@@ -4,14 +4,14 @@ from pydantic import ConfigDict, DirectoryPath, validate_call
 from pynwb import NWBFile
 
 from ._openephys_utils import _get_session_start_time, _read_settings_xml
-from ..baserecordingtotimeseriesinterface import BaseRecordingToTimeSeriesInterface
+from ..baserecordingastimeseriesinterface import BaseRecordingAsTimeSeriesInterface
 from ....utils import (
     DeepDict,
     get_json_schema_from_method_signature,
 )
 
 
-class OpenEphysBinaryAnalogInterface(BaseRecordingToTimeSeriesInterface):
+class OpenEphysBinaryAnalogInterface(BaseRecordingAsTimeSeriesInterface):
     """Primary data interface class for converting analog channels from OpenEphysBinary data."""
 
     display_name = "OpenEphysBinary Analog Recording"

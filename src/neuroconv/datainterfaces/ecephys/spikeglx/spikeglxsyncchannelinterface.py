@@ -5,11 +5,11 @@ from pathlib import Path
 from pydantic import ConfigDict, DirectoryPath, validate_call
 from pynwb import NWBFile
 
-from ..baserecordingtotimeseriesinterface import BaseRecordingToTimeSeriesInterface
+from ..baserecordingastimeseriesinterface import BaseRecordingAsTimeSeriesInterface
 from ....utils import DeepDict, get_json_schema_from_method_signature
 
 
-class SpikeGLXSyncChannelInterface(BaseRecordingToTimeSeriesInterface):
+class SpikeGLXSyncChannelInterface(BaseRecordingAsTimeSeriesInterface):
     """
     Data interface for SpikeGLX synchronization channels from Neuropixel probes.
 

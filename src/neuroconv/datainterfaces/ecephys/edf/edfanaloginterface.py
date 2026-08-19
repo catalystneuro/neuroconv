@@ -4,11 +4,11 @@ from pathlib import Path
 from pydantic import FilePath
 from pynwb import NWBFile
 
-from ..baserecordingtotimeseriesinterface import BaseRecordingToTimeSeriesInterface
+from ..baserecordingastimeseriesinterface import BaseRecordingAsTimeSeriesInterface
 from ....utils import DeepDict, get_json_schema_from_method_signature
 
 
-class EDFAnalogInterface(BaseRecordingToTimeSeriesInterface):
+class EDFAnalogInterface(BaseRecordingAsTimeSeriesInterface):
     """
     Primary data interface for converting auxiliary data streams from EDF files.
 

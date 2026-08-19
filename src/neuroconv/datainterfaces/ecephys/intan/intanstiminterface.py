@@ -4,11 +4,11 @@ from pydantic import FilePath
 from pynwb import NWBFile
 
 from ._utils import _warn_if_split_siblings_detected
-from ..baserecordingtotimeseriesinterface import BaseRecordingToTimeSeriesInterface
+from ..baserecordingastimeseriesinterface import BaseRecordingAsTimeSeriesInterface
 from ....utils import DeepDict, get_json_schema_from_method_signature
 
 
-class IntanStimInterface(BaseRecordingToTimeSeriesInterface):
+class IntanStimInterface(BaseRecordingAsTimeSeriesInterface):
     """
     Data interface for converting electrical stimulation data from Intan .rhs files.
 

@@ -5,7 +5,7 @@ from pynwb import NWBFile
 from ...basedatainterface import BaseDataInterface
 
 
-class BaseRecordingToTimeSeriesInterface(BaseDataInterface):
+class BaseRecordingAsTimeSeriesInterface(BaseDataInterface):
     """
     Base for the interfaces that write a recording as a ``TimeSeries`` instead of an ``ElectricalSeries``.
 

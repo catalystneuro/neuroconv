@@ -5,11 +5,11 @@ from pydantic import FilePath
 from pynwb import NWBFile
 
 from ._utils import _warn_if_split_siblings_detected
-from ..baserecordingtotimeseriesinterface import BaseRecordingToTimeSeriesInterface
+from ..baserecordingastimeseriesinterface import BaseRecordingAsTimeSeriesInterface
 from ....utils import DeepDict, get_json_schema_from_method_signature
 
 
-class IntanAnalogInterface(BaseRecordingToTimeSeriesInterface):
+class IntanAnalogInterface(BaseRecordingAsTimeSeriesInterface):
     """
     Primary data interface for converting non-amplifier analog data streams from Intan .rhd or .rhs files.
 
