@@ -21,7 +21,9 @@ from .tools.nwb_helpers import (
     get_default_nwbfile_metadata,
     make_nwbfile_from_metadata,
 )
-from .tools.nwb_helpers._metadata_and_file_helpers import _resolve_backend
+from .tools.nwb_helpers._metadata_and_file_helpers import (
+    _fetch_backend_from_nwbfile_on_disk,
+)
 from .utils import (
     dict_deep_update,
     fill_defaults,
@@ -440,7 +442,9 @@ class NWBConverter:
         Private helper method for run_conversion in append mode.
         Reads existing file, adds interface data, and writes back.
         """
-        backend = _resolve_backend(backend, backend_configuration)
+        backend = _fetch_backend_from_nwbfile_on_disk(
+            nwbfile_path=nwbfile_path, backend=backend, backend_configuration=backend_configuration
+        )
         IO = BACKEND_NWB_IO[backend]
 
         with IO(path=str(nwbfile_path), mode="r+", load_namespaces=True) as io:

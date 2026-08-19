@@ -19,6 +19,7 @@ from neuroconv.datainterfaces import (
 )
 from neuroconv.tools.testing.data_interface_mixins import (
     DataInterfaceTestMixin,
+    PoseEstimationInterfaceTestMixin,
     TemporalAlignmentMixin,
 )
 from neuroconv.utils import DeepDict
@@ -45,7 +46,7 @@ SLEAP_MACOS_INTEL_PYTHON_313_UNSUPPORTED = (
 )
 
 
-class TestLightningPoseDataInterface(DataInterfaceTestMixin, TemporalAlignmentMixin):
+class TestLightningPoseDataInterface(PoseEstimationInterfaceTestMixin):
     data_interface_cls = LightningPoseDataInterface
     interface_kwargs = dict(
         file_path=str(BEHAVIOR_DATA_PATH / "lightningpose" / "outputs/2023-11-09/10-14-37/video_preds/test_vid.csv"),
@@ -120,58 +121,26 @@ class TestLightningPoseDataInterface(DataInterfaceTestMixin, TemporalAlignmentMi
         metadata = self.interface.get_metadata(use_new_metadata_format=True)
         self.check_extracted_metadata(metadata)
 
-    def check_read_nwb(self, nwbfile_path: str):
-        from ndx_pose import PoseEstimation, PoseEstimationSeries
+    def run_custom_checks(self):
+        self.check_written_values(nwbfile_path=self.nwbfile_path)
 
+    def check_written_values(self, nwbfile_path: str):
+        """What the mixin cannot know: the source's own samples, its video dimensions, and the reference
+        frame the deprecated conversion option routes into every series."""
         nwbfile = read_nwb(nwbfile_path)
-
-        # Replacing assertIn with pytest-style assert
-        assert "behavior" in nwbfile.processing
-        assert self.pose_estimation_name in nwbfile.processing["behavior"].data_interfaces
-        assert "Skeletons" in nwbfile.processing["behavior"].data_interfaces
-
         pose_estimation_container = nwbfile.processing["behavior"].data_interfaces[self.pose_estimation_name]
 
-        # Replacing assertIsInstance with pytest-style assert
-        assert isinstance(pose_estimation_container, PoseEstimation)
-
-        pose_estimation_metadata = self.expected_metadata[self.pose_estimation_name]
-
-        # Replacing assertEqual with pytest-style assert
-        assert pose_estimation_container.description == pose_estimation_metadata["description"]
-        assert pose_estimation_container.scorer == pose_estimation_metadata["scorer"]
-        assert pose_estimation_container.source_software == pose_estimation_metadata["source_software"]
-
-        # Using numpy's assert_array_equal
         assert_array_equal(
-            pose_estimation_container.dimensions[:], [[self.original_video_height, self.original_video_width]]
+            pose_estimation_container.dimensions[:],
+            [[self.original_video_height, self.original_video_width]],
         )
 
-        # Replacing assertEqual with pytest-style assert
-        assert len(pose_estimation_container.pose_estimation_series) == len(self.expected_keypoint_names)
-
-        assert pose_estimation_container.skeleton.nodes[:].tolist() == self.expected_keypoint_names
-
         for keypoint_name in self.expected_keypoint_names:
-            series_metadata = pose_estimation_metadata[keypoint_name]
-
-            # Replacing assertIn with pytest-style assert
-            assert series_metadata["name"] in pose_estimation_container.pose_estimation_series
-
-            pose_estimation_series = pose_estimation_container.pose_estimation_series[series_metadata["name"]]
-
-            # Replacing assertIsInstance with pytest-style assert
-            assert isinstance(pose_estimation_series, PoseEstimationSeries)
-
-            # Replacing assertEqual with pytest-style assert
-            assert pose_estimation_series.unit == "px"
-            assert pose_estimation_series.description == series_metadata["description"]
+            pose_estimation_series = pose_estimation_container.pose_estimation_series[
+                f"PoseEstimationSeries{keypoint_name}"
+            ]
             assert pose_estimation_series.reference_frame == self.conversion_options["reference_frame"]
-
-            test_data = self.test_data[keypoint_name]
-
-            # Using numpy's assert_array_equal
-            assert_array_equal(pose_estimation_series.data[:], test_data[["x", "y"]].values)
+            assert_array_equal(pose_estimation_series.data[:], self.test_data[keypoint_name][["x", "y"]].values)
         nwbfile.read_io.close()
 
     def check_extracted_metadata(self, metadata: dict):
@@ -232,9 +201,42 @@ class TestLightningPoseDataInterface(DataInterfaceTestMixin, TemporalAlignmentMi
 
         nwbfile_path = str(self.save_directory / f"{self.data_interface_cls.__name__}_old_metadata_format.nwb")
         self.interface.run_conversion(
-            nwbfile_path=nwbfile_path, overwrite=True, metadata=metadata, **self.conversion_options
+            nwbfile_path=nwbfile_path,
+            overwrite=True,
+            metadata=metadata,
+            **self.conversion_options,
         )
         self.check_read_nwb(nwbfile_path=nwbfile_path)
+        self.check_written_values(nwbfile_path=nwbfile_path)
+
+        # The legacy path keeps its own free text, which the dict-based path leaves to the writer.
+        nwbfile = read_nwb(nwbfile_path)
+        pose_estimation_container = nwbfile.processing["behavior"].data_interfaces[self.pose_estimation_name]
+        assert pose_estimation_container.description == "Contains the pose estimation series for each keypoint."
+        for keypoint_name in self.expected_keypoint_names:
+            pose_estimation_series = pose_estimation_container.pose_estimation_series[
+                f"PoseEstimationSeries{keypoint_name}"
+            ]
+            assert pose_estimation_series.unit == "px"
+            assert pose_estimation_series.description == f"The estimated position (x, y) of {keypoint_name} over time."
+        nwbfile.read_io.close()
+
+    def test_written_text_in_dict_based_format(self, setup_interface):
+        """The dict-based metadata carries no free text, so the writer's and ndx-pose's defaults apply."""
+        nwbfile = mock_NWBFile()
+        metadata = self.interface.get_metadata(use_new_metadata_format=True)
+        self.interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+        pose_estimation_container = nwbfile.processing["behavior"][self.pose_estimation_name]
+        assert pose_estimation_container.description is None
+        for keypoint_name in self.expected_keypoint_names:
+            pose_estimation_series = pose_estimation_container.pose_estimation_series[
+                f"PoseEstimationSeries{keypoint_name}"
+            ]
+            assert pose_estimation_series.unit == "pixels"
+            assert pose_estimation_series.description == f"Pose estimation series for {keypoint_name}."
+            assert pose_estimation_series.reference_frame == "(0,0) is unknown."
+            assert pose_estimation_series.confidence_definition is None
 
     def test_series_conversion_options_are_deprecated(self, setup_interface):
         """The deprecated conversion options are routed into every series entry."""
@@ -257,7 +259,7 @@ class TestLightningPoseDataInterface(DataInterfaceTestMixin, TemporalAlignmentMi
             assert pose_estimation_series.confidence_definition == confidence_definition
 
 
-class TestLightningPoseDataInterfaceWithStubTest(DataInterfaceTestMixin, TemporalAlignmentMixin):
+class TestLightningPoseDataInterfaceWithStubTest(PoseEstimationInterfaceTestMixin):
     data_interface_cls = LightningPoseDataInterface
     interface_kwargs = dict(
         file_path=str(BEHAVIOR_DATA_PATH / "lightningpose" / "outputs/2023-11-09/10-14-37/video_preds/test_vid.csv"),
@@ -269,8 +271,9 @@ class TestLightningPoseDataInterfaceWithStubTest(DataInterfaceTestMixin, Tempora
     conversion_options = dict(stub_test=True)
     save_directory = OUTPUT_PATH
 
-    def check_read_nwb(self, nwbfile_path: str):
-        nwbfile = read_nwb(nwbfile_path)
+    def run_custom_checks(self):
+        """The stub option is what this class is for: every series is truncated to ten frames."""
+        nwbfile = read_nwb(self.nwbfile_path)
         pose_estimation_container = nwbfile.processing["behavior"].data_interfaces["PoseEstimation"]
         for pose_estimation_series in pose_estimation_container.pose_estimation_series.values():
             assert pose_estimation_series.data.shape[0] == 10
@@ -279,7 +282,6 @@ class TestLightningPoseDataInterfaceWithStubTest(DataInterfaceTestMixin, Tempora
 
 
 class TestSLEAPInterface(DataInterfaceTestMixin, TemporalAlignmentMixin):
-
     data_interface_cls = SLEAPInterface
     interface_kwargs = dict(
         file_path=str(BEHAVIOR_DATA_PATH / "sleap" / "predictions_1.2.7_provenance_and_tracking.slp"),
@@ -435,7 +437,7 @@ class CustomTestSLEAPInterface(TestCase):
     ndx_pose_version < version.parse("0.2.0"),
     reason="Interface requires ndx-pose version >= 0.2.0",
 )
-class TestDeepLabCutInterface(DataInterfaceTestMixin):
+class TestDeepLabCutInterface(PoseEstimationInterfaceTestMixin):
     data_interface_cls = DeepLabCutInterface
     interface_kwargs = dict(
         file_path=str(
@@ -545,8 +547,20 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin):
             assert series["unit"] == "pixels"
 
     def run_custom_checks(self):
+        # Before check_renaming_instance, which overwrites the file at self.nwbfile_path with one whose
+        # container is named differently.
+        self.check_written_timing(nwbfile_path=self.nwbfile_path)
         self.check_renaming_instance(nwbfile_path=self.nwbfile_path)
         self.check_custom_metadata()
+
+    def check_written_timing(self, nwbfile_path: str):
+        """The interface was given a constant frame rate, so the series carry it rather than timestamps."""
+        nwbfile = read_nwb(nwbfile_path)
+        pose_estimation_container = nwbfile.processing["behavior"].data_interfaces["PoseEstimationDeepLabCut"]
+        for pose_estimation_series in pose_estimation_container.pose_estimation_series.values():
+            assert pose_estimation_series.starting_time == 0
+            assert pose_estimation_series.rate == 30.0
+        nwbfile.read_io.close()
 
     def check_renaming_instance(self, nwbfile_path: str):
         custom_container_name = "TestPoseEstimation"
@@ -579,7 +593,9 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin):
 
         # Create a test NWBFile
         nwbfile = NWBFile(
-            session_description="Test session", identifier="TEST123", session_start_time=datetime.now().astimezone()
+            session_description="Test session",
+            identifier="TEST123",
+            session_start_time=datetime.now().astimezone(),
         )
 
         # Add a behavior processing module
@@ -675,37 +691,7 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin):
         assert container.source_software_version == custom_source_software_version
         assert container.original_videos == custom_original_videos
         assert container.labeled_videos == custom_labeled_videos
-        assert container.dimensions == custom_dimensions
-
-    def check_read_nwb(self, nwbfile_path: str):
-        nwbfile = read_nwb(nwbfile_path)
-        assert "behavior" in nwbfile.processing
-        processing_module_interfaces = nwbfile.processing["behavior"].data_interfaces
-        assert "PoseEstimationDeepLabCut" in processing_module_interfaces
-        assert "Skeletons" in processing_module_interfaces
-
-        pose_estimation_container = processing_module_interfaces["PoseEstimationDeepLabCut"]
-        pose_estimation_series_in_nwb = pose_estimation_container.pose_estimation_series
-        expected_pose_estimation_series = [
-            "PoseEstimationSeriesLeftear",
-            "PoseEstimationSeriesRightear",
-            "PoseEstimationSeriesSnout",
-            "PoseEstimationSeriesTailbase",
-        ]
-
-        expected_pose_estimation_series_are_in_nwb_file = [
-            pose_estimation in pose_estimation_series_in_nwb for pose_estimation in expected_pose_estimation_series
-        ]
-
-        for pose_estimation in pose_estimation_series_in_nwb.values():
-            assert pose_estimation.starting_time == 0
-            assert pose_estimation.rate == 30.0
-
-        assert all(expected_pose_estimation_series_are_in_nwb_file)
-
-        skeleton = pose_estimation_container.skeleton
-        assert skeleton.nodes[:].tolist() == ["snout", "leftear", "rightear", "tailbase"]
-        nwbfile.read_io.close()
+        assert_array_equal(container.dimensions, custom_dimensions)
 
     def test_conversion_new_metadata_format(self, setup_interface):
         """Run the conversion with the dict-based ("new") metadata format and read it back.
@@ -742,7 +728,7 @@ class TestDeepLabCutInterface(DataInterfaceTestMixin):
     ndx_pose_version < version.parse("0.2.0"),
     reason="Interface requires ndx-pose version >= 0.2.0",
 )
-class TestDeepLabCutInterfaceNoConfigFile(DataInterfaceTestMixin):
+class TestDeepLabCutInterfaceNoConfigFile(PoseEstimationInterfaceTestMixin):
     data_interface_cls = DeepLabCutInterface
     interface_kwargs = dict(
         file_path=str(
@@ -757,33 +743,12 @@ class TestDeepLabCutInterfaceNoConfigFile(DataInterfaceTestMixin):
     )
     save_directory = OUTPUT_PATH
 
-    def check_read_nwb(self, nwbfile_path: str):
-        nwbfile = read_nwb(nwbfile_path)
-        assert "behavior" in nwbfile.processing
-        processing_module_interfaces = nwbfile.processing["behavior"].data_interfaces
-        assert "PoseEstimationDeepLabCut" in processing_module_interfaces
-
-        pose_estimation_series_in_nwb = processing_module_interfaces["PoseEstimationDeepLabCut"].pose_estimation_series
-        expected_pose_estimation_series = [
-            "PoseEstimationSeriesLeftear",
-            "PoseEstimationSeriesRightear",
-            "PoseEstimationSeriesSnout",
-            "PoseEstimationSeriesTailbase",
-        ]
-
-        expected_pose_estimation_series_are_in_nwb_file = [
-            pose_estimation in pose_estimation_series_in_nwb for pose_estimation in expected_pose_estimation_series
-        ]
-
-        assert all(expected_pose_estimation_series_are_in_nwb_file)
-        nwbfile.read_io.close()
-
 
 @pytest.mark.skipif(
     ndx_pose_version < version.parse("0.2.0"),
     reason="Interface requires ndx-pose version >= 0.2.0",
 )
-class TestDeepLabCutInterfaceSetTimestamps(DataInterfaceTestMixin):
+class TestDeepLabCutInterfaceSetTimestamps(PoseEstimationInterfaceTestMixin):
     data_interface_cls = DeepLabCutInterface
     interface_kwargs = dict(
         file_path=str(
@@ -805,7 +770,11 @@ class TestDeepLabCutInterfaceSetTimestamps(DataInterfaceTestMixin):
     def check_custom_timestamps(self, nwbfile_path: str):
         # This is irregular timestamps
         custom_timestamps = np.concatenate(
-            (np.linspace(10, 110, 1000), np.linspace(150, 250, 1000), np.linspace(300, 400, 330))
+            (
+                np.linspace(10, 110, 1000),
+                np.linspace(150, 250, 1000),
+                np.linspace(300, 400, 330),
+            )
         )
 
         metadata = self.interface.get_metadata()
@@ -828,16 +797,12 @@ class TestDeepLabCutInterfaceSetTimestamps(DataInterfaceTestMixin):
             np.testing.assert_array_equal(pose_timestamps, custom_timestamps)
         nwbfile.read_io.close()
 
-    # This was tested in the other test
-    def check_read_nwb(self, nwbfile_path: str):
-        pass
-
 
 @pytest.mark.skipif(
     platform == "darwin" and python_version < version.parse("3.10") or ndx_pose_version < version.parse("0.2.0"),
     reason="Interface requires ndx-pose version >= 0.2.0",
 )
-class TestDeepLabCutInterfaceFromCSV(DataInterfaceTestMixin):
+class TestDeepLabCutInterfaceFromCSV(PoseEstimationInterfaceTestMixin):
     data_interface_cls = DeepLabCutInterface
     interface_kwargs = dict(
         file_path=str(
@@ -851,27 +816,6 @@ class TestDeepLabCutInterfaceFromCSV(DataInterfaceTestMixin):
         sampling_frequency=30.0,
     )
     save_directory = OUTPUT_PATH
-
-    def check_read_nwb(self, nwbfile_path: str):
-        nwbfile = read_nwb(nwbfile_path)
-        assert "behavior" in nwbfile.processing
-        processing_module_interfaces = nwbfile.processing["behavior"].data_interfaces
-        assert "PoseEstimationDeepLabCut" in processing_module_interfaces
-
-        pose_estimation_series_in_nwb = processing_module_interfaces["PoseEstimationDeepLabCut"].pose_estimation_series
-        expected_pose_estimation_series = [
-            "PoseEstimationSeriesRedled",
-            "PoseEstimationSeriesShoulder",
-            "PoseEstimationSeriesHaunch",
-            "PoseEstimationSeriesBaseoftail",
-        ]
-
-        expected_pose_estimation_series_are_in_nwb_file = [
-            pose_estimation in pose_estimation_series_in_nwb for pose_estimation in expected_pose_estimation_series
-        ]
-
-        assert all(expected_pose_estimation_series_are_in_nwb_file)
-        nwbfile.read_io.close()
 
 
 @pytest.fixture
