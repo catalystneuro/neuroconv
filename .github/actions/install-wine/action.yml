@@ -17,6 +17,10 @@ runs:
         sudo dpkg --add-architecture i386
       shell: bash
 
+    # Wine is here for the Plexon2 tests alone, and the Ubuntu mirrors the runner points at go down
+    # often enough that failing the job over one costs an unrelated pull request its whole run. Both
+    # steps below report and carry on instead. The Plexon2 tests check for the `wine` binary and skip
+    # themselves when it is absent, so the coverage is lost for that run and nothing else breaks.
     - name: Refresh APT package index for Wine
       if: runner.os == 'Linux'
       run: |
@@ -27,7 +31,8 @@ runs:
           fi
           [ "$attempt" -eq 2 ] || sleep 10
         done
-        exit 1
+        echo "::warning title=Wine unavailable::apt-get update failed, so Wine was not installed and the Plexon2 tests will skip."
+        exit 0
       shell: bash
 
     - name: Install Wine on Linux
@@ -40,7 +45,8 @@ runs:
           fi
           [ "$attempt" -eq 2 ] || sleep 10
         done
-        exit 1
+        echo "::warning title=Wine unavailable::Installing Wine failed, so the Plexon2 tests will skip."
+        exit 0
       shell: bash
 
     - name: Skip Wine install on macOS

@@ -1352,8 +1352,8 @@ class TestAddTimeSeries:
         assert time_series.unit == "mV"
         assert time_series.conversion == 2.0
 
-    def test_heterogeneous_units_warning(self):
-        """Test warning when recording has heterogeneous units."""
+    def test_heterogeneous_units_raises(self):
+        """A TimeSeries states one unit for all of its channels, so channels that disagree cannot be written."""
         # Create a recording object for testing
         num_channels = 3
         sampling_frequency = 1.0
@@ -1374,12 +1374,10 @@ class TestAddTimeSeries:
         # Create a fresh NWBFile for testing
         nwbfile = mock_NWBFile()
 
-        with pytest.warns(UserWarning, match="heterogeneous units"):
+        with pytest.raises(ValueError, match="state different units"):
             add_recording_as_time_series_to_nwbfile(recording=recording, nwbfile=nwbfile, iterator_type=None)
 
-        # Verify the time series has the default unit
-        time_series = nwbfile.acquisition["TimeSeries"]
-        assert time_series.unit == "n.a."
+        assert "TimeSeries" not in nwbfile.acquisition
 
     def test_missing_scaling_factors_warning(self):
         """Test warning when recording is missing scaling factors."""
