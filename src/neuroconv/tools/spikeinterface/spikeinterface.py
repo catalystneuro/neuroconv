@@ -1901,9 +1901,8 @@ def _add_time_series_segment_to_nwbfile(
             "1) Set the unit in the metadata['TimeSeries'][metadata_key]['unit'] field, or "
             "2) Set the `physical_unit`, `gain_to_physical_unit`, and `offset_to_physical_unit` properties "
             "on the recording object with consistent units across all channels, or "
-            "3) Group the channels by unit and write each group as its own TimeSeries. Use "
-            "`recording.select_channels(channel_ids=...)` on a recording, or the `channels_to_include` "
-            "argument of the analog interfaces. "
+            "3) Group the channels by unit and write each group as its own TimeSeries, selecting each "
+            "group with recording.select_channels(channel_ids=[...]). "
             "See https://neuroconv.readthedocs.io/en/main/how_to/handle_heterogeneous_offsets.html"
         )
 
