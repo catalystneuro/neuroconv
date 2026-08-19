@@ -319,9 +319,15 @@ class TestSLEAPMultipleTracks:
     file_path = str(BEHAVIOR_DATA_PATH / "sleap" / "predictions_1.2.7_provenance_and_tracking.slp")
     video_file_path = str(BEHAVIOR_DATA_PATH / "sleap" / "melanogaster_courtship.mp4")
 
-    def test_naming_a_track_is_required(self):
-        with pytest.raises(ValueError, match="tracks 2 individuals"):
-            SLEAPInterface(file_path=self.file_path, video_file_path=self.video_file_path)
+    def test_writing_every_track_is_deprecated(self):
+        """Not naming a track still writes them all, through sleap-io, behind a FutureWarning."""
+        interface = SLEAPInterface(file_path=self.file_path, video_file_path=self.video_file_path)
+        nwbfile = mock_NWBFile()
+        with pytest.warns(FutureWarning, match="one interface per track"):
+            interface.add_to_nwbfile(nwbfile=nwbfile)
+
+        processing_module = nwbfile.processing["SLEAP_VIDEO_000_20190128_113421"]
+        assert set(processing_module.data_interfaces) == {"track=track_0", "track=track_1"}
 
     def test_unknown_track_raises(self):
         with pytest.raises(ValueError, match="Track 'nobody' is not in this file"):

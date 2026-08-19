@@ -3,6 +3,7 @@ from pathlib import Path
 
 import numpy as np
 from pydantic import FilePath, validate_call
+from pynwb.file import NWBFile
 
 from .sleap_utils import extract_timestamps
 from ..baseposeestimationinterface import BasePoseEstimationInterface
@@ -106,15 +107,10 @@ class SLEAPInterface(BasePoseEstimationInterface):
         self.metadata_key = metadata_key
 
         track_names = self.get_available_tracks(file_path=file_path)
-        if track_name is None:
-            if len(track_names) > 1:
-                raise ValueError(
-                    f"This file tracks {len(track_names)} individuals ({track_names}) and an NWB file holds "
-                    "one subject, so name the one to write with 'track_name' and use one interface per track."
-                )
-            track_name = track_names[0] if track_names else None
-        elif track_name not in track_names:
+        if track_name is not None and track_name not in track_names:
             raise ValueError(f"Track '{track_name}' is not in this file. Available tracks: {track_names}.")
+        if track_name is None and len(track_names) == 1:
+            track_name = track_names[0]
         self.track_name = track_name
 
         super().__init__(file_path=file_path)
@@ -141,26 +137,65 @@ class SLEAPInterface(BasePoseEstimationInterface):
         return np.asarray(sorted(frame_indices))
 
     def get_original_timestamps(self) -> np.ndarray:
-        """One time per labeled frame, read off the video or derived from the frame rate."""
-        frame_indices = self._get_frame_indices()
+        """The video's timeline, one time per video frame, not per labeled frame.
+
+        Kept on the video's frames rather than on the predictions so ``set_aligned_timestamps`` takes the
+        same vector an alignment against another stream produces. ``get_timestamps`` selects from it.
+        """
         if self.video_file_path is not None:
-            video_timestamps = np.asarray(extract_timestamps(self.video_file_path))
-            return video_timestamps[frame_indices]
+            return np.array(extract_timestamps(self.video_file_path))
         if self.video_sample_rate is not None:
-            return frame_indices / self.video_sample_rate
+            number_of_frames = int(self._get_frame_indices()[-1]) + 1
+            return np.arange(number_of_frames) / self.video_sample_rate
         raise ValueError(
-            "No timing information is available for this SLEAP output. Its rows are video frames and the "
-            ".slp file records no frame rate, so the times cannot be derived from the source. Pass "
-            "'video_file_path' or 'frames_per_second' to SLEAPInterface, or call 'set_aligned_timestamps' "
-            "with one time per labeled frame."
+            "Unable to fetch the original timestamps from the video! "
+            "Please specify 'video_file_path' or 'frames_per_second' when initializing the interface."
         )
 
     def get_timestamps(self) -> np.ndarray:
+        """The times of the frames this track was labeled on, selected from the video's timeline.
+
+        Not every video frame carries a prediction, so the written series are shorter than the video.
+        """
         timestamps = self._timestamps if self._timestamps is not None else self.get_original_timestamps()
-        return timestamps
+        return np.asarray(timestamps)[self._get_frame_indices()]
 
     def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
         self._timestamps = aligned_timestamps
+
+    # TODO: remove on or after August 2027, with the branch in add_to_nwbfile that calls it.
+    def _add_every_track_to_nwbfile(self, nwbfile: NWBFile) -> None:
+        """The pre-``track_name`` path: hand the whole file to sleap-io and let it write every track.
+
+        It writes one ``PoseEstimation`` per track into a ``SLEAP_VIDEO_000_*`` processing module, so a
+        multi-animal file ends up holding several subjects, which is what ndx-pose says not to do and what
+        naming a track fixes.
+        """
+        from sleap_io.io.nwb_predictions import append_nwb_data
+
+        pose_estimation_metadata = dict()
+        if self.video_file_path or self._timestamps:
+            pose_estimation_metadata.update(video_timestamps=self.get_original_timestamps())
+        if self.video_sample_rate:
+            pose_estimation_metadata.update(video_sample_rate=self.video_sample_rate)
+
+        append_nwb_data(labels=self._get_labels(), nwbfile=nwbfile, pose_estimation_metadata=pose_estimation_metadata)
+
+    def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict | None = None, **conversion_options) -> None:
+        """Write the named track's ``PoseEstimation`` container to the file's behavior module."""
+        if self.track_name is None:
+            warnings.warn(
+                f"This file tracks {len(self.get_available_tracks(file_path=self.file_path))} individuals and "
+                "an NWB file holds one subject, so writing them all into one file is deprecated and will be "
+                "removed on or after August 2027. Name the individual with 'track_name' and use one "
+                "interface per track; 'get_available_tracks' lists them.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            self._add_every_track_to_nwbfile(nwbfile=nwbfile)
+            return
+
+        super().add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **conversion_options)
 
     def get_keypoint_names(self) -> list[str]:
         return [node.name for node in self._get_labels().skeletons[0].nodes]
