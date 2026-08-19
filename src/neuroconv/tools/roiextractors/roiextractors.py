@@ -1326,6 +1326,30 @@ def write_imaging_to_nwbfile(
         return nwbfile
 
 
+def _segmentation_extractor_has_data(segmentation_extractor: SegmentationExtractor) -> bool:
+    """
+    Whether a segmentation extractor holds anything to write: ROIs, traces or summary images.
+
+    Parameters
+    ----------
+    segmentation_extractor : SegmentationExtractor
+        The extractor to inspect.
+
+    Returns
+    -------
+    bool
+        False only when the extractor reports no ROIs, no traces and no summary images.
+    """
+    if segmentation_extractor.get_num_rois() > 0:
+        return True
+
+    traces = segmentation_extractor.get_traces_dict().values()
+    if any(trace is not None and trace.size != 0 for trace in traces):
+        return True
+
+    return any(image is not None for image in segmentation_extractor.get_images_dict().values())
+
+
 def add_segmentation_to_nwbfile(
     segmentation_extractor: SegmentationExtractor,
     nwbfile: NWBFile,
@@ -1434,6 +1458,18 @@ def add_segmentation_to_nwbfile(
             "This parameter will be removed on or after February 2027.",
             DeprecationWarning,
             stacklevel=2,
+        )
+
+    # Without this the writer either fails inside the mask handling with an AttributeError naming a
+    # private attribute or, where masks are absent, writes an imaging plane and an empty table that read
+    # as a successful conversion. See https://github.com/catalystneuro/neuroconv/issues/1401.
+    if not _segmentation_extractor_has_data(segmentation_extractor=segmentation_extractor):
+        raise ValueError(
+            f"{type(segmentation_extractor).__name__} contains no segmentation data: it reports 0 ROIs, "
+            "no traces and no summary images. This is usually an empty result from the segmentation "
+            "pipeline, or a file whose data is not where the format expected it. Writing it would produce "
+            "an NWB file holding an imaging plane, a device and an empty ROI table and nothing else, which "
+            "is indistinguishable from a successful conversion."
         )
 
     if metadata is None:
