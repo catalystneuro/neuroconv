@@ -88,9 +88,23 @@ statement of ignorance sitting in your file, and replacing it is the most valuab
 
     container["description"] = "2D keypoints of a mouse in an open field, from the overhead camera."
 
-**Describe the skeleton.** Edges are pairs of node indices. The ``subject`` field names the individual
-within the source, and the skeleton is linked to the file's ``Subject`` when the two ids match. A file
-without a ``Subject``, or one whose id differs, gets a skeleton linked to nothing.
+**Describe the skeleton.** The nodes repeat what the series already say, so the edges are what a skeleton
+is really for: they are the only record in the file of which body parts are joined. That connectivity is
+a fact about the animal rather than about the recording, and it is what makes a derived quantity well
+defined, since a limb length or a joint angle is only meaningful along a segment the body actually has.
+It is also what lets anything reading the file draw the animal rather than a cloud of points. Edges are
+pairs of indices into ``nodes``, in the order the series are written, so reordering the nodes changes
+what the edges mean.
+
+Most trackers already know them, because the connectivity is drawn when the project is set up rather than
+estimated per frame, and a bottom-up multi-animal model uses it to group keypoints into individuals. The
+interfaces read them where the format records them, so this step is usually a matter of checking rather
+than supplying. Lightning Pose is the exception, since it predicts each keypoint independently and its
+output carries no connectivity at all.
+
+The ``subject`` field names the individual within the source, and the skeleton is linked to the file's
+``Subject`` when the two ids match. A file without a ``Subject``, or one whose id differs, gets a skeleton
+linked to nothing.
 
 .. code-block:: python
 
