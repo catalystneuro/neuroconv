@@ -148,8 +148,11 @@ hind paw.
 
 **Annotate the subject skeleton**
 
-A ``Skeleton`` is the body plan behind the keypoints. It has a ``name`` and three fields describing the
-subject's structure.
+A ``Skeleton`` describes the subject rather than the recording: which body parts the tracker was trained
+to find, how they connect, and whose body they belong to. It is the one object on this page that would
+still be true if you filmed the same subject again tomorrow with a different camera, which is why several
+containers can share one, and why it lives beside the containers in the file rather than inside any of
+them. It carries a ``name`` and three fields.
 
 .. code-block:: python
    :emphasize-lines: 38-42
@@ -197,19 +200,6 @@ subject's structure.
     skeleton["edges"] = [[0, 1], [1, 2]]  # head-neck, neck-left shoulder
     skeleton["subject"] = "mouse_001"
 
-.. admonition:: The file so far
-   :class: tip
-
-   .. code-block:: text
-
-       processing/behavior
-       ├── PoseEstimationTopCamera            PoseEstimation   description, unit, reference frame
-       │   ├── PoseEstimationSeriesHead       data (1000, 2)
-       │   ├── PoseEstimationSeriesNeck       data (1000, 2)
-       │   └── PoseEstimationSeriesLeftShou…  data (1000, 2)
-       └── Skeletons
-           └── SkeletonMouse                  nodes, edges, subject
-
 ``nodes`` are the body parts, in the order their series are written. The interface fills them from the
 keypoints it read, so this is the one field you usually leave alone; the order matters because it is what
 the edges index into, and reordering it silently changes what they mean.
@@ -230,27 +220,59 @@ the two ids match, which is what ties a body plan to a subject for anyone readin
 without a ``Subject``, or one whose id differs, gets a skeleton linked to nothing, which is how you say
 these keypoints belong to somebody other than the file's subject.
 
-How to Link a Pose Estimation to its Source Video
--------------------------------------------------
+**Link the source video**
 
-Keypoints are a claim about a video, and a file that does not say which video cannot be checked. A
-reader who wants to know whether a low-confidence stretch is an occlusion or a tracking failure has to
-watch the frames, and a reader assembling a dataset needs to know that two sessions came from different
-cameras.
-
-If you have the original video, it should go into the same file. That is what
-:doc:`ExternalVideoInterface <../conversion_examples_gallery/behavior/video>` is for: it stores the video
-as an ``ImageSeries`` pointing at the file on disk, and gives it an entry in
-``metadata["Behavior"]["ExternalVideos"]``.
-
-On top of storing it, the pose container can formally link to it. The link is a reference to the object
-rather than a path, so it cannot rot, and it makes the pairing explicit rather than something a reader
-infers from names. That matters most when a file holds more than one of either: two trackers run over the
-same recording, or one tracker run over several camera recordings, and nothing but the link says which
-output came from which video. It also brings the camera along, since the ``ImageSeries`` carries its own
-``Device``, so the pose container needs none of its own.
+Keypoints are a claim about a video, and a file that does not say which video cannot be checked. If you
+have the original video, put it in the same file with
+:doc:`ExternalVideoInterface <../conversion_examples_gallery/behavior/video>`, which stores it as an
+``ImageSeries`` pointing at the file on disk and gives it an entry in
+``metadata["Behavior"]["ExternalVideos"]``, then name that entry from the container.
 
 .. code-block:: python
+   :emphasize-lines: 44-56
+
+    from neuroconv.tools.testing import MockPoseEstimationInterface
+
+    interface = MockPoseEstimationInterface(num_nodes=3)
+    metadata = interface.get_metadata()
+    key = interface.metadata_key
+
+    container = metadata["Pose"]["PoseEstimations"][key]
+    container["name"] = "PoseEstimationTopCamera"
+    container["description"] = "2D keypoints of a mouse in an open field, from the overhead camera."
+    container["source_software"] = "DeepLabCut"
+    container["source_software_version"] = "2.3.9"
+    container["scorer"] = "DLC_resnet50_openfield"
+
+    unit = "pixels"
+    reference_frame = "(0,0) is the top left corner of the video."
+    confidence_definition = "Softmax output of the deep neural network."
+
+    series = container["PoseEstimationSeries"]
+    series["head"].update(
+        description="Tip of the snout.",
+        unit=unit,
+        reference_frame=reference_frame,
+        confidence_definition=confidence_definition,
+    )
+    series["neck"].update(
+        description="Base of the skull.",
+        unit=unit,
+        reference_frame=reference_frame,
+        confidence_definition=confidence_definition,
+    )
+    series["left_shoulder"].update(
+        description="Left shoulder joint.",
+        unit=unit,
+        reference_frame=reference_frame,
+        confidence_definition=confidence_definition,
+    )
+
+    skeleton = metadata["Pose"]["Skeletons"][key]
+    skeleton["name"] = "SkeletonMouse"
+    skeleton["nodes"] = ["head", "neck", "left_shoulder"]
+    skeleton["edges"] = [[0, 1], [1, 2]]  # head-neck, neck-left shoulder
+    skeleton["subject"] = "mouse_001"
 
     video_metadata_key = "source_video_key"      # the metadata_key the video interface was built with
     camera_metadata_key = "top_camera_key"
@@ -264,24 +286,40 @@ output came from which video. It also brings the camera along, since the ``Image
         name="TopCamera", description="Overhead camera, 30 fps."
     )
 
-    # The pose container names that entry, and the writer resolves it to the ImageSeries.
     container["source_video_metadata_key"] = video_metadata_key
 
-The video interface has to run before the pose one in the same conversion, since the writer resolves the
-link against an object that must already be in the file. Use ``labeled_video_metadata_key`` the same way
-for a tracker's annotated output video, when you have one.
+``source_video_metadata_key`` names an entry in ``metadata["Behavior"]["ExternalVideos"]``, which the
+writer resolves to the ``ImageSeries`` that interface wrote. The link is a reference to the object rather
+than a path, so it cannot rot, and it makes the pairing explicit rather than something a reader infers
+from names, which matters as soon as a file holds two trackers over one recording or one tracker over
+several recordings. It also brings the camera along, since the ``ImageSeries`` carries its own
+``Device``. The video interface has to run before the pose one in the same conversion, since the writer
+resolves the link against an object that must already be in the file.
 
-If the video cannot go into the file, there is nothing to link, so add the camera to the pose container
-yourself: with no ``ImageSeries`` to carry it, nothing else in the file records that a camera existed.
+``labeled_video_metadata_key`` does the same for a tracker's annotated output video, when you have one.
 
-.. code-block:: python
+``device_metadata_key`` names an entry in ``metadata["Devices"]``, and is only needed when there is no
+linked video: with no ``ImageSeries`` to carry it, nothing else in the file records that a camera
+existed.
 
-    camera_metadata_key = "top_camera_key"
+.. admonition:: The file so far
+   :class: tip
 
-    metadata["Devices"][camera_metadata_key] = dict(
-        name="TopCamera", description="Overhead camera, 30 fps."
-    )
-    container["device_metadata_key"] = camera_metadata_key
+   .. code-block:: text
+
+       processing/behavior
+       ├── PoseEstimationTopCamera            PoseEstimation   description, unit, reference frame
+       │   ├── PoseEstimationSeriesHead       data (1000, 2)
+       │   ├── PoseEstimationSeriesNeck       data (1000, 2)
+       │   └── PoseEstimationSeriesLeftShou…  data (1000, 2)
+       └── Skeletons
+           └── SkeletonMouse                  nodes, edges, subject
+
+       acquisition
+       └── OverheadVideo                      ImageSeries      linked as the container's source_video
+
+       devices
+       └── TopCamera                          carried by the ImageSeries
 
 How to Annotate Several Camera Views of One Subject
 ----------------------------------------------------
