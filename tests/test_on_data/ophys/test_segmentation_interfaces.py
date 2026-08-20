@@ -587,6 +587,18 @@ skip_on_python_313 = pytest.mark.skipif(
 
 @skip_on_darwin_arm64
 @skip_on_python_313
+def test_inscopix_empty_cellset_raises():
+    """An Inscopix cellset holding no cells has no segmentation to write."""
+    interface = InscopixSegmentationInterface(
+        file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "empty_cellset.isxd")
+    )
+
+    with pytest.raises(ValueError, match="contains no segmentation data"):
+        interface.add_to_nwbfile(nwbfile=mock_NWBFile(), metadata=interface.get_metadata())
+
+
+@skip_on_darwin_arm64
+@skip_on_python_313
 class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTestMixin):
     """Tests for InscopixSegmentationInterface."""
 

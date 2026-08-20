@@ -44,68 +44,40 @@ use the following structure:
 
 .. code-block:: python
 
-    >>> pose_estimation_metadata_key = "PoseEstimationContainerName"
-    >>> interface = DeepLabCutInterface(file_path=file_path, pose_estimation_metadata_key=pose_estimation_metadata_key, sampling_frequency=30.0)
+    >>> metadata_key = "deep_lab_cut_metadata_key"
+    >>> interface = DeepLabCutInterface(file_path=file_path, metadata_key=metadata_key, sampling_frequency=30.0)
     >>> metadata = interface.get_metadata()
     >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>>
-    >>> # Customize the PoseEstimation container metadata
-    >>> metadata["PoseEstimation"]["PoseEstimationContainers"][pose_estimation_metadata_key] = {
-    ...     "name": "PoseEstimationContainerName", # Edit to change the name and if you add multiple DLC containers for disambiguation
-    ...     "description": "2D keypoint coordinates estimated using DeepLabCut.",
-    ...     "source_software": "DeepLabCut",
-    ...     "source_software_version": "2.2.0",
-    ...     "dimensions": [[0, 0]],
-    ...     "skeleton": "SubjectIDSkeleton",
-    ...     "devices": ["CameraPoseEstimationContainerName"],
-    ...     "scorer": "DLC_resnet50_openfieldAug20shuffle1_30000",
-    ...     "original_videos": None,
-    ...     "labeled_videos": None,
-    ...     "PoseEstimationSeries": {
-    ...         "snout": {
-    ...             "name": "PoseEstimationSeriesSnout",
-    ...             "description": "Pose estimation series for snout.",
-    ...             "unit": "pixels",
-    ...             "reference_frame": "(0,0) corresponds to the bottom left corner of the video.",
-    ...             "confidence_definition": "Softmax output of the deep neural network.",
-    ...         },
-    ...         "leftear": {
-    ...             "name": "PoseEstimationSeriesLeftear",
-    ...             "description": "Pose estimation series for leftear.",
-    ...             "unit": "pixels",
-    ...             "reference_frame": "(0,0) corresponds to the bottom left corner of the video.",
-    ...             "confidence_definition": "Softmax output of the deep neural network.",
-    ...         },
-    ...         "rightear": {
-    ...             "name": "PoseEstimationSeriesRightear",
-    ...             "description": "Pose estimation series for rightear.",
-    ...             "unit": "pixels",
-    ...             "reference_frame": "(0,0) corresponds to the bottom left corner of the video.",
-    ...             "confidence_definition": "Softmax output of the deep neural network.",
-    ...         },
-    ...         "tailbase": {
-    ...             "name": "PoseEstimationSeriesTailbase",
-    ...             "description": "Pose estimation series for tailbase.",
-    ...             "unit": "pixels",
-    ...             "reference_frame": "(0,0) corresponds to the bottom left corner of the video.",
-    ...             "confidence_definition": "Softmax output of the deep neural network.",
-    ...         },
-    ...     },
-    ... }
-
-    >>> # Define skeleton metadata
-    >>> skeletons_metadata = {
-    ...     "SubjectIDSkeleton": {
-    ...         "name": "SkeletonPoseEstimationContainerName_Ind1",
-    ...         "nodes": ["snout", "leftear", "rightear", "tailbase"],
-    ...         "edges": [],
-    ...         "subject": "the_subject_id",  # If this matches the subject_id in the video, it will be used to link the skeleton to the video
-    ...     }
-    ... }
-
-    >>> # Add skeleton metadata to the main metadata
-    >>> metadata["PoseEstimation"]["Skeletons"] = skeletons_metadata
+    >>> # The container: its name is what appears in the file, the key is only how you address it here
+    >>> container = metadata["Pose"]["PoseEstimations"][metadata_key]
+    >>> container.update(
+    ...     name="PoseEstimationContainerName",
+    ...     description="2D keypoint coordinates estimated using DeepLabCut.",
+    ...     source_software_version="2.2.0",
+    ... )
+    >>>
+    >>> # Each keypoint gets one series. Nothing in the source says what the coordinates mean, so the
+    >>> # unit, the reference frame and the confidence definition are yours to state.
+    >>> for keypoint_name, series in container["PoseEstimationSeries"].items():
+    ...     series.update(
+    ...         unit="pixels",
+    ...         reference_frame="(0,0) corresponds to the bottom left corner of the video.",
+    ...         confidence_definition="Softmax output of the deep neural network.",
+    ...     )
+    >>>
+    >>> # The skeleton names the body parts and the edges between them, and links to the subject
+    >>> metadata["Pose"]["Skeletons"][metadata_key].update(
+    ...     name="SkeletonPoseEstimationContainerName_Ind1",
+    ...     edges=[[0, 1], [0, 2], [0, 3]],
+    ...     subject="subject1",  # links the skeleton when it matches the subject_id below
+    ... )
+    >>>
+    >>> # The camera, if you know it. No pose format records one, so none is written unless you say so.
+    >>> metadata["Devices"]["camera"] = dict(name="CameraPoseEstimationContainerName")
+    >>> container["device_metadata_key"] = "camera"
+    >>>
     >>> # Add subject information (required for DANDI upload)
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
 
@@ -113,25 +85,27 @@ use the following structure:
     >>> nwbfile_path = f"{path_to_save_nwbfile}"  # This should be something like: "saved_file.nwb"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
 
-The metadata structure for DeepLabCut includes:
+The metadata lives under the top-level ``metadata["Pose"]``, in two registries plus the shared
+``metadata["Devices"]``. Each entry is addressed by a key of your choosing; that key is an internal
+handle and never appears in the NWB file, while the entry's ``name`` field is what does.
 
-1. **PoseEstimationContainers** - Contains the main metadata for the pose estimation:
+1. **PoseEstimations** - the container, one per camera view of one subject:
 
-   - ``name``: Name of the pose estimation container
+   - ``name``: Name of the ``PoseEstimation`` container in the file
    - ``description``: Description of the pose estimation data
-   - ``source_software``: Software used for pose estimation (DeepLabCut)
-   - ``source_software_version``: Version of the software used
-   - ``dimensions``: Video dimensions [height, width] for each video
-   - ``skeleton``: Reference to a skeleton defined in Skeletons
-   - ``devices``: List of devices used for recording
+   - ``source_software`` and ``source_software_version``: the tracker and its version
    - ``scorer``: Name of the DeepLabCut model used
-   - ``original_videos``: Paths to original videos (if available)
-   - ``labeled_videos``: Paths to labeled videos (if available)
-   - ``PoseEstimationSeries``: Dictionary of series for each bodypart
+   - ``dimensions``: Video dimensions [height, width] for each video
+   - ``original_videos`` and ``labeled_videos``: Paths to the videos, if available
+   - ``device_metadata_key``: Address of an entry in ``metadata["Devices"]``, if you have a camera
+   - ``skeleton_metadata_key``: Address of an entry in ``metadata["Pose"]["Skeletons"]``
+   - ``PoseEstimationSeries``: One entry per bodypart, each with a ``name`` and optionally a
+     ``description``, ``unit``, ``reference_frame`` and ``confidence_definition``
 
-2. **Skeletons** - Defines the skeleton structure:
+2. **Skeletons** - the layout of the body:
 
    - ``name``: Name of the skeleton
    - ``nodes``: List of bodyparts/keypoints
-   - ``edges``: Connections between nodes (optional)
-   - ``subject``: Subject ID associated with this skeleton. If the subject matches the subject_id of the nwbfile the skeleton will be linked to the Subject.
+   - ``edges``: Connections between nodes, as pairs of node indices (optional)
+   - ``subject``: Subject ID associated with this skeleton. If it matches the ``subject_id`` of the
+     NWBFile the skeleton is linked to the ``Subject``.

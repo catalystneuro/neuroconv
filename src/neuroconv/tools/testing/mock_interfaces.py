@@ -5,12 +5,14 @@ from typing import Literal
 import numpy as np
 from pynwb import NWBFile
 from pynwb.base import DynamicTable
-from pynwb.device import Device
 
 from .mock_ttl_signals import generate_mock_ttl_signal
 from ...basedatainterface import BaseDataInterface
 from ...basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from ...datainterfaces import SpikeGLXNIDQInterface
+from ...datainterfaces.behavior.baseposeestimationinterface import (
+    BasePoseEstimationInterface,
+)
 from ...datainterfaces.ecephys.baserecordingextractorinterface import (
     BaseRecordingExtractorInterface,
 )
@@ -36,7 +38,6 @@ from ...tools.events import (
     _validate_detection_configuration,
 )
 from ...tools.icephys import _RESPONSE_CLASS, _add_intracellular_electrode_to_nwbfile
-from ...tools.nwb_helpers import get_module
 from ...tools.signal_processing import (
     _condition_signal,
     _detect_events,
@@ -540,13 +541,20 @@ class MockSignalEncodedEventsInterface(BaseEventsInterface):
             bit: entry[1] if isinstance(entry, tuple) else entry for bit, entry in entries.items()
         }
         self._digital_line_names = {bit: entry[0] for bit, entry in entries.items() if isinstance(entry, tuple)}
-        unknown_kinds = set(self._digital_line_waveforms.values()) - {"pulses", "idle", "unclosed_pulses"}
+        unknown_kinds = set(self._digital_line_waveforms.values()) - {
+            "pulses",
+            "idle",
+            "unclosed_pulses",
+        }
         if unknown_kinds:
             raise ValueError(
                 f"Unknown waveform kind(s) {sorted(unknown_kinds)}; valid kinds are pulses, idle, " "unclosed_pulses."
             )
         self._analog_waveforms = dict(analog_waveforms or {})
-        unknown_kinds = set(self._analog_waveforms.values()) - {"levels", "noisy_two_level"}
+        unknown_kinds = set(self._analog_waveforms.values()) - {
+            "levels",
+            "noisy_two_level",
+        }
         if unknown_kinds:
             raise ValueError(
                 f"Unknown analog waveform kind(s) {sorted(unknown_kinds)}; valid kinds are levels, " "noisy_two_level."
@@ -565,7 +573,10 @@ class MockSignalEncodedEventsInterface(BaseEventsInterface):
         # settles both from its file's structure: SpikeGLX declares the inventory as niXDChans1, and the
         # keys of digital_line_waveforms stand in for that declaration here.
         self._available_signals = {
-            self.SIGNAL_SOURCE_ID: {"kind": "word", "bits": sorted(self._digital_line_waveforms)}
+            self.SIGNAL_SOURCE_ID: {
+                "kind": "word",
+                "bits": sorted(self._digital_line_waveforms),
+            }
         }
         self._available_signals.update({name: {"kind": "analog"} for name in self._analog_waveforms})
         if detection_configuration is None:
@@ -794,7 +805,10 @@ class MockSpikeGLXNIDQInterface(SpikeGLXNIDQInterface):
         return source_schema
 
     def __init__(
-        self, signal_duration: float = 7.0, ttl_times: list[list[float]] | None = None, ttl_duration: float = 1.0
+        self,
+        signal_duration: float = 7.0,
+        ttl_times: list[list[float]] | None = None,
+        ttl_duration: float = 1.0,
     ):
         """
         Define a mock SpikeGLXNIDQInterface by overriding the recording extractor to be a mock TTL signal.
@@ -838,14 +852,20 @@ class MockSpikeGLXNIDQInterface(SpikeGLXNIDQInterface):
             )
 
         self.recording_extractor = NumpyRecording(
-            traces_list=traces, sampling_frequency=sampling_frequency, channel_ids=channel_ids
+            traces_list=traces,
+            sampling_frequency=sampling_frequency,
+            channel_ids=channel_ids,
         )
         # NIDQ channel gains
         self.recording_extractor.set_channel_gains(gains=[61.03515625] * self.recording_extractor.get_num_channels())
         self.recording_extractor.set_property(key="group_name", values=channel_groups)
 
         # Minimal meta so `get_metadata` works similarly to real NIDQ header
-        self.meta = {"acqMnMaXaDw": "0,0,8,1", "fileCreateTime": "2020-11-03T10:35:10", "niDev1ProductName": "PCI-6259"}
+        self.meta = {
+            "acqMnMaXaDw": "0,0,8,1",
+            "fileCreateTime": "2020-11-03T10:35:10",
+            "niDev1ProductName": "PCI-6259",
+        }
         self.verbose = None
         self.metadata_key = "spikeglx_nidq"
         self._analog_channel_groups = {
@@ -870,6 +890,7 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
         self.extractor_kwargs.pop("verbose", None)
         self.extractor_kwargs.pop("es_key", None)
         self.extractor_kwargs.pop("metadata_key", None)
+        self.extractor_kwargs.pop("calibration", None)
 
         extractor_class = self.get_extractor_class()
         extractor_instance = extractor_class(**self.extractor_kwargs)
@@ -886,6 +907,7 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
         es_key: str | None = None,
         metadata_key: str | None = None,
         set_probe: bool = False,
+        calibration: Literal["unknown", "uniform", "heterogeneous_gains", "heterogeneous_offsets"] = "uniform",
     ):
         # Handle deprecated positional arguments
         if args:
@@ -936,8 +958,29 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
             metadata_key=metadata_key,
         )
 
-        self.recording_extractor.set_channel_gains(gains=[1.0] * self.recording_extractor.get_num_channels())
-        self.recording_extractor.set_channel_offsets(offsets=[0.0] * self.recording_extractor.get_num_channels())
+        number_of_channels = self.recording_extractor.get_num_channels()
+        if calibration == "uniform":
+            gains = np.ones(number_of_channels)
+            offsets = np.zeros(number_of_channels)
+        elif calibration == "heterogeneous_gains":
+            gains = np.arange(1, number_of_channels + 1)
+            offsets = np.zeros(number_of_channels)
+        elif calibration == "heterogeneous_offsets":
+            gains = np.ones(number_of_channels)
+            offsets = np.arange(number_of_channels)
+        elif calibration == "unknown":
+            gains = offsets = None
+        else:
+            raise ValueError(
+                "calibration must be one of 'unknown', 'uniform', 'heterogeneous_gains', or " "'heterogeneous_offsets'."
+            )
+
+        if gains is not None:
+            self.recording_extractor.set_channel_gains(gains=gains)
+            self.recording_extractor.set_channel_offsets(offsets=offsets)
+            self.recording_extractor.set_property("physical_unit", values=["uV"] * number_of_channels)
+            self.recording_extractor.set_property("gain_to_physical_unit", values=gains)
+            self.recording_extractor.set_property("offset_to_physical_unit", values=offsets)
 
         # If probe was set, customize contact IDs to use "e0", "e1", etc. format for testing
         if set_probe and self.recording_extractor.has_probe():
@@ -1306,7 +1349,7 @@ class MockSegmentationInterface(BaseSegmentationExtractorInterface):
         return metadata
 
 
-class MockPoseEstimationInterface(BaseTemporalAlignmentInterface):
+class MockPoseEstimationInterface(BasePoseEstimationInterface):
     """
     A mock pose estimation interface for testing purposes.
     """
@@ -1453,145 +1496,40 @@ class MockPoseEstimationInterface(BaseTemporalAlignmentInterface):
         self._timestamps = aligned_timestamps
 
     def get_metadata(self) -> DeepDict:
-        """Get metadata for the mock pose estimation interface in the dict-based shape.
-
-        Returns metadata with top-level ``metadata["Devices"]`` and the top-level pose modality at
-        ``metadata["Pose"]`` holding ``Skeletons`` and ``PoseEstimations`` registries,
-        all keyed by ``self.metadata_key`` and cross-referenced via ``device_metadata_key`` and
-        ``skeleton_metadata_key``.
-        """
+        """Name the objects after this interface's key and add what the mock pretends its source records."""
         metadata = super().get_metadata()
-        session_start_time = datetime.now().astimezone()
-        metadata["NWBFile"]["session_start_time"] = session_start_time
+        metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
 
         container_name = self.metadata_key
-        skeleton_name = f"Skeleton{container_name}"
-        device_name = f"Camera{container_name}"
-
-        pose_estimation_series_entries = {}
-        for node in self.nodes:
-            pascal_case_node = "".join(word.capitalize() for word in node.replace("_", " ").split())
-            pose_estimation_series_entries[node] = {
-                "name": f"PoseEstimationSeries{pascal_case_node}",
-                "description": f"Mock pose estimation series for {node}.",
-                "unit": "pixels",
-                "reference_frame": "(0,0) corresponds to the bottom left corner of the video.",
-                "confidence_definition": "Softmax output of the deep neural network.",
-            }
-
-        metadata["Devices"] = {
-            self.metadata_key: {
-                "name": device_name,
-                "description": "Mock camera device for pose estimation testing.",
-            }
-        }
-        metadata["Pose"] = {
-            "Skeletons": {
-                self.metadata_key: {
-                    "name": skeleton_name,
-                    "nodes": self.nodes,
-                    "edges": self.edges.tolist(),
-                },
+        metadata["Pose"]["Skeletons"][self.metadata_key].update(
+            name=f"Skeleton{container_name}",
+            edges=self.edges.tolist(),
+        )
+        metadata["Pose"]["PoseEstimations"][self.metadata_key].update(
+            name=container_name,
+            description=f"Mock pose estimation data from {self.source_software}.",
+            source_software=self.source_software,
+            scorer=self.scorer,
+            dimensions=[[640, 480]],
+            original_videos=["mock_video.mp4"],
+            PoseEstimationSeries={
+                node: {"name": f"PoseEstimationSeries{self._pascal_case(node)}"} for node in self.nodes
             },
-            "PoseEstimations": {
-                self.metadata_key: {
-                    "name": container_name,
-                    "description": f"Mock pose estimation data from {self.source_software}.",
-                    "source_software": self.source_software,
-                    "scorer": self.scorer,
-                    "dimensions": [[640, 480]],
-                    "original_videos": ["mock_video.mp4"],
-                    "device_metadata_key": self.metadata_key,
-                    "skeleton_metadata_key": self.metadata_key,
-                    "PoseEstimationSeries": pose_estimation_series_entries,
-                },
-            },
-        }
-
+        )
         return metadata
 
-    def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict | None = None, **conversion_options):
-        """Add mock pose estimation data to NWBFile using ndx-pose, reading names from metadata."""
-        from ndx_pose import PoseEstimation, PoseEstimationSeries, Skeleton, Skeletons
+    @staticmethod
+    def _pascal_case(node_name: str) -> str:
+        return "".join(word.capitalize() for word in node_name.replace("_", " ").split())
 
-        if metadata is None:
-            metadata = self.get_metadata()
+    def _get_keypoint_names(self) -> list[str]:
+        return self.nodes
 
-        pose_metadata = metadata["Pose"]
-        container_entry = pose_metadata["PoseEstimations"][self.metadata_key]
-
-        behavior_module = get_module(nwbfile, "behavior")
-
-        # Lazy device creation: only write a device when the container references one. ndx-pose
-        # makes ``devices`` optional, so an absent ``device_metadata_key`` means "no device", not a
-        # fabricated placeholder. Reuse an existing Device with the same name when present, which
-        # lets multiple interfaces share a device by pointing at the same ``device_metadata_key``.
-        device = None
-        device_metadata_key = container_entry.get("device_metadata_key")
-        if device_metadata_key is not None:
-            device_entry = metadata["Devices"][device_metadata_key]
-            device_name = device_entry["name"]
-            if device_name in nwbfile.devices:
-                device = nwbfile.devices[device_name]
-            else:
-                device = Device(name=device_name, description=device_entry.get("description", ""))
-                nwbfile.add_device(device)
-
-        # Lazy skeleton creation: only write a skeleton when the container references one. Reuse an
-        # existing Skeleton with the same name when present.
-        skeleton = None
-        skeleton_metadata_key = container_entry.get("skeleton_metadata_key")
-        if skeleton_metadata_key is not None:
-            skeleton_entry = pose_metadata["Skeletons"][skeleton_metadata_key]
-            skeleton_name = skeleton_entry["name"]
-            existing_skeletons = (
-                behavior_module["Skeletons"].skeletons if "Skeletons" in behavior_module.data_interfaces else {}
-            )
-            if skeleton_name in existing_skeletons:
-                skeleton = existing_skeletons[skeleton_name]
-            else:
-                skeleton = Skeleton(name=skeleton_name, nodes=skeleton_entry["nodes"], edges=self.edges)
-
-        pose_estimation_series_metadata = container_entry["PoseEstimationSeries"]
-        pose_estimation_series = []
-        for index, node_name in enumerate(self.nodes):
-            series_metadata = pose_estimation_series_metadata[node_name]
-            series = PoseEstimationSeries(
-                name=series_metadata["name"],
-                description=series_metadata["description"],
-                data=self.pose_data[:, index, :],
-                unit=series_metadata["unit"],
-                reference_frame=series_metadata["reference_frame"],
-                timestamps=self.get_timestamps(),
-                confidence=np.ones(self.num_samples),
-                confidence_definition=series_metadata["confidence_definition"],
-            )
-            pose_estimation_series.append(series)
-
-        pose_estimation = PoseEstimation(
-            name=container_entry["name"],
-            description=container_entry["description"],
-            pose_estimation_series=pose_estimation_series,
-            skeleton=skeleton,
-            devices=[device] if device is not None else None,
-            scorer=container_entry["scorer"],
-            source_software=container_entry["source_software"],
-            dimensions=(
-                np.array(container_entry["dimensions"], dtype="uint16")
-                if container_entry.get("dimensions") is not None
-                else None
-            ),
-            original_videos=container_entry.get("original_videos"),
-            labeled_videos=container_entry.get("labeled_videos"),
-        )
-
-        behavior_module.add(pose_estimation)
-        if skeleton is not None:
-            if "Skeletons" not in behavior_module.data_interfaces:
-                skeletons = Skeletons(skeletons=[skeleton])
-                behavior_module.add(skeletons)
-            elif skeleton.name not in behavior_module["Skeletons"].skeletons:
-                behavior_module["Skeletons"].add_skeletons(skeleton)
+    def _get_keypoint_data(self) -> dict[str, tuple[np.ndarray, np.ndarray | None]]:
+        return {
+            node_name: (self.pose_data[:, index, :], np.ones(self.num_samples))
+            for index, node_name in enumerate(self.nodes)
+        }
 
 
 class MockIcephysInterface(BaseDataInterface):
@@ -1696,7 +1634,10 @@ class MockIcephysInterface(BaseDataInterface):
         # (a single key with a single name), the way several real interfaces recorded on one amplifier do.
         device_metadata_key = "mock_amplifier"
         metadata["Devices"] = {
-            device_metadata_key: {"name": "MockAmplifier", "description": "Mock patch-clamp amplifier."}
+            device_metadata_key: {
+                "name": "MockAmplifier",
+                "description": "Mock patch-clamp amplifier.",
+            }
         }
         metadata["Icephys"]["IntracellularElectrodes"] = {
             self.metadata_key: {

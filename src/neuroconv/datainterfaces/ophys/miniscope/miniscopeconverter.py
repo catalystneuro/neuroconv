@@ -231,16 +231,6 @@ class MiniscopeConverter(ConverterPipe):
                 self._user_config = json.load(f)
             _raise_if_legacy_user_config_device_list(user_config=self._user_config)
 
-            data_directory_path_in_config = self._user_config.get("dataDirectory", "")
-            data_directory_name_in_json = data_directory_path_in_config.split("/")[-1]
-            if data_directory_name_in_json != self._folder_path.name:
-                warnings.warn(
-                    f"Ignoring 'dataDirectory' field in User Config ('{data_directory_path_in_config}'). "
-                    f"Using provided folder_path: '{self._folder_path}'.",
-                    UserWarning,
-                    stacklevel=2,
-                )
-
             directory_structure = self._user_config.get("directoryStructure", [])
             config_fields = self._user_config.keys()
             fixed_path_entries = [key for key in directory_structure if key in config_fields]

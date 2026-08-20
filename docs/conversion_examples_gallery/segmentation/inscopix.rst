@@ -4,7 +4,9 @@ Inscopix segmentation data conversion
 Install NeuroConv with the additional dependencies necessary for reading Inscopix data.
 
 .. code-block:: bash
+
     pip install "neuroconv[inscopix]"
+
 Convert Inscopix segmentation data to NWB using :py:class:`~neuroconv.datainterfaces.ophys.inscopix.inscopixsegmentationdatainterface.InscopixSegmentationInterface`.
 
 .. code-block:: python
