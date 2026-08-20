@@ -18,6 +18,7 @@ Child interfaces implement only the format-reading seam:
 * ``get_metadata`` — enrich the base metadata with whatever the format embeds (e.g. session start time).
 """
 
+import warnings
 from abc import abstractmethod
 from typing import Literal
 
@@ -79,12 +80,12 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             stream_parts = [str(name).replace(" ", "_").strip("_").lower() for name in self.stream_names]
             metadata_key = "_".join(["fiber_photometry", *stream_parts])
         self.metadata_key = metadata_key
-        self._aligned_timestamps: np.ndarray | None = None
-        # Gross alignment by composition, the same component the events interfaces hold: one offset every
-        # time this interface writes is measured from, reached as ``interface.alignment.shift_times``.
-        # Held privately so this interface's own reads do not go through the guard on the public property.
+        # Alignment by composition, the same component the events interfaces hold. This interface writes one
+        # response series, so it names one time-bearing object, under the same key its metadata uses. The
+        # native times are registered as a callable, so naming the object reads nothing.
         # See neuroconv/_temporal_alignment.py.
-        self._alignment = _TemporalAlignment()
+        self.alignment = _TemporalAlignment()
+        self.alignment._register_series(key=self.metadata_key, get_native_times=self.get_original_timestamps)
         super().__init__(verbose=verbose, stream_names=stream_names, **source_data)
         # Keep the ndx extensions registered so pynwb IO works correctly.
         import ndx_fiber_photometry  # noqa: F401
@@ -111,51 +112,69 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
     # Temporal alignment API (scalar, standard)
     # ------------------------------------------------------------------
 
-    @property
-    def alignment(self) -> _TemporalAlignment:
-        """This interface's alignment surface, reached as ``interface.alignment.shift_times(delta)``.
-
-        An interface uses one alignment API or the other, never both. Handing timestamps to
-        :meth:`set_aligned_timestamps` puts it on the older array-shaped one, and reaching for this
-        property afterwards raises rather than letting the two compose into times nobody chose.
-        """
-        if self._aligned_timestamps is not None:
-            raise ValueError(
-                "This interface's timestamps were replaced with `set_aligned_timestamps`, which is the older "
-                "alignment API, so `alignment` is not available on it. Add the offset into the timestamps you "
-                "pass there, or start from a fresh interface and use `alignment.shift_times` alone."
-            )
-        return self._alignment
-
     def get_original_timestamps(self) -> np.ndarray:
         """Return the original (unaligned) timestamps of this interface's primary stream."""
         return self._get_stream_timestamps(stream_name=self.stream_names[0])
 
     def get_timestamps(self) -> np.ndarray:
-        """Return this interface's times: the aligned ones if set, otherwise the original ones, shifted.
+        """Return the times this interface's response series will be written on.
 
-        This is the one method that answers for both alignment APIs, so it reports the times that will be
-        written whichever was used: the array if one was set, otherwise ``native + offset``, where the
-        offset is whatever ``alignment.shift_times`` accumulated. Only one of the two can be in play.
+        .. deprecated::
+            Use ``interface.alignment[key].get_times()``, which reads the object it names rather than
+            assuming the interface writes one. Removed on or after August 2027.
         """
-        timestamps = self._aligned_timestamps
-        if timestamps is None:
-            timestamps = self.get_original_timestamps()
-        return timestamps + self._alignment.offset
+        warnings.warn(
+            "`get_timestamps` is deprecated and will be removed on or after August 2027. "
+            "Use `interface.alignment[key].get_times()` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        return self.alignment[self.metadata_key].get_times()
 
     def set_aligned_timestamps(self, aligned_timestamps: np.ndarray) -> None:
         """Replace this interface's timestamps with externally aligned values.
 
-        The older of the two alignment APIs. It refuses once ``alignment.shift_times`` has been used, so
-        that an interface is only ever on one of them (see :attr:`alignment`).
+        .. deprecated::
+            Use ``interface.alignment[key].set_times(aligned_timestamps)``, which does the same thing and
+            names the object it lands on. Removed on or after August 2027.
         """
-        if self._alignment.offset != 0.0:
-            raise ValueError(
-                "This interface has already been shifted with `alignment.shift_times`, so replacing its "
-                "timestamps here would leave two alignments in play. Add the shift into the timestamps you "
-                "are passing, or start from a fresh interface."
-            )
-        self._aligned_timestamps = np.asarray(aligned_timestamps)
+        warnings.warn(
+            "`set_aligned_timestamps` is deprecated and will be removed on or after August 2027. "
+            "Use `interface.alignment[key].set_times(times)` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        self.alignment[self.metadata_key].set_times(aligned_timestamps)
+
+    def set_aligned_starting_time(self, aligned_starting_time: float) -> None:
+        """Shift this interface's times by ``aligned_starting_time`` seconds.
+
+        .. deprecated::
+            Use ``interface.alignment.shift_times(delta)``, which is the same rigid shift under a name that
+            says so. Removed on or after August 2027.
+        """
+        warnings.warn(
+            "`set_aligned_starting_time` is deprecated and will be removed on or after August 2027. "
+            "Use `interface.alignment.shift_times(delta)` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        self.alignment.shift_times(aligned_starting_time)
+
+    def align_by_interpolation(self, unaligned_timestamps: np.ndarray, aligned_timestamps: np.ndarray) -> None:
+        """Re-time this interface against a reference clock through synchronization pulses.
+
+        .. deprecated::
+            Use ``interface.alignment.remap_times(local_sync_times=..., reference_sync_times=...)``, whose
+            argument names say which clock each set of pulses came off. Removed on or after August 2027.
+        """
+        warnings.warn(
+            "`align_by_interpolation` is deprecated and will be removed on or after August 2027. Use "
+            "`interface.alignment.remap_times(local_sync_times=..., reference_sync_times=...)` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        self.alignment.remap_times(local_sync_times=unaligned_timestamps, reference_sync_times=aligned_timestamps)
 
     # ------------------------------------------------------------------
     # Metadata
@@ -418,7 +437,7 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
                 # alignment offset has to be applied here: a shift is interface-wide, and a commanded
                 # voltage left on its native times would drift from the response series it drove.
                 commanded_voltage_timestamps = (
-                    self._get_stream_timestamps(stream_name=commanded_voltage_stream_name) + self._alignment.offset
+                    self._get_stream_timestamps(stream_name=commanded_voltage_stream_name) + self.alignment.offset
                 )
                 add_commanded_voltage_series(
                     nwbfile=nwbfile,
@@ -448,7 +467,7 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
 
         # Add this interface's single response series.
         data = stub(self._read_response_data())
-        timestamps = stub(self.get_timestamps())
+        timestamps = stub(self.alignment[self.metadata_key].get_times())
         timing_kwargs = self._timing_kwargs_from_timestamps(timestamps, always_write_timestamps)
 
         response_series = FiberPhotometryResponseSeries(
