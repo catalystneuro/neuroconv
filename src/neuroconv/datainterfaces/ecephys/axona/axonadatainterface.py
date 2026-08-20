@@ -317,5 +317,5 @@ class AxonaPositionDataInterface(BaseDataInterface):
         file_path = self.interface_kwargs["file_path"]
 
         # Create or update processing module for behavioral data
-        behavior_module = get_module(nwbfile=nwbfile, name="behavior", description="behavioral data")
+        behavior_module = get_module(nwbfile=nwbfile, name="behavior", description="processed behavioral data")
         behavior_module.add(get_position_object(file_path))
