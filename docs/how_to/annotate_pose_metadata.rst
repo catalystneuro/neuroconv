@@ -206,14 +206,10 @@ the edges index into, and reordering it silently changes what they mean.
 
 ``edges`` say which body parts are joined, and they are what a skeleton is really for, since the nodes
 repeat what the series already say. Which parts you join is a modelling decision rather than an
-anatomical fact: it records what whoever built the project decided was worth relating, and two labs
-tracking the same animal can draw different skeletons. The file records that decision nowhere else. A
-reader who has it can compute a limb length or a joint angle, which are only meaningful along a segment
-you declared, and can draw the subject rather than a cloud of points; a reader without it has to guess
-your intent or ask you. Most trackers already know the edges, since connectivity is drawn when the
-project is set up rather than estimated per frame, and a bottom-up multi-animal model uses it to group
-keypoints into individuals. Lightning Pose is the exception, predicting each keypoint independently and
-recording no connectivity at all.
+anatomical fact, and the file records it nowhere else. With it a reader can compute a limb length or a
+joint angle, which are only meaningful along a segment you declared, and can draw the subject rather
+than a cloud of points. Most trackers already know the edges, since connectivity is drawn when the
+project is set up; Lightning Pose is the exception, predicting each keypoint independently.
 
 ``subject`` names the individual within the source. The skeleton is linked to the file's ``Subject`` when
 the two ids match, which is what ties a body plan to a subject for anyone reading the file. A file
