@@ -1,0 +1,74 @@
+# Every `null` is yours to fill. Delete any entry your recording did not use.
+# Every key here is a handle you may rename, not a name in the file; `name` is the name in the file.
+
+# The make and catalog specification of the camera, shared by every recording on that rig.
+# Optional. To drop it, delete it here and the `device_model_metadata_key` pointing at it below.
+DeviceModels:
+  camera_model:
+    name: null
+    manufacturer: null
+    model_number: null
+    description: null
+
+# The camera that filmed the frames the tracker ran on. No pose format records one, so nothing is
+# written unless you say so. Optional as a whole: if a video interface writes the recording into the
+# same file, link it with `source_video_metadata_key` below instead, since that `ImageSeries` carries
+# its own camera. To drop it, delete it here and the `device_metadata_key` pointing at it.
+Devices:
+  camera:
+    name: null
+    description: null
+    serial_number: null                        # of this camera, not of the model
+    device_model_metadata_key: camera_model    # a key in DeviceModels above
+
+Pose:
+  # Which body parts exist and which are joined. `nodes` is the one field a pose file answers, and the
+  # tracker's order is what `edges` indexes into, so do not reorder it.
+  Skeletons:
+    pose_estimation:
+      name: null
+      nodes:                # the tracker's body parts, in the order its series are written
+        - head
+        - neck
+      edges:                # pairs of indices into `nodes` above; [0, 1] joins head to neck
+        - [0, 1]
+      subject: null         # the individual within the source; blank links to the file's own subject
+  # The keypoints themselves. Rename this key to the `metadata_key` the interface was constructed
+  # with, here and in Skeletons above.
+  PoseEstimations:
+    pose_estimation:
+      name: null
+      description: null
+      source_software: null                     # DeepLabCut, SLEAP, Lightning Pose
+      source_software_version: null
+      scorer: null                              # the trained model that produced these coordinates
+      skeleton_metadata_key: pose_estimation    # a key in Skeletons above
+      device_metadata_key: camera               # a key in Devices above
+      # The video the tracker ran on, when a video interface wrote it into this same file. These
+      # address `metadata["Behavior"]["ExternalVideos"]`, and the link is a reference to the object
+      # rather than a path, so prefer it over the two path fields below.
+      source_video_metadata_key: null
+      labeled_video_metadata_key: null
+      # The video as paths, for when it is not in the file. Prefer paths relative to the NWB file: an
+      # absolute one from the machine that ran the tracker rarely resolves on the machine that reads
+      # the file. ndx-pose is replacing these three with the links above.
+      original_videos: null                     # e.g. [videos/top_camera.mp4]
+      labeled_videos: null
+      dimensions: null                          # frame size as [[height, width]], one row per video
+      # One entry per body part, keyed by the tracker's name for it. These keys are matched against
+      # the keypoints being written, so renaming one means its series is not described.
+      PoseEstimationSeries:
+        head:
+          name: null
+          description: null
+          unit: null                            # pixels, or mm once the coordinates are calibrated
+          # Required by ndx-pose, and the field worth filling above all others: left blank, the file
+          # says "(0,0) is unknown." about every coordinate in it.
+          reference_frame: null                 # e.g. (0,0) is the top left corner of the video.
+          confidence_definition: null           # what the tracker's confidence value means
+        neck:
+          name: null
+          description: null
+          unit: null
+          reference_frame: null
+          confidence_definition: null

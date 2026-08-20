@@ -38,3 +38,5 @@ It is often the case that crucial information is not available there, such as th
 the meaning of the values, or a semantically meaningful description of the data. Follow
 :ref:`the pose estimation how-to <annotate_pose_metadata>` for a modality-relevant guide to adding this
 extra metadata, which makes the data more useful for future users and for the community as a whole.
+Its :ref:`section on templates <how_to_annotate_pose_from_a_template>` starts from scratch, and the
+:ref:`reference template <pose_estimation_metadata_template>` lists every element the metadata accepts.

@@ -1,0 +1,68 @@
+{
+    "DeviceModels": {
+        "camera_model": {
+            "name": null,
+            "manufacturer": null,
+            "model_number": null,
+            "description": null
+        }
+    },
+    "Devices": {
+        "camera": {
+            "name": null,
+            "description": null,
+            "serial_number": null,
+            "device_model_metadata_key": "camera_model"
+        }
+    },
+    "Pose": {
+        "Skeletons": {
+            "pose_estimation": {
+                "name": null,
+                "nodes": [
+                    "head",
+                    "neck"
+                ],
+                "edges": [
+                    [
+                        0,
+                        1
+                    ]
+                ],
+                "subject": null
+            }
+        },
+        "PoseEstimations": {
+            "pose_estimation": {
+                "name": null,
+                "description": null,
+                "source_software": null,
+                "source_software_version": null,
+                "scorer": null,
+                "skeleton_metadata_key": "pose_estimation",
+                "device_metadata_key": "camera",
+                "source_video_metadata_key": null,
+                "labeled_video_metadata_key": null,
+                "original_videos": null,
+                "labeled_videos": null,
+                "dimensions": null,
+                "PoseEstimationSeries": {
+                    "head": {
+                        "name": null,
+                        "description": null,
+                        "unit": null,
+                        "reference_frame": null,
+                        "confidence_definition": null
+                    },
+                    "neck": {
+                        "name": null,
+                        "description": null,
+                        "unit": null,
+                        "reference_frame": null,
+                        "confidence_definition": null
+                    }
+                }
+            }
+        }
+    }
+}
