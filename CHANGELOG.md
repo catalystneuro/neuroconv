@@ -23,6 +23,7 @@
 * Pose estimation now supports device model addition in their metadata. [PR #1961](https://github.com/catalystneuro/neuroconv/pull/1961)
 
 ## Improvements
+* Added `docs/how_to/annotate_pose_metadata.rst`, walking through the metadata a pose format does not record, one acquisition setup at a time. [PR #1967](https://github.com/catalystneuro/neuroconv/pull/1967)
 * The keypoint-name hook a pose interface implements is now private, `_get_keypoint_names`, matching its `_get_keypoint_data` sibling. [PR #1966](https://github.com/catalystneuro/neuroconv/pull/1966)
 * `DeepLabCutInterface`, `LightningPoseDataInterface` and `MockPoseEstimationInterface` now build their pose registries from a shared `BasePoseEstimationInterface`, which owns the registry construction and the write path, so a format states what it records and nothing else. [PR #1963](https://github.com/catalystneuro/neuroconv/pull/1963)
 * The pose interfaces no longer emit a camera device, since no pose format records one and the `ndx-pose` warning it silenced is filtered at the write site instead, and they pass the metadata you give them to the writer as written rather than merged over their own defaults. A `metadata_key`, `device_metadata_key` or `skeleton_metadata_key` that addresses no entry now raises `ValueError` naming the registry and the keys it holds, where before it silently wrote a placeholder-named object. [PR #1961](https://github.com/catalystneuro/neuroconv/pull/1961)
