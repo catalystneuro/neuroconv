@@ -39,9 +39,7 @@ signal is, which nothing in the acquisition file records. Set both on the entry 
 interface's ``metadata_key``:
 
 .. code-block:: python
-   :emphasize-lines: 12-13
-
-    from datetime import datetime
+   :emphasize-lines: 0-1
 
     from neuroconv.tools.testing.mock_interfaces import MockRecordingInterface
 
@@ -49,7 +47,6 @@ interface's ``metadata_key``:
     interface = MockRecordingInterface(num_channels=4, durations=[0.1], metadata_key=metadata_key)
 
     metadata = interface.get_metadata_template()
-    metadata["NWBFile"]["session_start_time"] = datetime(2020, 1, 1, 12, 30, 0).astimezone()
     ecephys = metadata["Ecephys"]
 
     ecephys["ElectricalSeries"][metadata_key]["name"] = "ElectricalSeriesProbe0"
@@ -84,9 +81,7 @@ impedance in ohms and a description of the hardware filtering. Any other field y
 becomes a column of its own.
 
 .. code-block:: python
-   :emphasize-lines: 14-21
-
-    from datetime import datetime
+   :emphasize-lines: 11-18
 
     from neuroconv.tools.testing.mock_interfaces import MockRecordingInterface
 
@@ -94,7 +89,6 @@ becomes a column of its own.
     interface = MockRecordingInterface(num_channels=4, durations=[0.1], metadata_key=metadata_key)
 
     metadata = interface.get_metadata_template()
-    metadata["NWBFile"]["session_start_time"] = datetime(2020, 1, 1, 12, 30, 0).astimezone()
     ecephys = metadata["Ecephys"]
 
     ecephys["ElectricalSeries"][metadata_key]["name"] = "ElectricalSeriesProbe0"
@@ -128,9 +122,7 @@ know about the electrodes is worth recording too, and a reader can only use it i
 means. Put the value on the rows and describe it under ``ElectrodesTable["columns"]``:
 
 .. code-block:: python
-   :emphasize-lines: 22-35
-
-    from datetime import datetime
+   :emphasize-lines: 19-32
 
     from neuroconv.tools.testing.mock_interfaces import MockRecordingInterface
 
@@ -138,7 +130,6 @@ means. Put the value on the rows and describe it under ``ElectrodesTable["column
     interface = MockRecordingInterface(num_channels=4, durations=[0.1], metadata_key=metadata_key)
 
     metadata = interface.get_metadata_template()
-    metadata["NWBFile"]["session_start_time"] = datetime(2020, 1, 1, 12, 30, 0).astimezone()
     ecephys = metadata["Ecephys"]
 
     ecephys["ElectricalSeries"][metadata_key]["name"] = "ElectricalSeriesProbe0"
@@ -194,9 +185,7 @@ electrodes were sorted as a unit and which sat on the same shank. Declare the gr
 at it with ``electrode_group_metadata_key``:
 
 .. code-block:: python
-   :emphasize-lines: 36-46
-
-    from datetime import datetime
+   :emphasize-lines: 33-43
 
     from neuroconv.tools.testing.mock_interfaces import MockRecordingInterface
 
@@ -204,7 +193,6 @@ at it with ``electrode_group_metadata_key``:
     interface = MockRecordingInterface(num_channels=4, durations=[0.1], metadata_key=metadata_key)
 
     metadata = interface.get_metadata_template()
-    metadata["NWBFile"]["session_start_time"] = datetime(2020, 1, 1, 12, 30, 0).astimezone()
     ecephys = metadata["Ecephys"]
 
     ecephys["ElectricalSeries"][metadata_key]["name"] = "ElectricalSeriesProbe0"
@@ -254,9 +242,7 @@ group at a ``Devices`` entry, and that entry at a ``DeviceModels`` entry with
 deprecated in pynwb:
 
 .. code-block:: python
-   :emphasize-lines: 47-63
-
-    from datetime import datetime
+   :emphasize-lines: 44-60
 
     from neuroconv.tools.testing.mock_interfaces import MockRecordingInterface
 
@@ -264,7 +250,6 @@ deprecated in pynwb:
     interface = MockRecordingInterface(num_channels=4, durations=[0.1], metadata_key=metadata_key)
 
     metadata = interface.get_metadata_template()
-    metadata["NWBFile"]["session_start_time"] = datetime(2020, 1, 1, 12, 30, 0).astimezone()
     ecephys = metadata["Ecephys"]
 
     ecephys["ElectricalSeries"][metadata_key]["name"] = "ElectricalSeriesProbe0"
@@ -459,7 +444,6 @@ fills in.
 
     interface = MockRecordingInterface(num_channels=4, durations=[0.1], metadata_key="two_shanks")
     metadata = interface.get_metadata_template()
-    metadata["NWBFile"]["session_start_time"] = datetime(2020, 1, 1, 12, 30, 0).astimezone()
     ecephys = metadata["Ecephys"]
 
     metadata["Devices"] = {
@@ -508,7 +492,6 @@ one piece of silicon or on two separately implanted probes.
 
     interface = MockRecordingInterface(num_channels=4, durations=[0.1], metadata_key="two_probes")
     metadata = interface.get_metadata_template()
-    metadata["NWBFile"]["session_start_time"] = datetime(2020, 1, 1, 12, 30, 0).astimezone()
     ecephys = metadata["Ecephys"]
 
     metadata["Devices"] = {

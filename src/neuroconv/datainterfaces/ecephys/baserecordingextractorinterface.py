@@ -638,7 +638,10 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         for one in probes:
             # ``Probe.copy`` drops ``contact_ids``, ``shank_ids`` and the annotations, which is most of
             # what identifies the probe and all of what the electrodes table reads off it, so the copy
-            # has to be a real one.
+            # TODO: use ``one.copy()`` once probeinterface releases the version carrying its #428,
+            # which makes ``copy`` identity-preserving and drops only ``device_channel_indices``, which is
+            # exactly what is wanted here. Until then ``copy`` silently loses ``contact_ids``,
+            # ``shank_ids`` and the annotations, and those are what the electrodes table reads off a probe.
             copied = deepcopy(one)
             copied.set_device_channel_indices(
                 [channel_index_by_id.get(stated.get(str(contact_id)), -1) for contact_id in copied.contact_ids]
