@@ -51,13 +51,11 @@ do is a variation on this one, so it is worked in full.
 A ``PoseEstimation`` is one camera view of one subject. It holds one time series per keypoint, and links
 out to the skeleton of the subject, where the structure of those keypoints is described.
 
-The writer falls back to generic names, ``PoseEstimation`` and ``SkeletonPoseEstimation``, and those are
-what someone browsing your file sees first. In a file holding several recordings they are the only thing
-telling one apart from another, so a name that says which camera or which subject this is saves a reader
-from opening every container to find out. The ``description`` is prose, and the schema calls it the pose
-estimation procedure and output. Everything else the container can say about provenance,
-``source_software``, ``source_software_version`` and ``scorer``, the interface fills from the source when
-the format records it.
+The ``name`` is how the container is identified in the file, so give it one that says which camera or
+which subject it holds. The ``description`` is prose, and the schema calls it the pose estimation
+procedure and output. The rest of what a container says about its provenance, ``source_software``,
+``source_software_version`` and ``scorer``, the interface fills from the source when the format records
+it.
 
 .. code-block:: python
    :emphasize-lines: 7-10
