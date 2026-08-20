@@ -46,7 +46,7 @@ How to Annotate a Pose Estimation Session
 The baseline setup: one camera above the arena, one subject, one tracker run. Everything the other setups
 do is a variation on this one, so it is worked in full.
 
-**Name the objects**
+**Name what appears in the file**
 
 Every object the conversion writes gets a name, and the writer falls back to generic ones:
 ``PoseEstimation``, ``SkeletonPoseEstimation``, ``PoseEstimationSeriesHead``. Those names are what
@@ -68,7 +68,7 @@ top-level ``metadata["Pose"]``, addressed by the interface's ``metadata_key``.
     container["name"] = "PoseEstimationTopCamera"
     metadata["Pose"]["Skeletons"][key]["name"] = "SkeletonMouse"
 
-**Describe what the coordinates mean**
+**Say what the numbers mean**
 
 A pose file records numbers: an x, a y and a confidence per keypoint per frame, and nothing saying
 what any of them measure. neuroconv writes none of that unless
