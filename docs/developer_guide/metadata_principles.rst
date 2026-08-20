@@ -197,6 +197,22 @@ earlier ``add_*`` call.
 See `issue #1511 <https://github.com/catalystneuro/neuroconv/issues/1511>`_ for the discussion.
 
 
+.. _metadata_plural_naming:
+
+Fields that hold keyed entries are plural
+------------------------------------------
+
+**A field whose entries are addressed by** ``metadata_key`` **is named in the plural, because it can
+hold more than one of them.** The top-level ``Devices`` and ``DeviceModels``, ``ElectrodeGroups`` and
+``ElectricalSeries`` under ``Ecephys``, ``ImagingPlanes``, ``PlaneSegmentations``, ``RoiResponses`` and
+``SegmentationImages`` under ``Ophys``, ``Skeletons`` and ``PoseEstimations`` under ``Pose``, and
+``EventTables`` under ``Events`` all follow it. The rule is a naming convention, but a key is a contract
+with the users who write their metadata edits against it, so one that has to gain the plural later
+breaks every script addressing the old spelling.
+
+See `issue #1280 <https://github.com/catalystneuro/neuroconv/issues/1280>`_ for the original discussion.
+
+
 .. _metadata_key_naming:
 
 The ``metadata_key`` parameter
@@ -249,3 +265,4 @@ When writing or reviewing an interface:
 - The ``metadata_key`` default is a snake_case constant, unless the format inherently produces several
   instances at once (then it is derived from a stable source handle).
 - The ``metadata_key`` is typed ``str | None``, and its default is resolved in ``__init__``.
+- Every metadata field holding entries addressed by ``metadata_key`` is named in the plural.

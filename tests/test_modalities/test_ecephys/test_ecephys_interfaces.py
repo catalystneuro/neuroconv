@@ -90,7 +90,7 @@ class TestSortingInterface(SortingExtractorInterfaceTestMixin):
 
     def test_electrode_indices(self, setup_interface):
 
-        recording_interface = MockRecordingInterface(num_channels=4, durations=[0.100])
+        recording_interface = MockRecordingInterface(num_channels=4, durations=[0.100], calibration="uniform")
         recording_extractor = recording_interface.recording_extractor
         recording_extractor = recording_extractor.rename_channels(new_channel_ids=["a", "b", "c", "d"])
         recording_extractor.set_property(key="property", values=["A", "B", "C", "D"])
@@ -207,7 +207,7 @@ class TestSortingInterface(SortingExtractorInterfaceTestMixin):
 
 class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = MockRecordingInterface
-    interface_kwargs = dict(num_channels=4, durations=[0.100])
+    interface_kwargs = dict(num_channels=4, durations=[0.100], calibration="uniform")
 
     def check_extracted_metadata(self, metadata: dict):
         # New dict-based format: the interface emits only the ElectricalSeries entry keyed by
@@ -244,7 +244,7 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
         passing data_representation as a conversion option (distinct from the tools-level message)."""
         from pynwb.testing.mock.file import mock_NWBFile
 
-        interface = MockRecordingInterface(num_channels=5, durations=[0.100])
+        interface = MockRecordingInterface(num_channels=5, durations=[0.100], calibration="uniform")
         interface.recording_extractor.set_channel_offsets(offsets=[0, 0, 1, 1, 2])  # heterogeneous
 
         expected_error_msg = (
@@ -283,7 +283,7 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
     def test_stub_with_starting_time(self, setup_interface):
 
-        interface = MockRecordingInterface(durations=[1.0])
+        interface = MockRecordingInterface(durations=[1.0], calibration="uniform")
 
         recording = interface.recording_extractor
         recording.shift_times(2.0)
@@ -292,7 +292,7 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
     def test_stub_multi_segment(self):
 
-        interface = MockRecordingInterface(durations=[0.100, 0.100])
+        interface = MockRecordingInterface(durations=[0.100, 0.100], calibration="uniform")
         metadata = interface.get_metadata()
         interface.create_nwbfile(stub_test=True, metadata=metadata)
 
@@ -442,7 +442,7 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
     def test_set_probe_by_shank(self, setup_interface):
         """Test setting probe with by_shank group mode."""
         # Create a probe with multiple shanks (6 channels for this test)
-        interface = MockRecordingInterface(num_channels=6, durations=[0.100])
+        interface = MockRecordingInterface(num_channels=6, durations=[0.100], calibration="uniform")
 
         probe = Probe(ndim=2, si_units="um")
         positions = np.array([[0, 0], [0, 20], [50, 0], [50, 20], [100, 0], [100, 20]])  # shank 0  # shank 1  # shank 2
@@ -489,7 +489,7 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
     def test_set_probe_group_by_shank(self):
         """Test setting a ProbeGroup with multiple probes using by_shank group mode."""
         # Create interface with 6 channels to accommodate two probes with 3 channels each
-        interface = MockRecordingInterface(num_channels=6, durations=[0.100])
+        interface = MockRecordingInterface(num_channels=6, durations=[0.100], calibration="uniform")
 
         # Create first probe with 2 shanks (3 channels total)
         probe1 = Probe(ndim=2, si_units="um")
@@ -549,7 +549,7 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
     def test_electrode_name_column_added_with_probe(self):
         """Test that electrode_name column is added when probe is attached."""
         # Create interface with probe attached
-        interface = MockRecordingInterface(num_channels=4, durations=[0.100], set_probe=True)
+        interface = MockRecordingInterface(num_channels=4, durations=[0.100], set_probe=True, calibration="uniform")
 
         # Verify probe is attached
         assert interface.has_probe()
@@ -579,7 +579,7 @@ def test_recording_routes_on_its_own_block_in_a_mixed_converter_old_list_format(
     keyed ``ElectricalSeries`` entry its own ``get_metadata`` never wrote."""
     from pynwb.testing.mock.file import mock_NWBFile
 
-    recording_interface = MockRecordingInterface(num_channels=4, durations=[0.100])
+    recording_interface = MockRecordingInterface(num_channels=4, durations=[0.100], calibration="uniform")
     dict_only_interface = MockIcephysInterface()
     converter = ConverterPipe(data_interfaces=dict(Recording=recording_interface, Icephys=dict_only_interface))
 
@@ -601,7 +601,7 @@ def test_run_conversion_through_converter(tmp_path):
     # Dict metadata has to survive validation to reach the writer, and a converter validates against its own
     # merged schema rather than an interface's. The interface-level equivalent of this test was removed once
     # the shared test mixins started writing dict metadata for every interface on real data.
-    interface = MockRecordingInterface(num_channels=4, durations=[0.100])
+    interface = MockRecordingInterface(num_channels=4, durations=[0.100], calibration="uniform")
     converter = ConverterPipe(data_interfaces=dict(Recording=interface))
 
     metadata = interface.get_metadata(use_new_metadata_format=True)
@@ -654,6 +654,21 @@ class TestMockRecordingInterfaceArgsDeprecation:
 
         future_warnings = [w for w in caught_warnings if issubclass(w.category, FutureWarning)]
         assert len(future_warnings) == 0
+
+    @pytest.mark.parametrize(
+        ("calibration", "expected_gains", "expected_offsets"),
+        [
+            ("unknown", None, None),
+            ("uniform", [1.0, 1.0], [0.0, 0.0]),
+            ("heterogeneous_gains", [1.0, 2.0], [0.0, 0.0]),
+            ("heterogeneous_offsets", [1.0, 1.0], [0.0, 1.0]),
+        ],
+    )
+    def test_calibration(self, calibration, expected_gains, expected_offsets):
+        interface = MockRecordingInterface(num_channels=2, durations=(0.1,), calibration=calibration)
+
+        assert np.array_equal(interface.recording_extractor.get_channel_gains(), expected_gains)
+        assert np.array_equal(interface.recording_extractor.get_channel_offsets(), expected_offsets)
 
     def test_init_too_many_positional_args_raises_error(self):
         """Test that passing too many positional arguments to __init__ raises TypeError.

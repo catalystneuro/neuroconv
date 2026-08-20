@@ -76,8 +76,7 @@ class TestAxonRecordingInterface(RecordingExtractorInterfaceTestMixin):
         expected_devices = {
             "axon_device": dict(
                 name="Axon Instruments",
-                description="Axon Instruments data acquisition system (pCLAMP/AxoScope)",
-                manufacturer="Molecular Devices",
+                description="Axon Instruments (now Molecular Devices) data acquisition system (pCLAMP/AxoScope)",
             )
         }
         # The series keeps the name and description the old format gives it.
@@ -104,8 +103,10 @@ class TestAxonRecordingInterface(RecordingExtractorInterfaceTestMixin):
         assert len(devices) >= 1
         axon_device = devices[0]
         assert axon_device["name"] == "Axon Instruments"
-        assert axon_device["description"] == "Axon Instruments data acquisition system (pCLAMP/AxoScope)"
-        assert axon_device["manufacturer"] == "Molecular Devices"
+        assert (
+            axon_device["description"]
+            == "Axon Instruments (now Molecular Devices) data acquisition system (pCLAMP/AxoScope)"
+        )
 
         # Check electrode groups have device assigned
         electrode_groups = metadata["Ecephys"]["ElectrodeGroup"]
@@ -127,8 +128,13 @@ class TestAxonaRecordingInterface(RecordingExtractorInterfaceTestMixin):
     def check_extracted_metadata(self, metadata: dict):
         expected_metadata_key = "axona_recording"
         expected_devices = {
-            "axona_device": dict(name="Axona", description="Axona DacqUSB, sw_version=1.2.2.16", manufacturer="Axona")
+            "axona_device": dict(
+                name="Axona",
+                description="Axona DacqUSB, sw_version=1.2.2.16",
+                device_model_metadata_key="axona_dacqusb_model",
+            )
         }
+        expected_device_models = {"axona_dacqusb_model": dict(name="DacqUSB", manufacturer="Axona")}
         # One group per tetrode, each linked to the single Axona device.
         expected_electrode_groups = {
             group_name: dict(name=group_name, device_metadata_key="axona_device") for group_name in ("1", "2", "3", "4")
@@ -136,14 +142,13 @@ class TestAxonaRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
         assert self.interface.metadata_key == expected_metadata_key
         assert metadata["Devices"] == expected_devices
+        assert metadata["DeviceModels"] == expected_device_models
         assert metadata["Ecephys"]["ElectrodeGroups"] == expected_electrode_groups
 
     def check_extracted_metadata_old_list_format(self, metadata: dict):
         # Old list-based format: the Axona device lives in the Ecephys.Device list and every electrode
         # group points at it by name.
-        assert metadata["Ecephys"]["Device"] == [
-            dict(name="Axona", description="Axona DacqUSB, sw_version=1.2.2.16", manufacturer="Axona")
-        ]
+        assert metadata["Ecephys"]["Device"] == [dict(name="Axona", description="Axona DacqUSB, sw_version=1.2.2.16")]
         for electrode_group in metadata["Ecephys"]["ElectrodeGroup"]:
             assert electrode_group["device"] == "Axona"
 
@@ -286,9 +291,18 @@ class TestCellExplorerRecordingInterface(RecordingExtractorInterfaceTestMixin):
         nwbfile.read_io.close()
 
 
+# The file holds two electrode channels next to a current, a temperature and an unitless channel, so
+# SpikeInterface warns about the mix while building the recording. The three are excluded below, which
+# is what the warning asks for, but it is emitted before the interface can drop them.
+@pytest.mark.filterwarnings("ignore:Found a mix of voltage and non-voltage units:UserWarning")
 class TestEDFRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = EDFRecordingInterface
-    interface_kwargs = dict(file_path=str(ECEPHY_DATA_PATH / "edf" / "edf+C.edf"))
+    # ch3 is in pA, ch5 in Celsius and ch4 states no unit, so none of the three belongs in an
+    # ElectricalSeries. Only ch1 and ch2 are electrode channels.
+    interface_kwargs = dict(
+        file_path=str(ECEPHY_DATA_PATH / "edf" / "edf+C.edf"),
+        channels_to_skip=["ch3", "ch4", "ch5"],
+    )
     save_directory = OUTPUT_PATH
 
     def check_extracted_metadata(self, metadata: dict):
@@ -337,10 +351,12 @@ class TestEDFRecordingInterfaceMultiStream(RecordingExtractorInterfaceTestMixin)
     data_interface_cls = EDFRecordingInterface
     interface_kwargs = dict(
         file_path=str(ECEPHY_DATA_PATH / "edf" / "heterogeneous_offsets" / "same_unit_offsets_multirate.edf"),
-        stream_name="stream ((1.0,) Hz)",
+        stream_name="stream ((100.0,) Hz)",
     )
-    # The channels of this stream carry a per-channel offset, which a single ElectricalSeries can
-    # hold only in physical units.
+    # This stream is three electrode channels that all state uV and carry a per-channel offset, which a
+    # single ElectricalSeries can hold only in physical units. The 1 Hz stream is not the case to use
+    # here: its offsets differ because a respiration, a temperature and a marker channel each bring
+    # their own physical range, so it asks to have those channels excluded instead.
     conversion_options = dict(data_representation="physical_units")
     save_directory = OUTPUT_PATH
 
@@ -358,8 +374,8 @@ class TestEDFRecordingInterfaceMultiStream(RecordingExtractorInterfaceTestMixin)
             EDFRecordingInterface(file_path=self.interface_kwargs["file_path"])
 
     def test_stream_name_selects_the_channels_of_its_stream(self, setup_interface):
-        assert list(self.interface.channel_ids) == ["Resp oro-nasal", "EMG submental", "Temp rectal", "Event marker"]
-        assert self.interface.recording_extractor.get_sampling_frequency() == 1.0
+        assert list(self.interface.channel_ids) == ["EEG Fpz-Cz", "EEG Pz-Oz", "EOG horizontal"]
+        assert self.interface.recording_extractor.get_sampling_frequency() == 100.0
 
     def test_channels_to_skip_applies_within_the_selected_stream(self):
         interface = EDFRecordingInterface(
@@ -409,7 +425,11 @@ class TestIntanRecordingInterfaceRHS(RecordingExtractorInterfaceTestMixin):
     def check_extracted_metadata(self, metadata: dict):
         expected_metadata_key = "intan_recording"
         expected_devices = {
-            "intan_device": dict(name="Intan", description="RHS Stim/Recording System", manufacturer="Intan")
+            "intan_device": dict(
+                name="Intan",
+                description="RHS Stim/Recording System",
+                device_model_metadata_key="intan_rhs2000_model",
+            )
         }
         expected_electrode_groups = {
             "B": dict(
@@ -429,7 +449,7 @@ class TestIntanRecordingInterfaceRHS(RecordingExtractorInterfaceTestMixin):
         # Old list-based format: the Intan device lives in the Ecephys.Device list and every
         # electrode group points at it by name.
         devices = metadata["Ecephys"]["Device"]
-        assert dict(name="Intan", description="RHS Stim/Recording System", manufacturer="Intan") in devices
+        assert dict(name="Intan", description="RHS Stim/Recording System") in devices
         for electrode_group in metadata["Ecephys"]["ElectrodeGroup"]:
             assert electrode_group["device"] == "Intan"
 
@@ -449,7 +469,11 @@ class TestIntanRecordingInterfaceRHD(RecordingExtractorInterfaceTestMixin):
     def check_extracted_metadata(self, metadata: dict):
         expected_metadata_key = "intan_recording"
         expected_devices = {
-            "intan_device": dict(name="Intan", description="RHD Recording System", manufacturer="Intan")
+            "intan_device": dict(
+                name="Intan",
+                description="RHD Recording System",
+                device_model_metadata_key="intan_rhd2000_model",
+            )
         }
         expected_electrical_series = {"intan_recording": dict(name="ElectricalSeries")}
         # The three fixtures use different sets of headstage ports, so the expected groups are pinned per fixture.
@@ -476,7 +500,7 @@ class TestIntanRecordingInterfaceRHD(RecordingExtractorInterfaceTestMixin):
         # Old list-based format: the Intan device lives in the Ecephys.Device list and every
         # electrode group points at it by name.
         devices = metadata["Ecephys"]["Device"]
-        assert dict(name="Intan", description="RHD Recording System", manufacturer="Intan") in devices
+        assert dict(name="Intan", description="RHD Recording System") in devices
         for electrode_group in metadata["Ecephys"]["ElectrodeGroup"]:
             assert electrode_group["device"] == "Intan"
 
@@ -569,12 +593,14 @@ class TestMaxOneRecordingInterface(RecordingExtractorInterfaceTestMixin):
             "maxone_device": dict(
                 name="MaxOne",
                 description="Recorded using Maxwell version '20190530'.",
-                manufacturer="MaxWell Biosystems",
+                device_model_metadata_key="maxone_model",
             )
         }
+        expected_device_models = {"maxone_model": dict(name="MaxOne", manufacturer="MaxWell Biosystems")}
 
         assert self.interface.metadata_key == expected_metadata_key
         assert metadata["Devices"] == expected_devices
+        assert metadata["DeviceModels"] == expected_device_models
         assert all(
             electrode_group["device_metadata_key"] == "maxone_device"
             for electrode_group in metadata["Ecephys"]["ElectrodeGroups"].values()
@@ -1370,15 +1396,23 @@ class TestPlexonLFPInterface(RecordingExtractorInterfaceTestMixin):
         assert metadata["Ecephys"]["ElectricalSeries"] == expected_electrical_series
 
 
-def is_macos():
-    import platform
+def wine_is_required_and_missing() -> bool:
+    """Whether these tests need Wine on this platform and it is not installed.
 
-    return platform.system() == "Darwin"
+    Plexon2 reads its files through a Windows DLL, so every platform other than Windows runs that DLL
+    under Wine. macOS has no Wine to install since the wine-crossover Homebrew cask was removed
+    upstream in April 2026, and on Linux the apt install is allowed to fail rather than take an
+    unrelated pull request's whole run down with it, so the binary is not guaranteed to be there.
+    """
+    import platform
+    import shutil
+
+    return platform.system() != "Windows" and shutil.which("wine") is None
 
 
 @pytest.mark.skipif(
-    is_macos(),
-    reason="Plexon2 requires Wine on macOS and the wine-crossover Homebrew cask was removed upstream in April 2026.",
+    wine_is_required_and_missing(),
+    reason="Plexon2 reads its files through a Windows DLL and Wine is not installed on this platform.",
 )
 class TestPlexon2RecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = Plexon2RecordingInterface
