@@ -45,6 +45,9 @@
   "events/doric_events.rst": {
     "extra": "doric_events"
   },
+  "events/inscopix_gpio.rst": {
+    "extra": "inscopix"
+  },
   "events/npm_events.rst": {
     "extra": "npm_events"
   },

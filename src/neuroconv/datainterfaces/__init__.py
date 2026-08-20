@@ -98,6 +98,7 @@ from .ophys.femtonics.femtonicsdatainterface import FemtonicsImagingInterface
 from .ophys.hdf5.hdf5datainterface import Hdf5ImagingInterface
 from .ophys.inscopix.inscopixsegmentationdatainterface import InscopixSegmentationInterface
 from .ophys.inscopix.inscopiximagingdatainterface import InscopixImagingInterface
+from .ophys.inscopix.inscopixgpiodatainterface import InscopixGpioInterface
 from .ophys.micromanagertiff.micromanagertiffdatainterface import (
     MicroManagerTiffImagingInterface,
 )
@@ -136,6 +137,7 @@ from .events.doric_events.doriccsveventsdatainterface import DoricCSVEventsInter
 from .events.doric_events.doriceventsdatainterface import DoricEventsInterface
 from .events.npm_events.npmeventsdatainterface import NPMEventsInterface
 from .events.tdt_events.tdteventsdatainterface import TDTEventsInterface
+from .events.inscopix_gpio_events.inscopixgpioeventsdatainterface import InscopixGpioEventsInterface
 
 interface_list = [
     # Ecephys
@@ -201,6 +203,7 @@ interface_list = [
     TiffImagingInterface,
     Hdf5ImagingInterface,
     InscopixImagingInterface,
+    InscopixGpioInterface,
     ScanImageImagingInterface,
     ScanImageLegacyImagingInterface,
     BrukerTiffImagingInterface,
@@ -240,6 +243,7 @@ interface_list = [
     DoricEventsInterface,
     NPMEventsInterface,
     TDTEventsInterface,
+    InscopixGpioEventsInterface,
 ]
 
 interfaces_by_category = dict(
@@ -277,6 +281,7 @@ interfaces_by_category = dict(
         IntanAnalog=IntanAnalogInterface,
         IntanDigital=IntanDigitalInterface,
         IntanStim=IntanStimInterface,
+        InscopixGpio=InscopixGpioInterface,
     ),
     icephys=dict(
         Abf=AbfInterface,
@@ -305,5 +310,6 @@ interfaces_by_category = dict(
         DoricEvents=DoricEventsInterface,
         NPMEvents=NPMEventsInterface,
         TDTEvents=TDTEventsInterface,
+        InscopixGpioEvents=InscopixGpioEventsInterface,
     ),
 )
