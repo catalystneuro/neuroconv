@@ -46,17 +46,19 @@ How to Annotate a Pose Estimation Session
 The baseline setup: one camera above the arena, one subject, one tracker run. Everything the other setups
 do is a variation on this one, so it is worked in full.
 
-**Name what appears in the file**
+**Name and describe the objects**
 
 Every object the conversion writes gets a name, and the writer falls back to generic ones:
 ``PoseEstimation``, ``SkeletonPoseEstimation``, ``PoseEstimationSeriesHead``. Those names are what
 someone browsing your file sees first, and in a session holding several recordings they are the
 only thing telling one apart from another, so a name that says which camera or which subject this is
-saves a reader from opening every container to find out. Names are set through the registries under the
-top-level ``metadata["Pose"]``, addressed by the interface's ``metadata_key``.
+saves a reader from opening every container to find out. The container also takes a ``description``,
+which the schema describes as the pose estimation procedure and output, and is where you say in prose
+what was tracked and how. Both are set through the registries under the top-level ``metadata["Pose"]``,
+addressed by the interface's ``metadata_key``. A ``Skeleton`` has no description, only a name.
 
 .. code-block:: python
-   :emphasize-lines: 7-9
+   :emphasize-lines: 7-10
 
     from neuroconv.tools.testing import MockPoseEstimationInterface
 
@@ -66,6 +68,7 @@ top-level ``metadata["Pose"]``, addressed by the interface's ``metadata_key``.
 
     container = metadata["Pose"]["PoseEstimations"][key]
     container["name"] = "PoseEstimationTopCamera"
+    container["description"] = "2D keypoints of a mouse in an open field, from the overhead camera."
     metadata["Pose"]["Skeletons"][key]["name"] = "SkeletonMouse"
 
 **Say what the numbers mean**
@@ -92,11 +95,11 @@ reader whether 0.6 is good, where to put a threshold when filtering, or whether 
 means what the same value means in another. Stating it is what makes filtering reproducible by someone
 who was not there.
 
-All three are set per series, and the container's ``description`` is where the recording itself is
-described.
+All three are set per series, so a container whose keypoints were tracked under different conditions
+can say so keypoint by keypoint.
 
 .. code-block:: python
-   :emphasize-lines: 11-26
+   :emphasize-lines: 12-25
 
     from neuroconv.tools.testing import MockPoseEstimationInterface
 
@@ -106,6 +109,7 @@ described.
 
     container = metadata["Pose"]["PoseEstimations"][key]
     container["name"] = "PoseEstimationTopCamera"
+    container["description"] = "2D keypoints of a mouse in an open field, from the overhead camera."
     metadata["Pose"]["Skeletons"][key]["name"] = "SkeletonMouse"
 
     unit = "pixels"
@@ -122,8 +126,6 @@ described.
     series["left_shoulder"].update(
         unit=unit, reference_frame=reference_frame, confidence_definition=confidence_definition
     )
-
-    container["description"] = "2D keypoints of a mouse in an open field, from the overhead camera."
 
 **Describe the skeleton**
 
@@ -150,7 +152,7 @@ a ``Subject``, or one whose id differs, gets a skeleton linked to nothing, which
 keypoints belong to somebody other than the file's subject.
 
 .. code-block:: python
-   :emphasize-lines: 28-31
+   :emphasize-lines: 27-30
 
     from neuroconv.tools.testing import MockPoseEstimationInterface
 
@@ -160,6 +162,7 @@ keypoints belong to somebody other than the file's subject.
 
     container = metadata["Pose"]["PoseEstimations"][key]
     container["name"] = "PoseEstimationTopCamera"
+    container["description"] = "2D keypoints of a mouse in an open field, from the overhead camera."
     metadata["Pose"]["Skeletons"][key]["name"] = "SkeletonMouse"
 
     unit = "pixels"
@@ -176,8 +179,6 @@ keypoints belong to somebody other than the file's subject.
     series["left_shoulder"].update(
         unit=unit, reference_frame=reference_frame, confidence_definition=confidence_definition
     )
-
-    container["description"] = "2D keypoints of a mouse in an open field, from the overhead camera."
 
     skeleton = metadata["Pose"]["Skeletons"][key]
     skeleton["nodes"] = ["head", "neck", "left_shoulder"]
