@@ -46,16 +46,20 @@ How to Annotate a Pose Estimation Session
 The baseline setup: one camera above the arena, one subject, one tracker run. Everything the other setups
 do is a variation on this one, so it is worked in full.
 
-**Name and describe the objects**
+**Annotate the PoseEstimation container**
 
-Every object the conversion writes gets a name, and the writer falls back to generic ones:
-``PoseEstimation``, ``SkeletonPoseEstimation``, ``PoseEstimationSeriesHead``. Those names are what
-someone browsing your file sees first, and in a session holding several recordings they are the
-only thing telling one apart from another, so a name that says which camera or which subject this is
-saves a reader from opening every container to find out. The container also takes a ``description``,
-which the schema describes as the pose estimation procedure and output, and is where you say in prose
-what was tracked and how. Both are set through the registries under the top-level ``metadata["Pose"]``,
-addressed by the interface's ``metadata_key``. A ``Skeleton`` has no description, only a name.
+A ``PoseEstimation`` is one camera view of one subject. It holds one series per keypoint, and links out
+to the skeleton those keypoints belong to, to the camera that filmed them, and to the video they were
+tracked from; each of those links has its own section below. What the container itself carries is a
+``name`` and a ``description``.
+
+The writer falls back to generic names, ``PoseEstimation`` and ``SkeletonPoseEstimation``, and those are
+what someone browsing your file sees first. In a file holding several recordings they are the only thing
+telling one apart from another, so a name that says which camera or which subject this is saves a reader
+from opening every container to find out. The ``description`` is prose, and the schema calls it the pose
+estimation procedure and output. Everything else the container can say about provenance,
+``source_software``, ``source_software_version`` and ``scorer``, the interface fills from the source when
+the format records it.
 
 .. code-block:: python
    :emphasize-lines: 7-10
@@ -71,11 +75,12 @@ addressed by the interface's ``metadata_key``. A ``Skeleton`` has no description
     container["description"] = "2D keypoints of a mouse in an open field, from the overhead camera."
     metadata["Pose"]["Skeletons"][key]["name"] = "SkeletonMouse"
 
-**Say what the numbers mean**
+**Annotate the PoseEstimationSeries data**
 
-A pose file records numbers: an x, a y and a confidence per keypoint per frame, and nothing saying
-what any of them measure. neuroconv writes none of that unless
-you do, because any value it chose would be invented rather than read. Three fields carry it.
+One ``PoseEstimationSeries`` per keypoint holds where that body part was in each frame, an x and a y, or
+an x, y and z, with a confidence beside it. Numbers are all it has, and nothing in them says what they
+measure. neuroconv writes none of that unless you do, because any value it chose would be invented
+rather than read. Three fields carry it.
 
 ``unit`` is what the coordinates are measured in, pixels for a raw tracker output and millimetres or
 centimetres once they have been calibrated against something of known size. It is what lets a reader
@@ -84,7 +89,7 @@ different resolutions or camera heights, none of which is possible while the num
 has named.
 
 ``reference_frame`` says where (0,0) sits and which way the axes run. It is what relates the coordinates
-to the apparatus rather than to the image, so a reader can say an animal was in the left arm of the maze
+to the apparatus rather than to the image, so a reader can say a subject was in the left arm of the maze
 or three centimetres from the wall, and it is what lets pose be combined with anything else spatial in
 the file. ``ndx-pose`` requires it, so a value is written whether you supply one or not, and what the
 writer supplies is "(0,0) is unknown.".
@@ -95,8 +100,8 @@ reader whether 0.6 is good, where to put a threshold when filtering, or whether 
 means what the same value means in another. Stating it is what makes filtering reproducible by someone
 who was not there.
 
-All three are set per series, so a container whose keypoints were tracked under different conditions
-can say so keypoint by keypoint.
+All three are set per series, so a container whose keypoints were tracked under different conditions can
+say so keypoint by keypoint.
 
 .. code-block:: python
    :emphasize-lines: 12-25
@@ -127,7 +132,7 @@ can say so keypoint by keypoint.
         unit=unit, reference_frame=reference_frame, confidence_definition=confidence_definition
     )
 
-**Describe the skeleton**
+**Annotate the subject skeleton**
 
 A ``Skeleton`` is the body plan behind the keypoints, and it has three fields.
 
