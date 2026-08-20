@@ -635,7 +635,7 @@ class TestDeepLabCutInterface(PoseEstimationInterfaceTestMixin):
     def test_a_config_naming_no_skeleton_writes_no_edges(self, setup_interface):
         """Which is this repository's test data: its config carries ``skeleton: []``."""
         metadata = self.interface.get_metadata()
-        assert metadata["Pose"]["Skeletons"]["deep_lab_cut_metadata_key"]["edges"] == []
+        assert metadata["Pose"]["Skeletons"][self.interface.metadata_key]["edges"] == []
 
     def test_subject_not_linked(self, setup_interface):
         """
