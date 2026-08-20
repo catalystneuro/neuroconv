@@ -7,6 +7,7 @@ from tempfile import mkdtemp
 import numpy as np
 import pytest
 from pynwb import NWBFile
+from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv import (
     BaseDataInterface,
@@ -14,6 +15,7 @@ from neuroconv import (
     ConverterPipe,
     NWBConverter,
 )
+from neuroconv.tools.testing.mock_interfaces import MockInterface
 from neuroconv.utils import DeepDict
 
 try:
@@ -235,3 +237,26 @@ def test_converter_forwards_the_metadata_format_it_was_asked_for():
     converter.get_metadata(use_new_metadata_format=True)
 
     assert interface.asked_for == [False, True]
+
+
+def test_nested_converter_receives_its_conversion_options():
+    """A converter nested in another one is handed its options as a mapping, not as keyword arguments.
+
+    An outer converter unpacks one level of `conversion_options` per container, and the entry for a nested
+    converter names that converter's own children, so it has to arrive whole. The two halves are asserted
+    together because they used to disagree: the shape the schema describes was the shape the call rejected.
+    """
+    inner_converter = ConverterPipe(data_interfaces=dict(Recording=MockInterface()))
+    outer_converter = ConverterPipe(data_interfaces=dict(Inner=inner_converter))
+
+    conversion_options = dict(Inner=dict(Recording=dict(add_subject=True)))
+
+    outer_converter.validate_conversion_options(conversion_options=conversion_options)
+    nwbfile = mock_NWBFile()
+    outer_converter.add_to_nwbfile(
+        nwbfile=nwbfile,
+        metadata=outer_converter.get_metadata(),
+        conversion_options=conversion_options,
+    )
+
+    assert nwbfile.subject is not None

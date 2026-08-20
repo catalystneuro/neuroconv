@@ -67,9 +67,16 @@ class MockInterface(BaseDataInterface):
         metadata["NWBFile"]["session_start_time"] = session_start_time
         return metadata
 
-    def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict | None, **conversion_options):
+    def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict | None, add_subject: bool = False):
+        """Add a mock subject to the NWBFile when asked to, and nothing otherwise.
 
-        return None
+        The one conversion option this interface takes, so that a test can assert an option reached it by
+        reading the file it wrote rather than by reading state off the interface.
+        """
+        if add_subject:
+            from pynwb.testing.mock.file import mock_Subject
+
+            nwbfile.subject = mock_Subject()
 
 
 class MockTimeSeriesInterface(BaseDataInterface):
