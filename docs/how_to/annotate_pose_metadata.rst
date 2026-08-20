@@ -275,7 +275,7 @@ have the original video, put it in the same file with
     camera_metadata_key = "top_camera_key"
 
     metadata["Behavior"]["ExternalVideos"][video_metadata_key] = dict(
-        name="OverheadVideo",
+        name="TopCameraVideo",
         description="Raw video the tracker ran on.",
         device_metadata_key=camera_metadata_key,
     )
@@ -284,6 +284,25 @@ have the original video, put it in the same file with
     )
 
     container["source_video_metadata_key"] = video_metadata_key
+
+.. admonition:: The file so far
+   :class: note
+
+   .. code-block:: text
+
+       processing/behavior
+       ├── PoseEstimationTopCamera            PoseEstimation   description, unit, reference frame
+       │   ├── PoseEstimationSeriesHead       data (1000, 2)
+       │   ├── PoseEstimationSeriesNeck       data (1000, 2)
+       │   └── PoseEstimationSeriesLeftShou…  data (1000, 2)
+       └── Skeletons
+           └── SkeletonMouse                  nodes, edges, subject
+
+       acquisition
+       └── TopCameraVideo                     ImageSeries      linked as the container's source_video
+
+       devices
+       └── TopCamera                          carried by the ImageSeries
 
 ``source_video_metadata_key`` names an entry in ``metadata["Behavior"]["ExternalVideos"]``, which the
 writer resolves to the ``ImageSeries`` that interface wrote. The link is a reference to the object rather
@@ -298,25 +317,6 @@ resolves the link against an object that must already be in the file.
 ``device_metadata_key`` names an entry in ``metadata["Devices"]``, and is only needed when there is no
 linked video: with no ``ImageSeries`` to carry it, nothing else in the file records that a camera
 existed.
-
-.. admonition:: The file so far
-   :class: tip
-
-   .. code-block:: text
-
-       processing/behavior
-       ├── PoseEstimationTopCamera            PoseEstimation   description, unit, reference frame
-       │   ├── PoseEstimationSeriesHead       data (1000, 2)
-       │   ├── PoseEstimationSeriesNeck       data (1000, 2)
-       │   └── PoseEstimationSeriesLeftShou…  data (1000, 2)
-       └── Skeletons
-           └── SkeletonMouse                  nodes, edges, subject
-
-       acquisition
-       └── OverheadVideo                      ImageSeries      linked as the container's source_video
-
-       devices
-       └── TopCamera                          carried by the ImageSeries
 
 How to Annotate Several Camera Views of One Subject
 ----------------------------------------------------
