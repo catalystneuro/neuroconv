@@ -230,7 +230,8 @@ class BaseDataInterface(ABC):
         nwbfile_path : FilePath
             Path for where to write or load (if overwrite=False) the NWBFile.
         nwbfile : NWBFile, optional
-            An in-memory NWBFile object to write to the location.
+            An in-memory NWBFile object. If provided, this conversion's interfaces add their data to
+            it rather than a new file being created; the file still needs `nwbfile_path` to be written.
         metadata : dict, optional
             Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
         overwrite : bool, default: False
