@@ -53,10 +53,13 @@ out to the skeleton of the subject, where the structure of those keypoints is de
 
 The ``name`` is how the container is identified in the file, so give it one that says which camera or
 which subject it holds. The ``description`` is prose, and the schema calls it the pose estimation
-procedure and output.
+procedure and output. ``source_software``, ``source_software_version`` and ``scorer`` say which tracker
+and which trained model produced the coordinates, which is what someone needs to reproduce them or to
+judge them against a later version of the same tool. An interface fills these in when the format records
+them, and DeepLabCut and SLEAP do; set them yourself when yours does not.
 
 .. code-block:: python
-   :emphasize-lines: 7-9
+   :emphasize-lines: 7-12
 
     from neuroconv.tools.testing import MockPoseEstimationInterface
 
@@ -67,12 +70,16 @@ procedure and output.
     container = metadata["Pose"]["PoseEstimations"][key]
     container["name"] = "PoseEstimationTopCamera"
     container["description"] = "2D keypoints of a mouse in an open field, from the overhead camera."
+    container["source_software"] = "DeepLabCut"
+    container["source_software_version"] = "2.3.9"
+    container["scorer"] = "DLC_resnet50_openfield"
 
 **Annotate the PoseEstimationSeries data**
 
 One ``PoseEstimationSeries`` per keypoint holds where that body part was in each frame, an x and a y, or
 an x, y and z, with a confidence beside it. Numbers are all it has, and nothing in them says what they
-measure. Three fields carry it.
+measure. Three fields carry that, and a ``description`` says which body part the series is, in whatever
+detail the keypoint name leaves out.
 
 ``unit`` is what the coordinates are measured in, pixels for a raw tracker output and millimetres or
 centimetres once they have been calibrated against something of known size. It is what lets a reader
@@ -92,11 +99,11 @@ reader whether 0.6 is good, where to put a threshold when filtering, or whether 
 means what the same value means in another. Stating it is what makes filtering reproducible by someone
 who was not there.
 
-All three are set per series, so a container whose keypoints were tracked under different conditions can
-say so keypoint by keypoint.
+All of them are set per series, so a container whose keypoints were tracked under different conditions
+can say so keypoint by keypoint.
 
 .. code-block:: python
-   :emphasize-lines: 11-24
+   :emphasize-lines: 14-36
 
     from neuroconv.tools.testing import MockPoseEstimationInterface
 
@@ -107,6 +114,9 @@ say so keypoint by keypoint.
     container = metadata["Pose"]["PoseEstimations"][key]
     container["name"] = "PoseEstimationTopCamera"
     container["description"] = "2D keypoints of a mouse in an open field, from the overhead camera."
+    container["source_software"] = "DeepLabCut"
+    container["source_software_version"] = "2.3.9"
+    container["scorer"] = "DLC_resnet50_openfield"
 
     unit = "pixels"
     reference_frame = "(0,0) is the top left corner of the video."
@@ -114,13 +124,22 @@ say so keypoint by keypoint.
 
     series = container["PoseEstimationSeries"]
     series["head"].update(
-        unit=unit, reference_frame=reference_frame, confidence_definition=confidence_definition
+        description="Tip of the snout.",
+        unit=unit,
+        reference_frame=reference_frame,
+        confidence_definition=confidence_definition,
     )
     series["neck"].update(
-        unit=unit, reference_frame=reference_frame, confidence_definition=confidence_definition
+        description="Base of the skull.",
+        unit=unit,
+        reference_frame=reference_frame,
+        confidence_definition=confidence_definition,
     )
     series["left_shoulder"].update(
-        unit=unit, reference_frame=reference_frame, confidence_definition=confidence_definition
+        description="Left shoulder joint.",
+        unit=unit,
+        reference_frame=reference_frame,
+        confidence_definition=confidence_definition,
     )
 
 **Annotate the subject skeleton**
@@ -148,7 +167,7 @@ a ``Subject``, or one whose id differs, gets a skeleton linked to nothing, which
 keypoints belong to somebody other than the file's subject.
 
 .. code-block:: python
-   :emphasize-lines: 26-30
+   :emphasize-lines: 38-42
 
     from neuroconv.tools.testing import MockPoseEstimationInterface
 
@@ -159,6 +178,9 @@ keypoints belong to somebody other than the file's subject.
     container = metadata["Pose"]["PoseEstimations"][key]
     container["name"] = "PoseEstimationTopCamera"
     container["description"] = "2D keypoints of a mouse in an open field, from the overhead camera."
+    container["source_software"] = "DeepLabCut"
+    container["source_software_version"] = "2.3.9"
+    container["scorer"] = "DLC_resnet50_openfield"
 
     unit = "pixels"
     reference_frame = "(0,0) is the top left corner of the video."
@@ -166,13 +188,22 @@ keypoints belong to somebody other than the file's subject.
 
     series = container["PoseEstimationSeries"]
     series["head"].update(
-        unit=unit, reference_frame=reference_frame, confidence_definition=confidence_definition
+        description="Tip of the snout.",
+        unit=unit,
+        reference_frame=reference_frame,
+        confidence_definition=confidence_definition,
     )
     series["neck"].update(
-        unit=unit, reference_frame=reference_frame, confidence_definition=confidence_definition
+        description="Base of the skull.",
+        unit=unit,
+        reference_frame=reference_frame,
+        confidence_definition=confidence_definition,
     )
     series["left_shoulder"].update(
-        unit=unit, reference_frame=reference_frame, confidence_definition=confidence_definition
+        description="Left shoulder joint.",
+        unit=unit,
+        reference_frame=reference_frame,
+        confidence_definition=confidence_definition,
     )
 
     skeleton = metadata["Pose"]["Skeletons"][key]
