@@ -35,6 +35,22 @@ class BrukerVoltageRecordingConverter(ConverterPipe):
     associated_suffixes = BrukerVoltageRecordingInterface.associated_suffixes
     info = "Combines several BrukerVoltageRecordingInterface instances into one icephys hierarchy."
 
+    def __init__(
+        self,
+        data_interfaces: list[BrukerVoltageRecordingInterface] | dict[str, BrukerVoltageRecordingInterface],
+        verbose: bool = False,
+    ):
+        super().__init__(data_interfaces=data_interfaces, verbose=verbose)
+        # Place the electrodes on one timeline here, where every interface is finally in view. It happens once, at
+        # construction, because ``shift_times`` accumulates and a per-write placement would stack up over repeated
+        # writes. Nothing is lost by doing it early: the placement comes from cycle start times that do not change.
+        # A user shifting afterwards moves the placed set as a block.
+        interfaces = list(self.data_interface_objects.values())
+        if interfaces:
+            _, starting_time_shifts = self._compute_alignment(interfaces)
+            for interface, starting_time_shift in starting_time_shifts.items():
+                interface.alignment.shift_times(starting_time_shift)
+
     def get_metadata(self) -> dict:
         interfaces = list(self.data_interface_objects.values())
         self._assign_run_identities(interfaces)  # before super(), which builds each interface's metadata
@@ -56,11 +72,6 @@ class BrukerVoltageRecordingConverter(ConverterPipe):
             repetitions=[interface._repetition for interface in interfaces],
             conditions=[interface._condition for interface in interfaces],
         )
-
-        # Align the electrodes onto one timeline before the interfaces write their series.
-        _, starting_time_shifts = self._compute_alignment(interfaces)
-        for interface, shift in starting_time_shifts.items():
-            interface._starting_time_shift = shift
 
         super().add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, conversion_options=conversion_options)
 

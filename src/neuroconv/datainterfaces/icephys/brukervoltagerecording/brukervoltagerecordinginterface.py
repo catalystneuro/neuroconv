@@ -12,7 +12,7 @@ from ._bruker_voltage_recording_readers import (
     _read_cycle_header,
     _read_signal_column,
 )
-from ....basedatainterface import BaseDataInterface
+from ..baseintracellularinterface import BaseIntracellularInterface
 from ....tools.icephys import (
     _RESPONSE_CLASS,
     _add_intracellular_electrode_to_nwbfile,
@@ -35,7 +35,7 @@ _MODE_BEARING_SIGNAL_NAME = "Primary"
 _UNIT_TO_MODE = {"mV": "current_clamp", "pA": "voltage_clamp"}
 
 
-class BrukerVoltageRecordingInterface(BaseDataInterface):
+class BrukerVoltageRecordingInterface(BaseIntracellularInterface):
     """
     Interface for intracellular electrophysiology recorded by Bruker PrairieView's VoltageRecording.
 
@@ -108,9 +108,6 @@ class BrukerVoltageRecordingInterface(BaseDataInterface):
         self._condition = condition
         self._stimulus_type = stimulus_type
         self._metadata_key = metadata_key
-        # Seconds added to this interface's series timestamps; a converter sets it for multi-electrode
-        # alignment. Default 0 leaves single-interface output unchanged.
-        self._starting_time_shift = 0.0
         self.source_data = dict(
             file_paths=file_paths,
             response_signal_name=response_signal_name,
@@ -331,9 +328,9 @@ class BrukerVoltageRecordingInterface(BaseDataInterface):
 
         data, timestamps, sweep_sample_ranges = self._concatenate_cycles()
         # The series is written on this electrode's own clock (its earliest cycle is time zero). A lone
-        # interface leaves _starting_time_shift at 0; a converter combining electrodes sets it so they share
-        # one session timeline, since that resolution needs sight of all of them.
-        timestamps = timestamps + self._starting_time_shift
+        # interface writes it unmoved; a converter combining electrodes places them on one session timeline,
+        # since that resolution needs sight of all of them.
+        timestamps = self._align_timestamps(timestamps)
 
         # The whole scale chain lives in `conversion` rather than being multiplied into the samples, so the
         # data stays exactly what PrairieView wrote: raw times Multiplier / Divisor gives the signal in its

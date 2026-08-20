@@ -7,7 +7,7 @@ import numpy as np
 from pydantic import FilePath, validate_call
 from pynwb import NWBFile
 
-from ....basedatainterface import BaseDataInterface
+from ..baseintracellularinterface import BaseIntracellularInterface
 from ....tools.icephys import (
     _RESPONSE_CLASS,
     _STIMULUS_CLASS,
@@ -22,7 +22,7 @@ from ....utils import (
 )
 
 
-class AxonIntracellularInterface(BaseDataInterface):
+class AxonIntracellularInterface(BaseIntracellularInterface):
     """
     Interface for intracellular electrophysiology data recorded in Axon Binary Format (.abf).
 
@@ -102,9 +102,6 @@ class AxonIntracellularInterface(BaseDataInterface):
         self._mode = mode
         self._repetition = repetition
         self._condition = condition
-        # Seconds added to this interface's series timestamps; a converter sets it for multi-file alignment.
-        # Default 0 leaves single-file output unchanged.
-        self._starting_time_shift = 0.0
         self.source_data = dict(
             file_path=file_path,
             response_channel_name=response_channel_name,
@@ -301,9 +298,9 @@ class AxonIntracellularInterface(BaseDataInterface):
             self._reader, self._response_channel_index, self._num_sweeps, self._sampling_rate
         )
         # The series is written on this file's own clock (timestamps start at the ABF header's t_start). A lone
-        # interface leaves _starting_time_shift at 0; a converter combining several files sets it so they share one
-        # session timeline (aligned by header start time), since that resolution needs sight of all the files.
-        timestamps = timestamps + self._starting_time_shift
+        # interface writes it unmoved; a converter combining several files places them on one session timeline
+        # (aligned by header start time), since that resolution needs sight of all the files.
+        timestamps = self._align_timestamps(timestamps)
         channel = self._signal_channels[self._response_channel_index]
         response_kwargs = dict(
             name=response_metadata["name"],
