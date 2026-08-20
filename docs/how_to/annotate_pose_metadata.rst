@@ -78,29 +78,8 @@ them, and DeepLabCut and SLEAP do; set them yourself when yours does not.
 
 One ``PoseEstimationSeries`` per keypoint holds where that body part was in each frame, an x and a y, or
 an x, y and z, with a confidence beside it. Numbers are all it has, and nothing in them says what they
-measure. Three fields carry that, and a ``description`` says which body part the series is, in whatever
-detail the keypoint name leaves out.
-
-``unit`` is what the coordinates are measured in, pixels for a raw tracker output and millimetres or
-centimetres once they have been calibrated against something of known size. It is what lets a reader
-turn a distance into a physical one, compare a speed against another study, or pool sessions filmed at
-different resolutions or camera heights, none of which is possible while the numbers are in units nobody
-has named.
-
-``reference_frame`` says where (0,0) sits and which way the axes run. It is what relates the coordinates
-to the apparatus rather than to the image, so a reader can say a subject was in the left arm of the maze
-or three centimetres from the wall, and it is what lets pose be combined with anything else spatial in
-the file. ``ndx-pose`` requires it, so a value is written whether you supply one or not, and what the
-writer supplies is "(0,0) is unknown.".
-
-``confidence_definition`` says what the confidence number is. DeepLabCut's likelihood, SLEAP's instance
-score and Lightning Pose's confidence are computed differently, so the number alone does not tell a
-reader whether 0.6 is good, where to put a threshold when filtering, or whether a value from your file
-means what the same value means in another. Stating it is what makes filtering reproducible by someone
-who was not there.
-
-All of them are set per series, so a container whose keypoints were tracked under different conditions
-can say so keypoint by keypoint.
+measure. Four fields carry that, and all of them are set per series, so a container whose keypoints were
+tracked under different conditions can say so keypoint by keypoint.
 
 .. code-block:: python
    :emphasize-lines: 14-36
@@ -124,23 +103,45 @@ can say so keypoint by keypoint.
 
     series = container["PoseEstimationSeries"]
     series["head"].update(
-        description="Tip of the snout.",
         unit=unit,
         reference_frame=reference_frame,
         confidence_definition=confidence_definition,
+        description="Tip of the snout.",
     )
     series["neck"].update(
-        description="Base of the skull.",
         unit=unit,
         reference_frame=reference_frame,
         confidence_definition=confidence_definition,
+        description="Base of the skull.",
     )
     series["left_shoulder"].update(
-        description="Left shoulder joint.",
         unit=unit,
         reference_frame=reference_frame,
         confidence_definition=confidence_definition,
+        description="Left shoulder joint.",
     )
+
+``unit`` is what the coordinates are measured in, pixels for a raw tracker output and millimetres or
+centimetres once they have been calibrated against something of known size. It is what lets a reader
+turn a distance into a physical one, compare a speed against another study, or pool sessions filmed at
+different resolutions or camera heights, none of which is possible while the numbers are in units nobody
+has named.
+
+``reference_frame`` says where (0,0) sits and which way the axes run. It is what relates the coordinates
+to the apparatus rather than to the image, so a reader can say a subject was in the left arm of the maze
+or three centimetres from the wall, and it is what lets pose be combined with anything else spatial in
+the file. ``ndx-pose`` requires it, so a value is written whether you supply one or not, and what the
+writer supplies is "(0,0) is unknown.".
+
+``confidence_definition`` says what the confidence number is. DeepLabCut's likelihood, SLEAP's instance
+score and Lightning Pose's confidence are computed differently, so the number alone does not tell a
+reader whether 0.6 is good, where to put a threshold when filtering, or whether a value from your file
+means what the same value means in another. Stating it is what makes filtering reproducible by someone
+who was not there.
+
+``description`` says which body part the series is, in whatever detail the keypoint name leaves out. A
+name like ``paw1LH`` is a label the tracker's author chose, and the description is where it becomes left
+hind paw.
 
 **Annotate the subject skeleton**
 
