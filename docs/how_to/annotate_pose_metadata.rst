@@ -48,10 +48,8 @@ do is a variation on this one, so it is worked in full.
 
 **Annotate the PoseEstimation container**
 
-A ``PoseEstimation`` is one camera view of one subject. It holds one series per keypoint, and links out
-to the skeleton those keypoints belong to, to the camera that filmed them, and to the video they were
-tracked from; each of those links has its own section below. What the container itself carries is a
-``name`` and a ``description``.
+A ``PoseEstimation`` is one camera view of one subject. It holds one time series per keypoint, and links
+out to the skeleton of the subject, where the structure of those keypoints is described.
 
 The writer falls back to generic names, ``PoseEstimation`` and ``SkeletonPoseEstimation``, and those are
 what someone browsing your file sees first. In a file holding several recordings they are the only thing
