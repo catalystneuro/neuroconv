@@ -218,7 +218,8 @@ recording no connectivity at all.
 ``subject`` names the individual within the source. The skeleton is linked to the file's ``Subject`` when
 the two ids match, which is what ties a body plan to a subject for anyone reading the file. A file
 without a ``Subject``, or one whose id differs, gets a skeleton linked to nothing, which is how you say
-these keypoints belong to somebody other than the file's subject.
+these keypoints belong to somebody other than the file's subject. That case is
+:ref:`several subjects in one recording <annotate_pose_several_subjects>` below.
 
 **Link the source video**
 
@@ -377,6 +378,8 @@ the node lists genuinely differ and each view wants its own skeleton.
 
 Two containers pointing at one ``skeleton_metadata_key`` produce one ``Skeleton`` in the file, which both
 link to.
+
+.. _annotate_pose_several_subjects:
 
 How to Annotate Several Subjects in One Recording
 --------------------------------------------------
