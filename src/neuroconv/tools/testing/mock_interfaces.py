@@ -876,13 +876,6 @@ class MockSpikeGLXNIDQInterface(SpikeGLXNIDQInterface):
 class MockRecordingInterface(BaseRecordingExtractorInterface):
     """An interface with a spikeinterface recording object for testing purposes."""
 
-    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
-        metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
-        # Synthesized traces have no session to read a start time from, and every conversion needs one,
-        # so the mock supplies it as the other mock interfaces do.
-        metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
-        return metadata
-
     @classmethod
     def get_extractor_class(cls):
         from spikeinterface.core.generate import generate_recording
