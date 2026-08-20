@@ -300,7 +300,7 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
             position_container.add_spatial_series(spatial_series)
 
         # Add the container to the processing module
-        processing_module = get_module(nwbfile=nwbfile, name="behavior")
+        processing_module = get_module(nwbfile=nwbfile, name="behavior", description="processed behavioral data")
         processing_module.add(position_container)
 
     def get_original_timestamps(self):
@@ -420,7 +420,7 @@ def extract_session_start_time(
     length_in_seconds_of_a_10_year_experiment = 10 * 365 * 24 * 60 * 60
     if first_timestamp > length_in_seconds_of_a_10_year_experiment:
         utc_timestamp = first_timestamp
-        return datetime.utcfromtimestamp(utc_timestamp).replace(tzinfo=timezone.utc)
+        return datetime.fromtimestamp(utc_timestamp, tz=timezone.utc)
 
     if configuration_file_path is None:
         configuration_file_path = file_path.parent / "fictrac_config.txt"
