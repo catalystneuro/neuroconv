@@ -292,10 +292,14 @@ class NWBConverter:
         metadata = metadata or self._get_metadata_for_writing()
 
         conversion_options = conversion_options or dict()
-        for interface_name, data_interface in self.data_interface_objects.items():
-            data_interface.add_to_nwbfile(
-                nwbfile=nwbfile, metadata=metadata, **conversion_options.get(interface_name, dict())
-            )
+        for child_name, child in self.data_interface_objects.items():
+            child_options = conversion_options.get(child_name, dict())
+            if isinstance(child, NWBConverter):
+                # A nested converter takes its options as one mapping keyed by its own children's names,
+                # not unpacked into keyword arguments the way a data interface does.
+                child.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, conversion_options=child_options)
+            else:
+                child.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **child_options)
 
     def run_conversion(
         self,
