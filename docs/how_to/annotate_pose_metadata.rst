@@ -76,7 +76,7 @@ out to the skeleton of the subject, where the structure of those keypoints is de
    .. code-block:: text
 
        processing/behavior
-       └── PoseEstimationTopCamera            source_software=DeepLabCut  scorer=DLC_resnet50_openfield
+       └── PoseEstimationTopCamera            source_software=DeepLabCut · scorer=DLC_resnet50_openfield
            ├── PoseEstimationSeriesHead       data (1000, 2)
            ├── PoseEstimationSeriesNeck       data (1000, 2)
            └── PoseEstimationSeriesLeftShou…  data (1000, 2)
@@ -147,10 +147,10 @@ tracked under different conditions can say so keypoint by keypoint.
    .. code-block:: text
 
        processing/behavior
-       └── PoseEstimationTopCamera
-           ├── PoseEstimationSeriesHead       unit=pixels  reference_frame  confidence_definition
-           ├── PoseEstimationSeriesNeck       unit=pixels  reference_frame  confidence_definition
-           └── PoseEstimationSeriesLeftShou…  unit=pixels  reference_frame  confidence_definition
+       └── PoseEstimationTopCamera            source_software=DeepLabCut · scorer=DLC_resnet50_openfield
+           ├── PoseEstimationSeriesHead       data (1000, 2) · pixels · reference_frame · confidence_definition
+           ├── PoseEstimationSeriesNeck       data (1000, 2) · pixels · reference_frame · confidence_definition
+           └── PoseEstimationSeriesLeftShou…  data (1000, 2) · pixels · reference_frame · confidence_definition
 
 ``unit`` is what the coordinates are measured in, pixels for a raw tracker output and millimetres or
 centimetres once they have been calibrated against something of known size. It is what lets a reader
@@ -238,9 +238,11 @@ them. It carries a ``name`` and three fields.
 
        processing/behavior
        ├── PoseEstimationTopCamera            ──▶  SkeletonMouse
-       │   └── (3 PoseEstimationSeries)
+       │   ├── PoseEstimationSeriesHead       data (1000, 2) · pixels · reference_frame · confidence_definition
+       │   ├── PoseEstimationSeriesNeck       data (1000, 2) · pixels · reference_frame · confidence_definition
+       │   └── PoseEstimationSeriesLeftShou…  data (1000, 2) · pixels · reference_frame · confidence_definition
        └── Skeletons
-           └── SkeletonMouse                  nodes, edges, subject
+           └── SkeletonMouse                  nodes · edges · subject
 
 ``nodes`` are the body parts, in the order their series are written. The interface fills them from the
 keypoints it read, so this is the one field you usually leave alone; the order matters because it is what
@@ -330,21 +332,23 @@ have the original video, put it in the same file with
 .. admonition:: The file so far
    :class: note
 
+   The container now names the video its keypoints were tracked from, and the camera comes with it.
+
    .. code-block:: text
 
        processing/behavior
-       ├── PoseEstimationTopCamera            PoseEstimation   description, unit, reference frame
-       │   ├── PoseEstimationSeriesHead       data (1000, 2)
-       │   ├── PoseEstimationSeriesNeck       data (1000, 2)
-       │   └── PoseEstimationSeriesLeftShou…  data (1000, 2)
+       ├── PoseEstimationTopCamera            ──▶  SkeletonMouse  ·  TopCameraVideo
+       │   ├── PoseEstimationSeriesHead       data (1000, 2) · pixels · reference_frame · confidence_definition
+       │   ├── PoseEstimationSeriesNeck       data (1000, 2) · pixels · reference_frame · confidence_definition
+       │   └── PoseEstimationSeriesLeftShou…  data (1000, 2) · pixels · reference_frame · confidence_definition
        └── Skeletons
-           └── SkeletonMouse                  nodes, edges, subject
+           └── SkeletonMouse                  nodes · edges · subject
 
        acquisition
-       └── TopCameraVideo                     ImageSeries      linked as the container's source_video
+       └── TopCameraVideo                     ImageSeries  ──▶  TopCamera
 
        devices
-       └── TopCamera                          carried by the ImageSeries
+       └── TopCamera
 
 ``source_video_metadata_key`` names an entry in ``metadata["Behavior"]["ExternalVideos"]``, which the
 writer resolves to the ``ImageSeries`` that interface wrote. The link is a reference to the object rather
