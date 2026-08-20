@@ -234,8 +234,8 @@ def _get_graph_edges(metadata_file_path: Path):
             paf_inds = test_cfg.get("paf_best")
             if paf_inds is not None:
                 paf_graph = [paf_graph[i] for i in paf_inds]
-    else:
-        warnings.warn("Metadata not found...")
+    # An absent pickle is not an error and not worth a warning: DeepLabCut does not always write one, and
+    # the project config is the first place the edges are looked for.
 
     return paf_graph
 
@@ -266,8 +266,11 @@ def _get_video_info_from_config_file(config_file_path: Path, vidname: str):
             break
 
     if video is None:
-        warnings.warn(f"The corresponding video file could not be found in the config file")
-        video = None, "0, 0, 0, 0"
+        # Nothing is invented here. The stem is matched against the config's ``video_sets`` keys, which are
+        # absolute paths from the machine that did the training, so a miss is the common case rather than
+        # the exception, and the frame size this used to return ("0, 0, 0, 0", which parses to [[0, 0]])
+        # was a fabricated one written into the file. See https://github.com/catalystneuro/neuroconv/issues/1046.
+        video = None, None
 
     # The video in the config_file looks like this:
     # video_sets:

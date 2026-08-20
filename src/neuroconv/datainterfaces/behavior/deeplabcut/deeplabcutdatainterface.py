@@ -465,12 +465,13 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
             _, image_shape = _get_video_info_from_config_file(
                 config_file_path=self.source_data["config_file_path"], vidname=video_name
             )
-            try:
-                shape_parts = [int(x.strip()) for x in image_shape.split(",")]
-                if len(shape_parts) == 4:
-                    dimensions = [[shape_parts[3], shape_parts[1]]]  # [[height, width]]
-            except (ValueError, IndexError):
-                pass
+            if image_shape is not None:
+                try:
+                    shape_parts = [int(x.strip()) for x in image_shape.split(",")]
+                    if len(shape_parts) == 4:
+                        dimensions = [[shape_parts[3], shape_parts[1]]]  # [[height, width]]
+                except (ValueError, IndexError):
+                    pass
 
         # Get edges from metadata pickle file if available
         # The project config states the skeleton as pairs of bodypart names, which is the source that is

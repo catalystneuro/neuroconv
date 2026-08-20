@@ -478,7 +478,9 @@ class TestDeepLabCutInterface(PoseEstimationInterfaceTestMixin):
                     "name": "PoseEstimationDeepLabCut",
                     "source_software": "DeepLabCut",
                     "scorer": "DLC_resnet50_openfieldAug20shuffle1_30000",
-                    "dimensions": [[0, 0]],
+                    # No dimensions: the config's video_sets keys are absolute paths from the training
+                    # machine, so the lookup misses and nothing invents a frame size. See issue #1046.
+                    "dimensions": None,
                     "original_videos": None,
                     "skeleton_metadata_key": metadata_key,
                     "PoseEstimationSeries": {
