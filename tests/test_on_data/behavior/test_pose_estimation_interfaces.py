@@ -613,7 +613,7 @@ class TestDeepLabCutInterface(PoseEstimationInterfaceTestMixin):
         config_dict = yaml.safe_load(config_file_path.read_text(encoding="utf-8"))
         config_dict["skeleton"] = [["snout", "leftear"], ["leftear", "rightear"]]
         config_with_skeleton_path = tmp_path / "config.yaml"
-        config_with_skeleton_path.write_text(yaml.safe_dump(config_dict))
+        config_with_skeleton_path.write_text(yaml.safe_dump(config_dict), encoding="utf-8")
 
         interface = DeepLabCutInterface(
             file_path=self.interface_kwargs["file_path"],
