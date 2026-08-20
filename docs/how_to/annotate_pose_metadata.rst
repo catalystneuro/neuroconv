@@ -72,8 +72,7 @@ procedure and output.
 
 One ``PoseEstimationSeries`` per keypoint holds where that body part was in each frame, an x and a y, or
 an x, y and z, with a confidence beside it. Numbers are all it has, and nothing in them says what they
-measure. neuroconv writes none of that unless you do, because any value it chose would be invented
-rather than read. Three fields carry it.
+measure. Three fields carry it.
 
 ``unit`` is what the coordinates are measured in, pixels for a raw tracker output and millimetres or
 centimetres once they have been calibrated against something of known size. It is what lets a reader
