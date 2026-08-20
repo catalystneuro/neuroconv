@@ -58,7 +58,7 @@ procedure and output. The rest of what a container says about its provenance, ``
 it.
 
 .. code-block:: python
-   :emphasize-lines: 7-10
+   :emphasize-lines: 7-9
 
     from neuroconv.tools.testing import MockPoseEstimationInterface
 
@@ -69,7 +69,6 @@ it.
     container = metadata["Pose"]["PoseEstimations"][key]
     container["name"] = "PoseEstimationTopCamera"
     container["description"] = "2D keypoints of a mouse in an open field, from the overhead camera."
-    metadata["Pose"]["Skeletons"][key]["name"] = "SkeletonMouse"
 
 **Annotate the PoseEstimationSeries data**
 
@@ -100,7 +99,7 @@ All three are set per series, so a container whose keypoints were tracked under 
 say so keypoint by keypoint.
 
 .. code-block:: python
-   :emphasize-lines: 12-25
+   :emphasize-lines: 11-24
 
     from neuroconv.tools.testing import MockPoseEstimationInterface
 
@@ -111,7 +110,6 @@ say so keypoint by keypoint.
     container = metadata["Pose"]["PoseEstimations"][key]
     container["name"] = "PoseEstimationTopCamera"
     container["description"] = "2D keypoints of a mouse in an open field, from the overhead camera."
-    metadata["Pose"]["Skeletons"][key]["name"] = "SkeletonMouse"
 
     unit = "pixels"
     reference_frame = "(0,0) is the top left corner of the video."
@@ -130,7 +128,7 @@ say so keypoint by keypoint.
 
 **Annotate the subject skeleton**
 
-A ``Skeleton`` is the body plan behind the keypoints, and it has three fields.
+A ``Skeleton`` is the body plan behind the keypoints. Besides its ``name``, it has three fields.
 
 ``nodes`` are the body parts, in the order their series are written. The interface fills them from the
 keypoints it read, so this is the one field you usually leave alone; the order matters because it is what
@@ -153,7 +151,7 @@ a ``Subject``, or one whose id differs, gets a skeleton linked to nothing, which
 keypoints belong to somebody other than the file's subject.
 
 .. code-block:: python
-   :emphasize-lines: 27-30
+   :emphasize-lines: 26-30
 
     from neuroconv.tools.testing import MockPoseEstimationInterface
 
@@ -164,7 +162,6 @@ keypoints belong to somebody other than the file's subject.
     container = metadata["Pose"]["PoseEstimations"][key]
     container["name"] = "PoseEstimationTopCamera"
     container["description"] = "2D keypoints of a mouse in an open field, from the overhead camera."
-    metadata["Pose"]["Skeletons"][key]["name"] = "SkeletonMouse"
 
     unit = "pixels"
     reference_frame = "(0,0) is the top left corner of the video."
@@ -182,6 +179,7 @@ keypoints belong to somebody other than the file's subject.
     )
 
     skeleton = metadata["Pose"]["Skeletons"][key]
+    skeleton["name"] = "SkeletonMouse"
     skeleton["nodes"] = ["head", "neck", "left_shoulder"]
     skeleton["edges"] = [[0, 1], [1, 2]]  # head-neck, neck-left shoulder
     skeleton["subject"] = "mouse_001"
