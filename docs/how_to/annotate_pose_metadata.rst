@@ -67,6 +67,20 @@ out to the skeleton of the subject, where the structure of those keypoints is de
     container["source_software_version"] = "2.3.9"
     container["scorer"] = "DLC_resnet50_openfield"
 
+.. admonition:: The file so far
+   :class: note
+
+   The container is named and described, and says which tracker produced it. The series under it hold
+   coordinates and nothing else.
+
+   .. code-block:: text
+
+       processing/behavior
+       └── PoseEstimationTopCamera            source_software=DeepLabCut  scorer=DLC_resnet50_openfield
+           ├── PoseEstimationSeriesHead       data (1000, 2)
+           ├── PoseEstimationSeriesNeck       data (1000, 2)
+           └── PoseEstimationSeriesLeftShou…  data (1000, 2)
+
 ``name`` is how the container is identified in the file, so give it one that says which camera or which
 subject it holds.
 
@@ -123,6 +137,20 @@ tracked under different conditions can say so keypoint by keypoint.
         confidence_definition=confidence_definition,
         description="Left shoulder joint.",
     )
+
+.. admonition:: The file so far
+   :class: note
+
+   Every series now says what its numbers measure, so a reader can convert a distance, place the origin
+   and interpret a confidence.
+
+   .. code-block:: text
+
+       processing/behavior
+       └── PoseEstimationTopCamera
+           ├── PoseEstimationSeriesHead       unit=pixels  reference_frame  confidence_definition
+           ├── PoseEstimationSeriesNeck       unit=pixels  reference_frame  confidence_definition
+           └── PoseEstimationSeriesLeftShou…  unit=pixels  reference_frame  confidence_definition
 
 ``unit`` is what the coordinates are measured in, pixels for a raw tracker output and millimetres or
 centimetres once they have been calibrated against something of known size. It is what lets a reader
@@ -199,6 +227,20 @@ them. It carries a ``name`` and three fields.
     skeleton["nodes"] = ["head", "neck", "left_shoulder"]
     skeleton["edges"] = [[0, 1], [1, 2]]  # head-neck, neck-left shoulder
     skeleton["subject"] = "mouse_001"
+
+.. admonition:: The file so far
+   :class: note
+
+   The body plan is written beside the container rather than inside it, so another camera view of the
+   same subject can point at this one skeleton.
+
+   .. code-block:: text
+
+       processing/behavior
+       ├── PoseEstimationTopCamera            ──▶  SkeletonMouse
+       │   └── (3 PoseEstimationSeries)
+       └── Skeletons
+           └── SkeletonMouse                  nodes, edges, subject
 
 ``nodes`` are the body parts, in the order their series are written. The interface fills them from the
 keypoints it read, so this is the one field you usually leave alone; the order matters because it is what
