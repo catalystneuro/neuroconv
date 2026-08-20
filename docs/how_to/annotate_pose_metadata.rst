@@ -53,9 +53,7 @@ out to the skeleton of the subject, where the structure of those keypoints is de
 
 The ``name`` is how the container is identified in the file, so give it one that says which camera or
 which subject it holds. The ``description`` is prose, and the schema calls it the pose estimation
-procedure and output. The rest of what a container says about its provenance, ``source_software``,
-``source_software_version`` and ``scorer``, the interface fills from the source when the format records
-it.
+procedure and output.
 
 .. code-block:: python
    :emphasize-lines: 7-9
