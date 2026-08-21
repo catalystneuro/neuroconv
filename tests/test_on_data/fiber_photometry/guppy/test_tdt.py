@@ -48,7 +48,8 @@ MOCK_GUPPY_RATE = 200.0
 
 class TestGuppyConverterTDT:
     @pytest.fixture(scope="class")
-    def epoc_onsets(self):
+    @classmethod
+    def epoc_onsets(cls):
         """The first few onsets of each epoc GuPPy listed, read straight from the tank."""
         import tdt
 
