@@ -25,6 +25,7 @@
 * Pose estimation now supports device model addition in their metadata. [PR #1961](https://github.com/catalystneuro/neuroconv/pull/1961)
 
 ## Improvements
+* `general/source_script` now carries a structured, versioned provenance record instead of the `Created using NeuroConv v<version>` watermark, stating the NeuroConv version, how the conversion was run and, when it ran from a git checkout, the repository, commit and whether the working tree was clean. `source_script_file_name` is now the conversion script's name rather than the absolute path of NeuroConv's own module on the machine that wrote the file; see the developer guide for the format and for `NEUROCONV_PROVENANCE=no-git-info`. [PR #1971](https://github.com/catalystneuro/neuroconv/pull/1971)
 * Added `docs/how_to/annotate_pose_metadata.rst`, walking through the metadata a pose format does not record, one acquisition setup at a time. [PR #1967](https://github.com/catalystneuro/neuroconv/pull/1967)
 * The keypoint-name hook a pose interface implements is now private, `_get_keypoint_names`, matching its `_get_keypoint_data` sibling. [PR #1966](https://github.com/catalystneuro/neuroconv/pull/1966)
 * `DeepLabCutInterface`, `LightningPoseDataInterface` and `MockPoseEstimationInterface` now build their pose registries from a shared `BasePoseEstimationInterface`, which owns the registry construction and the write path, so a format states what it records and nothing else. [PR #1963](https://github.com/catalystneuro/neuroconv/pull/1963)
