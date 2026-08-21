@@ -311,7 +311,7 @@ tdt_fp = [
 ]
 guppy = [
     "neuroconv[fiber_photometry_minimal]",
-    "ndx-guppy>=0.1.0",
+    "ndx-guppy>=0.2.0",
     "tables",
     # Every acquisition format GuppyConverter can read, so one install covers a GuPPy session
     # whatever it was recorded on.
