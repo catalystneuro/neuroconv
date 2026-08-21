@@ -38,6 +38,8 @@ MOCK_SAMPLING_RATE = 200.0
 MOCK_STARTING_TIME = 1.0
 BIN_EDGES_PER_EVENT = [[0.0, 3.0], [3.0, 4.0]]
 VALID_SIGNAL_INTERVALS = [[1.25, 1.75], [2.0, 2.5]]
+# The generator's default tonic epoch windows, written for every recording site.
+TONIC_EPOCHS = [("baseline", 1.0, 2.0), ("post_injection", 2.0, 3.0)]
 # The generator's default onsets, shared by every event: they label the trial columns of every
 # peri-event product and fill <event>_<recording_site>.hdf5.
 MOCK_TRIAL_ONSETS = [10.0, 20.0, 30.0, 40.0]
@@ -302,6 +304,61 @@ class TestGuppyInterfaceBehavior:
 
         # The removal method is recorded once, on GuppyParameters.
         assert nwbfile.lab_meta_data["guppy_parameters"].artifacts_removal_method == "concatenate"
+
+    def test_tonic_epochs_yield_one_row_per_site_epoch_and_trace_type(self, interface, nwbfile):
+        """Every (recording site, epoch, trace type) is a row carrying that trace's mean over the window."""
+        module = self.add_to_nwbfile(interface, nwbfile, stub_test=False)
+        tonic_epochs = module["tonic_epochs"]
+        assert tonic_epochs.neurodata_type == "GuppyTonicEpochs"
+        assert len(tonic_epochs) == len(RECORDING_SITES) * len(TONIC_EPOCHS) * 2
+
+        recording_site_names = list(module["recording_sites"]["recording_site"].data)
+        rows = [
+            (recording_site_names[site_index], label, start, stop, trace_type, mean)
+            for site_index, label, start, stop, trace_type, mean in zip(
+                tonic_epochs["recording_site"].data,
+                tonic_epochs["label"].data,
+                tonic_epochs["start_time"].data,
+                tonic_epochs["stop_time"].data,
+                tonic_epochs["trace_type"].data,
+                tonic_epochs["mean"].data,
+            )
+        ]
+        # The mock writes the same windows for every site, over a trace that ramps linearly from -1 to 1
+        # across its 400 samples: the baseline window covers samples 0-200 (mean = the value at sample
+        # 100) and post_injection covers samples 200-399 (mean = the value at sample 299.5). dF/F is the
+        # z-score mean scaled by a tenth.
+        for recording_site in RECORDING_SITES:
+            site_rows = [row[1:] for row in rows if row[0] == recording_site]
+            assert [row[0] for row in site_rows] == ["baseline"] * 2 + ["post_injection"] * 2
+            np.testing.assert_allclose([row[1] for row in site_rows], [1.0, 1.0, 2.0, 2.0])
+            np.testing.assert_allclose([row[2] for row in site_rows], [2.0, 2.0, 3.0, 3.0])
+            assert [row[3] for row in site_rows] == ["z_score", "dff", "z_score", "dff"]
+            np.testing.assert_allclose(
+                [row[4] for row in site_rows],
+                [-0.498747, -0.0498747, 0.501253, 0.0501253],
+                atol=1e-6,
+            )
+
+    def test_no_tonic_analysis_writes_no_tonic_epochs(self, tmp_path, nwbfile):
+        """A session that never ran the optional tonic analysis has no tonic files, so no object."""
+        folder_path = generate_mock_guppy_output_folder(tmp_path / "guppy_output_no_tonic", tonic_epochs=())
+        interface = GuppyInterface(folder_path=str(folder_path))
+
+        guppy_metadata = interface.get_metadata()["FiberPhotometry"]["Guppy"][interface.metadata_key]
+        assert "TonicEpochs" not in guppy_metadata
+
+        module = self.add_to_nwbfile(interface, nwbfile, stub_test=True)
+        assert "tonic_epochs" not in module.data_interfaces
+
+    def test_tonic_outputs_missing_their_pair_is_an_incomplete_folder(self, guppy_output_folder, tmp_path):
+        """The epoch windows and their means are written together; one without the other is an error."""
+        copied_folder = tmp_path / "guppy_output_copy"
+        shutil.copytree(guppy_output_folder, copied_folder)
+        (copied_folder / f"tonic_{RECORDING_SITES[0]}.h5").unlink()
+
+        with pytest.raises(AssertionError, match="tonic outputs for recording site"):
+            GuppyInterface(folder_path=str(copied_folder))
 
     def test_cross_correlation_without_bin_columns(self, guppy_output_folder, tmp_path, nwbfile):
         """A GuPPy run with binning disabled writes no bin_ columns, so the bin fields stay unset."""
