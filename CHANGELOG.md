@@ -25,6 +25,7 @@
 * Pose estimation now supports device model addition in their metadata. [PR #1961](https://github.com/catalystneuro/neuroconv/pull/1961)
 
 ## Improvements
+* `AxonIntracellularInterface` and `BrukerVoltageRecordingInterface` now share `BaseIcephysInterface`: each maps its source into an internal patch-clamp series record, while the base resolves metadata-linked electrodes and writes the NWB response/stimulus series and intracellular-recordings rows. The former Neo base is now explicitly `LegacyBaseIcephysInterface` and will be removed with `AbfInterface` in release 0.12.0. [PR #1972](https://github.com/catalystneuro/neuroconv/pull/1972)
 * Added `docs/how_to/annotate_pose_metadata.rst`, walking through the metadata a pose format does not record, one acquisition setup at a time. [PR #1967](https://github.com/catalystneuro/neuroconv/pull/1967)
 * The keypoint-name hook a pose interface implements is now private, `_get_keypoint_names`, matching its `_get_keypoint_data` sibling. [PR #1966](https://github.com/catalystneuro/neuroconv/pull/1966)
 * `DeepLabCutInterface`, `LightningPoseDataInterface` and `MockPoseEstimationInterface` now build their pose registries from a shared `BasePoseEstimationInterface`, which owns the registry construction and the write path, so a format states what it records and nothing else. [PR #1963](https://github.com/catalystneuro/neuroconv/pull/1963)

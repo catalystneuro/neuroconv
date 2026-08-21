@@ -15,8 +15,13 @@ from ...utils import (
 )
 
 
-class BaseIcephysInterface(BaseExtractorInterface):
-    """Primary class for all intracellular NeoInterfaces."""
+class LegacyBaseIcephysInterface(BaseExtractorInterface):
+    """Legacy Neo base for intracellular electrophysiology.
+
+    .. deprecated::
+       This Neo-based base will be removed in release 0.12.0 together with the legacy ``AbfInterface``.
+       Use :class:`BaseIcephysInterface` for new icephys interfaces.
+    """
 
     keywords = ("intracellular electrophysiology", "patch clamp", "current clamp")
 
@@ -27,6 +32,12 @@ class BaseIcephysInterface(BaseExtractorInterface):
 
     @validate_call
     def __init__(self, file_paths: list[FilePath]):
+        warnings.warn(
+            "LegacyBaseIcephysInterface is deprecated and will be removed in release 0.12.0 together with "
+            "AbfInterface. Use BaseIcephysInterface for new icephys interfaces.",
+            FutureWarning,
+            stacklevel=2,
+        )
         # Check if the ndx_dandi_icephys module is available
         dandi_icephys_spec = importlib.util.find_spec("ndx_dandi_icephys")
         if dandi_icephys_spec is not None:
@@ -127,7 +138,7 @@ class BaseIcephysInterface(BaseExtractorInterface):
             positional_values = dict(zip(parameter_names, args))
             passed_as_positional = list(positional_values.keys())
             warnings.warn(
-                f"Passing arguments positionally to BaseIcephysInterface.add_to_nwbfile() is deprecated "
+                f"Passing arguments positionally to LegacyBaseIcephysInterface.add_to_nwbfile() is deprecated "
                 f"and will be removed on or after August 2026. "
                 f"The following arguments were passed positionally: {passed_as_positional}. "
                 "Please use keyword arguments instead.",
