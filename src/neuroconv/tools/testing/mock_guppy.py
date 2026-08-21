@@ -34,6 +34,8 @@ _DEFAULT_EVENT_STORE_TO_NAME = {
     "PrtR": "port_entries",
 }
 _SESSION_ID = "mock_guppy_session"
+# Detected transient times, shared by transientsOccurrences_* and the spontaneous-mode event trains.
+_TRANSIENT_PEAK_TIMES = (1.2, 1.5, 1.8, 2.5)
 # Seconds of raw recording GuPPy's lights-on trim discards before analysis (its default).
 _TIME_FOR_LIGHTS_TURN_ON = 1.0
 
@@ -55,6 +57,7 @@ def generate_mock_guppy_output_folder(
     peak_end_points: tuple[float, ...] = (0.0, 3.0, 10.0),
     valid_signal_intervals: tuple[tuple[float, float], ...] = ((1.25, 1.75), (2.0, 2.5)),
     bin_size_in_trials: int = 3,
+    use_transients_as_events: bool = False,
     guppy_version: str = "2.0.0a7",
     zscore_method: str = "standard z-score",
 ) -> Path:
@@ -105,6 +108,13 @@ def generate_mock_guppy_output_folder(
         case). The windows must fall inside the trace timebase.
     bin_size_in_trials : int, optional
         Trials per bin for the ``bin_(a-b)`` columns ("# of trials" binning mode).
+    use_transients_as_events : bool, optional
+        Whether to emit GuPPy's spontaneous mode, off by default as it is in GuPPy. When on, each
+        recording site's own detected transients stand in for external TTLs: a
+        ``transients_<feature>_<recording_site>.hdf5`` event train is written per (feature, recording
+        site), holding a *subset* of that site's detected transients, since trial rejection drops some;
+        the two recording sites keep different subsets, as two sites detecting their own transients
+        would. Every peri-event product is then emitted for those events as well.
     guppy_version, zscore_method : str, optional
         Provenance values written to ``GuPPyParamtersUsed.json``.
 
@@ -168,6 +178,7 @@ def generate_mock_guppy_output_folder(
         peak_end_points=peak_end_points,
         bin_size_in_trials=bin_size_in_trials,
         remove_artifacts=bool(valid_signal_intervals),
+        use_transients_as_events=use_transients_as_events,
     )
 
     for recording_site in recording_sites:
@@ -212,6 +223,41 @@ def generate_mock_guppy_output_folder(
                     bin_edges=bin_edges,
                     num_windows=len(peak_start_points),
                 )
+
+    if use_transients_as_events:
+        # Each recording site stands its own detected transients in for the TTLs, keeping the subset that
+        # survived trial rejection. The two sites keep different subsets, so a row mix-up cannot pass.
+        for recording_site_index, recording_site in enumerate(recording_sites):
+            kept_transients = list(_TRANSIENT_PEAK_TIMES[recording_site_index :: len(recording_sites)])
+            transient_bin_edges = _trial_bin_edges(
+                num_trials=len(kept_transients), bin_size_in_trials=bin_size_in_trials
+            )
+            for detected_feature in features:
+                event_name = "transients_" + detected_feature
+                _write_event_onsets(
+                    folder_path, event=event_name, recording_site=recording_site, onsets=kept_transients
+                )
+                for feature in features:
+                    for baseline_corrected in (True, False):
+                        _write_psth(
+                            folder_path,
+                            event=event_name,
+                            recording_site=recording_site,
+                            feature=feature,
+                            baseline_corrected=baseline_corrected,
+                            peri_event_time=peri_event_time,
+                            trial_onsets=kept_transients,
+                            bin_edges=transient_bin_edges,
+                        )
+                    _write_peak_auc(
+                        folder_path,
+                        event=event_name,
+                        recording_site=recording_site,
+                        feature=feature,
+                        trial_onsets=kept_transients,
+                        bin_edges=transient_bin_edges,
+                        num_windows=len(peak_start_points),
+                    )
 
     cross_correlation_folder = folder_path / "cross_correlation_output"
     cross_correlation_folder.mkdir(exist_ok=True)
@@ -281,6 +327,7 @@ def _write_parameters(
     peak_end_points,
     bin_size_in_trials,
     remove_artifacts,
+    use_transients_as_events,
 ) -> None:
     """``GuPPyParamtersUsed.json`` written via ``json.dump``.
 
@@ -314,6 +361,7 @@ def _write_parameters(
         moving_window=15.0,
         highAmpFilt=2.0,
         transientsThresh=2.0,
+        useTransientsAsEvents=use_transients_as_events,
     )
     with open(folder_path / "GuPPyParamtersUsed.json", "w", encoding="utf-8") as parameters_file:
         json.dump(parameters, parameters_file, indent=4)
@@ -361,7 +409,8 @@ def _write_transients_occurrences(folder_path, feature, recording_site) -> None:
     Written as a DataFrame via ``to_csv`` (leading integer index column). The peaks sit inside the
     trace window; a couple fall beyond the 1-s stub window on purpose.
     """
-    peaks = np.array([[1.2, 0.9], [1.5, 1.4], [1.8, 0.7], [2.5, 1.1]], dtype=np.float64)
+    amplitudes = (0.9, 1.4, 0.7, 1.1)
+    peaks = np.column_stack([np.asarray(_TRANSIENT_PEAK_TIMES, dtype=np.float64), np.asarray(amplitudes)])
     dataframe = pandas.DataFrame(peaks, index=np.arange(peaks.shape[0]), columns=["timestamps", "amplitude"])
     dataframe.to_csv(folder_path / f"transientsOccurrences_{feature}_{recording_site}.csv")
 

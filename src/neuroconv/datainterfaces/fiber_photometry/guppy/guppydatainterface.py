@@ -34,6 +34,8 @@ def _column_parses_as_float(column: str) -> bool:
 _PREFIX_TO_TRACE_TYPE = dict(cntrl_sig_fit="control_fit", dff="dff", z_score="z_score")
 # GuPPy derived-trace prefix -> unit (deterministic from the output, not user-editable).
 _PREFIX_TO_UNIT = dict(cntrl_sig_fit="n.a.", dff="a.u.", z_score="a.u.")
+# GuPPy's label prefix for a spontaneous-mode event: the transients of one metric standing in for a TTL.
+_TRANSIENT_EVENT_PREFIX = "transients_"
 # Per-window peak/area metric row prefixes in the peak_AUC_*.h5 DataFrame index.
 _BIN_COLUMN_PATTERN = re.compile(r"bin_\((\d+(?:\.\d+)?)-(\d+(?:\.\d+)?)\)$")
 # The two registry tables every GuPPy product references. The recording sites table is shared with
@@ -54,8 +56,8 @@ class GuppyInterface(BaseDataInterface):
 
     * control-fit / ΔF/F / z-score traces
     * transient peaks and their per-(recording_site, trace_type) summary
-    * peri-event PSTHs
-    * peak / AUC summaries
+    * peri-event PSTHs and peak / AUC summaries, including those GuPPy's spontaneous mode aligned to its
+      own detected transients instead of to external TTLs
     * recording-site-pair cross-correlations
 
     plus the GuPPy parameters (``GuppyParameters``), the ``GuppyValidSignalIntervals`` object, and the two
@@ -168,10 +170,22 @@ class GuppyInterface(BaseDataInterface):
         with open(parameters_file_path, "r", encoding="utf-8") as parameters_file:
             guppy_parameters = json.load(parameters_file)
 
+        transient_events = self._discover_transient_events(
+            folder_path=folder_path,
+            recording_sites=recording_sites,
+            transients_by_recording_site=transients_by_recording_site,
+        )
+        # Spontaneous-mode events are events as far as every peri-event product is concerned, so the
+        # products are discovered over both kinds. The registry rows differ (see the events table writer).
+        transient_event_names = sorted({event_name for event_name, _ in transient_events})
+        product_event_names = event_names + transient_event_names
+
         cross_correlations = self._discover_cross_correlations(folder_path=folder_path, recording_sites=recording_sites)
-        psths = self._discover_psths(folder_path=folder_path, event_names=event_names, recording_sites=recording_sites)
+        psths = self._discover_psths(
+            folder_path=folder_path, event_names=product_event_names, recording_sites=recording_sites
+        )
         peak_aucs = self._discover_peak_aucs(
-            folder_path=folder_path, event_names=event_names, recording_sites=recording_sites
+            folder_path=folder_path, event_names=product_event_names, recording_sites=recording_sites
         )
         valid_signal_intervals_by_recording_site = self._discover_valid_signal_intervals(
             folder_path=folder_path, recording_sites=recording_sites
@@ -205,6 +219,9 @@ class GuppyInterface(BaseDataInterface):
         self._peak_aucs = peak_aucs
         self._valid_signal_intervals_by_recording_site = valid_signal_intervals_by_recording_site
         self._analyzed_event_onsets = analyzed_event_onsets
+        self._transient_events = transient_events
+        self._transient_event_names = transient_event_names
+        self._product_event_names = product_event_names
         self._guppy_parameters = guppy_parameters
 
     # ------------------------------------------------------------------ #
@@ -427,6 +444,32 @@ class GuppyInterface(BaseDataInterface):
             result[recording_site] = time_values.reshape(-1, 2)
         return result
 
+    @classmethod
+    def _discover_transient_events(
+        cls, folder_path: Path, recording_sites: list[str], transients_by_recording_site: dict[str, list[str]]
+    ) -> dict[tuple[str, str], np.ndarray]:
+        """Return ``{(event_name, recording_site): onsets}`` for GuPPy's spontaneous-mode events.
+
+        In spontaneous mode GuPPy stands its own detected transients in for external TTLs, writing each
+        recording site's transient times to ``transients_<metric>_<recording_site>.hdf5`` under key ``ts``
+        -- the shape of a corrected event file -- and building PSTHs and peak/AUC summaries around them.
+        The labels never reach ``storesList.csv``, so the events are discovered from those files.
+
+        Unlike a behavioral event, a transient train is *per recording site*: each site detects its own
+        transients. And like any other event, the onsets here are the ones that survived trial rejection,
+        so they are a subset of the detected transients in ``transientsOccurrences_<metric>_<recording_site>.csv``.
+        """
+        transient_events = {}
+        for recording_site in recording_sites:
+            for feature in transients_by_recording_site[recording_site]:
+                event_name = _TRANSIENT_EVENT_PREFIX + feature
+                onsets_path = folder_path / f"{event_name}_{recording_site}.hdf5"
+                if not onsets_path.is_file():
+                    continue
+                with h5py.File(onsets_path, "r") as onsets_file:
+                    transient_events[(event_name, recording_site)] = np.asarray(onsets_file["ts"][:], dtype=np.float64)
+        return transient_events
+
     @staticmethod
     def _discover_analyzed_event_onsets(
         folder_path: Path, event_names: list[str], recording_sites: list[str]
@@ -489,7 +532,11 @@ class GuppyInterface(BaseDataInterface):
             zscore_method="zscore_method",
             artifactsRemovalMethod="artifacts_removal_method",
         )
-        bool_keys = dict(isosbestic_control="isosbestic_control", removeArtifacts="remove_artifacts")
+        bool_keys = dict(
+            isosbestic_control="isosbestic_control",
+            removeArtifacts="remove_artifacts",
+            useTransientsAsEvents="use_transients_as_events",
+        )
         int_keys = dict(bin_psth_trials="bin_psth_trials")
         float_keys = dict(
             baselineWindowStart="baseline_window_start",
@@ -727,12 +774,13 @@ class GuppyInterface(BaseDataInterface):
 
         This method takes **no linkage arguments**: it writes only what the GuPPy output defines. The
         events registry references an ``EventsTable`` of GuPPy's own analyzed onsets, written into
-        ``nwbfile.events``. The recording sites registry's acquisition ``fiber_photometry_table_region``
-        is the one link the GuPPy output cannot supply: a converter that owns the acquisition authors
-        that registry before this method runs and the table found in the processing module is reused as
-        it stands (see ``GuppyConverter``); failing that, the link is resolved against the
-        ``FiberPhotometryTable`` the ``nwbfile`` already holds, and standalone the registry is written
-        link-free.
+        ``nwbfile.events``. A spontaneous-mode event is registered once per recording site, since each
+        site stood its own detected transients in for the TTLs. The recording sites registry's acquisition
+        ``fiber_photometry_table_region`` is the one link the GuPPy output cannot supply: a converter that
+        owns the acquisition authors that registry before this method runs and the table found in the
+        processing module is reused as it stands (see ``GuppyConverter``); failing that, the link is
+        resolved against the ``FiberPhotometryTable`` the ``nwbfile`` already holds, and standalone the
+        registry is written link-free.
 
         Parameters
         ----------
@@ -857,12 +905,46 @@ class GuppyInterface(BaseDataInterface):
             table=recording_sites_table,
         )
 
-    def _event_reference(self, events_table, event_names: list[str], name: str = "event") -> DynamicTableRegion:
-        """Build a DynamicTableRegion into the GuppyEventsTable for the given event name(s)."""
-        event_to_row_index = {event_name: index for index, event_name in enumerate(self._event_names)}
+    def _event_row_indices(self) -> dict[object, int]:
+        """Map each registry key to its row index: an event name, or (event name, recording site).
+
+        A behavioral event is one row, since every recording site saw the same occurrences. A
+        spontaneous-mode event is one row *per recording site*, since each site stood its own detected
+        transients in for the TTLs, so those rows are keyed by the pair.
+        """
+        row_indices: dict[object, int] = {event_name: index for index, event_name in enumerate(self._event_names)}
+        for event_name, recording_site in self._transient_event_keys():
+            row_indices[(event_name, recording_site)] = len(row_indices)
+        return row_indices
+
+    def _transient_event_keys(self) -> list[tuple[str, str]]:
+        """The (event name, recording site) pairs of the spontaneous-mode rows, in registry row order."""
+        return [
+            (event_name, recording_site)
+            for event_name in self._transient_event_names
+            for recording_site in self._recording_sites
+            if (event_name, recording_site) in self._transient_events
+        ]
+
+    def _event_reference(
+        self, events_table, event_names: list[str], name: str = "event", recording_site: str | None = None
+    ) -> DynamicTableRegion:
+        """Build a DynamicTableRegion into the GuppyEventsTable for the given event name(s).
+
+        ``recording_site`` selects which row a spontaneous-mode event resolves to, since those rows are
+        per recording site; it is unused for a behavioral event.
+        """
+        row_indices = self._event_row_indices()
         return DynamicTableRegion(
             name=name,
-            data=[event_to_row_index[event_name] for event_name in event_names],
+            data=[
+                (
+                    row_indices[(event_name, recording_site)]
+                    if event_name in self._transient_event_names
+                    else row_indices[event_name]
+                )
+                for event_name in event_names
+            ],
             description="GuPPy behavioral event(s) this object's columns were aligned to.",
             table=events_table,
         )
@@ -1077,9 +1159,14 @@ class GuppyInterface(BaseDataInterface):
                 baseline_corrected=bool(baseline_corrected),
                 unit="a.u.",
                 recording_site=self._recording_site_reference(recording_sites_table, [recording_site]),
-                event=self._event_reference(events_table, concatenated["trial_event_names"]),
+                event=self._event_reference(
+                    events_table, concatenated["trial_event_names"], recording_site=recording_site
+                ),
                 summary_event=self._event_reference(
-                    events_table, concatenated["summary_event_names"], name="summary_event"
+                    events_table,
+                    concatenated["summary_event_names"],
+                    name="summary_event",
+                    recording_site=recording_site,
                 ),
                 peri_event_time=concatenated["axis"],
                 trial_onset_times=concatenated["trial_onset_times"],
@@ -1091,7 +1178,12 @@ class GuppyInterface(BaseDataInterface):
                 psth_kwargs.update(
                     bin_edges=concatenated["bin_edges"],
                     bin_edges__bin_basis=bin_basis,
-                    bin_event=self._event_reference(events_table, concatenated["bin_event_names"], name="bin_event"),
+                    bin_event=self._event_reference(
+                        events_table,
+                        concatenated["bin_event_names"],
+                        name="bin_event",
+                        recording_site=recording_site,
+                    ),
                     binned_mean=concatenated["binned_value"],
                     binned_error=concatenated["binned_error"],
                 )
@@ -1261,10 +1353,14 @@ class GuppyInterface(BaseDataInterface):
         standalone or inside ``GuppyConverter``, and every peri-event product reaches the occurrences it
         was built from either way.
 
-        A session whose storesList.csv holds no event store at all is the one registry without a link
-        target: it has no rows, and there is nothing to write.
+        A spontaneous-mode event gets one row per recording site rather than one row: GuPPy stood each
+        site's own detected transients in for the TTLs, so the sites do not share a train.
+
+        A session that analyzed no event at all is the one registry without a link target: it has no rows,
+        and there is nothing to write.
         """
-        if not self._event_names:
+        registry_keys = list(self._event_names) + self._transient_event_keys()
+        if not registry_keys:
             events_table = ndx_guppy.GuppyEventsTable(
                 name=_EVENTS_TABLE_NAME,
                 description=_EVENTS_TABLE_DESCRIPTION,
@@ -1272,7 +1368,7 @@ class GuppyInterface(BaseDataInterface):
             processing_module.add(events_table)
             return events_table
 
-        target_events_table, event_name_to_rows = self._add_guppy_events_to_nwbfile(
+        target_events_table, registry_key_to_rows = self._add_guppy_events_to_nwbfile(
             nwbfile=nwbfile, events_metadata=events_metadata
         )
         events_table = ndx_guppy.GuppyEventsTable(
@@ -1280,8 +1376,9 @@ class GuppyInterface(BaseDataInterface):
             description=_EVENTS_TABLE_DESCRIPTION,
             target_tables={"events": target_events_table},
         )
-        for event_name in self._event_names:
-            events_table.add_row(event_name=event_name, events=event_name_to_rows[event_name])
+        for registry_key in registry_keys:
+            event_name = registry_key if isinstance(registry_key, str) else registry_key[0]
+            events_table.add_row(event_name=event_name, events=registry_key_to_rows[registry_key])
         processing_module.add(events_table)
         return events_table
 
@@ -1305,24 +1402,33 @@ class GuppyInterface(BaseDataInterface):
         )
 
         # Chronological across every event, which is the order a table an events interface wrote is in.
-        # The sort is stable, so onsets shared by two events keep self._event_names order.
+        # The sort is stable, so onsets shared by two events keep the registry's row order. A
+        # spontaneous-mode event contributes one train per recording site, keyed by the pair.
+        registry_keys = list(self._event_names) + self._transient_event_keys()
         rows = [
-            (float(onset), event_name)
-            for event_name in self._event_names
-            for onset in self._analyzed_event_onsets[event_name]
+            (float(onset), registry_key)
+            for registry_key in registry_keys
+            for onset in (
+                self._analyzed_event_onsets[registry_key]
+                if isinstance(registry_key, str)
+                else self._transient_events[registry_key]
+            )
         ]
         rows.sort(key=lambda row: row[0])
 
         events_table = EventsTable(name=table_name, description=events_metadata["description"])
         events_table.add_column(name="event_type", description="The event type of each event.")
-        event_name_to_rows: dict[str, list[int]] = {event_name: [] for event_name in self._event_names}
-        for row_index, (onset, event_name) in enumerate(rows):
+        registry_key_to_rows: dict[object, list[int]] = {registry_key: [] for registry_key in registry_keys}
+        for row_index, (onset, registry_key) in enumerate(rows):
+            # The recording site is part of a spontaneous-mode event's type here, since two sites'
+            # transient trains are different events sharing a name; the registry keeps them structured.
+            event_type = registry_key if isinstance(registry_key, str) else "_".join(registry_key)
             # check_ragged=False: hdmf rescans the whole column on every add_row, making this quadratic in
             # the number of onsets. Both cells here are scalars, so the check can only ever return False.
-            events_table.add_row(timestamp=onset, event_type=event_name, check_ragged=False)
-            event_name_to_rows[event_name].append(row_index)
+            events_table.add_row(timestamp=onset, event_type=event_type, check_ragged=False)
+            registry_key_to_rows[registry_key].append(row_index)
         nwbfile.add_events_table(events_table)
-        return events_table, event_name_to_rows
+        return events_table, registry_key_to_rows
 
     def _add_guppy_transient_summary_table_to_nwbfile(
         self, *, ndx_guppy, processing_module, recording_sites_table, summary_metadata: dict
@@ -1383,10 +1489,10 @@ class GuppyInterface(BaseDataInterface):
 
         ``key_fields`` are the entry fields that define a condition (everything except the event),
         e.g. ``("recording_site", "feature", "baseline_corrected")`` for PSTHs. Within each group the entries
-        are ordered by their event's position in ``self._event_names`` so concatenation across events
-        is deterministic.
+        are ordered by their event's position in ``self._product_event_names`` -- the behavioral events
+        followed by any spontaneous-mode ones -- so concatenation across events is deterministic.
         """
-        event_order = {event_name: index for index, event_name in enumerate(self._event_names)}
+        event_order = {event_name: index for index, event_name in enumerate(self._product_event_names)}
         groups: dict[tuple, list[dict]] = {}
         for entry in entries:
             key = tuple(entry[field] for field in key_fields)
@@ -1598,8 +1704,10 @@ class GuppyInterface(BaseDataInterface):
             trace_type=trace_type,
             unit="a.u.",
             recording_site=self._recording_site_reference(recording_sites_table, [recording_site]),
-            event=self._event_reference(events_table, trial_event_names),
-            summary_event=self._event_reference(events_table, summary_event_names, name="summary_event"),
+            event=self._event_reference(events_table, trial_event_names, recording_site=recording_site),
+            summary_event=self._event_reference(
+                events_table, summary_event_names, name="summary_event", recording_site=recording_site
+            ),
             window_start=window_start,
             window_stop=window_stop,
             trial_onset_times=np.array(trial_onset_times, dtype=np.float64),
@@ -1614,7 +1722,9 @@ class GuppyInterface(BaseDataInterface):
             kwargs.update(
                 bin_edges=np.concatenate(bin_edges_blocks, axis=0),
                 bin_edges__bin_basis=bin_basis,
-                bin_event=self._event_reference(events_table, bin_event_names, name="bin_event"),
+                bin_event=self._event_reference(
+                    events_table, bin_event_names, name="bin_event", recording_site=recording_site
+                ),
                 binned_peak_positive=np.concatenate(binned_peak_positive_blocks, axis=1),
                 binned_peak_negative=np.concatenate(binned_peak_negative_blocks, axis=1),
                 binned_area_under_curve=np.concatenate(binned_area_blocks, axis=1),
