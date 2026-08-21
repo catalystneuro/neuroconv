@@ -164,7 +164,8 @@ def psth_source_path(event, recording_site, feature, *, baseline_corrected):
 
 class TestGuppyReferenceSession:
     @pytest.fixture(scope="class")
-    def converter(self):
+    @classmethod
+    def converter(cls):
         return GuppyConverter(
             fiber_photometry_folder_path=SESSION_FOLDER,
             events_folder_path=SESSION_FOLDER,
@@ -173,7 +174,8 @@ class TestGuppyReferenceSession:
         )
 
     @pytest.fixture(scope="class")
-    def metadata(self, converter):
+    @classmethod
+    def metadata(cls, converter):
         """The converter's metadata with the user-supplied FiberPhotometry provenance chain merged in.
 
         A CSV session carries no clock origin, so the session start time is the caller's to supply.
@@ -190,7 +192,8 @@ class TestGuppyReferenceSession:
         return metadata
 
     @pytest.fixture(scope="class")
-    def nwbfile_path(self, converter, metadata, tmp_path_factory):
+    @classmethod
+    def nwbfile_path(cls, converter, metadata, tmp_path_factory):
         """Convert the reference session once; every assertion below reads this one file."""
         nwbfile_path = tmp_path_factory.mktemp("guppy_reference") / "reference_session.nwb"
         converter.run_conversion(nwbfile_path=str(nwbfile_path), metadata=metadata, overwrite=True)

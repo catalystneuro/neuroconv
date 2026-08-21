@@ -473,7 +473,9 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 minversion = "6.0"
-addopts = "-ra --doctest-glob='*.rst'"
+# The `--numprocesses` is not only for speed: `PYTHONWARNDEFAULTENCODING` (set below) reaches the interpreter only through
+# the xdist workers, which start after `pytest-env` has written it, so a serial run cannot see `EncodingWarning`.
+addopts = "-ra --doctest-glob='*.rst' --numprocesses=logical --dist=loadscope"
 testpaths = ["docs/conversion_examples_gallery/", "tests"]
 doctest_optionflags = "ELLIPSIS"
 filterwarnings = [
