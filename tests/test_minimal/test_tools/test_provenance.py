@@ -8,8 +8,8 @@ from pathlib import Path
 import pytest
 from pynwb import read_nwb
 
-from neuroconv.tools import _provenance
-from neuroconv.tools._provenance import describe_source_script
+from neuroconv.tools.nwb_helpers import _provenance
+from neuroconv.tools.nwb_helpers._provenance import describe_source_script
 
 
 @pytest.fixture(autouse=True)
@@ -142,7 +142,7 @@ def test_the_record_describes_a_real_checkout(tmp_path):
 
     script = checkout / "provenance_from_a_real_checkout.py"
     script.write_text(
-        "from neuroconv.tools._provenance import describe_source_script\nprint(describe_source_script()[0])\n",
+        "from neuroconv.tools.nwb_helpers._provenance import describe_source_script\nprint(describe_source_script()[0])\n",
         encoding="utf-8",
     )
     try:

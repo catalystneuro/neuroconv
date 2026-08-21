@@ -25,7 +25,7 @@ from ._device_types import (
     _build_inline_containers,
     _resolve_type,
 )
-from .._provenance import describe_source_script
+from ._provenance import describe_source_script
 from ...utils.dict import DeepDict, load_dict_from_file
 from ...utils.json_schema import _validate_device_registry_names, validate_metadata
 
