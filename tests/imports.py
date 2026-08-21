@@ -63,6 +63,7 @@ class TestImportStructure(TestCase):
             "path_expansion",
             "processes",
             "iterative_write",
+            "_provenance",  # Attached to namespace by nwb_helpers importing describe_source_script
             # Functions and classes imported on the __init__
             "get_format_summaries",
             "get_package",
