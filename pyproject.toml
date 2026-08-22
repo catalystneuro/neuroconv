@@ -148,10 +148,16 @@ tdt_events = [
 doric_events = [
     "h5py>=3",  # Doric events live in the .doric HDF5 file; the CSV export variant needs only pandas.
 ]
+openephys_events = [
+    # Open Ephys binary events are plain .npy arrays read with numpy, so they need only the core
+    # dependencies (no spikeinterface/neo); kept as a stable install alias so
+    # `neuroconv[openephys_events]` and `neuroconv[events]` remain valid.
+]
 events = [
     "neuroconv[csv_events]",
     "neuroconv[doric_events]",
     "neuroconv[npm_events]",
+    "neuroconv[openephys_events]",
     "neuroconv[tdt_events]",
 ]
 
