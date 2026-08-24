@@ -787,9 +787,7 @@ class GuppyInterface(BaseDataInterface):
             guppy_metadata["CovariateCorrelations"] = dict(
                 name="covariate_correlations",
                 description=(
-                    "Descriptive correlation of each behavioral covariate against each per-bin GuPPy "
-                    "metric. No p-value is reported: successive bins of both series are autocorrelated, "
-                    "which the standard significance tests assume they are not."
+                    "Descriptive correlation of each behavioral covariate against each per-bin GuPPy " "metric."
                 ),
             )
         return metadata
