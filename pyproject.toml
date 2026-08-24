@@ -311,7 +311,9 @@ tdt_fp = [
 ]
 guppy = [
     "neuroconv[fiber_photometry_minimal]",
-    "ndx-guppy>=0.2.0",
+    # TEMPORARY: GuppyTonicEpochs needs ndx-guppy 0.2.0, which is not on PyPI yet. Re-pin to
+    # "ndx-guppy>=0.2.0" once 0.2.0 is released.
+    "ndx-guppy @ git+https://github.com/catalystneuro/ndx-guppy.git@main",
     "tables",
     # Every acquisition format GuppyConverter can read, so one install covers a GuPPy session
     # whatever it was recorded on.
