@@ -17,6 +17,7 @@ The most common contribution is for a user/developer to help us integrate a new 
     Fiber Photometry Metadata Structure <fiber_photometry_metadata_structure>
     Events Metadata Structure <events_metadata_structure>
     Schemas <schemas>
+    Provenance Record <provenance>
     Project Structure <project_structure>
     Testing Suite <testing_suite>
     Coding Style <style_guide>

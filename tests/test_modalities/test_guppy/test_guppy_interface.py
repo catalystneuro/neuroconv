@@ -128,7 +128,8 @@ class TestGuppyInterfaceBehavior:
     """The caller-visible options and the folder shapes the reference session cannot express."""
 
     @pytest.fixture(scope="class")
-    def guppy_output_folder(self, tmp_path_factory):
+    @classmethod
+    def guppy_output_folder(cls, tmp_path_factory):
         """One mock folder per class: the interface only reads it, and mutation tests copy it first."""
         return generate_mock_guppy_output_folder(tmp_path_factory.mktemp("guppy") / "guppy_output")
 
