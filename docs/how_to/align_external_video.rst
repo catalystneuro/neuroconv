@@ -207,7 +207,7 @@ directly. This is accurate and corrects drift, so prefer it whenever the pulses 
 
     frame_pulse_times = digital_interface.get_event_times("camera_frame")
 
-    frame_count = interface.get_frame_counts()[0]
+    frame_count = interface.get_header_frame_counts()[0]
     assert len(frame_pulse_times) == frame_count, (
         f"{len(frame_pulse_times)} pulses for {frame_count} frames."
     )
@@ -241,7 +241,7 @@ counts over the frame rates:
 
     interface = ExternalVideoInterface(file_paths=["part_01.avi", "part_02.avi", "part_03.avi"])
 
-    frame_counts = interface.get_frame_counts()
+    frame_counts = interface.get_header_frame_counts()
     frame_rates = interface.get_header_frame_rates()
     durations = np.array(frame_counts) / np.array(frame_rates)
     starting_times = np.concatenate([[0.0], np.cumsum(durations)[:-1]])
@@ -299,7 +299,7 @@ The digital line recorded the triggers and nothing else.
     segment_keys = interface.alignment.keys()
     assert len(trial_onsets) == len(segment_keys)
 
-    frame_counts = interface.get_frame_counts()
+    frame_counts = interface.get_header_frame_counts()
     frame_rates = interface.get_header_frame_rates()
 
     for segment_key, onset, count, rate in zip(segment_keys, trial_onsets, frame_counts, frame_rates):
@@ -346,7 +346,7 @@ times of that file.
     bursts = np.split(frame_pulse_times, gap_indices)
 
     segment_keys = interface.alignment.keys()
-    frame_counts = interface.get_frame_counts()
+    frame_counts = interface.get_header_frame_counts()
 
     assert len(bursts) == len(segment_keys), f"{len(bursts)} bursts for {len(segment_keys)} files."
     for segment_key, burst, frame_count in zip(segment_keys, bursts, frame_counts):

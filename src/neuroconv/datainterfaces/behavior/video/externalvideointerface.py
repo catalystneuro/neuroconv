@@ -164,14 +164,15 @@ class ExternalVideoInterface(BaseDataInterface):
         }
         return dict_deep_update(metadata, video_metadata)
 
-    def get_frame_counts(self) -> list[int]:
+    def get_header_frame_counts(self) -> list[int]:
         """
         Return the number of frames held by each video file.
 
-        The count comes from the container header of each file, a cheap read rather than a decode. It is
-        public because a conversion that measures its frame times from a pulse train wants to check the
-        pulse count against it before setting anything, and it is a method so that an interface which
-        knows the count without a file to open can supply it.
+        Named for where the number comes from, because a container header can be missing it or state it
+        wrongly, which is what :meth:`_check_timestamps_number_matches_frames` has to allow for. Public
+        because a conversion that measures its frame times from a pulse train wants to check the pulse
+        count against it before setting anything, and a method so that an interface which knows the count
+        without a file to open can supply it.
 
         Returns
         -------
@@ -186,6 +187,42 @@ class ExternalVideoInterface(BaseDataInterface):
             self._frame_counts = frame_counts
         return self._frame_counts
 
+    def _check_timestamps_number_matches_frames(self, timestamps: np.ndarray) -> None:
+        """
+        Raise when the times about to be written do not number one per frame of the video files.
+
+        An external ``ImageSeries`` carries no data, so the length of its ``timestamps`` *is* its sample
+        count, while ``external_file`` and ``starting_frame`` describe however many frames the files
+        actually hold. A mismatch therefore writes a series that contradicts itself, and nothing downstream
+        reports it, which is why it is caught here rather than left to a reader.
+
+        Only the array path is checked. Where the times come from the files themselves, nothing has been
+        set and the count matches by construction.
+
+        Parameters
+        ----------
+        timestamps : numpy.ndarray
+            The concatenated times across every file, as they are about to be written.
+        """
+        # OpenCV reads this out of the container header rather than by counting, and returns 0 where the
+        # header does not carry it, which happens with streams and with growing or truncated files. Zero
+        # frames cannot contradict any number of timestamps, so an unreadable count disables the check
+        # rather than failing it. Negative is guarded against too, defensively rather than from a known case.
+        frame_counts = self.get_header_frame_counts()
+        a_count_is_unknown = any(frame_count <= 0 for frame_count in frame_counts)
+        if a_count_is_unknown:
+            return
+
+        number_of_frames = sum(frame_counts)
+        if len(timestamps) != number_of_frames:
+            raise ValueError(
+                f"{len(timestamps)} timestamps were set for the {number_of_frames} frames held by "
+                f"{self._number_of_files} video file(s), and an external ImageSeries carries one time per "
+                "frame. A few timestamps short of the frame count usually means the camera dropped frames, "
+                "and many more than it usually means the signal you read them from was already running "
+                "before the camera started."
+            )
+
     def get_header_frame_rates(self) -> list[float]:
         """
         Return the frames per second each video file's container header states.
@@ -198,7 +235,7 @@ class ExternalVideoInterface(BaseDataInterface):
         timestamp frames from it. Only a signal recorded alongside the video settles the question, which is
         what :ref:`align_external_video` is about.
 
-        Public alongside :meth:`get_frame_counts` because a caller placing files that run on from each other
+        Public alongside :meth:`get_header_frame_counts` because a caller placing files that run on from each other
         needs both, the length of a file being its frame count over its rate.
 
         Returns
@@ -235,7 +272,7 @@ class ExternalVideoInterface(BaseDataInterface):
         their own; a file that was triggered independently is moved off that timeline by
         ``alignment[key].set_times(...)``.
         """
-        frame_counts = self.get_frame_counts()
+        frame_counts = self.get_header_frame_counts()
         frame_rates = self.get_header_frame_rates()
         starting_time = sum(frame_counts[preceding] / frame_rates[preceding] for preceding in range(file_index))
         return starting_time + np.arange(frame_counts[file_index]) / frame_rates[file_index]
@@ -264,7 +301,7 @@ class ExternalVideoInterface(BaseDataInterface):
             "them and this is wrong. Give each its times to say so, with "
             "`alignment[key].set_times(times)`. Where a pulse timed every frame those are the pulse times; "
             "otherwise build them from the segment's onset and its own spacing, "
-            "`onset + numpy.arange(count) / rate` over `get_frame_counts()` and `get_header_frame_rates()`. That "
+            "`onset + numpy.arange(count) / rate` over `get_header_frame_counts()` and `get_header_frame_rates()`. That "
             "also silences this warning.",
             UserWarning,
             stacklevel=3,
@@ -617,6 +654,7 @@ class ExternalVideoInterface(BaseDataInterface):
             image_series_kwargs.update(starting_time=starting_time, rate=rate)
         else:
             timestamps = self._get_aligned_timestamps()
+            self._check_timestamps_number_matches_frames(timestamps=timestamps)
             rate = None if always_write_timestamps else calculate_regular_series_rate(series=timestamps)
             if rate is not None:
                 image_series_kwargs.update(starting_time=timestamps[0], rate=rate)
@@ -626,7 +664,7 @@ class ExternalVideoInterface(BaseDataInterface):
         # The frame count of each external file backs both `num_samples` and `starting_frame`, so read it once.
         compute_starting_frames = self._number_of_files > 1 and starting_frames is None
         if "rate" in image_series_kwargs or compute_starting_frames:
-            frame_counts = self.get_frame_counts()
+            frame_counts = self.get_header_frame_counts()
 
         # pynwb>=4 requires num_samples on an external ImageSeries when timing is rate-based, because the
         # empty data array cannot convey the frame count. Sum the frame count across the external video files.

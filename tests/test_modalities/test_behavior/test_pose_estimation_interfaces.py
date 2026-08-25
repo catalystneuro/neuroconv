@@ -354,51 +354,76 @@ class TestPoseEstimationMetadata:
 class TestPoseEstimationVideoLink:
     """A container naming the video its keypoints were tracked from, via ``source_video_metadata_key``.
 
-    The link addresses an entry in ``metadata["Behavior"]["ExternalVideos"]`` and is resolved against
-    the ``ImageSeries`` already in the file rather than created, so it is the converter, and the order
-    the interfaces are declared in, that decides whether it can be followed.
+    The link addresses an entry in ``metadata["Behavior"]["ExternalVideos"]`` and is resolved against the
+    ``ImageSeries`` already in the file rather than created, so it is the converter, and the order the
+    interfaces are declared in, that decides whether it can be followed.
     """
-
-    video_metadata_key = "top_video"
-    pose_metadata_key = "top_pose"
-
-    def _build_converter(self, interface_classes):
-        converter_class = type("VideoPoseConverter", (NWBConverter,), {"data_interface_classes": interface_classes})
-        return converter_class(
-            source_data=dict(
-                Video=dict(file_paths=["top_camera.mp4"], metadata_key=self.video_metadata_key),
-                Pose=dict(num_samples=50, num_nodes=3, metadata_key=self.pose_metadata_key),
-            )
-        )
-
-    def _build_metadata(self, converter):
-        metadata = converter.get_metadata()
-        container = metadata["Pose"]["PoseEstimations"][self.pose_metadata_key]
-        container["source_video_metadata_key"] = self.video_metadata_key
-        return metadata
 
     def test_link_resolves_to_the_written_image_series(self):
         """The container holds the very ``ImageSeries`` object the video interface added."""
-        converter = self._build_converter(
-            dict(Video=MockExternalVideoInterface, Pose=MockPoseEstimationInterface),
+
+        class VideoThenPoseConverter(NWBConverter):
+            data_interface_classes = dict(Video=MockExternalVideoInterface, Pose=MockPoseEstimationInterface)
+
+        converter = VideoThenPoseConverter(
+            source_data=dict(
+                Video=dict(file_paths=["top_camera.mp4"], metadata_key="top_video"),
+                Pose=dict(num_samples=50, num_nodes=3, metadata_key="top_pose"),
+            )
         )
-        metadata = self._build_metadata(converter)
+        metadata = converter.get_metadata()
+        metadata["Pose"]["PoseEstimations"]["top_pose"]["source_video_metadata_key"] = "top_video"
 
         nwbfile = mock_NWBFile()
         converter.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
 
-        image_series_name = metadata["Behavior"]["ExternalVideos"][self.video_metadata_key]["name"]
-        container = nwbfile.processing["behavior"][self.pose_metadata_key]
+        image_series_name = metadata["Behavior"]["ExternalVideos"]["top_video"]["name"]
+        container = nwbfile.processing["behavior"]["top_pose"]
         assert container.source_video is nwbfile.acquisition[image_series_name]
         # The camera reaches the file through the ImageSeries, so the container names no device of its own.
         assert not container.devices
 
+    def test_link_resolves_when_the_video_is_in_the_behavior_module(self):
+        """Both containers are searched, since it is the video interface that chooses which one it writes to."""
+
+        class VideoThenPoseConverter(NWBConverter):
+            data_interface_classes = dict(Video=MockExternalVideoInterface, Pose=MockPoseEstimationInterface)
+
+        converter = VideoThenPoseConverter(
+            source_data=dict(
+                Video=dict(file_paths=["top_camera.mp4"], metadata_key="top_video"),
+                Pose=dict(num_samples=50, num_nodes=3, metadata_key="top_pose"),
+            )
+        )
+        metadata = converter.get_metadata()
+        metadata["Pose"]["PoseEstimations"]["top_pose"]["source_video_metadata_key"] = "top_video"
+
+        nwbfile = mock_NWBFile()
+        converter.add_to_nwbfile(
+            nwbfile=nwbfile,
+            metadata=metadata,
+            conversion_options=dict(Video=dict(parent_container="processing/behavior")),
+        )
+
+        image_series_name = metadata["Behavior"]["ExternalVideos"]["top_video"]["name"]
+        behavior_module = nwbfile.processing["behavior"]
+        assert image_series_name not in nwbfile.acquisition
+        assert behavior_module["top_pose"].source_video is behavior_module[image_series_name]
+
     def test_pose_written_before_the_video_raises(self):
         """Declaring the pose interface first leaves nothing for the link to resolve against."""
-        converter = self._build_converter(
-            dict(Pose=MockPoseEstimationInterface, Video=MockExternalVideoInterface),
+
+        class PoseThenVideoConverter(NWBConverter):
+            data_interface_classes = dict(Pose=MockPoseEstimationInterface, Video=MockExternalVideoInterface)
+
+        converter = PoseThenVideoConverter(
+            source_data=dict(
+                Video=dict(file_paths=["top_camera.mp4"], metadata_key="top_video"),
+                Pose=dict(num_samples=50, num_nodes=3, metadata_key="top_pose"),
+            )
         )
-        metadata = self._build_metadata(converter)
+        metadata = converter.get_metadata()
+        metadata["Pose"]["PoseEstimations"]["top_pose"]["source_video_metadata_key"] = "top_video"
 
         nwbfile = mock_NWBFile()
         with pytest.raises(ValueError, match="The video has to be written before the pose that links it"):
@@ -406,9 +431,9 @@ class TestPoseEstimationVideoLink:
 
     def test_key_naming_no_video_entry_raises(self):
         """A key that is in no ``ExternalVideos`` registry is a metadata error rather than an ordering one."""
-        interface = MockPoseEstimationInterface(num_samples=50, num_nodes=3, metadata_key=self.pose_metadata_key)
+        interface = MockPoseEstimationInterface(num_samples=50, num_nodes=3, metadata_key="top_pose")
         metadata = interface.get_metadata()
-        metadata["Pose"]["PoseEstimations"][self.pose_metadata_key]["source_video_metadata_key"] = "absent_video"
+        metadata["Pose"]["PoseEstimations"]["top_pose"]["source_video_metadata_key"] = "absent_video"
 
         nwbfile = mock_NWBFile()
         with pytest.raises(ValueError, match=r"was not found in metadata\['Behavior'\]\['ExternalVideos'\]"):

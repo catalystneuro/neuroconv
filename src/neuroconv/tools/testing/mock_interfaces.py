@@ -1547,11 +1547,19 @@ class MockExternalVideoInterface(ExternalVideoInterface):
     """
     A mock external video interface for testing purposes.
 
-    Writes the ``ImageSeries`` that :class:`.ExternalVideoInterface` writes without a video file on disk:
-    the frame count and the timestamps are given as arguments rather than read from a file, so a test can
-    compose a video of any length into a conversion at no cost. The paths land in ``external_file`` as
-    they were passed and deliberately do not resolve, which is what keeps the file a mock produces from
-    being mistaken for a publishable one.
+    Overrides exactly one thing: what the container header says. The frame count and the frame rate are
+    constructor arguments rather than reads, so a test can compose a video of any length into a conversion
+    at no cost, and everything else runs the real interface's course. In particular the timing is left
+    unset, as it is on a freshly constructed real interface, so a single file writes a starting time and a
+    rate while several files raise until the test says where they sit.
+
+    Nothing that reads the video itself is stubbed, only the header, so a method that decodes frames
+    (``get_original_timestamps``, and ``set_aligned_segment_starting_times`` which goes through it) will
+    fail here as it would on any missing file. Give the times directly with ``set_aligned_timestamps``.
+
+    The paths land in ``external_file`` as they were passed and deliberately do not resolve, which is what
+    keeps the file a mock produces from being mistaken for a publishable one; ``nwbinspector`` flags the
+    dangling path, and that is the intent.
     """
 
     display_name = "Mock Video"
@@ -1566,7 +1574,6 @@ class MockExternalVideoInterface(ExternalVideoInterface):
         frame_rate: float = 30.0,
         verbose: bool = False,
         *,
-        rig_timing_setup: Literal["unstated", "free_running", "triggered"] = "free_running",
         metadata_key: str | None = None,
     ):
         """
@@ -1578,44 +1585,19 @@ class MockExternalVideoInterface(ExternalVideoInterface):
             The paths written to ``external_file``; they do not have to exist. Defaults to a single
             ``"mock_video.mp4"``.
         num_frames : int, default: 100
-            The number of frames of each file, which backs both ``num_samples`` and the timestamps.
+            The frame count each file's header reports, which backs ``num_samples`` and ``starting_frame``.
         frame_rate : float, default: 30.0
-            The frames per second the timestamps are built from. The segments run consecutively, so
-            several files describe one continuous recording.
+            The frame rate each file's header reports.
         verbose : bool, default: False
             If True, display verbose output.
-        rig_timing_setup : {"unstated", "free_running", "triggered"}, default: "free_running"
-            The timing the rig produced, and what the mock did about it, so a test can reach any of the
-            states a real interface can be in without a video on disk. The two rig values come from how
-            cameras are documented, free-running against triggered acquisition, which is exactly this
-            distinction: a free-running camera writing rotated files produces segments that abut, a
-            triggered one produces segments with gaps.
-
-            ``"unstated"``
-                Nothing set. Note that this produces the *same times* as ``"free_running"``; the only
-                difference is that nobody said so, which is why several files then read as one recording
-                split in place under a warning.
-            ``"free_running"``
-                Each segment given the times it would have had anyway, abutting the one before and starting
-                at the session start. A single file is left alone, since one file is trivially contiguous
-                with itself and a real interface says nothing about it either.
-            ``"triggered"``
-                Each segment preceded by one second, the first included, so the first trigger fires a second
-                after the session starts. A triggered camera has a measured start and it is never at zero,
-                which is why this is the value that says something for a single file, and why a bug the size
-                of an offset cannot hide in it.
-
-            The spacing within a segment is always the source's own. A test that needs a particular
-            timeline, an unusual gap or irregular times says so directly with
-            ``alignment[key].set_times([...])``, where the numbers that matter are visible in the test.
         metadata_key : str, optional
             Snake_case key identifying this video's entry under ``metadata["Behavior"]["ExternalVideos"]``.
             Defaults to the stem-based key of the parent interface.
         """
         file_paths = [Path(file_path) for file_path in file_paths or ["mock_video.mp4"]]
-        # ExternalVideoInterface.__init__ is wrapped by pydantic's validate_call, whose FilePath refuses
-        # a path that does not exist; the undecorated function kept at __wrapped__ is what lets this
-        # interface stand up with nothing behind its paths.
+        # ExternalVideoInterface.__init__ is wrapped by pydantic's validate_call, whose FilePath refuses a
+        # path that does not exist; the undecorated function kept at __wrapped__ is what lets this interface
+        # stand up with nothing behind its paths.
         ExternalVideoInterface.__init__.__wrapped__(
             self,
             file_paths=file_paths,
@@ -1625,34 +1607,12 @@ class MockExternalVideoInterface(ExternalVideoInterface):
         self.num_frames = num_frames
         self.frame_rate = frame_rate
 
-        self.rig_timing_setup = rig_timing_setup
-        segment_duration = num_frames / frame_rate
-        # A fixed second, not a parameter: a test needing a particular timeline sets the times itself.
-        gap = 1.0 if rig_timing_setup == "triggered" else 0.0
-        # One file is trivially contiguous with itself, so leave it where a real interface leaves it.
-        single_file_needs_nothing = rig_timing_setup == "free_running" and self._number_of_files == 1
-        if rig_timing_setup != "unstated" and not single_file_needs_nothing:
-            for file_index, segment_key in enumerate(self._segment_keys):
-                # Every segment is preceded by the gap, the first included, so a triggered camera starts
-                # after the session does rather than exactly with it.
-                starting_time = (file_index + 1) * gap + file_index * segment_duration
-                self.alignment[segment_key].set_times(starting_time + np.arange(num_frames) / frame_rate)
-
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
         metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
         return metadata
 
-    def get_original_timestamps(self, stub_test: bool = False) -> list[np.ndarray]:
-        """Return each file's own times, without the scan the real interface pays for.
-
-        Zero-based per file, as the container timestamps the real one reads are: each file is opened on its
-        own, so the second one does not carry the first one's duration. That is what makes a caller add the
-        file's placement to them.
-        """
-        return [np.arange(self.num_frames) / self.frame_rate for _ in range(self._number_of_files)]
-
-    def get_frame_counts(self) -> list[int]:
+    def get_header_frame_counts(self) -> list[int]:
         """Return the frame count the mock was built with, so the write path opens no files."""
         return [self.num_frames] * self._number_of_files
 
