@@ -61,6 +61,7 @@ def generate_mock_guppy_output_folder(
     valid_signal_intervals: tuple[tuple[float, float], ...] = ((1.25, 1.75), (2.0, 2.5)),
     bin_width: float | None = 0.5,
     covariates: dict[str, tuple[Sequence[float], Sequence[float]]] | None = None,
+    tonic_epochs: tuple[tuple[str, float, float], ...] = (("baseline", 1.0, 2.0), ("post_injection", 2.0, 3.0)),
     bin_size_in_trials: int = 3,
     guppy_version: str = "2.0.0a7",
     zscore_method: str = "standard z-score",
@@ -119,6 +120,12 @@ def generate_mock_guppy_output_folder(
         labeled ``covariate_<name>`` in ``storesList.csv``, plus its binned means and correlations.
         Defaults to one covariate scored at four times inside the recording, one of the bins holding no
         score. Pass an empty dict for a session carrying no covariate.
+    tonic_epochs : tuple of (str, float, float), optional
+        ``(label, start, end)`` tonic epoch windows written to ``tonic_epochs_<recording_site>.csv`` for
+        every recording_site, with their per-epoch means in ``tonic_<recording_site>.h5``. Pass an empty
+        tuple to emit neither file (the case where GuPPy's optional tonic analysis was not run). A window
+        may run past the last sample, which is how GuPPy records an epoch ending at the nominal recording
+        duration; it is clamped to the samples available when averaged.
     bin_size_in_trials : int, optional
         Trials per bin for the ``bin_(a-b)`` columns ("# of trials" binning mode).
     guppy_version, zscore_method : str, optional
@@ -205,6 +212,15 @@ def generate_mock_guppy_output_folder(
         )
         if valid_signal_intervals:
             _write_valid_signal_intervals(folder_path, recording_site=recording_site, intervals=valid_signal_intervals)
+        if tonic_epochs:
+            _write_tonic_epochs(folder_path, recording_site=recording_site, tonic_epochs=tonic_epochs)
+            _write_tonic_means(
+                folder_path,
+                recording_site=recording_site,
+                tonic_epochs=tonic_epochs,
+                timestamps=timestamps,
+                trace=_trace_data(num_samples),
+            )
         for prefix in trace_prefixes:
             _write_trace(folder_path, prefix=prefix, recording_site=recording_site, num_samples=num_samples)
         for feature in features:
@@ -371,6 +387,7 @@ def _write_parameters(
 
 def _trace_data(num_samples) -> np.ndarray:
     """The sample values every derived trace carries, shared so the binned means derive from them."""
+    """The sample values every derived trace carries, shared so the tonic means can be derived from them."""
     return np.linspace(-1.0, 1.0, num_samples, dtype=np.float64)
 
 
@@ -420,6 +437,38 @@ def _write_transients_occurrences(folder_path, feature, recording_site) -> None:
     peaks = np.column_stack([np.asarray(_TRANSIENT_PEAK_TIMES, dtype=np.float64), np.asarray(amplitudes)])
     dataframe = pandas.DataFrame(peaks, index=np.arange(peaks.shape[0]), columns=["timestamps", "amplitude"])
     dataframe.to_csv(folder_path / f"transientsOccurrences_{feature}_{recording_site}.csv")
+
+
+def _write_tonic_epochs(folder_path, recording_site, tonic_epochs) -> None:
+    """``tonic_epochs_<recording_site>.csv`` with columns ``label``, ``start``, ``end``.
+
+    Written as a DataFrame via ``to_csv(index=False)``, so the file has a header row and no index
+    column. ``start`` and ``end`` are seconds on the same timebase as ``timestampNew``.
+    """
+    dataframe = pandas.DataFrame(list(tonic_epochs), columns=["label", "start", "end"])
+    dataframe.to_csv(folder_path / f"tonic_epochs_{recording_site}.csv", index=False)
+
+
+def _write_tonic_means(folder_path, recording_site, tonic_epochs, timestamps, trace) -> None:
+    """``tonic_<recording_site>.h5`` -- one row per epoch, columns ``mean_zscore``, ``mean_dff``.
+
+    Written as a DataFrame via ``to_hdf(key="df")``, indexed by the epoch labels of
+    ``tonic_epochs_<recording_site>.csv`` (index name ``epoch``). ``mean_zscore`` is the mean of the
+    trace over the window, clamped to the samples available; ``mean_dff`` is that value scaled down,
+    since the real dF/F and z-score traces differ and a reader must not be able to confuse the two
+    columns.
+    """
+    labels = []
+    mean_zscore = []
+    for label, start, end in tonic_epochs:
+        window = trace[(timestamps >= start) & (timestamps <= end)]
+        labels.append(label)
+        mean_zscore.append(float(window.mean()))
+    dataframe = pandas.DataFrame(
+        {"mean_zscore": mean_zscore, "mean_dff": [value / 10.0 for value in mean_zscore]},
+        index=pandas.Index(labels, name="epoch"),
+    )
+    dataframe.to_hdf(folder_path / f"tonic_{recording_site}.h5", key="df", mode="w")
 
 
 def _write_freq_and_amp(folder_path, feature, recording_site) -> None:

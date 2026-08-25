@@ -47,6 +47,8 @@ _BINNED_METRIC_COLUMN_TO_TRACE_TYPE_AND_METRIC = {
     "transient_count_z_score": ("z_score", "transient_count"),
     "transient_count_dff": ("dff", "transient_count"),
 }
+# ndx-guppy trace_type -> the column holding its per-epoch mean in tonic_<recording_site>.h5.
+_TRACE_TYPE_TO_TONIC_COLUMN = dict(z_score="mean_zscore", dff="mean_dff")
 # Per-window peak/area metric row prefixes in the peak_AUC_*.h5 DataFrame index.
 _BIN_COLUMN_PATTERN = re.compile(r"bin_\((\d+(?:\.\d+)?)-(\d+(?:\.\d+)?)\)$")
 # The two registry tables every GuPPy product references. The recording sites table is shared with
@@ -72,6 +74,7 @@ class GuppyInterface(BaseDataInterface):
     * recording-site-pair cross-correlations
     * whole-session time-binned metrics, and the behavioral covariates binned onto and correlated
       against them, where those optional GuPPy steps were run
+    * per-epoch tonic means, where GuPPy's optional tonic analysis was run
 
     plus the GuPPy parameters (``GuppyParameters``), the ``GuppyValidSignalIntervals`` object, and the two
     registry tables (``GuppyRecordingSitesTable``, ``GuppyEventsTable``) that give each recording_site and
@@ -193,6 +196,7 @@ class GuppyInterface(BaseDataInterface):
             folder_path=folder_path, recording_sites=recording_sites
         )
         binned_tables_by_recording_site = self._discover_binned_tables(
+        tonic_epochs_by_recording_site = self._discover_tonic_epochs(
             folder_path=folder_path, recording_sites=recording_sites
         )
         analyzed_event_onsets = self._discover_analyzed_event_onsets(
@@ -225,6 +229,7 @@ class GuppyInterface(BaseDataInterface):
         self._valid_signal_intervals_by_recording_site = valid_signal_intervals_by_recording_site
         self._covariate_to_store_id = covariate_to_store_id
         self._binned_tables_by_recording_site = binned_tables_by_recording_site
+        self._tonic_epochs_by_recording_site = tonic_epochs_by_recording_site
         self._analyzed_event_onsets = analyzed_event_onsets
         self._guppy_parameters = guppy_parameters
 
@@ -524,6 +529,37 @@ class GuppyInterface(BaseDataInterface):
                     values=np.asarray(store_file["data"][:], dtype=np.float64),
                 )
         return covariate_series
+    def _discover_tonic_epochs(cls, folder_path: Path, recording_sites: list[str]) -> dict[str, pandas.DataFrame]:
+        """Return ``{recording_site: epochs_dataframe}`` for each recording_site with tonic outputs.
+
+        GuPPy's optional tonic analysis writes a recording site's epoch windows to
+        ``tonic_epochs_<recording_site>.csv`` (columns ``label``, ``start``, ``end``, in seconds on the
+        emitted timebase) and the mean of each trace over each window to ``tonic_<recording_site>.h5``
+        (a DataFrame under key ``df``, indexed by the epoch label, columns ``mean_zscore`` and
+        ``mean_dff``). The two are written and deleted together, so a site with one and not the other is
+        an incomplete output rather than a site without tonic analysis.
+
+        ``epochs_dataframe`` is the join of the two on the epoch label, with columns ``label``,
+        ``start``, ``end``, ``mean_zscore``, ``mean_dff``, in the order the windows were defined.
+        """
+        result = {}
+        for recording_site in recording_sites:
+            epochs_path = folder_path / f"tonic_epochs_{recording_site}.csv"
+            means_path = folder_path / f"tonic_{recording_site}.h5"
+            if not epochs_path.is_file() and not means_path.is_file():
+                continue
+            assert epochs_path.is_file() and means_path.is_file(), (
+                f"GuPPy writes {epochs_path.name} and {means_path.name} together, but only one of them is in "
+                f"{folder_path}; the tonic outputs for recording site '{recording_site}' are incomplete."
+            )
+            epochs = pandas.read_csv(epochs_path)
+            means = pandas.read_hdf(means_path)
+            assert list(epochs["label"]) == list(means.index), (
+                f"The epoch labels in {epochs_path.name} ({list(epochs['label'])}) do not match those in "
+                f"{means_path.name} ({list(means.index)}) for recording site '{recording_site}'."
+            )
+            result[recording_site] = epochs.join(means.reset_index(drop=True))
+        return result
 
     @staticmethod
     def _discover_analyzed_event_onsets(
@@ -788,6 +824,13 @@ class GuppyInterface(BaseDataInterface):
                 name="covariate_correlations",
                 description=(
                     "Descriptive correlation of each behavioral covariate against each per-bin GuPPy " "metric."
+        # Tonic analysis is an optional GuPPy step, so its entry appears only for a session that ran it.
+        if self._tonic_epochs_by_recording_site:
+            metadata["FiberPhotometry"]["Guppy"][self.metadata_key]["TonicEpochs"] = dict(
+                name="tonic_epochs",
+                description=(
+                    "Mean level of each GuPPy normalized trace within each tonic epoch window, one row "
+                    "per (recording_site, epoch, trace_type)."
                 ),
             )
         return metadata
@@ -836,6 +879,7 @@ class GuppyInterface(BaseDataInterface):
                 Covariates=named_collection,
                 BinnedCovariates=named_object,
                 CovariateCorrelations=named_object,
+                TonicEpochs=named_object,
             ),
         )
         return metadata_schema
@@ -864,6 +908,9 @@ class GuppyInterface(BaseDataInterface):
         referencing its registry rows, and the ``GuppyValidSignalIntervals`` object. Products are written on
         the timestamps GuPPy emits. Each behavioral covariate's scored values are written as a
         ``TimeSeries`` that the two covariate products reference.
+        cross-correlation, PSTH, peak/AUC) each referencing its registry rows, the
+        ``GuppyValidSignalIntervals`` object, and, where GuPPy's optional tonic analysis was run, the
+        ``GuppyTonicEpochs`` object. Products are written on the timestamps GuPPy emits.
 
         This method takes **no linkage arguments**: it writes only what the GuPPy output defines. The
         events registry references an ``EventsTable`` of GuPPy's own analyzed onsets, written into
@@ -954,6 +1001,14 @@ class GuppyInterface(BaseDataInterface):
                 correlations_metadata=guppy_metadata["CovariateCorrelations"],
             )
 
+        # Tonic epoch means: one object, one row per (recording_site, epoch, trace_type).
+        if self._tonic_epochs_by_recording_site:
+            self._add_guppy_tonic_epochs_to_nwbfile(
+                ndx_guppy=ndx_guppy,
+                processing_module=processing_module,
+                recording_sites_table=recording_sites_table,
+                tonic_epochs_metadata=guppy_metadata["TonicEpochs"],
+            )
         # Derived continuous traces.
         self._add_guppy_derived_response_series_to_nwbfile(
             ndx_guppy=ndx_guppy,
@@ -1484,6 +1539,7 @@ class GuppyInterface(BaseDataInterface):
         return binned_metrics
 
     def _add_guppy_binned_covariates_to_nwbfile(
+    def _add_guppy_tonic_epochs_to_nwbfile(
         self,
         *,
         ndx_guppy,
@@ -1496,6 +1552,13 @@ class GuppyInterface(BaseDataInterface):
 
         The bins are the ones the metrics table was reduced to, so the two tables line up row for row on
         their windows.
+        tonic_epochs_metadata: dict,
+    ):
+        """Build and add the GuppyTonicEpochs object over the epochs the tonic analysis defined.
+
+        One row per (recording_site, epoch, trace_type): the window is the epoch GuPPy averaged over,
+        on its emitted recording timebase, and ``mean`` is that trace's mean over the window. Each row
+        references its recording site via a DynamicTableRegion into the GuppyRecordingSitesTable.
         """
         recording_site_to_row_index = {
             recording_site: index for index, recording_site in enumerate(self._recording_sites)
@@ -1568,6 +1631,27 @@ class GuppyInterface(BaseDataInterface):
                 )
         processing_module.add(correlations_table)
         return correlations_table
+        tonic_epochs = ndx_guppy.GuppyTonicEpochs(
+            name=tonic_epochs_metadata["name"],
+            description=tonic_epochs_metadata["description"],
+            target_tables={"recording_site": recording_sites_table},
+        )
+        for recording_site in self._recording_sites:
+            epochs = self._tonic_epochs_by_recording_site.get(recording_site)
+            if epochs is None:
+                continue
+            for epoch in epochs.itertuples(index=False):
+                for trace_type in self._TRANSIENT_FEATURES:
+                    tonic_epochs.add_interval(
+                        start_time=float(epoch.start),
+                        stop_time=float(epoch.end),
+                        label=str(epoch.label),
+                        trace_type=trace_type,
+                        mean=float(getattr(epoch, _TRACE_TYPE_TO_TONIC_COLUMN[trace_type])),
+                        recording_site=recording_site_to_row_index[recording_site],
+                    )
+        processing_module.add(tonic_epochs)
+        return tonic_epochs
 
     def _add_guppy_events_table_to_nwbfile(self, *, ndx_guppy, nwbfile, processing_module, events_metadata: dict):
         """Build the GuppyEventsTable registry over GuPPy's own analyzed onsets.
