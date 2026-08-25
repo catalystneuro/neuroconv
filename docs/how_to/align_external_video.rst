@@ -231,7 +231,8 @@ times from the pulses instead.
     starting_times = np.concatenate([[0.0], np.cumsum(durations)[:-1]])
 
     for segment_key, start, count, rate in zip(interface.alignment.keys(), starting_times, frame_counts, frame_rates):
-        interface.alignment[segment_key].set_times(start + np.arange(count) / rate)
+        segment_timestamps = np.arange(count) / rate
+        interface.alignment[segment_key].set_times(start + segment_timestamps)
 
 A triggered camera, one file per trial
 --------------------------------------
@@ -268,7 +269,8 @@ two handles.
     frame_rates = interface.get_header_frame_rates()
 
     for segment_key, onset, count, rate in zip(segment_keys, trial_onsets, frame_counts, frame_rates):
-        interface.alignment[segment_key].set_times(onset + np.arange(count) / rate)
+        segment_timestamps = np.arange(count) / rate
+        interface.alignment[segment_key].set_times(onset + segment_timestamps)
 
 Each file is placed where its trigger fired, and within a file the frame times come from the nominal frame
 rate. So the no-drift caveat from the known-offset case returns, but per trial rather than once for the
@@ -322,9 +324,16 @@ rather than being silently merged into its neighbour.
     trial_onsets = digital_interface.get_event_times("camera_trigger")
     bursts = np.split(frame_pulse_times, np.searchsorted(frame_pulse_times, trial_onsets[1:]))
 
-**Recording which file is which trial.** A single ``ImageSeries`` with several ``external_file`` entries has
-no per-file timing metadata. The structure survives in the concatenated ``timestamps`` and in
-``starting_frame``, but no field says "file 2 covers trial 2 and ran from here to here", and a single file
+One case this does not cover: a camera that free-runs while only some of its frames are written to disk.
+The counts no longer say which frames were saved, so neither the gaps nor the onsets can reconstruct the
+mapping, and no alignment recipe repairs it. That one needs per-frame metadata from the acquisition
+software.
+
+Recording which file is which trial
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A single ``ImageSeries`` with several ``external_file`` entries has no per-file timing metadata. The
+structure survives in the concatenated ``timestamps`` and in ``starting_frame``, but no field says "file 2 covers trial 2 and ran from here to here", and a single file
 within the series cannot be addressed on its own; that is a limitation of the schema, tracked in
 `nwb-schema#677 <https://github.com/NeurodataWithoutBorders/nwb-schema/issues/677>`_. Write the mapping
 somewhere that can hold it: a column on the trials table when the segments are your trials, or a
@@ -338,11 +347,6 @@ somewhere that can hold it: a column on the trials table when the segments are y
     nwbfile.add_trial_column(name="video_file", description="The external_file entry holding this trial's frames.")
     for onset, duration, file_path in zip(trial_onsets, durations, file_paths):
         nwbfile.add_trial(start_time=onset, stop_time=onset + duration, video_file=str(file_path))
-
-One case this does not cover: a camera that free-runs while only some of its frames are written to disk.
-The counts no longer say which frames were saved, so neither the gaps nor the onsets can reconstruct the
-mapping, and no alignment recipe repairs it. That one needs per-frame metadata from the acquisition
-software.
 
 A setup this guide does not cover
 ---------------------------------
