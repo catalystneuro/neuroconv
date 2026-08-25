@@ -1566,9 +1566,7 @@ class MockExternalVideoInterface(ExternalVideoInterface):
         frame_rate: float = 30.0,
         verbose: bool = False,
         *,
-        segment_timing: Literal[
-            "unset", "contiguous_onsets", "gapped_onsets", "contiguous_frame_times", "gapped_frame_times"
-        ] = "contiguous_onsets",
+        segment_timing: Literal["unset", "contiguous", "gapped"] = "contiguous",
         inter_segment_gap: float = 1.0,
         metadata_key: str | None = None,
     ):
@@ -1587,36 +1585,24 @@ class MockExternalVideoInterface(ExternalVideoInterface):
             several files describe one continuous recording.
         verbose : bool, default: False
             If True, display verbose output.
-        segment_timing : str, default: "contiguous_onsets"
+        segment_timing : {"unset", "contiguous", "gapped"}, default: "contiguous"
             The state the segments are put into, so a test can reach any of the states a real interface can
-            be in without a video on disk. One literal rather than separate layout and mechanism arguments,
-            because the two do not form a rectangle: nothing being set cannot express a gap, so that
-            combination does not exist.
-
-            Each value names both facts, how the segments sit relative to each other and what set their
-            times, since the second is what ``is_set``, the compact-timing path and the multi-segment
-            warning key off:
+            be in without a video on disk.
 
             ``"unset"``
                 Nothing set. Several files then read as one recording split in place, under a warning.
-            ``"contiguous_onsets"``
-                Each segment placed by ``set_starting_time`` where the one before it ended. A single file
-                is left alone, since one file is trivially contiguous and a real interface says nothing
-                about it either.
-            ``"gapped_onsets"``
-                Each segment placed by ``set_starting_time`` with ``inter_segment_gap`` seconds between
-                them, which is a camera a trigger started per trial.
-            ``"contiguous_frame_times"``
-                Every frame's time given by ``set_times``, laid out end to end. The one state that shows
-                a set object still writing a rate, because the times happen to be regular.
-            ``"gapped_frame_times"``
-                Every frame's time given by ``set_times``, with gaps, which is a frame-out line on a
-                triggered camera.
+            ``"contiguous"``
+                Each segment given the times it would have had anyway, running on from the one before it,
+                so the difference from ``"unset"`` is that they count as set. A single file is left alone,
+                since one file is trivially contiguous and a real interface says nothing about it either.
+            ``"gapped"``
+                Each segment given times ``inter_segment_gap`` seconds after the end of the previous one,
+                which is a camera a trigger started per trial.
 
-            The times are always the source's own spacing. A test that needs irregular ones says so
-            directly, with ``alignment[key].set_times([...])``, where the values that matter are visible.
+            The values are always the source's own spacing. A test that needs irregular times says so
+            directly, with ``alignment[key].set_times([...])``, where the numbers that matter are visible.
         inter_segment_gap : float, default: 1.0
-            Seconds between the end of one segment and the start of the next, for the ``gapped`` values.
+            Seconds between the end of one segment and the start of the next, for ``"gapped"``.
         metadata_key : str, optional
             Snake_case key identifying this video's entry under ``metadata["Behavior"]["ExternalVideos"]``.
             Defaults to the stem-based key of the parent interface.
@@ -1636,19 +1622,12 @@ class MockExternalVideoInterface(ExternalVideoInterface):
         self.segment_timing = segment_timing
 
         segment_duration = num_frames / frame_rate
-        gap = inter_segment_gap if segment_timing.startswith("gapped") else 0.0
-        starting_times = [file_index * (segment_duration + gap) for file_index in range(self._number_of_files)]
+        gap = inter_segment_gap if segment_timing == "gapped" else 0.0
         # One file is trivially contiguous with itself, so leave it in the state a real interface is in.
-        if segment_timing == "contiguous_onsets" and self._number_of_files == 1:
-            starting_times = None
-
-        if starting_times is None or segment_timing == "unset":
-            pass
-        elif segment_timing.endswith("onsets"):
-            for segment_key, starting_time in zip(self._segment_keys, starting_times):
-                self.alignment[segment_key].set_starting_time(starting_time)
-        else:
-            for segment_key, starting_time in zip(self._segment_keys, starting_times):
+        single_file_needs_nothing = segment_timing == "contiguous" and self._number_of_files == 1
+        if segment_timing != "unset" and not single_file_needs_nothing:
+            for file_index, segment_key in enumerate(self._segment_keys):
+                starting_time = file_index * (segment_duration + gap)
                 self.alignment[segment_key].set_times(starting_time + np.arange(num_frames) / frame_rate)
 
     def get_metadata(self) -> DeepDict:

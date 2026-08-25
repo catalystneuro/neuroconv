@@ -235,11 +235,13 @@ counts over the frame rates:
 
     interface = ExternalVideoInterface(file_paths=["part_01.avi", "part_02.avi", "part_03.avi"])
 
-    durations = np.array(interface.get_frame_counts()) / np.array(interface.get_frame_rates())
+    frame_counts = interface.get_frame_counts()
+    frame_rates = interface.get_frame_rates()
+    durations = np.array(frame_counts) / np.array(frame_rates)
     starting_times = np.concatenate([[0.0], np.cumsum(durations)[:-1]])
 
-    for segment_key, starting_time in zip(interface.alignment.keys(), starting_times):
-        interface.alignment[segment_key].set_starting_time(starting_time)
+    for segment_key, start, count, rate in zip(interface.alignment.keys(), starting_times, frame_counts, frame_rates):
+        interface.alignment[segment_key].set_times(start + np.arange(count) / rate)
 
     interface.alignment.shift_times(12.5)
 
@@ -291,15 +293,20 @@ The digital line recorded the triggers and nothing else.
     segment_keys = interface.alignment.keys()
     assert len(trial_onsets) == len(segment_keys)
 
-    for segment_key, onset in zip(segment_keys, trial_onsets):
-        interface.alignment[segment_key].set_starting_time(onset)
+    frame_counts = interface.get_frame_counts()
+    frame_rates = interface.get_frame_rates()
+
+    for segment_key, onset, count, rate in zip(segment_keys, trial_onsets, frame_counts, frame_rates):
+        interface.alignment[segment_key].set_times(onset + np.arange(count) / rate)
 
 Each file is placed where its trigger fired, and within a file the frame times come from the nominal frame
 rate. So the no-drift caveat from the known-offset case returns, but per trial rather than once for the
 session, which is usually fine: a trial is short, and a camera does not drift far in ten seconds.
 
-``set_starting_time`` is **absolute**, so calling it twice puts the file where the second call says
-rather than moving it twice, which is what distinguishes it from ``alignment.shift_times``.
+``set_times`` is **absolute**, so running that loop twice leaves the files where the second run says
+rather than moving them twice, which is what distinguishes it from ``alignment.shift_times``. Within a
+segment the frame times come from the container's nominal rate, which is what ``get_frame_rates()`` reads,
+so this places each file but does not correct drift inside one.
 
 Within a file the frame times come from the frame rate the container states, which is a header read rather
 than a decode. For variable-frame-rate footage that rate is a fiction, and there the file does carry a time

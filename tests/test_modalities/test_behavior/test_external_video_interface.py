@@ -66,7 +66,7 @@ class TestMockExternalVideoInterface:
             np.testing.assert_array_equal(original_timestamps, np.arange(4) / 2.0)
 
         for segment_key, starting_time in zip(interface.alignment.keys(), [10.0, 100.0]):
-            interface.alignment[segment_key].set_starting_time(starting_time)
+            _place(interface, segment_key, starting_time)
 
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile)
@@ -115,9 +115,7 @@ class TestExternalVideoAlignment:
         assert image_series.starting_time == 0.0
         assert image_series.starting_frame == [0, 2]
 
-    @pytest.mark.parametrize(
-        "segment_timing", ["contiguous_onsets", "gapped_onsets", "contiguous_frame_times", "gapped_frame_times"]
-    )
+    @pytest.mark.parametrize("segment_timing", ["contiguous", "gapped"])
     def test_segments_with_times_of_their_own_do_not_warn(self, segment_timing):
         """Times of their own are what the warning asks for, however they were given."""
         interface = MockExternalVideoInterface(
@@ -142,7 +140,7 @@ class TestExternalVideoAlignment:
     def test_the_warning_names_only_the_segments_without_times(self, video_files):
         """Setting some of them narrows the warning rather than removing it."""
         interface = ExternalVideoInterface(file_paths=video_files[0:2])
-        interface.alignment[Path(video_files[0]).stem].set_starting_time(0.0)
+        _place(interface, Path(video_files[0]).stem, 0.0)
 
         nwbfile = mock_NWBFile()
         with pytest.warns(UserWarning, match=Path(video_files[1]).stem):
@@ -170,7 +168,7 @@ class TestExternalVideoAlignment:
 
         for _ in range(2):
             for segment_key, starting_time in zip(interface.alignment.keys(), [10.0, 100.0]):
-                interface.alignment[segment_key].set_starting_time(starting_time)
+                _place(interface, segment_key, starting_time)
 
         np.testing.assert_array_equal(interface.alignment["trial_1"].get_times(), [10.0, 10.5])
         np.testing.assert_array_equal(interface.alignment["trial_2"].get_times(), [100.0, 100.5])
@@ -179,7 +177,7 @@ class TestExternalVideoAlignment:
         """A pulse per frame is set on the file it belongs to."""
         interface = MockExternalVideoInterface(file_paths=["trial_1.avi", "trial_2.avi"], num_frames=2, frame_rate=2.0)
         for segment_key, starting_time in zip(interface.alignment.keys(), [10.0, 100.0]):
-            interface.alignment[segment_key].set_starting_time(starting_time)
+            _place(interface, segment_key, starting_time)
 
         interface.alignment["trial_2"].set_times([100.1, 100.7])
 
@@ -189,7 +187,7 @@ class TestExternalVideoAlignment:
     def test_shift_moves_every_file(self):
         interface = MockExternalVideoInterface(file_paths=["trial_1.avi", "trial_2.avi"], num_frames=2, frame_rate=2.0)
         for segment_key, starting_time in zip(interface.alignment.keys(), [10.0, 100.0]):
-            interface.alignment[segment_key].set_starting_time(starting_time)
+            _place(interface, segment_key, starting_time)
 
         interface.alignment.shift_times(5.0)
 
@@ -200,11 +198,11 @@ class TestExternalVideoAlignment:
         """Both say where one file is, so the later call wins rather than the two combining."""
         interface = MockExternalVideoInterface(file_paths=["trial_1.avi", "trial_2.avi"], num_frames=2, frame_rate=2.0)
 
-        interface.alignment["trial_2"].set_starting_time(100.0)
+        _place(interface, "trial_2", 100.0)
         interface.alignment["trial_2"].set_times([100.1, 100.7])
         np.testing.assert_array_equal(interface.alignment["trial_2"].get_times(), [100.1, 100.7])
 
-        interface.alignment["trial_2"].set_starting_time(50.0)
+        _place(interface, "trial_2", 50.0)
         np.testing.assert_array_equal(interface.alignment["trial_2"].get_times(), [50.0, 50.5])
 
     def test_overlapping_files_raise_on_write(self):
@@ -213,7 +211,7 @@ class TestExternalVideoAlignment:
             file_paths=["trial_1.avi", "trial_2.avi"], num_frames=100, frame_rate=30.0
         )
         for segment_key, starting_time in zip(interface.alignment.keys(), [0.0, 1.0]):
-            interface.alignment[segment_key].set_starting_time(starting_time)
+            _place(interface, segment_key, starting_time)
 
         nwbfile = mock_NWBFile()
         with pytest.raises(ValueError, match="do not merge into a single increasing timeline"):
@@ -243,12 +241,20 @@ class TestExternalVideoAlignment:
         np.testing.assert_array_equal(interface.alignment["trial_2"].get_times(), [2.0, 3.0])
 
 
+def _place(interface, segment_key, starting_time):
+    """Give one segment the times its onset implies, which is what a caller writes without a lazy setter."""
+    file_index = list(interface.alignment.keys()).index(segment_key)
+    frame_count = interface.get_frame_counts()[file_index]
+    frame_rate = interface.get_frame_rates()[file_index]
+    interface.alignment[segment_key].set_times(starting_time + np.arange(frame_count) / frame_rate)
+
+
 def _place_contiguously(interface):
     """Place every file where the one before it ended, which is what a recording split in place needs."""
     durations = np.array(interface.get_frame_counts()) / np.array(interface.get_frame_rates())
     starting_times = np.concatenate([[0.0], np.cumsum(durations)[:-1]])
     for segment_key, starting_time in zip(interface.alignment.keys(), starting_times):
-        interface.alignment[segment_key].set_starting_time(starting_time)
+        _place(interface, segment_key, starting_time)
 
 
 def test_initialization_without_metadata(video_files):
