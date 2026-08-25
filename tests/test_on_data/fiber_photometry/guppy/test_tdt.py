@@ -59,9 +59,12 @@ class TestGuppyConverterTDT:
             for epoc_name, event_name in EPOC_TO_EVENT_NAME.items()
         }
 
-    @pytest.fixture
-    def guppy_output_folder(self, tmp_path, epoc_onsets):
-        return generate_mock_guppy_output_folder(tmp_path / "guppy_output", event_onsets=epoc_onsets)
+    @pytest.fixture(scope="class")
+    @classmethod
+    def guppy_output_folder(cls, tmp_path_factory, epoc_onsets):
+        return generate_mock_guppy_output_folder(
+            tmp_path_factory.mktemp("tdt_output") / "guppy_output", event_onsets=epoc_onsets
+        )
 
     @pytest.fixture
     def converter(self, guppy_output_folder):
