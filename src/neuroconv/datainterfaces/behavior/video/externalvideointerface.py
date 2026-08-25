@@ -1,5 +1,6 @@
 import warnings
 from copy import deepcopy
+from functools import partial
 from pathlib import Path
 from typing import Literal
 
@@ -10,6 +11,7 @@ from pynwb.device import Device, DeviceModel
 from pynwb.image import ImageSeries
 
 from .video_utils import VideoCaptureContext
+from ...._temporal_alignment import _TemporalAlignment
 from ....basedatainterface import BaseDataInterface
 from ....tools import get_package
 from ....tools.nwb_helpers import _add_device_to_nwbfile, get_module
@@ -80,8 +82,27 @@ class ExternalVideoInterface(BaseDataInterface):
         file_paths = [Path(file_path) for file_path in file_paths]
         self.verbose = verbose
         self._number_of_files = len(file_paths)
-        self._timestamps = None
-        self._starting_time = None
+        self._frame_counts = None
+        self._frame_rates = None
+
+        # Alignment by composition, the component the fiber photometry and events interfaces hold. Each
+        # video file is triggered on its own, so each is separately addressable and the file stem is its
+        # key: `alignment[stem].set_times(times)` re-times one file and `alignment.shift_times(delta)`
+        # moves them all. See neuroconv/_temporal_alignment.py.
+        self._segment_keys = [file_path.stem for file_path in file_paths]
+        duplicated_keys = sorted({key for key in self._segment_keys if self._segment_keys.count(key) > 1})
+        if duplicated_keys:
+            raise ValueError(
+                "Each video file is addressed for alignment by the stem of its path, so the stems have to "
+                f"differ. These are used more than once: {duplicated_keys}. Rename the files, or pass one "
+                "interface per name."
+            )
+        self.alignment = _TemporalAlignment()
+        for file_index, segment_key in enumerate(self._segment_keys):
+            # A callable, so registering the files reads none of them.
+            self.alignment._register_series(
+                key=segment_key, get_native_times=partial(self._get_native_times, file_index=file_index)
+            )
         # metadata_key is the snake_case registry key (for cross-component linking); the ImageSeries
         # name is kept distinct and is never derived from the key. Name precedence: explicit
         # video_name, else a stem-based default. video_name is retained as a back-compat convenience.
@@ -143,6 +164,141 @@ class ExternalVideoInterface(BaseDataInterface):
         }
         return dict_deep_update(metadata, video_metadata)
 
+    def get_frame_counts(self) -> list[int]:
+        """
+        Return the number of frames held by each video file.
+
+        The count comes from the container header of each file, a cheap read rather than a decode. It is
+        public because a conversion that measures its frame times from a pulse train wants to check the
+        pulse count against it before setting anything, and it is a method so that an interface which
+        knows the count without a file to open can supply it.
+
+        Returns
+        -------
+        list of int
+            The frame count of each file, in the order the files were passed.
+        """
+        if self._frame_counts is None:
+            frame_counts = []
+            for file_path in self.source_data["file_paths"]:
+                with VideoCaptureContext(file_path=str(file_path)) as video:
+                    frame_counts.append(video.get_video_frame_count())
+            self._frame_counts = frame_counts
+        return self._frame_counts
+
+    def get_frame_rates(self) -> list[float]:
+        """
+        Return the nominal frames per second of each video file, as its container header states it.
+
+        Public alongside :meth:`get_frame_counts` because placing a set of files that run on from each
+        other needs both: the length of a file is its frame count over its rate.
+
+        Returns
+        -------
+        list of float
+            The frame rate of each file, in the order the files were passed.
+        """
+        if self._frame_rates is None:
+            frame_rates = []
+            for file_path in self.source_data["file_paths"]:
+                with VideoCaptureContext(file_path=str(file_path)) as video:
+                    frame_rates.append(video.get_video_fps())
+            self._frame_rates = frame_rates
+        return self._frame_rates
+
+    def _get_native_times(self, *, file_index: int) -> np.ndarray:
+        """
+        Return the times of one video file as the files themselves describe them.
+
+        These are **not** the presentation timestamps the container carries per frame. Those come from
+        :meth:`get_original_timestamps`, which reads every frame of every file to collect them, and the
+        write path has never used them: before this interface held an alignment it wrote ``starting_time``
+        plus ``get_video_fps()`` for a video nothing had aligned, which is what is reconstructed here. Two
+        header reads rather than a full pass, and the result still collapses to a rate on the way out,
+        which decoded timestamps would not. For constant-frame-rate footage the two agree anyway. Where
+        they do not, which is variable-frame-rate footage, the file's own times are the truth and the way
+        to use them is ``alignment[key].set_times(get_original_timestamps()[index])``, paying for the scan
+        deliberately.
+
+        Each file starts where the one before it ended, which is the only reading several files support on
+        their own; a file that was triggered independently is moved off that timeline by
+        ``alignment[key].set_starting_time(...)`` or by its own times.
+        """
+        frame_counts = self.get_frame_counts()
+        frame_rates = self.get_frame_rates()
+        starting_time = sum(frame_counts[preceding] / frame_rates[preceding] for preceding in range(file_index))
+        return starting_time + np.arange(frame_counts[file_index]) / frame_rates[file_index]
+
+    def _warn_if_multi_segment_timings_are_not_set(self) -> None:
+        """
+        Warn when several files are about to be written on an assumption rather than on measured times.
+
+        One ``ImageSeries`` carries one timeline across every ``external_file``, and several files do not
+        say among themselves how they relate: a recorder that rotated its output and a camera triggered
+        once per trial produce the same files, one segment running on from the last and the other separated
+        by gaps. Without times the first reading is taken, because it is the only one the files support on
+        their own, and the warning is there because it is a choice the caller did not make.
+
+        A single file is exempt: one file starting at the session start is a claim a reader can check.
+        """
+        if self._number_of_files == 1 or self.alignment.is_fine_aligned:
+            return
+        segment_keys_without_times = [
+            segment_key for segment_key in self._segment_keys if not self.alignment[segment_key].is_fine_aligned
+        ]
+        warnings.warn(
+            f"Writing {self._number_of_files} video files as one recording split in place, each segment "
+            f"starting where the one before it ended, because these have no times of their own: "
+            f"{segment_keys_without_times}. If the camera was triggered per segment there are gaps between "
+            "them and this is wrong. Give each its times to say so, with "
+            "`alignment[key].set_starting_time(time)` where its onset was measured or "
+            "`alignment[key].set_times(times)` where a pulse timed every frame, which also silences this "
+            "warning. Where the files really are one recording split in place, their starting times are the "
+            "cumulative durations, `get_frame_counts()` over `get_frame_rates()`.",
+            UserWarning,
+            stacklevel=3,
+        )
+
+    def _get_compact_timing(self) -> tuple[float, float] | None:
+        """
+        Return ``(starting_time, rate)`` where the interface can state them exactly, and ``None`` otherwise.
+
+        An ``ImageSeries`` whose frames are evenly spaced carries a starting time and a rate rather than an
+        array, and while the write path recovers a rate from the times, recovering it is not the same as
+        knowing it: a rate read off a container header comes back as 29.999999999999993 once it has been
+        divided into an array and fitted again. So where the files still run at the rate they were recorded
+        at, the answer is given rather than derived, which also means no array is built for the case that
+        does not need one.
+        """
+        # Measured times are the case an array exists for, and several placed files generally leave gaps.
+        if any(self.alignment[segment_key]._times is not None for segment_key in self._segment_keys):
+            return None
+        starting_times = [self.alignment[segment_key]._starting_time for segment_key in self._segment_keys]
+        if self._number_of_files > 1 and any(starting_time is not None for starting_time in starting_times):
+            return None
+
+        frame_rates = self.get_frame_rates()
+        if len(set(frame_rates)) != 1:
+            return None
+        starting_time = starting_times[0] if starting_times[0] is not None else 0.0
+        return self.alignment.offset + starting_time, frame_rates[0]
+
+    def _get_aligned_timestamps(self) -> np.ndarray:
+        """
+        Return one timeline for the whole ``ImageSeries``, the files concatenated in the order given.
+
+        The ``ImageSeries`` carries a single time coordinate across every ``external_file``, so the files
+        have to merge into one increasing series; a set of files that overlap describes no such thing.
+        """
+        segment_times = [self.alignment[segment_key].get_times() for segment_key in self._segment_keys]
+        timestamps = np.concatenate(segment_times)
+        if np.any(np.diff(timestamps) < 0):
+            raise ValueError(
+                "The video files do not merge into a single increasing timeline, so at least one of them "
+                "runs into the next. Check the starting times against the length of each file."
+            )
+        return timestamps
+
     def get_original_timestamps(self, stub_test: bool = False) -> list[np.ndarray]:
         """
         Retrieve the original unaltered timestamps for the data in this interface.
@@ -171,88 +327,135 @@ class ExternalVideoInterface(BaseDataInterface):
         """
         Retrieve the timestamps for the data in this interface.
 
+        .. deprecated::
+            Use ``interface.alignment[key].get_times()``, which reads the file it names rather than
+            handing back a list whose order the caller has to know. Removed in v0.12.0.
+
         Returns
         -------
-        timestamps : numpy.ndarray
-            The timestamps for the data stream.
+        timestamps : list of numpy.ndarray
+            The timestamps of each video file.
         stub_test : bool, default: False
-            If timestamps have not been set to this interface, it will attempt to retrieve them
-            using the `.get_original_timestamps` method, which scans through each video;
-            a process which can take some time to complete.
-
-            To limit that scan to a small number of frames, set `stub_test=True`.
+            Unused, kept for signature compatibility.
         """
-        return self._timestamps or self.get_original_timestamps(stub_test=stub_test)
+        warnings.warn(
+            "`get_timestamps` is deprecated and will be removed in v0.12.0. "
+            "Use `interface.alignment[key].get_times()` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        return [self.alignment[segment_key].get_times() for segment_key in self._segment_keys]
 
     def set_aligned_timestamps(self, aligned_timestamps: list[np.ndarray]):
         """
         Replace all timestamps for this interface with those aligned to the common session start time.
 
-        Must be in units seconds relative to the common 'session_start_time'.
+        .. deprecated::
+            Use ``interface.alignment[key].set_times(times)``, which names the file the times land on.
+            Removed in v0.12.0.
 
         Parameters
         ----------
         aligned_timestamps : list of numpy.ndarray
-            The synchronized timestamps for data in this interface.
+            The synchronized timestamps for data in this interface, one array per video file.
         """
-        self._timestamps = aligned_timestamps
+        warnings.warn(
+            "`set_aligned_timestamps` is deprecated and will be removed in v0.12.0. "
+            "Use `interface.alignment[key].set_times(times)` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        self._set_aligned_timestamps(aligned_timestamps=aligned_timestamps)
+
+    def _set_aligned_timestamps(self, aligned_timestamps: list[np.ndarray]):
+        """Set one array of times per video file, the undeprecated body of ``set_aligned_timestamps``."""
+        number_of_arrays = len(aligned_timestamps)
+        if number_of_arrays != self._number_of_files:
+            raise ValueError(
+                f"There is one array of timestamps per video file, but {number_of_arrays} were given for "
+                f"{self._number_of_files} files."
+            )
+        for segment_key, timestamps in zip(self._segment_keys, aligned_timestamps):
+            self.alignment[segment_key].set_times(timestamps)
 
     def set_aligned_starting_time(self, aligned_starting_time: float):
         """
         Set the aligned starting time for the ImageSeries in this interface.
 
-        If the timestamps have already been set, each segment will be shifted by aligned_starting_time.
-
-        Must be in units seconds relative to the common 'session_start_time'.
+        .. deprecated::
+            Use ``interface.alignment.shift_times(delta)``, which is the same rigid shift under a name that
+            says so. Removed in v0.12.0.
 
         Parameters
         ----------
         aligned_starting_time : float
             The common starting time for all segments of temporal data in this interface.
         """
-        if self._timestamps is not None:
-            aligned_segment_starting_times = [aligned_starting_time] * self._number_of_files
-            self.set_aligned_segment_starting_times(aligned_segment_starting_times=aligned_segment_starting_times)
-        else:
-            self._starting_time = aligned_starting_time
+        warnings.warn(
+            "`set_aligned_starting_time` is deprecated and will be removed in v0.12.0. "
+            "Use `interface.alignment.shift_times(delta)` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        self.alignment.shift_times(aligned_starting_time)
 
     def set_aligned_segment_starting_times(self, aligned_segment_starting_times: list[float], stub_test: bool = False):
         """
         Align the individual starting time for each video (segment) in this interface relative to the common session start time.
 
-        Must be in units seconds relative to the common 'session_start_time'.
-
-        If the timestamps have not already been set, this method will set them to the original timestamps and then shift
-        them by the aligned segment starting times.
+        .. deprecated::
+            Use ``interface.alignment[key].set_starting_time(time)`` per file, which places each one where
+            it started instead of adding an offset to whatever times it currently carries, so calling it
+            twice does not shift twice. Removed in v0.12.0.
 
         Parameters
         ----------
         aligned_segment_starting_times : list of floats
             The relative starting times of each video.
         stub_test : bool, default: False
-            If timestamps have not been set to this interface, it will attempt to retrieve them
-            using the `.get_original_timestamps` method, which scans through each video;
-            a process which can take some time to complete.
-
-            To limit that scan to a small number of frames, set `stub_test=True`.
+            Unused, kept for signature compatibility.
         """
-        aligned_segment_starting_times_length = len(aligned_segment_starting_times)
-        assert aligned_segment_starting_times_length == self._number_of_files, (
-            f"The length of the 'aligned_segment_starting_times' list ({aligned_segment_starting_times_length}) does not match the "
-            "number of video files ({self._number_of_files})!"
+        warnings.warn(
+            "`set_aligned_segment_starting_times` is deprecated and will be removed in v0.12.0. "
+            "Use `interface.alignment[key].set_starting_time(time)` instead, which is absolute rather than "
+            "relative and so does not accumulate when called twice.",
+            FutureWarning,
+            stacklevel=2,
         )
-        self._timestamps = self.get_timestamps(stub_test=stub_test)
-        self.set_aligned_timestamps(
-            aligned_timestamps=[
-                timestamps + segment_starting_time
-                for timestamps, segment_starting_time in zip(
-                    self.get_timestamps(stub_test=stub_test), aligned_segment_starting_times
-                )
-            ]
-        )
+        self._set_aligned_segment_starting_times(aligned_segment_starting_times=aligned_segment_starting_times)
+
+    def _set_aligned_segment_starting_times(self, aligned_segment_starting_times: list[float]):
+        """The body of the deprecated setter, which shifted times already set and placed files otherwise."""
+        number_of_starting_times = len(aligned_segment_starting_times)
+        if number_of_starting_times != self._number_of_files:
+            raise ValueError(
+                f"The length of the 'aligned_segment_starting_times' list ({number_of_starting_times}) does not "
+                f"match the number of video files ({self._number_of_files})!"
+            )
+        times_were_set = any(self.alignment[segment_key]._times is not None for segment_key in self._segment_keys)
+        if not times_were_set:
+            for segment_key, segment_starting_time in zip(self._segment_keys, aligned_segment_starting_times):
+                self.alignment[segment_key].set_starting_time(segment_starting_time)
+            return
+        for segment_key, segment_starting_time in zip(self._segment_keys, aligned_segment_starting_times):
+            time_bearing_object = self.alignment[segment_key]
+            time_bearing_object.set_times(time_bearing_object.get_times() + segment_starting_time)
 
     def align_by_interpolation(self, unaligned_timestamps: np.ndarray, aligned_timestamps: np.ndarray):
-        raise NotImplementedError("The `align_by_interpolation` method has not been developed for this interface yet.")
+        """
+        Re-time this interface against a reference clock through synchronization pulses.
+
+        .. deprecated::
+            Use ``interface.alignment.remap_times(local_sync_times=..., reference_sync_times=...)``, whose
+            argument names say which clock each set of pulses came off. Removed in v0.12.0.
+        """
+        warnings.warn(
+            "`align_by_interpolation` is deprecated and will be removed in v0.12.0. Use "
+            "`interface.alignment.remap_times(local_sync_times=..., reference_sync_times=...)` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        self.alignment.remap_times(local_sync_times=unaligned_timestamps, reference_sync_times=aligned_timestamps)
 
     def add_to_nwbfile(
         self,
@@ -395,36 +598,25 @@ class ExternalVideoInterface(BaseDataInterface):
                 nwbfile=nwbfile, device_metadata=legacy_device_kwargs
             )
 
-        if always_write_timestamps:
-            timestamps = self.get_timestamps()
-            image_series_kwargs.update(timestamps=np.concatenate(timestamps))
-        elif self._timestamps is not None:
-            # Check if timestamps are regular
-            timestamps = np.concatenate(self._timestamps)
-            rate = calculate_regular_series_rate(series=timestamps)
+        # One timeline across every external file, whatever it was built from: the files' own frame rates,
+        # a starting time per file, or times set on one of them.
+        self._warn_if_multi_segment_timings_are_not_set()
+        compact_timing = None if always_write_timestamps else self._get_compact_timing()
+        if compact_timing is not None:
+            starting_time, rate = compact_timing
+            image_series_kwargs.update(starting_time=starting_time, rate=rate)
+        else:
+            timestamps = self._get_aligned_timestamps()
+            rate = None if always_write_timestamps else calculate_regular_series_rate(series=timestamps)
             if rate is not None:
-                starting_time = timestamps[0]
-                image_series_kwargs.update(starting_time=starting_time, rate=rate)
+                image_series_kwargs.update(starting_time=timestamps[0], rate=rate)
             else:
                 image_series_kwargs.update(timestamps=timestamps)
-        else:
-            if self._number_of_files > 1 and self._starting_time is None:
-                raise ValueError(
-                    f"No timing information is specified and there are {self._number_of_files} total video files! "
-                    "Please specify the temporal alignment of each video."
-                )
-            starting_time = self._starting_time if self._starting_time is not None else 0.0
-            with VideoCaptureContext(file_path=str(file_paths[0])) as video:
-                rate = video.get_video_fps()
-            image_series_kwargs.update(starting_time=starting_time, rate=rate)
 
         # The frame count of each external file backs both `num_samples` and `starting_frame`, so read it once.
         compute_starting_frames = self._number_of_files > 1 and starting_frames is None
         if "rate" in image_series_kwargs or compute_starting_frames:
-            frame_counts = []
-            for file_path in file_paths:
-                with VideoCaptureContext(file_path=str(file_path)) as video:
-                    frame_counts.append(video.get_video_frame_count())
+            frame_counts = self.get_frame_counts()
 
         # pynwb>=4 requires num_samples on an external ImageSeries when timing is rate-based, because the
         # empty data array cannot convey the frame count. Sum the frame count across the external video files.

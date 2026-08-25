@@ -1,5 +1,6 @@
 import warnings
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Literal
 
 import numpy as np
@@ -12,6 +13,9 @@ from ...basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from ...datainterfaces import SpikeGLXNIDQInterface
 from ...datainterfaces.behavior.baseposeestimationinterface import (
     BasePoseEstimationInterface,
+)
+from ...datainterfaces.behavior.video.externalvideointerface import (
+    ExternalVideoInterface,
 )
 from ...datainterfaces.ecephys.baserecordingextractorinterface import (
     BaseRecordingExtractorInterface,
@@ -1537,6 +1541,137 @@ class MockPoseEstimationInterface(BasePoseEstimationInterface):
             node_name: (self.pose_data[:, index, :], np.ones(self.num_samples))
             for index, node_name in enumerate(self.nodes)
         }
+
+
+class MockExternalVideoInterface(ExternalVideoInterface):
+    """
+    A mock external video interface for testing purposes.
+
+    Writes the ``ImageSeries`` that :class:`.ExternalVideoInterface` writes without a video file on disk:
+    the frame count and the timestamps are given as arguments rather than read from a file, so a test can
+    compose a video of any length into a conversion at no cost. The paths land in ``external_file`` as
+    they were passed and deliberately do not resolve, which is what keeps the file a mock produces from
+    being mistaken for a publishable one.
+    """
+
+    display_name = "Mock Video"
+    keywords = ("video", "behavior", "mock")
+    associated_suffixes = ()
+    info = "Mock interface for external video data testing."
+
+    def __init__(
+        self,
+        file_paths: list[str] | None = None,
+        num_frames: int = 100,
+        frame_rate: float = 30.0,
+        verbose: bool = False,
+        *,
+        segment_timing: Literal[
+            "unset", "contiguous_onsets", "gapped_onsets", "contiguous_frame_times", "gapped_frame_times"
+        ] = "contiguous_onsets",
+        inter_segment_gap: float = 1.0,
+        metadata_key: str | None = None,
+    ):
+        """
+        Initialize a mock external video interface.
+
+        Parameters
+        ----------
+        file_paths : list of str, optional
+            The paths written to ``external_file``; they do not have to exist. Defaults to a single
+            ``"mock_video.mp4"``.
+        num_frames : int, default: 100
+            The number of frames of each file, which backs both ``num_samples`` and the timestamps.
+        frame_rate : float, default: 30.0
+            The frames per second the timestamps are built from. The segments run consecutively, so
+            several files describe one continuous recording.
+        verbose : bool, default: False
+            If True, display verbose output.
+        segment_timing : str, default: "contiguous_onsets"
+            The state the segments are put into, so a test can reach any of the states a real interface can
+            be in without a video on disk. One literal rather than separate layout and mechanism arguments,
+            because the two do not form a rectangle: nothing being set cannot express a gap, so that
+            combination does not exist.
+
+            Each value names both facts, how the segments sit relative to each other and what set their
+            times, since the second is what ``is_set``, the compact-timing path and the multi-segment
+            warning key off:
+
+            ``"unset"``
+                Nothing set. Several files then read as one recording split in place, under a warning.
+            ``"contiguous_onsets"``
+                Each segment placed by ``set_starting_time`` where the one before it ended. A single file
+                is left alone, since one file is trivially contiguous and a real interface says nothing
+                about it either.
+            ``"gapped_onsets"``
+                Each segment placed by ``set_starting_time`` with ``inter_segment_gap`` seconds between
+                them, which is a camera a trigger started per trial.
+            ``"contiguous_frame_times"``
+                Every frame's time given by ``set_times``, laid out end to end. The one state that shows
+                a set object still writing a rate, because the times happen to be regular.
+            ``"gapped_frame_times"``
+                Every frame's time given by ``set_times``, with gaps, which is a frame-out line on a
+                triggered camera.
+
+            The times are always the source's own spacing. A test that needs irregular ones says so
+            directly, with ``alignment[key].set_times([...])``, where the values that matter are visible.
+        inter_segment_gap : float, default: 1.0
+            Seconds between the end of one segment and the start of the next, for the ``gapped`` values.
+        metadata_key : str, optional
+            Snake_case key identifying this video's entry under ``metadata["Behavior"]["ExternalVideos"]``.
+            Defaults to the stem-based key of the parent interface.
+        """
+        file_paths = [Path(file_path) for file_path in file_paths or ["mock_video.mp4"]]
+        # ExternalVideoInterface.__init__ is wrapped by pydantic's validate_call, whose FilePath refuses
+        # a path that does not exist; the undecorated function kept at __wrapped__ is what lets this
+        # interface stand up with nothing behind its paths.
+        ExternalVideoInterface.__init__.__wrapped__(
+            self,
+            file_paths=file_paths,
+            verbose=verbose,
+            metadata_key=metadata_key,
+        )
+        self.num_frames = num_frames
+        self.frame_rate = frame_rate
+        self.segment_timing = segment_timing
+
+        segment_duration = num_frames / frame_rate
+        gap = inter_segment_gap if segment_timing.startswith("gapped") else 0.0
+        starting_times = [file_index * (segment_duration + gap) for file_index in range(self._number_of_files)]
+        # One file is trivially contiguous with itself, so leave it in the state a real interface is in.
+        if segment_timing == "contiguous_onsets" and self._number_of_files == 1:
+            starting_times = None
+
+        if starting_times is None or segment_timing == "unset":
+            pass
+        elif segment_timing.endswith("onsets"):
+            for segment_key, starting_time in zip(self._segment_keys, starting_times):
+                self.alignment[segment_key].set_starting_time(starting_time)
+        else:
+            for segment_key, starting_time in zip(self._segment_keys, starting_times):
+                self.alignment[segment_key].set_times(starting_time + np.arange(num_frames) / frame_rate)
+
+    def get_metadata(self) -> DeepDict:
+        metadata = super().get_metadata()
+        metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
+        return metadata
+
+    def get_original_timestamps(self, stub_test: bool = False) -> list[np.ndarray]:
+        """Return each file's own times, without the scan the real interface pays for.
+
+        Zero-based per file, as the container timestamps the real one reads are: each file is opened on its
+        own, so the second one does not carry the first one's duration. That is what makes a caller add the
+        file's placement to them.
+        """
+        return [np.arange(self.num_frames) / self.frame_rate for _ in range(self._number_of_files)]
+
+    def get_frame_counts(self) -> list[int]:
+        """Return the frame count the mock was built with, so the write path opens no files."""
+        return [self.num_frames] * self._number_of_files
+
+    def get_frame_rates(self) -> list[float]:
+        """Return the frame rate the mock was built with, so the write path opens no files."""
+        return [self.frame_rate] * self._number_of_files
 
 
 class MockIcephysInterface(BaseDataInterface):

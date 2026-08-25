@@ -4,11 +4,12 @@ An interface's alignment surface is a container. It carries the whole-interface 
 interface's **time-bearing objects**, the things it writes that carry a time coordinate, so that a single one
 can be reached and re-timed on its own::
 
-    interface.alignment.shift_times(3.0)                   # every object, rigid, accumulates
-    interface.alignment.keys()                             # the objects this interface can name
-    interface.alignment["response"].get_times()            # the times this object will be written on
-    interface.alignment["response"].set_times(times)       # this object's times outright
-    interface.alignment["response"].remap_times(...)       # this object's clock against a reference
+    interface.alignment.shift_times(3.0)                       # every object, rigid, accumulates
+    interface.alignment.keys()                                 # the objects this interface can name
+    interface.alignment["response"].get_times()                # the times this object will be written on
+    interface.alignment["response"].set_times(times)           # this object's times outright
+    interface.alignment["response"].set_starting_time(65.0)    # where it starts, its own spacing kept
+    interface.alignment["response"].remap_times(...)           # this object's clock against a reference
 
 What an operation is called on is what it applies to: a shift positions the whole interface and so cannot take
 a key, while literal times belong to one object and so cannot be given without one. An interface that names
@@ -16,6 +17,17 @@ nothing still shifts: registration is what a keyed operation needs, and the even
 because enumerating their event types means reading the source. The objects are typed by shape, since a series
 is a single sample axis and takes ``set_times`` while a table is timestamps plus durations and cannot, there
 being no one array to hand it. Only the series-shaped one exists here so far.
+
+The offset is **held and applied when times are asked for**, rather than added into the times when it is
+given. The obvious alternative, walking every object on each shift and rewriting its times in place, reads
+more simply and costs the property this component exists for: shifting would have to materialise every
+object's times just to add a number to them, which for a three-hour recording at 30 kHz is a 2.6 GB float64
+vector standing in for one scalar, and it would open every source a caller had merely named. Holding it
+means nothing is read until someone asks for times.
+
+Why a setter then stores what it was given *less* the current offset is a separate question, not implied by
+the above: it is so that a shift applied *after* a set still moves the object, which a converter-wide shift
+has to do or it desynchronises the very streams a caller aligned most carefully.
 """
 
 import numpy as np
@@ -33,10 +45,30 @@ class _TimeBearingSeries:
         self._get_native_times = get_native_times
         self._alignment = alignment
         self._times: np.ndarray | None = None
+        # A placement rather than times: where the object starts, its source's own spacing kept. Held as a
+        # number so that placing an object reads nothing, which is what lets a caller place several and
+        # then look at the metadata without the sources being opened.
+        self._starting_time: float | None = None
+
+    @property
+    def is_fine_aligned(self) -> bool:
+        """Whether this object has been finely aligned, as against still reporting its source's times.
+
+        True once ``set_times``, ``set_starting_time`` or ``remap_times`` has run on it. A shift does not
+        count, and not by
+        convention: a shift is *gross* alignment, moving every object at once, so it says nothing about any
+        one of them. See :doc:`the temporal alignment user guide </user_guide/temporal_alignment>` for the
+        gross and fine distinction.
+        """
+        return self._times is not None or self._starting_time is not None
 
     def get_times(self) -> np.ndarray:
         """Return the times this object will be written on, the interface's offset included."""
-        times = self._times if self._times is not None else np.asarray(self._get_native_times())
+        if self._times is not None:
+            return self._times + self._alignment.offset
+        times = np.asarray(self._get_native_times())
+        if self._starting_time is not None:
+            times = times - times[0] + self._starting_time
         return times + self._alignment.offset
 
     def set_times(self, times) -> None:
@@ -49,6 +81,24 @@ class _TimeBearingSeries:
         # ``get_times`` adds the interface's offset on the way back out, so store these less that offset
         # and the caller reads back exactly what they passed.
         self._times = np.asarray(times) - self._alignment.offset
+        self._starting_time = None
+
+    def set_starting_time(self, starting_time: float) -> None:
+        """Place this object at ``starting_time``, keeping the spacing its source gives it.
+
+        For an object whose position on the session clock was measured but whose sample times were not: a
+        video file a trigger started, a run whose onset is known. Only the first sample's time is yours;
+        the rest follow from the source, so this does not correct drift within the object the way
+        :meth:`set_times` does.
+
+        Absolute, so calling it twice places the object where the second call says rather than moving it
+        twice, which is what distinguishes it from ``alignment.shift_times``: a shift is a relative
+        correction applied to the whole interface, and this is one object's position.
+        """
+        # Stored less the interface's offset, as in ``set_times``, so the caller reads back what they
+        # passed while a shift applied afterwards still moves this object.
+        self._starting_time = float(starting_time) - self._alignment.offset
+        self._times = None
 
     def remap_times(self, *, local_sync_times, reference_sync_times, interpolation_function=None) -> None:
         """Re-express this object's times on a reference clock through synchronization pulses.
@@ -119,6 +169,7 @@ class _TimeBearingSeries:
         # These are the times to be written, and ``get_times`` adds the interface's offset on the way back
         # out, so what is stored is the remapped times less that offset.
         self._times = remapped_times - self._alignment.offset
+        self._starting_time = None
 
 
 class _TemporalAlignment:
@@ -148,6 +199,18 @@ class _TemporalAlignment:
     def keys(self) -> tuple[str, ...]:
         """The time-bearing objects this interface can name, empty when it names none."""
         return tuple(self._name_to_time_bearing_object)
+
+    @property
+    def is_fine_aligned(self) -> bool:
+        """Whether **every** object this interface names has been finely aligned.
+
+        All rather than any, since the question it answers is whether the interface still has to fall back
+        on an assumption anywhere. For an interface whose objects do not say among themselves how they
+        relate, a single object left on its source's times is enough to make the whole thing a guess.
+        """
+        return all(
+            time_bearing_object.is_fine_aligned for time_bearing_object in self._name_to_time_bearing_object.values()
+        )
 
     def __getitem__(self, key: str) -> _TimeBearingSeries:
         if key not in self._name_to_time_bearing_object:
