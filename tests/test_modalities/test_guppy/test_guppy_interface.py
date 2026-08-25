@@ -350,6 +350,8 @@ class TestGuppyInterfaceBehavior:
     def test_spontaneous_mode_registers_one_event_row_per_recording_site(self, spontaneous_interface, nwbfile):
         """Each site stands its own transients in for the TTLs, so the sites do not share an event row."""
         module = self.add_to_nwbfile(spontaneous_interface, nwbfile, stub_test=False)
+        # A transient train stands in for a TTL without becoming a behavioral event of its own.
+        assert spontaneous_interface.event_names == sorted(EVENT_NAMES)
         events_registry = module["events"]
         assert len(events_registry) == len(EVENT_NAMES) + len(TRANSIENT_EVENT_NAMES) * len(RECORDING_SITES)
 
@@ -408,13 +410,6 @@ class TestGuppyInterfaceBehavior:
             np.testing.assert_allclose(
                 [onset for _, onset in transient_trials], TRANSIENTS_KEPT[recording_site] * len(referenced_rows)
             )
-
-    def test_recording_sites_with_different_transient_trains_construct(self, spontaneous_interface):
-        """The two sites detect different transients, which the events registry represents as two rows."""
-        assert spontaneous_interface.event_names == sorted(EVENT_NAMES)
-        transient_events = spontaneous_interface._transient_events
-        np.testing.assert_allclose(transient_events[("transients_z_score", "dms")], TRANSIENTS_KEPT["dms"])
-        np.testing.assert_allclose(transient_events[("transients_z_score", "dls")], TRANSIENTS_KEPT["dls"])
 
     def test_without_spontaneous_mode_the_registry_holds_only_behavioral_events(self, interface, nwbfile):
         """The default session ran no spontaneous mode, so nothing transient reaches the registry."""
