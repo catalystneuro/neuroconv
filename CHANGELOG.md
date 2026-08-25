@@ -27,6 +27,7 @@
 * Pose estimation now supports device model addition in their metadata. [PR #1961](https://github.com/catalystneuro/neuroconv/pull/1961)
 
 ## Improvements
+* Added `MockExternalVideoInterface` [PR #1981](https://github.com/catalystneuro/neuroconv/pull/1981)
 * `AxonIntracellularInterface` and `BrukerVoltageRecordingInterface` now share `BaseIcephysInterface`: each maps its source into an internal patch-clamp series record, while the base resolves metadata-linked electrodes and writes the NWB response/stimulus series and intracellular-recordings rows. The former Neo base is now explicitly `LegacyBaseIcephysInterface` and will be removed with `AbfInterface` in release 0.12.0. [PR #1972](https://github.com/catalystneuro/neuroconv/pull/1972)
 * `general/source_script` now carries a structured, versioned provenance record instead of the `Created using NeuroConv v<version>` watermark, stating the NeuroConv version, how the conversion was run and, when it ran from a git checkout, the repository, commit and whether the working tree was clean. `source_script_file_name` is now the conversion script's name rather than the absolute path of NeuroConv's own module on the machine that wrote the file; see the developer guide for the format and for `NEUROCONV_PROVENANCE=no-git-info`. [PR #1971](https://github.com/catalystneuro/neuroconv/pull/1971)
 * Added `docs/how_to/annotate_pose_metadata.rst`, walking through the metadata a pose format does not record, one acquisition setup at a time. [PR #1967](https://github.com/catalystneuro/neuroconv/pull/1967)

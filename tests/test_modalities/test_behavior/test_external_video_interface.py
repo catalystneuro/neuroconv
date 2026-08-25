@@ -13,7 +13,51 @@ from neuroconv import NWBConverter
 from neuroconv.datainterfaces.behavior.video.externalvideointerface import (
     ExternalVideoInterface,
 )
+from neuroconv.tools.testing.mock_interfaces import MockExternalVideoInterface
 from neuroconv.utils import dict_deep_update
+
+
+class TestMockExternalVideoInterface:
+    """Whether the mock is a faithful stand-in for ``ExternalVideoInterface`` with no video behind its paths.
+
+    These deliberately repeat assertions the real-video tests below already make, on the same write paths,
+    because that is the only way to test fidelity: the mock is right exactly when the real tests give the
+    same answers against it. So an assertion appearing twice in this file is the point rather than an
+    oversight. What is unique here is the negative, that no file is ever opened, and the two things the mock
+    overrides, the frame count and the frame rate a container header would report.
+    """
+
+    def test_add_to_nwbfile(self, tmp_path):
+        """That it works with no real file behind the path, which is the whole premise of the mock."""
+        file_path = tmp_path / "never_written.mp4"
+        interface = MockExternalVideoInterface(file_paths=[file_path], num_frames=5000, frame_rate=30.0)
+
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile)
+
+        image_series = nwbfile.acquisition[interface._default_name]
+        assert image_series.num_samples == 5000
+        assert image_series.rate == 30.0
+        assert image_series.starting_time == 0.0
+        assert list(image_series.external_file) == [file_path]
+        assert not file_path.exists()
+
+    def test_add_to_nwbfile_multi_segment(self):
+        """The same with several files, where the frame counts back `num_samples` and `starting_frame`."""
+        interface = MockExternalVideoInterface(
+            file_paths=["segment1.mp4", "segment2.mp4", "segment3.mp4"], num_frames=10, frame_rate=30.0
+        )
+        interface.set_aligned_timestamps(
+            aligned_timestamps=[(file_index * 10 + np.arange(10)) / 30.0 for file_index in range(3)]
+        )
+
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile)
+
+        image_series = nwbfile.acquisition[interface._default_name]
+        assert image_series.rate == pytest.approx(30.0)
+        assert image_series.num_samples == 30
+        assert image_series.starting_frame == [0, 10, 20]
 
 
 def test_initialization_without_metadata(video_files):
