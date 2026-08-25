@@ -6,16 +6,15 @@ Run from the repository root::
 
 Produces two figures:
 
-- ``video_setup_free_running.png``, ``video_setup_triggered.png`` and
-  ``video_setup_several_cameras.png``  - one per setup the guide is organised by, free-running against
-  triggered being how cameras are documented and the fact about the rig's intent that decides everything
-  else, and within each the shapes
+- ``video_setup_free_running.png`` and ``video_setup_triggered.png``  - one per setup the guide is
+  organised by, free-running against triggered being how cameras are documented and the fact about the
+  rig's intent that decides everything else, and within each the shapes
   the session's files and its digital line can take, over the recording system that runs the whole session
   and carries the session clock. Rig only: no method names, since which call places a setup belongs in the
   prose beside it and would date the figure.
-- ``video_wiring.png``            - the three ways the camera and the recording system are wired, which is
-  what decides how well a rig can be aligned: the camera reports, the camera is commanded, or a third box
-  drives both.
+- ``video_wiring.png``            - the four ways the camera and the recording system are wired, which is
+  what decides how well a rig can be aligned: the camera reports, the camera is commanded, a third box
+  drives both, or there is no cable at all.
 
 One figure rather than one per setup, deliberately: the third row of the first group and the first of the
 second are the same files on disk, and only the line underneath tells them apart, which is the whole
@@ -99,7 +98,18 @@ def build_setup_figure(*, file_name, title, rows):
     section that teaches them, and a single stack of seven cases is taller than a screen.
     """
     figure, ax = plt.subplots(figsize=(9.4, 1.45 * len(rows) + 1.6))
-    ax.text(GROUP_X, FILE_HEIGHT + 0.42, title, ha="left", va="center", fontsize=11, color=BLACK, fontweight="semibold")
+    # Centred over the same x range the axes spans, so it sits over the drawing rather than over the
+    # row-label gutter to its left.
+    ax.text(
+        (GROUP_X - 0.1 + 10.0) / 2,
+        FILE_HEIGHT + 0.42,
+        title,
+        ha="center",
+        va="center",
+        fontsize=11,
+        color=BLACK,
+        fontweight="semibold",
+    )
 
     y = 0.0
     for row_title, spans, labels, pulses, line_label in rows:
@@ -167,14 +177,6 @@ def build_recording_setups():
                 frame_pulses(trials, interval=0.16),
                 "frame line",
             ),
-        ],
-    )
-    build_setup_figure(
-        file_name="video_setup_several_cameras.png",
-        title="Several cameras of the same subject",
-        rows=[
-            ("Top camera", [(1.0, 9.2)], ["top.avi"], [1.0], "top start"),
-            ("Side camera", [(2.2, 8.4)], ["side.avi"], [2.2], "side start"),
         ],
     )
 
@@ -245,7 +247,8 @@ def sync_panel(ax, *, title, arrow_label, note):
 
 def build_wiring():
     """The three arrangements, which decide how well a rig can be aligned."""
-    figure, axes = plt.subplots(1, 3, figsize=(15.0, 2.9))
+    figure, axes = plt.subplots(2, 2, figsize=(10.4, 5.8))
+    axes = axes.ravel()
     wiring_panel(
         axes[0],
         title="The camera reports",
@@ -265,6 +268,12 @@ def build_wiring():
         title="A shared sync source",
         arrow_label="one line\ninto both",
         note="Neither system commands the other. Both write down when each\npulse arrived, so the pairs map one clock onto the other.",
+    )
+    # The endpoints with nothing between them, which is the fourth arrangement rather than a blank cell.
+    wiring_endpoints(
+        axes[3],
+        title="No cable",
+        note="Nothing relates the two clocks after the instant someone\nwrote down, and nothing in either file records that either.",
     )
     figure.tight_layout()
     figure.savefig(OUTDIR / "video_wiring.png", dpi=200, bbox_inches="tight")

@@ -25,7 +25,7 @@ is the other modality, whichever it is, and it matters here for two reasons. Its
 session clock, because everything else in the rig is wired into it. And its digital inputs are where the
 camera's timing signal was captured, so it is also the instrument that measures the video.
 
-The video arrives in one of three arrangements, and they are the three sections below. Every case in them
+The video arrives in one of two arrangements, and they are the two sections below. Every case in them
 is drawn the same way: the video files on top, the digital line that timed them below, and a band for the
 recording system running underneath, with a dashed guide at the session start so the gap before a row's
 first file reads as its offset.
@@ -52,18 +52,8 @@ gaps between them. This is the trialized case, and there the gaps are the intent
          one pulse at each block's start. And the same separated blocks over a line pulsing only while a
          block runs, so the pulses arrive in three bursts.
 
-**Several cameras of the same subject.** Not a third arrangement: it is several cameras, each of which is
-free-running or triggered, and each aligned on its own.
-
-.. image:: ../_static/images/video_setup_several_cameras.png
-   :width: 720px
-   :align: center
-   :alt: Two cases on one session clock, one per camera. A long block for a top camera starting just after
-         the session, and a shorter one for a side camera starting later, each over its own line, so the
-         two cameras are placed independently.
-
-Note that the first two figures hold the same three files, touching in one and separated in the other. That
-is the whole difficulty: the files on disk look identical, and only what the rig did tells them apart.
+Note that the two figures hold the same three files, touching in one and separated in the other. That is
+the whole difficulty: the files on disk look identical, and only what the rig did tells them apart.
 
 How they are wired, and where the times come from
 -------------------------------------------------
@@ -73,18 +63,19 @@ well you can do. It is the second of the two things that pick a recipe: the arra
 many placements you have to make, and the cable says how good each one can be.
 
 .. image:: ../_static/images/video_wiring.png
-   :width: 900px
+   :width: 760px
    :align: center
-   :alt: Three panels, each holding a camera box on the left and a recording system box on the right, so
-         the only thing that differs between them is what runs in between. In "the camera reports" an arrow
-         runs from the camera to the recording system, labelled frame-out line, one pulse per frame, with a
-         note that each pulse is evidence a frame was exposed so the count can be checked against the file.
-         In "the camera is commanded" the arrow runs the other way, from the recording system to the
-         camera, labelled trigger line, one pulse per trial, with a note that the trigger is recorded on
-         its way out so its time is known but the delay to the first exposed frame is not measured. In "a
-         shared sync source" a third box sits above the two and one line fans out from it into both, with a
-         note that neither system commands the other and both write down when each pulse arrived, so the
-         pairs map one clock onto the other.
+   :alt: Four panels in a two by two grid, each holding a camera box on the left and a recording system box
+         on the right, so the only thing that differs between them is what runs in between. In "the camera
+         reports" an arrow runs from the camera to the recording system, labelled frame-out line, one pulse
+         per frame, with a note that each pulse is evidence a frame was exposed so the count can be checked
+         against the file. In "the camera is commanded" the arrow runs the other way, from the recording
+         system to the camera, labelled trigger line, one pulse per trial, with a note that the trigger is
+         recorded on its way out so its time is known but the delay to the first exposed frame is not
+         measured. In "a shared sync source" a third box sits above the two and one line fans out from it
+         into both, with a note that neither system commands the other and both write down when each pulse
+         arrived, so the pairs map one clock onto the other. In "no cable" the two boxes stand alone with
+         nothing between them.
 
 **The camera reports.** The camera has a frame-out or strobe pin that fires each time it exposes a frame,
 wired into a digital input on the recording system. Every frame therefore has a time measured on the session
@@ -162,6 +153,11 @@ Each video file is addressable for alignment under the stem of its path, which f
 one key. Note that a single video writes with no alignment call at all, claiming it started exactly at
 ``session_start_time``. That is a claim worth checking rather than accepting.
 
+Where a session has more than one camera, give each interface its own ``metadata_key``. It addresses that
+camera's entry in ``metadata["Behavior"]["ExternalVideos"]``, which keeps the two ``ImageSeries`` and their
+devices apart, and it is what a ``PoseEstimation`` container names when it says which video its keypoints
+were tracked from (see :ref:`annotate_pose_metadata`).
+
 **Known offset.** All you know is when the camera started relative to the session start.
 
 .. code-block:: python
@@ -195,16 +191,17 @@ one clock into the other. A shift will not do it, because the two clocks drift.
 
 .. code-block:: python
 
-    import pandas as pd
+    # Read from whatever the camera's acquisition software wrote, both on the camera's own clock.
+    frame_times = ...  # one per frame
+    camera_sync_times = ...  # one per sync pulse
 
-    camera_log = pd.read_csv("session_frame_times.csv")  # both columns on the camera's own clock
-    frame_times = camera_log["frame_timestamp"].dropna().to_numpy()
-    camera_sync_times = camera_log["sync_timestamp"].dropna().to_numpy()
+    # The same pulses, as the recording system timestamped them, on the session clock.
+    recording_system_sync_times = digital_interface.get_event_times("camera_sync")
 
     interface.alignment["session"].set_times(frame_times)
     interface.alignment.remap_times(
         local_sync_times=camera_sync_times,
-        reference_sync_times=digital_interface.get_event_times("camera_sync"),
+        reference_sync_times=recording_system_sync_times,
     )
 
 Set the log's times first, which puts the video on the camera's clock, then remap that clock onto the
@@ -346,47 +343,6 @@ One case this does not cover: a camera that free-runs while only some of its fra
 The counts no longer say which frames were saved, so neither the gaps nor the onsets can reconstruct the
 mapping, and no alignment recipe repairs it. That one needs per-frame metadata from the acquisition
 software.
-
-Several cameras of the same subject
------------------------------------
-
-A top view and a side view, or a face camera and a body camera, recording the same subject at the same
-time. Each camera is its own acquisition system with its own clock, so each
-gets its own interface, its own ``ImageSeries``, its own camera device, and its own alignment, and each one
-is then whichever of the cases above fits it.
-
-.. code-block:: python
-
-    from neuroconv import ConverterPipe
-
-    top_camera = ExternalVideoInterface(file_paths=["top.avi"], metadata_key="top_camera")
-    side_camera = ExternalVideoInterface(file_paths=["side.avi"], metadata_key="side_camera")
-
-    # The alignment key is the file's stem, so "top.avi" is "top".
-    top_camera.alignment["top"].set_times(digital_interface.get_event_times("top_frame"))
-    side_camera.alignment["side"].set_times(digital_interface.get_event_times("side_frame"))
-
-    converter = ConverterPipe(
-        data_interfaces=dict(
-            TopCamera=top_camera,
-            SideCamera=side_camera,
-            Recording=recording_interface,
-            Digital=digital_interface,
-        )
-    )
-
-Give each camera its own ``metadata_key``. It is the address of that camera's entry in
-``metadata["Behavior"]["ExternalVideos"]``, it keeps the two ``ImageSeries`` and their devices apart, and
-it is what a ``PoseEstimation`` container names when it says which video its keypoints were tracked from
-(see :ref:`annotate_pose_metadata`).
-
-Both lines land on the same recording system, so both cameras' frames are timestamped on one clock and it
-does not matter that the cameras themselves drift apart: the drift is measured rather than assumed. That is
-the reason to take every camera's times from the digital inputs even when they were started together.
-
-What you cannot do is borrow one camera's times for another that has no line of its own. A shared trigger
-starts them together and nothing keeps them together afterwards, since each free-runs on its own
-oscillator.
 
 A setup this guide does not cover
 ---------------------------------
