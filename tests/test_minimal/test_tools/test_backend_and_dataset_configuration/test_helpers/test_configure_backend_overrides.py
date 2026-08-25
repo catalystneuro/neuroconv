@@ -49,9 +49,9 @@ def test_simple_time_series_override(
 
     higher_gzip_level = 5
     if backend == "hdf5":
-        dataset_configuration.compression_options = dict(level=higher_gzip_level)
+        dataset_configuration.compressor_options = [dict(level=higher_gzip_level)]
     elif backend == "zarr":
-        dataset_configuration.compression_options = dict(level=higher_gzip_level)
+        dataset_configuration.compressor_options = [dict(level=higher_gzip_level)]
 
     configure_backend(nwbfile=nwbfile, backend_configuration=backend_configuration)
 
@@ -93,9 +93,9 @@ def test_simple_dynamic_table_override(tmpdir: Path, backend: Literal["hdf5", "z
 
     higher_gzip_level = 5
     if backend == "hdf5":
-        dataset_configuration.compression_options = dict(level=higher_gzip_level)
+        dataset_configuration.compressor_options = [dict(level=higher_gzip_level)]
     elif backend == "zarr":
-        dataset_configuration.compression_options = dict(level=higher_gzip_level)
+        dataset_configuration.compressor_options = [dict(level=higher_gzip_level)]
 
     configure_backend(nwbfile=nwbfile, backend_configuration=backend_configuration)
 

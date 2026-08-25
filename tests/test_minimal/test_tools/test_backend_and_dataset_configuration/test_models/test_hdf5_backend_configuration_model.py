@@ -30,7 +30,7 @@ acquisition/TestElectricalSeriesAP/data
   chunk shape : (78125, 64)
   disk space usage per chunk : 10.00 MB
 
-  compression method : gzip
+  compressors : ['gzip']
 
 
 acquisition/TestElectricalSeriesLF/data
@@ -45,7 +45,7 @@ acquisition/TestElectricalSeriesLF/data
   chunk shape : (37500, 128)
   disk space usage per chunk : 9.60 MB
 
-  compression method : gzip
+  compressors : ['gzip']
 
 """
     assert out.getvalue() == expected_print

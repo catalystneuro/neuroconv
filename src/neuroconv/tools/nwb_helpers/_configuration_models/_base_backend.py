@@ -268,7 +268,8 @@ class BackendConfiguration(BaseModel):
                 f"'{self.backend}'. Available methods: {list(available_methods.keys())}"
             )
 
-        # Apply global compression to ALL datasets
+        # Apply global compression to ALL datasets, leaving any filters that compose with it in place
         for dataset_configuration in self.dataset_configurations.values():
-            dataset_configuration.compression_method = compression_method
-            dataset_configuration.compression_options = compression_options
+            dataset_configuration._set_compression(
+                compression_method=compression_method, compression_options=compression_options
+            )

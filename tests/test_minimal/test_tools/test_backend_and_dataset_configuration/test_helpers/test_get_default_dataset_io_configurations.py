@@ -45,8 +45,8 @@ def test_configuration_on_time_series(iterator: callable, backend: Literal["hdf5
     assert dataset_configuration.dtype == array.dtype
     assert dataset_configuration.chunk_shape == array.shape
     assert dataset_configuration.buffer_shape == array.shape
-    assert dataset_configuration.compression_method == "gzip"
-    assert dataset_configuration.compression_options is None
+    assert dataset_configuration.compressors == ["gzip"]
+    assert dataset_configuration.compressor_options is None
 
     if backend == "zarr":
         assert dataset_configuration.filter_methods is None
@@ -119,7 +119,7 @@ def test_configuration_on_image(backend: Literal["hdf5", "zarr"]):
     assert dataset_configuration.dtype == array.dtype
     assert dataset_configuration.chunk_shape == array.shape
     assert dataset_configuration.buffer_shape == array.shape
-    assert dataset_configuration.compression_method == "gzip"
+    assert dataset_configuration.compressors == ["gzip"]
 
 
 @pytest.mark.parametrize("backend", ["hdf5", "zarr"])
@@ -158,8 +158,8 @@ def test_configuration_on_dynamic_table(iterator: callable, backend: Literal["hd
     assert dataset_configuration.dtype == array.dtype
     assert dataset_configuration.chunk_shape == array.shape
     assert dataset_configuration.buffer_shape == array.shape
-    assert dataset_configuration.compression_method == "gzip"
-    assert dataset_configuration.compression_options is None
+    assert dataset_configuration.compressors == ["gzip"]
+    assert dataset_configuration.compressor_options is None
 
     if backend == "zarr":
         assert dataset_configuration.filter_methods is None
@@ -195,8 +195,8 @@ def test_configuration_on_ragged_units_table(backend: Literal["hdf5", "zarr"]):
     assert dataset_configuration.dtype == np.dtype("float64")
     assert dataset_configuration.chunk_shape == (5,)
     assert dataset_configuration.buffer_shape == (5,)
-    assert dataset_configuration.compression_method == "gzip"
-    assert dataset_configuration.compression_options is None
+    assert dataset_configuration.compressors == ["gzip"]
+    assert dataset_configuration.compressor_options is None
 
     if backend == "zarr":
         assert dataset_configuration.filter_methods is None
@@ -212,8 +212,8 @@ def test_configuration_on_ragged_units_table(backend: Literal["hdf5", "zarr"]):
     assert dataset_configuration.dtype == np.dtype("uint8")
     assert dataset_configuration.chunk_shape == (2,)
     assert dataset_configuration.buffer_shape == (2,)
-    assert dataset_configuration.compression_method == "gzip"
-    assert dataset_configuration.compression_options is None
+    assert dataset_configuration.compressors == ["gzip"]
+    assert dataset_configuration.compressor_options is None
 
     if backend == "zarr":
         assert dataset_configuration.filter_methods is None
@@ -229,8 +229,8 @@ def test_configuration_on_ragged_units_table(backend: Literal["hdf5", "zarr"]):
     assert dataset_configuration.dtype == np.dtype("int32")
     assert dataset_configuration.chunk_shape == (12, 3)
     assert dataset_configuration.buffer_shape == (12, 3)
-    assert dataset_configuration.compression_method == "gzip"
-    assert dataset_configuration.compression_options is None
+    assert dataset_configuration.compressors == ["gzip"]
+    assert dataset_configuration.compressor_options is None
 
     if backend == "zarr":
         assert dataset_configuration.filter_methods is None
@@ -246,8 +246,8 @@ def test_configuration_on_ragged_units_table(backend: Literal["hdf5", "zarr"]):
     assert dataset_configuration.dtype == np.dtype("uint8")
     assert dataset_configuration.chunk_shape == (4,)
     assert dataset_configuration.buffer_shape == (4,)
-    assert dataset_configuration.compression_method == "gzip"
-    assert dataset_configuration.compression_options is None
+    assert dataset_configuration.compressors == ["gzip"]
+    assert dataset_configuration.compressor_options is None
 
     if backend == "zarr":
         assert dataset_configuration.filter_methods is None
@@ -263,8 +263,8 @@ def test_configuration_on_ragged_units_table(backend: Literal["hdf5", "zarr"]):
     assert dataset_configuration.dtype == np.dtype("uint8")
     assert dataset_configuration.chunk_shape == (2,)
     assert dataset_configuration.buffer_shape == (2,)
-    assert dataset_configuration.compression_method == "gzip"
-    assert dataset_configuration.compression_options is None
+    assert dataset_configuration.compressors == ["gzip"]
+    assert dataset_configuration.compressor_options is None
 
     if backend == "zarr":
         assert dataset_configuration.filter_methods is None
@@ -295,8 +295,8 @@ def test_configuration_on_compass_direction(iterator: callable, backend: Literal
     assert dataset_configuration.dtype == array.dtype
     assert dataset_configuration.chunk_shape == array.shape
     assert dataset_configuration.buffer_shape == array.shape
-    assert dataset_configuration.compression_method == "gzip"
-    assert dataset_configuration.compression_options is None
+    assert dataset_configuration.compressors == ["gzip"]
+    assert dataset_configuration.compressor_options is None
 
     if backend == "zarr":
         assert dataset_configuration.filter_methods is None
@@ -344,8 +344,8 @@ def test_configuration_on_ndx_events(backend: Literal["hdf5", "zarr"]):
     assert data_dataset_configuration.dtype == data.dtype
     assert data_dataset_configuration.chunk_shape == data.shape
     assert data_dataset_configuration.buffer_shape == data.shape
-    assert data_dataset_configuration.compression_method == "gzip"
-    assert data_dataset_configuration.compression_options is None
+    assert data_dataset_configuration.compressors == ["gzip"]
+    assert data_dataset_configuration.compressor_options is None
 
     if backend == "zarr":
         assert data_dataset_configuration.filter_methods is None
@@ -363,8 +363,8 @@ def test_configuration_on_ndx_events(backend: Literal["hdf5", "zarr"]):
     assert timestamps_dataset_configuration.dtype == timestamps.dtype
     assert timestamps_dataset_configuration.chunk_shape == timestamps.shape
     assert timestamps_dataset_configuration.buffer_shape == timestamps.shape
-    assert timestamps_dataset_configuration.compression_method == "gzip"
-    assert timestamps_dataset_configuration.compression_options is None
+    assert timestamps_dataset_configuration.compressors == ["gzip"]
+    assert timestamps_dataset_configuration.compressor_options is None
 
     if backend == "zarr":
         assert timestamps_dataset_configuration.filter_methods is None

@@ -17,7 +17,7 @@ def test_get_data_io_kwargs_abstract_error():
             dtype=np.dtype("int16"),
             chunk_shape=(78_125, 64),
             buffer_shape=(1_250_000, 384),
-            compression_method="gzip",
+            compressors=["gzip"],
         )
     assert "Can't instantiate abstract class DatasetIOConfiguration" in str(error_info.value)
 
@@ -38,7 +38,7 @@ def test_get_data_io_kwargs_not_implemented():
         dtype=np.dtype("int16"),
         chunk_shape=(78_125, 64),
         buffer_shape=(1_250_000, 384),
-        compression_method="gzip",
+        compressors=["gzip"],
     )
 
     with pytest.raises(NotImplementedError):
@@ -77,7 +77,7 @@ def test_model_json_schema_generator_assertion():
 
 #     assert dataset_io_configuration.chunk_shape == (3,)
 #     assert dataset_io_configuration.buffer_shape == (3,)
-#     assert dataset_io_configuration.compression_method is None
+#     assert dataset_io_configuration.compressors is None
 
 
 def test_from_neurodata_object_dtype_object_all_strings():
@@ -102,4 +102,4 @@ def test_from_neurodata_object_dtype_object_all_strings():
 
     assert dataset_io_configuration.chunk_shape == (3,)
     assert dataset_io_configuration.buffer_shape == (3,)
-    assert dataset_io_configuration.compression_method == "gzip"
+    assert dataset_io_configuration.compressors == ["gzip"]

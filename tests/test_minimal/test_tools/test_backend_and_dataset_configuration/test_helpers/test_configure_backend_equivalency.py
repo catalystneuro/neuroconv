@@ -66,7 +66,7 @@ def test_configure_backend_equivalency(
     # assert False, f"{backend_configuration_2=}"
 
     dataset_configuration = backend_configuration_2.dataset_configurations["acquisition/TestTimeSeries/data"]
-    dataset_configuration.compression_options = {"level": 2}
+    dataset_configuration.compressor_options = [{"level": 2}]
     configure_backend(nwbfile=nwbfile_1, backend_configuration=backend_configuration_2)
 
     nwbfile_path = str(tmpdir / f"test_configure_backend_equivalency.nwb")

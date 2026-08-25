@@ -4,7 +4,8 @@ from io import StringIO
 from unittest.mock import patch
 
 import pytest
-from numcodecs import GZip
+from numcodecs import Delta, GZip, Shuffle
+from pydantic import ValidationError
 
 from neuroconv.tools.nwb_helpers import (
     AVAILABLE_ZARR_COMPRESSION_METHODS,
@@ -33,7 +34,7 @@ acquisition/TestElectricalSeries/data
   chunk shape : (78125, 64)
   disk space usage per chunk : 10.00 MB
 
-  compression method : gzip
+  compressors : ['gzip']
 
 """
     assert out.getvalue() == expected_print
@@ -41,7 +42,7 @@ acquisition/TestElectricalSeries/data
 
 def test_zarr_dataset_configuration_print_with_compression_options():
     """Test the printout display of a ZarrDatasetIOConfiguration model looks nice."""
-    zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration(compression_options=dict(level=5))
+    zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration(compressor_options=[dict(level=5)])
 
     with patch("sys.stdout", new=StringIO()) as out:
         print(zarr_dataset_configuration)
@@ -59,8 +60,8 @@ acquisition/TestElectricalSeries/data
   chunk shape : (78125, 64)
   disk space usage per chunk : 10.00 MB
 
-  compression method : gzip
-  compression options : {'level': 5}
+  compressors : ['gzip']
+  compressor options : [{'level': 5}]
 
 """
     assert out.getvalue() == expected_print
@@ -68,7 +69,7 @@ acquisition/TestElectricalSeries/data
 
 def test_zarr_dataset_configuration_print_with_compression_disabled():
     """Test the printout display of a ZarrDatasetIOConfiguration model looks nice."""
-    zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration(compression_method=None)
+    zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration(compressors=None)
 
     with patch("sys.stdout", new=StringIO()) as out:
         print(zarr_dataset_configuration)
@@ -110,7 +111,7 @@ acquisition/TestElectricalSeries/data
   chunk shape : (78125, 64)
   disk space usage per chunk : 10.00 MB
 
-  compression method : gzip
+  compressors : ['gzip']
 
   filter methods : ['delta']
 
@@ -140,7 +141,7 @@ acquisition/TestElectricalSeries/data
   chunk shape : (78125, 64)
   disk space usage per chunk : 10.00 MB
 
-  compression method : gzip
+  compressors : ['gzip']
 
   filter methods : ['blosc']
   filter options : [{'clevel': 5}]
@@ -157,8 +158,8 @@ def test_zarr_dataset_configuration_repr():
     expected_repr = (
         "ZarrDatasetIOConfiguration(object_id='481a0860-3a0c-40ec-b931-df4a3e9b101f', "
         "location_in_file='acquisition/TestElectricalSeries/data', dataset_name='data', dtype=dtype('int16'), "
-        "full_shape=(1800000, 384), chunk_shape=(78125, 64), buffer_shape=(1250000, 384), compression_method='gzip', "
-        "compression_options=None, filter_methods=None, filter_options=None)"
+        "full_shape=(1800000, 384), chunk_shape=(78125, 64), buffer_shape=(1250000, 384), compressors=['gzip'], "
+        "compressor_options=None, filter_methods=None, filter_options=None)"
     )
     assert repr(zarr_dataset_configuration) == expected_repr
 
@@ -215,3 +216,40 @@ def test_zarr_dataset_io_configuration_schema():
     assert ZarrDatasetIOConfiguration.schema() is not None
     assert ZarrDatasetIOConfiguration.schema_json() is not None
     assert ZarrDatasetIOConfiguration.model_json_schema() is not None
+
+
+def test_get_data_io_kwargs_with_shuffle():
+    """Zarr v2 has a single compressor slot, so every entry of `compressors` but the last rides in `filters`."""
+    zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration(compressors=["shuffle", "gzip"])
+
+    assert zarr_dataset_configuration.get_data_io_kwargs() == dict(
+        chunks=(78125, 64), compressor=GZip(level=1), filters=[Shuffle()]
+    )
+
+
+def test_get_data_io_kwargs_with_shuffle_and_a_filter_method():
+    """An array-to-array filter method stays ahead of the entries moved out of `compressors`."""
+    zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration(
+        compressors=["shuffle", "gzip"], filter_methods=["delta"], filter_options=[dict(dtype="int16")]
+    )
+
+    assert zarr_dataset_configuration.get_data_io_kwargs() == dict(
+        chunks=(78125, 64), compressor=GZip(level=1), filters=[Delta(dtype="int16"), Shuffle()]
+    )
+
+
+def test_compressor_options_length_mismatch_raises():
+    with pytest.raises(ValidationError, match="Length mismatch between `compressors`"):
+        mock_ZarrDatasetIOConfiguration(compressors=["shuffle", "gzip"], compressor_options=[None])
+
+
+def test_deprecated_compression_method_property():
+    zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration(compressors=["shuffle", "gzip"])
+
+    with pytest.warns(FutureWarning, match="removed in v0.12.0"):
+        assert zarr_dataset_configuration.compression_method == "gzip"
+
+    with pytest.warns(FutureWarning, match="removed in v0.12.0"):
+        zarr_dataset_configuration.compression_method = "zstd"
+
+    assert zarr_dataset_configuration.compressors == ["shuffle", "zstd"]

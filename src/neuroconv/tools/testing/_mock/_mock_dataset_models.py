@@ -22,10 +22,10 @@ def mock_HDF5DatasetIOConfiguration(
     dtype: np.dtype = np.dtype("int16"),
     chunk_shape: tuple[int, ...] = (78_125, 64),  # ~10 MB
     buffer_shape: tuple[int, ...] = (1_250_000, 384),  # ~1 GB
-    compression_method: (
-        Literal[tuple(AVAILABLE_HDF5_COMPRESSION_METHODS.keys())] | h5py._hl.filters.FilterRefBase | None
-    ) = "gzip",
-    compression_options: dict[str, Any] | None = None,
+    compressors: (
+        Iterable[Literal[tuple(AVAILABLE_HDF5_COMPRESSION_METHODS.keys())] | h5py._hl.filters.FilterRefBase] | None
+    ) = ("gzip",),
+    compressor_options: Iterable[dict[str, Any] | None] | None = None,
 ) -> HDF5DatasetIOConfiguration:
     """Mock object of a HDF5DatasetIOConfiguration with NeuroPixel-like values to show chunk/buffer recommendations."""
     return HDF5DatasetIOConfiguration(
@@ -36,8 +36,8 @@ def mock_HDF5DatasetIOConfiguration(
         dtype=dtype,
         chunk_shape=chunk_shape,
         buffer_shape=buffer_shape,
-        compression_method=compression_method,
-        compression_options=compression_options,
+        compressors=None if compressors is None else list(compressors),
+        compressor_options=None if compressor_options is None else list(compressor_options),
     )
 
 
@@ -49,8 +49,10 @@ def mock_ZarrDatasetIOConfiguration(
     dtype: np.dtype = np.dtype("int16"),
     chunk_shape: tuple[int, ...] = (78_125, 64),  # ~10 MB
     buffer_shape: tuple[int, ...] = (1_250_000, 384),  # ~1 GB
-    compression_method: Literal[tuple(AVAILABLE_ZARR_COMPRESSION_METHODS.keys())] | numcodecs.abc.Codec | None = "gzip",
-    compression_options: dict[str, Any] | None = None,
+    compressors: Iterable[Literal[tuple(AVAILABLE_ZARR_COMPRESSION_METHODS.keys())] | numcodecs.abc.Codec] | None = (
+        "gzip",
+    ),
+    compressor_options: Iterable[dict[str, Any] | None] | None = None,
     filter_methods: (
         Iterable[Literal[tuple(AVAILABLE_ZARR_COMPRESSION_METHODS.keys())] | numcodecs.abc.Codec | None] | None
     ) = None,
@@ -65,8 +67,8 @@ def mock_ZarrDatasetIOConfiguration(
         dtype=dtype,
         chunk_shape=chunk_shape,
         buffer_shape=buffer_shape,
-        compression_method=compression_method,
-        compression_options=compression_options,
+        compressors=None if compressors is None else list(compressors),
+        compressor_options=None if compressor_options is None else list(compressor_options),
         filter_methods=filter_methods,
         filter_options=filter_options,
     )
