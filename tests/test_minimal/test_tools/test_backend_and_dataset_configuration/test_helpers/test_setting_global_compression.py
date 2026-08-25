@@ -368,3 +368,35 @@ def test_global_compression_deprecated_singular_form():
     for dataset_configuration in backend_configuration.dataset_configurations.values():
         assert dataset_configuration.compressors == ["gzip"]
         assert dataset_configuration.compressor_options == [{"level": 9}]
+
+
+def test_global_compression_deprecated_keyword_form():
+    """The keyword spelling the user guide used to teach still works and warns."""
+    nwbfile = create_test_nwbfile()
+    backend_configuration = get_default_backend_configuration(nwbfile, backend="hdf5")
+
+    with pytest.warns(FutureWarning, match="removed in v0.12.0"):
+        backend_configuration.apply_global_compression(
+            compression_method="gzip",
+            compression_options={"level": 9},
+        )
+
+    for dataset_configuration in backend_configuration.dataset_configurations.values():
+        assert dataset_configuration.compressors == ["gzip"]
+        assert dataset_configuration.compressor_options == [{"level": 9}]
+
+
+def test_global_compression_both_spellings_raises():
+    nwbfile = create_test_nwbfile()
+    backend_configuration = get_default_backend_configuration(nwbfile, backend="hdf5")
+
+    with pytest.raises(ValueError, match="Use only `compressors` and `compressor_options`"):
+        backend_configuration.apply_global_compression(["gzip"], compression_method="gzip")
+
+
+def test_global_compression_without_compressors_raises():
+    nwbfile = create_test_nwbfile()
+    backend_configuration = get_default_backend_configuration(nwbfile, backend="hdf5")
+
+    with pytest.raises(TypeError, match="requires `compressors`"):
+        backend_configuration.apply_global_compression()

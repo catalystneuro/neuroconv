@@ -177,34 +177,6 @@ class DatasetIOConfiguration(BaseModel, ABC):
                 return index
         return None
 
-    def _set_compression(self, compression_method, compression_options: dict[str, Any] | None) -> None:
-        """Replace the compression method and its options, leaving any filters that compose with it in place."""
-        index = self._compressor_index()
-
-        if compression_method is None:
-            if index is not None:
-                compressors = list(self.compressors)
-                compressors.pop(index)
-                compressor_options = None if self.compressor_options is None else list(self.compressor_options)
-                if compressor_options is not None:
-                    compressor_options.pop(index)
-                self.compressors = compressors or None
-                self.compressor_options = compressor_options or None
-            return
-
-        compressors = list(self.compressors or [])
-        compressor_options = list(self.compressor_options or [None] * len(compressors))
-        if index is None:
-            compressors.append(compression_method)
-            compressor_options.append(compression_options)
-        else:
-            compressors[index] = compression_method
-            compressor_options[index] = compression_options
-        self.compressors = compressors
-        self.compressor_options = (
-            compressor_options if any(options is not None for options in compressor_options) else None
-        )
-
     @abstractmethod
     def get_data_io_kwargs(self) -> dict[str, Any]:
         """

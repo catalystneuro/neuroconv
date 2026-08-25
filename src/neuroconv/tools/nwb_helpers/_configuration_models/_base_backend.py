@@ -223,8 +223,11 @@ class BackendConfiguration(BaseModel):
 
     def apply_global_compression(
         self,
-        compressors: list[str] | str,
+        compressors: list[str] | str | None = None,
         compressor_options: list[dict[str, Any] | None] | dict[str, Any] | None = None,
+        *,
+        compression_method: str | None = None,
+        compression_options: dict[str, Any] | None = None,
     ) -> None:
         """
         Apply a codec pipeline to all datasets in this backend configuration.
@@ -255,23 +258,38 @@ class BackendConfiguration(BaseModel):
         >>> backend_config.apply_global_compression(["shuffle", "gzip"])
 
         .. deprecated:: 0.10.1
-            Passing a single compression method and a single options dictionary is deprecated and
-            will be removed in v0.12.0. Pass lists instead.
+            The `compression_method` and `compression_options` arguments, and passing a single
+            compression method and a single options dictionary positionally, are deprecated and will
+            be removed in v0.12.0. Pass lists to `compressors` and `compressor_options` instead.
         """
         # Import here to avoid circular imports
         from ._hdf5_dataset_io import AVAILABLE_HDF5_COMPRESSION_METHODS
         from ._zarr_dataset_io import AVAILABLE_ZARR_COMPRESSION_METHODS
 
-        if isinstance(compressors, str) or isinstance(compressor_options, dict):
-            warnings.warn(
-                "Passing a single compression method and options to `apply_global_compression` is deprecated "
-                "and will be removed in v0.12.0. Pass lists instead, for example "
-                '`apply_global_compression(["gzip"], [{"level": 9}])`.',
-                FutureWarning,
-                stacklevel=2,
-            )
-            compressors = [compressors] if isinstance(compressors, str) else compressors
-            compressor_options = [compressor_options] if isinstance(compressor_options, dict) else compressor_options
+        deprecated_message = (
+            "Naming a single compression method and options for `apply_global_compression` is deprecated and will "
+            "be removed in v0.12.0. Pass lists instead, for example "
+            '`apply_global_compression(["gzip"], [{"level": 9}])`.'
+        )
+
+        if compression_method is not None or compression_options is not None:
+            if compressors is not None or compressor_options is not None:
+                raise ValueError(
+                    "Both the deprecated `compression_method`/`compression_options` and the new "
+                    "`compressors`/`compressor_options` were specified. Use only `compressors` and "
+                    "`compressor_options`."
+                )
+            warnings.warn(deprecated_message, FutureWarning, stacklevel=2)
+            compressors = compression_method
+            compressor_options = compression_options
+        elif isinstance(compressors, str) or isinstance(compressor_options, dict):
+            warnings.warn(deprecated_message, FutureWarning, stacklevel=2)
+
+        compressors = [compressors] if isinstance(compressors, str) else compressors
+        compressor_options = [compressor_options] if isinstance(compressor_options, dict) else compressor_options
+
+        if compressors is None:
+            raise TypeError("`apply_global_compression` requires `compressors`.")
 
         # Validate compression method for the backend
         if self.backend == "hdf5":
