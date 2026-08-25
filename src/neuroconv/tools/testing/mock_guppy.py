@@ -34,11 +34,11 @@ _DEFAULT_EVENT_STORE_TO_NAME = {
     "PrtR": "port_entries",
 }
 _SESSION_ID = "mock_guppy_session"
-# Detected transient times, shared by transientsOccurrences_* and the spontaneous-mode event trains.
 # One behavioral covariate scored four times inside the default recording. The third bin holds no
 # score, so the empty-bin case (NaN mean, count 0) is covered by the defaults.
 _DEFAULT_COVARIATES = {"akinesia": ((1.1, 1.6, 1.7, 2.6), (2.0, 3.0, 4.0, 5.0))}
-# Detected transient times shared by transientsOccurrences_* and the per-bin counts.
+# Detected transient times, shared by transientsOccurrences_*, the per-bin counts, and the
+# spontaneous-mode event trains.
 _TRANSIENT_PEAK_TIMES = (1.2, 1.5, 1.8, 2.5)
 # Seconds of raw recording GuPPy's lights-on trim discards before analysis (its default).
 _TIME_FOR_LIGHTS_TURN_ON = 1.0

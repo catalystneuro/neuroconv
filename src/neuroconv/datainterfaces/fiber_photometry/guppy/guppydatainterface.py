@@ -514,6 +514,7 @@ class GuppyInterface(BaseDataInterface):
                     transient_events[(event_name, recording_site)] = np.asarray(onsets_file["ts"][:], dtype=np.float64)
         return transient_events
 
+    @classmethod
     def _discover_binned_tables(cls, folder_path: Path, recording_sites: list[str]) -> dict[str, dict]:
         """Return ``{recording_site: {"metrics": ..., "covariates": ..., "correlations": ...}}``.
 
