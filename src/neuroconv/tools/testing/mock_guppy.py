@@ -386,8 +386,7 @@ def _write_parameters(
 
 
 def _trace_data(num_samples) -> np.ndarray:
-    """The sample values every derived trace carries, shared so the binned means derive from them."""
-    """The sample values every derived trace carries, shared so the tonic means can be derived from them."""
+    """The sample values every derived trace carries, shared so the binned and tonic means derive from them."""
     return np.linspace(-1.0, 1.0, num_samples, dtype=np.float64)
 
 

@@ -37,8 +37,9 @@ _PREFIX_TO_TRACE_TYPE = dict(cntrl_sig_fit="control_fit", dff="dff", z_score="z_
 _PREFIX_TO_UNIT = dict(cntrl_sig_fit="n.a.", dff="a.u.", z_score="a.u.")
 # GuPPy store-label prefix marking a behavioral covariate (e.g. 'covariate_akinesia').
 _COVARIATE_PREFIX = "covariate_"
-# ndx-guppy trace_type -> the column holding its per-bin mean in binned_metrics_<recording_site>.h5.
-_TRACE_TYPE_TO_BINNED_MEAN_COLUMN = dict(z_score="mean_zscore", dff="mean_dff")
+# ndx-guppy trace_type -> the column holding its mean, in both binned_metrics_<recording_site>.h5
+# (per bin) and tonic_<recording_site>.h5 (per epoch).
+_TRACE_TYPE_TO_MEAN_COLUMN = dict(z_score="mean_zscore", dff="mean_dff")
 # A binned-metrics column name -> the (trace_type, metric) pair it stands for. GuPPy spells the two
 # families differently ('mean_zscore' but 'transient_count_z_score'), so the mapping is written out.
 _BINNED_METRIC_COLUMN_TO_TRACE_TYPE_AND_METRIC = {
@@ -47,8 +48,6 @@ _BINNED_METRIC_COLUMN_TO_TRACE_TYPE_AND_METRIC = {
     "transient_count_z_score": ("z_score", "transient_count"),
     "transient_count_dff": ("dff", "transient_count"),
 }
-# ndx-guppy trace_type -> the column holding its per-epoch mean in tonic_<recording_site>.h5.
-_TRACE_TYPE_TO_TONIC_COLUMN = dict(z_score="mean_zscore", dff="mean_dff")
 # Per-window peak/area metric row prefixes in the peak_AUC_*.h5 DataFrame index.
 _BIN_COLUMN_PATTERN = re.compile(r"bin_\((\d+(?:\.\d+)?)-(\d+(?:\.\d+)?)\)$")
 # The two registry tables every GuPPy product references. The recording sites table is shared with
@@ -196,6 +195,8 @@ class GuppyInterface(BaseDataInterface):
             folder_path=folder_path, recording_sites=recording_sites
         )
         binned_tables_by_recording_site = self._discover_binned_tables(
+            folder_path=folder_path, recording_sites=recording_sites
+        )
         tonic_epochs_by_recording_site = self._discover_tonic_epochs(
             folder_path=folder_path, recording_sites=recording_sites
         )
@@ -510,25 +511,7 @@ class GuppyInterface(BaseDataInterface):
             result[recording_site] = tables
         return result
 
-    def _read_covariate_series(self) -> dict[str, dict[str, np.ndarray]]:
-        """Return ``{covariate_name: {"timestamps": ..., "values": ...}}`` for each labeled covariate.
-
-        Step 2 carries a covariate into the run folder as an ordinary store, ``<store_id>.hdf5`` with
-        ``timestamps`` and ``data`` datasets, and leaves the scored values untouched.
-        """
-        covariate_series = {}
-        for covariate_name, store_id in self._covariate_to_store_id.items():
-            store_path = self._folder_path / f"{store_id}.hdf5"
-            assert store_path.is_file(), (
-                f"{store_path.name} not found in {self._folder_path}; storesList.csv labels store "
-                f"'{store_id}' as the covariate '{covariate_name}', so its scored values should be here."
-            )
-            with h5py.File(store_path, "r") as store_file:
-                covariate_series[covariate_name] = dict(
-                    timestamps=np.asarray(store_file["timestamps"][:], dtype=np.float64),
-                    values=np.asarray(store_file["data"][:], dtype=np.float64),
-                )
-        return covariate_series
+    @classmethod
     def _discover_tonic_epochs(cls, folder_path: Path, recording_sites: list[str]) -> dict[str, pandas.DataFrame]:
         """Return ``{recording_site: epochs_dataframe}`` for each recording_site with tonic outputs.
 
@@ -560,6 +543,26 @@ class GuppyInterface(BaseDataInterface):
             )
             result[recording_site] = epochs.join(means.reset_index(drop=True))
         return result
+
+    def _read_covariate_series(self) -> dict[str, dict[str, np.ndarray]]:
+        """Return ``{covariate_name: {"timestamps": ..., "values": ...}}`` for each labeled covariate.
+
+        Step 2 carries a covariate into the run folder as an ordinary store, ``<store_id>.hdf5`` with
+        ``timestamps`` and ``data`` datasets, and leaves the scored values untouched.
+        """
+        covariate_series = {}
+        for covariate_name, store_id in self._covariate_to_store_id.items():
+            store_path = self._folder_path / f"{store_id}.hdf5"
+            assert store_path.is_file(), (
+                f"{store_path.name} not found in {self._folder_path}; storesList.csv labels store "
+                f"'{store_id}' as the covariate '{covariate_name}', so its scored values should be here."
+            )
+            with h5py.File(store_path, "r") as store_file:
+                covariate_series[covariate_name] = dict(
+                    timestamps=np.asarray(store_file["timestamps"][:], dtype=np.float64),
+                    values=np.asarray(store_file["data"][:], dtype=np.float64),
+                )
+        return covariate_series
 
     @staticmethod
     def _discover_analyzed_event_onsets(
@@ -824,9 +827,11 @@ class GuppyInterface(BaseDataInterface):
                 name="covariate_correlations",
                 description=(
                     "Descriptive correlation of each behavioral covariate against each per-bin GuPPy " "metric."
+                ),
+            )
         # Tonic analysis is an optional GuPPy step, so its entry appears only for a session that ran it.
         if self._tonic_epochs_by_recording_site:
-            metadata["FiberPhotometry"]["Guppy"][self.metadata_key]["TonicEpochs"] = dict(
+            guppy_metadata["TonicEpochs"] = dict(
                 name="tonic_epochs",
                 description=(
                     "Mean level of each GuPPy normalized trace within each tonic epoch window, one row "
@@ -905,12 +910,10 @@ class GuppyInterface(BaseDataInterface):
         Builds the ``GuppyParameters`` lab metadata, the ``GuppyRecordingSitesTable`` and
         ``GuppyEventsTable`` registries, the per-product objects (traces, transients, summary,
         cross-correlation, PSTH, peak/AUC, binned metrics, binned covariates, covariate correlations) each
-        referencing its registry rows, and the ``GuppyValidSignalIntervals`` object. Products are written on
-        the timestamps GuPPy emits. Each behavioral covariate's scored values are written as a
-        ``TimeSeries`` that the two covariate products reference.
-        cross-correlation, PSTH, peak/AUC) each referencing its registry rows, the
-        ``GuppyValidSignalIntervals`` object, and, where GuPPy's optional tonic analysis was run, the
-        ``GuppyTonicEpochs`` object. Products are written on the timestamps GuPPy emits.
+        referencing its registry rows, the ``GuppyValidSignalIntervals`` object, and, where GuPPy's optional
+        tonic analysis was run, the ``GuppyTonicEpochs`` object. Products are written on the timestamps
+        GuPPy emits. Each behavioral covariate's scored values are written as a ``TimeSeries`` that the two
+        covariate products reference.
 
         This method takes **no linkage arguments**: it writes only what the GuPPy output defines. The
         events registry references an ``EventsTable`` of GuPPy's own analyzed onsets, written into
@@ -1009,6 +1012,7 @@ class GuppyInterface(BaseDataInterface):
                 recording_sites_table=recording_sites_table,
                 tonic_epochs_metadata=guppy_metadata["TonicEpochs"],
             )
+
         # Derived continuous traces.
         self._add_guppy_derived_response_series_to_nwbfile(
             ndx_guppy=ndx_guppy,
@@ -1530,7 +1534,7 @@ class GuppyInterface(BaseDataInterface):
                         start_time=float(row.bin_start),
                         stop_time=float(row.bin_end),
                         trace_type=trace_type,
-                        mean=float(getattr(row, _TRACE_TYPE_TO_BINNED_MEAN_COLUMN[trace_type])),
+                        mean=float(getattr(row, _TRACE_TYPE_TO_MEAN_COLUMN[trace_type])),
                         transient_count=float(getattr(row, count_column, np.nan)),
                         n_samples=int(row.n_samples),
                         recording_site=recording_site_to_row_index[recording_site],
@@ -1539,7 +1543,6 @@ class GuppyInterface(BaseDataInterface):
         return binned_metrics
 
     def _add_guppy_binned_covariates_to_nwbfile(
-    def _add_guppy_tonic_epochs_to_nwbfile(
         self,
         *,
         ndx_guppy,
@@ -1552,13 +1555,6 @@ class GuppyInterface(BaseDataInterface):
 
         The bins are the ones the metrics table was reduced to, so the two tables line up row for row on
         their windows.
-        tonic_epochs_metadata: dict,
-    ):
-        """Build and add the GuppyTonicEpochs object over the epochs the tonic analysis defined.
-
-        One row per (recording_site, epoch, trace_type): the window is the epoch GuPPy averaged over,
-        on its emitted recording timebase, and ``mean`` is that trace's mean over the window. Each row
-        references its recording site via a DynamicTableRegion into the GuppyRecordingSitesTable.
         """
         recording_site_to_row_index = {
             recording_site: index for index, recording_site in enumerate(self._recording_sites)
@@ -1631,6 +1627,24 @@ class GuppyInterface(BaseDataInterface):
                 )
         processing_module.add(correlations_table)
         return correlations_table
+
+    def _add_guppy_tonic_epochs_to_nwbfile(
+        self,
+        *,
+        ndx_guppy,
+        processing_module,
+        recording_sites_table,
+        tonic_epochs_metadata: dict,
+    ):
+        """Build and add the GuppyTonicEpochs object over the epochs the tonic analysis defined.
+
+        One row per (recording_site, epoch, trace_type): the window is the epoch GuPPy averaged over,
+        on its emitted recording timebase, and ``mean`` is that trace's mean over the window. Each row
+        references its recording site via a DynamicTableRegion into the GuppyRecordingSitesTable.
+        """
+        recording_site_to_row_index = {
+            recording_site: index for index, recording_site in enumerate(self._recording_sites)
+        }
         tonic_epochs = ndx_guppy.GuppyTonicEpochs(
             name=tonic_epochs_metadata["name"],
             description=tonic_epochs_metadata["description"],
@@ -1647,7 +1661,7 @@ class GuppyInterface(BaseDataInterface):
                         stop_time=float(epoch.end),
                         label=str(epoch.label),
                         trace_type=trace_type,
-                        mean=float(getattr(epoch, _TRACE_TYPE_TO_TONIC_COLUMN[trace_type])),
+                        mean=float(getattr(epoch, _TRACE_TYPE_TO_MEAN_COLUMN[trace_type])),
                         recording_site=recording_site_to_row_index[recording_site],
                     )
         processing_module.add(tonic_epochs)
