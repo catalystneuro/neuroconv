@@ -1566,7 +1566,7 @@ class MockExternalVideoInterface(ExternalVideoInterface):
         frame_rate: float = 30.0,
         verbose: bool = False,
         *,
-        alignment_state: Literal["unaligned", "free_running", "triggered"] = "free_running",
+        rig_timing_setup: Literal["unstated", "free_running", "triggered"] = "free_running",
         metadata_key: str | None = None,
     ):
         """
@@ -1584,24 +1584,26 @@ class MockExternalVideoInterface(ExternalVideoInterface):
             several files describe one continuous recording.
         verbose : bool, default: False
             If True, display verbose output.
-        alignment_state : {"unaligned", "free_running", "triggered"}, default: "free_running"
-            The state the segments are left in, so a test can reach any of the states a real interface can
-            be in without a video on disk. The values come from how cameras are documented, free-running
-            against triggered acquisition, which is exactly this distinction: a free-running camera writing
-            rotated files produces segments that abut, a triggered one produces segments with gaps.
+        rig_timing_setup : {"unstated", "free_running", "triggered"}, default: "free_running"
+            The timing the rig produced, and what the mock did about it, so a test can reach any of the
+            states a real interface can be in without a video on disk. The two rig values come from how
+            cameras are documented, free-running against triggered acquisition, which is exactly this
+            distinction: a free-running camera writing rotated files produces segments that abut, a
+            triggered one produces segments with gaps.
 
-            ``"unaligned"``
-                Nothing set. Several files then read as one recording split in place, under a warning.
+            ``"unstated"``
+                Nothing set. Note that this produces the *same times* as ``"free_running"``; the only
+                difference is that nobody said so, which is why several files then read as one recording
+                split in place under a warning.
             ``"free_running"``
                 Each segment given the times it would have had anyway, abutting the one before and starting
-                at the session start, so the only difference from ``"unaligned"`` is that they count as set.
-                A single file is left alone, since one file is trivially contiguous with itself and a real
-                interface says nothing about it either.
+                at the session start. A single file is left alone, since one file is trivially contiguous
+                with itself and a real interface says nothing about it either.
             ``"triggered"``
                 Each segment preceded by one second, the first included, so the first trigger fires a second
                 after the session starts. A triggered camera has a measured start and it is never at zero,
-                which is also why this is the value that says something for a single file, and why a bug of
-                the size of an offset cannot hide in it.
+                which is why this is the value that says something for a single file, and why a bug the size
+                of an offset cannot hide in it.
 
             The spacing within a segment is always the source's own. A test that needs a particular
             timeline, an unusual gap or irregular times says so directly with
@@ -1623,13 +1625,13 @@ class MockExternalVideoInterface(ExternalVideoInterface):
         self.num_frames = num_frames
         self.frame_rate = frame_rate
 
-        self.alignment_state = alignment_state
+        self.rig_timing_setup = rig_timing_setup
         segment_duration = num_frames / frame_rate
         # A fixed second, not a parameter: a test needing a particular timeline sets the times itself.
-        gap = 1.0 if alignment_state == "triggered" else 0.0
+        gap = 1.0 if rig_timing_setup == "triggered" else 0.0
         # One file is trivially contiguous with itself, so leave it where a real interface leaves it.
-        single_file_needs_nothing = alignment_state == "free_running" and self._number_of_files == 1
-        if alignment_state != "unaligned" and not single_file_needs_nothing:
+        single_file_needs_nothing = rig_timing_setup == "free_running" and self._number_of_files == 1
+        if rig_timing_setup != "unstated" and not single_file_needs_nothing:
             for file_index, segment_key in enumerate(self._segment_keys):
                 # Every segment is preceded by the gap, the first included, so a triggered camera starts
                 # after the session does rather than exactly with it.

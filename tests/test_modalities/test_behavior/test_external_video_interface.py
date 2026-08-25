@@ -103,7 +103,7 @@ class TestExternalVideoAlignment:
             file_paths=["trial_1.avi", "trial_2.avi"],
             num_frames=2,
             frame_rate=2.0,
-            alignment_state="unaligned",
+            rig_timing_setup="unstated",
         )
         assert not interface.alignment.is_fine_aligned
 
@@ -115,11 +115,11 @@ class TestExternalVideoAlignment:
         assert image_series.starting_time == 0.0
         assert image_series.starting_frame == [0, 2]
 
-    @pytest.mark.parametrize("alignment_state", ["free_running", "triggered"])
-    def test_segments_with_times_of_their_own_do_not_warn(self, alignment_state):
+    @pytest.mark.parametrize("rig_timing_setup", ["free_running", "triggered"])
+    def test_segments_with_times_of_their_own_do_not_warn(self, rig_timing_setup):
         """Times of their own are what the warning asks for, however they were given."""
         interface = MockExternalVideoInterface(
-            file_paths=["trial_1.avi", "trial_2.avi"], num_frames=2, frame_rate=2.0, alignment_state=alignment_state
+            file_paths=["trial_1.avi", "trial_2.avi"], num_frames=2, frame_rate=2.0, rig_timing_setup=rig_timing_setup
         )
         assert interface.alignment.is_fine_aligned
 
