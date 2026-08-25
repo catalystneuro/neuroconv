@@ -67,15 +67,17 @@ class DoricConverterTestMixin:
     source file, so the resolved stream is compared against the file rather than against the interface.
     """
 
-    @pytest.fixture
-    def acquisition_folder(self, tmp_path):
-        folder_path = tmp_path / "session"
+    @pytest.fixture(scope="class")
+    @classmethod
+    def acquisition_folder(cls, tmp_path_factory):
+        folder_path = tmp_path_factory.mktemp("doric_session") / "session"
         folder_path.mkdir()
-        shutil.copy(DORIC_FOLDER / self.ACQUISITION_FILE_NAME, folder_path / self.ACQUISITION_FILE_NAME)
+        shutil.copy(DORIC_FOLDER / cls.ACQUISITION_FILE_NAME, folder_path / cls.ACQUISITION_FILE_NAME)
         return folder_path
 
-    @pytest.fixture
-    def event_onsets(self, acquisition_folder):
+    @pytest.fixture(scope="class")
+    @classmethod
+    def event_onsets(cls, acquisition_folder):
         """Onsets for the mock to record as GuPPy's, defaulting to the generator's own.
 
         Only a layout whose tests convert needs real ones -- the converter matches them against the
@@ -83,12 +85,13 @@ class DoricConverterTestMixin:
         """
         return None
 
-    @pytest.fixture
-    def guppy_output_folder(self, tmp_path, event_onsets):
+    @pytest.fixture(scope="class")
+    @classmethod
+    def guppy_output_folder(cls, tmp_path_factory, event_onsets):
         return generate_mock_guppy_output_folder(
-            tmp_path / "session_output_1",
-            recording_site_to_stores=self.RECORDING_SITE_TO_STORES,
-            event_store_to_name=self.EVENT_STORE_TO_NAME,
+            tmp_path_factory.mktemp("doric_output") / "session_output_1",
+            recording_site_to_stores=cls.RECORDING_SITE_TO_STORES,
+            event_store_to_name=cls.EVENT_STORE_TO_NAME,
             cross_correlation_pairs=(),
             event_onsets=event_onsets,
         )
@@ -162,13 +165,14 @@ class TestGuppyConverterDoricModernHDF5(DoricConverterTestMixin):
         prefix = "ROISignals/Series0001" if group.startswith("CAM1EXC") else "Signals/Series0001"
         return read_doric_hdf5_stream(file_path, f"DataAcquisition/BBC300/{prefix}/{group}/{dataset}")
 
-    @pytest.fixture
-    def event_onsets(self, acquisition_folder):
+    @pytest.fixture(scope="class")
+    @classmethod
+    def event_onsets(cls, acquisition_folder):
         """This layout converts, so the mock records the lines' real rising edges as GuPPy's onsets."""
-        file_path = acquisition_folder / self.ACQUISITION_FILE_NAME
+        file_path = acquisition_folder / cls.ACQUISITION_FILE_NAME
         return {
-            event_name: digital_line_rising_edges(file_path, self.DIGITAL_IO_GROUP, store_id.split("/")[-1])
-            for store_id, event_name in self.EVENT_STORE_TO_NAME.items()
+            event_name: digital_line_rising_edges(file_path, cls.DIGITAL_IO_GROUP, store_id.split("/")[-1])
+            for store_id, event_name in cls.EVENT_STORE_TO_NAME.items()
         }
 
     def test_session_start_time_comes_from_the_doric_file(self, converter):
