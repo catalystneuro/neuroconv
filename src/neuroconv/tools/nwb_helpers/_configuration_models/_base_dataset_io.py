@@ -136,6 +136,23 @@ class DatasetIOConfiguration(BaseModel, ABC):
         default=None, description="The optional parameters to use for the specified compression method."
     )
 
+    @property
+    def full_size_in_bytes(self) -> int:
+        """The size the entire source array occupies in memory."""
+        return math.prod(self.full_shape) * self.dtype.itemsize
+
+    @property
+    def maximum_ram_usage_per_iteration_in_bytes(self) -> int:
+        """The RAM a single iteration of the write takes, which is one buffer of the source array."""
+        return math.prod(self.buffer_shape) * self.dtype.itemsize
+
+    @property
+    def disk_space_usage_per_chunk_in_bytes(self) -> int | None:
+        """The uncompressed size of a single chunk, or `None` if the dataset is not chunked."""
+        if self.chunk_shape is None:
+            return None
+        return math.prod(self.chunk_shape) * self.dtype.itemsize
+
     @abstractmethod
     def get_data_io_kwargs(self) -> dict[str, Any]:
         """
@@ -154,25 +171,21 @@ class DatasetIOConfiguration(BaseModel, ABC):
         `list[DatasetConfiguration]`, would print out the nested representations, which only look good when using the
         basic `repr` (that is, this fancy string print-out does not look good when nested in another container).
         """
-        size_in_bytes = math.prod(self.full_shape) * self.dtype.itemsize
-        maximum_ram_usage_per_iteration_in_bytes = math.prod(self.buffer_shape) * self.dtype.itemsize
-
         string = (
             f"\n{self.location_in_file}"
             f"\n{'-' * len(self.location_in_file)}"
             f"\n  dtype : {self.dtype}"
             f"\n  full shape of source array : {self.full_shape}"
-            f"\n  full size of source array : {human_readable_size(size_in_bytes)}"
+            f"\n  full size of source array : {human_readable_size(self.full_size_in_bytes)}"
             "\n"
             f"\n  buffer shape : {self.buffer_shape}"
-            f"\n  expected RAM usage : {human_readable_size(maximum_ram_usage_per_iteration_in_bytes)}"
+            f"\n  expected RAM usage : {human_readable_size(self.maximum_ram_usage_per_iteration_in_bytes)}"
             "\n"
         )
         if self.chunk_shape is not None:
-            disk_space_usage_per_chunk_in_bytes = math.prod(self.chunk_shape) * self.dtype.itemsize
             string += (
                 f"\n  chunk shape : {self.chunk_shape}"
-                f"\n  disk space usage per chunk : {human_readable_size(disk_space_usage_per_chunk_in_bytes)}"
+                f"\n  disk space usage per chunk : {human_readable_size(self.disk_space_usage_per_chunk_in_bytes)}"
                 "\n"
             )
         if self.compression_method is not None:
