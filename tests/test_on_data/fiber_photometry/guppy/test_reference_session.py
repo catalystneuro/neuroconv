@@ -199,13 +199,15 @@ class TestGuppyReferenceSession:
         converter.run_conversion(nwbfile_path=str(nwbfile_path), metadata=metadata, overwrite=True)
         return nwbfile_path
 
-    @pytest.fixture
-    def nwbfile(self, nwbfile_path):
+    @pytest.fixture(scope="class")
+    @classmethod
+    def nwbfile(cls, nwbfile_path):
         with NWBHDF5IO(str(nwbfile_path), "r") as io:
             yield io.read()
 
-    @pytest.fixture
-    def module(self, nwbfile):
+    @pytest.fixture(scope="class")
+    @classmethod
+    def module(cls, nwbfile):
         return nwbfile.processing["guppy"]
 
     @pytest.fixture
