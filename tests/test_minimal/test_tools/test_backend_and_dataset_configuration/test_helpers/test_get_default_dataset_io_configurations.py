@@ -363,7 +363,7 @@ def test_configuration_on_ndx_events(backend: Literal["hdf5", "zarr"]):
     assert timestamps_dataset_configuration.dtype == timestamps.dtype
     assert timestamps_dataset_configuration.chunk_shape == timestamps.shape
     assert timestamps_dataset_configuration.buffer_shape == timestamps.shape
-    assert timestamps_dataset_configuration.compressors == ["gzip"]
+    assert timestamps_dataset_configuration.compressors == ["shuffle", "gzip"]
     assert timestamps_dataset_configuration.compressor_options is None
 
     if backend == "zarr":
