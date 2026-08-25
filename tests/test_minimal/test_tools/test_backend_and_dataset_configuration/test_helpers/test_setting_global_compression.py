@@ -3,7 +3,7 @@
 import h5py
 import numpy as np
 import pytest
-from pynwb import NWBHDF5IO
+from pynwb import read_nwb
 from pynwb.testing.mock.base import mock_TimeSeries
 from pynwb.testing.mock.file import mock_NWBFile
 
@@ -137,10 +137,9 @@ class TestGlobalCompressionHDF5:
         assert nwbfile_path.exists()
 
         # Verify compression was applied by reading the file
-        with NWBHDF5IO(str(nwbfile_path), mode="r") as io:
-            read_nwbfile = io.read()
-            assert "TestTimeSeries1" in read_nwbfile.acquisition
-            assert "TestTimeSeries2" in read_nwbfile.acquisition
+        read_nwbfile = read_nwb(nwbfile_path)
+        assert "TestTimeSeries1" in read_nwbfile.acquisition
+        assert "TestTimeSeries2" in read_nwbfile.acquisition
 
         # Check compression at HDF5 level for both datasets using proper filter pipeline inspection
         with h5py.File(str(nwbfile_path), "r") as f:
@@ -195,10 +194,9 @@ class TestGlobalCompressionHDF5:
         assert nwbfile_path.exists()
 
         # Verify compression was applied by reading the file
-        with NWBHDF5IO(str(nwbfile_path), mode="r") as io:
-            read_nwbfile = io.read()
-            assert "TestTimeSeries1" in read_nwbfile.acquisition
-            assert "TestTimeSeries2" in read_nwbfile.acquisition
+        read_nwbfile = read_nwb(nwbfile_path)
+        assert "TestTimeSeries1" in read_nwbfile.acquisition
+        assert "TestTimeSeries2" in read_nwbfile.acquisition
 
         # Check compression at HDF5 level for both datasets
         with h5py.File(str(nwbfile_path), "r") as f:
@@ -253,12 +251,10 @@ class TestGlobalCompressionZarr:
         assert nwbfile_path.exists()
 
         # Verify compression was applied by reading the file
-        from hdmf_zarr import NWBZarrIO
 
-        with NWBZarrIO(str(nwbfile_path), mode="r") as io:
-            read_nwbfile = io.read()
-            assert "TestTimeSeries1" in read_nwbfile.acquisition
-            assert "TestTimeSeries2" in read_nwbfile.acquisition
+        read_nwbfile = read_nwb(nwbfile_path)
+        assert "TestTimeSeries1" in read_nwbfile.acquisition
+        assert "TestTimeSeries2" in read_nwbfile.acquisition
 
         # Check compression at Zarr level for both datasets
         import zarr
@@ -292,12 +288,10 @@ class TestGlobalCompressionZarr:
         assert nwbfile_path.exists()
 
         # Verify compression was applied by reading the file
-        from hdmf_zarr import NWBZarrIO
 
-        with NWBZarrIO(str(nwbfile_path), mode="r") as io:
-            read_nwbfile = io.read()
-            assert "TestTimeSeries1" in read_nwbfile.acquisition
-            assert "TestTimeSeries2" in read_nwbfile.acquisition
+        read_nwbfile = read_nwb(nwbfile_path)
+        assert "TestTimeSeries1" in read_nwbfile.acquisition
+        assert "TestTimeSeries2" in read_nwbfile.acquisition
 
         # Check compression at Zarr level for both datasets
         import zarr

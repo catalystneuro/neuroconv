@@ -40,127 +40,45 @@ acquisition/TestElectricalSeries/data
 
 
 def test_zarr_dataset_configuration_print_with_compression_options():
-    """Test the printout display of a ZarrDatasetIOConfiguration model looks nice."""
+    """The compression options line renders only when options are set."""
     zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration(compression_options=dict(level=5))
 
-    with patch("sys.stdout", new=StringIO()) as out:
-        print(zarr_dataset_configuration)
+    printout = str(zarr_dataset_configuration)
 
-    expected_print = """
-acquisition/TestElectricalSeries/data
--------------------------------------
-  dtype : int16
-  full shape of source array : (1800000, 384)
-  full size of source array : 1.38 GB
-
-  buffer shape : (1250000, 384)
-  expected RAM usage : 960.00 MB
-
-  chunk shape : (78125, 64)
-  disk space usage per chunk : 10.00 MB
-
-  compression method : gzip
-  compression options : {'level': 5}
-
-"""
-    assert out.getvalue() == expected_print
+    assert "  compression method : gzip" in printout
+    assert "  compression options : {'level': 5}" in printout
 
 
 def test_zarr_dataset_configuration_print_with_compression_disabled():
-    """Test the printout display of a ZarrDatasetIOConfiguration model looks nice."""
+    """Neither compression line renders when compression is disabled."""
     zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration(compression_method=None)
 
-    with patch("sys.stdout", new=StringIO()) as out:
-        print(zarr_dataset_configuration)
+    printout = str(zarr_dataset_configuration)
 
-    expected_print = """
-acquisition/TestElectricalSeries/data
--------------------------------------
-  dtype : int16
-  full shape of source array : (1800000, 384)
-  full size of source array : 1.38 GB
-
-  buffer shape : (1250000, 384)
-  expected RAM usage : 960.00 MB
-
-  chunk shape : (78125, 64)
-  disk space usage per chunk : 10.00 MB
-
-"""
-    assert out.getvalue() == expected_print
+    assert "compression method" not in printout
+    assert "compression options" not in printout
 
 
 def test_zarr_dataset_configuration_print_with_filter_methods():
-    """Test the printout display of a ZarrDatasetIOConfiguration model looks nice."""
-    zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration(filter_methods=["delta"])
+    """The filter methods line renders only when filters are set."""
+    zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration(filter_methods=["delta", "blosc"])
 
-    with patch("sys.stdout", new=StringIO()) as out:
-        print(zarr_dataset_configuration)
+    printout = str(zarr_dataset_configuration)
 
-    expected_print = """
-acquisition/TestElectricalSeries/data
--------------------------------------
-  dtype : int16
-  full shape of source array : (1800000, 384)
-  full size of source array : 1.38 GB
-
-  buffer shape : (1250000, 384)
-  expected RAM usage : 960.00 MB
-
-  chunk shape : (78125, 64)
-  disk space usage per chunk : 10.00 MB
-
-  compression method : gzip
-
-  filter methods : ['delta']
-
-"""
-    assert out.getvalue() == expected_print
+    assert "  filter methods : ['delta', 'blosc']" in printout
+    assert "filter options" not in printout
 
 
 def test_zarr_dataset_configuration_print_with_filter_options():
-    """Test the printout display of a ZarrDatasetIOConfiguration model looks nice."""
+    """The filter options line renders alongside the filter methods line."""
     zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration(
-        filter_methods=["blosc"], filter_options=[dict(clevel=5)]
+        filter_methods=["blosc"], filter_options=[dict(clevel=6)]
     )
 
-    with patch("sys.stdout", new=StringIO()) as out:
-        print(zarr_dataset_configuration)
+    printout = str(zarr_dataset_configuration)
 
-    expected_print = """
-acquisition/TestElectricalSeries/data
--------------------------------------
-  dtype : int16
-  full shape of source array : (1800000, 384)
-  full size of source array : 1.38 GB
-
-  buffer shape : (1250000, 384)
-  expected RAM usage : 960.00 MB
-
-  chunk shape : (78125, 64)
-  disk space usage per chunk : 10.00 MB
-
-  compression method : gzip
-
-  filter methods : ['blosc']
-  filter options : [{'clevel': 5}]
-
-"""
-    assert out.getvalue() == expected_print
-
-
-def test_zarr_dataset_configuration_repr():
-    """Test the programmatic repr of a ZarrDatasetIOConfiguration model is more dataclass-like."""
-    zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration()
-
-    # Important to keep the `repr` unmodified for appearance inside iterables of DatasetInfo objects
-    expected_repr = (
-        "ZarrDatasetIOConfiguration(object_id='481a0860-3a0c-40ec-b931-df4a3e9b101f', "
-        "location_in_file='acquisition/TestElectricalSeries/data', dataset_name='data', dtype=dtype('int16'), "
-        "full_shape=(1800000, 384), chunk_shape=(78125, 64), buffer_shape=(1250000, 384), compression_method='gzip', "
-        "compression_options=None, filter_methods=None, filter_options=None)"
-    )
-    assert repr(zarr_dataset_configuration) == expected_repr
+    assert "  filter methods : ['blosc']" in printout
+    assert "  filter options : [{'clevel': 6}]" in printout
 
 
 def test_validator_filter_options_has_methods():

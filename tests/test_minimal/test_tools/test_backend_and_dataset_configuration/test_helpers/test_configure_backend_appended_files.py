@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 from numpy.testing import assert_array_equal
-from pynwb import NWBHDF5IO
+from pynwb import NWBHDF5IO, read_nwb
 from pynwb.testing.mock.base import mock_TimeSeries
 from pynwb.testing.mock.file import mock_NWBFile
 
@@ -45,12 +45,11 @@ def test_appended_time_series(nwbfile_path: str):
 
         io.write(nwbfile)
 
-    with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
-        written_nwbfile = io.read()
+    written_nwbfile = read_nwb(nwbfile_path)
 
-        written_data = written_nwbfile.acquisition["AppendedTimeSeries"].data
-        assert written_data.compression == "gzip"
-        assert written_data.chunks == APPENDED_ARRAY.shape
-        assert_array_equal(written_data[:], APPENDED_ARRAY)
+    written_data = written_nwbfile.acquisition["AppendedTimeSeries"].data
+    assert written_data.compression == "gzip"
+    assert written_data.chunks == APPENDED_ARRAY.shape
+    assert_array_equal(written_data[:], APPENDED_ARRAY)
 
-        assert_array_equal(written_nwbfile.acquisition["ExistingTimeSeries"].data[:], EXISTING_ARRAY)
+    assert_array_equal(written_nwbfile.acquisition["ExistingTimeSeries"].data[:], EXISTING_ARRAY)

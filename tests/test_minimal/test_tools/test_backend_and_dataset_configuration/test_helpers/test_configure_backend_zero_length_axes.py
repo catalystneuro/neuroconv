@@ -13,6 +13,7 @@ import numpy as np
 import pytest
 from hdmf.common import DynamicTable, VectorData
 from numpy.testing import assert_array_equal
+from pynwb import read_nwb
 from pynwb.testing.mock.base import mock_TimeSeries
 from pynwb.testing.mock.file import mock_NWBFile
 
@@ -119,15 +120,14 @@ def test_dynamic_table_skip_zero_length_axis(
     with NWB_IO(path=nwbfile_path, mode="w") as io:
         io.write(nwbfile)
 
-    with NWB_IO(path=nwbfile_path, mode="r") as io:
-        written_nwbfile = io.read()
-        written_data = written_nwbfile.acquisition["TestDynamicTable"]["TestColumn"].data
+    written_nwbfile = read_nwb(nwbfile_path)
+    written_data = written_nwbfile.acquisition["TestDynamicTable"]["TestColumn"].data
 
-        assert written_data.chunks == dataset_configuration.chunk_shape
+    assert written_data.chunks == dataset_configuration.chunk_shape
 
-        if backend == "hdf5":
-            assert written_data.compression == "gzip"
-        elif backend == "zarr":
-            assert written_data.compressor == numcodecs.GZip(level=1)
+    if backend == "hdf5":
+        assert written_data.compression == "gzip"
+    elif backend == "zarr":
+        assert written_data.compressor == numcodecs.GZip(level=1)
 
-        assert_array_equal(integer_array, written_data[:])
+    assert_array_equal(integer_array, written_data[:])
