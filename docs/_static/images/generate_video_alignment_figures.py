@@ -13,8 +13,9 @@ Produces two figures:
   the session's files and its digital line can take, over the recording system that runs the whole session
   and carries the session clock. Rig only: no method names, since which call places a setup belongs in the
   prose beside it and would date the figure.
-- ``video_wiring.png``            - the two ways the camera and the recording system are cabled, which is
-  the discriminator between the two main cases: the camera reports, or the camera is commanded.
+- ``video_wiring.png``            - the three ways the camera and the recording system are wired, which is
+  what decides how well a rig can be aligned: the camera reports, the camera is commanded, or a third box
+  drives both.
 
 One figure rather than one per setup, deliberately: the third row of the first group and the first of the
 second are the same files on disk, and only the line underneath tells them apart, which is the whole
@@ -178,39 +179,73 @@ def build_recording_setups():
     )
 
 
-def wiring_panel(ax, *, title, signal_travels_to_system, arrow_label, note):
-    """One panel: the camera on the left, the recording system on the right, and the cable between them.
+BOX_BOTTOM = 0.30
+BOX_HEIGHT = 0.26
+BOX_MIDDLE = BOX_BOTTOM + BOX_HEIGHT / 2
+BOX_TOP = BOX_BOTTOM + BOX_HEIGHT
 
-    The boxes hold the same positions in both panels on purpose. The only thing that moves is the arrow,
-    because which way the signal travels is the whole distinction being drawn.
+
+def wiring_endpoints(ax, *, title, note):
+    """The camera on the left and the recording system on the right, at the same place in every panel.
+
+    Only what runs between them changes from panel to panel, which is the whole distinction being drawn,
+    so the endpoints are shared and drawn once.
     """
     ax.set_title(title, fontsize=11, loc="left", pad=10)
     for x, label, is_camera in ((0.03, "Camera", True), (0.67, "Recording system", False)):
         ax.add_patch(
             mpatches.Rectangle(
-                (x, 0.40),
+                (x, BOX_BOTTOM),
                 0.30,
-                0.28,
+                BOX_HEIGHT,
                 facecolor=FILL if is_camera else "0.93",
                 edgecolor=EDGE if is_camera else "0.55",
                 lw=1.6,
                 joinstyle="miter",
             )
         )
-        ax.text(x + 0.15, 0.54, label, ha="center", va="center", fontsize=9, color=EDGE if is_camera else "0.25")
-
-    tail, head = (0.35, 0.65) if signal_travels_to_system else (0.65, 0.35)
-    ax.annotate("", xy=(head, 0.54), xytext=(tail, 0.54), arrowprops=dict(arrowstyle="-|>", color=RED, lw=1.8))
-    ax.text(0.50, 0.60, arrow_label, ha="center", va="bottom", fontsize=8.5, color=RED, linespacing=1.4)
-    ax.text(0.5, 0.28, note, ha="center", va="top", fontsize=8.5, color=NOTE)
+        ax.text(
+            x + 0.15, BOX_MIDDLE, label, ha="center", va="center", fontsize=9, color=EDGE if is_camera else "0.25"
+        )
+    ax.text(0.5, 0.19, note, ha="center", va="top", fontsize=8.5, color=NOTE)
     ax.set_xlim(0, 1)
-    ax.set_ylim(0.0, 0.90)
+    ax.set_ylim(0.0, 0.95)
     ax.axis("off")
 
 
+def wiring_panel(ax, *, title, signal_travels_to_system, arrow_label, note):
+    """One cable, pointing one way or the other."""
+    wiring_endpoints(ax, title=title, note=note)
+    tail, head = (0.35, 0.65) if signal_travels_to_system else (0.65, 0.35)
+    ax.annotate(
+        "", xy=(head, BOX_MIDDLE), xytext=(tail, BOX_MIDDLE), arrowprops=dict(arrowstyle="-|>", color=RED, lw=1.8)
+    )
+    ax.text(0.50, BOX_MIDDLE + 0.05, arrow_label, ha="center", va="bottom", fontsize=8.5, color=RED, linespacing=1.4)
+
+
+def sync_panel(ax, *, title, arrow_label, note):
+    """A third box driving both, so the same instants are written down on both clocks."""
+    wiring_endpoints(ax, title=title, note=note)
+    ax.add_patch(
+        mpatches.Rectangle(
+            (0.35, 0.74), 0.30, 0.17, facecolor="1.0", edgecolor=RED, lw=1.6, joinstyle="miter", zorder=3
+        )
+    )
+    ax.text(0.50, 0.825, "Sync source", ha="center", va="center", fontsize=9, color=RED, zorder=4)
+    for x_head in (0.18, 0.82):
+        ax.annotate(
+            "",
+            xy=(x_head, BOX_TOP),
+            xytext=(0.50 - 0.10 if x_head < 0.5 else 0.50 + 0.10, 0.74),
+            arrowprops=dict(arrowstyle="-|>", color=RED, lw=1.8),
+        )
+    # Two short lines rather than one long one, so the label sits inside the wedge the arrows leave.
+    ax.text(0.50, 0.71, arrow_label, ha="center", va="top", fontsize=8.5, color=RED, linespacing=1.4)
+
+
 def build_wiring():
-    """The two cable directions, which decide how well a rig can be aligned."""
-    figure, axes = plt.subplots(1, 2, figsize=(10.4, 2.9))
+    """The three arrangements, which decide how well a rig can be aligned."""
+    figure, axes = plt.subplots(1, 3, figsize=(15.0, 2.9))
     wiring_panel(
         axes[0],
         title="The camera reports",
@@ -224,6 +259,12 @@ def build_wiring():
         signal_travels_to_system=False,
         arrow_label="trigger line\none pulse per trial",
         note="The trigger is recorded on its way out, so its time is known,\nbut the delay to the first exposed frame is not measured.",
+    )
+    sync_panel(
+        axes[2],
+        title="A shared sync source",
+        arrow_label="one line\ninto both",
+        note="Neither system commands the other. Both write down when each\npulse arrived, so the pairs map one clock onto the other.",
     )
     figure.tight_layout()
     figure.savefig(OUTDIR / "video_wiring.png", dpi=200, bbox_inches="tight")

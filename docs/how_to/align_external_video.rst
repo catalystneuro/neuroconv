@@ -68,20 +68,23 @@ is the whole difficulty: the files on disk look identical, and only what the rig
 How they are wired, and where the times come from
 -------------------------------------------------
 
-Between the camera and the recording system there is usually a cable, and which way it points decides how
+Between the camera and the recording system there is usually a cable, and what runs along it decides how
 well you can do. It is the second of the two things that pick a recipe: the arrangement above says how
 many placements you have to make, and the cable says how good each one can be.
 
 .. image:: ../_static/images/video_wiring.png
-   :width: 760px
+   :width: 900px
    :align: center
-   :alt: Two panels, each holding a camera box on the left and a recording system box on the right, so the
-         only thing that differs between them is the arrow. In "the camera reports" the arrow runs from the
-         camera to the recording system, labelled frame-out line, one pulse per frame, with a note that
-         each pulse is evidence a frame was exposed so the count can be checked against the file. In "the
-         camera is commanded" the arrow runs the other way, from the recording system to the camera,
-         labelled trigger line, one pulse per trial, with a note that the trigger is recorded on its way
-         out so its time is known but the delay to the first exposed frame is not measured.
+   :alt: Three panels, each holding a camera box on the left and a recording system box on the right, so
+         the only thing that differs between them is what runs in between. In "the camera reports" an arrow
+         runs from the camera to the recording system, labelled frame-out line, one pulse per frame, with a
+         note that each pulse is evidence a frame was exposed so the count can be checked against the file.
+         In "the camera is commanded" the arrow runs the other way, from the recording system to the
+         camera, labelled trigger line, one pulse per trial, with a note that the trigger is recorded on
+         its way out so its time is known but the delay to the first exposed frame is not measured. In "a
+         shared sync source" a third box sits above the two and one line fans out from it into both, with a
+         note that neither system commands the other and both write down when each pulse arrived, so the
+         pairs map one clock onto the other.
 
 **The camera reports.** The camera has a frame-out or strobe pin that fires each time it exposes a frame,
 wired into a digital input on the recording system. Every frame therefore has a time measured on the session
@@ -93,6 +96,13 @@ camera's trigger input, and the same line is recorded on a digital input so its 
 measured is the command, not a confirmation, so the delay from trigger to first exposed frame is unmeasured
 and nothing in the file records it. Within a trial the frame times then come from the nominal frame rate
 rather than from measurement.
+
+**A shared sync source.** A third box, an Arduino or a Bonsai workflow, emits pulses into a general-purpose
+input on the camera and into a digital input on the recording system at once. Neither system commands the
+other; both only write down when each pulse arrived. That is what makes the camera's own clock usable,
+because the same instants now appear in the camera's metadata and in the recording, and the pairs define
+the map between the two clocks. Pulses are often emitted in coded groups, a "barcode", so a pair cannot be
+lined up wrong even if one of the systems missed one.
 
 **No cable.** Then you have only whatever someone wrote down, a start time and nothing relating the two clocks
 after that instant.
@@ -177,22 +187,23 @@ you want the tail of it. A few short means dropped frames, and do not trim the p
 recorders stamp each frame with its index rather than its time, so a drop closes the gap instead of leaving
 one and every later frame is written early; the pulses are the only record of where the missing frames were.
 
-**A pulse every few frames.** Some cameras send a sync pulse on every tenth or hundredth frame rather than
-on every one, and write a timestamp for each frame to a log file next to the video. The log times every
-frame, but on the camera's own clock, and the pulses are the only instants recorded on both clocks. A shift
-will not do it, because the two clocks drift; the pulses are what turn the camera's clock into the
-session's.
+**The camera keeps its own clock.** The camera writes a timestamp for every frame it captures, and a shared
+sync source sends pulses into both systems, so the camera's log holds a time for every frame and a time for
+every sync pulse, all on the camera's clock. The frame times are already the right shape, one per frame,
+but on the wrong clock; the sync pulses are the instants both systems wrote down, so they are what turns
+one clock into the other. A shift will not do it, because the two clocks drift.
 
 .. code-block:: python
 
     import pandas as pd
 
-    camera_log = pd.read_csv("session_frame_times.csv")
-    frame_times = camera_log["timestamp"].to_numpy()  # camera clock, one per frame
+    camera_log = pd.read_csv("session_frame_times.csv")  # both columns on the camera's own clock
+    frame_times = camera_log["frame_timestamp"].dropna().to_numpy()
+    camera_sync_times = camera_log["sync_timestamp"].dropna().to_numpy()
 
     interface.alignment["session"].set_times(frame_times)
     interface.alignment.remap_times(
-        local_sync_times=frame_times[::10],  # a pulse went out on every tenth frame
+        local_sync_times=camera_sync_times,
         reference_sync_times=digital_interface.get_event_times("camera_sync"),
     )
 
@@ -200,6 +211,9 @@ Set the log's times first, which puts the video on the camera's clock, then rema
 session's. The two pulse arrays pair up positionally, so they have to be the same length and in the same
 order, and a pulse only one of the systems recorded has to be dropped from both. Frames between two pulses
 are interpolated proportionally and none of the data is resampled, only the times move.
+
+``remap_times`` is called on ``alignment`` rather than on one key, because one clock means one correction,
+so a trialized camera on its own clock takes the same call after its files have been placed.
 
 **When the recorder split the session into several files.** Still one continuous recording, but the software
 was set to open a new file every few minutes, so it arrives as several. Whether that changes the timing
@@ -311,6 +325,23 @@ rather than being silently merged into its neighbour.
     trial_onsets = digital_interface.get_event_times("camera_trigger")
     bursts = np.split(frame_pulse_times, np.searchsorted(frame_pulse_times, trial_onsets[1:]))
 
+**Recording which file is which trial.** A single ``ImageSeries`` with several ``external_file`` entries has
+no per-file timing metadata. The structure survives in the concatenated ``timestamps`` and in
+``starting_frame``, but no field says "file 2 covers trial 2 and ran from here to here", and a single file
+within the series cannot be addressed on its own; that is a limitation of the schema, tracked in
+`nwb-schema#677 <https://github.com/NeurodataWithoutBorders/nwb-schema/issues/677>`_. Write the mapping
+somewhere that can hold it: a column on the trials table when the segments are your trials, or a
+``TimeIntervals`` of their own when a trial begins before the camera does or outlasts it. See
+:ref:`adding_trials` for the rest of what a trials table can carry.
+
+.. code-block:: python
+
+    durations = np.array(interface.get_header_frame_counts()) / np.array(interface.get_header_frame_rates())
+
+    nwbfile.add_trial_column(name="video_file", description="The external_file entry holding this trial's frames.")
+    for onset, duration, file_path in zip(trial_onsets, durations, file_paths):
+        nwbfile.add_trial(start_time=onset, stop_time=onset + duration, video_file=str(file_path))
+
 One case this does not cover: a camera that free-runs while only some of its frames are written to disk.
 The counts no longer say which frames were saved, so neither the gaps nor the onsets can reconstruct the
 mapping, and no alignment recipe repairs it. That one needs per-frame metadata from the acquisition
@@ -356,43 +387,6 @@ the reason to take every camera's times from the digital inputs even when they w
 What you cannot do is borrow one camera's times for another that has no line of its own. A shared trigger
 starts them together and nothing keeps them together afterwards, since each free-runs on its own
 oscillator.
-
-Recording the per-file structure
---------------------------------
-
-A single ``ImageSeries`` with several ``external_file`` entries has no per-file timing metadata. The
-structure survives in the concatenated ``timestamps`` and in ``starting_frame``, from which the per-file
-frame counts can be recovered, but there is no field that says "file 2 covers trial 2 and ran from here to
-here", and a single file within the series cannot be addressed on its own; that is a known limitation of
-the schema, tracked in `nwb-schema#677 <https://github.com/NeurodataWithoutBorders/nwb-schema/issues/677>`_.
-
-So write it somewhere that can hold it. If the segments are your trials, a column on the trials table
-carries the mapping:
-
-.. code-block:: python
-
-    durations = np.array(interface.get_header_frame_counts()) / np.array(interface.get_header_frame_rates())
-
-    nwbfile.add_trial_column(name="video_file", description="The external_file entry holding this trial's frames.")
-    for onset, duration, file_path in zip(trial_onsets, durations, file_paths):
-        nwbfile.add_trial(start_time=onset, stop_time=onset + duration, video_file=str(file_path))
-
-If they are not your trials, which is the case whenever a trial begins before the camera does or outlasts
-it, give the segments their own ``TimeIntervals`` instead:
-
-.. code-block:: python
-
-    from pynwb.epoch import TimeIntervals
-
-    segments = TimeIntervals(name="video_segments", description="One row per external file of the behavior video.")
-    segments.add_column(name="external_file", description="The file holding this segment's frames.")
-    for onset, duration, file_path in zip(trial_onsets, durations, file_paths):
-        segments.add_row(start_time=onset, stop_time=onset + duration, external_file=str(file_path))
-
-    nwbfile.add_time_intervals(segments)
-
-Either way the video frames fall inside those intervals, because you aligned them. See :ref:`adding_trials`
-for the rest of what a trials table can carry.
 
 A setup this guide does not cover
 ---------------------------------
