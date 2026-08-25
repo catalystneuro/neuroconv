@@ -126,7 +126,7 @@ class TestGlobalCompressionHDF5:
 
         # Get default backend configuration and apply global compression
         backend_configuration = get_default_backend_configuration(nwbfile, backend="hdf5")
-        backend_configuration.apply_global_compression(compression_method)
+        backend_configuration.apply_global_compression([compression_method])
 
         configure_and_write_nwbfile(
             nwbfile=nwbfile,
@@ -184,7 +184,7 @@ class TestGlobalCompressionHDF5:
 
         # Get default backend configuration and apply global compression with options
         backend_configuration = get_default_backend_configuration(nwbfile, backend="hdf5")
-        backend_configuration.apply_global_compression("gzip", {"level": 9})
+        backend_configuration.apply_global_compression(["gzip"], [{"level": 9}])
 
         configure_and_write_nwbfile(
             nwbfile=nwbfile,
@@ -215,7 +215,7 @@ class TestGlobalCompressionHDF5:
         backend_configuration = get_default_backend_configuration(nwbfile, backend="hdf5")
 
         with pytest.raises(ValueError, match="Compression method 'invalid_method' is not available"):
-            backend_configuration.apply_global_compression("invalid_method")
+            backend_configuration.apply_global_compression(["invalid_method"])
 
 
 # We need this so that pytest-xdist can run tests in parallel without issues
@@ -242,7 +242,7 @@ class TestGlobalCompressionZarr:
 
         # Get default backend configuration and apply global compression
         backend_configuration = get_default_backend_configuration(nwbfile, backend="zarr")
-        backend_configuration.apply_global_compression(compression_method)
+        backend_configuration.apply_global_compression([compression_method])
 
         configure_and_write_nwbfile(
             nwbfile=nwbfile,
@@ -280,7 +280,7 @@ class TestGlobalCompressionZarr:
 
         # Get default backend configuration and apply global compression with options
         backend_configuration = get_default_backend_configuration(nwbfile, backend="zarr")
-        backend_configuration.apply_global_compression("gzip", {"level": 6})
+        backend_configuration.apply_global_compression(["gzip"], [{"level": 6}])
 
         configure_and_write_nwbfile(
             nwbfile=nwbfile,
@@ -322,4 +322,49 @@ class TestGlobalCompressionZarr:
         backend_configuration = get_default_backend_configuration(nwbfile, backend="zarr")
 
         with pytest.raises(ValueError, match="Compression method 'invalid_method' is not available"):
-            backend_configuration.apply_global_compression("invalid_method")
+            backend_configuration.apply_global_compression(["invalid_method"])
+
+
+def test_global_compression_applies_a_filter():
+    """A filter composes with a compression method, so naming both puts both on every dataset."""
+    nwbfile = create_test_nwbfile()
+    backend_configuration = get_default_backend_configuration(nwbfile, backend="hdf5")
+
+    backend_configuration.apply_global_compression(["shuffle", "gzip"])
+
+    for dataset_configuration in backend_configuration.dataset_configurations.values():
+        assert dataset_configuration.compressors == ["shuffle", "gzip"]
+        assert dataset_configuration.get_data_io_kwargs()["shuffle"] is True
+
+
+def test_global_compression_replaces_the_whole_pipeline():
+    """Naming the pipeline replaces it, so a filter that is not named again does not survive."""
+    nwbfile = create_test_nwbfile()
+    backend_configuration = get_default_backend_configuration(nwbfile, backend="hdf5")
+    backend_configuration.apply_global_compression(["shuffle", "gzip"])
+
+    backend_configuration.apply_global_compression(["lzf"])
+
+    for dataset_configuration in backend_configuration.dataset_configurations.values():
+        assert dataset_configuration.compressors == ["lzf"]
+
+
+def test_global_compression_length_mismatch_raises():
+    nwbfile = create_test_nwbfile()
+    backend_configuration = get_default_backend_configuration(nwbfile, backend="hdf5")
+
+    with pytest.raises(ValueError, match="Length mismatch between `compressors`"):
+        backend_configuration.apply_global_compression(["shuffle", "gzip"], [None])
+
+
+def test_global_compression_deprecated_singular_form():
+    """The single method and single options dictionary remain accepted for one release cycle."""
+    nwbfile = create_test_nwbfile()
+    backend_configuration = get_default_backend_configuration(nwbfile, backend="hdf5")
+
+    with pytest.warns(FutureWarning, match="removed in v0.12.0"):
+        backend_configuration.apply_global_compression("gzip", {"level": 9})
+
+    for dataset_configuration in backend_configuration.dataset_configurations.values():
+        assert dataset_configuration.compressors == ["gzip"]
+        assert dataset_configuration.compressor_options == [{"level": 9}]
