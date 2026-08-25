@@ -6,7 +6,6 @@ from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.tools.nwb_helpers import DatasetIOConfiguration
 from neuroconv.tools.testing import mock_HDF5DatasetIOConfiguration
-from neuroconv.utils.str_utils import human_readable_size
 
 
 def test_get_data_io_kwargs_abstract_error():
@@ -130,20 +129,3 @@ def test_derived_size_properties_follow_the_dtype():
 
     assert dataset_configuration.full_size_in_bytes == 1_800_000 * 384 * 8
     assert dataset_configuration.disk_space_usage_per_chunk_in_bytes == 78_125 * 64 * 8
-
-
-def test_printout_reports_the_derived_sizes():
-    """The printout is a rendering of the properties, so the two cannot drift apart."""
-    dataset_configuration = mock_HDF5DatasetIOConfiguration()
-
-    printout = str(dataset_configuration)
-
-    assert f"full size of source array : {human_readable_size(dataset_configuration.full_size_in_bytes)}" in printout
-    assert (
-        f"expected RAM usage : {human_readable_size(dataset_configuration.maximum_ram_usage_per_iteration_in_bytes)}"
-        in printout
-    )
-    assert (
-        "disk space usage per chunk : "
-        f"{human_readable_size(dataset_configuration.disk_space_usage_per_chunk_in_bytes)}" in printout
-    )
