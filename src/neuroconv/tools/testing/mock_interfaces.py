@@ -1612,11 +1612,11 @@ class MockExternalVideoInterface(ExternalVideoInterface):
         metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
         return metadata
 
-    def _get_frame_counts(self) -> list[int]:
+    def _get_header_frame_counts(self) -> list[int]:
         """Return the frame count the mock was built with, so the write path opens no files."""
         return [self.num_frames] * self._number_of_files
 
-    def _get_frame_rates(self) -> list[float]:
+    def _get_header_frame_rates(self) -> list[float]:
         """Return the frame rate the mock was built with, so the write path opens no files."""
         return [self.frame_rate] * self._number_of_files
 

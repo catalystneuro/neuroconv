@@ -143,13 +143,14 @@ class ExternalVideoInterface(BaseDataInterface):
         }
         return dict_deep_update(metadata, video_metadata)
 
-    def _get_frame_counts(self) -> list[int]:
+    def _get_header_frame_counts(self) -> list[int]:
         """
         Return the number of frames held by each video file.
 
-        The count comes from the container header of each file, a cheap read rather than a decode. It is a
-        method rather than an inline read so that an interface which knows the count without a file to open
-        can supply it, which is what :class:`.MockExternalVideoInterface` does.
+        Named for where the number comes from, because a container header can be missing it or state it
+        wrongly. A cheap read rather than a decode, and a method rather than an inline read so that an
+        interface which knows the count without a file to open can supply it, which is what
+        :class:`.MockExternalVideoInterface` does.
 
         Returns
         -------
@@ -162,13 +163,14 @@ class ExternalVideoInterface(BaseDataInterface):
                 frame_counts.append(video.get_video_frame_count())
         return frame_counts
 
-    def _get_frame_rates(self) -> list[float]:
+    def _get_header_frame_rates(self) -> list[float]:
         """
         Return the frames per second each video file's container header states.
 
-        The companion of :meth:`_get_frame_counts`: both are header reads rather than decodes, and both are
-        methods rather than inline reads so that an interface which knows the answer without a file to open
-        can supply it, which is what :class:`.MockExternalVideoInterface` does.
+        The companion of :meth:`_get_header_frame_counts`, and named the same way for the same reason: both
+        are header reads rather than decodes, and both are methods rather than inline reads so that an
+        interface which knows the answer without a file to open can supply it, which is what
+        :class:`.MockExternalVideoInterface` does.
 
         Returns
         -------
@@ -452,13 +454,13 @@ class ExternalVideoInterface(BaseDataInterface):
                     "Please specify the temporal alignment of each video."
                 )
             starting_time = self._starting_time if self._starting_time is not None else 0.0
-            rate = self._get_frame_rates()[0]
+            rate = self._get_header_frame_rates()[0]
             image_series_kwargs.update(starting_time=starting_time, rate=rate)
 
         # The frame count of each external file backs both `num_samples` and `starting_frame`, so read it once.
         compute_starting_frames = self._number_of_files > 1 and starting_frames is None
         if "rate" in image_series_kwargs or compute_starting_frames:
-            frame_counts = self._get_frame_counts()
+            frame_counts = self._get_header_frame_counts()
 
         # pynwb>=4 requires num_samples on an external ImageSeries when timing is rate-based, because the
         # empty data array cannot convey the frame count. Sum the frame count across the external video files.
