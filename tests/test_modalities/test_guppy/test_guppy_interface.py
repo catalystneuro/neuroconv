@@ -38,6 +38,12 @@ MOCK_SAMPLING_RATE = 200.0
 MOCK_STARTING_TIME = 1.0
 BIN_EDGES_PER_EVENT = [[0.0, 3.0], [3.0, 4.0]]
 VALID_SIGNAL_INTERVALS = [[1.25, 1.75], [2.0, 2.5]]
+# The generator's default whole-session bins: 0.5 s wide over a 1.0-2.995 s timebase, so the last is short.
+BIN_EDGES = [[1.0, 1.5], [1.5, 2.0], [2.0, 2.5], [2.5, 2.995]]
+# The mean of the mock's -1 to 1 ramp within each of those bins.
+BIN_MEAN_ZSCORE = [-0.751880, -0.250627, 0.250627, 0.751880]
+# The generator's default behavioral covariate.
+COVARIATE_NAME = "akinesia"
 # The generator's default tonic epoch windows, written for every recording site.
 TONIC_EPOCHS = [("baseline", 1.0, 2.0), ("post_injection", 2.0, 3.0)]
 # The generator's default onsets, shared by every event: they label the trial columns of every
@@ -157,7 +163,7 @@ class TestGuppyInterfaceBehavior:
         derived unit ever leak into the metadata.
         """
         guppy_metadata = interface.get_metadata()["FiberPhotometry"]["Guppy"][interface.metadata_key]
-        for family in ("Traces", "Transients", "CrossCorrelations", "PSTHs", "PeakAUCs"):
+        for family in ("Traces", "Transients", "CrossCorrelations", "PSTHs", "PeakAUCs", "Covariates"):
             for name, entry in guppy_metadata[family].items():
                 assert set(entry.keys()) == {"name", "description"}, (family, entry)
                 assert entry["name"] == name
@@ -304,6 +310,147 @@ class TestGuppyInterfaceBehavior:
 
         # The removal method is recorded once, on GuppyParameters.
         assert nwbfile.lab_meta_data["guppy_parameters"].artifacts_removal_method == "concatenate"
+
+    # ------------------------------------------------------------------ whole-session binning
+
+    def test_binned_metrics_yield_one_row_per_site_bin_and_trace_type(self, interface, nwbfile):
+        """Each bin contributes a z-score row and a dF/F row, with the bin's own sample count on both."""
+        module = self.add_to_nwbfile(interface, nwbfile, stub_test=False)
+        binned = module["binned_metrics"]
+        assert binned.neurodata_type == "GuppyBinnedMetrics"
+        assert len(binned) == len(RECORDING_SITES) * len(BIN_EDGES) * 2
+
+        recording_site_names = list(module["recording_sites"]["recording_site"].data)
+        for recording_site in RECORDING_SITES:
+            rows = [
+                (label, start, stop, mean, count, n_samples)
+                for site_index, label, start, stop, mean, count, n_samples in zip(
+                    binned["recording_site"].data,
+                    binned["trace_type"].data,
+                    binned["start_time"].data,
+                    binned["stop_time"].data,
+                    binned["mean"].data,
+                    binned["transient_count"].data,
+                    binned["n_samples"].data,
+                )
+                if recording_site_names[site_index] == recording_site
+            ]
+            assert [row[0] for row in rows] == ["z_score", "dff"] * len(BIN_EDGES)
+            # The four bins, the last one short because the session does not divide evenly.
+            np.testing.assert_allclose([row[1] for row in rows[::2]], [1.0, 1.5, 2.0, 2.5])
+            np.testing.assert_allclose([row[2] for row in rows[::2]], [1.5, 2.0, 2.5, 2.995])
+            # The mock's trace ramps linearly from -1 to 1 over 400 samples, so a 100-sample bin's mean
+            # is the value at its middle sample; dF/F is that scaled by a tenth.
+            np.testing.assert_allclose([row[3] for row in rows[::2]], BIN_MEAN_ZSCORE, atol=1e-6)
+            np.testing.assert_allclose([row[3] for row in rows[1::2]], np.array(BIN_MEAN_ZSCORE) / 10.0, atol=1e-6)
+            # Peaks at 1.2 / 1.5 / 1.8 / 2.5 s, binned half-open with the last bin inclusive.
+            np.testing.assert_allclose([row[4] for row in rows[::2]], [1.0, 2.0, 0.0, 1.0])
+            assert [row[5] for row in rows[::2]] == [100, 100, 100, 100]
+
+        # The bin width is recorded once, on GuppyParameters.
+        assert nwbfile.lab_meta_data["guppy_parameters"].compute_binned_metrics is True
+        assert nwbfile.lab_meta_data["guppy_parameters"].binned_metrics_width == 0.5
+
+    def test_binned_covariates_are_on_the_metrics_bins_and_reference_their_series(self, interface, nwbfile):
+        """A covariate is averaged onto the metrics' own bins and points at the series it was scored in."""
+        module = self.add_to_nwbfile(interface, nwbfile, stub_test=False)
+        binned_covariates = module["binned_covariates"]
+        assert binned_covariates.neurodata_type == "GuppyBinnedCovariates"
+        assert len(binned_covariates) == len(RECORDING_SITES) * len(BIN_EDGES)
+
+        recording_site_names = list(module["recording_sites"]["recording_site"].data)
+        for recording_site in RECORDING_SITES:
+            rows = [
+                (start, stop, mean, n_samples)
+                for site_index, start, stop, mean, n_samples in zip(
+                    binned_covariates["recording_site"].data,
+                    binned_covariates["start_time"].data,
+                    binned_covariates["stop_time"].data,
+                    binned_covariates["mean"].data,
+                    binned_covariates["n_samples"].data,
+                )
+                if recording_site_names[site_index] == recording_site
+            ]
+            np.testing.assert_allclose([row[0] for row in rows], [1.0, 1.5, 2.0, 2.5])
+            np.testing.assert_allclose([row[1] for row in rows], [1.5, 2.0, 2.5, 2.995])
+            # Scores 2.0 / 3.0 / 4.0 / 5.0 at 1.1 / 1.6 / 1.7 / 2.6 s: the third bin holds none.
+            np.testing.assert_allclose([row[2] for row in rows], [2.0, 3.5, np.nan, 5.0])
+            assert [row[3] for row in rows] == [1, 2, 0, 1]
+
+        # Every row references the one TimeSeries the covariate's scores were written to.
+        covariate_series = module[COVARIATE_NAME]
+        assert {series.name for series in binned_covariates["covariate"].data} == {COVARIATE_NAME}
+        np.testing.assert_allclose(covariate_series.data[:], [2.0, 3.0, 4.0, 5.0])
+        np.testing.assert_allclose(covariate_series.timestamps[:], [1.1, 1.6, 1.7, 2.6])
+
+    def test_covariate_correlations_split_guppys_composite_metric_name(self, interface, nwbfile):
+        """GuPPy's one metric string becomes the trace_type and metric naming the binned-metrics rows."""
+        module = self.add_to_nwbfile(interface, nwbfile, stub_test=False)
+        correlations = module["covariate_correlations"]
+        assert correlations.neurodata_type == "GuppyCovariateCorrelations"
+
+        recording_site_names = list(module["recording_sites"]["recording_site"].data)
+        rows = [
+            (trace_type, metric, pearson_r, spearman_rho, n_bins)
+            for site_index, trace_type, metric, pearson_r, spearman_rho, n_bins in zip(
+                correlations["recording_site"].data,
+                correlations["trace_type"].data,
+                correlations["metric"].data,
+                correlations["pearson_r"].data,
+                correlations["spearman_rho"].data,
+                correlations["n_bins"].data,
+            )
+            if recording_site_names[site_index] == RECORDING_SITES[0]
+        ]
+        # The mock writes the four metric columns in sorted order, with descending coefficients.
+        assert [(row[0], row[1]) for row in rows] == [
+            ("dff", "mean"),
+            ("z_score", "mean"),
+            ("dff", "transient_count"),
+            ("z_score", "transient_count"),
+        ]
+        np.testing.assert_allclose([row[2] for row in rows], [0.5, 0.4, 0.3, 0.2])
+        np.testing.assert_allclose([row[3] for row in rows], [0.4, 0.3, 0.2, 0.1])
+        assert [row[4] for row in rows] == [3, 3, 3, 3]
+        assert {series.name for series in correlations["covariate"].data} == {COVARIATE_NAME}
+        # GuPPy reports no p-value, so neither does the interface.
+        assert "p_value" not in correlations.colnames
+
+    def test_covariate_store_is_not_read_as_an_event(self, interface):
+        """A covariate is a store like any other, and must not be taken for a behavioral event."""
+        assert interface.event_names == sorted(EVENT_NAMES)
+        assert COVARIATE_NAME not in interface.event_names
+        assert f"covariate_{COVARIATE_NAME}" not in interface.event_store_to_event_name.values()
+
+    def test_unknown_correlated_metric_fails_loudly(self, guppy_output_folder, tmp_path, nwbfile):
+        """A metric the interface cannot map onto a (trace_type, metric) pair is an error, not a guess."""
+        copied_folder = tmp_path / "guppy_output_copy"
+        shutil.copytree(guppy_output_folder, copied_folder)
+        correlations_path = copied_folder / f"covariate_correlations_{RECORDING_SITES[0]}.h5"
+        correlations = pandas.read_hdf(correlations_path)
+        correlations.loc[0, "metric"] = "median_zscore"
+        correlations_path.unlink()
+        correlations.to_hdf(correlations_path, key="df", mode="w")
+
+        interface = GuppyInterface(folder_path=str(copied_folder))
+        with pytest.raises(AssertionError, match="not a binned-metrics column"):
+            self.add_to_nwbfile(interface, nwbfile, stub_test=False)
+
+    def test_no_binning_and_no_covariate_writes_none_of_the_tables(self, tmp_path, nwbfile):
+        """A session that ran neither optional step carries neither the tables nor their metadata."""
+        folder_path = generate_mock_guppy_output_folder(
+            tmp_path / "guppy_output_unbinned", bin_width=None, covariates={}
+        )
+        interface = GuppyInterface(folder_path=str(folder_path))
+
+        guppy_metadata = interface.get_metadata()["FiberPhotometry"]["Guppy"][interface.metadata_key]
+        for key in ("BinnedMetrics", "Covariates", "BinnedCovariates", "CovariateCorrelations"):
+            assert key not in guppy_metadata
+
+        module = self.add_to_nwbfile(interface, nwbfile, stub_test=True)
+        for name in ("binned_metrics", "binned_covariates", "covariate_correlations", COVARIATE_NAME):
+            assert name not in module.data_interfaces
+        assert nwbfile.lab_meta_data["guppy_parameters"].compute_binned_metrics is False
 
     def test_tonic_epochs_yield_one_row_per_site_epoch_and_trace_type(self, interface, nwbfile):
         """Every (recording site, epoch, trace type) is a row carrying that trace's mean over the window."""

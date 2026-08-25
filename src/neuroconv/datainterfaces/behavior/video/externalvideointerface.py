@@ -143,6 +143,81 @@ class ExternalVideoInterface(BaseDataInterface):
         }
         return dict_deep_update(metadata, video_metadata)
 
+    def _get_header_frame_counts(self) -> list[int]:
+        """
+        Return the number of frames held by each video file.
+
+        Named for where the number comes from, because a container header can be missing it or state it
+        wrongly, which is what :meth:`_check_timestamps_number_matches_frames` has to allow for. A cheap
+        read rather than a decode, and a method rather than an inline read so that an interface which knows
+        the count without a file to open can supply it, which is what :class:`.MockExternalVideoInterface`
+        does.
+
+        Returns
+        -------
+        list of int
+            The frame count of each file, in the order the files were passed.
+        """
+        frame_counts = []
+        for file_path in self.source_data["file_paths"]:
+            with VideoCaptureContext(file_path=str(file_path)) as video:
+                frame_counts.append(video.get_video_frame_count())
+        return frame_counts
+
+    def _check_timestamps_number_matches_frames(self) -> None:
+        """
+        Raise when the timestamps that were set do not number one per frame of the video files.
+
+        An external ``ImageSeries`` carries no data, so the length of its ``timestamps`` *is* its sample
+        count, while ``external_file`` and ``starting_frame`` describe however many frames the files
+        actually hold. A mismatch therefore writes a series that contradicts itself, and nothing downstream
+        reports it, which is why it is caught here rather than left to a reader.
+
+        A file whose header cannot say how many frames it holds reports a non-positive count, and a count
+        that is unknown cannot contradict anything, so the check is skipped rather than failed for it.
+        """
+        if self._timestamps is None:
+            return
+        # OpenCV reads this out of the container header rather than by counting, and returns 0 where the
+        # header does not carry it, which happens with streams and with growing or truncated files. Zero
+        # frames cannot contradict any number of timestamps, so an unreadable count disables the check
+        # rather than failing it. Negative is guarded against too, defensively rather than from a known case.
+        frame_counts = self._get_header_frame_counts()
+        a_count_is_unknown = any(frame_count <= 0 for frame_count in frame_counts)
+        if a_count_is_unknown:
+            return
+
+        number_of_timestamps = sum(len(timestamps) for timestamps in self._timestamps)
+        number_of_frames = sum(frame_counts)
+        if number_of_timestamps != number_of_frames:
+            raise ValueError(
+                f"{number_of_timestamps} timestamps were set for the {number_of_frames} frames held by "
+                f"{self._number_of_files} video file(s), and an external ImageSeries carries one time per "
+                "frame. A few timestamps short of the frame count usually means the camera dropped frames, "
+                "and many more than it usually means the signal you read them from was already running "
+                "before the camera started."
+            )
+
+    def _get_header_frame_rates(self) -> list[float]:
+        """
+        Return the frames per second each video file's container header states.
+
+        The companion of :meth:`_get_header_frame_counts`, and named the same way for the same reason: both
+        are header reads rather than decodes, and both are methods rather than inline reads so that an
+        interface which knows the answer without a file to open can supply it, which is what
+        :class:`.MockExternalVideoInterface` does.
+
+        Returns
+        -------
+        list of float
+            The frame rate each file's header states, in the order the files were passed.
+        """
+        frame_rates = []
+        for file_path in self.source_data["file_paths"]:
+            with VideoCaptureContext(file_path=str(file_path)) as video:
+                frame_rates.append(video.get_video_fps())
+        return frame_rates
+
     def get_original_timestamps(self, stub_test: bool = False) -> list[np.ndarray]:
         """
         Retrieve the original unaltered timestamps for the data in this interface.
@@ -395,6 +470,8 @@ class ExternalVideoInterface(BaseDataInterface):
                 nwbfile=nwbfile, device_metadata=legacy_device_kwargs
             )
 
+        self._check_timestamps_number_matches_frames()
+
         if always_write_timestamps:
             timestamps = self.get_timestamps()
             image_series_kwargs.update(timestamps=np.concatenate(timestamps))
@@ -414,17 +491,13 @@ class ExternalVideoInterface(BaseDataInterface):
                     "Please specify the temporal alignment of each video."
                 )
             starting_time = self._starting_time if self._starting_time is not None else 0.0
-            with VideoCaptureContext(file_path=str(file_paths[0])) as video:
-                rate = video.get_video_fps()
+            rate = self._get_header_frame_rates()[0]
             image_series_kwargs.update(starting_time=starting_time, rate=rate)
 
         # The frame count of each external file backs both `num_samples` and `starting_frame`, so read it once.
         compute_starting_frames = self._number_of_files > 1 and starting_frames is None
         if "rate" in image_series_kwargs or compute_starting_frames:
-            frame_counts = []
-            for file_path in file_paths:
-                with VideoCaptureContext(file_path=str(file_path)) as video:
-                    frame_counts.append(video.get_video_frame_count())
+            frame_counts = self._get_header_frame_counts()
 
         # pynwb>=4 requires num_samples on an external ImageSeries when timing is rate-based, because the
         # empty data array cannot convey the frame count. Sum the frame count across the external video files.
