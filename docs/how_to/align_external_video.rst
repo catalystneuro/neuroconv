@@ -220,6 +220,12 @@ a file that is wrong in a way nothing downstream flags. A pulse count one or two
 usually means dropped frames; a count much larger usually means the line was recording before the camera
 began, and you want the tail of it.
 
+A dropped frame is worse than it sounds, which is why this check earns its place. Most recorders, Bonsai,
+Campy, OpenCV's ``VideoWriter`` and OBS among them, stamp each frame with its **index** rather than with
+the time it was taken, so a drop does not leave a hole in the timeline. It closes the gap, and every frame
+after the drop is written earlier than it happened, by a growing amount. Pairing frames with pulses is what
+catches that; a frame count on its own never will.
+
 .. _video_split_files:
 
 When the recorder split the session into several files
@@ -236,7 +242,7 @@ counts over the frame rates:
     interface = ExternalVideoInterface(file_paths=["part_01.avi", "part_02.avi", "part_03.avi"])
 
     frame_counts = interface.get_frame_counts()
-    frame_rates = interface.get_frame_rates()
+    frame_rates = interface.get_header_frame_rates()
     durations = np.array(frame_counts) / np.array(frame_rates)
     starting_times = np.concatenate([[0.0], np.cumsum(durations)[:-1]])
 
@@ -294,7 +300,7 @@ The digital line recorded the triggers and nothing else.
     assert len(trial_onsets) == len(segment_keys)
 
     frame_counts = interface.get_frame_counts()
-    frame_rates = interface.get_frame_rates()
+    frame_rates = interface.get_header_frame_rates()
 
     for segment_key, onset, count, rate in zip(segment_keys, trial_onsets, frame_counts, frame_rates):
         interface.alignment[segment_key].set_times(onset + np.arange(count) / rate)
@@ -304,21 +310,19 @@ rate. So the no-drift caveat from the known-offset case returns, but per trial r
 session, which is usually fine: a trial is short, and a camera does not drift far in ten seconds.
 
 ``set_times`` is **absolute**, so running that loop twice leaves the files where the second run says
-rather than moving them twice, which is what distinguishes it from ``alignment.shift_times``. Within a
-segment the frame times come from the container's nominal rate, which is what ``get_frame_rates()`` reads,
-so this places each file but does not correct drift inside one.
+rather than moving them twice, which is what distinguishes it from ``alignment.shift_times``.
 
-Within a file the frame times come from the frame rate the container states, which is a header read rather
-than a decode. For variable-frame-rate footage that rate is a fiction, and there the file does carry a time
-per frame; ``get_original_timestamps()`` decodes them, one array per file, each starting near zero. It is a
-full pass over every frame, so it is not what the write path does by default, but where you need it:
+.. warning::
 
-.. code-block:: python
+   Within a segment those times rest entirely on ``get_header_frame_rates()``, and **a container header
+   can be wrong without the file saying so**. An IBL Brain Wide Map camera declares exactly 150 fps against
+   a hardware-measured 150.4083, which is 11.5 seconds of drift by the end of a session, on frames that are
+   perfectly evenly spaced. The UCLA Miniscope DAQ hardcodes 60 into its writer against a true rate nearer
+   28, deliberately, so that nobody timestamps frames from it.
 
-    frame_times = interface.get_original_timestamps()
-
-    for segment_key, onset, times in zip(segment_keys, trial_onsets, frame_times):
-        interface.alignment[segment_key].set_times(onset + times)
+   Decoding the container's per-frame timestamps does not rescue this, because they are commonly derived
+   from the same declared rate. Only a signal recorded alongside the video settles it, which is the case
+   below. Where the trials are long, or the session is, prefer it.
 
 .. _video_trialized_pulse_per_frame:
 

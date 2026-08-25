@@ -1566,8 +1566,7 @@ class MockExternalVideoInterface(ExternalVideoInterface):
         frame_rate: float = 30.0,
         verbose: bool = False,
         *,
-        segment_timing: Literal["unset", "contiguous", "gapped"] = "contiguous",
-        inter_segment_gap: float = 1.0,
+        alignment_state: Literal["unaligned", "free_running", "triggered"] = "free_running",
         metadata_key: str | None = None,
     ):
         """
@@ -1585,24 +1584,28 @@ class MockExternalVideoInterface(ExternalVideoInterface):
             several files describe one continuous recording.
         verbose : bool, default: False
             If True, display verbose output.
-        segment_timing : {"unset", "contiguous", "gapped"}, default: "contiguous"
-            The state the segments are put into, so a test can reach any of the states a real interface can
-            be in without a video on disk.
+        alignment_state : {"unaligned", "free_running", "triggered"}, default: "free_running"
+            The state the segments are left in, so a test can reach any of the states a real interface can
+            be in without a video on disk. The values come from how cameras are documented, free-running
+            against triggered acquisition, which is exactly this distinction: a free-running camera writing
+            rotated files produces segments that abut, a triggered one produces segments with gaps.
 
-            ``"unset"``
+            ``"unaligned"``
                 Nothing set. Several files then read as one recording split in place, under a warning.
-            ``"contiguous"``
-                Each segment given the times it would have had anyway, running on from the one before it,
-                so the difference from ``"unset"`` is that they count as set. A single file is left alone,
-                since one file is trivially contiguous and a real interface says nothing about it either.
-            ``"gapped"``
-                Each segment given times ``inter_segment_gap`` seconds after the end of the previous one,
-                which is a camera a trigger started per trial.
+            ``"free_running"``
+                Each segment given the times it would have had anyway, abutting the one before and starting
+                at the session start, so the only difference from ``"unaligned"`` is that they count as set.
+                A single file is left alone, since one file is trivially contiguous with itself and a real
+                interface says nothing about it either.
+            ``"triggered"``
+                Each segment preceded by one second, the first included, so the first trigger fires a second
+                after the session starts. A triggered camera has a measured start and it is never at zero,
+                which is also why this is the value that says something for a single file, and why a bug of
+                the size of an offset cannot hide in it.
 
-            The values are always the source's own spacing. A test that needs irregular times says so
-            directly, with ``alignment[key].set_times([...])``, where the numbers that matter are visible.
-        inter_segment_gap : float, default: 1.0
-            Seconds between the end of one segment and the start of the next, for ``"gapped"``.
+            The spacing within a segment is always the source's own. A test that needs a particular
+            timeline, an unusual gap or irregular times says so directly with
+            ``alignment[key].set_times([...])``, where the numbers that matter are visible in the test.
         metadata_key : str, optional
             Snake_case key identifying this video's entry under ``metadata["Behavior"]["ExternalVideos"]``.
             Defaults to the stem-based key of the parent interface.
@@ -1619,15 +1622,18 @@ class MockExternalVideoInterface(ExternalVideoInterface):
         )
         self.num_frames = num_frames
         self.frame_rate = frame_rate
-        self.segment_timing = segment_timing
 
+        self.alignment_state = alignment_state
         segment_duration = num_frames / frame_rate
-        gap = inter_segment_gap if segment_timing == "gapped" else 0.0
-        # One file is trivially contiguous with itself, so leave it in the state a real interface is in.
-        single_file_needs_nothing = segment_timing == "contiguous" and self._number_of_files == 1
-        if segment_timing != "unset" and not single_file_needs_nothing:
+        # A fixed second, not a parameter: a test needing a particular timeline sets the times itself.
+        gap = 1.0 if alignment_state == "triggered" else 0.0
+        # One file is trivially contiguous with itself, so leave it where a real interface leaves it.
+        single_file_needs_nothing = alignment_state == "free_running" and self._number_of_files == 1
+        if alignment_state != "unaligned" and not single_file_needs_nothing:
             for file_index, segment_key in enumerate(self._segment_keys):
-                starting_time = file_index * (segment_duration + gap)
+                # Every segment is preceded by the gap, the first included, so a triggered camera starts
+                # after the session does rather than exactly with it.
+                starting_time = (file_index + 1) * gap + file_index * segment_duration
                 self.alignment[segment_key].set_times(starting_time + np.arange(num_frames) / frame_rate)
 
     def get_metadata(self) -> DeepDict:
@@ -1648,7 +1654,7 @@ class MockExternalVideoInterface(ExternalVideoInterface):
         """Return the frame count the mock was built with, so the write path opens no files."""
         return [self.num_frames] * self._number_of_files
 
-    def get_frame_rates(self) -> list[float]:
+    def get_header_frame_rates(self) -> list[float]:
         """Return the frame rate the mock was built with, so the write path opens no files."""
         return [self.frame_rate] * self._number_of_files
 

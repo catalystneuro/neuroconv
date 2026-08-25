@@ -186,17 +186,25 @@ class ExternalVideoInterface(BaseDataInterface):
             self._frame_counts = frame_counts
         return self._frame_counts
 
-    def get_frame_rates(self) -> list[float]:
+    def get_header_frame_rates(self) -> list[float]:
         """
-        Return the nominal frames per second of each video file, as its container header states it.
+        Return the frames per second each video file's container header states.
 
-        Public alongside :meth:`get_frame_counts` because placing a set of files that run on from each
-        other needs both: the length of a file is its frame count over its rate.
+        Named for where the number comes from, because **the header can be wrong and the file will not say
+        so.** Two documented cases, neither of them variable-frame-rate footage: an IBL Brain Wide Map
+        camera whose container declares exactly 150 fps against a hardware-measured 150.4083, which is
+        11.5 seconds of drift over a session on perfectly evenly spaced frames; and the UCLA Miniscope DAQ,
+        which hardcodes 60 into its writer against a true rate nearer 28, deliberately, so that users do not
+        timestamp frames from it. Only a signal recorded alongside the video settles the question, which is
+        what :ref:`align_external_video` is about.
+
+        Public alongside :meth:`get_frame_counts` because a caller placing files that run on from each other
+        needs both, the length of a file being its frame count over its rate.
 
         Returns
         -------
         list of float
-            The frame rate of each file, in the order the files were passed.
+            The frame rate each file's header states, in the order the files were passed.
         """
         if self._frame_rates is None:
             frame_rates = []
@@ -214,18 +222,21 @@ class ExternalVideoInterface(BaseDataInterface):
         :meth:`get_original_timestamps`, which reads every frame of every file to collect them, and the
         write path has never used them: before this interface held an alignment it wrote ``starting_time``
         plus ``get_video_fps()`` for a video nothing had aligned, which is what is reconstructed here. Two
-        header reads rather than a full pass, and the result still collapses to a rate on the way out,
-        which decoded timestamps would not. For constant-frame-rate footage the two agree anyway. Where
-        they do not, which is variable-frame-rate footage, the file's own times are the truth and the way
-        to use them is ``alignment[key].set_times(get_original_timestamps()[index])``, paying for the scan
-        deliberately.
+        header reads rather than a full pass, and the result still collapses to a rate on the way out.
+
+        Do not read that as accurate for evenly spaced footage. It is only as good as the header's frame
+        rate, and :meth:`get_header_frame_rates` records how wrong that can be on video whose frames are
+        perfectly regular. Decoding the presentation timestamps is usually no better, since they are
+        commonly derived from the same declared rate. What settles it is a signal recorded alongside the
+        video, handed to ``alignment[key].set_times(...)``; these times are what gets written when nobody
+        has done that.
 
         Each file starts where the one before it ended, which is the only reading several files support on
         their own; a file that was triggered independently is moved off that timeline by
         ``alignment[key].set_times(...)``.
         """
         frame_counts = self.get_frame_counts()
-        frame_rates = self.get_frame_rates()
+        frame_rates = self.get_header_frame_rates()
         starting_time = sum(frame_counts[preceding] / frame_rates[preceding] for preceding in range(file_index))
         return starting_time + np.arange(frame_counts[file_index]) / frame_rates[file_index]
 
@@ -253,7 +264,7 @@ class ExternalVideoInterface(BaseDataInterface):
             "them and this is wrong. Give each its times to say so, with "
             "`alignment[key].set_times(times)`. Where a pulse timed every frame those are the pulse times; "
             "otherwise build them from the segment's onset and its own spacing, "
-            "`onset + numpy.arange(count) / rate` over `get_frame_counts()` and `get_frame_rates()`. That "
+            "`onset + numpy.arange(count) / rate` over `get_frame_counts()` and `get_header_frame_rates()`. That "
             "also silences this warning.",
             UserWarning,
             stacklevel=3,
@@ -274,7 +285,7 @@ class ExternalVideoInterface(BaseDataInterface):
         # segments have been placed independently they generally leave gaps between them.
         if any(self.alignment[segment_key].is_fine_aligned for segment_key in self._segment_keys):
             return None
-        frame_rates = self.get_frame_rates()
+        frame_rates = self.get_header_frame_rates()
         if len(set(frame_rates)) != 1:
             return None
         return self.alignment.offset, frame_rates[0]

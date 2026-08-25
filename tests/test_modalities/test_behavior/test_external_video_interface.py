@@ -103,7 +103,7 @@ class TestExternalVideoAlignment:
             file_paths=["trial_1.avi", "trial_2.avi"],
             num_frames=2,
             frame_rate=2.0,
-            segment_timing="unset",
+            alignment_state="unaligned",
         )
         assert not interface.alignment.is_fine_aligned
 
@@ -115,11 +115,11 @@ class TestExternalVideoAlignment:
         assert image_series.starting_time == 0.0
         assert image_series.starting_frame == [0, 2]
 
-    @pytest.mark.parametrize("segment_timing", ["contiguous", "gapped"])
-    def test_segments_with_times_of_their_own_do_not_warn(self, segment_timing):
+    @pytest.mark.parametrize("alignment_state", ["free_running", "triggered"])
+    def test_segments_with_times_of_their_own_do_not_warn(self, alignment_state):
         """Times of their own are what the warning asks for, however they were given."""
         interface = MockExternalVideoInterface(
-            file_paths=["trial_1.avi", "trial_2.avi"], num_frames=2, frame_rate=2.0, segment_timing=segment_timing
+            file_paths=["trial_1.avi", "trial_2.avi"], num_frames=2, frame_rate=2.0, alignment_state=alignment_state
         )
         assert interface.alignment.is_fine_aligned
 
@@ -160,7 +160,7 @@ class TestExternalVideoAlignment:
         assert image_series.num_samples == sum(interface.get_frame_counts())
         # Placed files go through the times array, so the rate is fitted back out of it rather than stated,
         # which costs the last digits. The compact path only survives for a video nothing has re-timed.
-        assert image_series.rate == pytest.approx(interface.get_frame_rates()[0])
+        assert image_series.rate == pytest.approx(interface.get_header_frame_rates()[0])
 
     def test_starting_times_are_absolute(self):
         """Placement replaces rather than accumulates, which is what the deprecated setter got wrong."""
@@ -245,13 +245,13 @@ def _place(interface, segment_key, starting_time):
     """Give one segment the times its onset implies, which is what a caller writes without a lazy setter."""
     file_index = list(interface.alignment.keys()).index(segment_key)
     frame_count = interface.get_frame_counts()[file_index]
-    frame_rate = interface.get_frame_rates()[file_index]
+    frame_rate = interface.get_header_frame_rates()[file_index]
     interface.alignment[segment_key].set_times(starting_time + np.arange(frame_count) / frame_rate)
 
 
 def _place_contiguously(interface):
     """Place every file where the one before it ended, which is what a recording split in place needs."""
-    durations = np.array(interface.get_frame_counts()) / np.array(interface.get_frame_rates())
+    durations = np.array(interface.get_frame_counts()) / np.array(interface.get_header_frame_rates())
     starting_times = np.concatenate([[0.0], np.cumsum(durations)[:-1]])
     for segment_key, starting_time in zip(interface.alignment.keys(), starting_times):
         _place(interface, segment_key, starting_time)
