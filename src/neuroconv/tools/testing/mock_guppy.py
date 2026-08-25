@@ -34,6 +34,11 @@ _DEFAULT_EVENT_STORE_TO_NAME = {
     "PrtR": "port_entries",
 }
 _SESSION_ID = "mock_guppy_session"
+# One behavioral covariate scored four times inside the default recording. The third bin holds no
+# score, so the empty-bin case (NaN mean, count 0) is covered by the defaults.
+_DEFAULT_COVARIATES = {"akinesia": ((1.1, 1.6, 1.7, 2.6), (2.0, 3.0, 4.0, 5.0))}
+# Detected transient times shared by transientsOccurrences_* and the per-bin counts.
+_TRANSIENT_PEAK_TIMES = (1.2, 1.5, 1.8, 2.5)
 # Seconds of raw recording GuPPy's lights-on trim discards before analysis (its default).
 _TIME_FOR_LIGHTS_TURN_ON = 1.0
 
@@ -54,6 +59,8 @@ def generate_mock_guppy_output_folder(
     peak_start_points: tuple[float, ...] = (-5.0, 0.0, 5.0),
     peak_end_points: tuple[float, ...] = (0.0, 3.0, 10.0),
     valid_signal_intervals: tuple[tuple[float, float], ...] = ((1.25, 1.75), (2.0, 2.5)),
+    bin_width: float | None = 0.5,
+    covariates: dict[str, tuple[Sequence[float], Sequence[float]]] | None = None,
     tonic_epochs: tuple[tuple[str, float, float], ...] = (("baseline", 1.0, 2.0), ("post_injection", 2.0, 3.0)),
     bin_size_in_trials: int = 3,
     guppy_version: str = "2.0.0a7",
@@ -104,6 +111,15 @@ def generate_mock_guppy_output_folder(
         ``coordsForPreProcessing_<recording_site>.npy`` for every recording_site, and reflected by ``removeArtifacts``
         in the parameters file. Pass an empty tuple to emit no coords files (the no-artifact-removal
         case). The windows must fall inside the trace timebase.
+    bin_width : float, optional
+        Width (s) of the whole-session time bins, written to the parameters file and used for
+        ``binned_metrics_<recording_site>.h5``. Pass ``None`` to emit no binned tables at all (the case
+        where **Compute Binned Metrics?** was off), which also suppresses the covariate tables.
+    covariates : dict of str to (sequence of float, sequence of float), optional
+        Behavioral covariates as ``{name: (timestamps, values)}``, each written as an ordinary store and
+        labeled ``covariate_<name>`` in ``storesList.csv``, plus its binned means and correlations.
+        Defaults to one covariate scored at four times inside the recording, one of the bins holding no
+        score. Pass an empty dict for a session carrying no covariate.
     tonic_epochs : tuple of (str, float, float), optional
         ``(label, start, end)`` tonic epoch windows written to ``tonic_epochs_<recording_site>.csv`` for
         every recording_site, with their per-epoch means in ``tonic_<recording_site>.h5``. Pass an empty
@@ -136,6 +152,7 @@ def generate_mock_guppy_output_folder(
         recording_site_to_stores if recording_site_to_stores is not None else _DEFAULT_RECORDING_SITE_TO_STORES
     )
     event_store_to_name = event_store_to_name if event_store_to_name is not None else _DEFAULT_EVENT_STORE_TO_NAME
+    covariates = covariates if covariates is not None else _DEFAULT_COVARIATES
     recording_sites = list(recording_site_to_stores)
     event_names = list(event_store_to_name.values())
 
@@ -165,8 +182,15 @@ def generate_mock_guppy_output_folder(
     lag_axis = np.linspace(-5.0, 5.0, num_psth_timepoints)
 
     _write_stores_list(
-        folder_path, recording_site_to_stores=recording_site_to_stores, event_store_to_name=event_store_to_name
+        folder_path,
+        recording_site_to_stores=recording_site_to_stores,
+        event_store_to_name=event_store_to_name,
+        covariates=covariates,
     )
+    for covariate_name, (covariate_timestamps, covariate_values) in covariates.items():
+        _write_covariate_store(
+            folder_path, covariate_name=covariate_name, timestamps=covariate_timestamps, values=covariate_values
+        )
     _write_parameters(
         folder_path,
         guppy_version=guppy_version,
@@ -175,6 +199,7 @@ def generate_mock_guppy_output_folder(
         peak_end_points=peak_end_points,
         bin_size_in_trials=bin_size_in_trials,
         remove_artifacts=bool(valid_signal_intervals),
+        bin_width=bin_width,
     )
 
     for recording_site in recording_sites:
@@ -201,6 +226,23 @@ def generate_mock_guppy_output_folder(
         for feature in features:
             _write_transients_occurrences(folder_path, feature=feature, recording_site=recording_site)
             _write_freq_and_amp(folder_path, feature=feature, recording_site=recording_site)
+        if bin_width is not None:
+            bin_edges = _bin_edges(timestamps=timestamps, bin_width=bin_width)
+            _write_binned_metrics(
+                folder_path,
+                recording_site=recording_site,
+                bin_edges=bin_edges,
+                timestamps=timestamps,
+                trace=_trace_data(num_samples),
+                features=features,
+            )
+            if covariates:
+                _write_binned_covariates(
+                    folder_path, recording_site=recording_site, bin_edges=bin_edges, covariates=covariates
+                )
+                _write_covariate_correlations(
+                    folder_path, recording_site=recording_site, features=features, covariates=covariates
+                )
 
     for event_name in event_names:
         trial_onsets = event_name_to_onsets[event_name]
@@ -258,10 +300,12 @@ def _trial_bin_edges(num_trials: int, bin_size_in_trials: int) -> list[tuple[int
     return edges
 
 
-def _write_stores_list(folder_path, recording_site_to_stores, event_store_to_name) -> None:
+def _write_stores_list(folder_path, recording_site_to_stores, event_store_to_name, covariates=None) -> None:
     """Two-row ``storesList.csv`` (row 0 = acquisition store ids, row 1 = GuPPy store labels).
 
-    Written via ``np.savetxt(..., delimiter=",", fmt="%s")``.
+    Written via ``np.savetxt(..., delimiter=",", fmt="%s")``. A behavioral covariate is listed like any
+    other store, under the label ``covariate_<name>``; its store id is the name of the CSV it came in
+    as, which is the covariate name.
     """
     store_ids, store_labels = [], []
     for recording_site, stores in recording_site_to_stores.items():
@@ -272,6 +316,9 @@ def _write_stores_list(folder_path, recording_site_to_stores, event_store_to_nam
     for store, event_name in event_store_to_name.items():
         store_ids.append(store)
         store_labels.append(event_name)
+    for covariate_name in covariates or {}:
+        store_ids.append(covariate_name)
+        store_labels.append("covariate_" + covariate_name)
     rows = np.asarray([store_ids, store_labels], dtype=str)
     np.savetxt(folder_path / "storesList.csv", rows, delimiter=",", fmt="%s")
 
@@ -297,6 +344,7 @@ def _write_parameters(
     peak_end_points,
     bin_size_in_trials,
     remove_artifacts,
+    bin_width,
 ) -> None:
     """``GuPPyParamtersUsed.json`` written via ``json.dump``.
 
@@ -330,13 +378,15 @@ def _write_parameters(
         moving_window=15.0,
         highAmpFilt=2.0,
         transientsThresh=2.0,
+        computeBinnedMetrics=bin_width is not None,
+        binnedMetricsWidth=bin_width if bin_width is not None else 60.0,
     )
     with open(folder_path / "GuPPyParamtersUsed.json", "w", encoding="utf-8") as parameters_file:
         json.dump(parameters, parameters_file, indent=4)
 
 
 def _trace_data(num_samples) -> np.ndarray:
-    """The sample values every derived trace carries, shared so the tonic means can be derived from them."""
+    """The sample values every derived trace carries, shared so the binned and tonic means derive from them."""
     return np.linspace(-1.0, 1.0, num_samples, dtype=np.float64)
 
 
@@ -382,7 +432,8 @@ def _write_transients_occurrences(folder_path, feature, recording_site) -> None:
     Written as a DataFrame via ``to_csv`` (leading integer index column). The peaks sit inside the
     trace window; a couple fall beyond the 1-s stub window on purpose.
     """
-    peaks = np.array([[1.2, 0.9], [1.5, 1.4], [1.8, 0.7], [2.5, 1.1]], dtype=np.float64)
+    amplitudes = (0.9, 1.4, 0.7, 1.1)
+    peaks = np.column_stack([np.asarray(_TRANSIENT_PEAK_TIMES, dtype=np.float64), np.asarray(amplitudes)])
     dataframe = pandas.DataFrame(peaks, index=np.arange(peaks.shape[0]), columns=["timestamps", "amplitude"])
     dataframe.to_csv(folder_path / f"transientsOccurrences_{feature}_{recording_site}.csv")
 
@@ -426,6 +477,120 @@ def _write_freq_and_amp(folder_path, feature, recording_site) -> None:
     """
     dataframe = pandas.DataFrame([[28.7, 2.18]], index=[_SESSION_ID], columns=["freq (events/min)", "amplitude"])
     dataframe.to_hdf(folder_path / f"freqAndAmp_{feature}_{recording_site}.h5", key="df", mode="w")
+
+
+def _write_covariate_store(folder_path, covariate_name, timestamps, values) -> None:
+    """``<store_id>.hdf5`` for a behavioral covariate, with ``timestamps``, ``data`` and ``sampling_rate``.
+
+    A covariate arrives as an ordinary GuPPy CSV and is carried into the run folder as an ordinary store,
+    under the store id ``storesList.csv`` row 0 gives it, with its scored values untouched.
+    """
+    with h5py.File(folder_path / f"{covariate_name}.hdf5", "w") as store_file:
+        store_file.create_dataset(
+            "timestamps", data=np.asarray(timestamps, dtype=np.float64), maxshape=(None,), chunks=True
+        )
+        store_file.create_dataset("data", data=np.asarray(values, dtype=np.float64), maxshape=(None,), chunks=True)
+        store_file.create_dataset("sampling_rate", data=np.asarray([1 / 120], dtype=np.float64))
+
+
+def _bin_edges(timestamps, bin_width) -> np.ndarray:
+    """The bin edges a recording of these timestamps is tiled into.
+
+    Bins start at the first timestamp and run in ``bin_width`` steps, with the last edge snapped back to
+    the final timestamp, so a session that does not divide evenly keeps a short final bin.
+    """
+    start = float(timestamps[0])
+    end = float(timestamps[-1])
+    edges = start + bin_width * np.arange(int(np.ceil((end - start) / bin_width)) + 1, dtype=np.float64)
+    edges[-1] = end
+    return edges
+
+
+def _bin_index(timestamps, bin_edges) -> np.ndarray:
+    """Index of the bin each timestamp falls in, the final bin including its own end."""
+    return np.clip(np.searchsorted(bin_edges, timestamps, side="right") - 1, 0, bin_edges.shape[0] - 2)
+
+
+def _write_binned_metrics(folder_path, recording_site, bin_edges, timestamps, trace, features) -> None:
+    """``binned_metrics_<recording_site>.h5`` and ``.csv`` -- one row per fixed-width time bin.
+
+    Written as a DataFrame via ``to_hdf(key="df")`` and ``to_csv``, indexed ``0..n_bins-1`` (index name
+    ``bin``), with columns ``bin_start``, ``bin_end``, ``n_samples``, ``mean_zscore``, ``mean_dff`` and a
+    ``transient_count_<feature>`` per feature the detector ran on. ``mean_dff`` is the z-score mean scaled
+    down, since the real traces differ and a reader must not be able to confuse the two columns.
+    """
+    bin_index = _bin_index(np.asarray(timestamps, dtype=np.float64), bin_edges)
+    n_bins = bin_edges.shape[0] - 1
+    n_samples = np.bincount(bin_index, minlength=n_bins)
+    mean_zscore = np.bincount(bin_index, weights=np.asarray(trace, dtype=np.float64), minlength=n_bins) / n_samples
+
+    binned = pandas.DataFrame(
+        {
+            "bin_start": bin_edges[:-1],
+            "bin_end": bin_edges[1:],
+            "n_samples": n_samples,
+            "mean_zscore": mean_zscore,
+            "mean_dff": mean_zscore / 10.0,
+        },
+        index=pandas.RangeIndex(n_bins, name="bin"),
+    )
+    for feature in sorted(features):
+        binned["transient_count_" + feature] = np.histogram(_TRANSIENT_PEAK_TIMES, bins=bin_edges)[0]
+    binned.to_hdf(folder_path / f"binned_metrics_{recording_site}.h5", key="df", mode="w")
+    binned.to_csv(folder_path / f"binned_metrics_{recording_site}.csv")
+
+
+def _write_binned_covariates(folder_path, recording_site, bin_edges, covariates) -> None:
+    """``binned_covariates_<recording_site>.h5`` and ``.csv`` -- the covariate means on the metrics' bins.
+
+    Written as a DataFrame via ``to_hdf(key="df")`` and ``to_csv``, indexed ``0..n_bins-1`` (index name
+    ``bin``), with columns ``bin_start``, ``bin_end``, one ``<covariate>`` mean column and one
+    ``n_samples_<covariate>`` count column per covariate. A bin holding no score reads NaN with a count
+    of 0.
+    """
+    n_bins = bin_edges.shape[0] - 1
+    columns = {"bin_start": bin_edges[:-1], "bin_end": bin_edges[1:]}
+    for covariate_name, (covariate_timestamps, covariate_values) in covariates.items():
+        covariate_timestamps = np.asarray(covariate_timestamps, dtype=np.float64)
+        covariate_values = np.asarray(covariate_values, dtype=np.float64)
+        inside = (covariate_timestamps >= bin_edges[0]) & (covariate_timestamps <= bin_edges[-1])
+        bin_index = _bin_index(covariate_timestamps[inside], bin_edges)
+        counts = np.bincount(bin_index, minlength=n_bins)
+        sums = np.bincount(bin_index, weights=covariate_values[inside], minlength=n_bins)
+        columns[covariate_name] = np.where(counts > 0, sums / np.maximum(counts, 1), np.nan)
+        columns["n_samples_" + covariate_name] = counts
+
+    binned = pandas.DataFrame(columns, index=pandas.RangeIndex(n_bins, name="bin"))
+    binned.to_hdf(folder_path / f"binned_covariates_{recording_site}.h5", key="df", mode="w")
+    binned.to_csv(folder_path / f"binned_covariates_{recording_site}.csv")
+
+
+def _write_covariate_correlations(folder_path, recording_site, features, covariates) -> None:
+    """``covariate_correlations_<recording_site>.h5`` and ``.csv`` -- one row per (metric, covariate) pair.
+
+    Written as a DataFrame via ``to_hdf(key="df")`` and ``to_csv``, indexed ``0..n_pairs-1`` (index name
+    ``pair``), with columns ``metric``, ``covariate``, ``pearson_r``, ``spearman_rho`` and ``n_bins``.
+    ``metric`` names a column of the binned-metrics table. There is no p-value column: GuPPy reports none,
+    because per-bin photometry and a behavioral score are both autocorrelated across bins.
+
+    The coefficients are fabricated but distinct per row, so a reader that mixes up rows fails.
+    """
+    metrics = ["mean_zscore", "mean_dff"] + ["transient_count_" + feature for feature in sorted(features)]
+    rows = []
+    for index, metric in enumerate(sorted(metrics)):
+        for covariate_name in covariates:
+            rows.append(
+                {
+                    "metric": metric,
+                    "covariate": covariate_name,
+                    "pearson_r": round(0.5 - 0.1 * index, 4),
+                    "spearman_rho": round(0.4 - 0.1 * index, 4),
+                    "n_bins": 3,
+                }
+            )
+    correlations = pandas.DataFrame(rows, index=pandas.RangeIndex(len(rows), name="pair"))
+    correlations.to_hdf(folder_path / f"covariate_correlations_{recording_site}.h5", key="df", mode="w")
+    correlations.to_csv(folder_path / f"covariate_correlations_{recording_site}.csv")
 
 
 def _event_matrix_dataframe(axis, trial_onsets, bin_edges) -> pandas.DataFrame:
