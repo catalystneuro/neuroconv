@@ -67,8 +67,14 @@ class TestTimestampCountValidation:
         interface = MockExternalVideoInterface(file_paths=["session.mp4"], num_frames=100)
         interface.set_aligned_timestamps(aligned_timestamps=[np.arange(99) / 30.0])
 
+        expected_message = (
+            "99 timestamps were set for the 100 frames held by 1 video file(s), and an external ImageSeries "
+            "carries one time per frame. A few timestamps short of the frame count usually means the camera "
+            "dropped frames, and many more than it usually means the signal you read them from was already "
+            "running before the camera started."
+        )
         nwbfile = mock_NWBFile()
-        with pytest.raises(ValueError, match="99 timestamps were set for the 100 frames"):
+        with pytest.raises(ValueError, match=re.escape(expected_message)):
             interface.add_to_nwbfile(nwbfile=nwbfile)
 
     def test_an_unknown_frame_count_is_not_a_contradiction(self):
