@@ -73,6 +73,7 @@ def test_simple_time_series_override(
         assert written_data.compression_opts == higher_gzip_level
     elif backend == "zarr":
         assert written_data.compressor == numcodecs.GZip(level=5)
+    written_nwbfile.read_io.close()
 
 
 @pytest.mark.parametrize("backend", ["hdf5", "zarr"])
@@ -114,3 +115,4 @@ def test_simple_dynamic_table_override(tmpdir: Path, backend: Literal["hdf5", "z
         assert written_data.compression_opts == higher_gzip_level
     elif backend == "zarr":
         assert written_data.compressor == numcodecs.GZip(level=5)
+    written_nwbfile.read_io.close()

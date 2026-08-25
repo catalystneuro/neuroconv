@@ -86,6 +86,7 @@ def test_configure_backend_equivalency(
         assert written_data.compressor == numcodecs.GZip(level=2)
 
     assert_array_equal(array_1, written_data[:])
+    written_nwbfile.read_io.close()
 
 
 @pytest.mark.parametrize("backend", ["hdf5", "zarr"])

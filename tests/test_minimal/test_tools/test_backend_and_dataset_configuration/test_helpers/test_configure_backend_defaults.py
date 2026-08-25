@@ -88,6 +88,7 @@ def test_simple_time_series(
         assert written_data.compressor == numcodecs.GZip(level=1)
 
     assert_array_equal(integer_array, written_data[:])
+    written_nwbfile.read_io.close()
 
 
 @pytest.mark.parametrize("backend", ["hdf5", "zarr"])
@@ -120,6 +121,7 @@ def test_simple_dynamic_table(tmpdir: Path, integer_array: np.ndarray, backend: 
         assert written_data.compressor == numcodecs.GZip(level=1)
 
     assert_array_equal(integer_array, written_data[:])
+    written_nwbfile.read_io.close()
 
 
 def test_pynwb_data_io_is_shadowed_on_nwbdata():
@@ -169,6 +171,7 @@ def test_simple_image(tmpdir: Path, backend: Literal["hdf5", "zarr"]):
         assert written_data.compressor == numcodecs.GZip(level=1)
 
     assert_array_equal(array, written_data[:])
+    written_nwbfile.read_io.close()
 
 
 @pytest.mark.parametrize(
@@ -250,6 +253,7 @@ def test_time_series_timestamps_linkage(
 
     written_timestamps_2 = written_nwbfile.acquisition["TestTimeSeries2"].timestamps
     assert written_timestamps_2 == written_timestamps_1
+    written_nwbfile.read_io.close()
 
 
 @pytest.mark.parametrize("backend", ["hdf5", "zarr"])
@@ -299,3 +303,4 @@ def test_plane_segmentation_pixel_mask(
     elif backend == "zarr":
         assert written_dataset.compressor == numcodecs.GZip(level=1)
     assert_array_equal(written_dataset[:], expected_pixel_mask)
+    written_nwbfile.read_io.close()

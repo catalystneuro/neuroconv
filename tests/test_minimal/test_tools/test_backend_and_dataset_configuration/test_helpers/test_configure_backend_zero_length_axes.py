@@ -131,3 +131,4 @@ def test_dynamic_table_skip_zero_length_axis(
         assert written_data.compressor == numcodecs.GZip(level=1)
 
     assert_array_equal(integer_array, written_data[:])
+    written_nwbfile.read_io.close()

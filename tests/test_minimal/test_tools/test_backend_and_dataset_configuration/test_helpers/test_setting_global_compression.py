@@ -175,6 +175,7 @@ class TestGlobalCompressionHDF5:
                 # For compression methods that don't work properly, we just verify the file was created
                 # The compression may be None or fallback to a default method
                 pass
+        read_nwbfile.read_io.close()
 
     def test_global_compression_with_options(self, tmp_path):
         """Test applying global compression method with options using backend configuration."""
@@ -206,6 +207,7 @@ class TestGlobalCompressionHDF5:
             assert dataset1.compression_opts == 9
             assert dataset2.compression == "gzip"
             assert dataset2.compression_opts == 9
+        read_nwbfile.read_io.close()
 
     def test_global_compression_invalid_method(self):
         """Test that invalid compression method raises error when using apply_global_compression."""
@@ -269,6 +271,7 @@ class TestGlobalCompressionZarr:
         # Check that the compressor name matches the expected compression method
         assert expected_compression in str(dataset1.compressor).lower()
         assert expected_compression in str(dataset2.compressor).lower()
+        read_nwbfile.read_io.close()
 
     def test_global_compression_with_options(self, tmp_path):
         """Test applying global compression method with options using backend configuration."""
@@ -311,6 +314,7 @@ class TestGlobalCompressionZarr:
             assert dataset1.compressor.level == 6
         if hasattr(dataset2.compressor, "level"):
             assert dataset2.compressor.level == 6
+        read_nwbfile.read_io.close()
 
     def test_global_compression_invalid_method(self, tmp_path):
         """Test that invalid compression method raises error when using apply_global_compression."""

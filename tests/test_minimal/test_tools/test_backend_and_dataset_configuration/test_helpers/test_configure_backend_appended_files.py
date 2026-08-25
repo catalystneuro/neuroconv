@@ -53,3 +53,4 @@ def test_appended_time_series(nwbfile_path: str):
     assert_array_equal(written_data[:], APPENDED_ARRAY)
 
     assert_array_equal(written_nwbfile.acquisition["ExistingTimeSeries"].data[:], EXISTING_ARRAY)
+    written_nwbfile.read_io.close()
