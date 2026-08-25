@@ -6,7 +6,10 @@ Run from the repository root::
 
 Produces two figures:
 
-- ``video_recording_setups.png``  - the three setups the guide is organised by, and within each the shapes
+- ``video_setup_free_running.png``, ``video_setup_triggered.png`` and
+  ``video_setup_several_cameras.png``  - one per setup the guide is organised by, free-running against
+  triggered being how cameras are documented and the fact about the rig's intent that decides everything
+  else, and within each the shapes
   the session's files and its digital line can take, over the recording system that runs the whole session
   and carries the session clock. Rig only: no method names, since which call places a setup belongs in the
   prose beside it and would date the figure.
@@ -88,118 +91,91 @@ def frame_pulses(spans, *, interval):
     return np.concatenate([np.arange(start, stop, interval) for start, stop in spans])
 
 
-def build_recording_setups():
-    """The three setups, on one session clock, in the order the guide takes them."""
-    session = [(1.0, 9.2)]
-    split = [(1.0, 3.7), (3.7, 6.4), (6.4, 9.1)]
-    trials = [(1.0, 2.6), (4.0, 5.6), (7.0, 8.6)]
+def build_setup_figure(*, file_name, title, rows):
+    """One setup, drawn on its own: its cases stacked over the recording system and the session clock.
 
-    groups = [
-        (
-            "One behavior video",
-            [
-                ("Known offset", session, ["session.avi"], [1.0], "start pulse"),
-                (
-                    "A pulse per frame",
-                    session,
-                    ["session.avi"],
-                    frame_pulses(session, interval=0.16),
-                    "frame line",
-                ),
-                # The line does not distinguish this row: what makes it its own case is that the files
-                # touch, and it can carry anything the two rows above carry, or nothing.
-                ("Split into several files", split, ["part_01", "part_02", "part_03"], [], "any line, or none"),
-            ],
-        ),
-        (
-            "Trialized videos of the same behavior",
-            [
-                (
-                    "Trial onsets only",
-                    trials,
-                    ["trial_01", "trial_02", "trial_03"],
-                    [start for start, _ in trials],
-                    "trigger line",
-                ),
-                (
-                    "A pulse per frame",
-                    trials,
-                    ["trial_01", "trial_02", "trial_03"],
-                    frame_pulses(trials, interval=0.16),
-                    "frame line",
-                ),
-            ],
-        ),
-        (
-            "Several cameras of the same subject",
-            [
-                ("Top camera", [(1.0, 9.2)], ["top.avi"], [1.0], "top start"),
-                ("Side camera", [(2.2, 8.4)], ["side.avi"], [2.2], "side start"),
-            ],
-        ),
-    ]
-
-    number_of_rows = sum(len(rows) for _, rows in groups)
-    figure, ax = plt.subplots(figsize=(9.4, 1.45 * number_of_rows + 1.6))
+    One figure per setup rather than all three in one, because they are read one at a time, beside the
+    section that teaches them, and a single stack of seven cases is taller than a screen.
+    """
+    figure, ax = plt.subplots(figsize=(9.4, 1.45 * len(rows) + 1.6))
+    ax.text(GROUP_X, FILE_HEIGHT + 0.42, title, ha="left", va="center", fontsize=11, color=BLACK, fontweight="semibold")
 
     y = 0.0
-    group_separators = []
-    for group_index, (group_title, rows) in enumerate(groups):
-        if group_index:
-            content_bottom = y + ROW_PITCH - SYSTEM_DROP
-            y -= GROUP_GAP
-            group_separators.append(content_bottom - GROUP_GAP * 0.55)
-        ax.text(
-            GROUP_X,
-            y + FILE_HEIGHT + 0.34,
-            group_title,
-            ha="left",
-            va="center",
-            fontsize=11,
-            color=BLACK,
-            fontweight="semibold",
-        )
-        for title, spans, labels, pulses, line_label in rows:
-            row_label(ax, y=y, title=title)
-            video_files(ax, y=y, spans=spans, labels=labels)
-            digital_line(ax, y=y - PULSE_DROP, pulses=pulses, label=line_label)
-            recording_system(ax, y=y - SYSTEM_DROP)
-            y -= ROW_PITCH
-
-    for separator_y in group_separators:
-        ax.hlines(separator_y, GROUP_X, 9.6, color="0.9", lw=1.0)
+    for row_title, spans, labels, pulses, line_label in rows:
+        row_label(ax, y=y, title=row_title)
+        video_files(ax, y=y, spans=spans, labels=labels)
+        digital_line(ax, y=y - PULSE_DROP, pulses=pulses, label=line_label)
+        recording_system(ax, y=y - SYSTEM_DROP)
+        y -= ROW_PITCH
 
     # The session clock every row is expressed on, drawn once under the stack.
     baseline_y = y + ROW_PITCH - SYSTEM_DROP - 0.55
     ax.annotate(
-        "",
-        xy=(9.7, baseline_y),
-        xytext=(0.55, baseline_y),
-        arrowprops=dict(arrowstyle="-|>", color=BLACK, lw=1.4),
+        "", xy=(9.7, baseline_y), xytext=(0.55, baseline_y), arrowprops=dict(arrowstyle="-|>", color=BLACK, lw=1.4)
     )
     ax.text(LABEL_X, baseline_y, "session clock", ha="right", va="center", fontsize=9, color=BLACK)
     ax.vlines(0.55, baseline_y - 0.14, baseline_y + 0.14, color=BLACK, lw=1.4)
     ax.text(0.55, baseline_y - 0.28, "session_start_time", ha="center", va="top", fontsize=8, color=NOTE)
-    ax.text(
-        5.075,
-        baseline_y - 0.72,
-        "the recording system is the electrophysiology, fiber photometry, imaging or operant box the video is "
-        "placed against;\nevery digital line above is one of its inputs",
-        ha="center",
-        va="top",
-        fontsize=8,
-        color=NOTE,
-        linespacing=1.5,
-    )
     # A guide at the session start, so the gap before each row's first file reads as its offset.
     ax.vlines(0.55, baseline_y, FILE_HEIGHT + 0.2, color="0.8", lw=1.0, linestyle=(0, (4, 4)))
 
     ax.set_xlim(GROUP_X - 0.1, 10.0)
-    ax.set_ylim(baseline_y - 1.35, FILE_HEIGHT + 0.62)
+    ax.set_ylim(baseline_y - 0.6, FILE_HEIGHT + 0.62)
     ax.axis("off")
     figure.tight_layout()
-    figure.savefig(OUTDIR / "video_recording_setups.png", dpi=200, bbox_inches="tight")
+    figure.savefig(OUTDIR / file_name, dpi=200, bbox_inches="tight")
     plt.close(figure)
+
+
+def build_recording_setups():
+    """The three setups, one figure each, all on the same session clock so they compare directly."""
+    session = [(1.0, 9.2)]
+    split = [(1.0, 3.7), (3.7, 6.4), (6.4, 9.1)]
+    trials = [(1.0, 2.6), (4.0, 5.6), (7.0, 8.6)]
+
+    build_setup_figure(
+        file_name="video_setup_free_running.png",
+        title="A free-running camera",
+        rows=[
+            ("Known offset", session, ["session.avi"], [1.0], "start pulse"),
+            (
+                "A pulse per frame",
+                session,
+                ["session.avi"],
+                frame_pulses(session, interval=0.16),
+                "frame line",
+            ),
+            ("Written to several files", split, ["part_01", "part_02", "part_03"], [], "either of the above"),
+        ],
+    )
+    build_setup_figure(
+        file_name="video_setup_triggered.png",
+        title="A triggered camera",
+        rows=[
+            (
+                "Trial onsets only",
+                trials,
+                ["trial_01", "trial_02", "trial_03"],
+                [start for start, _ in trials],
+                "trigger line",
+            ),
+            (
+                "A pulse per frame",
+                trials,
+                ["trial_01", "trial_02", "trial_03"],
+                frame_pulses(trials, interval=0.16),
+                "frame line",
+            ),
+        ],
+    )
+    build_setup_figure(
+        file_name="video_setup_several_cameras.png",
+        title="Several cameras of the same subject",
+        rows=[
+            ("Top camera", [(1.0, 9.2)], ["top.avi"], [1.0], "top start"),
+            ("Side camera", [(2.2, 8.4)], ["side.avi"], [2.2], "side start"),
+        ],
+    )
 
 
 def wiring_panel(ax, *, title, signal_travels_to_system, arrow_label, note):

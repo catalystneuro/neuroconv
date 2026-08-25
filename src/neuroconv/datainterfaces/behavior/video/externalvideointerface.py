@@ -53,6 +53,12 @@ class ExternalVideoInterface(BaseDataInterface):
         file_paths : list of FilePaths
             Many video storage formats segment a sequence of videos over the course of the experiment.
             Pass the file paths for this videos as a list in sorted, consecutive order.
+
+            Each file is separately addressable for alignment under the stem of its path, so
+            ``file_paths=["trial_01.avi", "trial_02.avi"]`` gives ``alignment["trial_01"]`` and
+            ``alignment["trial_02"]``. The stems therefore have to be unique, and a repeated one raises
+            here rather than merging two files onto one handle: rename the files, or pass one interface
+            per name.
         verbose : bool, optional
             If True, display verbose output. Defaults to False.
         metadata_key : str, optional

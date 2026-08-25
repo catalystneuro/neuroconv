@@ -9,8 +9,8 @@ against another signal it has to be expressed on the session clock. That is the 
 
 Most rigs record behavior video alongside something else: extracellular electrophysiology, fiber
 photometry, optical imaging, an operant box. The camera is on its own clock in every one of them, so the
-recipes below cover those setups together. What changes between them is not which modality the video sits
-next to but how the camera's output is chunked and what the cable between the two systems carried.
+recipes below cover those setups together. What changes between them is how the camera's output is
+chunked and what the cable between the two systems carried.
 
 This guide covers :py:class:`~neuroconv.datainterfaces.behavior.video.externalvideointerface.ExternalVideoInterface`,
 which leaves the video on disk and writes an ``ImageSeries`` pointing at it. For the generic
@@ -25,27 +25,45 @@ is the other modality, whichever it is, and it matters here for two reasons. Its
 session clock, because everything else in the rig is wired into it. And its digital inputs are where the
 camera's timing signal was captured, so it is also the instrument that measures the video.
 
-.. image:: ../_static/images/video_recording_setups.png
-   :width: 760px
-   :align: center
-   :alt: Three groups of cases on one session clock. Every case is drawn as three stacked bands: the video
-         files on top, the digital line that timed them below, and a band for the recording system running
-         the whole session underneath, since the recording is present in all of them and is what the video
-         is placed against. The first group, one behavior video, holds a single long block with one start
-         pulse, the same block over a line pulsing continuously, and three blocks touching end to end whose
-         line is labelled "any line, or none" because what makes that case its own is the file layout
-         rather than the wiring. The second, trialized videos of the same behavior, holds three short
-         blocks separated by gaps over a trigger line carrying one pulse at each block's start, and the
-         same separated blocks over a line pulsing only while a block runs, so the pulses arrive in three
-         bursts. The third, several cameras of the same subject, holds one long block for a top camera and
-         a shorter one starting later for a side camera, each over its own line. A dashed guide marks the
-         session start time, so the gap before each row's first block is that row's offset.
+The video arrives in one of three arrangements, and they are the three sections below. Every case in them
+is drawn the same way: the video files on top, the digital line that timed them below, and a band for the
+recording system running underneath, with a dashed guide at the session start so the gap before a row's
+first file reads as its offset.
 
-The video arrives in one of three arrangements, and they are the three sections below. **One behavior
-video** is a single camera writing one file, or writing several that are one recording split in place.
-**Trialized videos of the same behavior** is a single camera triggered per trial, so one file per trial
-with real gaps between them. **Several cameras of the same subject** is not a third arrangement: it is
-several cameras, each of which is one of the first two, and each aligned on its own.
+**A free-running camera.** It runs for the session and stops when the session does. Whether that lands in one
+file or several is a decision the recording software made about file size or a timer, and it changes nothing
+about the timing: the frames are one continuous stream either way.
+
+.. image:: ../_static/images/video_setup_free_running.png
+   :width: 720px
+   :align: center
+   :alt: Three cases on one session clock. A single long block with one start pulse beneath it. The same
+         block over a line pulsing continuously. And three blocks touching end to end, written by a
+         recorder that rotated its output, whose line is labelled "either of the above" because the split
+         is a storage detail rather than a timing one.
+
+**A triggered camera.** A pulse starts it at each trial, so the session yields one file per trial with real
+gaps between them. This is the trialized case, and there the gaps are the intent rather than an artifact.
+
+.. image:: ../_static/images/video_setup_triggered.png
+   :width: 720px
+   :align: center
+   :alt: Two cases on one session clock. Three short blocks separated by gaps, over a trigger line carrying
+         one pulse at each block's start. And the same separated blocks over a line pulsing only while a
+         block runs, so the pulses arrive in three bursts.
+
+**Several cameras of the same subject.** Not a third arrangement: it is several cameras, each of which is
+free-running or triggered, and each aligned on its own.
+
+.. image:: ../_static/images/video_setup_several_cameras.png
+   :width: 720px
+   :align: center
+   :alt: Two cases on one session clock, one per camera. A long block for a top camera starting just after
+         the session, and a shorter one for a side camera starting later, each over its own line, so the
+         two cameras are placed independently.
+
+Note that the first two figures hold the same three files, touching in one and separated in the other. That
+is the whole difficulty: the files on disk look identical, and only what the rig did tells them apart.
 
 How they are wired, and where the times come from
 -------------------------------------------------
@@ -66,58 +84,25 @@ many placements you have to make, and the cable says how good each one can be.
          out so its time is known but the delay to the first exposed frame is not measured.
 
 **The camera reports.** The camera has a frame-out or strobe pin that fires each time it exposes a frame,
-wired into a digital input on the recording system. Every frame therefore has a time measured on the
-session clock, which is the best case: it corrects drift, and because a pulse is evidence a frame
-happened, the pulse count is a fact you can check the video file against.
+wired into a digital input on the recording system. Every frame therefore has a time measured on the session
+clock, which is the best case: it corrects drift, and because a pulse is evidence a frame happened, the pulse
+count is a fact you can check the video file against.
 
-**The camera is commanded.** The line runs the other way, from the controller or the recording system into
-the camera's trigger input, and the same line is recorded on a digital input so its time is known. What
-was measured is the command, not a confirmation, so the delay from trigger to first exposed frame is
-unmeasured and nothing in the file records it. Within a trial the frame times then come from the nominal
-frame rate rather than from measurement.
+**The camera is commanded.** The line runs the other way, from the controller or the recording system into the
+camera's trigger input, and the same line is recorded on a digital input so its time is known. What was
+measured is the command, not a confirmation, so the delay from trigger to first exposed frame is unmeasured
+and nothing in the file records it. Within a trial the frame times then come from the nominal frame rate
+rather than from measurement.
 
-**No cable.** Then you have only whatever someone wrote down, a start time and nothing relating the two
-clocks after that instant.
+**No cable.** Then you have only whatever someone wrote down, a start time and nothing relating the two clocks
+after that instant.
 
-Crossing the two gives the recipes, which are the subsections of the three sections below:
+One combination has no recipe at all, and is worth naming: one file per trial with no line.
+Nothing in the recording then says where the trials sit, so the starting times have to come from somewhere
+else, a behavioral log or the files' modification times, and be set by hand.
 
-.. list-table::
-   :header-rows: 1
-   :widths: 26 30 44
-
-   * - The video
-     - What the line carried
-     - Recipe
-   * - One file
-     - Nothing but a start time
-     - :ref:`Known offset <video_known_offset>`
-   * - One file
-     - A pulse per frame
-     - :ref:`A pulse per frame <video_single_pulse_per_frame>`, under one behavior video
-   * - Several files, one recording
-     - Either
-     - :ref:`When the recorder split the session into several files <video_split_files>`
-   * - One file per trial
-     - An onset per file
-     - `Trial onsets only`_
-   * - One file per trial
-     - A pulse per frame
-     - :ref:`A pulse per frame <video_trialized_pulse_per_frame>`, under trialized videos
-   * - Several cameras
-     - Per camera
-     - One of the above for each, in `Several cameras of the same subject`_
-
-One combination is missing from that list and is worth naming: one file per trial with no line at all.
-Nothing then says where the trials sit, so the interface falls back on reading them as one recording split
-in place, warns that it has done so, and writes a file whose trials run back to back. You would have to
-recover the starting times from somewhere else, a behavioral log or the files' modification times, and set
-them yourself.
-
-Reading the line
-^^^^^^^^^^^^^^^^
-
-Whichever direction it points, the line lands on a digital input of the recording system and is read the
-same way. Name it in the header, configure it, and read it back without writing anything:
+**Reading the line.** Whichever direction it points, the line lands on a digital input of the recording system
+and is read the same way. Name it in the header, configure it, and read it back without writing anything:
 
 .. code-block:: python
 
@@ -146,24 +131,11 @@ arrangement: one system is the master because everything else is wired into it, 
 every other stream is expressed in its clock. If you do move the recording, shift it before you read, so
 the pulses come back already carrying the shift.
 
-This is also why no interpolation step appears on this page. Two clocks rarely differ by a constant: they
-run at slightly different rates and the difference wanders, and interpolating between paired sync pulses
-is how you track that when a handful of pulses is all you have. A frame-out line makes the tracking
-unnecessary rather than easier, because each frame's time on the recording clock is then measured, so
-however the two clocks drifted apart it is already in those numbers.
+What goes in ``detection_configuration`` is :ref:`how a signal becomes a line <events_conditioning>` and
+:ref:`how a line becomes events <events_detection>`.
 
-``get_event_type_source_ids()`` lists what a configuration resolved to if you are not sure of the handle.
-The line you configure is also written to the file as an ``EventsTable``, which is the right outcome: the
-pulse train is a record of the experiment and not merely scaffolding. Reading a line and keeping it out of
-the conversion are no longer the same decision. How the configuration itself works is
-:ref:`extract_events_from_signals`.
-
-Getting that order wrong is silent: pulses read before the shift look entirely reasonable and are wrong by
-exactly the offset, with nothing downstream able to detect it. The mirror of the rule applies to the video,
-where measured times already place it, so setting them and shifting the interface as well moves it twice.
-
-One behavior video
-------------------
+A free-running camera
+---------------------
 
 One camera, running for the session, writing one file. The interface writes one ``ImageSeries``, and the
 only question is what timed it.
@@ -180,12 +152,7 @@ Each video file is addressable for alignment under the stem of its path, which f
 one key. Note that a single video writes with no alignment call at all, claiming it started exactly at
 ``session_start_time``. That is a claim worth checking rather than accepting.
 
-.. _video_known_offset:
-
-Known offset
-^^^^^^^^^^^^
-
-All you know is when the camera started relative to the session start.
+**Known offset.** All you know is when the camera started relative to the session start.
 
 .. code-block:: python
 
@@ -195,45 +162,51 @@ Frame times come from the video's own frame rate, moved rigidly by the offset. T
 nothing else: two clocks that differ by a constant today will differ by more of one an hour from now, so a
 long session on a free-running camera accumulates error that no single number can fix.
 
-.. _video_single_pulse_per_frame:
-
-A pulse per frame
-^^^^^^^^^^^^^^^^^
-
-The camera sent a pulse on every frame it captured, so the recording system timestamped each frame
-directly. This is accurate and corrects drift, so prefer it whenever the pulses exist.
+**A pulse per frame.** The camera sent a pulse on every frame it captured, so the recording system timestamped
+each frame directly. This is accurate and corrects drift, so prefer it whenever the pulses exist.
 
 .. code-block:: python
 
     frame_pulse_times = digital_interface.get_event_times("camera_frame")
 
-    frame_count = interface.get_header_frame_counts()[0]
-    assert len(frame_pulse_times) == frame_count, (
-        f"{len(frame_pulse_times)} pulses for {frame_count} frames."
-    )
-
     interface.alignment["session"].set_times(frame_pulse_times)
 
-**Check the count before you set anything.** A mismatch is common, from dropped frames or from a pulse
-train that was already running when the camera started, and it is exactly the kind of error that produces
-a file that is wrong in a way nothing downstream flags. A pulse count one or two short of the frame count
-usually means dropped frames; a count much larger usually means the line was recording before the camera
-began, and you want the tail of it.
+You do not have to count them first: the interface refuses times that do not number one per frame and says
+how far out they are. Many more pulses than frames usually means the line was running before the camera, so
+you want the tail of it. A few short means dropped frames, and do not trim the pulses to fit, because most
+recorders stamp each frame with its index rather than its time, so a drop closes the gap instead of leaving
+one and every later frame is written early; the pulses are the only record of where the missing frames were.
 
-A dropped frame is worse than it sounds, which is why this check earns its place. Most recorders, Bonsai,
-Campy, OpenCV's ``VideoWriter`` and OBS among them, stamp each frame with its **index** rather than with
-the time it was taken, so a drop does not leave a hole in the timeline. It closes the gap, and every frame
-after the drop is written earlier than it happened, by a growing amount. Pairing frames with pulses is what
-catches that; a frame count on its own never will.
+**A pulse every few frames.** Some cameras send a sync pulse on every tenth or hundredth frame rather than
+on every one, and write a timestamp for each frame to a log file next to the video. The log times every
+frame, but on the camera's own clock, and the pulses are the only instants recorded on both clocks. A shift
+will not do it, because the two clocks drift; the pulses are what turn the camera's clock into the
+session's.
 
-.. _video_split_files:
+.. code-block:: python
 
-When the recorder split the session into several files
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    import pandas as pd
 
-Still one continuous recording, but the software was set to open a new file every few minutes, so it
-arrives as several. Each file starts where the one before it ended, and those durations are the frame
-counts over the frame rates:
+    camera_log = pd.read_csv("session_frame_times.csv")
+    frame_times = camera_log["timestamp"].to_numpy()  # camera clock, one per frame
+
+    interface.alignment["session"].set_times(frame_times)
+    interface.alignment.remap_times(
+        local_sync_times=frame_times[::10],  # a pulse went out on every tenth frame
+        reference_sync_times=digital_interface.get_event_times("camera_sync"),
+    )
+
+Set the log's times first, which puts the video on the camera's clock, then remap that clock onto the
+session's. The two pulse arrays pair up positionally, so they have to be the same length and in the same
+order, and a pulse only one of the systems recorded has to be dropped from both. Frames between two pulses
+are interpolated proportionally and none of the data is resampled, only the times move.
+
+**When the recorder split the session into several files.** Still one continuous recording, but the software
+was set to open a new file every few minutes, so it arrives as several. Whether that changes the timing
+depends on the recorder: if it dropped no frames while closing one file and opening the next, the files run
+back to back and each starts where the last one ended, which the frame counts and rates give you. Nothing in
+the files records a gap if there was one, so if the rig has a frame-out line, use it and take each file's
+times from the pulses instead.
 
 .. code-block:: python
 
@@ -249,34 +222,18 @@ counts over the frame rates:
     for segment_key, start, count, rate in zip(interface.alignment.keys(), starting_times, frame_counts, frame_rates):
         interface.alignment[segment_key].set_times(start + np.arange(count) / rate)
 
-    interface.alignment.shift_times(12.5)
-
-Strictly you can skip that loop, because it is what the interface assumes anyway. **But it warns when it
-has to assume**, naming the files with no times of their own, and the loop is how you silence it. That is
-deliberate: a rotated recording and a camera triggered once per trial produce the same list of files, and
-nothing in the files tells them apart, so writing the first reading without saying so would hide a wrong
-answer. A rigid ``shift_times`` does not silence it either, since it moves the whole interface and says
-nothing about any one file.
-
-.. note::
-
-   Writing the cumulative durations asserts that the recorder dropped no frames between closing one file
-   and opening the next. That is usually close enough over a few minutes and it is the best the files
-   themselves can tell you, but it is an assumption; a frame-out line, if the rig has one, measures it
-   instead.
-
-Trialized videos of the same behavior
--------------------------------------
+A triggered camera, one file per trial
+--------------------------------------
 
 One camera again, but a pulse triggers it at the start of each trial, so the session yields one file per
 trial with real gaps between them. Each file's placement is an independent fact.
 
 ``ExternalVideoInterface(file_paths=[...])`` writes a **single** ``ImageSeries`` whose ``external_file``
-list is as long as the input. A session of forty trials is one container with forty entries, not forty
-containers. Modelling it as one interface per trial gives a file that is harder to consume, because
-nothing downstream can tell that the forty series are one camera. ``starting_frame``, which marks where
-each external file begins within the series, is computed from the frame counts and never appears in your
-code.
+list is as long as the input. A session of forty trials is one container with forty entries. That container
+carries the trial order in the ``external_file`` list and the frame numbering in ``starting_frame``, over
+one timestamps vector, so a reader gets the session's structure from the object itself; split into forty
+containers it has to be reconstructed from their names. ``starting_frame``, which marks where each external
+file begins within the series, is computed from the frame counts and never appears in your code.
 
 .. code-block:: python
 
@@ -288,10 +245,7 @@ If two trials write files with the same name in different folders, rename them. 
 addressed, so it has to be unique, and the interface raises at construction rather than silently merging
 two handles.
 
-Trial onsets only
-^^^^^^^^^^^^^^^^^
-
-The digital line recorded the triggers and nothing else.
+**Trial onsets only.** The digital line recorded the triggers and nothing else.
 
 .. code-block:: python
 
@@ -310,29 +264,18 @@ rate. So the no-drift caveat from the known-offset case returns, but per trial r
 session, which is usually fine: a trial is short, and a camera does not drift far in ten seconds.
 
 ``set_times`` is **absolute**, so running that loop twice leaves the files where the second run says
-rather than moving them twice, which is what distinguishes it from ``alignment.shift_times``.
+rather than moving them twice.
 
-.. warning::
+Within a trial the frame times rest entirely on the rate the container declares, and a header can be wrong
+without the file saying so: an IBL Brain Wide Map camera declares exactly 150 fps against a
+hardware-measured 150.4083, which is 11.5 seconds by the end of a session on frames that are perfectly
+evenly spaced. Over a ten-second trial that is a millisecond and nobody cares. Over a long trial, or a
+session written as one file, it is worth using the pulses below instead.
 
-   Within a segment those times rest entirely on ``get_header_frame_rates()``, and **a container header
-   can be wrong without the file saying so**. An IBL Brain Wide Map camera declares exactly 150 fps against
-   a hardware-measured 150.4083, which is 11.5 seconds of drift by the end of a session, on frames that are
-   perfectly evenly spaced. The UCLA Miniscope DAQ hardcodes 60 into its writer against a true rate nearer
-   28, deliberately, so that nobody timestamps frames from it.
-
-   Decoding the container's per-frame timestamps does not rescue this, because they are commonly derived
-   from the same declared rate. Only a signal recorded alongside the video settles it, which is the case
-   below. Where the trials are long, or the session is, prefer it.
-
-.. _video_trialized_pulse_per_frame:
-
-A pulse per frame
-^^^^^^^^^^^^^^^^^
-
-The richest case, and the one to ask for when a rig is being designed. A frame-out line that is active only
-while the camera is running gives you both structures at once, because the pulses arrive in bursts, one
-burst per trial: the burst onsets are where the files start, and the pulses within a burst are the frame
-times of that file.
+**A pulse per frame.** The richest case, and the one to ask for when a rig is being designed. A frame-out line
+that is active only while the camera is running gives you both structures at once, because the pulses arrive
+in bursts, one burst per trial: the burst onsets are where the files start, and the pulses within a burst are
+the frame times of that file.
 
 .. code-block:: python
 
@@ -353,14 +296,15 @@ times of that file.
         assert len(burst) == frame_count, f"{segment_key}: {len(burst)} pulses for {frame_count} frames."
         interface.alignment[segment_key].set_times(burst)
 
-Those two assertions are the point of this section. Once the pulse train has to agree with the files both
-in how many trials it saw and in how long each one was, it has stopped being a source of numbers and become
-a check on the conversion.
+If either assertion fires, the pulse record and the files disagree about the session and the cause has to
+be found before the timestamps mean anything. A trial that was triggered but never reached disk is the
+usual one, and it puts every later file onto the wrong trial's pulses. Without the check ``zip`` stops at
+the shorter of the two and the result looks fine.
 
-**A second line makes the split more robust.** If the rig also has a line marking when each trial began,
-bin the frame pulses between consecutive trial onsets instead of splitting on the gaps. It needs no
-threshold, and a trial that recorded no frames comes back as an empty burst, which the frame-count
-assertion then catches, rather than being silently merged into its neighbour.
+**A second line makes the split more robust.** If the rig also has a line marking when each trial began, bin
+the frame pulses between consecutive trial onsets instead of splitting on the gaps. It needs no threshold, and
+a trial that recorded no frames comes back as an empty burst, which the frame-count assertion then catches,
+rather than being silently merged into its neighbour.
 
 .. code-block:: python
 
@@ -376,28 +320,27 @@ Several cameras of the same subject
 -----------------------------------
 
 A top view and a side view, or a face camera and a body camera, recording the same subject at the same
-time. **This is not a third shape.** Each camera is its own acquisition system with its own clock, so each
+time. Each camera is its own acquisition system with its own clock, so each
 gets its own interface, its own ``ImageSeries``, its own camera device, and its own alignment, and each one
 is then whichever of the cases above fits it.
 
 .. code-block:: python
 
-    from neuroconv import NWBConverter
+    from neuroconv import ConverterPipe
 
-    class BehaviorConverter(NWBConverter):
-        data_interface_classes = dict(
-            TopCamera=ExternalVideoInterface,
-            SideCamera=ExternalVideoInterface,
-            Recording=IntanRecordingInterface,
-            Digital=IntanDigitalInterface,
-        )
+    top_camera = ExternalVideoInterface(file_paths=["top.avi"], metadata_key="top_camera")
+    side_camera = ExternalVideoInterface(file_paths=["side.avi"], metadata_key="side_camera")
 
-    converter = BehaviorConverter(
-        source_data=dict(
-            TopCamera=dict(file_paths=["top.avi"], metadata_key="top_camera"),
-            SideCamera=dict(file_paths=["side.avi"], metadata_key="side_camera"),
-            Recording=dict(file_path="session.rhd"),
-            Digital=dict(file_path="session.rhd", detection_configuration=detection_configuration),
+    # The alignment key is the file's stem, so "top.avi" is "top".
+    top_camera.alignment["top"].set_times(digital_interface.get_event_times("top_frame"))
+    side_camera.alignment["side"].set_times(digital_interface.get_event_times("side_frame"))
+
+    converter = ConverterPipe(
+        data_interfaces=dict(
+            TopCamera=top_camera,
+            SideCamera=side_camera,
+            Recording=recording_interface,
+            Digital=digital_interface,
         )
     )
 
@@ -406,31 +349,56 @@ Give each camera its own ``metadata_key``. It is the address of that camera's en
 it is what a ``PoseEstimation`` container names when it says which video its keypoints were tracked from
 (see :ref:`annotate_pose_metadata`).
 
-Then align each camera from the line that timed it:
+Both lines land on the same recording system, so both cameras' frames are timestamped on one clock and it
+does not matter that the cameras themselves drift apart: the drift is measured rather than assumed. That is
+the reason to take every camera's times from the digital inputs even when they were started together.
+
+What you cannot do is borrow one camera's times for another that has no line of its own. A shared trigger
+starts them together and nothing keeps them together afterwards, since each free-runs on its own
+oscillator.
+
+Recording the per-file structure
+--------------------------------
+
+A single ``ImageSeries`` with several ``external_file`` entries has no per-file timing metadata. The
+structure survives in the concatenated ``timestamps`` and in ``starting_frame``, from which the per-file
+frame counts can be recovered, but there is no field that says "file 2 covers trial 2 and ran from here to
+here", and a single file within the series cannot be addressed on its own; that is a known limitation of
+the schema, tracked in `nwb-schema#677 <https://github.com/NeurodataWithoutBorders/nwb-schema/issues/677>`_.
+
+So write it somewhere that can hold it. If the segments are your trials, a column on the trials table
+carries the mapping:
 
 .. code-block:: python
 
-    digital_interface = converter.data_interface_objects["Digital"]
-    top_camera = converter.data_interface_objects["TopCamera"]
-    side_camera = converter.data_interface_objects["SideCamera"]
+    durations = np.array(interface.get_header_frame_counts()) / np.array(interface.get_header_frame_rates())
 
-    top_camera.alignment["top"].set_times(digital_interface.get_event_times("top_frame"))
-    side_camera.alignment["side"].set_times(digital_interface.get_event_times("side_frame"))
+    nwbfile.add_trial_column(name="video_file", description="The external_file entry holding this trial's frames.")
+    for onset, duration, file_path in zip(trial_onsets, durations, file_paths):
+        nwbfile.add_trial(start_time=onset, stop_time=onset + duration, video_file=str(file_path))
 
-Two cameras started by one trigger still drift apart, because each free-runs on its own oscillator after
-that trigger. So one shift applied to both is only correct if both are genuinely slaved to the same clock;
-where each has its own frame-out line, use it, and where only one does, do not borrow its times for the
-other.
+If they are not your trials, which is the case whenever a trial begins before the camera does or outlasts
+it, give the segments their own ``TimeIntervals`` instead:
 
-Limitations
------------
+.. code-block:: python
 
-A single ``ImageSeries`` with several ``external_file`` entries has no per-file timing metadata. The trial
-structure survives in the concatenated ``timestamps`` and in ``starting_frame``, from which the per-file
-frame counts can be recovered, but there is no field that says "file 2 covers trial 2 and ran from here to
-here", and a single file within the series cannot be addressed on its own. This is a known limitation of
-the schema, tracked in `nwb-schema#677 <https://github.com/NeurodataWithoutBorders/nwb-schema/issues/677>`_.
+    from pynwb.epoch import TimeIntervals
 
-So do not try to make the ``ImageSeries`` carry the trial structure. **The trials table is where that
-lives**: write one row per trial with its start and stop time, and the video frames fall inside those
-intervals because you aligned them. See :ref:`adding_trials` for how to add it.
+    segments = TimeIntervals(name="video_segments", description="One row per external file of the behavior video.")
+    segments.add_column(name="external_file", description="The file holding this segment's frames.")
+    for onset, duration, file_path in zip(trial_onsets, durations, file_paths):
+        segments.add_row(start_time=onset, stop_time=onset + duration, external_file=str(file_path))
+
+    nwbfile.add_time_intervals(segments)
+
+Either way the video frames fall inside those intervals, because you aligned them. See :ref:`adding_trials`
+for the rest of what a trials table can carry.
+
+A setup this guide does not cover
+---------------------------------
+
+The recipes here come from the rigs we have seen, and rigs vary more than any guide can. If yours does not
+fit one of them, or fits but produces something these calls cannot express, please
+`open an issue <https://github.com/catalystneuro/neuroconv/issues/new>`_ describing what the camera did and
+what the recording system captured. That is the information this page is built from, and a setup nobody has
+written down is one nobody can support.
