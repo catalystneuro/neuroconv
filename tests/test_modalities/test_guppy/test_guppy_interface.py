@@ -451,6 +451,7 @@ class TestGuppyInterfaceBehavior:
         for name in ("binned_metrics", "binned_covariates", "covariate_correlations", COVARIATE_NAME):
             assert name not in module.data_interfaces
         assert nwbfile.lab_meta_data["guppy_parameters"].compute_binned_metrics is False
+
     def test_tonic_epochs_yield_one_row_per_site_epoch_and_trace_type(self, interface, nwbfile):
         """Every (recording site, epoch, trace type) is a row carrying that trace's mean over the window."""
         module = self.add_to_nwbfile(interface, nwbfile, stub_test=False)
