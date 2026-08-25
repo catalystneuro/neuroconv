@@ -31,6 +31,25 @@ if is_package_installed(package_name="hdf5plugin"):
     )
 
 
+def _compression_opts_from(compression_options: dict[str, Any] | None) -> int | tuple | None:
+    """
+    Reduce the options of a base HDF5 filter to the single value `h5py` takes as `compression_opts`.
+
+    A base filter takes one value rather than keywords: an int for gzip, a 2-tuple for szip. The name
+    it is stated under varies, `level` from a caller and `compression_opts` from a configuration read
+    back off disk, so the value is taken by position. Two of them cannot both be passed, and silently
+    dropping one is worse than saying so.
+    """
+    if not compression_options:
+        return None
+    if len(compression_options) > 1:
+        raise ValueError(
+            f"A base HDF5 filter takes a single option, but {len(compression_options)} were given "
+            f"({sorted(compression_options)}). Name only the one `h5py` calls `compression_opts`."
+        )
+    return next(iter(compression_options.values()))
+
+
 class HDF5DatasetIOConfiguration(DatasetIOConfiguration):
     """A data model for configuring options about an object that will become a HDF5 Dataset in the file."""
 
@@ -69,31 +88,24 @@ class HDF5DatasetIOConfiguration(DatasetIOConfiguration):
     )
 
     def get_data_io_kwargs(self) -> dict[str, Any]:
-        if is_package_installed(package_name="hdf5plugin"):
+        # Handled before the branch so that disabling compression means the same thing whether or not
+        # `hdf5plugin` happens to be installed
+        if self.compression_method is None:
+            compression_bundle = dict(compression=False)
+        elif self.compression_method in _base_hdf5_filters:
+            compression_bundle = dict(
+                compression=self.compression_method,
+                compression_opts=_compression_opts_from(compression_options=self.compression_options),
+            )
+        elif isinstance(self.compression_method, h5py._hl.filters.FilterRefBase):
+            compression_bundle = dict(**self.compression_method, allow_plugin_filters=True)
+        else:
+            # The easiest way to ensure the form is correct is to instantiate the hdf5plugin and pass dynamic kwargs
             import hdf5plugin
 
-            if self.compression_method in _base_hdf5_filters:
-                # Base filters only take particular form of a single input; single int for GZIP; 2-tuple for SZIP
-                compression_opts = None
-                if self.compression_options is not None:
-                    compression_opts = list(self.compression_options.values())[0]
-                compression_bundle = dict(compression=self.compression_method, compression_opts=compression_opts)
-            elif isinstance(self.compression_method, str):
-                compression_options = self.compression_options or dict()
-                # The easiest way to ensure the form is correct is to instantiate the hdf5plugin and pass dynamic kwargs
-                plugin_class = getattr(hdf5plugin, self.compression_method)
-                plugin_instance = plugin_class(**compression_options)
-                compression_bundle = dict(**plugin_instance, allow_plugin_filters=True)
-            elif isinstance(self.compression_method, h5py._hl.filters.FilterRefBase):
-                compression_bundle = dict(**self.compression_method, allow_plugin_filters=True)
-            elif self.compression_method is None:
-                compression_bundle = dict(compression=False)
-        else:
-            # Base filters only take particular form of a single input; single int for GZIP; 2-tuple for SZIP
-            compression_opts = None
-            if self.compression_options is not None:
-                compression_opts = list(self.compression_options.values())[0]
-            compression_bundle = dict(compression=self.compression_method, compression_opts=compression_opts)
+            plugin_class = getattr(hdf5plugin, self.compression_method)
+            plugin_instance = plugin_class(**(self.compression_options or dict()))
+            compression_bundle = dict(**plugin_instance, allow_plugin_filters=True)
 
         return dict(chunks=self.chunk_shape, **compression_bundle)
 
