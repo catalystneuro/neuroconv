@@ -147,10 +147,11 @@ class ExternalVideoInterface(BaseDataInterface):
         """
         Return the number of frames held by each video file.
 
-        Named for where the number comes from, because a header can be missing it or state it wrongly, which
-        is what :meth:`_check_timestamps_number_matches_frames` has to allow for. A cheap read rather than a
-        decode, and a method rather than an inline read so that an interface which knows the count without a
-        file to open can supply it, which is what :class:`.MockExternalVideoInterface` does.
+        Named for where the number comes from, because a container header can be missing it or state it
+        wrongly, which is what :meth:`_check_timestamps_number_matches_frames` has to allow for. A cheap
+        read rather than a decode, and a method rather than an inline read so that an interface which knows
+        the count without a file to open can supply it, which is what :class:`.MockExternalVideoInterface`
+        does.
 
         Returns
         -------
@@ -201,9 +202,10 @@ class ExternalVideoInterface(BaseDataInterface):
         """
         Return the frames per second each video file's container header states.
 
-        The companion of :meth:`_get_header_frame_counts`: both are header reads rather than decodes, and both are
-        methods rather than inline reads so that an interface which knows the answer without a file to open
-        can supply it, which is what :class:`.MockExternalVideoInterface` does.
+        The companion of :meth:`_get_header_frame_counts`, and named the same way for the same reason: both
+        are header reads rather than decodes, and both are methods rather than inline reads so that an
+        interface which knows the answer without a file to open can supply it, which is what
+        :class:`.MockExternalVideoInterface` does.
 
         Returns
         -------
