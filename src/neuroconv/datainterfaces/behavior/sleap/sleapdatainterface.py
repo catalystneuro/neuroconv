@@ -302,23 +302,28 @@ class SLEAPInterface(BasePoseEstimationInterface):
             edges=[[skeleton.index(edge.source), skeleton.index(edge.destination)] for edge in skeleton.edges],
             subject=self.track_name,
         )
+        # Both sentences hold for every .slp: the first says what the network's number is, the second
+        # what this interface writes where there is no such number. The second states the direction that
+        # is true, since a model score is not bounded by 1 and can reach it, so a 1.0 does not identify a
+        # human point.
+        confidence_definition = (
+            "Height of the peak in the SLEAP network's confidence map at the location it placed this "
+            "keypoint, so a larger value means the network localized the keypoint more strongly. It is "
+            "not a calibrated probability and is not bounded by 1. A point placed by a human annotator "
+            "while proofreading carries no network score and is written with a confidence of 1.0, and a "
+            "point the annotator marked not visible with NaN."
+        )
+
         series_entry = {}
         for keypoint_name in self._get_keypoint_names():
-            entry = {
+            series_entry[keypoint_name] = {
                 "name": f"PoseEstimationSeries{keypoint_name.title().replace('_', '')}",
+                "confidence_definition": confidence_definition,
                 "reference_frame": (
                     "(0,0) is the top-left pixel of the video frame, with x increasing to the right "
                     "and y increasing downward."
                 ),
             }
-            # Only said when the track holds corrections, so a file the network alone produced keeps
-            # writing exactly what it wrote before.
-            if self._has_user_instances():
-                entry["confidence_definition"] = (
-                    "Score reported by the SLEAP network. A confidence of 1.0 marks a point placed by a "
-                    "human annotator while proofreading, which the network did not score."
-                )
-            series_entry[keypoint_name] = entry
 
         container_entry = dict(
             name=container_name,
