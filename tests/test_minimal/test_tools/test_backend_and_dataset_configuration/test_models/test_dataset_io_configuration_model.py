@@ -2,10 +2,9 @@
 
 import numpy as np
 import pytest
-from pynwb.testing.mock.base import mock_TimeSeries
 from pynwb.testing.mock.file import mock_NWBFile
 
-from neuroconv.tools.nwb_helpers import DatasetIOConfiguration, HDF5DatasetIOConfiguration
+from neuroconv.tools.nwb_helpers import DatasetIOConfiguration
 from neuroconv.tools.testing import mock_HDF5DatasetIOConfiguration
 
 
@@ -130,21 +129,3 @@ def test_derived_size_properties_follow_the_dtype():
 
     assert dataset_configuration.full_size_in_bytes == 1_800_000 * 384 * 8
     assert dataset_configuration.disk_space_usage_per_chunk_in_bytes == 78_125 * 64 * 8
-
-
-def test_deprecated_from_neurodata_object_matches_the_supported_method():
-    """The deprecated constructor delegates, so it cannot drift from the one it points at."""
-    nwbfile = mock_NWBFile()
-    time_series = mock_TimeSeries(name="TestTimeSeries", data=np.zeros(shape=(30, 4)))
-    nwbfile.add_acquisition(time_series)
-
-    with pytest.warns(FutureWarning, match="from_neurodata_object"):
-        deprecated = HDF5DatasetIOConfiguration.from_neurodata_object(neurodata_object=time_series, dataset_name="data")
-    supported = HDF5DatasetIOConfiguration.from_neurodata_object_with_defaults(
-        neurodata_object=time_series, dataset_name="data"
-    )
-
-    assert deprecated == supported
-    # Before the delegation this path left `buffer_shape` unset, which made the printout raise
-    assert deprecated.buffer_shape is not None
-    assert str(deprecated)

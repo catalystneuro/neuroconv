@@ -276,44 +276,6 @@ class DatasetIOConfiguration(BaseModel, ABC):
         return super().model_json_schema(mode="validation", schema_generator=PureJSONSchemaGenerator, **kwargs)
 
     @classmethod
-    def from_neurodata_object(
-        cls,
-        neurodata_object: Container,
-        dataset_name: Literal["data", "timestamps"],
-        builder: BaseBuilder | None = None,
-    ) -> Self:
-        """
-        Construct an instance of a DatasetIOConfiguration for a dataset in a neurodata object in an NWBFile.
-
-        Parameters
-        ----------
-        neurodata_object : hdmf.Container
-            The neurodata object containing the field that will become a dataset when written to disk.
-        dataset_name : "data" or "timestamps"
-            The name of the field that will become a dataset when written to disk.
-            Some neurodata objects can have multiple such fields, such as `pynwb.TimeSeries` which can have both `data`
-            and `timestamps`, each of which can be configured separately.
-        builder : hdmf.build.builders.BaseBuilder, optional
-            The builder object that would be used to construct the NWBFile object. If None, the dataset is assumed to
-            NOT have a compound dtype.
-
-        .. deprecated:: 0.8.4
-            The `from_neurodata_object` method is deprecated and will be removed on or after June 2026.
-            Use `from_neurodata_object_with_defaults` or `from_neurodata_object_with_existing` instead.
-        """
-        import warnings
-
-        warnings.warn(
-            "The 'from_neurodata_object' method is deprecated and will be removed on or after June 2026. "
-            "Use 'from_neurodata_object_with_defaults' or 'from_neurodata_object_with_existing' instead.",
-            FutureWarning,
-            stacklevel=2,
-        )
-        return cls.from_neurodata_object_with_defaults(
-            neurodata_object=neurodata_object, dataset_name=dataset_name, builder=builder
-        )
-
-    @classmethod
     def from_neurodata_object_with_defaults(
         cls,
         neurodata_object: Container,
