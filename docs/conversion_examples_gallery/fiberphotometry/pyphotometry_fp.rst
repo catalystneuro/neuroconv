@@ -46,21 +46,7 @@ Convert pyPhotometry Fiber Photometry data to NWB using
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
 
-Each signal is written with the start time it was sampled at. In the strobed modes the analog inputs
-are read one per tick of a timer running at the number of inputs times the header's rate, so the second
-signal of a 130 Hz recording starts 1/260 of a second after the first:
-
-.. code-block:: python
-
-    >>> control = PyPhotometryFiberPhotometryInterface(file_path=file_path, stream_name="detector_1_excitation_2", metadata_key="control")
-    >>> float(round(control.get_timestamps()[0], 6))
-    0.003846
-
-The continuous modes are the exception: the offset is real there too but its size is not recorded
-anywhere, so those signals keep the header's timebase and say so in their description.
-
-Since a response series carries one time axis, and no two signals of a recording share one, each signal
-is its own interface and its own series. To write all of them into one file, sharing a single
+One interface reads one signal. To write several into one file, sharing a single
 ``FiberPhotometryTable``, pass one interface per signal to a
 :py:class:`~neuroconv.nwbconverter.ConverterPipe`:
 
