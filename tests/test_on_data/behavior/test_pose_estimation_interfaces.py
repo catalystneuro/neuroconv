@@ -291,9 +291,11 @@ class TestSLEAPInterface(PoseEstimationInterfaceTestMixin):
         assert container_entry["source_software_version"] == "1.2.7"
         assert container_entry["scorer"] == "TopDownPredictor"
 
-        # This file is the network's own output, so no series claims a human placed any of its points.
+        # Every file says how its confidence was produced. This one is the network's own output, so no
+        # series claims a person placed any of its points.
         for series_entry in container_entry["PoseEstimationSeries"].values():
-            assert "confidence_definition" not in series_entry
+            assert series_entry["confidence_definition"].startswith("Peak value of the SLEAP network")
+            assert "human annotator" not in series_entry["confidence_definition"]
 
         skeleton_entry = metadata["Pose"]["Skeletons"]["sleap_track_0"]
         assert skeleton_entry["subject"] == "track_0"
@@ -567,10 +569,17 @@ class TestSLEAPHumanInstances(PoseEstimationInterfaceTestMixin):
             assert_array_equal(np.asarray(pose_estimation_series.data)[row], human.numpy()[index])
 
     def check_extracted_metadata(self, metadata: dict):
-        """This track holds corrections, so every series says what a confidence of 1.0 means."""
+        """This track holds corrections, so the definition says how a human point was written.
+
+        It states the direction that is true. A human point is written as 1.0, which does not make a 1.0
+        a human point: the network's own scores are not bounded by 1 and can reach it.
+        """
         entries = metadata["Pose"]["PoseEstimations"][self.interface.metadata_key]["PoseEstimationSeries"]
         for entry in entries.values():
-            assert "human annotator" in entry["confidence_definition"]
+            definition = entry["confidence_definition"]
+            assert definition.startswith("Peak value of the SLEAP network")
+            assert "is not bounded by 1" in definition
+            assert "written with a confidence of 1.0" in definition
 
 
 @pytest.mark.skipif(

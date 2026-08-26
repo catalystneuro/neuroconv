@@ -302,17 +302,25 @@ class SLEAPInterface(BasePoseEstimationInterface):
             edges=[[skeleton.index(edge.source), skeleton.index(edge.destination)] for edge in skeleton.edges],
             subject=self.track_name,
         )
+        # The score SLEAP reports for a point is the peak of the network's confidence map there. It is
+        # not a calibrated probability and it is not bounded by 1, so the sentence states how a human
+        # point is written rather than that a 1.0 identifies one: a model point can reach 1.0 too.
+        confidence_definition = (
+            "Peak value of the SLEAP network's confidence map for this keypoint, as reported in the .slp "
+            "file. It is not a calibrated probability and is not bounded by 1."
+        )
+        if self._has_user_instances():
+            confidence_definition += (
+                " A point placed by a human annotator while proofreading carries no network score and is "
+                "written with a confidence of 1.0, and a point the annotator marked not visible with NaN."
+            )
+
         series_entry = {}
         for keypoint_name in self._get_keypoint_names():
-            entry = {"name": f"PoseEstimationSeries{keypoint_name.title().replace('_', '')}"}
-            # Only said when the track holds corrections, so a file the network alone produced keeps
-            # writing exactly what it wrote before.
-            if self._has_user_instances():
-                entry["confidence_definition"] = (
-                    "Score reported by the SLEAP network. A confidence of 1.0 marks a point placed by a "
-                    "human annotator while proofreading, which the network did not score."
-                )
-            series_entry[keypoint_name] = entry
+            series_entry[keypoint_name] = {
+                "name": f"PoseEstimationSeries{keypoint_name.title().replace('_', '')}",
+                "confidence_definition": confidence_definition,
+            }
 
         container_entry = dict(
             name=container_name,
