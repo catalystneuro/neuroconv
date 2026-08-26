@@ -21,12 +21,17 @@
                 "name": null,
                 "nodes": [
                     "head",
-                    "neck"
+                    "neck",
+                    "left_shoulder"
                 ],
                 "edges": [
                     [
                         0,
                         1
+                    ],
+                    [
+                        1,
+                        2
                     ]
                 ],
                 "subject": null
@@ -52,6 +57,13 @@
                         "confidence_definition": null
                     },
                     "neck": {
+                        "name": null,
+                        "description": null,
+                        "unit": null,
+                        "reference_frame": null,
+                        "confidence_definition": null
+                    },
+                    "left_shoulder": {
                         "name": null,
                         "description": null,
                         "unit": null,

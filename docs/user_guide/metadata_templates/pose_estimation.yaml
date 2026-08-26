@@ -30,8 +30,11 @@ Pose:
       nodes:                # the tracker's body parts, in the order its series are written
         - head
         - neck
-      edges:                # pairs of indices into `nodes` above; [0, 1] joins head to neck
+        - left_shoulder
+      edges:                # pairs of indices into `nodes` above: [0, 1] joins head to neck, and
+                            # [1, 2] joins neck to left_shoulder
         - [0, 1]
+        - [1, 2]
       subject: null         # the individual within the source; blank links to the file's own subject
   # The keypoints themselves. Rename this key to the `metadata_key` the interface was constructed
   # with, here and in Skeletons above.
@@ -61,6 +64,12 @@ Pose:
           reference_frame: null                 # e.g. (0,0) is the top left corner of the video.
           confidence_definition: null           # what the tracker's confidence value means
         neck:
+          name: null
+          description: null
+          unit: null
+          reference_frame: null
+          confidence_definition: null
+        left_shoulder:
           name: null
           description: null
           unit: null

@@ -35,9 +35,9 @@ def test_published_pose_template_matches_the_method():
     published_json = json.loads((PUBLISHED_TEMPLATES / "pose_estimation.json").read_text())
     assert published_yaml == published_json
 
-    # Two keypoints, since the published block shows the series entry twice: that is where the
-    # structure repeats, once per body part the tracker named.
-    interface = MockPoseEstimationInterface(num_nodes=2, metadata_key="pose_estimation")
+    # Three keypoints, since the published block repeats every list-valued field: three nodes and the
+    # two edges joining them, so a reader sees the shape of a list and not of a single entry.
+    interface = MockPoseEstimationInterface(num_nodes=3, metadata_key="pose_estimation")
     template = interface.get_metadata_template()
     template.pop("NWBFile")  # Session-level, and not what this block illustrates.
 
@@ -49,7 +49,7 @@ def test_published_pose_template_converts_once_filled(tmp_path):
     # convert. The camera stands for the delete: a recording whose video is not in the file records it
     # here, and the two video links go instead.
     metadata = yaml.safe_load((PUBLISHED_TEMPLATES / "pose_estimation.yaml").read_text())
-    interface = MockPoseEstimationInterface(num_nodes=2, metadata_key="pose_estimation")
+    interface = MockPoseEstimationInterface(num_nodes=3, metadata_key="pose_estimation")
     metadata["NWBFile"] = interface.get_metadata()["NWBFile"]
 
     metadata["DeviceModels"]["camera_model"].update(
@@ -90,7 +90,7 @@ def test_published_pose_template_converts_once_filled(tmp_path):
     assert camera.name == "TopCamera"
     assert camera.model.manufacturer == "Basler"
     assert pose_estimation.skeleton.name == "SkeletonMouse"
-    assert list(pose_estimation.skeleton.nodes) == ["head", "neck"]
+    assert list(pose_estimation.skeleton.nodes) == ["head", "neck", "left_shoulder"]
     series = pose_estimation.pose_estimation_series["PoseEstimationSeriesHead"]
     assert series.unit == "pixels"
     assert series.reference_frame == "(0,0) is the top left corner of the video."
