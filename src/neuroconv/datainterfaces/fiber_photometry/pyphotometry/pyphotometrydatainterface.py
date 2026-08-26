@@ -15,17 +15,12 @@ from ....utils import DeepDict, dict_deep_update
 class PyPhotometryFiberPhotometryInterface(BaseFiberPhotometryInterface):
     """Interface for one signal of a pyPhotometry ``.ppd`` recording.
 
-    A ``.ppd`` file holds every signal the board recorded, interleaved word by word, and no two of them
-    were sampled at the same instant: in the pulsed modes the timer advances one analog line per tick, so
-    a response series can only ever carry one of them. Each signal therefore gets its own interface, the
-    way the Neurophotometrics interface takes one excitation at a time, and several of them are combined
-    by putting them in a converter of your own.
+    A ``.ppd`` holds every signal the board recorded and no two of them were sampled at the same instant,
+    so one interface reads one signal. Combine several in a converter to write them into one file.
 
-    Signals are named for the photodetector read and the excitation source lit, so a recording strobing
-    two sources onto one detector offers ``detector_1_excitation_1`` and ``detector_1_excitation_2``,
-    while one using a detector per source offers ``detector_1_excitation_1`` and
-    ``detector_2_excitation_2``. A shared ``detector`` prefix means a shared optical fiber, and so one
-    brain region across those series. Use :meth:`get_available_streams` to list what a file holds.
+    Streams are named for the photodetector read and the excitation source lit, as in
+    ``detector_1_excitation_2``, and a shared ``detector`` prefix means those signals came off one fiber.
+    Use :meth:`get_available_streams` to list what a file holds.
     """
 
     display_name = "pyPhotometry Fiber Photometry"
