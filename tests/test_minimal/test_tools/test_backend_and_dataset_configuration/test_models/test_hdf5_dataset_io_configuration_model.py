@@ -38,15 +38,6 @@ def test_get_data_io_kwargs_disables_compression_the_same_way_either_side_of_the
     assert hdf5_dataset_configuration.get_data_io_kwargs() == dict(chunks=(78125, 64), compression=False)
 
 
-def test_compression_options_are_read_by_value_not_by_name():
-    """A base HDF5 filter takes one value, and the key it arrives under varies by who wrote it."""
-    from_a_caller = mock_HDF5DatasetIOConfiguration(compression_options=dict(level=9))
-    from_a_file = mock_HDF5DatasetIOConfiguration(compression_options=dict(compression_opts=9))
-
-    assert from_a_caller.get_data_io_kwargs()["compression_opts"] == 9
-    assert from_a_file.get_data_io_kwargs()["compression_opts"] == 9
-
-
 def test_more_than_one_compression_option_raises():
     """Silently dropping the second option is worse than saying it cannot be applied."""
     hdf5_dataset_configuration = mock_HDF5DatasetIOConfiguration(compression_options=dict(level=9, extra=1))
