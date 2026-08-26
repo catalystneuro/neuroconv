@@ -10,11 +10,12 @@ from datetime import datetime
 
 import numpy as np
 import pytest
+from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.datainterfaces import PyPhotometryFiberPhotometryInterface
 
 
-def write_ppd_file(tmp_path, header_overrides: dict | None = None, header_bytes: bytes | None = None):
+def write_ppd_file(tmp_path, header_overrides: dict | None = None, header_bytes: bytes | None = None, repeats: int = 1):
     """Write a ``.ppd``: a two-byte header length, a header, then the packed words.
 
     Fields passed override a header version 1.1 recording. Passing ``header_bytes`` writes them verbatim
@@ -33,7 +34,8 @@ def write_ppd_file(tmp_path, header_overrides: dict | None = None, header_bytes:
         }
         header_bytes = json.dumps(header | (header_overrides or {})).encode("utf-8")
 
-    words = (np.array([1000, 100, 2000, 200, 1010, 110, 2010, 210], dtype=np.uint16) << 1).astype("<u2")
+    cycle = np.array([1000, 100, 2000, 200, 1010, 110, 2010, 210], dtype=np.uint16)
+    words = (np.tile(cycle, repeats) << 1).astype("<u2")
     file_path = tmp_path / "recording.ppd"
     file_path.write_bytes(len(header_bytes).to_bytes(2, "little") + header_bytes + words.tobytes())
     return file_path
@@ -144,3 +146,26 @@ def test_a_version_1_1_recording_warns_that_its_layout_is_unverified(tmp_path):
         PyPhotometryFiberPhotometryInterface(file_path=file_path, stream_name="detector_1_excitation_1")
 
     assert str(raised[0].message) == expected_warning
+
+
+def test_the_raw_pair_is_cut_and_timed_like_the_difference_it_came_from(tmp_path):
+    """A version 1.1 file writes three series, and all three describe the same span of the recording.
+
+    The raw pair is the difference before the subtraction, so a stub that shortens one has to shorten
+    the others, and an alignment that moves one has to move the others.
+    """
+    file_path = write_ppd_file(tmp_path, repeats=4)
+    interface = PyPhotometryFiberPhotometryInterface(file_path=file_path)
+    interface.alignment.shift_times(7.5)
+    nwbfile = mock_NWBFile()
+
+    interface.add_to_nwbfile(nwbfile=nwbfile, stub_test=True, stub_samples=3)
+
+    assert set(nwbfile.acquisition) == {
+        "FiberPhotometryResponseSeries",
+        "FiberPhotometryResponseSeriesRawLEDOn",
+        "FiberPhotometryResponseSeriesRawBaseline",
+    }
+    timings = {(len(series.data), series.starting_time) for series in nwbfile.acquisition.values()}
+    assert len(timings) == 1
+    assert timings.pop() == (3, 7.5)
