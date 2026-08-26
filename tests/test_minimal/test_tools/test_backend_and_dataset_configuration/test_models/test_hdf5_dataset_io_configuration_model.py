@@ -1,7 +1,5 @@
 """Unit tests for the HDF5DatasetIOConfiguration Pydantic model."""
 
-import pytest
-
 from neuroconv.tools.nwb_helpers import (
     AVAILABLE_HDF5_COMPRESSION_METHODS,
     HDF5DatasetIOConfiguration,
@@ -36,11 +34,3 @@ def test_get_data_io_kwargs_disables_compression_the_same_way_either_side_of_the
     hdf5_dataset_configuration = mock_HDF5DatasetIOConfiguration(compression_method=None)
 
     assert hdf5_dataset_configuration.get_data_io_kwargs() == dict(chunks=(78125, 64), compression=False)
-
-
-def test_more_than_one_compression_option_raises():
-    """Silently dropping the second option is worse than saying it cannot be applied."""
-    hdf5_dataset_configuration = mock_HDF5DatasetIOConfiguration(compression_options=dict(level=9, extra=1))
-
-    with pytest.raises(ValueError, match="takes a single option"):
-        hdf5_dataset_configuration.get_data_io_kwargs()

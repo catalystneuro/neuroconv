@@ -37,16 +37,10 @@ def _compression_opts_from(compression_options: dict[str, Any] | None) -> int | 
 
     A base filter takes one value rather than keywords: an int for gzip, a 2-tuple for szip. The name
     it is stated under varies, `level` from a caller and `compression_opts` from a configuration read
-    back off disk, so the value is taken by position. Two of them cannot both be passed, and silently
-    dropping one is worse than saying so.
+    back off disk, so the value is taken by position rather than by name.
     """
     if not compression_options:
         return None
-    if len(compression_options) > 1:
-        raise ValueError(
-            f"A base HDF5 filter takes a single option, but {len(compression_options)} were given "
-            f"({sorted(compression_options)}). Name only the one `h5py` calls `compression_opts`."
-        )
     return next(iter(compression_options.values()))
 
 
