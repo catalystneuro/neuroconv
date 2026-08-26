@@ -8,8 +8,8 @@ this module is organized to match, one round-trip class per recording and signal
 - ``mode_named_symbolically`` -- the current vocabulary, ``2EX_2EM_pulsed``, header version 1.0, the only
   generation whose header states its signal counts.
 - ``mode_named_in_prose`` -- versions 0.2 and 0.3, where the mode describes the acquisition in words:
-  ``1 colour time div.``, ``2 colour time div.``, ``2 colour continuous``, and the four-colour fork whose
-  analog lines each multiplex two colours.
+  ``1 colour time div.``, ``2 colour time div.`` and ``2 colour continuous``. The four-colour fork lives
+  here too, and is refused rather than read.
 - ``mode_named_by_indicators`` -- version 0.1, where the mode names the fluorophores.
 - ``header_predates_json`` -- the fixed-layout header, whose mode is a byte indexing that generation's
   three modes.
@@ -190,51 +190,20 @@ class TestPyPhotometryIndicatorNamedMode(FiberPhotometryInterfaceTestMixin):
     expected_starting_time = 0.0
 
 
-class TestPyPhotometryFourColourFork(FiberPhotometryInterfaceTestMixin):
-    """Round-trip the first signal of the four-colour fork, whose layout its header does not state.
+class TestPyPhotometryForkIsRefused:
+    """The Wiegert-lab fork's ``4 colour time div.`` is recognized and refused, not read.
 
-    Each analog input time-multiplexes two colours, so the file holds four signals at half the rate the
-    header advertises. Nothing but the mode string distinguishes it from an ordinary two-signal
-    recording, and reading it by the rule documented for this header generation returns two traces of
-    interleaved colours.
+    Its analog lines each alternate two excitation sources, so it holds four signals at half the rate its
+    header states, and nothing distinguishes it from an ordinary two-signal recording except the mode
+    string. Reading it the documented way returns interleaved colours that look like traces. It is listed
+    rather than left to the unknown-mode path so the message names the fork and says support can be added.
     """
 
-    data_interface_cls = PyPhotometryFiberPhotometryInterface
     file_path = PYPHOTOMETRY_PATH / "mode_named_in_prose" / "four_colour_time_division.ppd"
-    interface_kwargs = dict(file_path=file_path, stream_name="analog_1")
-    conversion_options = dict(stub_test=True, stub_samples=5)
-    save_directory = OUTPUT_PATH
 
-    expected_response_series_data = np.array(
-        [0.17166911999999998, 0.10132121999999999, 0.18766188, 0.09929682, 0.18745944]
-    )
-    expected_rate = 32.5
-    expected_starting_time = 0.0
-
-    def test_get_available_streams(self):
-        """A multiplexed line is named by its input and its colour, since the input alone is ambiguous."""
-        assert self.data_interface_cls.get_available_streams(file_path=self.file_path) == [
-            "analog_1",
-            "analog_2",
-            "analog_1_color_2",
-            "analog_2_color_2",
-        ]
-
-
-class TestPyPhotometryFourColourForkLastSlot(FiberPhotometryInterfaceTestMixin):
-    """The fork's last slot, three ticks into the cycle and at half the header's rate."""
-
-    data_interface_cls = PyPhotometryFiberPhotometryInterface
-    file_path = PYPHOTOMETRY_PATH / "mode_named_in_prose" / "four_colour_time_division.ppd"
-    interface_kwargs = dict(file_path=file_path, stream_name="analog_2_color_2")
-    conversion_options = dict(stub_test=True, stub_samples=5)
-    save_directory = OUTPUT_PATH
-
-    expected_response_series_data = np.array(
-        [0.2864526, 0.23857554, 0.26296956, 0.24424385999999998, 0.24879875999999998]
-    )
-    expected_rate = 32.5
-    expected_starting_time = 3 / 130
+    def test_the_fork_is_refused_by_name(self):
+        with pytest.raises(ValueError, match="Wiegert-lab fork of the pyPhotometry acquisition software"):
+            PyPhotometryFiberPhotometryInterface(file_path=self.file_path)
 
 
 class TestPyPhotometryPreJsonHeader(FiberPhotometryInterfaceTestMixin):

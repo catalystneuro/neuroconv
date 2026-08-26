@@ -6,10 +6,16 @@ line. Nothing else in the file says how those words are laid out: the ``mode`` s
 mapping from mode to layout is the table below.
 
 Six header generations exist and three of them spell the modes differently, so the reader dispatches on
-``mode`` rather than on the presence of ``n_analog_signals``. It refuses a mode it does not know instead
-of falling back to the two-signal default that the format documents, because a fork exists whose file is
-indistinguishable from an ordinary two-signal recording except by its mode string, and reading it the
-documented way returns interleaved colours that look like a trace and are not.
+``mode`` rather than on the presence of ``n_analog_signals``, which only the newest generation carries.
+The strings are mutually unique across the three vocabularies, so one flat table resolves them all;
+keying on the header version first would misread the files that carry a prose name under version 0.1,
+since the rename that introduced those names did not bump it.
+
+An unrecognized mode is refused rather than read with the two-signal default the format documents. A fork
+of the acquisition software exists whose file is indistinguishable from an ordinary two-signal recording
+except by its mode string, and reading it the documented way returns interleaved colours that look like a
+trace and are not. That fork is named in ``_FORKED_MODES`` so its message can say what the file is instead
+of calling it unknown; reading it is not supported.
 """
 
 import json
@@ -36,16 +42,14 @@ class _ModeLayout:
     Attributes
     ----------
     analog_input_count : int
-        How many analog lines the words interleave across, which is the stride.
-    colors_per_input : int
-        How many colors each analog line time-multiplexes. One for every upstream mode; two for the
-        four-color fork, whose line alternates colors on consecutive samples.
+        How many slots one sampling cycle holds, which is the stride. Named for the firmware field it
+        comes from, ``n_analog_signals``; a slot is one photoreceiver read under one excitation source,
+        so in the strobed modes two slots can be the same photoreceiver.
     pulsed : bool
         Whether the LEDs are strobed, which decides whether the signals are staggered in time.
     """
 
     analog_input_count: int
-    colors_per_input: int
     pulsed: bool
 
 
@@ -61,28 +65,39 @@ class _ModeLayout:
 # writer's own mode table, but no file carrying it has been found.
 _MODE_LAYOUTS = {
     # Modern, version 1.0 and later.
-    "2EX_2EM_continuous": _ModeLayout(analog_input_count=2, colors_per_input=1, pulsed=False),
-    "2EX_1EM_pulsed": _ModeLayout(analog_input_count=2, colors_per_input=1, pulsed=True),
-    "2EX_2EM_pulsed": _ModeLayout(analog_input_count=2, colors_per_input=1, pulsed=True),
-    "3EX_2EM_pulsed": _ModeLayout(analog_input_count=3, colors_per_input=1, pulsed=True),
+    "2EX_2EM_continuous": _ModeLayout(analog_input_count=2, pulsed=False),
+    "2EX_1EM_pulsed": _ModeLayout(analog_input_count=2, pulsed=True),
+    "2EX_2EM_pulsed": _ModeLayout(analog_input_count=2, pulsed=True),
+    "3EX_2EM_pulsed": _ModeLayout(analog_input_count=3, pulsed=True),
     # Prose names, versions 0.2 and 0.3.
-    "1 colour time div.": _ModeLayout(analog_input_count=2, colors_per_input=1, pulsed=True),
-    "2 colour time div.": _ModeLayout(analog_input_count=2, colors_per_input=1, pulsed=True),
-    "2 colour continuous": _ModeLayout(analog_input_count=2, colors_per_input=1, pulsed=False),
-    # The Wiegert-lab fused-fiber-coupler fork. Two analog lines, each alternating two colors, so the
-    # per-color rate is half what the header advertises. Reading it as two signals is what produces a
-    # trace that alternates every sample instead of a fluorescence signal.
-    "4 colour time div.": _ModeLayout(analog_input_count=2, colors_per_input=2, pulsed=True),
+    "1 colour time div.": _ModeLayout(analog_input_count=2, pulsed=True),
+    "2 colour time div.": _ModeLayout(analog_input_count=2, pulsed=True),
+    "2 colour continuous": _ModeLayout(analog_input_count=2, pulsed=False),
     # Indicator names, used by the software that predates the first tagged release. The mode carries the
     # layout here as well: the continuous one runs at 1 kHz and the strobed ones at 130 Hz.
-    "GCaMP/RFP": _ModeLayout(analog_input_count=2, colors_per_input=1, pulsed=False),
-    "GCaMP/iso": _ModeLayout(analog_input_count=2, colors_per_input=1, pulsed=True),
-    "GCaMP/RFP_dif": _ModeLayout(analog_input_count=2, colors_per_input=1, pulsed=True),
+    "GCaMP/RFP": _ModeLayout(analog_input_count=2, pulsed=False),
+    "GCaMP/iso": _ModeLayout(analog_input_count=2, pulsed=True),
+    "GCaMP/RFP_dif": _ModeLayout(analog_input_count=2, pulsed=True),
 }
 
 #: What the pre-JSON header's mode byte indexes, from the header writer of that generation
 #: (``photometry_host.py`` at commit 87c7d084, before commit c0182a88 replaced the layout with JSON).
 _LEGACY_MODE_CODES = {1: "GCaMP/RFP", 2: "GCaMP/iso", 3: "GCaMP/RFP_dif"}
+
+#: Modes written by a fork of the acquisition software rather than by any pyPhotometry release, mapped to
+#: what to say when one turns up. They are listed rather than left to the unknown-mode path so that the
+#: message names what the file is, which is the difference between a user knowing to ask and a user
+#: assuming the format is unsupported.
+_FORKED_MODES = {
+    "4 colour time div.": (
+        "This recording was written by the Wiegert-lab fork of the pyPhotometry acquisition software "
+        "(Formozov, Dieter and Wiegert 2023, Cell Reports Methods 3:100418), whose analog lines each "
+        "alternate two excitation sources, so it holds four signals at half the rate its header states. "
+        "Reading it with the layout the format documents returns two traces of interleaved colours that "
+        "look like signals and are not, so it is refused rather than guessed at. Support can be added: "
+        "please open an issue at https://github.com/catalystneuro/neuroconv/issues."
+    ),
+}
 
 
 @dataclass
@@ -92,9 +107,7 @@ class PPDAnalogSignal:
     Attributes
     ----------
     analog_input : int
-        Which analog line this signal came off.
-    color_index : int
-        Which of that line's time-multiplexed colors this is; always zero outside the four-color fork.
+        Which slot of the sampling cycle this signal occupies.
     data_in_volts : numpy.ndarray
         The signal, scaled by the header's volts per division. On a paired file this is the LED-on
         sample minus its baseline, which is what the acquisition system used to compute on the board.
@@ -102,8 +115,7 @@ class PPDAnalogSignal:
         When this signal's first sample was taken. Signals are sampled one after another rather than at
         once, so this is what distinguishes them in time; the samples themselves are perfectly regular.
     rate_in_hz : float
-        The signal's own sampling rate, which is the header's rate divided by however many colors its
-        analog line multiplexes.
+        The signal's own sampling rate, which is the rate the header states.
     raw_led_on_in_volts : numpy.ndarray or None
         The LED-on measurement, on a paired file only.
     raw_baseline_in_volts : numpy.ndarray or None
@@ -112,7 +124,6 @@ class PPDAnalogSignal:
     """
 
     analog_input: int
-    color_index: int
     data_in_volts: np.ndarray
     starting_time_in_seconds: float
     rate_in_hz: float
@@ -214,6 +225,9 @@ def _get_layout(header: dict) -> _ModeLayout:
                 f"{sorted(_LEGACY_MODE_CODES)} were ever assigned."
             )
 
+    if mode in _FORKED_MODES:
+        raise ValueError(_FORKED_MODES[mode])
+
     layout = _MODE_LAYOUTS.get(mode)
     if layout is None:
         raise ValueError(
@@ -265,7 +279,6 @@ def read_ppd(file_path: Path | str) -> PPDRecording:
     digital_bits = (words & 1).astype(np.uint8)
 
     sampling_rate = float(header["sampling_rate"])
-    signals_per_cycle = layout.analog_input_count * layout.colors_per_input
     has_paired_samples = layout.pulsed and _parse_version(header) >= _PAIRED_SAMPLE_VERSION
     if has_paired_samples:
         # Say it rather than hand back traces that look like every other generation's: from version
@@ -282,46 +295,43 @@ def read_ppd(file_path: Path | str) -> PPDRecording:
             UserWarning,
             stacklevel=3,
         )
-    words_per_cycle = signals_per_cycle * (2 if has_paired_samples else 1)
+    words_per_cycle = layout.analog_input_count * (2 if has_paired_samples else 1)
 
-    # In the pulsed modes the timer ticks once per analog line per sample, so a signal's slot in the
-    # cycle is how far into the recording it starts. A line that multiplexes colors visits each of them
-    # once per cycle, so its own rate is the header's divided by that count.
+    # In the pulsed modes the timer ticks once per slot per sample, so a slot's position in the cycle is
+    # how far into the recording it starts. Every slot is visited once per cycle, so each signal samples
+    # at the rate the header states.
     timer_frequency = sampling_rate * layout.analog_input_count
-    signal_rate = sampling_rate / layout.colors_per_input
+    signal_rate = sampling_rate
 
     analog_signals = []
-    for color_index in range(layout.colors_per_input):
-        for analog_input in range(layout.analog_input_count):
-            slot = color_index * layout.analog_input_count + analog_input
-            offset = slot * (2 if has_paired_samples else 1)
-            word_indices = np.arange(offset, len(words), words_per_cycle)
-            scale = _volts_per_division(header, analog_input)
+    for slot in range(layout.analog_input_count):
+        offset = slot * (2 if has_paired_samples else 1)
+        word_indices = np.arange(offset, len(words), words_per_cycle)
+        scale = _volts_per_division(header, slot)
 
-            if has_paired_samples:
-                # From version 1.1 the firmware stores the LED-on sample and the LED-off baseline it was
-                # measured against, and the subtraction the board used to do moved into the reader.
-                baseline_indices = word_indices + 1
-                usable = baseline_indices < len(words)
-                word_indices, baseline_indices = word_indices[usable], baseline_indices[usable]
-                led_on = analog_words[word_indices] * scale
-                baseline = analog_words[baseline_indices] * scale
-                data = led_on - baseline
-            else:
-                led_on = baseline = None
-                data = analog_words[word_indices] * scale
+        if has_paired_samples:
+            # From version 1.1 the firmware stores the LED-on sample and the LED-off baseline it was
+            # measured against, and the subtraction the board used to do moved into the reader.
+            baseline_indices = word_indices + 1
+            usable = baseline_indices < len(words)
+            word_indices, baseline_indices = word_indices[usable], baseline_indices[usable]
+            led_on = analog_words[word_indices] * scale
+            baseline = analog_words[baseline_indices] * scale
+            data = led_on - baseline
+        else:
+            led_on = baseline = None
+            data = analog_words[word_indices] * scale
 
-            analog_signals.append(
-                PPDAnalogSignal(
-                    analog_input=analog_input,
-                    color_index=color_index,
-                    data_in_volts=data,
-                    starting_time_in_seconds=slot / timer_frequency if layout.pulsed else 0.0,
-                    rate_in_hz=signal_rate,
-                    raw_led_on_in_volts=led_on,
-                    raw_baseline_in_volts=baseline,
-                )
+        analog_signals.append(
+            PPDAnalogSignal(
+                analog_input=slot,
+                data_in_volts=data,
+                starting_time_in_seconds=slot / timer_frequency if layout.pulsed else 0.0,
+                rate_in_hz=signal_rate,
+                raw_led_on_in_volts=led_on,
+                raw_baseline_in_volts=baseline,
             )
+        )
 
     # A digital line rides in the low bit of the words of the analog line it shares a slot with, so it
     # starts when that line does. Headers before 1.0 do not count the lines; both are present.

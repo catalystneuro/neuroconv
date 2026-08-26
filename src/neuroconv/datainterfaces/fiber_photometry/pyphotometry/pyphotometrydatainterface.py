@@ -36,9 +36,10 @@ class PyPhotometryFiberPhotometryInterface(BaseFiberPhotometryInterface):
     way the Neurophotometrics interface takes one excitation at a time, and several of them are combined
     by putting them in a converter of your own.
 
-    Signals are named the way pyPhotometry's own reader names them, ``analog_1`` and ``analog_2``. The
-    four-color fork, whose analog lines each multiplex two colors, extends that to ``analog_1_color_1``
-    and so on. Use :meth:`get_available_streams` to list what a file actually holds.
+    Signals are named the way pyPhotometry's own reader names them, ``analog_1`` and ``analog_2``. Those
+    are the slots of the sampling cycle rather than the board's two sockets: in the modes that strobe two
+    excitation sources onto a single photoreceiver, both slots come off the same one. Use
+    :meth:`get_available_streams` to list what a file actually holds.
     """
 
     display_name = "pyPhotometry Fiber Photometry"
@@ -52,9 +53,8 @@ class PyPhotometryFiberPhotometryInterface(BaseFiberPhotometryInterface):
 
     @staticmethod
     def _stream_name(signal) -> str:
-        """Name a signal after the analog line it came off, counting from one as the vendor does."""
-        name = f"analog_{signal.analog_input + 1}"
-        return name if signal.color_index == 0 else f"{name}_color_{signal.color_index + 1}"
+        """Name a signal after its slot in the sampling cycle, counting from one as the vendor does."""
+        return f"analog_{signal.analog_input + 1}"
 
     @validate_call(config=dict(arbitrary_types_allowed=True))
     def __init__(
