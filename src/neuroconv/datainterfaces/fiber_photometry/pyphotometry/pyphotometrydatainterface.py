@@ -92,10 +92,8 @@ class PyPhotometryFiberPhotometryInterface(BaseFiberPhotometryInterface):
         return self._cached_recording
 
     def _get_signal(self, stream_name: str):
-        for signal in self._recording.analog_signals:
-            if self._stream_name(signal) == stream_name:
-                return signal
-        raise ValueError(f"'{stream_name}' is not a signal of '{self._file_path}'.")
+        """Return the signal a stream name refers to, validated against the file at construction."""
+        return {self._stream_name(signal): signal for signal in self._recording.analog_signals}[stream_name]
 
     def _get_stream_data(self, *, stream_name: str) -> np.ndarray:
         return self._get_signal(stream_name).data_in_volts
@@ -149,6 +147,10 @@ class PyPhotometryFiberPhotometryInterface(BaseFiberPhotometryInterface):
         self,
         nwbfile: NWBFile,
         metadata: dict | None = None,
+        *,
+        stub_test: bool = False,
+        stub_samples: int = 100,
+        always_write_timestamps: bool = False,
         **conversion_options,
     ) -> None:
         """Write the response series, and the raw pair beside it when the file carries one.
@@ -161,7 +163,14 @@ class PyPhotometryFiberPhotometryInterface(BaseFiberPhotometryInterface):
         references none, since a row states an excitation source and wavelength and a measurement taken
         in the dark had neither.
         """
-        super().add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **conversion_options)
+        super().add_to_nwbfile(
+            nwbfile=nwbfile,
+            metadata=metadata,
+            stub_test=stub_test,
+            stub_samples=stub_samples,
+            always_write_timestamps=always_write_timestamps,
+            **conversion_options,
+        )
 
         signal = self._get_signal(self.stream_names[0])
         if signal.raw_led_on_in_volts is None:
@@ -172,7 +181,15 @@ class PyPhotometryFiberPhotometryInterface(BaseFiberPhotometryInterface):
         series_name = (metadata or self.get_metadata())["FiberPhotometry"][self.metadata_key]["name"]
         response_series = nwbfile.acquisition[series_name]
         table_region = getattr(response_series, "fiber_photometry_table_region", None)
-        starting_time, rate = float(self.get_timestamps()[0]), float(signal.rate_in_hz)
+
+        # The raw pair is the difference before the subtraction, so it is cut and timed exactly as the
+        # difference was: same aligned times, same stub, same choice between a rate and an array.
+        def stub(array: np.ndarray) -> np.ndarray:
+            return array[: min(stub_samples, len(array))] if stub_test else array
+
+        timing_kwargs = self._timing_kwargs_from_timestamps(
+            stub(self.alignment[self.metadata_key].get_times()), always_write_timestamps
+        )
 
         # The LED-on trace is the difference before the subtraction, so every field of the row the
         # difference references is true of it as well. A region belongs to one series, so it gets its
@@ -187,15 +204,14 @@ class PyPhotometryFiberPhotometryInterface(BaseFiberPhotometryInterface):
         nwbfile.add_acquisition(
             FiberPhotometryResponseSeries(
                 name=f"{series_name}RawLEDOn",
-                data=signal.raw_led_on_in_volts,
+                data=stub(signal.raw_led_on_in_volts),
                 unit="volts",
-                starting_time=starting_time,
-                rate=rate,
                 description=(
                     "The measurement taken with the excitation LED on, before the baseline recorded "
                     "beside it was subtracted. Written because the acquisition system measured it."
                 ),
                 fiber_photometry_table_region=led_on_region,
+                **timing_kwargs,
             )
         )
 
@@ -205,10 +221,8 @@ class PyPhotometryFiberPhotometryInterface(BaseFiberPhotometryInterface):
         nwbfile.add_acquisition(
             FiberPhotometryResponseSeries(
                 name=f"{series_name}RawBaseline",
-                data=signal.raw_baseline_in_volts,
+                data=stub(signal.raw_baseline_in_volts),
                 unit="volts",
-                starting_time=starting_time,
-                rate=rate,
                 description=(
                     "The measurement taken with the excitation LED off, which the LED-on sample is "
                     "corrected against. It measures ambient light and detector offset at that instant. "
@@ -216,5 +230,6 @@ class PyPhotometryFiberPhotometryInterface(BaseFiberPhotometryInterface):
                     "and wavelength, and neither applies to a measurement taken in the dark."
                 ),
                 fiber_photometry_table_region=None,
+                **timing_kwargs,
             )
         )
