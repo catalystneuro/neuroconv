@@ -70,6 +70,10 @@ One interface reads one signal. To write several into one file, sharing a single
 
     >>> converter.run_conversion(nwbfile_path=f"{path_to_save_nwbfile}", metadata=metadata, overwrite=True)
 
-How to fill in the metadata a conversion needs, the device models, devices, indicators and the
-``FiberPhotometryTable``, is shared across the fiber photometry interfaces and covered in
-:ref:`annotate_fiber_photometry_metadata`.
+NeuroConv aims to automatically add all the metadata annotations that are present in the source format.
+It is often the case that crucial information is not available there, such as the anatomical location,
+the meaning of the values, or a semantically meaningful description of the data. Follow
+:ref:`the fiber photometry how-to <annotate_fiber_photometry_metadata>` for a modality-relevant guide to adding
+this extra metadata, which makes the data more useful for future users and for the community as a whole.
+Its :ref:`section on templates <how_to_annotate_from_a_template>` starts from scratch, and the
+:ref:`reference template <fiber_photometry_metadata_template>` lists every element the metadata accepts.
