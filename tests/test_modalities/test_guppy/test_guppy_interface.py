@@ -38,6 +38,11 @@ MOCK_SAMPLING_RATE = 200.0
 MOCK_STARTING_TIME = 1.0
 BIN_EDGES_PER_EVENT = [[0.0, 3.0], [3.0, 4.0]]
 VALID_SIGNAL_INTERVALS = [[1.25, 1.75], [2.0, 2.5]]
+# The transients the mock's detector reports for every (recording site, feature).
+TRANSIENT_PEAK_TIMES = [1.2, 1.5, 1.8, 2.5]
+# In spontaneous mode each site keeps its own subset of them as its event train.
+TRANSIENTS_KEPT = {"dms": [1.2, 1.8], "dls": [1.5, 2.5]}
+TRANSIENT_EVENT_NAMES = ["transients_dff", "transients_z_score"]
 # The generator's default whole-session bins: 0.5 s wide over a 1.0-2.995 s timebase, so the last is short.
 BIN_EDGES = [[1.0, 1.5], [1.5, 2.0], [2.0, 2.5], [2.5, 2.995]]
 # The mean of the mock's -1 to 1 ramp within each of those bins.
@@ -531,6 +536,92 @@ class TestGuppyInterfaceBehavior:
         (copied_folder / "GuPPyParamtersUsed.json").unlink()
         with pytest.raises(AssertionError, match="GuPPyParamtersUsed.json not found"):
             GuppyInterface(folder_path=str(copied_folder))
+
+    # ------------------------------------------------------------------ spontaneous mode
+
+    @pytest.fixture(scope="class")
+    @classmethod
+    def spontaneous_output_folder(cls, tmp_path_factory):
+        """A session GuPPy ran in spontaneous mode, aligning to its own transients instead of to TTLs."""
+        return generate_mock_guppy_output_folder(
+            tmp_path_factory.mktemp("guppy_spontaneous") / "guppy_output", use_transients_as_events=True
+        )
+
+    @pytest.fixture
+    def spontaneous_interface(self, spontaneous_output_folder):
+        return GuppyInterface(folder_path=str(spontaneous_output_folder))
+
+    def test_spontaneous_mode_registers_one_event_row_per_recording_site(self, spontaneous_interface, nwbfile):
+        """Each site stands its own transients in for the TTLs, so the sites do not share an event row."""
+        module = self.add_to_nwbfile(spontaneous_interface, nwbfile, stub_test=False)
+        # A transient train stands in for a TTL without becoming a behavioral event of its own.
+        assert spontaneous_interface.event_names == sorted(EVENT_NAMES)
+        events_registry = module["events"]
+        assert len(events_registry) == len(EVENT_NAMES) + len(TRANSIENT_EVENT_NAMES) * len(RECORDING_SITES)
+
+        transient_rows = [
+            (name, list(events_registry["events"][row_index]["timestamp"]))
+            for row_index, name in enumerate(events_registry["event_name"].data)
+            if name in TRANSIENT_EVENT_NAMES
+        ]
+        # dms keeps the first and third detected transient, dls the second and fourth.
+        assert transient_rows == [
+            ("transients_dff", TRANSIENTS_KEPT["dms"]),
+            ("transients_dff", TRANSIENTS_KEPT["dls"]),
+            ("transients_z_score", TRANSIENTS_KEPT["dms"]),
+            ("transients_z_score", TRANSIENTS_KEPT["dls"]),
+        ]
+        # The event train is a subset of the detected transients, which keep their own table.
+        np.testing.assert_allclose(module["transients_dms_z_score"]["timestamp"].data, TRANSIENT_PEAK_TIMES)
+
+    def test_spontaneous_mode_events_are_labeled_by_recording_site_in_the_events_table(
+        self, spontaneous_interface, nwbfile
+    ):
+        """Two sites' trains share an event name, so the core table's event_type names the site too."""
+        self.add_to_nwbfile(spontaneous_interface, nwbfile, stub_test=False)
+        core_events_table = nwbfile.events["GuppyEvents"]
+        event_types = list(core_events_table["event_type"].data)
+        for recording_site in RECORDING_SITES:
+            kept = [
+                timestamp
+                for timestamp, event_type in zip(core_events_table["timestamp"].data, event_types)
+                if event_type == f"transients_z_score_{recording_site}"
+            ]
+            np.testing.assert_allclose(kept, TRANSIENTS_KEPT[recording_site])
+
+    def test_spontaneous_mode_psth_references_its_own_recording_sites_row(self, spontaneous_interface, nwbfile):
+        """A PSTH's trials point at the registry row for the site whose transients it was aligned to."""
+        module = self.add_to_nwbfile(spontaneous_interface, nwbfile, stub_test=False)
+        events_registry = module["events"]
+
+        for recording_site in RECORDING_SITES:
+            psth = module[f"psth_{recording_site}_z_score"]
+            transient_trials = [
+                (int(row_index), float(onset))
+                for row_index, onset in zip(psth.event.data, psth.trial_onset_times[:])
+                if events_registry["event_name"].data[int(row_index)] in TRANSIENT_EVENT_NAMES
+            ]
+            # A trace is aligned to both transient trains, so both of this site's rows are referenced.
+            referenced_rows = sorted({row_index for row_index, _ in transient_trials})
+            assert [events_registry["event_name"].data[row_index] for row_index in referenced_rows] == (
+                TRANSIENT_EVENT_NAMES
+            )
+            # Every referenced row is this site's own, and its occurrences are the trials.
+            for row_index in referenced_rows:
+                np.testing.assert_allclose(
+                    list(events_registry["events"][row_index]["timestamp"]), TRANSIENTS_KEPT[recording_site]
+                )
+            np.testing.assert_allclose(
+                [onset for _, onset in transient_trials], TRANSIENTS_KEPT[recording_site] * len(referenced_rows)
+            )
+
+    def test_without_spontaneous_mode_the_registry_holds_only_behavioral_events(self, interface, nwbfile):
+        """The default session ran no spontaneous mode, so nothing transient reaches the registry."""
+        module = self.add_to_nwbfile(interface, nwbfile, stub_test=True)
+        events_registry = module["events"]
+        assert len(events_registry) == len(EVENT_NAMES)
+        assert not any(name in TRANSIENT_EVENT_NAMES for name in events_registry["event_name"].data)
+        assert nwbfile.lab_meta_data["guppy_parameters"].use_transients_as_events is False
 
     # ------------------------------------------------------------------ the onsets GuPPy analyzed
 

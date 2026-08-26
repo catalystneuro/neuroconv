@@ -137,31 +137,27 @@ class HDF5DatasetIOConfiguration(DatasetIOConfiguration):
         compression_method = None if compression_index is None else compressors[compression_index]
         compression_options = None if compression_index is None else compressor_options[compression_index]
 
-        if is_package_installed(package_name="hdf5plugin"):
+        # Handled before the branch so that disabling compression means the same thing whether or not
+        # `hdf5plugin` happens to be installed
+        if compression_method is None:
+            compression_bundle = dict(compression=False)
+        elif compression_method in _base_hdf5_filters:
+            # A base filter takes one value rather than keywords, an int for gzip and a 2-tuple for szip.
+            # The name it arrives under varies, `level` from a caller and `compression_opts` from a
+            # configuration read back off disk, so the value is taken by position rather than by name.
+            compression_bundle = dict(
+                compression=compression_method,
+                compression_opts=next(iter((compression_options or dict()).values()), None),
+            )
+        elif isinstance(compression_method, h5py._hl.filters.FilterRefBase):
+            compression_bundle = dict(**compression_method, allow_plugin_filters=True)
+        else:
+            # The easiest way to ensure the form is correct is to instantiate the hdf5plugin and pass dynamic kwargs
             import hdf5plugin
 
-            if compression_method in _base_hdf5_filters:
-                # Base filters only take particular form of a single input; single int for GZIP; 2-tuple for SZIP
-                compression_opts = None
-                if compression_options is not None:
-                    compression_opts = list(compression_options.values())[0]
-                compression_bundle = dict(compression=compression_method, compression_opts=compression_opts)
-            elif isinstance(compression_method, str):
-                compression_options = compression_options or dict()
-                # The easiest way to ensure the form is correct is to instantiate the hdf5plugin and pass dynamic kwargs
-                plugin_class = getattr(hdf5plugin, compression_method)
-                plugin_instance = plugin_class(**compression_options)
-                compression_bundle = dict(**plugin_instance, allow_plugin_filters=True)
-            elif isinstance(compression_method, h5py._hl.filters.FilterRefBase):
-                compression_bundle = dict(**compression_method, allow_plugin_filters=True)
-            elif compression_method is None:
-                compression_bundle = dict(compression=False)
-        else:
-            # Base filters only take particular form of a single input; single int for GZIP; 2-tuple for SZIP
-            compression_opts = None
-            if compression_options is not None:
-                compression_opts = list(compression_options.values())[0]
-            compression_bundle = dict(compression=compression_method, compression_opts=compression_opts)
+            plugin_class = getattr(hdf5plugin, compression_method)
+            plugin_instance = plugin_class(**(compression_options or dict()))
+            compression_bundle = dict(**plugin_instance, allow_plugin_filters=True)
 
         return dict(chunks=self.chunk_shape, **compression_bundle, **filter_kwargs)
 
