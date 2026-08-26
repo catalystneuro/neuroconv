@@ -179,41 +179,47 @@ class PyPhotometryFiberPhotometryInterface(BaseFiberPhotometryInterface):
         table_region = getattr(response_series, "fiber_photometry_table_region", None)
         starting_time, rate = float(self.get_timestamps()[0]), float(signal.rate_in_hz)
 
-        for suffix, data, description, links_to_the_row in (
-            (
-                "RawLEDOn",
-                signal.raw_led_on_in_volts,
-                "The measurement taken with the excitation LED on, before the baseline recorded beside "
-                "it was subtracted. Written because the acquisition system measured it.",
-                True,
-            ),
-            (
-                "RawBaseline",
-                signal.raw_baseline_in_volts,
-                "The measurement taken with the excitation LED off, which the LED-on sample is corrected "
-                "against. It measures ambient light and detector offset at that instant. It references no "
-                "FiberPhotometryTable row because a row states an excitation source and wavelength, and "
-                "neither applies to a measurement taken in the dark.",
-                False,
-            ),
-        ):
-            # A region belongs to one series, so the LED-on trace gets its own over the rows the
-            # difference uses rather than sharing the object.
-            own_region = (
-                table_region.table.create_fiber_photometry_table_region(
-                    description=table_region.description, region=list(table_region.data)
-                )
-                if links_to_the_row and table_region is not None
-                else None
+        # The LED-on trace is the difference before the subtraction, so every field of the row the
+        # difference references is true of it as well. A region belongs to one series, so it gets its
+        # own over those same rows rather than sharing the object.
+        led_on_region = (
+            table_region.table.create_fiber_photometry_table_region(
+                description=table_region.description, region=list(table_region.data)
             )
-            nwbfile.add_acquisition(
-                FiberPhotometryResponseSeries(
-                    name=f"{series_name}{suffix}",
-                    data=data,
-                    unit="volts",
-                    starting_time=starting_time,
-                    rate=rate,
-                    description=description,
-                    fiber_photometry_table_region=own_region,
-                )
+            if table_region is not None
+            else None
+        )
+        nwbfile.add_acquisition(
+            FiberPhotometryResponseSeries(
+                name=f"{series_name}RawLEDOn",
+                data=signal.raw_led_on_in_volts,
+                unit="volts",
+                starting_time=starting_time,
+                rate=rate,
+                description=(
+                    "The measurement taken with the excitation LED on, before the baseline recorded "
+                    "beside it was subtracted. Written because the acquisition system measured it."
+                ),
+                fiber_photometry_table_region=led_on_region,
             )
+        )
+
+        # The dark measurement was taken with no excitation at all, and a row requires an excitation
+        # source and an excitation wavelength, so any row written for it would name one that was never
+        # applied. It goes in unlinked, saying in its description what it is.
+        nwbfile.add_acquisition(
+            FiberPhotometryResponseSeries(
+                name=f"{series_name}RawBaseline",
+                data=signal.raw_baseline_in_volts,
+                unit="volts",
+                starting_time=starting_time,
+                rate=rate,
+                description=(
+                    "The measurement taken with the excitation LED off, which the LED-on sample is "
+                    "corrected against. It measures ambient light and detector offset at that instant. "
+                    "It references no FiberPhotometryTable row because a row states an excitation source "
+                    "and wavelength, and neither applies to a measurement taken in the dark."
+                ),
+                fiber_photometry_table_region=None,
+            )
+        )
