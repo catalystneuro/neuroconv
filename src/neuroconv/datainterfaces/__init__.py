@@ -124,6 +124,7 @@ from .ophys.tiff.tiffdatainterface import TiffImagingInterface
 from .ophys.thor.thordatainterface import ThorImagingInterface
 
 # Image
+from .image.externalimageinterface import ExternalImageInterface
 from .image.imageinterface import ImageInterface
 
 # Text
@@ -234,6 +235,7 @@ interface_list = [
     ExcelTimeIntervalsInterface,
     # Image
     ImageInterface,
+    ExternalImageInterface,
     # Events
     CSVEventsInterface,
     DoricCSVEventsInterface,
@@ -298,6 +300,7 @@ interfaces_by_category = dict(
     ),
     image=dict(
         Image=ImageInterface,
+        ExternalImage=ExternalImageInterface,
     ),
     events=dict(
         CSVEvents=CSVEventsInterface,

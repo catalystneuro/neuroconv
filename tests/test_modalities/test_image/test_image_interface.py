@@ -4,9 +4,14 @@ import numpy as np
 import pytest
 from PIL import Image
 from pynwb import read_nwb
+from pynwb.base import ExternalImage
 from pynwb.image import GrayscaleImage, RGBAImage, RGBImage
 
+from neuroconv.datainterfaces.image.externalimageinterface import (
+    ExternalImageInterface,
+)
 from neuroconv.datainterfaces.image.imageinterface import ImageInterface
+from neuroconv.tools.testing import MockExternalImageInterface
 from neuroconv.tools.testing.data_interface_mixins import DataInterfaceTestMixin
 
 MODE_CONFIGS = {
@@ -456,3 +461,158 @@ class TestImagesContainerMetadataKey(DataInterfaceTestMixin):
         # Should not have resolution or description attributes if not set
         assert not hasattr(third_image, "resolution") or third_image.resolution is None
         assert not hasattr(third_image, "description") or third_image.description is None
+
+
+@pytest.mark.parametrize("format", ["PNG", "JPEG"])
+class TestExternalImageInterface(DataInterfaceTestMixin):
+    """Test suite for ExternalImageInterface with RGB images."""
+
+    data_interface_cls = ExternalImageInterface
+    mode = "RGB"
+
+    @pytest.fixture(autouse=True)
+    def make_interface(self, tmp_path, format):
+        """Create interface with RGB test images."""
+        generate_random_images(num_images=5, mode=self.mode, output_dir_path=tmp_path, format=format)
+        self.format = format
+        self.interface_kwargs = dict(folder_path=tmp_path)
+        self.interface = self.data_interface_cls(**self.interface_kwargs)
+
+    def check_read_nwb(self, nwbfile_path):
+        """Test that the images are written as paths pointing at the source files."""
+
+        nwbfile = read_nwb(nwbfile_path)
+        assert "Images" in nwbfile.acquisition
+        images_container = nwbfile.acquisition["Images"]
+        assert len(images_container.images) == 5
+
+        file_paths_by_stem = {file_path.stem: file_path for file_path in self.interface.file_paths}
+        for name, image in images_container.images.items():
+            assert isinstance(image, ExternalImage)
+            assert image.data == str(file_paths_by_stem[name])
+            assert image.image_format == self.format
+            assert image.image_mode == self.mode
+        nwbfile.read_io.close()
+
+
+def test_external_images_write_no_pixel_data(tmp_path):
+    """The pixel data stays in the source files: each image is a scalar path string on disk."""
+    import h5py
+    from pynwb.testing.mock.file import mock_NWBFile
+
+    from neuroconv.tools.nwb_helpers import configure_and_write_nwbfile
+
+    generate_random_images(num_images=2, mode="RGB", output_dir_path=tmp_path, format="PNG")
+    interface = ExternalImageInterface(folder_path=tmp_path)
+
+    nwbfile = mock_NWBFile()
+    interface.add_to_nwbfile(nwbfile)
+
+    nwbfile_path = tmp_path / "images.nwb"
+    configure_and_write_nwbfile(nwbfile=nwbfile, nwbfile_path=nwbfile_path, backend="hdf5")
+
+    with h5py.File(nwbfile_path, "r") as file:
+        written_images = file["acquisition/Images"]
+        assert len(written_images) == 2
+        for written_image in written_images.values():
+            assert written_image.shape == ()
+            assert written_image.attrs["neurodata_type"] == "ExternalImage"
+
+
+@pytest.mark.parametrize("format", ["TIFF", "WEBP"])
+def test_external_image_rejects_unsupported_format(tmp_path, format):
+    """NWB allows only PNG, JPEG and GIF by reference, and the error names the file that was rejected."""
+    from pynwb.testing.mock.file import mock_NWBFile
+
+    generate_random_images(num_images=1, mode="RGB", output_dir_path=tmp_path, format=format)
+    file_path = next(tmp_path.iterdir())
+    interface = ExternalImageInterface(file_paths=[file_path])
+
+    with pytest.raises(ValueError, match=f"Unsupported image format: {format} for image {file_path.name}"):
+        interface.add_to_nwbfile(mock_NWBFile())
+
+
+def test_external_image_rejects_resolution_metadata(tmp_path):
+    """`resolution` is declared on `Image` and not on the `BaseImage` parent `ExternalImage` shares with it."""
+    from pynwb.testing.mock.file import mock_NWBFile
+
+    generate_random_images(num_images=1, mode="RGB", output_dir_path=tmp_path, format="PNG")
+    interface = ExternalImageInterface(folder_path=tmp_path)
+    file_path = interface.file_paths[0]
+
+    metadata = interface.get_metadata()
+    metadata["Images"]["Images"]["images"][str(file_path)]["resolution"] = 2.5
+
+    with pytest.raises(ValueError, match=f"Resolution was given for image {file_path.name}"):
+        interface.add_to_nwbfile(mock_NWBFile(), metadata=metadata)
+
+
+class TestMixedModeExternalImageInterface(DataInterfaceTestMixin):
+    """Test suite for ExternalImageInterface with mixed image modes and formats."""
+
+    data_interface_cls = ExternalImageInterface
+
+    @pytest.fixture(autouse=True)
+    def make_interface(self, tmp_path):
+        """Create interface with mixed test images, one directory per mode to avoid name collisions."""
+        rgb_dir = tmp_path / "rgb"
+        gray_dir = tmp_path / "gray"
+        rgba_dir = tmp_path / "rgba"
+        la_dir = tmp_path / "la"
+        palette_dir = tmp_path / "palette"
+
+        generate_random_images(num_images=2, mode="RGB", output_dir_path=rgb_dir, format="JPEG")
+        generate_random_images(num_images=2, mode="L", output_dir_path=gray_dir, format="PNG")
+        generate_random_images(num_images=2, mode="RGBA", output_dir_path=rgba_dir, format="PNG")
+        generate_random_images(num_images=2, mode="LA", output_dir_path=la_dir, format="PNG")
+        generate_random_images(num_images=2, mode="P", output_dir_path=palette_dir, format="GIF")
+
+        file_paths = []
+        for dir_path in [rgb_dir, gray_dir, rgba_dir, la_dir, palette_dir]:
+            file_paths.extend([str(p) for p in dir_path.glob("*.*")])
+
+        self.interface_kwargs = dict(file_paths=file_paths)
+        self.interface = self.data_interface_cls(file_paths=file_paths)
+
+    def check_read_nwb(self, nwbfile_path):
+        """External mode writes the source color mode as it is, without converting LA to RGBA."""
+
+        nwbfile = read_nwb(nwbfile_path)
+        assert "Images" in nwbfile.acquisition
+        images_container = nwbfile.acquisition["Images"]
+        assert len(images_container.images) == 10
+
+        num_image_modes = {}
+        for image in images_container.images.values():
+            assert isinstance(image, ExternalImage)
+            num_image_modes[image.image_mode] = num_image_modes.get(image.image_mode, 0) + 1
+
+        # `L` is written as "grayscale", the schema's spelling; every other mode is passed through as PIL reports it
+        assert num_image_modes == {"RGB": 2, "grayscale": 2, "RGBA": 2, "LA": 2, "P": 2}
+        nwbfile.read_io.close()
+
+
+class TestMockExternalImageInterface(DataInterfaceTestMixin):
+    """Test suite for MockExternalImageInterface, whose paths do not have to exist."""
+
+    data_interface_cls = MockExternalImageInterface
+
+    @pytest.fixture(autouse=True)
+    def make_interface(self, tmp_path):
+        """Create the mock over two paths that are never written to disk."""
+        self.file_paths = [str(tmp_path / "first_image.png"), str(tmp_path / "second_image.png")]
+        self.interface_kwargs = dict(file_paths=self.file_paths, image_format="JPEG", image_mode="LA")
+        self.interface = self.data_interface_cls(**self.interface_kwargs)
+
+    def check_read_nwb(self, nwbfile_path):
+        """The mock reports its header without opening anything, and the paths are written as they were passed."""
+
+        nwbfile = read_nwb(nwbfile_path)
+        images_container = nwbfile.acquisition["Images"]
+        assert len(images_container.images) == 2
+        for image in images_container.images.values():
+            assert isinstance(image, ExternalImage)
+            assert image.image_format == "JPEG"
+            assert image.image_mode == "LA"
+        assert {image.data for image in images_container.images.values()} == set(self.file_paths)
+        nwbfile.read_io.close()
