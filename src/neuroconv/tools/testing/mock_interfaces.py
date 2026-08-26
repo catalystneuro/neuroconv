@@ -1521,8 +1521,6 @@ class MockPoseEstimationInterface(BasePoseEstimationInterface):
             description=f"Mock pose estimation data from {self.source_software}.",
             source_software=self.source_software,
             scorer=self.scorer,
-            dimensions=[[640, 480]],
-            original_videos=["mock_video.mp4"],
             PoseEstimationSeries={
                 node: {"name": f"PoseEstimationSeries{self._pascal_case(node)}"} for node in self.nodes
             },

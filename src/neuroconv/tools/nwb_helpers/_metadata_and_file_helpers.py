@@ -281,6 +281,31 @@ def _add_device_model_to_nwbfile(
     return device_model
 
 
+def _get_device_template_entry(*, device_model_metadata_key: str) -> dict:
+    """A blank device, ready to be linked to by whatever hangs off it.
+
+    The make and catalog specification belong to the model rather than to the instrument: pynwb
+    deprecated ``Device.manufacturer``, ``model_number`` and ``model_name`` in favor of a linked
+    ``DeviceModel``, so those are offered there and only the serial number of this one instrument
+    stays here.
+    """
+    return dict(
+        name=None,
+        description=None,
+        serial_number=None,
+        device_model_metadata_key=device_model_metadata_key,
+    )
+
+
+def _get_device_model_template_entry() -> dict:
+    """A blank device model: the make and catalog specification, shared by every recording on that instrument.
+
+    Optional as a whole. To drop it, delete the entry and the ``device_model_metadata_key`` pointing
+    at it.
+    """
+    return dict(name=None, manufacturer=None, model_number=None, description=None)
+
+
 def _add_device_to_nwbfile(
     nwbfile: NWBFile,
     *,
