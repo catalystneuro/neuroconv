@@ -304,7 +304,13 @@ class SLEAPInterface(BasePoseEstimationInterface):
         )
         series_entry = {}
         for keypoint_name in self._get_keypoint_names():
-            entry = {"name": f"PoseEstimationSeries{keypoint_name.title().replace('_', '')}"}
+            entry = {
+                "name": f"PoseEstimationSeries{keypoint_name.title().replace('_', '')}",
+                "reference_frame": (
+                    "(0,0) is the top-left pixel of the video frame, with x increasing to the right "
+                    "and y increasing downward."
+                ),
+            }
             # Only said when the track holds corrections, so a file the network alone produced keeps
             # writing exactly what it wrote before.
             if self._has_user_instances():
