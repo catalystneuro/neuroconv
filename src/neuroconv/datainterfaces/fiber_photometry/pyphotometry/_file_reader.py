@@ -49,10 +49,16 @@ class _ModeLayout:
     pulsed: bool
 
 
-# Every mode string observed across 380 files spanning all six header generations. The modern symbolic
-# names, the prose names of versions 0.2 and 0.3, and the indicator names of version 0.1 all name the
-# same handful of layouts. Each entry's stride was checked against the recordings themselves rather than
-# read off the documentation.
+# Every mode string the acquisition software has ever written. The modern symbolic names, the prose names
+# of versions 0.2 and 0.3, and the indicator names that predate them all name the same handful of layouts,
+# and the strings are mutually unique, so the table is keyed on the string alone: dispatching on the
+# header version first would misread the files that carry a prose name under version 0.1, since the rename
+# did not bump it.
+#
+# Each entry was read from `set_mode` and the interrupt service routines of the firmware, at the tag that
+# introduced its vocabulary, and cross-checked against the recordings where any are held. `GCaMP/iso` is
+# the one entry with no recording behind it anywhere: it is in the firmware and in the pre-JSON header
+# writer's own mode table, but no file carrying it has been found.
 _MODE_LAYOUTS = {
     # Modern, version 1.0 and later.
     "2EX_2EM_continuous": _ModeLayout(analog_input_count=2, colors_per_input=1, pulsed=False),
@@ -67,11 +73,16 @@ _MODE_LAYOUTS = {
     # per-color rate is half what the header advertises. Reading it as two signals is what produces a
     # trace that alternates every sample instead of a fluorescence signal.
     "4 colour time div.": _ModeLayout(analog_input_count=2, colors_per_input=2, pulsed=True),
-    # Indicator names, version 0.1. The mode carries the layout here as well: the continuous one runs at
-    # 1 kHz and the differential one at 130 Hz.
+    # Indicator names, used by the software that predates the first tagged release. The mode carries the
+    # layout here as well: the continuous one runs at 1 kHz and the strobed ones at 130 Hz.
     "GCaMP/RFP": _ModeLayout(analog_input_count=2, colors_per_input=1, pulsed=False),
+    "GCaMP/iso": _ModeLayout(analog_input_count=2, colors_per_input=1, pulsed=True),
     "GCaMP/RFP_dif": _ModeLayout(analog_input_count=2, colors_per_input=1, pulsed=True),
 }
+
+#: What the pre-JSON header's mode byte indexes, from the header writer of that generation
+#: (``photometry_host.py`` at commit 87c7d084, before commit c0182a88 replaced the layout with JSON).
+_LEGACY_MODE_CODES = {1: "GCaMP/RFP", 2: "GCaMP/iso", 3: "GCaMP/RFP_dif"}
 
 
 @dataclass
@@ -149,16 +160,22 @@ def _read_legacy_header(header_bytes: bytes) -> dict:
 
     Two files out of 380 use it, both from the 2018 manuscript data. A failed JSON parse is a version
     signal rather than a corrupt file, so this is a fallback rather than an error path.
+
+    The two text fields are fixed-width slices rather than a delimited pair: the writer of this
+    generation packs the subject with ``ljust(12)`` and the timestamp straight after it, and the
+    acquisition GUI caps that field at exactly twelve characters. So a twelve-character subject leaves no
+    separator at all and an eleven-character one leaves a single space, and splitting on a run of spaces
+    would swallow the timestamp on either.
     """
-    subject_and_time = header_bytes[:31].decode("utf-8").strip()
-    subject_id, _, date_time = subject_and_time.partition(" " * 2)
+    subject_id = header_bytes[0:12].decode("utf-8").strip()
+    date_time = header_bytes[12:31].decode("utf-8").strip()
     volts_per_division = [
         int.from_bytes(header_bytes[34:38], "little") / _LEGACY_VOLTS_PER_DIVISION_SCALE,
         int.from_bytes(header_bytes[38:42], "little") / _LEGACY_VOLTS_PER_DIVISION_SCALE,
     ]
     return {
-        "subject_ID": subject_id.strip(),
-        "date_time": date_time.strip(),
+        "subject_ID": subject_id,
+        "date_time": date_time,
         "mode_code": header_bytes[31],
         "sampling_rate": int.from_bytes(header_bytes[32:34], "little"),
         "volts_per_division": volts_per_division,
@@ -186,12 +203,16 @@ def _get_layout(header: dict) -> _ModeLayout:
     """Look the mode up, and refuse rather than guess when it is not in the table."""
     mode = header.get("mode")
     if mode is None and "mode_code" in header:
-        # The pre-JSON header packs the mode as a code whose meaning is not published. Every file of this
-        # generation held so far interleaves two analog lines, which is also what the format's default
-        # would give, so it is read that way and stated here rather than being silently assumed. Whether
-        # its LEDs were strobed is not recoverable from the code, so no stagger is claimed for it: an
-        # invented offset would be worse than a missing one.
-        return _ModeLayout(analog_input_count=2, colors_per_input=1, pulsed=False)
+        # The pre-JSON header packs the mode as a byte indexing the three modes that generation offered,
+        # so it resolves to the same layouts as every later vocabulary rather than needing a default.
+        mode_code = header["mode_code"]
+        mode = _LEGACY_MODE_CODES.get(mode_code)
+        if mode is None:
+            raise ValueError(
+                f"Unknown pyPhotometry mode code {mode_code} in the pre-JSON header. That byte indexes "
+                f"the acquisition modes of the software that wrote this generation, and only "
+                f"{sorted(_LEGACY_MODE_CODES)} were ever assigned."
+            )
 
     layout = _MODE_LAYOUTS.get(mode)
     if layout is None:

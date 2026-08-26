@@ -11,7 +11,8 @@ this module is organized to match, one round-trip class per recording and signal
   ``1 colour time div.``, ``2 colour time div.``, ``2 colour continuous``, and the four-colour fork whose
   analog lines each multiplex two colours.
 - ``mode_named_by_indicators`` -- version 0.1, where the mode names the fluorophores.
-- ``header_predates_json`` -- the fixed-layout header, whose mode is an unpublished byte code.
+- ``header_predates_json`` -- the fixed-layout header, whose mode is a byte indexing that generation's
+  three modes.
 
 A last class holds what no recording can show: a mode nothing recognizes, a header readable as neither
 generation, and a version 1.1 recording, which stores an LED-on sample beside the LED-off baseline it is
@@ -239,8 +240,8 @@ class TestPyPhotometryFourColourForkLastSlot(FiberPhotometryInterfaceTestMixin):
 class TestPyPhotometryPreJsonHeader(FiberPhotometryInterfaceTestMixin):
     """Round-trip a recording older than the JSON header, whose 42 bytes are a fixed layout.
 
-    A failed JSON parse is what identifies the generation. Its mode is a one-byte code whose meaning was
-    never published, so no stagger is claimed for its signals.
+    A failed JSON parse is what identifies the generation. Byte 31 is a code indexing the three modes
+    that generation offered, so it resolves to a layout the same way a mode string does.
     """
 
     data_interface_cls = PyPhotometryFiberPhotometryInterface
@@ -254,6 +255,16 @@ class TestPyPhotometryPreJsonHeader(FiberPhotometryInterfaceTestMixin):
     )
     expected_rate = 200.0
     expected_starting_time = 0.0
+
+    def test_the_mode_code_staggers_the_second_signal(self):
+        """Byte 31 of this file is 3, which was ``GCaMP/RFP_dif``: two receivers, strobed.
+
+        So its signals are a timer tick apart like any other strobed recording, rather than sharing the
+        header's timebase. The code is what says so; nothing else in the file does.
+        """
+        second = PyPhotometryFiberPhotometryInterface(file_path=self.file_path, stream_name="analog_2")
+
+        assert second.get_original_timestamps()[0] == pytest.approx(1 / (200 * 2))
 
 
 def write_ppd_file(tmp_path, header_overrides: dict | None = None, header_bytes: bytes | None = None):
@@ -278,6 +289,26 @@ def write_ppd_file(tmp_path, header_overrides: dict | None = None, header_bytes:
     words = (np.array([1000, 100, 2000, 200, 1010, 110, 2010, 210], dtype=np.uint16) << 1).astype("<u2")
     file_path = tmp_path / "recording.ppd"
     file_path.write_bytes(len(header_bytes).to_bytes(2, "little") + header_bytes + words.tobytes())
+    return file_path
+
+
+def write_legacy_ppd_file(tmp_path, subject_id: str = "test", mode_code: int = 3):
+    """Write a recording with the 42-byte fixed header, packed the way that generation's writer packed it.
+
+    The subject is padded to exactly twelve bytes and the timestamp occupies the nineteen after it, so the
+    two are adjacent with no separator when the subject fills its field.
+    """
+    header = bytearray(42)
+    header[0:12] = subject_id.ljust(12).encode("utf-8")
+    header[12:31] = b"2018-08-16T08:51:15"
+    header[31] = mode_code
+    header[32:34] = (200).to_bytes(2, "little")
+    header[34:38] = (100708).to_bytes(4, "little")
+    header[38:42] = (100708).to_bytes(4, "little")
+
+    words = (np.array([1000, 100, 2000, 200, 1010, 110, 2010, 210], dtype=np.uint16) << 1).astype("<u2")
+    file_path = tmp_path / "legacy.ppd"
+    file_path.write_bytes(len(header).to_bytes(2, "little") + bytes(header) + words.tobytes())
     return file_path
 
 
@@ -320,6 +351,31 @@ class TestPyPhotometryEdgeCases:
         file_path = write_ppd_file(tmp_path, {"mode": "5EX_3EM_whatever"})
 
         with pytest.raises(ValueError, match="Unknown pyPhotometry acquisition mode '5EX_3EM_whatever'"):
+            PyPhotometryFiberPhotometryInterface(file_path=file_path)
+
+    def test_a_subject_id_filling_its_field_still_leaves_the_timestamp_readable(self, tmp_path):
+        """The fixed header pads the subject to twelve bytes, and the GUI caps the field at twelve.
+
+        So a subject that long leaves no gap before the timestamp, and the two are only separable by
+        slicing at the offsets the writer used. Both recordings held have short identifiers, which is why
+        this is written here rather than read.
+        """
+        file_path = write_legacy_ppd_file(tmp_path, subject_id="LONGSUBJECT1")
+
+        metadata = PyPhotometryFiberPhotometryInterface(file_path=file_path).get_metadata()
+
+        assert metadata["Subject"]["subject_id"] == "LONGSUBJECT1"
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2018, 8, 16, 8, 51, 15)
+
+    def test_an_unknown_legacy_mode_code_is_refused(self, tmp_path):
+        """The code indexes three modes, so a fourth value means the byte is not what we think it is.
+
+        Refusing matches how an unrecognized mode string is treated: the layout comes from the mode, and
+        guessing it is what silently interleaves signals.
+        """
+        file_path = write_legacy_ppd_file(tmp_path, mode_code=7)
+
+        with pytest.raises(ValueError, match="Unknown pyPhotometry mode code 7 in the pre-JSON header"):
             PyPhotometryFiberPhotometryInterface(file_path=file_path)
 
     def test_a_header_that_is_neither_json_nor_the_fixed_layout_is_refused(self, tmp_path):
