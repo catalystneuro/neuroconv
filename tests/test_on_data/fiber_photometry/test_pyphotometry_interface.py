@@ -8,10 +8,11 @@ this module is organized to match, one round-trip class per recording and signal
 - ``mode_named_symbolically`` -- the current vocabulary, ``2EX_2EM_pulsed``, header version 1.0, the only
   generation whose header states its signal counts.
 - ``mode_named_in_prose`` -- versions 0.2 and 0.3, where the mode describes the acquisition in words:
-  ``1 colour time div.``, ``2 colour time div.``, ``2 colour continuous``, and the four-colour fork whose
-  analog lines each multiplex two colours.
+  ``1 colour time div.``, ``2 colour time div.`` and ``2 colour continuous``. The four-colour fork lives
+  here too, and is refused rather than read.
 - ``mode_named_by_indicators`` -- version 0.1, where the mode names the fluorophores.
-- ``header_predates_json`` -- the fixed-layout header, whose mode is an unpublished byte code.
+- ``header_predates_json`` -- the fixed-layout header, whose mode is a byte indexing that generation's
+  three modes.
 
 A last class holds what no recording can show: a mode nothing recognizes, a header readable as neither
 generation, and a version 1.1 recording, which stores an LED-on sample beside the LED-off baseline it is
@@ -21,6 +22,11 @@ What the round trips assert beyond reading at all is timing. The board samples i
 after another, so each signal is written with the start time its slot implies, where the vendor's reader
 reports every signal as starting at zero. Classes come in pairs where that matters, one per signal, so
 the second one's ``expected_starting_time`` is the claim.
+
+Streams are named for the photodetector read and the excitation source lit, so a mode strobing two
+sources onto one detector offers ``detector_1_excitation_1`` and ``detector_1_excitation_2`` while the
+rest offer ``detector_1_excitation_1`` and ``detector_2_excitation_2``. Which of the two a class uses is
+therefore itself an assertion about the rig the recording came off.
 
 Each expected trace is the leading samples of that signal, read off the file by hand rather than through
 the interface, with ``stub_samples`` keeping them short.
@@ -51,7 +57,7 @@ class TestPyPhotometrySymbolicMode(FiberPhotometryInterfaceTestMixin):
 
     data_interface_cls = PyPhotometryFiberPhotometryInterface
     file_path = PYPHOTOMETRY_PATH / "mode_named_symbolically" / "two_excitation_two_emission_pulsed.ppd"
-    interface_kwargs = dict(file_path=file_path, stream_name="analog_1")
+    interface_kwargs = dict(file_path=file_path, stream_name="detector_1_excitation_1")
     conversion_options = dict(stub_test=True, stub_samples=5)
     save_directory = OUTPUT_PATH
 
@@ -62,8 +68,8 @@ class TestPyPhotometrySymbolicMode(FiberPhotometryInterfaceTestMixin):
     def test_get_available_streams(self):
         """The header states two analog signals, so the file offers two."""
         assert self.data_interface_cls.get_available_streams(file_path=self.file_path) == [
-            "analog_1",
-            "analog_2",
+            "detector_1_excitation_1",
+            "detector_2_excitation_2",
         ]
 
     def run_custom_checks(self):
@@ -82,7 +88,7 @@ class TestPyPhotometryOneColourTimeDivisionSignal(FiberPhotometryInterfaceTestMi
 
     data_interface_cls = PyPhotometryFiberPhotometryInterface
     file_path = PYPHOTOMETRY_PATH / "mode_named_in_prose" / "one_colour_time_division.ppd"
-    interface_kwargs = dict(file_path=file_path, stream_name="analog_1")
+    interface_kwargs = dict(file_path=file_path, stream_name="detector_1_excitation_1")
     conversion_options = dict(stub_test=True, stub_samples=5)
     save_directory = OUTPUT_PATH
 
@@ -114,7 +120,7 @@ class TestPyPhotometryOneColourTimeDivisionControl(FiberPhotometryInterfaceTestM
 
     data_interface_cls = PyPhotometryFiberPhotometryInterface
     file_path = PYPHOTOMETRY_PATH / "mode_named_in_prose" / "one_colour_time_division.ppd"
-    interface_kwargs = dict(file_path=file_path, stream_name="analog_2")
+    interface_kwargs = dict(file_path=file_path, stream_name="detector_1_excitation_2")
     conversion_options = dict(stub_test=True, stub_samples=5)
     save_directory = OUTPUT_PATH
 
@@ -132,7 +138,7 @@ class TestPyPhotometryTwoColourTimeDivision(FiberPhotometryInterfaceTestMixin):
 
     data_interface_cls = PyPhotometryFiberPhotometryInterface
     file_path = PYPHOTOMETRY_PATH / "mode_named_in_prose" / "two_colour_time_division.ppd"
-    interface_kwargs = dict(file_path=file_path, stream_name="analog_1")
+    interface_kwargs = dict(file_path=file_path, stream_name="detector_1_excitation_1")
     conversion_options = dict(stub_test=True, stub_samples=5)
     save_directory = OUTPUT_PATH
 
@@ -154,7 +160,7 @@ class TestPyPhotometryTwoColourContinuous(FiberPhotometryInterfaceTestMixin):
 
     data_interface_cls = PyPhotometryFiberPhotometryInterface
     file_path = PYPHOTOMETRY_PATH / "mode_named_in_prose" / "two_colour_continuous.ppd"
-    interface_kwargs = dict(file_path=file_path, stream_name="analog_2")
+    interface_kwargs = dict(file_path=file_path, stream_name="detector_2_excitation_2")
     conversion_options = dict(stub_test=True, stub_samples=5)
     save_directory = OUTPUT_PATH
 
@@ -178,7 +184,7 @@ class TestPyPhotometryIndicatorNamedMode(FiberPhotometryInterfaceTestMixin):
 
     data_interface_cls = PyPhotometryFiberPhotometryInterface
     file_path = PYPHOTOMETRY_PATH / "mode_named_by_indicators" / "gcamp_rfp_dif.ppd"
-    interface_kwargs = dict(file_path=file_path, stream_name="analog_1")
+    interface_kwargs = dict(file_path=file_path, stream_name="detector_1_excitation_1")
     conversion_options = dict(stub_test=True, stub_samples=5)
     save_directory = OUTPUT_PATH
 
@@ -189,63 +195,32 @@ class TestPyPhotometryIndicatorNamedMode(FiberPhotometryInterfaceTestMixin):
     expected_starting_time = 0.0
 
 
-class TestPyPhotometryFourColourFork(FiberPhotometryInterfaceTestMixin):
-    """Round-trip the first signal of the four-colour fork, whose layout its header does not state.
+class TestPyPhotometryForkIsRefused:
+    """The Wiegert-lab fork's ``4 colour time div.`` is recognized and refused, not read.
 
-    Each analog input time-multiplexes two colours, so the file holds four signals at half the rate the
-    header advertises. Nothing but the mode string distinguishes it from an ordinary two-signal
-    recording, and reading it by the rule documented for this header generation returns two traces of
-    interleaved colours.
+    Its analog lines each alternate two excitation sources, so it holds four signals at half the rate its
+    header states, and nothing distinguishes it from an ordinary two-signal recording except the mode
+    string. Reading it the documented way returns interleaved colours that look like traces. It is listed
+    rather than left to the unknown-mode path so the message names the fork and says support can be added.
     """
 
-    data_interface_cls = PyPhotometryFiberPhotometryInterface
     file_path = PYPHOTOMETRY_PATH / "mode_named_in_prose" / "four_colour_time_division.ppd"
-    interface_kwargs = dict(file_path=file_path, stream_name="analog_1")
-    conversion_options = dict(stub_test=True, stub_samples=5)
-    save_directory = OUTPUT_PATH
 
-    expected_response_series_data = np.array(
-        [0.17166911999999998, 0.10132121999999999, 0.18766188, 0.09929682, 0.18745944]
-    )
-    expected_rate = 32.5
-    expected_starting_time = 0.0
-
-    def test_get_available_streams(self):
-        """A multiplexed line is named by its input and its colour, since the input alone is ambiguous."""
-        assert self.data_interface_cls.get_available_streams(file_path=self.file_path) == [
-            "analog_1",
-            "analog_2",
-            "analog_1_color_2",
-            "analog_2_color_2",
-        ]
-
-
-class TestPyPhotometryFourColourForkLastSlot(FiberPhotometryInterfaceTestMixin):
-    """The fork's last slot, three ticks into the cycle and at half the header's rate."""
-
-    data_interface_cls = PyPhotometryFiberPhotometryInterface
-    file_path = PYPHOTOMETRY_PATH / "mode_named_in_prose" / "four_colour_time_division.ppd"
-    interface_kwargs = dict(file_path=file_path, stream_name="analog_2_color_2")
-    conversion_options = dict(stub_test=True, stub_samples=5)
-    save_directory = OUTPUT_PATH
-
-    expected_response_series_data = np.array(
-        [0.2864526, 0.23857554, 0.26296956, 0.24424385999999998, 0.24879875999999998]
-    )
-    expected_rate = 32.5
-    expected_starting_time = 3 / 130
+    def test_the_fork_is_refused_by_name(self):
+        with pytest.raises(ValueError, match="Wiegert-lab fork of the pyPhotometry acquisition software"):
+            PyPhotometryFiberPhotometryInterface(file_path=self.file_path)
 
 
 class TestPyPhotometryPreJsonHeader(FiberPhotometryInterfaceTestMixin):
     """Round-trip a recording older than the JSON header, whose 42 bytes are a fixed layout.
 
-    A failed JSON parse is what identifies the generation. Its mode is a one-byte code whose meaning was
-    never published, so no stagger is claimed for its signals.
+    A failed JSON parse is what identifies the generation. Byte 31 is a code indexing the three modes
+    that generation offered, so it resolves to a layout the same way a mode string does.
     """
 
     data_interface_cls = PyPhotometryFiberPhotometryInterface
     file_path = PYPHOTOMETRY_PATH / "header_predates_json" / "two_signals_200hz.ppd"
-    interface_kwargs = dict(file_path=file_path, stream_name="analog_1")
+    interface_kwargs = dict(file_path=file_path, stream_name="detector_1_excitation_1")
     conversion_options = dict(stub_test=True, stub_samples=5)
     save_directory = OUTPUT_PATH
 
@@ -254,6 +229,16 @@ class TestPyPhotometryPreJsonHeader(FiberPhotometryInterfaceTestMixin):
     )
     expected_rate = 200.0
     expected_starting_time = 0.0
+
+    def test_the_mode_code_staggers_the_second_signal(self):
+        """Byte 31 of this file is 3, which was ``GCaMP/RFP_dif``: two receivers, strobed.
+
+        So its signals are a timer tick apart like any other strobed recording, rather than sharing the
+        header's timebase. The code is what says so; nothing else in the file does.
+        """
+        second = PyPhotometryFiberPhotometryInterface(file_path=self.file_path, stream_name="detector_2_excitation_2")
+
+        assert second.get_original_timestamps()[0] == pytest.approx(1 / (200 * 2))
 
 
 def write_ppd_file(tmp_path, header_overrides: dict | None = None, header_bytes: bytes | None = None):
@@ -281,6 +266,26 @@ def write_ppd_file(tmp_path, header_overrides: dict | None = None, header_bytes:
     return file_path
 
 
+def write_legacy_ppd_file(tmp_path, subject_id: str = "test", mode_code: int = 3):
+    """Write a recording with the 42-byte fixed header, packed the way that generation's writer packed it.
+
+    The subject is padded to exactly twelve bytes and the timestamp occupies the nineteen after it, so the
+    two are adjacent with no separator when the subject fills its field.
+    """
+    header = bytearray(42)
+    header[0:12] = subject_id.ljust(12).encode("utf-8")
+    header[12:31] = b"2018-08-16T08:51:15"
+    header[31] = mode_code
+    header[32:34] = (200).to_bytes(2, "little")
+    header[34:38] = (100708).to_bytes(4, "little")
+    header[38:42] = (100708).to_bytes(4, "little")
+
+    words = (np.array([1000, 100, 2000, 200, 1010, 110, 2010, 210], dtype=np.uint16) << 1).astype("<u2")
+    file_path = tmp_path / "legacy.ppd"
+    file_path.write_bytes(len(header).to_bytes(2, "little") + bytes(header) + words.tobytes())
+    return file_path
+
+
 class TestPyPhotometryEdgeCases:
     """What a round-trip class cannot express: errors before a conversion, and files nobody has.
 
@@ -292,14 +297,14 @@ class TestPyPhotometryEdgeCases:
 
     def test_asking_for_a_signal_the_file_does_not_have_is_refused(self):
         """Which signals exist depends on the acquisition mode, so this is a mistake worth naming."""
-        with pytest.raises(ValueError, match="'analog_3' is not a signal of"):
-            PyPhotometryFiberPhotometryInterface(file_path=self.file_path, stream_name="analog_3")
+        with pytest.raises(ValueError, match="'detector_9_excitation_9' is not a signal of"):
+            PyPhotometryFiberPhotometryInterface(file_path=self.file_path, stream_name="detector_9_excitation_9")
 
     def test_the_first_signal_is_read_when_none_is_named(self):
         """A file holding one signal needs no argument; one holding several is only unambiguous with it."""
         interface = PyPhotometryFiberPhotometryInterface(file_path=self.file_path)
 
-        assert interface.stream_names == ["analog_1"]
+        assert interface.stream_names == ["detector_1_excitation_1"]
 
     def test_a_blank_subject_id_writes_no_subject(self, tmp_path):
         """Every header carries the field, so a blank one means it was left blank in the GUI.
@@ -320,6 +325,31 @@ class TestPyPhotometryEdgeCases:
         file_path = write_ppd_file(tmp_path, {"mode": "5EX_3EM_whatever"})
 
         with pytest.raises(ValueError, match="Unknown pyPhotometry acquisition mode '5EX_3EM_whatever'"):
+            PyPhotometryFiberPhotometryInterface(file_path=file_path)
+
+    def test_a_subject_id_filling_its_field_still_leaves_the_timestamp_readable(self, tmp_path):
+        """The fixed header pads the subject to twelve bytes, and the GUI caps the field at twelve.
+
+        So a subject that long leaves no gap before the timestamp, and the two are only separable by
+        slicing at the offsets the writer used. Both recordings held have short identifiers, which is why
+        this is written here rather than read.
+        """
+        file_path = write_legacy_ppd_file(tmp_path, subject_id="LONGSUBJECT1")
+
+        metadata = PyPhotometryFiberPhotometryInterface(file_path=file_path).get_metadata()
+
+        assert metadata["Subject"]["subject_id"] == "LONGSUBJECT1"
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2018, 8, 16, 8, 51, 15)
+
+    def test_an_unknown_legacy_mode_code_is_refused(self, tmp_path):
+        """The code indexes three modes, so a fourth value means the byte is not what we think it is.
+
+        Refusing matches how an unrecognized mode string is treated: the layout comes from the mode, and
+        guessing it is what silently interleaves signals.
+        """
+        file_path = write_legacy_ppd_file(tmp_path, mode_code=7)
+
+        with pytest.raises(ValueError, match="Unknown pyPhotometry mode code 7 in the pre-JSON header"):
             PyPhotometryFiberPhotometryInterface(file_path=file_path)
 
     def test_a_header_that_is_neither_json_nor_the_fixed_layout_is_refused(self, tmp_path):
@@ -353,6 +383,6 @@ class TestPyPhotometryEdgeCases:
         )
 
         with pytest.warns(UserWarning) as raised:
-            PyPhotometryFiberPhotometryInterface(file_path=file_path, stream_name="analog_1")
+            PyPhotometryFiberPhotometryInterface(file_path=file_path, stream_name="detector_1_excitation_1")
 
         assert str(raised[0].message) == expected_warning

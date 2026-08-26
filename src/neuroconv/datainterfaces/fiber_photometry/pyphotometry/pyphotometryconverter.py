@@ -22,9 +22,9 @@ class PyPhotometryConverter(ConverterPipe):
     :class:`.PyPhotometryEventsInterface` for the digital lines, which reads whichever of them the file
     carries.
 
-    Each response series is named after the slot its signal came off,
-    ``FiberPhotometryResponseSeriesAnalog1``, because a single-series interface names its series
-    ``FiberPhotometryResponseSeries`` and two of those cannot go in one file. The ``FiberPhotometry``
+    Each response series is named after the stream its signal came off,
+    ``FiberPhotometryResponseSeriesDetector1Excitation1``, because a single-series interface names its
+    series ``FiberPhotometryResponseSeries`` and two of those cannot go in one file. The ``FiberPhotometry``
     chain itself (devices, indicators, table rows, per-series regions) is yours to supply, exactly as for
     one interface on its own.
     """

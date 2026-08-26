@@ -10,7 +10,13 @@ Install NeuroConv with the additional dependencies necessary for reading pyPhoto
 pyPhotometry is an open acquisition system, also sold as hardware by Open Ephys, which writes a binary
 ``.ppd`` file holding every signal the board recorded. How many signals that is depends on the
 acquisition mode the recording was made in, and ``get_available_streams`` reports them before
-construction, named after the analog input they came off.
+construction, each named for the photodetector that was read and the excitation source that was lit.
+
+Those two are the devices a ``FiberPhotometryTable`` row links, so the name says what to fill in for that
+row. A shared ``detector`` prefix means a shared optical fiber and so one brain region: the recording
+below strobes a signal and an isosbestic excitation onto a single detector, which is why both of its
+streams begin ``detector_1``. A recording using one detector per excitation instead offers
+``detector_1_excitation_1`` and ``detector_2_excitation_2``.
 
 ``PyPhotometryConverter`` writes a recording whole, every fluorescence signal and every digital line, in
 one call. ``PyPhotometryFiberPhotometryInterface`` reads one signal on its own, and the
@@ -33,7 +39,7 @@ digital lines that ride in the same words.
 
     >>> # The fluorescence signals first, then the digital lines that ride beside them.
     >>> PyPhotometryConverter.get_available_streams(file_path=recording_path)
-    ['analog_1', 'analog_2', 'digital_1', 'digital_2']
+    ['detector_1_excitation_1', 'detector_2_excitation_2', 'digital_1', 'digital_2']
 
     >>> converter = PyPhotometryConverter(file_path=recording_path)
     >>> metadata = converter.get_metadata()
@@ -69,10 +75,10 @@ which reads the signal named by ``stream_name``.
 
     >>> # Which signals a file holds depends on the acquisition mode it was recorded in.
     >>> PyPhotometryFiberPhotometryInterface.get_available_streams(file_path=file_path)
-    ['analog_1', 'analog_2']
+    ['detector_1_excitation_1', 'detector_1_excitation_2']
 
     >>> # One interface reads one signal.
-    >>> interface = PyPhotometryFiberPhotometryInterface(file_path=file_path, stream_name="analog_1", metadata_key="signal")
+    >>> interface = PyPhotometryFiberPhotometryInterface(file_path=file_path, stream_name="detector_1_excitation_1", metadata_key="signal")
     >>> metadata = interface.get_metadata()
     >>> # The recording start time is in the file's header, so it does not have to be supplied.
     >>> metadata["NWBFile"]["session_start_time"]
@@ -91,7 +97,7 @@ signal of a 130 Hz recording starts 1/260 of a second after the first:
 
 .. code-block:: python
 
-    >>> control = PyPhotometryFiberPhotometryInterface(file_path=file_path, stream_name="analog_2", metadata_key="control")
+    >>> control = PyPhotometryFiberPhotometryInterface(file_path=file_path, stream_name="detector_1_excitation_2", metadata_key="control")
     >>> float(round(control.get_timestamps()[0], 6))
     0.003846
 
