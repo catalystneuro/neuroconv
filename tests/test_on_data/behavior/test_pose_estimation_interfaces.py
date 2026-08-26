@@ -659,6 +659,75 @@ class TestDeepLabCutInterface(PoseEstimationInterfaceTestMixin):
     ndx_pose_version < version.parse("0.2.0"),
     reason="Interface requires ndx-pose version >= 0.2.0",
 )
+class TestDeepLabCutInterfaceWithLandmarks(PoseEstimationInterfaceTestMixin):
+    """A multi-animal project can also track landmarks, points of the scene rather than of a subject.
+
+    DeepLabCut calls them unique bodyparts and files them under an ``individuals`` group named
+    ``single``, so the keypoints in the file are the subjects' plus the landmarks and any one subject's
+    are a strict subset. Reading the bodyparts from the whole file while the series came from one
+    individual wrote a three-series container against a thirty-three node skeleton, silently.
+
+    Leafcutter ants, two of them, three keypoints each, beside thirty arena landmarks whose names they
+    share none of.
+    """
+
+    data_interface_cls = DeepLabCutInterface
+    interface_kwargs = dict(
+        file_path=str(
+            BEHAVIOR_DATA_PATH
+            / "DLC"
+            / "multi_subject_h5"
+            / "landmarks_and_subject_keypoints"
+            / "ant_video_5DLC_dlcrnetms5_AntsFeb11shuffle1_100000_el.h5"
+        ),
+        subject_name="ant_1",
+        sampling_frequency=10.0,  # no config.yaml is published with this data, so the rate is given here
+    )
+    save_directory = OUTPUT_PATH
+
+    subject_bodyparts = ["ant_head", "ant_midbody", "ant_end"]
+
+    def check_extracted_metadata(self, metadata: dict):
+        """The skeleton is the subject's keypoints, not the file's."""
+        skeleton_entry = metadata["Pose"]["Skeletons"][self.interface.metadata_key]
+        assert skeleton_entry["nodes"] == self.subject_bodyparts
+
+        series_entries = metadata["Pose"]["PoseEstimations"][self.interface.metadata_key]["PoseEstimationSeries"]
+        assert list(series_entries) == self.subject_bodyparts
+
+        # Read off the file rather than off its name, which carries the tracker suffix ``_el`` as well.
+        assert metadata["Pose"]["PoseEstimations"][self.interface.metadata_key]["scorer"] == (
+            "DLC_dlcrnetms5_AntsFeb11shuffle1_100000"
+        )
+
+    def run_custom_checks(self):
+        """The written skeleton and the written series describe the same keypoints."""
+        nwbfile = read_nwb(self.nwbfile_path)
+        container = nwbfile.processing["behavior"].data_interfaces["PoseEstimationDeepLabCut"]
+
+        assert list(container.skeleton.nodes) == self.subject_bodyparts
+        assert len(container.pose_estimation_series) == len(self.subject_bodyparts)
+        nwbfile.read_io.close()
+
+    def test_the_file_holds_landmarks_this_subject_does_not(self):
+        """The fixture only tests anything while the two sets differ, so state that they do."""
+        file_bodyparts = pd.read_hdf(self.interface_kwargs["file_path"]).columns.get_level_values("bodyparts")
+        assert set(self.subject_bodyparts) < set(file_bodyparts.unique())
+        assert len(file_bodyparts.unique()) == 33
+
+    def test_every_subject_gets_its_own_keypoints(self):
+        """The other ant reads the same file and must not pick up the landmarks either."""
+        interface = DeepLabCutInterface(
+            file_path=self.interface_kwargs["file_path"], subject_name="drug_ant2", sampling_frequency=10.0
+        )
+        skeleton_entry = interface.get_metadata()["Pose"]["Skeletons"][interface.metadata_key]
+        assert skeleton_entry["nodes"] == self.subject_bodyparts
+
+
+@pytest.mark.skipif(
+    ndx_pose_version < version.parse("0.2.0"),
+    reason="Interface requires ndx-pose version >= 0.2.0",
+)
 class TestDeepLabCutInterfaceNoConfigFile(PoseEstimationInterfaceTestMixin):
     data_interface_cls = DeepLabCutInterface
     interface_kwargs = dict(
