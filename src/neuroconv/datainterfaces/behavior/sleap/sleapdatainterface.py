@@ -183,26 +183,31 @@ class SLEAPInterface(BasePoseEstimationInterface):
             self._labels = load_slp(self.file_path)
         return self._labels
 
-    def _get_labeled_frames(self) -> list:
-        """This track's labeled frames in this recording, in frame order.
+    def _get_track_samples(self) -> list[tuple]:
+        """This track's ``(labeled frame, instance)`` pairs in this recording, in frame order.
+
+        One pair per sample written, and the single place the selection is made: the timestamps and the
+        rows are both read from it, so the number of frames and the number of rows cannot disagree.
+
+        Where a frame holds both a human-placed ``Instance`` and a ``PredictedInstance`` for this track,
+        the human's wins, because proofreading a file means correcting what the network got wrong.
 
         Both filters matter: ``frame_idx`` is only unique within a video, so a file holding several
         recordings would otherwise collapse their frames onto each other.
         """
-        labeled_frames = [
-            labeled_frame
-            for labeled_frame in self._get_labels().labeled_frames
-            if Path(labeled_frame.video.filename).stem == self.video_name
-            and any(
-                instance.track is not None and instance.track.name == self.track_name
-                for instance in labeled_frame.instances
-            )
-        ]
-        return sorted(labeled_frames, key=lambda labeled_frame: labeled_frame.frame_idx)
+        samples = []
+        for labeled_frame in self._get_labels().labeled_frames:
+            if Path(labeled_frame.video.filename).stem != self.video_name:
+                continue
+            for instance in [*labeled_frame.user_instances, *labeled_frame.predicted_instances]:
+                if instance.track is not None and instance.track.name == self.track_name:
+                    samples.append((labeled_frame, instance))
+                    break
+        return sorted(samples, key=lambda sample: sample[0].frame_idx)
 
     def _get_frame_indices(self) -> np.ndarray:
         """The video frame numbers this track was labeled on, in order."""
-        return np.asarray([labeled_frame.frame_idx for labeled_frame in self._get_labeled_frames()])
+        return np.asarray([labeled_frame.frame_idx for labeled_frame, _ in self._get_track_samples()])
 
     def get_original_timestamps(self) -> np.ndarray:
         if self._legacy_interface is not None:
@@ -248,21 +253,29 @@ class SLEAPInterface(BasePoseEstimationInterface):
     def _get_keypoint_names(self) -> list[str]:
         return [node.name for node in self._get_labels().skeletons[0].nodes]
 
+    def _has_user_instances(self) -> bool:
+        """Whether any sample written for this track is a human-placed point rather than a prediction."""
+        from sleap_io import PredictedInstance
+
+        return any(not isinstance(instance, PredictedInstance) for _, instance in self._get_track_samples())
+
     def _get_keypoint_data(self) -> dict[str, tuple[np.ndarray, np.ndarray | None]]:
+        from sleap_io import PredictedInstance
+
         keypoint_names = self._get_keypoint_names()
 
-        # One row per labeled frame, in frame order, taking this track's instance from each. Only
-        # predicted instances are read: a proofread file also holds the human's corrections as plain
-        # Instances, which the path this replaced skipped too. See the pre-existing-defects note.
-        instances = []
-        for labeled_frame in self._get_labeled_frames():
-            for instance in labeled_frame.predicted_instances:
-                if instance.track is not None and instance.track.name == self.track_name:
-                    instances.append(instance)
-                    break
+        # (num_frames, num_keypoints, 3), the last axis being x, y and the point's score. A human-placed
+        # Instance carries no score, since a person places a point rather than estimating it, so those
+        # rows are written as 1.0 and 'confidence_definition' says what the 1.0 means.
+        rows = []
+        for _, instance in self._get_track_samples():
+            if isinstance(instance, PredictedInstance):
+                rows.append(instance.numpy(scores=True))
+            else:
+                positions = instance.numpy()
+                rows.append(np.column_stack([positions, np.ones(len(positions))]))
 
-        # (num_frames, num_keypoints, 3), the last axis being x, y and the point's score.
-        points = np.stack([instance.numpy(scores=True) for instance in instances])
+        points = np.stack(rows)
         return {
             keypoint_name: (points[:, index, :2], points[:, index, 2])
             for index, keypoint_name in enumerate(keypoint_names)
@@ -286,13 +299,22 @@ class SLEAPInterface(BasePoseEstimationInterface):
             edges=[[skeleton.index(edge.source), skeleton.index(edge.destination)] for edge in skeleton.edges],
             subject=self.track_name,
         )
+        series_entry = {}
+        for keypoint_name in self._get_keypoint_names():
+            entry = {"name": f"PoseEstimationSeries{keypoint_name.title().replace('_', '')}"}
+            # Only said when the track holds corrections, so a file the network alone produced keeps
+            # writing exactly what it wrote before.
+            if self._has_user_instances():
+                entry["confidence_definition"] = (
+                    "Score reported by the SLEAP network. A confidence of 1.0 marks a point placed by a "
+                    "human annotator while proofreading, which the network did not score."
+                )
+            series_entry[keypoint_name] = entry
+
         container_entry = dict(
             name=container_name,
             source_software="SLEAP",
-            PoseEstimationSeries={
-                keypoint_name: {"name": f"PoseEstimationSeries{keypoint_name.title().replace('_', '')}"}
-                for keypoint_name in self._get_keypoint_names()
-            },
+            PoseEstimationSeries=series_entry,
         )
         if "sleap_version" in provenance:
             container_entry["source_software_version"] = provenance["sleap_version"]
