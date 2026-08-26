@@ -2,7 +2,7 @@
 
 from pydantic import FilePath, validate_call
 
-from ._file_reader import read_ppd
+from ._file_reader import _read_ppd
 from .pyphotometrydatainterface import PyPhotometryFiberPhotometryInterface
 from ...events.pyphotometry_events.pyphotometryeventsdatainterface import (
     PyPhotometryEventsInterface,
@@ -43,7 +43,7 @@ class PyPhotometryConverter(ConverterPipe):
     @staticmethod
     def _read_stream_names(*, file_path: FilePath) -> tuple[list[str], list[str]]:
         """Return the file's signal names and line names separately, each in interleave order."""
-        recording = read_ppd(file_path)
+        recording = _read_ppd(file_path)
         analog_streams = [
             PyPhotometryFiberPhotometryInterface._stream_name(signal) for signal in recording.analog_signals
         ]
