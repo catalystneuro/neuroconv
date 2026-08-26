@@ -6,7 +6,7 @@ import numpy as np
 from pydantic import FilePath, validate_call
 
 from ..baseeventsinterface import BaseEventsInterface, _EventsData
-from ...fiber_photometry.pyphotometry._file_reader import read_ppd
+from ...fiber_photometry.pyphotometry._file_reader import _read_ppd
 from ....tools.events import (
     _get_event_type_source_ids,
     _resolve_detection_plan,
@@ -94,9 +94,9 @@ class PyPhotometryEventsInterface(BaseEventsInterface):
             verbose=verbose,
         )
         self.metadata_key = metadata_key or "pyphotometry_events"
-        # Read once and kept, the way the fiber photometry interface holds it: a photometry session is
-        # small enough to hold, and separating the words into signals is what tells us which lines exist.
-        self._recording = read_ppd(self.source_data["file_path"])
+        # Read once and kept: a photometry session is small enough to hold, and separating the words
+        # into signals is what tells us which lines the file carries.
+        self._recording = _read_ppd(self.source_data["file_path"])
         # available_signals: signal_source_id ("digital_1") -> its descriptor. Every signal a .ppd carries
         # here is a digital line, one bit wide by construction, and kind "line" is what lets the validator
         # reject a bit carve on one.
