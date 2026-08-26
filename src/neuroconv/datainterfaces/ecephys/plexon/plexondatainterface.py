@@ -38,7 +38,7 @@ class PlexonRecordingInterface(BaseRecordingExtractorInterface):
         file_path: FilePath,
         *args,  # TODO: change to * (keyword only) on or after August 2026
         verbose: bool = False,
-        es_key: str = "ElectricalSeries",
+        es_key: str | None = None,
         metadata_key: str | None = None,
         stream_name: str = "WB-Wideband",
     ):
@@ -98,7 +98,7 @@ class PlexonRecordingInterface(BaseRecordingExtractorInterface):
         if metadata_key is None:
             self.metadata_key = "plexon_recording"
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
         neo_reader = self.recording_extractor.neo_reader
 
@@ -121,6 +121,7 @@ class PlexonLFPInterface(BaseLFPExtractorInterface):
     display_name = "Plexon LFP Recording"
     associated_suffixes = (".plx",)
     info = "Interface for Plexon low pass filtered data."
+    _default_es_key = "ElectricalSeriesLF"
 
     @classmethod
     def get_extractor_class(cls):
@@ -140,7 +141,7 @@ class PlexonLFPInterface(BaseLFPExtractorInterface):
         file_path: FilePath,
         *args,  # TODO: change to * (keyword only) on or after August 2026
         verbose: bool = False,
-        es_key: str = "ElectricalSeriesLF",
+        es_key: str | None = None,
         metadata_key: str | None = None,
         stream_name: str = "FPl-Low Pass Filtered",
     ):
@@ -204,7 +205,7 @@ class PlexonLFPInterface(BaseLFPExtractorInterface):
         if metadata_key is None:
             self.metadata_key = "plexon_lfp"
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
 
         if use_new_metadata_format:
@@ -266,7 +267,7 @@ class Plexon2RecordingInterface(BaseRecordingExtractorInterface):
         file_path: FilePath,
         *args,  # TODO: change to * (keyword only) on or after August 2026
         verbose: bool = False,
-        es_key: str = "ElectricalSeries",
+        es_key: str | None = None,
         metadata_key: str | None = None,
     ):
         """
@@ -330,7 +331,7 @@ class Plexon2RecordingInterface(BaseRecordingExtractorInterface):
         if metadata_key is None:
             self.metadata_key = "plexon2_recording"
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
 
         neo_reader = self.recording_extractor.neo_reader

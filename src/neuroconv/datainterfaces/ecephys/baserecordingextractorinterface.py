@@ -19,6 +19,11 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
     keywords = ("extracellular electrophysiology", "voltage", "recording")
 
+    # The series key an interface uses when the caller states none. It lives here rather than as a
+    # signature default so that ``es_key=None`` can mean "the caller did not state one", which is what
+    # makes the deprecation warning fire only for callers who actually passed it.
+    _default_es_key = "ElectricalSeries"
+
     def _initialize_extractor(self, interface_kwargs: dict):
         """
         Initialize and return the extractor instance for recording interfaces.
@@ -50,7 +55,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
     def __init__(
         self,
         verbose: bool = False,
-        es_key: str = "ElectricalSeries",
+        es_key: str | None = None,
         *,
         metadata_key: str | None = None,
         **source_data,
@@ -60,8 +65,9 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         ----------
         verbose : bool, default: False
             If True, will print out additional information.
-        es_key : str, default: "ElectricalSeries"
-            The key of this ElectricalSeries in the metadata dictionary.
+        es_key : str, optional
+            Deprecated. Use ``metadata_key`` instead. Defaults to the interface's own
+            ``_default_es_key`` when not stated.
         metadata_key : str, optional
             Key of this interface's ElectricalSeries in the dict-based metadata format.
             Defaults to the value of ``es_key``.
@@ -69,19 +75,24 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             The key-value pairs of extractor-specific arguments.
 
         """
+        # ``es_key`` defaults to None rather than to its value so that a caller stating it can be told
+        # apart from the library passing it to itself, which every subclass and the LFP base do on every
+        # construction. Without the sentinel the deprecation warning would fire for everyone.
+        if es_key is not None:
+            warnings.warn(
+                "The 'es_key' argument is deprecated and will be removed on or after February 2027. "
+                "Use 'metadata_key' instead: it is the same concept, the key addressing this interface's "
+                "entry in the metadata, and it is the one the dict-based format uses. The name written to "
+                "the file comes from that entry's 'name' field, not from the key.",
+                FutureWarning,
+                stacklevel=2,
+            )
 
         super().__init__(**source_data)
         self.recording_extractor = self._extractor_instance
-        property_names = self.recording_extractor.get_property_keys()
-        # TODO remove this and go and change all the uses of channel_name once spikeinterface > 0.101.0 is released
-        if "channel_name" not in property_names and "channel_names" in property_names:
-            channel_names = self.recording_extractor.get_property("channel_names")
-            self.recording_extractor.set_property("channel_name", channel_names)
-            self.recording_extractor.delete_property("channel_names")
-
         self.verbose = verbose
-        self.es_key = es_key
-        self.metadata_key = metadata_key if metadata_key is not None else es_key
+        self.es_key = es_key if es_key is not None else self._default_es_key
+        self.metadata_key = metadata_key if metadata_key is not None else self.es_key
         self._number_of_segments = self.recording_extractor.get_num_segments()
 
     def get_metadata_schema(self) -> dict:
@@ -199,7 +210,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             )
         return metadata_schema
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         metadata = super().get_metadata()
 
         if use_new_metadata_format:
@@ -464,7 +475,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             - 'processing/FilteredEphys': a ``FilteredEphys`` container in the ecephys processing module.
         write_as : {'raw', 'processed', 'lfp'}, optional
             Deprecated. Use ``parent_container`` instead ('raw' -> 'acquisition', 'lfp' -> 'processing/LFP',
-            'processed' -> 'processing/FilteredEphys'). Will be removed on or after December 2026.
+            'processed' -> 'processing/FilteredEphys'). Will be removed on or after February 2027.
         data_representation : {'digital_counts', 'physical_units'}, default='digital_counts'
             How the trace values are materialized in the stored data array.
             - 'digital_counts': store the raw integer samples and carry the per-channel gain in
@@ -513,7 +524,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         if write_as is not None:
             warnings.warn(
                 "The 'write_as' parameter of BaseRecordingExtractorInterface.add_to_nwbfile() is deprecated and "
-                "will be removed on or after December 2026. Use 'parent_container' instead "
+                "will be removed on or after February 2027. Use 'parent_container' instead "
                 "('raw' -> 'acquisition', 'lfp' -> 'processing/LFP', 'processed' -> 'processing/FilteredEphys').",
                 FutureWarning,
                 stacklevel=2,

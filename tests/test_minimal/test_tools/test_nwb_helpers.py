@@ -6,7 +6,11 @@ from hdmf.testing import TestCase
 from jsonschema.exceptions import ValidationError
 from pynwb import ProcessingModule
 
-from neuroconv.tools.nwb_helpers import get_module, make_nwbfile_from_metadata
+from neuroconv.tools.nwb_helpers import (
+    add_subject_to_nwbfile,
+    get_module,
+    make_nwbfile_from_metadata,
+)
 
 
 class TestNWBHelpers(TestCase):
@@ -55,10 +59,46 @@ class TestNWBHelpers(TestCase):
 
     def test_make_nwbfile_from_metadata_no_in_place_modification(self):
         """A past version of the `make_nwbfile_from_metadata` function would unintentionally modify the `metadata` dictionary in-place."""
+        # `date_of_birth` is stated as a string because that is the entry the conversion rewrites, and
+        # writing the datetime back into the caller's dictionary is what this test exists to catch.
         metadata = dict(
             NWBFile=dict(session_start_time=datetime.now().astimezone()),
-            Subject=dict(subject_id="test", sex="M", species="Mus musculus"),
+            Subject=dict(
+                subject_id="test",
+                sex="M",
+                species="Mus musculus",
+                date_of_birth="2025-06-01T00:00:00+00:00",
+            ),
         )
         expected_metadata = deepcopy(metadata)
         make_nwbfile_from_metadata(metadata=metadata)
         assert metadata == expected_metadata
+
+    def test_add_subject_to_nwbfile_without_a_subject_block(self):
+        """A source that recorded no subject leaves the file without one rather than raising."""
+        nwbfile = make_nwbfile_from_metadata(
+            metadata=dict(NWBFile=dict(session_start_time=datetime.now().astimezone()))
+        )
+
+        add_subject_to_nwbfile(nwbfile=nwbfile, metadata=dict(NWBFile=dict()))
+
+        assert nwbfile.subject is None
+
+    def test_add_subject_to_nwbfile_on_a_file_that_has_one(self):
+        """An NWBFile describes one subject, so a second one is a conflict for the caller to resolve."""
+        metadata = dict(
+            NWBFile=dict(session_start_time=datetime.now().astimezone()),
+            Subject=dict(subject_id="the_first_one", sex="M", species="Mus musculus"),
+        )
+        nwbfile = make_nwbfile_from_metadata(metadata=metadata)
+
+        second_metadata = dict(Subject=dict(subject_id="the_second_one", sex="F", species="Mus musculus"))
+        with self.assertRaisesWith(
+            exc_type=ValueError,
+            exc_msg=(
+                "This NWBFile already holds the subject 'the_first_one' and an NWBFile describes one subject. "
+                "The metadata states 'the_second_one'. Write the two subjects to separate files, or drop "
+                "metadata['Subject'] to keep the one already there."
+            ),
+        ):
+            add_subject_to_nwbfile(nwbfile=nwbfile, metadata=second_metadata)
