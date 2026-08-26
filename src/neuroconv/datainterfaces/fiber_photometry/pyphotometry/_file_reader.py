@@ -41,16 +41,24 @@ class _ModeLayout:
 
     Attributes
     ----------
-    analog_input_count : int
-        How many slots one sampling cycle holds, which is the stride. Named for the firmware field it
-        comes from, ``n_analog_signals``; a slot is one photoreceiver read under one excitation source,
-        so in the strobed modes two slots can be the same photoreceiver.
+    slot_mapping : tuple of (int, int)
+        One entry per slot of the sampling cycle, in the order the slots occupy it, giving the index of
+        the photodetector read and of the excitation source lit. Read from the firmware's ``set_mode``
+        and its interrupt service routines, which label every branch with the pair it handles. A slot is
+        not a socket: the strobed one-emission modes read the same photodetector twice under different
+        excitations, and ``3EX_2EM_pulsed`` visits detector 1, detector 2, detector 1 in that order.
     pulsed : bool
-        Whether the LEDs are strobed, which decides whether the signals are staggered in time.
+        Whether the excitation sources are strobed, which decides whether the signals are staggered in
+        time.
     """
 
-    analog_input_count: int
+    slot_mapping: tuple[tuple[int, int], ...]
     pulsed: bool
+
+    @property
+    def analog_input_count(self) -> int:
+        """How many slots one sampling cycle holds, which is the stride."""
+        return len(self.slot_mapping)
 
 
 # Every mode string the acquisition software has ever written. The modern symbolic names, the prose names
@@ -63,21 +71,28 @@ class _ModeLayout:
 # introduced its vocabulary, and cross-checked against the recordings where any are held. `GCaMP/iso` is
 # the one entry with no recording behind it anywhere: it is in the firmware and in the pre-JSON header
 # writer's own mode table, but no file carrying it has been found.
+#: The three slot layouts the format has ever used, as (photodetector, excitation source) per slot. Every
+#: mode is one of these: two detectors each under their own source, one detector under two sources in
+#: turn, or three sources across two detectors in the order the firmware's interrupt visits them.
+_DIAGONAL = ((0, 0), (1, 1))
+_ONE_DETECTOR = ((0, 0), (0, 1))
+_THREE_SOURCES = ((0, 0), (1, 1), (0, 2))
+
 _MODE_LAYOUTS = {
     # Modern, version 1.0 and later.
-    "2EX_2EM_continuous": _ModeLayout(analog_input_count=2, pulsed=False),
-    "2EX_1EM_pulsed": _ModeLayout(analog_input_count=2, pulsed=True),
-    "2EX_2EM_pulsed": _ModeLayout(analog_input_count=2, pulsed=True),
-    "3EX_2EM_pulsed": _ModeLayout(analog_input_count=3, pulsed=True),
+    "2EX_2EM_continuous": _ModeLayout(slot_mapping=_DIAGONAL, pulsed=False),
+    "2EX_1EM_pulsed": _ModeLayout(slot_mapping=_ONE_DETECTOR, pulsed=True),
+    "2EX_2EM_pulsed": _ModeLayout(slot_mapping=_DIAGONAL, pulsed=True),
+    "3EX_2EM_pulsed": _ModeLayout(slot_mapping=_THREE_SOURCES, pulsed=True),
     # Prose names, versions 0.2 and 0.3.
-    "1 colour time div.": _ModeLayout(analog_input_count=2, pulsed=True),
-    "2 colour time div.": _ModeLayout(analog_input_count=2, pulsed=True),
-    "2 colour continuous": _ModeLayout(analog_input_count=2, pulsed=False),
+    "1 colour time div.": _ModeLayout(slot_mapping=_ONE_DETECTOR, pulsed=True),
+    "2 colour time div.": _ModeLayout(slot_mapping=_DIAGONAL, pulsed=True),
+    "2 colour continuous": _ModeLayout(slot_mapping=_DIAGONAL, pulsed=False),
     # Indicator names, used by the software that predates the first tagged release. The mode carries the
     # layout here as well: the continuous one runs at 1 kHz and the strobed ones at 130 Hz.
-    "GCaMP/RFP": _ModeLayout(analog_input_count=2, pulsed=False),
-    "GCaMP/iso": _ModeLayout(analog_input_count=2, pulsed=True),
-    "GCaMP/RFP_dif": _ModeLayout(analog_input_count=2, pulsed=True),
+    "GCaMP/RFP": _ModeLayout(slot_mapping=_DIAGONAL, pulsed=False),
+    "GCaMP/iso": _ModeLayout(slot_mapping=_ONE_DETECTOR, pulsed=True),
+    "GCaMP/RFP_dif": _ModeLayout(slot_mapping=_DIAGONAL, pulsed=True),
 }
 
 #: What the pre-JSON header's mode byte indexes, from the header writer of that generation
@@ -108,6 +123,10 @@ class PPDAnalogSignal:
     ----------
     analog_input : int
         Which slot of the sampling cycle this signal occupies.
+    detector_index : int
+        Which photodetector was read for this slot, counting from zero.
+    excitation_index : int
+        Which excitation source was lit for this slot, counting from zero.
     data_in_volts : numpy.ndarray
         The signal, scaled by the header's volts per division. On a paired file this is the LED-on
         sample minus its baseline, which is what the acquisition system used to compute on the board.
@@ -124,6 +143,8 @@ class PPDAnalogSignal:
     """
 
     analog_input: int
+    detector_index: int
+    excitation_index: int
     data_in_volts: np.ndarray
     starting_time_in_seconds: float
     rate_in_hz: float
@@ -307,7 +328,8 @@ def read_ppd(file_path: Path | str) -> PPDRecording:
     for slot in range(layout.analog_input_count):
         offset = slot * (2 if has_paired_samples else 1)
         word_indices = np.arange(offset, len(words), words_per_cycle)
-        scale = _volts_per_division(header, slot)
+        detector, excitation = layout.slot_mapping[slot]
+        scale = _volts_per_division(header, detector)
 
         if has_paired_samples:
             # From version 1.1 the firmware stores the LED-on sample and the LED-off baseline it was
@@ -325,6 +347,8 @@ def read_ppd(file_path: Path | str) -> PPDRecording:
         analog_signals.append(
             PPDAnalogSignal(
                 analog_input=slot,
+                detector_index=detector,
+                excitation_index=excitation,
                 data_in_volts=data,
                 starting_time_in_seconds=slot / timer_frequency if layout.pulsed else 0.0,
                 rate_in_hz=signal_rate,

@@ -36,10 +36,11 @@ class PyPhotometryFiberPhotometryInterface(BaseFiberPhotometryInterface):
     way the Neurophotometrics interface takes one excitation at a time, and several of them are combined
     by putting them in a converter of your own.
 
-    Signals are named the way pyPhotometry's own reader names them, ``analog_1`` and ``analog_2``. Those
-    are the slots of the sampling cycle rather than the board's two sockets: in the modes that strobe two
-    excitation sources onto a single photoreceiver, both slots come off the same one. Use
-    :meth:`get_available_streams` to list what a file actually holds.
+    Signals are named for the photodetector read and the excitation source lit, so a recording strobing
+    two sources onto one detector offers ``detector_1_excitation_1`` and ``detector_1_excitation_2``,
+    while one using a detector per source offers ``detector_1_excitation_1`` and
+    ``detector_2_excitation_2``. A shared ``detector`` prefix means a shared optical fiber, and so one
+    brain region across those series. Use :meth:`get_available_streams` to list what a file holds.
     """
 
     display_name = "pyPhotometry Fiber Photometry"
@@ -53,8 +54,15 @@ class PyPhotometryFiberPhotometryInterface(BaseFiberPhotometryInterface):
 
     @staticmethod
     def _stream_name(signal) -> str:
-        """Name a signal after its slot in the sampling cycle, counting from one as the vendor does."""
-        return f"analog_{signal.analog_input + 1}"
+        """Name a signal by the two devices that produced it, counting from one as the vendor does.
+
+        Those are the photodetector that was read and the excitation source that was lit, which are the
+        two devices a ``FiberPhotometryTable`` row links. Naming them says which pairs of signals share a
+        fiber and so belong at one brain region, which is the metadata decision a user makes right after
+        listing the streams, and which the vendor's own ``analog_1`` and ``analog_2`` get wrong: those
+        read as two sockets, and in the strobed one-emission modes both signals come off a single one.
+        """
+        return f"detector_{signal.detector_index + 1}_excitation_{signal.excitation_index + 1}"
 
     @validate_call(config=dict(arbitrary_types_allowed=True))
     def __init__(

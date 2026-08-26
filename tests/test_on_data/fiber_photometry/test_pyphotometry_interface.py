@@ -23,6 +23,11 @@ after another, so each signal is written with the start time its slot implies, w
 reports every signal as starting at zero. Classes come in pairs where that matters, one per signal, so
 the second one's ``expected_starting_time`` is the claim.
 
+Streams are named for the photodetector read and the excitation source lit, so a mode strobing two
+sources onto one detector offers ``detector_1_excitation_1`` and ``detector_1_excitation_2`` while the
+rest offer ``detector_1_excitation_1`` and ``detector_2_excitation_2``. Which of the two a class uses is
+therefore itself an assertion about the rig the recording came off.
+
 Each expected trace is the leading samples of that signal, read off the file by hand rather than through
 the interface, with ``stub_samples`` keeping them short.
 """
@@ -52,7 +57,7 @@ class TestPyPhotometrySymbolicMode(FiberPhotometryInterfaceTestMixin):
 
     data_interface_cls = PyPhotometryFiberPhotometryInterface
     file_path = PYPHOTOMETRY_PATH / "mode_named_symbolically" / "two_excitation_two_emission_pulsed.ppd"
-    interface_kwargs = dict(file_path=file_path, stream_name="analog_1")
+    interface_kwargs = dict(file_path=file_path, stream_name="detector_1_excitation_1")
     conversion_options = dict(stub_test=True, stub_samples=5)
     save_directory = OUTPUT_PATH
 
@@ -63,8 +68,8 @@ class TestPyPhotometrySymbolicMode(FiberPhotometryInterfaceTestMixin):
     def test_get_available_streams(self):
         """The header states two analog signals, so the file offers two."""
         assert self.data_interface_cls.get_available_streams(file_path=self.file_path) == [
-            "analog_1",
-            "analog_2",
+            "detector_1_excitation_1",
+            "detector_2_excitation_2",
         ]
 
     def run_custom_checks(self):
@@ -83,7 +88,7 @@ class TestPyPhotometryOneColourTimeDivisionSignal(FiberPhotometryInterfaceTestMi
 
     data_interface_cls = PyPhotometryFiberPhotometryInterface
     file_path = PYPHOTOMETRY_PATH / "mode_named_in_prose" / "one_colour_time_division.ppd"
-    interface_kwargs = dict(file_path=file_path, stream_name="analog_1")
+    interface_kwargs = dict(file_path=file_path, stream_name="detector_1_excitation_1")
     conversion_options = dict(stub_test=True, stub_samples=5)
     save_directory = OUTPUT_PATH
 
@@ -115,7 +120,7 @@ class TestPyPhotometryOneColourTimeDivisionControl(FiberPhotometryInterfaceTestM
 
     data_interface_cls = PyPhotometryFiberPhotometryInterface
     file_path = PYPHOTOMETRY_PATH / "mode_named_in_prose" / "one_colour_time_division.ppd"
-    interface_kwargs = dict(file_path=file_path, stream_name="analog_2")
+    interface_kwargs = dict(file_path=file_path, stream_name="detector_1_excitation_2")
     conversion_options = dict(stub_test=True, stub_samples=5)
     save_directory = OUTPUT_PATH
 
@@ -133,7 +138,7 @@ class TestPyPhotometryTwoColourTimeDivision(FiberPhotometryInterfaceTestMixin):
 
     data_interface_cls = PyPhotometryFiberPhotometryInterface
     file_path = PYPHOTOMETRY_PATH / "mode_named_in_prose" / "two_colour_time_division.ppd"
-    interface_kwargs = dict(file_path=file_path, stream_name="analog_1")
+    interface_kwargs = dict(file_path=file_path, stream_name="detector_1_excitation_1")
     conversion_options = dict(stub_test=True, stub_samples=5)
     save_directory = OUTPUT_PATH
 
@@ -155,7 +160,7 @@ class TestPyPhotometryTwoColourContinuous(FiberPhotometryInterfaceTestMixin):
 
     data_interface_cls = PyPhotometryFiberPhotometryInterface
     file_path = PYPHOTOMETRY_PATH / "mode_named_in_prose" / "two_colour_continuous.ppd"
-    interface_kwargs = dict(file_path=file_path, stream_name="analog_2")
+    interface_kwargs = dict(file_path=file_path, stream_name="detector_2_excitation_2")
     conversion_options = dict(stub_test=True, stub_samples=5)
     save_directory = OUTPUT_PATH
 
@@ -179,7 +184,7 @@ class TestPyPhotometryIndicatorNamedMode(FiberPhotometryInterfaceTestMixin):
 
     data_interface_cls = PyPhotometryFiberPhotometryInterface
     file_path = PYPHOTOMETRY_PATH / "mode_named_by_indicators" / "gcamp_rfp_dif.ppd"
-    interface_kwargs = dict(file_path=file_path, stream_name="analog_1")
+    interface_kwargs = dict(file_path=file_path, stream_name="detector_1_excitation_1")
     conversion_options = dict(stub_test=True, stub_samples=5)
     save_directory = OUTPUT_PATH
 
@@ -215,7 +220,7 @@ class TestPyPhotometryPreJsonHeader(FiberPhotometryInterfaceTestMixin):
 
     data_interface_cls = PyPhotometryFiberPhotometryInterface
     file_path = PYPHOTOMETRY_PATH / "header_predates_json" / "two_signals_200hz.ppd"
-    interface_kwargs = dict(file_path=file_path, stream_name="analog_1")
+    interface_kwargs = dict(file_path=file_path, stream_name="detector_1_excitation_1")
     conversion_options = dict(stub_test=True, stub_samples=5)
     save_directory = OUTPUT_PATH
 
@@ -231,7 +236,7 @@ class TestPyPhotometryPreJsonHeader(FiberPhotometryInterfaceTestMixin):
         So its signals are a timer tick apart like any other strobed recording, rather than sharing the
         header's timebase. The code is what says so; nothing else in the file does.
         """
-        second = PyPhotometryFiberPhotometryInterface(file_path=self.file_path, stream_name="analog_2")
+        second = PyPhotometryFiberPhotometryInterface(file_path=self.file_path, stream_name="detector_2_excitation_2")
 
         assert second.get_original_timestamps()[0] == pytest.approx(1 / (200 * 2))
 
@@ -292,14 +297,14 @@ class TestPyPhotometryEdgeCases:
 
     def test_asking_for_a_signal_the_file_does_not_have_is_refused(self):
         """Which signals exist depends on the acquisition mode, so this is a mistake worth naming."""
-        with pytest.raises(ValueError, match="'analog_3' is not a signal of"):
-            PyPhotometryFiberPhotometryInterface(file_path=self.file_path, stream_name="analog_3")
+        with pytest.raises(ValueError, match="'detector_9_excitation_9' is not a signal of"):
+            PyPhotometryFiberPhotometryInterface(file_path=self.file_path, stream_name="detector_9_excitation_9")
 
     def test_the_first_signal_is_read_when_none_is_named(self):
         """A file holding one signal needs no argument; one holding several is only unambiguous with it."""
         interface = PyPhotometryFiberPhotometryInterface(file_path=self.file_path)
 
-        assert interface.stream_names == ["analog_1"]
+        assert interface.stream_names == ["detector_1_excitation_1"]
 
     def test_a_blank_subject_id_writes_no_subject(self, tmp_path):
         """Every header carries the field, so a blank one means it was left blank in the GUI.
@@ -378,6 +383,6 @@ class TestPyPhotometryEdgeCases:
         )
 
         with pytest.warns(UserWarning) as raised:
-            PyPhotometryFiberPhotometryInterface(file_path=file_path, stream_name="analog_1")
+            PyPhotometryFiberPhotometryInterface(file_path=file_path, stream_name="detector_1_excitation_1")
 
         assert str(raised[0].message) == expected_warning
