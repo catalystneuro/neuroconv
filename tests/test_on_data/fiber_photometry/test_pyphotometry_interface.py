@@ -84,7 +84,7 @@ class TestPyPhotometryOneColourTimeDivisionSignal(FiberPhotometryInterfaceTestMi
         """
         assert metadata["NWBFile"]["session_start_time"] == datetime(2021, 6, 8, 16, 52, 48)
         assert metadata["Subject"]["subject_id"] == "FFC_AF50-202"
-        assert "description" not in metadata["FiberPhotometry"][self.interface.metadata_key]
+        assert "comments" not in metadata["FiberPhotometry"][self.interface.metadata_key]
 
     def test_asking_for_a_signal_the_file_does_not_have_is_refused(self):
         """Which signals exist depends on the acquisition mode, so this is a mistake worth naming."""
@@ -158,10 +158,10 @@ class TestPyPhotometryTwoColourContinuous(FiberPhotometryInterfaceTestMixin):
 
     def check_extracted_metadata(self, metadata: dict):
         """The lag is real in a continuous mode but its size is not in the file, so it is said in prose."""
-        description = metadata["FiberPhotometry"][self.interface.metadata_key]["description"]
+        comments = metadata["FiberPhotometry"][self.interface.metadata_key]["comments"]
 
-        assert "sequentially" in description
-        assert "213 microseconds" in description
+        assert "sequentially" in comments
+        assert "213 microseconds" in comments
 
 
 class TestPyPhotometryIndicatorNamedMode(FiberPhotometryInterfaceTestMixin):

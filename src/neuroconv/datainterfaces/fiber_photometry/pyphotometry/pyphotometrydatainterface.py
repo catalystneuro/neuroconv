@@ -124,12 +124,13 @@ class PyPhotometryFiberPhotometryInterface(BaseFiberPhotometryInterface):
         if subject_id:
             metadata = dict_deep_update(metadata, dict(Subject=dict(subject_id=subject_id)))
         if not self._recording.pulsed:
-            # Said in the series rather than in its timestamps, because the size of the lag is not
-            # knowable from the file. The firmware reads the analog inputs one after the other inside a
+            # A comment rather than a description, since it says how the recording was made rather than
+            # what the data is, and it is said at all because the size of the lag is not knowable from
+            # the file. The firmware reads the analog inputs one after the other inside a
             # single timer interrupt, so the second is late by the 64-sample oversampling buffer at the
             # 300 kHz oversampling clock, plus interrupt work nobody has quantified. Neither constant is
             # in the header, so writing a number would look measured while being, at best, a floor.
-            description = (
+            comments = (
                 "Acquired in a continuous mode, in which the board reads its analog inputs sequentially "
                 "within one timer interrupt rather than sampling them simultaneously. A signal is "
                 "therefore later than the one read before it by at least 213 microseconds (a 64-sample "
@@ -138,9 +139,7 @@ class PyPhotometryFiberPhotometryInterface(BaseFiberPhotometryInterface):
                 "characterized upstream, so every signal here is written on the timebase the header "
                 "states, as pyPhotometry's own reader does."
             )
-            metadata = dict_deep_update(
-                metadata, dict(FiberPhotometry={self.metadata_key: dict(description=description)})
-            )
+            metadata = dict_deep_update(metadata, dict(FiberPhotometry={self.metadata_key: dict(comments=comments)}))
         return metadata
 
     def add_to_nwbfile(
