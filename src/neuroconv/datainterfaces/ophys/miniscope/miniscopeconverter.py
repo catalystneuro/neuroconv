@@ -231,16 +231,6 @@ class MiniscopeConverter(ConverterPipe):
                 self._user_config = json.load(f)
             _raise_if_legacy_user_config_device_list(user_config=self._user_config)
 
-            data_directory_path_in_config = self._user_config.get("dataDirectory", "")
-            data_directory_name_in_json = data_directory_path_in_config.split("/")[-1]
-            if data_directory_name_in_json != self._folder_path.name:
-                warnings.warn(
-                    f"Ignoring 'dataDirectory' field in User Config ('{data_directory_path_in_config}'). "
-                    f"Using provided folder_path: '{self._folder_path}'.",
-                    UserWarning,
-                    stacklevel=2,
-                )
-
             directory_structure = self._user_config.get("directoryStructure", [])
             config_fields = self._user_config.keys()
             fixed_path_entries = [key for key in directory_structure if key in config_fields]
@@ -405,7 +395,7 @@ class MiniscopeConverter(ConverterPipe):
             # Legacy mode: use _MiniscopeMultiRecordingInterface for backwards compatibility
             warnings.warn(
                 "Not passing 'user_configuration_file_path' to MiniscopeConverter is deprecated "
-                "and will be removed on or after December 2026. "
+                "and will be removed on or after February 2027. "
                 "The legacy folder discovery mode assumes all recordings are back-to-back, "
                 "which does not hold in general and can produce silently incorrect results. "
                 "Please pass the 'user_configuration_file_path' argument, which points to the "

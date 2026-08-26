@@ -1,8 +1,8 @@
-"""Tool-agnostic helpers for behavioral-segmentation output (the ``ndx-ethogram`` extension)."""
+"""Helpers for behavioral-segmentation output downstream of pose estimation (the ``ndx-ethogram`` extension)."""
 
 import numpy as np
 
-from .signal_processing import _run_length_encode_labels
+from ..signal_processing import _run_length_encode_labels
 
 
 def _build_ethogram_from_labels(
@@ -111,6 +111,8 @@ def _build_ethogram_from_labels(
         ethogram=catalogue,
     )
     for start_time, stop_time, label in _run_length_encode_labels(labels, timestamps, frame_period):
-        bouts.add_row(start_time=start_time, stop_time=stop_time, label=str(label))
+        # check_ragged=False: hdmf rescans the whole column on every add_row, making this quadratic in the
+        # number of bouts. Every cell here is a scalar, so the check can only ever return False.
+        bouts.add_row(start_time=start_time, stop_time=stop_time, label=str(label), check_ragged=False)
 
     return bouts, catalogue

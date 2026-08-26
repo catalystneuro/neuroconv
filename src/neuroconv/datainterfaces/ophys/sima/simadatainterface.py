@@ -66,7 +66,7 @@ class SimaSegmentationInterface(BaseSegmentationExtractorInterface):
             file_path=file_path, sima_segmentation_label=sima_segmentation_label, metadata_key=metadata_key
         )
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False):
+    def get_metadata(self, *, use_new_metadata_format: bool = True):
         if use_new_metadata_format:
             metadata = super().get_metadata(use_new_metadata_format=True)
             metadata["Ophys"] = {
@@ -76,4 +76,4 @@ class SimaSegmentationInterface(BaseSegmentationExtractorInterface):
             }
             return metadata
 
-        return super().get_metadata()
+        return super().get_metadata(use_new_metadata_format=False)

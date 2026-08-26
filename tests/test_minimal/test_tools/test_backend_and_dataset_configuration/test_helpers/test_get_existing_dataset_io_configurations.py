@@ -14,7 +14,7 @@ from pynwb.behavior import CompassDirection
 from pynwb.image import ImageSeries
 from pynwb.testing.mock.base import mock_TimeSeries
 from pynwb.testing.mock.behavior import mock_SpatialSeries
-from pynwb.testing.mock.ecephys import mock_ElectrodeTable
+from pynwb.testing.mock.ecephys import mock_ElectrodesTable
 from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.tools.importing import is_package_installed
@@ -715,7 +715,7 @@ def test_configuration_in_memory_nwbfile_error():
 @pytest.mark.parametrize("backend", ["hdf5", "zarr"])
 def test_configuration_electrodes_table(tmp_path, backend: Literal["hdf5", "zarr"]):
     nwbfile = mock_NWBFile()
-    mock_ElectrodeTable(nwbfile=nwbfile)
+    mock_ElectrodesTable(nwbfile=nwbfile)
 
     IO = NWBHDF5IO if backend == "hdf5" else NWBZarrIO
     nwbfile_path = tmp_path / "test_existing_dataset_io_configurations_electrodes_table.nwb"

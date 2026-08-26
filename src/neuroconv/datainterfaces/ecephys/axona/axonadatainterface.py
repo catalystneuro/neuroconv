@@ -45,7 +45,7 @@ class AxonaRecordingInterface(BaseRecordingExtractorInterface):
         file_path: FilePath,
         *args,  # TODO: change to * (keyword only) on or after August 2026
         verbose: bool = False,
-        es_key: str = "ElectricalSeries",
+        es_key: str | None = None,
         metadata_key: str | None = None,
     ):
         """
@@ -125,7 +125,6 @@ class AxonaRecordingInterface(BaseRecordingExtractorInterface):
                 dict(
                     name="Axona",
                     description=description,
-                    manufacturer="Axona",
                 ),
             ],
             ElectrodeGroup=[
@@ -141,7 +140,7 @@ class AxonaRecordingInterface(BaseRecordingExtractorInterface):
 
         return ecephys_metadata
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
 
         nwbfile_metadata = self.extract_nwb_file_metadata()
@@ -154,12 +153,14 @@ class AxonaRecordingInterface(BaseRecordingExtractorInterface):
             # .set header carries, so the device is registered once at the top level and every tetrode
             # group links to it through ``device_metadata_key``.
             device_metadata_key = "axona_device"
+            device_model_metadata_key = "axona_dacqusb_model"
             sw_version = self.metadata_in_set_file["sw_version"]
+            metadata["DeviceModels"] = {device_model_metadata_key: dict(name="DacqUSB", manufacturer="Axona")}
             metadata["Devices"] = {
                 device_metadata_key: dict(
                     name="Axona",
                     description=f"Axona DacqUSB, sw_version={sw_version}",
-                    manufacturer="Axona",
+                    device_model_metadata_key=device_model_metadata_key,
                 )
             }
 
@@ -316,5 +317,5 @@ class AxonaPositionDataInterface(BaseDataInterface):
         file_path = self.interface_kwargs["file_path"]
 
         # Create or update processing module for behavioral data
-        behavior_module = get_module(nwbfile=nwbfile, name="behavior", description="behavioral data")
+        behavior_module = get_module(nwbfile=nwbfile, name="behavior", description="processed behavioral data")
         behavior_module.add(get_position_object(file_path))

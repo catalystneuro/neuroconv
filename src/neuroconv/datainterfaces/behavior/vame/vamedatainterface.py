@@ -661,13 +661,13 @@ class VameInterface(BaseTemporalAlignmentInterface):
         """Derive and add a curated ``EthogramBouts`` + ``Ethogram`` catalogue for one motif run.
 
         Thin VAME-specific adapter over the tool-agnostic
-        ``neuroconv.tools.behavior._build_ethogram_from_labels``: it supplies VAME's names,
+        ``neuroconv.tools.pose_estimation._build_ethogram_from_labels``: it supplies VAME's names,
         provenance, full motif label space (``n_clusters``), and the per-frame community labels that
         become the catalogue's ``category`` column.
         """
         if bouts_metadata is None or catalogue_metadata is None:
             return
-        from ....tools.behavior import _build_ethogram_from_labels
+        from ....tools.pose_estimation import _build_ethogram_from_labels
 
         n_clusters = self._vame_config.get("n_clusters")
         vame_version = str(self._vame_config.get("vame_version", "")).strip()

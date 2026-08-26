@@ -51,7 +51,7 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
         *args,  # TODO: change to * (keyword only) on or after August 2026
         stream_name: str | None = None,
         verbose: bool = False,
-        es_key: str = "ElectricalSeries",
+        es_key: str | None = None,
         metadata_key: str | None = None,
     ):
         """
@@ -145,7 +145,7 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
 
         return nwbfile_metadata, neuralynx_device
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         nwbfile_metadata, neuralynx_device = self._extract_header_metadata()
 
         if use_new_metadata_format:
@@ -175,7 +175,7 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
         if neuralynx_device is not None:
             nwb_metadata["Ecephys"]["Device"].append(neuralynx_device)
 
-        return dict_deep_update(super().get_metadata(), nwb_metadata)
+        return dict_deep_update(super().get_metadata(use_new_metadata_format=False), nwb_metadata)
 
 
 class NeuralynxSortingInterface(BaseSortingExtractorInterface):
