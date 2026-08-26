@@ -291,11 +291,9 @@ class TestSLEAPInterface(PoseEstimationInterfaceTestMixin):
         assert container_entry["source_software_version"] == "1.2.7"
         assert container_entry["scorer"] == "TopDownPredictor"
 
-        # Every file says how its confidence was produced. This one is the network's own output, so no
-        # series claims a person placed any of its points.
+        # The definition describes what this interface writes, so it is the same on every .slp.
         for series_entry in container_entry["PoseEstimationSeries"].values():
             assert series_entry["confidence_definition"].startswith("Height of the peak in the SLEAP network")
-            assert "human annotator" not in series_entry["confidence_definition"]
 
         skeleton_entry = metadata["Pose"]["Skeletons"]["sleap_track_0"]
         assert skeleton_entry["subject"] == "track_0"
@@ -569,10 +567,10 @@ class TestSLEAPHumanInstances(PoseEstimationInterfaceTestMixin):
             assert_array_equal(np.asarray(pose_estimation_series.data)[row], human.numpy()[index])
 
     def check_extracted_metadata(self, metadata: dict):
-        """This track holds corrections, so the definition says how a human point was written.
+        """The definition states the direction that is true.
 
-        It states the direction that is true. A human point is written as 1.0, which does not make a 1.0
-        a human point: the network's own scores are not bounded by 1 and can reach it.
+        A human point is written as 1.0, which does not make a 1.0 a human point: the network's own
+        scores are not bounded by 1 and can reach it.
         """
         entries = metadata["Pose"]["PoseEstimations"][self.interface.metadata_key]["PoseEstimationSeries"]
         for entry in entries.values():

@@ -253,12 +253,6 @@ class SLEAPInterface(BasePoseEstimationInterface):
     def _get_keypoint_names(self) -> list[str]:
         return [node.name for node in self._get_labels().skeletons[0].nodes]
 
-    def _has_user_instances(self) -> bool:
-        """Whether any sample written for this track is a human-placed point rather than a prediction."""
-        from sleap_io import PredictedInstance
-
-        return any(not isinstance(instance, PredictedInstance) for _, instance in self._get_track_samples())
-
     def _get_keypoint_data(self) -> dict[str, tuple[np.ndarray, np.ndarray | None]]:
         from sleap_io import PredictedInstance
 
@@ -302,19 +296,17 @@ class SLEAPInterface(BasePoseEstimationInterface):
             edges=[[skeleton.index(edge.source), skeleton.index(edge.destination)] for edge in skeleton.edges],
             subject=self.track_name,
         )
-        # The score SLEAP reports for a point is the peak of the network's confidence map there. It is
-        # not a calibrated probability and it is not bounded by 1, so the sentence states how a human
-        # point is written rather than that a 1.0 identifies one: a model point can reach 1.0 too.
+        # Both sentences hold for every .slp: the first says what the network's number is, the second
+        # what this interface writes where there is no such number. The second states the direction that
+        # is true, since a model score is not bounded by 1 and can reach it, so a 1.0 does not identify a
+        # human point.
         confidence_definition = (
             "Height of the peak in the SLEAP network's confidence map at the location it placed this "
             "keypoint, so a larger value means the network localized the keypoint more strongly. It is "
-            "not a calibrated probability and is not bounded by 1."
+            "not a calibrated probability and is not bounded by 1. A point placed by a human annotator "
+            "while proofreading carries no network score and is written with a confidence of 1.0, and a "
+            "point the annotator marked not visible with NaN."
         )
-        if self._has_user_instances():
-            confidence_definition += (
-                " A point placed by a human annotator while proofreading carries no network score and is "
-                "written with a confidence of 1.0, and a point the annotator marked not visible with NaN."
-            )
 
         series_entry = {}
         for keypoint_name in self._get_keypoint_names():
