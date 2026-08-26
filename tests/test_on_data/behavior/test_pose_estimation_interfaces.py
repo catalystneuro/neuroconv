@@ -545,10 +545,9 @@ class TestSLEAPHumanInstances(PoseEstimationInterfaceTestMixin):
         for index, pose_estimation_series in enumerate(container.pose_estimation_series.values()):
             assert_array_equal(np.asarray(pose_estimation_series.data)[row], human.numpy()[index])
 
-    def test_the_confidence_definition_says_what_a_one_means(self, setup_interface):
-        entries = self.interface.get_metadata()["Pose"]["PoseEstimations"][self.interface.metadata_key][
-            "PoseEstimationSeries"
-        ]
+    def check_extracted_metadata(self, metadata: dict):
+        """This track holds corrections, so every series says what a confidence of 1.0 means."""
+        entries = metadata["Pose"]["PoseEstimations"][self.interface.metadata_key]["PoseEstimationSeries"]
         for entry in entries.values():
             assert "human annotator" in entry["confidence_definition"]
 
