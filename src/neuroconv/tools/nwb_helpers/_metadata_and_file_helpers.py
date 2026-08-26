@@ -1,6 +1,5 @@
 """Collection of helper functions related to NWB."""
 
-import importlib
 import uuid
 import warnings
 from contextlib import contextmanager
@@ -26,6 +25,7 @@ from ._device_types import (
     _build_inline_containers,
     _resolve_type,
 )
+from ._provenance import describe_source_script
 from ...utils.dict import DeepDict, load_dict_from_file
 from ...utils.json_schema import _validate_device_registry_names, validate_metadata
 
@@ -83,15 +83,15 @@ def get_default_nwbfile_metadata() -> DeepDict:
         A dictionary containing default metadata values for an NWBFile, including
         session description, identifier, and NeuroConv version information.
     """
-    neuroconv_version = importlib.metadata.version("neuroconv")
+    source_script, source_script_file_name = describe_source_script()
 
     metadata = DeepDict()
     metadata["NWBFile"].deep_update(
         session_description="no description",
         identifier=str(uuid.uuid4()),
-        # Add NeuroConv watermark (overridden if going through the GUIDE)
-        source_script=f"Created using NeuroConv v{neuroconv_version}",
-        source_script_file_name=__file__,  # Required for validation
+        # Add NeuroConv provenance record (overridden if going through the GUIDE)
+        source_script=source_script,
+        source_script_file_name=source_script_file_name,  # Required for validation
     )
 
     return metadata
@@ -118,18 +118,11 @@ def make_nwbfile_from_metadata(metadata: dict) -> NWBFile:
     assert metadata is not None, "Metadata is required to create an NWBFile but metadata=None was passed."
     validate_metadata(metadata=metadata, schema=base_metadata_schema)
 
-    nwbfile_kwargs = deepcopy(metadata["NWBFile"])
+    # Anything the caller did not provide falls back to the same defaults an interface would have given
+    nwbfile_kwargs = {**get_default_nwbfile_metadata()["NWBFile"], **deepcopy(metadata["NWBFile"])}
     # convert ISO 8601 string to datetime
     if isinstance(nwbfile_kwargs.get("session_start_time"), str):
         nwbfile_kwargs["session_start_time"] = datetime.fromisoformat(nwbfile_kwargs["session_start_time"])
-    if "session_description" not in nwbfile_kwargs:
-        nwbfile_kwargs["session_description"] = "No description."
-    if "identifier" not in nwbfile_kwargs:
-        nwbfile_kwargs["identifier"] = str(uuid.uuid4())
-    if "source_script" not in nwbfile_kwargs:
-        neuroconv_version = importlib.metadata.version("neuroconv")
-        nwbfile_kwargs["source_script"] = f"Created using NeuroConv v{neuroconv_version}"
-        nwbfile_kwargs["source_script_file_name"] = __file__  # Required for validation
 
     nwbfile = NWBFile(**nwbfile_kwargs)
     add_subject_to_nwbfile(nwbfile=nwbfile, metadata=metadata)

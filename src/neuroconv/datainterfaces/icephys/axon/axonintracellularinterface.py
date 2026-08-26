@@ -5,24 +5,17 @@ from typing import Literal
 
 import numpy as np
 from pydantic import FilePath, validate_call
-from pynwb import NWBFile
 
-from ....basedatainterface import BaseDataInterface
-from ....tools.icephys import (
-    _RESPONSE_CLASS,
-    _STIMULUS_CLASS,
-    _add_intracellular_electrode_to_nwbfile,
-    _add_intracellular_recordings_to_nwbfile,
-)
+from ..baseicephysinterface import BaseIcephysInterface
+from ....tools.icephys import _IcephysSeriesData
 from ....utils import (
     DeepDict,
-    calculate_regular_series_rate,
     get_conversion_from_unit,
     to_camel_case,
 )
 
 
-class AxonIntracellularInterface(BaseDataInterface):
+class AxonIntracellularInterface(BaseIcephysInterface):
     """
     Interface for intracellular electrophysiology data recorded in Axon Binary Format (.abf).
 
@@ -214,6 +207,7 @@ class AxonIntracellularInterface(BaseDataInterface):
 
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
+        metadata["Icephys"] = {}
         info = self._reader._axon_info
 
         # neo already builds rec_datetime from the header (real date+time for v2, time-of-day placeholder for v1).
@@ -281,98 +275,26 @@ class AxonIntracellularInterface(BaseDataInterface):
 
     # ------------------------------------------------------------------ writing
 
-    def add_to_nwbfile(
-        self,
-        nwbfile: NWBFile,
-        metadata: dict | None = None,
-    ) -> None:
-        if metadata is None:
-            metadata = self.get_metadata()
-
-        # Locate this interface's response entry by its series metadata key (resolved at construction) and follow
-        # the editable link to the electrode. The paired stimulus, if any, is read further down where it is used.
-        series_metadata_key = self._series_metadata_key
-        response_metadata = metadata["Icephys"]["PatchClampSeries"][series_metadata_key]
-        electrode = _add_intracellular_electrode_to_nwbfile(
-            nwbfile, metadata, response_metadata["electrode_metadata_key"]
-        )
-
+    def _get_icephys_series_data(self):
+        """Map the ABF response and optional stimulus into the base writer representation."""
         data, timestamps, sweep_sample_ranges = self._concatenate_channel_sweeps(
             self._reader, self._response_channel_index, self._num_sweeps, self._sampling_rate
         )
-        # The series is written on this file's own clock (timestamps start at the ABF header's t_start). A lone
-        # interface leaves _starting_time_shift at 0; a converter combining several files sets it so they share one
-        # session timeline (aligned by header start time), since that resolution needs sight of all the files.
         timestamps = timestamps + self._starting_time_shift
         channel = self._signal_channels[self._response_channel_index]
-        response_kwargs = dict(
-            name=response_metadata["name"],
+        response_data = _IcephysSeriesData(
             data=data,
-            electrode=electrode,
+            timestamps=timestamps,
             conversion=float(channel["gain"]) * get_conversion_from_unit(channel["units"]),
             offset=float(channel["offset"]) * get_conversion_from_unit(channel["units"]),
-            gain=np.nan,
-            description=response_metadata["description"],
         )
-        # Use a uniform rate when the timestamps are regular (a single sweep, or contiguous sweeps); fall back to
-        # explicit timestamps only when inter-sweep gaps make them irregular.
-        rate = calculate_regular_series_rate(series=timestamps)
-        if rate is not None:
-            response_kwargs.update(starting_time=float(timestamps[0]), rate=rate)
-        else:
-            response_kwargs.update(timestamps=timestamps)
-        response_series = _RESPONSE_CLASS[self._mode](**response_kwargs)
-        nwbfile.add_acquisition(response_series)
-
-        stimulus_series = None
+        stimulus_data = None
         if self._has_stimulus:
-            # Read the stimulus directly (same key, parallel registry); a missing entry fails loud, no silent drop.
-            stimulus_metadata = metadata["Icephys"]["PatchClampStimulusSeries"][series_metadata_key]
-            stimulus_series = self._build_stimulus_series(
-                self._reader, stimulus_metadata, electrode, timestamps, self._sampling_rate, self._num_sweeps
-            )
-            nwbfile.add_stimulus(stimulus_series)
+            stimulus_data = self._get_stimulus_data(self._reader, timestamps, self._sampling_rate, self._num_sweeps)
+        return response_data, stimulus_data, sweep_sample_ranges
 
-        self._add_intracellular_table_to_nwb(
-            nwbfile,
-            electrode=electrode,
-            response_series=response_series,
-            stimulus_series=stimulus_series,
-            sweep_sample_ranges=sweep_sample_ranges,
-        )
-
-    def _add_intracellular_table_to_nwb(
-        self, nwbfile, electrode, response_series, sweep_sample_ranges, stimulus_series=None
-    ):
-        """Write one IntracellularRecordings row per sweep, each addressing this electrode's continuous response
-        series (and, when present, its stimulus series) by the sweep's ``(start_index, count)`` range, and tag
-        every row with two run-level foreign-key columns:
-
-        - ``sequence``: the run identity (defaults to the file stem; the whole file is one run, so every sweep
-          shares it). This is the column an aggregator later groups on to build a SequentialRecordings entry.
-        - ``stimulus_type``: what kind of run it was (gap-free, the protocol file name, or "not described").
-        - ``repetition`` and ``condition``: only when the user gave them (when combining several files in a
-          converter), so the runs group into repetitions and experimental conditions; a lone file omits them.
-
-        These carry the run information in denormalized form, so the file stays information-complete even though
-        the upper tables are not built. Those tables (SimultaneousRecordings, SequentialRecordings, and above) are
-        deliberately not built by the interface: constructing them is a terminal step that locks their membership,
-        and a single interface cannot know whether it is the last contributor to the file (a future converter may
-        combine it with another electrode in the same simultaneous recording). Building the hierarchy is left to
-        whatever reaches the known-complete file; the per-sweep rows written here are always safe to append to, so
-        this contribution stays composable.
-        """
-        _add_intracellular_recordings_to_nwbfile(
-            nwbfile,
-            electrode=electrode,
-            response_series=response_series,
-            sweep_sample_ranges=sweep_sample_ranges,
-            sequence=self._run_identity,
-            stimulus_series=stimulus_series,
-            stimulus_type=self._extract_and_format_stimulus_type(),
-            repetition=self._repetition,
-            condition=self._condition,
-        )
+    def _get_stimulus_type(self) -> str:
+        return self._extract_and_format_stimulus_type()
 
     # ------------------------------------------------------------------ discovery (call before constructing)
 
@@ -469,41 +391,26 @@ class AxonIntracellularInterface(BaseDataInterface):
 
         return data, timestamps, sweep_sample_ranges
 
-    def _build_stimulus_series(self, reader, stimulus_metadata, electrode, timestamps, sampling_rate, num_sweeps):
+    def _get_stimulus_data(self, reader, timestamps, sampling_rate, num_sweeps):
+        """Map the ABF stimulus source into the base writer representation."""
         if self._stimulus_command is not None:
-            # Reconstructed command (DAC): resolve the command name to its DAC index, then synthesize the
-            # waveform from the protocol epoch table.
             dac_index = self._command_name_to_index(self._stimulus_command)
             sigs_by_segment, _, units = reader.read_raw_protocol()
             data = np.concatenate(
-                [np.asarray(sigs_by_segment[seg][dac_index]).reshape(-1) for seg in range(num_sweeps)]
+                [
+                    np.asarray(sigs_by_segment[segment_index][dac_index]).reshape(-1)
+                    for segment_index in range(num_sweeps)
+                ]
             )
             conversion = get_conversion_from_unit(units[dac_index])
             offset = 0.0
         else:
-            # Recorded monitor (ADC): resolve the monitor channel, then read it like the response.
             stimulus_channel_index = self._channel_name_to_index(self._stimulus_channel_name)
             data, _, _ = self._concatenate_channel_sweeps(reader, stimulus_channel_index, num_sweeps, sampling_rate)
             channel = self._signal_channels[stimulus_channel_index]
             conversion = float(channel["gain"]) * get_conversion_from_unit(channel["units"])
             offset = float(channel["offset"]) * get_conversion_from_unit(channel["units"])
-
-        kwargs = dict(
-            name=stimulus_metadata["name"],
-            data=data,
-            electrode=electrode,
-            conversion=conversion,
-            offset=offset,
-            gain=np.nan,
-            description=stimulus_metadata["description"],
-        )
-        # Same timing rule as the response: regular -> rate, irregular (inter-sweep gaps) -> timestamps.
-        rate = calculate_regular_series_rate(series=timestamps)
-        if rate is not None:
-            kwargs.update(starting_time=float(timestamps[0]), rate=rate)
-        else:
-            kwargs.update(timestamps=timestamps)
-        return _STIMULUS_CLASS[self._mode](**kwargs)
+        return _IcephysSeriesData(data=data, timestamps=timestamps, conversion=conversion, offset=offset)
 
     def _extract_and_format_stimulus_type(self) -> str:
         r"""Short label for the run's stimulus type.

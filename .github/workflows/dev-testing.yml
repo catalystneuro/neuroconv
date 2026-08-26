@@ -100,4 +100,4 @@ jobs:
 
 
       - name: Run full pytest
-        run: pytest -rsx -n logical --dist loadscope
+        run: pytest

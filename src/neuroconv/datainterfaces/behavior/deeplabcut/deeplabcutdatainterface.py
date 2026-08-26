@@ -446,6 +446,7 @@ class DeepLabCutInterface(BasePoseEstimationInterface):
 
         from ._dlc_utils import (
             _ensure_individuals_in_header,
+            _get_edges_from_config,
             _get_graph_edges,
             _get_video_info_from_config_file,
         )
@@ -472,26 +473,32 @@ class DeepLabCutInterface(BasePoseEstimationInterface):
             _, image_shape = _get_video_info_from_config_file(
                 config_file_path=self.source_data["config_file_path"], vidname=video_name
             )
-            try:
-                shape_parts = [int(x.strip()) for x in image_shape.split(",")]
-                if len(shape_parts) == 4:
-                    dimensions = [[shape_parts[3], shape_parts[1]]]  # [[height, width]]
-            except (ValueError, IndexError):
-                pass
+            if image_shape is not None:
+                try:
+                    shape_parts = [int(x.strip()) for x in image_shape.split(",")]
+                    if len(shape_parts) == 4:
+                        dimensions = [[shape_parts[3], shape_parts[1]]]  # [[height, width]]
+                except (ValueError, IndexError):
+                    pass
 
         # Get edges from metadata pickle file if available
-        edges = []
-        try:
-            filename = str(Path(file_path).parent / Path(file_path).stem)
-            for i, c in enumerate(filename[::-1]):
-                if c.isnumeric():
-                    break
-            if i > 0:
-                filename = filename[:-i]
-            metadata_file_path = Path(filename + "_meta.pickle")
-            edges = _get_graph_edges(metadata_file_path=metadata_file_path)
-        except Exception:
-            pass
+        # The project config states the skeleton as pairs of bodypart names, which is the source that is
+        # actually there: the part affinity field graph below lives in a ``_meta.pickle`` beside the output
+        # file that DeepLabCut does not always write, and when it is missing the skeleton is written with
+        # nodes and no connections.
+        edges = _get_edges_from_config(config_dict=self.config_dict, bodyparts=bodyparts)
+        if not edges:
+            try:
+                filename = str(Path(file_path).parent / Path(file_path).stem)
+                for i, c in enumerate(filename[::-1]):
+                    if c.isnumeric():
+                        break
+                if i > 0:
+                    filename = filename[:-i]
+                metadata_file_path = Path(filename + "_meta.pickle")
+                edges = _get_graph_edges(metadata_file_path=metadata_file_path)
+            except Exception:
+                pass
 
         # Extract video name and scorer
         # If filename contains "DLC", split on it to get video name
