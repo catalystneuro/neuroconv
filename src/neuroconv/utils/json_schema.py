@@ -364,6 +364,22 @@ def _is_member(types: type | tuple[type, ...], target_types: type | tuple[type, 
     return any(t in target_types for t in types)
 
 
+# Small array-valued metadata that must stay in the generated schema whatever pynwb declares for it.
+# The branch below infers "this is a bulk dataset, leave it out" from `DataIO` appearing among the
+# accepted types, since only bulk data is ever wrapped for chunked and compressed writing. pynwb's
+# development branch replaced the `collections.abc.Iterable` these fields used to declare, which was too
+# wide because it also accepted `str`, with the same explicit tuple that `data` and `timestamps` carry,
+# `DataIO` included. That reclassified a fixed-length pair of integers as bulk data. Nobody compresses a
+# frame size, so the signal carries no information for these and they are named instead of inferred.
+ARRAY_VALUED_METADATA_ARGUMENTS = (
+    "dimension",
+    "field_of_view",
+    "starting_frame",
+    "control",
+    "control_description",
+)
+
+
 def get_schema_from_hdmf_class(hdmf_class: type) -> dict[str, Any]:
     """
     Get metadata schema from hdmf class.
@@ -409,6 +425,8 @@ def get_schema_from_hdmf_class(hdmf_class: type) -> dict[str, Any]:
         elif _is_member(arg_type, str):
             schema_val.update(type="string")
         elif _is_member(arg_type, collections.abc.Iterable):
+            schema_val.update(type="array")
+        elif arg_name in ARRAY_VALUED_METADATA_ARGUMENTS:
             schema_val.update(type="array")
         elif isinstance(arg_type, tuple) and (np.ndarray in arg_type and hdmf.data_utils.DataIO not in arg_type):
             # extend type array without including type where DataIO in tuple
