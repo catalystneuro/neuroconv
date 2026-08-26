@@ -13,7 +13,6 @@
 
 ## Bug Fixes
 * Printing a `DatasetIOConfiguration` built by the deprecated `from_neurodata_object` no longer raises for an `ElectricalSeries` or an `ImageSeries`, since that path left `buffer_shape` unset, and naming two options for a base HDF5 filter now raises instead of one being silently dropped. [PR #1985](https://github.com/catalystneuro/neuroconv/pull/1985)
-||||||| 3f5da49d0
 * `GuppyInterface` no longer reads a behavioral covariate store as a behavioral event. Every store that was not a signal or control channel was taken for an event, so a session carrying a covariate failed to construct, asserting on a per-recording-site onsets file that GuPPy never writes for one. [PR #1975](https://github.com/catalystneuro/neuroconv/pull/1975)
 * A converter nested inside another converter now receives its conversion options. The outer converter unpacked each entry into keyword arguments, which is an interface's calling convention rather than a converter's, so the shape the schema describes raised `TypeError` on the way in. [PR #1970](https://github.com/catalystneuro/neuroconv/pull/1970)
 * `DeepLabCutInterface` no longer writes a fabricated frame size when the video is not found in the project config. The lookup matches the output file's stem against the config's `video_sets` keys, which are absolute paths from the machine that trained the model, so a miss is the common case, and the `"0, 0, 0, 0"` it returned was written into the file as `dimensions` of `[[0, 0]]`. [PR #1969](https://github.com/catalystneuro/neuroconv/pull/1969)
