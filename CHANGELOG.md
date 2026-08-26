@@ -32,6 +32,7 @@
 * Pose estimation now supports device model addition in their metadata. [PR #1961](https://github.com/catalystneuro/neuroconv/pull/1961)
 
 ## Improvements
+* `dimension`, `field_of_view`, `starting_frame`, `control` and `control_description` are named explicitly as array-valued metadata in the schema generator, so they stay in a generated metadata schema even where pynwb declares them the way it declares `data`, which its development branch now does and which was dropping them and failing every conversion that supplied one. [PR #1988](https://github.com/catalystneuro/neuroconv/pull/1988)
 * The YAML DANDI upload test appends the platform and Python version to its subject and session identifiers, the way the other DANDI upload tests already do, so two CI runs overlapping no longer replace each other's assets in the shared sandbox dandiset and fail with a 404. [PR #1986](https://github.com/catalystneuro/neuroconv/pull/1986)
 * The docker image tests run weekly instead of daily, matching the cadence at which the images they exercise are built, and their jobs now install `pytest-xdist`, without which the `--numprocesses` that [PR #1973](https://github.com/catalystneuro/neuroconv/pull/1973) moved into `addopts` failed them at argument parsing. [PR #1983](https://github.com/catalystneuro/neuroconv/pull/1983)
 * Added `MockExternalVideoInterface` [PR #1981](https://github.com/catalystneuro/neuroconv/pull/1981)
