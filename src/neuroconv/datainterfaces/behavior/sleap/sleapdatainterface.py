@@ -266,14 +266,17 @@ class SLEAPInterface(BasePoseEstimationInterface):
 
         # (num_frames, num_keypoints, 3), the last axis being x, y and the point's score. A human-placed
         # Instance carries no score, since a person places a point rather than estimating it, so those
-        # rows are written as 1.0 and 'confidence_definition' says what the 1.0 means.
+        # points are written as 1.0 and 'confidence_definition' says what the 1.0 means. A point the
+        # annotator marked not visible comes back as NaN, and its confidence is NaN too: 1.0 there would
+        # claim certainty about a position the person declined to give.
         rows = []
         for _, instance in self._get_track_samples():
             if isinstance(instance, PredictedInstance):
                 rows.append(instance.numpy(scores=True))
             else:
                 positions = instance.numpy()
-                rows.append(np.column_stack([positions, np.ones(len(positions))]))
+                confidence = np.where(np.isnan(positions).any(axis=1), np.nan, 1.0)
+                rows.append(np.column_stack([positions, confidence]))
 
         points = np.stack(rows)
         return {
