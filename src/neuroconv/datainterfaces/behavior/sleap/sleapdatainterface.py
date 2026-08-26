@@ -306,8 +306,9 @@ class SLEAPInterface(BasePoseEstimationInterface):
         # not a calibrated probability and it is not bounded by 1, so the sentence states how a human
         # point is written rather than that a 1.0 identifies one: a model point can reach 1.0 too.
         confidence_definition = (
-            "Peak value of the SLEAP network's confidence map for this keypoint, as reported in the .slp "
-            "file. It is not a calibrated probability and is not bounded by 1."
+            "Height of the peak in the SLEAP network's confidence map at the location it placed this "
+            "keypoint, so a larger value means the network localized the keypoint more strongly. It is "
+            "not a calibrated probability and is not bounded by 1."
         )
         if self._has_user_instances():
             confidence_definition += (

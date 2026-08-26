@@ -294,7 +294,7 @@ class TestSLEAPInterface(PoseEstimationInterfaceTestMixin):
         # Every file says how its confidence was produced. This one is the network's own output, so no
         # series claims a person placed any of its points.
         for series_entry in container_entry["PoseEstimationSeries"].values():
-            assert series_entry["confidence_definition"].startswith("Peak value of the SLEAP network")
+            assert series_entry["confidence_definition"].startswith("Height of the peak in the SLEAP network")
             assert "human annotator" not in series_entry["confidence_definition"]
 
         skeleton_entry = metadata["Pose"]["Skeletons"]["sleap_track_0"]
@@ -577,7 +577,7 @@ class TestSLEAPHumanInstances(PoseEstimationInterfaceTestMixin):
         entries = metadata["Pose"]["PoseEstimations"][self.interface.metadata_key]["PoseEstimationSeries"]
         for entry in entries.values():
             definition = entry["confidence_definition"]
-            assert definition.startswith("Peak value of the SLEAP network")
+            assert definition.startswith("Height of the peak in the SLEAP network")
             assert "is not bounded by 1" in definition
             assert "written with a confidence of 1.0" in definition
 
