@@ -31,19 +31,6 @@ if is_package_installed(package_name="hdf5plugin"):
     )
 
 
-def _compression_opts_from(compression_options: dict[str, Any] | None) -> int | tuple | None:
-    """
-    Reduce the options of a base HDF5 filter to the single value `h5py` takes as `compression_opts`.
-
-    A base filter takes one value rather than keywords: an int for gzip, a 2-tuple for szip. The name
-    it is stated under varies, `level` from a caller and `compression_opts` from a configuration read
-    back off disk, so the value is taken by position rather than by name.
-    """
-    if not compression_options:
-        return None
-    return next(iter(compression_options.values()))
-
-
 class HDF5DatasetIOConfiguration(DatasetIOConfiguration):
     """A data model for configuring options about an object that will become a HDF5 Dataset in the file."""
 
@@ -87,9 +74,12 @@ class HDF5DatasetIOConfiguration(DatasetIOConfiguration):
         if self.compression_method is None:
             compression_bundle = dict(compression=False)
         elif self.compression_method in _base_hdf5_filters:
+            # A base filter takes one value rather than keywords, an int for gzip and a 2-tuple for szip.
+            # The name it arrives under varies, `level` from a caller and `compression_opts` from a
+            # configuration read back off disk, so the value is taken by position rather than by name.
             compression_bundle = dict(
                 compression=self.compression_method,
-                compression_opts=_compression_opts_from(compression_options=self.compression_options),
+                compression_opts=next(iter((self.compression_options or dict()).values()), None),
             )
         elif isinstance(self.compression_method, h5py._hl.filters.FilterRefBase):
             compression_bundle = dict(**self.compression_method, allow_plugin_filters=True)
