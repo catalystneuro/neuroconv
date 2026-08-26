@@ -462,6 +462,126 @@ class TestSLEAPMultipleTracks:
 
 
 @pytest.mark.skipif(
+    SLEAP_MACOS_INTEL_PYTHON_313_UNSUPPORTED,
+    reason="SLEAP conversion is not yet supported on macOS Intel with Python 3.13.",
+)
+class TestSLEAPHumanInstances:
+    """A proofread .slp holds the network's instances and a person's corrections side by side.
+
+    Both kinds are written. The person's instance wins where the two sit on the same track, and a track
+    carrying a human instance and no model one still produces a row, which is what keeps the number of
+    rows equal to the number of frames the timestamps are drawn from.
+    """
+
+    folder_path = BEHAVIOR_DATA_PATH / "sleap" / "human_and_model_instances" / "solo_human_instances"
+    file_path = str(folder_path / "remora_video_1.slp")
+    track_names = ["track_0", "track_1", "track_2"]
+
+    @staticmethod
+    def _write(file_path, track_name):
+        interface = SLEAPInterface(file_path=file_path, track_name=track_name, frames_per_second=30.0)
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
+        container = next(iter(nwbfile.processing["behavior"].data_interfaces.values()))
+        return interface, container
+
+    @staticmethod
+    def _instances_for(labels, track_name):
+        """This track's ``(frame index, human instance, model instance)`` triples, in frame order."""
+        triples = []
+        for labeled_frame in sorted(labels.labeled_frames, key=lambda frame: frame.frame_idx):
+            human = [i for i in labeled_frame.user_instances if i.track is not None and i.track.name == track_name]
+            model = [i for i in labeled_frame.predicted_instances if i.track is not None and i.track.name == track_name]
+            if human or model:
+                triples.append((labeled_frame.frame_idx, human[0] if human else None, model[0] if model else None))
+        return triples
+
+    def test_a_frame_labeled_only_by_hand_still_writes_a_row(self):
+        """The frames feeding the timestamps and the rows feeding the data are one selection.
+
+        Reading the rows from the model's instances alone dropped every frame a person had labeled
+        without the network finding anything, so the rows slid up against the wrong times.
+        """
+        import sleap_io
+
+        labels = sleap_io.load_slp(self.file_path)
+        by_track = {name: self._instances_for(labels, name) for name in self.track_names}
+        # Not every track has one, but the file does, which is what makes it worth testing against.
+        assert any(human is not None and model is None for triples in by_track.values() for _, human, model in triples)
+
+        for track_name, triples in by_track.items():
+            interface, container = self._write(self.file_path, track_name)
+            assert len(interface.get_timestamps()) == len(triples)
+            for series in container.pose_estimation_series.values():
+                assert np.asarray(series.data).shape[0] == len(triples)
+
+    def test_a_human_instance_wins_over_the_model_one_on_its_track(self):
+        """Proofreading means correcting the network, so the correction is what gets written."""
+        import sleap_io
+
+        labels = sleap_io.load_slp(self.file_path)
+        keypoint_names = [node.name for node in labels.skeletons[0].nodes]
+
+        for track_name in self.track_names:
+            triples = self._instances_for(labels, track_name)
+            row, human, model = next(
+                (index, human, model)
+                for index, (_, human, model) in enumerate(triples)
+                if human is not None and model is not None
+            )
+            assert not np.allclose(human.numpy(), model.numpy(), equal_nan=True)
+
+            _, container = self._write(self.file_path, track_name)
+            for index, keypoint_name in enumerate(keypoint_names):
+                series_name = f"PoseEstimationSeries{keypoint_name.title().replace('_', '')}"
+                series = container.pose_estimation_series[series_name]
+                assert_array_equal(np.asarray(series.data)[row], human.numpy()[index])
+
+    def test_a_human_placed_point_carries_full_confidence_and_an_invisible_one_carries_none(self):
+        """A person does not estimate a point, so 1.0, and a point they marked not visible is NaN."""
+        import sleap_io
+
+        labels = sleap_io.load_slp(self.file_path)
+        for track_name in self.track_names:
+            human_points = np.concatenate(
+                [human.numpy() for _, human, _ in self._instances_for(labels, track_name) if human is not None]
+            )
+            visible = np.count_nonzero(~np.isnan(human_points[:, 0]))
+            invisible = np.count_nonzero(np.isnan(human_points[:, 0]))
+
+            _, container = self._write(self.file_path, track_name)
+            confidence = np.concatenate(
+                [np.asarray(series.confidence) for series in container.pose_estimation_series.values()]
+            )
+            positions = np.concatenate(
+                [np.asarray(series.data)[:, 0] for series in container.pose_estimation_series.values()]
+            )
+            assert np.count_nonzero(confidence == 1.0) == visible
+            assert np.count_nonzero(np.isnan(confidence)) == invisible
+            # A missing position never claims a confidence the file does not have.
+            assert not np.any(np.isnan(positions) & (confidence == 1.0))
+
+    def test_the_confidence_definition_says_what_a_one_means(self):
+        for track_name in self.track_names:
+            interface = SLEAPInterface(file_path=self.file_path, track_name=track_name, frames_per_second=30.0)
+            series_entries = interface.get_metadata()["Pose"]["PoseEstimations"][interface.metadata_key][
+                "PoseEstimationSeries"
+            ]
+            for entry in series_entries.values():
+                assert "human annotator" in entry["confidence_definition"]
+
+    def test_a_file_the_network_alone_wrote_says_nothing_about_confidence(self):
+        """No corrections, no sentence about them, so such a file writes exactly what it wrote before."""
+        file_path = str(BEHAVIOR_DATA_PATH / "sleap" / "predictions_1.2.7_provenance_and_tracking.slp")
+        interface = SLEAPInterface(file_path=file_path, track_name="track_0", frames_per_second=30.0)
+        series_entries = interface.get_metadata()["Pose"]["PoseEstimations"][interface.metadata_key][
+            "PoseEstimationSeries"
+        ]
+        for entry in series_entries.values():
+            assert "confidence_definition" not in entry
+
+
+@pytest.mark.skipif(
     ndx_pose_version < version.parse("0.2.0"),
     reason="Interface requires ndx-pose version >= 0.2.0",
 )
