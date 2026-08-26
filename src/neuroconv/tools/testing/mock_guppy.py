@@ -37,7 +37,8 @@ _SESSION_ID = "mock_guppy_session"
 # One behavioral covariate scored four times inside the default recording. The third bin holds no
 # score, so the empty-bin case (NaN mean, count 0) is covered by the defaults.
 _DEFAULT_COVARIATES = {"akinesia": ((1.1, 1.6, 1.7, 2.6), (2.0, 3.0, 4.0, 5.0))}
-# Detected transient times shared by transientsOccurrences_* and the per-bin counts.
+# Detected transient times, shared by transientsOccurrences_*, the per-bin counts, and the
+# spontaneous-mode event trains.
 _TRANSIENT_PEAK_TIMES = (1.2, 1.5, 1.8, 2.5)
 # Seconds of raw recording GuPPy's lights-on trim discards before analysis (its default).
 _TIME_FOR_LIGHTS_TURN_ON = 1.0
@@ -63,6 +64,7 @@ def generate_mock_guppy_output_folder(
     covariates: dict[str, tuple[Sequence[float], Sequence[float]]] | None = None,
     tonic_epochs: tuple[tuple[str, float, float], ...] = (("baseline", 1.0, 2.0), ("post_injection", 2.0, 3.0)),
     bin_size_in_trials: int = 3,
+    use_transients_as_events: bool = False,
     guppy_version: str = "2.0.0a7",
     zscore_method: str = "standard z-score",
 ) -> Path:
@@ -128,6 +130,13 @@ def generate_mock_guppy_output_folder(
         duration; it is clamped to the samples available when averaged.
     bin_size_in_trials : int, optional
         Trials per bin for the ``bin_(a-b)`` columns ("# of trials" binning mode).
+    use_transients_as_events : bool, optional
+        Whether to emit GuPPy's spontaneous mode, off by default as it is in GuPPy. When on, each
+        recording site's own detected transients stand in for external TTLs: a
+        ``transients_<feature>_<recording_site>.hdf5`` event train is written per (feature, recording
+        site), holding a *subset* of that site's detected transients, since trial rejection drops some;
+        the two recording sites keep different subsets, as two sites detecting their own transients
+        would. Every peri-event product is then emitted for those events as well.
     guppy_version, zscore_method : str, optional
         Provenance values written to ``GuPPyParamtersUsed.json``.
 
@@ -199,6 +208,7 @@ def generate_mock_guppy_output_folder(
         peak_end_points=peak_end_points,
         bin_size_in_trials=bin_size_in_trials,
         remove_artifacts=bool(valid_signal_intervals),
+        use_transients_as_events=use_transients_as_events,
         bin_width=bin_width,
     )
 
@@ -270,6 +280,41 @@ def generate_mock_guppy_output_folder(
                     bin_edges=bin_edges,
                     num_windows=len(peak_start_points),
                 )
+
+    if use_transients_as_events:
+        # Each recording site stands its own detected transients in for the TTLs, keeping the subset that
+        # survived trial rejection. The two sites keep different subsets, so a row mix-up cannot pass.
+        for recording_site_index, recording_site in enumerate(recording_sites):
+            kept_transients = list(_TRANSIENT_PEAK_TIMES[recording_site_index :: len(recording_sites)])
+            transient_bin_edges = _trial_bin_edges(
+                num_trials=len(kept_transients), bin_size_in_trials=bin_size_in_trials
+            )
+            for detected_feature in features:
+                event_name = "transients_" + detected_feature
+                _write_event_onsets(
+                    folder_path, event=event_name, recording_site=recording_site, onsets=kept_transients
+                )
+                for feature in features:
+                    for baseline_corrected in (True, False):
+                        _write_psth(
+                            folder_path,
+                            event=event_name,
+                            recording_site=recording_site,
+                            feature=feature,
+                            baseline_corrected=baseline_corrected,
+                            peri_event_time=peri_event_time,
+                            trial_onsets=kept_transients,
+                            bin_edges=transient_bin_edges,
+                        )
+                    _write_peak_auc(
+                        folder_path,
+                        event=event_name,
+                        recording_site=recording_site,
+                        feature=feature,
+                        trial_onsets=kept_transients,
+                        bin_edges=transient_bin_edges,
+                        num_windows=len(peak_start_points),
+                    )
 
     cross_correlation_folder = folder_path / "cross_correlation_output"
     cross_correlation_folder.mkdir(exist_ok=True)
@@ -344,6 +389,7 @@ def _write_parameters(
     peak_end_points,
     bin_size_in_trials,
     remove_artifacts,
+    use_transients_as_events,
     bin_width,
 ) -> None:
     """``GuPPyParamtersUsed.json`` written via ``json.dump``.
@@ -378,6 +424,7 @@ def _write_parameters(
         moving_window=15.0,
         highAmpFilt=2.0,
         transientsThresh=2.0,
+        useTransientsAsEvents=use_transients_as_events,
         computeBinnedMetrics=bin_width is not None,
         binnedMetricsWidth=bin_width if bin_width is not None else 60.0,
     )
