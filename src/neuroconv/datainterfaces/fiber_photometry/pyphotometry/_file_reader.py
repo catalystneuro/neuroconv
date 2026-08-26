@@ -116,7 +116,7 @@ _FORKED_MODES = {
 
 
 @dataclass
-class PPDAnalogSignal:
+class _PPDAnalogSignal:
     """One analog signal, de-interleaved from the file's words.
 
     Attributes
@@ -153,7 +153,7 @@ class PPDAnalogSignal:
 
 
 @dataclass
-class PPDDigitalSignal:
+class _PPDDigitalSignal:
     """One digital line, carried in the low bit of the words of its analog line's slot."""
 
     digital_input: int
@@ -163,13 +163,13 @@ class PPDDigitalSignal:
 
 
 @dataclass
-class PPDRecording:
+class _PPDRecording:
     """Everything a ``.ppd`` file holds."""
 
     header: dict
     sampling_rate_in_hz: float
-    analog_signals: list[PPDAnalogSignal]
-    digital_signals: list[PPDDigitalSignal]
+    analog_signals: list[_PPDAnalogSignal]
+    digital_signals: list[_PPDDigitalSignal]
     has_paired_samples: bool
     pulsed: bool
 
@@ -267,7 +267,7 @@ def _volts_per_division(header: dict, analog_input: int) -> float:
     return float(volts_per_division[analog_input])
 
 
-def read_ppd(file_path: Path | str) -> PPDRecording:
+def _read_ppd(file_path: Path | str) -> _PPDRecording:
     """Read a pyPhotometry ``.ppd`` file.
 
     Parameters
@@ -277,7 +277,7 @@ def read_ppd(file_path: Path | str) -> PPDRecording:
 
     Returns
     -------
-    PPDRecording
+    _PPDRecording
         The header, one entry per analog signal with its own rate and starting time, and one per digital
         line.
 
@@ -345,7 +345,7 @@ def read_ppd(file_path: Path | str) -> PPDRecording:
             data = analog_words[word_indices] * scale
 
         analog_signals.append(
-            PPDAnalogSignal(
+            _PPDAnalogSignal(
                 analog_input=slot,
                 detector_index=detector,
                 excitation_index=excitation,
@@ -365,7 +365,7 @@ def read_ppd(file_path: Path | str) -> PPDRecording:
         offset = digital_input * (2 if has_paired_samples else 1)
         word_indices = np.arange(offset, len(words), words_per_cycle)
         digital_signals.append(
-            PPDDigitalSignal(
+            _PPDDigitalSignal(
                 digital_input=digital_input,
                 data=digital_bits[word_indices],
                 starting_time_in_seconds=digital_input / timer_frequency if layout.pulsed else 0.0,
@@ -373,7 +373,7 @@ def read_ppd(file_path: Path | str) -> PPDRecording:
             )
         )
 
-    return PPDRecording(
+    return _PPDRecording(
         header=header,
         sampling_rate_in_hz=sampling_rate,
         analog_signals=analog_signals,
