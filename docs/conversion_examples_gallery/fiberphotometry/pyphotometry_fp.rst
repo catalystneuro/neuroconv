@@ -11,12 +11,7 @@ pyPhotometry is an open acquisition system, also sold as hardware by Open Ephys,
 ``.ppd`` file holding every signal the board recorded. How many signals that is depends on the
 acquisition mode the recording was made in, and ``get_available_streams`` reports them before
 construction, each named for the photodetector that was read and the excitation source that was lit.
-
-Those two are the devices a ``FiberPhotometryTable`` row links, so the name says what to fill in for that
-row. A shared ``detector`` prefix means a shared optical fiber and so one brain region: the recording
-below strobes a signal and an isosbestic excitation onto a single detector, which is why both of its
-streams begin ``detector_1``. A recording using one detector per excitation instead offers
-``detector_1_excitation_1`` and ``detector_2_excitation_2``.
+Streams sharing a ``detector`` prefix came off one fiber.
 
 ``PyPhotometryFiberPhotometryInterface`` reads one signal into a single
 ``FiberPhotometryResponseSeries``.

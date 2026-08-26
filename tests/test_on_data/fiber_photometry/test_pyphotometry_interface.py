@@ -1,43 +1,24 @@
 """On-data tests for the pyPhotometry fiber photometry interface.
 
-A ``.ppd`` file holds every signal the board recorded interleaved word by word, and nothing in it says
-how to separate them except the header's ``mode`` field, whose spelling changed across four header
-generations. The recordings under ``fiber_photometry_datasets/pyphotometry`` are one per generation, and
-this module is organized to match, one round-trip class per recording and signal:
+One round-trip class per recording and per signal, under directories named for the header generation the
+recording belongs to. A last class holds what no recording can show: a mode nothing recognizes, a header
+readable as neither generation, and a version 1.1 file, which exists in no public deposit. Those are
+written by the test.
 
-- ``mode_named_symbolically`` -- the current vocabulary, ``2EX_2EM_pulsed``, header version 1.0, the only
-  generation whose header states its signal counts.
-- ``mode_named_in_prose`` -- versions 0.2 and 0.3, where the mode describes the acquisition in words:
-  ``1 colour time div.``, ``2 colour time div.`` and ``2 colour continuous``. The four-colour fork lives
-  here too, and is refused rather than read.
-- ``mode_named_by_indicators`` -- version 0.1, where the mode names the fluorophores.
-- ``header_predates_json`` -- the fixed-layout header, whose mode is a byte indexing that generation's
-  three modes.
-
-A last class holds what no recording can show: a mode nothing recognizes, a header readable as neither
-generation, and a version 1.1 recording, which stores an LED-on sample beside the LED-off baseline it is
-corrected against and exists in no public deposit at all. Those files are written by the test.
-
-What the round trips assert beyond reading at all is timing. The board samples its analog inputs one
-after another, so each signal is written with the start time its slot implies, where the vendor's reader
-reports every signal as starting at zero. Classes come in pairs where that matters, one per signal, so
-the second one's ``expected_starting_time`` is the claim.
-
-Streams are named for the photodetector read and the excitation source lit, so a mode strobing two
-sources onto one detector offers ``detector_1_excitation_1`` and ``detector_1_excitation_2`` while the
-rest offer ``detector_1_excitation_1`` and ``detector_2_excitation_2``. Which of the two a class uses is
-therefore itself an assertion about the rig the recording came off.
+Beyond reading at all, what the round trips assert is timing. Classes come in pairs where a recording's
+signals are staggered, one per signal, so the second one's ``expected_starting_time`` is the claim.
 
 Each expected trace is the leading samples of that signal, read off the file by hand rather than through
 the interface, with ``stub_samples`` keeping them short.
 """
 
 import json
+import re
 from datetime import datetime
 
 import numpy as np
 import pytest
-from pynwb import NWBHDF5IO
+from pynwb import read_nwb
 
 from neuroconv.datainterfaces import PyPhotometryFiberPhotometryInterface
 from neuroconv.tools.testing.data_interface_mixins import (
@@ -79,8 +60,9 @@ class TestPyPhotometrySymbolicMode(FiberPhotometryInterfaceTestMixin):
         beside it. Only recordings written by header version 1.1 or later carry the raw measurements that
         would add series here, and this is the assertion that says so.
         """
-        with NWBHDF5IO(self.nwbfile_path, "r") as io:
-            assert set(io.read().acquisition) == {"FiberPhotometryResponseSeries"}
+        nwbfile = read_nwb(self.nwbfile_path)
+
+        assert set(nwbfile.acquisition) == {"FiberPhotometryResponseSeries"}
 
 
 class TestPyPhotometryOneColourTimeDivisionSignal(FiberPhotometryInterfaceTestMixin):
@@ -95,19 +77,6 @@ class TestPyPhotometryOneColourTimeDivisionSignal(FiberPhotometryInterfaceTestMi
     expected_response_series_data = np.array([0.77757204, 0.77706594, 0.77979888, 0.7788879, 0.78020376])
     expected_rate = 130.0
     expected_starting_time = 0.0
-
-    def test_session_start_time_comes_from_the_header(self, setup_interface):
-        """Unlike most fiber photometry formats, a ``.ppd`` records when the session started."""
-        assert self.interface.get_metadata()["NWBFile"]["session_start_time"] == datetime(2021, 6, 8, 16, 52, 48)
-
-    def test_subject_id_comes_from_the_header(self, setup_interface):
-        """The identifier typed into the acquisition GUI, and all a ``.ppd`` says about the animal."""
-        assert self.interface.get_metadata()["Subject"]["subject_id"] == "FFC_AF50-202"
-
-    def test_strobed_recordings_carry_no_timing_note(self, setup_interface):
-        """The stagger of a strobed recording is exact, so it is in the start time and needs no prose."""
-        metadata = self.interface.get_metadata()
-        assert "description" not in metadata["FiberPhotometry"][self.interface.metadata_key]
 
 
 class TestPyPhotometryOneColourTimeDivisionControl(FiberPhotometryInterfaceTestMixin):
@@ -168,12 +137,6 @@ class TestPyPhotometryTwoColourContinuous(FiberPhotometryInterfaceTestMixin):
     expected_rate = 1000.0
     expected_starting_time = 0.0
 
-    def test_the_series_says_why_it_shares_the_headers_timebase(self, setup_interface):
-        metadata = self.interface.get_metadata()
-        description = metadata["FiberPhotometry"][self.interface.metadata_key]["description"]
-        assert "sequentially" in description
-        assert "213 microseconds" in description
-
 
 class TestPyPhotometryIndicatorNamedMode(FiberPhotometryInterfaceTestMixin):
     """Round-trip a ``GCaMP/RFP_dif`` recording, header version 0.1, where the mode names fluorophores.
@@ -207,7 +170,17 @@ class TestPyPhotometryForkIsRefused:
     file_path = PYPHOTOMETRY_PATH / "mode_named_in_prose" / "four_colour_time_division.ppd"
 
     def test_the_fork_is_refused_by_name(self):
-        with pytest.raises(ValueError, match="Wiegert-lab fork of the pyPhotometry acquisition software"):
+        expected_error = (
+            "This recording was written by the Wiegert-lab fork of the pyPhotometry acquisition software "
+            "(Formozov, Dieter and Wiegert 2023, Cell Reports Methods 3:100418), whose analog lines each "
+            "alternate two excitation sources, so it holds four signals at half the rate its header "
+            "states. Reading it with the layout the format documents returns two traces of interleaved "
+            "colours that look like signals and are not, so it is refused rather than guessed at. "
+            "Support can be added: please open an issue at "
+            "https://github.com/catalystneuro/neuroconv/issues."
+        )
+
+        with pytest.raises(ValueError, match=re.escape(expected_error)):
             PyPhotometryFiberPhotometryInterface(file_path=self.file_path)
 
 

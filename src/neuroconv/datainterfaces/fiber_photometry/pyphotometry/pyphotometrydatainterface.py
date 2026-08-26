@@ -6,25 +6,10 @@ import numpy as np
 from pydantic import FilePath, validate_call
 from pynwb import NWBFile
 
-from ._file_reader import PPDRecording, read_ppd
+from ._file_reader import _PPDRecording, _read_ppd
 from ..basefiberphotometryinterface import BaseFiberPhotometryInterface
 from ....tools import get_package
 from ....utils import DeepDict, dict_deep_update
-
-#: Said in the series rather than in its timestamps, because the size of the lag is not knowable from
-#: the file. The firmware reads the analog inputs one after the other inside a single timer interrupt,
-#: so the second one is late by the 64-sample oversampling buffer at the 300 kHz oversampling clock,
-#: plus interrupt work nobody has quantified. Neither constant is in the header, and no pyPhotometry
-#: document states the resulting offset, so writing a number here would look measured while being, at
-#: best, a floor.
-_CONTINUOUS_TIMING_DESCRIPTION = (
-    "Acquired in a continuous mode, in which the board reads its analog inputs sequentially within one "
-    "timer interrupt rather than sampling them simultaneously. A signal is therefore later than the one "
-    "read before it by at least 213 microseconds (a 64-sample oversampling buffer at the firmware's 300 "
-    "kHz oversampling clock) plus unquantified interrupt overhead. The file records neither constant and "
-    "the offset has never been characterized upstream, so every signal here is written on the timebase "
-    "the header states, as pyPhotometry's own reader does."
-)
 
 
 class PyPhotometryFiberPhotometryInterface(BaseFiberPhotometryInterface):
@@ -50,17 +35,14 @@ class PyPhotometryFiberPhotometryInterface(BaseFiberPhotometryInterface):
     @classmethod
     def get_available_streams(cls, file_path: FilePath) -> list[str]:
         """Return the names of the signals in a file, in the order the words interleave them."""
-        return [cls._stream_name(signal) for signal in read_ppd(file_path).analog_signals]
+        return [cls._stream_name(signal) for signal in _read_ppd(file_path).analog_signals]
 
     @staticmethod
     def _stream_name(signal) -> str:
-        """Name a signal by the two devices that produced it, counting from one as the vendor does.
+        """Name a signal by the photodetector read and the excitation source lit, counting from one.
 
-        Those are the photodetector that was read and the excitation source that was lit, which are the
-        two devices a ``FiberPhotometryTable`` row links. Naming them says which pairs of signals share a
-        fiber and so belong at one brain region, which is the metadata decision a user makes right after
-        listing the streams, and which the vendor's own ``analog_1`` and ``analog_2`` get wrong: those
-        read as two sockets, and in the strobed one-emission modes both signals come off a single one.
+        Those are the two devices a ``FiberPhotometryTable`` row links, so a shared ``detector`` prefix
+        says which signals came off one fiber.
         """
         return f"detector_{signal.detector_index + 1}_excitation_{signal.excitation_index + 1}"
 
@@ -88,8 +70,8 @@ class PyPhotometryFiberPhotometryInterface(BaseFiberPhotometryInterface):
         verbose : bool, default: False
             Whether to print status messages.
         """
-        self.file_path = file_path
-        self._recording: PPDRecording | None = None
+        self._file_path = file_path
+        self._cached_recording: _PPDRecording | None = None
 
         available_streams = self.get_available_streams(file_path=file_path)
         if stream_name is None:
@@ -108,28 +90,26 @@ class PyPhotometryFiberPhotometryInterface(BaseFiberPhotometryInterface):
         )
 
     @property
-    def recording(self) -> PPDRecording:
+    def _recording(self) -> _PPDRecording:
         """The file, read once and kept, since a photometry session is small enough to hold."""
-        if self._recording is None:
-            self._recording = read_ppd(self.file_path)
-        return self._recording
+        if self._cached_recording is None:
+            self._cached_recording = _read_ppd(self._file_path)
+        return self._cached_recording
 
     def _get_signal(self, stream_name: str):
-        for signal in self.recording.analog_signals:
+        for signal in self._recording.analog_signals:
             if self._stream_name(signal) == stream_name:
                 return signal
-        raise ValueError(f"'{stream_name}' is not a signal of '{self.file_path}'.")
+        raise ValueError(f"'{stream_name}' is not a signal of '{self._file_path}'.")
 
     def _get_stream_data(self, *, stream_name: str) -> np.ndarray:
         return self._get_signal(stream_name).data_in_volts
 
     def _get_stream_timestamps(self, *, stream_name: str) -> np.ndarray:
-        """Return this signal's own times.
+        """Return this signal's own times, beginning at the instant its slot was sampled.
 
-        The signal is regular, so this is a start time and a rate expanded into an array, which is what
-        the base class expects and which it collapses back to a rate when it writes. The start time is
-        the point: the file's signals were sampled one after another, and the upstream reader reports
-        every one of them as starting at zero.
+        The samples are regular, so this expands a start time and a rate into the array the base class
+        expects and collapses back to a rate on write.
         """
         signal = self._get_signal(stream_name)
         sample_count = len(signal.data_in_volts)
@@ -138,7 +118,7 @@ class PyPhotometryFiberPhotometryInterface(BaseFiberPhotometryInterface):
     def get_metadata(self) -> DeepDict:
         """Add what the header states about the session and the subject, and what it omits about timing."""
         metadata = super().get_metadata()
-        date_time = self.recording.header.get("date_time")
+        date_time = self._recording.header.get("date_time")
         if date_time is not None:
             metadata = dict_deep_update(
                 metadata, dict(NWBFile=dict(session_start_time=datetime.fromisoformat(date_time)))
@@ -147,13 +127,26 @@ class PyPhotometryFiberPhotometryInterface(BaseFiberPhotometryInterface):
         # Every header generation carries the field, so an empty one means it was left blank rather than
         # that the format lacks it, and writing that would be indistinguishable from an experimenter
         # naming their subject "".
-        subject_id = self.recording.header.get("subject_ID")
+        subject_id = self._recording.header.get("subject_ID")
         if subject_id:
             metadata = dict_deep_update(metadata, dict(Subject=dict(subject_id=subject_id)))
-        if not self.recording.pulsed:
+        if not self._recording.pulsed:
+            # Said in the series rather than in its timestamps, because the size of the lag is not
+            # knowable from the file. The firmware reads the analog inputs one after the other inside a
+            # single timer interrupt, so the second is late by the 64-sample oversampling buffer at the
+            # 300 kHz oversampling clock, plus interrupt work nobody has quantified. Neither constant is
+            # in the header, so writing a number would look measured while being, at best, a floor.
+            description = (
+                "Acquired in a continuous mode, in which the board reads its analog inputs sequentially "
+                "within one timer interrupt rather than sampling them simultaneously. A signal is "
+                "therefore later than the one read before it by at least 213 microseconds (a 64-sample "
+                "oversampling buffer at the firmware's 300 kHz oversampling clock) plus unquantified "
+                "interrupt overhead. The file records neither constant and the offset has never been "
+                "characterized upstream, so every signal here is written on the timebase the header "
+                "states, as pyPhotometry's own reader does."
+            )
             metadata = dict_deep_update(
-                metadata,
-                dict(FiberPhotometry={self.metadata_key: dict(description=_CONTINUOUS_TIMING_DESCRIPTION)}),
+                metadata, dict(FiberPhotometry={self.metadata_key: dict(description=description)})
             )
         return metadata
 
@@ -165,21 +158,13 @@ class PyPhotometryFiberPhotometryInterface(BaseFiberPhotometryInterface):
     ) -> None:
         """Write the response series, and the raw pair beside it when the file carries one.
 
-        From header version 1.1 a pulsed file stores the LED-on sample and the LED-off baseline it was
-        measured against, and the subtraction that used to happen on the board moved into the reader. The
-        response series carries the difference, which is the quantity every pipeline expects and the one
-        earlier firmware wrote itself. Both measurements go in beside it, since dropping either would
-        discard something the hardware recorded. No file of that version was available when this was
-        written, so the layout comes from pyPhotometry's own reader and the reader says so when it meets
-        one.
+        From header version 1.1 a strobed recording stores the LED-on sample and the LED-off baseline it
+        was measured against. The response series carries their difference, which is what earlier
+        firmware wrote itself, and both measurements are written beside it.
 
-        They are linked differently, because the table can describe one of them and not the other. Every
-        field of the row the difference references is true of the LED-on trace, so it references the same
-        row. The dark measurement was taken with no excitation at all, and a row cannot say that:
-        ``excitation_source`` and ``excitation_wavelength_in_nm`` are both required columns, so any row
-        written for it would name an excitation that was not applied. It is written unlinked instead,
-        with a description saying what it is. Whether the extension should model this is
-        https://github.com/catalystneuro/ndx-fiber-photometry/issues/54.
+        ``RawLEDOn`` references the same ``FiberPhotometryTable`` row as the difference. ``RawBaseline``
+        references none, since a row states an excitation source and wavelength and a measurement taken
+        in the dark had neither.
         """
         super().add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **conversion_options)
 
