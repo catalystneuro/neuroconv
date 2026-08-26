@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import pytest
-from numpy.testing import assert_array_equal
+from numpy.testing import assert_allclose, assert_array_equal
 from pynwb import read_nwb
 from pynwb.testing.mock.file import mock_NWBFile, mock_Subject
 
@@ -291,6 +291,10 @@ class TestSLEAPInterface(PoseEstimationInterfaceTestMixin):
         assert container_entry["source_software_version"] == "1.2.7"
         assert container_entry["scorer"] == "TopDownPredictor"
 
+        # The definition describes what this interface writes, so it is the same on every .slp.
+        for series_entry in container_entry["PoseEstimationSeries"].values():
+            assert series_entry["confidence_definition"].startswith("Height of the peak in the SLEAP network")
+
         skeleton_entry = metadata["Pose"]["Skeletons"]["sleap_track_0"]
         assert skeleton_entry["subject"] == "track_0"
         assert skeleton_entry["nodes"] == [
@@ -459,6 +463,121 @@ class TestSLEAPMultipleTracks:
         container = nwbfile.processing["behavior"]["PoseEstimationTrack0"]
         for series in container.pose_estimation_series.values():
             assert set(series.get_timestamps()).issubset(expected_timestamps)
+
+
+@pytest.mark.skipif(
+    SLEAP_MACOS_INTEL_PYTHON_313_UNSUPPORTED,
+    reason="SLEAP conversion is not yet supported on macOS Intel with Python 3.13.",
+)
+class TestSLEAPHumanInstances(PoseEstimationInterfaceTestMixin):
+    """A proofread .slp holds the network's instances and a person's corrections side by side.
+
+    ``track_0`` of this recording carries both arrangements a correction can take: 41 frames where a
+    human instance shares the track with a model one, and 6 where it is alone on the track because the
+    network found nothing there. Reading the rows from the model's instances alone dropped the second
+    kind while the timestamps still counted them, so the samples after one slid onto earlier frames'
+    times.
+
+    The counts below are properties of the file, recorded next to it in ``sleap/README.md`` on gin. They
+    are written out rather than recomputed so that a fixture swapped underneath this fails loudly.
+    """
+
+    data_interface_cls = SLEAPInterface
+    interface_kwargs = dict(
+        file_path=str(
+            BEHAVIOR_DATA_PATH / "sleap" / "human_and_model_instances" / "solo_human_instances" / "remora_video_1.slp"
+        ),
+        track_name="track_0",
+        frames_per_second=30.0,
+    )
+    save_directory = OUTPUT_PATH
+
+    labeled_frames = 251  # every one writes a row, including the six the model missed
+
+    def _rows(self):
+        """The ``(human instance, model instance)`` behind each written row, read from the source.
+
+        One entry per row the conversion produces, so an index here is a row index in every series. Only
+        frames where this track has an instance of either kind produce a row.
+        """
+        import sleap_io
+
+        track_name = self.interface_kwargs["track_name"]
+        labels = sleap_io.load_slp(self.interface_kwargs["file_path"])
+        rows = []
+        for frame in sorted(labels.labeled_frames, key=lambda labeled_frame: labeled_frame.frame_idx):
+            human = [i for i in frame.user_instances if i.track is not None and i.track.name == track_name]
+            model = [i for i in frame.predicted_instances if i.track is not None and i.track.name == track_name]
+            if human or model:
+                rows.append((human[0] if human else None, model[0] if model else None))
+        return rows
+
+    def run_custom_checks(self):
+        """What this file exists to prove, asserted against the file the conversion actually wrote."""
+        nwbfile = read_nwb(self.nwbfile_path)
+        container = nwbfile.processing["behavior"]["PoseEstimationTrack0"]
+        rows = self._rows()
+        assert len(rows) == self.labeled_frames
+
+        # One row per labeled frame. Building the rows from the model's instances alone lost the frames
+        # a person labeled where the network found nothing, and the times then belonged to other frames.
+        for pose_estimation_series in container.pose_estimation_series.values():
+            assert np.asarray(pose_estimation_series.data).shape[0] == self.labeled_frames
+            assert len(pose_estimation_series.get_timestamps()) == self.labeled_frames
+
+        # A person places a point rather than estimating it, so a human row carries 1.0, and a point the
+        # annotator marked not visible carries NaN. Which rows those are comes from the source: SLEAP does
+        # not clamp its own scores, 134 model points on this track exceed 1.0, and six sit within a
+        # thousandth of it, so a confidence of exactly 1.0 does not identify a human point on its own.
+        for index, keypoint_name in enumerate(container.skeleton.nodes):
+            pose_estimation_series = container.pose_estimation_series[self._series_name(keypoint_name)]
+            expected = []
+            for human, model in rows:
+                if human is None:
+                    expected.append(model.numpy(scores=True)[index, 2])
+                    continue
+                placed = not np.isnan(human.numpy()[index, 0])
+                expected.append(1.0 if placed else np.nan)
+            assert_allclose(np.asarray(pose_estimation_series.confidence), expected, equal_nan=True)
+
+        nwbfile.read_io.close()
+
+    @staticmethod
+    def _series_name(keypoint_name: str) -> str:
+        """The container orders its series by name, so a keypoint index cannot be read off their order."""
+        return f"PoseEstimationSeries{keypoint_name.title().replace('_', '')}"
+
+    def test_a_human_instance_wins_over_the_model_one(self, setup_interface):
+        """Proofreading means correcting the network, so the correction is what gets written.
+
+        The expected coordinates come from ``sleap_io`` directly rather than from the interface, so the
+        comparison is against the source and not against the writer's own reading of it.
+        """
+        rows = self._rows()
+        row, (human, model) = next(
+            (index, pair) for index, pair in enumerate(rows) if pair[0] is not None and pair[1] is not None
+        )
+        assert not np.allclose(human.numpy(), model.numpy(), equal_nan=True)
+
+        nwbfile = mock_NWBFile()
+        self.interface.add_to_nwbfile(nwbfile=nwbfile, metadata=self.interface.get_metadata())
+        container = nwbfile.processing["behavior"]["PoseEstimationTrack0"]
+        for index, keypoint_name in enumerate(container.skeleton.nodes):
+            pose_estimation_series = container.pose_estimation_series[self._series_name(keypoint_name)]
+            assert_array_equal(np.asarray(pose_estimation_series.data)[row], human.numpy()[index])
+
+    def check_extracted_metadata(self, metadata: dict):
+        """The definition states the direction that is true.
+
+        A human point is written as 1.0, which does not make a 1.0 a human point: the network's own
+        scores are not bounded by 1 and can reach it.
+        """
+        entries = metadata["Pose"]["PoseEstimations"][self.interface.metadata_key]["PoseEstimationSeries"]
+        for entry in entries.values():
+            definition = entry["confidence_definition"]
+            assert definition.startswith("Height of the peak in the SLEAP network")
+            assert "is not bounded by 1" in definition
+            assert "written with a confidence of 1.0" in definition
 
 
 @pytest.mark.skipif(
