@@ -196,3 +196,39 @@ class TestMockImagingInterfaceArgsDeprecation:
         # Verify data was written to processing/ophys
         assert "ophys" in nwbfile.processing
         assert "MicroscopySeries" in nwbfile.processing["ophys"].data_interfaces
+
+
+class TestSegmentationWithoutData:
+    """A source holding no ROIs, no traces and no summary images has no segmentation to write."""
+
+    # A trace is one column per ROI, so an extractor reporting no ROIs cannot hold one either; the
+    # cases that must keep writing are the ones carrying ROIs or summary images.
+    nothing_to_write = dict(
+        num_rois=0,
+        has_summary_images=False,
+        has_raw_signal=False,
+        has_dff_signal=False,
+        has_deconvolved_signal=False,
+        has_neuropil_signal=False,
+    )
+
+    def test_empty_segmentation_raises(self):
+        interface = MockSegmentationInterface(**self.nothing_to_write)
+
+        with pytest.raises(ValueError, match="contains no segmentation data"):
+            interface.add_to_nwbfile(nwbfile=mock_NWBFile(), metadata=interface.get_metadata())
+
+    def test_rois_without_traces_or_images_are_written(self):
+        interface = MockSegmentationInterface(**{**self.nothing_to_write, "num_rois": 3})
+
+        nwbfile = interface.create_nwbfile()
+
+        plane_segmentation = nwbfile.processing["ophys"]["ImageSegmentation"]["PlaneSegmentation"]
+        assert len(plane_segmentation.id) == 3
+
+    def test_summary_images_without_rois_are_written(self):
+        interface = MockSegmentationInterface(**{**self.nothing_to_write, "has_summary_images": True})
+
+        nwbfile = interface.create_nwbfile()
+
+        assert "SegmentationImages" in nwbfile.processing["ophys"].data_interfaces

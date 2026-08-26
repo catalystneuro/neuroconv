@@ -26,7 +26,7 @@ from ..nwb_helpers import (
 )
 from ..nwb_helpers._metadata_and_file_helpers import (
     _add_device_to_nwbfile,
-    _resolve_backend,
+    _fetch_backend_from_nwbfile_on_disk,
     configure_and_write_nwbfile,
 )
 from ...utils import (
@@ -367,7 +367,7 @@ def add_recording_to_nwbfile(
         - 'processing/FilteredEphys': a ``FilteredEphys`` container in the ecephys processing module.
     write_as : {'raw', 'processed', 'lfp'}, optional
         Deprecated. Use ``parent_container`` instead ('raw' -> 'acquisition', 'lfp' -> 'processing/LFP',
-        'processed' -> 'processing/FilteredEphys'). Will be removed on or after December 2026.
+        'processed' -> 'processing/FilteredEphys'). Will be removed on or after February 2027.
     data_representation : {'digital_counts', 'physical_units'}, default: 'digital_counts'
         How the trace values are materialized in the stored data array.
         - 'digital_counts': store the raw integer samples and carry the per-channel gain in
@@ -410,7 +410,7 @@ def add_recording_to_nwbfile(
     if write_as is not None:
         warnings.warn(
             "The 'write_as' parameter of add_recording_to_nwbfile is deprecated and will be removed "
-            "on or after December 2026. Use 'parent_container' instead "
+            "on or after February 2027. Use 'parent_container' instead "
             "('raw' -> 'acquisition', 'lfp' -> 'processing/LFP', 'processed' -> 'processing/FilteredEphys').",
             FutureWarning,
             stacklevel=2,
@@ -547,12 +547,12 @@ def add_sorting_to_nwbfile(
             - "sampling_rate": float, the sampling rate of the waveforms in Hz
             - "unit": str, the unit of measurement (default: "volts")
     write_as : {'units', 'processing'}, optional
-        Deprecated. Use ``parent_container`` instead. Will be removed on or after December 2026.
+        Deprecated. Use ``parent_container`` instead. Will be removed on or after February 2027.
     """
     if write_as is not None:
         warnings.warn(
             "The 'write_as' parameter of add_sorting_to_nwbfile is deprecated and will be removed "
-            "on or after December 2026. Use 'parent_container' instead.",
+            "on or after February 2027. Use 'parent_container' instead.",
             FutureWarning,
             stacklevel=2,
         )
@@ -740,9 +740,7 @@ def _add_recording_segment_to_nwbfile(
 
         if rate:
             starting_time = float(recording_t_start)
-            # Note that we call the sampling frequency again because the estimated rate might be different from the
-            # sampling frequency of the recording extractor by some epsilon.
-            eseries_kwargs.update(starting_time=starting_time, rate=recording.get_sampling_frequency())
+            eseries_kwargs.update(starting_time=starting_time, rate=rate)
         else:
             eseries_kwargs["timestamps"] = timestamps
 
@@ -836,7 +834,7 @@ def add_devices_to_nwbfile(nwbfile: pynwb.NWBFile, metadata: DeepDict | None = N
     devices within the metadata list will also be created.
 
     .. deprecated::
-        ``add_devices_to_nwbfile`` is deprecated and will be removed on or after November 2026.
+        ``add_devices_to_nwbfile`` is deprecated and will be removed on or after February 2027.
         Use the dict-based metadata format (``metadata["Devices"]``) with
         :func:`add_recording_to_nwbfile` instead, or call
         :func:`~neuroconv.tools.nwb_helpers._add_device_to_nwbfile` directly for a single device.
@@ -860,7 +858,7 @@ def add_devices_to_nwbfile(nwbfile: pynwb.NWBFile, metadata: DeepDict | None = N
         Missing keys in an element of metadata['Ecephys']['Device'] will be auto-populated with defaults.
     """
     warnings.warn(
-        "add_devices_to_nwbfile is deprecated and will be removed on or after November 2026. "
+        "add_devices_to_nwbfile is deprecated and will be removed on or after February 2027. "
         "Use _add_device_to_nwbfile with the new dict-based metadata format (metadata['Devices']) instead.",
         FutureWarning,
         stacklevel=2,
@@ -1587,10 +1585,10 @@ def add_electrodes_to_nwbfile(
     orchestrates devices, electrode groups, and electrodes together and should be
     used to ensure all recording metadata is properly added.
 
-    This function will be removed on or after October 2026.
+    This function will be removed on or after February 2027.
     """
     warnings.warn(
-        "add_electrodes_to_nwbfile is deprecated and will be removed on or after October 2026. "
+        "add_electrodes_to_nwbfile is deprecated and will be removed on or after February 2027. "
         "Use add_recording_metadata_to_nwbfile to ensure all recording metadata "
         "(devices, electrode groups, and electrodes) is properly added.",
         FutureWarning,
@@ -1898,18 +1896,40 @@ def _add_time_series_segment_to_nwbfile(
 
         save_scaling_info = channels_have_same_unit and channels_have_same_gain and channels_have_same_offest
 
+        remedies = (
+            "To fix this issue, either: "
+            "1) Set the unit in the metadata['TimeSeries'][metadata_key]['unit'] field, or "
+            "2) Set the `physical_unit`, `gain_to_physical_unit`, and `offset_to_physical_unit` properties "
+            "on the recording object with consistent units across all channels, or "
+            "3) Group the channels by unit and write each group as its own TimeSeries, selecting each "
+            "group with recording.select_channels(channel_ids=[...]). "
+            "See https://neuroconv.readthedocs.io/en/main/how_to/handle_heterogeneous_offsets.html"
+        )
+
+        # A ``TimeSeries`` states one unit for all of its channels, so channels that state different
+        # units cannot be written as one. Falling back to 'n.a.' here would not be a lossy write but a
+        # false one: it would assert that a percentage and a heart rate share a unit, and nothing
+        # downstream could detect it. Missing scaling information is the opposite case and stays a
+        # warning below, since 'n.a.' is then a true statement that the source named no unit.
+        if units is not None and len(set(units)) > 1:
+            units_to_channel_ids = defaultdict(list)
+            for channel_id, unit in zip(recording.get_channel_ids(), units):
+                units_to_channel_ids[unit].append(str(channel_id))
+            unit_map = "\n".join(
+                f"  Unit {unit!r}: {channel_ids}" for unit, channel_ids in units_to_channel_ids.items()
+            )
+            raise ValueError(
+                "The channels of this recording state different units, which a single NWB TimeSeries "
+                f"cannot represent.\nMultiple units were found per channel IDs:\n{unit_map}\n{remedies}"
+            )
+
         if save_scaling_info:
             tseries_kwargs.update(unit=units[0], conversion=gain_to_unit[0], offset=offset_to_unit[0])
         else:
             warning_msg = (
-                "The recording extractor has heterogeneous units or is lacking scaling factors. "
+                "The recording extractor is lacking scaling factors. "
                 "The time series will be saved with unit 'n.a.' and the conversion factors will not be set, "
-                "so the physical values will not be recoverable from the file. "
-                "To fix this issue, either: "
-                "1) Set the unit in the metadata['TimeSeries'][metadata_key]['unit'] field, or "
-                "2) Set the `physical_unit`, `gain_to_physical_unit`, and `offset_to_physical_unit` properties "
-                "on the recording object with consistent units across all channels, or "
-                "3) Group the channels by unit and write each group as its own TimeSeries. "
+                f"so the physical values will not be recoverable from the file. {remedies} "
                 f"Channel units: {units if units is not None else 'None'}, "
                 f"gain available: {gain_to_unit is not None}, "
                 f"offset available: {offset_to_unit is not None}"
@@ -1943,7 +1963,7 @@ def _add_time_series_segment_to_nwbfile(
         if rate:
             starting_time = float(recording_t_start)
             tseries_kwargs["starting_time"] = starting_time
-            tseries_kwargs["rate"] = recording.get_sampling_frequency()
+            tseries_kwargs["rate"] = rate
         else:
             tseries_kwargs["timestamps"] = timestamps
 
@@ -2047,14 +2067,14 @@ def add_recording_as_spatial_series_to_nwbfile(
         By default (False), the function checks if timestamps are uniformly sampled,
         and if so, stores data using a regular sampling rate.
     write_as : {'acquisition', 'processing'}, optional
-        Deprecated. Use ``parent_container`` instead. Will be removed on or after December 2026.
+        Deprecated. Use ``parent_container`` instead. Will be removed on or after February 2027.
 
 
     """
     if write_as is not None:
         warnings.warn(
             "The 'write_as' parameter of add_recording_as_spatial_series_to_nwbfile is deprecated and will be "
-            "removed on or after December 2026. Use 'parent_container' instead.",
+            "removed on or after February 2027. Use 'parent_container' instead.",
             FutureWarning,
             stacklevel=2,
         )
@@ -2140,7 +2160,7 @@ def _add_spatial_series_segment_to_nwbfile(
         if rate:
             starting_time = float(recording_t_start)
             series_kwargs["starting_time"] = starting_time
-            series_kwargs["rate"] = recording.get_sampling_frequency()
+            series_kwargs["rate"] = rate
         else:
             series_kwargs["timestamps"] = timestamps
 
@@ -2326,7 +2346,7 @@ def write_recording_to_nwbfile(
         - 'processing/FilteredEphys' writes a ``FilteredEphys`` container in the ecephys processing module
     write_as: {'raw', 'processed', 'lfp'}, optional
         Deprecated. Use ``parent_container`` instead ('raw' -> 'acquisition', 'lfp' -> 'processing/LFP',
-        'processed' -> 'processing/FilteredEphys'). Will be removed on or after December 2026.
+        'processed' -> 'processing/FilteredEphys'). Will be removed on or after February 2027.
     es_key: str, optional
         Key in metadata dictionary containing metadata info for the specific electrical series
     iterator_type: {"v2",  None}
@@ -2393,8 +2413,11 @@ def write_recording_to_nwbfile(
             "Either set overwrite=True to replace the existing file, or remove the nwbfile parameter to append to the existing file on disk."
         )
 
-    # Resolve backend
-    backend = _resolve_backend(backend=backend, backend_configuration=backend_configuration)
+    # An append is bound to the backend of the file on disk; a new file gets its backend from the caller
+    if append_on_disk_nwbfile:
+        backend = _fetch_backend_from_nwbfile_on_disk(
+            nwbfile_path=nwbfile_path, backend=backend, backend_configuration=backend_configuration
+        )
 
     # Determine if we're writing a new file or appending
     writing_new_file = not append_on_disk_nwbfile
@@ -2413,7 +2436,7 @@ def write_recording_to_nwbfile(
         if write_as is not None:
             warnings.warn(
                 "The 'write_as' parameter of write_recording_to_nwbfile is deprecated and will be removed "
-                "on or after December 2026. Use 'parent_container' instead "
+                "on or after February 2027. Use 'parent_container' instead "
                 "('raw' -> 'acquisition', 'lfp' -> 'processing/LFP', 'processed' -> 'processing/FilteredEphys').",
                 FutureWarning,
                 stacklevel=2,
@@ -2431,9 +2454,6 @@ def write_recording_to_nwbfile(
             iterator_options=iterator_options,
             null_values_for_properties=null_values_for_properties,
         )
-
-        if backend_configuration is None:
-            backend_configuration = get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
 
         configure_and_write_nwbfile(
             nwbfile=nwbfile,
@@ -2457,7 +2477,7 @@ def write_recording_to_nwbfile(
             if write_as is not None:
                 warnings.warn(
                     "The 'write_as' parameter of write_recording_to_nwbfile is deprecated and will be removed "
-                    "on or after December 2026. Use 'parent_container' instead "
+                    "on or after February 2027. Use 'parent_container' instead "
                     "('raw' -> 'acquisition', 'lfp' -> 'processing/LFP', 'processed' -> 'processing/FilteredEphys').",
                     FutureWarning,
                     stacklevel=2,
@@ -2639,6 +2659,18 @@ def _add_units_table_to_nwbfile(
         nwbfile, pynwb.NWBFile
     ), f"'nwbfile' should be of type pynwb.NWBFile but is of type {type(nwbfile)}"
 
+    # A sorting holding no unit at all has nothing to put in a units table. A unit that holds no spike in
+    # this session is a different thing and is written, since the unit itself is the result being recorded.
+    # See https://github.com/catalystneuro/neuroconv/issues/422.
+    if sorting.get_num_units() == 0:
+        raise ValueError(
+            f"{type(sorting).__name__} contains no units, so a units table built from it would have no "
+            "rows. This is usually a source file that carries no spike events, or a file whose data is "
+            "not where the format expected it. Writing it would produce an NWB file whose only spike "
+            "content is an empty units table, indistinguishable from a successful conversion, and NWB "
+            "Inspector reports such a table as a best practice violation."
+        )
+
     if unit_electrode_indices is not None:
         electrodes_table = nwbfile.electrodes
         if electrodes_table is None:
@@ -2658,6 +2690,10 @@ def _add_units_table_to_nwbfile(
         waveform_unit=waveform_unit,
         resolution=resolution,
     )
+    if unit_electrode_indices is not None:
+        # `electrodes` is a predefined Units column. Binding its target table here
+        # preserves its schema instead of redefining it through `add_column` below.
+        units_table_kwargs["target_tables"] = {"electrodes": nwbfile.electrodes}
 
     if write_in_processing_module:
         ecephys_mod = get_module(
@@ -2787,14 +2823,14 @@ def _add_units_table_to_nwbfile(
             table=nwbfile.electrodes,
         )
 
-    # For a new table, establish all rows in bulk via id.extend().
-    # All data (spike_times, waveforms, electrodes, properties) is then added as columns below.
-    if write_table_first_time:
+    # A table constructed with `target_tables` already has the predefined
+    # `electrodes` column, whose values must be added one row at a time.
+    units_table_previous_columns = set(units_table.colnames)
+    if write_table_first_time and not units_table_previous_columns:
         units_table.id.extend(list(range(num_units)))
 
     # Determine which properties already exist as columns and which are new.
     # Pre-existing columns must be provided per row via add_unit(); new properties are added as columns.
-    units_table_previous_columns = set(units_table.colnames)
     properties_to_add = set(data_to_add)
 
     # Determine which units need per-row insertion via add_unit().
@@ -3012,7 +3048,7 @@ def write_sorting_to_nwbfile(
         A dictionary mapping properties to their respective default values. If a property is not found in this
         dictionary, a sensible default value based on the type of `sample_data` will be used.
     write_as : {'units', 'processing'}, optional
-        Deprecated. Use ``parent_container`` instead. Will be removed on or after December 2026.
+        Deprecated. Use ``parent_container`` instead. Will be removed on or after February 2027.
 
     Returns
     -------
@@ -3023,7 +3059,7 @@ def write_sorting_to_nwbfile(
     if write_as is not None:
         warnings.warn(
             "The 'write_as' parameter of write_sorting_to_nwbfile is deprecated and will be removed "
-            "on or after December 2026. Use 'parent_container' instead.",
+            "on or after February 2027. Use 'parent_container' instead.",
             FutureWarning,
             stacklevel=2,
         )
@@ -3045,8 +3081,11 @@ def write_sorting_to_nwbfile(
             "Either set overwrite=True to replace the existing file, or remove the nwbfile parameter to append to the existing file on disk."
         )
 
-    # Resolve backend
-    backend = _resolve_backend(backend=backend, backend_configuration=backend_configuration)
+    # An append is bound to the backend of the file on disk; a new file gets its backend from the caller
+    if append_on_disk_nwbfile:
+        backend = _fetch_backend_from_nwbfile_on_disk(
+            nwbfile_path=nwbfile_path, backend=backend, backend_configuration=backend_configuration
+        )
 
     # Determine if we're writing a new file or appending
     writing_new_file = not append_on_disk_nwbfile
@@ -3076,9 +3115,6 @@ def write_sorting_to_nwbfile(
             unit_electrode_indices=unit_electrode_indices,
             null_values_for_properties=null_values_for_properties,
         )
-
-        if backend_configuration is None:
-            backend_configuration = get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
 
         configure_and_write_nwbfile(
             nwbfile=nwbfile,
@@ -3186,12 +3222,12 @@ def add_sorting_analyzer_to_nwbfile(
         A dictionary mapping properties to their respective default values. If a property is not found in this
         dictionary, a sensible default value based on the type of `sample_data` will be used.
     write_as : {'units', 'processing'}, optional
-        Deprecated. Use ``parent_container`` instead. Will be removed on or after December 2026.
+        Deprecated. Use ``parent_container`` instead. Will be removed on or after February 2027.
     """
     if write_as is not None:
         warnings.warn(
             "The 'write_as' parameter of add_sorting_analyzer_to_nwbfile is deprecated and will be removed "
-            "on or after December 2026. Use 'parent_container' instead.",
+            "on or after February 2027. Use 'parent_container' instead.",
             FutureWarning,
             stacklevel=2,
         )
@@ -3364,7 +3400,7 @@ def write_sorting_analyzer_to_nwbfile(
         A dictionary mapping properties to their respective default values. If a property is not found in this
         dictionary, a sensible default value based on the type of `sample_data` will be used.
     write_as : {'units', 'processing'}, optional
-        Deprecated. Use ``parent_container`` instead. Will be removed on or after December 2026.
+        Deprecated. Use ``parent_container`` instead. Will be removed on or after February 2027.
 
     Returns
     -------
@@ -3375,7 +3411,7 @@ def write_sorting_analyzer_to_nwbfile(
     if write_as is not None:
         warnings.warn(
             "The 'write_as' parameter of write_sorting_analyzer_to_nwbfile is deprecated and will be removed "
-            "on or after December 2026. Use 'parent_container' instead.",
+            "on or after February 2027. Use 'parent_container' instead.",
             FutureWarning,
             stacklevel=2,
         )
@@ -3393,8 +3429,11 @@ def write_sorting_analyzer_to_nwbfile(
         "needs to have a recording attached or the 'recording' argument needs to be used."
     )
 
-    # Resolve backend
-    backend = _resolve_backend(backend=backend, backend_configuration=backend_configuration)
+    # An append is bound to the backend of the file on disk; a new file gets its backend from the caller
+    if append_on_disk_nwbfile:
+        backend = _fetch_backend_from_nwbfile_on_disk(
+            nwbfile_path=nwbfile_path, backend=backend, backend_configuration=backend_configuration
+        )
 
     appending_to_in_memory_nwbfile = nwbfile is not None
     file_initially_exists = nwbfile_path.exists()
@@ -3449,9 +3488,6 @@ def write_sorting_analyzer_to_nwbfile(
             units_description=units_description,
             null_values_for_properties=null_values_for_properties,
         )
-
-        if backend_configuration is None:
-            backend_configuration = get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
 
         configure_and_write_nwbfile(
             nwbfile=nwbfile,

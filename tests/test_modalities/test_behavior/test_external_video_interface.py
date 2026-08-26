@@ -13,7 +13,88 @@ from neuroconv import NWBConverter
 from neuroconv.datainterfaces.behavior.video.externalvideointerface import (
     ExternalVideoInterface,
 )
+from neuroconv.tools.testing.mock_interfaces import MockExternalVideoInterface
 from neuroconv.utils import dict_deep_update
+
+
+class TestMockExternalVideoInterface:
+    """Whether the mock is a faithful stand-in for ``ExternalVideoInterface`` with no video behind its paths.
+
+    These deliberately repeat assertions the real-video tests below already make, on the same write paths,
+    because that is the only way to test fidelity: the mock is right exactly when the real tests give the
+    same answers against it. So an assertion appearing twice in this file is the point rather than an
+    oversight. What is unique here is the negative, that no file is ever opened, and the two things the mock
+    overrides, the frame count and the frame rate a container header would report.
+    """
+
+    def test_add_to_nwbfile(self, tmp_path):
+        """That it works with no real file behind the path, which is the whole premise of the mock."""
+        file_path = tmp_path / "never_written.mp4"
+        interface = MockExternalVideoInterface(file_paths=[file_path], num_frames=5000, frame_rate=30.0)
+
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile)
+
+        image_series = nwbfile.acquisition[interface._default_name]
+        assert image_series.num_samples == 5000
+        assert image_series.rate == 30.0
+        assert image_series.starting_time == 0.0
+        assert list(image_series.external_file) == [file_path]
+        assert not file_path.exists()
+
+    def test_add_to_nwbfile_multi_segment(self):
+        """The same with several files, where the frame counts back `num_samples` and `starting_frame`."""
+        interface = MockExternalVideoInterface(
+            file_paths=["segment1.mp4", "segment2.mp4", "segment3.mp4"], num_frames=10, frame_rate=30.0
+        )
+        interface.set_aligned_timestamps(
+            aligned_timestamps=[(file_index * 10 + np.arange(10)) / 30.0 for file_index in range(3)]
+        )
+
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile)
+
+        image_series = nwbfile.acquisition[interface._default_name]
+        assert image_series.rate == pytest.approx(30.0)
+        assert image_series.num_samples == 30
+        assert image_series.starting_frame == [0, 10, 20]
+
+
+class TestTimestampCountValidation:
+    """An external ``ImageSeries`` carries one time per frame, so a mismatch describes no video at all."""
+
+    def test_too_few_timestamps_raise(self):
+        interface = MockExternalVideoInterface(file_paths=["session.mp4"], num_frames=100)
+        interface.set_aligned_timestamps(aligned_timestamps=[np.arange(99) / 30.0])
+
+        expected_message = (
+            "99 timestamps were set for the 100 frames held by 1 video file(s), and an external ImageSeries "
+            "carries one time per frame. A few timestamps short of the frame count usually means the camera "
+            "dropped frames, and many more than it usually means the signal you read them from was already "
+            "running before the camera started."
+        )
+        nwbfile = mock_NWBFile()
+        with pytest.raises(ValueError, match=re.escape(expected_message)):
+            interface.add_to_nwbfile(nwbfile=nwbfile)
+
+    def test_an_unknown_frame_count_is_not_a_contradiction(self):
+        """Some codecs report no frame count, and an unknown count cannot disagree with anything."""
+        interface = MockExternalVideoInterface(file_paths=["session.mp4"], num_frames=0)
+        # Irregular, so they are written out rather than collapsing to a rate and vanishing from the file.
+        interface.set_aligned_timestamps(aligned_timestamps=[np.array([0.0, 0.1, 0.3, 0.4, 0.7, 0.8, 1.2])])
+
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile)
+
+        assert len(nwbfile.acquisition[interface._default_name].timestamps[:]) == 7
+
+
+NUMBER_OF_FRAMES_PER_FILE = 30  # every fixture video holds this many
+
+
+def _timestamps_starting_at(*starting_times, spacing=0.04):
+    """One timestamp per frame of each file, which is what an external ``ImageSeries`` carries."""
+    return [start + np.arange(NUMBER_OF_FRAMES_PER_FILE) * spacing for start in starting_times]
 
 
 def test_initialization_without_metadata(video_files):
@@ -100,7 +181,7 @@ def test_external_mode_with_timestamps(
     nwb_converter, nwbfile_path, metadata, aligned_segment_starting_times, video_files
 ):
     """Test that external mode works correctly with timestamps."""
-    timestamps = [np.array([2.2, 2.4, 2.6]), np.array([3.2, 3.4, 3.6])]
+    timestamps = _timestamps_starting_at(2.2, 3.2)
     interface = nwb_converter.data_interface_objects["Video1"]
     interface.set_aligned_timestamps(aligned_timestamps=timestamps)
     interface.set_aligned_segment_starting_times(aligned_segment_starting_times=aligned_segment_starting_times)
@@ -141,7 +222,8 @@ def test_external_mode_with_starting_time(nwb_converter, nwbfile_path, metadata,
 
 def test_irregular_timestamps(nwb_converter, nwbfile_path, metadata, aligned_segment_starting_times):
     """Test that irregular timestamps are handled correctly."""
-    aligned_timestamps = [np.array([1.0, 2.0, 4.0]), np.array([5.0, 6.0, 7.0])]
+    aligned_timestamps = _timestamps_starting_at(1.0, 5.0)
+    aligned_timestamps[0][2:] += 1.0  # a gap partway through the first file, so no rate stands in for it
     interface = nwb_converter.data_interface_objects["Video1"]
     interface.set_aligned_timestamps(aligned_timestamps=aligned_timestamps)
     interface.set_aligned_segment_starting_times(aligned_segment_starting_times=aligned_segment_starting_times)
@@ -154,31 +236,39 @@ def test_irregular_timestamps(nwb_converter, nwbfile_path, metadata, aligned_seg
         metadata=metadata,
     )
 
-    expected_timestamps = np.array([1.0, 2.0, 4.0, 55.0, 56.0, 57.0])
+    expected_timestamps = np.concatenate(
+        [
+            aligned_timestamps[0] + aligned_segment_starting_times[0],
+            aligned_timestamps[1] + aligned_segment_starting_times[1],
+        ]
+    )
     with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
         nwbfile = io.read()
         np.testing.assert_array_equal(expected_timestamps, nwbfile.acquisition["Video test1"].timestamps[:])
 
 
-def test_starting_frames_type_error(nwb_converter, nwbfile_path, metadata):
-    """Test that an error is raised when starting_frames is not provided for multiple file paths."""
-    timestamps = [np.array([2.2, 2.4, 2.6]), np.array([3.2, 3.4, 3.6])]
+def test_starting_frames_computed_from_video_files(nwb_converter, nwbfile_path, metadata):
+    """Test that starting_frames is computed from the video frame counts when it is not provided."""
+    timestamps = _timestamps_starting_at(2.2, 3.2)
     interface = nwb_converter.data_interface_objects["Video1"]
     interface.set_aligned_timestamps(aligned_timestamps=timestamps)
 
-    with pytest.raises(
-        TypeError, match="Multiple paths were specified for the ImageSeries, but no starting_frames were specified!"
-    ):
-        nwb_converter.run_conversion(
-            nwbfile_path=nwbfile_path,
-            overwrite=True,
-            metadata=metadata,
-        )
+    nwb_converter.run_conversion(
+        nwbfile_path=nwbfile_path,
+        overwrite=True,
+        metadata=metadata,
+    )
+
+    number_of_frames_per_file = 30  # Each of the test video files holds 30 frames
+    with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+        nwbfile = io.read()
+        starting_frame = nwbfile.acquisition["Video test1"].starting_frame
+        np.testing.assert_array_equal(starting_frame, [0, number_of_frames_per_file])
 
 
 def test_starting_frames_value_error(nwb_converter, nwbfile_path, metadata):
     """Test that an error is raised when the length of starting_frames doesn't match the number of file paths."""
-    timestamps = [np.array([2.2, 2.4, 2.6]), np.array([3.2, 3.4, 3.6])]
+    timestamps = _timestamps_starting_at(2.2, 3.2)
     interface = nwb_converter.data_interface_objects["Video1"]
     interface.set_aligned_timestamps(aligned_timestamps=timestamps)
 
@@ -198,7 +288,7 @@ def test_starting_frames_value_error(nwb_converter, nwbfile_path, metadata):
 def test_always_write_timestamps(nwb_converter, nwbfile_path, metadata, aligned_segment_starting_times):
     """Test that always_write_timestamps forces the use of timestamps even when timestamps are regular."""
     interface = nwb_converter.data_interface_objects["Video1"]
-    interface.set_aligned_timestamps(aligned_timestamps=[np.array([1.0, 2.0, 3.0]), np.array([4.0, 5.0, 6.0])])
+    interface.set_aligned_timestamps(aligned_timestamps=_timestamps_starting_at(1.0, 5.0))
 
     # Run conversion with always_write_timestamps=True
     conversion_options = dict(Video1=dict(starting_frames=[0, 4], always_write_timestamps=True))
@@ -220,7 +310,7 @@ def test_always_write_timestamps(nwb_converter, nwbfile_path, metadata, aligned_
 
 def test_custom_module(nwb_converter, nwbfile_path, metadata, aligned_segment_starting_times):
     """Test that videos can be added to a custom module."""
-    timestamps = [np.array([2.2, 2.4, 2.6]), np.array([3.2, 3.4, 3.6])]
+    timestamps = _timestamps_starting_at(2.2, 3.2)
     interface = nwb_converter.data_interface_objects["Video1"]
     interface.set_aligned_timestamps(aligned_timestamps=timestamps)
     interface.set_aligned_segment_starting_times(aligned_segment_starting_times=aligned_segment_starting_times)
@@ -312,7 +402,7 @@ def test_add_to_nwbfile_with_custom_metadata(nwb_converter, nwbfile_path, metada
 
     # Set up the interface for conversion
     interface = nwb_converter.data_interface_objects["Video1"]
-    interface.set_aligned_timestamps(aligned_timestamps=[np.array([1.0, 2.0, 3.0]), np.array([4.0, 5.0, 6.0])])
+    interface.set_aligned_timestamps(aligned_timestamps=_timestamps_starting_at(1.0, 5.0))
 
     conversion_options = dict(Video1=dict(starting_frames=[0, 4]))
     nwb_converter.run_conversion(
@@ -333,7 +423,7 @@ def test_add_to_nwbfile_with_custom_metadata(nwb_converter, nwbfile_path, metada
 def test_device_propagation(nwb_converter, nwbfile_path, metadata, aligned_segment_starting_times):
     """Test that devices are properly created and linked to videos."""
     # Setup interface with timing information to allow conversion
-    timestamps = [np.array([1.0, 2.0, 3.0]), np.array([4.0, 5.0, 6.0])]
+    timestamps = _timestamps_starting_at(1.0, 5.0)
     interface = nwb_converter.data_interface_objects["Video1"]
     interface.set_aligned_timestamps(aligned_timestamps=timestamps)
     interface.set_aligned_segment_starting_times(aligned_segment_starting_times=aligned_segment_starting_times)
@@ -369,7 +459,7 @@ def test_device_model_propagation(nwb_converter, nwbfile_path, metadata):
     metadata_copy = dict_deep_update(deepcopy(metadata), custom_metadata)
 
     interface = nwb_converter.data_interface_objects["Video1"]
-    interface.set_aligned_timestamps(aligned_timestamps=[np.array([1.0, 2.0, 3.0]), np.array([4.0, 5.0, 6.0])])
+    interface.set_aligned_timestamps(aligned_timestamps=_timestamps_starting_at(1.0, 5.0))
 
     nwb_converter.run_conversion(
         nwbfile_path=nwbfile_path,
@@ -388,7 +478,7 @@ def test_device_model_propagation(nwb_converter, nwbfile_path, metadata):
 def test_no_device(nwb_converter, nwbfile_path, metadata, aligned_segment_starting_times):
     """Test that no device is created when the metadata doesn't have a device."""
     # Setup interface with timing information to allow conversion
-    timestamps = [np.array([1.0, 2.0, 3.0]), np.array([4.0, 5.0, 6.0])]
+    timestamps = _timestamps_starting_at(1.0, 5.0)
     interface = nwb_converter.data_interface_objects["Video1"]
     interface.set_aligned_timestamps(aligned_timestamps=timestamps)
     interface.set_aligned_segment_starting_times(aligned_segment_starting_times=aligned_segment_starting_times)
@@ -413,7 +503,7 @@ def test_no_device(nwb_converter, nwbfile_path, metadata, aligned_segment_starti
 
 def test_dangling_device_metadata_key_raises(nwb_converter, nwbfile_path, metadata, aligned_segment_starting_times):
     """A device_metadata_key with no matching Devices entry raises instead of silently dropping the device."""
-    timestamps = [np.array([1.0, 2.0, 3.0]), np.array([4.0, 5.0, 6.0])]
+    timestamps = _timestamps_starting_at(1.0, 5.0)
     interface = nwb_converter.data_interface_objects["Video1"]
     interface.set_aligned_timestamps(aligned_timestamps=timestamps)
     interface.set_aligned_segment_starting_times(aligned_segment_starting_times=aligned_segment_starting_times)
@@ -436,7 +526,7 @@ def test_dangling_device_metadata_key_raises(nwb_converter, nwbfile_path, metada
 def test_invalid_device_metadata(nwb_converter, nwbfile_path, metadata):
     """Test that an error is raised when the device metadata is invalid."""
     # Setup interface with timing information to allow conversion
-    timestamps = [np.array([1.0, 2.0, 3.0]), np.array([4.0, 5.0, 6.0])]
+    timestamps = _timestamps_starting_at(1.0, 5.0)
     interface = nwb_converter.data_interface_objects["Video1"]
     interface.set_aligned_timestamps(aligned_timestamps=timestamps)
 

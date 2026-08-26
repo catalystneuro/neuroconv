@@ -236,6 +236,12 @@ def _detect_events(
         stopped being a distinct job when every cut started guaranteeing a line. To tell transitions
         apart, cut one line per distinction and give each its own spec.
 
+        Note that ``"high_period"`` is ill-defined when the sampling frequency is too low for the pulse:
+        the duration is measured in sampling periods, and that jump is large in that case. A 130 Hz line
+        samples every 7.69 ms, so a camera's frame-out pulse covers one sample or two depending on where
+        it started, and its duration reads 7.69 ms or 15.38 ms though every pulse is identical. Use
+        ``"rising"`` there, and a durative reading once the high period covers ten or more samples.
+
     Returns
     -------
     onset_frames : numpy.ndarray

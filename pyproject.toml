@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "neuroconv"
-version = "0.10.0rc1"
+version = "0.10.1.dev0"
 description = "Convert data from proprietary formats to NWB format."
 readme = "README.md"
 authors = [
@@ -39,7 +39,7 @@ dependencies = [
     "numpy>=1.26.0; python_version >= '3.12'",
     "PyYAML>=5.4",
     "h5py>=3.9.0",
-    "hdmf>=4.1.1",
+    "hdmf>=6.1.0",
     "hdmf_zarr>=0.11",
     "pynwb>=4.0.0",
     "pydantic>=2.0",
@@ -298,8 +298,55 @@ image = [
 ]
 
 ## Fiber Photometry
-fiber_photometry = [
+fiber_photometry_minimal = [  # Keeps the minimal version of the fiber photometry dependency in the repo
     "ndx-fiber-photometry>=0.2.3",
+]
+csv_fp = [
+    "neuroconv[fiber_photometry_minimal]",
+]
+doric_fp = [
+    "neuroconv[fiber_photometry_minimal]",
+    "h5py>=3",
+]
+npm_fp = [
+    "neuroconv[fiber_photometry_minimal]",
+]
+pyphotometry_fp = [
+    "neuroconv[fiber_photometry_minimal]",
+]
+# One .ppd holds both modalities and PyPhotometryConverter writes both, so this is the install for a
+# whole recording. It resolves to the same packages as pyphotometry_fp while pyphotometry_events is
+# empty, and states what the converter needs rather than what it happens to cost today.
+pyphotometry = [
+    "neuroconv[pyphotometry_fp]",
+    "neuroconv[pyphotometry_events]",
+]
+tdt_fp = [
+    "neuroconv[fiber_photometry_minimal]",
+    "tdt",
+]
+guppy = [
+    "neuroconv[fiber_photometry_minimal]",
+    "ndx-guppy>=0.2.0",
+    "tables",
+    # Every acquisition format GuppyConverter can read, so one install covers a GuPPy session
+    # whatever it was recorded on.
+    "neuroconv[tdt_fp]",
+    "neuroconv[tdt_events]",
+    "neuroconv[csv_fp]",
+    "neuroconv[csv_events]",
+    "neuroconv[doric_fp]",
+    "neuroconv[doric_events]",
+    "neuroconv[npm_fp]",
+    "neuroconv[npm_events]",
+]
+fiber_photometry = [
+    "neuroconv[csv_fp]",
+    "neuroconv[doric_fp]",
+    "neuroconv[guppy]",
+    "neuroconv[npm_fp]",
+    "neuroconv[pyphotometry_fp]",
+    "neuroconv[tdt_fp]",
 ]
 
 
@@ -390,45 +437,6 @@ suite2p = [
     "natsort",
     "neuroconv[ophys_minimal]",
 ]
-doric_fp = [
-    "neuroconv[fiber_photometry]",
-    "h5py>=3",
-]
-tdt_fp = [
-    "neuroconv[fiber_photometry]",
-    "tdt",
-]
-npm_fp = [
-    "neuroconv[fiber_photometry]",
-]
-pyphotometry_fp = [
-    "neuroconv[fiber_photometry]",
-]
-# One .ppd holds both modalities and PyPhotometryConverter writes both, so this is the install for a
-# whole recording. It resolves to the same packages as pyphotometry_fp while pyphotometry_events is
-# empty, and states what the converter needs rather than what it happens to cost today.
-pyphotometry = [
-    "neuroconv[pyphotometry_fp]",
-    "neuroconv[pyphotometry_events]",
-]
-csv_fp = [
-    "neuroconv[fiber_photometry]",
-]
-guppy = [
-    "neuroconv[fiber_photometry]",
-    "ndx-guppy>=0.1.0",
-    "tables",
-    # Every acquisition format GuppyConverter can read, so one install covers a GuPPy session
-    # whatever it was recorded on.
-    "neuroconv[tdt_fp]",
-    "neuroconv[tdt_events]",
-    "neuroconv[csv_fp]",
-    "neuroconv[csv_events]",
-    "neuroconv[doric_fp]",
-    "neuroconv[doric_events]",
-    "neuroconv[npm_fp]",
-    "neuroconv[npm_events]",
-]
 thor = [
     # ThorImageLS is the format that surfaced the codecs question, see 'ophys_tiff' above: it writes
     # LZW-compressed TIFFs when the operator leaves compression on.
@@ -439,12 +447,10 @@ tiff = [
 ]
 ophys = [
     "neuroconv[brukertiff]",
-    "neuroconv[doric_fp]",
     "neuroconv[caiman]",
     "neuroconv[cnmfe]",
     "neuroconv[extract]",
     "neuroconv[femtonics]",
-    "neuroconv[guppy]",
     "neuroconv[inscopix]",
     "neuroconv[hdf5imaging]",
     "neuroconv[micromanagertiff]",
@@ -453,13 +459,16 @@ ophys = [
     "neuroconv[scanimage]",
     "neuroconv[sima]",
     "neuroconv[suite2p]",
-    "neuroconv[tdt_fp]",
-    "neuroconv[npm_fp]",
-    "neuroconv[pyphotometry_fp]",
-    "neuroconv[csv_fp]",
     "neuroconv[thor]",
     "neuroconv[tiff]",
     "neuroconv[scanimage_legacy]",
+    # TODO: remove on or after August 2027. Fiber photometry is its own modality now (see the
+    # 'Fiber Photometry' section above) and no other modality aggregate pulls in another one.
+    # This line is kept so that an install which reached photometry through neuroconv[ophys] keeps
+    # working, at the cost of every calcium imaging install carrying tdt, ndx-guppy, tables and h5py.
+    # No documentation has ever pointed at this path, every photometry gallery page installs the
+    # single format extra it needs, so removing it should reach very few people.
+    "neuroconv[fiber_photometry]",
 ]
 # Note these are references to the package in pipy (not local)
 full = [
@@ -469,6 +478,7 @@ full = [
     "neuroconv[behavior]",
     "neuroconv[ecephys]",
     "neuroconv[events]",
+    "neuroconv[fiber_photometry]",
     "neuroconv[icephys]",
     "neuroconv[image]",
     "neuroconv[ophys]",
@@ -480,7 +490,9 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 minversion = "6.0"
-addopts = "-ra --doctest-glob='*.rst'"
+# The `--numprocesses` is not only for speed: `PYTHONWARNDEFAULTENCODING` (set below) reaches the interpreter only through
+# the xdist workers, which start after `pytest-env` has written it, so a serial run cannot see `EncodingWarning`.
+addopts = "-ra --doctest-glob='*.rst' --numprocesses=logical --dist=loadscope"
 testpaths = ["docs/conversion_examples_gallery/", "tests"]
 doctest_optionflags = "ELLIPSIS"
 filterwarnings = [
@@ -490,6 +502,9 @@ filterwarnings = [
     # `num_samples` is a computed property on pynwb's `TimeSeries` (it returns `len(data)`), so the signed int it
     # hands hdmf for an unsigned spec is not something a caller can influence.
     "ignore:Spec .*num_samples.*is being converted:hdmf.build.warnings.DtypeConversionWarning",
+    # pymatreader reports every MATLAB class object it meets, and CellExplorer session files are full
+    # of them. The reader imports what it can and nothing in NeuroConv can change what the file holds.
+    "ignore:Complex objects \\(like classes\\) are not supported:UserWarning:pymatreader.utils",
     # `PYTHONWARNDEFAULTENCODING` (set below) enables `EncodingWarning` process wide, so every dependency that opens
     # a text file without `encoding=` reports one. Only our own calls are actionable, so ignore the category by
     # default and re-raise it as an error for the code we own. Later filters take precedence, so the two `error`
@@ -525,6 +540,11 @@ extend-exclude = '''
 
 
 [tool.ruff]
+# Kept equivalent to [tool.black] above, so that running ruff directly does not rewrap what black
+# formatted. Ruff's default line length is 88, and its default exclusions already cover the ones black
+# lists, so the width is the only setting that has to be restated.
+line-length = 120
+target-version = "py310"
 
 [tool.ruff.lint]
 select = [

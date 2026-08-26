@@ -136,6 +136,23 @@ class DatasetIOConfiguration(BaseModel, ABC):
         default=None, description="The optional parameters to use for the specified compression method."
     )
 
+    @property
+    def full_size_in_bytes(self) -> int:
+        """The size the entire source array occupies in memory."""
+        return math.prod(self.full_shape) * self.dtype.itemsize
+
+    @property
+    def maximum_ram_usage_per_iteration_in_bytes(self) -> int:
+        """The RAM a single iteration of the write takes, which is one buffer of the source array."""
+        return math.prod(self.buffer_shape) * self.dtype.itemsize
+
+    @property
+    def disk_space_usage_per_chunk_in_bytes(self) -> int | None:
+        """The uncompressed size of a single chunk, or `None` if the dataset is not chunked."""
+        if self.chunk_shape is None:
+            return None
+        return math.prod(self.chunk_shape) * self.dtype.itemsize
+
     @abstractmethod
     def get_data_io_kwargs(self) -> dict[str, Any]:
         """
@@ -154,25 +171,21 @@ class DatasetIOConfiguration(BaseModel, ABC):
         `list[DatasetConfiguration]`, would print out the nested representations, which only look good when using the
         basic `repr` (that is, this fancy string print-out does not look good when nested in another container).
         """
-        size_in_bytes = math.prod(self.full_shape) * self.dtype.itemsize
-        maximum_ram_usage_per_iteration_in_bytes = math.prod(self.buffer_shape) * self.dtype.itemsize
-
         string = (
             f"\n{self.location_in_file}"
             f"\n{'-' * len(self.location_in_file)}"
             f"\n  dtype : {self.dtype}"
             f"\n  full shape of source array : {self.full_shape}"
-            f"\n  full size of source array : {human_readable_size(size_in_bytes)}"
+            f"\n  full size of source array : {human_readable_size(self.full_size_in_bytes)}"
             "\n"
             f"\n  buffer shape : {self.buffer_shape}"
-            f"\n  expected RAM usage : {human_readable_size(maximum_ram_usage_per_iteration_in_bytes)}"
+            f"\n  expected RAM usage : {human_readable_size(self.maximum_ram_usage_per_iteration_in_bytes)}"
             "\n"
         )
         if self.chunk_shape is not None:
-            disk_space_usage_per_chunk_in_bytes = math.prod(self.chunk_shape) * self.dtype.itemsize
             string += (
                 f"\n  chunk shape : {self.chunk_shape}"
-                f"\n  disk space usage per chunk : {human_readable_size(disk_space_usage_per_chunk_in_bytes)}"
+                f"\n  disk space usage per chunk : {human_readable_size(self.disk_space_usage_per_chunk_in_bytes)}"
                 "\n"
             )
         if self.compression_method is not None:
@@ -261,128 +274,6 @@ class DatasetIOConfiguration(BaseModel, ABC):
         assert "mode" not in kwargs, "The 'mode' of this method is fixed to be 'validation' and cannot be changed."
         assert "schema_generator" not in kwargs, "The 'schema_generator' of this method cannot be changed."
         return super().model_json_schema(mode="validation", schema_generator=PureJSONSchemaGenerator, **kwargs)
-
-    @classmethod
-    def from_neurodata_object(
-        cls,
-        neurodata_object: Container,
-        dataset_name: Literal["data", "timestamps"],
-        builder: BaseBuilder | None = None,
-    ) -> Self:
-        """
-        Construct an instance of a DatasetIOConfiguration for a dataset in a neurodata object in an NWBFile.
-
-        Parameters
-        ----------
-        neurodata_object : hdmf.Container
-            The neurodata object containing the field that will become a dataset when written to disk.
-        dataset_name : "data" or "timestamps"
-            The name of the field that will become a dataset when written to disk.
-            Some neurodata objects can have multiple such fields, such as `pynwb.TimeSeries` which can have both `data`
-            and `timestamps`, each of which can be configured separately.
-        builder : hdmf.build.builders.BaseBuilder, optional
-            The builder object that would be used to construct the NWBFile object. If None, the dataset is assumed to
-            NOT have a compound dtype.
-
-        .. deprecated:: 0.8.4
-            The `from_neurodata_object` method is deprecated and will be removed on or after June 2026.
-            Use `from_neurodata_object_with_defaults` or `from_neurodata_object_with_existing` instead.
-        """
-        import warnings
-
-        warnings.warn(
-            "The 'from_neurodata_object' method is deprecated and will be removed on or after June 2026. "
-            "Use 'from_neurodata_object_with_defaults' or 'from_neurodata_object_with_existing' instead.",
-            FutureWarning,
-            stacklevel=2,
-        )
-        location_in_file = _find_location_in_memory_nwbfile(neurodata_object=neurodata_object, field_name=dataset_name)
-        candidate_dataset = getattr(neurodata_object, dataset_name)
-        full_shape = get_full_data_shape(dataset=candidate_dataset, location_in_file=location_in_file, builder=builder)
-        dtype = _infer_dtype(dataset=candidate_dataset)
-
-        if isinstance(candidate_dataset, HDMFGenericDataChunkIterator):
-            chunk_shape = candidate_dataset.chunk_shape
-            buffer_shape = candidate_dataset.buffer_shape
-            compression_method = "gzip"
-
-        elif isinstance(neurodata_object, ElectricalSeries) and dataset_name == "data":
-
-            number_of_frames = candidate_dataset.shape[0]
-            number_of_channels = candidate_dataset.shape[1]
-            dtype = candidate_dataset.dtype
-
-            chunk_shape = get_electrical_series_chunk_shape(
-                number_of_channels=number_of_channels, number_of_frames=number_of_frames, dtype=dtype
-            )
-
-            buffer_shape = None  # This is the non-iterative path
-            compression_method = "gzip"
-
-        elif isinstance(neurodata_object, ImageSeries) and dataset_name == "data":
-            from ....tools.iterative_write import (
-                get_image_series_chunk_shape,
-            )
-
-            num_samples = candidate_dataset.shape[0]
-            sample_shape = candidate_dataset.shape[1:]
-
-            chunk_shape = get_image_series_chunk_shape(
-                num_samples=num_samples,
-                sample_shape=sample_shape,
-                dtype=dtype,
-            )
-            buffer_shape = None  # This is the non-iterative path
-            compression_method = "gzip"
-
-        elif dtype != np.dtype("object"):
-            chunk_shape = SliceableDataChunkIterator.estimate_default_chunk_shape(
-                chunk_mb=10.0, maxshape=full_shape, dtype=np.dtype(dtype)
-            )
-            buffer_shape = SliceableDataChunkIterator.estimate_default_buffer_shape(
-                buffer_gb=0.5,
-                chunk_shape=chunk_shape,
-                maxshape=full_shape,
-                dtype=np.dtype(dtype),
-            )
-            compression_method = "gzip"
-        elif dtype == np.dtype("object"):  # Unclear what default chunking/compression should be for compound objects
-            # pandas reads in strings as objects by default: https://pandas.pydata.org/docs/user_guide/text.html
-            all_elements_are_strings = all([isinstance(element, str) for element in candidate_dataset[:].flat])
-            if all_elements_are_strings:
-                dtype = np.array([element for element in candidate_dataset[:].flat]).dtype
-                chunk_shape = SliceableDataChunkIterator.estimate_default_chunk_shape(
-                    chunk_mb=10.0, maxshape=full_shape, dtype=dtype
-                )
-                buffer_shape = SliceableDataChunkIterator.estimate_default_buffer_shape(
-                    buffer_gb=0.5, chunk_shape=chunk_shape, maxshape=full_shape, dtype=dtype
-                )
-                compression_method = "gzip"
-            else:
-                raise NotImplementedError(
-                    f"Unable to create a `DatasetIOConfiguration` for the dataset at '{location_in_file}'"
-                    f"for neurodata object '{neurodata_object}' of type '{type(neurodata_object)}'!"
-                )
-                # TODO: Add support for compound objects with non-string elements
-                # chunk_shape = full_shape  # validate_all_shapes fails if chunk_shape or buffer_shape is None
-                # buffer_shape = full_shape
-                # compression_method = None
-                # warnings.warn(
-                #     f"Default chunking and compression options for compound objects are not optimized. "
-                #     f"Consider manually specifying DatasetIOConfiguration for dataset at '{location_in_file}'."
-                # )
-
-        return cls(
-            object_id=neurodata_object.object_id,
-            object_name=neurodata_object.name,
-            location_in_file=location_in_file,
-            dataset_name=dataset_name,
-            full_shape=full_shape,
-            dtype=dtype,
-            chunk_shape=chunk_shape,
-            buffer_shape=buffer_shape,
-            compression_method=compression_method,
-        )
 
     @classmethod
     def from_neurodata_object_with_defaults(
