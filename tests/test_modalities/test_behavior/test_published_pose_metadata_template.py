@@ -67,10 +67,8 @@ def test_published_pose_template_converts_once_filled(tmp_path):
         source_software="DeepLabCut",
         source_software_version="2.3.9",
         scorer="DLC_resnet50_openfield",
-        original_videos=["videos/top_camera.mp4"],
-        dimensions=[[480, 640]],
     )
-    for unrecorded_field in ("source_video_metadata_key", "labeled_video_metadata_key", "labeled_videos"):
+    for unrecorded_field in ("source_video_metadata_key", "labeled_video_metadata_key"):
         del container_metadata[unrecorded_field]
 
     for keypoint_name, series_metadata in container_metadata["PoseEstimationSeries"].items():

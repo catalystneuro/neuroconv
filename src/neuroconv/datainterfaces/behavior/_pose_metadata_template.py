@@ -25,6 +25,11 @@ def _get_pose_estimation_template_entry(
     written without one carries "(0,0) is unknown." into the file. The two ``*_video_metadata_key``
     fields address ``metadata["Behavior"]["ExternalVideos"]``, so they are answerable only when a video
     interface writes the recording into the same file.
+
+    ``original_videos``, ``labeled_videos`` and ``dimensions`` are not offered, since ndx-pose
+    deprecates all three in favour of the ``source_video`` link (rly/ndx-pose#57). The writer still
+    accepts them, so a format that reads them from its own source keeps reporting them in
+    ``get_metadata()``.
     """
     return dict(
         name=None,
@@ -36,9 +41,6 @@ def _get_pose_estimation_template_entry(
         device_metadata_key=device_metadata_key,
         source_video_metadata_key=None,
         labeled_video_metadata_key=None,
-        original_videos=None,
-        labeled_videos=None,
-        dimensions=None,
         PoseEstimationSeries={
             keypoint_name: dict(
                 name=None, description=None, unit=None, reference_frame=None, confidence_definition=None

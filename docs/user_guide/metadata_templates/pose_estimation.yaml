@@ -46,15 +46,9 @@ Pose:
       device_metadata_key: camera               # a key in Devices above
       # The video the tracker ran on, when a video interface wrote it into this same file. These
       # address `metadata["Behavior"]["ExternalVideos"]`, and the link is a reference to the object
-      # rather than a path, so prefer it over the two path fields below.
+      # rather than a path, which is what ndx-pose is standardising on.
       source_video_metadata_key: null
       labeled_video_metadata_key: null
-      # The video as paths, for when it is not in the file. Prefer paths relative to the NWB file: an
-      # absolute one from the machine that ran the tracker rarely resolves on the machine that reads
-      # the file. ndx-pose is replacing these three with the links above.
-      original_videos: null                     # e.g. [videos/top_camera.mp4]
-      labeled_videos: null
-      dimensions: null                          # frame size as [[height, width]], one row per video
       # One entry per body part, keyed by the tracker's name for it. These keys are matched against
       # the keypoints being written, so renaming one means its series is not described.
       PoseEstimationSeries:

@@ -43,9 +43,6 @@
                 "device_metadata_key": "camera",
                 "source_video_metadata_key": null,
                 "labeled_video_metadata_key": null,
-                "original_videos": null,
-                "labeled_videos": null,
-                "dimensions": null,
                 "PoseEstimationSeries": {
                     "head": {
                         "name": null,
