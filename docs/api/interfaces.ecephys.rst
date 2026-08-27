@@ -9,10 +9,6 @@ Base Sorting
 ------------
 .. automodule:: neuroconv.datainterfaces.ecephys.basesortingextractorinterface
 
-Base MNE Continuous
--------------------
-.. automodule:: neuroconv.datainterfaces.ecephys.basemnecontinuousdatainterface
-
 AlphaOmega
 ----------
 .. automodule:: neuroconv.datainterfaces.ecephys.alphaomega.alphaomegadatainterface

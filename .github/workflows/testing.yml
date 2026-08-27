@@ -161,7 +161,7 @@ jobs:
           python -m pytest tests/test_modalities/test_behavior -vv
           deactivate
 
-      - name: Test MNE machinery
+      - name: Test biopotential machinery
         shell: bash
         run: |
           # Create mne environment
@@ -174,7 +174,7 @@ jobs:
           fi
           uv pip install ".[mne]"
           uv pip install --group test
-          python -m pytest tests/test_modalities/test_mne -vv -rsx -n logical --dist loadscope
+          python -m pytest tests/test_modalities/test_biopotential -vv -rsx -n logical --dist loadscope
           deactivate
 
       - name: Test events machinery

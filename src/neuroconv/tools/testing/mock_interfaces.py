@@ -17,7 +17,7 @@ from ...datainterfaces.behavior.baseposeestimationinterface import (
 from ...datainterfaces.behavior.video.externalvideointerface import (
     ExternalVideoInterface,
 )
-from ...datainterfaces.ecephys.basemnecontinuousdatainterface import (
+from ...datainterfaces.biopotential.basemnecontinuousdatainterface import (
     BaseMNEElectricalSeriesInterface,
     BaseMNETimeSeriesInterface,
 )
