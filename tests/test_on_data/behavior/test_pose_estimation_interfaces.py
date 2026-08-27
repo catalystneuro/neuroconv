@@ -595,37 +595,89 @@ class TestSLEAPHumanInstances(PoseEstimationInterfaceTestMixin):
     SLEAP_MACOS_INTEL_PYTHON_313_UNSUPPORTED,
     reason="SLEAP conversion is not yet supported on macOS Intel with Python 3.13.",
 )
-class TestSLEAPEmptyTracks:
-    """A .slp can declare a track that no frame carries an instance for.
+class TestSLEAPEmptyTracksAndUntrackedInstances:
+    """A .slp records the identities the tracking run created, not the ones that survived it.
 
-    ``Labels.tracks`` records what the tracking run created rather than the animals present, so this
-    recording advertises four tracks and only ``track_0`` is ever populated.
+    This recording declares four tracks and only ``track_0`` is ever populated, and it also carries 12
+    human-placed instances in 9 frames that no track claims. Both are ordinary results of proofreading:
+    clearing a track leaves the ``Track`` object behind, and an instance added where the model found
+    nothing does not inherit an identity.
     """
 
     file_path = str(
         BEHAVIOR_DATA_PATH / "sleap" / "edge_cases" / "empty_tracks_and_untracked_instances" / "remora_video_2.slp"
     )
 
-    def test_declared_tracks_are_reported_unfiltered(self):
-        """``get_available_tracks`` says what the file declares, which answering otherwise would cost a
-        read of every frame."""
-        assert SLEAPInterface.get_available_tracks(file_path=self.file_path) == [
-            "track_0",
-            "track_1",
-            "track_2",
-            "track_3",
-        ]
+    def test_only_populated_tracks_are_offered(self):
+        assert SLEAPInterface.get_available_tracks(file_path=self.file_path) == ["track_0"]
 
-    def test_empty_track_raises(self):
-        interface = SLEAPInterface(file_path=self.file_path, track_name="track_2", frames_per_second=30.0)
-        with pytest.raises(ValueError, match=r"Track 'track_2' .* holds no instances .*Tracks that do: \['track_0'\]"):
-            interface.get_timestamps()
+    def test_declared_but_empty_track_says_so(self):
+        """A name the file declares is a different mistake from a name it does not."""
+        with pytest.raises(ValueError, match=r"Track 'track_2' is declared .* Tracks that do: \['track_0'\]"):
+            SLEAPInterface(file_path=self.file_path, track_name="track_2", frames_per_second=30.0)
 
-    def test_populated_track_converts(self):
+    def test_unknown_track_says_so(self):
+        with pytest.raises(ValueError, match="Track 'nobody' is not in this file"):
+            SLEAPInterface(file_path=self.file_path, track_name="nobody", frames_per_second=30.0)
+
+    def test_untracked_instances_are_reported_and_not_written(self):
         interface = SLEAPInterface(file_path=self.file_path, track_name="track_0", frames_per_second=30.0)
         nwbfile = mock_NWBFile()
-        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
-        assert "PoseEstimationTrack0" in nwbfile.processing["behavior"].data_interfaces
+        with pytest.warns(UserWarning, match="12 instances in 9 frames .* carry no track"):
+            interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
+
+        container = nwbfile.processing["behavior"]["PoseEstimationTrack0"]
+        series = next(iter(container.pose_estimation_series.values()))
+        # One row per frame carrying a track_0 instance, and none for the 8 frames that hold only
+        # untracked ones.
+        assert series.data.shape[0] == 147
+
+
+@pytest.mark.skipif(
+    SLEAP_MACOS_INTEL_PYTHON_313_UNSUPPORTED,
+    reason="SLEAP conversion is not yet supported on macOS Intel with Python 3.13.",
+)
+class TestSLEAPWithoutTracks:
+    """A labeling project, or a single-animal recording that was never tracked, assigns no identities.
+
+    Built rather than downloaded, since every .slp in the test data is the output of a tracking run.
+    """
+
+    @staticmethod
+    def _write_untracked_file(file_path, declared_track_name=None) -> None:
+        import sleap_io
+
+        skeleton = sleap_io.Skeleton(["head", "tail"])
+        video = sleap_io.Video(filename="recording.mp4")
+        labeled_frames = [
+            sleap_io.LabeledFrame(
+                video=video,
+                frame_idx=frame_index,
+                instances=[
+                    sleap_io.Instance.from_numpy(
+                        points_data=np.array([[float(frame_index), 1.0], [2.0, 3.0]]), skeleton=skeleton
+                    )
+                ],
+            )
+            for frame_index in range(3)
+        ]
+        tracks = [sleap_io.Track(name=declared_track_name)] if declared_track_name is not None else []
+        sleap_io.save_slp(
+            sleap_io.Labels(labeled_frames=labeled_frames, videos=[video], skeletons=[skeleton], tracks=tracks),
+            str(file_path),
+        )
+
+    def test_no_tracks_declared_raises(self, tmp_path):
+        file_path = tmp_path / "labeling_project.slp"
+        self._write_untracked_file(file_path=file_path)
+        with pytest.raises(ValueError, match="carries a track.*declares no tracks at all"):
+            SLEAPInterface(file_path=str(file_path), frames_per_second=1.0)
+
+    def test_tracks_declared_but_all_empty_raises(self, tmp_path):
+        file_path = tmp_path / "cleared_tracks.slp"
+        self._write_untracked_file(file_path=file_path, declared_track_name="track_0")
+        with pytest.raises(ValueError, match="carries a track.*declares 1 tracks"):
+            SLEAPInterface(file_path=str(file_path), frames_per_second=1.0)
 
 
 @pytest.mark.skipif(
