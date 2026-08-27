@@ -56,7 +56,7 @@ class MaxOneRecordingInterface(BaseRecordingExtractorInterface):  # pragma: no c
         hdf5_plugin_path: DirectoryPath | None = None,
         download_plugin: bool = True,
         verbose: bool = False,
-        es_key: str = "ElectricalSeries",
+        es_key: str | None = None,
         metadata_key: str | None = None,
     ) -> None:
         """
@@ -131,7 +131,7 @@ class MaxOneRecordingInterface(BaseRecordingExtractorInterface):  # pragma: no c
         if metadata_key is None:
             self.metadata_key = "maxone_recording"
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
 
         maxwell_version = self.recording_extractor.neo_reader.raw_annotations["blocks"][0]["maxwell_version"]
@@ -144,8 +144,14 @@ class MaxOneRecordingInterface(BaseRecordingExtractorInterface):  # pragma: no c
             # the device itself unnamed. Here the recording system is named after the format it is, with
             # the Maxwell software version the file records as its description.
             device_metadata_key = "maxone_device"
+            device_model_metadata_key = "maxone_model"
+            metadata["DeviceModels"] = {
+                device_model_metadata_key: dict(name="MaxOne", manufacturer="MaxWell Biosystems")
+            }
             metadata["Devices"] = {
-                device_metadata_key: dict(name="MaxOne", description=description, manufacturer="MaxWell Biosystems")
+                device_metadata_key: dict(
+                    name="MaxOne", description=description, device_model_metadata_key=device_model_metadata_key
+                )
             }
 
             channel_group_names = set(_get_group_name(recording=self.recording_extractor).tolist())

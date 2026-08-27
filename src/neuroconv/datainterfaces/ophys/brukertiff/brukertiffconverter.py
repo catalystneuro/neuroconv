@@ -136,7 +136,7 @@ class BrukerTiffMultiPlaneConverter(BaseDataInterface):
             Controls verbosity.
         """
         warnings.warn(
-            "BrukerTiffMultiPlaneConverter is deprecated and will be removed on or after December 2026. "
+            "BrukerTiffMultiPlaneConverter is deprecated and will be removed on or after February 2027. "
             "Use BrukerTiffConverter with plane_separation_type instead.",
             FutureWarning,
             stacklevel=2,
@@ -239,7 +239,7 @@ class BrukerTiffSinglePlaneConverter(BaseDataInterface):
             Controls verbosity.
         """
         warnings.warn(
-            "BrukerTiffSinglePlaneConverter is deprecated and will be removed on or after December 2026."
+            "BrukerTiffSinglePlaneConverter is deprecated and will be removed on or after February 2027."
             "Use BrukerTiffImagingInterface instead.",
             FutureWarning,
             stacklevel=2,

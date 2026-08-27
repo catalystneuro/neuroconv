@@ -141,13 +141,13 @@ class FemtonicsImagingInterface(BaseImagingExtractorInterface):
         extractor_instance = extractor_class(**self.extractor_kwargs)
         return extractor_instance
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         """
         Extract metadata specific to Femtonics imaging data.
 
         Parameters
         ----------
-        use_new_metadata_format : bool, default: False
+        use_new_metadata_format : bool, default: True
             When False, returns the old list-based metadata format (backward compatible).
             When True, returns dict-based metadata with Femtonics provenance.
 

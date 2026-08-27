@@ -39,6 +39,14 @@ own traces, named for the pair it came from ("PlaneSegmentationChan1Plane0"). Th
 suite2p writes for a multi-plane session is skipped, since its ROIs are the per-plane ones
 concatenated.
 
+NeuroConv aims to automatically add all the metadata annotations that are present in the source format.
+It is often the case that crucial information is not available there, such as the anatomical location,
+the meaning of the values, or a semantically meaningful description of the data. Follow
+:ref:`the ophys how-to <annotate_ophys_metadata>` for a modality-relevant guide to adding
+this extra metadata, which makes the data more useful for future users and for the community as a whole.
+Its :ref:`section on templates <how_to_annotate_ophys_from_a_template>` starts from scratch, and the
+:ref:`reference template <ophys_segmentation_metadata_template>` lists every element the metadata accepts.
+
 **Converting a single plane and channel**
 
 Use :py:class:`~neuroconv.datainterfaces.ophys.suite2p.suite2pdatainterface.Suite2pSegmentationInterface`

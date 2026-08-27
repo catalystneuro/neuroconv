@@ -186,13 +186,15 @@ class IntanConverter(ConverterPipe):
             interface_kwargs.update({k: v for k, v in entry.items() if k not in self._ROUTING_KEYS})
             if entry["interface"] is IntanAnalogInterface:
                 interface_kwargs["stream_name"] = stream_name
-            elif entry["interface"] is IntanRecordingInterface:
-                # The recording interface takes both: ``metadata_key`` keys the dict-based metadata and
-                # ``es_key`` keys the old list-based metadata, which used this same name before the dict
-                # format existed.
-                interface_kwargs["es_key"] = interface_kwargs["metadata_key"]
             if saved_files_are_split:
                 interface_kwargs["saved_files_are_split"] = True
-            data_interfaces[entry["interface_name"]] = entry["interface"](**interface_kwargs)
+            interface = entry["interface"](**interface_kwargs)
+            if entry["interface"] is IntanRecordingInterface:
+                # The recording interface uses both: ``metadata_key`` keys the dict-based metadata and
+                # ``es_key`` keys the old list-based metadata, which used this same name before the dict
+                # format existed. It is set here rather than passed to the constructor so that the
+                # deprecation warning stays reserved for callers who state ``es_key`` themselves.
+                interface.es_key = interface_kwargs["metadata_key"]
+            data_interfaces[entry["interface_name"]] = interface
 
         super().__init__(data_interfaces=data_interfaces, verbose=verbose)

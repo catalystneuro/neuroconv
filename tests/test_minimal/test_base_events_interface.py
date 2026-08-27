@@ -1048,3 +1048,58 @@ class TestEventsTemporalAlignment:
             "auxiliary",
             "auxiliary",
         ]
+
+
+class TestGetEventTimes:
+    """``get_event_times``, the read-only query for events a caller wants to read rather than write.
+
+    A camera's frame-out pulse or an alignment pulse is configured like any other event type; the query
+    hands back its times so another stream can be aligned against them. It is base-class behaviour, so it
+    works the same on a pre-extracted source as on a signal-encoded one, and there is no second place to
+    state a reading, which is what makes the array it returns the array the writer writes.
+    """
+
+    def test_returns_the_onsets_the_writer_writes(self):
+        """The property the single path buys: the query cannot disagree with the file."""
+        interface = MockEventsInterface()
+
+        queried_timestamps = interface.get_event_times(event_type_source_id="events")
+        expected_timestamps = [0.1, 0.2, 0.3, 0.4]
+        np.testing.assert_allclose(queried_timestamps, expected_timestamps)
+
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile)
+
+        written_timestamps = np.asarray(nwbfile.get_events_table("Events")["timestamp"][:])
+        np.testing.assert_allclose(queried_timestamps, written_timestamps)
+
+    def test_answers_on_the_interfaces_current_clock(self):
+        """Shifted times, not native ones, so the events can be the input to another stream's alignment."""
+        interface = MockEventsInterface()
+        interface.alignment.shift_times(5.0)
+
+        shifted_timestamps = interface.get_event_times(event_type_source_id="events")
+        expected_timestamps = [5.1, 5.2, 5.3, 5.4]
+
+        np.testing.assert_allclose(shifted_timestamps, expected_timestamps)
+
+    def test_lists_the_event_types_it_reads(self):
+        """The handles the query takes, since a derived identifier is not guessable."""
+        interface = MockEventsInterface(num_event_types=3)
+
+        event_type_source_ids = interface.get_event_type_source_ids()
+        expected_event_type_source_ids = ["events_0", "events_1", "events_2"]
+
+        assert event_type_source_ids == expected_event_type_source_ids
+        for event_type_source_id in event_type_source_ids:
+            assert interface.get_event_times(event_type_source_id=event_type_source_id).size == 4
+
+    def test_an_event_type_that_is_not_read_raises_naming_the_ones_that_are(self):
+        interface = MockEventsInterface(num_event_types=2)
+        expected_error = (
+            "No event type 'camera' in MockEventsInterface. This interface reads ['events_0', 'events_1'], "
+            "which get_event_type_source_ids lists."
+        )
+
+        with pytest.raises(KeyError, match=re.escape(expected_error)):
+            interface.get_event_times(event_type_source_id="camera")

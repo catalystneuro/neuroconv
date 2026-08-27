@@ -6,11 +6,12 @@ import pandas as pd
 from pydantic import FilePath, validate_call
 from pynwb.file import NWBFile
 
-from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
+from ..baseposeestimationinterface import BasePoseEstimationInterface
+from ....tools.pose_estimation import _add_pose_estimation_to_nwbfile
 from ....utils import DeepDict
 
 
-class DeepLabCutInterface(BaseTemporalAlignmentInterface):
+class DeepLabCutInterface(BasePoseEstimationInterface):
     """Data interface for DeepLabCut datasets."""
 
     display_name = "DeepLabCut"
@@ -19,6 +20,8 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
     info = "Interface for handling data from DeepLabCut."
 
     _timestamps = None
+    _source_metadata = None
+    _animal_dataframe = None
 
     @classmethod
     def get_source_schema(cls) -> dict:
@@ -81,6 +84,7 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         pose_estimation_metadata_key: str | None = None,
         verbose: bool = False,
         metadata_key: str | None = None,
+        sampling_frequency: float | None = None,
     ):
         """
         Interface for writing DeepLabCut's output files to NWB.
@@ -103,7 +107,7 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
             used to link the skeleton to the subject in the NWB file.
         pose_estimation_metadata_key : str, optional
             Deprecated. Renamed to ``metadata_key``; passing it forwards the value to ``metadata_key``
-            and will be removed on or after December 2026. Passing both raises ``ValueError``.
+            and will be removed on or after February 2027. Passing both raises ``ValueError``.
         verbose : bool, default: False
             Controls verbosity of the conversion process.
         metadata_key : str, optional
@@ -112,6 +116,12 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
             internal handle and does not appear in the NWB file; rename NWB objects via their ``name``
             fields in the metadata dict instead. To opt into the dict-based shape, call
             ``get_metadata(use_new_metadata_format=True)``.
+        sampling_frequency : float, optional
+            The frame rate of the video the pose was estimated from, in Hz. A DeepLabCut output file's rows
+            are video frames and carry no times, and neither the file nor the project config records the
+            rate, so one of ``sampling_frequency`` or ``set_aligned_timestamps`` is required before writing.
+            Pass this for a constant frame rate; call ``set_aligned_timestamps`` when the frames have times
+            of their own, from a hardware clock or an alignment against another stream.
 
 
         Metadata Structure
@@ -241,7 +251,7 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         if pose_estimation_metadata_key is not None:
             warnings.warn(
                 "The 'pose_estimation_metadata_key' argument has been renamed to 'metadata_key' and "
-                "will be removed on or after December 2026. Please use 'metadata_key' instead.",
+                "will be removed on or after February 2027. Please use 'metadata_key' instead.",
                 DeprecationWarning,
                 stacklevel=2,
             )
@@ -252,12 +262,16 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
             self.config_dict = _read_config(config_file_path=config_file_path)
         self.subject_name = subject_name
         self.verbose = verbose
-        self.metadata_key = metadata_key
+        # What the user passed, kept because the legacy shape defaults the key to the container name it
+        # writes rather than to the registry key the dict-based shape uses. It goes with the legacy shape.
+        self._user_metadata_key = metadata_key
+        self.metadata_key = metadata_key or "deep_lab_cut_metadata_key"
+        self.sampling_frequency = sampling_frequency
         self.pose_estimation_container_kwargs = dict()
 
         super().__init__(file_path=file_path, config_file_path=config_file_path)
 
-    def get_metadata_schema(self, *, use_new_metadata_format: bool = False) -> dict:
+    def get_metadata_schema(self, *, use_new_metadata_format: bool = True) -> dict:
         """
         Retrieve JSON schema for metadata specific to the DeepLabCutInterface.
 
@@ -425,20 +439,17 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
 
         return metadata_schema
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def _get_source_metadata(self) -> dict:
+        """Read the output file and the project config once, and cache what they describe."""
+        if self._source_metadata is not None:
+            return self._source_metadata
+
         from ._dlc_utils import (
             _ensure_individuals_in_header,
+            _get_edges_from_config,
             _get_graph_edges,
             _get_video_info_from_config_file,
         )
-
-        metadata = super().get_metadata()
-
-        if self.config_dict:
-            metadata["NWBFile"].update(
-                session_description=self.config_dict["Task"],
-                experimenter=[self.config_dict["scorer"]],
-            )
 
         # Extract information from the DeepLabCut data
         file_path = self.source_data["file_path"]
@@ -452,8 +463,12 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         # Ensure individuals in header if needed
         df = _ensure_individuals_in_header(df, self.subject_name)
 
-        # Extract bodyparts and individuals
-        bodyparts = df.columns.get_level_values("bodyparts").unique().tolist()
+        # This individual's bodyparts, not the file's. A multi-animal project can also declare unique
+        # bodyparts, landmarks of the scene rather than of any subject, and those arrive under an
+        # ``individuals`` group named ``single``. The file's set is then a superset of the subject's, so
+        # reading it here while the series come from ``_read_animal_dataframe`` wrote a skeleton whose
+        # nodes were not the keypoints the container held.
+        bodyparts = self._read_animal_dataframe().columns.get_level_values("bodyparts").unique().tolist()
 
         # Get video dimensions from config if available
         dimensions = None
@@ -462,38 +477,44 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
             _, image_shape = _get_video_info_from_config_file(
                 config_file_path=self.source_data["config_file_path"], vidname=video_name
             )
-            try:
-                shape_parts = [int(x.strip()) for x in image_shape.split(",")]
-                if len(shape_parts) == 4:
-                    dimensions = [[shape_parts[3], shape_parts[1]]]  # [[height, width]]
-            except (ValueError, IndexError):
-                pass
+            if image_shape is not None:
+                try:
+                    shape_parts = [int(x.strip()) for x in image_shape.split(",")]
+                    if len(shape_parts) == 4:
+                        dimensions = [[shape_parts[3], shape_parts[1]]]  # [[height, width]]
+                except (ValueError, IndexError):
+                    pass
 
         # Get edges from metadata pickle file if available
-        edges = []
-        try:
-            filename = str(Path(file_path).parent / Path(file_path).stem)
-            for i, c in enumerate(filename[::-1]):
-                if c.isnumeric():
-                    break
-            if i > 0:
-                filename = filename[:-i]
-            metadata_file_path = Path(filename + "_meta.pickle")
-            edges = _get_graph_edges(metadata_file_path=metadata_file_path)
-        except Exception:
-            pass
+        # The project config states the skeleton as pairs of bodypart names, which is the source that is
+        # actually there: the part affinity field graph below lives in a ``_meta.pickle`` beside the output
+        # file that DeepLabCut does not always write, and when it is missing the skeleton is written with
+        # nodes and no connections.
+        edges = _get_edges_from_config(config_dict=self.config_dict, bodyparts=bodyparts)
+        if not edges:
+            try:
+                filename = str(Path(file_path).parent / Path(file_path).stem)
+                for i, c in enumerate(filename[::-1]):
+                    if c.isnumeric():
+                        break
+                if i > 0:
+                    filename = filename[:-i]
+                metadata_file_path = Path(filename + "_meta.pickle")
+                edges = _get_graph_edges(metadata_file_path=metadata_file_path)
+            except Exception:
+                pass
 
-        # Extract video name and scorer
-        # If filename contains "DLC", split on it to get video name
-        # Otherwise, use the full stem as video name
+        # The scorer is written into the file by DeepLabCut, so read it from there rather than off the
+        # filename. A multi-animal run appends a tracker suffix to the name (``_el`` for ellipse, ``_bx``
+        # for box, ``_sk`` for skeleton, plus ``_filtered``), and any local rename adds more, all of which
+        # the split swept into the scorer. It also raised ``ValueError`` on a stem holding "DLC" twice,
+        # which a video named after a DeepLabCut project produces.
+        scorer = df.columns.get_level_values("scorer")[0]
+
+        # The filename stays the only source for the video name, which is what looks the recording up in
+        # the project config.
         file_stem = Path(file_path).stem
-        if "DLC" in file_stem:
-            video_name, scorer = Path(file_path).stem.split("DLC")
-            scorer = "DLC" + scorer
-        else:
-            video_name = file_stem
-            # Extract scorer from DataFrame header
-            scorer = df.columns.get_level_values("scorer")[0]
+        video_name = file_stem.split("DLC")[0] if "DLC" in file_stem else file_stem
 
         # Get video info from config file if available
         video_file_path = None
@@ -502,89 +523,119 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
                 config_file_path=self.source_data["config_file_path"], vidname=video_name
             )
 
-        # Legacy shape (deprecated; removed with the flag): the parsed components arranged into the
-        # top-level metadata["PoseEstimation"] block, with default strings baked in here.
+        self._source_metadata = dict(
+            bodyparts=bodyparts,
+            edges=edges,
+            dimensions=dimensions,
+            scorer=scorer,
+            video_file_path=video_file_path,
+        )
+        return self._source_metadata
+
+    def _get_keypoint_names(self) -> list[str]:
+        return self._get_source_metadata()["bodyparts"]
+
+    def _get_keypoint_data(self) -> dict[str, tuple[np.ndarray, np.ndarray | None]]:
+        df_animal = self._read_animal_dataframe()
+        keypoint_data = {}
+        for keypoint in df_animal.columns.get_level_values("bodyparts").unique():
+            data = df_animal.xs(keypoint, level="bodyparts", axis=1).to_numpy()
+            keypoint_data[keypoint] = (data[:, :2], data[:, 2])
+        return keypoint_data
+
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
+        # TODO: remove the branch and _get_legacy_metadata with the legacy shape.
         if not use_new_metadata_format:
-            container_name = self.metadata_key or "PoseEstimationDeepLabCut"
-            skeleton_name = f"Skeleton{container_name}_{self.subject_name.capitalize()}"
-            device_name = f"Camera{container_name}"
+            return self._get_legacy_metadata()
 
-            pose_estimation_metadata = DeepDict()
-            pose_estimation_metadata["Skeletons"] = {
-                skeleton_name: {"name": skeleton_name, "nodes": bodyparts, "edges": edges, "subject": self.subject_name}
-            }
-            pose_estimation_metadata["Devices"] = {
-                device_name: {
-                    "name": device_name,
-                    "description": "Camera used for behavioral recording and pose estimation.",
-                }
-            }
-            pose_estimation_metadata["PoseEstimationContainers"] = {
-                container_name: {
-                    "name": container_name,
-                    "description": "2D keypoint coordinates estimated using DeepLabCut.",
-                    "source_software": "DeepLabCut",
-                    "dimensions": dimensions,
-                    "skeleton": skeleton_name,
-                    "devices": [device_name],
-                    "scorer": scorer,
-                    "original_videos": [video_file_path] if video_file_path else None,
-                    "PoseEstimationSeries": {},
-                }
-            }
-            for bodypart in bodyparts:
-                pose_estimation_metadata["PoseEstimationContainers"][container_name]["PoseEstimationSeries"][
-                    bodypart
-                ] = {
-                    "name": f"PoseEstimationSeries{bodypart.capitalize()}",
-                    "description": f"Pose estimation series for {bodypart}.",
-                    "unit": "pixels",
-                    "reference_frame": "(0,0) corresponds to the bottom left corner of the video.",
-                    "confidence_definition": "Softmax output of the deep neural network.",
-                }
-            metadata["PoseEstimation"] = pose_estimation_metadata
-            return metadata
+        metadata = super().get_metadata()
+        self._add_config_metadata(metadata=metadata)
+        source_metadata = self._get_source_metadata()
 
-        metadata_key = self.metadata_key or "deep_lab_cut_metadata_key"
         container_name = "PoseEstimationDeepLabCut"
+        metadata["Pose"]["Skeletons"][self.metadata_key].update(
+            name=f"Skeleton{container_name}_{self.subject_name.capitalize()}",
+            edges=source_metadata["edges"],
+            subject=self.subject_name,
+        )
+        video_file_path = source_metadata["video_file_path"]
+        metadata["Pose"]["PoseEstimations"][self.metadata_key].update(
+            name=container_name,
+            source_software="DeepLabCut",
+            scorer=source_metadata["scorer"],
+            dimensions=source_metadata["dimensions"],
+            original_videos=[video_file_path] if video_file_path else None,
+            PoseEstimationSeries={
+                bodypart: {"name": f"PoseEstimationSeries{bodypart.capitalize()}"}
+                for bodypart in source_metadata["bodyparts"]
+            },
+        )
+
+        return metadata
+
+    def _add_config_metadata(self, metadata: DeepDict) -> None:
+        """Take the task description and the experimenter from the project config, when there is one."""
+        if self.config_dict:
+            metadata["NWBFile"].update(
+                session_description=self.config_dict["Task"],
+                experimenter=[self.config_dict["scorer"]],
+            )
+
+    # TODO: remove with the legacy metadata["PoseEstimation"] block.
+    def _get_legacy_metadata(self) -> DeepDict:
+        """The parsed components arranged into the top-level ``metadata["PoseEstimation"]`` block.
+
+        Built from ``_get_base_metadata`` rather than from ``get_metadata`` so it never carries the
+        dict-based registries: ``add_to_nwbfile`` dispatches on a top-level "Pose" block being present.
+        """
+        metadata = self._get_base_metadata()
+        self._add_config_metadata(metadata=metadata)
+        source_metadata = self._get_source_metadata()
+
+        bodyparts = source_metadata["bodyparts"]
+        video_file_path = source_metadata["video_file_path"]
+        container_name = self._user_metadata_key or "PoseEstimationDeepLabCut"
         skeleton_name = f"Skeleton{container_name}_{self.subject_name.capitalize()}"
         device_name = f"Camera{container_name}"
 
-        # We add an artificial camera device even when one is not available from the source, only to
-        # avoid an ndx-pose warning: ndx-pose ties the number of dimensions/original_videos to the
-        # number of camera devices, so a device is required to carry the frame dimensions and video
-        # path. Remove once ndx-pose decouples those recording fields from the camera-device count.
-        metadata["Devices"] = {
-            metadata_key: {
+        pose_estimation_metadata = DeepDict()
+        pose_estimation_metadata["Skeletons"] = {
+            skeleton_name: {
+                "name": skeleton_name,
+                "nodes": bodyparts,
+                "edges": source_metadata["edges"],
+                "subject": self.subject_name,
+            }
+        }
+        pose_estimation_metadata["Devices"] = {
+            device_name: {
                 "name": device_name,
                 "description": "Camera used for behavioral recording and pose estimation.",
             }
         }
-
-        metadata["Pose"]["Skeletons"] = {
-            metadata_key: {
-                "name": skeleton_name,
-                "nodes": bodyparts,
-                "edges": edges,
-                "subject": self.subject_name,
-            }
-        }
-
-        pose_estimation_series = {
-            bodypart: {"name": f"PoseEstimationSeries{bodypart.capitalize()}"} for bodypart in bodyparts
-        }
-        metadata["Pose"]["PoseEstimations"] = {
-            metadata_key: {
+        pose_estimation_metadata["PoseEstimationContainers"] = {
+            container_name: {
                 "name": container_name,
+                "description": "2D keypoint coordinates estimated using DeepLabCut.",
                 "source_software": "DeepLabCut",
-                "scorer": scorer,
-                "dimensions": dimensions,
+                "dimensions": source_metadata["dimensions"],
+                "skeleton": skeleton_name,
+                "devices": [device_name],
+                "scorer": source_metadata["scorer"],
                 "original_videos": [video_file_path] if video_file_path else None,
-                "device_metadata_key": metadata_key,
-                "skeleton_metadata_key": metadata_key,
-                "PoseEstimationSeries": pose_estimation_series,
+                "PoseEstimationSeries": {
+                    bodypart: {
+                        "name": f"PoseEstimationSeries{bodypart.capitalize()}",
+                        "description": f"Pose estimation series for {bodypart}.",
+                        "unit": "pixels",
+                        "reference_frame": "(0,0) corresponds to the bottom left corner of the video.",
+                        "confidence_definition": "Softmax output of the deep neural network.",
+                    }
+                    for bodypart in bodyparts
+                },
             }
         }
+        metadata["PoseEstimation"] = pose_estimation_metadata
 
         return metadata
 
@@ -610,6 +661,22 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         """
         self._timestamps = np.asarray(aligned_timestamps)
 
+    def _read_animal_dataframe(self):
+        """Read the output file and select this interface's individual, once."""
+        if self._animal_dataframe is not None:
+            return self._animal_dataframe
+
+        from ._dlc_utils import _ensure_individuals_in_header
+
+        file_path = Path(self.source_data["file_path"])
+        if ".h5" in file_path.suffixes:
+            df = pd.read_hdf(file_path)
+        elif ".csv" in file_path.suffixes:
+            df = pd.read_csv(file_path, header=[0, 1, 2], index_col=0)
+        df = _ensure_individuals_in_header(df, self.subject_name)
+        self._animal_dataframe = df.xs(self.subject_name, level="individuals", axis=1)
+        return self._animal_dataframe
+
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
@@ -625,48 +692,71 @@ class DeepLabCutInterface(BaseTemporalAlignmentInterface):
         metadata: dict
             metadata info for constructing the nwb file (optional).
         """
-        from ._dlc_utils import (
-            _add_pose_estimation_to_nwbfile,
-            _ensure_individuals_in_header,
-        )
+        # Dispatch on the legacy block being there rather than on the dict-based one being absent, since
+        # metadata that mentions neither is not legacy, it is a caller who said nothing about pose. The
+        # legacy shape is converted so there is a single write path, and the caller's metadata is passed
+        # on as they wrote it; only an absent one falls back to this interface's own.
+        # TODO: remove the branch with the legacy metadata["PoseEstimation"] block.
+        uses_legacy_metadata_format = metadata is not None and "PoseEstimation" in metadata
+        describes_pose = metadata is not None and ("Pose" in metadata or uses_legacy_metadata_format)
 
-        # Dispatch on the shape of the user-supplied metadata: the dict-based format has the pose
-        # modality at the top-level metadata["Pose"]; anything else (including no metadata) uses the
-        # legacy path. The defaults are fetched in the matching shape, then user metadata is merged on.
-        use_new_metadata_format = metadata is not None and "Pose" in metadata
+        # Per block, not per field: a caller who wrote a pose block gets it as they wrote it, absent keys
+        # and all, and a caller who wrote none gets this interface's own rather than an error.
+        resolved_metadata = metadata if describes_pose else self.get_metadata()
 
-        # Get default metadata
-        default_metadata = DeepDict(self.get_metadata(use_new_metadata_format=use_new_metadata_format))
+        df_animal = self._read_animal_dataframe()
 
-        # Update with user-provided metadata if available
-        if metadata is not None:
-            default_metadata.deep_update(metadata)
-
-        file_path = Path(self.source_data["file_path"])
-
-        # Read the data
-        if ".h5" in file_path.suffixes:
-            df = pd.read_hdf(file_path)
-        elif ".csv" in file_path.suffixes:
-            df = pd.read_csv(file_path, header=[0, 1, 2], index_col=0)
-
-        # Ensure individuals in header
-        df = _ensure_individuals_in_header(df, self.subject_name)
-
-        # Get timestamps
+        # Get timestamps. A DeepLabCut file's index is the video frame number, so it becomes a time only
+        # once a frame rate is known. Neither the .h5/.csv nor the project config records one, so it has
+        # to come from the caller.
         timestamps = self._timestamps
         if timestamps is None:
-            timestamps = df.index.tolist()  # Use index as dummy timestamps if not provided
+            if self.sampling_frequency is None:
+                raise ValueError(
+                    "No timing information is available for this DeepLabCut output. Its rows are video "
+                    "frames, and neither the file nor the project config records the frame rate, so the "
+                    "times cannot be derived from the source. Pass 'sampling_frequency' to "
+                    "DeepLabCutInterface for a constant frame rate, or call 'set_aligned_timestamps' with "
+                    "one time per frame."
+                )
+            timestamps = np.asarray(df_animal.index) / self.sampling_frequency
 
-        df_animal = df.xs(self.subject_name, level="individuals", axis=1)
+        metadata_key = (
+            (self._user_metadata_key or "PoseEstimationDeepLabCut")
+            if uses_legacy_metadata_format
+            else self.metadata_key
+        )
+        if uses_legacy_metadata_format:
+            resolved_metadata = self._translate_legacy_metadata(metadata=resolved_metadata, metadata_key=metadata_key)
 
-        default_key = "deep_lab_cut_metadata_key" if use_new_metadata_format else "PoseEstimationDeepLabCut"
         _add_pose_estimation_to_nwbfile(
             nwbfile=nwbfile,
-            df_animal=df_animal,
+            keypoint_data=self._get_keypoint_data(),
             timestamps=timestamps,
-            exclude_nans=False,
-            metadata=default_metadata,
-            metadata_key=self.metadata_key or default_key,
-            use_new_metadata_format=use_new_metadata_format,
+            metadata=resolved_metadata,
+            metadata_key=metadata_key,
         )
+
+    # TODO: remove with the legacy metadata["PoseEstimation"] block.
+    def _translate_legacy_metadata(self, metadata: dict, metadata_key: str) -> DeepDict:
+        """Convert the legacy ``metadata["PoseEstimation"]`` block into the dict-based shape.
+
+        A re-nesting rather than a rewrite: the legacy block already keys its containers, skeletons and
+        devices and carries every field, but names its cross-references by object name where the
+        dict-based shape names them by registry key.
+        """
+        legacy_metadata = metadata["PoseEstimation"]
+        container_entry = dict(legacy_metadata["PoseEstimationContainers"][metadata_key])
+        skeleton_name = container_entry.pop("skeleton", None)
+        device_names = container_entry.pop("devices", None)
+
+        translated = DeepDict({key: value for key, value in metadata.items() if key != "PoseEstimation"})
+        if skeleton_name is not None:
+            container_entry["skeleton_metadata_key"] = metadata_key
+            translated["Pose"]["Skeletons"][metadata_key] = legacy_metadata["Skeletons"][skeleton_name]
+        if device_names:
+            container_entry["device_metadata_key"] = metadata_key
+            translated["Devices"][metadata_key] = legacy_metadata["Devices"][device_names[0]]
+        translated["Pose"]["PoseEstimations"][metadata_key] = container_entry
+
+        return translated

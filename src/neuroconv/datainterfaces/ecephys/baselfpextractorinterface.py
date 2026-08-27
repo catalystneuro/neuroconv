@@ -17,10 +17,12 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
         "LF",
     )
 
-    def __init__(self, verbose: bool = False, es_key: str = "ElectricalSeriesLFP", **source_data):
+    _default_es_key = "ElectricalSeriesLFP"
+
+    def __init__(self, verbose: bool = False, es_key: str | None = None, **source_data):
         super().__init__(verbose=verbose, es_key=es_key, **source_data)
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
 
         if use_new_metadata_format:
@@ -81,7 +83,7 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
         if write_as is not None:
             warnings.warn(
                 "The 'write_as' parameter of BaseLFPExtractorInterface.add_to_nwbfile() is deprecated and will be "
-                "removed on or after December 2026. Use 'parent_container' instead "
+                "removed on or after February 2027. Use 'parent_container' instead "
                 "('raw' -> 'acquisition', 'lfp' -> 'processing/LFP', 'processed' -> 'processing/FilteredEphys').",
                 FutureWarning,
                 stacklevel=2,

@@ -2,7 +2,7 @@ import shutil
 import tempfile
 from datetime import datetime
 from pathlib import Path
-from warnings import warn
+from warnings import catch_warnings, simplefilter, warn
 
 import pytest
 from pynwb import read_nwb
@@ -52,6 +52,16 @@ def test_legacy_user_config_device_list_raises(tmp_path, device_kind):
     config_file_path.write_text(json.dumps(user_config), encoding="utf-8")
 
     with pytest.raises(NotImplementedError, match=f"devices\\[{device_kind}\\] as a list of devices"):
+        MiniscopeConverter(folder_path=folder_path, user_configuration_file_path=config_file_path)
+
+
+def test_relocated_data_root_does_not_warn():
+    """The explicit data root, not the acquisition machine dataDirectory, determines discovery."""
+    folder_path = OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "behavior_camera_with_config"
+    config_file_path = folder_path / "UserConfigFile.json"
+
+    with catch_warnings():
+        simplefilter("error", UserWarning)
         MiniscopeConverter(folder_path=folder_path, user_configuration_file_path=config_file_path)
 
 

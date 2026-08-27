@@ -395,7 +395,7 @@ class TestSuite2pSegmentationInterfaceChan1Plane0(SegmentationExtractorInterface
         cls.neuropil_traces_names = "Neuropil" + plane_suffix
         cls.deconvolved_trace_name = "Deconvolved" + plane_suffix
 
-    def test_check_extracted_metadata(self):
+    def test_check_extracted_metadata_old_list_format(self):
         self.interface = self.data_interface_cls(**self.interface_kwargs)
 
         metadata = self.interface.get_metadata(use_new_metadata_format=False)
@@ -472,7 +472,7 @@ class TestSuite2pSegmentationInterfaceChan2Plane0(SegmentationExtractorInterface
         cls.neuropil_traces_names = "Neuropil" + plane_suffix
         cls.deconvolved_trace_name = None
 
-    def test_check_extracted_metadata(self):
+    def test_check_extracted_metadata_old_list_format(self):
         self.interface = self.data_interface_cls(**self.interface_kwargs)
 
         metadata = self.interface.get_metadata(use_new_metadata_format=False)
@@ -583,6 +583,18 @@ skip_on_python_313 = pytest.mark.skipif(
     "Requires: Python <3.13, >=3.9)"
     "See:https://github.com/inscopix/pyisx/issues",
 )
+
+
+@skip_on_darwin_arm64
+@skip_on_python_313
+def test_inscopix_empty_cellset_raises():
+    """An Inscopix cellset holding no cells has no segmentation to write."""
+    interface = InscopixSegmentationInterface(
+        file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "empty_cellset.isxd")
+    )
+
+    with pytest.raises(ValueError, match="contains no segmentation data"):
+        interface.add_to_nwbfile(nwbfile=mock_NWBFile(), metadata=interface.get_metadata())
 
 
 @skip_on_darwin_arm64

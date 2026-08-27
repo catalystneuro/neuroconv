@@ -1266,44 +1266,115 @@ class TDTFiberPhotometryInterfaceMixin(DataInterfaceTestMixin, TemporalAlignment
                 self.check_nwbfile_temporal_alignment()
 
 
-class PoseEstimationInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
+class PoseEstimationInterfaceTestMixin(DataInterfaceTestMixin):
     """
     Generic class for testing any pose estimation interface.
+
+    Format-specific assertions belong in ``run_custom_checks``. ``TemporalAlignmentMixin`` is not a base
+    because the pose interfaces' alignment methods are on the way out; a child that wants them adds it.
     """
 
     def check_read_nwb(self, nwbfile_path: str):
-        """Check that pose estimation data can be read back from NWB file."""
+        """Every container the metadata declares is in the file, named and shaped as the metadata says."""
+        metadata = _get_metadata_for_writing(self.interface)
         nwbfile = read_nwb(nwbfile_path)
 
-        # Check that behavior module exists
         assert "behavior" in nwbfile.processing
         behavior_module = nwbfile.processing["behavior"]
 
-        # Check for pose estimation container (this may vary by interface)
-        # Most interfaces will have some pose estimation container in behavior
-        pose_containers = [
-            data_interface
-            for name, data_interface in behavior_module.data_interfaces.items()
-            if hasattr(data_interface, "pose_estimation_series")
-        ]
-        assert len(pose_containers) > 0, "No pose estimation containers found in behavior module"
-
-        # Check that pose estimation series exist
-        pose_container = pose_containers[0]
-        assert hasattr(pose_container, "pose_estimation_series")
-        assert len(pose_container.pose_estimation_series) > 0
-
-        # Check that timestamps are properly written
-        for series_name, series in pose_container.pose_estimation_series.items():
-            assert hasattr(series, "timestamps")
-            assert len(series.timestamps) > 0
-            assert hasattr(series, "data")
-            assert len(series.data) > 0
-
-            # Check data dimensions (should be 2D: time x spatial_dims)
-            assert len(series.data.shape) == 2
-            assert series.data.shape[0] == len(series.timestamps)
+        containers_metadata = metadata["Pose"]["PoseEstimations"]
+        assert len(containers_metadata) > 0, "The interface declares no PoseEstimation container."
+        for container_entry in containers_metadata.values():
+            self._check_pose_estimation_container(
+                nwbfile=nwbfile,
+                behavior_module=behavior_module,
+                metadata=metadata,
+                container_entry=container_entry,
+            )
         nwbfile.read_io.close()
+
+    def test_metadata_propagation(self, setup_interface):
+        """Every editable name and description under ``metadata["Pose"]`` reaches the written objects.
+
+        The interface's own metadata is edited and handed back, so this covers the whole addressing chain:
+        ``metadata_key`` to the container entry, its two cross-references to the skeleton and the device,
+        and each keypoint to its series entry.
+        """
+        metadata = _get_metadata_for_writing(self.interface)
+        pose_metadata = metadata["Pose"]
+
+        for metadata_key, container_entry in pose_metadata["PoseEstimations"].items():
+            container_entry["name"] = f"Custom{container_entry['name']}"
+            container_entry["description"] = f"Custom description for {metadata_key}."
+            skeleton_metadata_key = container_entry.get("skeleton_metadata_key")
+            if skeleton_metadata_key is not None:
+                skeleton_entry = pose_metadata["Skeletons"][skeleton_metadata_key]
+                skeleton_entry["name"] = f"Custom{skeleton_entry['name']}"
+            for keypoint_name, series_entry in container_entry["PoseEstimationSeries"].items():
+                series_entry["name"] = f"Custom{series_entry['name']}"
+                series_entry["description"] = f"Custom description for {keypoint_name}."
+                series_entry["unit"] = "custom_units"
+                series_entry["reference_frame"] = "Custom reference frame."
+
+        nwbfile = mock_NWBFile()
+        self.interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+        behavior_module = nwbfile.processing["behavior"]
+        for container_entry in pose_metadata["PoseEstimations"].values():
+            container = behavior_module.data_interfaces[container_entry["name"]]
+            assert container.description == container_entry["description"]
+
+            skeleton_metadata_key = container_entry.get("skeleton_metadata_key")
+            if skeleton_metadata_key is not None:
+                assert container.skeleton.name == pose_metadata["Skeletons"][skeleton_metadata_key]["name"]
+
+            for series_entry in container_entry["PoseEstimationSeries"].values():
+                series = container.pose_estimation_series[series_entry["name"]]
+                assert series.description == series_entry["description"]
+                assert series.unit == series_entry["unit"]
+                assert series.reference_frame == series_entry["reference_frame"]
+
+    def _check_pose_estimation_container(self, nwbfile, behavior_module, metadata: dict, container_entry: dict):
+        """One container entry, its cross-referenced device and skeleton, and one series per keypoint."""
+        from ndx_pose import PoseEstimation, PoseEstimationSeries
+
+        container_name = container_entry["name"]
+        assert container_name in behavior_module.data_interfaces
+        container = behavior_module.data_interfaces[container_name]
+        assert isinstance(container, PoseEstimation)
+
+        # Only fields the metadata actually carries are checked: the rest are left to ndx-pose's defaults
+        # by the writer, so asserting on them here would be asserting on the extension.
+        for field in ("description", "scorer", "source_software"):
+            if container_entry.get(field) is not None:
+                assert getattr(container, field) == container_entry[field]
+
+        device_metadata_key = container_entry.get("device_metadata_key")
+        if device_metadata_key is not None:
+            assert metadata["Devices"][device_metadata_key]["name"] in nwbfile.devices
+
+        skeleton_metadata_key = container_entry.get("skeleton_metadata_key")
+        if skeleton_metadata_key is not None:
+            skeleton_entry = metadata["Pose"]["Skeletons"][skeleton_metadata_key]
+            assert "Skeletons" in behavior_module.data_interfaces
+            assert skeleton_entry["name"] in behavior_module["Skeletons"].skeletons
+            assert container.skeleton.name == skeleton_entry["name"]
+            assert container.skeleton.nodes[:].tolist() == list(skeleton_entry["nodes"])
+
+        series_entries = container_entry["PoseEstimationSeries"]
+        assert len(container.pose_estimation_series) == len(series_entries)
+        for series_entry in series_entries.values():
+            series_name = series_entry["name"]
+            assert series_name in container.pose_estimation_series
+            series = container.pose_estimation_series[series_name]
+            assert isinstance(series, PoseEstimationSeries)
+
+            # A regularly sampled series carries a rate and a starting time instead of an explicit
+            # timestamps vector, so ask for the times either way.
+            timestamps = series.get_timestamps()
+            assert len(timestamps) > 0
+            assert series.data.ndim == 2
+            assert series.data.shape[0] == len(timestamps)
 
 
 class FiberPhotometryInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
