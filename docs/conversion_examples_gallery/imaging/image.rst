@@ -2,11 +2,18 @@ Image data conversion
 ---------------------
 
 A collection of image files reaches NWB through one of two interfaces. The
-:py:class:`~neuroconv.datainterfaces.image.imageinterface.ImageInterface` embeds the pixels, converting various image
-formats (PNG, JPG, TIFF) and handling the different color modes, and the
-:py:class:`~neuroconv.datainterfaces.image.externalimageinterface.ExternalImageInterface` writes the path of each file
-instead, leaving the pixels where they already are. Both store the images in either the acquisition or stimulus group of
-the NWB file. Everything below is about the embedding interface until the last section, which covers the other one.
+:py:class:`~neuroconv.datainterfaces.image.externalimageinterface.ExternalImageInterface` writes the path of each
+file and leaves the pixels where they already are, and the
+:py:class:`~neuroconv.datainterfaces.image.imageinterface.ImageInterface` embeds the pixels, converting the
+various image formats (PNG, JPG, TIFF) and handling the different color modes. Writing by reference is the path to
+reach for first: the image keeps the format, the color mode and the bytes that the instrument wrote, so nothing
+about it is reinterpreted on the way into the NWB file, and a collection that already sits beside the session is
+not copied a second time. Embedding is what a format NWB does not accept by reference needs, and what makes an NWB
+file that has to travel on its own self-contained.
+
+Both interfaces take either a list of files, ``file_paths=["image1.png", "image2.png"]``, or a folder,
+``folder_path="images_directory"``, and both store the images in the acquisition group of the NWB file, or in the
+stimulus group when ``images_location="stimulus"`` is passed.
 
 Install NeuroConv with the additional dependencies necessary for reading image data:
 
@@ -14,18 +21,60 @@ Install NeuroConv with the additional dependencies necessary for reading image d
 
     pip install "neuroconv[image]"
 
-Supported Image Modes
-~~~~~~~~~~~~~~~~~~~~~
+Writing Images by Reference
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-``ImageInterface`` automatically converts the following PIL image modes to their corresponding NWB types:
+The :py:class:`~neuroconv.datainterfaces.image.externalimageinterface.ExternalImageInterface` writes the path of
+each image into the NWB file instead of its pixels, as an ``ExternalImage``. The images stay where they are and
+the file points at them, which avoids a second copy on disk of a collection that is already stored alongside the
+session.
+
+NWB allows only PNG, JPEG and GIF by reference, and the format is read from the file itself rather than from its
+suffix, so a mislabeled file is classified by what it holds. Any other format has to be embedded with
+``ImageInterface``. No color mode conversion happens, since no pixels are written: the mode is recorded as PIL
+reports it, so an LA image stays LA instead of becoming RGBA.
+
+.. code-block:: python
+
+    >>> from datetime import datetime
+    >>> from pathlib import Path
+    >>> from tempfile import mkdtemp
+    >>> from zoneinfo import ZoneInfo
+    >>>
+    >>> import numpy as np
+    >>> from PIL import Image
+    >>>
+    >>> from neuroconv.datainterfaces import ExternalImageInterface
+    >>>
+    >>> # Create a temporary directory holding the images that stay outside of the NWB file
+    >>> image_dir = Path(mkdtemp())
+    >>> rgb_array = np.random.randint(0, 255, (100, 100, 3), dtype=np.uint8)
+    >>> Image.fromarray(rgb_array, mode='RGB').save(image_dir / 'histology.png')
+    >>>
+    >>> interface = ExternalImageInterface(folder_path=str(image_dir))
+    >>>
+    >>> metadata = interface.get_metadata()
+    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
+    >>> metadata["NWBFile"].update(session_start_time=session_start_time)
+    >>> # Add subject information (required for DANDI upload)
+    >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
+    >>> # Choose a path for saving the nwb file and run the conversion
+    >>> nwbfile_path = f"{path_to_save_nwbfile}"
+    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+
+Embedding the Images
+~~~~~~~~~~~~~~~~~~~~
+
+The :py:class:`~neuroconv.datainterfaces.image.imageinterface.ImageInterface` reads the pixels and writes them
+into the NWB file, which is what a format that cannot be written by reference (TIFF, WebP) requires. The images
+are read one at a time as the file is written, so a large collection does not have to fit in memory.
+
+Embedding maps the PIL image mode onto the NWB image type:
 
 - L (grayscale) → GrayscaleImage
 - RGB → RGBImage
 - RGBA → RGBAImage
 - LA (luminance + alpha) → RGBAImage (automatically converted)
-
-Example Usage
-~~~~~~~~~~~~~
 
 .. code-block:: python
 
@@ -75,29 +124,7 @@ Example Usage
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
-    >>> interface.run_conversion(nwbfile_path=path_to_save_nwbfile, metadata=metadata)
-
-
-Key Features
-~~~~~~~~~~~~
-
-1. **Memory Efficiency**: Uses an iterator pattern to load images only when needed, making it suitable for a large collection of images without consuming excessive memory.
-
-2. **Automatic Mode Conversion**: Handles LA (luminance + alpha) to RGBA conversion automatically.
-
-3. **Input Methods**:
-    - List of files: ``interface = ImageInterface(file_paths=["image1.png", "image2.jpg"])``
-    - Directory: ``interface = ImageInterface(folder_path="images_directory")``
-
-4. **Storage Location**: Images can be stored in either acquisition or stimulus:
-
-   .. code-block:: python
-
-       # Store in acquisition (default)
-       interface = ImageInterface(file_paths=["image.png"], images_location="acquisition")
-
-       # Store in stimulus
-       interface = ImageInterface(file_paths=["image.png"], images_location="stimulus")
+    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
 
 
 Specifying Metadata
@@ -105,7 +132,10 @@ Specifying Metadata
 
 The examples above show how to convert image data without specifying any metadata, in which case the metadata will be
 automatically generated with default values. To customize the NWB file annotations, specify the metadata
-using the formats described below.
+using the formats described below. Both interfaces read the same structure, so the container name and description
+and the per-image names and descriptions are given the same way whether the images are written by reference or
+embedded. The one field that is not shared is ``resolution``, which NWB declares on the embedded image type alone,
+so ``ExternalImageInterface`` rejects it.
 
 You can customize the container name and add descriptions, names, and resolution to individual images in the container:
 
@@ -171,45 +201,3 @@ You can customize the container name and add descriptions, names, and resolution
     Individual image metadata is specified using the full file path as the key in the "images" dictionary.
     You can customize the name, description, and resolution for each image. Resolution should be specified
     in pixels/cm if provided. If not specified, individual image names default to the filename stem.
-
-Writing Images by Reference
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-The :py:class:`~neuroconv.datainterfaces.image.externalimageinterface.ExternalImageInterface` writes the path of
-each image into the NWB file instead of its pixels, as an ``ExternalImage``. The images stay where they are and
-the file points at them, which avoids a second copy on disk of a collection that is already stored alongside the
-session.
-
-NWB allows only PNG, JPEG and GIF by reference, and the format is read from the file itself rather than from its
-suffix, so a mislabeled file is classified by what it holds. Any other format has to be embedded with
-``ImageInterface``. No color mode conversion happens, since no pixels are written: the mode is recorded as PIL
-reports it, so an LA image stays LA instead of becoming RGBA. Per-image ``resolution`` metadata is not accepted,
-because NWB declares that field on the embedded image type alone.
-
-.. code-block:: python
-
-    >>> from datetime import datetime
-    >>> from pathlib import Path
-    >>> from tempfile import mkdtemp
-    >>> from zoneinfo import ZoneInfo
-    >>>
-    >>> import numpy as np
-    >>> from PIL import Image
-    >>>
-    >>> from neuroconv.datainterfaces import ExternalImageInterface
-    >>>
-    >>> # Create a temporary directory holding the images that stay outside of the NWB file
-    >>> image_dir = Path(mkdtemp())
-    >>> rgb_array = np.random.randint(0, 255, (100, 100, 3), dtype=np.uint8)
-    >>> Image.fromarray(rgb_array, mode='RGB').save(image_dir / 'histology.png')
-    >>>
-    >>> interface = ExternalImageInterface(folder_path=str(image_dir))
-    >>>
-    >>> metadata = interface.get_metadata()
-    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
-    >>> metadata["NWBFile"].update(session_start_time=session_start_time)
-    >>> # Add subject information (required for DANDI upload)
-    >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
-    >>> # Choose a path for saving the nwb file and run the conversion
-    >>> nwbfile_path = f"{path_to_save_nwbfile}"
-    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
