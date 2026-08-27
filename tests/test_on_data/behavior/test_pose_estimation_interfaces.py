@@ -592,6 +592,43 @@ class TestSLEAPHumanInstances(PoseEstimationInterfaceTestMixin):
 
 
 @pytest.mark.skipif(
+    SLEAP_MACOS_INTEL_PYTHON_313_UNSUPPORTED,
+    reason="SLEAP conversion is not yet supported on macOS Intel with Python 3.13.",
+)
+class TestSLEAPEmptyTracks:
+    """A .slp can declare a track that no frame carries an instance for.
+
+    ``Labels.tracks`` records what the tracking run created rather than the animals present, so this
+    recording advertises four tracks and only ``track_0`` is ever populated.
+    """
+
+    file_path = str(
+        BEHAVIOR_DATA_PATH / "sleap" / "edge_cases" / "empty_tracks_and_untracked_instances" / "remora_video_2.slp"
+    )
+
+    def test_declared_tracks_are_reported_unfiltered(self):
+        """``get_available_tracks`` says what the file declares, which answering otherwise would cost a
+        read of every frame."""
+        assert SLEAPInterface.get_available_tracks(file_path=self.file_path) == [
+            "track_0",
+            "track_1",
+            "track_2",
+            "track_3",
+        ]
+
+    def test_empty_track_raises(self):
+        interface = SLEAPInterface(file_path=self.file_path, track_name="track_2", frames_per_second=30.0)
+        with pytest.raises(ValueError, match=r"Track 'track_2' .* holds no instances .*Tracks that do: \['track_0'\]"):
+            interface.get_timestamps()
+
+    def test_populated_track_converts(self):
+        interface = SLEAPInterface(file_path=self.file_path, track_name="track_0", frames_per_second=30.0)
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
+        assert "PoseEstimationTrack0" in nwbfile.processing["behavior"].data_interfaces
+
+
+@pytest.mark.skipif(
     ndx_pose_version < version.parse("0.2.0"),
     reason="Interface requires ndx-pose version >= 0.2.0",
 )

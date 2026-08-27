@@ -203,7 +203,32 @@ class SLEAPInterface(BasePoseEstimationInterface):
                 if instance.track is not None and instance.track.name == self.track_name:
                     samples.append((labeled_frame, instance))
                     break
+
+        # ``Labels.tracks`` is what the tracking run created rather than a census of the animals present,
+        # so a file can declare a track that no frame ever carries an instance for. Selecting one used to
+        # reach numpy with nothing to stack, which said nothing about tracks or about this file.
+        if not samples:
+            raise ValueError(
+                f"Track '{self.track_name}' is declared in {self.file_path} but holds no instances in "
+                f"video '{self.video_name}'. {self._describe_populated_tracks()}"
+            )
+
         return sorted(samples, key=lambda sample: sample[0].frame_idx)
+
+    def _describe_populated_tracks(self) -> str:
+        """Name the tracks that do carry an instance in this recording, for the error above."""
+        populated_track_names = sorted(
+            {
+                instance.track.name
+                for labeled_frame in self._get_labels().labeled_frames
+                if Path(labeled_frame.video.filename).stem == self.video_name
+                for instance in labeled_frame.instances
+                if instance.track is not None
+            }
+        )
+        if not populated_track_names:
+            return "No track holds an instance in this video."
+        return f"Tracks that do: {populated_track_names}."
 
     def _get_frame_indices(self) -> np.ndarray:
         """The video frame numbers this track was labeled on, in order."""
