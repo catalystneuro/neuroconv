@@ -35,6 +35,7 @@
 * Pose estimation now supports device model addition in their metadata. [PR #1961](https://github.com/catalystneuro/neuroconv/pull/1961)
 
 ## Improvements
+* The pose estimation interfaces now state their `reference_frame` instead of leaving the writer to fill it, since image coordinates with the origin at the top-left pixel are a fact about SLEAP, DeepLabCut and Lightning Pose rather than something a source failed to record, and the writer's fallback is now the plain placeholder `unknown` in place of the false `(0,0) is unknown.` every file used to carry. [PR #1991](https://github.com/catalystneuro/neuroconv/pull/1991)
 * The pose estimation interfaces now offer `get_metadata_template()`, and its structure is published as YAML and JSON in the user guide. [PR #1968](https://github.com/catalystneuro/neuroconv/pull/1968)
 * Added `docs/developer_guide/pose_metadata_structure.rst`, recording the decisions behind the pose metadata shape and what they oblige a new pose interface to do. [PR #1989](https://github.com/catalystneuro/neuroconv/pull/1989)
 * `dimension`, `field_of_view`, `starting_frame`, `control` and `control_description` are named explicitly as array-valued metadata in the schema generator, so they stay in a generated metadata schema even where pynwb declares them the way it declares `data`, which its development branch now does and which was dropping them and failing every conversion that supplied one. [PR #1988](https://github.com/catalystneuro/neuroconv/pull/1988)

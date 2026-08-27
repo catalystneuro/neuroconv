@@ -1522,7 +1522,14 @@ class MockPoseEstimationInterface(BasePoseEstimationInterface):
             source_software=self.source_software,
             scorer=self.scorer,
             PoseEstimationSeries={
-                node: {"name": f"PoseEstimationSeries{self._pascal_case(node)}"} for node in self.nodes
+                node: {
+                    "name": f"PoseEstimationSeries{self._pascal_case(node)}",
+                    "reference_frame": (
+                        "(0,0) is the top-left pixel of the video frame, with x increasing to the right "
+                        "and y increasing downward."
+                    ),
+                }
+                for node in self.nodes
             },
         )
         return metadata

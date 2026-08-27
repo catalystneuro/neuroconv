@@ -143,8 +143,10 @@ class TestLightningPoseDataInterface(PoseEstimationInterfaceTestMixin):
         """The dict-based metadata shape, checked against a full expected dict.
 
         The equality is strict: provenance-first means ``get_metadata`` emits only source-derived
-        values and object names (no ``description``/``unit``/``reference_frame`` defaults, those are
-        applied by the writer), so any extra emitted field would fail the comparison.
+        values and object names (no ``description``/``unit`` defaults, those are applied by the
+        writer), so any extra emitted field would fail the comparison. ``reference_frame`` is
+        source-derived here: image coordinates are a property of the tracker's output rather than a
+        stand-in for something the file failed to record.
         """
         metadata_key = "lightning_pose_key"
 
@@ -170,7 +172,13 @@ class TestLightningPoseDataInterface(PoseEstimationInterfaceTestMixin):
                     "labeled_videos": None,
                     "skeleton_metadata_key": metadata_key,
                     "PoseEstimationSeries": {
-                        keypoint_name: {"name": f"PoseEstimationSeries{keypoint_name}"}
+                        keypoint_name: {
+                            "name": f"PoseEstimationSeries{keypoint_name}",
+                            "reference_frame": (
+                                "(0,0) is the top-left pixel of the video frame, with x increasing "
+                                "to the right and y increasing downward."
+                            ),
+                        }
                         for keypoint_name in self.expected_keypoint_names
                     },
                 },
@@ -227,7 +235,10 @@ class TestLightningPoseDataInterface(PoseEstimationInterfaceTestMixin):
             ]
             assert pose_estimation_series.unit == "pixels"
             assert pose_estimation_series.description == f"Pose estimation series for {keypoint_name}."
-            assert pose_estimation_series.reference_frame == "(0,0) is unknown."
+            assert pose_estimation_series.reference_frame == (
+                "(0,0) is the top-left pixel of the video frame, with x increasing to the right "
+                "and y increasing downward."
+            )
             assert pose_estimation_series.confidence_definition is None
 
     def test_series_conversion_options_are_deprecated(self, setup_interface):
@@ -610,8 +621,10 @@ class TestDeepLabCutInterface(PoseEstimationInterfaceTestMixin):
         """The dict-based ("new") metadata shape, checked against a full expected dict.
 
         The equality is strict: provenance-first means ``get_metadata`` emits only source-derived
-        values and object names (no ``description``/``unit``/``reference_frame`` defaults, those are
-        applied by the writer), so any extra emitted field would fail the comparison.
+        values and object names (no ``description``/``unit`` defaults, those are applied by the
+        writer), so any extra emitted field would fail the comparison. ``reference_frame`` is
+        source-derived here: image coordinates are a property of the tracker's output rather than a
+        stand-in for something the file failed to record.
         """
         metadata_key = "deep_lab_cut_key"
         bodyparts = ["snout", "leftear", "rightear", "tailbase"]
@@ -639,7 +652,14 @@ class TestDeepLabCutInterface(PoseEstimationInterfaceTestMixin):
                     "original_videos": None,
                     "skeleton_metadata_key": metadata_key,
                     "PoseEstimationSeries": {
-                        bodypart: {"name": f"PoseEstimationSeries{bodypart.capitalize()}"} for bodypart in bodyparts
+                        bodypart: {
+                            "name": f"PoseEstimationSeries{bodypart.capitalize()}",
+                            "reference_frame": (
+                                "(0,0) is the top-left pixel of the video frame, with x increasing "
+                                "to the right and y increasing downward."
+                            ),
+                        }
+                        for bodypart in bodyparts
                     },
                 },
             },

@@ -253,6 +253,12 @@ class SLEAPInterface(BasePoseEstimationInterface):
     def _get_keypoint_names(self) -> list[str]:
         return [node.name for node in self._get_labels().skeletons[0].nodes]
 
+    def _has_user_instances(self) -> bool:
+        """Whether any sample written for this track is a human-placed point rather than a prediction."""
+        from sleap_io import PredictedInstance
+
+        return any(not isinstance(instance, PredictedInstance) for _, instance in self._get_track_samples())
+
     def _get_keypoint_data(self) -> dict[str, tuple[np.ndarray, np.ndarray | None]]:
         from sleap_io import PredictedInstance
 
@@ -313,6 +319,10 @@ class SLEAPInterface(BasePoseEstimationInterface):
             series_entry[keypoint_name] = {
                 "name": f"PoseEstimationSeries{keypoint_name.title().replace('_', '')}",
                 "confidence_definition": confidence_definition,
+                "reference_frame": (
+                    "(0,0) is the top-left pixel of the video frame, with x increasing to the right "
+                    "and y increasing downward."
+                ),
             }
 
         container_entry = dict(

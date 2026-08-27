@@ -566,7 +566,13 @@ class DeepLabCutInterface(BasePoseEstimationInterface):
             dimensions=source_metadata["dimensions"],
             original_videos=[video_file_path] if video_file_path else None,
             PoseEstimationSeries={
-                bodypart: {"name": f"PoseEstimationSeries{bodypart.capitalize()}"}
+                bodypart: {
+                    "name": f"PoseEstimationSeries{bodypart.capitalize()}",
+                    "reference_frame": (
+                        "(0,0) is the top-left pixel of the video frame, with x increasing to the right "
+                        "and y increasing downward."
+                    ),
+                }
                 for bodypart in source_metadata["bodyparts"]
             },
         )
