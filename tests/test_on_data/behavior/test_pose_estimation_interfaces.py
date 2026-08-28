@@ -592,6 +592,125 @@ class TestSLEAPHumanInstances(PoseEstimationInterfaceTestMixin):
 
 
 @pytest.mark.skipif(
+    SLEAP_MACOS_INTEL_PYTHON_313_UNSUPPORTED,
+    reason="SLEAP conversion is not yet supported on macOS Intel with Python 3.13.",
+)
+class TestSLEAPEmptyTracksAndUntrackedInstances:
+    """A .slp records the identities the tracking run created, not the ones that survived it.
+
+    This recording declares four tracks and only ``track_0`` is ever populated, and it also carries 12
+    human-placed instances in 9 frames that no track claims. Both are ordinary results of proofreading:
+    clearing a track leaves the ``Track`` object behind, and an instance added where the model found
+    nothing does not inherit an identity.
+    """
+
+    file_path = str(
+        BEHAVIOR_DATA_PATH / "sleap" / "edge_cases" / "empty_tracks_and_untracked_instances" / "remora_video_2.slp"
+    )
+
+    def test_only_populated_tracks_are_offered(self):
+        assert SLEAPInterface.get_available_tracks(file_path=self.file_path) == ["track_0"]
+
+    def test_declared_but_empty_track_says_so(self):
+        """A name the file declares is a different mistake from a name it does not."""
+        with pytest.raises(ValueError, match=r"Track 'track_2' is declared .* Tracks that do: \['track_0'\]"):
+            SLEAPInterface(file_path=self.file_path, track_name="track_2", frames_per_second=30.0)
+
+    def test_unknown_track_says_so(self):
+        with pytest.raises(ValueError, match="Track 'nobody' is not in this file"):
+            SLEAPInterface(file_path=self.file_path, track_name="nobody", frames_per_second=30.0)
+
+    def test_untracked_instances_are_reported_and_not_written(self):
+        interface = SLEAPInterface(file_path=self.file_path, track_name="track_0", frames_per_second=30.0)
+        nwbfile = mock_NWBFile()
+        with pytest.warns(UserWarning, match="12 instances in 9 frames .* carry no track"):
+            interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
+
+        container = nwbfile.processing["behavior"]["PoseEstimationTrack0"]
+        series = next(iter(container.pose_estimation_series.values()))
+        # One row per frame carrying a track_0 instance, and none for the 8 frames that hold only
+        # untracked ones.
+        assert series.data.shape[0] == 147
+
+
+@pytest.mark.skipif(
+    SLEAP_MACOS_INTEL_PYTHON_313_UNSUPPORTED,
+    reason="SLEAP conversion is not yet supported on macOS Intel with Python 3.13.",
+)
+class TestSLEAPWithoutTracks:
+    """A labeling project, or a single-animal recording that was never tracked, assigns no identities.
+
+    SLEAP's own analysis export reads such a file as one individual (`tracks = labels.tracks or [None]`
+    in ``sleap/info/write_tracking_h5.py``) and so does the interface. Built rather than downloaded,
+    since every .slp in the test data is the output of a tracking run.
+    """
+
+    @staticmethod
+    def _write_untracked_file(file_path, declared_track_name=None, instances_per_frame=1) -> None:
+        import sleap_io
+
+        skeleton = sleap_io.Skeleton(["head", "tail"])
+        video = sleap_io.Video(filename="recording.mp4")
+        labeled_frames = [
+            sleap_io.LabeledFrame(
+                video=video,
+                frame_idx=frame_index,
+                instances=[
+                    sleap_io.Instance.from_numpy(
+                        points_data=np.array([[float(frame_index), float(instance_index)], [2.0, 3.0]]),
+                        skeleton=skeleton,
+                    )
+                    for instance_index in range(instances_per_frame)
+                ],
+            )
+            for frame_index in range(3)
+        ]
+        tracks = [sleap_io.Track(name=declared_track_name)] if declared_track_name is not None else []
+        sleap_io.save_slp(
+            sleap_io.Labels(labeled_frames=labeled_frames, videos=[video], skeletons=[skeleton], tracks=tracks),
+            str(file_path),
+        )
+
+    def test_no_tracks_declared_writes_one_individual(self, tmp_path):
+        file_path = tmp_path / "labeling_project.slp"
+        self._write_untracked_file(file_path=file_path)
+
+        interface = SLEAPInterface(file_path=str(file_path), frames_per_second=1.0)
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
+
+        container = nwbfile.processing["behavior"]["PoseEstimation"]
+        head = container.pose_estimation_series["PoseEstimationSeriesHead"]
+        assert_array_equal(head.data[:, 0], [0.0, 1.0, 2.0])
+
+    def test_tracks_declared_but_all_empty_writes_one_individual(self, tmp_path):
+        """A cleared track leaves the Track object behind, which does not make the file a tracked one."""
+        file_path = tmp_path / "cleared_tracks.slp"
+        self._write_untracked_file(file_path=file_path, declared_track_name="track_0")
+
+        interface = SLEAPInterface(file_path=str(file_path), frames_per_second=1.0)
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
+
+        assert "PoseEstimation" in nwbfile.processing["behavior"].data_interfaces
+
+    def test_naming_a_track_says_the_file_has_none(self, tmp_path):
+        file_path = tmp_path / "labeling_project.slp"
+        self._write_untracked_file(file_path=file_path)
+        with pytest.raises(ValueError, match="no instance in this file carries a track"):
+            SLEAPInterface(file_path=str(file_path), track_name="track_0", frames_per_second=1.0)
+
+    def test_several_untracked_instances_in_a_frame_raises(self, tmp_path):
+        """The multi-animal labeling project, which SLEAP writes into one slot with the last one winning."""
+        file_path = tmp_path / "two_animals_labeled.slp"
+        self._write_untracked_file(file_path=file_path, instances_per_frame=2)
+
+        interface = SLEAPInterface(file_path=str(file_path), frames_per_second=1.0)
+        with pytest.raises(ValueError, match="holds 2 instances and none of them carries a track"):
+            interface.get_timestamps()
+
+
+@pytest.mark.skipif(
     ndx_pose_version < version.parse("0.2.0"),
     reason="Interface requires ndx-pose version >= 0.2.0",
 )

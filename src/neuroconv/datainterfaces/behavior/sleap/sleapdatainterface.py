@@ -30,7 +30,30 @@ class SLEAPInterface(BasePoseEstimationInterface):
 
     @staticmethod
     def get_available_tracks(file_path: FilePath) -> list[str]:
-        """Return the track names in a .slp file, one per tracked individual."""
+        """Return the names of the tracks that carry at least one instance, in the file's own order.
+
+        ``Labels.tracks`` records the identities the tracking run created rather than the ones that
+        survived it, so a file can declare a track that no frame holds an instance for. Those are not
+        offered, since selecting one has nothing to write. Reading the frames costs nothing here, as
+        ``load_slp`` has already read them.
+
+        A file holding several recordings is answered as a whole: a track offered here can still be
+        empty in one of them, which is caught when the recording is selected.
+        """
+        from sleap_io import load_slp
+
+        labels = load_slp(Path(file_path))
+        populated_track_names = {
+            instance.track.name
+            for labeled_frame in labels.labeled_frames
+            for instance in labeled_frame.instances
+            if instance.track is not None
+        }
+        return [track.name for track in labels.tracks if track.name in populated_track_names]
+
+    @staticmethod
+    def _get_declared_track_names(file_path: FilePath) -> list[str]:
+        """Every track the file declares, populated or not, for the constructor's error message."""
         from sleap_io import load_slp
 
         return [track.name for track in load_slp(Path(file_path)).tracks]
@@ -74,7 +97,9 @@ class SLEAPInterface(BasePoseEstimationInterface):
         track_name : str, optional
             Which tracked individual to write. An NWB file holds one subject, so a multi-animal ``.slp``
             takes one interface per track. Call ``get_available_tracks`` to see them. Required when the
-            file has more than one; the only track is used when it has one.
+            file has more than one; the only track is used when it has one. A file where no instance
+            carries a track, a labeling project or an untracked single-animal recording, is written as
+            one individual and takes no track name.
         video_name : str, optional
             Which recording to write, as the stem of its path. A ``.slp`` assembled in the SLEAP GUI can
             hold several recordings, and those are separate sessions rather than separate views, so they
@@ -126,11 +151,33 @@ class SLEAPInterface(BasePoseEstimationInterface):
         self._labels = None
 
         track_names = self.get_available_tracks(file_path=file_path)
-        if track_name is not None and track_name not in track_names:
-            raise ValueError(f"Track '{track_name}' is not in this file. Available tracks: {track_names}.")
-        if track_name is None and len(track_names) == 1:
+        # A file where no instance carries a track is a labeling project, or a single-animal recording
+        # that was never tracked. SLEAP's own analysis export reads that as one individual, through
+        # `tracks = labels.tracks or [None]`, and so does this interface: there is one thing being
+        # tracked and nobody named it.
+        self._writes_untracked_instances = not track_names
+
+        if track_name is not None:
+            if self._writes_untracked_instances:
+                raise ValueError(
+                    f"Track '{track_name}' cannot be selected, as no instance in this file carries a track. "
+                    "That is what a labeling project or an untracked single-animal recording looks like, and "
+                    "it is written as one individual without naming a track."
+                )
+            if track_name not in track_names:
+                if track_name in self._get_declared_track_names(file_path=file_path):
+                    raise ValueError(
+                        f"Track '{track_name}' is declared in this file but no frame carries an instance for "
+                        f"it. Tracks that do: {track_names}."
+                    )
+                raise ValueError(f"Track '{track_name}' is not in this file. Available tracks: {track_names}.")
+        elif len(track_names) == 1:
             track_name = track_names[0]
         self.track_name = track_name
+
+        # Every path but the deprecated one writes a single container, and only that one handles a file
+        # holding several recordings by itself.
+        writes_one_container = track_name is not None or self._writes_untracked_instances
 
         video_names = self.get_available_videos(file_path=file_path)
         if video_name is not None:
@@ -141,7 +188,7 @@ class SLEAPInterface(BasePoseEstimationInterface):
                 )
             if video_name not in video_names:
                 raise ValueError(f"Video '{video_name}' is not in this file. Available videos: {video_names}.")
-        elif len(video_names) > 1 and track_name is not None:
+        elif len(video_names) > 1 and writes_one_container:
             raise ValueError(
                 f"This file holds {len(video_names)} recordings ({video_names}). They are separate sessions "
                 "rather than separate views of one, so name the one to write with 'video_name' and use one "
@@ -157,7 +204,7 @@ class SLEAPInterface(BasePoseEstimationInterface):
         # different writer, different timing and no pose metadata. It is the whole object that is legacy
         # rather than one method of it, so the old interface is kept verbatim and delegated to.
         self._legacy_interface = None
-        if track_name is None:
+        if not writes_one_container:
             warnings.warn(
                 f"This file tracks {len(track_names)} individuals and an NWB file holds one subject, so "
                 "writing them all into one file is deprecated and will be removed on or after August 2027. "
@@ -199,11 +246,65 @@ class SLEAPInterface(BasePoseEstimationInterface):
         for labeled_frame in self._get_labels().labeled_frames:
             if Path(labeled_frame.video.filename).stem != self.video_name:
                 continue
+            if self._writes_untracked_instances:
+                sample = self._select_untracked_instance(labeled_frame=labeled_frame)
+                if sample is not None:
+                    samples.append((labeled_frame, sample))
+                continue
             for instance in [*labeled_frame.user_instances, *labeled_frame.predicted_instances]:
                 if instance.track is not None and instance.track.name == self.track_name:
                     samples.append((labeled_frame, instance))
                     break
+
+        # ``Labels.tracks`` is what the tracking run created rather than a census of the animals present,
+        # so a file can declare a track that no frame ever carries an instance for. Selecting one used to
+        # reach numpy with nothing to stack, which said nothing about tracks or about this file.
+        if not samples:
+            if self._writes_untracked_instances:
+                raise ValueError(f"No frame of video '{self.video_name}' in {self.file_path} holds an instance.")
+            raise ValueError(
+                f"Track '{self.track_name}' is declared in {self.file_path} but holds no instances in "
+                f"video '{self.video_name}'. {self._describe_populated_tracks()}"
+            )
+
         return sorted(samples, key=lambda sample: sample[0].frame_idx)
+
+    def _select_untracked_instance(self, labeled_frame):
+        """The one instance of a frame in a file that tracks nothing, or ``None`` where it holds none.
+
+        Human instances take precedence over the network's, as everywhere else here. A frame holding
+        more than one is where SLEAP's own export goes wrong: it writes them all into the single slot
+        and the last one wins, so a series silently alternates between two animals. A multi-animal
+        labeling project is exactly that file, so this refuses instead.
+        """
+        instances = [instance for instance in labeled_frame.user_instances if instance.track is None] or [
+            instance for instance in labeled_frame.predicted_instances if instance.track is None
+        ]
+        if not instances:
+            return None
+        if len(instances) > 1:
+            raise ValueError(
+                f"Frame {labeled_frame.frame_idx} of video '{self.video_name}' holds {len(instances)} "
+                "instances and none of them carries a track, so there is no way to say which individual "
+                "each belongs to. Run tracking, or assign the identities in the SLEAP GUI, and convert "
+                "the result."
+            )
+        return instances[0]
+
+    def _describe_populated_tracks(self) -> str:
+        """Name the tracks that do carry an instance in this recording, for the error above."""
+        populated_track_names = sorted(
+            {
+                instance.track.name
+                for labeled_frame in self._get_labels().labeled_frames
+                if Path(labeled_frame.video.filename).stem == self.video_name
+                for instance in labeled_frame.instances
+                if instance.track is not None
+            }
+        )
+        if not populated_track_names:
+            return "No track holds an instance in this video."
+        return f"Tracks that do: {populated_track_names}."
 
     def _get_frame_indices(self) -> np.ndarray:
         """The video frame numbers this track was labeled on, in order."""
@@ -248,7 +349,44 @@ class SLEAPInterface(BasePoseEstimationInterface):
         """Write the named track's ``PoseEstimation`` container to the file's behavior module."""
         if self._legacy_interface is not None:
             return self._legacy_interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+        self._warn_about_untracked_instances()
         super().add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **conversion_options)
+
+    def _warn_about_untracked_instances(self) -> None:
+        """Say what this recording holds that no track claims, since none of it is written.
+
+        A point carrying no track belongs to no individual, and one frame can hold several of them, so
+        they cannot be written as a series without inventing the identities the tracking was meant to
+        establish. The message names no track, so several interfaces reading one file warn once between
+        them rather than once each.
+        """
+        if self._writes_untracked_instances:
+            return
+
+        untracked_frame_indices = []
+        untracked_instance_count = 0
+        for labeled_frame in self._get_labels().labeled_frames:
+            if Path(labeled_frame.video.filename).stem != self.video_name:
+                continue
+            count = sum(1 for instance in labeled_frame.instances if instance.track is None)
+            if count:
+                untracked_frame_indices.append(labeled_frame.frame_idx)
+                untracked_instance_count += count
+
+        if not untracked_instance_count:
+            return
+
+        shown_frame_indices = sorted(untracked_frame_indices)[:10]
+        frames = ", ".join(str(frame_index) for frame_index in shown_frame_indices)
+        if len(untracked_frame_indices) > len(shown_frame_indices):
+            frames += ", ..."
+        warnings.warn(
+            f"{untracked_instance_count} instances in {len(untracked_frame_indices)} frames of video "
+            f"'{self.video_name}' carry no track and were not written, since a point with no track belongs "
+            f"to no individual. Assign them in the SLEAP GUI to write them. Frames: {frames}.",
+            UserWarning,
+            stacklevel=2,
+        )
 
     def _get_keypoint_names(self) -> list[str]:
         return [node.name for node in self._get_labels().skeletons[0].nodes]
@@ -296,7 +434,11 @@ class SLEAPInterface(BasePoseEstimationInterface):
         skeleton = labels.skeletons[0]
         provenance = labels.provenance or {}
 
-        container_name = f"PoseEstimation{self.track_name.title().replace('_', '')}"
+        # No track name to derive one from where the file tracks nothing, and none is wanted: there is a
+        # single individual and it is the file's own subject.
+        container_name = (
+            "PoseEstimation" if self.track_name is None else f"PoseEstimation{self.track_name.title().replace('_', '')}"
+        )
         metadata["Pose"]["Skeletons"][self.metadata_key].update(
             name=f"Skeleton{container_name}",
             edges=[[skeleton.index(edge.source), skeleton.index(edge.destination)] for edge in skeleton.edges],
