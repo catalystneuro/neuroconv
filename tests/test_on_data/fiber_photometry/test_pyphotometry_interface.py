@@ -161,7 +161,7 @@ class TestPyPhotometryTwoColourContinuous(FiberPhotometryInterfaceTestMixin):
         comments = metadata["FiberPhotometry"][self.interface.metadata_key]["comments"]
 
         assert "sequentially" in comments
-        assert "213 microseconds" in comments
+        assert "393 microseconds" in comments
 
 
 class TestPyPhotometryIndicatorNamedMode(FiberPhotometryInterfaceTestMixin):
