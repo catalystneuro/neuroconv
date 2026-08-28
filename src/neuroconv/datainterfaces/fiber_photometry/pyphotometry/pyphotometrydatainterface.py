@@ -126,20 +126,16 @@ class PyPhotometryFiberPhotometryInterface(BaseFiberPhotometryInterface):
         if not self._recording.pulsed:
             # A comment rather than a description, since it says how the recording was made rather than
             # what the data is. The firmware reads the analog inputs one after the other inside a single
-            # timer interrupt, and the format's author has measured that delay, but on one board and with
-            # an interrupt routine modified to drive the LEDs, so it is a property of the hardware rather
-            # than of this recording. It is reported rather than applied: the header carries neither the
-            # oversampling buffer nor its clock, so a start time built from it would look like something
-            # the file states.
+            # timer interrupt, and Thomas Akam measured that gap at a mean of 393 microseconds with a
+            # standard deviation of 9, on one board and with an interrupt routine modified to drive the
+            # LEDs for the measurement, in https://github.com/pyPhotometry/code/issues/39. It is stated
+            # and not applied: the figure belongs to the board and its firmware, and the header records
+            # neither the oversampling buffer nor its clock, so a start time built from it would look
+            # like something this file measured.
             comments = (
-                "Acquired in a continuous mode, in which the board reads its analog inputs sequentially "
-                "within one timer interrupt rather than sampling them simultaneously, so a signal is "
-                "later than the one read before it. The format's author measured this delay at a mean of "
-                "393 microseconds with a standard deviation of 9 microseconds, reported in "
-                "https://github.com/pyPhotometry/code/issues/39. That figure is a property of the board "
-                "and its firmware rather than of this file, which records neither the oversampling buffer "
-                "nor its clock, so it is not applied here: every signal is written on the timebase the "
-                "header states, as pyPhotometry's own reader does."
+                "The board reads its analog inputs sequentially within one timer interrupt instead of "
+                "sampling them simultaneously, so each signal is about 393 microseconds later than the "
+                "one read before it. These timestamps do not include that offset."
             )
             metadata = dict_deep_update(metadata, dict(FiberPhotometry={self.metadata_key: dict(comments=comments)}))
         return metadata
