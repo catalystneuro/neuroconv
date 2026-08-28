@@ -150,7 +150,8 @@ class ImageInterface(BaseImageInterface):
         file_paths: list[str | Path] | None = None,
         folder_path: str | Path | None = None,
         *args,  # TODO: change to * (keyword only) on or after August 2026
-        images_location: Literal["acquisition", "stimulus"] = "acquisition",
+        parent_container: Literal["acquisition", "stimulus"] = "acquisition",
+        images_location: Literal["acquisition", "stimulus"] | None = None,
         metadata_key: str = "Images",
         verbose: bool = True,
     ):
@@ -163,8 +164,10 @@ class ImageInterface(BaseImageInterface):
             List of paths to image files to be converted
         folder_path : str | Path, optional
             Path to folder containing images to be converted. Used if file_paths not provided.
-        images_location : Literal["acquisition", "stimulus"], default: "acquisition"
-            Location to store images in the NWB file
+        parent_container : Literal["acquisition", "stimulus"], default: "acquisition"
+            The group of the NWB file the ``Images`` container is written to
+        images_location : Literal["acquisition", "stimulus"], optional
+            Deprecated. Use ``parent_container`` instead. Will be removed in v0.12.0.
         metadata_key : str, default: "Images"
             Key to use in metadata["Images"][metadata_key] for storing container metadata
         verbose : bool, default: True
@@ -173,7 +176,7 @@ class ImageInterface(BaseImageInterface):
         # Handle deprecated positional arguments
         if args:
             parameter_names = [
-                "images_location",
+                "parent_container",
                 "metadata_key",
                 "verbose",
             ]
@@ -195,13 +198,14 @@ class ImageInterface(BaseImageInterface):
                 FutureWarning,
                 stacklevel=2,
             )
-            images_location = positional_values.get("images_location", images_location)
+            parent_container = positional_values.get("parent_container", parent_container)
             metadata_key = positional_values.get("metadata_key", metadata_key)
             verbose = positional_values.get("verbose", verbose)
 
         super().__init__(
             file_paths=file_paths,
             folder_path=folder_path,
+            parent_container=parent_container,
             images_location=images_location,
             metadata_key=metadata_key,
             verbose=verbose,

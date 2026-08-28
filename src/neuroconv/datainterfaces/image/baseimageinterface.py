@@ -1,5 +1,6 @@
 """Base interface shared by the interfaces that write a collection of image files to NWB."""
 
+import warnings
 from pathlib import Path
 from typing import Literal
 
@@ -41,7 +42,8 @@ class BaseImageInterface(BaseDataInterface):
         file_paths: list[str | Path] | None = None,
         folder_path: str | Path | None = None,
         *,
-        images_location: Literal["acquisition", "stimulus"] = "acquisition",
+        parent_container: Literal["acquisition", "stimulus"] = "acquisition",
+        images_location: Literal["acquisition", "stimulus"] | None = None,
         metadata_key: str = "Images",
         verbose: bool = True,
     ):
@@ -54,13 +56,24 @@ class BaseImageInterface(BaseDataInterface):
             List of paths to image files to be converted
         folder_path : str | Path, optional
             Path to folder containing images to be converted. Used if file_paths not provided.
-        images_location : Literal["acquisition", "stimulus"], default: "acquisition"
-            Location to store images in the NWB file
+        parent_container : Literal["acquisition", "stimulus"], default: "acquisition"
+            The group of the NWB file the ``Images`` container is written to
+        images_location : Literal["acquisition", "stimulus"], optional
+            Deprecated. Use ``parent_container`` instead. Will be removed in v0.12.0.
         metadata_key : str, default: "Images"
             Key to use in metadata["Images"][metadata_key] for storing container metadata
         verbose : bool, default: True
             Whether to print status messages
         """
+        if images_location is not None:
+            warnings.warn(
+                "The 'images_location' parameter is deprecated and will be removed in v0.12.0. "
+                "Use 'parent_container' instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            parent_container = images_location
+
         if file_paths is None and folder_path is None:
             raise ValueError("Either file_paths or folder_path must be provided")
 
@@ -69,14 +82,14 @@ class BaseImageInterface(BaseDataInterface):
 
         self.file_paths = file_paths
         self.folder_path = folder_path
-        self.images_location = images_location
+        self.parent_container = parent_container
         self.metadata_key = metadata_key
 
         super().__init__(
             verbose=verbose,
             file_paths=file_paths,
             folder_path=folder_path,
-            images_location=images_location,
+            parent_container=parent_container,
             metadata_key=metadata_key,
         )
 
@@ -246,7 +259,7 @@ class BaseImageInterface(BaseDataInterface):
             images_container.add_image(nwb_image)
 
         # Add images container to nwb file
-        if self.images_location == "acquisition":
+        if self.parent_container == "acquisition":
             nwbfile.add_acquisition(images_container)
         else:
             nwbfile.add_stimulus(images_container)

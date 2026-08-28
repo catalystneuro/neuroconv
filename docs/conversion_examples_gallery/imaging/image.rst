@@ -19,7 +19,7 @@ is everything other than PNG, JPEG and GIF, TIFF above all.
 
 Both interfaces take either a list of files, ``file_paths=["image1.png", "image2.png"]``, or a folder,
 ``folder_path="images_directory"``, and both store the images in the acquisition group of the NWB file, or in the
-stimulus group when ``images_location="stimulus"`` is passed.
+stimulus group when ``parent_container="stimulus"`` is passed.
 
 Install NeuroConv with the additional dependencies necessary for reading image data:
 

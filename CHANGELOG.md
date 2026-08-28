@@ -1,6 +1,7 @@
 # v0.10.1 (Upcoming)
 
 ## Removals, Deprecations and Changes
+* Renamed the `images_location` parameter of `ImageInterface` to `parent_container`, the keyword the audio, video, fiber photometry, sorting and recording interfaces already use to select the group of the NWB file an object is written to. `images_location` still works but emits a `FutureWarning` and will be removed in v0.12.0. [PR #1987](https://github.com/catalystneuro/neuroconv/pull/1987)
 * Removed `DatasetIOConfiguration.from_neurodata_object`, deprecated since v0.8.4 in [PR #1003](https://github.com/catalystneuro/neuroconv/pull/1003) for removal on or after June 2026. Use `from_neurodata_object_with_defaults` or `from_neurodata_object_with_existing` instead. [PR #1985](https://github.com/catalystneuro/neuroconv/pull/1985)
 * `ExternalVideoInterface` now raises when the timestamps set on it do not number one per frame of the video files, which previously wrote an `ImageSeries` whose sample count contradicted the `external_file` entries it pointed at. [PR #1982](https://github.com/catalystneuro/neuroconv/pull/1982)
 * Writing every track and every recording of a `.slp` at once is deprecated, to be removed on or after August 2027, since an NWB file holds one subject and a `PoseEstimation` holds one camera view. Name them with `SLEAPInterface`'s new `track_name` and `video_name` arguments and use one interface per pair; `get_available_tracks` and `get_available_videos` list them. [PR #1965](https://github.com/catalystneuro/neuroconv/pull/1965)
