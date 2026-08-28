@@ -596,13 +596,8 @@ class TestMockExternalImageInterface(DataInterfaceTestMixin):
     """Test suite for MockExternalImageInterface, whose paths do not have to exist."""
 
     data_interface_cls = MockExternalImageInterface
-
-    @pytest.fixture(autouse=True)
-    def make_interface(self, tmp_path):
-        """Create the mock over two paths that are never written to disk."""
-        self.file_paths = [str(tmp_path / "first_image.png"), str(tmp_path / "second_image.png")]
-        self.interface_kwargs = dict(file_paths=self.file_paths, image_format="JPEG", image_mode="LA")
-        self.interface = self.data_interface_cls(**self.interface_kwargs)
+    file_paths = ["first_image.png", "second_image.png"]
+    interface_kwargs = dict(file_paths=file_paths, image_format="JPEG", image_mode="LA")
 
     def check_read_nwb(self, nwbfile_path):
         """The mock reports its header without opening anything, and the paths are written as they were passed."""
