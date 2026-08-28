@@ -1,15 +1,21 @@
 Image data conversion
 ---------------------
 
-A collection of image files reaches NWB through one of two interfaces. The
-:py:class:`~neuroconv.datainterfaces.image.externalimageinterface.ExternalImageInterface` writes the path of each
-file and leaves the pixels where they already are, and the
-:py:class:`~neuroconv.datainterfaces.image.imageinterface.ImageInterface` embeds the pixels, converting the
-various image formats (PNG, JPG, TIFF) and handling the different color modes. Writing by reference is the path to
-reach for first: the image keeps the format, the color mode and the bytes that the instrument wrote, so nothing
-about it is reinterpreted on the way into the NWB file, and a collection that already sits beside the session is
-not copied a second time. Embedding is what a format NWB does not accept by reference needs, and what makes an NWB
-file that has to travel on its own self-contained.
+The NWB standard provides two ways to store an image, and NeuroConv has an interface for each. An
+``ExternalImage`` holds the path of an image file and leaves the pixels in it, which is what the
+:py:class:`~neuroconv.datainterfaces.image.externalimageinterface.ExternalImageInterface` writes. An ``Image``
+holds the pixel data itself, which is what the
+:py:class:`~neuroconv.datainterfaces.image.imageinterface.ImageInterface` writes, reading each file to get the
+pixels out of it. Either way the images land in the same ``Images`` container.
+
+Write the images by reference by default. That keeps the file as the microscope or the camera wrote it, its
+format, its color mode and its bytes, where embedding stores decoded pixels instead, so the original file cannot
+be recovered from the NWB file and an LA image comes back as RGBA.
+
+Embed the images when they are meant to be read as arrays, either by an analysis or as the stimulus templates that
+an ``IndexSeries`` indexes into, and when the NWB file has to stand on its own rather than travel next to the
+folder it points at. Embedding is also the only option for a format that NWB does not accept by reference, which
+is everything other than PNG, JPEG and GIF, TIFF above all.
 
 Both interfaces take either a list of files, ``file_paths=["image1.png", "image2.png"]``, or a folder,
 ``folder_path="images_directory"``, and both store the images in the acquisition group of the NWB file, or in the
@@ -25,9 +31,7 @@ Writing Images by Reference
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The :py:class:`~neuroconv.datainterfaces.image.externalimageinterface.ExternalImageInterface` writes the path of
-each image into the NWB file instead of its pixels, as an ``ExternalImage``. The images stay where they are and
-the file points at them, which avoids a second copy on disk of a collection that is already stored alongside the
-session.
+each image into the NWB file instead of its pixels, as an ``ExternalImage``.
 
 NWB allows only PNG, JPEG and GIF by reference, and the format is read from the file itself rather than from its
 suffix, so a mislabeled file is classified by what it holds. Any other format has to be embedded with
