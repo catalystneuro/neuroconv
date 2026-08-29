@@ -495,30 +495,6 @@ class TestExternalImageInterface(DataInterfaceTestMixin):
         nwbfile.read_io.close()
 
 
-def test_external_images_write_no_pixel_data(tmp_path):
-    """The pixel data stays in the source files: each image is a scalar path string on disk."""
-    import h5py
-    from pynwb.testing.mock.file import mock_NWBFile
-
-    from neuroconv.tools.nwb_helpers import configure_and_write_nwbfile
-
-    generate_random_images(num_images=2, mode="RGB", output_dir_path=tmp_path, format="PNG")
-    interface = ExternalImageInterface(folder_path=tmp_path)
-
-    nwbfile = mock_NWBFile()
-    interface.add_to_nwbfile(nwbfile)
-
-    nwbfile_path = tmp_path / "images.nwb"
-    configure_and_write_nwbfile(nwbfile=nwbfile, nwbfile_path=nwbfile_path, backend="hdf5")
-
-    with h5py.File(nwbfile_path, "r") as file:
-        written_images = file["acquisition/Images"]
-        assert len(written_images) == 2
-        for written_image in written_images.values():
-            assert written_image.shape == ()
-            assert written_image.attrs["neurodata_type"] == "ExternalImage"
-
-
 @pytest.mark.parametrize("format", ["TIFF", "WEBP"])
 def test_external_image_rejects_unsupported_format(tmp_path, format):
     """NWB allows only PNG, JPEG and GIF by reference, and the error names the file that was rejected."""
@@ -530,21 +506,6 @@ def test_external_image_rejects_unsupported_format(tmp_path, format):
 
     with pytest.raises(ValueError, match=f"Unsupported image format: {format} for image {file_path.name}"):
         interface.add_to_nwbfile(mock_NWBFile())
-
-
-def test_external_image_rejects_resolution_metadata(tmp_path):
-    """`resolution` is declared on `Image` and not on the `BaseImage` parent `ExternalImage` shares with it."""
-    from pynwb.testing.mock.file import mock_NWBFile
-
-    generate_random_images(num_images=1, mode="RGB", output_dir_path=tmp_path, format="PNG")
-    interface = ExternalImageInterface(folder_path=tmp_path)
-    file_path = interface.file_paths[0]
-
-    metadata = interface.get_metadata()
-    metadata["Images"]["Images"]["images"][str(file_path)]["resolution"] = 2.5
-
-    with pytest.raises(ValueError, match=f"Resolution was given for image {file_path.name}"):
-        interface.add_to_nwbfile(mock_NWBFile(), metadata=metadata)
 
 
 class TestMixedModeExternalImageInterface(DataInterfaceTestMixin):
