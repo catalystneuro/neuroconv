@@ -92,10 +92,8 @@ class PyPhotometryFiberPhotometryInterface(BaseFiberPhotometryInterface):
         return self._cached_recording
 
     def _get_signal(self, stream_name: str):
-        for signal in self._recording.analog_signals:
-            if self._stream_name(signal) == stream_name:
-                return signal
-        raise ValueError(f"'{stream_name}' is not a signal of '{self._file_path}'.")
+        """Return the signal a stream name refers to, validated against the file at construction."""
+        return {self._stream_name(signal): signal for signal in self._recording.analog_signals}[stream_name]
 
     def _get_stream_data(self, *, stream_name: str) -> np.ndarray:
         return self._get_signal(stream_name).data_in_volts
@@ -126,29 +124,30 @@ class PyPhotometryFiberPhotometryInterface(BaseFiberPhotometryInterface):
         if subject_id:
             metadata = dict_deep_update(metadata, dict(Subject=dict(subject_id=subject_id)))
         if not self._recording.pulsed:
-            # Said in the series rather than in its timestamps, because the size of the lag is not
-            # knowable from the file. The firmware reads the analog inputs one after the other inside a
-            # single timer interrupt, so the second is late by the 64-sample oversampling buffer at the
-            # 300 kHz oversampling clock, plus interrupt work nobody has quantified. Neither constant is
-            # in the header, so writing a number would look measured while being, at best, a floor.
-            description = (
-                "Acquired in a continuous mode, in which the board reads its analog inputs sequentially "
-                "within one timer interrupt rather than sampling them simultaneously. A signal is "
-                "therefore later than the one read before it by at least 213 microseconds (a 64-sample "
-                "oversampling buffer at the firmware's 300 kHz oversampling clock) plus unquantified "
-                "interrupt overhead. The file records neither constant and the offset has never been "
-                "characterized upstream, so every signal here is written on the timebase the header "
-                "states, as pyPhotometry's own reader does."
+            # A comment rather than a description, since it says how the recording was made rather than
+            # what the data is. The firmware reads the analog inputs one after the other inside a single
+            # timer interrupt, and Thomas Akam measured that gap at a mean of 393 microseconds with a
+            # standard deviation of 9, on one board and with an interrupt routine modified to drive the
+            # LEDs for the measurement, in https://github.com/pyPhotometry/code/issues/39. It is stated
+            # and not applied: the figure belongs to the board and its firmware, and the header records
+            # neither the oversampling buffer nor its clock, so a start time built from it would look
+            # like something this file measured.
+            comments = (
+                "The board reads its analog inputs sequentially within one timer interrupt instead of "
+                "sampling them simultaneously, so each signal is about 393 microseconds later than the "
+                "one read before it. These timestamps do not include that offset."
             )
-            metadata = dict_deep_update(
-                metadata, dict(FiberPhotometry={self.metadata_key: dict(description=description)})
-            )
+            metadata = dict_deep_update(metadata, dict(FiberPhotometry={self.metadata_key: dict(comments=comments)}))
         return metadata
 
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
         metadata: dict | None = None,
+        *,
+        stub_test: bool = False,
+        stub_samples: int = 100,
+        always_write_timestamps: bool = False,
         **conversion_options,
     ) -> None:
         """Write the response series, and the raw pair beside it when the file carries one.
@@ -161,7 +160,14 @@ class PyPhotometryFiberPhotometryInterface(BaseFiberPhotometryInterface):
         references none, since a row states an excitation source and wavelength and a measurement taken
         in the dark had neither.
         """
-        super().add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **conversion_options)
+        super().add_to_nwbfile(
+            nwbfile=nwbfile,
+            metadata=metadata,
+            stub_test=stub_test,
+            stub_samples=stub_samples,
+            always_write_timestamps=always_write_timestamps,
+            **conversion_options,
+        )
 
         signal = self._get_signal(self.stream_names[0])
         if signal.raw_led_on_in_volts is None:
@@ -172,7 +178,15 @@ class PyPhotometryFiberPhotometryInterface(BaseFiberPhotometryInterface):
         series_name = (metadata or self.get_metadata())["FiberPhotometry"][self.metadata_key]["name"]
         response_series = nwbfile.acquisition[series_name]
         table_region = getattr(response_series, "fiber_photometry_table_region", None)
-        starting_time, rate = float(self.get_timestamps()[0]), float(signal.rate_in_hz)
+
+        # The raw pair is the difference before the subtraction, so it is cut and timed exactly as the
+        # difference was: same aligned times, same stub, same choice between a rate and an array.
+        def stub(array: np.ndarray) -> np.ndarray:
+            return array[: min(stub_samples, len(array))] if stub_test else array
+
+        timing_kwargs = self._timing_kwargs_from_timestamps(
+            stub(self.alignment[self.metadata_key].get_times()), always_write_timestamps
+        )
 
         # The LED-on trace is the difference before the subtraction, so every field of the row the
         # difference references is true of it as well. A region belongs to one series, so it gets its
@@ -187,15 +201,14 @@ class PyPhotometryFiberPhotometryInterface(BaseFiberPhotometryInterface):
         nwbfile.add_acquisition(
             FiberPhotometryResponseSeries(
                 name=f"{series_name}RawLEDOn",
-                data=signal.raw_led_on_in_volts,
+                data=stub(signal.raw_led_on_in_volts),
                 unit="volts",
-                starting_time=starting_time,
-                rate=rate,
                 description=(
                     "The measurement taken with the excitation LED on, before the baseline recorded "
                     "beside it was subtracted. Written because the acquisition system measured it."
                 ),
                 fiber_photometry_table_region=led_on_region,
+                **timing_kwargs,
             )
         )
 
@@ -205,10 +218,8 @@ class PyPhotometryFiberPhotometryInterface(BaseFiberPhotometryInterface):
         nwbfile.add_acquisition(
             FiberPhotometryResponseSeries(
                 name=f"{series_name}RawBaseline",
-                data=signal.raw_baseline_in_volts,
+                data=stub(signal.raw_baseline_in_volts),
                 unit="volts",
-                starting_time=starting_time,
-                rate=rate,
                 description=(
                     "The measurement taken with the excitation LED off, which the LED-on sample is "
                     "corrected against. It measures ambient light and detector offset at that instant. "
@@ -216,5 +227,6 @@ class PyPhotometryFiberPhotometryInterface(BaseFiberPhotometryInterface):
                     "and wavelength, and neither applies to a measurement taken in the dark."
                 ),
                 fiber_photometry_table_region=None,
+                **timing_kwargs,
             )
         )

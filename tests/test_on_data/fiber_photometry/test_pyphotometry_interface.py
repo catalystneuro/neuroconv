@@ -12,6 +12,7 @@ the interface, with ``stub_samples`` keeping them short.
 """
 
 import re
+from datetime import datetime
 
 import numpy as np
 import pytest
@@ -74,6 +75,16 @@ class TestPyPhotometryOneColourTimeDivisionSignal(FiberPhotometryInterfaceTestMi
     expected_response_series_data = np.array([0.77757204, 0.77706594, 0.77979888, 0.7788879, 0.78020376])
     expected_rate = 130.0
     expected_starting_time = 0.0
+
+    def check_extracted_metadata(self, metadata: dict):
+        """A ``.ppd`` header states when the session started and what the animal was called.
+
+        The stagger of a strobed recording is exact, so it is carried by the start time and the series
+        needs no prose about its timing.
+        """
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2021, 6, 8, 16, 52, 48)
+        assert metadata["Subject"]["subject_id"] == "FFC_AF50-202"
+        assert "comments" not in metadata["FiberPhotometry"][self.interface.metadata_key]
 
     def test_asking_for_a_signal_the_file_does_not_have_is_refused(self):
         """Which signals exist depends on the acquisition mode, so this is a mistake worth naming."""
@@ -144,6 +155,13 @@ class TestPyPhotometryTwoColourContinuous(FiberPhotometryInterfaceTestMixin):
     expected_response_series_data = np.array([0.32704182, 0.32694059999999997, 0.32683938, 0.32704182, 0.32714304])
     expected_rate = 1000.0
     expected_starting_time = 0.0
+
+    def check_extracted_metadata(self, metadata: dict):
+        """The lag is real in a continuous mode but its size is not in the file, so it is said in prose."""
+        comments = metadata["FiberPhotometry"][self.interface.metadata_key]["comments"]
+
+        assert "sequentially" in comments
+        assert "393 microseconds" in comments
 
 
 class TestPyPhotometryIndicatorNamedMode(FiberPhotometryInterfaceTestMixin):

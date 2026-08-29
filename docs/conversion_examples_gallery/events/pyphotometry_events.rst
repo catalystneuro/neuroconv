@@ -7,11 +7,10 @@ Install NeuroConv with the additional dependencies necessary for reading pyPhoto
 
     pip install "neuroconv[pyphotometry_events]"
 
-A pyPhotometry ``.ppd`` file has no digital stream of its own. Every word it holds carries fifteen bits of
-an analog sample and one bit of a digital line, and the words cycle through the board's analog inputs, so
-a digital line rides in the low bit of the words of the input it shares a slot with and is sampled on that
-input's clock. Reading the lines therefore means reading the same file the fluorescence comes from, and
-each line arrives as a sampled ``0``/``1`` signal rather than as a list of onsets.
+A pyPhotometry ``.ppd`` file carries its digital lines inside the same words as the fluorescence, so this
+interface reads the same file as ``PyPhotometryFiberPhotometryInterface``. Each line is sampled at the
+rate of the analog input it travels with instead of being logged as a list of onsets, so an edge is
+located only to within one sample of that input's clock.
 
 Convert pyPhotometry Events data to NWB
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -45,19 +44,17 @@ named the way pyPhotometry's own reader names them, and ``session_start_time`` c
     >>> interface.run_conversion(nwbfile_path=path_to_save_nwbfile, metadata=metadata, overwrite=True)
 
 A line that never toggles is written as a zero-row table rather than dropped, since the type existed in
-the recording and nothing fired. To read only some of the lines, or to read one of them differently, name
-them in ``detection_configuration``:
+the recording and nothing fired. To read only some of the lines, or to read one of them differently, pass
+a ``detection_configuration``, which :ref:`extract_events_from_signals` documents.
 
-.. code-block:: python
-
-    >>> interface = PyPhotometryEventsInterface(
-    ...     file_path=file_path,
-    ...     detection_configuration={
-    ...         "digital_1": [{"signal_conditioning": {"binarize": "midpoint"}, "detection": "rising"}]
-    ...     },
-    ... )
-    >>> list(interface.get_metadata()["Events"]["pyphotometry_events"]["event_types"])
-    ['digital_1']
+NeuroConv aims to automatically add all the metadata annotations that are present in the source format.
+It is often the case that crucial information is not available there, such as what a line was wired to,
+what a pulse on it meant, or a semantically meaningful description of an event type. Follow
+:ref:`the events how-to <annotate_events_metadata>` for a modality-relevant guide to adding this extra
+metadata, which makes the data more useful for future users and for the community as a whole. Its
+:ref:`section on a single interface <annotate_events_single_interface>` starts from scratch, and its
+:ref:`section on shared tables <annotate_events_shared_table>` covers writing several interfaces into one
+table.
 
 .. seealso::
 
