@@ -13,9 +13,10 @@ Each event type is written as a ``pynwb.event.EventsTable`` into ``nwbfile.event
 Which interface you want
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-Where an event type's identity lives is decided by the MSN program that wrote the file, not by MedPC, so there are
-two shapes a file can be in and one interface for each. Open your file and look at the arrays to tell which you
-have.
+MedPC defines only how a number is *printed*; ``DISKVARS``, ``DISKFORMAT`` and ``DISKCOLUMNS`` say which
+variables are saved, how wide they print and how many sit on a row, and nothing in the format says what any
+number means. What an array holds is decided entirely by the MSN program the experimenter wrote, so **read the
+program, not the data**, and open the file to see which of the two shapes it is in.
 
 **One array per event type.** Each lettered array is a plain list of times, and the array is the event type:
 
@@ -29,17 +30,44 @@ have.
 Use :py:class:`~neuroconv.datainterfaces.events.medpc_events.medpceventsdatainterface.MedPCArrayEventsInterface`,
 and tell it which arrays hold events, since nothing in the file says that ``A`` is nose pokes.
 
-**One coded array.** A single array holds every event as a ``TIME.EVENTCODE`` value, the integer part being the
-time in clock ticks and the fractional digits the code of the event type:
+**The event type carried in the data.** One array holds the times of every event of the session, and which type
+each one is comes from the data. Either the code is packed into the time value, classically as
+``TIME.EVENTCODE``:
 
 .. code-block:: text
 
     A:
          0:    10602.001    10602.011    10602.051    10852.021    10900.001
 
-Use :py:class:`~neuroconv.datainterfaces.events.medpc_events.medpceventsdatainterface.MedPCCodedEventsInterface`,
-which finds the event types itself, since the codes are in the data. You supply the clock rate and whatever names
-you know for the codes.
+or it sits in a companion array of the same length:
+
+.. code-block:: text
+
+    B:
+         0:        1.900        7.510        7.870       17.200
+    C:
+         0:        3.000        1.000        1.000        3.000
+
+Use :py:class:`~neuroconv.datainterfaces.events.medpc_events.medpceventsdatainterface.MedPCCodedEventsInterface`
+for both. It finds the event types itself, since the codes are in the data, and you supply only how to read them
+and whatever names you know.
+
+What a value is worth
+~~~~~~~~~~~~~~~~~~~~~
+
+Both interfaces take the same three arguments for this, because a MedPC value is a time only after the program's
+choices are applied and the file records none of them.
+
+``time_unit`` is what one unit is worth. Programs store seconds, centiseconds, deciseconds, or the raw ``BTIME``
+counter, in which case pass ``time_unit="clock_ticks"`` and the rate through ``clock_ticks_per_second`` (500 on a
+2 ms system, 200 on a 5 ms one; it is set when MED-PC is installed and appears in no file).
+
+``relative_times`` says whether each value is the interval since the previous event rather than the elapsed time.
+Med Associates' own shipped example procedures use this, which they call relative or incremental mode, so it is
+worth checking before assuming absolute times.
+
+Get any of these wrong and the file still decodes, which is why both interfaces check that the times they read do
+not run backwards and raise naming the likely cause when they do.
 
 One array per event type
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -133,7 +161,8 @@ still read and takes its digits as its name.
     >>> interface = MedPCCodedEventsInterface(
     ...     file_path=file_path,
     ...     session_header={"Start Date": "09/25/15", "Subject": "ML03"},
-    ...     variable_name="A",  # the array this program packs its events into
+    ...     timestamps_variable="A",  # the array this program packs its events into
+    ...     time_unit="clock_ticks",
     ...     clock_ticks_per_second=500,  # this program clocks at 2 ms
     ...     event_configuration={
     ...         "001": {"name": "lick"},

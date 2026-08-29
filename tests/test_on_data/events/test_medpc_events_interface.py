@@ -277,8 +277,9 @@ class TestCodedWithLegend(MedPCEventsInterfaceMixin):
     interface_kwargs = dict(
         file_path=MEDPC_DATA_PATH / "event_type_in_column_laubach_lab" / "ExampleFile2",
         session_header={"Start Date": "09/25/15", "Subject": "ML03"},
-        variable_name="A",
+        timestamps_variable="A",
         # The program clocks at 2 ms, so the integer part of each value is in 500ths of a second.
+        time_unit="clock_ticks",
         clock_ticks_per_second=500,
         event_configuration={
             "001": {"name": "lick"},
@@ -357,7 +358,8 @@ class TestCodedWithoutLegend(MedPCEventsInterfaceMixin):
     interface_kwargs = dict(
         file_path=MEDPC_DATA_PATH / "event_type_in_column_laubach_lab" / "ExampleFile1",
         session_header={"Start Date": "09/17/15", "Subject": "EX01"},
-        variable_name="A",
+        timestamps_variable="A",
+        time_unit="clock_ticks",
         clock_ticks_per_second=500,
     )
 

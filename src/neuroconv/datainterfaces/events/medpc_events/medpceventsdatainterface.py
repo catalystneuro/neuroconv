@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 
 import numpy as np
 from pydantic import FilePath, validate_call
@@ -15,6 +16,22 @@ from ...behavior.medpc.medpc_helpers import read_medpc_file
 # MED-PC IV writes the same fixed header above every session, so a session always begins at its `Start Date` line
 # and the reader needs no configuration to find it.
 _SESSION_START_FIELD = "Start Date"
+
+# MedPC's own array terminator, documented in Med Associates' shipped programs as "the code value -987.987 can be
+# used to seal or terminate an array at the last valid element", and written automatically by a `Sealed_Array`
+# declaration. It is a marker, not an event.
+_ARRAY_SEAL = -987.987
+
+# What one unit of an array value is worth in seconds. MedPC stores whatever the MSN program divided by before
+# writing, and the file records neither the choice nor the clock's resolution, so the unit is stated rather than
+# detected. `clock_ticks` is the raw `BTIME` counter and takes its rate separately.
+_TIME_UNIT_TO_SECONDS = {
+    "seconds": 1.0,
+    "deciseconds": 0.1,
+    "centiseconds": 0.01,
+    "milliseconds": 0.001,
+}
+TimeUnit = Literal["seconds", "deciseconds", "centiseconds", "milliseconds", "clock_ticks"]
 
 
 class _MedPCEventsInterface(BaseEventsInterface):
@@ -213,7 +230,56 @@ class _MedPCEventsInterface(BaseEventsInterface):
                 f"The MedPC variable '{medpc_name}' is not in the session selected by "
                 f"{self.source_data['session_header']} of {self.source_data['file_path']}."
             )
-        return session_dict[medpc_name]
+        values = np.asarray(session_dict[medpc_name], dtype=float)
+        # A sealed array carries `-987.987` after its last real element. The seal marks the end, so everything
+        # from it on is padding rather than data, which is what a `Sealed_Array` declaration writes.
+        sealed = np.flatnonzero(values == _ARRAY_SEAL)
+        return values[: sealed[0]] if len(sealed) else values
+
+    def _decode_times(self, values: np.ndarray, medpc_name: str) -> np.ndarray:
+        """Turn one array's raw values into onset times in seconds.
+
+        MedPC writes whatever the MSN program computed, so a value is a time only after the unit is applied and,
+        for a program written in relative mode, after the deltas are accumulated. Neither the unit nor the mode is
+        recorded in the file, which is why both are stated on the interface.
+        """
+        if self.source_data["relative_times"]:
+            # Relative (incremental) mode: each element is the time since the previous event, so the series is a
+            # set of deltas and only their running total is a time.
+            values = np.cumsum(values)
+        seconds = self._scale_to_seconds(values)
+        self._validate_non_decreasing(times=seconds, medpc_name=medpc_name)
+        return seconds
+
+    def _scale_to_seconds(self, values: np.ndarray) -> np.ndarray:
+        """Apply the stated unit to raw values, without accumulating or checking their order."""
+        time_unit = self.source_data["time_unit"]
+        if time_unit == "clock_ticks":
+            return values / self.source_data["clock_ticks_per_second"]
+        return values * _TIME_UNIT_TO_SECONDS[time_unit]
+
+    def _validate_non_decreasing(self, times: np.ndarray, medpc_name: str) -> None:
+        """Raise where a decoded series runs backwards, which no sequence of onsets can do.
+
+        This is the one check that catches a misread unit or mode, because every one of them decodes without
+        error and only the ordering betrays it. A program written in relative mode read as absolute is the
+        common case: the deltas are small and arbitrary, so the series jumps around instead of climbing.
+        """
+        if len(times) < 2:
+            return
+        backwards = np.flatnonzero(np.diff(times) < 0)
+        if len(backwards) == 0:
+            return
+        first = int(backwards[0])
+        raise ValueError(
+            f"The onsets read from the MedPC variable '{medpc_name}' run backwards: event {first} is at "
+            f"{times[first]:.6g} s and event {first + 1} is at {times[first + 1]:.6g} s. Onsets cannot go "
+            "backwards, so the values are not being read as the program wrote them. The usual causes are a "
+            "program written in relative mode, where each value is the time since the previous event and "
+            "`relative_times=True` accumulates them; a `time_unit` other than the one the program divided by "
+            "before storing; and, for a coded array, a `code_divisor` or `code_position` that leaves part of "
+            "the code in the time. The MSN program that wrote the file is what settles which."
+        )
 
 
 class MedPCArrayEventsInterface(_MedPCEventsInterface):
@@ -241,6 +307,9 @@ class MedPCArrayEventsInterface(_MedPCEventsInterface):
         *,
         session_header: dict,
         event_configuration: dict,
+        time_unit: TimeUnit = "seconds",
+        clock_ticks_per_second: int | None = None,
+        relative_times: bool = False,
         metadata_key: str = "medpc",
         verbose: bool = False,
     ):
@@ -272,6 +341,19 @@ class MedPCArrayEventsInterface(_MedPCEventsInterface):
             codes and saying what they mean is done in the metadata through ``column_categories``.
             ex. {"G": {"name": "port_entries", "duration": "E"}}
             ex. {"S": {"name": "cs_presentations", "payload": {"K": "cs_type"}}}
+        time_unit : {"seconds", "deciseconds", "centiseconds", "milliseconds", "clock_ticks"}, optional
+            What one unit of an array value is worth, default = "seconds". MedPC stores whatever the MSN program
+            divided by before writing and records neither that choice nor the clock's resolution, so the unit is
+            stated rather than detected. Use "clock_ticks" for a program that stored the raw `BTIME` counter, and
+            give the rate through ``clock_ticks_per_second``.
+        clock_ticks_per_second : int, optional
+            The rate of the program's clock: 500 for a 2 ms system, 200 for a 5 ms one. Required when
+            ``time_unit`` is "clock_ticks" and rejected otherwise, since the file carries neither.
+        relative_times : bool, optional
+            Whether each value is the time since the previous event rather than the time since the session began,
+            default = False. Med Associates' own shipped programs call this relative or incremental mode and it is
+            what their example procedures use, so it is worth checking the program before assuming absolute times.
+            The values are accumulated when True.
         metadata_key : str, optional
             The key under ``metadata["Events"]`` that namespaces this interface's events metadata, default = "medpc".
         verbose : bool, optional
@@ -284,10 +366,14 @@ class MedPCArrayEventsInterface(_MedPCEventsInterface):
                     f"editable event_name. Pass {{'name': ...}} for every variable that holds events."
                 )
 
+        _validate_time_arguments(time_unit=time_unit, clock_ticks_per_second=clock_ticks_per_second)
         super().__init__(
             file_path=file_path,
             session_header=session_header,
             event_configuration=event_configuration,
+            time_unit=time_unit,
+            clock_ticks_per_second=clock_ticks_per_second,
+            relative_times=relative_times,
             verbose=verbose,
         )
         self.metadata_key = metadata_key
@@ -310,11 +396,16 @@ class MedPCArrayEventsInterface(_MedPCEventsInterface):
 
         events_data_dict = {}
         for medpc_name, info_dict in event_configuration.items():
-            timestamps = self._get_variable_array(session_dict=session_dict, medpc_name=medpc_name)
+            raw_timestamps = self._get_variable_array(session_dict=session_dict, medpc_name=medpc_name)
+            timestamps = self._decode_times(values=raw_timestamps, medpc_name=medpc_name)
             durations = None
             durations_variable = info_dict.get("duration")
             if durations_variable is not None:
-                durations = self._get_variable_array(session_dict=session_dict, medpc_name=durations_variable)
+                # A duration is an elapsed time, so it takes the same unit as the onsets. It is never relative,
+                # since each one already is an interval, and it is never accumulated.
+                durations = self._scale_to_seconds(
+                    self._get_variable_array(session_dict=session_dict, medpc_name=durations_variable)
+                )
                 if len(durations) > len(timestamps):
                     raise ValueError(
                         f"The event type '{medpc_name}' has {len(timestamps)} onsets but its durations array "
@@ -354,22 +445,29 @@ class MedPCArrayEventsInterface(_MedPCEventsInterface):
 
 
 class MedPCCodedEventsInterface(_MedPCEventsInterface):
-    """Data Interface for the discrete events of a MedPC file that holds them all in one coded array.
+    """Data Interface for the discrete events of a MedPC file that carries the event type in the data.
 
-    One array carries every event as a ``TIME.EVENTCODE`` value: the integer part is the time in clock ticks and
-    the fractional digits are the code of the event type, so the event type is a value in the data rather than the
-    array's name. The MSN program packs it with a line like ``Set A(Y) = BTIME-U + code/1000``. This is often
-    called a time-event code file, after the reference reader ``med_to_tec.py`` the convention comes from; MedPC
-    itself has no name for it, since nothing in the format marks such a file as different.
+    One array holds the onset times of every event of the session, and which type each one is comes from the data
+    rather than from the array's name, in either of the two ways an MSN program does that:
 
-    Every code the array holds becomes an event type, identified by its zero-padded digits (ex. ``'011'``), so the
-    file names its own event types and ``event_configuration`` only supplies names for them.
+    - **Packed into the time value.** The classic ``TIME.EVENTCODE`` form, written by a line like
+      ``Set A(Y) = BTIME-U + code/1000``: the code rides in the fractional digits and the time is the integer
+      part. ``code_divisor`` is the divisor the program used and ``code_position`` is "fraction". Some programs
+      pack the other way round, adding a large constant so the code sits in the leading digits
+      (``^PeckLeft=10000`` with ``set x(y)=^PeckLeft+Btime/1"``, giving ``aabbbb.bbb``); that is
+      ``code_position="leading"`` with ``code_divisor=10000``.
+    - **In a companion array.** A second array of the same length holds one code per event
+      (``DIM B`` for all event times beside ``DIM C`` for all event identities). Name it with
+      ``event_type_variable`` and nothing is unpacked.
+
+    Every code found becomes an event type identified by its digits, so the file names its own event types and
+    ``event_configuration`` only supplies names for them.
 
     Use :class:`MedPCArrayEventsInterface` instead for a file that holds one array per event type.
     """
 
     display_name = "MedPCCodedEvents"
-    info = "Interface for the discrete events of MedPC files holding one coded TIME.EVENTCODE array."
+    info = "Interface for the discrete events of MedPC files carrying the event type in the data."
 
     @validate_call
     def __init__(
@@ -377,9 +475,14 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
         file_path: FilePath,
         *,
         session_header: dict,
-        clock_ticks_per_second: int,
-        variable_name: str,
+        timestamps_variable: str,
+        event_type_variable: str | None = None,
+        code_divisor: int = 1000,
+        code_position: Literal["fraction", "leading"] = "fraction",
         event_configuration: dict | None = None,
+        time_unit: TimeUnit = "seconds",
+        clock_ticks_per_second: int | None = None,
+        relative_times: bool = False,
         metadata_key: str = "medpc",
         verbose: bool = False,
     ):
@@ -398,61 +501,106 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
             them is read.
             ex. {"Start Date": "04/10/19", "Start Time": "12:36:13"} where one animal ran on several days and the
             date, or the date and the time where it ran twice in a day, is what separates them
-            ex. {"Start Date": "10/06/22", "Subject": "cohort10-M3.3"} where a cohort's animals were pooled into one
-            file and the subject is needed as well
-        clock_ticks_per_second : int
-            The rate of the program's clock: 500 for a 2 ms clock, 200 for a 5 ms one. A coded array stores its
-            times in clock ticks and the file does not carry the rate, so the wrong value silently scales every
-            timestamp in the session.
-        variable_name : str
-            The MedPC variable holding the coded values (ex. 'A'). The MSN program picks it, so it is stated
+            ex. {"Start Date": "09/25/15", "Subject": "ML03"} where a cohort's animals were pooled into one file
+        timestamps_variable : str
+            The MedPC variable holding the event times (ex. 'A'). The MSN program picks it, so it is stated
             rather than defaulted: 'A' is what the readers of this convention happen to use, not something the
             format fixes.
+        event_type_variable : str, optional
+            The MedPC variable holding one event code per event, where the program wrote the codes into their own
+            array instead of packing them into the times. When given, ``timestamps_variable`` is read as plain
+            times and nothing is unpacked, so ``code_divisor`` and ``code_position`` do not apply.
+            ex. 'C', beside timestamps in 'B'
+        code_divisor : int, optional
+            The constant the program divided the code by, or added it to, when packing, default = 1000. With
+            ``code_position="fraction"`` it is the divisor of ``time + code/divisor``, so 1000 leaves three
+            fractional digits and 100 leaves two. With ``code_position="leading"`` it is the multiplier of
+            ``code * divisor + time``, so 10000 puts the code above four digits of time.
+        code_position : {"fraction", "leading"}, optional
+            Where in the value the code sits, default = "fraction". Which one a program used cannot be read off
+            the data reliably, since both produce plausible numbers; the MSN program settles it.
         event_configuration : dict, optional
-            Names for the event types, keyed by the event code's zero-padded digits (ex. '011'). Each value takes
-            a 'name', which seeds the editable ``event_name``. This is a legend rather than a declaration of what
-            to read: every code the array holds becomes an event type whether or not it is named here, and one
-            left out is named 'code_<digits>'. A code named here that the file never holds is written as an empty
-            table, the type having been declared and never fired. What a code means lives in the MSN program, and
-            often in a later version of it whose numbering disagrees with the file, so it cannot be derived.
+            Names for the event types, keyed by the event code as it appears in the identifiers this interface
+            reports (ex. '011'). Each value takes a 'name', which seeds the editable ``event_name``. This is a
+            legend rather than a declaration of what to read: every code found becomes an event type whether or
+            not it is named here, and one left out is named 'code_<digits>'. A code named here that the file never
+            holds is written as an empty table, the type having been declared and never fired. What a code means
+            lives in the MSN program, and often in a later version of it whose numbering disagrees with the file,
+            so it cannot be derived.
             ex. {"001": {"name": "lick"}, "011": {"name": "pump_a_on"}}
+        time_unit : {"seconds", "deciseconds", "centiseconds", "milliseconds", "clock_ticks"}, optional
+            What one unit of a time value is worth, default = "seconds". MedPC stores whatever the MSN program
+            divided by before writing and records neither that choice nor the clock's resolution, so the unit is
+            stated rather than detected. Use "clock_ticks" for a program that stored the raw `BTIME` counter, and
+            give the rate through ``clock_ticks_per_second``.
+        clock_ticks_per_second : int, optional
+            The rate of the program's clock: 500 for a 2 ms system, 200 for a 5 ms one. Required when
+            ``time_unit`` is "clock_ticks" and rejected otherwise, since the file carries neither.
+        relative_times : bool, optional
+            Whether each time is the interval since the previous event rather than the time since the session
+            began, default = False. Med Associates' own shipped example procedures use this, which they call
+            relative or incremental mode, so it is worth checking the program before assuming absolute times.
+            The values are accumulated when True.
         metadata_key : str, optional
             The key under ``metadata["Events"]`` that namespaces this interface's events metadata, default = "medpc".
         verbose : bool, optional
             Whether to print verbose output, by default False.
         """
+        _validate_time_arguments(time_unit=time_unit, clock_ticks_per_second=clock_ticks_per_second)
+        if code_divisor < 10:
+            raise ValueError(
+                f"`code_divisor` is {code_divisor}, which leaves no digits for a code. It is the constant the "
+                "program packed with (1000 for `time + code/1000`, 10000 for `code * 10000 + time`)."
+            )
+
         super().__init__(
             file_path=file_path,
             session_header=session_header,
-            clock_ticks_per_second=clock_ticks_per_second,
-            variable_name=variable_name,
+            timestamps_variable=timestamps_variable,
+            event_type_variable=event_type_variable,
+            code_divisor=code_divisor,
+            code_position=code_position,
             event_configuration=event_configuration,
+            time_unit=time_unit,
+            clock_ticks_per_second=clock_ticks_per_second,
+            relative_times=relative_times,
             verbose=verbose,
         )
         self.metadata_key = metadata_key
 
     def _read_events(self) -> dict[str, _EventsData]:
-        """Split each ``TIME.EVENTCODE`` value of the coded array and group the times by their code."""
-        variable_name = self.source_data["variable_name"]
-        clock_ticks_per_second = self.source_data["clock_ticks_per_second"]
+        """Read the one time array, recover each event's code, and group the times by it."""
+        timestamps_variable = self.source_data["timestamps_variable"]
+        event_type_variable = self.source_data["event_type_variable"]
 
+        to_read = [timestamps_variable] + ([event_type_variable] if event_type_variable else [])
         session_dict = self._read_session(
-            medpc_name_to_info_dict={variable_name: {"name": variable_name, "is_array": True}}
+            medpc_name_to_info_dict={name: {"name": name, "is_array": True} for name in to_read}
         )
-        packed = self._get_variable_array(session_dict=session_dict, medpc_name=variable_name)
-        # The integer part is the time in clock ticks and the three fractional digits are the event code. The
-        # values are read as floats, so the code is recovered by rounding rather than by comparing fractions.
-        ticks = np.floor(packed)
-        codes = np.round((packed - ticks) * 1000).astype(int)
-        timestamps = ticks / clock_ticks_per_second
+        values = self._get_variable_array(session_dict=session_dict, medpc_name=timestamps_variable)
 
-        # Every code the file holds becomes an event type, in the order the codes first occur, whether or not the
-        # legend names it: the legend gives a code a name, and a file is not read less completely for lacking one.
+        if event_type_variable is not None:
+            codes = self._get_variable_array(session_dict=session_dict, medpc_name=event_type_variable)
+            if len(codes) != len(values):
+                raise ValueError(
+                    f"The times in '{timestamps_variable}' number {len(values)} but the codes in "
+                    f"'{event_type_variable}' number {len(codes)}, so they are not one code per event."
+                )
+            raw_times = values
+        else:
+            raw_times, codes = self._unpack(values=values)
+
+        timestamps = self._decode_times(values=raw_times, medpc_name=timestamps_variable)
+        identifiers = [self._format_code(code) for code in codes.tolist()]
+
+        # Every code found becomes an event type, in the order the codes first occur, whether or not the legend
+        # names it: the legend gives a code a name, and a file is not read less completely for lacking one.
+        identifiers = np.asarray(identifiers)
         events_data_dict = {}
-        for code in dict.fromkeys(codes.tolist()):
-            event_type_source_id = f"{code:03d}"
+        for event_type_source_id in dict.fromkeys(identifiers.tolist()):
             events_data_dict[event_type_source_id] = _EventsData(
-                event_type_source_id=event_type_source_id, timestamps=timestamps[codes == code]
+                event_type_source_id=event_type_source_id,
+                timestamps=timestamps[identifiers == event_type_source_id],
             )
         # A code the legend names but the file never holds is a type that was declared and never fired, written as
         # an empty table the way a declared per-array variable holding no events is.
@@ -463,15 +611,56 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
                 )
         return events_data_dict
 
+    def _unpack(self, values: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        """Split packed values into their time part and their code part."""
+        divisor = self.source_data["code_divisor"]
+        if self.source_data["code_position"] == "fraction":
+            times = np.floor(values)
+            # The values are read as floats, so the code is recovered by rounding rather than by comparing
+            # fractions, which would fail on the representation error a decimal fraction carries in binary.
+            codes = np.round((values - times) * divisor)
+        else:
+            codes = np.floor(values / divisor)
+            times = values - codes * divisor
+        return times, codes
+
+    def _format_code(self, code: float) -> str:
+        """Return the identifier one event code is known by.
+
+        A code packed into the fraction is zero-padded to the width its divisor implies, so the identifiers read
+        as the program writes them (``'011'`` for a code of 11 packed with 1000). A code in the leading digits has
+        no such width, since the digits below it are the time, and a code from a companion array has none either,
+        where some programs use fractional codes such as 3.1. Both are left as the program wrote them.
+        """
+        if self.source_data["event_type_variable"] is not None or self.source_data["code_position"] == "leading":
+            return str(int(code)) if float(code).is_integer() else str(code)
+        width = len(str(self.source_data["code_divisor"])) - 1
+        return f"{int(code):0{width}d}"
+
     def _code_to_info_dict(self) -> dict:
-        """Return the legend keyed by the code's zero-padded digits, as the event types are."""
+        """Return the legend keyed as the event types are, so a legend entry and a found code meet."""
         event_configuration = self.source_data["event_configuration"] or {}
-        return {f"{int(code):03d}": info_dict for code, info_dict in event_configuration.items()}
+        return {str(code): info_dict for code, info_dict in event_configuration.items()}
 
     def _event_name(self, event_type_source_id: str) -> str:
         """Return the ``event_name`` seeded for one event type."""
         info_dict = self._code_to_info_dict().get(event_type_source_id, {})
         return info_dict.get("name", f"code_{event_type_source_id}")
+
+
+def _validate_time_arguments(time_unit: str, clock_ticks_per_second: int | None) -> None:
+    """Check that a clock rate is given exactly when the times are in clock ticks."""
+    if time_unit == "clock_ticks" and clock_ticks_per_second is None:
+        raise ValueError(
+            "`time_unit` is 'clock_ticks', so `clock_ticks_per_second` is required: the rate is set when MED-PC "
+            "is installed (500 for a 2 ms system, 200 for a 5 ms one) and no file records it, so the wrong value "
+            "silently scales every timestamp in the session."
+        )
+    if time_unit != "clock_ticks" and clock_ticks_per_second is not None:
+        raise ValueError(
+            f"`clock_ticks_per_second` was given but `time_unit` is '{time_unit}', so the rate would not be "
+            "used. Pass `time_unit='clock_ticks'` for a program that stored the raw BTIME counter."
+        )
 
 
 def _to_integer_where_whole(values: np.ndarray) -> np.ndarray:
