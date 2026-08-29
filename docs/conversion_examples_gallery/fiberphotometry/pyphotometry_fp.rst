@@ -16,6 +16,12 @@ Streams sharing a ``detector`` prefix came off one fiber.
 ``PyPhotometryFiberPhotometryInterface`` reads one signal into a single
 ``FiberPhotometryResponseSeries``.
 
+The board reads its analog inputs one after the other rather than at the same instant, so each signal is
+written with the start time its own slot in the sampling cycle implies. In the continuous modes that gap
+is not recorded anywhere in the file, and the pyPhotometry developers measured it at about 393
+microseconds on `their issue tracker <https://github.com/pyPhotometry/code/issues/39>`_. It is not
+included in the timestamps, and each series states it in its ``comments``.
+
 Convert pyPhotometry Fiber Photometry data to NWB
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -77,3 +83,7 @@ the meaning of the values, or a semantically meaningful description of the data.
 this extra metadata, which makes the data more useful for future users and for the community as a whole.
 Its :ref:`section on templates <how_to_annotate_from_a_template>` starts from scratch, and the
 :ref:`reference template <fiber_photometry_metadata_template>` lists every element the metadata accepts.
+
+.. seealso::
+
+    - :doc:`../events/pyphotometry_events` to convert the digital lines carried in the same words.

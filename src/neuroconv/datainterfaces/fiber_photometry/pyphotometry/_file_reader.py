@@ -358,7 +358,9 @@ def _read_ppd(file_path: Path | str) -> _PPDRecording:
         )
 
     # A digital line rides in the low bit of the words of the analog line it shares a slot with, so it
-    # starts when that line does. Headers before 1.0 do not count the lines; both are present.
+    # starts when that line does. Headers before 1.0 do not count the lines; both are present. A mode can
+    # also carry fewer lines than it has analog inputs: `3EX_2EM_pulsed` states one, because the board
+    # drives its third excitation source from the second digital output and the line is not free to read.
     digital_count = int(header.get("n_digital_signals", 2))
     digital_signals = []
     for digital_input in range(min(digital_count, layout.analog_input_count)):

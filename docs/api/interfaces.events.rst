@@ -17,6 +17,10 @@ NPM Events
 ----------
 .. automodule:: neuroconv.datainterfaces.events.npm_events.npmeventsdatainterface
 
+pyPhotometry Events
+-------------------
+.. autoclass:: neuroconv.datainterfaces.events.pyphotometry_events.pyphotometryeventsdatainterface.PyPhotometryEventsInterface
+
 TDT Events
 ----------
 .. automodule:: neuroconv.datainterfaces.events.tdt_events.tdteventsdatainterface
