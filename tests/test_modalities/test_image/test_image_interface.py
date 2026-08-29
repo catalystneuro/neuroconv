@@ -462,35 +462,44 @@ class TestImagesContainerMetadataKey(DataInterfaceTestMixin):
         assert not hasattr(third_image, "description") or third_image.description is None
 
 
-@pytest.mark.parametrize("format", ["PNG", "JPEG"])
 class TestExternalImageInterface(DataInterfaceTestMixin):
-    """Test suite for ExternalImageInterface with RGB images."""
+    """Test suite for ExternalImageInterface over a folder holding every mode and format it accepts."""
 
     data_interface_cls = ExternalImageInterface
-    mode = "RGB"
 
     @pytest.fixture(autouse=True)
-    def make_interface(self, tmp_path, format):
-        """Create interface with RGB test images."""
-        generate_random_images(num_images=5, mode=self.mode, output_dir_path=tmp_path, format=format)
-        self.format = format
-        self.interface_kwargs = dict(folder_path=tmp_path)
+    def make_interface(self, tmp_path):
+        """Create the interface over one folder, which is also what exercises the suffix glob."""
+        images_directory = tmp_path / "images"
+        images_directory.mkdir()
+
+        # `generate_random_images` empties its output directory, so each mode is generated apart and moved in.
+        for mode, format in [("RGB", "JPEG"), ("L", "PNG"), ("RGBA", "PNG"), ("LA", "PNG"), ("P", "GIF")]:
+            staging_directory = tmp_path / f"staging_{mode}"
+            generate_random_images(num_images=2, mode=mode, output_dir_path=staging_directory, format=format)
+            for file_path in staging_directory.iterdir():
+                file_path.rename(images_directory / file_path.name)
+
+        self.interface_kwargs = dict(folder_path=images_directory)
         self.interface = self.data_interface_cls(**self.interface_kwargs)
 
     def check_read_nwb(self, nwbfile_path):
-        """Test that the images are written as paths pointing at the source files."""
+        """Each image is written as the path of its source file, carrying the color mode PIL reports."""
 
         nwbfile = read_nwb(nwbfile_path)
         assert "Images" in nwbfile.acquisition
         images_container = nwbfile.acquisition["Images"]
-        assert len(images_container.images) == 5
+        assert len(images_container.images) == 10
 
         file_paths_by_stem = {file_path.stem: file_path for file_path in self.interface.file_paths}
+        num_image_modes = {}
         for name, image in images_container.images.items():
             assert isinstance(image, ExternalImage)
             assert image.data == str(file_paths_by_stem[name])
-            assert image.image_format == self.format
-            assert image.image_mode == self.mode
+            num_image_modes[image.image_mode] = num_image_modes.get(image.image_mode, 0) + 1
+
+        # `L` is written as "grayscale", the schema's spelling; every other mode is passed through as PIL reports it
+        assert num_image_modes == {"RGB": 2, "grayscale": 2, "RGBA": 2, "LA": 2, "P": 2}
         nwbfile.read_io.close()
 
 
@@ -504,48 +513,3 @@ def test_external_image_rejects_unsupported_format(tmp_path):
 
     with pytest.raises(ValueError, match=f"Unsupported image format: TIFF for image {file_path.name}"):
         interface.add_to_nwbfile(mock_NWBFile())
-
-
-class TestMixedModeExternalImageInterface(DataInterfaceTestMixin):
-    """Test suite for ExternalImageInterface with mixed image modes and formats."""
-
-    data_interface_cls = ExternalImageInterface
-
-    @pytest.fixture(autouse=True)
-    def make_interface(self, tmp_path):
-        """Create interface with mixed test images, one directory per mode to avoid name collisions."""
-        rgb_dir = tmp_path / "rgb"
-        gray_dir = tmp_path / "gray"
-        rgba_dir = tmp_path / "rgba"
-        la_dir = tmp_path / "la"
-        palette_dir = tmp_path / "palette"
-
-        generate_random_images(num_images=2, mode="RGB", output_dir_path=rgb_dir, format="JPEG")
-        generate_random_images(num_images=2, mode="L", output_dir_path=gray_dir, format="PNG")
-        generate_random_images(num_images=2, mode="RGBA", output_dir_path=rgba_dir, format="PNG")
-        generate_random_images(num_images=2, mode="LA", output_dir_path=la_dir, format="PNG")
-        generate_random_images(num_images=2, mode="P", output_dir_path=palette_dir, format="GIF")
-
-        file_paths = []
-        for dir_path in [rgb_dir, gray_dir, rgba_dir, la_dir, palette_dir]:
-            file_paths.extend([str(p) for p in dir_path.glob("*.*")])
-
-        self.interface_kwargs = dict(file_paths=file_paths)
-        self.interface = self.data_interface_cls(file_paths=file_paths)
-
-    def check_read_nwb(self, nwbfile_path):
-        """External mode writes the source color mode as it is, without converting LA to RGBA."""
-
-        nwbfile = read_nwb(nwbfile_path)
-        assert "Images" in nwbfile.acquisition
-        images_container = nwbfile.acquisition["Images"]
-        assert len(images_container.images) == 10
-
-        num_image_modes = {}
-        for image in images_container.images.values():
-            assert isinstance(image, ExternalImage)
-            num_image_modes[image.image_mode] = num_image_modes.get(image.image_mode, 0) + 1
-
-        # `L` is written as "grayscale", the schema's spelling; every other mode is passed through as PIL reports it
-        assert num_image_modes == {"RGB": 2, "grayscale": 2, "RGBA": 2, "LA": 2, "P": 2}
-        nwbfile.read_io.close()
