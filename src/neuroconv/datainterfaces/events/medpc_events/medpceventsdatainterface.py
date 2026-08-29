@@ -36,9 +36,22 @@ class MedPCEventsInterface(BaseEventsInterface):
             5:     1567.800     1774.950     2448.450     2454.050     2552.800
             10:     2620.550     2726.250
 
-    A file holds several sessions, each a fixed MED-PC IV header followed by that session's variables and
-    separated from the next by a blank line, so the session to read is picked out by the header fields given in
-    ``session_header``.
+    A file holds several sessions, one per run of the program, separated from each other by a blank line. Every one
+    of them opens with the same header, which MED-PC IV writes rather than the MSN program, so its fields are the
+    same in every file::
+
+        Start Date: 04/10/19
+        End Date: 04/10/19
+        Subject: 95.259
+        Experiment: FR1
+        Group: 1
+        Box: 1
+        Start Time: 12:36:13
+        End Time: 13:38:19
+        MSN: FOOD_FR1 TTL Left
+
+    The session to read is picked out by ``session_header``, which states the values of as many of those fields as
+    it takes to name one session in the file.
 
     Where an event type's identity lives is decided by the MSN program that wrote the file, so this interface takes
     either of the two layouts:
@@ -80,11 +93,15 @@ class MedPCEventsInterface(BaseEventsInterface):
         file_path : FilePath
             Path to the MedPC file.
         session_header : dict
-            The header fields that identify the session to read, since a MedPC file holds several. The keys are the
-            names of the header lines MED-PC IV writes above every session ('Start Date', 'Start Time', 'Subject',
-            'Experiment', 'Group', 'Box', 'End Date', 'End Time', 'MSN') and the values are the ones the desired
-            session carries. Give as many as it takes to be unique in the file.
-            ex. {"Start Date": "11/09/18", "Start Time": "10:34:30"}
+            The header fields identifying which of the file's sessions to read, keyed by the header line's name
+            ('Start Date', 'End Date', 'Subject', 'Experiment', 'Group', 'Box', 'Start Time', 'End Time', 'MSN') and
+            valued as that session carries them. Whichever fields tell the sessions apart is a property of how the
+            file was collected, so pass as many as it takes to name exactly one; the first session matching all of
+            them is read.
+            ex. {"Start Date": "04/10/19", "Start Time": "12:36:13"} where one animal ran on several days and the
+            date, or the date and the time where it ran twice in a day, is what separates them
+            ex. {"Start Date": "10/06/22", "Subject": "cohort10-M3.3"} where a cohort's animals were pooled into one
+            file and the subject is needed as well
         medpc_name_to_info_dict : dict, optional
             The event types of a per-array file, keyed by the name of the MedPC variable holding their onset times
             (ex. 'A'). That name is the event type's identifier, the handle ``get_event_times`` takes and the key of
