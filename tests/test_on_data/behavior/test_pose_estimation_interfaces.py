@@ -1080,9 +1080,35 @@ class TestDeepLabCutInterfaceFromCSV(PoseEstimationInterfaceTestMixin):
 
 @pytest.fixture
 def clean_pose_extension_import():
-    modules_to_remove = [m for m in sys.modules if m.startswith("ndx_pose")]
-    for module in modules_to_remove:
-        del sys.modules[module]
+    """Hide ndx_pose from the test, then put the process back the way it was found.
+
+    Deleting the modules is only half of it. The re-import inside the interface builds a second
+    generation of every ndx-pose container class, and hdmf's ``register_container_type`` evicts the first
+    generation from its class to data type map when the second registers under the same name. Restoring
+    ``sys.modules`` without restoring that registration would leave the process holding classes hdmf no
+    longer recognises, and a later ``PoseEstimation`` build would be handed an ancestor's spec.
+    """
+    saved_modules = {name: module for name, module in sys.modules.items() if name.startswith("ndx_pose")}
+    for name in saved_modules:
+        del sys.modules[name]
+
+    yield
+
+    sys.modules.update(saved_modules)
+    pose_module = saved_modules.get("ndx_pose")
+    if pose_module is None:
+        return
+
+    from pynwb import get_type_map
+
+    type_map = get_type_map(copy=False)
+    for attribute_name in dir(pose_module):
+        candidate = getattr(pose_module, attribute_name)
+        if not isinstance(candidate, type) or getattr(candidate, "namespace", None) != "ndx-pose":
+            continue
+        data_type = getattr(candidate, "neurodata_type", None)
+        if data_type is not None:
+            type_map.register_container_type("ndx-pose", data_type, candidate)
 
 
 @pytest.mark.skipif(
