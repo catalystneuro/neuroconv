@@ -8,14 +8,13 @@ holds the pixel data itself, which is what the
 :py:class:`~neuroconv.datainterfaces.image.imageinterface.ImageInterface` writes, reading each file to get the
 pixels out of it. Either way the images land in the same ``Images`` container.
 
-Write the images by reference by default. That keeps the file as the microscope or the camera wrote it, its
-format, its color mode and its bytes, where embedding stores decoded pixels instead, so the original file cannot
-be recovered from the NWB file and an LA image comes back as RGBA.
+In most cases you should write the images as external. That keeps the full provenance of each file, its
+format, its color mode, and the metadata standard image formats carry that NWB's ``Image`` type has nowhere to
+put, and it avoids duplicating images that more than one NWB file references.
 
-Embed the images when they are meant to be read as arrays, either by an analysis or as the stimulus templates that
-an ``IndexSeries`` indexes into, and when the NWB file has to stand on its own rather than travel next to the
-folder it points at. Embedding is also the only option for a format that NWB does not accept by reference, which
-is everything other than PNG, JPEG and GIF, TIFF above all.
+Embed the images when something downstream wants the pixels as an array without decoding a file first, or when
+the NWB file has to stand on its own rather than travel next to the folder it points at. Embedding is also
+forced when the format is not PNG, JPEG or GIF, which is all NWB accepts by reference.
 
 Both interfaces take either a list of files, ``file_paths=["image1.png", "image2.png"]``, or a folder,
 ``folder_path="images_directory"``, and both store the images in the acquisition group of the NWB file, or in the
