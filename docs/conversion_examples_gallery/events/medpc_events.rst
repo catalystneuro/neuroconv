@@ -14,7 +14,7 @@ Each event type is written as a ``pynwb.event.EventsTable`` into ``nwbfile.event
 
 Where an event type's identity lives is decided by the MSN program that wrote the file, so the interface takes
 either of the two layouts. In the **per-array** layout each lettered array holds the onset times of one event type,
-and ``medpc_name_to_info_dict`` says which arrays to read and what to call them.
+and ``event_configuration`` says which arrays to read and what to call them.
 
 .. code-block:: python
 
@@ -25,18 +25,18 @@ and ``medpc_name_to_info_dict`` says which arrays to read and what to call them.
     >>> file_path = f"{BEHAVIOR_DATA_PATH}/medpc/example_medpc_file_06_06_2024.txt"
     >>> # Change the file_path to the appropriate location in your system
     >>> session_header = {"Start Date": "04/09/19", "Start Time": "10:34:30"}
-    >>> medpc_name_to_info_dict = {
+    >>> event_configuration = {
     ...     "A": {"name": "left_nose_poke_times"},
     ...     "B": {"name": "left_reward_times"},
     ...     "C": {"name": "right_nose_poke_times"},
     ...     "D": {"name": "right_reward_times"},
-    ...     # An entry naming a durations_name is durative: G holds the port entry onsets and E their durations
-    ...     "G": {"name": "port_entries", "durations_name": "E"},
+    ...     # An entry naming a duration is durative: G holds the port entry onsets and E their durations
+    ...     "G": {"name": "port_entries", "duration": "E"},
     ... }
     >>> interface = MedPCEventsInterface(
     ...     file_path=file_path,
     ...     session_header=session_header,
-    ...     medpc_name_to_info_dict=medpc_name_to_info_dict,
+    ...     event_configuration=event_configuration,
     ... )
     >>>
     >>> # Extract what metadata we can from the source file, which includes the session's start time and its
@@ -59,7 +59,7 @@ and ``medpc_name_to_info_dict`` says which arrays to read and what to call them.
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
 An array holding one value per event, such as the type of each trial, rides along as a column of that event type's
-table through ``value_names``, and what its codes mean is stated in the metadata through ``column_categories``.
+table through ``payload``, and what its codes mean is stated in the metadata through ``column_categories``.
 
 .. code-block:: python
 
@@ -70,7 +70,7 @@ table through ``value_names``, and what its codes mean is stated in the metadata
     ...     file_path=file_path,
     ...     session_header={"Start Date": "10/06/22", "Subject": "cohort10-M3.3"},
     ...     # S holds the time of each conditioned stimulus and K holds which one it was
-    ...     medpc_name_to_info_dict={"S": {"name": "cs_presentations", "value_names": {"K": "cs_type"}}},
+    ...     event_configuration={"S": {"name": "cs_presentations", "payload": {"K": "cs_type"}}},
     ... )
     >>>
     >>> metadata = interface.get_metadata()

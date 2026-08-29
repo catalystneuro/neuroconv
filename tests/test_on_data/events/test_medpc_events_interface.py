@@ -32,12 +32,12 @@ class TestPerArrayLernerLab(MedPCEventsInterfaceMixin):
     interface_kwargs = dict(
         file_path=MEDPC_DATA_PATH / "example_medpc_file_06_06_2024.txt",
         session_header={"Start Date": "04/10/19", "Start Time": "12:36:13"},
-        medpc_name_to_info_dict={
+        event_configuration={
             "A": {"name": "left_nose_poke_times"},
             "B": {"name": "left_reward_times"},
             "C": {"name": "right_nose_poke_times"},
             "D": {"name": "right_reward_times"},
-            "G": {"name": "port_entries", "durations_name": "E"},
+            "G": {"name": "port_entries", "duration": "E"},
         },
     )
 
@@ -166,7 +166,7 @@ class TestPerArrayTyeLab(MedPCEventsInterfaceMixin):
     interface_kwargs = dict(
         file_path=MEDPC_DATA_PATH / "medpc_tye_lab" / "!2022-10-06_14h12m.Subject cohort10-M3.3",
         session_header={"Start Date": "10/06/22", "Subject": "cohort10-M3.3"},
-        medpc_name_to_info_dict={
+        event_configuration={
             # The lick start/end arrays are onset/offset pairs rather than onset/duration ones, so each is
             # its own point event type.
             "P": {"name": "lick_start_ethanol"},
@@ -175,7 +175,7 @@ class TestPerArrayTyeLab(MedPCEventsInterfaceMixin):
             "R": {"name": "lick_end_water"},
             # K holds the type of each CS presentation in S, one value per event, so it rides along as a column
             # of that event type's table rather than becoming a table of its own.
-            "S": {"name": "cs_presentation", "value_names": {"K": "cs_type"}},
+            "S": {"name": "cs_presentation", "payload": {"K": "cs_type"}},
             "H": {"name": "ethanol_laser_trigger_off"},
         },
     )
@@ -247,9 +247,7 @@ class TestPerArrayTyeLab(MedPCEventsInterfaceMixin):
     def test_value_array_of_the_wrong_length_raises(self):
         # N holds the 906 ethanol lick ends, which is not one value per CS presentation.
         interface_kwargs = dict(self.interface_kwargs)
-        interface_kwargs["medpc_name_to_info_dict"] = {
-            "S": {"name": "cs_presentation", "value_names": {"N": "cs_type"}}
-        }
+        interface_kwargs["event_configuration"] = {"S": {"name": "cs_presentation", "payload": {"N": "cs_type"}}}
         interface = MedPCEventsInterface(**interface_kwargs)
 
         with pytest.raises(ValueError, match="has 30 events but its value array 'N' holds 906 values"):
@@ -404,7 +402,7 @@ def test_metadata_of_the_deprecated_interface_raises():
     interface = MedPCEventsInterface(
         file_path=MEDPC_DATA_PATH / "example_medpc_file_06_06_2024.txt",
         session_header={"Start Date": "04/10/19", "Start Time": "12:36:13"},
-        medpc_name_to_info_dict={"A": {"name": "left_nose_poke_times"}},
+        event_configuration={"A": {"name": "left_nose_poke_times"}},
     )
     metadata = interface.get_metadata()
     metadata["MedPC"] = {"Events": [{"name": "left_nose_poke_times", "description": "Left nose poke times"}]}
@@ -418,7 +416,7 @@ def test_metadata_of_the_deprecated_interface_raises():
     [
         dict(),
         dict(
-            medpc_name_to_info_dict={"A": {"name": "left_nose_poke_times"}},
+            event_configuration={"A": {"name": "left_nose_poke_times"}},
             packed_code_configuration={"clock_ticks_per_second": 500},
         ),
     ],
@@ -448,7 +446,7 @@ def test_variable_missing_from_the_session_is_named():
     interface = MedPCEventsInterface(
         file_path=MEDPC_DATA_PATH / "example_medpc_file_06_06_2024.txt",
         session_header={"Start Date": "04/10/19", "Start Time": "12:36:13"},
-        medpc_name_to_info_dict={"left_nose_poke_times": {"name": "left_nose_poke_times"}},
+        event_configuration={"left_nose_poke_times": {"name": "left_nose_poke_times"}},
     )
 
     with pytest.raises(ValueError, match="The MedPC variable 'left_nose_poke_times' is not in the session"):
