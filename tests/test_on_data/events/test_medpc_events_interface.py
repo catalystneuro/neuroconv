@@ -329,14 +329,16 @@ class TestCodedWithLegend(MedPCEventsInterfaceMixin):
         assert licks.colnames == ("timestamp",)
         assert np.allclose(licks["timestamp"][:3], [21.204, 21.8, 57.526])
 
-    def test_clock_rate_scales_every_timestamp(self):
-        # The file states its times in clock ticks and not the rate they were counted at, so the rate the
-        # user passes is what puts the events in seconds.
+    def test_the_wrong_clock_rate_is_caught_by_the_session_length(self):
+        # The file states its times in clock ticks and not the rate they were counted at, so the rate the user
+        # passes is what puts the events in seconds. Passing 200 where the program clocked at 500 stretches
+        # every time by two and a half, which pushes the last event past the end the header states.
         interface_kwargs = dict(self.interface_kwargs)
         interface_kwargs["clock_ticks_per_second"] = 200
         interface = MedPCCodedEventsInterface(**interface_kwargs)
 
-        assert np.allclose(interface.get_event_times("001")[:3], [53.01, 54.5, 143.815])
+        with pytest.raises(ValueError, match="says the session ran"):
+            interface.get_event_times("001")
 
     def test_round_trip(self, interface, tmp_path):
         metadata = interface.get_metadata()

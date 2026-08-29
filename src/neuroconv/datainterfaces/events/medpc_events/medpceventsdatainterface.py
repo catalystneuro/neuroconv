@@ -219,6 +219,53 @@ class _MedPCEventsInterface(BaseEventsInterface):
         """Return the arrays one event type carries as value columns, mapping each to its column name."""
         return {}
 
+    def _validate_within_the_session(self, times: np.ndarray, medpc_name: str) -> None:
+        """Raise where a decoded time falls after the session's own recorded end.
+
+        The header states `Start Time` and `End Time`, so the session has a length the file itself asserts and no
+        event can fall outside it. This is the only bound a MedPC file offers on the magnitude of a time, which
+        makes it the one check the ordering check cannot do: accumulating intervals always yields a rising series,
+        so `relative_mode=True` satisfies the ordering check whether or not the program used Relative Mode, and
+        only the length catches the difference.
+        """
+        if len(times) == 0:
+            return
+        duration = self._session_duration_in_seconds()
+        if duration is None:
+            return
+        latest = float(np.max(times))
+        # Whole seconds only in the header, and a box is opened and closed around the program, so the bound is
+        # generous: only a time well past the end is evidence of anything.
+        if latest <= duration * 1.05 + 1:
+            return
+        raise ValueError(
+            f"The last event read from the MedPC variable '{medpc_name}' is at {latest:.6g} s, but the header "
+            f"says the session ran {duration:.6g} s, from '{self._header_field('Start Time')}' to "
+            f"'{self._header_field('End Time')}'. No event can happen after the session ended, so the values are "
+            "being scaled up. Check `time_unit` against what the program divided by, and, if `relative_mode` is "
+            "on, whether the program really wrote intervals: accumulating times that were already elapsed times "
+            "inflates them exactly this way."
+        )
+
+    def _header_field(self, name: str) -> str | None:
+        """Return one header line of the selected session, reading the header once and keeping it."""
+        if getattr(self, "_header_dict", None) is None:
+            names = ("Start Date", "Start Time", "End Time", "Subject", "MSN", "Experiment")
+            self._header_dict = self._read_session(
+                medpc_name_to_info_dict={field: {"name": field, "is_array": False} for field in names}
+            )
+        return self._header_dict.get(name)
+
+    def _session_duration_in_seconds(self) -> float | None:
+        """Return how long the header says the session ran, or None where it does not say."""
+        start = _parse_clock_time(self._header_field("Start Time"))
+        end = _parse_clock_time(self._header_field("End Time"))
+        if start is None or end is None:
+            return None
+        seconds = end - start
+        # A session running past midnight wraps the clock; the header carries no second date to resolve it.
+        return seconds + 24 * 3600 if seconds < 0 else seconds
+
     def _read_session(self, medpc_name_to_info_dict: dict) -> dict:
         """Read the selected session's variables out of the MedPC file."""
         return read_medpc_file(
@@ -254,6 +301,7 @@ class _MedPCEventsInterface(BaseEventsInterface):
             # session's start, so the accumulation is what makes the values times at all.
             values = np.cumsum(values)
         seconds = self._scale_to_seconds(values)
+        self._validate_within_the_session(times=seconds, medpc_name=medpc_name)
         if check_order:
             self._validate_non_decreasing(times=seconds, medpc_name=medpc_name)
         return seconds
@@ -396,6 +444,7 @@ class MedPCArrayEventsInterface(_MedPCEventsInterface):
             verbose=verbose,
         )
         self.metadata_key = metadata_key or "medpc"
+        self._header_dict = None
 
     def _read_events(self) -> dict[str, _EventsData]:
         """Read one event type per declared array, plus the arrays named as its durations and payload."""
@@ -596,6 +645,7 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
             verbose=verbose,
         )
         self.metadata_key = metadata_key or "medpc"
+        self._header_dict = None
 
     def _read_events(self) -> dict[str, _EventsData]:
         """Read the one time array, recover each event's code, and group the times by it."""
@@ -766,6 +816,20 @@ def _to_integer_where_whole(values: np.ndarray) -> np.ndarray:
     if len(values) > 0 and np.all(np.mod(values, 1) == 0):
         return values.astype(int)
     return values
+
+
+def _parse_clock_time(value: str | None) -> float | None:
+    """Return a header clock time as seconds past midnight, or None where it is absent or unreadable."""
+    if not value:
+        return None
+    parts = value.strip().split(":")
+    if len(parts) != 3:
+        return None
+    try:
+        hours, minutes, seconds = (float(part) for part in parts)
+    except ValueError:
+        return None
+    return hours * 3600 + minutes * 60 + seconds
 
 
 def _parse_session_start_time(start_date: str | None, start_time: str | None) -> datetime | None:
