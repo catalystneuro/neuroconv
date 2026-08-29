@@ -17,15 +17,15 @@ from ...datainterfaces.behavior.baseposeestimationinterface import (
 from ...datainterfaces.behavior.video.externalvideointerface import (
     ExternalVideoInterface,
 )
-from ...datainterfaces.biopotential.basemnecontinuousdatainterface import (
-    BaseMNEElectricalSeriesInterface,
-    BaseMNETimeSeriesInterface,
-)
 from ...datainterfaces.ecephys.baserecordingextractorinterface import (
     BaseRecordingExtractorInterface,
 )
 from ...datainterfaces.ecephys.basesortingextractorinterface import (
     BaseSortingExtractorInterface,
+)
+from ...datainterfaces.eeg.basemnecontinuousdatainterface import (
+    BaseMNEElectricalSeriesInterface,
+    BaseMNETimeSeriesInterface,
 )
 from ...datainterfaces.events.baseeventsinterface import (
     BaseEventsInterface,

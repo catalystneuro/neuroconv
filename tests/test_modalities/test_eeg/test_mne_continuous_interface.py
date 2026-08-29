@@ -13,7 +13,7 @@ from pynwb import NWBHDF5IO
 
 pytest.importorskip("mne")
 
-from neuroconv.datainterfaces.biopotential.basemnecontinuousdatainterface import (  # noqa: E402
+from neuroconv.datainterfaces.eeg.basemnecontinuousdatainterface import (  # noqa: E402
     BaseMNEElectricalSeriesInterface,
 )
 from neuroconv.tools.mne import MNERawDataChunkIterator  # noqa: E402

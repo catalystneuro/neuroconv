@@ -6,7 +6,7 @@ Interfaces
 
     interfaces.ecephys
     interfaces.icephys
-    interfaces.biopotential
+    interfaces.eeg
     interfaces.ophys
     interfaces.fiber_photometry
     interfaces.behavior
