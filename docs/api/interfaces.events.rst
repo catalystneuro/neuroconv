@@ -17,6 +17,10 @@ NPM Events
 ----------
 .. automodule:: neuroconv.datainterfaces.events.npm_events.npmeventsdatainterface
 
+OpenEphys Binary Events
+-----------------------
+.. automodule:: neuroconv.datainterfaces.events.openephys_events.openephysbinaryeventsdatainterface
+
 TDT Events
 ----------
 .. automodule:: neuroconv.datainterfaces.events.tdt_events.tdteventsdatainterface
