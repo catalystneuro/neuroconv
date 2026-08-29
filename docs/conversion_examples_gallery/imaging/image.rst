@@ -131,17 +131,14 @@ Embedding maps the PIL image mode onto the NWB image type:
 - LA (luminance + alpha) → RGBAImage (automatically converted)
 
 
-Specifying Metadata
-~~~~~~~~~~~~~~~~~~~
+Naming and Describing the Images
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The examples above show how to convert image data without specifying any metadata, in which case the metadata will be
-automatically generated with default values. To customize the NWB file annotations, specify the metadata
-using the formats described below. Both interfaces read the same structure, so the container name and description
-and the per-image names and descriptions are given the same way whether the images are written by reference or
-embedded. The one field that is not shared is ``resolution``, which NWB declares on the embedded image type alone,
-so ``ExternalImageInterface`` rejects it.
-
-You can customize the container name and add descriptions, names, and resolution to individual images in the container:
+Metadata here is naming. The container takes a name and a description, and each image takes a name, which defaults
+to the file stem, and a description of what it shows. Everything else, the format, the color mode and the size, is
+read from the files, so there is nothing else to state. ``ImageInterface`` additionally accepts a ``resolution``
+per image in pixels/cm, which ``ExternalImageInterface`` rejects because NWB declares that field on the embedded
+image type alone.
 
 .. code-block:: python
 
