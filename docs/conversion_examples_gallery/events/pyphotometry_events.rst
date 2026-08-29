@@ -44,19 +44,9 @@ named the way pyPhotometry's own reader names them, and ``session_start_time`` c
     >>> interface.run_conversion(nwbfile_path=path_to_save_nwbfile, metadata=metadata, overwrite=True)
 
 A line that never toggles is written as a zero-row table rather than dropped, since the type existed in
-the recording and nothing fired. To read only some of the lines, or to read one of them differently, name
-them in ``detection_configuration``:
-
-.. code-block:: python
-
-    >>> interface = PyPhotometryEventsInterface(
-    ...     file_path=file_path,
-    ...     detection_configuration={
-    ...         "digital_1": [{"signal_conditioning": {"binarize": "midpoint"}, "detection": "rising"}]
-    ...     },
-    ... )
-    >>> list(interface.get_metadata()["Events"]["pyphotometry_events"]["event_types"])
-    ['digital_1']
+the recording and nothing fired. To read only some of the lines, or to read one of them differently, pass
+a ``detection_configuration``. See :ref:`extract_events_from_signals` for that argument, and
+:ref:`annotate_events_metadata` for naming the resulting event types and grouping them into tables.
 
 .. seealso::
 
