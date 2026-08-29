@@ -32,29 +32,19 @@ Images as References
 The :py:class:`~neuroconv.datainterfaces.image.externalimageinterface.ExternalImageInterface` writes the path of
 each image into the NWB file instead of its pixels, as an :py:class:`~pynwb.base.ExternalImage`.
 
-NWB allows only PNG, JPEG and GIF by reference, and the format is read from the file itself rather than from its
-suffix, so a mislabeled file is classified by what it holds. Any other format has to be embedded with
-``ImageInterface``. No color mode conversion happens, since no pixels are written: the mode is recorded as PIL
-reports it, so an LA image stays LA instead of becoming RGBA.
+NWB accepts only PNG, JPEG and GIF by reference, so any other format has to be embedded instead. Nothing about
+the image is converted on the way in, since no pixels are written: the color mode is recorded as the file reports
+it, so an LA image stays LA where ``ImageInterface`` would turn it into RGBA.
 
 .. code-block:: python
 
     >>> from datetime import datetime
-    >>> from pathlib import Path
-    >>> from tempfile import mkdtemp
     >>> from zoneinfo import ZoneInfo
-    >>>
-    >>> import numpy as np
-    >>> from PIL import Image
     >>>
     >>> from neuroconv.datainterfaces import ExternalImageInterface
     >>>
-    >>> # Create a temporary directory holding the images that stay outside of the NWB file
-    >>> image_dir = Path(mkdtemp())
-    >>> rgb_array = np.random.randint(0, 255, (100, 100, 3), dtype=np.uint8)
-    >>> Image.fromarray(rgb_array, mode='RGB').save(image_dir / 'histology.png')
-    >>>
-    >>> interface = ExternalImageInterface(folder_path=str(image_dir))
+    >>> # Every PNG, JPEG and GIF in the folder becomes one image in the container
+    >>> interface = ExternalImageInterface(folder_path=path_to_folder_with_images)
     >>>
     >>> metadata = interface.get_metadata()
     >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
@@ -74,42 +64,12 @@ into the NWB file.
 .. code-block:: python
 
     >>> from datetime import datetime
-    >>> from pathlib import Path
     >>> from zoneinfo import ZoneInfo
+    >>>
     >>> from neuroconv.datainterfaces import ImageInterface
-    >>> from pynwb import NWBHDF5IO, NWBFile
     >>>
-    >>> # Create example images of different modes
-    >>> from PIL import Image
-    >>> import numpy as np
-    >>>
-    >>> # Create a temporary directory for our example images
-    >>> from tempfile import mkdtemp
-    >>> image_dir = Path(mkdtemp())
-    >>>
-    >>> # Create example images
-    >>> # RGB image (3 channels)
-    >>> rgb_array = np.random.randint(0, 255, (100, 100, 3), dtype=np.uint8)
-    >>> rgb_image = Image.fromarray(rgb_array, mode='RGB')
-    >>> rgb_image.save(image_dir / 'rgb_image.png')
-    >>>
-    >>> # Grayscale image (L mode)
-    >>> gray_array = np.random.randint(0, 255, (100, 100), dtype=np.uint8)
-    >>> gray_image = Image.fromarray(gray_array, mode='L')
-    >>> gray_image.save(image_dir / 'gray_image.png')
-    >>>
-    >>> # RGBA image (4 channels)
-    >>> rgba_array = np.random.randint(0, 255, (100, 100, 4), dtype=np.uint8)
-    >>> rgba_image = Image.fromarray(rgba_array, mode='RGBA')
-    >>> rgba_image.save(image_dir / 'rgba_image.png')
-    >>>
-    >>> # LA image (luminance + alpha)
-    >>> la_array = np.random.randint(0, 255, (100, 100, 2), dtype=np.uint8)
-    >>> la_image = Image.fromarray(la_array, mode='LA')
-    >>> la_image.save(image_dir / 'la_image.png')
-    >>>
-    >>> # Initialize the image interface
-    >>> interface = ImageInterface(folder_path=str(image_dir))
+    >>> # Every image in the folder that PIL can read becomes one image in the container
+    >>> interface = ImageInterface(folder_path=path_to_folder_with_images)
     >>>
     >>> # Get metadata from the interface
     >>> metadata = interface.get_metadata()
@@ -122,7 +82,10 @@ into the NWB file.
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
 
 
-The images are read one at a time as the file is written, so a large collection does not have to fit in memory.
+To avoid an out-of-memory error when processing a large amount of images the interface uses a
+:py:class:`~neuroconv.datainterfaces.image.imageinterface.SingleImageIterator`. This loads one image at a time at
+writing time, protecting the system from crashing.
+
 Embedding maps the PIL image mode onto the NWB image type:
 
 - L (grayscale) → GrayscaleImage
@@ -134,8 +97,11 @@ Embedding maps the PIL image mode onto the NWB image type:
 Naming and Describing the Images
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Metadata here is naming. The container takes a name and a description, and each image takes a name, which defaults
-to the file stem, and a description of what it shows. Everything else, the format, the color mode and the size, is
+Metadata here is naming, and there are two things to name. The first is the ``Images`` container that holds the
+collection: its name is what the object is called in the NWB file, so it is what somebody browsing the file sees,
+and its description says what the collection is, a set of histology sections, the stimuli that were presented,
+photographs of the rig. The second is each image inside it, which takes a name, defaulting to the file stem, and
+a description of what that particular picture shows. Everything else, the format, the color mode and the size, is
 read from the files, so there is nothing else to state. ``ImageInterface`` additionally accepts a ``resolution``
 per image in pixels/cm, which ``ExternalImageInterface`` rejects because NWB declares that field on the embedded
 image type alone.
@@ -143,37 +109,14 @@ image type alone.
 .. code-block:: python
 
     >>> from datetime import datetime
-    >>> from pathlib import Path
     >>> from zoneinfo import ZoneInfo
+    >>>
     >>> from neuroconv.datainterfaces import ImageInterface
-    >>> from neuroconv.utils import dict_deep_update
-    >>> from PIL import Image
-    >>> import numpy as np
-    >>> from tempfile import mkdtemp
     >>>
-    >>> # Create a temporary directory for our example images
-    >>> image_dir = Path(mkdtemp())
-    >>>
-    >>> # Create example images with specific file paths
-    >>> stimulus_image_file_path = image_dir / 'stimulus_image.png'
-    >>> baseline_image_file_path = image_dir / 'baseline_image.png'
-    >>>
-    >>> rgb_array = np.random.randint(0, 255, (100, 100, 3), dtype=np.uint8)
-    >>> rgb_image = Image.fromarray(rgb_array, mode='RGB')
-    >>> rgb_image.save(stimulus_image_file_path)
-    >>>
-    >>> gray_array = np.random.randint(0, 255, (100, 100), dtype=np.uint8)
-    >>> gray_image = Image.fromarray(gray_array, mode='L')
-    >>> gray_image.save(baseline_image_file_path)
-    >>>
-    >>> # Create interface with custom container name
+    >>> # `metadata_key` is where this interface's block sits in the metadata, and names the container
     >>> metadata_key = "ExperimentalImages"
-    >>> interface = ImageInterface(
-    ...     folder_path=str(image_dir),
-    ...     metadata_key=metadata_key
-    ... )
+    >>> interface = ImageInterface(folder_path=path_to_folder_with_images, metadata_key=metadata_key)
     >>>
-    >>> # Get metadata and customize both container and individual images
     >>> metadata = interface.get_metadata()
     >>> # For data provenance we add the time zone information to the conversion
     >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
@@ -181,24 +124,21 @@ image type alone.
     >>> # Add subject information (required for DANDI upload)
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
     >>>
-    >>> # Customize container description
     >>> metadata["Images"][metadata_key]["description"] = "Collection of experimental stimulus and baseline images"
     >>>
-    >>> # Customize individual image metadata (names, descriptions, resolution)
-    >>> stimulus_image_file_path_str = str(stimulus_image_file_path)
-    >>> baseline_image_file_path_str = str(baseline_image_file_path)
-    >>> metadata["Images"][metadata_key]["images"][stimulus_image_file_path_str]["name"] = "visual_stimulus"
-    >>> metadata["Images"][metadata_key]["images"][stimulus_image_file_path_str]["description"] = "Visual stimulus presented to subject"
-    >>> metadata["Images"][metadata_key]["images"][stimulus_image_file_path_str]["resolution"] = 2.5  # pixels/cm
-    >>> metadata["Images"][metadata_key]["images"][baseline_image_file_path_str]["name"] = "baseline_recording"
-    >>> metadata["Images"][metadata_key]["images"][baseline_image_file_path_str]["description"] = "Baseline image before stimulus"
-    >>> metadata["Images"][metadata_key]["images"][baseline_image_file_path_str]["resolution"] = 2.5  # pixels/cm
+    >>> # Each image is keyed by its file path
+    >>> images_metadata = metadata["Images"][metadata_key]["images"]
+    >>> stimulus_image_path, baseline_image_path = sorted(images_metadata)[:2]
+    >>> images_metadata[stimulus_image_path].update(
+    ...     name="visual_stimulus", description="Visual stimulus presented to subject", resolution=2.5
+    ... )
+    >>> images_metadata[baseline_image_path].update(
+    ...     name="baseline_recording", description="Baseline image before stimulus", resolution=2.5
+    ... )
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
 
 .. note::
-    Individual image metadata is specified using the full file path as the key in the "images" dictionary.
-    You can customize the name, description, and resolution for each image. Resolution should be specified
-    in pixels/cm if provided. If not specified, individual image names default to the filename stem.
+    Individual image metadata is keyed by the full file path, and the name defaults to the file stem.
