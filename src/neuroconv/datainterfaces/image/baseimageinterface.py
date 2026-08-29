@@ -145,7 +145,8 @@ class BaseImageInterface(BaseDataInterface):
         Returns
         -------
         DeepDict
-            Metadata dictionary with the following structure:
+            Metadata dictionary with the following structure::
+
             {
                 "Images": {
                     "<metadata_key>": {
@@ -176,10 +177,7 @@ class BaseImageInterface(BaseDataInterface):
         >>> interface = ImageInterface(file_paths=["/data/img1.png", "/data/img2.jpg"])
         >>> metadata = interface.get_metadata()
         >>> print(metadata["Images"]["ImagesRGB"]["images"])
-        {
-            "/data/img1.png": {"name": "img1"},
-            "/data/img2.jpg": {"name": "img2"}
-        }
+        {"/data/img1.png": {"name": "img1"}, "/data/img2.jpg": {"name": "img2"}}
 
         Customizing per-image metadata:
         >>> metadata = interface.get_metadata()

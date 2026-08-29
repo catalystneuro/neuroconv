@@ -2,15 +2,15 @@ Image data conversion
 ---------------------
 
 The NWB standard provides two ways to store an image, and NeuroConv has an interface for each. An
-``ExternalImage`` holds the path of an image file and leaves the pixels in it, which is what the
-:py:class:`~neuroconv.datainterfaces.image.externalimageinterface.ExternalImageInterface` writes. An ``Image``
-holds the pixel data itself, which is what the
+:py:class:`~pynwb.base.ExternalImage` holds the path of an image file and leaves the pixels in it, which is what
+the :py:class:`~neuroconv.datainterfaces.image.externalimageinterface.ExternalImageInterface` writes. An
+:py:class:`~pynwb.base.Image` holds the pixel data itself, which is what the
 :py:class:`~neuroconv.datainterfaces.image.imageinterface.ImageInterface` writes, reading each file to get the
-pixels out of it. Either way the images land in the same ``Images`` container.
+pixels out of it. Either way the images land in the same :py:class:`~pynwb.base.Images` container.
 
 In most cases you should write the images as external. That keeps the full provenance of each file, its
-format, its color mode, and the metadata standard image formats carry that NWB's ``Image`` type has nowhere to
-put, and it avoids duplicating images that more than one NWB file references.
+format, its color mode, and the metadata standard image formats carry that NWB's :py:class:`~pynwb.base.Image` type has nowhere
+to put, and it avoids duplicating images that more than one NWB file references.
 
 Embed the images when something downstream wants the pixels as an array without decoding a file first, or when
 the NWB file has to stand on its own rather than travel next to the folder it points at. Embedding is also
@@ -26,11 +26,11 @@ Install NeuroConv with the additional dependencies necessary for reading image d
 
     pip install "neuroconv[image]"
 
-Writing Images by Reference
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Images as References
+~~~~~~~~~~~~~~~~~~~~
 
 The :py:class:`~neuroconv.datainterfaces.image.externalimageinterface.ExternalImageInterface` writes the path of
-each image into the NWB file instead of its pixels, as an ``ExternalImage``.
+each image into the NWB file instead of its pixels, as an :py:class:`~pynwb.base.ExternalImage`.
 
 NWB allows only PNG, JPEG and GIF by reference, and the format is read from the file itself rather than from its
 suffix, so a mislabeled file is classified by what it holds. Any other format has to be embedded with
@@ -65,19 +65,11 @@ reports it, so an LA image stays LA instead of becoming RGBA.
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
-Embedding the Images
-~~~~~~~~~~~~~~~~~~~~
+Images as Arrays
+~~~~~~~~~~~~~~~~
 
 The :py:class:`~neuroconv.datainterfaces.image.imageinterface.ImageInterface` reads the pixels and writes them
-into the NWB file, which is what a format that cannot be written by reference (TIFF, WebP) requires. The images
-are read one at a time as the file is written, so a large collection does not have to fit in memory.
-
-Embedding maps the PIL image mode onto the NWB image type:
-
-- L (grayscale) → GrayscaleImage
-- RGB → RGBImage
-- RGBA → RGBAImage
-- LA (luminance + alpha) → RGBAImage (automatically converted)
+into the NWB file.
 
 .. code-block:: python
 
@@ -128,6 +120,15 @@ Embedding maps the PIL image mode onto the NWB image type:
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
+
+
+The images are read one at a time as the file is written, so a large collection does not have to fit in memory.
+Embedding maps the PIL image mode onto the NWB image type:
+
+- L (grayscale) → GrayscaleImage
+- RGB → RGBImage
+- RGBA → RGBAImage
+- LA (luminance + alpha) → RGBAImage (automatically converted)
 
 
 Specifying Metadata
