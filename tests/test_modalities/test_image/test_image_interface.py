@@ -1,11 +1,17 @@
+import re
+from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
 import pytest
 from PIL import Image
 from pynwb import read_nwb
+from pynwb.base import ExternalImage
 from pynwb.image import GrayscaleImage, RGBAImage, RGBImage
 
+from neuroconv.datainterfaces.image.externalimageinterface import (
+    ExternalImageInterface,
+)
 from neuroconv.datainterfaces.image.imageinterface import ImageInterface
 from neuroconv.tools.testing.data_interface_mixins import DataInterfaceTestMixin
 
@@ -456,3 +462,96 @@ class TestImagesContainerMetadataKey(DataInterfaceTestMixin):
         # Should not have resolution or description attributes if not set
         assert not hasattr(third_image, "resolution") or third_image.resolution is None
         assert not hasattr(third_image, "description") or third_image.description is None
+
+
+class TestExternalImageInterface(DataInterfaceTestMixin):
+    """Test suite for ExternalImageInterface over a folder holding every mode and format it accepts."""
+
+    data_interface_cls = ExternalImageInterface
+
+    @pytest.fixture(autouse=True)
+    def make_interface(self, tmp_path):
+        """Create the interface over one folder, which is also what exercises the suffix glob."""
+        images_directory = tmp_path / "images"
+        images_directory.mkdir()
+
+        # `generate_random_images` empties its output directory, so each mode is generated apart and moved in.
+        for mode, format in [("RGB", "JPEG"), ("L", "PNG"), ("RGBA", "PNG"), ("LA", "PNG"), ("P", "GIF")]:
+            staging_directory = tmp_path / f"staging_{mode}"
+            generate_random_images(num_images=2, mode=mode, output_dir_path=staging_directory, format=format)
+            for file_path in staging_directory.iterdir():
+                file_path.rename(images_directory / file_path.name)
+
+        self.interface_kwargs = dict(folder_path=images_directory)
+        self.interface = self.data_interface_cls(**self.interface_kwargs)
+
+    def check_read_nwb(self, nwbfile_path):
+        """Each image is written as the path of its source file, carrying the color mode PIL reports."""
+
+        nwbfile = read_nwb(nwbfile_path)
+        assert "Images" in nwbfile.acquisition
+        images_container = nwbfile.acquisition["Images"]
+        assert len(images_container.images) == 10
+
+        file_paths_by_stem = {file_path.stem: file_path for file_path in self.interface.file_paths}
+        num_image_modes = {}
+        for name, image in images_container.images.items():
+            assert isinstance(image, ExternalImage)
+            assert image.data == str(file_paths_by_stem[name])
+            num_image_modes[image.image_mode] = num_image_modes.get(image.image_mode, 0) + 1
+
+        # `L` is written as "grayscale", the schema's spelling; every other mode is passed through as PIL reports it
+        assert num_image_modes == {"RGB": 2, "grayscale": 2, "RGBA": 2, "LA": 2, "P": 2}
+        nwbfile.read_io.close()
+
+
+def test_external_image_rejects_unsupported_format(tmp_path):
+    """NWB allows only PNG, JPEG and GIF by reference, and the error names the file that was rejected."""
+    from pynwb.testing.mock.file import mock_NWBFile
+
+    generate_random_images(num_images=1, mode="RGB", output_dir_path=tmp_path, format="TIFF")
+    file_path = next(tmp_path.iterdir())
+    interface = ExternalImageInterface(file_paths=[file_path])
+
+    with pytest.raises(ValueError, match=f"Unsupported image format: TIFF for image {file_path.name}"):
+        interface.add_to_nwbfile(mock_NWBFile())
+
+
+@pytest.mark.parametrize("interface_class", [ImageInterface, ExternalImageInterface])
+def test_parent_container_selects_the_group(tmp_path, interface_class):
+    """`parent_container` is a conversion option, so one interface can write to either group."""
+    from pynwb.testing.mock.file import mock_NWBFile
+
+    generate_random_images(num_images=1, mode="RGB", output_dir_path=tmp_path, format="PNG")
+    interface = interface_class(folder_path=tmp_path)
+
+    nwbfile = mock_NWBFile()
+    interface.add_to_nwbfile(nwbfile)
+    assert "Images" in nwbfile.acquisition
+
+    nwbfile = mock_NWBFile()
+    interface.add_to_nwbfile(nwbfile, parent_container="stimulus")
+    assert "Images" in nwbfile.stimulus
+
+    expected_error = "parent_container must be either 'acquisition' or 'stimulus', not processing."
+    with pytest.raises(ValueError, match=re.escape(expected_error)):
+        interface.add_to_nwbfile(mock_NWBFile(), parent_container="processing")
+
+
+def test_resolution_is_rejected_for_an_external_image(tmp_path):
+    """NWB declares `resolution` on the embedded image type alone, so the schema takes it from one interface only."""
+    from jsonschema import ValidationError
+
+    generate_random_images(num_images=1, mode="RGB", output_dir_path=tmp_path, format="PNG")
+
+    for interface_class, accepts_resolution in [(ImageInterface, True), (ExternalImageInterface, False)]:
+        interface = interface_class(folder_path=tmp_path)
+        metadata = interface.get_metadata()
+        metadata["NWBFile"]["session_start_time"] = datetime(2020, 1, 1, tzinfo=timezone.utc)
+        metadata["Images"]["Images"]["images"][str(interface.file_paths[0])]["resolution"] = 2.5
+
+        if accepts_resolution:
+            interface.validate_metadata(metadata=metadata)
+        else:
+            with pytest.raises(ValidationError, match="'resolution' was unexpected"):
+                interface.validate_metadata(metadata=metadata)
