@@ -1,4 +1,4 @@
-"""Tests of `MedPCEventsInterface` over both MedPC layouts and both labs whose per-array output is on gin."""
+"""Tests of the two MedPC events interfaces, over both layouts and both labs whose array output is on gin."""
 
 from datetime import datetime
 
@@ -7,7 +7,7 @@ import pytest
 from pynwb import read_nwb
 from pynwb.testing.mock.file import mock_NWBFile
 
-from neuroconv.datainterfaces import MedPCEventsInterface
+from neuroconv.datainterfaces import MedPCArrayEventsInterface, MedPCCodedEventsInterface
 
 try:
     from ..setup_paths import BEHAVIOR_DATA_PATH
@@ -18,16 +18,18 @@ MEDPC_DATA_PATH = BEHAVIOR_DATA_PATH / "medpc"
 
 
 class MedPCEventsInterfaceMixin:
-    """Builds ``self.interface`` from ``interface_kwargs`` set on the subclass."""
+    """Builds ``self.interface`` from the ``interface_class`` and ``interface_kwargs`` set on the subclass."""
 
     @pytest.fixture
     def interface(self):
-        return MedPCEventsInterface(**self.interface_kwargs)
+        return self.interface_class(**self.interface_kwargs)
 
 
 class TestPerArrayLernerLab(MedPCEventsInterfaceMixin):
     """A per-array file from the Lerner lab: one lettered array per event type, plus an interval type
     pairing the port-entry onsets in G with the durations in E."""
+
+    interface_class = MedPCArrayEventsInterface
 
     interface_kwargs = dict(
         file_path=MEDPC_DATA_PATH / "example_medpc_file_06_06_2024.txt",
@@ -163,6 +165,8 @@ class TestPerArrayTyeLab(MedPCEventsInterfaceMixin):
     """A per-array file from a second lab, whose program writes one value per index line rather than five,
     and whose `.MPC` source names what each array holds."""
 
+    interface_class = MedPCArrayEventsInterface
+
     interface_kwargs = dict(
         file_path=MEDPC_DATA_PATH / "medpc_tye_lab" / "!2022-10-06_14h12m.Subject cohort10-M3.3",
         session_header={"Start Date": "10/06/22", "Subject": "cohort10-M3.3"},
@@ -248,7 +252,7 @@ class TestPerArrayTyeLab(MedPCEventsInterfaceMixin):
         # N holds the 906 ethanol lick ends, which is not one value per CS presentation.
         interface_kwargs = dict(self.interface_kwargs)
         interface_kwargs["event_configuration"] = {"S": {"name": "cs_presentation", "payload": {"N": "cs_type"}}}
-        interface = MedPCEventsInterface(**interface_kwargs)
+        interface = MedPCArrayEventsInterface(**interface_kwargs)
 
         with pytest.raises(ValueError, match="has 30 events but its value array 'N' holds 906 values"):
             interface.get_metadata()
@@ -264,26 +268,26 @@ class TestPerArrayTyeLab(MedPCEventsInterfaceMixin):
         nwbfile.read_io.close()
 
 
-class TestPackedCodeWithLegend(MedPCEventsInterfaceMixin):
+class TestCodedWithLegend(MedPCEventsInterfaceMixin):
     """A packed-code file whose event codes are known: every event is a TIME.EVENTCODE value in array A,
     and the legend of `ExampleFile2` names each code."""
+
+    interface_class = MedPCCodedEventsInterface
 
     interface_kwargs = dict(
         file_path=MEDPC_DATA_PATH / "event_type_in_column_laubach_lab" / "ExampleFile2",
         session_header={"Start Date": "09/25/15", "Subject": "ML03"},
-        packed_code_configuration={
-            # The program clocks at 2 ms, so the integer part of each value is in 500ths of a second.
-            "clock_ticks_per_second": 500,
-            "code_to_info_dict": {
-                "001": {"name": "lick"},
-                "011": {"name": "pump_a_on"},
-                "021": {"name": "pump_a_off"},
-                "012": {"name": "pump_b_on"},
-                "022": {"name": "pump_b_off"},
-                "050": {"name": "concentration_low"},
-                "051": {"name": "concentration_high"},
-                "052": {"name": "shift"},
-            },
+        # The program clocks at 2 ms, so the integer part of each value is in 500ths of a second.
+        clock_ticks_per_second=500,
+        event_configuration={
+            "001": {"name": "lick"},
+            "011": {"name": "pump_a_on"},
+            "021": {"name": "pump_a_off"},
+            "012": {"name": "pump_b_on"},
+            "022": {"name": "pump_b_off"},
+            "050": {"name": "concentration_low"},
+            "051": {"name": "concentration_high"},
+            "052": {"name": "shift"},
         },
     )
 
@@ -327,16 +331,14 @@ class TestPackedCodeWithLegend(MedPCEventsInterfaceMixin):
         # The file states its times in clock ticks and not the rate they were counted at, so the rate the
         # user passes is what puts the events in seconds.
         interface_kwargs = dict(self.interface_kwargs)
-        interface_kwargs["packed_code_configuration"] = dict(
-            interface_kwargs["packed_code_configuration"], clock_ticks_per_second=200
-        )
-        interface = MedPCEventsInterface(**interface_kwargs)
+        interface_kwargs["clock_ticks_per_second"] = 200
+        interface = MedPCCodedEventsInterface(**interface_kwargs)
 
         assert np.allclose(interface.get_event_times("001")[:3], [53.01, 54.5, 143.815])
 
     def test_round_trip(self, interface, tmp_path):
         metadata = interface.get_metadata()
-        nwbfile_path = tmp_path / "test_medpc_packed_code.nwb"
+        nwbfile_path = tmp_path / "test_medpc_coded.nwb"
 
         interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
@@ -345,14 +347,16 @@ class TestPackedCodeWithLegend(MedPCEventsInterfaceMixin):
         nwbfile.read_io.close()
 
 
-class TestPackedCodeWithoutLegend(MedPCEventsInterfaceMixin):
+class TestCodedWithoutLegend(MedPCEventsInterfaceMixin):
     """A packed-code file whose codes are not known: `ExampleFile1` ships no legend, and the MSN template
     beside it is a later version whose numbering disagrees with the file, so the codes cannot be named."""
+
+    interface_class = MedPCCodedEventsInterface
 
     interface_kwargs = dict(
         file_path=MEDPC_DATA_PATH / "event_type_in_column_laubach_lab" / "ExampleFile1",
         session_header={"Start Date": "09/17/15", "Subject": "EX01"},
-        packed_code_configuration={"clock_ticks_per_second": 500},
+        clock_ticks_per_second=500,
     )
 
     def test_get_metadata(self, interface):
@@ -384,11 +388,8 @@ class TestPackedCodeWithoutLegend(MedPCEventsInterfaceMixin):
         # A legend entry for a code that never fired is a declared event type, written as an empty table the
         # way a per-array variable holding no events is.
         interface_kwargs = dict(self.interface_kwargs)
-        interface_kwargs["packed_code_configuration"] = {
-            "clock_ticks_per_second": 500,
-            "code_to_info_dict": {"099": {"name": "never_fired"}},
-        }
-        interface = MedPCEventsInterface(**interface_kwargs)
+        interface_kwargs["event_configuration"] = {"099": {"name": "never_fired"}}
+        interface = MedPCCodedEventsInterface(**interface_kwargs)
 
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
@@ -399,7 +400,7 @@ class TestPackedCodeWithoutLegend(MedPCEventsInterfaceMixin):
 def test_metadata_of_the_deprecated_interface_raises():
     # A script moved over from MedPCInterface brings its metadata["MedPC"] block, which this interface does not
     # read, so the events it describes would go unwritten.
-    interface = MedPCEventsInterface(
+    interface = MedPCArrayEventsInterface(
         file_path=MEDPC_DATA_PATH / "example_medpc_file_06_06_2024.txt",
         session_header={"Start Date": "04/10/19", "Start Time": "12:36:13"},
         event_configuration={"A": {"name": "left_nose_poke_times"}},
@@ -411,39 +412,10 @@ def test_metadata_of_the_deprecated_interface_raises():
         interface.add_to_nwbfile(nwbfile=mock_NWBFile(), metadata=metadata)
 
 
-@pytest.mark.parametrize(
-    "layout_kwargs",
-    [
-        dict(),
-        dict(
-            event_configuration={"A": {"name": "left_nose_poke_times"}},
-            packed_code_configuration={"clock_ticks_per_second": 500},
-        ),
-    ],
-    ids=["neither", "both"],
-)
-def test_exactly_one_layout_is_required(layout_kwargs):
-    with pytest.raises(ValueError, match="Pass exactly one of"):
-        MedPCEventsInterface(
-            file_path=MEDPC_DATA_PATH / "example_medpc_file_06_06_2024.txt",
-            session_header={"Start Date": "04/10/19", "Start Time": "12:36:13"},
-            **layout_kwargs,
-        )
-
-
-def test_packed_code_requires_the_clock_rate():
-    with pytest.raises(ValueError, match="must state 'clock_ticks_per_second'"):
-        MedPCEventsInterface(
-            file_path=MEDPC_DATA_PATH / "event_type_in_column_laubach_lab" / "ExampleFile2",
-            session_header={"Start Date": "09/25/15", "Subject": "ML03"},
-            packed_code_configuration={"code_to_info_dict": {"001": {"name": "lick"}}},
-        )
-
-
 def test_variable_missing_from_the_session_is_named():
     # The dictionary is keyed by the MedPC variable, so keying it by the name to give that variable (which is
     # how the removed metadata block was written) names nothing in the file and is reported as such.
-    interface = MedPCEventsInterface(
+    interface = MedPCArrayEventsInterface(
         file_path=MEDPC_DATA_PATH / "example_medpc_file_06_06_2024.txt",
         session_header={"Start Date": "04/10/19", "Start Time": "12:36:13"},
         event_configuration={"left_nose_poke_times": {"name": "left_nose_poke_times"}},

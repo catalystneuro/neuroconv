@@ -36,7 +36,7 @@ class MedPCInterface(BaseTemporalAlignmentInterface):
     behavior module.
 
     .. deprecated::
-        Use :class:`~neuroconv.datainterfaces.events.medpc_events.medpceventsdatainterface.MedPCEventsInterface`,
+        Use :class:`~neuroconv.datainterfaces.events.medpc_events.medpceventsdatainterface.MedPCArrayEventsInterface`,
         which writes the same events as native ``pynwb.event.EventsTable`` objects into ``nwbfile.events``. This
         interface will be removed on or after August 2027, and ``ndx-events`` leaves NeuroConv with it.
     """
@@ -81,7 +81,7 @@ class MedPCInterface(BaseTemporalAlignmentInterface):
         """
         warnings.warn(
             "MedPCInterface is deprecated and will be removed on or after August 2027. Use "
-            "MedPCEventsInterface, which reads the same files and writes their events as native "
+            "MedPCArrayEventsInterface, which reads the same files and writes their events as native "
             "pynwb.event.EventsTable objects into nwbfile.events rather than as ndx-events Events and "
             "IntervalSeries into the behavior processing module. Which arrays hold events is declared on that "
             "interface instead of in metadata['MedPC'], an interval type states its durations array instead of "

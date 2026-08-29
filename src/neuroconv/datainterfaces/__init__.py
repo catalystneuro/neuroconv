@@ -137,7 +137,10 @@ from .text.excel.exceltimeintervalsinterface import ExcelTimeIntervalsInterface
 from .events.csv_events.csveventsdatainterface import CSVEventsInterface
 from .events.doric_events.doriccsveventsdatainterface import DoricCSVEventsInterface
 from .events.doric_events.doriceventsdatainterface import DoricEventsInterface
-from .events.medpc_events.medpceventsdatainterface import MedPCEventsInterface
+from .events.medpc_events.medpceventsdatainterface import (
+    MedPCArrayEventsInterface,
+    MedPCCodedEventsInterface,
+)
 from .events.npm_events.npmeventsdatainterface import NPMEventsInterface
 from .events.pyphotometry_events.pyphotometryeventsdatainterface import (
     PyPhotometryEventsInterface,
@@ -246,7 +249,8 @@ interface_list = [
     CSVEventsInterface,
     DoricCSVEventsInterface,
     DoricEventsInterface,
-    MedPCEventsInterface,
+    MedPCArrayEventsInterface,
+    MedPCCodedEventsInterface,
     NPMEventsInterface,
     PyPhotometryEventsInterface,
     TDTEventsInterface,
@@ -314,7 +318,8 @@ interfaces_by_category = dict(
         CSVEvents=CSVEventsInterface,
         DoricCSVEvents=DoricCSVEventsInterface,
         DoricEvents=DoricEventsInterface,
-        MedPCEvents=MedPCEventsInterface,
+        MedPCArrayEvents=MedPCArrayEventsInterface,
+        MedPCCodedEvents=MedPCCodedEventsInterface,
         NPMEvents=NPMEventsInterface,
         PyPhotometryEvents=PyPhotometryEventsInterface,
         TDTEvents=TDTEventsInterface,
