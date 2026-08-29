@@ -146,9 +146,9 @@ class TestRelativeTimes:
             file_path=path,
             session_header=SESSION_HEADER,
             timestamps_variable="C",
-            code_divisor=100,
+            code_scale=100,
             time_unit="centiseconds",
-            relative_times=True,
+            times_are_intervals=True,
             event_configuration={"10": {"name": "left_lever"}, "20": {"name": "reinforcement"}},
         )
 
@@ -164,7 +164,7 @@ class TestRelativeTimes:
             file_path=path,
             session_header=SESSION_HEADER,
             timestamps_variable="C",
-            code_divisor=100,
+            code_scale=100,
             time_unit="centiseconds",
         )
 
@@ -200,7 +200,7 @@ class TestCodePosition:
             file_path=path,
             session_header=SESSION_HEADER,
             timestamps_variable="A",
-            code_divisor=10000,
+            code_scale=10000,
             code_position="leading",
             event_configuration={"1": {"name": "peck_left"}, "2": {"name": "peck_right"}},
         )
@@ -214,18 +214,39 @@ class TestCodePosition:
         write_medpc_file(path, {"A": [1.10, 2.20]})
 
         interface = MedPCCodedEventsInterface(
-            file_path=path, session_header=SESSION_HEADER, timestamps_variable="A", code_divisor=100
+            file_path=path, session_header=SESSION_HEADER, timestamps_variable="A", code_scale=100
         )
 
         assert set(interface.get_event_type_source_ids()) == {"10", "20"}
 
-    def test_a_divisor_leaving_no_digits_raises(self, tmp_path):
+    @pytest.mark.parametrize("legend_key", [11, "11", "011"], ids=["int", "unpadded", "padded"])
+    def test_a_legend_key_reaches_the_padded_identifier(self, tmp_path, legend_key):
+        # The identifiers are zero-padded to the scale's width, but a legend is written the way the program
+        # numbers its codes. Keying the legend literally used to leave the real type named `code_011` and add a
+        # phantom empty table carrying the user's name beside it.
+        path = tmp_path / "legend.txt"
+        write_medpc_file(path, {"A": [100.011, 200.011]})
+
+        interface = MedPCCodedEventsInterface(
+            file_path=path,
+            session_header=SESSION_HEADER,
+            timestamps_variable="A",
+            event_configuration={legend_key: {"name": "pump_a_on"}},
+        )
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
+
+        assert set(interface.get_event_type_source_ids()) == {"011"}
+        assert set(nwbfile.events) == {"PumpAOn"}
+        assert len(nwbfile.get_events_table("PumpAOn")) == 2
+
+    def test_a_scale_leaving_no_digits_raises(self, tmp_path):
         path = tmp_path / "a.txt"
         write_medpc_file(path, {"A": [1.0]})
 
         with pytest.raises(ValueError, match="leaves no digits for a code"):
             MedPCCodedEventsInterface(
-                file_path=path, session_header=SESSION_HEADER, timestamps_variable="A", code_divisor=1
+                file_path=path, session_header=SESSION_HEADER, timestamps_variable="A", code_scale=1
             )
 
 
@@ -258,6 +279,20 @@ class TestCompanionCodeArray:
         )
 
         assert set(interface.get_event_type_source_ids()) == {"3.1", "3.2"}
+
+    def test_packing_arguments_beside_a_code_array_raise(self, tmp_path):
+        # Both say where the code is, so passing both means one of them is a misunderstanding.
+        path = tmp_path / "both.txt"
+        write_medpc_file(path, {"B": [1.0], "C": [1.0]})
+
+        with pytest.raises(ValueError, match="not both"):
+            MedPCCodedEventsInterface(
+                file_path=path,
+                session_header=SESSION_HEADER,
+                timestamps_variable="B",
+                event_type_variable="C",
+                code_scale=1000,
+            )
 
     def test_a_mismatched_code_array_raises(self, tmp_path):
         path = tmp_path / "mismatch.txt"

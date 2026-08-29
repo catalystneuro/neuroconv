@@ -243,7 +243,7 @@ class _MedPCEventsInterface(BaseEventsInterface):
         for a program written in relative mode, after the deltas are accumulated. Neither the unit nor the mode is
         recorded in the file, which is why both are stated on the interface.
         """
-        if self.source_data["relative_times"]:
+        if self.source_data["times_are_intervals"]:
             # Relative (incremental) mode: each element is the time since the previous event, so the series is a
             # set of deltas and only their running total is a time.
             values = np.cumsum(values)
@@ -276,10 +276,14 @@ class _MedPCEventsInterface(BaseEventsInterface):
             f"{times[first]:.6g} s and event {first + 1} is at {times[first + 1]:.6g} s. Onsets cannot go "
             "backwards, so the values are not being read as the program wrote them. The usual causes are a "
             "program written in relative mode, where each value is the time since the previous event and "
-            "`relative_times=True` accumulates them; a `time_unit` other than the one the program divided by "
-            "before storing; and, for a coded array, a `code_divisor` or `code_position` that leaves part of "
-            "the code in the time. The MSN program that wrote the file is what settles which."
+            "`times_are_intervals=True` accumulates them; and a `time_unit` other than the one the program "
+            f"divided by before storing. {self._extra_decoding_causes()}The MSN program that wrote the file is "
+            "what settles which."
         )
+
+    def _extra_decoding_causes(self) -> str:
+        """Return the causes of a backwards series that only some layouts can have."""
+        return ""
 
 
 class MedPCArrayEventsInterface(_MedPCEventsInterface):
@@ -309,8 +313,8 @@ class MedPCArrayEventsInterface(_MedPCEventsInterface):
         event_configuration: dict,
         time_unit: TimeUnit = "seconds",
         clock_ticks_per_second: int | None = None,
-        relative_times: bool = False,
-        metadata_key: str = "medpc",
+        times_are_intervals: bool = False,
+        metadata_key: str | None = None,
         verbose: bool = False,
     ):
         """
@@ -330,7 +334,7 @@ class MedPCArrayEventsInterface(_MedPCEventsInterface):
             date, or the date and the time where it ran twice in a day, is what separates them
             ex. {"Start Date": "10/06/22", "Subject": "cohort10-M3.3"} where a cohort's animals were pooled into one
             file and the subject is needed as well
-        event_configuration : dict, optional
+        event_configuration : dict
             The event types of a per-array file, keyed by the name of the MedPC variable holding their onset times
             (ex. 'A'). That name is the event type's identifier, the handle ``get_event_times`` takes and the key of
             its metadata entry. Each value declares what that array becomes: a required 'name', which seeds the
@@ -349,13 +353,14 @@ class MedPCArrayEventsInterface(_MedPCEventsInterface):
         clock_ticks_per_second : int, optional
             The rate of the program's clock: 500 for a 2 ms system, 200 for a 5 ms one. Required when
             ``time_unit`` is "clock_ticks" and rejected otherwise, since the file carries neither.
-        relative_times : bool, optional
+        times_are_intervals : bool, optional
             Whether each value is the time since the previous event rather than the time since the session began,
             default = False. Med Associates' own shipped programs call this relative or incremental mode and it is
             what their example procedures use, so it is worth checking the program before assuming absolute times.
             The values are accumulated when True.
         metadata_key : str, optional
-            The key under ``metadata["Events"]`` that namespaces this interface's events metadata, default = "medpc".
+            The key under ``metadata["Events"]`` that namespaces this interface's events metadata. If None
+            (default), "medpc" is used, so several MedPC interfaces in one conversion need a key each.
         verbose : bool, optional
             Whether to print verbose output, by default False.
         """
@@ -373,10 +378,10 @@ class MedPCArrayEventsInterface(_MedPCEventsInterface):
             event_configuration=event_configuration,
             time_unit=time_unit,
             clock_ticks_per_second=clock_ticks_per_second,
-            relative_times=relative_times,
+            times_are_intervals=times_are_intervals,
             verbose=verbose,
         )
-        self.metadata_key = metadata_key
+        self.metadata_key = metadata_key or "medpc"
 
     def _read_events(self) -> dict[str, _EventsData]:
         """Read one event type per declared array, plus the arrays named as its durations and payload."""
@@ -452,10 +457,10 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
 
     - **Packed into the time value.** The classic ``TIME.EVENTCODE`` form, written by a line like
       ``Set A(Y) = BTIME-U + code/1000``: the code rides in the fractional digits and the time is the integer
-      part. ``code_divisor`` is the divisor the program used and ``code_position`` is "fraction". Some programs
+      part. ``code_scale`` is the divisor the program used and ``code_position`` is "fraction". Some programs
       pack the other way round, adding a large constant so the code sits in the leading digits
       (``^PeckLeft=10000`` with ``set x(y)=^PeckLeft+Btime/1"``, giving ``aabbbb.bbb``); that is
-      ``code_position="leading"`` with ``code_divisor=10000``.
+      ``code_position="leading"`` with ``code_scale=10000``.
     - **In a companion array.** A second array of the same length holds one code per event
       (``DIM B`` for all event times beside ``DIM C`` for all event identities). Name it with
       ``event_type_variable`` and nothing is unpacked.
@@ -477,13 +482,13 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
         session_header: dict,
         timestamps_variable: str,
         event_type_variable: str | None = None,
-        code_divisor: int = 1000,
-        code_position: Literal["fraction", "leading"] = "fraction",
+        code_scale: int | None = None,
+        code_position: Literal["fraction", "leading"] | None = None,
         event_configuration: dict | None = None,
         time_unit: TimeUnit = "seconds",
         clock_ticks_per_second: int | None = None,
-        relative_times: bool = False,
-        metadata_key: str = "medpc",
+        times_are_intervals: bool = False,
+        metadata_key: str | None = None,
         verbose: bool = False,
     ):
         """
@@ -509,9 +514,9 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
         event_type_variable : str, optional
             The MedPC variable holding one event code per event, where the program wrote the codes into their own
             array instead of packing them into the times. When given, ``timestamps_variable`` is read as plain
-            times and nothing is unpacked, so ``code_divisor`` and ``code_position`` do not apply.
+            times and nothing is unpacked, so ``code_scale`` and ``code_position`` do not apply.
             ex. 'C', beside timestamps in 'B'
-        code_divisor : int, optional
+        code_scale : int, optional
             The constant the program divided the code by, or added it to, when packing, default = 1000. With
             ``code_position="fraction"`` it is the divisor of ``time + code/divisor``, so 1000 leaves three
             fractional digits and 100 leaves two. With ``code_position="leading"`` it is the multiplier of
@@ -536,20 +541,29 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
         clock_ticks_per_second : int, optional
             The rate of the program's clock: 500 for a 2 ms system, 200 for a 5 ms one. Required when
             ``time_unit`` is "clock_ticks" and rejected otherwise, since the file carries neither.
-        relative_times : bool, optional
+        times_are_intervals : bool, optional
             Whether each time is the interval since the previous event rather than the time since the session
             began, default = False. Med Associates' own shipped example procedures use this, which they call
             relative or incremental mode, so it is worth checking the program before assuming absolute times.
             The values are accumulated when True.
         metadata_key : str, optional
-            The key under ``metadata["Events"]`` that namespaces this interface's events metadata, default = "medpc".
+            The key under ``metadata["Events"]`` that namespaces this interface's events metadata. If None
+            (default), "medpc" is used, so several MedPC interfaces in one conversion need a key each.
         verbose : bool, optional
             Whether to print verbose output, by default False.
         """
         _validate_time_arguments(time_unit=time_unit, clock_ticks_per_second=clock_ticks_per_second)
-        if code_divisor < 10:
+        if event_type_variable is not None and (code_scale is not None or code_position is not None):
             raise ValueError(
-                f"`code_divisor` is {code_divisor}, which leaves no digits for a code. It is the constant the "
+                f"`event_type_variable` names '{event_type_variable}' as the array holding the codes, so nothing "
+                "is unpacked from the times and `code_scale` and `code_position` would not be used. Pass the "
+                "companion array or the packing arguments, not both."
+            )
+        code_scale = 1000 if code_scale is None else code_scale
+        code_position = "fraction" if code_position is None else code_position
+        if code_scale < 10:
+            raise ValueError(
+                f"`code_scale` is {code_scale}, which leaves no digits for a code. It is the constant the "
                 "program packed with (1000 for `time + code/1000`, 10000 for `code * 10000 + time`)."
             )
 
@@ -558,15 +572,15 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
             session_header=session_header,
             timestamps_variable=timestamps_variable,
             event_type_variable=event_type_variable,
-            code_divisor=code_divisor,
+            code_scale=code_scale,
             code_position=code_position,
             event_configuration=event_configuration,
             time_unit=time_unit,
             clock_ticks_per_second=clock_ticks_per_second,
-            relative_times=relative_times,
+            times_are_intervals=times_are_intervals,
             verbose=verbose,
         )
-        self.metadata_key = metadata_key
+        self.metadata_key = metadata_key or "medpc"
 
     def _read_events(self) -> dict[str, _EventsData]:
         """Read the one time array, recover each event's code, and group the times by it."""
@@ -613,7 +627,7 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
 
     def _unpack(self, values: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """Split packed values into their time part and their code part."""
-        divisor = self.source_data["code_divisor"]
+        divisor = self.source_data["code_scale"]
         if self.source_data["code_position"] == "fraction":
             times = np.floor(values)
             # The values are read as floats, so the code is recovered by rounding rather than by comparing
@@ -624,6 +638,12 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
             times = values - codes * divisor
         return times, codes
 
+    def _extra_decoding_causes(self) -> str:
+        """Name the packing arguments too, since a wrong one leaves part of the code in the time."""
+        if self.source_data["event_type_variable"] is not None:
+            return ""
+        return "For a packed array, a `code_scale` or `code_position` that leaves part of the code in the time. "
+
     def _format_code(self, code: float) -> str:
         """Return the identifier one event code is known by.
 
@@ -632,15 +652,22 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
         no such width, since the digits below it are the time, and a code from a companion array has none either,
         where some programs use fractional codes such as 3.1. Both are left as the program wrote them.
         """
+        if not float(code).is_integer():
+            return str(code)
         if self.source_data["event_type_variable"] is not None or self.source_data["code_position"] == "leading":
-            return str(int(code)) if float(code).is_integer() else str(code)
-        width = len(str(self.source_data["code_divisor"])) - 1
+            return str(int(code))
+        width = len(str(self.source_data["code_scale"])) - 1
         return f"{int(code):0{width}d}"
 
     def _code_to_info_dict(self) -> dict:
-        """Return the legend keyed as the event types are, so a legend entry and a found code meet."""
+        """Return the legend keyed as the event types are, so a legend entry and a found code meet.
+
+        The keys go through the same formatting the identifiers get, so a legend written the way the program
+        numbers its codes (``11``, or ``"11"``) reaches the type this interface calls ``"011"``. Keying it
+        literally let a mismatched key silently name nothing and add an empty table beside the real one.
+        """
         event_configuration = self.source_data["event_configuration"] or {}
-        return {str(code): info_dict for code, info_dict in event_configuration.items()}
+        return {self._format_code(float(code)): info_dict for code, info_dict in event_configuration.items()}
 
     def _event_name(self, event_type_source_id: str) -> str:
         """Return the ``event_name`` seeded for one event type."""
