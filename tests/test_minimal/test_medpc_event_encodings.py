@@ -366,22 +366,6 @@ def test_interleaved_events_out_of_order_are_caught(tmp_path):
         interface.get_event_type_source_ids()
 
 
-def test_the_order_check_can_be_refused(tmp_path):
-    # The check is a heuristic about the program, and a published file usually does not ship with its program.
-    # Someone who has it and knows the order is not evidence of a misreading reads the file as stated.
-    path = tmp_path / "unordered.txt"
-    write_medpc_file(path, {"A": [3.0, 1.0, 2.0]})
-
-    interface = MedPCArrayEventsInterface(
-        file_path=path,
-        session_header=SESSION_HEADER,
-        event_configuration={"A": {"name": "poke"}},
-        check_event_order=False,
-    )
-
-    assert np.allclose(interface.get_event_times("A"), [3.0, 1.0, 2.0])
-
-
 def test_a_clock_rate_of_zero_raises(tmp_path):
     path = tmp_path / "zero_rate.txt"
     write_medpc_file(path, {"A": [1.0]})

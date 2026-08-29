@@ -271,14 +271,10 @@ class _MedPCEventsInterface(BaseEventsInterface):
         """Raise where a decoded series runs backwards, unless the caller has turned the check off.
 
         This is the one check that catches a misread unit or mode, because every one of them decodes without
-        error and only the ordering betrays it. A program written in relative mode read as absolute is the
-        common case: the deltas are small and arbitrary, so the series jumps around instead of climbing.
-
-        It is a heuristic about the program, though, not a rule of the format, and the program is exactly what a
-        published file usually does not ship with. So it is refusable: ``check_event_order=False`` reads the file
-        as stated, for someone who has the program in hand and knows the order is not evidence of a misreading.
+        error and only the ordering betrays it. A program written in Relative Mode and read as absolute is the
+        common case: the intervals are small and arbitrary, so the series jumps around instead of climbing.
         """
-        if not self.source_data["check_event_order"] or len(times) < 2:
+        if len(times) < 2:
             return
         backwards = np.flatnonzero(np.diff(times) < 0)
         if len(backwards) == 0:
@@ -288,12 +284,14 @@ class _MedPCEventsInterface(BaseEventsInterface):
         raise ValueError(
             f"The onsets read from the MedPC variable '{medpc_name}'{of_type} run backwards: event {first} is at "
             f"{times[first]:.6g} s and event {first + 1} is at {times[first + 1]:.6g} s. Onsets cannot go "
-            "backwards, so the values are not being read as the program wrote them. The usual causes are a "
-            "program written in relative mode, where each value is the time since the previous event and "
-            "`relative_mode=True` accumulates them; and a `time_unit` other than the one the program "
-            f"divided by before storing. {self._extra_decoding_causes()}The MSN program that wrote the file is "
-            "what settles which, and where it says the order is not evidence of a misreading, "
-            "`check_event_order=False` reads the file as stated."
+            "backwards, so the values are not being read as the program wrote them. The likeliest cause is Med "
+            "Associates' Relative Mode, where the program stored the time since the previous event rather than "
+            "the time since the session began: pass `relative_mode=True` to accumulate them. Failing that, a "
+            f"`time_unit` other than the one the program divided by before storing. {self._extra_decoding_causes()}"
+            "No MedPC header states any of this, so the MSN program that wrote the file is what settles it. If "
+            "the program says the file is already being read as it was written, this is a layout NeuroConv does "
+            "not support yet: please open an issue at https://github.com/catalystneuro/neuroconv/issues with the "
+            "program and a sample file."
         )
 
     def _extra_decoding_causes(self) -> str:
@@ -329,7 +327,6 @@ class MedPCArrayEventsInterface(_MedPCEventsInterface):
         time_unit: TimeUnit = "seconds",
         clock_ticks_per_second: int | None = None,
         relative_mode: bool = False,
-        check_event_order: bool = True,
         metadata_key: str | None = None,
         verbose: bool = False,
     ):
@@ -375,12 +372,6 @@ class MedPCArrayEventsInterface(_MedPCEventsInterface):
             procedures that use it: "Relative Mode means that each event is listed by the amount of time that has
             passed since the last event has happened". The values are accumulated when True, because a time
             written into NWB is the time since the session started.
-        check_event_order : bool, optional
-            Whether to refuse a file whose decoded onsets run backwards, default = True. Reading a unit or a
-            mode wrongly decodes without error and only the ordering betrays it, so the check is what stands
-            between a misstatement and a file of plausible-looking wrong times. It is a heuristic about the
-            program rather than a rule of the format, though, so pass False to read a file as stated where the
-            program says its order is not evidence of a misreading.
         metadata_key : str, optional
             The key under ``metadata["Events"]`` that namespaces this interface's events metadata. If None
             (default), "medpc" is used, so several MedPC interfaces in one conversion need a key each.
@@ -402,7 +393,6 @@ class MedPCArrayEventsInterface(_MedPCEventsInterface):
             time_unit=time_unit,
             clock_ticks_per_second=clock_ticks_per_second,
             relative_mode=relative_mode,
-            check_event_order=check_event_order,
             verbose=verbose,
         )
         self.metadata_key = metadata_key or "medpc"
@@ -512,7 +502,6 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
         time_unit: TimeUnit = "seconds",
         clock_ticks_per_second: int | None = None,
         relative_mode: bool = False,
-        check_event_order: bool = True,
         metadata_key: str | None = None,
         verbose: bool = False,
     ):
@@ -572,12 +561,6 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
             procedures that use it: "Relative Mode means that each event is listed by the amount of time that has
             passed since the last event has happened". The values are accumulated when True, because a time
             written into NWB is the time since the session started.
-        check_event_order : bool, optional
-            Whether to refuse a file whose decoded onsets run backwards, default = True. Reading a unit or a
-            mode wrongly decodes without error and only the ordering betrays it, so the check is what stands
-            between a misstatement and a file of plausible-looking wrong times. It is a heuristic about the
-            program rather than a rule of the format, though, so pass False to read a file as stated where the
-            program says its order is not evidence of a misreading.
         metadata_key : str, optional
             The key under ``metadata["Events"]`` that namespaces this interface's events metadata. If None
             (default), "medpc" is used, so several MedPC interfaces in one conversion need a key each.
@@ -610,7 +593,6 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
             time_unit=time_unit,
             clock_ticks_per_second=clock_ticks_per_second,
             relative_mode=relative_mode,
-            check_event_order=check_event_order,
             verbose=verbose,
         )
         self.metadata_key = metadata_key or "medpc"
