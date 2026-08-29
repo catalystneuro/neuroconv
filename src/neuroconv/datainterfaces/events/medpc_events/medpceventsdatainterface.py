@@ -419,6 +419,11 @@ class MedPCArrayEventsInterface(_MedPCEventsInterface):
             'payload' mapping a MedPC variable holding one value per event to the name of the column it rides
             along as. A payload column is written with the raw values the program wrote, so relabelling those
             codes and saying what they mean is done in the metadata through ``column_categories``.
+
+            Naming here rather than only in the editable metadata is a deliberate departure from the other events
+            interfaces, which seed a name from the source's own handle. Theirs is a label a human wrote (a CSV
+            column header, a TDT epoc name); a MedPC variable is a slot number. Seeding from it would name every
+            table 'A', 'B', 'C', so a conversion would have to edit metadata purely to become legible.
             ex. {"G": {"name": "port_entries", "duration": "E"}}
             ex. {"S": {"name": "cs_presentations", "payload": {"K": "cs_type"}}}
         time_unit : {"decaseconds", "seconds", "deciseconds", "centiseconds", "milliseconds", "clock_ticks"}, optional
@@ -544,7 +549,7 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
       ``event_type_variable`` and nothing is unpacked.
 
     Every code found becomes an event type identified by its digits, so the file names its own event types and
-    ``event_configuration`` only supplies names for them.
+    ``event_code_names`` only supplies names for them.
 
     Use :class:`MedPCArrayEventsInterface` instead for a file that holds one array per event type.
     """
@@ -562,7 +567,7 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
         event_type_variable: str | None = None,
         code_scale: int | None = None,
         code_position: Literal["fraction", "leading"] | None = None,
-        event_configuration: dict | None = None,
+        event_code_names: dict | None = None,
         time_unit: TimeUnit | dict[str, TimeUnit] = "seconds",
         clock_ticks_per_second: int | None = None,
         relative_mode: bool = False,
@@ -602,15 +607,17 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
         code_position : {"fraction", "leading"}, optional
             Where in the value the code sits, default = "fraction". Which one a program used cannot be read off
             the data reliably, since both produce plausible numbers; the MSN program settles it.
-        event_configuration : dict, optional
-            Names for the event types, keyed by the event code as it appears in the identifiers this interface
-            reports (ex. '011'). Each value takes a 'name', which seeds the editable ``event_name``. This is a
-            legend rather than a declaration of what to read: every code found becomes an event type whether or
-            not it is named here, and one left out is named 'code_<digits>'. A code named here that the file never
-            holds is written as an empty table, the type having been declared and never fired. What a code means
-            lives in the MSN program, and often in a later version of it whose numbering disagrees with the file,
-            so it cannot be derived.
-            ex. {"001": {"name": "lick"}, "011": {"name": "pump_a_on"}}
+        event_code_names : dict, optional
+            The name each event code is known by, keyed by the code as it appears in the identifiers this
+            interface reports (ex. '011') and valued with the name, which seeds the editable ``event_name``.
+
+            This is a **legend, not a declaration of what to read**, which is what separates it from
+            ``MedPCArrayEventsInterface``'s ``event_configuration``: every code the array holds becomes an event
+            type whether or not it is named here, one left out is named 'code_<digits>', and a code named here
+            that the file never holds is written as an empty table, the type having been declared and never
+            fired. What a code means lives in the MSN program, and often in a later version of it whose
+            numbering disagrees with the file, so it cannot be derived.
+            ex. {"001": "lick", "011": "pump_a_on", "021": "pump_a_off"}
         time_unit : str or dict, optional
             What one unit of a time value is worth: "decaseconds", "seconds", "deciseconds", "centiseconds",
             "milliseconds", or "clock_ticks" with the rate given through ``clock_ticks_per_second``,
@@ -659,7 +666,7 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
             event_type_variable=event_type_variable,
             code_scale=code_scale,
             code_position=code_position,
-            event_configuration=event_configuration,
+            event_code_names=event_code_names,
             time_unit=time_unit,
             clock_ticks_per_second=clock_ticks_per_second,
             relative_mode=relative_mode,
@@ -725,7 +732,7 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
             )
         # A code the legend names but the file never holds is a type that was declared and never fired, written as
         # an empty table the way a declared per-array variable holding no events is.
-        for event_type_source_id in self._code_to_info_dict():
+        for event_type_source_id in self._code_to_name():
             if event_type_source_id not in events_data_dict:
                 events_data_dict[event_type_source_id] = _EventsData(
                     event_type_source_id=event_type_source_id, timestamps=np.array([], dtype=float)
@@ -795,21 +802,21 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
         width = len(str(self.source_data["code_scale"])) - 1
         return f"{int(code):0{width}d}"
 
-    def _code_to_info_dict(self) -> dict:
+    def _code_to_name(self) -> dict:
         """Return the legend keyed as the event types are, so a legend entry and a found code meet.
 
         The keys go through the same formatting the identifiers get, so a legend written the way the program
         numbers its codes (``11``, or ``"11"``) reaches the type this interface calls ``"011"``. Keying it
         literally let a mismatched key silently name nothing and add an empty table beside the real one.
         """
-        event_configuration = self.source_data["event_configuration"] or {}
+        event_code_names = self.source_data["event_code_names"] or {}
         legend = {}
-        for code, info_dict in event_configuration.items():
+        for code, name in event_code_names.items():
             try:
-                legend[self._format_code(float(code))] = info_dict
+                legend[self._format_code(float(code))] = name
             except (TypeError, ValueError):
                 raise ValueError(
-                    f"The `event_configuration` key {code!r} is not an event code. This interface reads the code "
+                    f"The `event_code_names` key {code!r} is not an event code. This interface reads the code "
                     "out of the data, so its legend is keyed by the code the program wrote (11, or '011'), not "
                     "by a MedPC variable or a name."
                 ) from None
@@ -817,8 +824,7 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
 
     def _event_name(self, event_type_source_id: str) -> str:
         """Return the ``event_name`` seeded for one event type."""
-        info_dict = self._code_to_info_dict().get(event_type_source_id, {})
-        return info_dict.get("name", f"code_{event_type_source_id}")
+        return self._code_to_name().get(event_type_source_id, f"code_{event_type_source_id}")
 
 
 def _is_grouped_by_type(identifiers: np.ndarray) -> bool:

@@ -281,15 +281,15 @@ class TestCodedWithLegend(MedPCEventsInterfaceMixin):
         # The program clocks at 2 ms, so the integer part of each value is in 500ths of a second.
         time_unit="clock_ticks",
         clock_ticks_per_second=500,
-        event_configuration={
-            "001": {"name": "lick"},
-            "011": {"name": "pump_a_on"},
-            "021": {"name": "pump_a_off"},
-            "012": {"name": "pump_b_on"},
-            "022": {"name": "pump_b_off"},
-            "050": {"name": "concentration_low"},
-            "051": {"name": "concentration_high"},
-            "052": {"name": "shift"},
+        event_code_names={
+            "001": "lick",
+            "011": "pump_a_on",
+            "021": "pump_a_off",
+            "012": "pump_b_on",
+            "022": "pump_b_off",
+            "050": "concentration_low",
+            "051": "concentration_high",
+            "052": "shift",
         },
     )
 
@@ -394,7 +394,7 @@ class TestCodedWithoutLegend(MedPCEventsInterfaceMixin):
         # A legend entry for a code that never fired is a declared event type, written as an empty table the
         # way a per-array variable holding no events is.
         interface_kwargs = dict(self.interface_kwargs)
-        interface_kwargs["event_configuration"] = {"099": {"name": "never_fired"}}
+        interface_kwargs["event_code_names"] = {"099": "never_fired"}
         interface = MedPCCodedEventsInterface(**interface_kwargs)
 
         nwbfile = mock_NWBFile()

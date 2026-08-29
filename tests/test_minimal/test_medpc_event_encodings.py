@@ -150,7 +150,7 @@ class TestRelativeTimes:
             code_scale=100,
             time_unit="centiseconds",
             relative_mode=True,
-            event_configuration={"10": {"name": "left_lever"}, "20": {"name": "reinforcement"}},
+            event_code_names={"10": "left_lever", "20": "reinforcement"},
         )
 
         assert np.allclose(interface.get_event_times("10"), [1.5, 2.12, 3.0])
@@ -203,7 +203,7 @@ class TestCodePosition:
             timestamps_variable="A",
             code_scale=10000,
             code_position="leading",
-            event_configuration={"1": {"name": "peck_left"}, "2": {"name": "peck_right"}},
+            event_code_names={"1": "peck_left", "2": "peck_right"},
         )
 
         assert np.allclose(interface.get_event_times("1"), [64.54, 182.0])
@@ -232,7 +232,7 @@ class TestCodePosition:
             file_path=path,
             session_header=SESSION_HEADER,
             timestamps_variable="A",
-            event_configuration={legend_key: {"name": "pump_a_on"}},
+            event_code_names={legend_key: "pump_a_on"},
         )
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
@@ -264,7 +264,7 @@ class TestCompanionCodeArray:
             session_header=SESSION_HEADER,
             timestamps_variable="B",
             event_type_variable="C",
-            event_configuration={"1": {"name": "lever_press"}, "3": {"name": "magazine_entry"}},
+            event_code_names={"1": "lever_press", "3": "magazine_entry"},
         )
 
         assert np.allclose(interface.get_event_times("1"), [7.51, 7.87])
@@ -493,7 +493,7 @@ def test_a_legend_key_that_is_not_a_code_raises(tmp_path):
         file_path=path,
         session_header=SESSION_HEADER,
         timestamps_variable="A",
-        event_configuration={"lick": {"name": "lick"}},
+        event_code_names={"lick": "lick"},
     )
 
     with pytest.raises(ValueError, match="is not an event code"):

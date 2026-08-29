@@ -150,8 +150,8 @@ One coded array
 
 The file does not carry the rate its clock was counted at, so ``clock_ticks_per_second`` has to be stated, and the
 codes cannot be read off the MSN program either, since the copy that ships beside the data is often a later version
-whose numbering disagrees with the file. ``event_configuration`` names the codes you know; one you leave out is
-still read and takes its digits as its name.
+whose numbering disagrees with the file. ``event_code_names`` is a legend rather than a declaration of what to
+read: it names the codes you know, and one you leave out is still read and takes its digits as its name.
 
 .. code-block:: python
 
@@ -164,10 +164,10 @@ still read and takes its digits as its name.
     ...     timestamps_variable="A",  # the array this program packs its events into
     ...     time_unit="clock_ticks",
     ...     clock_ticks_per_second=500,  # this program clocks at 2 ms
-    ...     event_configuration={
-    ...         "001": {"name": "lick"},
-    ...         "011": {"name": "pump_a_on"},
-    ...         "021": {"name": "pump_a_off"},
+    ...     event_code_names={
+    ...         "001": "lick",
+    ...         "011": "pump_a_on",
+    ...         "021": "pump_a_off",
     ...     },
     ... )
     >>>
