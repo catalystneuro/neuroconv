@@ -17,8 +17,8 @@ the NWB file has to stand on its own rather than travel next to the folder it po
 forced when the format is not PNG, JPEG or GIF, which is all NWB accepts by reference.
 
 Both interfaces take either a list of files, ``file_paths=["image1.png", "image2.png"]``, or a folder,
-``folder_path="images_directory"``, and both store the images in the acquisition group of the NWB file, or in the
-stimulus group when ``parent_container="stimulus"`` is passed.
+``folder_path="images_directory"``, and both write the images to the acquisition group of the NWB file, or to the
+stimulus group when the conversion option ``parent_container="stimulus"`` is given.
 
 Install NeuroConv with the additional dependencies necessary for reading image data:
 

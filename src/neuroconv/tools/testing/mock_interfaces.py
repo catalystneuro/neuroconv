@@ -1647,7 +1647,6 @@ class MockExternalImageInterface(ExternalImageInterface):
         image_mode: str = "RGB",
         verbose: bool = False,
         *,
-        parent_container: Literal["acquisition", "stimulus"] = "acquisition",
         metadata_key: str = "Images",
     ):
         """
@@ -1664,14 +1663,11 @@ class MockExternalImageInterface(ExternalImageInterface):
             The color mode each file's header reports.
         verbose : bool, default: False
             If True, display verbose output.
-        parent_container : Literal["acquisition", "stimulus"], default: "acquisition"
-            The group of the NWB file the ``Images`` container is written to.
         metadata_key : str, default: "Images"
             Key to use in metadata["Images"][metadata_key] for storing container metadata.
         """
         super().__init__(
             file_paths=file_paths or ["mock_image.png"],
-            parent_container=parent_container,
             metadata_key=metadata_key,
             verbose=verbose,
         )

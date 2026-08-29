@@ -150,7 +150,6 @@ class ImageInterface(BaseImageInterface):
         file_paths: list[str | Path] | None = None,
         folder_path: str | Path | None = None,
         *args,  # TODO: change to * (keyword only) on or after August 2026
-        parent_container: Literal["acquisition", "stimulus"] = "acquisition",
         images_location: Literal["acquisition", "stimulus"] | None = None,
         metadata_key: str = "Images",
         verbose: bool = True,
@@ -164,10 +163,8 @@ class ImageInterface(BaseImageInterface):
             List of paths to image files to be converted
         folder_path : str | Path, optional
             Path to folder containing images to be converted. Used if file_paths not provided.
-        parent_container : Literal["acquisition", "stimulus"], default: "acquisition"
-            The group of the NWB file the ``Images`` container is written to
         images_location : Literal["acquisition", "stimulus"], optional
-            Deprecated. Use ``parent_container`` instead. Will be removed in v0.12.0.
+            Deprecated. Pass ``parent_container`` to ``add_to_nwbfile`` instead. Will be removed in v0.12.0.
         metadata_key : str, default: "Images"
             Key to use in metadata["Images"][metadata_key] for storing container metadata
         verbose : bool, default: True
@@ -176,7 +173,7 @@ class ImageInterface(BaseImageInterface):
         # Handle deprecated positional arguments
         if args:
             parameter_names = [
-                "parent_container",
+                "images_location",
                 "metadata_key",
                 "verbose",
             ]
@@ -198,18 +195,25 @@ class ImageInterface(BaseImageInterface):
                 FutureWarning,
                 stacklevel=2,
             )
-            parent_container = positional_values.get("parent_container", parent_container)
+            images_location = positional_values.get("images_location", images_location)
             metadata_key = positional_values.get("metadata_key", metadata_key)
             verbose = positional_values.get("verbose", verbose)
 
         super().__init__(
             file_paths=file_paths,
             folder_path=folder_path,
-            parent_container=parent_container,
-            images_location=images_location,
             metadata_key=metadata_key,
             verbose=verbose,
         )
+
+        if images_location is not None:
+            warnings.warn(
+                "The 'images_location' parameter of ImageInterface.__init__() is deprecated and will be removed "
+                "in v0.12.0. Pass 'parent_container' to add_to_nwbfile() instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            self.parent_container = images_location
 
     def _create_nwb_image(self, *, file_path: Path, image_metadata: dict) -> Image:
         # Create iterator for memory-efficient loading
