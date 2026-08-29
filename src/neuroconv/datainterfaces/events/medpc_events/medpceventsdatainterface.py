@@ -264,7 +264,9 @@ class _MedPCEventsInterface(BaseEventsInterface):
             return values / self.source_data["clock_ticks_per_second"]
         return values * _TIME_UNIT_TO_SECONDS[time_unit]
 
-    def _validate_non_decreasing(self, times: np.ndarray, medpc_name: str) -> None:
+    def _validate_non_decreasing(
+        self, times: np.ndarray, medpc_name: str, event_type_source_id: str | None = None
+    ) -> None:
         """Raise where a decoded series runs backwards, unless the caller has turned the check off.
 
         This is the one check that catches a misread unit or mode, because every one of them decodes without
@@ -281,8 +283,9 @@ class _MedPCEventsInterface(BaseEventsInterface):
         if len(backwards) == 0:
             return
         first = int(backwards[0])
+        of_type = f" (event type '{event_type_source_id}')" if event_type_source_id is not None else ""
         raise ValueError(
-            f"The onsets read from the MedPC variable '{medpc_name}' run backwards: event {first} is at "
+            f"The onsets read from the MedPC variable '{medpc_name}'{of_type} run backwards: event {first} is at "
             f"{times[first]:.6g} s and event {first + 1} is at {times[first + 1]:.6g} s. Onsets cannot go "
             "backwards, so the values are not being read as the program wrote them. The usual causes are a "
             "program written in relative mode, where each value is the time since the previous event and "
@@ -648,7 +651,9 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
             # Checked per type as well, since no single type's onsets can run backwards whichever way the
             # program wrote them out.
             self._validate_non_decreasing(
-                times=of_this_type, medpc_name=f"{timestamps_variable}' (event type '{event_type_source_id}"
+                times=of_this_type,
+                medpc_name=timestamps_variable,
+                event_type_source_id=event_type_source_id,
             )
             events_data_dict[event_type_source_id] = _EventsData(
                 event_type_source_id=event_type_source_id, timestamps=of_this_type
