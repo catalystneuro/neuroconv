@@ -26,12 +26,13 @@ _ARRAY_SEAL = -987.987
 # writing, and the file records neither the choice nor the clock's resolution, so the unit is stated rather than
 # detected. `clock_ticks` is the raw `BTIME` counter and takes its rate separately.
 _TIME_UNIT_TO_SECONDS = {
+    "decaseconds": 10.0,
     "seconds": 1.0,
     "deciseconds": 0.1,
     "centiseconds": 0.01,
     "milliseconds": 0.001,
 }
-TimeUnit = Literal["seconds", "deciseconds", "centiseconds", "milliseconds", "clock_ticks"]
+TimeUnit = Literal["decaseconds", "seconds", "deciseconds", "centiseconds", "milliseconds", "clock_ticks"]
 
 
 class _MedPCEventsInterface(BaseEventsInterface):
@@ -310,12 +311,23 @@ class _MedPCEventsInterface(BaseEventsInterface):
             self._validate_non_decreasing(times=seconds, medpc_name=medpc_name)
         return seconds
 
-    def _scale_to_seconds(self, values: np.ndarray) -> np.ndarray:
+    def _scale_to_seconds(self, values: np.ndarray, time_unit: str | None = None) -> np.ndarray:
         """Apply the stated unit to raw values, without accumulating or checking their order."""
-        time_unit = self.source_data["time_unit"]
+        time_unit = time_unit or self._single_time_unit()
         if time_unit == "clock_ticks":
             return values / self.source_data["clock_ticks_per_second"]
         return values * _TIME_UNIT_TO_SECONDS[time_unit]
+
+    def _single_time_unit(self) -> str:
+        """Return the one unit that applies to every value, refusing a per-type mapping where none can."""
+        time_unit = self.source_data["time_unit"]
+        if isinstance(time_unit, dict):
+            raise ValueError(
+                f"`time_unit` is a mapping ({time_unit}), which states a unit per event type. Only "
+                "MedPCCodedEventsInterface can use one, since only there do several event types share an array. "
+                "Pass a single unit here."
+            )
+        return time_unit
 
     def _validate_non_decreasing(
         self, times: np.ndarray, medpc_name: str, event_type_source_id: str | None = None
@@ -409,7 +421,7 @@ class MedPCArrayEventsInterface(_MedPCEventsInterface):
             codes and saying what they mean is done in the metadata through ``column_categories``.
             ex. {"G": {"name": "port_entries", "duration": "E"}}
             ex. {"S": {"name": "cs_presentations", "payload": {"K": "cs_type"}}}
-        time_unit : {"seconds", "deciseconds", "centiseconds", "milliseconds", "clock_ticks"}, optional
+        time_unit : {"decaseconds", "seconds", "deciseconds", "centiseconds", "milliseconds", "clock_ticks"}, optional
             What one unit of an array value is worth, default = "seconds". MedPC stores whatever the MSN program
             divided by before writing and records neither that choice nor the clock's resolution, so the unit is
             stated rather than detected. Use "clock_ticks" for a program that stored the raw `BTIME` counter, and
@@ -551,7 +563,7 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
         code_scale: int | None = None,
         code_position: Literal["fraction", "leading"] | None = None,
         event_configuration: dict | None = None,
-        time_unit: TimeUnit = "seconds",
+        time_unit: TimeUnit | dict[str, TimeUnit] = "seconds",
         clock_ticks_per_second: int | None = None,
         relative_mode: bool = False,
         metadata_key: str | None = None,
@@ -599,11 +611,17 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
             lives in the MSN program, and often in a later version of it whose numbering disagrees with the file,
             so it cannot be derived.
             ex. {"001": {"name": "lick"}, "011": {"name": "pump_a_on"}}
-        time_unit : {"seconds", "deciseconds", "centiseconds", "milliseconds", "clock_ticks"}, optional
-            What one unit of a time value is worth, default = "seconds". MedPC stores whatever the MSN program
-            divided by before writing and records neither that choice nor the clock's resolution, so the unit is
-            stated rather than detected. Use "clock_ticks" for a program that stored the raw `BTIME` counter, and
-            give the rate through ``clock_ticks_per_second``.
+        time_unit : str or dict, optional
+            What one unit of a time value is worth: "decaseconds", "seconds", "deciseconds", "centiseconds",
+            "milliseconds", or "clock_ticks" with the rate given through ``clock_ticks_per_second``,
+            default = "seconds". MedPC stores whatever the MSN program divided by before writing and records
+            neither that choice nor the clock's resolution, so the unit is stated rather than detected.
+
+            May also be a dict giving one unit per event type, keyed as the identifiers this interface reports
+            (ex. ``{"1": "seconds", "3": "decaseconds"}``). A program can time two event types differently and
+            store them in the same array; nothing in the file records that it did, and the ordinary sign of it
+            is that the pooled times run backwards while each type on its own climbs. A mapping has to name
+            every type the array holds. The MSN program is the only thing that says which unit belongs to which.
         clock_ticks_per_second : int, optional
             The rate of the program's clock: 500 for a 2 ms system, 200 for a 5 ms one. Required when
             ``time_unit`` is "clock_ticks" and rejected otherwise, since the file carries neither.
@@ -672,12 +690,21 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
         else:
             raw_times, codes = self._unpack(values=values)
 
-        timestamps = self._decode_times(values=raw_times, medpc_name=timestamps_variable, check_order=False)
-        identifiers = [self._format_code(code) for code in codes.tolist()]
+        identifiers = np.asarray([self._format_code(code) for code in codes.tolist()])
+        if self.source_data["relative_mode"]:
+            # A gap is between consecutive events whatever type they are, so the accumulation is over the whole
+            # array and only the scaling can differ per type.
+            raw_times = np.cumsum(raw_times)
+        timestamps = np.empty(len(raw_times), dtype=float)
+        for event_type_source_id in dict.fromkeys(identifiers.tolist()):
+            of_this_type = identifiers == event_type_source_id
+            timestamps[of_this_type] = self._scale_to_seconds(
+                raw_times[of_this_type], time_unit=self._time_unit_for(event_type_source_id)
+            )
+        self._validate_within_the_session(times=timestamps, medpc_name=timestamps_variable)
 
         # Every code found becomes an event type, in the order the codes first occur, whether or not the legend
         # names it: the legend gives a code a name, and a file is not read less completely for lacking one.
-        identifiers = np.asarray(identifiers)
         events_data_dict = {}
         # A program that writes every event of one type before the next leaves the pooled array unsorted by
         # construction, so its order says nothing. One that interleaves the types is writing them as they
@@ -704,6 +731,24 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
                     event_type_source_id=event_type_source_id, timestamps=np.array([], dtype=float)
                 )
         return events_data_dict
+
+    def _time_unit_for(self, event_type_source_id: str) -> str:
+        """Return the unit one event type's times are in.
+
+        A single ``time_unit`` covers the whole array, which is the ordinary case. A mapping states one per
+        event type, for a program that timed two types differently and stored them in the same array; that
+        happens, and nothing in the file records it.
+        """
+        time_unit = self.source_data["time_unit"]
+        if not isinstance(time_unit, dict):
+            return time_unit
+        if event_type_source_id not in time_unit:
+            raise ValueError(
+                f"`time_unit` is a mapping and names {sorted(time_unit)}, but the array also holds the event "
+                f"type '{event_type_source_id}'. A mapping has to give a unit for every type in the array, "
+                "since a type left out has no unit at all."
+            )
+        return time_unit[event_type_source_id]
 
     def _unpack(self, values: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """Split packed values into their time part and their code part."""
@@ -789,8 +834,10 @@ def _is_grouped_by_type(identifiers: np.ndarray) -> bool:
     return runs == len(set(identifiers.tolist()))
 
 
-def _validate_time_arguments(time_unit: str, clock_ticks_per_second: int | None) -> None:
+def _validate_time_arguments(time_unit, clock_ticks_per_second: int | None) -> None:
     """Check that a clock rate is given exactly when the times are in clock ticks, and that it is a rate."""
+    units = set(time_unit.values()) if isinstance(time_unit, dict) else {time_unit}
+    time_unit = "clock_ticks" if "clock_ticks" in units else next(iter(units))
     if clock_ticks_per_second is not None and clock_ticks_per_second <= 0:
         raise ValueError(
             f"`clock_ticks_per_second` is {clock_ticks_per_second}, which is not a rate. It is how many times "

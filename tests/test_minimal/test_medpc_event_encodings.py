@@ -9,6 +9,7 @@ from datetime import datetime
 
 import numpy as np
 import pytest
+from pydantic import ValidationError
 from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.datainterfaces import MedPCArrayEventsInterface, MedPCCodedEventsInterface
@@ -294,6 +295,51 @@ class TestCompanionCodeArray:
                 code_scale=1000,
             )
 
+    def test_a_unit_per_event_type(self, tmp_path):
+        # A program can time two event types differently and store them in one array. Nothing in the file says
+        # so; the sign of it is that the pooled times run backwards while each type on its own climbs.
+        path = tmp_path / "two_bases.txt"
+        write_medpc_file(path, {"B": [19.8, 2.62, 27.0, 2.94, 30.1], "C": [1.0, 3.0, 1.0, 3.0, 1.0]})
+
+        interface = MedPCCodedEventsInterface(
+            file_path=path,
+            session_header=SESSION_HEADER,
+            timestamps_variable="B",
+            event_type_variable="C",
+            time_unit={"1": "seconds", "3": "decaseconds"},
+        )
+
+        assert np.allclose(interface.get_event_times("1"), [19.8, 27.0, 30.1])
+        assert np.allclose(interface.get_event_times("3"), [26.2, 29.4])
+
+    def test_one_unit_for_a_two_base_file_is_still_refused(self, tmp_path):
+        # The same file read with a single unit: the guard has to keep firing, or the mapping would be the only
+        # thing standing between a user and a silently mis-scaled conversion.
+        path = tmp_path / "two_bases.txt"
+        write_medpc_file(path, {"B": [19.8, 2.62, 27.0, 2.94, 30.1], "C": [1.0, 3.0, 1.0, 3.0, 1.0]})
+
+        interface = MedPCCodedEventsInterface(
+            file_path=path, session_header=SESSION_HEADER, timestamps_variable="B", event_type_variable="C"
+        )
+
+        with pytest.raises(ValueError, match="run backwards"):
+            interface.get_event_type_source_ids()
+
+    def test_a_unit_mapping_missing_a_type_raises(self, tmp_path):
+        path = tmp_path / "two_bases.txt"
+        write_medpc_file(path, {"B": [1.0, 2.0], "C": [1.0, 3.0]})
+
+        interface = MedPCCodedEventsInterface(
+            file_path=path,
+            session_header=SESSION_HEADER,
+            timestamps_variable="B",
+            event_type_variable="C",
+            time_unit={"1": "seconds"},
+        )
+
+        with pytest.raises(ValueError, match="has to give a unit for every type"):
+            interface.get_event_type_source_ids()
+
     def test_a_mismatched_code_array_raises(self, tmp_path):
         path = tmp_path / "mismatch.txt"
         write_medpc_file(path, {"B": [1.0, 2.0, 3.0], "C": [1.0, 2.0]})
@@ -364,6 +410,20 @@ def test_interleaved_events_out_of_order_are_caught(tmp_path):
 
     with pytest.raises(ValueError, match="run backwards"):
         interface.get_event_type_source_ids()
+
+
+def test_a_unit_mapping_is_refused_by_the_array_interface(tmp_path):
+    # One array per event type means each already has its own unit slot; a mapping there says nothing.
+    path = tmp_path / "array.txt"
+    write_medpc_file(path, {"A": [1.0, 2.0]})
+
+    with pytest.raises(ValidationError):
+        MedPCArrayEventsInterface(
+            file_path=path,
+            session_header=SESSION_HEADER,
+            event_configuration={"A": {"name": "poke"}},
+            time_unit={"A": "seconds"},
+        )
 
 
 def test_a_time_after_the_session_ended_is_caught(tmp_path):
