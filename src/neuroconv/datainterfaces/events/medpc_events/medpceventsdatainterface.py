@@ -241,15 +241,14 @@ class _MedPCEventsInterface(BaseEventsInterface):
         raise ValueError(
             f"The last event read from the MedPC variable '{medpc_name}' is at {latest:.6g} s, but the header "
             f"says the session ran {duration:.6g} s, from '{self._header_field('Start Time')}' to "
-            f"'{self._header_field('End Time')}'. No event can happen after the session ended, so the values are "
-            "coming out larger than the program wrote them. Check `time_unit` against what the program divided "
-            "by before storing, and `clock_ticks_per_second` against the resolution MED-PC was installed at "
-            "(500 for a 2 ms system, 200 for a 5 ms one), since too low a rate stretches every time. If "
-            "`relative_mode` is on, check that the program really wrote intervals: accumulating times that were "
-            "already elapsed times inflates them exactly this way. Nothing in a MedPC header states any of "
-            "this, so the MSN program that wrote the file is what settles it. If the program says the file is "
-            "already being read as it was written, this is a layout NeuroConv does not support yet: please open "
-            "an issue at https://github.com/catalystneuro/neuroconv/issues with the program and a sample file."
+            f"'{self._header_field('End Time')}'. No event can happen after the session ended, so the values "
+            "are coming out larger than the program wrote them. Check the MSN program that wrote the file: "
+            "`time_unit` against what it divided by before storing, `clock_ticks_per_second` against the "
+            "resolution MED-PC was installed at (500 for a 2 ms system, 200 for a 5 ms one), and, where "
+            "`relative_mode` is on, that it really wrote intervals, since accumulating times that were already "
+            "elapsed inflates them exactly this way. If the program shows the file is already being read as it "
+            "was written, this is a layout NeuroConv does not support yet: please open an issue at "
+            "https://github.com/catalystneuro/neuroconv/issues with the program and a sample file."
         )
 
     def _header_field(self, name: str) -> str | None:
@@ -337,13 +336,12 @@ class _MedPCEventsInterface(BaseEventsInterface):
         raise ValueError(
             f"The onsets read from the MedPC variable '{medpc_name}'{of_type} run backwards: event {first} is at "
             f"{times[first]:.6g} s and event {first + 1} is at {times[first + 1]:.6g} s. Onsets cannot go "
-            "backwards, so the values are not being read as the program wrote them. The likeliest cause is Med "
-            "Associates' Relative Mode, where the program stored the time since the previous event rather than "
-            "the time since the session began: pass `relative_mode=True` to accumulate them. Failing that, a "
-            f"`time_unit` other than the one the program divided by before storing. {self._extra_decoding_causes()}"
-            "No MedPC header states any of this, so the MSN program that wrote the file is what settles it. If "
-            "the program says the file is already being read as it was written, this is a layout NeuroConv does "
-            "not support yet: please open an issue at https://github.com/catalystneuro/neuroconv/issues with the "
+            "backwards. Check the MSN program that wrote the file. The likeliest cause is Med Associates' "
+            "Relative Mode, where the program stored the time since the previous event rather than the time "
+            "since the session began: pass `relative_mode=True` to accumulate them. Failing that, a `time_unit` "
+            f"other than the one the program divided by before storing. {self._extra_decoding_causes()}If the "
+            "program shows the file is already being read as it was written, this is a layout NeuroConv does not "
+            "support yet: please open an issue at https://github.com/catalystneuro/neuroconv/issues with the "
             "program and a sample file."
         )
 
