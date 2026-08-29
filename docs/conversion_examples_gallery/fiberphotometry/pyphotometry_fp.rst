@@ -99,7 +99,7 @@ first:
 .. code-block:: python
 
     >>> control = PyPhotometryFiberPhotometryInterface(file_path=file_path, stream_name="detector_1_excitation_2", metadata_key="control")
-    >>> float(round(control.get_timestamps()[0], 6))
+    >>> float(round(control.alignment["control"].get_times()[0], 6))
     0.003846
 
 NeuroConv usually gathers a system's regions into the columns of one series, and that is not possible
