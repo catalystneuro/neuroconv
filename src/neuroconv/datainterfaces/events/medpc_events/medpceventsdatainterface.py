@@ -265,13 +265,17 @@ class _MedPCEventsInterface(BaseEventsInterface):
         return values * _TIME_UNIT_TO_SECONDS[time_unit]
 
     def _validate_non_decreasing(self, times: np.ndarray, medpc_name: str) -> None:
-        """Raise where a decoded series runs backwards, which no sequence of onsets can do.
+        """Raise where a decoded series runs backwards, unless the caller has turned the check off.
 
         This is the one check that catches a misread unit or mode, because every one of them decodes without
         error and only the ordering betrays it. A program written in relative mode read as absolute is the
         common case: the deltas are small and arbitrary, so the series jumps around instead of climbing.
+
+        It is a heuristic about the program, though, not a rule of the format, and the program is exactly what a
+        published file usually does not ship with. So it is refusable: ``check_event_order=False`` reads the file
+        as stated, for someone who has the program in hand and knows the order is not evidence of a misreading.
         """
-        if len(times) < 2:
+        if not self.source_data["check_event_order"] or len(times) < 2:
             return
         backwards = np.flatnonzero(np.diff(times) < 0)
         if len(backwards) == 0:
@@ -284,7 +288,8 @@ class _MedPCEventsInterface(BaseEventsInterface):
             "program written in relative mode, where each value is the time since the previous event and "
             "`times_are_intervals=True` accumulates them; and a `time_unit` other than the one the program "
             f"divided by before storing. {self._extra_decoding_causes()}The MSN program that wrote the file is "
-            "what settles which."
+            "what settles which, and where it says the order is not evidence of a misreading, "
+            "`check_event_order=False` reads the file as stated."
         )
 
     def _extra_decoding_causes(self) -> str:
@@ -320,6 +325,7 @@ class MedPCArrayEventsInterface(_MedPCEventsInterface):
         time_unit: TimeUnit = "seconds",
         clock_ticks_per_second: int | None = None,
         times_are_intervals: bool = False,
+        check_event_order: bool = True,
         metadata_key: str | None = None,
         verbose: bool = False,
     ):
@@ -364,6 +370,12 @@ class MedPCArrayEventsInterface(_MedPCEventsInterface):
             default = False. Med Associates' own shipped programs call this relative or incremental mode and it is
             what their example procedures use, so it is worth checking the program before assuming absolute times.
             The values are accumulated when True.
+        check_event_order : bool, optional
+            Whether to refuse a file whose decoded onsets run backwards, default = True. Reading a unit or a
+            mode wrongly decodes without error and only the ordering betrays it, so the check is what stands
+            between a misstatement and a file of plausible-looking wrong times. It is a heuristic about the
+            program rather than a rule of the format, though, so pass False to read a file as stated where the
+            program says its order is not evidence of a misreading.
         metadata_key : str, optional
             The key under ``metadata["Events"]`` that namespaces this interface's events metadata. If None
             (default), "medpc" is used, so several MedPC interfaces in one conversion need a key each.
@@ -385,6 +397,7 @@ class MedPCArrayEventsInterface(_MedPCEventsInterface):
             time_unit=time_unit,
             clock_ticks_per_second=clock_ticks_per_second,
             times_are_intervals=times_are_intervals,
+            check_event_order=check_event_order,
             verbose=verbose,
         )
         self.metadata_key = metadata_key or "medpc"
@@ -494,6 +507,7 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
         time_unit: TimeUnit = "seconds",
         clock_ticks_per_second: int | None = None,
         times_are_intervals: bool = False,
+        check_event_order: bool = True,
         metadata_key: str | None = None,
         verbose: bool = False,
     ):
@@ -552,6 +566,12 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
             began, default = False. Med Associates' own shipped example procedures use this, which they call
             relative or incremental mode, so it is worth checking the program before assuming absolute times.
             The values are accumulated when True.
+        check_event_order : bool, optional
+            Whether to refuse a file whose decoded onsets run backwards, default = True. Reading a unit or a
+            mode wrongly decodes without error and only the ordering betrays it, so the check is what stands
+            between a misstatement and a file of plausible-looking wrong times. It is a heuristic about the
+            program rather than a rule of the format, though, so pass False to read a file as stated where the
+            program says its order is not evidence of a misreading.
         metadata_key : str, optional
             The key under ``metadata["Events"]`` that namespaces this interface's events metadata. If None
             (default), "medpc" is used, so several MedPC interfaces in one conversion need a key each.
@@ -584,6 +604,7 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
             time_unit=time_unit,
             clock_ticks_per_second=clock_ticks_per_second,
             times_are_intervals=times_are_intervals,
+            check_event_order=check_event_order,
             verbose=verbose,
         )
         self.metadata_key = metadata_key or "medpc"
