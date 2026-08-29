@@ -473,6 +473,7 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         response_series = FiberPhotometryResponseSeries(
             name=series_metadata["name"],
             description=series_metadata.get("description", ""),
+            comments=series_metadata.get("comments", "no comments"),
             data=data,
             unit="a.u.",
             fiber_photometry_table_region=table_region,

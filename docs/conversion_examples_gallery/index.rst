@@ -105,6 +105,7 @@ Fiber Photometry
     Doric Fiber Photometry <fiberphotometry/doric_fp>
     TDT Fiber Photometry <fiberphotometry/tdt_fp>
     NPM Fiber Photometry <fiberphotometry/npm_fp>
+    pyPhotometry Fiber Photometry <fiberphotometry/pyphotometry_fp>
     CSV Fiber Photometry <fiberphotometry/csv_fp>
     GuPPy Fiber Photometry <fiberphotometry/guppy_fp>
 

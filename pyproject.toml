@@ -305,6 +305,9 @@ doric_fp = [
 npm_fp = [
     "neuroconv[fiber_photometry_minimal]",
 ]
+pyphotometry_fp = [
+    "neuroconv[fiber_photometry_minimal]",
+]
 tdt_fp = [
     "neuroconv[fiber_photometry_minimal]",
     "tdt",
@@ -329,6 +332,7 @@ fiber_photometry = [
     "neuroconv[doric_fp]",
     "neuroconv[guppy]",
     "neuroconv[npm_fp]",
+    "neuroconv[pyphotometry_fp]",
     "neuroconv[tdt_fp]",
 ]
 

@@ -25,6 +25,10 @@ NPM Fiber Photometry
 --------------------
 .. autoclass:: neuroconv.datainterfaces.fiber_photometry.npm.npmfiberphotometrydatainterface.NPMFiberPhotometryInterface
 
+pyPhotometry Fiber Photometry
+-----------------------------
+.. autoclass:: neuroconv.datainterfaces.fiber_photometry.pyphotometry.pyphotometrydatainterface.PyPhotometryFiberPhotometryInterface
+
 GuPPy Fiber Photometry
 ----------------------
 .. autoclass:: neuroconv.datainterfaces.fiber_photometry.guppy.guppydatainterface.GuppyInterface
