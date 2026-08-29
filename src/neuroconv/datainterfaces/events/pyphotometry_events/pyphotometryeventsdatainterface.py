@@ -23,29 +23,23 @@ from ....utils import DeepDict
 class PyPhotometryEventsInterface(BaseEventsInterface):
     """Convert discrete events (digital IO) from pyPhotometry ``.ppd`` recordings to NWB.
 
-    A ``.ppd`` file is a single stream of unsigned 16-bit words, each holding fifteen bits of an analog
-    sample and one bit of a digital line, and the words cycle through the board's analog inputs. A digital
-    line therefore rides in the low bit of the words of the analog input it shares a slot with, and takes
-    that input's rate and start time: with two inputs at 130 Hz, ``digital_1`` is sampled at 130 Hz from
-    the start of the recording and ``digital_2`` at 130 Hz one tick of the 260 Hz sampling timer later.
+    The lines are the board's digital inputs, named ``digital_1`` and ``digital_2`` the way pyPhotometry's
+    own reader names them. They are sampled rather than logged, so an event's time is only as precise as
+    the sampling rate, 7.7 ms at 130 Hz, and the two lines are not sampled at the same instant but half a
+    sample period apart. A recording carries both lines except in ``3EX_2EM_pulsed``, where the board uses
+    the second one to drive its third LED.
 
-    Each line is a *signal*, sampled ``0``/``1`` rather than a list of onsets, and the events derived from
-    it are set by ``detection_configuration``: one entry per line holding a list of detection specs, since
-    a line can yield more than one event type. Each event type is written as its own
-    ``pynwb.event.EventsTable`` into ``nwbfile.events``. By default every line is read as a
+    Which events come off a line is set by ``detection_configuration``: one entry per line holding a list
+    of detection specs, since a line can yield more than one event type. Each event type is written as its
+    own ``pynwb.event.EventsTable`` into ``nwbfile.events``. By default every line is read as a
     ``high_period`` (each rising edge is an event onset, its duration the span to the next falling edge).
     A line that never toggles still yields its event type, written as a zero-row table, since the type
     existed in the recording and nothing fired. ``session_start_time`` and ``subject_id`` are read from
     the header's ``date_time`` and ``subject_ID``.
 
-    Lines are named the way pyPhotometry's own reader names them, ``digital_1`` and ``digital_2``. How
-    many a file holds depends on the acquisition mode and on the header: a mode with two analog inputs
-    carries both lines, while ``3EX_2EM_pulsed`` states one digital signal in its header, because the
-    firmware drives its third LED from the second digital input.
-
-    The fluorescence in the same words is a separate interface,
-    :class:`.PyPhotometryFiberPhotometryInterface`, since the two are different neurodata types; put both
-    in a converter of your own to write a recording whole.
+    The fluorescence in the same recording is a separate interface,
+    :class:`.PyPhotometryFiberPhotometryInterface`; put both in a converter of your own to write a
+    recording whole.
     """
 
     keywords = ("events", "pyPhotometry")
