@@ -366,6 +366,38 @@ def test_interleaved_events_out_of_order_are_caught(tmp_path):
         interface.get_event_type_source_ids()
 
 
+def test_a_time_after_the_session_ended_is_caught(tmp_path):
+    # The header states both ends of the session, so the file itself says how long it ran and no event can fall
+    # outside that. This is the only bound MedPC gives on the size of a time, and it is what catches an
+    # over-scaled file: accumulating intervals always yields a rising series, so ordering alone cannot.
+    path = tmp_path / "too_long.txt"
+    write_medpc_file(path, {"A": [100.0, 200.0, 9000.0]})  # the header says 12:36:13 to 13:38:19, 3726 s
+
+    interface = MedPCArrayEventsInterface(
+        file_path=path, session_header=SESSION_HEADER, event_configuration={"A": {"name": "poke"}}
+    )
+
+    with pytest.raises(ValueError, match="says the session ran"):
+        interface.get_event_times("A")
+
+
+def test_accumulating_times_that_were_not_intervals_is_caught(tmp_path):
+    # The trap the ordering error's own first suggestion can lead into: `relative_mode=True` always produces a
+    # rising series, so it silences the ordering check whether or not the program used Relative Mode.
+    path = tmp_path / "not_intervals.txt"
+    write_medpc_file(path, {"A": [600.0, 1200.0, 1800.0, 2400.0]})  # already elapsed times, well inside 3726 s
+
+    interface = MedPCArrayEventsInterface(
+        file_path=path,
+        session_header=SESSION_HEADER,
+        event_configuration={"A": {"name": "poke"}},
+        relative_mode=True,
+    )
+
+    with pytest.raises(ValueError, match="says the session ran"):
+        interface.get_event_times("A")
+
+
 def test_a_clock_rate_of_zero_raises(tmp_path):
     path = tmp_path / "zero_rate.txt"
     write_medpc_file(path, {"A": [1.0]})

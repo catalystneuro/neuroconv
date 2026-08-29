@@ -242,9 +242,14 @@ class _MedPCEventsInterface(BaseEventsInterface):
             f"The last event read from the MedPC variable '{medpc_name}' is at {latest:.6g} s, but the header "
             f"says the session ran {duration:.6g} s, from '{self._header_field('Start Time')}' to "
             f"'{self._header_field('End Time')}'. No event can happen after the session ended, so the values are "
-            "being scaled up. Check `time_unit` against what the program divided by, and, if `relative_mode` is "
-            "on, whether the program really wrote intervals: accumulating times that were already elapsed times "
-            "inflates them exactly this way."
+            "coming out larger than the program wrote them. Check `time_unit` against what the program divided "
+            "by before storing, and `clock_ticks_per_second` against the resolution MED-PC was installed at "
+            "(500 for a 2 ms system, 200 for a 5 ms one), since too low a rate stretches every time. If "
+            "`relative_mode` is on, check that the program really wrote intervals: accumulating times that were "
+            "already elapsed times inflates them exactly this way. Nothing in a MedPC header states any of "
+            "this, so the MSN program that wrote the file is what settles it. If the program says the file is "
+            "already being read as it was written, this is a layout NeuroConv does not support yet: please open "
+            "an issue at https://github.com/catalystneuro/neuroconv/issues with the program and a sample file."
         )
 
     def _header_field(self, name: str) -> str | None:
