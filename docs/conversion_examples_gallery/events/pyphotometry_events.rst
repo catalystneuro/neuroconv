@@ -7,11 +7,10 @@ Install NeuroConv with the additional dependencies necessary for reading pyPhoto
 
     pip install "neuroconv[pyphotometry_events]"
 
-A pyPhotometry ``.ppd`` file has no digital stream of its own. Every word it holds carries fifteen bits of
-an analog sample and one bit of a digital line, and the words cycle through the board's analog inputs, so
-a digital line rides in the low bit of the words of the input it shares a slot with and is sampled on that
-input's clock. Reading the lines therefore means reading the same file the fluorescence comes from, and
-each line arrives as a sampled ``0``/``1`` signal rather than as a list of onsets.
+A pyPhotometry ``.ppd`` file carries its digital lines inside the same words as the fluorescence, so this
+interface reads the same file as ``PyPhotometryFiberPhotometryInterface``. Each line is sampled at the
+rate of the analog input it travels with instead of being logged as a list of onsets, so an edge is
+located only to within one sample of that input's clock.
 
 Convert pyPhotometry Events data to NWB
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

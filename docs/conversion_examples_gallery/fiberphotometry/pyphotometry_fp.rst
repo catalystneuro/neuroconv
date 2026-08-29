@@ -17,13 +17,10 @@ Streams sharing a ``detector`` prefix came off one fiber.
 ``FiberPhotometryResponseSeries``.
 
 The board reads its analog inputs one after the other rather than at the same instant, so each signal is
-written with the start time its own slot in the sampling cycle implies. In the continuous modes the two
-reads happen inside a single timer interrupt and the gap between them is not derivable from the header,
-which records neither the oversampling buffer nor its clock. The pyPhotometry developers measured it at a
-mean of 393 microseconds with a standard deviation of 9, on `their issue tracker
-<https://github.com/pyPhotometry/code/issues/39>`_. That figure belongs to the board and its firmware
-instead of to any one recording, so it is not applied to the timestamps. Each series states it in its
-``comments``, so a reader of the file knows the offset is there and how large it is.
+written with the start time its own slot in the sampling cycle implies. In the continuous modes that gap
+is not recorded anywhere in the file, and the pyPhotometry developers measured it at about 393
+microseconds on `their issue tracker <https://github.com/pyPhotometry/code/issues/39>`_. It is not
+included in the timestamps, and each series states it in its ``comments``.
 
 Convert pyPhotometry Fiber Photometry data to NWB
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
