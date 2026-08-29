@@ -12,21 +12,16 @@ from ....utils import DeepDict
 
 
 class PyPhotometryConverter(ConverterPipe):
-    """Convert a pyPhotometry ``.ppd`` recording whole.
+    """Convert a pyPhotometry ``.ppd`` recording whole, its fluorescence and its digital lines together.
 
-    A ``.ppd`` file interleaves everything the board recorded into one stream of unsigned 16-bit words,
-    fifteen bits of a fluorescence sample and one bit of a digital line each, and how many signals and
-    lines that is follows from the acquisition mode. This reads the mode and builds one
-    :class:`.PyPhotometryFiberPhotometryInterface` per fluorescence signal, since no two signals of a
-    recording were sampled at the same instant and a response series carries one time axis, plus a single
-    :class:`.PyPhotometryEventsInterface` for the digital lines, which reads whichever of them the file
-    carries.
+    One call writes every fluorescence signal as its own ``FiberPhotometryResponseSeries`` and every
+    digital line as its own ``EventsTable``. How many of each a recording holds depends on how it was
+    acquired, and ``get_available_streams`` lists them before you build anything.
 
-    Each response series is named after the stream its signal came off,
-    ``FiberPhotometryResponseSeriesDetector1Excitation1``, because a single-series interface names its
-    series ``FiberPhotometryResponseSeries`` and two of those cannot go in one file. The ``FiberPhotometry``
-    chain itself (devices, indicators, table rows, per-series regions) is yours to supply, exactly as for
-    one interface on its own.
+    Each series is named after the stream its signal came off,
+    ``FiberPhotometryResponseSeriesDetector1Excitation1``, so several of them can sit in one file. The
+    ``FiberPhotometry`` metadata (devices, indicators, table rows, per-series regions) is yours to supply,
+    exactly as for one interface on its own.
     """
 
     display_name = "pyPhotometry Converter"
