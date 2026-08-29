@@ -45,8 +45,16 @@ named the way pyPhotometry's own reader names them, and ``session_start_time`` c
 
 A line that never toggles is written as a zero-row table rather than dropped, since the type existed in
 the recording and nothing fired. To read only some of the lines, or to read one of them differently, pass
-a ``detection_configuration``. See :ref:`extract_events_from_signals` for that argument, and
-:ref:`annotate_events_metadata` for naming the resulting event types and grouping them into tables.
+a ``detection_configuration``, which :ref:`extract_events_from_signals` documents.
+
+NeuroConv aims to automatically add all the metadata annotations that are present in the source format.
+It is often the case that crucial information is not available there, such as what a line was wired to,
+what a pulse on it meant, or a semantically meaningful description of an event type. Follow
+:ref:`the events how-to <annotate_events_metadata>` for a modality-relevant guide to adding this extra
+metadata, which makes the data more useful for future users and for the community as a whole. Its
+:ref:`section on a single interface <annotate_events_single_interface>` starts from scratch, and its
+:ref:`section on shared tables <annotate_events_shared_table>` covers writing several interfaces into one
+table.
 
 .. seealso::
 
