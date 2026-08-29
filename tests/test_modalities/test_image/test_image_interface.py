@@ -1,3 +1,5 @@
+import re
+from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
@@ -513,3 +515,43 @@ def test_external_image_rejects_unsupported_format(tmp_path):
 
     with pytest.raises(ValueError, match=f"Unsupported image format: TIFF for image {file_path.name}"):
         interface.add_to_nwbfile(mock_NWBFile())
+
+
+@pytest.mark.parametrize("interface_class", [ImageInterface, ExternalImageInterface])
+def test_parent_container_selects_the_group(tmp_path, interface_class):
+    """`parent_container` is a conversion option, so one interface can write to either group."""
+    from pynwb.testing.mock.file import mock_NWBFile
+
+    generate_random_images(num_images=1, mode="RGB", output_dir_path=tmp_path, format="PNG")
+    interface = interface_class(folder_path=tmp_path)
+
+    nwbfile = mock_NWBFile()
+    interface.add_to_nwbfile(nwbfile)
+    assert "Images" in nwbfile.acquisition
+
+    nwbfile = mock_NWBFile()
+    interface.add_to_nwbfile(nwbfile, parent_container="stimulus")
+    assert "Images" in nwbfile.stimulus
+
+    expected_error = "parent_container must be either 'acquisition' or 'stimulus', not processing."
+    with pytest.raises(ValueError, match=re.escape(expected_error)):
+        interface.add_to_nwbfile(mock_NWBFile(), parent_container="processing")
+
+
+def test_resolution_is_rejected_for_an_external_image(tmp_path):
+    """NWB declares `resolution` on the embedded image type alone, so the schema takes it from one interface only."""
+    from jsonschema import ValidationError
+
+    generate_random_images(num_images=1, mode="RGB", output_dir_path=tmp_path, format="PNG")
+
+    for interface_class, accepts_resolution in [(ImageInterface, True), (ExternalImageInterface, False)]:
+        interface = interface_class(folder_path=tmp_path)
+        metadata = interface.get_metadata()
+        metadata["NWBFile"]["session_start_time"] = datetime(2020, 1, 1, tzinfo=timezone.utc)
+        metadata["Images"]["Images"]["images"][str(interface.file_paths[0])]["resolution"] = 2.5
+
+        if accepts_resolution:
+            interface.validate_metadata(metadata=metadata)
+        else:
+            with pytest.raises(ValidationError, match="'resolution' was unexpected"):
+                interface.validate_metadata(metadata=metadata)
