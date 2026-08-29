@@ -168,6 +168,11 @@ class _MedPCEventsInterface(BaseEventsInterface):
                 )
             event = events_data_dict[event_type_source_id]
             aligned_timestamps = np.asarray(aligned_timestamps)
+            if aligned_timestamps.ndim != 1:
+                raise ValueError(
+                    f"The aligned timestamps for '{event_type_source_id}' have shape {aligned_timestamps.shape}, "
+                    "but an event type's onsets are one time per event, so a one-dimensional array is expected."
+                )
             if len(aligned_timestamps) != len(event.timestamps):
                 raise ValueError(
                     f"The event type '{event_type_source_id}' has {len(event.timestamps)} events but "
@@ -236,7 +241,7 @@ class _MedPCEventsInterface(BaseEventsInterface):
         sealed = np.flatnonzero(values == _ARRAY_SEAL)
         return values[: sealed[0]] if len(sealed) else values
 
-    def _decode_times(self, values: np.ndarray, medpc_name: str) -> np.ndarray:
+    def _decode_times(self, values: np.ndarray, medpc_name: str, check_order: bool = True) -> np.ndarray:
         """Turn one array's raw values into onset times in seconds.
 
         MedPC writes whatever the MSN program computed, so a value is a time only after the unit is applied and,
@@ -248,7 +253,8 @@ class _MedPCEventsInterface(BaseEventsInterface):
             # set of deltas and only their running total is a time.
             values = np.cumsum(values)
         seconds = self._scale_to_seconds(values)
-        self._validate_non_decreasing(times=seconds, medpc_name=medpc_name)
+        if check_order:
+            self._validate_non_decreasing(times=seconds, medpc_name=medpc_name)
         return seconds
 
     def _scale_to_seconds(self, values: np.ndarray) -> np.ndarray:
@@ -604,7 +610,7 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
         else:
             raw_times, codes = self._unpack(values=values)
 
-        timestamps = self._decode_times(values=raw_times, medpc_name=timestamps_variable)
+        timestamps = self._decode_times(values=raw_times, medpc_name=timestamps_variable, check_order=False)
         identifiers = [self._format_code(code) for code in codes.tolist()]
 
         # Every code found becomes an event type, in the order the codes first occur, whether or not the legend
@@ -612,9 +618,14 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
         identifiers = np.asarray(identifiers)
         events_data_dict = {}
         for event_type_source_id in dict.fromkeys(identifiers.tolist()):
+            of_this_type = timestamps[identifiers == event_type_source_id]
+            # Checked per type rather than over the pooled array, since a program is free to write all of one
+            # type before another, but no single type's onsets can run backwards.
+            self._validate_non_decreasing(
+                times=of_this_type, medpc_name=f"{timestamps_variable}' (event type '{event_type_source_id}"
+            )
             events_data_dict[event_type_source_id] = _EventsData(
-                event_type_source_id=event_type_source_id,
-                timestamps=timestamps[identifiers == event_type_source_id],
+                event_type_source_id=event_type_source_id, timestamps=of_this_type
             )
         # A code the legend names but the file never holds is a type that was declared and never fired, written as
         # an empty table the way a declared per-array variable holding no events is.
@@ -633,6 +644,17 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
             # The values are read as floats, so the code is recovered by rounding rather than by comparing
             # fractions, which would fail on the representation error a decimal fraction carries in binary.
             codes = np.round((values - times) * divisor)
+            # A fraction that rounds up to the scale itself has more digits than the scale leaves for a code,
+            # which is what a value carrying more decimals than the program packed looks like.
+            too_wide = np.flatnonzero(codes >= divisor)
+            if len(too_wide):
+                index = int(too_wide[0])
+                raise ValueError(
+                    f"The value {values[index]:.6f} of '{self.source_data['timestamps_variable']}' leaves a code "
+                    f"of {int(codes[index])}, which `code_scale={divisor}` has no room for. The array carries "
+                    "more decimals than that scale accounts for, so either the program packed with a larger "
+                    "scale or these values are not packed codes at all."
+                )
         else:
             codes = np.floor(values / divisor)
             times = values - codes * divisor
@@ -667,7 +689,17 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
         literally let a mismatched key silently name nothing and add an empty table beside the real one.
         """
         event_configuration = self.source_data["event_configuration"] or {}
-        return {self._format_code(float(code)): info_dict for code, info_dict in event_configuration.items()}
+        legend = {}
+        for code, info_dict in event_configuration.items():
+            try:
+                legend[self._format_code(float(code))] = info_dict
+            except (TypeError, ValueError):
+                raise ValueError(
+                    f"The `event_configuration` key {code!r} is not an event code. This interface reads the code "
+                    "out of the data, so its legend is keyed by the code the program wrote (11, or '011'), not "
+                    "by a MedPC variable or a name."
+                ) from None
+        return legend
 
     def _event_name(self, event_type_source_id: str) -> str:
         """Return the ``event_name`` seeded for one event type."""
@@ -676,7 +708,12 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
 
 
 def _validate_time_arguments(time_unit: str, clock_ticks_per_second: int | None) -> None:
-    """Check that a clock rate is given exactly when the times are in clock ticks."""
+    """Check that a clock rate is given exactly when the times are in clock ticks, and that it is a rate."""
+    if clock_ticks_per_second is not None and clock_ticks_per_second <= 0:
+        raise ValueError(
+            f"`clock_ticks_per_second` is {clock_ticks_per_second}, which is not a rate. It is how many times "
+            "the box's clock ticks in a second: 500 on a 2 ms system, 200 on a 5 ms one."
+        )
     if time_unit == "clock_ticks" and clock_ticks_per_second is None:
         raise ValueError(
             "`time_unit` is 'clock_ticks', so `clock_ticks_per_second` is required: the rate is set when MED-PC "

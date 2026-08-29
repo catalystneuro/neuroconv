@@ -320,6 +320,79 @@ class TestSealedArray:
         assert np.allclose(interface.get_event_times("A"), [1.0, 2.0, 3.0])
 
 
+def test_a_space_padded_header_value_still_matches(tmp_path):
+    # MED-PC pads a single-digit hour with a space ("Start Time:  9:47:07"), which a caller writing the time out
+    # would not reproduce. Matching the whole line made 272 of 936 files of one published corpus unreadable.
+    path = tmp_path / "padded.txt"
+    write_medpc_file(path, {"A": [1.0]})
+    text = path.read_text(encoding="utf-8").replace("Start Time: 12:36:13", "Start Time:  9:47:07")
+    path.write_text(text, encoding="utf-8")
+
+    interface = MedPCArrayEventsInterface(
+        file_path=path,
+        session_header={"Start Date": "04/10/19", "Start Time": "9:47:07"},
+        event_configuration={"A": {"name": "poke"}},
+    )
+
+    assert np.allclose(interface.get_event_times("A"), [1.0])
+
+
+def test_events_grouped_by_type_are_not_read_as_backwards(tmp_path):
+    # A program may write every event of one type before the next, so the pooled array is not sorted even though
+    # each type's own onsets climb. The order check is per type for exactly this reason.
+    path = tmp_path / "grouped.txt"
+    write_medpc_file(path, {"B": [1.0, 2.0, 3.0, 1.5, 2.5], "C": [1.0, 1.0, 1.0, 2.0, 2.0]})
+
+    interface = MedPCCodedEventsInterface(
+        file_path=path, session_header=SESSION_HEADER, timestamps_variable="B", event_type_variable="C"
+    )
+
+    assert np.allclose(interface.get_event_times("1"), [1.0, 2.0, 3.0])
+    assert np.allclose(interface.get_event_times("2"), [1.5, 2.5])
+
+
+def test_a_clock_rate_of_zero_raises(tmp_path):
+    path = tmp_path / "zero_rate.txt"
+    write_medpc_file(path, {"A": [1.0]})
+
+    with pytest.raises(ValueError, match="is not a rate"):
+        MedPCArrayEventsInterface(
+            file_path=path,
+            session_header=SESSION_HEADER,
+            event_configuration={"A": {"name": "poke"}},
+            time_unit="clock_ticks",
+            clock_ticks_per_second=0,
+        )
+
+
+def test_a_code_wider_than_the_scale_raises(tmp_path):
+    # A value carrying more decimals than the scale accounts for folds part of the time into the code.
+    path = tmp_path / "wide.txt"
+    write_medpc_file(path, {"A": [5.999, 6.999]})
+
+    interface = MedPCCodedEventsInterface(
+        file_path=path, session_header=SESSION_HEADER, timestamps_variable="A", code_scale=100
+    )
+
+    with pytest.raises(ValueError, match="has no room for"):
+        interface.get_event_type_source_ids()
+
+
+def test_a_legend_key_that_is_not_a_code_raises(tmp_path):
+    path = tmp_path / "bad_legend.txt"
+    write_medpc_file(path, {"A": [1.011]})
+
+    interface = MedPCCodedEventsInterface(
+        file_path=path,
+        session_header=SESSION_HEADER,
+        timestamps_variable="A",
+        event_configuration={"lick": {"name": "lick"}},
+    )
+
+    with pytest.raises(ValueError, match="is not an event code"):
+        interface.get_event_type_source_ids()
+
+
 def test_the_session_header_still_selects(tmp_path):
     # The encodings above all use a single-session file; this checks the header reading survives them.
     path = tmp_path / "header.txt"

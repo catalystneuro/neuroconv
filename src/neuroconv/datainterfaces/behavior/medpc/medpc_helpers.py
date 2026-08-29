@@ -65,8 +65,11 @@ def _get_session_lines(lines: list, session_conditions: dict, start_variable: st
         if line.startswith(f"{start_variable}:"):
             start_line = i
         for condition_name, condition_value in session_conditions.items():
-            if line == f"{condition_name}: {condition_value}":
-                session_condition_has_been_met[condition_name] = True
+            # Compared field by field rather than as a whole line, because MED-PC pads a single-digit hour with a
+            # space ("Start Time:  9:47:07") and a caller writing the time out reasonably says "9:47:07".
+            if line.startswith(f"{condition_name}:"):
+                if line.split(":", 1)[1].strip() == str(condition_value).strip():
+                    session_condition_has_been_met[condition_name] = True
         if line == "" and all(session_condition_has_been_met.values()):
             end_line = i
             break
