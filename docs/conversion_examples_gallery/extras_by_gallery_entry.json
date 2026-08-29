@@ -66,6 +66,9 @@
   "fiberphotometry/npm_fp.rst": {
     "extra": "npm_fp"
   },
+  "fiberphotometry/pyphotometry_fp.rst": {
+    "extra": "pyphotometry_fp"
+  },
   "fiberphotometry/tdt_fp.rst": {
     "extra": "tdt_fp"
   },

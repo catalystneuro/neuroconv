@@ -1,6 +1,5 @@
 """Utilities used by the SpikeGLX interfaces."""
 
-import json
 import warnings
 from datetime import datetime
 from pathlib import Path
@@ -83,55 +82,3 @@ def fetch_stream_id_for_spikelgx_file(file_path: FilePath) -> str:
     stream_id = device[1:] + signal_kind
 
     return stream_id
-
-
-def get_device_metadata(meta) -> dict:
-    """Returns a device with description including the metadata as described here
-    # https://billkarsh.github.io/SpikeGLX/Sgl_help/Metadata_30.html
-
-    This function is deprecated and will be removed in May 2026 or later.
-    Use SpikeGLXRecordingInterface._get_device_metadata_from_probe() instead,
-    which extracts device metadata directly from probe information.
-
-    Parameters
-    ----------
-    meta : dict
-        The metadata dictionary containing SpikeGLX probe information.
-
-    Returns
-    -------
-    dict
-        a dict containing the metadata necessary for creating the device
-    """
-    import warnings
-
-    warnings.warn(
-        "get_device_metadata is deprecated and will be removed in May 2026 or later. "
-        "Use SpikeGLXRecordingInterface._get_device_metadata_from_probe() instead.",
-        FutureWarning,
-        stacklevel=2,
-    )
-    metadata_dict = dict()
-    if "imDatPrb_type" in meta:
-        probe_type_to_probe_description = {
-            "0": "NP1.0",
-            "21": "NP2.0(1-shank)",
-            "24": "NP2.0(4-shank)",
-            "1030": "NP1.0 NHP",
-        }
-        probe_type = str(meta["imDatPrb_type"])
-        probe_type_description = probe_type_to_probe_description.get(probe_type, "Unknown SpikeGLX probe type.")
-        metadata_dict.update(probe_type=probe_type, probe_type_description=probe_type_description)
-
-    if "imDatFx_pn" in meta:
-        metadata_dict.update(flex_part_number=meta["imDatFx_pn"])
-
-    if "imDatBsc_pn" in meta:
-        metadata_dict.update(connected_base_station_part_number=meta["imDatBsc_pn"])
-
-    description_string = "A Neuropixel probe of unknown subtype."
-    if metadata_dict:
-        description_string = json.dumps(metadata_dict)
-    device_metadata = dict(name="NeuropixelImec", description=description_string, manufacturer="Imec")
-
-    return device_metadata

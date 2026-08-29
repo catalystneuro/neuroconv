@@ -1,27 +1,26 @@
+import pytest
 from pynwb.testing.mock.file import mock_NWBFile
 
+from neuroconv import NWBConverter
 from neuroconv.tools.testing.data_interface_mixins import (
     PoseEstimationInterfaceTestMixin,
 )
-from neuroconv.tools.testing.mock_interfaces import MockPoseEstimationInterface
+from neuroconv.tools.testing.mock_interfaces import (
+    MockExternalVideoInterface,
+    MockPoseEstimationInterface,
+)
 
 
 class TestMockPoseEstimationInterface(PoseEstimationInterfaceTestMixin):
     data_interface_cls = MockPoseEstimationInterface
-    interface_kwargs = dict(num_samples=100, num_nodes=3, seed=42)
+    interface_kwargs = dict(num_samples=100, num_nodes=3, seed=42, metadata_key="mock_pose_key")
 
     def check_extracted_metadata(self, metadata: dict):
         metadata_key = self.interface.metadata_key
         container_name = metadata_key
-        device_name = f"Camera{container_name}"
         skeleton_name = f"Skeleton{container_name}"
 
-        assert metadata["Devices"] == {
-            metadata_key: {
-                "name": device_name,
-                "description": "Mock camera device for pose estimation testing.",
-            },
-        }
+        assert "Devices" not in metadata
 
         pose_metadata = metadata["Pose"]
 
@@ -32,7 +31,6 @@ class TestMockPoseEstimationInterface(PoseEstimationInterfaceTestMixin):
         container = pose_metadata["PoseEstimations"][metadata_key]
         assert container["name"] == container_name
         assert container["source_software"] == self.interface.source_software
-        assert container["device_metadata_key"] == metadata_key
         assert container["skeleton_metadata_key"] == metadata_key
         assert set(container["PoseEstimationSeries"].keys()) == set(self.interface.nodes)
 
@@ -300,13 +298,14 @@ class TestPoseEstimationMetadata:
         assert container_a.skeleton.name == "SkeletonA"
         assert container_b.skeleton.name == "SkeletonB"
 
-    def test_device_and_skeleton_omitted_are_not_written(self):
+    def test_device_omitted_and_skeleton_set_to_none_are_not_written(self):
         """A container that references no device or skeleton writes neither object.
 
         ndx-pose makes ``devices`` and ``skeleton`` optional, so the writer only creates objects the
-        metadata references: a container with no ``device_metadata_key`` / ``skeleton_metadata_key``
-        produces a ``PoseEstimation`` with no device and no skeleton, and no ``Skeletons`` collection
-        is added to the behavior module. The writer never fabricates a placeholder.
+        metadata references, and never fabricates a placeholder. The two are suppressed differently
+        because the interface's own defaults are merged underneath whatever the caller passes: no
+        interface emits a ``device_metadata_key``, so omitting it is enough, while a skeleton is
+        defaulted from the keypoints and has to be refused with an explicit ``None``.
         """
         metadata_key = "no_device_no_skeleton"
         bodyparts = ["head", "neck", "left_shoulder"]
@@ -321,8 +320,11 @@ class TestPoseEstimationMetadata:
                         "description": "Pose estimation without a device or skeleton.",
                         "source_software": "MockSourceSoftware",
                         "scorer": "MockScorer",
+                        "skeleton_metadata_key": None,
                         # No device, so the per-camera fields (dimensions, original_videos,
-                        # labeled_videos) are omitted too: they are parallel to the cameras.
+                        # labeled_videos) are suppressed too: they are parallel to the cameras.
+                        "dimensions": None,
+                        "original_videos": None,
                         "PoseEstimationSeries": {
                             bodypart: {
                                 "name": f"PoseEstimationSeries{bodypart.capitalize()}",
@@ -347,3 +349,92 @@ class TestPoseEstimationMetadata:
         container = behavior_module["PoseNoDeviceNoSkeleton"]
         assert container.skeleton is None
         assert not container.devices
+
+
+class TestPoseEstimationVideoLink:
+    """A container naming the video its keypoints were tracked from, via ``source_video_metadata_key``.
+
+    The link addresses an entry in ``metadata["Behavior"]["ExternalVideos"]`` and is resolved against the
+    ``ImageSeries`` already in the file rather than created, so it is the converter, and the order the
+    interfaces are declared in, that decides whether it can be followed.
+    """
+
+    def test_link_resolves_to_the_written_image_series(self):
+        """The container holds the very ``ImageSeries`` object the video interface added."""
+
+        class VideoThenPoseConverter(NWBConverter):
+            data_interface_classes = dict(Video=MockExternalVideoInterface, Pose=MockPoseEstimationInterface)
+
+        converter = VideoThenPoseConverter(
+            source_data=dict(
+                Video=dict(file_paths=["top_camera.mp4"], metadata_key="top_video"),
+                Pose=dict(num_samples=50, num_nodes=3, metadata_key="top_pose"),
+            )
+        )
+        metadata = converter.get_metadata()
+        metadata["Pose"]["PoseEstimations"]["top_pose"]["source_video_metadata_key"] = "top_video"
+
+        nwbfile = mock_NWBFile()
+        converter.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+        image_series_name = metadata["Behavior"]["ExternalVideos"]["top_video"]["name"]
+        container = nwbfile.processing["behavior"]["top_pose"]
+        assert container.source_video is nwbfile.acquisition[image_series_name]
+        # The camera reaches the file through the ImageSeries, so the container names no device of its own.
+        assert not container.devices
+
+    def test_link_resolves_when_the_video_is_in_the_behavior_module(self):
+        """Both containers are searched, since it is the video interface that chooses which one it writes to."""
+
+        class VideoThenPoseConverter(NWBConverter):
+            data_interface_classes = dict(Video=MockExternalVideoInterface, Pose=MockPoseEstimationInterface)
+
+        converter = VideoThenPoseConverter(
+            source_data=dict(
+                Video=dict(file_paths=["top_camera.mp4"], metadata_key="top_video"),
+                Pose=dict(num_samples=50, num_nodes=3, metadata_key="top_pose"),
+            )
+        )
+        metadata = converter.get_metadata()
+        metadata["Pose"]["PoseEstimations"]["top_pose"]["source_video_metadata_key"] = "top_video"
+
+        nwbfile = mock_NWBFile()
+        converter.add_to_nwbfile(
+            nwbfile=nwbfile,
+            metadata=metadata,
+            conversion_options=dict(Video=dict(parent_container="processing/behavior")),
+        )
+
+        image_series_name = metadata["Behavior"]["ExternalVideos"]["top_video"]["name"]
+        behavior_module = nwbfile.processing["behavior"]
+        assert image_series_name not in nwbfile.acquisition
+        assert behavior_module["top_pose"].source_video is behavior_module[image_series_name]
+
+    def test_pose_written_before_the_video_raises(self):
+        """Declaring the pose interface first leaves nothing for the link to resolve against."""
+
+        class PoseThenVideoConverter(NWBConverter):
+            data_interface_classes = dict(Pose=MockPoseEstimationInterface, Video=MockExternalVideoInterface)
+
+        converter = PoseThenVideoConverter(
+            source_data=dict(
+                Video=dict(file_paths=["top_camera.mp4"], metadata_key="top_video"),
+                Pose=dict(num_samples=50, num_nodes=3, metadata_key="top_pose"),
+            )
+        )
+        metadata = converter.get_metadata()
+        metadata["Pose"]["PoseEstimations"]["top_pose"]["source_video_metadata_key"] = "top_video"
+
+        nwbfile = mock_NWBFile()
+        with pytest.raises(ValueError, match="The video has to be written before the pose that links it"):
+            converter.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+    def test_key_naming_no_video_entry_raises(self):
+        """A key that is in no ``ExternalVideos`` registry is a metadata error rather than an ordering one."""
+        interface = MockPoseEstimationInterface(num_samples=50, num_nodes=3, metadata_key="top_pose")
+        metadata = interface.get_metadata()
+        metadata["Pose"]["PoseEstimations"]["top_pose"]["source_video_metadata_key"] = "absent_video"
+
+        nwbfile = mock_NWBFile()
+        with pytest.raises(ValueError, match=r"was not found in metadata\['Behavior'\]\['ExternalVideos'\]"):
+            interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)

@@ -119,6 +119,9 @@ from .fiber_photometry.guppy.guppydatainterface import GuppyInterface
 from .fiber_photometry.npm.npmfiberphotometrydatainterface import (
     NPMFiberPhotometryInterface,
 )
+from .fiber_photometry.pyphotometry.pyphotometrydatainterface import (
+    PyPhotometryFiberPhotometryInterface,
+)
 from .fiber_photometry.tdt.tdtfiberphotometrydatainterface import TDTFiberPhotometryInterface
 from .ophys.tiff.tiffdatainterface import TiffImagingInterface
 from .ophys.thor.thordatainterface import ThorImagingInterface
@@ -216,6 +219,7 @@ interface_list = [
     DoricFiberPhotometryInterface,
     TDTFiberPhotometryInterface,
     NPMFiberPhotometryInterface,
+    PyPhotometryFiberPhotometryInterface,
     GuppyInterface,
     MinianSegmentationInterface,
     ThorImagingInterface,
@@ -271,6 +275,7 @@ interfaces_by_category = dict(
         "DoricFiberPhotometry": DoricFiberPhotometryInterface,
         "TDTFiberPhotometry": TDTFiberPhotometryInterface,
         "NPMFiberPhotometry": NPMFiberPhotometryInterface,
+        "PyPhotometryFiberPhotometry": PyPhotometryFiberPhotometryInterface,
         "CSVFiberPhotometry": CSVFiberPhotometryInterface,
         "MultiFileCSVFiberPhotometry": MultiFileCSVFiberPhotometryInterface,
     },

@@ -58,7 +58,7 @@ def generate_complex_nwbfile() -> NWBFile:
 
 @pytest.fixture(scope="session")
 def hdf5_nwbfile_path(tmpdir_factory):
-    nwbfile_path = tmpdir_factory.mktemp("data").join("test_repack_nwbfile.nwb.h5")
+    nwbfile_path = tmpdir_factory.mktemp("data").join("test_repack_nwbfile.nwb")
     if not Path(nwbfile_path).exists():
         nwbfile = generate_complex_nwbfile()
 
@@ -122,7 +122,7 @@ def test_repack_nwbfile(hdf5_nwbfile_path, zarr_nwbfile_path, backend):
 
     if backend == "hdf5":
         nwbfile_path = hdf5_nwbfile_path
-        export_path = Path(hdf5_nwbfile_path).parent / "repacked_test_repack_nwbfile.nwb.h5"
+        export_path = Path(hdf5_nwbfile_path).parent / "repacked_test_repack_nwbfile.nwb"
     elif backend == "zarr":
         nwbfile_path = zarr_nwbfile_path
         export_path = Path(hdf5_nwbfile_path).parent / "repacked_test_repack_nwbfile.nwb.zarr"
@@ -212,7 +212,7 @@ def test_repack_nwbfile_hdf5_to_zarr(hdf5_nwbfile_path: str, tmp_path: Path):
 
 def test_repack_nwbfile_zarr_to_hdf5(zarr_nwbfile_path: str, tmp_path: Path):
     """Test repackaging an NWB file from Zarr to HDF5."""
-    export_nwbfile_path = tmp_path / "repacked_zarr_to_hdf5.nwb.h5"
+    export_nwbfile_path = tmp_path / "repacked_zarr_to_hdf5.nwb"
 
     repack_nwbfile(
         nwbfile_path=Path(zarr_nwbfile_path),
