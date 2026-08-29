@@ -378,7 +378,7 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
         *,
         session_header: dict,
         clock_ticks_per_second: int,
-        variable_name: str = "A",
+        variable_name: str,
         event_configuration: dict | None = None,
         metadata_key: str = "medpc",
         verbose: bool = False,
@@ -404,8 +404,10 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
             The rate of the program's clock: 500 for a 2 ms clock, 200 for a 5 ms one. A coded array stores its
             times in clock ticks and the file does not carry the rate, so the wrong value silently scales every
             timestamp in the session.
-        variable_name : str, optional
-            The MedPC variable holding the coded values, default = "A".
+        variable_name : str
+            The MedPC variable holding the coded values (ex. 'A'). The MSN program picks it, so it is stated
+            rather than defaulted: 'A' is what the readers of this convention happen to use, not something the
+            format fixes.
         event_configuration : dict, optional
             Names for the event types, keyed by the event code's zero-padded digits (ex. '011'). Each value takes
             a 'name', which seeds the editable ``event_name``. This is a legend rather than a declaration of what

@@ -133,6 +133,7 @@ still read and takes its digits as its name.
     >>> interface = MedPCCodedEventsInterface(
     ...     file_path=file_path,
     ...     session_header={"Start Date": "09/25/15", "Subject": "ML03"},
+    ...     variable_name="A",  # the array this program packs its events into
     ...     clock_ticks_per_second=500,  # this program clocks at 2 ms
     ...     event_configuration={
     ...         "001": {"name": "lick"},
