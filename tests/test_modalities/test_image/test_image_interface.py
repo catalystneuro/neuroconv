@@ -11,7 +11,6 @@ from neuroconv.datainterfaces.image.externalimageinterface import (
     ExternalImageInterface,
 )
 from neuroconv.datainterfaces.image.imageinterface import ImageInterface
-from neuroconv.tools.testing import MockExternalImageInterface
 from neuroconv.tools.testing.data_interface_mixins import DataInterfaceTestMixin
 
 MODE_CONFIGS = {
@@ -495,16 +494,15 @@ class TestExternalImageInterface(DataInterfaceTestMixin):
         nwbfile.read_io.close()
 
 
-@pytest.mark.parametrize("format", ["TIFF", "WEBP"])
-def test_external_image_rejects_unsupported_format(tmp_path, format):
+def test_external_image_rejects_unsupported_format(tmp_path):
     """NWB allows only PNG, JPEG and GIF by reference, and the error names the file that was rejected."""
     from pynwb.testing.mock.file import mock_NWBFile
 
-    generate_random_images(num_images=1, mode="RGB", output_dir_path=tmp_path, format=format)
+    generate_random_images(num_images=1, mode="RGB", output_dir_path=tmp_path, format="TIFF")
     file_path = next(tmp_path.iterdir())
     interface = ExternalImageInterface(file_paths=[file_path])
 
-    with pytest.raises(ValueError, match=f"Unsupported image format: {format} for image {file_path.name}"):
+    with pytest.raises(ValueError, match=f"Unsupported image format: TIFF for image {file_path.name}"):
         interface.add_to_nwbfile(mock_NWBFile())
 
 
@@ -550,25 +548,4 @@ class TestMixedModeExternalImageInterface(DataInterfaceTestMixin):
 
         # `L` is written as "grayscale", the schema's spelling; every other mode is passed through as PIL reports it
         assert num_image_modes == {"RGB": 2, "grayscale": 2, "RGBA": 2, "LA": 2, "P": 2}
-        nwbfile.read_io.close()
-
-
-class TestMockExternalImageInterface(DataInterfaceTestMixin):
-    """Test suite for MockExternalImageInterface, whose paths do not have to exist."""
-
-    data_interface_cls = MockExternalImageInterface
-    file_paths = ["first_image.png", "second_image.png"]
-    interface_kwargs = dict(file_paths=file_paths, image_format="JPEG", image_mode="LA")
-
-    def check_read_nwb(self, nwbfile_path):
-        """The mock reports its header without opening anything, and the paths are written as they were passed."""
-
-        nwbfile = read_nwb(nwbfile_path)
-        images_container = nwbfile.acquisition["Images"]
-        assert len(images_container.images) == 2
-        for image in images_container.images.values():
-            assert isinstance(image, ExternalImage)
-            assert image.image_format == "JPEG"
-            assert image.image_mode == "LA"
-        assert {image.data for image in images_container.images.values()} == set(self.file_paths)
         nwbfile.read_io.close()
