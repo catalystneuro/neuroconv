@@ -119,6 +119,9 @@ from .fiber_photometry.guppy.guppydatainterface import GuppyInterface
 from .fiber_photometry.npm.npmfiberphotometrydatainterface import (
     NPMFiberPhotometryInterface,
 )
+from .fiber_photometry.pyphotometry.pyphotometrydatainterface import (
+    PyPhotometryFiberPhotometryInterface,
+)
 from .fiber_photometry.tdt.tdtfiberphotometrydatainterface import TDTFiberPhotometryInterface
 from .ophys.tiff.tiffdatainterface import TiffImagingInterface
 from .ophys.thor.thordatainterface import ThorImagingInterface
@@ -136,6 +139,9 @@ from .events.csv_events.csveventsdatainterface import CSVEventsInterface
 from .events.doric_events.doriccsveventsdatainterface import DoricCSVEventsInterface
 from .events.doric_events.doriceventsdatainterface import DoricEventsInterface
 from .events.npm_events.npmeventsdatainterface import NPMEventsInterface
+from .events.pyphotometry_events.pyphotometryeventsdatainterface import (
+    PyPhotometryEventsInterface,
+)
 from .events.tdt_events.tdteventsdatainterface import TDTEventsInterface
 
 interface_list = [
@@ -214,6 +220,7 @@ interface_list = [
     DoricFiberPhotometryInterface,
     TDTFiberPhotometryInterface,
     NPMFiberPhotometryInterface,
+    PyPhotometryFiberPhotometryInterface,
     GuppyInterface,
     MinianSegmentationInterface,
     ThorImagingInterface,
@@ -241,6 +248,7 @@ interface_list = [
     DoricCSVEventsInterface,
     DoricEventsInterface,
     NPMEventsInterface,
+    PyPhotometryEventsInterface,
     TDTEventsInterface,
 ]
 
@@ -269,6 +277,7 @@ interfaces_by_category = dict(
         "DoricFiberPhotometry": DoricFiberPhotometryInterface,
         "TDTFiberPhotometry": TDTFiberPhotometryInterface,
         "NPMFiberPhotometry": NPMFiberPhotometryInterface,
+        "PyPhotometryFiberPhotometry": PyPhotometryFiberPhotometryInterface,
         "CSVFiberPhotometry": CSVFiberPhotometryInterface,
         "MultiFileCSVFiberPhotometry": MultiFileCSVFiberPhotometryInterface,
     },
@@ -307,6 +316,7 @@ interfaces_by_category = dict(
         DoricCSVEvents=DoricCSVEventsInterface,
         DoricEvents=DoricEventsInterface,
         NPMEvents=NPMEventsInterface,
+        PyPhotometryEvents=PyPhotometryEventsInterface,
         TDTEvents=TDTEventsInterface,
     ),
 )

@@ -148,10 +148,16 @@ tdt_events = [
 doric_events = [
     "h5py>=3",  # Doric events live in the .doric HDF5 file; the CSV export variant needs only pandas.
 ]
+pyphotometry_events = [
+    # A .ppd is read by neuroconv's own binary reader and written as native pynwb 4.0 EventsTable objects,
+    # so this needs only core numpy + pynwb>=4.0; kept as a stable install alias so
+    # `neuroconv[pyphotometry_events]` and `neuroconv[events]` remain valid.
+]
 events = [
     "neuroconv[csv_events]",
     "neuroconv[doric_events]",
     "neuroconv[npm_events]",
+    "neuroconv[pyphotometry_events]",
     "neuroconv[tdt_events]",
 ]
 
@@ -305,6 +311,16 @@ doric_fp = [
 npm_fp = [
     "neuroconv[fiber_photometry_minimal]",
 ]
+pyphotometry_fp = [
+    "neuroconv[fiber_photometry_minimal]",
+]
+# One .ppd holds both modalities and PyPhotometryConverter writes both, so this is the install for a
+# whole recording. It resolves to the same packages as pyphotometry_fp while pyphotometry_events is
+# empty, and states what the converter needs rather than what it happens to cost today.
+pyphotometry = [
+    "neuroconv[pyphotometry_fp]",
+    "neuroconv[pyphotometry_events]",
+]
 tdt_fp = [
     "neuroconv[fiber_photometry_minimal]",
     "tdt",
@@ -329,6 +345,7 @@ fiber_photometry = [
     "neuroconv[doric_fp]",
     "neuroconv[guppy]",
     "neuroconv[npm_fp]",
+    "neuroconv[pyphotometry_fp]",
     "neuroconv[tdt_fp]",
 ]
 

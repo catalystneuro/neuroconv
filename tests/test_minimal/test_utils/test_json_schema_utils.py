@@ -4,6 +4,7 @@ from copy import deepcopy
 
 import numpy as np
 import pytest
+from pynwb.image import ImageSeries
 from pynwb.ophys import ImagingPlane, TwoPhotonSeries
 
 from neuroconv.utils import (
@@ -233,6 +234,21 @@ def test_get_schema_from_TwoPhotonSeries_array_type():
     assert "data" not in two_photon_series_schema["properties"]
     assert "timestamps" not in two_photon_series_schema["properties"]
     assert "external_file" not in two_photon_series_schema["properties"]
+
+
+@pytest.mark.parametrize("hdmf_class", [ImageSeries, TwoPhotonSeries])
+def test_array_valued_metadata_survives_a_widened_type_declaration(hdmf_class):
+    """Small array-valued metadata stays in the schema even where pynwb declares it as `data` is declared.
+
+    Whether an argument accepts a `DataIO` is the generator's proxy for it being a bulk dataset. pynwb's
+    development branch widened these fields to the same declaration `data` carries, so the proxy stopped
+    separating them and every conversion supplying one failed validation.
+    """
+    schema = get_schema_from_hdmf_class(hdmf_class)
+
+    assert schema["properties"]["dimension"]["type"] == "array"
+    if hdmf_class is TwoPhotonSeries:
+        assert schema["properties"]["field_of_view"]["type"] == "array"
 
 
 def test_np_array_encoding():
