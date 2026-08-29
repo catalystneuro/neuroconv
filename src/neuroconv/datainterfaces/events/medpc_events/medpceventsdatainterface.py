@@ -12,6 +12,10 @@ from ..baseeventsinterface import BaseEventsInterface, _EventsData
 # when that interface is removed.
 from ...behavior.medpc.medpc_helpers import read_medpc_file
 
+# MED-PC IV writes the same fixed header above every session, so a session always begins at its `Start Date` line
+# and the reader needs no configuration to find it.
+_SESSION_START_FIELD = "Start Date"
+
 
 class MedPCEventsInterface(BaseEventsInterface):
     """
@@ -32,8 +36,9 @@ class MedPCEventsInterface(BaseEventsInterface):
             5:     1567.800     1774.950     2448.450     2454.050     2552.800
             10:     2620.550     2726.250
 
-    Different sessions are usually separated by a blank line or two, so the session to read is picked out by
-    ``session_conditions``.
+    A file holds several sessions, each a fixed MED-PC IV header followed by that session's variables and
+    separated from the next by a blank line, so the session to read is picked out by the header fields given in
+    ``session_header``.
 
     Where an event type's identity lives is decided by the MSN program that wrote the file, so this interface takes
     either of the two layouts:
@@ -61,8 +66,7 @@ class MedPCEventsInterface(BaseEventsInterface):
         self,
         file_path: FilePath,
         *,
-        session_conditions: dict,
-        start_variable: str,
+        session_header: dict,
         medpc_name_to_info_dict: dict | None = None,
         packed_code_configuration: dict | None = None,
         metadata_key: str = "medpc",
@@ -75,11 +79,12 @@ class MedPCEventsInterface(BaseEventsInterface):
         ----------
         file_path : FilePath
             Path to the MedPC file.
-        session_conditions : dict
-            The conditions that define the session. The keys are the names of the single-line variables (ex. 'Start Date')
-            and the values are the values of those variables for the desired session (ex. '11/09/18').
-        start_variable : str
-            The name of the variable that starts the session (ex. 'Start Date').
+        session_header : dict
+            The header fields that identify the session to read, since a MedPC file holds several. The keys are the
+            names of the header lines MED-PC IV writes above every session ('Start Date', 'Start Time', 'Subject',
+            'Experiment', 'Group', 'Box', 'End Date', 'End Time', 'MSN') and the values are the ones the desired
+            session carries. Give as many as it takes to be unique in the file.
+            ex. {"Start Date": "11/09/18", "Start Time": "10:34:30"}
         medpc_name_to_info_dict : dict, optional
             The event types of a per-array file, keyed by the name of the MedPC variable holding their onset times
             (ex. 'A'). That name is the event type's identifier, the handle ``get_event_times`` takes and the key of
@@ -125,8 +130,7 @@ class MedPCEventsInterface(BaseEventsInterface):
 
         super().__init__(
             file_path=file_path,
-            session_conditions=session_conditions,
-            start_variable=start_variable,
+            session_header=session_header,
             medpc_name_to_info_dict=medpc_name_to_info_dict,
             packed_code_configuration=packed_code_configuration,
             verbose=verbose,
@@ -356,8 +360,8 @@ class MedPCEventsInterface(BaseEventsInterface):
         return read_medpc_file(
             file_path=self.source_data["file_path"],
             medpc_name_to_info_dict=medpc_name_to_info_dict,
-            session_conditions=self.source_data["session_conditions"],
-            start_variable=self.source_data["start_variable"],
+            session_conditions=self.source_data["session_header"],
+            start_variable=_SESSION_START_FIELD,
         )
 
     def _get_variable_array(self, session_dict: dict, medpc_name: str) -> np.ndarray:
@@ -365,7 +369,7 @@ class MedPCEventsInterface(BaseEventsInterface):
         if medpc_name not in session_dict:
             raise ValueError(
                 f"The MedPC variable '{medpc_name}' is not in the session selected by "
-                f"{self.source_data['session_conditions']} of {self.source_data['file_path']}."
+                f"{self.source_data['session_header']} of {self.source_data['file_path']}."
             )
         return session_dict[medpc_name]
 

@@ -24,8 +24,7 @@ and ``medpc_name_to_info_dict`` says which arrays to read and what to call them.
     >>> # For this data interface we need to pass the output file from MedPC
     >>> file_path = f"{BEHAVIOR_DATA_PATH}/medpc/example_medpc_file_06_06_2024.txt"
     >>> # Change the file_path to the appropriate location in your system
-    >>> session_conditions = {"Start Date": "04/09/19", "Start Time": "10:34:30"}
-    >>> start_variable = "Start Date"
+    >>> session_header = {"Start Date": "04/09/19", "Start Time": "10:34:30"}
     >>> medpc_name_to_info_dict = {
     ...     "A": {"name": "left_nose_poke_times"},
     ...     "B": {"name": "left_reward_times"},
@@ -36,13 +35,12 @@ and ``medpc_name_to_info_dict`` says which arrays to read and what to call them.
     ... }
     >>> interface = MedPCEventsInterface(
     ...     file_path=file_path,
-    ...     session_conditions=session_conditions,
-    ...     start_variable=start_variable,
+    ...     session_header=session_header,
     ...     medpc_name_to_info_dict=medpc_name_to_info_dict,
     ... )
     >>>
     >>> # Extract what metadata we can from the source file, which includes the session's start time and its
-    >>> # subject, read from the header of the session picked out by session_conditions
+    >>> # subject, read from the header of the session picked out by session_header
     >>> metadata = interface.get_metadata()
     >>> metadata["NWBFile"]["session_start_time"]
     datetime.datetime(2019, 4, 9, 10, 34, 30)
@@ -70,8 +68,7 @@ table through ``value_names``, and what its codes mean is stated in the metadata
     >>> file_path = f"{BEHAVIOR_DATA_PATH}/medpc/medpc_tye_lab/!2022-10-06_14h12m.Subject cohort10-M3.3"
     >>> interface = MedPCEventsInterface(
     ...     file_path=file_path,
-    ...     session_conditions={"Start Date": "10/06/22", "Subject": "cohort10-M3.3"},
-    ...     start_variable="Start Date",
+    ...     session_header={"Start Date": "10/06/22", "Subject": "cohort10-M3.3"},
     ...     # S holds the time of each conditioned stimulus and K holds which one it was
     ...     medpc_name_to_info_dict={"S": {"name": "cs_presentations", "value_names": {"K": "cs_type"}}},
     ... )
@@ -103,8 +100,7 @@ its digits as its name.
     >>> file_path = f"{BEHAVIOR_DATA_PATH}/medpc/event_type_in_column_laubach_lab/ExampleFile2"
     >>> interface = MedPCEventsInterface(
     ...     file_path=file_path,
-    ...     session_conditions={"Start Date": "09/25/15", "Subject": "ML03"},
-    ...     start_variable="Start Date",
+    ...     session_header={"Start Date": "09/25/15", "Subject": "ML03"},
     ...     packed_code_configuration={
     ...         "clock_ticks_per_second": 500,  # this program clocks at 2 ms
     ...         "code_to_info_dict": {

@@ -31,8 +31,7 @@ class TestPerArrayLernerLab(MedPCEventsInterfaceMixin):
 
     interface_kwargs = dict(
         file_path=MEDPC_DATA_PATH / "example_medpc_file_06_06_2024.txt",
-        session_conditions={"Start Date": "04/10/19", "Start Time": "12:36:13"},
-        start_variable="Start Date",
+        session_header={"Start Date": "04/10/19", "Start Time": "12:36:13"},
         medpc_name_to_info_dict={
             "A": {"name": "left_nose_poke_times"},
             "B": {"name": "left_reward_times"},
@@ -166,8 +165,7 @@ class TestPerArrayTyeLab(MedPCEventsInterfaceMixin):
 
     interface_kwargs = dict(
         file_path=MEDPC_DATA_PATH / "medpc_tye_lab" / "!2022-10-06_14h12m.Subject cohort10-M3.3",
-        session_conditions={"Start Date": "10/06/22", "Subject": "cohort10-M3.3"},
-        start_variable="Start Date",
+        session_header={"Start Date": "10/06/22", "Subject": "cohort10-M3.3"},
         medpc_name_to_info_dict={
             # The lick start/end arrays are onset/offset pairs rather than onset/duration ones, so each is
             # its own point event type.
@@ -274,8 +272,7 @@ class TestPackedCodeWithLegend(MedPCEventsInterfaceMixin):
 
     interface_kwargs = dict(
         file_path=MEDPC_DATA_PATH / "event_type_in_column_laubach_lab" / "ExampleFile2",
-        session_conditions={"Start Date": "09/25/15", "Subject": "ML03"},
-        start_variable="Start Date",
+        session_header={"Start Date": "09/25/15", "Subject": "ML03"},
         packed_code_configuration={
             # The program clocks at 2 ms, so the integer part of each value is in 500ths of a second.
             "clock_ticks_per_second": 500,
@@ -356,8 +353,7 @@ class TestPackedCodeWithoutLegend(MedPCEventsInterfaceMixin):
 
     interface_kwargs = dict(
         file_path=MEDPC_DATA_PATH / "event_type_in_column_laubach_lab" / "ExampleFile1",
-        session_conditions={"Start Date": "09/17/15", "Subject": "EX01"},
-        start_variable="Start Date",
+        session_header={"Start Date": "09/17/15", "Subject": "EX01"},
         packed_code_configuration={"clock_ticks_per_second": 500},
     )
 
@@ -407,8 +403,7 @@ def test_metadata_of_the_deprecated_interface_raises():
     # read, so the events it describes would go unwritten.
     interface = MedPCEventsInterface(
         file_path=MEDPC_DATA_PATH / "example_medpc_file_06_06_2024.txt",
-        session_conditions={"Start Date": "04/10/19", "Start Time": "12:36:13"},
-        start_variable="Start Date",
+        session_header={"Start Date": "04/10/19", "Start Time": "12:36:13"},
         medpc_name_to_info_dict={"A": {"name": "left_nose_poke_times"}},
     )
     metadata = interface.get_metadata()
@@ -433,8 +428,7 @@ def test_exactly_one_layout_is_required(layout_kwargs):
     with pytest.raises(ValueError, match="Pass exactly one of"):
         MedPCEventsInterface(
             file_path=MEDPC_DATA_PATH / "example_medpc_file_06_06_2024.txt",
-            session_conditions={"Start Date": "04/10/19", "Start Time": "12:36:13"},
-            start_variable="Start Date",
+            session_header={"Start Date": "04/10/19", "Start Time": "12:36:13"},
             **layout_kwargs,
         )
 
@@ -443,8 +437,7 @@ def test_packed_code_requires_the_clock_rate():
     with pytest.raises(ValueError, match="must state 'clock_ticks_per_second'"):
         MedPCEventsInterface(
             file_path=MEDPC_DATA_PATH / "event_type_in_column_laubach_lab" / "ExampleFile2",
-            session_conditions={"Start Date": "09/25/15", "Subject": "ML03"},
-            start_variable="Start Date",
+            session_header={"Start Date": "09/25/15", "Subject": "ML03"},
             packed_code_configuration={"code_to_info_dict": {"001": {"name": "lick"}}},
         )
 
@@ -454,8 +447,7 @@ def test_variable_missing_from_the_session_is_named():
     # how the removed metadata block was written) names nothing in the file and is reported as such.
     interface = MedPCEventsInterface(
         file_path=MEDPC_DATA_PATH / "example_medpc_file_06_06_2024.txt",
-        session_conditions={"Start Date": "04/10/19", "Start Time": "12:36:13"},
-        start_variable="Start Date",
+        session_header={"Start Date": "04/10/19", "Start Time": "12:36:13"},
         medpc_name_to_info_dict={"left_nose_poke_times": {"name": "left_nose_poke_times"}},
     )
 
