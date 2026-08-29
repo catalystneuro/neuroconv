@@ -51,6 +51,9 @@
   "events/npm_events.rst": {
     "extra": "npm_events"
   },
+  "events/pyphotometry_events.rst": {
+    "extra": "pyphotometry_events"
+  },
   "events/tdt_events.rst": {
     "extra": "tdt_events"
   },
@@ -65,6 +68,9 @@
   },
   "fiberphotometry/npm_fp.rst": {
     "extra": "npm_fp"
+  },
+  "fiberphotometry/pyphotometry_fp.rst": {
+    "extra": "pyphotometry"
   },
   "fiberphotometry/tdt_fp.rst": {
     "extra": "tdt_fp"

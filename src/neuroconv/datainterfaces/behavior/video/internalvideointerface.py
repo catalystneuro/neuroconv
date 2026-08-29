@@ -236,7 +236,7 @@ class InternalVideoInterface(BaseDataInterface):
         buffer_data: bool = True,
         iterator_options: dict | None = None,
         parent_container: Literal["acquisition", "processing/behavior"] = "acquisition",
-        module_description: str | None = None,
+        module_description: str = "processed behavioral data",
         always_write_timestamps: bool = False,
     ):
         """
@@ -313,10 +313,11 @@ class InternalVideoInterface(BaseDataInterface):
         parent_container: {'acquisition', 'processing/behavior'}
             The container where the ImageSeries is added, default is nwbfile.acquisition.
             When 'processing/behavior' is chosen, the ImageSeries is added to nwbfile.processing['behavior'].
-        module_description: str, optional
-            If parent_container is 'processing/behavior', and the module does not exist,
-            it will be created with this description. The default description is the same as used by the
-            conversion_tools.get_module function.
+        module_description: str, default: "processed behavioral data"
+            If parent_container is 'processing/behavior', and the module does not exist, it will be
+            created with this description. The default matches what every other interface writing to that
+            module uses, so a conversion combining several of them does not warn about a description
+            mismatch.
         always_write_timestamps: bool, default: False
             Set to True to always write timestamps.
             By default (False), the function checks if timestamps are available, and if not, uses starting_time and rate.
