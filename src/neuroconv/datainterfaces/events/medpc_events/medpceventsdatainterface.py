@@ -228,6 +228,10 @@ class _MedPCEventsInterface(BaseEventsInterface):
         makes it the one check the ordering check cannot do: accumulating intervals always yields a rising series,
         so `relative_mode=True` satisfies the ordering check whether or not the program used Relative Mode, and
         only the length catches the difference.
+
+        It is one-sided. Times that come out too large run past the session end and are caught; times that come
+        out too small sit inside it and climb correctly, so a unit smaller than the truth passes both checks
+        silently. Nothing in a MedPC file bounds a time from below.
         """
         if len(times) == 0:
             return
