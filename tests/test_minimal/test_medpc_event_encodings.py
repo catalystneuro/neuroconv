@@ -49,7 +49,7 @@ class TestTimeUnit:
         write_medpc_file(path, {"A": [1.5, 2.25, 3.0]})
 
         interface = MedPCArrayEventsInterface(
-            file_path=path, session_header=SESSION_HEADER, event_configuration={"A": {"name": "poke"}}
+            file_path=path, session_header=SESSION_HEADER, event_configuration={"A": None}
         )
 
         assert np.allclose(interface.get_event_times("A"), [1.5, 2.25, 3.0])
@@ -69,7 +69,7 @@ class TestTimeUnit:
         interface = MedPCArrayEventsInterface(
             file_path=path,
             session_header=SESSION_HEADER,
-            event_configuration={"A": {"name": "poke"}},
+            event_configuration={"A": None},
             time_unit=time_unit,
         )
 
@@ -84,7 +84,7 @@ class TestTimeUnit:
         interface = MedPCArrayEventsInterface(
             file_path=path,
             session_header=SESSION_HEADER,
-            event_configuration={"A": {"name": "lick"}},
+            event_configuration={"A": None},
             time_unit="clock_ticks",
             clock_ticks_per_second=500,
         )
@@ -99,7 +99,7 @@ class TestTimeUnit:
             MedPCArrayEventsInterface(
                 file_path=path,
                 session_header=SESSION_HEADER,
-                event_configuration={"A": {"name": "lick"}},
+                event_configuration={"A": None},
                 time_unit="clock_ticks",
             )
 
@@ -113,7 +113,7 @@ class TestTimeUnit:
             MedPCArrayEventsInterface(
                 file_path=path,
                 session_header=SESSION_HEADER,
-                event_configuration={"A": {"name": "lick"}},
+                event_configuration={"A": None},
                 clock_ticks_per_second=500,
             )
 
@@ -124,11 +124,13 @@ class TestTimeUnit:
         interface = MedPCArrayEventsInterface(
             file_path=path,
             session_header=SESSION_HEADER,
-            event_configuration={"G": {"name": "port_entries", "duration": "E"}},
+            event_configuration={"G": {"duration": "E"}},
             time_unit="centiseconds",
         )
         nwbfile = mock_NWBFile()
-        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
+        metadata = interface.get_metadata()
+        metadata["Events"]["medpc"]["event_types"]["G"]["event_name"] = "port_entries"
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
 
         port_entries = nwbfile.get_events_table("PortEntries")
         assert np.allclose(port_entries["timestamp"][:], [1.0, 3.0])
@@ -150,7 +152,6 @@ class TestRelativeTimes:
             code_scale=100,
             time_unit="centiseconds",
             relative_mode=True,
-            event_code_names={"10": "left_lever", "20": "reinforcement"},
         )
 
         assert np.allclose(interface.get_event_times("10"), [1.5, 2.12, 3.0])
@@ -203,7 +204,6 @@ class TestCodePosition:
             timestamps_variable="A",
             code_scale=10000,
             code_position="leading",
-            event_code_names={"1": "peck_left", "2": "peck_right"},
         )
 
         assert np.allclose(interface.get_event_times("1"), [64.54, 182.0])
@@ -219,27 +219,6 @@ class TestCodePosition:
         )
 
         assert set(interface.get_event_type_source_ids()) == {"10", "20"}
-
-    @pytest.mark.parametrize("legend_key", [11, "11", "011"], ids=["int", "unpadded", "padded"])
-    def test_a_legend_key_reaches_the_padded_identifier(self, tmp_path, legend_key):
-        # The identifiers are zero-padded to the scale's width, but a legend is written the way the program
-        # numbers its codes. Keying the legend literally used to leave the real type named `code_011` and add a
-        # phantom empty table carrying the user's name beside it.
-        path = tmp_path / "legend.txt"
-        write_medpc_file(path, {"A": [100.011, 200.011]})
-
-        interface = MedPCCodedEventsInterface(
-            file_path=path,
-            session_header=SESSION_HEADER,
-            timestamps_variable="A",
-            event_code_names={legend_key: "pump_a_on"},
-        )
-        nwbfile = mock_NWBFile()
-        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
-
-        assert set(interface.get_event_type_source_ids()) == {"011"}
-        assert set(nwbfile.events) == {"PumpAOn"}
-        assert len(nwbfile.get_events_table("PumpAOn")) == 2
 
     def test_a_scale_leaving_no_digits_raises(self, tmp_path):
         path = tmp_path / "a.txt"
@@ -264,7 +243,6 @@ class TestCompanionCodeArray:
             session_header=SESSION_HEADER,
             timestamps_variable="B",
             event_type_variable="C",
-            event_code_names={"1": "lever_press", "3": "magazine_entry"},
         )
 
         assert np.allclose(interface.get_event_times("1"), [7.51, 7.87])
@@ -360,7 +338,7 @@ class TestSealedArray:
         write_medpc_file(path, {"A": [1.0, 2.0, 3.0, -987.987, 0.0, 0.0]})
 
         interface = MedPCArrayEventsInterface(
-            file_path=path, session_header=SESSION_HEADER, event_configuration={"A": {"name": "poke"}}
+            file_path=path, session_header=SESSION_HEADER, event_configuration={"A": None}
         )
 
         assert np.allclose(interface.get_event_times("A"), [1.0, 2.0, 3.0])
@@ -377,7 +355,7 @@ def test_a_space_padded_header_value_still_matches(tmp_path):
     interface = MedPCArrayEventsInterface(
         file_path=path,
         session_header={"Start Date": "04/10/19", "Start Time": "9:47:07"},
-        event_configuration={"A": {"name": "poke"}},
+        event_configuration={"A": None},
     )
 
     assert np.allclose(interface.get_event_times("A"), [1.0])
@@ -421,7 +399,7 @@ def test_a_unit_mapping_is_refused_by_the_array_interface(tmp_path):
         MedPCArrayEventsInterface(
             file_path=path,
             session_header=SESSION_HEADER,
-            event_configuration={"A": {"name": "poke"}},
+            event_configuration={"A": None},
             time_unit={"A": "seconds"},
         )
 
@@ -434,7 +412,7 @@ def test_a_time_after_the_session_ended_is_caught(tmp_path):
     write_medpc_file(path, {"A": [100.0, 200.0, 9000.0]})  # the header says 12:36:13 to 13:38:19, 3726 s
 
     interface = MedPCArrayEventsInterface(
-        file_path=path, session_header=SESSION_HEADER, event_configuration={"A": {"name": "poke"}}
+        file_path=path, session_header=SESSION_HEADER, event_configuration={"A": None}
     )
 
     with pytest.raises(ValueError, match="says the session ran"):
@@ -450,7 +428,7 @@ def test_accumulating_times_that_were_not_intervals_is_caught(tmp_path):
     interface = MedPCArrayEventsInterface(
         file_path=path,
         session_header=SESSION_HEADER,
-        event_configuration={"A": {"name": "poke"}},
+        event_configuration={"A": None},
         relative_mode=True,
     )
 
@@ -466,7 +444,7 @@ def test_a_clock_rate_of_zero_raises(tmp_path):
         MedPCArrayEventsInterface(
             file_path=path,
             session_header=SESSION_HEADER,
-            event_configuration={"A": {"name": "poke"}},
+            event_configuration={"A": None},
             time_unit="clock_ticks",
             clock_ticks_per_second=0,
         )
@@ -485,28 +463,13 @@ def test_a_code_wider_than_the_scale_raises(tmp_path):
         interface.get_event_type_source_ids()
 
 
-def test_a_legend_key_that_is_not_a_code_raises(tmp_path):
-    path = tmp_path / "bad_legend.txt"
-    write_medpc_file(path, {"A": [1.011]})
-
-    interface = MedPCCodedEventsInterface(
-        file_path=path,
-        session_header=SESSION_HEADER,
-        timestamps_variable="A",
-        event_code_names={"lick": "lick"},
-    )
-
-    with pytest.raises(ValueError, match="is not an event code"):
-        interface.get_event_type_source_ids()
-
-
 def test_the_session_header_still_selects(tmp_path):
     # The encodings above all use a single-session file; this checks the header reading survives them.
     path = tmp_path / "header.txt"
     write_medpc_file(path, {"A": [1.0]})
 
     interface = MedPCArrayEventsInterface(
-        file_path=path, session_header=SESSION_HEADER, event_configuration={"A": {"name": "poke"}}
+        file_path=path, session_header=SESSION_HEADER, event_configuration={"A": None}
     )
     metadata = interface.get_metadata()
 

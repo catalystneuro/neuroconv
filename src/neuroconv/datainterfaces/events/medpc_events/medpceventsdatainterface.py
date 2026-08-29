@@ -128,12 +128,10 @@ class _MedPCEventsInterface(BaseEventsInterface):
         # head, and is the user's to add.
         event_types = metadata["Events"][self.metadata_key]["event_types"]
         for event_type_source_id in self._get_events_data_dict():
-            entry = {"event_name": self._event_name(event_type_source_id)}
+            entry = {"event_name": event_type_source_id}
             payload_variables = self._payload_variables(event_type_source_id=event_type_source_id)
             if payload_variables:
-                entry["columns"] = {
-                    medpc_name: {"column_name": column_name} for medpc_name, column_name in payload_variables.items()
-                }
+                entry["columns"] = {medpc_name: {"column_name": medpc_name} for medpc_name in payload_variables}
             event_types[event_type_source_id] = entry
         return metadata
 
@@ -212,13 +210,9 @@ class _MedPCEventsInterface(BaseEventsInterface):
         """Read the selected session's events. Implemented by each layout's interface."""
         raise NotImplementedError
 
-    def _event_name(self, event_type_source_id: str) -> str:
-        """Return the ``event_name`` seeded for one event type."""
-        raise NotImplementedError
-
-    def _payload_variables(self, event_type_source_id: str) -> dict:
-        """Return the arrays one event type carries as value columns, mapping each to its column name."""
-        return {}
+    def _payload_variables(self, event_type_source_id: str) -> list[str]:
+        """Return the arrays one event type carries as value columns."""
+        return []
 
     def _validate_within_the_session(self, times: np.ndarray, medpc_name: str) -> None:
         """Raise where a decoded time falls after the session's own recorded end.
@@ -415,21 +409,18 @@ class MedPCArrayEventsInterface(_MedPCEventsInterface):
             ex. {"Start Date": "10/06/22", "Subject": "cohort10-M3.3"} where a cohort's animals were pooled into one
             file and the subject is needed as well
         event_configuration : dict
-            The event types of a per-array file, keyed by the name of the MedPC variable holding their onset times
-            (ex. 'A'). That name is the event type's identifier, the handle ``get_event_times`` takes and the key of
-            its metadata entry. Each value declares what that array becomes: a required 'name', which seeds the
-            editable ``event_name``; an optional 'duration' naming the MedPC variable that holds the per-event
-            durations in seconds, which makes the type durative rather than a point event; and an optional
-            'payload' mapping a MedPC variable holding one value per event to the name of the column it rides
-            along as. A payload column is written with the raw values the program wrote, so relabelling those
-            codes and saying what they mean is done in the metadata through ``column_categories``.
+            The event types of a per-array file, keyed by the MedPC variable holding their onset times (ex. 'A').
+            That variable is the event type's identifier, the handle ``get_event_times`` takes and the key of its
+            metadata entry. Each value states how that array is read, or is None where the array is a plain list
+            of onsets: an optional 'duration' naming the MedPC variable that holds the per-event durations, which
+            makes the type durative rather than a point event, and an optional 'payload' listing MedPC variables
+            holding one value per event, each written as a column of the same table.
 
-            Naming here rather than only in the editable metadata is a deliberate departure from the other events
-            interfaces, which seed a name from the source's own handle. Theirs is a label a human wrote (a CSV
-            column header, a TDT epoc name); a MedPC variable is a slot number. Seeding from it would name every
-            table 'A', 'B', 'C', so a conversion would have to edit metadata purely to become legible.
-            ex. {"G": {"name": "port_entries", "duration": "E"}}
-            ex. {"S": {"name": "cs_presentations", "payload": {"K": "cs_type"}}}
+            Nothing here names anything. A MedPC variable is a slot number rather than a label, so an event type
+            arrives called 'A' and a payload column called 'K'; set ``event_name`` and ``column_name`` in the
+            editable metadata, which is also where a payload column's raw codes are relabelled and explained
+            through ``column_categories``.
+            ex. {"A": None, "G": {"duration": "E"}, "S": {"payload": ["K"]}}
         time_unit : {"decaseconds", "seconds", "deciseconds", "centiseconds", "milliseconds", "clock_ticks"}, optional
             What one unit of an array value is worth, default = "seconds". MedPC stores whatever the MSN program
             divided by before writing and records neither that choice nor the clock's resolution, so the unit is
@@ -450,12 +441,6 @@ class MedPCArrayEventsInterface(_MedPCEventsInterface):
         verbose : bool, optional
             Whether to print verbose output, by default False.
         """
-        for medpc_name, info_dict in event_configuration.items():
-            if "name" not in info_dict:
-                raise ValueError(
-                    f"The entry for the MedPC variable '{medpc_name}' has no 'name', which seeds the event type's "
-                    f"editable event_name. Pass {{'name': ...}} for every variable that holds events."
-                )
 
         _validate_time_arguments(time_unit=time_unit, clock_ticks_per_second=clock_ticks_per_second)
         super().__init__(
@@ -479,10 +464,10 @@ class MedPCArrayEventsInterface(_MedPCEventsInterface):
         read_dict = {}
         for medpc_name, info_dict in event_configuration.items():
             read_dict[medpc_name] = {"name": medpc_name, "is_array": True}
-            durations_variable = info_dict.get("duration")
+            durations_variable = (info_dict or {}).get("duration")
             if durations_variable is not None:
                 read_dict[durations_variable] = {"name": durations_variable, "is_array": True}
-            for value_name in info_dict.get("payload", {}):
+            for value_name in (info_dict or {}).get("payload", []):
                 read_dict[value_name] = {"name": value_name, "is_array": True}
         session_dict = self._read_session(medpc_name_to_info_dict=read_dict)
 
@@ -491,7 +476,7 @@ class MedPCArrayEventsInterface(_MedPCEventsInterface):
             raw_timestamps = self._get_variable_array(session_dict=session_dict, medpc_name=medpc_name)
             timestamps = self._decode_times(values=raw_timestamps, medpc_name=medpc_name)
             durations = None
-            durations_variable = info_dict.get("duration")
+            durations_variable = (info_dict or {}).get("duration")
             if durations_variable is not None:
                 # A duration is an elapsed time, so it takes the same unit as the onsets. It is never relative,
                 # since each one already is an interval, and it is never accumulated.
@@ -509,7 +494,7 @@ class MedPCArrayEventsInterface(_MedPCEventsInterface):
                 if missing > 0:
                     durations = np.concatenate([durations, np.full(shape=missing, fill_value=np.nan)])
             payload = {}
-            for value_name in info_dict.get("payload", {}):
+            for value_name in (info_dict or {}).get("payload", []):
                 values = self._get_variable_array(session_dict=session_dict, medpc_name=value_name)
                 # A value array holds one value per event, so a length that does not match the onsets is a
                 # mis-stated variable rather than something to pad: unlike a missing offset, there is no reading
@@ -527,13 +512,9 @@ class MedPCArrayEventsInterface(_MedPCEventsInterface):
             )
         return events_data_dict
 
-    def _event_name(self, event_type_source_id: str) -> str:
-        """Return the ``event_name`` seeded for one event type."""
-        return self.source_data["event_configuration"][event_type_source_id]["name"]
-
-    def _payload_variables(self, event_type_source_id: str) -> dict:
-        """Return the value arrays one event type carries, mapping each to the column name it is written as."""
-        return self.source_data["event_configuration"][event_type_source_id].get("payload", {})
+    def _payload_variables(self, event_type_source_id: str) -> list[str]:
+        """Return the value arrays one event type carries."""
+        return (self.source_data["event_configuration"][event_type_source_id] or {}).get("payload", [])
 
 
 class MedPCCodedEventsInterface(_MedPCEventsInterface):
@@ -553,7 +534,7 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
       ``event_type_variable`` and nothing is unpacked.
 
     Every code found becomes an event type identified by its digits, so the file names its own event types and
-    ``event_code_names`` only supplies names for them.
+    nothing has to be declared beyond how to read them.
 
     Use :class:`MedPCArrayEventsInterface` instead for a file that holds one array per event type.
     """
@@ -571,7 +552,6 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
         event_type_variable: str | None = None,
         code_scale: int | None = None,
         code_position: Literal["fraction", "leading"] | None = None,
-        event_code_names: dict | None = None,
         time_unit: TimeUnit | dict[str, TimeUnit] = "seconds",
         clock_ticks_per_second: int | None = None,
         relative_mode: bool = False,
@@ -611,17 +591,6 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
         code_position : {"fraction", "leading"}, optional
             Where in the value the code sits, default = "fraction". Which one a program used cannot be read off
             the data reliably, since both produce plausible numbers; the MSN program settles it.
-        event_code_names : dict, optional
-            The name each event code is known by, keyed by the code as it appears in the identifiers this
-            interface reports (ex. '011') and valued with the name, which seeds the editable ``event_name``.
-
-            This is a **legend, not a declaration of what to read**, which is what separates it from
-            ``MedPCArrayEventsInterface``'s ``event_configuration``: every code the array holds becomes an event
-            type whether or not it is named here, one left out is named 'code_<digits>', and a code named here
-            that the file never holds is written as an empty table, the type having been declared and never
-            fired. What a code means lives in the MSN program, and often in a later version of it whose
-            numbering disagrees with the file, so it cannot be derived.
-            ex. {"001": "lick", "011": "pump_a_on", "021": "pump_a_off"}
         time_unit : str or dict, optional
             What one unit of a time value is worth: "decaseconds", "seconds", "deciseconds", "centiseconds",
             "milliseconds", or "clock_ticks" with the rate given through ``clock_ticks_per_second``,
@@ -670,7 +639,6 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
             event_type_variable=event_type_variable,
             code_scale=code_scale,
             code_position=code_position,
-            event_code_names=event_code_names,
             time_unit=time_unit,
             clock_ticks_per_second=clock_ticks_per_second,
             relative_mode=relative_mode,
@@ -734,13 +702,6 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
             events_data_dict[event_type_source_id] = _EventsData(
                 event_type_source_id=event_type_source_id, timestamps=of_this_type
             )
-        # A code the legend names but the file never holds is a type that was declared and never fired, written as
-        # an empty table the way a declared per-array variable holding no events is.
-        for event_type_source_id in self._code_to_name():
-            if event_type_source_id not in events_data_dict:
-                events_data_dict[event_type_source_id] = _EventsData(
-                    event_type_source_id=event_type_source_id, timestamps=np.array([], dtype=float)
-                )
         return events_data_dict
 
     def _time_unit_for(self, event_type_source_id: str) -> str:
@@ -805,30 +766,6 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
             return str(int(code))
         width = len(str(self.source_data["code_scale"])) - 1
         return f"{int(code):0{width}d}"
-
-    def _code_to_name(self) -> dict:
-        """Return the legend keyed as the event types are, so a legend entry and a found code meet.
-
-        The keys go through the same formatting the identifiers get, so a legend written the way the program
-        numbers its codes (``11``, or ``"11"``) reaches the type this interface calls ``"011"``. Keying it
-        literally let a mismatched key silently name nothing and add an empty table beside the real one.
-        """
-        event_code_names = self.source_data["event_code_names"] or {}
-        legend = {}
-        for code, name in event_code_names.items():
-            try:
-                legend[self._format_code(float(code))] = name
-            except (TypeError, ValueError):
-                raise ValueError(
-                    f"The `event_code_names` key {code!r} is not an event code. This interface reads the code "
-                    "out of the data, so its legend is keyed by the code the program wrote (11, or '011'), not "
-                    "by a MedPC variable or a name."
-                ) from None
-        return legend
-
-    def _event_name(self, event_type_source_id: str) -> str:
-        """Return the ``event_name`` seeded for one event type."""
-        return self._code_to_name().get(event_type_source_id, f"code_{event_type_source_id}")
 
 
 def _is_grouped_by_type(identifiers: np.ndarray) -> bool:

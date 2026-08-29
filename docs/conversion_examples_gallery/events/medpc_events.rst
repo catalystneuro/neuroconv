@@ -72,7 +72,7 @@ not run backwards and raise naming the likely cause when they do.
 One array per event type
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-``event_configuration`` says which arrays to read and what to call them.
+``event_configuration`` says which arrays to read, and how, since nothing in the file marks an array as events.
 
 .. code-block:: python
 
@@ -84,12 +84,12 @@ One array per event type
     >>> # Change the file_path to the appropriate location in your system
     >>> session_header = {"Start Date": "04/09/19", "Start Time": "10:34:30"}
     >>> event_configuration = {
-    ...     "A": {"name": "left_nose_poke_times"},
-    ...     "B": {"name": "left_reward_times"},
-    ...     "C": {"name": "right_nose_poke_times"},
-    ...     "D": {"name": "right_reward_times"},
+    ...     "A": None,
+    ...     "B": None,
+    ...     "C": None,
+    ...     "D": None,
     ...     # An entry naming a duration is durative: G holds the port entry onsets and E their durations
-    ...     "G": {"name": "port_entries", "duration": "E"},
+    ...     "G": {"duration": "E"},
     ... }
     >>> interface = MedPCArrayEventsInterface(
     ...     file_path=file_path,
@@ -105,8 +105,12 @@ One array per event type
     >>> # The file states no time zone, so we add it
     >>> session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("US/Pacific"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
-    >>> # A MedPC file carries no prose, so describing each event type is up to you
+    >>> # A MedPC variable is a slot rather than a label, so every event type arrives named after its
+    >>> # variable and naming them is the first thing you do. The file carries no prose either, so the
+    >>> # descriptions are yours to write.
     >>> event_types = metadata["Events"]["medpc"]["event_types"]
+    >>> event_types["A"]["event_name"] = "left_nose_poke"
+    >>> event_types["G"]["event_name"] = "port_entries"
     >>> event_types["A"]["event_description"] = "Left nose poke times."
     >>> event_types["G"]["event_description"] = "Time spent in the reward port."
     >>> # The subject_id comes from the file; the rest is required for DANDI upload
@@ -117,7 +121,8 @@ One array per event type
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
 An array holding one value per event, such as the type of each trial, rides along as a column of that event
-type's table through ``payload``, and what its codes mean is stated in the metadata through ``column_categories``.
+type's table through ``payload``. The column arrives named after its variable, and both what to call it and what
+its codes mean are stated in the metadata.
 
 .. code-block:: python
 
@@ -128,10 +133,12 @@ type's table through ``payload``, and what its codes mean is stated in the metad
     ...     file_path=file_path,
     ...     session_header={"Start Date": "10/06/22", "Subject": "cohort10-M3.3"},
     ...     # S holds the time of each conditioned stimulus and K holds which one it was
-    ...     event_configuration={"S": {"name": "cs_presentations", "payload": {"K": "cs_type"}}},
+    ...     event_configuration={"S": {"payload": ["K"]}},
     ... )
     >>>
     >>> metadata = interface.get_metadata()
+    >>> metadata["Events"]["medpc"]["event_types"]["S"]["event_name"] = "cs_presentation"
+    >>> metadata["Events"]["medpc"]["event_types"]["S"]["columns"]["K"]["column_name"] = "cs_type"
     >>> metadata["Events"]["medpc"]["event_types"]["S"]["columns"]["K"]["column_categories"] = {
     ...     "labels": {1: "water", 2: "ethanol", 3: "both"},
     ...     "meanings": {
@@ -164,14 +171,15 @@ read: it names the codes you know, and one you leave out is still read and takes
     ...     timestamps_variable="A",  # the array this program packs its events into
     ...     time_unit="clock_ticks",
     ...     clock_ticks_per_second=500,  # this program clocks at 2 ms
-    ...     event_code_names={
-    ...         "001": "lick",
-    ...         "011": "pump_a_on",
-    ...         "021": "pump_a_off",
-    ...     },
     ... )
     >>>
+    >>> # Every code the array holds becomes an event type named after its digits, so naming them is the
+    >>> # first thing you do in the metadata
     >>> metadata = interface.get_metadata()
+    >>> event_types = metadata["Events"]["medpc"]["event_types"]
+    >>> event_types["001"]["event_name"] = "lick"
+    >>> event_types["011"]["event_name"] = "pump_a_on"
+    >>> event_types["021"]["event_name"] = "pump_a_off"
     >>> session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("US/Eastern"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>> metadata["Subject"].update(species="Rattus norvegicus", sex="M", age="P90D")
