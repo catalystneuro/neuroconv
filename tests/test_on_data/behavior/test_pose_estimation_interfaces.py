@@ -1104,8 +1104,12 @@ def clean_pose_extension_import():
     type_map = get_type_map(copy=False)
     for attribute_name in dir(pose_module):
         candidate = getattr(pose_module, attribute_name)
-        if not isinstance(candidate, type) or getattr(candidate, "namespace", None) != "ndx-pose":
+        if not isinstance(candidate, type) or not getattr(candidate, "__module__", "").startswith("ndx_pose"):
             continue
+        # Selected by defining module rather than by the `namespace` class attribute, which hdmf rewrites:
+        # every `merge` into a fresh type map re-registers shared class objects and stamps `namespace` and
+        # `neurodata_type` onto them, so `PoseEstimation.namespace` can read `ndx-vame` in a process that
+        # has imported ndx-vame.
         data_type = getattr(candidate, "neurodata_type", None)
         if data_type is not None:
             type_map.register_container_type("ndx-pose", data_type, candidate)
