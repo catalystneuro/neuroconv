@@ -617,10 +617,15 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
         # names it: the legend gives a code a name, and a file is not read less completely for lacking one.
         identifiers = np.asarray(identifiers)
         events_data_dict = {}
+        # A program that writes every event of one type before the next leaves the pooled array unsorted by
+        # construction, so its order says nothing. One that interleaves the types is writing them as they
+        # happened, and then the pooled order is a time order and has to hold.
+        if not _is_grouped_by_type(identifiers):
+            self._validate_non_decreasing(times=timestamps, medpc_name=timestamps_variable)
         for event_type_source_id in dict.fromkeys(identifiers.tolist()):
             of_this_type = timestamps[identifiers == event_type_source_id]
-            # Checked per type rather than over the pooled array, since a program is free to write all of one
-            # type before another, but no single type's onsets can run backwards.
+            # Checked per type as well, since no single type's onsets can run backwards whichever way the
+            # program wrote them out.
             self._validate_non_decreasing(
                 times=of_this_type, medpc_name=f"{timestamps_variable}' (event type '{event_type_source_id}"
             )
@@ -705,6 +710,19 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
         """Return the ``event_name`` seeded for one event type."""
         info_dict = self._code_to_info_dict().get(event_type_source_id, {})
         return info_dict.get("name", f"code_{event_type_source_id}")
+
+
+def _is_grouped_by_type(identifiers: np.ndarray) -> bool:
+    """Whether each event type occupies one contiguous run of the array.
+
+    That is what a program writing out all of one type before the next produces, and it is the one case where the
+    pooled array's order carries no information about when the events happened.
+    """
+    if len(identifiers) < 2:
+        return True
+    changes = identifiers[1:] != identifiers[:-1]
+    runs = int(np.count_nonzero(changes)) + 1
+    return runs == len(set(identifiers.tolist()))
 
 
 def _validate_time_arguments(time_unit: str, clock_ticks_per_second: int | None) -> None:

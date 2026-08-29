@@ -351,6 +351,21 @@ def test_events_grouped_by_type_are_not_read_as_backwards(tmp_path):
     assert np.allclose(interface.get_event_times("2"), [1.5, 2.5])
 
 
+def test_interleaved_events_out_of_order_are_caught(tmp_path):
+    # The counterpart of the grouped case. Here the types alternate, so the program was writing events as they
+    # happened and the pooled order is a time order. One published corpus stores two types in different units
+    # inside one array, which shows up exactly like this and is caught only by the pooled check.
+    path = tmp_path / "interleaved.txt"
+    write_medpc_file(path, {"B": [1.9, 75.1, 78.7, 17.2], "C": [3.0, 1.0, 1.0, 3.0]})
+
+    interface = MedPCCodedEventsInterface(
+        file_path=path, session_header=SESSION_HEADER, timestamps_variable="B", event_type_variable="C"
+    )
+
+    with pytest.raises(ValueError, match="run backwards"):
+        interface.get_event_type_source_ids()
+
+
 def test_a_clock_rate_of_zero_raises(tmp_path):
     path = tmp_path / "zero_rate.txt"
     write_medpc_file(path, {"A": [1.0]})
