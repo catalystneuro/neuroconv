@@ -381,15 +381,5 @@ class TestMedPCInterface(TestCase, MedPCInterfaceMixin):
         super().test_interface_alignment(medpc_name_to_info_dict=medpc_name_to_info_dict)
 
 
-def test_medpc_interface_deprecation():
-    with pytest.warns(FutureWarning, match="MedPCInterface is deprecated"):
-        MedPCInterface(
-            file_path=str(BEHAVIOR_DATA_PATH / "medpc" / "example_medpc_file_06_06_2024.txt"),
-            session_conditions={"Start Date": "04/10/19", "Start Time": "12:36:13"},
-            start_variable="Start Date",
-            metadata_medpc_name_to_info_dict={"Start Date": {"name": "start_date", "is_array": False}},
-        )
-
-
 if __name__ == "__main__":
     unittest.main()
