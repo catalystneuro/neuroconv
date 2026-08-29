@@ -62,7 +62,7 @@ choices are applied and the file records none of them.
 counter, in which case pass ``time_unit="clock_ticks"`` and the rate through ``clock_ticks_per_second`` (500 on a
 2 ms system, 200 on a 5 ms one; it is set when MED-PC is installed and appears in no file).
 
-``times_are_intervals`` says whether each value is the interval since the previous event rather than the elapsed time.
+``relative_mode`` says whether each value is the interval since the previous event rather than the elapsed time.
 Med Associates' own shipped example procedures use this, which they call relative or incremental mode, so it is
 worth checking before assuming absolute times.
 

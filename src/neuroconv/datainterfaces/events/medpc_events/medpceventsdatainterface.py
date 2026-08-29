@@ -248,9 +248,10 @@ class _MedPCEventsInterface(BaseEventsInterface):
         for a program written in relative mode, after the deltas are accumulated. Neither the unit nor the mode is
         recorded in the file, which is why both are stated on the interface.
         """
-        if self.source_data["times_are_intervals"]:
-            # Relative (incremental) mode: each element is the time since the previous event, so the series is a
-            # set of deltas and only their running total is a time.
+        if self.source_data["relative_mode"]:
+            # In Med Associates' Relative Mode each element is the time since the previous event, so the series is
+            # a set of intervals and only their running total is a time. NWB records a time as the offset from the
+            # session's start, so the accumulation is what makes the values times at all.
             values = np.cumsum(values)
         seconds = self._scale_to_seconds(values)
         if check_order:
@@ -289,7 +290,7 @@ class _MedPCEventsInterface(BaseEventsInterface):
             f"{times[first]:.6g} s and event {first + 1} is at {times[first + 1]:.6g} s. Onsets cannot go "
             "backwards, so the values are not being read as the program wrote them. The usual causes are a "
             "program written in relative mode, where each value is the time since the previous event and "
-            "`times_are_intervals=True` accumulates them; and a `time_unit` other than the one the program "
+            "`relative_mode=True` accumulates them; and a `time_unit` other than the one the program "
             f"divided by before storing. {self._extra_decoding_causes()}The MSN program that wrote the file is "
             "what settles which, and where it says the order is not evidence of a misreading, "
             "`check_event_order=False` reads the file as stated."
@@ -327,7 +328,7 @@ class MedPCArrayEventsInterface(_MedPCEventsInterface):
         event_configuration: dict,
         time_unit: TimeUnit = "seconds",
         clock_ticks_per_second: int | None = None,
-        times_are_intervals: bool = False,
+        relative_mode: bool = False,
         check_event_order: bool = True,
         metadata_key: str | None = None,
         verbose: bool = False,
@@ -368,11 +369,12 @@ class MedPCArrayEventsInterface(_MedPCEventsInterface):
         clock_ticks_per_second : int, optional
             The rate of the program's clock: 500 for a 2 ms system, 200 for a 5 ms one. Required when
             ``time_unit`` is "clock_ticks" and rejected otherwise, since the file carries neither.
-        times_are_intervals : bool, optional
-            Whether each value is the time since the previous event rather than the time since the session began,
-            default = False. Med Associates' own shipped programs call this relative or incremental mode and it is
-            what their example procedures use, so it is worth checking the program before assuming absolute times.
-            The values are accumulated when True.
+        relative_mode : bool, optional
+            Whether the program wrote each value as the time since the previous event rather than the time since
+            the session began, default = False. This is Med Associates' own term, from the shipped example
+            procedures that use it: "Relative Mode means that each event is listed by the amount of time that has
+            passed since the last event has happened". The values are accumulated when True, because a time
+            written into NWB is the time since the session started.
         check_event_order : bool, optional
             Whether to refuse a file whose decoded onsets run backwards, default = True. Reading a unit or a
             mode wrongly decodes without error and only the ordering betrays it, so the check is what stands
@@ -399,7 +401,7 @@ class MedPCArrayEventsInterface(_MedPCEventsInterface):
             event_configuration=event_configuration,
             time_unit=time_unit,
             clock_ticks_per_second=clock_ticks_per_second,
-            times_are_intervals=times_are_intervals,
+            relative_mode=relative_mode,
             check_event_order=check_event_order,
             verbose=verbose,
         )
@@ -509,7 +511,7 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
         event_configuration: dict | None = None,
         time_unit: TimeUnit = "seconds",
         clock_ticks_per_second: int | None = None,
-        times_are_intervals: bool = False,
+        relative_mode: bool = False,
         check_event_order: bool = True,
         metadata_key: str | None = None,
         verbose: bool = False,
@@ -564,11 +566,12 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
         clock_ticks_per_second : int, optional
             The rate of the program's clock: 500 for a 2 ms system, 200 for a 5 ms one. Required when
             ``time_unit`` is "clock_ticks" and rejected otherwise, since the file carries neither.
-        times_are_intervals : bool, optional
-            Whether each time is the interval since the previous event rather than the time since the session
-            began, default = False. Med Associates' own shipped example procedures use this, which they call
-            relative or incremental mode, so it is worth checking the program before assuming absolute times.
-            The values are accumulated when True.
+        relative_mode : bool, optional
+            Whether the program wrote each value as the time since the previous event rather than the time since
+            the session began, default = False. This is Med Associates' own term, from the shipped example
+            procedures that use it: "Relative Mode means that each event is listed by the amount of time that has
+            passed since the last event has happened". The values are accumulated when True, because a time
+            written into NWB is the time since the session started.
         check_event_order : bool, optional
             Whether to refuse a file whose decoded onsets run backwards, default = True. Reading a unit or a
             mode wrongly decodes without error and only the ordering betrays it, so the check is what stands
@@ -606,7 +609,7 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
             event_configuration=event_configuration,
             time_unit=time_unit,
             clock_ticks_per_second=clock_ticks_per_second,
-            times_are_intervals=times_are_intervals,
+            relative_mode=relative_mode,
             check_event_order=check_event_order,
             verbose=verbose,
         )

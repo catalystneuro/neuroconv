@@ -148,7 +148,7 @@ class TestRelativeTimes:
             timestamps_variable="C",
             code_scale=100,
             time_unit="centiseconds",
-            times_are_intervals=True,
+            relative_mode=True,
             event_configuration={"10": {"name": "left_lever"}, "20": {"name": "reinforcement"}},
         )
 
