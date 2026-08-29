@@ -124,23 +124,20 @@ class PyPhotometryFiberPhotometryInterface(BaseFiberPhotometryInterface):
         if subject_id:
             metadata = dict_deep_update(metadata, dict(Subject=dict(subject_id=subject_id)))
         if not self._recording.pulsed:
-            # Said in the series rather than in its timestamps, because the size of the lag is not
-            # knowable from the file. The firmware reads the analog inputs one after the other inside a
-            # single timer interrupt, so the second is late by the 64-sample oversampling buffer at the
-            # 300 kHz oversampling clock, plus interrupt work nobody has quantified. Neither constant is
-            # in the header, so writing a number would look measured while being, at best, a floor.
-            description = (
-                "Acquired in a continuous mode, in which the board reads its analog inputs sequentially "
-                "within one timer interrupt rather than sampling them simultaneously. A signal is "
-                "therefore later than the one read before it by at least 213 microseconds (a 64-sample "
-                "oversampling buffer at the firmware's 300 kHz oversampling clock) plus unquantified "
-                "interrupt overhead. The file records neither constant and the offset has never been "
-                "characterized upstream, so every signal here is written on the timebase the header "
-                "states, as pyPhotometry's own reader does."
+            # A comment rather than a description, since it says how the recording was made rather than
+            # what the data is. The firmware reads the analog inputs one after the other inside a single
+            # timer interrupt, and Thomas Akam measured that gap at a mean of 393 microseconds with a
+            # standard deviation of 9, on one board and with an interrupt routine modified to drive the
+            # LEDs for the measurement, in https://github.com/pyPhotometry/code/issues/39. It is stated
+            # and not applied: the figure belongs to the board and its firmware, and the header records
+            # neither the oversampling buffer nor its clock, so a start time built from it would look
+            # like something this file measured.
+            comments = (
+                "The board reads its analog inputs sequentially within one timer interrupt instead of "
+                "sampling them simultaneously, so each signal is about 393 microseconds later than the "
+                "one read before it. These timestamps do not include that offset."
             )
-            metadata = dict_deep_update(
-                metadata, dict(FiberPhotometry={self.metadata_key: dict(description=description)})
-            )
+            metadata = dict_deep_update(metadata, dict(FiberPhotometry={self.metadata_key: dict(comments=comments)}))
         return metadata
 
     def add_to_nwbfile(

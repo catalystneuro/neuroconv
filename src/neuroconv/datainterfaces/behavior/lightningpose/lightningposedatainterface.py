@@ -235,7 +235,13 @@ class LightningPoseDataInterface(BasePoseEstimationInterface):
             original_videos=[str(self.original_video_file_path)],
             labeled_videos=[str(labeled_video_file_path)] if labeled_video_file_path else None,
             PoseEstimationSeries={
-                keypoint_name: {"name": f"PoseEstimationSeries{keypoint_name.replace(' ', '')}"}
+                keypoint_name: {
+                    "name": f"PoseEstimationSeries{keypoint_name.replace(' ', '')}",
+                    "reference_frame": (
+                        "(0,0) is the top-left pixel of the video frame, with x increasing to the right "
+                        "and y increasing downward."
+                    ),
+                }
                 for keypoint_name in self.keypoint_names
             },
         )

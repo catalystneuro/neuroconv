@@ -192,7 +192,7 @@ def _add_pose_estimation_to_nwbfile(
             name=series_entry.get("name", placeholder_series[keypoint_name]["name"]),
             description=series_entry.get("description", f"Pose estimation series for {keypoint_name}."),
             data=positions,
-            reference_frame=series_entry.get("reference_frame", "(0,0) is unknown."),
+            reference_frame=series_entry.get("reference_frame", "unknown"),
         )
         if confidence is not None:
             series_kwargs["confidence"] = confidence

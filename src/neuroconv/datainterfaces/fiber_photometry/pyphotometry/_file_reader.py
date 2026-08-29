@@ -288,8 +288,8 @@ def _read_ppd(file_path: Path | str) -> _PPDRecording:
     timer runs at ``sampling_rate * analog_input_count`` and the interrupt advances one line per tick, so
     signal *i* starts exactly *i* ticks in, where the upstream reader reports every signal as starting at
     zero. In the continuous modes the conversions are also sequential rather than simultaneous, but by an
-    amount the format does not record and the firmware only implies, so those signals start at zero here
-    until the figure can be sourced rather than derived.
+    amount the format does not record and that has only been measured on one board, so those signals start
+    at zero here and the interface states the measurement in the series comments instead.
     """
     raw = Path(file_path).read_bytes()
     header, payload = _read_header(raw)
