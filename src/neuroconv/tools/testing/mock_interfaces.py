@@ -30,7 +30,6 @@ from ...datainterfaces.events.baseeventsinterface import (
 from ...datainterfaces.fiber_photometry.basefiberphotometryinterface import (
     BaseFiberPhotometryInterface,
 )
-from ...datainterfaces.image.externalimageinterface import ExternalImageInterface
 from ...datainterfaces.ophys.baseimagingextractorinterface import (
     BaseImagingExtractorInterface,
 )
@@ -1620,68 +1619,6 @@ class MockExternalVideoInterface(ExternalVideoInterface):
     def _get_header_frame_rates(self) -> list[float]:
         """Return the frame rate the mock was built with, so the write path opens no files."""
         return [self.frame_rate] * self._number_of_files
-
-
-class MockExternalImageInterface(ExternalImageInterface):
-    """
-    A mock external image interface for testing purposes.
-
-    Overrides exactly one thing: what the image header says. The format and the color mode are constructor
-    arguments rather than reads, so a test can compose a collection of images into a conversion without any
-    of them existing, and everything else runs the real interface's course, the format restriction and the
-    refusal of a per-image resolution included.
-
-    The paths land in ``data`` as they were passed and deliberately do not resolve, which is what keeps the
-    file a mock produces from being mistaken for a publishable one.
-    """
-
-    display_name = "Mock External Image"
-    keywords = ("image", "external", "mock")
-    associated_suffixes = ()
-    info = "Mock interface for external image data testing."
-
-    def __init__(
-        self,
-        file_paths: list[str] | None = None,
-        image_format: str = "PNG",
-        image_mode: str = "RGB",
-        verbose: bool = False,
-        *,
-        metadata_key: str = "Images",
-    ):
-        """
-        Initialize a mock external image interface.
-
-        Parameters
-        ----------
-        file_paths : list of str, optional
-            The paths written to ``data``; they do not have to exist. Defaults to a single
-            ``"mock_image.png"``.
-        image_format : str, default: "PNG"
-            The format each file's header reports.
-        image_mode : str, default: "RGB"
-            The color mode each file's header reports.
-        verbose : bool, default: False
-            If True, display verbose output.
-        metadata_key : str, default: "Images"
-            Key to use in metadata["Images"][metadata_key] for storing container metadata.
-        """
-        super().__init__(
-            file_paths=file_paths or ["mock_image.png"],
-            metadata_key=metadata_key,
-            verbose=verbose,
-        )
-        self.image_format = image_format
-        self.image_mode = image_mode
-
-    def get_metadata(self) -> DeepDict:
-        metadata = super().get_metadata()
-        metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
-        return metadata
-
-    def _read_image_header(self, file_path: Path) -> tuple[str, str]:
-        """Return the header the mock was built with, so the write path opens no files."""
-        return self.image_format, self.image_mode
 
 
 class MockIcephysInterface(BaseDataInterface):
