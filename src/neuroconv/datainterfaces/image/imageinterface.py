@@ -215,6 +215,13 @@ class ImageInterface(BaseImageInterface):
             )
             self.parent_container = images_location
 
+    def _get_image_metadata_properties(self) -> dict:
+        properties = super()._get_image_metadata_properties()
+        properties["resolution"] = dict(
+            type="number", description="Pixel resolution of the image, in pixels per centimeter."
+        )
+        return properties
+
     def _create_nwb_image(self, *, file_path: Path, image_metadata: dict) -> Image:
         # Create iterator for memory-efficient loading
         iterator = SingleImageIterator(file_path)

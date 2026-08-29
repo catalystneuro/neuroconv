@@ -7,7 +7,7 @@ from pynwb import NWBFile
 from pynwb.base import BaseImage, Images
 
 from ...basedatainterface import BaseDataInterface
-from ...utils import DeepDict
+from ...utils import DeepDict, get_base_schema
 
 
 class BaseImageInterface(BaseDataInterface):
@@ -93,6 +93,46 @@ class BaseImageInterface(BaseDataInterface):
                 raise ValueError(f"No image files found in {folder}")
 
         self.file_paths = [Path(p) for p in file_paths]
+
+    def _get_image_metadata_properties(self) -> dict:
+        """
+        Return the properties a single image's metadata block accepts.
+
+        Declared here rather than on the container schema so that a subclass writing an NWB image type with
+        more fields on it, `resolution` on the embedded `Image`, can add them without restating the rest.
+        """
+        return dict(
+            name=dict(type="string", description="Name of the image in the container."),
+            description=dict(type="string", description="Description of the image."),
+        )
+
+    def get_metadata_schema(self) -> dict:
+        """Return the schema for the metadata, declaring the ``Images`` container and its per-image blocks."""
+        metadata_schema = super().get_metadata_schema()
+
+        image_schema = dict(
+            type="object",
+            properties=self._get_image_metadata_properties(),
+            additionalProperties=False,
+        )
+        container_schema = dict(
+            type="object",
+            properties=dict(
+                name=dict(type="string", description="Name of the Images container."),
+                description=dict(type="string", description="Description of the Images container."),
+                # Keyed by the file path of each image, so the entries are validated rather than the keys.
+                images=dict(type="object", additionalProperties=image_schema),
+            ),
+            additionalProperties=False,
+        )
+
+        metadata_schema["properties"]["Images"] = get_base_schema(
+            tag="Images",
+            properties={self.metadata_key: container_schema},
+            required=[self.metadata_key],
+            additionalProperties=False,
+        )
+        return metadata_schema
 
     def get_metadata(self) -> DeepDict:
         """

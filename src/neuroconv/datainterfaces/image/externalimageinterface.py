@@ -36,14 +36,6 @@ class ExternalImageInterface(BaseImageInterface):
             return image.format, image.mode
 
     def _create_nwb_image(self, *, file_path: Path, image_metadata: dict) -> ExternalImage:
-        if "resolution" in image_metadata:
-            raise ValueError(
-                f"Resolution was given for image {file_path.name} but an external image cannot carry one: "
-                "`resolution` is declared on NWB's `Image`, which holds pixel data, and not on the `BaseImage` "
-                "parent that `ExternalImage` shares with it. Drop the resolution or write the image with "
-                "`ImageInterface`, which embeds the pixels."
-            )
-
         image_format, image_mode = self._read_image_header(file_path)
 
         if image_format not in self.SUPPORTED_IMAGE_FORMATS:

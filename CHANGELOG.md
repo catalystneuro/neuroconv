@@ -1,6 +1,7 @@
 # v0.10.1 (Upcoming)
 
 ## Removals, Deprecations and Changes
+* The image interfaces now declare a metadata schema for the `Images` container, so an unknown per-image key is caught by `validate_metadata` instead of reaching the NWB constructor, and `resolution` is accepted by `ImageInterface` alone since NWB declares it on the embedded image type. [PR #1987](https://github.com/catalystneuro/neuroconv/pull/1987)
 * `ImageInterface`'s `images_location` is deprecated for removal in v0.12.0 in favor of `parent_container`, a conversion option on `add_to_nwbfile` as it is on the audio, video and fiber photometry interfaces. [PR #1987](https://github.com/catalystneuro/neuroconv/pull/1987)
 * Removed `DatasetIOConfiguration.from_neurodata_object`, deprecated since v0.8.4 in [PR #1003](https://github.com/catalystneuro/neuroconv/pull/1003) for removal on or after June 2026. Use `from_neurodata_object_with_defaults` or `from_neurodata_object_with_existing` instead. [PR #1985](https://github.com/catalystneuro/neuroconv/pull/1985)
 * `ExternalVideoInterface` now raises when the timestamps set on it do not number one per frame of the video files, which previously wrote an `ImageSeries` whose sample count contradicted the `external_file` entries it pointed at. [PR #1982](https://github.com/catalystneuro/neuroconv/pull/1982)
