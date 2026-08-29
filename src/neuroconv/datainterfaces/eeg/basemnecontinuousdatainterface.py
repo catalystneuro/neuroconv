@@ -1,11 +1,16 @@
 """Base interfaces for continuous data read through MNE-Python."""
 
-from pynwb import NWBFile, TimeSeries
-from pynwb.ecephys import ElectricalSeries
+from pynwb import NWBFile
 
 from ...basedatainterface import BaseDataInterface
-from ...tools.mne import MNERawDataChunkIterator
-from ...tools.nwb_helpers._metadata_and_file_helpers import _add_device_to_nwbfile
+from ...tools.mne.mne import (
+    _FIFF_UNIT_TO_NAME,
+    _UNITLESS_NAME,
+    _add_mne_raw_to_nwbfile,
+    _channel_data,
+    _channel_indices,
+    _channel_unit,
+)
 from ...utils import (
     DeepDict,
     get_base_schema,
@@ -38,17 +43,9 @@ class BaseMNEContinuousDataInterface(BaseDataInterface):
     # electrode voltage and every trigger line 107, so the code identifies the physical unit and
     # never the channel's role; the role is the channel type, which is why that is what an
     # interface is scoped by.
-    _fiff_unit_to_name = {
-        107: "volts",
-        112: "teslas",
-        201: "teslas/meter",
-        110: "siemens",
-        114: "degrees Celsius",
-        6: "moles",
-        210: "pixels",
-    }
+    _fiff_unit_to_name = _FIFF_UNIT_TO_NAME
     # MNE's FIFF_UNIT_NONE. The channel carries no unit, which NWB still requires as a non-empty string.
-    _unitless_name = "n.a."
+    _unitless_name = _UNITLESS_NAME
 
     def __init__(
         self,
@@ -148,11 +145,7 @@ class BaseMNEContinuousDataInterface(BaseDataInterface):
     @property
     def channel_indices(self) -> list[int]:
         """Indices into the ``Raw`` of the channels this interface writes, in the source's own order."""
-        return [
-            channel_index
-            for channel_index, channel_type in enumerate(self.raw.get_channel_types())
-            if channel_type == self.channel_type
-        ]
+        return _channel_indices(raw=self.raw, channel_type=self.channel_type)
 
     @property
     def channel_names(self) -> list[str]:
@@ -162,8 +155,7 @@ class BaseMNEContinuousDataInterface(BaseDataInterface):
     @property
     def unit(self) -> str:
         """The NWB unit string for these channels, read from the FIFF unit code MNE stores on them."""
-        unit_code = int(self.raw.info["chs"][self.channel_indices[0]]["unit"])
-        return self._fiff_unit_to_name.get(unit_code, self._unitless_name)
+        return _channel_unit(raw=self.raw, channel_indices=self.channel_indices)
 
     def _get_data(self, stub_test: bool):
         """
@@ -173,10 +165,7 @@ class BaseMNEContinuousDataInterface(BaseDataInterface):
         full write goes through the iterator so a ``Raw`` opened with ``preload=False`` is never
         materialized in memory. MNE returns (n_channels, n_times), which both paths transpose.
         """
-        if stub_test:
-            return self.raw.get_data(picks=self.channel_indices, start=0, stop=min(100, self.raw.n_times)).T
-
-        return MNERawDataChunkIterator(raw=self.raw, picks=self.channel_indices)
+        return _channel_data(raw=self.raw, channel_indices=self.channel_indices, stub_test=stub_test)
 
 
 class BaseMNEElectricalSeriesInterface(BaseMNEContinuousDataInterface):
@@ -305,61 +294,16 @@ class BaseMNEElectricalSeriesInterface(BaseMNEContinuousDataInterface):
         if metadata is None:
             metadata = self.get_metadata()
 
-        ecephys_metadata = metadata["Ecephys"]
-
-        for group_metadata in ecephys_metadata["ElectrodeGroups"].values():
-            if group_metadata["name"] in nwbfile.electrode_groups:
-                continue
-            group_kwargs = dict(group_metadata)
-            device = _add_device_to_nwbfile(
-                nwbfile=nwbfile, metadata=metadata, metadata_key=group_kwargs.pop("device_metadata_key")
-            )
-            nwbfile.create_electrode_group(**group_kwargs, device=device)
-
-        # v1 puts this interface's channels in one group: the Raw carries no grouping to split on.
-        group_metadata = next(iter(ecephys_metadata["ElectrodeGroups"].values()))
-        electrode_group = nwbfile.electrode_groups[group_metadata["name"]]
-        electrode_location = group_metadata["location"]
-
-        existing_columns = nwbfile.electrodes.colnames if nwbfile.electrodes is not None else ()
-        if "channel_name" not in existing_columns:
-            nwbfile.add_electrode_column(
-                name="channel_name",
-                description="The name of the channel as reported by the source recording.",
-            )
-
-        channel_names = self.channel_names
-        number_of_existing_electrodes = len(nwbfile.electrodes) if nwbfile.electrodes is not None else 0
-        for channel_name in channel_names:
-            # v1 writes no coordinates: only the required `group`/`location` plus `channel_name`.
-            nwbfile.add_electrode(
-                group=electrode_group,
-                location=electrode_location,
-                channel_name=channel_name,
-            )
-        electrode_table_indices = list(
-            range(number_of_existing_electrodes, number_of_existing_electrodes + len(channel_names))
+        _add_mne_raw_to_nwbfile(
+            raw=self.raw,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            channel_type=self.channel_type,
+            metadata_key=self.metadata_key,
+            write_as="ElectricalSeries",
+            stub_test=stub_test,
+            write_electrical_series=write_electrical_series,
         )
-
-        if not write_electrical_series:
-            return
-
-        electrode_table_region = nwbfile.create_electrode_table_region(
-            region=electrode_table_indices,
-            description="The electrodes for this ElectricalSeries.",
-        )
-
-        electrical_series_metadata = ecephys_metadata["ElectricalSeries"][self.metadata_key]
-        electrical_series = ElectricalSeries(
-            name=electrical_series_metadata["name"],
-            description=electrical_series_metadata["description"],
-            data=self._get_data(stub_test=stub_test),
-            electrodes=electrode_table_region,
-            rate=float(self.raw.info["sfreq"]),
-            starting_time=0.0,
-            conversion=1.0,  # MNE data is already in volts, the fixed unit of ElectricalSeries.
-        )
-        nwbfile.add_acquisition(electrical_series)
 
 
 class BaseMNETimeSeriesInterface(BaseMNEContinuousDataInterface):
@@ -406,14 +350,12 @@ class BaseMNETimeSeriesInterface(BaseMNEContinuousDataInterface):
         if metadata is None:
             metadata = self.get_metadata()
 
-        time_series_metadata = metadata["TimeSeries"][self.metadata_key]
-        time_series = TimeSeries(
-            name=time_series_metadata["name"],
-            description=time_series_metadata["description"],
-            unit=time_series_metadata["unit"],
-            data=self._get_data(stub_test=stub_test),
-            rate=float(self.raw.info["sfreq"]),
-            starting_time=0.0,
-            conversion=1.0,  # MNE applies the calibration on read, so the values are already in `unit`.
+        _add_mne_raw_to_nwbfile(
+            raw=self.raw,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            channel_type=self.channel_type,
+            metadata_key=self.metadata_key,
+            write_as="TimeSeries",
+            stub_test=stub_test,
         )
-        nwbfile.add_acquisition(time_series)

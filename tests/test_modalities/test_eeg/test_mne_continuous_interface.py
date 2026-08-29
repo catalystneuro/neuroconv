@@ -5,11 +5,11 @@ tested separately and the streaming machinery they share is tested once, through
 convenient. Scope mirrors v1: no electrode geometry, no temporal alignment.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 import numpy as np
 import pytest
-from pynwb import NWBHDF5IO
+from pynwb import NWBHDF5IO, NWBFile
 
 pytest.importorskip("mne")
 
@@ -17,6 +17,7 @@ from neuroconv.datainterfaces.eeg.basemnecontinuousdatainterface import (  # noq
     BaseMNEElectricalSeriesInterface,
 )
 from neuroconv.tools.mne import MNERawDataChunkIterator  # noqa: E402
+from neuroconv.tools.mne.mne import _add_mne_raw_to_nwbfile  # noqa: E402
 from neuroconv.tools.testing.mock_interfaces import (  # noqa: E402
     MockMNEElectricalSeriesInterface,
     MockMNETimeSeriesInterface,
@@ -309,3 +310,66 @@ def test_readers_without_a_samples_per_record_vector_are_left_alone():
     interface = MockMNEElectricalSeriesInterface(num_channels=2)
 
     interface._validate_homogeneous_sampling_rate()
+
+
+class TestAddMNERawToNWBFile:
+    """The tool used directly, with no interface in sight.
+
+    This is the path a user takes when they already hold an ``mne.io.BaseRaw``: build the metadata dict
+    by hand, call once per channel type, choose the destination. The interfaces go through the same
+    function, so these tests pin the standalone contract rather than re-covering the interface.
+    """
+
+    @staticmethod
+    def _raw():
+        mne = pytest.importorskip("mne")
+        info = mne.create_info(ch_names=["E1", "E2", "VEOG"], sfreq=100.0, ch_types=["eeg", "eeg", "eog"])
+        return mne.io.RawArray(np.random.RandomState(0).standard_normal((3, 500)) * 1e-5, info, verbose="ERROR")
+
+    @staticmethod
+    def _nwbfile():
+        return NWBFile(
+            session_description="s", identifier="i", session_start_time=datetime(2020, 1, 1, tzinfo=timezone.utc)
+        )
+
+    def test_writes_one_channel_type_not_the_whole_raw(self):
+        """One call writes one type. The eog channel is not swept in with the eeg ones."""
+        raw, nwbfile = self._raw(), self._nwbfile()
+        metadata = dict(
+            Devices={"default_metadata_key": dict(name="PlaceholderElectrodeDevice", description="d")},
+            Ecephys=dict(
+                ElectrodeGroups={
+                    "g": dict(
+                        name="ElectrodeGroup",
+                        description="d",
+                        location="unknown",
+                        device_metadata_key="default_metadata_key",
+                    )
+                },
+                ElectricalSeries={"mne_eeg": dict(name="ElectricalSeriesEEG", description="d")},
+            ),
+        )
+        _add_mne_raw_to_nwbfile(raw=raw, nwbfile=nwbfile, metadata=metadata, channel_type="eeg")
+
+        assert list(nwbfile.acquisition) == ["ElectricalSeriesEEG"]
+        assert nwbfile.acquisition["ElectricalSeriesEEG"].data.shape == (500, 2)
+        assert list(nwbfile.electrodes["channel_name"][:]) == ["E1", "E2"]
+
+    def test_time_series_destination_is_the_callers_choice(self):
+        """`eeg` channels go to a TimeSeries if that is what the caller asks for: no routing table here."""
+        raw, nwbfile = self._raw(), self._nwbfile()
+        metadata = dict(TimeSeries={"mne_eeg": dict(name="TimeSeriesEEG", description="d", unit="volts")})
+        _add_mne_raw_to_nwbfile(raw=raw, nwbfile=nwbfile, metadata=metadata, channel_type="eeg", write_as="TimeSeries")
+
+        assert list(nwbfile.acquisition) == ["TimeSeriesEEG"]
+        assert nwbfile.electrodes is None
+
+    def test_absent_channel_type_raises_and_names_what_is_there(self):
+        raw, nwbfile = self._raw(), self._nwbfile()
+        with pytest.raises(ValueError, match="channel_type 'ecg' was not found.*eeg, eog"):
+            _add_mne_raw_to_nwbfile(raw=raw, nwbfile=nwbfile, metadata={}, channel_type="ecg")
+
+    def test_unknown_destination_raises(self):
+        raw, nwbfile = self._raw(), self._nwbfile()
+        with pytest.raises(ValueError, match="`write_as` must be"):
+            _add_mne_raw_to_nwbfile(raw=raw, nwbfile=nwbfile, metadata={}, channel_type="eeg", write_as="SpatialSeries")
