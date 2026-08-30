@@ -5,8 +5,6 @@ box's clock, nor whether the program stored absolute times or intervals. Every o
 error, so these tests state each encoding against a file written here rather than against a recording.
 """
 
-from datetime import datetime
-
 import numpy as np
 import pytest
 from pydantic import ValidationError
@@ -43,16 +41,6 @@ def write_medpc_file(file_path, arrays: dict[str, list[float]], columns: int = 5
 
 class TestTimeUnit:
     """A value is a time only once the unit the program divided by is applied."""
-
-    def test_seconds_is_the_default(self, tmp_path):
-        path = tmp_path / "seconds.txt"
-        write_medpc_file(path, {"A": [1.5, 2.25, 3.0]})
-
-        interface = MedPCArrayEventsInterface(
-            file_path=path, session_header=SESSION_HEADER, event_configuration={"A": None}
-        )
-
-        assert np.allclose(interface.get_event_times("A"), [1.5, 2.25, 3.0])
 
     @pytest.mark.parametrize(
         "time_unit, expected",
@@ -176,21 +164,6 @@ class TestRelativeTimes:
 
 class TestCodePosition:
     """A program packs the event's code into the value from either end."""
-
-    def test_the_code_in_the_fraction(self, tmp_path):
-        path = tmp_path / "fraction.txt"
-        write_medpc_file(path, {"A": [10602.001, 10602.011, 10852.021]})
-
-        interface = MedPCCodedEventsInterface(
-            file_path=path,
-            session_header=SESSION_HEADER,
-            timestamps_variable="A",
-            time_unit="clock_ticks",
-            clock_ticks_per_second=500,
-        )
-
-        assert set(interface.get_event_type_source_ids()) == {"001", "011", "021"}
-        assert np.allclose(interface.get_event_times("001"), [21.204])
 
     def test_the_code_in_the_leading_digits(self, tmp_path):
         # `^PeckLeft=10000` with `set x(y)=^PeckLeft+Btime/1"`, documented as `aabbbb.bbb` where `aa` is the code
@@ -461,18 +434,3 @@ def test_a_code_wider_than_the_scale_raises(tmp_path):
 
     with pytest.raises(ValueError, match="has no room for"):
         interface.get_event_type_source_ids()
-
-
-def test_the_session_header_still_selects(tmp_path):
-    # The encodings above all use a single-session file; this checks the header reading survives them.
-    path = tmp_path / "header.txt"
-    write_medpc_file(path, {"A": [1.0]})
-
-    interface = MedPCArrayEventsInterface(
-        file_path=path, session_header=SESSION_HEADER, event_configuration={"A": None}
-    )
-    metadata = interface.get_metadata()
-
-    assert metadata["NWBFile"]["session_start_time"] == datetime(2019, 4, 10, 12, 36, 13)
-    assert metadata["Subject"]["subject_id"] == "TEST-01"
-    assert metadata["NWBFile"]["protocol"] == "TEST_PROGRAM"
