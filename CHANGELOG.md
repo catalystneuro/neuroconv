@@ -1,6 +1,7 @@
 # v0.10.1 (Upcoming)
 
 ## Removals, Deprecations and Changes
+* The `medpc` extra now installs the MedPC events interfaces, which need nothing beyond core, and `ndx-events` moved to a new `medpc_legacy` extra since only the deprecated `MedPCInterface` writes it. [PR #1944](https://github.com/catalystneuro/neuroconv/pull/1944)
 * Deprecated `MedPCInterface`, to be removed in v0.12.0. `MedPCArrayEventsInterface` reads the same files and writes their events as native `pynwb.event.EventsTable` objects into `nwbfile.events` rather than as `ndx-events` objects and `IntervalSeries` into the behavior processing module. Which arrays hold events is declared on the interface instead of in `metadata["MedPC"]`, and an interval type states its durations array rather than being written as an `IntervalSeries`. [PR #1944](https://github.com/catalystneuro/neuroconv/pull/1944)
 * The image interfaces now declare a metadata schema for the `Images` container, so an unknown per-image key is caught by `validate_metadata` instead of reaching the NWB constructor, and `resolution` is accepted by `ImageInterface` alone since NWB declares it on the embedded image type. [PR #1987](https://github.com/catalystneuro/neuroconv/pull/1987)
 * `ImageInterface`'s `images_location` is deprecated for removal in v0.12.0 in favor of `parent_container`, a conversion option on `add_to_nwbfile` as it is on the audio, video and fiber photometry interfaces. [PR #1987](https://github.com/catalystneuro/neuroconv/pull/1987)

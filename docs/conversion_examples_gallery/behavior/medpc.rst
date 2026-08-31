@@ -1,7 +1,7 @@
 MedPC data conversion
 ---------------------
 
-.. deprecated::
+.. deprecated:: 0.10.1
 
     ``MedPCInterface`` is deprecated and will be removed in v0.12.0. Use
     :doc:`../events/medpc_events`, which reads the same files and writes their events as native
@@ -13,7 +13,7 @@ Install NeuroConv with the additional dependencies necessary for writing medpc b
 
 .. code-block:: bash
 
-    pip install neuroconv[medpc]
+    pip install "neuroconv[medpc_legacy]"
 
 Convert MedPC output data to NWB using
 :py:class:`~.neuroconv.datainterfaces.behavior.medpc.medpcdatainterface.MedPCInterface`.

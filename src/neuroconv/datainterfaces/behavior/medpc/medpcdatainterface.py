@@ -241,7 +241,9 @@ class MedPCInterface(BaseTemporalAlignmentInterface):
         metadata: dict,
     ) -> None:
 
-        ndx_events = get_package(package_name="ndx_events", installation_instructions="pip install ndx-events")
+        ndx_events = get_package(
+            package_name="ndx_events", installation_instructions='pip install "neuroconv[medpc_legacy]"'
+        )
         medpc_name_to_info_dict = metadata["MedPC"].get("medpc_name_to_info_dict", None)
         assert medpc_name_to_info_dict is not None, "medpc_name_to_info_dict must be provided in metadata"
         info_name_to_medpc_name = {
