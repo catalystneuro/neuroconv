@@ -144,6 +144,28 @@ class TestBORISVersion4_0(BORISTestMixin):
 
     interface_kwargs = dict(file_path=file_path, observation_name="media observation")
 
+    def check_extracted_metadata(self, metadata: dict):
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2017, 1, 2, 8, 30, 0)
+        assert metadata["Events"]["EventTables"]["boris_media_observation"] == {
+            "table_name": "MediaObservation",
+            "description": "Behaviors scored in BORIS observation 'media observation' (media).",
+        }
+
+        event_types = metadata["Events"]["boris_media_observation"]["event_types"]
+        assert set(event_types) == {"walk", "stand", "drink", "peck", "vigilance"}
+        # This scheme writes no prose, and the key is omitted rather than filled with an empty string.
+        assert all("event_description" not in entry for entry in event_types.values())
+        # Every behavior routes into the one table by default.
+        assert {entry["table_metadata_key"] for entry in event_types.values()} == {"boris_media_observation"}
+        # The menu stripped of its shortcuts, plus what was actually recorded. This observation scores
+        # only `slow (S)`, and the generated 4.0 fixture records the shortcut that real BORIS strips.
+        assert event_types["walk"]["columns"]["modifier_walk_1"]["column_categories"]["labels"] == {
+            "": "",
+            "fast": "fast",
+            "slow": "slow",
+            "slow (S)": "slow (S)",
+        }
+
     def check_read_nwb(self, nwbfile_path: str):
         super().check_read_nwb(nwbfile_path=nwbfile_path)
         nwbfile = read_nwb(nwbfile_path)
@@ -188,6 +210,37 @@ class TestBORISCategorizedEthogram(BORISTestMixin):
 
     interface_kwargs = dict(file_path=file_path, observation_name="test1")
 
+    def check_extracted_metadata(self, metadata: dict):
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2018, 5, 10, 15, 19, 0)
+        assert metadata["Events"]["EventTables"]["boris_test1"] == {
+            "table_name": "Test1",
+            "description": "Behaviors scored in BORIS observation 'test1' (live).",
+        }
+
+        event_types = metadata["Events"]["boris_test1"]["event_types"]
+        # Every behavior the scheme declares is an event type, including those nothing was scored
+        # against in this observation.
+        assert set(event_types) == {
+            "groom",
+            "run",
+            "walk",
+            "attack",
+            "play",
+            "jump",
+            "approach",
+            "drink",
+            "eat",
+            "defecate",
+            "urinate",
+        }
+        # This project names neither of its two slots, so both columns fall back to their position.
+        assert event_types["walk"]["columns"].keys() == {"subject", "comment", "modifier_walk_1"}
+        assert event_types["walk"]["columns"]["modifier_walk_1"]["column_categories"]["labels"] == {
+            "": "",
+            "bipedal": "bipedal",
+            "quadrupedal": "quadrupedal",
+        }
+
     def check_read_nwb(self, nwbfile_path: str):
         super().check_read_nwb(nwbfile_path=nwbfile_path)
         nwbfile = read_nwb(nwbfile_path)
@@ -224,6 +277,35 @@ class TestBORISModifierSlots(BORISTestMixin):
     )
 
     interface_kwargs = dict(file_path=file_path, observation_name="1")
+
+    def check_extracted_metadata(self, metadata: dict):
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2024, 9, 18, 23, 53, 47)
+        assert metadata["Events"]["EventTables"]["boris_1"] == {
+            "table_name": "Observation1",
+            "description": "Behaviors scored in BORIS observation '1' (live).",
+        }
+
+        event_types = metadata["Events"]["boris_1"]["event_types"]
+        assert set(event_types) == {"p", "a", "b", "z", "x", "many modifiers", "2 sets", "multiple modif", "numeric"}
+        # A behavior declaring two slots gets two columns, each keyed on the behavior so the `set 1`
+        # that `multiple modif` also declares does not land on top of this one.
+        assert event_types["2 sets"]["columns"].keys() == {
+            "subject",
+            "comment",
+            "modifier_2_sets_set_1",
+            "modifier_2_sets_set_2",
+        }
+        assert event_types["2 sets"]["columns"]["modifier_2_sets_set_2"]["column_categories"]["labels"] == {
+            "": "",
+            "3": "3",
+            "4": "4",
+            "5": "5",
+        }
+        # A free numeric slot offers no menu, so its vocabulary is only what was recorded.
+        assert event_types["numeric"]["columns"]["modifier_numeric_numeric_modif"]["column_categories"]["labels"] == {
+            "": "",
+            "789": "789",
+        }
 
     def check_read_nwb(self, nwbfile_path: str):
         super().check_read_nwb(nwbfile_path=nwbfile_path)
@@ -302,6 +384,30 @@ class TestBORISMultiSubject(BORISTestMixin):
 
     interface_kwargs = dict(file_path=file_path, observation_name="observation #1")
 
+    def check_extracted_metadata(self, metadata: dict):
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2016, 11, 27, 1, 57, 26)
+        assert metadata["Events"]["EventTables"]["boris_observation_1"] == {
+            "table_name": "Observation1",
+            "description": "Behaviors scored in BORIS observation 'observation #1' (media).",
+        }
+
+        event_types = metadata["Events"]["boris_observation_1"]["event_types"]
+        assert set(event_types) == {"p", "s", "q", "r", "m"}
+        assert {code: entry["event_description"] for code, entry in event_types.items()} == {
+            "p": "Test point event",
+            "s": "Test state event",
+            "q": "point event with 1 set of modifiers",
+            "r": "state event with 1 set of modifiers",
+            "m": "state event with 2 set of modifiers",
+        }
+        # A behavior declaring two slots gets a column for each, both keyed on its own code.
+        assert event_types["m"]["columns"].keys() == {
+            "subject",
+            "comment",
+            "modifier_m_modif_1",
+            "modifier_m_modif_2",
+        }
+
     def check_read_nwb(self, nwbfile_path: str):
         super().check_read_nwb(nwbfile_path=nwbfile_path)
         nwbfile = read_nwb(nwbfile_path)
@@ -343,6 +449,27 @@ class TestBORISUntidyModifiers(BORISTestMixin):
     file_path = BORIS_PROJECTS_PATH / "version_7_0" / "untidy_modifier_values" / "whitespace_and_the_none_token.boris"
 
     interface_kwargs = dict(file_path=file_path, observation_name="test1 live")
+
+    def check_extracted_metadata(self, metadata: dict):
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2019, 2, 26, 10, 30, 23)
+        assert metadata["Events"]["EventTables"]["boris_test1_live"] == {
+            "table_name": "Test1Live",
+            "description": "Behaviors scored in BORIS observation 'test1 live' (live).",
+        }
+
+        event_types = metadata["Events"]["boris_test1_live"]["event_types"]
+        assert set(event_types) == {"p", "r"}
+        # The menu reaches the vocabulary with the keyboard shortcut stripped, as BORIS strips it when
+        # recording, and the coder's whitespace is preserved on both sides.
+        assert event_types["p"]["columns"]["modifier_p_test_1"]["column_categories"]["labels"] == {
+            "": "",
+            "a   ": "a   ",
+            "c  ": "c  ",
+            "d": "d",
+        }
+        # Meanings stay empty because BORIS describes a slot and never its values, and the writer skips
+        # the MeaningsTable when nothing is described.
+        assert event_types["p"]["columns"]["modifier_p_test_1"]["column_categories"]["meanings"] == {}
 
     def check_read_nwb(self, nwbfile_path: str):
         super().check_read_nwb(nwbfile_path=nwbfile_path)

@@ -28,11 +28,15 @@ class BORISInterface(BaseEventsInterface):
     Every behavior the scheme declares becomes an event type, including one nothing was ever scored
     against, which is written as a zero-row contribution rather than dropped: the vocabulary is part of
     the record. A behavior's declared ``type`` decides its extent. A point behavior occupies one row and
-    is written without a duration; a state behavior occupies two, a start and a stop, which this
-    interface pairs on subject plus code in order of appearance and writes as one row carrying the bout's
-    length. Pairing ignores the modifier string, since a bout can open with one modifier and close with
-    another. A bout that opens and never closes keeps a ``NaN`` duration, which happens whenever a coder
-    misses a stop in a live session and cannot be repaired afterwards.
+    has no extent; a state behavior occupies two, a start and a stop, which this interface pairs on
+    subject plus code in order of appearance and writes as one row carrying the bout's length. Pairing
+    ignores the modifier string, since a bout can open with one modifier and close with another. A bout
+    that opens and never closes keeps a ``NaN`` duration, which happens whenever a coder misses a stop in
+    a live session and cannot be repaired afterwards.
+
+    Every behavior shares one ``duration`` column, so a ``NaN`` in it reads two ways: a point behavior,
+    which has no extent to record, and a state bout nobody closed. The catalogue's ``behavior_type`` is
+    what tells them apart.
 
     All of an observation's behaviors are written into one table by default. A behavior may declare
     modifier slots, the qualifiers a coder answers whenever they score it (``Walking`` asking for a speed
@@ -201,8 +205,39 @@ class BORISInterface(BaseEventsInterface):
         """
         if metadata is None:
             metadata = self.get_metadata()
+        self._check_table_name_is_free(nwbfile=nwbfile, metadata=metadata)
         super().add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
         self._add_ethogram_to_nwbfile(nwbfile=nwbfile)
+
+    def _check_table_name_is_free(self, nwbfile: NWBFile, metadata: dict) -> None:
+        """Refuse to write into an events table another observation already owns.
+
+        An observation name is free text and the object name derived from it drops the punctuation, so
+        `Boccia 223 2` and `Boccia 223_2`, two trials a real study recorded an hour apart against
+        different videos, both come out as `Boccia2232`. The events writer is deliberately
+        append-capable, which is right for several interfaces sharing one table on purpose and wrong
+        here: the second observation's rows would join the first's with nothing to say which trial they
+        came from.
+
+        Only the events table needs this. The bouts table goes through `ProcessingModule.add`, which
+        rejects a duplicate name already.
+        """
+        declared = metadata["Events"]["EventTables"].get(self.metadata_key)
+        if declared is None:
+            # The user re-routed the behaviors and named the tables themselves, so the name this
+            # interface would have chosen is not in play.
+            return
+        table_name = declared["table_name"]
+        existing = nwbfile.events.get(table_name) if nwbfile.events is not None else None
+        if existing is None or f"observation '{self._observation.name}'" in existing.description:
+            return
+        raise ValueError(
+            f"An events table named '{table_name}' already exists and holds a different observation: "
+            f"{existing.description} Two observation names that differ only in punctuation derive the "
+            f"same object name, and '{self._observation.name}' is one of them. Give this one a name of "
+            f"its own with metadata['Events']['EventTables']['{self.metadata_key}']['table_name'], or "
+            "write the two observations to separate files."
+        )
 
     def _get_events_data_dict(self) -> dict[str, _EventsData]:
         """Build the internal event representation from the observation, cached after the first call.
