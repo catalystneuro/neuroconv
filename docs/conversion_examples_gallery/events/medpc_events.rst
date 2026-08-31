@@ -2,11 +2,11 @@ MedPC Events data conversion
 ----------------------------
 
 MedPC output files contain information about operant behavior such as nose pokes and rewards. MedPC events need
-only NeuroConv's core dependencies, but the ``medpc_events`` extra is available for a consistent install command.
+only NeuroConv's core dependencies, but the ``medpc`` extra is available for a consistent install command.
 
 .. code-block:: bash
 
-    pip install "neuroconv[medpc_events]"
+    pip install "neuroconv[medpc]"
 
 Each event type is written as a ``pynwb.event.EventsTable`` into ``nwbfile.events``.
 

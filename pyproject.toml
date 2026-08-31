@@ -114,8 +114,9 @@ lightningpose = [
     "neuroconv[video]",
 ]
 medpc = [
-    "neuroconv[medpc_events]",
-    "ndx-events==0.2.2",  # only the deprecated MedPCInterface needs this; it goes when that interface does
+    # The events interfaces parse a raw text file and write native pynwb 4.0 EventsTable objects, so they need
+    # nothing beyond core. Only the deprecated MedPCInterface needs ndx-events, and it goes when that does.
+    "ndx-events==0.2.2",
 ]
 vame = [
     "ndx-vame>=0.3.2",
@@ -149,10 +150,6 @@ tdt_events = [
 doric_events = [
     "h5py>=3",  # Doric events live in the .doric HDF5 file; the CSV export variant needs only pandas.
 ]
-medpc_events = [
-    # MedPC events are parsed from a raw text file and written as native pynwb 4.0 EventsTable objects, so they
-    # need only core pynwb>=4.0; kept as a stable install alias so `neuroconv[medpc_events]` remains valid.
-]
 pyphotometry_events = [
     # A .ppd is read by neuroconv's own binary reader and written as native pynwb 4.0 EventsTable objects,
     # so this needs only core numpy + pynwb>=4.0; kept as a stable install alias so
@@ -161,7 +158,7 @@ pyphotometry_events = [
 events = [
     "neuroconv[csv_events]",
     "neuroconv[doric_events]",
-    "neuroconv[medpc_events]",
+    "neuroconv[medpc]",
     "neuroconv[npm_events]",
     "neuroconv[pyphotometry_events]",
     "neuroconv[tdt_events]",
