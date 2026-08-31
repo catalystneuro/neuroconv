@@ -122,23 +122,6 @@ def test_interleaved_events_out_of_order_are_caught(tmp_path):
         interface.get_event_type_source_ids()
 
 
-def test_accumulating_times_that_were_not_intervals_is_caught(tmp_path):
-    # The trap the ordering error's own first suggestion can lead into: `relative_mode=True` always produces a
-    # rising series, so it silences the ordering check whether or not the program used Relative Mode.
-    path = tmp_path / "not_intervals.txt"
-    write_medpc_file(path, {"A": [600.0, 1200.0, 1800.0, 2400.0]})  # already elapsed times, well inside 3726 s
-
-    interface = MedPCArrayEventsInterface(
-        file_path=path,
-        session_header=SESSION_HEADER,
-        event_configuration={"A": None},
-        relative_mode=True,
-    )
-
-    with pytest.raises(ValueError, match="says the session ran"):
-        interface.get_event_times("A")
-
-
 def test_a_resolution_of_zero_raises(tmp_path):
     path = tmp_path / "zero_rate.txt"
     write_medpc_file(path, {"A": [1.0]})

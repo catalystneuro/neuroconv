@@ -297,7 +297,7 @@ class TestPerArrayTyeLab(MedPCEventsInterfaceMixin):
         nwbfile.read_io.close()
 
 
-class TestCodedWithLegend(MedPCEventsInterfaceMixin):
+class TestPackedWithLegend(MedPCEventsInterfaceMixin):
     """A packed-code file whose event codes are known: every event is a TIME.EVENTCODE value in array A,
     and the legend of `ExampleFile2` names each code."""
 
@@ -369,7 +369,7 @@ class TestCodedWithLegend(MedPCEventsInterfaceMixin):
             interface.get_event_times("001")
 
     def test_round_trip(self, interface, metadata, tmp_path):
-        nwbfile_path = tmp_path / "test_medpc_coded.nwb"
+        nwbfile_path = tmp_path / "test_medpc_packed.nwb"
 
         interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
@@ -378,7 +378,7 @@ class TestCodedWithLegend(MedPCEventsInterfaceMixin):
         nwbfile.read_io.close()
 
 
-class TestCodedWithoutLegend(MedPCEventsInterfaceMixin):
+class TestPackedWithoutLegend(MedPCEventsInterfaceMixin):
     """A packed-code file whose codes are not known: `ExampleFile1` ships no legend, and the MSN template
     beside it is a later version whose numbering disagrees with the file, so the codes cannot be named."""
 
