@@ -114,7 +114,8 @@ lightningpose = [
     "neuroconv[video]",
 ]
 medpc = [
-    "ndx-events==0.2.2",
+    "neuroconv[medpc_events]",
+    "ndx-events==0.2.2",  # only the deprecated MedPCInterface needs this; it goes when that interface does
 ]
 vame = [
     "ndx-vame>=0.3.2",
