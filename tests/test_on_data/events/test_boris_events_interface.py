@@ -413,10 +413,12 @@ def test_live_observation_has_no_frame_rate():
 def test_time_offset_goes_through_alignment():
     """The observation's declared shift is an alignment offset, not something folded into the times.
 
-    No fixture declares a non-zero ``time offset``, so the shift itself is unexercised by real data: the
-    +20 and -20 in ``offset positif`` and ``offset neg`` are per-player *media* offsets in ``media_info``,
-    which align two simultaneous players against each other rather than shifting the observation. What is
-    checked here is that the times are the file's own and that the alignment surface moves them.
+    No file harvested upstream declares a non-zero ``time offset``, which is why the only ones that do are
+    in the generated fixture, covered by ``test_nonzero_time_offset_is_applied``. This observation is one
+    that declares none, despite its name: the +20 and -20 in ``offset positif`` and ``offset neg`` are
+    per-player *media* offsets in ``media_info``, which align two simultaneous players against each other
+    rather than shifting the observation. So its alignment offset starts at zero, and what is checked here
+    is that the times are the file's own and that the alignment surface moves them.
     """
     interface = BORISEventsInterface(file_path=MULTI_SUBJECT, observation_name="offset positif")
     assert interface.alignment.offset == 0.0

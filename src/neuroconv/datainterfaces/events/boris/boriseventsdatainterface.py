@@ -319,11 +319,13 @@ class BORISEventsInterface(BaseEventsInterface):
             ("comment", "The coder's comment at the bout's start."),
         ):
             bouts.add_column(name=column, description=column_description)
+        closing_fields = []
         for field, description in (
             ("stop_comment", "The coder's comment at the bout's stop."),
             ("stop_modifiers", "The modifier values at the bout's stop."),
         ):
             if self._closing_row_differs(field=field):
+                closing_fields.append(field)
                 bouts.add_column(name=field, description=description)
 
         offset = self.alignment.offset
@@ -335,11 +337,7 @@ class BORISEventsInterface(BaseEventsInterface):
                 subject=occurrence.subject,
                 modifiers=occurrence.modifiers,
                 comment=occurrence.comment,
-                **{
-                    field: getattr(occurrence, field)
-                    for field in ("stop_comment", "stop_modifiers")
-                    if self._closing_row_differs(field=field)
-                },
+                **{field: getattr(occurrence, field) for field in closing_fields},
             )
         behavior_module.add(bouts)
 
