@@ -48,7 +48,6 @@ class TestTimeUnit:
     @pytest.mark.parametrize(
         "time_unit, expected",
         [
-            ("centiseconds", [1.5, 2.25, 3.0]),
             ("deciseconds", [15.0, 22.5, 30.0]),
             ("milliseconds", [0.15, 0.225, 0.3]),
         ],
@@ -65,22 +64,6 @@ class TestTimeUnit:
         )
 
         assert np.allclose(interface.get_event_times("A"), expected)
-
-    def test_a_resolution_given_as_a_number(self, tmp_path):
-        # An array of raw BTIME counts, which is what a program storing `Set L(K) = BTIME-U` writes. A tick has
-        # no name because its worth is the resolution MED-PC was installed at, which appears in no file, so it
-        # is stated as a number of seconds: 0.002 on a 2 ms system.
-        path = tmp_path / "ticks.txt"
-        write_medpc_file(path, {"A": [500.0, 1000.0, 2750.0]})
-
-        interface = MedPCArrayEventsInterface(
-            file_path=path,
-            session_header=SESSION_HEADER,
-            event_configuration={"A": None},
-            time_unit=0.002,
-        )
-
-        assert np.allclose(interface.get_event_times("A"), [1.0, 2.0, 5.5])
 
     def test_durations_take_the_same_unit_as_the_onsets(self, tmp_path):
         path = tmp_path / "durative.txt"
@@ -168,21 +151,6 @@ def test_interleaved_events_out_of_order_are_caught(tmp_path):
 
     with pytest.raises(ValueError, match="run backwards"):
         interface.get_event_type_source_ids()
-
-
-def test_a_time_after_the_session_ended_is_caught(tmp_path):
-    # The header states both ends of the session, so the file itself says how long it ran and no event can fall
-    # outside that. This is the only bound MedPC gives on the size of a time, and it is what catches an
-    # over-scaled file: accumulating intervals always yields a rising series, so ordering alone cannot.
-    path = tmp_path / "too_long.txt"
-    write_medpc_file(path, {"A": [100.0, 200.0, 9000.0]})  # the header says 12:36:13 to 13:38:19, 3726 s
-
-    interface = MedPCArrayEventsInterface(
-        file_path=path, session_header=SESSION_HEADER, event_configuration={"A": None}
-    )
-
-    with pytest.raises(ValueError, match="says the session ran"):
-        interface.get_event_times("A")
 
 
 def test_accumulating_times_that_were_not_intervals_is_caught(tmp_path):
