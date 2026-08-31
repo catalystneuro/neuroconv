@@ -172,29 +172,10 @@ it, so a code you say nothing about is still read and takes its digits as its na
 Not supported yet
 ~~~~~~~~~~~~~~~~~
 
-Two ways of carrying an event's type are not read yet, and both would be straightforward to add given files
-written by them. If you have such files, please
-`open an issue <https://github.com/catalystneuro/neuroconv/issues>`_ with the MSN program and a sample file.
-
-**A companion array of codes.** One array holds the times and a second of the same length holds one code per
-event, paired by index (``DIM B \All event times`` beside ``DIM C \All event identities``):
-
-.. code-block:: text
-
-    B:
-         0:        1.900        7.510        7.870       17.200
-    C:
-         0:        3.000        1.000        1.000        3.000
-
-This is the tidiest way to write the program and we expect it to be common, but the only published corpus we
-found writing it stores two of its event types on time bases a factor of ten apart inside the one array, which
-no single unit reads correctly. Rather than generalise from that one deposit, we are waiting for a file written
-on a single clock.
-
-**A code in the leading digits.** Some programs pack the code above the time instead of below it, by adding a
-large constant (``^PeckLeft = 10000`` with ``set x(y) = ^PeckLeft + Btime/1"``), so a left peck at 64.54 s is
-stored as ``10064.540``. A survey of about 7,000 published files found the page describing this convention but
-not one file written by it.
+An MSN program can carry an event's type in other ways, since the format leaves the choice entirely to whoever
+wrote the program. If you have MedPC output that neither of the two shapes above describes, please
+`open an issue <https://github.com/catalystneuro/neuroconv/issues>`_ with the MSN program and a sample file and
+it can be supported.
 
 .. seealso::
 
