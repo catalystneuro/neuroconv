@@ -1,8 +1,8 @@
 MedPC Events data conversion
 ----------------------------
 
-MedPC output files contain information about operant behavior such as nose pokes and rewards. Reading them needs no
-dependencies beyond the core ones.
+MedPC output files contain information about operant behavior such as nose pokes and rewards. MedPC events need
+only NeuroConv's core dependencies, but the ``medpc_events`` extra is available for a consistent install command.
 
 .. code-block:: bash
 
@@ -16,10 +16,12 @@ metadata. See :ref:`annotate_events_metadata`.
 Supported MedPC layouts
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-Which layout you have was decided by the MSN program the experimenter wrote, so open the file and look.
+MedPC stores its variables under single letters, and the MSN program decides what each one holds. NeuroConv
+supports the two ways a program can store events. Open the file to see which one you have.
 
 Use :py:class:`~neuroconv.datainterfaces.events.medpc_events.medpceventsdatainterface.MedPCArrayEventsInterface`
-where each lettered array is one event type, holding a plain list of that type's times:
+when the program gave each kind of event its own variable, so ``A`` holds the times of one event type and ``C``
+the times of another:
 
 .. code-block:: text
 
@@ -29,8 +31,8 @@ where each lettered array is one event type, holding a plain list of that type's
          0:      330.050      362.500      947.200     1232.100     1233.400
 
 Use :py:class:`~neuroconv.datainterfaces.events.medpc_events.medpceventsdatainterface.MedPCPackedEventsInterface`
-where one array holds every event of the session as a ``TIME.EVENTCODE`` value, the event's code in the decimals
-and its time in the integer part:
+when the program put every event into a single variable, with the time before the decimal point and a code for
+the event type after it:
 
 .. code-block:: text
 
@@ -40,7 +42,8 @@ and its time in the integer part:
 One array per event type
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-``event_configuration`` says which arrays to read, and how, since nothing in the file marks an array as events.
+Nothing in the file marks a variable as events, so ``event_configuration`` lists the ones that hold them and
+says how to read each.
 
 .. code-block:: python
 
@@ -63,20 +66,19 @@ One array per event type
     ...     file_path=file_path,
     ...     session_header=session_header,
     ...     event_configuration=event_configuration,
-    ...     # This program stored elapsed times in seconds, which is the default. A program that divided by
-    ...     # something else takes `time_unit`, and one that stored the interval since the previous event
-    ...     # rather than the elapsed time takes `relative_mode=True`. The file records neither.
+    ...     # This program stored elapsed times in seconds, the default. Pass time_unit where yours used
+    ...     # another unit, and relative_mode=True where it stored the gap since the previous event.
+    ...     # The file records neither.
     ... )
     >>>
-    >>> # Extract what metadata we can from the source file, which includes the session's start time and its
-    >>> # subject, read from the header of the session picked out by session_header
+    >>> # Extract what metadata we can from the source file, which includes the session start time and the
+    >>> # subject read from the header
     >>> metadata = interface.get_metadata()
     >>> # The file states no time zone, so we add it
     >>> session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("US/Pacific"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
-    >>> # A MedPC variable is a slot rather than a label, so every event type arrives named after its
-    >>> # variable and naming them is the first thing you do. The file carries no prose either, so the
-    >>> # descriptions are yours to write.
+    >>> # Event types arrive named after the variable that holds them, and the file carries no descriptions,
+    >>> # so naming and describing them is the first thing you do
     >>> event_types = metadata["Events"]["medpc"]["event_types"]
     >>> event_types["A"]["event_name"] = "left_nose_poke"
     >>> event_types["G"]["event_name"] = "port_entries"
@@ -89,9 +91,9 @@ One array per event type
     >>> nwbfile_path = f"{path_to_save_nwbfile}"  # This should be something like: "./saved_file.nwb"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
-An array holding one value per event, such as the type of each trial, rides along as a column of that event
-type's table through ``payload``. The column arrives named after its variable, and both what to call it and what
-its codes mean are stated in the metadata.
+A variable holding one value per event, such as the type of each trial, is carried along as a column of that
+event type's table through ``payload``. The column arrives named after its variable; rename it and label its
+codes in the metadata.
 
 .. code-block:: python
 
@@ -124,10 +126,8 @@ its codes mean are stated in the metadata.
 One packed array
 ~~~~~~~~~~~~~~~~
 
-The file does not carry what one of its ticks is worth, so the resolution has to be stated as ``time_unit``, and the
-codes cannot be read off the MSN program either, since the copy that ships beside the data is often a later version
-whose numbering disagrees with the file. Every code the array holds becomes an event type whether or not you name
-it, so a code you say nothing about is still read and takes its digits as its name.
+``time_unit`` states what one stored value is worth, since the file does not record it. Every code in the
+variable becomes an event type named after its digits, so a code you do not name is still read.
 
 .. code-block:: python
 
@@ -139,12 +139,11 @@ it, so a code you say nothing about is still read and takes its digits as its na
     ...     session_header={"Start Date": "09/25/15", "Subject": "ML03"},
     ...     events_variable="A",  # the array this program packs its events into
     ...     time_unit=0.002,  # a 2 ms system, so each stored tick is worth 0.002 s
-    ...     # A wrong unit still decodes, so the times read are checked for running backwards and against
-    ...     # the session length the header states, and the error names the likely cause.
+    ...     # A wrong unit still decodes, so the times read are checked against the session length the
+    ...     # header states and for running backwards
     ... )
     >>>
-    >>> # Every code the array holds becomes an event type named after its digits, so naming them is the
-    >>> # first thing you do in the metadata
+    >>> # Every code becomes an event type named after its digits, so naming them comes first
     >>> metadata = interface.get_metadata()
     >>> event_types = metadata["Events"]["medpc"]["event_types"]
     >>> event_types["001"]["event_name"] = "lick"
@@ -160,12 +159,6 @@ it, so a code you say nothing about is still read and takes its digits as its na
 Not supported yet
 ~~~~~~~~~~~~~~~~~
 
-An MSN program can carry an event's type in other ways, since the format leaves the choice entirely to whoever
-wrote the program. If you have MedPC output that neither of the two shapes above describes, please
-`open an issue <https://github.com/catalystneuro/neuroconv/issues>`_ with the MSN program and a sample file and
-it can be supported.
-
-.. seealso::
-
-    :doc:`../behavior/medpc` is the deprecated interface that writes the same events as ``ndx-events`` objects into
-    the behavior processing module.
+The MSN program decides how an event's type is stored, and it can do it in ways NeuroConv does not read yet. If
+your file matches neither layout above, please
+`open an issue <https://github.com/catalystneuro/neuroconv/issues>`_ with the MSN program and a sample file.
