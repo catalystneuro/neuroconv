@@ -334,22 +334,11 @@ class _MedPCEventsInterface(BaseEventsInterface):
             self._validate_non_decreasing(times=seconds, medpc_name=medpc_name)
         return seconds
 
-    def _scale_to_seconds(self, values: np.ndarray, time_unit=None) -> np.ndarray:
+    def _scale_to_seconds(self, values: np.ndarray) -> np.ndarray:
         """Apply the stated unit to raw values, without accumulating or checking their order."""
-        time_unit = time_unit if time_unit is not None else self._single_time_unit()
+        time_unit = self.source_data["time_unit"]
         scale = time_unit if isinstance(time_unit, (int, float)) else _TIME_UNIT_TO_SECONDS[time_unit]
         return values * scale
-
-    def _single_time_unit(self) -> str:
-        """Return the one unit that applies to every value, refusing a per-type mapping where none can."""
-        time_unit = self.source_data["time_unit"]
-        if isinstance(time_unit, dict):
-            raise ValueError(
-                f"`time_unit` is a mapping ({time_unit}), which states a unit per event type. Only "
-                "MedPCCodedEventsInterface can use one, since only there do several event types share an array. "
-                "Pass a single unit here."
-            )
-        return time_unit
 
     def _validate_non_decreasing(
         self, times: np.ndarray, medpc_name: str, event_type_source_id: str | None = None
@@ -393,7 +382,7 @@ class MedPCArrayEventsInterface(_MedPCEventsInterface):
     from a second array; one naming a ``payload`` carries a per-event value from each array it names as a column
     of the event type's table.
 
-    Use :class:`MedPCCodedEventsInterface` instead for a file whose events are all in one array as
+    Use :class:`MedPCPackedEventsInterface` instead for a file whose events are all in one array as
     ``TIME.EVENTCODE`` values. This interface replaces
     :class:`~neuroconv.datainterfaces.behavior.medpc.medpcdatainterface.MedPCInterface`, which reads the same
     layout and writes it as ``ndx-events`` objects and ``IntervalSeries`` into the behavior processing module.
@@ -537,27 +526,24 @@ class MedPCArrayEventsInterface(_MedPCEventsInterface):
         return (self.source_data["event_configuration"][event_type_source_id] or {}).get("payload", [])
 
 
-class MedPCCodedEventsInterface(_MedPCEventsInterface):
-    """Data Interface for the discrete events of a MedPC file that carries the event type in the data.
+class MedPCPackedEventsInterface(_MedPCEventsInterface):
+    """Data Interface for the discrete events of a MedPC file that packs the event type into the time value.
 
-    One array holds the onset times of every event of the session, and which type each one is comes from the data
-    rather than from the array's name, in either of the two ways an MSN program does that:
+    One array holds every event of the session as a single ``TIME.EVENTCODE`` value, written by a line like
+    ``Set A(Y) = BTIME-U + code/1000``: the code rides in the fractional digits and the time is the integer part.
+    How many digits the code occupies is fixed by the program's ``DISKFORMAT``, which is what prints them, so the
+    file states its own code width and nothing has to be declared beyond the unit the integer part counts in.
 
-    - **Packed into the time value.** The classic ``TIME.EVENTCODE`` form, written by a line like
-      ``Set A(Y) = BTIME-U + code/1000``: the code rides in the fractional digits and the time is the integer
-      part, and how many digits it occupies is fixed by ``DISKFORMAT``, so nothing has to be stated.
-    - **In a companion array.** A second array of the same length holds one code per event
-      (``DIM B`` for all event times beside ``DIM C`` for all event identities). Name it with
-      ``event_type_variable`` and nothing is unpacked.
+    Every code found becomes an event type identified by its digits, so the file names its own event types.
 
-    Every code found becomes an event type identified by its digits, so the file names its own event types and
-    nothing has to be declared beyond how to read them.
-
-    Use :class:`MedPCArrayEventsInterface` instead for a file that holds one array per event type.
+    Use :class:`MedPCArrayEventsInterface` instead for a file that holds one array per event type. A file that
+    keeps its codes in a companion array of the same length, beside the times rather than inside them, is a
+    layout NeuroConv does not read yet: please open an issue at
+    https://github.com/catalystneuro/neuroconv/issues with the program and a sample file.
     """
 
-    display_name = "MedPCCodedEvents"
-    info = "Interface for the discrete events of MedPC files carrying the event type in the data."
+    display_name = "MedPCPackedEvents"
+    info = "Interface for the discrete events of MedPC files packing the event type into the time value."
 
     @validate_call
     def __init__(
@@ -566,14 +552,13 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
         *,
         session_header: dict,
         events_variable: str,
-        event_type_variable: str | None = None,
-        time_unit: TimeUnit | float | dict[str, TimeUnit | float] = "seconds",
+        time_unit: TimeUnit | float = "seconds",
         relative_mode: bool = False,
         metadata_key: str | None = None,
         verbose: bool = False,
     ):
         """
-        Initialize MedPCCodedEventsInterface.
+        Initialize MedPCPackedEventsInterface.
 
         Parameters
         ----------
@@ -594,23 +579,12 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
             nothing in the file's syntax tells them apart. The MSN program picks the letter, so it is stated
             rather than defaulted: 'A' is what the readers of this convention happen to use, not something the
             format fixes.
-        event_type_variable : str, optional
-            The MedPC variable holding one event code per event, where the program wrote the codes into their own
-            array instead of packing them into the times. When given, ``events_variable`` is read as plain
-            times and nothing is unpacked.
-            ex. 'C', beside timestamps in 'B'
-        time_unit : str, float or dict, optional
+        time_unit : str or float, optional
             What one stored value is worth, default = "seconds". Either a named unit, "decaseconds",
             "seconds", "deciseconds", "centiseconds" or "milliseconds", or a number of seconds. MedPC stores
             whatever the MSN program divided by before writing and records neither that choice nor the box's
             timing resolution, so it is stated rather than detected. A program that stored the raw `BTIME`
             counter takes the resolution as a number: 0.002 on a 2 ms system, 0.005 on a 5 ms one.
-
-            May also be a dict giving one unit per event type, keyed as the identifiers this interface
-            reports (ex. ``{"1": "seconds", "3": "decaseconds"}``). A program can time two event types
-            differently and store them in the same array; nothing in the file records that it did, and the
-            ordinary sign of it is that the pooled times run backwards while each type on its own climbs. A
-            mapping has to name every type the array holds.
         relative_mode : bool, optional
             Whether the program wrote each value as the time since the previous event rather than the time since
             the session began, default = False. This is Med Associates' own term, from the shipped example
@@ -629,7 +603,6 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
             file_path=file_path,
             session_header=session_header,
             events_variable=events_variable,
-            event_type_variable=event_type_variable,
             time_unit=time_unit,
             relative_mode=relative_mode,
             verbose=verbose,
@@ -640,36 +613,18 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
     def _read_events(self) -> dict[str, _EventsData]:
         """Read the one time array, recover each event's code, and group the times by it."""
         events_variable = self.source_data["events_variable"]
-        event_type_variable = self.source_data["event_type_variable"]
-
-        to_read = [events_variable] + ([event_type_variable] if event_type_variable else [])
         session_dict = self._read_session(
-            medpc_name_to_info_dict={name: {"name": name, "is_array": True} for name in to_read}
+            medpc_name_to_info_dict={events_variable: {"name": events_variable, "is_array": True}}
         )
         values = self._get_variable_array(session_dict=session_dict, medpc_name=events_variable)
-
-        if event_type_variable is not None:
-            codes = self._get_variable_array(session_dict=session_dict, medpc_name=event_type_variable)
-            if len(codes) != len(values):
-                raise ValueError(
-                    f"The times in '{events_variable}' number {len(values)} but the codes in "
-                    f"'{event_type_variable}' number {len(codes)}, so they are not one code per event."
-                )
-            raw_times = values
-        else:
-            raw_times, codes = self._unpack(values=values)
+        raw_times, codes = self._unpack(values=values)
 
         identifiers = np.asarray([self._format_code(code) for code in codes.tolist()])
         if self.source_data["relative_mode"]:
-            # A gap is between consecutive events whatever type they are, so the accumulation is over the whole
-            # array and only the scaling can differ per type.
+            # A gap is between consecutive events whatever type they are, so the accumulation runs over the
+            # whole array rather than within each type.
             raw_times = np.cumsum(raw_times)
-        timestamps = np.empty(len(raw_times), dtype=float)
-        for event_type_source_id in dict.fromkeys(identifiers.tolist()):
-            of_this_type = identifiers == event_type_source_id
-            timestamps[of_this_type] = self._scale_to_seconds(
-                raw_times[of_this_type], time_unit=self._time_unit_for(event_type_source_id)
-            )
+        timestamps = self._scale_to_seconds(raw_times)
         self._validate_within_the_session(times=timestamps, medpc_name=events_variable)
 
         # Every code found becomes an event type, in the order the codes first occur, whether or not the legend
@@ -694,24 +649,6 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
             )
         return events_data_dict
 
-    def _time_unit_for(self, event_type_source_id: str) -> str:
-        """Return the unit one event type's times are in.
-
-        A single ``time_unit`` covers the whole array, which is the ordinary case. A mapping states one per
-        event type, for a program that timed two types differently and stored them in the same array; that
-        happens, and nothing in the file records it.
-        """
-        time_unit = self.source_data["time_unit"]
-        if not isinstance(time_unit, dict):
-            return time_unit
-        if event_type_source_id not in time_unit:
-            raise ValueError(
-                f"`time_unit` is a mapping and names {sorted(time_unit)}, but the array also holds the event "
-                f"type '{event_type_source_id}'. A mapping has to give a unit for every type in the array, "
-                "since a type left out has no unit at all."
-            )
-        return time_unit[event_type_source_id]
-
     def _unpack(self, values: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """Split each packed value into its time part and its code part."""
         times = np.floor(values)
@@ -720,12 +657,6 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
         # The factor is ten to the printed width, so a fraction of that many digits can never exceed it.
         codes = np.round((values - times) * self._code_factor())
         return times, codes
-
-    def _extra_decoding_causes(self) -> str:
-        """Name the packing arguments too, since a wrong one leaves part of the code in the time."""
-        if self.source_data["event_type_variable"] is not None:
-            return ""
-        return ""
 
     def _code_factor(self) -> int:
         """Return the constant separating the code from the time, which the file states.
@@ -738,23 +669,20 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
             raise ValueError(
                 f"The values of '{self.source_data['events_variable']}' print no digits after the decimal "
                 "point, so they cannot carry a packed code. A program whose `DISKFORMAT` leaves no decimals "
-                "either writes the codes into their own array, which is `event_type_variable`, or packs them "
-                "into the leading digits instead, which NeuroConv does not support yet. Please open an issue "
-                "at https://github.com/catalystneuro/neuroconv/issues with the program and a sample file."
+                "either writes the codes into a companion array or packs them into the leading digits instead, "
+                "and NeuroConv reads neither layout yet. Please open an issue at "
+                "https://github.com/catalystneuro/neuroconv/issues with the program and a sample file."
             )
         return 10**decimals
 
     def _format_code(self, code: float) -> str:
         """Return the identifier one event code is known by.
 
-        A code packed into the fraction is zero-padded to the width its divisor implies, so the identifiers read
-        as the program writes them (``'011'`` for a code of 11 packed with 1000). A code from a companion array
-        has no such width, and some programs use fractional codes such as 3.1, so it is left as written.
+        A packed code is zero-padded to the width its factor implies, so the identifiers read as the program
+        prints them (``'011'`` for a code of 11 at three printed decimals).
         """
         if not float(code).is_integer():
             return str(code)
-        if self.source_data["event_type_variable"] is not None:
-            return str(int(code))
         width = len(str(self._code_factor())) - 1
         return f"{int(code):0{width}d}"
 
@@ -773,21 +701,19 @@ def _is_grouped_by_type(identifiers: np.ndarray) -> bool:
 
 
 def _validate_time_arguments(time_unit) -> None:
-    """Check that every unit given is a name or a positive number of seconds."""
-    units = time_unit.values() if isinstance(time_unit, dict) else [time_unit]
-    for unit in units:
-        if isinstance(unit, (int, float)) and not isinstance(unit, bool):
-            if unit <= 0:
-                raise ValueError(
-                    f"`time_unit` is {unit}, which is not a length of time. A number states what one stored "
-                    "value is worth in seconds, so a raw BTIME counter takes the box's timing resolution: "
-                    "0.002 on a 2 ms system, 0.005 on a 5 ms one."
-                )
-        elif unit not in _TIME_UNIT_TO_SECONDS:
+    """Check that the unit given is a name or a positive number of seconds."""
+    if isinstance(time_unit, (int, float)) and not isinstance(time_unit, bool):
+        if time_unit <= 0:
             raise ValueError(
-                f"`time_unit` is {unit!r}, which is neither one of {sorted(_TIME_UNIT_TO_SECONDS)} nor a number "
-                "of seconds per stored value."
+                f"`time_unit` is {time_unit}, which is not a length of time. A number states what one stored "
+                "value is worth in seconds, so a raw BTIME counter takes the box's timing resolution: "
+                "0.002 on a 2 ms system, 0.005 on a 5 ms one."
             )
+    elif time_unit not in _TIME_UNIT_TO_SECONDS:
+        raise ValueError(
+            f"`time_unit` is {time_unit!r}, which is neither one of {sorted(_TIME_UNIT_TO_SECONDS)} nor a "
+            "number of seconds per stored value."
+        )
 
 
 def _to_integer_where_whole(values: np.ndarray) -> np.ndarray:

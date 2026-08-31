@@ -30,27 +30,20 @@ program, not the data**, and open the file to see which of the two shapes it is 
 Use :py:class:`~neuroconv.datainterfaces.events.medpc_events.medpceventsdatainterface.MedPCArrayEventsInterface`,
 and tell it which arrays hold events, since nothing in the file says that ``A`` is nose pokes.
 
-**The event type carried in the data.** One array holds the times of every event of the session, and which type
-each one is comes from the data. Either the code is packed into the time value, classically as
-``TIME.EVENTCODE``:
+**The event type packed into the value.** One array holds every event of the session, and which type each one
+is comes from the value itself, classically as ``TIME.EVENTCODE``, the code in the decimals and the time in the
+integer part:
 
 .. code-block:: text
 
     A:
          0:    10602.001    10602.011    10602.051    10852.021    10900.001
 
-or it sits in a companion array of the same length:
-
-.. code-block:: text
-
-    B:
-         0:        1.900        7.510        7.870       17.200
-    C:
-         0:        3.000        1.000        1.000        3.000
-
-Use :py:class:`~neuroconv.datainterfaces.events.medpc_events.medpceventsdatainterface.MedPCCodedEventsInterface`
-for both. It finds the event types itself, since the codes are in the data, and you supply only how to read them
-and whatever names you know.
+Use :py:class:`~neuroconv.datainterfaces.events.medpc_events.medpceventsdatainterface.MedPCPackedEventsInterface`.
+It finds the event types itself, since the codes are in the data, and you supply only how to read them and
+whatever names you know. How many digits the code occupies needs no stating: ``DISKFORMAT`` fixes the printed
+width and those digits are the code, so ``.1``, ``.11`` and ``.987`` can sit in one array and all print as
+three decimals.
 
 What a value is worth
 ~~~~~~~~~~~~~~~~~~~~~
@@ -153,20 +146,20 @@ its codes mean are stated in the metadata.
     >>> nwbfile_path = output_folder / "medpc_value_column.nwb"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
-One coded array
-~~~~~~~~~~~~~~~
+One packed array
+~~~~~~~~~~~~~~~~
 
 The file does not carry what one of its ticks is worth, so the resolution has to be stated as ``time_unit``, and the
 codes cannot be read off the MSN program either, since the copy that ships beside the data is often a later version
-whose numbering disagrees with the file. ``event_code_names`` is a legend rather than a declaration of what to
-read: it names the codes you know, and one you leave out is still read and takes its digits as its name.
+whose numbering disagrees with the file. Every code the array holds becomes an event type whether or not you name
+it, so a code you say nothing about is still read and takes its digits as its name.
 
 .. code-block:: python
 
-    >>> from neuroconv.datainterfaces import MedPCCodedEventsInterface
+    >>> from neuroconv.datainterfaces import MedPCPackedEventsInterface
     >>>
     >>> file_path = f"{BEHAVIOR_DATA_PATH}/medpc/event_type_in_column_laubach_lab/ExampleFile2"
-    >>> interface = MedPCCodedEventsInterface(
+    >>> interface = MedPCPackedEventsInterface(
     ...     file_path=file_path,
     ...     session_header={"Start Date": "09/25/15", "Subject": "ML03"},
     ...     events_variable="A",  # the array this program packs its events into
@@ -190,12 +183,29 @@ read: it names the codes you know, and one you leave out is still read and takes
 Not supported yet
 ~~~~~~~~~~~~~~~~~
 
-Some programs pack the code into the **leading** digits instead of the decimals, by adding a large constant to
-the time (``^PeckLeft = 10000`` with ``set x(y) = ^PeckLeft + Btime/1"``), so a left peck at 64.54 s is stored
-as ``10064.540``. A survey of about 7,000 published files found the program describing this convention but not
-one file written by it, so NeuroConv does not read it. If you have such files, please
-`open an issue <https://github.com/catalystneuro/neuroconv/issues>`_ with the MSN program and a sample file and
-it can be supported.
+Two ways of carrying an event's type are not read yet, and both would be straightforward to add given files
+written by them. If you have such files, please
+`open an issue <https://github.com/catalystneuro/neuroconv/issues>`_ with the MSN program and a sample file.
+
+**A companion array of codes.** One array holds the times and a second of the same length holds one code per
+event, paired by index (``DIM B \All event times`` beside ``DIM C \All event identities``):
+
+.. code-block:: text
+
+    B:
+         0:        1.900        7.510        7.870       17.200
+    C:
+         0:        3.000        1.000        1.000        3.000
+
+This is the tidiest way to write the program and we expect it to be common, but the only published corpus we
+found writing it stores two of its event types on time bases a factor of ten apart inside the one array, which
+no single unit reads correctly. Rather than generalise from that one deposit, we are waiting for a file written
+on a single clock.
+
+**A code in the leading digits.** Some programs pack the code above the time instead of below it, by adding a
+large constant (``^PeckLeft = 10000`` with ``set x(y) = ^PeckLeft + Btime/1"``), so a left peck at 64.54 s is
+stored as ``10064.540``. A survey of about 7,000 published files found the page describing this convention but
+not one file written by it.
 
 .. seealso::
 

@@ -7,7 +7,7 @@ import pytest
 from pynwb import read_nwb
 from pynwb.testing.mock.file import mock_NWBFile
 
-from neuroconv.datainterfaces import MedPCArrayEventsInterface, MedPCCodedEventsInterface
+from neuroconv.datainterfaces import MedPCArrayEventsInterface, MedPCPackedEventsInterface
 
 try:
     from ..setup_paths import BEHAVIOR_DATA_PATH
@@ -301,7 +301,7 @@ class TestCodedWithLegend(MedPCEventsInterfaceMixin):
     """A packed-code file whose event codes are known: every event is a TIME.EVENTCODE value in array A,
     and the legend of `ExampleFile2` names each code."""
 
-    interface_class = MedPCCodedEventsInterface
+    interface_class = MedPCPackedEventsInterface
     event_names = {
         "001": "lick",
         "011": "pump_a_on",
@@ -363,7 +363,7 @@ class TestCodedWithLegend(MedPCEventsInterfaceMixin):
         # time by two and a half, which pushes the last event past the end the header states.
         interface_kwargs = dict(self.interface_kwargs)
         interface_kwargs["time_unit"] = 0.005
-        interface = MedPCCodedEventsInterface(**interface_kwargs)
+        interface = MedPCPackedEventsInterface(**interface_kwargs)
 
         with pytest.raises(ValueError, match="says the session ran"):
             interface.get_event_times("001")
@@ -382,7 +382,7 @@ class TestCodedWithoutLegend(MedPCEventsInterfaceMixin):
     """A packed-code file whose codes are not known: `ExampleFile1` ships no legend, and the MSN template
     beside it is a later version whose numbering disagrees with the file, so the codes cannot be named."""
 
-    interface_class = MedPCCodedEventsInterface
+    interface_class = MedPCPackedEventsInterface
     event_names = {
         code: f"code_{code}" for code in ("036", "034", "004", "029", "041", "001", "030", "032", "002", "012")
     }
@@ -446,3 +446,167 @@ def test_variable_missing_from_the_session_is_named():
 
     with pytest.raises(ValueError, match="The MedPC variable 'left_nose_poke_times' is not in the session"):
         interface.get_metadata()
+
+
+class TestPackedVariableWidthCodes(MedPCEventsInterfaceMixin):
+    """A packed-code file whose codes are not all the same width: `.1`, `.11` and `.987` sit in one array and
+    print as three decimals apiece. The deposited MSN program states the unit, so the times can be checked
+    against it rather than inferred."""
+
+    interface_class = MedPCPackedEventsInterface
+    event_names = {
+        "999": "session_start",
+        "987": "pre_cs_period",
+        "100": "food_cup_entry",
+        "110": "food_cup_exit",
+        "400": "ax_trial_offset",
+        "240": "ax_trial_onset",
+        "300": "a_trial_offset",
+        "200": "food_delivery",
+        "998": "pci_to_drl_transition",
+        "531": "drl_onset",
+        "307": "lever_press",
+        "218": "drl_reinforcer",
+        "155": "session_end",
+    }
+
+    interface_kwargs = dict(
+        file_path=MEDPC_DATA_PATH / "variable_width_event_codes" / "R6_inh_s13.txt",
+        session_header={"Start Date": "05/08/21", "Experiment": "D BOX 6 SUBJ 6"},
+        events_variable="J",
+        # The program says so twice: `\H = TIME IN HUNDREDTHS OF A SECOND`, and `.02": ADD H; ADD H`, which
+        # advances H by two every twentieth of a second.
+        time_unit="centiseconds",
+    )
+
+    def test_get_metadata(self, interface):
+        metadata = interface.get_metadata()
+        event_types = metadata["Events"]["medpc"]["event_types"]
+
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2021, 5, 8, 10, 33, 49)
+        assert metadata["NWBFile"]["protocol"] == "A inhibicion"
+        # This deposit leaves `Subject` empty and puts the animal's identity in `Experiment`, so there is no
+        # subject_id to report and the experiment description carries the box and subject numbers instead.
+        assert metadata["Subject"].get("subject_id") is None
+        assert metadata["NWBFile"]["experiment_description"] == "D BOX 6 SUBJ 6"
+
+        # Thirteen codes of one, two and three digits, each zero-padded to the three decimals DISKFORMAT
+        # prints, in the order they first occur.
+        assert list(event_types) == [
+            "999",
+            "987",
+            "100",
+            "110",
+            "400",
+            "240",
+            "300",
+            "200",
+            "998",
+            "531",
+            "307",
+            "218",
+            "155",
+        ]
+
+    def test_add_to_nwbfile(self, interface, metadata):
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+        counts = {name: len(table) for name, table in nwbfile.events.items()}
+        assert sum(counts.values()) == 631
+        assert counts["FoodCupEntry"] == 170
+        assert counts["FoodCupExit"] == 170
+        assert counts["LeverPress"] == 121
+        assert counts["DrlReinforcer"] == 54
+        # Written once each, and a code is an event type whether it fires once or a hundred times.
+        assert counts["SessionStart"] == 1
+        assert counts["PciToDrlTransition"] == 1
+        assert counts["SessionEnd"] == 1
+
+        # `0.999` is code 999 at hundredth 0, so the session-start marker sits at t=0, and the first food cup
+        # entry is `2432.100`, hundredth 2432.
+        assert nwbfile.get_events_table("SessionStart")["timestamp"][:] == [0.0]
+        entries = nwbfile.get_events_table("FoodCupEntry")
+        assert np.allclose(entries["timestamp"][:3], [24.32, 24.38, 24.60])
+
+    def test_a_ten_times_larger_unit_runs_past_the_session(self):
+        # The header gives the session as 10:33:49 to 11:47:17, so 4408 s. Read as deciseconds the last event
+        # lands at over twelve hours, which the session-length check refuses.
+        interface_kwargs = dict(self.interface_kwargs)
+        interface_kwargs["time_unit"] = "deciseconds"
+        interface = MedPCPackedEventsInterface(**interface_kwargs)
+
+        with pytest.raises(ValueError, match="says the session ran"):
+            interface.get_event_times("100")
+
+    def test_round_trip(self, interface, metadata, tmp_path):
+        nwbfile_path = tmp_path / "test_medpc_variable_width.nwb"
+
+        interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+
+        nwbfile = read_nwb(nwbfile_path)
+        assert np.allclose(nwbfile.get_events_table("FoodCupEntry")["timestamp"][:3], [24.32, 24.38, 24.60])
+        nwbfile.read_io.close()
+
+
+class TestPackedRelativeMode(MedPCEventsInterfaceMixin):
+    """A file written in Med Associates' Relative Mode, where each stored value is the interval since the
+    previous event rather than the time since the session began, so the array does not increase and the
+    values are times only once accumulated."""
+
+    interface_class = MedPCPackedEventsInterface
+    event_names = {"1": "lever_press"}
+
+    interface_kwargs = dict(
+        file_path=MEDPC_DATA_PATH / "relative_mode" / "!2025-08-29_11h06m.Subject M1",
+        session_header={"Start Date": "08/29/25", "Subject": "M1"},
+        events_variable="C",
+        # No program was deposited, so the unit cannot be read from the source that wrote it. Seconds is ruled
+        # out across the deposit, since the intervals would then span several times the session, and both
+        # deciseconds and centiseconds fit. Nothing below turns on which of the two is right.
+        time_unit="deciseconds",
+        relative_mode=True,
+    )
+
+    def test_get_metadata(self, interface):
+        metadata = interface.get_metadata()
+
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2025, 8, 29, 11, 6, 48)
+        assert metadata["Subject"]["subject_id"] == "M1"
+        assert metadata["NWBFile"]["protocol"] == "SubFLD"
+        # One code, `.1`, so the array holds a single event type; the identifier is one digit wide because
+        # DISKFORMAT prints one decimal.
+        assert list(metadata["Events"]["medpc"]["event_types"]) == ["1"]
+
+    def test_add_to_nwbfile(self, interface, metadata):
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+        table = nwbfile.get_events_table("LeverPress")
+        assert len(table) == 52
+
+        # The array opens `0.1, 80.1, 6.1`, which are intervals of 0, 80 and 6, so accumulating gives 0, 80
+        # and 86 tenths of a second. Reading them as they are printed would put the third event before the
+        # second.
+        timestamps = np.asarray(table["timestamp"][:])
+        assert np.allclose(timestamps[:3], [0.0, 8.0, 8.6])
+        assert np.all(np.diff(timestamps) >= 0)
+
+    def test_reading_the_intervals_as_elapsed_times_is_refused(self):
+        # The whole point of the layout: without relative_mode the values decode without error and produce a
+        # series that runs backwards, which is the only signal the file gives that it was misread.
+        interface_kwargs = dict(self.interface_kwargs)
+        interface_kwargs["relative_mode"] = False
+        interface = MedPCPackedEventsInterface(**interface_kwargs)
+
+        with pytest.raises(ValueError, match="run backwards"):
+            interface.get_event_times("1")
+
+    def test_round_trip(self, interface, metadata, tmp_path):
+        nwbfile_path = tmp_path / "test_medpc_relative_mode.nwb"
+
+        interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+
+        nwbfile = read_nwb(nwbfile_path)
+        assert np.allclose(nwbfile.get_events_table("LeverPress")["timestamp"][:3], [0.0, 8.0, 8.6])
+        nwbfile.read_io.close()

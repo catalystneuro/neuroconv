@@ -140,7 +140,7 @@ from .events.doric_events.doriccsveventsdatainterface import DoricCSVEventsInter
 from .events.doric_events.doriceventsdatainterface import DoricEventsInterface
 from .events.medpc_events.medpceventsdatainterface import (
     MedPCArrayEventsInterface,
-    MedPCCodedEventsInterface,
+    MedPCPackedEventsInterface,
 )
 from .events.npm_events.npmeventsdatainterface import NPMEventsInterface
 from .events.pyphotometry_events.pyphotometryeventsdatainterface import (
@@ -252,7 +252,7 @@ interface_list = [
     DoricCSVEventsInterface,
     DoricEventsInterface,
     MedPCArrayEventsInterface,
-    MedPCCodedEventsInterface,
+    MedPCPackedEventsInterface,
     NPMEventsInterface,
     PyPhotometryEventsInterface,
     TDTEventsInterface,
@@ -322,7 +322,7 @@ interfaces_by_category = dict(
         DoricCSVEvents=DoricCSVEventsInterface,
         DoricEvents=DoricEventsInterface,
         MedPCArrayEvents=MedPCArrayEventsInterface,
-        MedPCCodedEvents=MedPCCodedEventsInterface,
+        MedPCPackedEvents=MedPCPackedEventsInterface,
         NPMEvents=NPMEventsInterface,
         PyPhotometryEvents=PyPhotometryEventsInterface,
         TDTEvents=TDTEventsInterface,
