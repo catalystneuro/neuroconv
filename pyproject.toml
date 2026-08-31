@@ -120,6 +120,9 @@ medpc = [
 medpc_legacy = [
     "ndx-events==0.2.2",  # only the deprecated MedPCInterface writes ndx-events; both go in v0.12.0
 ]
+moseq = [
+    "ndx-ethogram>=0.1.0",  # For the curated EthogramBouts/Ethogram derived from the syllable sequence
+]
 vame = [
     "ndx-vame>=0.3.2",
     "ndx-ethogram>=0.1.0",  # For the curated EthogramBouts/Ethogram derived from MotifSeries
@@ -134,6 +137,7 @@ behavior = [
     # TODO: drop this when MedPCInterface is removed in v0.12.0; the events interfaces are in
     # neuroconv[events] and the legacy extra exists only for that interface's ndx-events pin.
     "neuroconv[medpc_legacy]",
+    "neuroconv[moseq]",
     "neuroconv[vame]",
     "ndx-miniscope>=0.5.1",  # This is for the miniscope behavior data interface, not sure is needed
 ]

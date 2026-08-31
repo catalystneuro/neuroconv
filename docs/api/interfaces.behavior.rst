@@ -32,3 +32,11 @@ Video
 MedPC
 -----
 .. automodule:: neuroconv.datainterfaces.behavior.medpc.medpcdatainterface
+
+VAME
+----
+.. automodule:: neuroconv.datainterfaces.behavior.vame.vamedatainterface
+
+keypoint-MoSeq
+--------------
+.. automodule:: neuroconv.datainterfaces.behavior.moseq.moseqkeypointsinterface

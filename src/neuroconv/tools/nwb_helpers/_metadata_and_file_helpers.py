@@ -66,6 +66,45 @@ def get_module(nwbfile: NWBFile, name: str, description: str = None):
         return nwbfile.create_processing_module(name=name, description=description)
 
 
+def _get_container_by_name(nwbfile: NWBFile, name: str, neurodata_type: str):
+    """
+    Return the container of the given neurodata type carrying the given name.
+
+    Used where an interface must link to an object another interface already wrote, since metadata
+    addresses it by name while the link needs the object itself.
+
+    Parameters
+    ----------
+    nwbfile : NWBFile
+        The NWB file to search, including its processing modules.
+    name : str
+        The name of the container to return.
+    neurodata_type : str
+        The class name of the container, such as ``"PoseEstimation"`` or ``"ImageSeries"``.
+
+    Returns
+    -------
+    The container carrying that name.
+
+    Raises
+    ------
+    ValueError
+        If no container of that type carries that name, naming the ones that do exist.
+    """
+    containers = {obj.name: obj for obj in nwbfile.all_children() if type(obj).__name__ == neurodata_type}
+    if name in containers:
+        return containers[name]
+    if containers:
+        raise ValueError(
+            f"No {neurodata_type} named '{name}' was found in the NWB file. "
+            f"Available {neurodata_type} containers: {list(containers)}."
+        )
+    raise ValueError(
+        f"No {neurodata_type} named '{name}' was found in the NWB file. No {neurodata_type} containers exist "
+        "in the file, so ensure the interface that writes it runs first."
+    )
+
+
 def get_default_nwbfile_metadata() -> DeepDict:
     """
     Return structure with defaulted metadata values required for a NWBFile.
