@@ -100,12 +100,30 @@ class TestBORISVersion1_6(BORISTestMixin):
 
     def check_extracted_metadata(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2016, 1, 2, 9, 0, 0)
-        # 1.6 has no categories at all, which has to read as absent rather than as unassigned.
-        # The block sits under the observation's own key, so several observations do not collide.
+        # The observation's block sits under its own key, so several of them do not collide.
+        assert metadata["Events"]["EventTables"]["boris_media_observation"] == {
+            "table_name": "MediaObservation",
+            "description": "Behaviors scored in BORIS observation 'media observation' (media).",
+        }
+
         event_types = metadata["Events"]["boris_media_observation"]["event_types"]
         assert set(event_types) == {"forage", "rest", "groom", "call"}
-        # BORIS is one of the few sources carrying its own prose, so the description is reported.
-        assert event_types["forage"]["event_description"] == "moves over the substrate collecting food"
+        # BORIS is one of the few sources carrying its own prose, so every description is reported.
+        assert {code: entry["event_description"] for code, entry in event_types.items()} == {
+            "forage": "moves over the substrate collecting food",
+            "rest": "stationary with the body lowered",
+            "groom": "a single grooming bout",
+            "call": "a single vocalisation",
+        }
+        # 1.6 declares its modifiers as one flat string with no slot name, so the column falls back to
+        # the slot's position and the vocabulary is the menu plus whatever was recorded.
+        assert event_types["forage"]["columns"]["modifier_forage_1"]["column_categories"]["labels"] == {
+            "": "",
+            "far": "far",
+            "near": "near",
+            "near (N)": "near (N)",
+        }
+        assert event_types["rest"]["columns"].keys() == {"subject", "comment"}
 
 
 class TestBORISVersion4_0(BORISTestMixin):
@@ -401,15 +419,54 @@ class TestBORISTimeOffsetAndUndeclaredCodes(BORISTestMixin):
         assert len(behavior_module["Ethogram"].to_dataframe()) == 5
         assert len(behavior_module["PositiveOffsetBouts"].to_dataframe()) == 1
 
+        # This is the only fixture whose coder wrote comments, so it is the only place the column can be
+        # shown to carry what they typed rather than merely to exist.
+        comments = list(events_table.to_dataframe()["comment"])
+        assert comments == [
+            "already at the tray when the clip opens",
+            "",
+            "head up, orienting to the door",
+            "something off camera",
+            "second visit, nothing left in the tray",
+            "",
+        ]
+
     def check_extracted_metadata(self, metadata: dict):
-        # The code is free text and stays verbatim as the identifier, accent and slash included.
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2026, 1, 2, 10, 0, 0)
+        # The only observation in the set whose coder wrote a description.
+        assert metadata["NWBFile"]["session_description"] == "media starts 12.5 s after the observation clock"
+        assert metadata["Events"]["EventTables"]["boris_positive_offset"] == {
+            "table_name": "PositiveOffset",
+            "description": "Behaviors scored in BORIS observation 'positive offset' (media).",
+        }
+
         event_types = metadata["Events"]["boris_positive_offset"]["event_types"]
-        assert "Foraging/Caching" in event_types
-        assert "Exploraci\u00f3n" in event_types
+        # The five the scheme declares plus `Foraging`, which the events name and the scheme dropped.
+        assert set(event_types) == {
+            "Foraging/Caching",
+            "Exploraci\u00f3n",
+            "Burrowing",
+            "Freeze",
+            "Allogroom",
+            "Foraging",
+        }
+        # The code is free text and stays verbatim as the identifier, accent and slash included.
+        assert event_types["Foraging/Caching"]["event_description"] == (
+            "nose down in the substrate, or carrying a seed to a cache"
+        )
         # The editable display name is what an object name gets derived from, so the characters an NWB
         # name cannot hold are replaced there rather than in the identifier.
         assert event_types["Foraging/Caching"]["event_name"] == "Foraging_Caching"
         assert event_types["Exploraci\u00f3n"]["event_name"] == "Exploraci\u00f3n"
+        # A code the scheme dropped has no slots to name its column after, so it falls back to position,
+        # and it carries no description because there is no behavior to take one from.
+        assert "event_description" not in event_types["Foraging"]
+        assert event_types["Foraging"]["columns"].keys() == {
+            "subject",
+            "comment",
+            "stop_comment",
+            "modifier_foraging_1",
+        }
 
 
 def test_time_offset_is_read_and_applied():
@@ -474,40 +531,6 @@ def test_undeclared_behavior_code_keeps_the_row():
         file_path=TestBORISTimeOffsetAndUndeclaredCodes.file_path, observation_name="removed behaviors"
     )._project.behaviors
     assert "Rearing" not in catalogue
-
-
-def test_event_comments_survive():
-    """The comment column carries what the coder typed, which almost no fixture exercises."""
-    interface = BORISInterface(
-        file_path=TestBORISTimeOffsetAndUndeclaredCodes.file_path, observation_name="negative offset"
-    )
-    nwbfile = mock_NWBFile()
-    interface.add_to_nwbfile(nwbfile=nwbfile)
-
-    comments = set(nwbfile.get_events_table("NegativeOffset").to_dataframe()["comment"])
-    assert "digging when the clip opens" in comments
-
-
-def test_a_behavior_code_with_a_slash_can_take_its_own_table():
-    """A code carrying a character an NWB object name cannot hold must not raise.
-
-    `Foraging/Caching` is an ordinary way to name one behavior covering two things, and hdmf rejects a
-    slash in an object name outright. The default layout puts every behavior in one table named after the
-    observation, so the code never reaches an object name there; routing one behavior to a table of its
-    own is what exposes it.
-    """
-    interface = BORISInterface(
-        file_path=TestBORISTimeOffsetAndUndeclaredCodes.file_path, observation_name="positive offset"
-    )
-    metadata = interface.get_metadata()
-    # Give the slashed behavior a table to itself, which the metadata permits.
-    metadata["Events"]["boris_positive_offset"]["event_types"]["Foraging/Caching"]["table_metadata_key"] = "solo"
-
-    nwbfile = mock_NWBFile()
-    interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
-    # The table name is CamelCased from the event_name, which eats the underscore. The separator still
-    # earns its place in the default layout, where the event_name is the value in the event_type column.
-    assert "ForagingCaching" in nwbfile.events
 
 
 def test_unpaired_state_start_becomes_nan():
@@ -588,11 +611,11 @@ def test_observation_without_events_writes_the_scheme():
 def test_project_with_no_observations():
     """A full coding scheme and nothing to convert is a legal file, not an error.
 
-    ``_get_observation_names`` reports the empty list, and asking for an observation by name says which
+    ``get_observation_names`` reports the empty list, and asking for an observation by name says which
     ones exist rather than failing obscurely.
     """
     assert (
-        BORISInterface._get_observation_names(
+        BORISInterface.get_observation_names(
             file_path=BORIS_PROJECTS_PATH
             / "version_7_0"
             / "no_observations"

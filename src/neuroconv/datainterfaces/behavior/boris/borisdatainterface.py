@@ -23,7 +23,7 @@ class BORISInterface(BaseEventsInterface):
     observations against video, audio, or a live session. A ``.boris`` file is one JSON document holding
     the whole record: the coding scheme, the subjects, and every observation with its events. An
     observation is the unit that corresponds to a session, so this interface takes one by name; use
-    :meth:`_get_observation_names` to see what a file holds.
+    :meth:`get_observation_names` to see what a file holds.
 
     Every behavior the scheme declares becomes an event type, including one nothing was ever scored
     against, which is written as a zero-row contribution rather than dropped: the vocabulary is part of
@@ -58,7 +58,7 @@ class BORISInterface(BaseEventsInterface):
     associated_suffixes = (".boris",)
 
     @staticmethod
-    def _get_observation_names(file_path: FilePath) -> list[str]:
+    def get_observation_names(file_path: FilePath) -> list[str]:
         """Return the names of the observations a ``.boris`` file holds, in file order.
 
         Parameters
@@ -90,7 +90,7 @@ class BORISInterface(BaseEventsInterface):
         file_path : FilePath
             Path to the ``.boris`` JSON document.
         observation_name : str
-            The observation to read, as :meth:`_get_observation_names` lists them.
+            The observation to read, as :meth:`get_observation_names` lists them.
         metadata_key : str, optional
             The key this interface's block sits under in ``metadata["Events"]``. Defaults to the
             observation's own name, ``boris_live_not_paired`` for an observation called
@@ -157,8 +157,7 @@ class BORISInterface(BaseEventsInterface):
         # column, so one table per behavior would buy density that is almost never missing and pay for
         # it in one NWB object per declared behavior. Giving a behavior its own `table_metadata_key`,
         # and naming it in `EventTables`, is what splits it back out.
-        table_metadata_key = self._table_metadata_key()
-        metadata["Events"]["EventTables"][table_metadata_key] = {
+        metadata["Events"]["EventTables"][self.metadata_key] = {
             "table_name": _to_object_name(name=self._observation.name),
             "description": (
                 f"Behaviors scored in BORIS observation '{self._observation.name}' "
@@ -177,7 +176,7 @@ class BORISInterface(BaseEventsInterface):
                 # separator is kept rather than dropped, since `Foraging_Caching` still reads as two
                 # words where `ForagingCaching` reads as one invented one.
                 "event_name": code.replace("/", "_").replace(":", "_"),
-                "table_metadata_key": table_metadata_key,
+                "table_metadata_key": self.metadata_key,
                 # One column per payload field the read produced, which is subject, comment, whichever
                 # closing-row fields say something new, and one per modifier slot this behavior declares.
                 "columns": {
@@ -241,8 +240,8 @@ class BORISInterface(BaseEventsInterface):
                 durations = np.array([occurrence.duration for occurrence in occurrences], dtype=float)
 
             payload = {
-                "subject": _text_column(occurrences=occurrences, field="subject"),
-                "comment": _text_column(occurrences=occurrences, field="comment"),
+                "subject": np.array([occurrence.subject for occurrence in occurrences], dtype=object),
+                "comment": np.array([occurrence.comment for occurrence in occurrences], dtype=object),
             }
 
             # A modifier is one answer per declared slot, so it gets one column per slot rather than the
@@ -255,7 +254,8 @@ class BORISInterface(BaseEventsInterface):
             # forward, so the closing ones earn a column only where this observation has a bout that
             # changed mid-way. They are split the same way, so `None` reads as unanswered here too.
             if closing_comment:
-                payload["stop_comment"] = _text_column(occurrences=occurrences, field="stop_comment")
+                stop_comments = [occurrence.stop_comment for occurrence in occurrences]
+                payload["stop_comment"] = np.array(stop_comments, dtype=object)
             if closing_modifiers:
                 for position, column_name in enumerate(modifier_columns[code]):
                     payload[f"stop_{column_name}"] = _modifier_column(
@@ -460,10 +460,6 @@ class BORISInterface(BaseEventsInterface):
         spec["column_categories"] = {"labels": {value: value for value in sorted(vocabulary)}, "meanings": {}}
         return spec
 
-    def _table_metadata_key(self) -> str:
-        """The routing key every one of this observation's behaviors shares, so they land in one table."""
-        return self.metadata_key
-
     def _closing_row_differs(self, field: str) -> bool:
         """Whether any closed bout's ``field`` says something its opening row did not.
 
@@ -481,11 +477,6 @@ class BORISInterface(BaseEventsInterface):
             for occurrence in self._observation.occurrences
             if occurrence.duration is not None and not np.isnan(occurrence.duration)
         )
-
-
-def _text_column(occurrences: list, field: str) -> np.ndarray:
-    """One of an occurrence's own text fields, as an events-table column."""
-    return np.array([getattr(occurrence, field) for occurrence in occurrences], dtype=object)
 
 
 def _modifier_column(occurrences: list, position: int, field: str = "modifier_values") -> np.ndarray:
@@ -554,8 +545,8 @@ def _column_description(field: str) -> str:
     slot = field.removeprefix("stop_").removeprefix("modifier_")
     when = "on the row that closed a state bout" if closing else "when the behavior was scored"
     return (
-        f"The '{slot}' modifier answered {when}. The Ethogram's `modifier_slots` column says which slot "
-        "this is for each behavior, and `modifier_slot_values` what it could hold."
+        f"The '{slot}' modifier answered {when}. The Ethogram's `modifiers` column says which slot this "
+        "is for each behavior, and `modifier_values` what it could hold."
     )
 
 
