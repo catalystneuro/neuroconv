@@ -135,6 +135,7 @@ from .text.csv.csvtimeintervalsinterface import CsvTimeIntervalsInterface
 from .text.excel.exceltimeintervalsinterface import ExcelTimeIntervalsInterface
 
 # Events
+from .events.boris.boriseventsdatainterface import BORISEventsInterface
 from .events.csv_events.csveventsdatainterface import CSVEventsInterface
 from .events.doric_events.doriccsveventsdatainterface import DoricCSVEventsInterface
 from .events.doric_events.doriceventsdatainterface import DoricEventsInterface
@@ -244,6 +245,7 @@ interface_list = [
     ImageInterface,
     ExternalImageInterface,
     # Events
+    BORISEventsInterface,
     CSVEventsInterface,
     DoricCSVEventsInterface,
     DoricEventsInterface,
@@ -312,6 +314,7 @@ interfaces_by_category = dict(
         ExternalImage=ExternalImageInterface,
     ),
     events=dict(
+        BORISEvents=BORISEventsInterface,
         CSVEvents=CSVEventsInterface,
         DoricCSVEvents=DoricCSVEventsInterface,
         DoricEvents=DoricEventsInterface,
