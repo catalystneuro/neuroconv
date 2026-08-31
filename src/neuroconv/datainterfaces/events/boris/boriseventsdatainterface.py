@@ -119,10 +119,10 @@ class BORISEventsInterface(BaseEventsInterface):
         """
         metadata = super().get_metadata()
 
-        session_start_time = _parse_observation_date(date=self._raw_observation().get("date"))
+        session_start_time = _parse_observation_date(date=self._observation.date)
         if session_start_time is not None:
             metadata["NWBFile"]["session_start_time"] = session_start_time
-        description = self._raw_observation().get("description", "")
+        description = self._observation.description
         if description:
             metadata["NWBFile"]["session_description"] = description
 
@@ -358,14 +358,6 @@ class BORISEventsInterface(BaseEventsInterface):
             for occurrence in self._observation.occurrences
             if occurrence.duration is not None and not np.isnan(occurrence.duration)
         )
-
-    def _raw_observation(self) -> dict:
-        """Return the observation's own JSON block, for the fields the reader does not model."""
-        import json
-        from pathlib import Path
-
-        document = json.loads(Path(self.source_data["file_path"]).read_text(encoding="utf-8"))
-        return document["observations"][self._observation.name]
 
     def _table_metadata_key(self) -> str:
         """The routing key every one of this observation's behaviors shares, so they land in one table."""

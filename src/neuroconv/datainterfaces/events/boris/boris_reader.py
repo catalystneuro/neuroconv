@@ -132,6 +132,11 @@ class BorisObservation:
     observation_type : str
         ``"MEDIA"`` for an observation scored against recorded files, ``"LIVE"`` for one scored against a
         clock started when the coder began.
+    date : str
+        When the observation was scored, as the file states it, which is ISO-formatted with either
+        separator and carries no timezone. Empty where the observation declares none.
+    description : str
+        What the coder wrote about this observation, empty where they wrote nothing.
     time_offset : float
         The rigid shift the observation declares, in seconds.
     media_files : list of str
@@ -145,6 +150,8 @@ class BorisObservation:
 
     name: str
     observation_type: str
+    date: str
+    description: str
     time_offset: float
     media_files: list[str]
     frame_rate: float | None
@@ -253,6 +260,8 @@ def read_boris_observation(file_path: str | Path, observation_name: str) -> Bori
     return BorisObservation(
         name=observation_name,
         observation_type=observation.get("type", ""),
+        date=observation.get("date", ""),
+        description=observation.get("description", ""),
         time_offset=float(observation.get("time offset", 0.0)),
         media_files=media_files,
         frame_rate=_frame_rate(observation=observation, media_files=media_files),
