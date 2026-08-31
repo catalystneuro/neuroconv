@@ -154,6 +154,7 @@ Events
     BORIS <events/boris_events>
     CSV <events/csv_events>
     Doric <events/doric_events>
+    MedPC <events/medpc_events>
     NPM <events/npm_events>
     pyPhotometry <events/pyphotometry_events>
     TDT <events/tdt_events>
