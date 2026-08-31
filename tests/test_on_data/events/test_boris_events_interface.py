@@ -63,10 +63,17 @@ class BORISEventsRoundTrip(DataInterfaceTestMixin):
 
         events_table = nwbfile.get_events_table(self.expected_table_name)
         assert len(events_table.id) == self.expected_event_count
-        # Every behavior lands in one table, so the merge carries the discriminator plus the three
+        # Every behavior lands in one table, so the merge carries the discriminator plus the
         # per-occurrence columns BORIS records and no other events format does.
-        for column_name in ("event_type", "subject", "modifiers", "comment"):
+        for column_name in ("event_type", "subject", "comment"):
             assert column_name in events_table.colnames
+        # A modifier answer goes in a column of its own per slot rather than in one `|`-joined string,
+        # and the catalogue says which slot each column is for each behavior.
+        catalogue_slots = set()
+        for slots in nwbfile.processing["behavior"]["Ethogram"]["modifier_slots"][:]:
+            catalogue_slots.update(slots)
+        assert catalogue_slots <= set(events_table.colnames)
+        assert "modifiers" not in events_table.colnames
 
         behavior_module = nwbfile.processing["behavior"]
         catalogue = behavior_module["Ethogram"].to_dataframe()
@@ -146,14 +153,34 @@ class TestBORISModifierSlots(BORISEventsRoundTrip):
     expected_catalogue_size = 9
 
     def run_custom_checks(self):
-        """The recorded forms of the three slot types, kept as the strings BORIS wrote."""
+        """The recorded forms of the three slot types, each answer in the column of its own slot."""
         interface = BORISEventsInterface(file_path=MODIFIER_SLOTS, observation_name="1")
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile)
-        table = nwbfile.get_events_table("Observation1").to_dataframe()
-        # A single selection, a multiple selection joined with ",", a free numeric, and two slots
-        # joined with "|".
-        assert set(table["modifiers"]) == {"3", "1,2", "789", "2|3"}
+        table = nwbfile.get_events_table("Observation1").to_dataframe().set_index("event_type")
+
+        # A single selection and a free numeric each answer one slot.
+        assert table.loc["many modifiers", "modifier_set_1"] == "3"
+        assert table.loc["numeric", "modifier_numeric_modif"] == "789"
+        # A multiple selection is several answers to *one* slot, so the comma stays inside one column.
+        assert table.loc["multiple modif", "modifier_set_1"] == "1,2"
+        # Two slots are two answers, which is what the split is for: the "|" does not survive.
+        assert table.loc["2 sets", "modifier_set_1"] == "2"
+        assert table.loc["2 sets", "modifier_set_2"] == "3"
+        # A behavior that declares no such slot writes an empty cell, not the neighbour's answer.
+        assert table.loc["numeric", "modifier_set_1"] == ""
+
+        # The catalogue carries the scheme half: which columns a behavior uses and what they may hold.
+        catalogue = nwbfile.processing["behavior"]["Ethogram"].to_dataframe().set_index("behavior")
+        assert list(catalogue.loc["2 sets", "modifier_slots"]) == ["modifier_set_1", "modifier_set_2"]
+        assert [list(values) for values in catalogue.loc["2 sets", "modifier_slot_values"]] == [
+            ["1", "2", "3"],
+            ["3", "4", "5"],
+        ]
+        # A free numeric slot has no menu at all, which is not the same as declaring no slot.
+        assert list(catalogue.loc["numeric", "modifier_slots"]) == ["modifier_numeric_modif"]
+        assert [list(values) for values in catalogue.loc["numeric", "modifier_slot_values"]] == [[]]
+        assert list(catalogue.loc["p", "modifier_slots"]) == []
 
 
 class TestBORISMultiSubject(BORISEventsRoundTrip):
@@ -190,9 +217,15 @@ class TestBORISUntidyModifiers(BORISEventsRoundTrip):
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile)
         table = nwbfile.get_events_table("Test1Live").to_dataframe()
-        # Whitespace is preserved and an unanswered slot writes the literal token, both verbatim: the
-        # values are free text somebody typed and normalizing them here would invent data.
-        assert set(table["modifiers"]) == {"a   |c ", "a   |None", "None|111", "None|c "}
+        # The coder's whitespace is preserved, since the values are free text somebody typed and
+        # normalizing them here would invent data. The `None` token is not a value, though: it is what
+        # BORIS writes for a slot nobody answered, so it reads as unanswered rather than as the string.
+        assert list(table["modifier_test_1"]) == ["a   ", "a   ", "", ""]
+        assert list(table["modifier_test_2"]) == ["c ", "", "111", "c "]
+        # The declared menu reaches the catalogue with the keyboard shortcut stripped, as BORIS strips it
+        # when recording, so "a    (a)" is declared and "a   " is what both the menu and the cell hold.
+        catalogue = nwbfile.processing["behavior"]["Ethogram"].to_dataframe().set_index("behavior")
+        assert list(catalogue.loc["p", "modifier_slot_values"][0]) == ["a   ", "c  ", "d"]
         # Both behaviors are point behaviors, so nothing in this observation has an extent.
         assert "duration" not in table.columns
 
@@ -338,6 +371,29 @@ def test_pairing_ignores_the_modifier_string():
     for bout in walk_bouts:
         assert bout.duration is not None and not math.isnan(bout.duration)
         assert bout.modifiers == "quadrupedal"
+
+
+def test_unnamed_modifier_slot_falls_back_to_its_position():
+    """A scheme need not name its slots, and an unnamed one still gets a column.
+
+    The BORIS demo project leaves the slot name blank on both the behaviors that carry one, so the name
+    cannot be what the column is called there. The position is what is left, and the catalogue is what
+    says which behavior's slot it is.
+    """
+    interface = BORISEventsInterface(file_path=CATEGORIZED, observation_name="id2")
+    nwbfile = mock_NWBFile()
+    interface.add_to_nwbfile(nwbfile=nwbfile)
+
+    table = nwbfile.get_events_table("Id2").to_dataframe()
+    assert list(table["modifier_1"]) == ["", "quadrupedal", "quadrupedal"]
+
+    # This observation is also the one where a bout closes on a different answer than it opened with, so
+    # the closing row earns columns of its own. `walk` opens on `quadrupedal` and closes on the `None`
+    # token, which reads as the slot being cleared rather than as the string.
+    assert list(table["stop_modifier_1"]) == ["", "", ""]
+    # The interval view carries the same columns, so a bout is described one way and not two.
+    bouts = nwbfile.processing["behavior"]["Id2Bouts"].to_dataframe()
+    assert list(bouts["modifier_1"]) == ["", "quadrupedal", "quadrupedal"]
 
 
 def test_observation_without_events_writes_the_scheme():

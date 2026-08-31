@@ -8,6 +8,7 @@ with its stop row. Nothing here knows about NWB, so the same reader serves whate
 
 import json
 import math
+import re
 import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -26,6 +27,60 @@ _TIME, _SUBJECT, _CODE, _MODIFIERS, _COMMENT = range(5)
 # `modifiers` on a behavior became a dict of slot objects in this project format version; before it, and
 # in every file older than it, it is one flat comma-separated string of the declared values.
 _SLOT_DICT_FROM_VERSION = 7.0
+
+# The token BORIS writes in a slot the coder left unanswered, where a sibling slot was answered. A slot
+# nobody answered on a behavior that declares only one writes the empty string instead.
+_UNANSWERED_SLOT = "None"
+
+# What BORIS removes from a declared value when it writes an event: one space and the parenthesized
+# keyboard shortcut. The space goes with it, which is why `"a    (a)"` is declared and `"a   "` recorded.
+_SHORTCUT = re.compile(r" \([^()]*\)$")
+
+
+def strip_modifier_shortcut(value: str) -> str:
+    """Return a declared modifier value in the form an event row records it.
+
+    A menu entry may end in the keyboard shortcut for choosing it, ``"quadrupedal (q)"``, and BORIS writes
+    the event without it. Matching a recorded answer against the declared menu therefore needs the menu put
+    through the same rule first. Everything else is left alone, the coder's whitespace included.
+
+    Parameters
+    ----------
+    value : str
+        A value as ``BorisModifierSlot.values`` declares it.
+
+    Returns
+    -------
+    str
+        The value as an event row would carry it.
+    """
+    return _SHORTCUT.sub("", value)
+
+
+def split_modifier_string(recorded: str, slot_count: int) -> list[str]:
+    """Split an event row's modifier string into one answer per slot.
+
+    Slots are joined with ``|`` in declaration order, so the split is positional and the caller reads each
+    field against the behavior's own slots. An unanswered slot reads as the empty string, whether it was
+    written as the ``None`` token or as nothing at all.
+
+    Parameters
+    ----------
+    recorded : str
+        The modifier field of an event row.
+    slot_count : int
+        How many slots the behavior declares.
+
+    Returns
+    -------
+    list of str
+        One answer per slot, padded where the row carries fewer fields than the behavior declares. Longer
+        than ``slot_count`` where the row carries more, which happens when the scheme lost a slot after the
+        session was scored; the extra answers are kept rather than dropped.
+    """
+    answers = recorded.split("|") if recorded else []
+    answers = ["" if answer == _UNANSWERED_SLOT else answer for answer in answers]
+    return answers + [""] * (slot_count - len(answers))
 
 
 @dataclass
@@ -96,6 +151,9 @@ class BorisOccurrence:
         The behavior code, joining this occurrence to its entry in the coding scheme.
     modifiers : str
         The recorded modifier string, exactly as written.
+    modifier_values : list of str
+        ``modifiers`` split into one answer per slot the behavior declares, an unanswered slot reading as
+        the empty string. Empty where the behavior declares no slots and the row recorded none.
     comment : str
         The coder's free-text comment, from the row that opened the occurrence.
     stop_comment : str
@@ -106,6 +164,8 @@ class BorisOccurrence:
         The modifier string on the row that closed a state bout. Almost always the same string as
         ``modifiers``, since BORIS carries the value forward, so it says something new only where the
         coder changed the answer while the bout ran.
+    stop_modifier_values : list of str
+        ``stop_modifiers`` split the same way as ``modifier_values``.
     duration : float or None
         ``None`` for a point behavior, which has no extent. For a state behavior, the length of the bout,
         or ``nan`` where the bout opened and never closed.
@@ -117,8 +177,10 @@ class BorisOccurrence:
     modifiers: str
     comment: str
     duration: float | None
+    modifier_values: list[str] = field(default_factory=list)
     stop_comment: str = ""
     stop_modifiers: str = ""
+    stop_modifier_values: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -397,6 +459,9 @@ def _pair_events(events: list, behaviors: dict[str, BorisBehavior]) -> list[Bori
 
         # A code no behavior declares cannot be typed, and treating it as a point event is the reading that
         # keeps the row rather than guessing at an extent it may not have.
+        slot_count = len(behavior.modifier_slots) if behavior is not None else 0
+        modifier_values = split_modifier_string(recorded=row[_MODIFIERS], slot_count=slot_count)
+
         if behavior is None or behavior.behavior_type == "point":
             occurrences.append(
                 BorisOccurrence(
@@ -404,6 +469,7 @@ def _pair_events(events: list, behaviors: dict[str, BorisBehavior]) -> list[Bori
                     subject=subject,
                     code=code,
                     modifiers=row[_MODIFIERS],
+                    modifier_values=modifier_values,
                     comment=row[_COMMENT],
                     duration=None,
                 )
@@ -418,6 +484,7 @@ def _pair_events(events: list, behaviors: dict[str, BorisBehavior]) -> list[Bori
             # is kept beside the opening row's rather than dropped when the two rows become one.
             opening.stop_comment = row[_COMMENT]
             opening.stop_modifiers = row[_MODIFIERS]
+            opening.stop_modifier_values = modifier_values
             continue
         open_bouts[key] = len(occurrences)
         occurrences.append(
@@ -426,6 +493,7 @@ def _pair_events(events: list, behaviors: dict[str, BorisBehavior]) -> list[Bori
                 subject=subject,
                 code=code,
                 modifiers=row[_MODIFIERS],
+                modifier_values=modifier_values,
                 comment=row[_COMMENT],
                 duration=math.nan,
             )

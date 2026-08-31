@@ -20,9 +20,13 @@ Convert BORIS Events data to NWB
 
 Use :py:class:`~neuroconv.datainterfaces.events.boris.boriseventsdatainterface.BORISEventsInterface`.
 Every behavior the scheme declares becomes an event type and all of them are written into one
-``pynwb.event.EventsTable`` named after the observation, with ``subject``, ``modifiers`` and ``comment``
-carried per event. The scheme itself is written as an ``ndx-ethogram`` ``Ethogram`` catalogue in the
-``behavior`` processing module, and the closed state bouts as an ``EthogramBouts`` table beside it.
+``pynwb.event.EventsTable`` named after the observation, with ``subject`` and ``comment`` carried per
+event. A behavior may also declare modifier slots, the qualifiers a coder answers each time they score it
+(``Walking`` asking for a speed and a direction), and each slot gets its own column named after it. The
+scheme itself is written as an ``ndx-ethogram`` ``Ethogram`` catalogue in the ``behavior`` processing
+module, where ``modifier_slots`` names the columns each behavior's slots write into and
+``modifier_slot_values`` the menu each one offers, and the closed state bouts as an ``EthogramBouts``
+table beside it.
 
 .. code-block:: python
 
