@@ -5,7 +5,7 @@ from zoneinfo import ZoneInfo
 import pytest
 from hdmf.testing import TestCase
 from jsonschema.exceptions import ValidationError
-from pynwb import ProcessingModule
+from pynwb import ProcessingModule, TimeSeries
 from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.tools.nwb_helpers import (
@@ -14,7 +14,6 @@ from neuroconv.tools.nwb_helpers import (
     get_module,
     make_nwbfile_from_metadata,
 )
-from neuroconv.tools.testing.mock_interfaces import MockPoseEstimationInterface
 
 
 class TestNWBHelpers(TestCase):
@@ -111,23 +110,22 @@ class TestNWBHelpers(TestCase):
 class TestGetContainerByName:
     """Resolving an object another interface already wrote, which metadata addresses only by name."""
 
-    def test_raises_when_no_container_of_that_type_exists(self):
+    def nwbfile_holding_a_series(self, name):
         nwbfile = mock_NWBFile()
-        with pytest.raises(ValueError, match="No PoseEstimation containers exist"):
-            _get_container_by_name(nwbfile, "SomeName", "PoseEstimation")
+        module = get_module(nwbfile, name="behavior", description="processed behavioral data")
+        module.add(TimeSeries(name=name, data=[1.0, 2.0, 3.0], unit="a.u.", rate=1.0, starting_time=0.0))
+        return nwbfile
+
+    def test_raises_when_no_container_of_that_type_exists(self):
+        with pytest.raises(ValueError, match="No TimeSeries containers exist"):
+            _get_container_by_name(mock_NWBFile(), "SomeName", "TimeSeries")
 
     def test_raises_listing_the_available_containers_when_the_name_is_absent(self):
-        nwbfile = mock_NWBFile()
-        pose_estimation_interface = MockPoseEstimationInterface(num_samples=10, num_nodes=3, seed=0)
-        pose_estimation_interface.add_to_nwbfile(nwbfile=nwbfile, metadata=pose_estimation_interface.get_metadata())
-
-        with pytest.raises(ValueError, match=pose_estimation_interface.metadata_key):
-            _get_container_by_name(nwbfile, "WrongName", "PoseEstimation")
+        nwbfile = self.nwbfile_holding_a_series("Present")
+        with pytest.raises(ValueError, match="Present"):
+            _get_container_by_name(nwbfile, "Absent", "TimeSeries")
 
     def test_returns_the_container_when_the_name_matches(self):
-        nwbfile = mock_NWBFile()
-        pose_estimation_interface = MockPoseEstimationInterface(num_samples=10, num_nodes=3, seed=0)
-        pose_estimation_interface.add_to_nwbfile(nwbfile=nwbfile, metadata=pose_estimation_interface.get_metadata())
-
-        expected = nwbfile.processing["behavior"].data_interfaces[pose_estimation_interface.metadata_key]
-        assert _get_container_by_name(nwbfile, pose_estimation_interface.metadata_key, "PoseEstimation") is expected
+        nwbfile = self.nwbfile_holding_a_series("Present")
+        expected = nwbfile.processing["behavior"]["Present"]
+        assert _get_container_by_name(nwbfile, "Present", "TimeSeries") is expected
