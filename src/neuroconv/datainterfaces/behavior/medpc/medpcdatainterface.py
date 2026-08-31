@@ -9,7 +9,7 @@ from neuroconv.basetemporalalignmentinterface import BaseTemporalAlignmentInterf
 from neuroconv.tools import get_package, nwb_helpers
 from neuroconv.utils import DeepDict
 
-from .medpc_helpers import read_medpc_file
+from .medpc_helpers import _read_medpc_file
 
 
 class MedPCInterface(BaseTemporalAlignmentInterface):
@@ -144,7 +144,7 @@ class MedPCInterface(BaseTemporalAlignmentInterface):
 
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
-        session_dict = read_medpc_file(
+        session_dict = _read_medpc_file(
             file_path=self.source_data["file_path"],
             medpc_name_to_info_dict=self.source_data["metadata_medpc_name_to_info_dict"],
             session_conditions=self.source_data["session_conditions"],
@@ -182,7 +182,7 @@ class MedPCInterface(BaseTemporalAlignmentInterface):
         timestamps_dict: dict
             A dictionary mapping the names of the variables to the original medpc timestamps.
         """
-        timestamps_dict = read_medpc_file(
+        timestamps_dict = _read_medpc_file(
             file_path=self.source_data["file_path"],
             medpc_name_to_info_dict=medpc_name_to_info_dict,
             session_conditions=self.source_data["session_conditions"],
@@ -252,7 +252,7 @@ class MedPCInterface(BaseTemporalAlignmentInterface):
         for name in self.source_data["aligned_timestamp_names"]:
             medpc_name = info_name_to_medpc_name[name]
             medpc_name_to_info_dict.pop(medpc_name)
-        session_dict = read_medpc_file(
+        session_dict = _read_medpc_file(
             file_path=self.source_data["file_path"],
             medpc_name_to_info_dict=medpc_name_to_info_dict,
             session_conditions=self.source_data["session_conditions"],

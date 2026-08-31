@@ -2,7 +2,7 @@ import numpy as np
 from pydantic import FilePath
 
 
-def get_medpc_variables(file_path: FilePath, variable_names: list) -> dict:
+def _get_medpc_variables(file_path: FilePath, variable_names: list) -> dict:
     """
     Get the values of the given single-line variables from a MedPC file for all sessions in that file.
 
@@ -86,7 +86,7 @@ def _get_session_lines(lines: list, session_conditions: dict, start_variable: st
     return session_lines
 
 
-def read_medpc_file(
+def _read_medpc_file(
     file_path: FilePath,
     medpc_name_to_info_dict: dict,
     session_conditions: dict,

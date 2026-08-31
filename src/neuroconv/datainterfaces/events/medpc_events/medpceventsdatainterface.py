@@ -13,7 +13,7 @@ from ..baseeventsinterface import BaseEventsInterface, _EventsData
 
 # The reader is shared with the deprecated MedPCInterface, which still owns it; it moves into this package
 # when that interface is removed.
-from ...behavior.medpc.medpc_helpers import read_medpc_file
+from ...behavior.medpc.medpc_helpers import _read_medpc_file
 
 # MED-PC IV writes the same fixed header above every session, so a session always begins at its `Start Date` line
 # and the reader needs no configuration to find it.
@@ -92,8 +92,7 @@ class _MedPCEventsInterface(BaseEventsInterface):
         header states no timezone, so the datetime is left naive and pynwb attaches the local one at write.
 
         ``Box`` and ``Group`` are not reported, as neither has a field in the NWB schema, nor are the file's
-        non-event arrays (counters, trial schedules, session parameters). Reach them with
-        :func:`~neuroconv.datainterfaces.behavior.medpc.medpc_helpers.get_medpc_variables`.
+        non-event arrays (counters, trial schedules, session parameters).
 
         Returns
         -------
@@ -291,7 +290,7 @@ class _MedPCEventsInterface(BaseEventsInterface):
 
     def _read_session(self, medpc_name_to_info_dict: dict) -> dict:
         """Read the selected session's variables out of the MedPC file."""
-        return read_medpc_file(
+        return _read_medpc_file(
             file_path=self.source_data["file_path"],
             medpc_name_to_info_dict=medpc_name_to_info_dict,
             session_conditions=self.source_data["session_header"],
