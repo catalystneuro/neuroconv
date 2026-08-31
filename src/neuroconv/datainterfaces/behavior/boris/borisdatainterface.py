@@ -226,6 +226,24 @@ class BORISInterface(BaseEventsInterface):
             code: self._modifier_column_names(code=code, occurrences=occurrences)
             for code, occurrences in occurrences_by_code.items()
         }
+        # A column is keyed on the behavior and the slot so that two behaviors asking a same-named
+        # question get a column each. Both halves are normalized and joined with underscores, so two
+        # different splits can still flatten to one name: behavior `Traffic` with slot `lights state`
+        # and behavior `Traffic lights` with slot `State` both give `modifier_traffic_lights_state`.
+        # Nothing downstream would notice, since the two would agree on the description and on the
+        # vocabulary, and their answers would merge into one column exactly as sharing by slot name did.
+        owner_of_column = {}
+        for code, column_names in modifier_columns.items():
+            for column_name in column_names:
+                previous_owner = owner_of_column.setdefault(column_name, code)
+                if previous_owner != code:
+                    raise ValueError(
+                        f"Behaviors '{previous_owner}' and '{code}' both resolve to the modifier column "
+                        f"'{column_name}', so their answers would merge into one column holding two "
+                        "vocabularies. A column is named for the behavior and the slot together, and "
+                        "these two flatten to the same name. Rename a slot on either behavior in BORIS "
+                        "and re-save."
+                    )
 
         events_data_dict = {}
         for code, occurrences in occurrences_by_code.items():
@@ -528,11 +546,13 @@ def _to_modifier_column_name(code: str, slot_name: str, position: int) -> str:
 
 
 def _column_description(field: str) -> str:
-    """The description of an events-table column, which several behaviors may write into.
+    """The description of an events-table column.
 
-    Derived from the column name rather than from the behavior or the slot's declared spelling, because
-    the writer requires every contributor to a shared column to describe it identically, and two
-    behaviors reaching one column by different spellings of a slot name would otherwise disagree.
+    ``subject``, ``comment`` and ``stop_comment`` are shared: every behavior declares them, and the
+    writer requires every contributor to a shared column to describe it identically, which is why they
+    are fixed strings here rather than built per behavior. A modifier column belongs to one behavior, so
+    its description could name that behavior, but it is derived from the column name for consistency
+    with the three above and because the column name already carries the behavior.
     """
     fixed = {
         "subject": "The subject the event was scored on.",
