@@ -19,21 +19,6 @@ except ImportError:
     from setup_paths import BEHAVIOR_DATA_PATH
 
 
-class SourceFileMixin:
-    """Reads the source file directly, so an assertion compares against the bytes on disk.
-
-    Going through the interface's own reader instead would make every comparison circular.
-    """
-
-    file_path: str
-    recording_name: str
-
-    def read_source_dataset(self, dataset_name):
-        """Return one dataset of this class's recording, straight out of the source file."""
-        with h5py.File(self.file_path, "r") as file:
-            return file[self.recording_name][dataset_name][:]
-
-
 def expected_bouts(labels, timestamps, frame_period):
     """Run-length-encode labels into (start_time, stop_time, label) tuples, written out by hand."""
     bouts = []
@@ -45,7 +30,7 @@ def expected_bouts(labels, timestamps, frame_period):
     return bouts
 
 
-class TestMoseqKeyPointsInterfaceTwoDimensional(SourceFileMixin, DataInterfaceTestMixin):
+class TestMoseqKeyPointsInterfaceTwoDimensional(DataInterfaceTestMixin):
     """A recording from a run on 2D pose, whose centroid is (T, 2).
 
     Its group names carry the scorer suffix DeepLabCut appended to the file the keypoints came from.
@@ -62,13 +47,21 @@ class TestMoseqKeyPointsInterfaceTwoDimensional(SourceFileMixin, DataInterfaceTe
         sampling_frequency_hz=sampling_frequency_hz,
     )
 
+    def _read_source_dataset(self, dataset_name):
+        """Return one dataset of this class's recording, straight out of the source file.
+
+        Read with plain h5py rather than through the interface, so the comparison is not circular.
+        """
+        with h5py.File(self.file_path, "r") as file:
+            return file[self.recording_name][dataset_name][:]
+
     def check_read_nwb(self, nwbfile_path: str):
         nwbfile = read_nwb(nwbfile_path)
         behavior = nwbfile.processing["behavior"]
 
         centroid = behavior["Position"]["MoseqKeyPointsCentroid"]
         assert centroid.data.shape == (700, 2)
-        assert_array_equal(centroid.data[:], self.read_source_dataset("centroid"))
+        assert_array_equal(centroid.data[:], self._read_source_dataset("centroid"))
         assert centroid.rate == self.sampling_frequency_hz
 
         heading = behavior["CompassDirection"]["MoseqKeyPointsHeading"]
@@ -84,7 +77,7 @@ class TestMoseqKeyPointsInterfaceTwoDimensional(SourceFileMixin, DataInterfaceTe
         assert behavior["MoseqKeyPointsEthogram"] is not None
 
 
-class TestMoseqKeyPointsInterfaceThreeDimensional(SourceFileMixin, DataInterfaceTestMixin):
+class TestMoseqKeyPointsInterfaceThreeDimensional(DataInterfaceTestMixin):
     """A recording from a run on 3D pose, whose centroid is (T, 3) in a different coordinate space.
 
     Its group names are bare, since the keypoints came from a plain coordinates file.
@@ -101,13 +94,21 @@ class TestMoseqKeyPointsInterfaceThreeDimensional(SourceFileMixin, DataInterface
         sampling_frequency_hz=sampling_frequency_hz,
     )
 
+    def _read_source_dataset(self, dataset_name):
+        """Return one dataset of this class's recording, straight out of the source file.
+
+        Read with plain h5py rather than through the interface, so the comparison is not circular.
+        """
+        with h5py.File(self.file_path, "r") as file:
+            return file[self.recording_name][dataset_name][:]
+
     def check_read_nwb(self, nwbfile_path: str):
         nwbfile = read_nwb(nwbfile_path)
         behavior = nwbfile.processing["behavior"]
 
         centroid = behavior["Position"]["MoseqKeyPointsCentroid"]
         assert centroid.data.shape == (700, 3)
-        assert_array_equal(centroid.data[:], self.read_source_dataset("centroid"))
+        assert_array_equal(centroid.data[:], self._read_source_dataset("centroid"))
 
 
 class TestRecordingSelection:
@@ -189,12 +190,20 @@ class TestTimeBase:
         assert behavior["MoseqKeyPointsLatentState"].rate == 60.0
 
 
-class TestEthogram(SourceFileMixin):
+class TestEthogram:
     """The syllable sequence, run-length-encoded into the curated ndx-ethogram product."""
 
     file_path = BEHAVIOR_DATA_PATH / "moseq" / "keypoint_moseq" / "three_dimensional" / "results.h5"
     recording_name = "21_11_8_one_mouse"
     sampling_frequency_hz = 30.0
+
+    def _read_source_dataset(self, dataset_name):
+        """Return one dataset of this class's recording, straight out of the source file.
+
+        Read with plain h5py rather than through the interface, so the comparison is not circular.
+        """
+        with h5py.File(self.file_path, "r") as file:
+            return file[self.recording_name][dataset_name][:]
 
     @pytest.fixture
     def written_behavior_module(self):
@@ -208,7 +217,7 @@ class TestEthogram(SourceFileMixin):
         return nwbfile.processing["behavior"]
 
     def test_bouts_are_the_syllables_run_length_encoded(self, written_behavior_module):
-        syllables = self.read_source_dataset("syllable")
+        syllables = self._read_source_dataset("syllable")
         timestamps = np.arange(len(syllables)) / self.sampling_frequency_hz
         expected = expected_bouts(syllables, timestamps, 1.0 / self.sampling_frequency_hz)
 
@@ -221,7 +230,7 @@ class TestEthogram(SourceFileMixin):
     def test_the_first_bout_covers_the_padded_frames(self, written_behavior_module):
         # The first three frames of every recording are the model's edge padding, repeated from the
         # first real syllable, so they fall inside the first bout rather than forming one of their own.
-        syllables = self.read_source_dataset("syllable")
+        syllables = self._read_source_dataset("syllable")
         bouts = written_behavior_module["MoseqKeyPointsEthogramBouts"].to_dataframe()
 
         assert bouts["start_time"].values[0] == 0.0
@@ -229,7 +238,7 @@ class TestEthogram(SourceFileMixin):
         assert bouts["stop_time"].values[0] > 3 / self.sampling_frequency_hz
 
     def test_catalogue_holds_the_non_contiguous_ids_present(self, written_behavior_module):
-        syllables = self.read_source_dataset("syllable")
+        syllables = self._read_source_dataset("syllable")
         catalogue = written_behavior_module["MoseqKeyPointsEthogram"].to_dataframe()
 
         # This recording uses 0-6, 8, 9, 11 and 28 of the 100 states the fit was configured with.

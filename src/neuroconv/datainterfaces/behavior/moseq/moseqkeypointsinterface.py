@@ -10,37 +10,17 @@ from pynwb.behavior import CompassDirection, Position, SpatialSeries
 
 from ....basedatainterface import BaseDataInterface
 from ....tools import get_module
+from ....tools.nwb_helpers import _get_container_by_name
 from ....utils import DeepDict
-
-
-def _get_container_by_name(nwbfile: NWBFile, name: str, type_name: str):
-    """Return the container of type ``type_name`` named ``name``, raising if it is not in the file."""
-    containers = {obj.name: obj for obj in nwbfile.all_children() if type(obj).__name__ == type_name}
-    if name in containers:
-        return containers[name]
-    if containers:
-        raise ValueError(
-            f"No {type_name} named '{name}' was found in the NWB file. Available {type_name}s: {list(containers)}."
-        )
-    raise ValueError(
-        f"No {type_name} named '{name}' was found in the NWB file. No {type_name} objects exist in the file, "
-        "so ensure the interface that writes it runs before MoseqKeyPointsInterface."
-    )
 
 
 class MoseqKeyPointsInterface(BaseDataInterface):
     """DataInterface for keypoint-MoSeq output (``results.h5``).
 
-    keypoint-MoSeq fits a switching linear dynamical system to pose keypoints and labels every frame
-    with a syllable, a short recurring unit of movement. Its ``results.h5`` holds one group per
-    recording, each with exactly four datasets: ``syllable``, ``latent_state``, ``centroid`` and
-    ``heading``.
-
-    This interface writes one recording. The syllable sequence becomes a curated ``ndx-ethogram``
-    product (an ``EthogramBouts`` table of run-length-encoded bouts plus its ``Ethogram`` catalogue),
-    and the three continuous per-frame arrays become core NWB objects: the centroid a
-    ``SpatialSeries`` in ``Position``, the heading a ``SpatialSeries`` in ``CompassDirection``, and
-    the latent trajectory a ``TimeSeries``.
+    Writes one recording of a ``results.h5``: the syllables as an ``ndx-ethogram`` ``EthogramBouts``
+    table with its ``Ethogram`` catalogue, the centroid as a ``SpatialSeries`` in ``Position``, the
+    heading as a ``SpatialSeries`` in ``CompassDirection``, and the latent-state trajectory as a
+    ``TimeSeries``.
 
     Notes
     -----
