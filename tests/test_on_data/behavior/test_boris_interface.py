@@ -23,72 +23,44 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-class BORISEventsRoundTrip(DataInterfaceTestMixin):
-    """What every observation shares: one merged events table, a catalogue, and a bouts table.
+class BORISRoundTrip(DataInterfaceTestMixin):
+    """The assertions true of every BORIS conversion, whatever the project holds.
 
-    Each subclass states what its own project is there to exercise; the shared assertions are the ones
-    true of every BORIS conversion. The whole coding scheme reaches the catalogue, including behaviors
-    nothing was ever scored against, and the bouts table holds exactly the state bouts that closed.
+    Nothing here is parameterised. What each observation is there to exercise, its table name, its row
+    counts and its columns, each subclass states for itself in its own ``check_read_nwb``, calling this
+    one first.
     """
 
     data_interface_cls = BORISInterface
     conversion_options = dict()  # what is written is set at construction, not at write
     save_directory = OUTPUT_PATH
 
-    #: The name of the events table, derived from the observation name.
-    expected_table_name: str
-    #: One row per occurrence: every point event, plus one per state bout including an unclosed one.
-    expected_event_count: int
-    #: One row per state bout that closed. A bout with no stop has no stop time to write.
-    expected_bout_count: int
-    #: Every behavior the project declares, scored or not.
-    expected_catalogue_size: int
-
     def check_read_nwb(self, nwbfile_path: str):
         nwbfile = read_nwb(nwbfile_path)
         behavior_module = nwbfile.processing["behavior"]
 
-        # Every behavior routes into one table by default, so the merge carries the discriminator plus
-        # the per-occurrence columns BORIS records and no other events format does.
-        events_table = nwbfile.get_events_table(self.expected_table_name)
-        assert len(events_table.id) == self.expected_event_count
-        for column_name in ("event_type", "subject", "comment"):
-            assert column_name in events_table.colnames
-
         catalogue = behavior_module["Ethogram"].to_dataframe()
-        assert len(catalogue) == self.expected_catalogue_size
         assert set(catalogue["behavior_type"]) <= {"point", "state"}
-
-        # A modifier answer goes in a column of its own per slot rather than in one `|`-joined string,
-        # and every slot a scored behavior declares has one. A behavior that declares no such slot
-        # writes an empty cell there, never a NaN, which could not share the column with the answers.
-        columns = {name for name in events_table.colnames if name.startswith("modifier_")}
-        # The catalogue carries the slot declarations, and only where the scheme declares any: a ragged
-        # column whose every row is empty has no dtype to write.
-        if "modifiers" in catalogue.columns:
-            by_behavior = catalogue.set_index("behavior")
-            for behavior in set(events_table["event_type"].data) & set(by_behavior.index):
-                assert len(by_behavior.loc[behavior, "modifiers"]) <= len(columns)
-        else:
-            assert not columns
-        for column_name in columns:
-            assert all(isinstance(value, str) for value in events_table[column_name].data)
-
-        bouts_name = f"{self.expected_table_name}Bouts"
-        if self.expected_bout_count == 0:
-            # An observation with nothing durative in it gets no interval table at all.
-            assert bouts_name not in behavior_module.data_interfaces
-            return
-        bouts = behavior_module[bouts_name].to_dataframe()
-        assert len(bouts) == self.expected_bout_count
-        # A bout is a closed interval by construction, so none of these may be reversed or unfinished.
-        assert (bouts["stop_time"] >= bouts["start_time"]).all()
-        # Only state behaviors reach the bouts table, and every label there is in the catalogue.
         state_behaviors = set(catalogue.loc[catalogue["behavior_type"] == "state", "behavior"])
-        assert set(bouts["label"]) <= state_behaviors
+
+        for events_table in nwbfile.events.values():
+            for column_name in events_table.colnames:
+                # A behavior that declares no slot writes an empty cell in a modifier column it does
+                # not own, never a NaN, which could not share the column with the answers.
+                if column_name.startswith("modifier_"):
+                    assert all(isinstance(value, str) for value in events_table[column_name].data)
+
+        for name, container in behavior_module.data_interfaces.items():
+            if not name.endswith("Bouts"):
+                continue
+            bouts = container.to_dataframe()
+            # A bout is a closed interval by construction, so none may be reversed or unfinished.
+            assert (bouts["stop_time"] >= bouts["start_time"]).all()
+            # Only state behaviors reach a bouts table, and every label there is in the catalogue.
+            assert set(bouts["label"]) <= state_behaviors
 
 
-class TestBORISVersion1_6(BORISEventsRoundTrip):
+class TestBORISVersion1_6(BORISRoundTrip):
     """Format 1.6: no `category` field on a behavior, and `modifiers` a flat comma-separated string."""
 
     file_path = (
@@ -97,10 +69,25 @@ class TestBORISVersion1_6(BORISEventsRoundTrip):
 
     interface_kwargs = dict(file_path=file_path, observation_name="media observation")
 
-    expected_table_name = "MediaObservation"
-    expected_event_count = 4
-    expected_bout_count = 2
-    expected_catalogue_size = 4
+    def check_read_nwb(self, nwbfile_path: str):
+        super().check_read_nwb(nwbfile_path=nwbfile_path)
+        nwbfile = read_nwb(nwbfile_path)
+        behavior_module = nwbfile.processing["behavior"]
+
+        events_table = nwbfile.get_events_table("MediaObservation")
+        assert len(events_table.id) == 4
+        assert tuple(events_table.colnames) == (
+            "timestamp",
+            "event_type",
+            "subject",
+            "comment",
+            "modifier_forage_1",
+            "modifier_groom_1",
+            "duration",
+        )
+        # The whole coding scheme reaches the catalogue, including behaviors nothing was scored against.
+        assert len(behavior_module["Ethogram"].to_dataframe()) == 4
+        assert len(behavior_module["MediaObservationBouts"].to_dataframe()) == 2
 
     def check_extracted_metadata(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2016, 1, 2, 9, 0, 0)
@@ -112,7 +99,7 @@ class TestBORISVersion1_6(BORISEventsRoundTrip):
         assert event_types["forage"]["event_description"] == "moves over the substrate collecting food"
 
 
-class TestBORISVersion4_0(BORISEventsRoundTrip):
+class TestBORISVersion4_0(BORISRoundTrip):
     """Format 4.0: categories exist, modifiers are still a flat string, and times are in seconds."""
 
     file_path = (
@@ -124,10 +111,25 @@ class TestBORISVersion4_0(BORISEventsRoundTrip):
 
     interface_kwargs = dict(file_path=file_path, observation_name="media observation")
 
-    expected_table_name = "MediaObservation"
-    expected_event_count = 5
-    expected_bout_count = 3
-    expected_catalogue_size = 5
+    def check_read_nwb(self, nwbfile_path: str):
+        super().check_read_nwb(nwbfile_path=nwbfile_path)
+        nwbfile = read_nwb(nwbfile_path)
+        behavior_module = nwbfile.processing["behavior"]
+
+        events_table = nwbfile.get_events_table("MediaObservation")
+        assert len(events_table.id) == 5
+        assert tuple(events_table.colnames) == (
+            "timestamp",
+            "event_type",
+            "subject",
+            "comment",
+            "modifier_walk_1",
+            "modifier_peck_1",
+            "duration",
+        )
+        # The whole coding scheme reaches the catalogue, including behaviors nothing was scored against.
+        assert len(behavior_module["Ethogram"].to_dataframe()) == 5
+        assert len(behavior_module["MediaObservationBouts"].to_dataframe()) == 3
 
     def run_custom_checks(self):
         interface = BORISInterface(file_path=TestBORISVersion4_0.file_path, observation_name="media observation")
@@ -137,7 +139,7 @@ class TestBORISVersion4_0(BORISEventsRoundTrip):
         assert set(catalogue["category"]) == {"Locomotion", "Maintenance", "Social"}
 
 
-class TestBORISCategorizedEthogram(BORISEventsRoundTrip):
+class TestBORISCategorizedEthogram(BORISRoundTrip):
     """The BORIS Android demo project: eleven behaviors, of which this observation scores a few."""
 
     file_path = (
@@ -149,13 +151,28 @@ class TestBORISCategorizedEthogram(BORISEventsRoundTrip):
 
     interface_kwargs = dict(file_path=file_path, observation_name="test1")
 
-    expected_table_name = "Test1"
-    expected_event_count = 6
-    expected_bout_count = 3
-    expected_catalogue_size = 11
+    def check_read_nwb(self, nwbfile_path: str):
+        super().check_read_nwb(nwbfile_path=nwbfile_path)
+        nwbfile = read_nwb(nwbfile_path)
+        behavior_module = nwbfile.processing["behavior"]
+
+        events_table = nwbfile.get_events_table("Test1")
+        assert len(events_table.id) == 6
+        assert tuple(events_table.colnames) == (
+            "timestamp",
+            "event_type",
+            "subject",
+            "comment",
+            "modifier_groom_1",
+            "modifier_walk_1",
+            "duration",
+        )
+        # The whole coding scheme reaches the catalogue, including behaviors nothing was scored against.
+        assert len(behavior_module["Ethogram"].to_dataframe()) == 11
+        assert len(behavior_module["Test1Bouts"].to_dataframe()) == 3
 
 
-class TestBORISModifierSlots(BORISEventsRoundTrip):
+class TestBORISModifierSlots(BORISRoundTrip):
     """All three modifier slot types. Every behavior scored here is a point behavior, so no bouts."""
 
     file_path = (
@@ -167,10 +184,30 @@ class TestBORISModifierSlots(BORISEventsRoundTrip):
 
     interface_kwargs = dict(file_path=file_path, observation_name="1")
 
-    expected_table_name = "Observation1"
-    expected_event_count = 4
-    expected_bout_count = 0
-    expected_catalogue_size = 9
+    def check_read_nwb(self, nwbfile_path: str):
+        super().check_read_nwb(nwbfile_path=nwbfile_path)
+        nwbfile = read_nwb(nwbfile_path)
+        behavior_module = nwbfile.processing["behavior"]
+
+        events_table = nwbfile.get_events_table("Observation1")
+        assert len(events_table.id) == 4
+        assert tuple(events_table.colnames) == (
+            "timestamp",
+            "event_type",
+            "subject",
+            "comment",
+            "modifier_a_x",
+            "modifier_many_modifiers_set_1",
+            "modifier_2_sets_set_1",
+            "modifier_2_sets_set_2",
+            "modifier_multiple_modif_set_1",
+            "modifier_numeric_numeric_modif",
+            "duration",
+        )
+        # The whole coding scheme reaches the catalogue, including behaviors nothing was scored against.
+        assert len(behavior_module["Ethogram"].to_dataframe()) == 9
+        # Nothing durative was scored, so there is no interval table to write.
+        assert "Observation1Bouts" not in behavior_module.data_interfaces
 
     def run_custom_checks(self):
         """The recorded forms of the three slot types, each answer in the column of its own slot."""
@@ -180,16 +217,19 @@ class TestBORISModifierSlots(BORISEventsRoundTrip):
         table = nwbfile.get_events_table("Observation1").to_dataframe().set_index("event_type")
 
         # A single selection and a free numeric each answer one slot.
-        assert table.loc["many modifiers", "modifier_set_1"] == "3"
-        assert table.loc["numeric", "modifier_numeric_modif"] == "789"
+        assert table.loc["many modifiers", "modifier_many_modifiers_set_1"] == "3"
+        assert table.loc["numeric", "modifier_numeric_numeric_modif"] == "789"
         # A multiple selection is several answers to *one* slot, so the comma stays inside one column.
-        assert table.loc["multiple modif", "modifier_set_1"] == "1,2"
+        assert table.loc["multiple modif", "modifier_multiple_modif_set_1"] == "1,2"
         # Two slots are two answers, which is what the split is for: the "|" does not survive.
-        assert table.loc["2 sets", "modifier_set_1"] == "2"
-        assert table.loc["2 sets", "modifier_set_2"] == "3"
-        # A behavior that declares no such slot writes an empty cell, not the neighbour's answer and
-        # not a NaN, which could not share a text column with it.
-        assert table.loc["numeric", "modifier_set_1"] == ""
+        assert table.loc["2 sets", "modifier_2_sets_set_1"] == "2"
+        assert table.loc["2 sets", "modifier_2_sets_set_2"] == "3"
+        # A column is keyed on the behavior as well as the slot, so `2 sets` and `multiple modif` both
+        # declaring a slot called `set 1` get a column each rather than sharing two vocabularies. A
+        # behavior writes an empty cell in a column it does not own, never a NaN, which could not share
+        # a text column with the answers.
+        assert table.loc["numeric", "modifier_2_sets_set_1"] == ""
+        assert table.loc["2 sets", "modifier_multiple_modif_set_1"] == ""
 
         # The catalogue carries the scheme half: which columns a behavior uses and what they may hold.
         catalogue = nwbfile.processing["behavior"]["Ethogram"].to_dataframe().set_index("behavior")
@@ -205,7 +245,7 @@ class TestBORISModifierSlots(BORISEventsRoundTrip):
         assert list(catalogue.loc["p", "modifiers"]) == []
 
 
-class TestBORISMultiSubject(BORISEventsRoundTrip):
+class TestBORISMultiSubject(BORISRoundTrip):
     """One observation carrying events from two named subjects, which is why subject is a column."""
 
     file_path = (
@@ -217,10 +257,27 @@ class TestBORISMultiSubject(BORISEventsRoundTrip):
 
     interface_kwargs = dict(file_path=file_path, observation_name="observation #1")
 
-    expected_table_name = "Observation1"
-    expected_event_count = 4
-    expected_bout_count = 4
-    expected_catalogue_size = 5
+    def check_read_nwb(self, nwbfile_path: str):
+        super().check_read_nwb(nwbfile_path=nwbfile_path)
+        nwbfile = read_nwb(nwbfile_path)
+        behavior_module = nwbfile.processing["behavior"]
+
+        events_table = nwbfile.get_events_table("Observation1")
+        assert len(events_table.id) == 4
+        assert tuple(events_table.colnames) == (
+            "timestamp",
+            "event_type",
+            "subject",
+            "comment",
+            "modifier_q_modif_1",
+            "modifier_r_modif_1",
+            "modifier_m_modif_1",
+            "modifier_m_modif_2",
+            "duration",
+        )
+        # The whole coding scheme reaches the catalogue, including behaviors nothing was scored against.
+        assert len(behavior_module["Ethogram"].to_dataframe()) == 5
+        assert len(behavior_module["Observation1Bouts"].to_dataframe()) == 4
 
     def run_custom_checks(self):
         interface = BORISInterface(file_path=TestBORISMultiSubject.file_path, observation_name="observation #1")
@@ -231,17 +288,32 @@ class TestBORISMultiSubject(BORISEventsRoundTrip):
         assert set(table["subject"]) == {"subject1", "subject2"}
 
 
-class TestBORISUntidyModifiers(BORISEventsRoundTrip):
+class TestBORISUntidyModifiers(BORISRoundTrip):
     """Untidy declared values and the literal `None` token for a slot nobody answered."""
 
     file_path = BORIS_PROJECTS_PATH / "version_7_0" / "untidy_modifier_values" / "whitespace_and_the_none_token.boris"
 
     interface_kwargs = dict(file_path=file_path, observation_name="test1 live")
 
-    expected_table_name = "Test1Live"
-    expected_event_count = 4
-    expected_bout_count = 0
-    expected_catalogue_size = 2
+    def check_read_nwb(self, nwbfile_path: str):
+        super().check_read_nwb(nwbfile_path=nwbfile_path)
+        nwbfile = read_nwb(nwbfile_path)
+        behavior_module = nwbfile.processing["behavior"]
+
+        events_table = nwbfile.get_events_table("Test1Live")
+        assert len(events_table.id) == 4
+        assert tuple(events_table.colnames) == (
+            "timestamp",
+            "event_type",
+            "subject",
+            "comment",
+            "modifier_p_test_1",
+            "modifier_p_test_2",
+        )
+        # The whole coding scheme reaches the catalogue, including behaviors nothing was scored against.
+        assert len(behavior_module["Ethogram"].to_dataframe()) == 2
+        # Nothing durative was scored, so there is no interval table to write.
+        assert "Test1LiveBouts" not in behavior_module.data_interfaces
 
     def run_custom_checks(self):
         interface = BORISInterface(file_path=TestBORISUntidyModifiers.file_path, observation_name="test1 live")
@@ -251,8 +323,8 @@ class TestBORISUntidyModifiers(BORISEventsRoundTrip):
         # The coder's whitespace is preserved, since the values are free text somebody typed and
         # normalizing them here would invent data. The `None` token is not a value, though: it is what
         # BORIS writes for a slot nobody answered, so it reads as unanswered rather than as the string.
-        assert list(table["modifier_test_1"]) == ["a   ", "a   ", "", ""]
-        assert list(table["modifier_test_2"]) == ["c ", "", "111", "c "]
+        assert list(table["modifier_p_test_1"]) == ["a   ", "a   ", "", ""]
+        assert list(table["modifier_p_test_2"]) == ["c ", "", "111", "c "]
         # The declared menu reaches the catalogue with the keyboard shortcut stripped, as BORIS strips it
         # when recording, so "a    (a)" is declared and "a   " is what both the menu and the cell hold.
         catalogue = nwbfile.processing["behavior"]["Ethogram"].to_dataframe().set_index("behavior")
@@ -261,7 +333,7 @@ class TestBORISUntidyModifiers(BORISEventsRoundTrip):
         assert "duration" not in table.columns
 
 
-class TestBORISTimeOffsetAndUndeclaredCodes(BORISEventsRoundTrip):
+class TestBORISTimeOffsetAndUndeclaredCodes(BORISRoundTrip):
     """The generated fixture: a non-zero time offset, event comments, and codes the ethogram dropped.
 
     Its three cases come from real files that carry no licence, so the layouts are copied and the
@@ -275,11 +347,26 @@ class TestBORISTimeOffsetAndUndeclaredCodes(BORISEventsRoundTrip):
 
     interface_kwargs = dict(file_path=file_path, observation_name="positive offset")
 
-    expected_table_name = "PositiveOffset"
-    #: Four `Foraging` rows the reader cannot type, one `Wake - Alert` bout, one `Freeze`.
-    expected_event_count = 6
-    expected_bout_count = 1
-    expected_catalogue_size = 5
+    def check_read_nwb(self, nwbfile_path: str):
+        super().check_read_nwb(nwbfile_path=nwbfile_path)
+        nwbfile = read_nwb(nwbfile_path)
+        behavior_module = nwbfile.processing["behavior"]
+
+        events_table = nwbfile.get_events_table("PositiveOffset")
+        assert len(events_table.id) == 6
+        assert tuple(events_table.colnames) == (
+            "timestamp",
+            "event_type",
+            "subject",
+            "comment",
+            "modifier_foraging_caching_substrate",
+            "stop_comment",
+            "modifier_foraging_1",
+            "duration",
+        )
+        # The whole coding scheme reaches the catalogue, including behaviors nothing was scored against.
+        assert len(behavior_module["Ethogram"].to_dataframe()) == 5
+        assert len(behavior_module["PositiveOffsetBouts"].to_dataframe()) == 1
 
     def check_extracted_metadata(self, metadata: dict):
         # The code is free text and stays verbatim as the identifier, accent and slash included.
@@ -432,17 +519,17 @@ def test_unnamed_modifier_slot_falls_back_to_its_position():
     interface.add_to_nwbfile(nwbfile=nwbfile)
 
     table = nwbfile.get_events_table("Id2").to_dataframe().set_index("event_type")
-    assert list(table.loc["walk", "modifier_1"]) == ["quadrupedal", "quadrupedal"]
-    # `run` declares no slot at all, so it writes an empty cell in the column `walk` needs.
-    assert table.loc["run", "modifier_1"] == ""
+    assert list(table.loc["walk", "modifier_walk_1"]) == ["quadrupedal", "quadrupedal"]
+    # `run` declares no slot at all, so it writes an empty cell in the column `walk` owns.
+    assert table.loc["run", "modifier_walk_1"] == ""
 
     # This observation is also the one where a bout closes on a different answer than it opened with, so
     # the closing row earns columns of its own. `walk` opens on `quadrupedal` and closes on the `None`
     # token, which reads as the slot being cleared rather than as the string.
-    assert list(table.loc["walk", "stop_modifier_1"]) == ["", ""]
+    assert list(table.loc["walk", "stop_modifier_walk_1"]) == ["", ""]
     # The interval view carries the same columns, so a bout is described one way and not two.
     bouts = nwbfile.processing["behavior"]["Id2Bouts"].to_dataframe().set_index("label")
-    assert list(bouts.loc["walk", "modifier_1"]) == ["quadrupedal", "quadrupedal"]
+    assert list(bouts.loc["walk", "modifier_walk_1"]) == ["quadrupedal", "quadrupedal"]
 
 
 def test_observation_without_events_writes_the_scheme():
@@ -510,10 +597,10 @@ def test_behaviors_can_be_routed_into_separate_tables():
     numeric = nwbfile.get_events_table("Observation1Numeric")
     # A behavior's own table carries its own slots and no others.
     assert {name for name in two_sets.colnames if name.startswith("modifier_")} == {
-        "modifier_set_1",
-        "modifier_set_2",
+        "modifier_2_sets_set_1",
+        "modifier_2_sets_set_2",
     }
-    assert {name for name in numeric.colnames if name.startswith("modifier_")} == {"modifier_numeric_modif"}
+    assert {name for name in numeric.colnames if name.startswith("modifier_")} == {"modifier_numeric_numeric_modif"}
 
 
 def test_several_observations_of_one_project_share_the_catalogue():
