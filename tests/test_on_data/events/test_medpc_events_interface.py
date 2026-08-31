@@ -611,3 +611,135 @@ class TestPackedRelativeMode(MedPCEventsInterfaceMixin):
         nwbfile = read_nwb(nwbfile_path)
         assert np.allclose(nwbfile.get_events_table("LeverPress")["timestamp"][:3], [6.4, 7.6, 14.8])
         nwbfile.read_io.close()
+
+
+class TestEncodingEdgeCases:
+    """Encodings and error paths that no published file covers, so each is written here.
+
+    MedPC records neither the unit the program divided by, the resolution of the box's clock, nor whether a
+    stored value is elapsed or an interval, and every wrong reading of those decodes without error. The cases
+    below are the ones the files on gin cannot exercise: units nothing published uses, a `DISKFORMAT` that
+    prints no decimals, and both sides of the check that decides whether a pooled array's order is a time
+    order.
+    """
+
+    SESSION_HEADER = {"Start Date": "04/10/19", "Start Time": "12:36:13"}
+
+    @staticmethod
+    def write_medpc_file(file_path, arrays: dict[str, list[float]], columns: int = 5, decimals: int = 3) -> None:
+        """Write a MED-PC IV annotated file holding one session and the given arrays.
+
+        ``decimals`` is `DISKFORMAT`'s second half, the digits printed after the decimal point. It is what fixes
+        how many digits a fraction-packed event code occupies, so a test that wants two-digit codes writes two.
+        """
+        lines = [
+            r"File: C:\MED-PC IV\DATA\!2019-04-10_12h36m.Subject TEST-01",
+            "",
+            "",
+            "Start Date: 04/10/19",
+            "End Date: 04/10/19",
+            "Subject: TEST-01",
+            "Experiment: ",
+            "Group: 1",
+            "Box: 1",
+            "Start Time: 12:36:13",
+            "End Time: 13:38:19",
+            "MSN: TEST_PROGRAM",
+        ]
+        for name, values in sorted(arrays.items()):
+            lines.append(f"{name}:")
+            for start in range(0, len(values), columns):
+                row = "".join(f"{value:13.{decimals}f}" for value in values[start : start + columns])
+                lines.append(f"{start:6d}:{row}")
+        file_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    @pytest.mark.parametrize(
+        "time_unit, expected",
+        [
+            ("deciseconds", [15.0, 22.5, 30.0]),
+            ("milliseconds", [0.15, 0.225, 0.3]),
+        ],
+    )
+    def test_a_scaled_unit(self, tmp_path, time_unit, expected):
+        # Neither unit appears in any file on gin, which between them cover seconds, centiseconds and raw ticks.
+        path = tmp_path / "scaled.txt"
+        self.write_medpc_file(path, {"A": [150.0, 225.0, 300.0]})
+
+        interface = MedPCArrayEventsInterface(
+            file_path=path,
+            session_header=self.SESSION_HEADER,
+            event_configuration={"A": None},
+            time_unit=time_unit,
+        )
+
+        assert np.allclose(interface.get_event_times("A"), expected)
+
+    def test_durations_take_the_same_unit_as_the_onsets(self, tmp_path):
+        # The only published onset-and-duration pair is in seconds, a scale factor of one, which cannot show
+        # whether the durations are scaled at all.
+        path = tmp_path / "durative.txt"
+        self.write_medpc_file(path, {"G": [100.0, 300.0], "E": [50.0, 25.0]})
+
+        interface = MedPCArrayEventsInterface(
+            file_path=path,
+            session_header=self.SESSION_HEADER,
+            event_configuration={"G": {"duration": "E"}},
+            time_unit="centiseconds",
+        )
+        nwbfile = mock_NWBFile()
+        metadata = interface.get_metadata()
+        metadata["Events"]["medpc"]["event_types"]["G"]["event_name"] = "port_entries"
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+        port_entries = nwbfile.get_events_table("PortEntries")
+        assert np.allclose(port_entries["timestamp"][:], [1.0, 3.0])
+        assert np.allclose(port_entries["duration"][:], [0.5, 0.25])
+
+    def test_a_file_printing_no_decimals_cannot_hold_a_packed_code(self, tmp_path):
+        # `DISKFORMAT = 13` prints no decimals at all, which is the commonest setting of the 361 programs
+        # surveyed, and is why those programs pack the code into the leading digits instead. Without this the
+        # file would read as a single event type holding every event.
+        path = tmp_path / "no_decimals.txt"
+        self.write_medpc_file(path, {"A": [10602.0, 10900.0]}, decimals=0)
+
+        interface = MedPCPackedEventsInterface(file_path=path, session_header=self.SESSION_HEADER, events_variable="A")
+
+        with pytest.raises(ValueError, match="print no digits after the decimal point"):
+            interface.get_event_type_source_ids()
+
+    def test_events_grouped_by_type_are_not_read_as_backwards(self, tmp_path):
+        # A program may write every event of one type before the next, so the pooled array is not sorted even
+        # though each type's own onsets climb. Every published packed file interleaves its types, so nothing on
+        # gin covers this. The order check is per type for exactly this reason.
+        path = tmp_path / "grouped.txt"
+        self.write_medpc_file(path, {"B": [1.1, 2.1, 3.1, 1.2, 2.2]})
+
+        interface = MedPCPackedEventsInterface(file_path=path, session_header=self.SESSION_HEADER, events_variable="B")
+
+        assert np.allclose(interface.get_event_times("100"), [1.0, 2.0, 3.0])
+        assert np.allclose(interface.get_event_times("200"), [1.0, 2.0])
+
+    def test_interleaved_events_out_of_order_are_caught(self, tmp_path):
+        # The counterpart of the grouped case. Here the types alternate, so the program was writing events as
+        # they happened and the pooled order is a time order. A program that times two of its event types
+        # differently and stores them in one array shows up exactly like this, and only the pooled check
+        # catches it.
+        path = tmp_path / "interleaved.txt"
+        self.write_medpc_file(path, {"B": [1.003, 75.001, 78.001, 17.003]})
+
+        interface = MedPCPackedEventsInterface(file_path=path, session_header=self.SESSION_HEADER, events_variable="B")
+
+        with pytest.raises(ValueError, match="run backwards"):
+            interface.get_event_type_source_ids()
+
+    def test_a_resolution_of_zero_raises(self, tmp_path):
+        path = tmp_path / "zero_rate.txt"
+        self.write_medpc_file(path, {"A": [1.0]})
+
+        with pytest.raises(ValueError, match="is not a length of time"):
+            MedPCArrayEventsInterface(
+                file_path=path,
+                session_header=self.SESSION_HEADER,
+                event_configuration={"A": None},
+                time_unit=0.0,
+            )
