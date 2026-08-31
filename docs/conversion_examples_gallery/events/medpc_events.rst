@@ -187,6 +187,16 @@ read: it names the codes you know, and one you leave out is still read and takes
     >>> nwbfile_path = output_folder / "medpc_coded.nwb"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
+Not supported yet
+~~~~~~~~~~~~~~~~~
+
+Some programs pack the code into the **leading** digits instead of the decimals, by adding a large constant to
+the time (``^PeckLeft = 10000`` with ``set x(y) = ^PeckLeft + Btime/1"``), so a left peck at 64.54 s is stored
+as ``10064.540``. A survey of about 7,000 published files found the program describing this convention but not
+one file written by it, so NeuroConv does not read it. If you have such files, please
+`open an issue <https://github.com/catalystneuro/neuroconv/issues>`_ with the MSN program and a sample file and
+it can be supported.
+
 .. seealso::
 
     :doc:`../behavior/medpc` is the deprecated interface that writes the same events as ``ndx-events`` objects into

@@ -141,23 +141,6 @@ class TestRelativeTimes:
 class TestCodePosition:
     """A program packs the event's code into the value from either end."""
 
-    def test_the_code_in_the_leading_digits(self, tmp_path):
-        # `^PeckLeft=10000` with `set x(y)=^PeckLeft+Btime/1"`, documented as `aabbbb.bbb` where `aa` is the code
-        # and the rest is the time in seconds.
-        path = tmp_path / "leading.txt"
-        write_medpc_file(path, {"A": [10064.540, 20101.250, 10182.000]})
-
-        interface = MedPCCodedEventsInterface(
-            file_path=path,
-            session_header=SESSION_HEADER,
-            events_variable="A",
-            event_code_factor=10000,
-            event_code_position="leading",
-        )
-
-        assert np.allclose(interface.get_event_times("1"), [64.54, 182.0])
-        assert np.allclose(interface.get_event_times("2"), [101.25])
-
     def test_the_printed_width_fixes_the_code_width(self, tmp_path):
         # `DISKFORMAT` decides how many digits print after the point, and those digits are the code. A file
         # printing two gives two-digit identifiers without anything being stated.
@@ -178,28 +161,6 @@ class TestCodePosition:
 
         with pytest.raises(ValueError, match="print no digits after the decimal point"):
             interface.get_event_type_source_ids()
-
-    def test_a_factor_in_fraction_position_is_refused(self, tmp_path):
-        # The file states it, so stating it again is a misunderstanding rather than a harmless extra.
-        path = tmp_path / "a.txt"
-        write_medpc_file(path, {"A": [1.011]})
-
-        with pytest.raises(ValueError, match="not needed in fraction position"):
-            MedPCCodedEventsInterface(
-                file_path=path, session_header=SESSION_HEADER, events_variable="A", event_code_factor=1000
-            )
-
-    def test_leading_position_without_a_factor_raises(self, tmp_path):
-        path = tmp_path / "a.txt"
-        write_medpc_file(path, {"A": [10064.540]})
-
-        with pytest.raises(ValueError, match="`event_code_factor` is required"):
-            MedPCCodedEventsInterface(
-                file_path=path,
-                session_header=SESSION_HEADER,
-                events_variable="A",
-                event_code_position="leading",
-            )
 
 
 class TestCompanionCodeArray:
@@ -230,20 +191,6 @@ class TestCompanionCodeArray:
         )
 
         assert set(interface.get_event_type_source_ids()) == {"3.1", "3.2"}
-
-    def test_packing_arguments_beside_a_code_array_raise(self, tmp_path):
-        # Both say where the code is, so passing both means one of them is a misunderstanding.
-        path = tmp_path / "both.txt"
-        write_medpc_file(path, {"B": [1.0], "C": [1.0]})
-
-        with pytest.raises(ValueError, match="not both"):
-            MedPCCodedEventsInterface(
-                file_path=path,
-                session_header=SESSION_HEADER,
-                events_variable="B",
-                event_type_variable="C",
-                event_code_factor=1000,
-            )
 
     def test_a_unit_per_event_type(self, tmp_path):
         # A program can time two event types differently and store them in one array. Nothing in the file says
