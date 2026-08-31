@@ -114,7 +114,7 @@ class TestRelativeTimes:
         interface = MedPCCodedEventsInterface(
             file_path=path,
             session_header=SESSION_HEADER,
-            timestamps_variable="C",
+            events_variable="C",
             time_unit="centiseconds",
             relative_mode=True,
         )
@@ -130,7 +130,7 @@ class TestRelativeTimes:
         interface = MedPCCodedEventsInterface(
             file_path=path,
             session_header=SESSION_HEADER,
-            timestamps_variable="C",
+            events_variable="C",
             time_unit="centiseconds",
         )
 
@@ -150,7 +150,7 @@ class TestCodePosition:
         interface = MedPCCodedEventsInterface(
             file_path=path,
             session_header=SESSION_HEADER,
-            timestamps_variable="A",
+            events_variable="A",
             event_code_factor=10000,
             event_code_position="leading",
         )
@@ -164,7 +164,7 @@ class TestCodePosition:
         path = tmp_path / "two_digits.txt"
         write_medpc_file(path, {"A": [1.10, 2.20]}, decimals=2)
 
-        interface = MedPCCodedEventsInterface(file_path=path, session_header=SESSION_HEADER, timestamps_variable="A")
+        interface = MedPCCodedEventsInterface(file_path=path, session_header=SESSION_HEADER, events_variable="A")
 
         assert set(interface.get_event_type_source_ids()) == {"10", "20"}
 
@@ -174,7 +174,7 @@ class TestCodePosition:
         path = tmp_path / "no_decimals.txt"
         write_medpc_file(path, {"A": [10602.0, 10900.0]}, decimals=0)
 
-        interface = MedPCCodedEventsInterface(file_path=path, session_header=SESSION_HEADER, timestamps_variable="A")
+        interface = MedPCCodedEventsInterface(file_path=path, session_header=SESSION_HEADER, events_variable="A")
 
         with pytest.raises(ValueError, match="print no digits after the decimal point"):
             interface.get_event_type_source_ids()
@@ -186,7 +186,7 @@ class TestCodePosition:
 
         with pytest.raises(ValueError, match="not needed in fraction position"):
             MedPCCodedEventsInterface(
-                file_path=path, session_header=SESSION_HEADER, timestamps_variable="A", event_code_factor=1000
+                file_path=path, session_header=SESSION_HEADER, events_variable="A", event_code_factor=1000
             )
 
     def test_leading_position_without_a_factor_raises(self, tmp_path):
@@ -197,7 +197,7 @@ class TestCodePosition:
             MedPCCodedEventsInterface(
                 file_path=path,
                 session_header=SESSION_HEADER,
-                timestamps_variable="A",
+                events_variable="A",
                 event_code_position="leading",
             )
 
@@ -213,7 +213,7 @@ class TestCompanionCodeArray:
         interface = MedPCCodedEventsInterface(
             file_path=path,
             session_header=SESSION_HEADER,
-            timestamps_variable="B",
+            events_variable="B",
             event_type_variable="C",
         )
 
@@ -226,7 +226,7 @@ class TestCompanionCodeArray:
         write_medpc_file(path, {"B": [1.0, 2.0], "C": [3.1, 3.2]})
 
         interface = MedPCCodedEventsInterface(
-            file_path=path, session_header=SESSION_HEADER, timestamps_variable="B", event_type_variable="C"
+            file_path=path, session_header=SESSION_HEADER, events_variable="B", event_type_variable="C"
         )
 
         assert set(interface.get_event_type_source_ids()) == {"3.1", "3.2"}
@@ -240,7 +240,7 @@ class TestCompanionCodeArray:
             MedPCCodedEventsInterface(
                 file_path=path,
                 session_header=SESSION_HEADER,
-                timestamps_variable="B",
+                events_variable="B",
                 event_type_variable="C",
                 event_code_factor=1000,
             )
@@ -254,7 +254,7 @@ class TestCompanionCodeArray:
         interface = MedPCCodedEventsInterface(
             file_path=path,
             session_header=SESSION_HEADER,
-            timestamps_variable="B",
+            events_variable="B",
             event_type_variable="C",
             time_unit={"1": "seconds", "3": "decaseconds"},
         )
@@ -269,7 +269,7 @@ class TestCompanionCodeArray:
         write_medpc_file(path, {"B": [19.8, 2.62, 27.0, 2.94, 30.1], "C": [1.0, 3.0, 1.0, 3.0, 1.0]})
 
         interface = MedPCCodedEventsInterface(
-            file_path=path, session_header=SESSION_HEADER, timestamps_variable="B", event_type_variable="C"
+            file_path=path, session_header=SESSION_HEADER, events_variable="B", event_type_variable="C"
         )
 
         with pytest.raises(ValueError, match="run backwards"):
@@ -282,7 +282,7 @@ class TestCompanionCodeArray:
         interface = MedPCCodedEventsInterface(
             file_path=path,
             session_header=SESSION_HEADER,
-            timestamps_variable="B",
+            events_variable="B",
             event_type_variable="C",
             time_unit={"1": "seconds"},
         )
@@ -295,7 +295,7 @@ class TestCompanionCodeArray:
         write_medpc_file(path, {"B": [1.0, 2.0, 3.0], "C": [1.0, 2.0]})
 
         interface = MedPCCodedEventsInterface(
-            file_path=path, session_header=SESSION_HEADER, timestamps_variable="B", event_type_variable="C"
+            file_path=path, session_header=SESSION_HEADER, events_variable="B", event_type_variable="C"
         )
 
         with pytest.raises(ValueError, match="not one code per event"):
@@ -340,7 +340,7 @@ def test_events_grouped_by_type_are_not_read_as_backwards(tmp_path):
     write_medpc_file(path, {"B": [1.0, 2.0, 3.0, 1.5, 2.5], "C": [1.0, 1.0, 1.0, 2.0, 2.0]})
 
     interface = MedPCCodedEventsInterface(
-        file_path=path, session_header=SESSION_HEADER, timestamps_variable="B", event_type_variable="C"
+        file_path=path, session_header=SESSION_HEADER, events_variable="B", event_type_variable="C"
     )
 
     assert np.allclose(interface.get_event_times("1"), [1.0, 2.0, 3.0])
@@ -355,7 +355,7 @@ def test_interleaved_events_out_of_order_are_caught(tmp_path):
     write_medpc_file(path, {"B": [1.9, 75.1, 78.7, 17.2], "C": [3.0, 1.0, 1.0, 3.0]})
 
     interface = MedPCCodedEventsInterface(
-        file_path=path, session_header=SESSION_HEADER, timestamps_variable="B", event_type_variable="C"
+        file_path=path, session_header=SESSION_HEADER, events_variable="B", event_type_variable="C"
     )
 
     with pytest.raises(ValueError, match="run backwards"):

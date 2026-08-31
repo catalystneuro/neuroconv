@@ -568,7 +568,7 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
         file_path: FilePath,
         *,
         session_header: dict,
-        timestamps_variable: str,
+        events_variable: str,
         event_type_variable: str | None = None,
         event_code_factor: int | None = None,
         event_code_position: Literal["fraction", "leading"] | None = None,
@@ -593,13 +593,15 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
             ex. {"Start Date": "04/10/19", "Start Time": "12:36:13"} where one animal ran on several days and the
             date, or the date and the time where it ran twice in a day, is what separates them
             ex. {"Start Date": "09/25/15", "Subject": "ML03"} where a cohort's animals were pooled into one file
-        timestamps_variable : str
-            The MedPC variable holding the event times (ex. 'A'). The MSN program picks it, so it is stated
+        events_variable : str
+            The MedPC variable holding every event of the session (ex. 'A'). A file has up to 26 arrays and
+            only one of them is this; the rest hold counters, schedules, flags and session parameters, and
+            nothing in the file's syntax tells them apart. The MSN program picks the letter, so it is stated
             rather than defaulted: 'A' is what the readers of this convention happen to use, not something the
             format fixes.
         event_type_variable : str, optional
             The MedPC variable holding one event code per event, where the program wrote the codes into their own
-            array instead of packing them into the times. When given, ``timestamps_variable`` is read as plain
+            array instead of packing them into the times. When given, ``events_variable`` is read as plain
             times and nothing is unpacked, so ``event_code_factor`` and ``event_code_position`` do not apply.
             ex. 'C', beside timestamps in 'B'
         event_code_factor : int, optional
@@ -659,7 +661,7 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
         super().__init__(
             file_path=file_path,
             session_header=session_header,
-            timestamps_variable=timestamps_variable,
+            events_variable=events_variable,
             event_type_variable=event_type_variable,
             event_code_factor=event_code_factor,
             event_code_position=event_code_position,
@@ -672,20 +674,20 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
 
     def _read_events(self) -> dict[str, _EventsData]:
         """Read the one time array, recover each event's code, and group the times by it."""
-        timestamps_variable = self.source_data["timestamps_variable"]
+        events_variable = self.source_data["events_variable"]
         event_type_variable = self.source_data["event_type_variable"]
 
-        to_read = [timestamps_variable] + ([event_type_variable] if event_type_variable else [])
+        to_read = [events_variable] + ([event_type_variable] if event_type_variable else [])
         session_dict = self._read_session(
             medpc_name_to_info_dict={name: {"name": name, "is_array": True} for name in to_read}
         )
-        values = self._get_variable_array(session_dict=session_dict, medpc_name=timestamps_variable)
+        values = self._get_variable_array(session_dict=session_dict, medpc_name=events_variable)
 
         if event_type_variable is not None:
             codes = self._get_variable_array(session_dict=session_dict, medpc_name=event_type_variable)
             if len(codes) != len(values):
                 raise ValueError(
-                    f"The times in '{timestamps_variable}' number {len(values)} but the codes in "
+                    f"The times in '{events_variable}' number {len(values)} but the codes in "
                     f"'{event_type_variable}' number {len(codes)}, so they are not one code per event."
                 )
             raw_times = values
@@ -703,7 +705,7 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
             timestamps[of_this_type] = self._scale_to_seconds(
                 raw_times[of_this_type], time_unit=self._time_unit_for(event_type_source_id)
             )
-        self._validate_within_the_session(times=timestamps, medpc_name=timestamps_variable)
+        self._validate_within_the_session(times=timestamps, medpc_name=events_variable)
 
         # Every code found becomes an event type, in the order the codes first occur, whether or not the legend
         # names it: the legend gives a code a name, and a file is not read less completely for lacking one.
@@ -712,14 +714,14 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
         # construction, so its order says nothing. One that interleaves the types is writing them as they
         # happened, and then the pooled order is a time order and has to hold.
         if not _is_grouped_by_type(identifiers):
-            self._validate_non_decreasing(times=timestamps, medpc_name=timestamps_variable)
+            self._validate_non_decreasing(times=timestamps, medpc_name=events_variable)
         for event_type_source_id in dict.fromkeys(identifiers.tolist()):
             of_this_type = timestamps[identifiers == event_type_source_id]
             # Checked per type as well, since no single type's onsets can run backwards whichever way the
             # program wrote them out.
             self._validate_non_decreasing(
                 times=of_this_type,
-                medpc_name=timestamps_variable,
+                medpc_name=events_variable,
                 event_type_source_id=event_type_source_id,
             )
             events_data_dict[event_type_source_id] = _EventsData(
@@ -775,10 +777,10 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
         """
         if self.source_data["event_code_position"] == "leading":
             return self.source_data["event_code_factor"]
-        decimals = self._printed_decimals(self.source_data["timestamps_variable"])
+        decimals = self._printed_decimals(self.source_data["events_variable"])
         if decimals == 0:
             raise ValueError(
-                f"The values of '{self.source_data['timestamps_variable']}' print no digits after the decimal "
+                f"The values of '{self.source_data['events_variable']}' print no digits after the decimal "
                 "point, so they cannot carry a code packed into the fraction. A program whose `DISKFORMAT` "
                 "leaves no decimals packs the code into the leading digits instead, which is "
                 "`event_code_position='leading'`, or writes the codes into their own array, which is "

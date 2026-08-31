@@ -169,7 +169,7 @@ read: it names the codes you know, and one you leave out is still read and takes
     >>> interface = MedPCCodedEventsInterface(
     ...     file_path=file_path,
     ...     session_header={"Start Date": "09/25/15", "Subject": "ML03"},
-    ...     timestamps_variable="A",  # the array this program packs its events into
+    ...     events_variable="A",  # the array this program packs its events into
     ...     time_unit=0.002,  # a 2 ms system, so each stored tick is worth 0.002 s
     ... )
     >>>
