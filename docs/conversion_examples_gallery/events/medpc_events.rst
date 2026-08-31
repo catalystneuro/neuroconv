@@ -10,15 +10,14 @@ only NeuroConv's core dependencies, but the ``medpc`` extra is available for a c
 
 Each event type is written as a ``pynwb.event.EventsTable`` into ``nwbfile.events``.
 
-Supported MedPC layouts
-~~~~~~~~~~~~~~~~~~~~~~~
+MedPC stores its variables under single letters, and the MSN program decides what each one holds, so open the
+file to see which of the two layouts below you have.
 
-MedPC stores its variables under single letters, and the MSN program decides what each one holds. NeuroConv
-supports the two ways a program can store events. Open the file to see which one you have.
+Each event type in its own variable
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Use :py:class:`~neuroconv.datainterfaces.events.medpc_events.medpceventsdatainterface.MedPCArrayEventsInterface`
-when the program gave each kind of event its own variable, so ``A`` holds the times of one event type and ``C``
-the times of another:
+The program gave each kind of event its own variable, so ``A`` holds the times of one event type and ``C`` the
+times of another. Nothing is packed into the values.
 
 .. code-block:: text
 
@@ -27,18 +26,7 @@ the times of another:
     C:
          0:      330.050      362.500      947.200     1232.100     1233.400
 
-Use :py:class:`~neuroconv.datainterfaces.events.medpc_events.medpceventsdatainterface.MedPCPackedEventsInterface`
-when the program put every event into a single variable, with the time before the decimal point and a code for
-the event type after it:
-
-.. code-block:: text
-
-    A:
-         0:    10602.001    10602.011    10602.051    10852.021    10900.001
-
-One array per event type
-~~~~~~~~~~~~~~~~~~~~~~~~
-
+Use :py:class:`~neuroconv.datainterfaces.events.medpc_events.medpceventsdatainterface.MedPCArrayEventsInterface`.
 Nothing in the file marks a variable as events, so ``event_configuration`` lists the ones that hold them and
 says how to read each.
 
@@ -120,10 +108,19 @@ codes in the metadata.
     >>> nwbfile_path = output_folder / "medpc_value_column.nwb"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
-One packed array
-~~~~~~~~~~~~~~~~
+Every event in one variable
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-``time_unit`` states what one stored value is worth, since the file does not record it. Every code in the
+The program put every event into a single variable, with the time before the decimal point and a code for the
+event type after it.
+
+.. code-block:: text
+
+    A:
+         0:    10602.001    10602.011    10602.051    10852.021    10900.001
+
+Use :py:class:`~neuroconv.datainterfaces.events.medpc_events.medpceventsdatainterface.MedPCPackedEventsInterface`.
+``time_unit`` states what one stored value is worth, since the file does not record it, and every code in the
 variable becomes an event type named after its digits, so a code you do not name is still read.
 
 .. code-block:: python
