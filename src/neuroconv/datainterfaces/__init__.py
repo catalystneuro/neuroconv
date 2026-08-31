@@ -9,6 +9,7 @@ from .behavior.lightningpose.lightningposedatainterface import (
 from .behavior.medpc.medpcdatainterface import MedPCInterface
 from .behavior.miniscope.miniscopedatainterface import MiniscopeBehaviorInterface
 from .behavior.miniscope.miniscopeheadorientationinterface import MiniscopeHeadOrientationInterface
+from .behavior.moseq.moseqkeypointsinterface import MoseqKeyPointsInterface
 from .behavior.neuralynx.neuralynx_nvt_interface import NeuralynxNvtInterface
 from .behavior.sleap.sleapdatainterface import SLEAPInterface
 from .behavior.vame.vamedatainterface import VameInterface
@@ -243,6 +244,7 @@ interface_list = [
     LightningPoseDataInterface,
     MedPCInterface,
     VameInterface,
+    MoseqKeyPointsInterface,
     # Text
     CsvTimeIntervalsInterface,
     ExcelTimeIntervalsInterface,
@@ -311,6 +313,7 @@ interfaces_by_category = dict(
         LightningPose=LightningPoseDataInterface,
         Vame=VameInterface,
         BORIS=BORISInterface,
+        MoseqKeyPoints=MoseqKeyPointsInterface,
         # Text
         CsvTimeIntervals=CsvTimeIntervalsInterface,
         ExcelTimeIntervals=ExcelTimeIntervalsInterface,

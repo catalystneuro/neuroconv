@@ -131,6 +131,7 @@ Behavioral segmentation
     :maxdepth: 1
 
     VAME <behavior/vame>
+    keypoint-MoSeq <behavior/moseq_keypoints>
 
 Behavior
 --------
