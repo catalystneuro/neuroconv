@@ -8,7 +8,9 @@ dependencies beyond the core ones.
 
     pip install "neuroconv[medpc_events]"
 
-Each event type is written as a ``pynwb.event.EventsTable`` into ``nwbfile.events``.
+Each event type is written as a ``pynwb.event.EventsTable`` into ``nwbfile.events``. How those types are
+named, described and grouped into tables is driven entirely by the editable events metadata. See
+:ref:`annotate_events_metadata`.
 
 Supported MedPC layouts
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -33,16 +35,6 @@ and its time in the integer part:
 
     A:
          0:    10602.001    10602.011    10602.051    10852.021    10900.001
-
-What a value is worth
-~~~~~~~~~~~~~~~~~~~~~
-
-A MedPC value is a time only once the program's choices are applied, and the file records none of them, so both
-interfaces take ``time_unit``, what one stored value is worth as a named unit or a number of seconds, and
-``relative_mode``, for a program that stored the interval since the previous event rather than the elapsed time.
-
-Get either wrong and the file still decodes, which is why both interfaces check the times they read for running
-backwards and against the session length the header states, and name the likely cause when they raise.
 
 One array per event type
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -70,6 +62,9 @@ One array per event type
     ...     file_path=file_path,
     ...     session_header=session_header,
     ...     event_configuration=event_configuration,
+    ...     # This program stored elapsed times in seconds, which is the default. A program that divided by
+    ...     # something else takes `time_unit`, and one that stored the interval since the previous event
+    ...     # rather than the elapsed time takes `relative_mode=True`. The file records neither.
     ... )
     >>>
     >>> # Extract what metadata we can from the source file, which includes the session's start time and its
@@ -145,6 +140,8 @@ it, so a code you say nothing about is still read and takes its digits as its na
     ...     session_header={"Start Date": "09/25/15", "Subject": "ML03"},
     ...     events_variable="A",  # the array this program packs its events into
     ...     time_unit=0.002,  # a 2 ms system, so each stored tick is worth 0.002 s
+    ...     # A wrong unit still decodes, so the times read are checked for running backwards and against
+    ...     # the session length the header states, and the error names the likely cause.
     ... )
     >>>
     >>> # Every code the array holds becomes an event type named after its digits, so naming them is the
