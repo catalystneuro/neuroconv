@@ -12,7 +12,7 @@
     "extra": "lightningpose"
   },
   "behavior/medpc.rst": {
-    "extra": "medpc"
+    "extra": "medpc_legacy"
   },
   "behavior/neuralynx_nvt.rst": {
     "extra": null,
@@ -44,6 +44,9 @@
   },
   "events/doric_events.rst": {
     "extra": "doric_events"
+  },
+  "events/medpc_events.rst": {
+    "extra": "medpc"
   },
   "events/npm_events.rst": {
     "extra": "npm_events"

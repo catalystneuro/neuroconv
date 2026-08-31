@@ -9,7 +9,7 @@ from neuroconv.basetemporalalignmentinterface import BaseTemporalAlignmentInterf
 from neuroconv.tools import get_package, nwb_helpers
 from neuroconv.utils import DeepDict
 
-from .medpc_helpers import read_medpc_file
+from .medpc_helpers import _read_medpc_file
 
 
 class MedPCInterface(BaseTemporalAlignmentInterface):
@@ -34,6 +34,11 @@ class MedPCInterface(BaseTemporalAlignmentInterface):
 
     This data is parsed by the MedPCInterface and added to the NWBFile as Events and IntervalSeries objects in the
     behavior module.
+
+    .. deprecated::
+        Use :class:`~neuroconv.datainterfaces.events.medpc_events.medpceventsdatainterface.MedPCArrayEventsInterface`,
+        which writes the same events as native ``pynwb.event.EventsTable`` objects into ``nwbfile.events``. This
+        interface will be removed in v0.12.0, and ``ndx-events`` leaves NeuroConv with it.
     """
 
     keywords = ("behavior",)
@@ -74,6 +79,18 @@ class MedPCInterface(BaseTemporalAlignmentInterface):
         verbose : bool, optional
             Whether to print verbose output, by default True
         """
+        warnings.warn(
+            "MedPCInterface is deprecated and will be removed in v0.12.0. Use "
+            "MedPCArrayEventsInterface, which reads the same files and writes their events as native "
+            "pynwb.event.EventsTable objects into nwbfile.events rather than as ndx-events Events and "
+            "IntervalSeries into the behavior processing module. Which arrays hold events is declared on that "
+            "interface instead of in metadata['MedPC'], an interval type states its durations array instead of "
+            "being written as an IntervalSeries. A file that packs its event codes into the time values is read "
+            "by MedPCPackedEventsInterface instead. See the CHANGELOG entry for the mapping between the two.",
+            FutureWarning,
+            stacklevel=2,
+        )
+
         # Handle deprecated positional arguments
         if args:
             parameter_names = [
@@ -127,7 +144,7 @@ class MedPCInterface(BaseTemporalAlignmentInterface):
 
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
-        session_dict = read_medpc_file(
+        session_dict = _read_medpc_file(
             file_path=self.source_data["file_path"],
             medpc_name_to_info_dict=self.source_data["metadata_medpc_name_to_info_dict"],
             session_conditions=self.source_data["session_conditions"],
@@ -165,7 +182,7 @@ class MedPCInterface(BaseTemporalAlignmentInterface):
         timestamps_dict: dict
             A dictionary mapping the names of the variables to the original medpc timestamps.
         """
-        timestamps_dict = read_medpc_file(
+        timestamps_dict = _read_medpc_file(
             file_path=self.source_data["file_path"],
             medpc_name_to_info_dict=medpc_name_to_info_dict,
             session_conditions=self.source_data["session_conditions"],
@@ -224,7 +241,9 @@ class MedPCInterface(BaseTemporalAlignmentInterface):
         metadata: dict,
     ) -> None:
 
-        ndx_events = get_package(package_name="ndx_events", installation_instructions="pip install ndx-events")
+        ndx_events = get_package(
+            package_name="ndx_events", installation_instructions='pip install "neuroconv[medpc_legacy]"'
+        )
         medpc_name_to_info_dict = metadata["MedPC"].get("medpc_name_to_info_dict", None)
         assert medpc_name_to_info_dict is not None, "medpc_name_to_info_dict must be provided in metadata"
         info_name_to_medpc_name = {
@@ -233,7 +252,7 @@ class MedPCInterface(BaseTemporalAlignmentInterface):
         for name in self.source_data["aligned_timestamp_names"]:
             medpc_name = info_name_to_medpc_name[name]
             medpc_name_to_info_dict.pop(medpc_name)
-        session_dict = read_medpc_file(
+        session_dict = _read_medpc_file(
             file_path=self.source_data["file_path"],
             medpc_name_to_info_dict=medpc_name_to_info_dict,
             session_conditions=self.source_data["session_conditions"],
