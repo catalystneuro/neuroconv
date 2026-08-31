@@ -5,7 +5,7 @@ import re
 import numpy as np
 import pytest
 from jsonschema.validators import Draft7Validator
-from pynwb import NWBHDF5IO
+from pynwb import NWBHDF5IO, read_nwb
 from pynwb.event import EventsTable
 from pynwb.testing.mock.file import mock_NWBFile
 
@@ -132,6 +132,47 @@ class TestMockEventsInterface:
         # Only the column that declares meanings earns a MeaningsTable: 'cue' writes its display labels
         # without one, and 'amplitude' writes raw values.
         assert set(events.meanings_tables.keys()) == {"outcome_meanings"}
+
+    def test_events_several_values_per_event(self):
+        # A payload field holding several values per event becomes a ragged column: an event tagged with
+        # two conditions at once, or a behavior scored with two qualifiers. Nothing in the metadata says
+        # "ragged"; the shape is read off the data, so there is no second place for it to disagree.
+        interface = MockEventsInterface(num_events=5, event_payload="several values")
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile)
+
+        events = nwbfile.get_events_table("Events")
+        assert set(events.colnames) == {"timestamp", "conditions"}
+        # A row with nothing to say holds an empty list, which is the only fill that means what the
+        # scalar fills mean for a one-value column.
+        assert [list(cell) for cell in events["conditions"][:]] == [
+            [],
+            ["go"],
+            ["go", "no_go"],
+            ["go", "no_go", "catch"],
+            [],
+        ]
+        # Relabelling applies per value rather than per cell, and the MeaningsTable targets the values
+        # underneath rather than the index that groups them into rows.
+        assert set(events.meanings_tables.keys()) == {"conditions_meanings"}
+        meanings = events.meanings_tables["conditions_meanings"]
+        assert meanings.target.name == "conditions"
+        assert list(meanings["value"][:]) == ["go", "no_go", "catch"]
+
+    def test_events_several_values_round_trip(self, tmp_path):
+        # The ragged column has to survive a real write, since the shape is what carries the distinction
+        # between one value and several and nothing else in the file states it.
+        interface = MockEventsInterface(num_events=4, event_payload="several values")
+        nwbfile_path = tmp_path / "ragged.nwb"
+        interface.run_conversion(nwbfile_path=nwbfile_path, overwrite=True)
+
+        events = read_nwb(nwbfile_path).get_events_table("Events")
+        assert [list(cell) for cell in events["conditions"][:]] == [
+            [],
+            ["go"],
+            ["go", "no_go"],
+            ["go", "no_go", "catch"],
+        ]
 
     def test_events_with_duration(self):
         # An event-with-duration type carries per-event durations, so the writer adds a `duration` column.
