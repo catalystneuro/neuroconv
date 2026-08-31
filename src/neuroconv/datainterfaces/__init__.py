@@ -1,5 +1,6 @@
 # Behavior
 from .behavior.audio.audiointerface import AudioInterface
+from .behavior.boris.borisdatainterface import BORISInterface
 from .behavior.deeplabcut.deeplabcutdatainterface import DeepLabCutInterface
 from .behavior.fictrac.fictracdatainterface import FicTracDataInterface
 from .behavior.lightningpose.lightningposedatainterface import (
@@ -135,7 +136,6 @@ from .text.csv.csvtimeintervalsinterface import CsvTimeIntervalsInterface
 from .text.excel.exceltimeintervalsinterface import ExcelTimeIntervalsInterface
 
 # Events
-from .events.boris.boriseventsdatainterface import BORISEventsInterface
 from .events.csv_events.csveventsdatainterface import CSVEventsInterface
 from .events.doric_events.doriccsveventsdatainterface import DoricCSVEventsInterface
 from .events.doric_events.doriceventsdatainterface import DoricEventsInterface
@@ -230,6 +230,7 @@ interface_list = [
     MinianSegmentationInterface,
     ThorImagingInterface,
     # Behavior
+    BORISInterface,
     ExternalVideoInterface,
     InternalVideoInterface,
     AudioInterface,
@@ -249,7 +250,6 @@ interface_list = [
     ImageInterface,
     ExternalImageInterface,
     # Events
-    BORISEventsInterface,
     CSVEventsInterface,
     DoricCSVEventsInterface,
     DoricEventsInterface,
@@ -310,6 +310,7 @@ interfaces_by_category = dict(
         FicTrac=FicTracDataInterface,
         LightningPose=LightningPoseDataInterface,
         Vame=VameInterface,
+        BORIS=BORISInterface,
         # Text
         CsvTimeIntervals=CsvTimeIntervalsInterface,
         ExcelTimeIntervals=ExcelTimeIntervalsInterface,
@@ -320,7 +321,6 @@ interfaces_by_category = dict(
         ExternalImage=ExternalImageInterface,
     ),
     events=dict(
-        BORISEvents=BORISEventsInterface,
         CSVEvents=CSVEventsInterface,
         DoricCSVEvents=DoricCSVEventsInterface,
         DoricEvents=DoricEventsInterface,

@@ -1,4 +1,4 @@
-"""Tests for BORISEventsInterface, one class per project file."""
+"""Tests for BORISInterface, one class per project file."""
 
 import math
 from datetime import datetime
@@ -8,7 +8,7 @@ import pytest
 from pynwb import read_nwb
 from pynwb.testing.mock.file import mock_NWBFile
 
-from neuroconv.datainterfaces import BORISEventsInterface
+from neuroconv.datainterfaces import BORISInterface
 from neuroconv.tools.testing.data_interface_mixins import DataInterfaceTestMixin
 
 try:
@@ -45,7 +45,7 @@ class BORISEventsRoundTrip(DataInterfaceTestMixin):
     nothing was ever scored against, and the bouts table holds exactly the state bouts that closed.
     """
 
-    data_interface_cls = BORISEventsInterface
+    data_interface_cls = BORISInterface
     conversion_options = dict()  # what is written is set at construction, not at write
     save_directory = OUTPUT_PATH
 
@@ -132,7 +132,7 @@ class TestBORISVersion4_0(BORISEventsRoundTrip):
     expected_catalogue_size = 5
 
     def run_custom_checks(self):
-        interface = BORISEventsInterface(file_path=VERSION_4_0, observation_name="media observation")
+        interface = BORISInterface(file_path=VERSION_4_0, observation_name="media observation")
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile)
         catalogue = nwbfile.processing["behavior"]["Ethogram"].to_dataframe()
@@ -162,7 +162,7 @@ class TestBORISModifierSlots(BORISEventsRoundTrip):
 
     def run_custom_checks(self):
         """The recorded forms of the three slot types, each answer in the column of its own slot."""
-        interface = BORISEventsInterface(file_path=MODIFIER_SLOTS, observation_name="1")
+        interface = BORISInterface(file_path=MODIFIER_SLOTS, observation_name="1")
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile)
         table = nwbfile.get_events_table("Observation1").to_dataframe().set_index("event_type")
@@ -204,7 +204,7 @@ class TestBORISMultiSubject(BORISEventsRoundTrip):
     expected_catalogue_size = 5
 
     def run_custom_checks(self):
-        interface = BORISEventsInterface(file_path=MULTI_SUBJECT, observation_name="observation #1")
+        interface = BORISInterface(file_path=MULTI_SUBJECT, observation_name="observation #1")
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile)
         table = nwbfile.get_events_table("Observation1").to_dataframe()
@@ -223,7 +223,7 @@ class TestBORISUntidyModifiers(BORISEventsRoundTrip):
     expected_catalogue_size = 2
 
     def run_custom_checks(self):
-        interface = BORISEventsInterface(file_path=UNTIDY_MODIFIERS, observation_name="test1 live")
+        interface = BORISInterface(file_path=UNTIDY_MODIFIERS, observation_name="test1 live")
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile)
         table = nwbfile.get_events_table("Test1Live").to_dataframe()
@@ -269,9 +269,9 @@ class TestBORISTimeOffsetAndUndeclaredCodes(BORISEventsRoundTrip):
 
 def test_nonzero_time_offset_is_applied():
     """The observation's declared shift reaches the written times through the alignment surface."""
-    forward = BORISEventsInterface(file_path=TIME_OFFSET, observation_name="positive offset")
+    forward = BORISInterface(file_path=TIME_OFFSET, observation_name="positive offset")
     assert forward.alignment.offset == pytest.approx(12.5)
-    backward = BORISEventsInterface(file_path=TIME_OFFSET, observation_name="negative offset")
+    backward = BORISInterface(file_path=TIME_OFFSET, observation_name="negative offset")
     assert backward.alignment.offset == pytest.approx(-4.0)
 
     # The reader keeps the file's own times; the offset is added at write.
@@ -288,11 +288,11 @@ def test_undeclared_behavior_code_warns():
     are written without durations. Read as a state behavior that would be every bout it ever had.
     """
     with pytest.warns(UserWarning, match="ethogram does not declare"):
-        BORISEventsInterface(file_path=TIME_OFFSET, observation_name="removed behaviors")
+        BORISInterface(file_path=TIME_OFFSET, observation_name="removed behaviors")
 
     # One warning per code, naming the code and how many rows carry it.
     with pytest.warns(UserWarning) as records:
-        BORISEventsInterface(file_path=TIME_OFFSET, observation_name="positive offset")
+        BORISInterface(file_path=TIME_OFFSET, observation_name="positive offset")
     messages = " ".join(str(record.message) for record in records)
     assert "'Foraging'" in messages and "4 events" in messages
 
@@ -304,20 +304,20 @@ def test_undeclared_behavior_code_keeps_the_row():
     scored, whose old code stays on every row, and behaviors removed from the scheme outright. Neither
     can be typed, so the extent is not claimed, which does lose a renamed state behavior's durations.
     """
-    interface = BORISEventsInterface(file_path=TIME_OFFSET, observation_name="removed behaviors")
+    interface = BORISInterface(file_path=TIME_OFFSET, observation_name="removed behaviors")
     nwbfile = mock_NWBFile()
     interface.add_to_nwbfile(nwbfile=nwbfile)
 
     table = nwbfile.get_events_table("RemovedBehaviors").to_dataframe()
     assert {"Rearing", "Scent-marking"} <= set(table["event_type"])
     # They are absent from the catalogue, which holds only what the ethogram declares.
-    catalogue = BORISEventsInterface(file_path=TIME_OFFSET, observation_name="removed behaviors")._project.behaviors
+    catalogue = BORISInterface(file_path=TIME_OFFSET, observation_name="removed behaviors")._project.behaviors
     assert "Rearing" not in catalogue
 
 
 def test_event_comments_survive():
     """The comment column carries what the coder typed, which almost no fixture exercises."""
-    interface = BORISEventsInterface(file_path=TIME_OFFSET, observation_name="negative offset")
+    interface = BORISInterface(file_path=TIME_OFFSET, observation_name="negative offset")
     nwbfile = mock_NWBFile()
     interface.add_to_nwbfile(nwbfile=nwbfile)
 
@@ -333,7 +333,7 @@ def test_a_behavior_code_with_a_slash_can_take_its_own_table():
     observation, so the code never reaches an object name there; routing one behavior to a table of its
     own is what exposes it.
     """
-    interface = BORISEventsInterface(file_path=TIME_OFFSET, observation_name="positive offset")
+    interface = BORISInterface(file_path=TIME_OFFSET, observation_name="positive offset")
     metadata = interface.get_metadata()
     # Give the slashed behavior a table to itself, which the metadata permits.
     metadata["Events"]["boris"]["event_types"]["Foraging/Caching"]["table_metadata_key"] = "solo"
@@ -352,7 +352,7 @@ def test_unpaired_state_start_becomes_nan():
     outcome. It stays in the events table with a NaN duration and is absent from the bouts table, which
     cannot hold a row with no stop time.
     """
-    interface = BORISEventsInterface(file_path=MULTI_SUBJECT, observation_name="live not paired")
+    interface = BORISInterface(file_path=MULTI_SUBJECT, observation_name="live not paired")
     nwbfile = mock_NWBFile()
     interface.add_to_nwbfile(nwbfile=nwbfile)
 
@@ -373,7 +373,7 @@ def test_pairing_ignores_the_modifier_string():
     and closes it with ``None``. The recorded modifier of the opening row is what survives, since that is
     what the coder said was true when the bout began.
     """
-    from neuroconv.datainterfaces.events.boris.boris_reader import read_boris_observation
+    from neuroconv.datainterfaces.behavior.boris.boris_reader import read_boris_observation
 
     observation = read_boris_observation(file_path=CATEGORIZED, observation_name="id2")
     walk_bouts = [occurrence for occurrence in observation.occurrences if occurrence.code == "walk"]
@@ -390,7 +390,7 @@ def test_unnamed_modifier_slot_falls_back_to_its_position():
     cannot be what the column is called there. The position is what is left, and the catalogue is what
     says which behavior's slot it is.
     """
-    interface = BORISEventsInterface(file_path=CATEGORIZED, observation_name="id2")
+    interface = BORISInterface(file_path=CATEGORIZED, observation_name="id2")
     nwbfile = mock_NWBFile()
     interface.add_to_nwbfile(nwbfile=nwbfile)
 
@@ -410,7 +410,7 @@ def test_unnamed_modifier_slot_falls_back_to_its_position():
 
 def test_observation_without_events_writes_the_scheme():
     """An observation holding nothing still carries the vocabulary it was going to be scored with."""
-    interface = BORISEventsInterface(file_path=MULTI_SUBJECT, observation_name="observation without events")
+    interface = BORISInterface(file_path=MULTI_SUBJECT, observation_name="observation without events")
     nwbfile = mock_NWBFile()
     interface.add_to_nwbfile(nwbfile=nwbfile)
 
@@ -426,10 +426,10 @@ def test_project_with_no_observations():
     ``get_observation_names`` reports the empty list, and asking for an observation by name says which
     ones exist rather than failing obscurely.
     """
-    assert BORISEventsInterface.get_observation_names(file_path=NO_OBSERVATIONS) == []
+    assert BORISInterface.get_observation_names(file_path=NO_OBSERVATIONS) == []
 
     with pytest.raises(KeyError, match="No observation"):
-        BORISEventsInterface(file_path=NO_OBSERVATIONS, observation_name="anything")
+        BORISInterface(file_path=NO_OBSERVATIONS, observation_name="anything")
 
 
 def test_behaviors_can_be_routed_into_separate_tables():
@@ -440,7 +440,7 @@ def test_behaviors_can_be_routed_into_separate_tables():
     the routing, and what they get has to be a real per-behavior table: each carrying only the slots its
     own behavior declares, not the union with the rest left empty.
     """
-    interface = BORISEventsInterface(file_path=MODIFIER_SLOTS, observation_name="1")
+    interface = BORISInterface(file_path=MODIFIER_SLOTS, observation_name="1")
     metadata = interface.get_metadata()
     metadata["Events"]["EventTables"] = {}
     for code, entry in metadata["Events"]["boris"]["event_types"].items():
@@ -474,7 +474,7 @@ def test_several_observations_of_one_project_share_the_catalogue():
     """
     nwbfile = mock_NWBFile()
     for observation_name in ("observation #1", "live not paired"):
-        BORISEventsInterface(file_path=MULTI_SUBJECT, observation_name=observation_name).add_to_nwbfile(nwbfile=nwbfile)
+        BORISInterface(file_path=MULTI_SUBJECT, observation_name=observation_name).add_to_nwbfile(nwbfile=nwbfile)
 
     behavior_module = nwbfile.processing["behavior"]
     assert set(nwbfile.events) == {"Observation1", "LiveNotPaired"}
@@ -491,20 +491,20 @@ def test_a_second_project_cannot_share_the_catalogue():
     and make one catalogue claim to be the scheme of two.
     """
     nwbfile = mock_NWBFile()
-    BORISEventsInterface(file_path=MULTI_SUBJECT, observation_name="observation #1").add_to_nwbfile(nwbfile=nwbfile)
+    BORISInterface(file_path=MULTI_SUBJECT, observation_name="observation #1").add_to_nwbfile(nwbfile=nwbfile)
 
     with pytest.raises(ValueError, match="cannot share one NWB file"):
-        BORISEventsInterface(file_path=CATEGORIZED, observation_name="test1").add_to_nwbfile(nwbfile=nwbfile)
+        BORISInterface(file_path=CATEGORIZED, observation_name="test1").add_to_nwbfile(nwbfile=nwbfile)
 
 
 def test_live_observation_has_no_frame_rate():
     """A LIVE observation has no media and so no resolution to claim; a MEDIA one has the frame period."""
-    live = BORISEventsInterface(file_path=VERSION_1_6, observation_name="live observation")
+    live = BORISInterface(file_path=VERSION_1_6, observation_name="live observation")
     nwbfile = mock_NWBFile()
     live.add_to_nwbfile(nwbfile=nwbfile)
     assert nwbfile.get_events_table("LiveObservation")["timestamp"].resolution is None
 
-    media = BORISEventsInterface(file_path=VERSION_1_6, observation_name="media observation")
+    media = BORISInterface(file_path=VERSION_1_6, observation_name="media observation")
     nwbfile = mock_NWBFile()
     media.add_to_nwbfile(nwbfile=nwbfile)
     # The project's media runs at 25 fps, so a coder could only ever mark a 40 ms boundary.
@@ -521,7 +521,7 @@ def test_time_offset_goes_through_alignment():
     rather than shifting the observation. So its alignment offset starts at zero, and what is checked here
     is that the times are the file's own and that the alignment surface moves them.
     """
-    interface = BORISEventsInterface(file_path=MULTI_SUBJECT, observation_name="offset positif")
+    interface = BORISInterface(file_path=MULTI_SUBJECT, observation_name="offset positif")
     assert interface.alignment.offset == 0.0
 
     first_code = interface.get_event_type_source_ids()[0]

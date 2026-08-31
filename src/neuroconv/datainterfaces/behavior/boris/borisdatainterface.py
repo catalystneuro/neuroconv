@@ -13,10 +13,10 @@ from .boris_reader import (
     read_boris_project,
     strip_modifier_shortcut,
 )
-from ..baseeventsinterface import BaseEventsInterface, _EventsData
+from ...events.baseeventsinterface import BaseEventsInterface, _EventsData
 
 
-class BORISEventsInterface(BaseEventsInterface):
+class BORISInterface(BaseEventsInterface):
     """Data Interface for the events of one observation of a BORIS project.
 
     BORIS (Behavioural Observation Research Interactive Software) records time-constrained behavioral
@@ -59,8 +59,8 @@ class BORISEventsInterface(BaseEventsInterface):
     """
 
     keywords = ("events", "behavior", "BORIS", "ethogram", "annotation")
-    display_name = "BORISEvents"
-    info = "Data Interface for the events of one observation of a BORIS project."
+    display_name = "BORIS"
+    info = "Data Interface for one observation of a BORIS project."
     associated_suffixes = (".boris",)
 
     @staticmethod
@@ -89,7 +89,7 @@ class BORISEventsInterface(BaseEventsInterface):
         metadata_key: str = "boris",
         verbose: bool = False,
     ):
-        """Initialize the BORISEventsInterface.
+        """Initialize the BORISInterface.
 
         Parameters
         ----------

@@ -139,6 +139,7 @@ Behavior
     :maxdepth: 1
 
     Audio <behavior/audio>
+    BORIS <behavior/boris>
     FicTrac <behavior/fictrac>
     Neuralynx NVT <behavior/neuralynx_nvt>
     Videos <behavior/video>
@@ -151,7 +152,6 @@ Events
 .. toctree::
     :maxdepth: 1
 
-    BORIS <events/boris_events>
     CSV <events/csv_events>
     Doric <events/doric_events>
     MedPC <events/medpc_events>

@@ -2,6 +2,9 @@
   "behavior/audio.rst": {
     "extra": "audio"
   },
+  "behavior/boris.rst": {
+    "extra": "boris"
+  },
   "behavior/deeplabcut.rst": {
     "extra": "deeplabcut"
   },
@@ -38,9 +41,6 @@
   "combinations/tiff_and_suite2p.rst": {
     "extra": null,
     "skip": "Combines several interfaces, so there is no single extra to install"
-  },
-  "events/boris_events.rst": {
-    "extra": "boris_events"
   },
   "events/csv_events.rst": {
     "extra": "csv_events"

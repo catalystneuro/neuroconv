@@ -5,6 +5,10 @@ Audio
 -----
 .. automodule:: neuroconv.datainterfaces.behavior.audio.audiointerface
 
+BORIS
+-----
+.. autoclass:: neuroconv.datainterfaces.behavior.boris.borisdatainterface.BORISInterface
+
 DeepLabCut
 ----------
 .. automodule:: neuroconv.datainterfaces.behavior.deeplabcut.deeplabcutdatainterface

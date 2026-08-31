@@ -124,7 +124,11 @@ vame = [
     "ndx-vame>=0.3.2",
     "ndx-ethogram>=0.1.0",  # For the curated EthogramBouts/Ethogram derived from MotifSeries
 ]
+boris = [
+    "ndx-ethogram>=0.1.0",  # a BORIS project is a coding scheme plus its events, and the scheme is an Ethogram
+]
 behavior = [
+    "neuroconv[boris]",
     "neuroconv[sleap]",
     "neuroconv[audio]",
     "neuroconv[deeplabcut]",
@@ -159,11 +163,7 @@ pyphotometry_events = [
     # so this needs only core numpy + pynwb>=4.0; kept as a stable install alias so
     # `neuroconv[pyphotometry_events]` and `neuroconv[events]` remain valid.
 ]
-boris_events = [
-    "ndx-ethogram>=0.1.0",  # a BORIS project is a coding scheme plus its events, and the scheme is an Ethogram
-]
 events = [
-    "neuroconv[boris_events]",
     "neuroconv[csv_events]",
     "neuroconv[doric_events]",
     "neuroconv[medpc]",
