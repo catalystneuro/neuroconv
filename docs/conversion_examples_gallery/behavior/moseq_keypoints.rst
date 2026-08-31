@@ -10,16 +10,8 @@ Install NeuroConv with the additional dependencies necessary for reading keypoin
 Convert `keypoint-MoSeq <https://github.com/dattalab/keypoint-moseq>`_ output to NWB using
 :py:class:`~neuroconv.datainterfaces.behavior.moseq.moseqkeypointsinterface.MoseqKeyPointsInterface`.
 keypoint-MoSeq labels every frame of a recording with a syllable, a short recurring unit of movement,
-and writes the result to a ``results.h5`` holding one group per recording:
-
-.. code-block:: none
-
-    results.h5
-    └── <recording name>/
-        ├── syllable       (T,)                int    one syllable per frame
-        ├── latent_state   (T, latent_dim)     float  the model's own description of pose
-        ├── centroid       (T, keypoint_dim)   float  where the animal is, in the input's coordinates
-        └── heading        (T,)                float  which way it faces
+and writes the result to a ``results.h5`` holding one group per recording, each with a ``syllable``,
+a ``latent_state``, a ``centroid`` and a ``heading`` array.
 
 The syllable sequence is written as a curated
 `ndx-ethogram <https://github.com/catalystneuro/ndx-ethogram>`_ product: an ``EthogramBouts`` table,
@@ -50,17 +42,20 @@ a frame rate, because the rate is a property of the video the keypoints came fro
     >>> recordings = MoseqKeyPointsInterface.get_available_recordings(file_path)
     >>> recording_name = recordings[0]
 
+    >>> # keypoint-MoSeq records no frame rate. Take it from the video the keypoints were tracked
+    >>> # from, or from the `fps` field of the keypoint-MoSeq project's config.yml.
     >>> interface = MoseqKeyPointsInterface(
     ...     file_path=file_path,
     ...     recording_name=recording_name,
     ...     sampling_frequency_hz=30.0,
     ... )
 
+    >>> # Extract what metadata we can from the source files
     >>> metadata = interface.get_metadata()
-    >>> metadata["NWBFile"].update(
-    ...     session_start_time=datetime(2024, 1, 1, 12, 0, 0, tzinfo=ZoneInfo("US/Pacific")),
-    ...     session_description="Open-field recording segmented into syllables with keypoint-MoSeq.",
-    ... )
+    >>> # session_start_time is required for conversion. keypoint-MoSeq records no acquisition date,
+    >>> # so you must supply one.
+    >>> session_start_time = datetime(2024, 1, 1, 12, 0, 0, tzinfo=ZoneInfo("US/Pacific"))
+    >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>> # Add subject information (required for DANDI upload)
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
     >>> interface.run_conversion(nwbfile_path=path_to_save_nwbfile, metadata=metadata)
@@ -88,7 +83,6 @@ metadata supplies them.
     >>> custom_metadata = {
     ...     "NWBFile": {
     ...         "session_start_time": datetime(2024, 1, 1, 12, 0, 0, tzinfo=ZoneInfo("US/Pacific")),
-    ...         "session_description": "Open-field recording segmented into syllables with keypoint-MoSeq.",
     ...     },
     ...     "Subject": dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D"),
     ...     "Behavior": {
@@ -116,24 +110,12 @@ record the upstream pose keypoints the syllables were fitted on, add a ``Recordi
 
 .. code-block:: python
 
-    >>> from neuroconv import NWBConverter
+    >>> from neuroconv import ConverterPipe
     >>> from neuroconv.datainterfaces import DeepLabCutInterface
 
-    >>> class PoseAndMoseqConverter(NWBConverter):
-    ...     data_interface_classes = dict(
-    ...         DLC=DeepLabCutInterface,
-    ...         Moseq=MoseqKeyPointsInterface,
-    ...     )
-
-    >>> converter = PoseAndMoseqConverter(  # doctest: +SKIP
-    ...     source_data=dict(
-    ...         DLC=dict(file_path="/path/to/dlc_output.h5"),
-    ...         Moseq=dict(
-    ...             file_path=str(file_path),
-    ...             recording_name=recording_name,
-    ...             sampling_frequency_hz=30.0,
-    ...         ),
-    ...     )
+    >>> pose_interface = DeepLabCutInterface(file_path="/path/to/dlc_output.h5")  # doctest: +SKIP
+    >>> converter = ConverterPipe(  # doctest: +SKIP
+    ...     data_interfaces=dict(DLC=pose_interface, Moseq=interface)
     ... )
     >>> metadata = converter.get_metadata()  # doctest: +SKIP
     >>> metadata["Behavior"]["MoseqKeyPoints"]["Recordings"] = {  # doctest: +SKIP
@@ -150,27 +132,20 @@ two do belong together, give each interface its own ``metadata_key``:
 
 .. code-block:: python
 
-    >>> class TwoRecordingConverter(NWBConverter):
-    ...     data_interface_classes = dict(
-    ...         MoseqFirst=MoseqKeyPointsInterface,
-    ...         MoseqSecond=MoseqKeyPointsInterface,
-    ...     )
-
-    >>> converter = TwoRecordingConverter(
-    ...     source_data=dict(
-    ...         MoseqFirst=dict(
-    ...             file_path=str(file_path),
-    ...             recording_name=recordings[0],
-    ...             sampling_frequency_hz=30.0,
-    ...             metadata_key="first_recording",
-    ...         ),
-    ...         MoseqSecond=dict(
-    ...             file_path=str(file_path),
-    ...             recording_name=recordings[1],
-    ...             sampling_frequency_hz=30.0,
-    ...             metadata_key="second_recording",
-    ...         ),
-    ...     )
+    >>> first_interface = MoseqKeyPointsInterface(
+    ...     file_path=file_path,
+    ...     recording_name=recordings[0],
+    ...     sampling_frequency_hz=30.0,
+    ...     metadata_key="first_recording",
+    ... )
+    >>> second_interface = MoseqKeyPointsInterface(
+    ...     file_path=file_path,
+    ...     recording_name=recordings[1],
+    ...     sampling_frequency_hz=30.0,
+    ...     metadata_key="second_recording",
+    ... )
+    >>> converter = ConverterPipe(
+    ...     data_interfaces=dict(MoseqFirst=first_interface, MoseqSecond=second_interface)
     ... )
 
 The default object names collide when two instances share a file, so rename them alongside the keys:
@@ -180,7 +155,6 @@ The default object names collide when two instances share a file, so rename them
     >>> custom_metadata = {
     ...     "NWBFile": {
     ...         "session_start_time": datetime(2024, 1, 1, 12, 0, 0, tzinfo=ZoneInfo("US/Pacific")),
-    ...         "session_description": "Two recordings segmented with keypoint-MoSeq.",
     ...     },
     ...     "Subject": dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D"),
     ...     "Behavior": {

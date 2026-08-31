@@ -8,18 +8,9 @@ from pynwb import NWBFile
 from pynwb.base import TimeSeries
 from pynwb.behavior import CompassDirection, Position, SpatialSeries
 
-from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
+from ....basedatainterface import BaseDataInterface
 from ....tools import get_module
-from ....utils import DeepDict, calculate_regular_series_rate
-
-# keypoint-MoSeq expresses the centroid in whatever coordinate space the pose it was given used
-# (image pixels for 2D DeepLabCut output, the triangulation's own space for 3D), and results.h5
-# records neither the unit nor the frame. Both are required by SpatialSeries, so they are filled here
-# rather than reported by get_metadata().
-_CENTROID_UNIT_PLACEHOLDER = "unknown"
-_REFERENCE_FRAME_PLACEHOLDER = (
-    "PLACEHOLDER: keypoint-MoSeq does not record the coordinate frame of the pose it was given."
-)
+from ....utils import DeepDict
 
 
 def _get_container_by_name(nwbfile: NWBFile, name: str, type_name: str):
@@ -37,7 +28,7 @@ def _get_container_by_name(nwbfile: NWBFile, name: str, type_name: str):
     )
 
 
-class MoseqKeyPointsInterface(BaseTemporalAlignmentInterface):
+class MoseqKeyPointsInterface(BaseDataInterface):
     """DataInterface for keypoint-MoSeq output (``results.h5``).
 
     keypoint-MoSeq fits a switching linear dynamical system to pose keypoints and labels every frame
@@ -55,9 +46,8 @@ class MoseqKeyPointsInterface(BaseTemporalAlignmentInterface):
     -----
     - **There is no time base in the source.** ``results.h5`` carries neither timestamps nor a frame
       rate; the rate is a property of the recording the keypoints came from and lives only in the
-      keypoint-MoSeq project ``config.yml``, where it was typed by the user rather than measured. So
-      either pass ``sampling_frequency_hz`` or call
-      :meth:`~.basetemporalalignmentinterface.BaseTemporalAlignmentInterface.set_aligned_timestamps`.
+      keypoint-MoSeq project ``config.yml``, where it was typed by the user rather than measured, so
+      ``sampling_frequency_hz`` has to be supplied.
     - **The first frames of every recording are padding.** The autoregressive model has no state for
       the first ``nlags`` frames (3 by default), so keypoint-MoSeq fills them by repeating the first
       real syllable. Those frames are written as they are, which makes the first bout start earlier
@@ -80,8 +70,6 @@ class MoseqKeyPointsInterface(BaseTemporalAlignmentInterface):
     associated_suffixes = (".h5",)
     info = "Interface for adding data from keypoint-MoSeq (Motion Sequencing on pose keypoints)."
 
-    _timestamps = None
-
     @classmethod
     def get_source_schema(cls) -> dict:
         source_schema = super().get_source_schema()
@@ -99,8 +87,8 @@ class MoseqKeyPointsInterface(BaseTemporalAlignmentInterface):
         self,
         file_path: FilePath,
         *,
+        sampling_frequency_hz: float,
         recording_name: str | None = None,
-        sampling_frequency_hz: float | None = None,
         metadata_key: str | None = None,
         verbose: bool = False,
     ):
@@ -110,13 +98,14 @@ class MoseqKeyPointsInterface(BaseTemporalAlignmentInterface):
         ----------
         file_path : FilePath
             Path to the keypoint-MoSeq ``results.h5``.
+        sampling_frequency_hz : float
+            Frame rate of the video the keypoints came from, in Hz. Required because keypoint-MoSeq
+            records no time base of its own; take it from that video or from the ``fps`` field of the
+            keypoint-MoSeq project's ``config.yml``.
         recording_name : str, optional
             Name of the recording group to write. Recordings in one file are separate recordings with
             their own frame counts, so one interface writes one of them. Optional when the file holds
             a single recording; required otherwise. Use :meth:`get_available_recordings` to list them.
-        sampling_frequency_hz : float, optional
-            Frame rate of the video the keypoints came from, in Hz. Required unless aligned timestamps
-            are supplied with ``set_aligned_timestamps``, because keypoint-MoSeq records no time base.
         metadata_key : str, optional
             Key of this interface's entries in the ``metadata["Behavior"]["MoseqKeyPoints"]``
             registries and in ``metadata["Behavior"]["Ethograms"]``. Defaults to ``"keypoint_moseq"``.
@@ -175,21 +164,6 @@ class MoseqKeyPointsInterface(BaseTemporalAlignmentInterface):
 
         with h5py.File(self.source_data["file_path"], "r") as file:
             return file[self._recording_name]["syllable"].shape[0]
-
-    def get_original_timestamps(self) -> np.ndarray:
-        if self._sampling_frequency_hz is None:
-            raise ValueError(
-                "MoseqKeyPointsInterface cannot generate timestamps because keypoint-MoSeq carries no time base: "
-                "results.h5 holds neither timestamps nor a frame rate. Pass sampling_frequency_hz at construction, "
-                "or call set_aligned_timestamps() with the timestamps of the video the keypoints came from."
-            )
-        return np.arange(self._get_number_of_frames()) / self._sampling_frequency_hz
-
-    def get_timestamps(self) -> np.ndarray:
-        return self._timestamps if self._timestamps is not None else self.get_original_timestamps()
-
-    def set_aligned_timestamps(self, aligned_timestamps: np.ndarray) -> None:
-        self._timestamps = np.asarray(aligned_timestamps)
 
     def get_metadata_schema(self) -> dict:
         from ....utils import get_base_schema
@@ -408,26 +382,30 @@ class MoseqKeyPointsInterface(BaseTemporalAlignmentInterface):
             default_metadata.deep_update(metadata)
         moseq_metadata = default_metadata["Behavior"]["MoseqKeyPoints"]
 
-        timestamps = self.get_timestamps()
-        rate = calculate_regular_series_rate(series=timestamps)
-        if rate is None:
-            timing_kwargs = dict(timestamps=timestamps.astype(np.float64))
-            frame_period = float(np.median(np.diff(timestamps)))
-        else:
-            timing_kwargs = dict(rate=float(rate), starting_time=float(timestamps[0]))
-            frame_period = 1.0 / float(rate)
+        # Every series shares one regular clock, since the frame rate is the only time base there is.
+        frame_period = 1.0 / self._sampling_frequency_hz
+        timestamps = np.arange(self._get_number_of_frames()) * frame_period
+        timing_kwargs = dict(rate=self._sampling_frequency_hz, starting_time=0.0)
 
         behavior_module = get_module(nwbfile, name="behavior", description="processed behavioral data")
 
         latent_state_series = None
+        # keypoint-MoSeq expresses the centroid in whatever coordinate space the pose it was given used,
+        # image pixels for 2D DeepLabCut output and the triangulation's own space for 3D, and results.h5
+        # records neither the unit nor the frame. SpatialSeries requires both, so they are filled here
+        # rather than reported by get_metadata().
+        placeholder_reference_frame = (
+            "PLACEHOLDER: keypoint-MoSeq does not record the coordinate frame of the pose it was given."
+        )
+
         if write_algorithm_output:
             # The centroid is (T, 2) for 2D pose and (T, 3) for 3D, so the width is read off the array.
             centroid_metadata = dict(moseq_metadata["Centroids"][self.metadata_key])
             position_container_name = centroid_metadata.pop("container_name")
             centroid_series = SpatialSeries(
                 data=self._read_dataset("centroid"),
-                unit=centroid_metadata.pop("unit", _CENTROID_UNIT_PLACEHOLDER),
-                reference_frame=centroid_metadata.pop("reference_frame", _REFERENCE_FRAME_PLACEHOLDER),
+                unit=centroid_metadata.pop("unit", "unknown"),
+                reference_frame=centroid_metadata.pop("reference_frame", placeholder_reference_frame),
                 **centroid_metadata,
                 **timing_kwargs,
             )
@@ -437,7 +415,7 @@ class MoseqKeyPointsInterface(BaseTemporalAlignmentInterface):
             compass_container_name = heading_metadata.pop("container_name")
             heading_series = SpatialSeries(
                 data=self._read_dataset("heading"),
-                reference_frame=heading_metadata.pop("reference_frame", _REFERENCE_FRAME_PLACEHOLDER),
+                reference_frame=heading_metadata.pop("reference_frame", placeholder_reference_frame),
                 **heading_metadata,
                 **timing_kwargs,
             )

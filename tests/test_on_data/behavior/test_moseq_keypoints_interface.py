@@ -6,42 +6,32 @@ import h5py
 import numpy as np
 import pytest
 from numpy.testing import assert_array_equal
+from pydantic import ValidationError
 from pynwb import read_nwb
 from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.datainterfaces import MoseqKeyPointsInterface
-from neuroconv.tools.testing.data_interface_mixins import (
-    DataInterfaceTestMixin,
-    TemporalAlignmentMixin,
-)
+from neuroconv.tools.testing.data_interface_mixins import DataInterfaceTestMixin
 
 try:
     from ..setup_paths import BEHAVIOR_DATA_PATH
 except ImportError:
     from setup_paths import BEHAVIOR_DATA_PATH
 
-MOSEQ_DATA_PATH = BEHAVIOR_DATA_PATH / "moseq" / "keypoint_moseq"
-TWO_DIMENSIONAL_FILE_PATH = MOSEQ_DATA_PATH / "two_dimensional" / "results.h5"
-THREE_DIMENSIONAL_FILE_PATH = MOSEQ_DATA_PATH / "three_dimensional" / "results.h5"
 
-# Group names come from the input filename, so the 2D run (fitted on DeepLabCut output) carries the
-# scorer suffix and the 3D run (fitted on a plain coordinates file) does not, for the same animals.
-DEEPLABCUT_SUFFIX = ".top.irDLC_resnet50_moseq_exampleAug21shuffle1_500000"
-TWO_DIMENSIONAL_RECORDINGS = [
-    f"21_11_8_one_mouse{DEEPLABCUT_SUFFIX}",
-    f"21_12_10_def6a_1_1{DEEPLABCUT_SUFFIX}",
-    f"21_12_10_def6a_3{DEEPLABCUT_SUFFIX}",
-]
-THREE_DIMENSIONAL_RECORDINGS = ["21_11_8_one_mouse", "21_12_10_def6a_1_1", "21_12_10_def6a_3"]
-RECORDING_FRAME_COUNTS = [700, 500, 350]
+class SourceFileMixin:
+    """Reads the source file directly, so an assertion compares against the bytes on disk.
 
-SAMPLING_FREQUENCY_HZ = 30.0
+    Going through the interface's own reader instead would make every comparison circular.
+    """
 
+    file_path: str
+    recording_name: str
 
-def read_recording(file_path, recording_name, dataset_name):
-    """Return one dataset of one recording straight out of the fixture."""
-    with h5py.File(file_path, "r") as file:
-        return file[recording_name][dataset_name][:]
+    def read_source_dataset(self, dataset_name):
+        """Return one dataset of this class's recording, straight out of the source file."""
+        with h5py.File(self.file_path, "r") as file:
+            return file[self.recording_name][dataset_name][:]
 
 
 def expected_bouts(labels, timestamps, frame_period):
@@ -55,14 +45,21 @@ def expected_bouts(labels, timestamps, frame_period):
     return bouts
 
 
-class TestMoseqKeyPointsInterfaceTwoDimensional(DataInterfaceTestMixin, TemporalAlignmentMixin):
-    """A recording from a run on 2D pose, whose centroid is (T, 2)."""
+class TestMoseqKeyPointsInterfaceTwoDimensional(SourceFileMixin, DataInterfaceTestMixin):
+    """A recording from a run on 2D pose, whose centroid is (T, 2).
+
+    Its group names carry the scorer suffix DeepLabCut appended to the file the keypoints came from.
+    """
+
+    file_path = str(BEHAVIOR_DATA_PATH / "moseq" / "keypoint_moseq" / "two_dimensional" / "results.h5")
+    recording_name = "21_11_8_one_mouse.top.irDLC_resnet50_moseq_exampleAug21shuffle1_500000"
+    sampling_frequency_hz = 30.0
 
     data_interface_cls = MoseqKeyPointsInterface
     interface_kwargs = dict(
-        file_path=str(TWO_DIMENSIONAL_FILE_PATH),
-        recording_name=TWO_DIMENSIONAL_RECORDINGS[0],
-        sampling_frequency_hz=SAMPLING_FREQUENCY_HZ,
+        file_path=file_path,
+        recording_name=recording_name,
+        sampling_frequency_hz=sampling_frequency_hz,
     )
 
     def check_read_nwb(self, nwbfile_path: str):
@@ -71,10 +68,8 @@ class TestMoseqKeyPointsInterfaceTwoDimensional(DataInterfaceTestMixin, Temporal
 
         centroid = behavior["Position"]["MoseqKeyPointsCentroid"]
         assert centroid.data.shape == (700, 2)
-        assert_array_equal(
-            centroid.data[:],
-            read_recording(TWO_DIMENSIONAL_FILE_PATH, TWO_DIMENSIONAL_RECORDINGS[0], "centroid"),
-        )
+        assert_array_equal(centroid.data[:], self.read_source_dataset("centroid"))
+        assert centroid.rate == self.sampling_frequency_hz
 
         heading = behavior["CompassDirection"]["MoseqKeyPointsHeading"]
         assert heading.data.shape == (700,)
@@ -89,14 +84,21 @@ class TestMoseqKeyPointsInterfaceTwoDimensional(DataInterfaceTestMixin, Temporal
         assert behavior["MoseqKeyPointsEthogram"] is not None
 
 
-class TestMoseqKeyPointsInterfaceThreeDimensional(DataInterfaceTestMixin, TemporalAlignmentMixin):
-    """A recording from a run on 3D pose, whose centroid is (T, 3) in a different coordinate space."""
+class TestMoseqKeyPointsInterfaceThreeDimensional(SourceFileMixin, DataInterfaceTestMixin):
+    """A recording from a run on 3D pose, whose centroid is (T, 3) in a different coordinate space.
+
+    Its group names are bare, since the keypoints came from a plain coordinates file.
+    """
+
+    file_path = str(BEHAVIOR_DATA_PATH / "moseq" / "keypoint_moseq" / "three_dimensional" / "results.h5")
+    recording_name = "21_11_8_one_mouse"
+    sampling_frequency_hz = 30.0
 
     data_interface_cls = MoseqKeyPointsInterface
     interface_kwargs = dict(
-        file_path=str(THREE_DIMENSIONAL_FILE_PATH),
-        recording_name=THREE_DIMENSIONAL_RECORDINGS[0],
-        sampling_frequency_hz=SAMPLING_FREQUENCY_HZ,
+        file_path=file_path,
+        recording_name=recording_name,
+        sampling_frequency_hz=sampling_frequency_hz,
     )
 
     def check_read_nwb(self, nwbfile_path: str):
@@ -105,84 +107,110 @@ class TestMoseqKeyPointsInterfaceThreeDimensional(DataInterfaceTestMixin, Tempor
 
         centroid = behavior["Position"]["MoseqKeyPointsCentroid"]
         assert centroid.data.shape == (700, 3)
-        assert_array_equal(
-            centroid.data[:],
-            read_recording(THREE_DIMENSIONAL_FILE_PATH, THREE_DIMENSIONAL_RECORDINGS[0], "centroid"),
-        )
+        assert_array_equal(centroid.data[:], self.read_source_dataset("centroid"))
 
 
 class TestRecordingSelection:
     """One results.h5 holds several recordings, and the interface writes exactly one of them."""
 
+    two_dimensional_file_path = BEHAVIOR_DATA_PATH / "moseq" / "keypoint_moseq" / "two_dimensional" / "results.h5"
+    three_dimensional_file_path = BEHAVIOR_DATA_PATH / "moseq" / "keypoint_moseq" / "three_dimensional" / "results.h5"
+    sampling_frequency_hz = 30.0
+
+    # Group names come from the input filename, so the 2D run carries the scorer suffix DeepLabCut
+    # appended to its own file while the 3D run, fitted on a plain coordinates file, does not.
+    deeplabcut_suffix = ".top.irDLC_resnet50_moseq_exampleAug21shuffle1_500000"
+    two_dimensional_recordings = [
+        f"21_11_8_one_mouse{deeplabcut_suffix}",
+        f"21_12_10_def6a_1_1{deeplabcut_suffix}",
+        f"21_12_10_def6a_3{deeplabcut_suffix}",
+    ]
+    three_dimensional_recordings = ["21_11_8_one_mouse", "21_12_10_def6a_1_1", "21_12_10_def6a_3"]
+    frame_counts = [700, 500, 350]
+
     def test_lists_recordings_with_the_deeplabcut_suffix(self):
-        assert MoseqKeyPointsInterface.get_available_recordings(TWO_DIMENSIONAL_FILE_PATH) == (
-            TWO_DIMENSIONAL_RECORDINGS
-        )
+        available = MoseqKeyPointsInterface.get_available_recordings(self.two_dimensional_file_path)
+        assert available == self.two_dimensional_recordings
 
     def test_lists_bare_recording_names(self):
-        assert MoseqKeyPointsInterface.get_available_recordings(THREE_DIMENSIONAL_FILE_PATH) == (
-            THREE_DIMENSIONAL_RECORDINGS
-        )
+        available = MoseqKeyPointsInterface.get_available_recordings(self.three_dimensional_file_path)
+        assert available == self.three_dimensional_recordings
 
     def test_raises_when_recording_name_is_omitted_and_the_file_holds_several(self):
         with pytest.raises(ValueError, match="holds 3 recordings, so recording_name is required"):
-            MoseqKeyPointsInterface(file_path=TWO_DIMENSIONAL_FILE_PATH)
+            MoseqKeyPointsInterface(
+                file_path=self.two_dimensional_file_path, sampling_frequency_hz=self.sampling_frequency_hz
+            )
 
     def test_raises_on_an_unknown_recording_name(self):
         with pytest.raises(ValueError, match="No recording named 'not_a_recording'"):
-            MoseqKeyPointsInterface(file_path=TWO_DIMENSIONAL_FILE_PATH, recording_name="not_a_recording")
+            MoseqKeyPointsInterface(
+                file_path=self.two_dimensional_file_path,
+                recording_name="not_a_recording",
+                sampling_frequency_hz=self.sampling_frequency_hz,
+            )
 
-    @pytest.mark.parametrize(
-        "recording_name, number_of_frames", list(zip(THREE_DIMENSIONAL_RECORDINGS, RECORDING_FRAME_COUNTS))
-    )
+    @pytest.mark.parametrize("recording_name, number_of_frames", list(zip(three_dimensional_recordings, frame_counts)))
     def test_each_recording_keeps_its_own_frame_count(self, recording_name, number_of_frames):
         interface = MoseqKeyPointsInterface(
-            file_path=THREE_DIMENSIONAL_FILE_PATH,
+            file_path=self.three_dimensional_file_path,
             recording_name=recording_name,
-            sampling_frequency_hz=SAMPLING_FREQUENCY_HZ,
+            sampling_frequency_hz=self.sampling_frequency_hz,
         )
-        assert len(interface.get_timestamps()) == number_of_frames
+        nwbfile = mock_NWBFile(session_start_time=datetime.now().astimezone())
+        interface.add_to_nwbfile(nwbfile=nwbfile)
+
+        heading = nwbfile.processing["behavior"]["CompassDirection"]["MoseqKeyPointsHeading"]
+        assert heading.data.shape == (number_of_frames,)
 
 
 class TestTimeBase:
-    """keypoint-MoSeq records no time base, so one has to be supplied."""
+    """keypoint-MoSeq records no time base, so the frame rate has to be supplied."""
 
-    def test_raises_without_a_sampling_frequency(self):
+    file_path = BEHAVIOR_DATA_PATH / "moseq" / "keypoint_moseq" / "three_dimensional" / "results.h5"
+    recording_name = "21_11_8_one_mouse"
+
+    def test_the_frame_rate_is_required(self):
+        with pytest.raises(ValidationError, match="sampling_frequency_hz"):
+            MoseqKeyPointsInterface(file_path=self.file_path, recording_name=self.recording_name)
+
+    def test_the_frame_rate_sets_the_rate_of_every_series(self):
         interface = MoseqKeyPointsInterface(
-            file_path=THREE_DIMENSIONAL_FILE_PATH, recording_name=THREE_DIMENSIONAL_RECORDINGS[0]
+            file_path=self.file_path,
+            recording_name=self.recording_name,
+            sampling_frequency_hz=60.0,
         )
-        with pytest.raises(ValueError, match="keypoint-MoSeq carries no time base"):
-            interface.get_timestamps()
+        nwbfile = mock_NWBFile(session_start_time=datetime.now().astimezone())
+        interface.add_to_nwbfile(nwbfile=nwbfile)
 
-    def test_aligned_timestamps_win_over_the_sampling_frequency(self):
-        interface = MoseqKeyPointsInterface(
-            file_path=THREE_DIMENSIONAL_FILE_PATH,
-            recording_name=THREE_DIMENSIONAL_RECORDINGS[0],
-            sampling_frequency_hz=SAMPLING_FREQUENCY_HZ,
-        )
-        aligned_timestamps = np.arange(700) / 60.0 + 5.0
-        interface.set_aligned_timestamps(aligned_timestamps=aligned_timestamps)
-        assert_array_equal(interface.get_timestamps(), aligned_timestamps)
+        behavior = nwbfile.processing["behavior"]
+        assert behavior["Position"]["MoseqKeyPointsCentroid"].rate == 60.0
+        assert behavior["CompassDirection"]["MoseqKeyPointsHeading"].rate == 60.0
+        assert behavior["MoseqKeyPointsLatentState"].rate == 60.0
 
 
-class TestEthogram:
+class TestEthogram(SourceFileMixin):
     """The syllable sequence, run-length-encoded into the curated ndx-ethogram product."""
+
+    file_path = BEHAVIOR_DATA_PATH / "moseq" / "keypoint_moseq" / "three_dimensional" / "results.h5"
+    recording_name = "21_11_8_one_mouse"
+    sampling_frequency_hz = 30.0
 
     @pytest.fixture
     def written_behavior_module(self):
         interface = MoseqKeyPointsInterface(
-            file_path=THREE_DIMENSIONAL_FILE_PATH,
-            recording_name=THREE_DIMENSIONAL_RECORDINGS[0],
-            sampling_frequency_hz=SAMPLING_FREQUENCY_HZ,
+            file_path=self.file_path,
+            recording_name=self.recording_name,
+            sampling_frequency_hz=self.sampling_frequency_hz,
         )
         nwbfile = mock_NWBFile(session_start_time=datetime.now().astimezone())
         interface.add_to_nwbfile(nwbfile=nwbfile)
         return nwbfile.processing["behavior"]
 
     def test_bouts_are_the_syllables_run_length_encoded(self, written_behavior_module):
-        syllables = read_recording(THREE_DIMENSIONAL_FILE_PATH, THREE_DIMENSIONAL_RECORDINGS[0], "syllable")
-        timestamps = np.arange(len(syllables)) / SAMPLING_FREQUENCY_HZ
-        expected = expected_bouts(syllables, timestamps, 1.0 / SAMPLING_FREQUENCY_HZ)
+        syllables = self.read_source_dataset("syllable")
+        timestamps = np.arange(len(syllables)) / self.sampling_frequency_hz
+        expected = expected_bouts(syllables, timestamps, 1.0 / self.sampling_frequency_hz)
 
         bouts = written_behavior_module["MoseqKeyPointsEthogramBouts"].to_dataframe()
         assert len(bouts) == len(expected)
@@ -193,15 +221,15 @@ class TestEthogram:
     def test_the_first_bout_covers_the_padded_frames(self, written_behavior_module):
         # The first three frames of every recording are the model's edge padding, repeated from the
         # first real syllable, so they fall inside the first bout rather than forming one of their own.
-        syllables = read_recording(THREE_DIMENSIONAL_FILE_PATH, THREE_DIMENSIONAL_RECORDINGS[0], "syllable")
+        syllables = self.read_source_dataset("syllable")
         bouts = written_behavior_module["MoseqKeyPointsEthogramBouts"].to_dataframe()
 
         assert bouts["start_time"].values[0] == 0.0
         assert bouts["label"].values[0] == str(syllables[0])
-        assert bouts["stop_time"].values[0] > 3 / SAMPLING_FREQUENCY_HZ
+        assert bouts["stop_time"].values[0] > 3 / self.sampling_frequency_hz
 
     def test_catalogue_holds_the_non_contiguous_ids_present(self, written_behavior_module):
-        syllables = read_recording(THREE_DIMENSIONAL_FILE_PATH, THREE_DIMENSIONAL_RECORDINGS[0], "syllable")
+        syllables = self.read_source_dataset("syllable")
         catalogue = written_behavior_module["MoseqKeyPointsEthogram"].to_dataframe()
 
         # This recording uses 0-6, 8, 9, 11 and 28 of the 100 states the fit was configured with.
@@ -215,36 +243,48 @@ class TestEthogram:
         assert bouts.ethogram is written_behavior_module["MoseqKeyPointsEthogram"]
 
 
-class TestCentroidWidth:
+class TestCentroidWidthTwoDimensional:
     """The centroid is the only array whose width follows the input pose."""
 
-    @pytest.mark.parametrize(
-        "file_path, recording_name, width",
-        [
-            (TWO_DIMENSIONAL_FILE_PATH, TWO_DIMENSIONAL_RECORDINGS[1], 2),
-            (THREE_DIMENSIONAL_FILE_PATH, THREE_DIMENSIONAL_RECORDINGS[1], 3),
-        ],
-    )
-    def test_width_is_read_off_the_array(self, file_path, recording_name, width):
+    file_path = BEHAVIOR_DATA_PATH / "moseq" / "keypoint_moseq" / "two_dimensional" / "results.h5"
+    recording_name = "21_12_10_def6a_1_1.top.irDLC_resnet50_moseq_exampleAug21shuffle1_500000"
+    sampling_frequency_hz = 30.0
+    expected_width = 2
+
+    def test_width_is_read_off_the_array(self):
         interface = MoseqKeyPointsInterface(
-            file_path=file_path, recording_name=recording_name, sampling_frequency_hz=SAMPLING_FREQUENCY_HZ
+            file_path=self.file_path,
+            recording_name=self.recording_name,
+            sampling_frequency_hz=self.sampling_frequency_hz,
         )
         nwbfile = mock_NWBFile(session_start_time=datetime.now().astimezone())
         interface.add_to_nwbfile(nwbfile=nwbfile)
 
         centroid = nwbfile.processing["behavior"]["Position"]["MoseqKeyPointsCentroid"]
-        assert centroid.data.shape == (500, width)
+        assert centroid.data.shape == (500, self.expected_width)
+
+
+class TestCentroidWidthThreeDimensional(TestCentroidWidthTwoDimensional):
+    """The same animal fitted on 3D pose, which widens the centroid to three columns."""
+
+    file_path = BEHAVIOR_DATA_PATH / "moseq" / "keypoint_moseq" / "three_dimensional" / "results.h5"
+    recording_name = "21_12_10_def6a_1_1"
+    expected_width = 3
 
 
 class TestMetadata:
     """get_metadata reports what results.h5 records, and nothing it does not."""
 
+    file_path = BEHAVIOR_DATA_PATH / "moseq" / "keypoint_moseq" / "three_dimensional" / "results.h5"
+    recording_name = "21_11_8_one_mouse"
+    sampling_frequency_hz = 30.0
+
     @pytest.fixture
     def interface(self):
         return MoseqKeyPointsInterface(
-            file_path=THREE_DIMENSIONAL_FILE_PATH,
-            recording_name=THREE_DIMENSIONAL_RECORDINGS[0],
-            sampling_frequency_hz=SAMPLING_FREQUENCY_HZ,
+            file_path=self.file_path,
+            recording_name=self.recording_name,
+            sampling_frequency_hz=self.sampling_frequency_hz,
         )
 
     def test_registries_are_keyed_by_the_metadata_key(self, interface):
@@ -263,9 +303,9 @@ class TestMetadata:
 
     def test_metadata_key_renames_every_entry(self):
         interface = MoseqKeyPointsInterface(
-            file_path=THREE_DIMENSIONAL_FILE_PATH,
-            recording_name=THREE_DIMENSIONAL_RECORDINGS[0],
-            sampling_frequency_hz=SAMPLING_FREQUENCY_HZ,
+            file_path=self.file_path,
+            recording_name=self.recording_name,
+            sampling_frequency_hz=self.sampling_frequency_hz,
             metadata_key="second_recording",
         )
         metadata = interface.get_metadata()
@@ -276,11 +316,15 @@ class TestMetadata:
 class TestDataToWrite:
     """The conversion option selecting which of the two outputs is written."""
 
+    file_path = BEHAVIOR_DATA_PATH / "moseq" / "keypoint_moseq" / "three_dimensional" / "results.h5"
+    recording_name = "21_11_8_one_mouse"
+    sampling_frequency_hz = 30.0
+
     def build_behavior_module(self, data_to_write):
         interface = MoseqKeyPointsInterface(
-            file_path=THREE_DIMENSIONAL_FILE_PATH,
-            recording_name=THREE_DIMENSIONAL_RECORDINGS[0],
-            sampling_frequency_hz=SAMPLING_FREQUENCY_HZ,
+            file_path=self.file_path,
+            recording_name=self.recording_name,
+            sampling_frequency_hz=self.sampling_frequency_hz,
         )
         nwbfile = mock_NWBFile(session_start_time=datetime.now().astimezone())
         interface.add_to_nwbfile(nwbfile=nwbfile, data_to_write=data_to_write)
