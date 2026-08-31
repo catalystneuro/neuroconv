@@ -22,9 +22,9 @@ _SESSION_START_FIELD = "Start Date"
 # declaration. It is a marker, not an event.
 _ARRAY_SEAL = -987.987
 
-# What one unit of an array value is worth in seconds. MedPC stores whatever the MSN program divided by before
-# writing, and the file records neither the choice nor the clock's resolution, so the unit is stated rather than
-# detected. `clock_ticks` is the raw `BTIME` counter and takes its rate separately.
+# What one stored value is worth in seconds. MedPC stores whatever the MSN program divided by before writing,
+# and the file records neither that choice nor the box's timing resolution, so it is stated rather than detected.
+# A raw `BTIME` tick has no name here because its worth is the installed resolution: 0.002 on a 2 ms system.
 _TIME_UNIT_TO_SECONDS = {
     "decaseconds": 10.0,
     "seconds": 1.0,
@@ -32,7 +32,7 @@ _TIME_UNIT_TO_SECONDS = {
     "centiseconds": 0.01,
     "milliseconds": 0.001,
 }
-TimeUnit = Literal["decaseconds", "seconds", "deciseconds", "centiseconds", "milliseconds", "clock_ticks"]
+TimeUnit = Literal["decaseconds", "seconds", "deciseconds", "centiseconds", "milliseconds"]
 
 
 class _MedPCEventsInterface(BaseEventsInterface):
@@ -242,10 +242,10 @@ class _MedPCEventsInterface(BaseEventsInterface):
             f"says the session ran {duration:.6g} s, from '{self._header_field('Start Time')}' to "
             f"'{self._header_field('End Time')}'. No event can happen after the session ended, so the values "
             "are coming out larger than the program wrote them. Check the MSN program that wrote the file: "
-            "`time_unit` against what it divided by before storing, `clock_ticks_per_second` against the "
-            "resolution MED-PC was installed at (500 for a 2 ms system, 200 for a 5 ms one), and, where "
-            "`relative_mode` is on, that it really wrote intervals, since accumulating times that were already "
-            "elapsed inflates them exactly this way. If the program shows the file is already being read as it "
+            "`time_unit` against what it divided by before storing, which for a program that stored the raw "
+            "BTIME counter is the resolution MED-PC was installed at (0.002 on a 2 ms system, 0.005 on a 5 ms "
+            "one), and, where `relative_mode` is on, that it really wrote intervals, since accumulating times "
+            "that were already elapsed inflates them exactly this way. If the program shows the file is already being read as it "
             "was written, this is a layout NeuroConv does not support yet: please open an issue at "
             "https://github.com/catalystneuro/neuroconv/issues with the program and a sample file."
         )
@@ -309,12 +309,11 @@ class _MedPCEventsInterface(BaseEventsInterface):
             self._validate_non_decreasing(times=seconds, medpc_name=medpc_name)
         return seconds
 
-    def _scale_to_seconds(self, values: np.ndarray, time_unit: str | None = None) -> np.ndarray:
+    def _scale_to_seconds(self, values: np.ndarray, time_unit=None) -> np.ndarray:
         """Apply the stated unit to raw values, without accumulating or checking their order."""
-        time_unit = time_unit or self._single_time_unit()
-        if time_unit == "clock_ticks":
-            return values / self.source_data["clock_ticks_per_second"]
-        return values * _TIME_UNIT_TO_SECONDS[time_unit]
+        time_unit = time_unit if time_unit is not None else self._single_time_unit()
+        scale = time_unit if isinstance(time_unit, (int, float)) else _TIME_UNIT_TO_SECONDS[time_unit]
+        return values * scale
 
     def _single_time_unit(self) -> str:
         """Return the one unit that applies to every value, refusing a per-type mapping where none can."""
@@ -385,8 +384,7 @@ class MedPCArrayEventsInterface(_MedPCEventsInterface):
         *,
         session_header: dict,
         event_configuration: dict,
-        time_unit: TimeUnit = "seconds",
-        clock_ticks_per_second: int | None = None,
+        time_unit: TimeUnit | float = "seconds",
         relative_mode: bool = False,
         metadata_key: str | None = None,
         verbose: bool = False,
@@ -421,14 +419,12 @@ class MedPCArrayEventsInterface(_MedPCEventsInterface):
             editable metadata, which is also where a payload column's raw codes are relabelled and explained
             through ``column_categories``.
             ex. {"A": None, "G": {"duration": "E"}, "S": {"payload": ["K"]}}
-        time_unit : {"decaseconds", "seconds", "deciseconds", "centiseconds", "milliseconds", "clock_ticks"}, optional
-            What one unit of an array value is worth, default = "seconds". MedPC stores whatever the MSN program
-            divided by before writing and records neither that choice nor the clock's resolution, so the unit is
-            stated rather than detected. Use "clock_ticks" for a program that stored the raw `BTIME` counter, and
-            give the rate through ``clock_ticks_per_second``.
-        clock_ticks_per_second : int, optional
-            The rate of the program's clock: 500 for a 2 ms system, 200 for a 5 ms one. Required when
-            ``time_unit`` is "clock_ticks" and rejected otherwise, since the file carries neither.
+        time_unit : str or float, optional
+            What one stored value is worth, default = "seconds". Either a named unit, "decaseconds",
+            "seconds", "deciseconds", "centiseconds" or "milliseconds", or a number of seconds. MedPC stores
+            whatever the MSN program divided by before writing and records neither that choice nor the box's
+            timing resolution, so it is stated rather than detected. A program that stored the raw `BTIME`
+            counter takes the resolution as a number: 0.002 on a 2 ms system, 0.005 on a 5 ms one.
         relative_mode : bool, optional
             Whether the program wrote each value as the time since the previous event rather than the time since
             the session began, default = False. This is Med Associates' own term, from the shipped example
@@ -442,13 +438,12 @@ class MedPCArrayEventsInterface(_MedPCEventsInterface):
             Whether to print verbose output, by default False.
         """
 
-        _validate_time_arguments(time_unit=time_unit, clock_ticks_per_second=clock_ticks_per_second)
+        _validate_time_arguments(time_unit=time_unit)
         super().__init__(
             file_path=file_path,
             session_header=session_header,
             event_configuration=event_configuration,
             time_unit=time_unit,
-            clock_ticks_per_second=clock_ticks_per_second,
             relative_mode=relative_mode,
             verbose=verbose,
         )
@@ -552,8 +547,7 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
         event_type_variable: str | None = None,
         code_scale: int | None = None,
         code_position: Literal["fraction", "leading"] | None = None,
-        time_unit: TimeUnit | dict[str, TimeUnit] = "seconds",
-        clock_ticks_per_second: int | None = None,
+        time_unit: TimeUnit | float | dict[str, TimeUnit | float] = "seconds",
         relative_mode: bool = False,
         metadata_key: str | None = None,
         verbose: bool = False,
@@ -591,20 +585,18 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
         code_position : {"fraction", "leading"}, optional
             Where in the value the code sits, default = "fraction". Which one a program used cannot be read off
             the data reliably, since both produce plausible numbers; the MSN program settles it.
-        time_unit : str or dict, optional
-            What one unit of a time value is worth: "decaseconds", "seconds", "deciseconds", "centiseconds",
-            "milliseconds", or "clock_ticks" with the rate given through ``clock_ticks_per_second``,
-            default = "seconds". MedPC stores whatever the MSN program divided by before writing and records
-            neither that choice nor the clock's resolution, so the unit is stated rather than detected.
+        time_unit : str, float or dict, optional
+            What one stored value is worth, default = "seconds". Either a named unit, "decaseconds",
+            "seconds", "deciseconds", "centiseconds" or "milliseconds", or a number of seconds. MedPC stores
+            whatever the MSN program divided by before writing and records neither that choice nor the box's
+            timing resolution, so it is stated rather than detected. A program that stored the raw `BTIME`
+            counter takes the resolution as a number: 0.002 on a 2 ms system, 0.005 on a 5 ms one.
 
-            May also be a dict giving one unit per event type, keyed as the identifiers this interface reports
-            (ex. ``{"1": "seconds", "3": "decaseconds"}``). A program can time two event types differently and
-            store them in the same array; nothing in the file records that it did, and the ordinary sign of it
-            is that the pooled times run backwards while each type on its own climbs. A mapping has to name
-            every type the array holds. The MSN program is the only thing that says which unit belongs to which.
-        clock_ticks_per_second : int, optional
-            The rate of the program's clock: 500 for a 2 ms system, 200 for a 5 ms one. Required when
-            ``time_unit`` is "clock_ticks" and rejected otherwise, since the file carries neither.
+            May also be a dict giving one unit per event type, keyed as the identifiers this interface
+            reports (ex. ``{"1": "seconds", "3": "decaseconds"}``). A program can time two event types
+            differently and store them in the same array; nothing in the file records that it did, and the
+            ordinary sign of it is that the pooled times run backwards while each type on its own climbs. A
+            mapping has to name every type the array holds.
         relative_mode : bool, optional
             Whether the program wrote each value as the time since the previous event rather than the time since
             the session began, default = False. This is Med Associates' own term, from the shipped example
@@ -617,7 +609,7 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
         verbose : bool, optional
             Whether to print verbose output, by default False.
         """
-        _validate_time_arguments(time_unit=time_unit, clock_ticks_per_second=clock_ticks_per_second)
+        _validate_time_arguments(time_unit=time_unit)
         if event_type_variable is not None and (code_scale is not None or code_position is not None):
             raise ValueError(
                 f"`event_type_variable` names '{event_type_variable}' as the array holding the codes, so nothing "
@@ -640,7 +632,6 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
             code_scale=code_scale,
             code_position=code_position,
             time_unit=time_unit,
-            clock_ticks_per_second=clock_ticks_per_second,
             relative_mode=relative_mode,
             verbose=verbose,
         )
@@ -781,26 +772,22 @@ def _is_grouped_by_type(identifiers: np.ndarray) -> bool:
     return runs == len(set(identifiers.tolist()))
 
 
-def _validate_time_arguments(time_unit, clock_ticks_per_second: int | None) -> None:
-    """Check that a clock rate is given exactly when the times are in clock ticks, and that it is a rate."""
-    units = set(time_unit.values()) if isinstance(time_unit, dict) else {time_unit}
-    time_unit = "clock_ticks" if "clock_ticks" in units else next(iter(units))
-    if clock_ticks_per_second is not None and clock_ticks_per_second <= 0:
-        raise ValueError(
-            f"`clock_ticks_per_second` is {clock_ticks_per_second}, which is not a rate. It is how many times "
-            "the box's clock ticks in a second: 500 on a 2 ms system, 200 on a 5 ms one."
-        )
-    if time_unit == "clock_ticks" and clock_ticks_per_second is None:
-        raise ValueError(
-            "`time_unit` is 'clock_ticks', so `clock_ticks_per_second` is required: the rate is set when MED-PC "
-            "is installed (500 for a 2 ms system, 200 for a 5 ms one) and no file records it, so the wrong value "
-            "silently scales every timestamp in the session."
-        )
-    if time_unit != "clock_ticks" and clock_ticks_per_second is not None:
-        raise ValueError(
-            f"`clock_ticks_per_second` was given but `time_unit` is '{time_unit}', so the rate would not be "
-            "used. Pass `time_unit='clock_ticks'` for a program that stored the raw BTIME counter."
-        )
+def _validate_time_arguments(time_unit) -> None:
+    """Check that every unit given is a name or a positive number of seconds."""
+    units = time_unit.values() if isinstance(time_unit, dict) else [time_unit]
+    for unit in units:
+        if isinstance(unit, (int, float)) and not isinstance(unit, bool):
+            if unit <= 0:
+                raise ValueError(
+                    f"`time_unit` is {unit}, which is not a length of time. A number states what one stored "
+                    "value is worth in seconds, so a raw BTIME counter takes the box's timing resolution: "
+                    "0.002 on a 2 ms system, 0.005 on a 5 ms one."
+                )
+        elif unit not in _TIME_UNIT_TO_SECONDS:
+            raise ValueError(
+                f"`time_unit` is {unit!r}, which is neither one of {sorted(_TIME_UNIT_TO_SECONDS)} nor a number "
+                "of seconds per stored value."
+            )
 
 
 def _to_integer_where_whole(values: np.ndarray) -> np.ndarray:

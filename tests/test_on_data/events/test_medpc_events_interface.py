@@ -318,8 +318,7 @@ class TestCodedWithLegend(MedPCEventsInterfaceMixin):
         session_header={"Start Date": "09/25/15", "Subject": "ML03"},
         timestamps_variable="A",
         # The program clocks at 2 ms, so the integer part of each value is in 500ths of a second.
-        time_unit="clock_ticks",
-        clock_ticks_per_second=500,
+        time_unit=0.002,
     )
 
     def test_get_metadata(self, interface):
@@ -358,12 +357,12 @@ class TestCodedWithLegend(MedPCEventsInterfaceMixin):
         assert licks.colnames == ("timestamp",)
         assert np.allclose(licks["timestamp"][:3], [21.204, 21.8, 57.526])
 
-    def test_the_wrong_clock_rate_is_caught_by_the_session_length(self):
-        # The file states its times in clock ticks and not the rate they were counted at, so the rate the user
-        # passes is what puts the events in seconds. Passing 200 where the program clocked at 500 stretches
-        # every time by two and a half, which pushes the last event past the end the header states.
+    def test_the_wrong_resolution_is_caught_by_the_session_length(self):
+        # The file states its times in raw clock ticks and not what a tick is worth, so the number the user
+        # passes is what puts the events in seconds. Passing 0.005 where the box ran at 2 ms stretches every
+        # time by two and a half, which pushes the last event past the end the header states.
         interface_kwargs = dict(self.interface_kwargs)
-        interface_kwargs["clock_ticks_per_second"] = 200
+        interface_kwargs["time_unit"] = 0.005
         interface = MedPCCodedEventsInterface(**interface_kwargs)
 
         with pytest.raises(ValueError, match="says the session ran"):
@@ -392,8 +391,7 @@ class TestCodedWithoutLegend(MedPCEventsInterfaceMixin):
         file_path=MEDPC_DATA_PATH / "event_type_in_column_laubach_lab" / "ExampleFile1",
         session_header={"Start Date": "09/17/15", "Subject": "EX01"},
         timestamps_variable="A",
-        time_unit="clock_ticks",
-        clock_ticks_per_second=500,
+        time_unit=0.002,
     )
 
     def test_get_metadata(self, interface):

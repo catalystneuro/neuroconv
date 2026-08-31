@@ -55,12 +55,13 @@ and whatever names you know.
 What a value is worth
 ~~~~~~~~~~~~~~~~~~~~~
 
-Both interfaces take the same three arguments for this, because a MedPC value is a time only after the program's
+Both interfaces take the same two arguments for this, because a MedPC value is a time only after the program's
 choices are applied and the file records none of them.
 
-``time_unit`` is what one unit is worth. Programs store seconds, centiseconds, deciseconds, or the raw ``BTIME``
-counter, in which case pass ``time_unit="clock_ticks"`` and the rate through ``clock_ticks_per_second`` (500 on a
-2 ms system, 200 on a 5 ms one; it is set when MED-PC is installed and appears in no file).
+``time_unit`` is what one stored value is worth: a named unit, ``"seconds"``, ``"centiseconds"``,
+``"deciseconds"``, ``"milliseconds"`` or ``"decaseconds"``, or a number of seconds. A program that stored the raw
+``BTIME`` counter takes the box's timing resolution as that number, ``0.002`` on a 2 ms system and ``0.005`` on a
+5 ms one, which is set when MED-PC is installed and appears in no file.
 
 ``relative_mode`` says whether each value is the interval since the previous event rather than the elapsed time.
 Med Associates' own shipped example procedures use this, which they call relative or incremental mode, so it is
@@ -155,7 +156,7 @@ its codes mean are stated in the metadata.
 One coded array
 ~~~~~~~~~~~~~~~
 
-The file does not carry the rate its clock was counted at, so ``clock_ticks_per_second`` has to be stated, and the
+The file does not carry what one of its ticks is worth, so the resolution has to be stated as ``time_unit``, and the
 codes cannot be read off the MSN program either, since the copy that ships beside the data is often a later version
 whose numbering disagrees with the file. ``event_code_names`` is a legend rather than a declaration of what to
 read: it names the codes you know, and one you leave out is still read and takes its digits as its name.
@@ -169,8 +170,7 @@ read: it names the codes you know, and one you leave out is still read and takes
     ...     file_path=file_path,
     ...     session_header={"Start Date": "09/25/15", "Subject": "ML03"},
     ...     timestamps_variable="A",  # the array this program packs its events into
-    ...     time_unit="clock_ticks",
-    ...     clock_ticks_per_second=500,  # this program clocks at 2 ms
+    ...     time_unit=0.002,  # a 2 ms system, so each stored tick is worth 0.002 s
     ... )
     >>>
     >>> # Every code the array holds becomes an event type named after its digits, so naming them is the

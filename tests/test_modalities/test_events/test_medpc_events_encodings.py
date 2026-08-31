@@ -63,9 +63,10 @@ class TestTimeUnit:
 
         assert np.allclose(interface.get_event_times("A"), expected)
 
-    def test_clock_ticks_take_the_rate(self, tmp_path):
-        # An array of raw BTIME counts, which is what a program storing `Set L(K) = BTIME-U` writes. The rate is
-        # fixed when MED-PC is installed and appears in no file, so it is stated here.
+    def test_a_resolution_given_as_a_number(self, tmp_path):
+        # An array of raw BTIME counts, which is what a program storing `Set L(K) = BTIME-U` writes. A tick has
+        # no name because its worth is the resolution MED-PC was installed at, which appears in no file, so it
+        # is stated as a number of seconds: 0.002 on a 2 ms system.
         path = tmp_path / "ticks.txt"
         write_medpc_file(path, {"A": [500.0, 1000.0, 2750.0]})
 
@@ -73,37 +74,10 @@ class TestTimeUnit:
             file_path=path,
             session_header=SESSION_HEADER,
             event_configuration={"A": None},
-            time_unit="clock_ticks",
-            clock_ticks_per_second=500,
+            time_unit=0.002,
         )
 
         assert np.allclose(interface.get_event_times("A"), [1.0, 2.0, 5.5])
-
-    def test_clock_ticks_without_a_rate_raises(self, tmp_path):
-        path = tmp_path / "ticks.txt"
-        write_medpc_file(path, {"A": [500.0]})
-
-        with pytest.raises(ValueError, match="`clock_ticks_per_second` is required"):
-            MedPCArrayEventsInterface(
-                file_path=path,
-                session_header=SESSION_HEADER,
-                event_configuration={"A": None},
-                time_unit="clock_ticks",
-            )
-
-    def test_a_rate_without_clock_ticks_raises(self, tmp_path):
-        # Stating a rate that nothing would use hides a misunderstanding rather than a typo, so it is refused
-        # instead of ignored.
-        path = tmp_path / "seconds.txt"
-        write_medpc_file(path, {"A": [1.0]})
-
-        with pytest.raises(ValueError, match="would not be used"):
-            MedPCArrayEventsInterface(
-                file_path=path,
-                session_header=SESSION_HEADER,
-                event_configuration={"A": None},
-                clock_ticks_per_second=500,
-            )
 
     def test_durations_take_the_same_unit_as_the_onsets(self, tmp_path):
         path = tmp_path / "durative.txt"
@@ -409,17 +383,16 @@ def test_accumulating_times_that_were_not_intervals_is_caught(tmp_path):
         interface.get_event_times("A")
 
 
-def test_a_clock_rate_of_zero_raises(tmp_path):
+def test_a_resolution_of_zero_raises(tmp_path):
     path = tmp_path / "zero_rate.txt"
     write_medpc_file(path, {"A": [1.0]})
 
-    with pytest.raises(ValueError, match="is not a rate"):
+    with pytest.raises(ValueError, match="is not a length of time"):
         MedPCArrayEventsInterface(
             file_path=path,
             session_header=SESSION_HEADER,
             event_configuration={"A": None},
-            time_unit="clock_ticks",
-            clock_ticks_per_second=0,
+            time_unit=0.0,
         )
 
 
