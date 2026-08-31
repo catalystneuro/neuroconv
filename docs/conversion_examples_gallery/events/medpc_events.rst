@@ -10,13 +10,13 @@ dependencies beyond the core ones.
 
 Each event type is written as a ``pynwb.event.EventsTable`` into ``nwbfile.events``.
 
-Which interface you want
-~~~~~~~~~~~~~~~~~~~~~~~~
+Supported MedPC layouts
+~~~~~~~~~~~~~~~~~~~~~~~
 
-NeuroConv currently reads two kinds of MedPC output, and which one you have was decided by the MSN program the
-experimenter wrote, so open the file and look.
+Which layout you have was decided by the MSN program the experimenter wrote, so open the file and look.
 
-**One array per event type.** Each lettered array is a plain list of times, and the array is the event type:
+Use :py:class:`~neuroconv.datainterfaces.events.medpc_events.medpceventsdatainterface.MedPCArrayEventsInterface`
+where each lettered array is one event type, holding a plain list of that type's times:
 
 .. code-block:: text
 
@@ -25,22 +25,14 @@ experimenter wrote, so open the file and look.
     C:
          0:      330.050      362.500      947.200     1232.100     1233.400
 
-Use :py:class:`~neuroconv.datainterfaces.events.medpc_events.medpceventsdatainterface.MedPCArrayEventsInterface`,
-and tell it which arrays hold events, since nothing in the file says that ``A`` is nose pokes.
-
-**The event type packed into the value.** One array holds every event of the session, and which type each one
-is comes from the value itself, classically as ``TIME.EVENTCODE``, the code in the decimals and the time in the
-integer part:
+Use :py:class:`~neuroconv.datainterfaces.events.medpc_events.medpceventsdatainterface.MedPCPackedEventsInterface`
+where one array holds every event of the session as a ``TIME.EVENTCODE`` value, the event's code in the decimals
+and its time in the integer part:
 
 .. code-block:: text
 
     A:
          0:    10602.001    10602.011    10602.051    10852.021    10900.001
-
-Use :py:class:`~neuroconv.datainterfaces.events.medpc_events.medpceventsdatainterface.MedPCPackedEventsInterface`.
-It finds the event types itself, since the codes are in the data, and you supply only how to read them and
-whatever names you know. Codes of different widths can sit in one array, since the file prints them all to the
-same number of decimals.
 
 What a value is worth
 ~~~~~~~~~~~~~~~~~~~~~
