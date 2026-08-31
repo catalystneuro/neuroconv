@@ -97,23 +97,6 @@ def test_a_file_printing_no_decimals_cannot_hold_a_packed_code(tmp_path):
         interface.get_event_type_source_ids()
 
 
-def test_a_space_padded_header_value_still_matches(tmp_path):
-    # MED-PC pads a single-digit hour with a space ("Start Time:  9:47:07"), which a caller writing the time out
-    # would not reproduce. Matching the whole line made 272 of 936 files of one published corpus unreadable.
-    path = tmp_path / "padded.txt"
-    write_medpc_file(path, {"A": [1.0]})
-    text = path.read_text(encoding="utf-8").replace("Start Time: 12:36:13", "Start Time:  9:47:07")
-    path.write_text(text, encoding="utf-8")
-
-    interface = MedPCArrayEventsInterface(
-        file_path=path,
-        session_header={"Start Date": "04/10/19", "Start Time": "9:47:07"},
-        event_configuration={"A": None},
-    )
-
-    assert np.allclose(interface.get_event_times("A"), [1.0])
-
-
 def test_events_grouped_by_type_are_not_read_as_backwards(tmp_path):
     # A program may write every event of one type before the next, so the pooled array is not sorted even though
     # each type's own onsets climb. The order check is per type for exactly this reason.

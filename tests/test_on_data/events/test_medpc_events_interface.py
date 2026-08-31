@@ -558,8 +558,10 @@ class TestPackedRelativeMode(MedPCEventsInterfaceMixin):
     event_names = {"1": "lever_press"}
 
     interface_kwargs = dict(
-        file_path=MEDPC_DATA_PATH / "relative_mode" / "!2025-08-29_11h06m.Subject M1",
-        session_header={"Start Date": "08/29/25", "Subject": "M1"},
+        file_path=MEDPC_DATA_PATH / "relative_mode" / "!2025-09-06_09h25m.Subject H4",
+        # The hour is space-padded in the header, "Start Time:  9:25:32", which is how MED-PC writes a
+        # single digit; the session is still selected by the value rather than by the whole line.
+        session_header={"Start Date": "09/06/25", "Subject": "H4"},
         events_variable="C",
         # No program was deposited, so the unit cannot be read from the source that wrote it. Seconds is ruled
         # out across the deposit, since the intervals would then span several times the session, and both
@@ -571,9 +573,9 @@ class TestPackedRelativeMode(MedPCEventsInterfaceMixin):
     def test_get_metadata(self, interface):
         metadata = interface.get_metadata()
 
-        assert metadata["NWBFile"]["session_start_time"] == datetime(2025, 8, 29, 11, 6, 48)
-        assert metadata["Subject"]["subject_id"] == "M1"
-        assert metadata["NWBFile"]["protocol"] == "SubFLD"
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2025, 9, 6, 9, 25, 32)
+        assert metadata["Subject"]["subject_id"] == "H4"
+        assert metadata["NWBFile"]["protocol"] == "SubFLI"
         # One code, `.1`, so the array holds a single event type; the identifier is one digit wide because
         # DISKFORMAT prints one decimal.
         assert list(metadata["Events"]["medpc"]["event_types"]) == ["1"]
@@ -583,13 +585,12 @@ class TestPackedRelativeMode(MedPCEventsInterfaceMixin):
         interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
 
         table = nwbfile.get_events_table("LeverPress")
-        assert len(table) == 52
+        assert len(table) == 141
 
-        # The array opens `0.1, 80.1, 6.1`, which are intervals of 0, 80 and 6, so accumulating gives 0, 80
-        # and 86 tenths of a second. Reading them as they are printed would put the third event before the
-        # second.
+        # The values are intervals, so accumulating them is what makes them times. Reading them as printed
+        # would put later events before earlier ones.
         timestamps = np.asarray(table["timestamp"][:])
-        assert np.allclose(timestamps[:3], [0.0, 8.0, 8.6])
+        assert np.allclose(timestamps[:3], [6.4, 7.6, 14.8])
         assert np.all(np.diff(timestamps) >= 0)
 
     def test_reading_the_intervals_as_elapsed_times_is_refused(self):
@@ -608,5 +609,5 @@ class TestPackedRelativeMode(MedPCEventsInterfaceMixin):
         interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
         nwbfile = read_nwb(nwbfile_path)
-        assert np.allclose(nwbfile.get_events_table("LeverPress")["timestamp"][:3], [0.0, 8.0, 8.6])
+        assert np.allclose(nwbfile.get_events_table("LeverPress")["timestamp"][:3], [6.4, 7.6, 14.8])
         nwbfile.read_io.close()
