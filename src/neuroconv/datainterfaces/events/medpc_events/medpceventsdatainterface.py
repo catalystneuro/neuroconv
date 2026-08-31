@@ -520,10 +520,10 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
 
     - **Packed into the time value.** The classic ``TIME.EVENTCODE`` form, written by a line like
       ``Set A(Y) = BTIME-U + code/1000``: the code rides in the fractional digits and the time is the integer
-      part. ``code_scale`` is the divisor the program used and ``code_position`` is "fraction". Some programs
+      part. ``event_code_factor`` is the divisor the program used and ``event_code_position`` is "fraction". Some programs
       pack the other way round, adding a large constant so the code sits in the leading digits
       (``^PeckLeft=10000`` with ``set x(y)=^PeckLeft+Btime/1"``, giving ``aabbbb.bbb``); that is
-      ``code_position="leading"`` with ``code_scale=10000``.
+      ``event_code_position="leading"`` with ``event_code_factor=10000``.
     - **In a companion array.** A second array of the same length holds one code per event
       (``DIM B`` for all event times beside ``DIM C`` for all event identities). Name it with
       ``event_type_variable`` and nothing is unpacked.
@@ -545,8 +545,8 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
         session_header: dict,
         timestamps_variable: str,
         event_type_variable: str | None = None,
-        code_scale: int | None = None,
-        code_position: Literal["fraction", "leading"] | None = None,
+        event_code_factor: int | None = None,
+        event_code_position: Literal["fraction", "leading"] | None = None,
         time_unit: TimeUnit | float | dict[str, TimeUnit | float] = "seconds",
         relative_mode: bool = False,
         metadata_key: str | None = None,
@@ -575,14 +575,14 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
         event_type_variable : str, optional
             The MedPC variable holding one event code per event, where the program wrote the codes into their own
             array instead of packing them into the times. When given, ``timestamps_variable`` is read as plain
-            times and nothing is unpacked, so ``code_scale`` and ``code_position`` do not apply.
+            times and nothing is unpacked, so ``event_code_factor`` and ``event_code_position`` do not apply.
             ex. 'C', beside timestamps in 'B'
-        code_scale : int, optional
+        event_code_factor : int, optional
             The constant the program divided the code by, or added it to, when packing, default = 1000. With
-            ``code_position="fraction"`` it is the divisor of ``time + code/divisor``, so 1000 leaves three
-            fractional digits and 100 leaves two. With ``code_position="leading"`` it is the multiplier of
+            ``event_code_position="fraction"`` it is the divisor of ``time + code/divisor``, so 1000 leaves three
+            fractional digits and 100 leaves two. With ``event_code_position="leading"`` it is the multiplier of
             ``code * divisor + time``, so 10000 puts the code above four digits of time.
-        code_position : {"fraction", "leading"}, optional
+        event_code_position : {"fraction", "leading"}, optional
             Where in the value the code sits, default = "fraction". Which one a program used cannot be read off
             the data reliably, since both produce plausible numbers; the MSN program settles it.
         time_unit : str, float or dict, optional
@@ -610,18 +610,19 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
             Whether to print verbose output, by default False.
         """
         _validate_time_arguments(time_unit=time_unit)
-        if event_type_variable is not None and (code_scale is not None or code_position is not None):
+        if event_type_variable is not None and (event_code_factor is not None or event_code_position is not None):
             raise ValueError(
                 f"`event_type_variable` names '{event_type_variable}' as the array holding the codes, so nothing "
-                "is unpacked from the times and `code_scale` and `code_position` would not be used. Pass the "
+                "is unpacked from the times and `event_code_factor` and `event_code_position` would not be used. Pass the "
                 "companion array or the packing arguments, not both."
             )
-        code_scale = 1000 if code_scale is None else code_scale
-        code_position = "fraction" if code_position is None else code_position
-        if code_scale < 10:
+        event_code_factor = 1000 if event_code_factor is None else event_code_factor
+        event_code_position = "fraction" if event_code_position is None else event_code_position
+        if event_code_factor < 10:
             raise ValueError(
-                f"`code_scale` is {code_scale}, which leaves no digits for a code. It is the constant the "
-                "program packed with (1000 for `time + code/1000`, 10000 for `code * 10000 + time`)."
+                f"`event_code_factor` is {event_code_factor}, which leaves no digits for a code. It is the "
+                "constant the program combined the code with: 1000 for `time + code/1000`, 10000 for "
+                "`code * 10000 + time`."
             )
 
         super().__init__(
@@ -629,8 +630,8 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
             session_header=session_header,
             timestamps_variable=timestamps_variable,
             event_type_variable=event_type_variable,
-            code_scale=code_scale,
-            code_position=code_position,
+            event_code_factor=event_code_factor,
+            event_code_position=event_code_position,
             time_unit=time_unit,
             relative_mode=relative_mode,
             verbose=verbose,
@@ -715,8 +716,8 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
 
     def _unpack(self, values: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """Split packed values into their time part and their code part."""
-        divisor = self.source_data["code_scale"]
-        if self.source_data["code_position"] == "fraction":
+        divisor = self.source_data["event_code_factor"]
+        if self.source_data["event_code_position"] == "fraction":
             times = np.floor(values)
             # The values are read as floats, so the code is recovered by rounding rather than by comparing
             # fractions, which would fail on the representation error a decimal fraction carries in binary.
@@ -728,7 +729,7 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
                 index = int(too_wide[0])
                 raise ValueError(
                     f"The value {values[index]:.6f} of '{self.source_data['timestamps_variable']}' leaves a code "
-                    f"of {int(codes[index])}, which `code_scale={divisor}` has no room for. The array carries "
+                    f"of {int(codes[index])}, which `event_code_factor={divisor}` has no room for. The array carries "
                     "more decimals than that scale accounts for, so either the program packed with a larger "
                     "scale or these values are not packed codes at all."
                 )
@@ -741,7 +742,7 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
         """Name the packing arguments too, since a wrong one leaves part of the code in the time."""
         if self.source_data["event_type_variable"] is not None:
             return ""
-        return "For a packed array, a `code_scale` or `code_position` that leaves part of the code in the time. "
+        return "For a packed array, a `event_code_factor` or `event_code_position` that leaves part of the code in the time. "
 
     def _format_code(self, code: float) -> str:
         """Return the identifier one event code is known by.
@@ -753,9 +754,9 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
         """
         if not float(code).is_integer():
             return str(code)
-        if self.source_data["event_type_variable"] is not None or self.source_data["code_position"] == "leading":
+        if self.source_data["event_type_variable"] is not None or self.source_data["event_code_position"] == "leading":
             return str(int(code))
-        width = len(str(self.source_data["code_scale"])) - 1
+        width = len(str(self.source_data["event_code_factor"])) - 1
         return f"{int(code):0{width}d}"
 
 

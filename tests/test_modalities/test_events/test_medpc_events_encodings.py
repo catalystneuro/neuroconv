@@ -111,7 +111,7 @@ class TestRelativeTimes:
             file_path=path,
             session_header=SESSION_HEADER,
             timestamps_variable="C",
-            code_scale=100,
+            event_code_factor=100,
             time_unit="centiseconds",
             relative_mode=True,
         )
@@ -128,7 +128,7 @@ class TestRelativeTimes:
             file_path=path,
             session_header=SESSION_HEADER,
             timestamps_variable="C",
-            code_scale=100,
+            event_code_factor=100,
             time_unit="centiseconds",
         )
 
@@ -149,8 +149,8 @@ class TestCodePosition:
             file_path=path,
             session_header=SESSION_HEADER,
             timestamps_variable="A",
-            code_scale=10000,
-            code_position="leading",
+            event_code_factor=10000,
+            event_code_position="leading",
         )
 
         assert np.allclose(interface.get_event_times("1"), [64.54, 182.0])
@@ -162,18 +162,18 @@ class TestCodePosition:
         write_medpc_file(path, {"A": [1.10, 2.20]})
 
         interface = MedPCCodedEventsInterface(
-            file_path=path, session_header=SESSION_HEADER, timestamps_variable="A", code_scale=100
+            file_path=path, session_header=SESSION_HEADER, timestamps_variable="A", event_code_factor=100
         )
 
         assert set(interface.get_event_type_source_ids()) == {"10", "20"}
 
-    def test_a_scale_leaving_no_digits_raises(self, tmp_path):
+    def test_a_factor_leaving_no_digits_raises(self, tmp_path):
         path = tmp_path / "a.txt"
         write_medpc_file(path, {"A": [1.0]})
 
         with pytest.raises(ValueError, match="leaves no digits for a code"):
             MedPCCodedEventsInterface(
-                file_path=path, session_header=SESSION_HEADER, timestamps_variable="A", code_scale=1
+                file_path=path, session_header=SESSION_HEADER, timestamps_variable="A", event_code_factor=1
             )
 
 
@@ -217,7 +217,7 @@ class TestCompanionCodeArray:
                 session_header=SESSION_HEADER,
                 timestamps_variable="B",
                 event_type_variable="C",
-                code_scale=1000,
+                event_code_factor=1000,
             )
 
     def test_a_unit_per_event_type(self, tmp_path):
@@ -402,7 +402,7 @@ def test_a_code_wider_than_the_scale_raises(tmp_path):
     write_medpc_file(path, {"A": [5.999, 6.999]})
 
     interface = MedPCCodedEventsInterface(
-        file_path=path, session_header=SESSION_HEADER, timestamps_variable="A", code_scale=100
+        file_path=path, session_header=SESSION_HEADER, timestamps_variable="A", event_code_factor=100
     )
 
     with pytest.raises(ValueError, match="has no room for"):
