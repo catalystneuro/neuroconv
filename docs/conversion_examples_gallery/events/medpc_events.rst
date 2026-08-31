@@ -38,19 +38,17 @@ says how to read each.
     >>> # For this data interface we need to pass the output file from MedPC
     >>> file_path = f"{BEHAVIOR_DATA_PATH}/medpc/example_medpc_file_06_06_2024.txt"
     >>> # Change the file_path to the appropriate location in your system
-    >>> session_header = {"Start Date": "04/09/19", "Start Time": "10:34:30"}
-    >>> event_configuration = {
-    ...     "A": None,
-    ...     "B": None,
-    ...     "C": None,
-    ...     "D": None,
-    ...     # An entry naming a duration is durative: G holds the port entry onsets and E their durations
-    ...     "G": {"duration": "E"},
-    ... }
-    >>> interface = MedPCArrayEventsInterface(
+    >>> array_interface = MedPCArrayEventsInterface(
     ...     file_path=file_path,
-    ...     session_header=session_header,
-    ...     event_configuration=event_configuration,
+    ...     session_header={"Start Date": "04/09/19", "Start Time": "10:34:30"},
+    ...     event_configuration={
+    ...         "A": None,
+    ...         "B": None,
+    ...         "C": None,
+    ...         "D": None,
+    ...         # An entry naming a duration is durative: G holds the port entry onsets and E their durations
+    ...         "G": {"duration": "E"},
+    ...     },
     ...     # This program stored elapsed times in seconds, the default. Pass time_unit where yours used
     ...     # another unit, and relative_mode=True where it stored the gap since the previous event.
     ...     # The file records neither.
@@ -58,55 +56,29 @@ says how to read each.
     >>>
     >>> # Extract what metadata we can from the source file, which includes the session start time and the
     >>> # subject read from the header
-    >>> metadata = interface.get_metadata()
+    >>> metadata = array_interface.get_metadata()
     >>> # The file states no time zone, so we add it
     >>> session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("US/Pacific"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
-    >>> # Event types arrive named after the variable that holds them, and the file carries no descriptions,
-    >>> # so naming and describing them is the first thing you do
-    >>> event_types = metadata["Events"]["medpc"]["event_types"]
-    >>> event_types["A"]["event_name"] = "left_nose_poke"
-    >>> event_types["G"]["event_name"] = "port_entries"
-    >>> event_types["A"]["event_description"] = "Left nose poke times."
-    >>> event_types["G"]["event_description"] = "Time spent in the reward port."
     >>> # The subject_id comes from the file; the rest is required for DANDI upload
     >>> metadata["Subject"].update(species="Mus musculus", sex="M", age="P30D")
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"  # This should be something like: "./saved_file.nwb"
-    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+    >>> array_interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
 A variable holding one value per event, such as the type of each trial, is carried along as a column of that
-event type's table through ``payload``. The column arrives named after its variable; rename it and label its
-codes in the metadata.
+event type's table through ``payload``.
 
 .. code-block:: python
 
-    >>> from neuroconv.datainterfaces import MedPCArrayEventsInterface
-    >>>
     >>> file_path = f"{BEHAVIOR_DATA_PATH}/medpc/medpc_tye_lab/!2022-10-06_14h12m.Subject cohort10-M3.3"
-    >>> interface = MedPCArrayEventsInterface(
+    >>> payload_interface = MedPCArrayEventsInterface(
     ...     file_path=file_path,
     ...     session_header={"Start Date": "10/06/22", "Subject": "cohort10-M3.3"},
     ...     # S holds the time of each conditioned stimulus and K holds which one it was
     ...     event_configuration={"S": {"payload": ["K"]}},
     ... )
-    >>>
-    >>> metadata = interface.get_metadata()
-    >>> metadata["Events"]["medpc"]["event_types"]["S"]["event_name"] = "cs_presentation"
-    >>> metadata["Events"]["medpc"]["event_types"]["S"]["columns"]["K"]["column_name"] = "cs_type"
-    >>> metadata["Events"]["medpc"]["event_types"]["S"]["columns"]["K"]["column_categories"] = {
-    ...     "labels": {1: "water", 2: "ethanol", 3: "both"},
-    ...     "meanings": {
-    ...         1: "The water bottle was extended.",
-    ...         2: "The ethanol bottle was extended.",
-    ...         3: "Both bottles were extended.",
-    ...     },
-    ... }
-    >>> metadata["Subject"].update(species="Mus musculus", sex="M", age="P90D")
-    >>>
-    >>> nwbfile_path = output_folder / "medpc_value_column.nwb"
-    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
 Every event in one variable
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -128,27 +100,25 @@ variable becomes an event type named after its digits, so a code you do not name
     >>> from neuroconv.datainterfaces import MedPCPackedEventsInterface
     >>>
     >>> file_path = f"{BEHAVIOR_DATA_PATH}/medpc/event_type_in_column_laubach_lab/ExampleFile2"
-    >>> interface = MedPCPackedEventsInterface(
+    >>> packed_interface = MedPCPackedEventsInterface(
     ...     file_path=file_path,
     ...     session_header={"Start Date": "09/25/15", "Subject": "ML03"},
-    ...     events_variable="A",  # the array this program packs its events into
+    ...     events_variable="A",  # the variable this program packs its events into
     ...     time_unit=0.002,  # a 2 ms system, so each stored tick is worth 0.002 s
     ...     # A wrong unit still decodes, so the times read are checked against the session length the
     ...     # header states and for running backwards
     ... )
     >>>
-    >>> # Every code becomes an event type named after its digits, so naming them comes first
-    >>> metadata = interface.get_metadata()
-    >>> event_types = metadata["Events"]["medpc"]["event_types"]
-    >>> event_types["001"]["event_name"] = "lick"
-    >>> event_types["011"]["event_name"] = "pump_a_on"
-    >>> event_types["021"]["event_name"] = "pump_a_off"
+    >>> metadata = packed_interface.get_metadata()
     >>> session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("US/Eastern"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>> metadata["Subject"].update(species="Rattus norvegicus", sex="M", age="P90D")
     >>>
-    >>> nwbfile_path = output_folder / "medpc_coded.nwb"
-    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+    >>> nwbfile_path = output_folder / "medpc_packed.nwb"
+    >>> packed_interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+
+Annotating the metadata
+~~~~~~~~~~~~~~~~~~~~~~~
 
 NeuroConv aims to automatically add all the metadata annotations that are present in the source format.
 It is often the case that crucial information is not available there, such as which behavior a variable
@@ -158,6 +128,45 @@ metadata, which makes the data more useful for future users and for the communit
 :ref:`section on a single interface <annotate_events_single_interface>` starts from scratch, and its
 :ref:`section on shared tables <annotate_events_shared_table>` covers writing several interfaces into one
 table.
+
+A MedPC variable is a slot rather than a label, so every event type arrives named after the variable that holds
+it and the file carries no descriptions at all. Both are yours to write, and the edits go before
+``run_conversion``.
+
+.. code-block:: python
+
+    >>> metadata = array_interface.get_metadata()
+    >>> event_types = metadata["Events"]["medpc"]["event_types"]
+    >>> event_types["A"]["event_name"] = "left_nose_poke"
+    >>> event_types["A"]["event_description"] = "Left nose poke times."
+    >>> event_types["G"]["event_name"] = "port_entries"
+    >>> event_types["G"]["event_description"] = "Time spent in the reward port."
+
+A packed file is the same, except that an event type is keyed by its code rather than by a variable.
+
+.. code-block:: python
+
+    >>> metadata = packed_interface.get_metadata()
+    >>> event_types = metadata["Events"]["medpc"]["event_types"]
+    >>> event_types["001"]["event_name"] = "lick"
+    >>> event_types["011"]["event_name"] = "pump_a_on"
+    >>> event_types["021"]["event_name"] = "pump_a_off"
+
+A payload column also arrives named after its variable, and what its values mean is stated here too.
+
+.. code-block:: python
+
+    >>> metadata = payload_interface.get_metadata()
+    >>> columns = metadata["Events"]["medpc"]["event_types"]["S"]["columns"]
+    >>> columns["K"]["column_name"] = "cs_type"
+    >>> columns["K"]["column_categories"] = {
+    ...     "labels": {1: "water", 2: "ethanol", 3: "both"},
+    ...     "meanings": {
+    ...         1: "The water bottle was extended.",
+    ...         2: "The ethanol bottle was extended.",
+    ...         3: "Both bottles were extended.",
+    ...     },
+    ... }
 
 Not supported yet
 ~~~~~~~~~~~~~~~~~
