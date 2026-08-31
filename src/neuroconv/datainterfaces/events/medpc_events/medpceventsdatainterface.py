@@ -1,4 +1,6 @@
+import re
 from datetime import datetime
+from pathlib import Path
 from typing import Literal
 
 import numpy as np
@@ -268,6 +270,29 @@ class _MedPCEventsInterface(BaseEventsInterface):
         seconds = end - start
         # A session running past midnight wraps the clock; the header carries no second date to resolve it.
         return seconds + 24 * 3600 if seconds < 0 else seconds
+
+    def _printed_decimals(self, medpc_name: str) -> int:
+        """Return how many digits `DISKFORMAT` printed after the decimal point for one array.
+
+        `DISKFORMAT = P1.P2` fixes the printed width of every value, and `P2` is therefore how many digits a
+        fraction-packed event code occupies. It is a property of the file, visible in the text, so a packed code
+        needs no constant supplied for it. The widths programs use vary: of 361 surveyed, most print none at all,
+        and those pack into the leading digits instead because they have no fractional digits to use.
+        """
+        pattern = re.compile(rf"^\s*{re.escape(medpc_name)}:\s*$")
+        row = re.compile(r"^\s*\d+:")
+        in_array = False
+        for line in Path(self.source_data["file_path"]).read_text(encoding="utf-8", errors="replace").splitlines():
+            if pattern.match(line):
+                in_array = True
+                continue
+            if in_array:
+                if not row.match(line):
+                    break
+                widths = {len(token.split(".")[1]) for token in line.split(":", 1)[1].split() if "." in token}
+                if widths:
+                    return max(widths)
+        return 0
 
     def _read_session(self, medpc_name_to_info_dict: dict) -> dict:
         """Read the selected session's variables out of the MedPC file."""
@@ -578,10 +603,10 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
             times and nothing is unpacked, so ``event_code_factor`` and ``event_code_position`` do not apply.
             ex. 'C', beside timestamps in 'B'
         event_code_factor : int, optional
-            The constant the program divided the code by, or added it to, when packing, default = 1000. With
-            ``event_code_position="fraction"`` it is the divisor of ``time + code/divisor``, so 1000 leaves three
-            fractional digits and 100 leaves two. With ``event_code_position="leading"`` it is the multiplier of
-            ``code * divisor + time``, so 10000 puts the code above four digits of time.
+            The constant the program added the code as, and required only with
+            ``event_code_position="leading"`` (ex. 10000 for ``^PeckLeft = 10000``). In fraction position the
+            file states it: ``DISKFORMAT`` fixes how many digits every value prints after the decimal point and
+            those digits are the code, so passing it there is refused.
         event_code_position : {"fraction", "leading"}, optional
             Where in the value the code sits, default = "fraction". Which one a program used cannot be read off
             the data reliably, since both produce plausible numbers; the MSN program settles it.
@@ -613,16 +638,22 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
         if event_type_variable is not None and (event_code_factor is not None or event_code_position is not None):
             raise ValueError(
                 f"`event_type_variable` names '{event_type_variable}' as the array holding the codes, so nothing "
-                "is unpacked from the times and `event_code_factor` and `event_code_position` would not be used. Pass the "
-                "companion array or the packing arguments, not both."
+                "is unpacked from the times and `event_code_factor` and `event_code_position` would not be "
+                "used. Pass the companion array or the packing arguments, not both."
             )
-        event_code_factor = 1000 if event_code_factor is None else event_code_factor
         event_code_position = "fraction" if event_code_position is None else event_code_position
-        if event_code_factor < 10:
+        if event_code_position == "fraction" and event_code_factor is not None:
             raise ValueError(
-                f"`event_code_factor` is {event_code_factor}, which leaves no digits for a code. It is the "
-                "constant the program combined the code with: 1000 for `time + code/1000`, 10000 for "
-                "`code * 10000 + time`."
+                "`event_code_factor` is not needed in fraction position: `DISKFORMAT` fixes how many digits "
+                "every value prints after the decimal point, and those digits are the code, so the file states "
+                "it. Pass it only with `event_code_position='leading'`, where nothing in the value says where "
+                "the code ends."
+            )
+        if event_code_position == "leading" and event_code_factor is None:
+            raise ValueError(
+                "`event_code_position` is 'leading', so `event_code_factor` is required: the code sits above "
+                "the time and nothing in a value like 10064.540 says whether the split is at 10000 or 1000. "
+                "It is the constant the program added the code as, `^PeckLeft = 10000`."
             )
 
         super().__init__(
@@ -716,23 +747,13 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
 
     def _unpack(self, values: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """Split packed values into their time part and their code part."""
-        divisor = self.source_data["event_code_factor"]
+        divisor = self._code_factor()
         if self.source_data["event_code_position"] == "fraction":
             times = np.floor(values)
             # The values are read as floats, so the code is recovered by rounding rather than by comparing
             # fractions, which would fail on the representation error a decimal fraction carries in binary.
+            # The factor is ten to the printed width, so a fraction of that many digits can never exceed it.
             codes = np.round((values - times) * divisor)
-            # A fraction that rounds up to the scale itself has more digits than the scale leaves for a code,
-            # which is what a value carrying more decimals than the program packed looks like.
-            too_wide = np.flatnonzero(codes >= divisor)
-            if len(too_wide):
-                index = int(too_wide[0])
-                raise ValueError(
-                    f"The value {values[index]:.6f} of '{self.source_data['timestamps_variable']}' leaves a code "
-                    f"of {int(codes[index])}, which `event_code_factor={divisor}` has no room for. The array carries "
-                    "more decimals than that scale accounts for, so either the program packed with a larger "
-                    "scale or these values are not packed codes at all."
-                )
         else:
             codes = np.floor(values / divisor)
             times = values - codes * divisor
@@ -743,6 +764,28 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
         if self.source_data["event_type_variable"] is not None:
             return ""
         return "For a packed array, a `event_code_factor` or `event_code_position` that leaves part of the code in the time. "
+
+    def _code_factor(self) -> int:
+        """Return the constant separating the code from the time.
+
+        In fraction position the file states it: `DISKFORMAT` fixes how many digits print after the decimal
+        point and those digits are the code, so the factor is ten to that width. A file printing none cannot
+        carry a fraction-packed code at all. In leading position nothing in the value says where the code ends,
+        so it is the number the caller gave.
+        """
+        if self.source_data["event_code_position"] == "leading":
+            return self.source_data["event_code_factor"]
+        decimals = self._printed_decimals(self.source_data["timestamps_variable"])
+        if decimals == 0:
+            raise ValueError(
+                f"The values of '{self.source_data['timestamps_variable']}' print no digits after the decimal "
+                "point, so they cannot carry a code packed into the fraction. A program whose `DISKFORMAT` "
+                "leaves no decimals packs the code into the leading digits instead, which is "
+                "`event_code_position='leading'`, or writes the codes into their own array, which is "
+                "`event_type_variable`. If the file is neither, please open an issue at "
+                "https://github.com/catalystneuro/neuroconv/issues with the program and a sample file."
+            )
+        return 10**decimals
 
     def _format_code(self, code: float) -> str:
         """Return the identifier one event code is known by.
@@ -756,7 +799,7 @@ class MedPCCodedEventsInterface(_MedPCEventsInterface):
             return str(code)
         if self.source_data["event_type_variable"] is not None or self.source_data["event_code_position"] == "leading":
             return str(int(code))
-        width = len(str(self.source_data["event_code_factor"])) - 1
+        width = len(str(self._code_factor())) - 1
         return f"{int(code):0{width}d}"
 
 

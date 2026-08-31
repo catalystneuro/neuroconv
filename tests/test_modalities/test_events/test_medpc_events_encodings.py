@@ -15,8 +15,12 @@ from neuroconv.datainterfaces import MedPCArrayEventsInterface, MedPCCodedEvents
 SESSION_HEADER = {"Start Date": "04/10/19", "Start Time": "12:36:13"}
 
 
-def write_medpc_file(file_path, arrays: dict[str, list[float]], columns: int = 5) -> None:
-    """Write a MED-PC IV annotated file holding one session and the given arrays."""
+def write_medpc_file(file_path, arrays: dict[str, list[float]], columns: int = 5, decimals: int = 3) -> None:
+    """Write a MED-PC IV annotated file holding one session and the given arrays.
+
+    ``decimals`` is `DISKFORMAT`'s second half, the digits printed after the decimal point. It is what fixes how
+    many digits a fraction-packed event code occupies, so a test that wants two-digit codes writes two.
+    """
     lines = [
         r"File: C:\MED-PC IV\DATA\!2019-04-10_12h36m.Subject TEST-01",
         "",
@@ -34,7 +38,7 @@ def write_medpc_file(file_path, arrays: dict[str, list[float]], columns: int = 5
     for name, values in sorted(arrays.items()):
         lines.append(f"{name}:")
         for start in range(0, len(values), columns):
-            row = "".join(f"{value:13.3f}" for value in values[start : start + columns])
+            row = "".join(f"{value:13.{decimals}f}" for value in values[start : start + columns])
             lines.append(f"{start:6d}:{row}")
     file_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
@@ -105,13 +109,12 @@ class TestRelativeTimes:
     def test_intervals_are_accumulated(self, tmp_path):
         # `SET C(I) = T + 0.10, T = 0` with T in centiseconds, which is what the shipped FR5 procedure writes.
         path = tmp_path / "relative.txt"
-        write_medpc_file(path, {"C": [150.10, 62.10, 88.10, 31.20]})
+        write_medpc_file(path, {"C": [150.10, 62.10, 88.10, 31.20]}, decimals=2)
 
         interface = MedPCCodedEventsInterface(
             file_path=path,
             session_header=SESSION_HEADER,
             timestamps_variable="C",
-            event_code_factor=100,
             time_unit="centiseconds",
             relative_mode=True,
         )
@@ -122,13 +125,12 @@ class TestRelativeTimes:
     def test_reading_intervals_as_absolute_times_raises(self, tmp_path):
         # The whole point of the check: this file decodes without error and only the ordering betrays it.
         path = tmp_path / "relative.txt"
-        write_medpc_file(path, {"C": [150.10, 62.10, 88.10]})
+        write_medpc_file(path, {"C": [150.10, 62.10, 88.10]}, decimals=2)
 
         interface = MedPCCodedEventsInterface(
             file_path=path,
             session_header=SESSION_HEADER,
             timestamps_variable="C",
-            event_code_factor=100,
             time_unit="centiseconds",
         )
 
@@ -156,24 +158,47 @@ class TestCodePosition:
         assert np.allclose(interface.get_event_times("1"), [64.54, 182.0])
         assert np.allclose(interface.get_event_times("2"), [101.25])
 
-    def test_the_identifier_is_padded_to_the_divisor(self, tmp_path):
-        # A divisor of 100 leaves two digits, so the identifiers read as the program writes them.
+    def test_the_printed_width_fixes_the_code_width(self, tmp_path):
+        # `DISKFORMAT` decides how many digits print after the point, and those digits are the code. A file
+        # printing two gives two-digit identifiers without anything being stated.
         path = tmp_path / "two_digits.txt"
-        write_medpc_file(path, {"A": [1.10, 2.20]})
+        write_medpc_file(path, {"A": [1.10, 2.20]}, decimals=2)
 
-        interface = MedPCCodedEventsInterface(
-            file_path=path, session_header=SESSION_HEADER, timestamps_variable="A", event_code_factor=100
-        )
+        interface = MedPCCodedEventsInterface(file_path=path, session_header=SESSION_HEADER, timestamps_variable="A")
 
         assert set(interface.get_event_type_source_ids()) == {"10", "20"}
 
-    def test_a_factor_leaving_no_digits_raises(self, tmp_path):
-        path = tmp_path / "a.txt"
-        write_medpc_file(path, {"A": [1.0]})
+    def test_a_file_printing_no_decimals_cannot_hold_a_packed_code(self, tmp_path):
+        # `DISKFORMAT = 13` prints no decimals at all, which is the commonest setting of the 361 programs
+        # surveyed, and is why those programs pack into the leading digits instead.
+        path = tmp_path / "no_decimals.txt"
+        write_medpc_file(path, {"A": [10602.0, 10900.0]}, decimals=0)
 
-        with pytest.raises(ValueError, match="leaves no digits for a code"):
+        interface = MedPCCodedEventsInterface(file_path=path, session_header=SESSION_HEADER, timestamps_variable="A")
+
+        with pytest.raises(ValueError, match="print no digits after the decimal point"):
+            interface.get_event_type_source_ids()
+
+    def test_a_factor_in_fraction_position_is_refused(self, tmp_path):
+        # The file states it, so stating it again is a misunderstanding rather than a harmless extra.
+        path = tmp_path / "a.txt"
+        write_medpc_file(path, {"A": [1.011]})
+
+        with pytest.raises(ValueError, match="not needed in fraction position"):
             MedPCCodedEventsInterface(
-                file_path=path, session_header=SESSION_HEADER, timestamps_variable="A", event_code_factor=1
+                file_path=path, session_header=SESSION_HEADER, timestamps_variable="A", event_code_factor=1000
+            )
+
+    def test_leading_position_without_a_factor_raises(self, tmp_path):
+        path = tmp_path / "a.txt"
+        write_medpc_file(path, {"A": [10064.540]})
+
+        with pytest.raises(ValueError, match="`event_code_factor` is required"):
+            MedPCCodedEventsInterface(
+                file_path=path,
+                session_header=SESSION_HEADER,
+                timestamps_variable="A",
+                event_code_position="leading",
             )
 
 
@@ -394,16 +419,3 @@ def test_a_resolution_of_zero_raises(tmp_path):
             event_configuration={"A": None},
             time_unit=0.0,
         )
-
-
-def test_a_code_wider_than_the_scale_raises(tmp_path):
-    # A value carrying more decimals than the scale accounts for folds part of the time into the code.
-    path = tmp_path / "wide.txt"
-    write_medpc_file(path, {"A": [5.999, 6.999]})
-
-    interface = MedPCCodedEventsInterface(
-        file_path=path, session_header=SESSION_HEADER, timestamps_variable="A", event_code_factor=100
-    )
-
-    with pytest.raises(ValueError, match="has no room for"):
-        interface.get_event_type_source_ids()
