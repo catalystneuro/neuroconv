@@ -300,7 +300,7 @@ def _read_boris_observation(file_path: str | Path, observation_name: str) -> _Bo
     if observation_name not in observations:
         raise KeyError(
             f"No observation '{observation_name}' in '{file_path}'. This project holds "
-            f"{sorted(observations)}, which _get_observation_names lists."
+            f"{sorted(observations)}, which get_observation_names lists."
         )
 
     observation = observations[observation_name]

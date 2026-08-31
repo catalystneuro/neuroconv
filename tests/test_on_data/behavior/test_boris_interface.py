@@ -1,6 +1,8 @@
 """Tests for BORISInterface, one class per project file."""
 
+import json
 import math
+import re
 from datetime import datetime
 
 import pytest
@@ -495,42 +497,56 @@ def test_time_offset_is_read_and_applied():
     assert table["timestamp"].min() == pytest.approx(1.0 + 12.5)  # the first Foraging row
 
 
-def test_undeclared_behavior_code_warns():
-    """The loss has to announce itself, since nothing in the written file records that it happened.
+def test_a_code_the_ethogram_no_longer_declares():
+    """Somebody edited the ethogram after scoring, and the already-scored rows still name the old code.
 
-    A code the ethogram no longer declares has no point-or-state kind, so its rows cannot be paired and
-    are written without durations. Read as a state behavior that would be every bout it ever had.
+    BORIS does not rewrite rows when a behavior is renamed or deleted, so this is an ordinary state for a
+    project to be in rather than a corrupt file. Both shapes are in this fixture: `Rearing` and
+    `Scent-marking` were scored and never declared at all.
+
+    What the conversion promises in that situation is three things at once. Nothing the coder recorded is
+    dropped, so every one of those events reaches the file. Nothing is invented on their behalf: the code
+    has no point-or-state kind, because only the ethogram carries that, so no extent is claimed for it and
+    the catalogue does not pretend it was ever part of the scheme. And the loss is announced, once per
+    code, with what went missing and how to get it back, because nothing in the written file would
+    otherwise say it happened.
     """
-    with pytest.warns(UserWarning, match="ethogram does not declare"):
-        BORISInterface(file_path=TestBORISTimeOffsetAndUndeclaredCodes.file_path, observation_name="removed behaviors")
-
-    # One warning per code, naming the code and how many rows carry it.
-    with pytest.warns(UserWarning) as records:
-        BORISInterface(file_path=TestBORISTimeOffsetAndUndeclaredCodes.file_path, observation_name="positive offset")
-    messages = " ".join(str(record.message) for record in records)
-    assert "'Foraging'" in messages and "4 events" in messages
-
-
-def test_undeclared_behavior_code_keeps_the_row():
-    """A code the ethogram no longer declares still reaches the file, typed as a point event.
-
-    Real projects produce this two ways, both in this fixture: a behavior renamed after the session was
-    scored, whose old code stays on every row, and behaviors removed from the scheme outright. Neither
-    can be typed, so the extent is not claimed, which does lose a renamed state behavior's durations.
-    """
-    interface = BORISInterface(
-        file_path=TestBORISTimeOffsetAndUndeclaredCodes.file_path, observation_name="removed behaviors"
+    file_path = TestBORISTimeOffsetAndUndeclaredCodes.file_path
+    expected = (
+        "Observation 'removed behaviors' has 1 events naming 'Rearing', which this project's ethogram "
+        "does not declare. BORIS does not rewrite existing rows when a behavior is renamed or removed, "
+        "so these are usually the old name of a behavior that is still in the scheme under a new one. "
+        "They are read without durations, since only the ethogram says whether a behavior is durative. "
+        "If 'Rearing' was a state behavior, its bouts are not in this file. Declare it in the project in "
+        "BORIS and re-save to recover them."
     )
+    with pytest.warns(UserWarning, match=re.escape(expected)) as records:
+        interface = BORISInterface(file_path=file_path, observation_name="removed behaviors")
+    # One warning per code, so somebody with three renamed behaviors gets three lines naming three codes.
+    messages = [str(record.message) for record in records]
+    assert len(messages) == 2
+    assert sorted(message.split("naming ")[1].split(",")[0] for message in messages) == [
+        "'Rearing'",
+        "'Scent-marking'",
+    ]
+
     nwbfile = mock_NWBFile()
     interface.add_to_nwbfile(nwbfile=nwbfile)
+    events_table = nwbfile.get_events_table("RemovedBehaviors").to_dataframe()
 
-    table = nwbfile.get_events_table("RemovedBehaviors").to_dataframe()
-    assert {"Rearing", "Scent-marking"} <= set(table["event_type"])
-    # They are absent from the catalogue, which holds only what the ethogram declares.
-    catalogue = BORISInterface(
-        file_path=TestBORISTimeOffsetAndUndeclaredCodes.file_path, observation_name="removed behaviors"
-    )._project.behaviors
-    assert "Rearing" not in catalogue
+    # Nothing is dropped: every scored event reaches the file, undeclared or not.
+    assert list(events_table["event_type"]) == ["Freeze", "Rearing", "Burrowing", "Scent-marking"]
+    # Nothing is invented: an undeclared code has no kind, so no extent is claimed for it.
+    assert list(events_table["duration"].isna()) == [True, True, False, True]
+    # The catalogue is the ethogram and nothing more, so it does not grow to cover a deleted code.
+    catalogue = nwbfile.processing["behavior"]["Ethogram"].to_dataframe()
+    assert list(catalogue["behavior"]) == [
+        "Foraging/Caching",
+        "Exploraci\u00f3n",
+        "Burrowing",
+        "Freeze",
+        "Allogroom",
+    ]
 
 
 def test_unpaired_state_start_becomes_nan():
@@ -624,14 +640,12 @@ def test_project_with_no_observations():
         == []
     )
 
-    with pytest.raises(KeyError, match="No observation"):
-        BORISInterface(
-            file_path=BORIS_PROJECTS_PATH
-            / "version_7_0"
-            / "no_observations"
-            / "twenty_six_subjects_and_three_converters.boris",
-            observation_name="anything",
-        )
+    file_path = (
+        BORIS_PROJECTS_PATH / "version_7_0" / "no_observations" / "twenty_six_subjects_and_three_converters.boris"
+    )
+    expected = f"No observation 'anything' in '{file_path}'. This project holds [], which get_observation_names lists."
+    with pytest.raises(KeyError, match=re.escape(expected)):
+        BORISInterface(file_path=file_path, observation_name="anything")
 
 
 def test_behaviors_can_be_routed_into_separate_tables():
@@ -667,6 +681,71 @@ def test_behaviors_can_be_routed_into_separate_tables():
     assert {name for name in numeric.colnames if name.startswith("modifier_")} == {"modifier_numeric_numeric_modif"}
 
 
+def test_two_behaviors_cannot_resolve_to_one_modifier_column(tmp_path):
+    """A column is named for the behavior and the slot, and the pair has to stay distinguishable.
+
+    Both halves are normalized and joined with underscores, so two different splits can flatten to the
+    same name. Nothing downstream would notice: the two behaviors would agree on the description and on
+    the vocabulary, so the writer would accept them and their answers would merge into one column
+    holding two vocabularies, which is the aggregation naming per behavior exists to prevent.
+    """
+    scheme = {
+        "0": {
+            "type": "State event",
+            "code": "Traffic",
+            "description": "",
+            "excluded": "",
+            "modifiers": {"0": {"name": "lights state", "type": 0, "values": ["Red", "Green"]}},
+        },
+        "1": {
+            "type": "State event",
+            "code": "Traffic lights",
+            "description": "",
+            "excluded": "",
+            "modifiers": {"0": {"name": "State", "type": 0, "values": ["On", "Off"]}},
+        },
+    }
+    events = [
+        [1.0, "", "Traffic", "Red", ""],
+        [2.0, "", "Traffic", "Red", ""],
+        [3.0, "", "Traffic lights", "On", ""],
+        [4.0, "", "Traffic lights", "On", ""],
+    ]
+    project = {
+        "project_format_version": "7.0",
+        "project_name": "collision",
+        "time_format": "s",
+        "behaviors_conf": scheme,
+        "behavioral_categories": [],
+        "subjects_conf": {},
+        "independent_variables": {},
+        "coding_map": {},
+        "converters": {},
+        "observations": {
+            "obs": {
+                "type": "LIVE",
+                "date": "2026-01-01T10:00:00",
+                "description": "",
+                "time offset": 0.0,
+                "file": [],
+                "independent_variables": {},
+                "events": events,
+            }
+        },
+    }
+    file_path = tmp_path / "collision.boris"
+    file_path.write_text(json.dumps(project), encoding="utf-8")
+
+    expected = (
+        "Behaviors 'Traffic' and 'Traffic lights' both resolve to the modifier column "
+        "'modifier_traffic_lights_state', so their answers would merge into one column holding two "
+        "vocabularies. A column is named for the behavior and the slot together, and these two flatten "
+        "to the same name. Rename a slot on either behavior in BORIS and re-save."
+    )
+    with pytest.raises(ValueError, match=re.escape(expected)):
+        BORISInterface(file_path=file_path, observation_name="obs").add_to_nwbfile(nwbfile=mock_NWBFile())
+
+
 def test_several_observations_of_one_project_share_the_catalogue():
     """One interface reads one observation, so writing several to a file is a converter's job.
 
@@ -699,7 +778,13 @@ def test_a_second_project_cannot_share_the_catalogue():
         nwbfile=nwbfile
     )
 
-    with pytest.raises(ValueError, match="cannot share one NWB file"):
+    expected = (
+        "The behavior processing module already holds an 'Ethogram' catalogue declaring "
+        "['p', 's', 'q', 'r', 'm'], and this project declares ['groom', 'run', 'walk', 'attack', 'play', "
+        "'jump', 'approach', 'drink', 'eat', 'defecate', 'urinate']. A catalogue is one project's coding "
+        "scheme, so two BORIS projects cannot share one NWB file. Write them to separate files."
+    )
+    with pytest.raises(ValueError, match=re.escape(expected)):
         BORISInterface(file_path=TestBORISCategorizedEthogram.file_path, observation_name="test1").add_to_nwbfile(
             nwbfile=nwbfile
         )
