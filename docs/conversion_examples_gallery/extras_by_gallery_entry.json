@@ -18,6 +18,9 @@
     "extra": null,
     "note": "Converts on a base install, so there is no extra to name"
   },
+  "behavior/moseq_keypoints.rst": {
+    "extra": "moseq"
+  },
   "behavior/sleap.rst": {
     "extra": "sleap"
   },
