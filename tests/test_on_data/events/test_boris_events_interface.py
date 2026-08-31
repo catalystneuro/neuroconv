@@ -364,6 +364,38 @@ def test_project_with_no_observations():
         BORISEventsInterface(file_path=NO_OBSERVATIONS, observation_name="anything")
 
 
+def test_several_observations_of_one_project_share_the_catalogue():
+    """One interface reads one observation, so writing several to a file is a converter's job.
+
+    They come from one project and so from one coding scheme, and the catalogue is that scheme, not any
+    observation's. The second interface therefore meets its own catalogue and reuses it, while each
+    observation keeps its own events table and its own bouts table.
+    """
+    nwbfile = mock_NWBFile()
+    for observation_name in ("observation #1", "live not paired"):
+        BORISEventsInterface(file_path=MULTI_SUBJECT, observation_name=observation_name).add_to_nwbfile(nwbfile=nwbfile)
+
+    behavior_module = nwbfile.processing["behavior"]
+    assert set(nwbfile.events) == {"Observation1", "LiveNotPaired"}
+    assert {"Observation1Bouts", "LiveNotPairedBouts"} <= set(behavior_module.data_interfaces)
+    catalogue = behavior_module["Ethogram"].to_dataframe()
+    assert list(catalogue["behavior"]) == ["p", "s", "q", "r", "m"]
+
+
+def test_a_second_project_cannot_share_the_catalogue():
+    """A catalogue is one project's coding scheme, so two projects in one file have to be refused.
+
+    The object name is fixed, so a second project would either find the name taken and skip writing its
+    own behaviors, leaving a bouts table whose labels are in no catalogue, or extend the first project's
+    and make one catalogue claim to be the scheme of two.
+    """
+    nwbfile = mock_NWBFile()
+    BORISEventsInterface(file_path=MULTI_SUBJECT, observation_name="observation #1").add_to_nwbfile(nwbfile=nwbfile)
+
+    with pytest.raises(ValueError, match="cannot share one NWB file"):
+        BORISEventsInterface(file_path=CATEGORIZED, observation_name="test1").add_to_nwbfile(nwbfile=nwbfile)
+
+
 def test_live_observation_has_no_frame_rate():
     """A LIVE observation has no media and so no resolution to claim; a MEDIA one has the frame period."""
     live = BORISEventsInterface(file_path=VERSION_1_6, observation_name="live observation")

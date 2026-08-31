@@ -272,6 +272,16 @@ class BORISEventsInterface(BaseEventsInterface):
                     category=behavior.category,
                 )
             behavior_module.add(catalogue)
+        elif list(catalogue["behavior"].data) != list(self._project.behaviors):
+            # A second observation of the same project meets its own catalogue and reuses it. A second
+            # project meets somebody else's, and extending it would make one catalogue claim to be the
+            # scheme of two projects while its `exclusive` flag and its rows describe only the first.
+            raise ValueError(
+                f"The behavior processing module already holds an 'Ethogram' catalogue declaring "
+                f"{list(catalogue['behavior'].data)}, and this project declares "
+                f"{list(self._project.behaviors)}. A catalogue is one project's coding scheme, so two "
+                "BORIS projects cannot share one NWB file. Write them to separate files."
+            )
 
         # A bout with no stop cannot be an interval row, having no stop time to write. It stays in the
         # events table with a NaN duration, which is the honest reading of a start nobody closed.
