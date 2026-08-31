@@ -13,10 +13,8 @@ Each event type is written as a ``pynwb.event.EventsTable`` into ``nwbfile.event
 Which interface you want
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-MedPC defines only how a number is *printed*; ``DISKVARS``, ``DISKFORMAT`` and ``DISKCOLUMNS`` say which
-variables are saved, how wide they print and how many sit on a row, and nothing in the format says what any
-number means. What an array holds is decided entirely by the MSN program the experimenter wrote, so **read the
-program, not the data**, and open the file to see which of the two shapes it is in.
+NeuroConv currently reads two kinds of MedPC output, and which one you have was decided by the MSN program the
+experimenter wrote, so open the file and look.
 
 **One array per event type.** Each lettered array is a plain list of times, and the array is the event type:
 
@@ -41,27 +39,18 @@ integer part:
 
 Use :py:class:`~neuroconv.datainterfaces.events.medpc_events.medpceventsdatainterface.MedPCPackedEventsInterface`.
 It finds the event types itself, since the codes are in the data, and you supply only how to read them and
-whatever names you know. How many digits the code occupies needs no stating: ``DISKFORMAT`` fixes the printed
-width and those digits are the code, so ``.1``, ``.11`` and ``.987`` can sit in one array and all print as
-three decimals.
+whatever names you know. Codes of different widths can sit in one array, since the file prints them all to the
+same number of decimals.
 
 What a value is worth
 ~~~~~~~~~~~~~~~~~~~~~
 
-Both interfaces take the same two arguments for this, because a MedPC value is a time only after the program's
-choices are applied and the file records none of them.
+A MedPC value is a time only once the program's choices are applied, and the file records none of them, so both
+interfaces take ``time_unit``, what one stored value is worth as a named unit or a number of seconds, and
+``relative_mode``, for a program that stored the interval since the previous event rather than the elapsed time.
 
-``time_unit`` is what one stored value is worth: a named unit, ``"seconds"``, ``"centiseconds"``,
-``"deciseconds"``, ``"milliseconds"`` or ``"decaseconds"``, or a number of seconds. A program that stored the raw
-``BTIME`` counter takes the box's timing resolution as that number, ``0.002`` on a 2 ms system and ``0.005`` on a
-5 ms one, which is set when MED-PC is installed and appears in no file.
-
-``relative_mode`` says whether each value is the interval since the previous event rather than the elapsed time.
-Med Associates' own shipped example procedures use this, which they call relative or incremental mode, so it is
-worth checking before assuming absolute times.
-
-Get any of these wrong and the file still decodes, which is why both interfaces check that the times they read do
-not run backwards and raise naming the likely cause when they do.
+Get either wrong and the file still decodes, which is why both interfaces check the times they read for running
+backwards and against the session length the header states, and name the likely cause when they raise.
 
 One array per event type
 ~~~~~~~~~~~~~~~~~~~~~~~~
