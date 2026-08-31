@@ -114,7 +114,11 @@ lightningpose = [
     "neuroconv[video]",
 ]
 medpc = [
-    "ndx-events==0.2.2",
+    # MedPC events are parsed from a raw text file and written as native pynwb 4.0 EventsTable objects, so this
+    # needs nothing beyond core; kept as a stable install alias so `neuroconv[medpc]` remains valid.
+]
+medpc_legacy = [
+    "ndx-events==0.2.2",  # only the deprecated MedPCInterface writes ndx-events; both go in v0.12.0
 ]
 moseq = [
     "ndx-ethogram>=0.1.0",  # For the curated EthogramBouts/Ethogram derived from the syllable sequence
@@ -130,7 +134,9 @@ behavior = [
     "neuroconv[fictrac]",
     "neuroconv[video]",
     "neuroconv[lightningpose]",
-    "neuroconv[medpc]",
+    # TODO: drop this when MedPCInterface is removed in v0.12.0; the events interfaces are in
+    # neuroconv[events] and the legacy extra exists only for that interface's ndx-events pin.
+    "neuroconv[medpc_legacy]",
     "neuroconv[moseq]",
     "neuroconv[vame]",
     "ndx-miniscope>=0.5.1",  # This is for the miniscope behavior data interface, not sure is needed
@@ -160,6 +166,7 @@ pyphotometry_events = [
 events = [
     "neuroconv[csv_events]",
     "neuroconv[doric_events]",
+    "neuroconv[medpc]",
     "neuroconv[npm_events]",
     "neuroconv[pyphotometry_events]",
     "neuroconv[tdt_events]",
