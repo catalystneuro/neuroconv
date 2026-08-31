@@ -219,6 +219,12 @@ class BORISEventsInterface(BaseEventsInterface):
         for occurrence in self._observation.occurrences:
             occurrences_by_code.setdefault(occurrence.code, []).append(occurrence)
 
+        # Whether a closing-row column earns its place is a property of the observation, not of any one
+        # behavior, so it is settled once here rather than re-walked for every code.
+        closing_fields = [
+            field for field in ("stop_comment", "stop_modifiers") if self._closing_row_differs(field=field)
+        ]
+
         events_data_dict = {}
         for code, occurrences in occurrences_by_code.items():
             behavior = self._project.behaviors.get(code)
@@ -237,12 +243,12 @@ class BORISEventsInterface(BaseEventsInterface):
                     "comment": np.array([occurrence.comment for occurrence in occurrences], dtype=object),
                     **{
                         field: np.array([getattr(occurrence, field) for occurrence in occurrences], dtype=object)
-                        for field in ("stop_comment", "stop_modifiers")
-                        if self._closing_row_differs(field=field)
+                        for field in closing_fields
                     },
                 },
             )
-        return events_data_dict
+        self._events_data_dict = events_data_dict
+        return self._events_data_dict
 
     def _add_ethogram_to_nwbfile(self, nwbfile: NWBFile) -> None:
         """Write the coding scheme as an ``Ethogram`` catalogue and the closed bouts as ``EthogramBouts``."""
