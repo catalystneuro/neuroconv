@@ -17,13 +17,14 @@ Convert BORIS data to NWB
 Use :py:class:`~neuroconv.datainterfaces.behavior.boris.borisdatainterface.BORISInterface`.
 Every behavior the scheme declares becomes an event type, and all of them are written into one
 ``pynwb.event.EventsTable`` named after the observation. How the behaviors map onto tables, all into one
-by default or a table each, is driven entirely by the editable events metadata; see
-:ref:`annotate_events_metadata` for the format.
+by default or a table each, is driven entirely by the editable events metadata.
 
 The coding scheme itself is written as an ``ndx-ethogram`` ``Ethogram`` catalogue in the ``behavior``
 processing module, and the closed state bouts as an ``EthogramBouts`` table beside it.
 
 .. code-block:: python
+
+    >>> from zoneinfo import ZoneInfo
 
     >>> from neuroconv.datainterfaces import BORISInterface
 
@@ -36,6 +37,10 @@ processing module, and the closed state bouts as an ``EthogramBouts`` table besi
     >>> interface = BORISInterface(file_path=file_path, observation_name="observation #1", verbose=False)
 
     >>> metadata = interface.get_metadata()
+
+    >>> # For data provenance we add the time zone information to the conversion
+    >>> session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("US/Pacific"))
+    >>> metadata["NWBFile"].update(session_start_time=session_start_time)
 
     >>> # Add subject information (required for DANDI upload)
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")

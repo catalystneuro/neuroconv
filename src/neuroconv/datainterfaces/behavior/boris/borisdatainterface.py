@@ -43,12 +43,6 @@ class BORISInterface(BaseEventsInterface):
     position. What each column means per behavior is on the catalogue, in ``modifiers``, along with the
     menu each offers in ``modifier_values``.
 
-    The layout is stated in ``get_metadata`` rather than fixed in the writer, so a behavior is routed
-    into a table of its own by giving its ``event_types`` entry its own ``table_metadata_key`` and naming
-    it in ``EventTables``. Merging is the default because a modifier slot is rare in real projects: half
-    of them declare none at all, so one table per behavior would buy density that is usually not missing
-    and pay one NWB object per declared behavior for it.
-
     The coding scheme is written alongside the events as an ``ndx-ethogram`` ``Ethogram`` catalogue in the
     ``behavior`` processing module, and the closed state bouts as an ``EthogramBouts`` table beside it
     where the observation has any. The catalogue is the durable half of a BORIS file, holding what is true
@@ -84,9 +78,9 @@ class BORISInterface(BaseEventsInterface):
     def __init__(
         self,
         file_path: FilePath,
-        observation_name: str,
         *,
-        metadata_key: str = "boris",
+        observation_name: str,
+        metadata_key: str | None = None,
         verbose: bool = False,
     ):
         """Initialize the BORISInterface.
@@ -97,14 +91,16 @@ class BORISInterface(BaseEventsInterface):
             Path to the ``.boris`` JSON document.
         observation_name : str
             The observation to read, as :meth:`get_observation_names` lists them.
-        metadata_key : str, default: "boris"
-            The key this interface's block sits under in ``metadata["Events"]``. Give each interface its
-            own when a conversion runs several observations together.
+        metadata_key : str, optional
+            The key this interface's block sits under in ``metadata["Events"]``. Defaults to the
+            observation's own name, ``boris_live_not_paired`` for an observation called
+            ``live not paired``, since a project holds many observations and a conversion running
+            several of them would otherwise write them all under one key.
         verbose : bool, default: False
             Whether to print progress.
         """
         super().__init__(file_path=file_path, observation_name=observation_name, verbose=verbose)
-        self.metadata_key = metadata_key
+        self.metadata_key = metadata_key or _to_metadata_key(name=observation_name)
         self._project = read_boris_project(file_path=file_path)
         self._observation = read_boris_observation(file_path=file_path, observation_name=observation_name)
         # The observation's `time offset` shifts the whole observation, which is what a rigid alignment
@@ -472,7 +468,7 @@ class BORISInterface(BaseEventsInterface):
 
     def _table_metadata_key(self) -> str:
         """The routing key every one of this observation's behaviors shares, so they land in one table."""
-        return f"{self.metadata_key}_{self._observation.name}"
+        return self.metadata_key
 
     def _closing_row_differs(self, field: str) -> bool:
         """Whether any closed bout's ``field`` says something its opening row did not.
@@ -551,6 +547,17 @@ def _to_event_name(code: str) -> str:
     event_type_source_id and reaches the file verbatim in the catalogue's `behavior` column.
     """
     return code.replace("/", "_").replace(":", "_")
+
+
+def _to_metadata_key(name: str) -> str:
+    """Turn an observation name into the snake_case handle its metadata block sits under.
+
+    A project holds many observations and each is its own interface, so the key is derived from the
+    observation rather than fixed, or a conversion running several of them would write every block under
+    the same handle. Observation names are free text, so the words are taken and joined.
+    """
+    words = [word for word in re.split(r"[\W_]+", name, flags=re.UNICODE) if word]
+    return "_".join(["boris", *(word.lower() for word in words)])
 
 
 def _to_object_name(name: str) -> str:
