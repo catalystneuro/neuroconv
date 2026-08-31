@@ -8,9 +8,10 @@ dependencies beyond the core ones.
 
     pip install "neuroconv[medpc_events]"
 
-Each event type is written as a ``pynwb.event.EventsTable`` into ``nwbfile.events``. How those types are
-named, described and grouped into tables is driven entirely by the editable events metadata. See
-:ref:`annotate_events_metadata`.
+Each event type is written as a ``pynwb.event.EventsTable`` into ``nwbfile.events``.
+
+How the event types are named, described and grouped into tables is driven entirely by the editable events
+metadata. See :ref:`annotate_events_metadata`.
 
 Supported MedPC layouts
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -70,8 +71,6 @@ One array per event type
     >>> # Extract what metadata we can from the source file, which includes the session's start time and its
     >>> # subject, read from the header of the session picked out by session_header
     >>> metadata = interface.get_metadata()
-    >>> metadata["NWBFile"]["session_start_time"]
-    datetime.datetime(2019, 4, 9, 10, 34, 30)
     >>> # The file states no time zone, so we add it
     >>> session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("US/Pacific"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
