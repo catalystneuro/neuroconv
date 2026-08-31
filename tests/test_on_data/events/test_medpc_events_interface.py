@@ -1,5 +1,6 @@
 """Tests of the two MedPC events interfaces, over both layouts and both labs whose array output is on gin."""
 
+import re
 from datetime import datetime
 
 import numpy as np
@@ -365,7 +366,19 @@ class TestPackedWithLegend(MedPCEventsInterfaceMixin):
         interface_kwargs["time_unit"] = 0.005
         interface = MedPCPackedEventsInterface(**interface_kwargs)
 
-        with pytest.raises(ValueError, match="says the session ran"):
+        expected_message = (
+            "The last event read from the MedPC variable 'A' is at 3369.73 s, but the header says the "
+            "session ran 1812 s, from '10:38:46' to '11:08:58'. "
+            "No event can happen after the session ended, so the values are coming out larger than the "
+            "program wrote them. Check the MSN program that wrote the file: `time_unit` against what it "
+            "divided by before storing, which for a program that stored the raw BTIME counter is the "
+            "resolution MED-PC was installed at (0.002 on a 2 ms system, 0.005 on a 5 ms one), and, where "
+            "`relative_mode` is on, that it really wrote intervals, since accumulating times that were "
+            "already elapsed inflates them exactly this way. If the program shows the file is already being "
+            "read as it was written, this is a layout NeuroConv does not support yet: please open an issue "
+            "at https://github.com/catalystneuro/neuroconv/issues with the program and a sample file."
+        )
+        with pytest.raises(ValueError, match=re.escape(expected_message)):
             interface.get_event_times("001")
 
     def test_round_trip(self, interface, metadata, tmp_path):
@@ -536,7 +549,19 @@ class TestPackedVariableWidthCodes(MedPCEventsInterfaceMixin):
         interface_kwargs["time_unit"] = "deciseconds"
         interface = MedPCPackedEventsInterface(**interface_kwargs)
 
-        with pytest.raises(ValueError, match="says the session ran"):
+        expected_message = (
+            "The last event read from the MedPC variable 'J' is at 44078.4 s, but the header says the "
+            "session ran 4408 s, from '10:33:49' to '11:47:17'. "
+            "No event can happen after the session ended, so the values are coming out larger than the "
+            "program wrote them. Check the MSN program that wrote the file: `time_unit` against what it "
+            "divided by before storing, which for a program that stored the raw BTIME counter is the "
+            "resolution MED-PC was installed at (0.002 on a 2 ms system, 0.005 on a 5 ms one), and, where "
+            "`relative_mode` is on, that it really wrote intervals, since accumulating times that were "
+            "already elapsed inflates them exactly this way. If the program shows the file is already being "
+            "read as it was written, this is a layout NeuroConv does not support yet: please open an issue "
+            "at https://github.com/catalystneuro/neuroconv/issues with the program and a sample file."
+        )
+        with pytest.raises(ValueError, match=re.escape(expected_message)):
             interface.get_event_times("100")
 
     def test_round_trip(self, interface, metadata, tmp_path):
@@ -600,7 +625,18 @@ class TestPackedRelativeMode(MedPCEventsInterfaceMixin):
         interface_kwargs["relative_mode"] = False
         interface = MedPCPackedEventsInterface(**interface_kwargs)
 
-        with pytest.raises(ValueError, match="run backwards"):
+        expected_message = (
+            "The onsets read from the MedPC variable 'C' (event type '1') run backwards: event 0 is at "
+            "6.4 s and event 1 is at 1.2 s. "
+            "Onsets cannot go backwards. Check the MSN program that wrote the file. The likeliest cause is "
+            "Med Associates' Relative Mode, where the program stored the time since the previous event "
+            "rather than the time since the session began: pass `relative_mode=True` to accumulate them. "
+            "Failing that, a `time_unit` other than the one the program divided by before storing. If the "
+            "program shows the file is already being read as it was written, this is a layout NeuroConv "
+            "does not support yet: please open an issue at "
+            "https://github.com/catalystneuro/neuroconv/issues with the program and a sample file."
+        )
+        with pytest.raises(ValueError, match=re.escape(expected_message)):
             interface.get_event_times("1")
 
     def test_round_trip(self, interface, metadata, tmp_path):
@@ -704,7 +740,14 @@ class TestEncodingEdgeCases:
 
         interface = MedPCPackedEventsInterface(file_path=path, session_header=self.SESSION_HEADER, events_variable="A")
 
-        with pytest.raises(ValueError, match="print no digits after the decimal point"):
+        expected_message = (
+            "The values of 'A' print no digits after the decimal point, so they cannot carry a packed "
+            "code. A program whose `DISKFORMAT` leaves no decimals either writes the codes into a companion "
+            "array or packs them into the leading digits instead, and NeuroConv reads neither layout yet. "
+            "Please open an issue at https://github.com/catalystneuro/neuroconv/issues with the program and "
+            "a sample file."
+        )
+        with pytest.raises(ValueError, match=re.escape(expected_message)):
             interface.get_event_type_source_ids()
 
     def test_events_grouped_by_type_are_not_read_as_backwards(self, tmp_path):
@@ -729,14 +772,30 @@ class TestEncodingEdgeCases:
 
         interface = MedPCPackedEventsInterface(file_path=path, session_header=self.SESSION_HEADER, events_variable="B")
 
-        with pytest.raises(ValueError, match="run backwards"):
+        expected_message = (
+            "The onsets read from the MedPC variable 'B' run backwards: event 2 is at 78 s and event 3 is "
+            "at 17 s. "
+            "Onsets cannot go backwards. Check the MSN program that wrote the file. The likeliest cause is "
+            "Med Associates' Relative Mode, where the program stored the time since the previous event "
+            "rather than the time since the session began: pass `relative_mode=True` to accumulate them. "
+            "Failing that, a `time_unit` other than the one the program divided by before storing. If the "
+            "program shows the file is already being read as it was written, this is a layout NeuroConv "
+            "does not support yet: please open an issue at "
+            "https://github.com/catalystneuro/neuroconv/issues with the program and a sample file."
+        )
+        with pytest.raises(ValueError, match=re.escape(expected_message)):
             interface.get_event_type_source_ids()
 
     def test_a_resolution_of_zero_raises(self, tmp_path):
         path = tmp_path / "zero_rate.txt"
         self.write_medpc_file(path, {"A": [1.0]})
 
-        with pytest.raises(ValueError, match="is not a length of time"):
+        expected_message = (
+            "`time_unit` is 0.0, which is not a length of time. A number states what one stored value is "
+            "worth in seconds, so a raw BTIME counter takes the box's timing resolution: 0.002 on a 2 ms "
+            "system, 0.005 on a 5 ms one."
+        )
+        with pytest.raises(ValueError, match=re.escape(expected_message)):
             MedPCArrayEventsInterface(
                 file_path=path,
                 session_header=self.SESSION_HEADER,
