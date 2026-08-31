@@ -1,4 +1,4 @@
-"""Reader for BORIS project files, independent of NWB.
+"""Reader for BORIS project files, independent of NWB. Private: only the interface beside it uses this.
 
 A ``.boris`` file is one JSON document holding the whole record: the coding scheme in ``behaviors_conf``,
 the subjects, and every observation with its events. This module turns that document into the dataclasses
@@ -37,7 +37,7 @@ _UNANSWERED_SLOT = "None"
 _SHORTCUT = re.compile(r" \([^()]*\)$")
 
 
-def strip_modifier_shortcut(value: str) -> str:
+def _strip_modifier_shortcut(value: str) -> str:
     """Return a declared modifier value in the form an event row records it.
 
     A menu entry may end in the keyboard shortcut for choosing it, ``"quadrupedal (q)"``, and BORIS writes
@@ -47,7 +47,7 @@ def strip_modifier_shortcut(value: str) -> str:
     Parameters
     ----------
     value : str
-        A value as ``BorisModifierSlot.values`` declares it.
+        A value as ``_BorisModifierSlot.values`` declares it.
 
     Returns
     -------
@@ -57,7 +57,7 @@ def strip_modifier_shortcut(value: str) -> str:
     return _SHORTCUT.sub("", value)
 
 
-def split_modifier_string(recorded: str, slot_count: int) -> list[str]:
+def _split_modifier_string(recorded: str, slot_count: int) -> list[str]:
     """Split an event row's modifier string into one answer per slot.
 
     Slots are joined with ``|`` in declaration order, so the split is positional and the caller reads each
@@ -84,7 +84,7 @@ def split_modifier_string(recorded: str, slot_count: int) -> list[str]:
 
 
 @dataclass
-class BorisModifierSlot:
+class _BorisModifierSlot:
     """One declared modifier dimension of a behavior.
 
     Attributes
@@ -105,7 +105,7 @@ class BorisModifierSlot:
 
 
 @dataclass
-class BorisBehavior:
+class _BorisBehavior:
     """One entry of the coding scheme.
 
     Attributes
@@ -121,7 +121,7 @@ class BorisBehavior:
         always empty in format 1.6, which has no category field.
     excluded : list of str
         The codes that starting this behavior terminates.
-    modifier_slots : list of BorisModifierSlot
+    modifier_slots : list of _BorisModifierSlot
         The declared modifier dimensions, empty where the behavior has none.
     """
 
@@ -130,11 +130,11 @@ class BorisBehavior:
     description: str
     category: str
     excluded: list[str] = field(default_factory=list)
-    modifier_slots: list[BorisModifierSlot] = field(default_factory=list)
+    modifier_slots: list[_BorisModifierSlot] = field(default_factory=list)
 
 
 @dataclass
-class BorisOccurrence:
+class _BorisOccurrence:
     """One thing that happened, after the start and stop rows of a state bout have been paired.
 
     Attributes
@@ -181,7 +181,7 @@ class BorisOccurrence:
 
 
 @dataclass
-class BorisObservation:
+class _BorisObservation:
     """One scoring session and its events.
 
     Attributes
@@ -198,12 +198,7 @@ class BorisObservation:
         What the coder wrote about this observation, empty where they wrote nothing.
     time_offset : float
         The rigid shift the observation declares, in seconds.
-    media_files : list of str
-        The media this observation was scored against, in player order. Empty for a ``LIVE`` observation.
-    frame_rate : float or None
-        The frame rate of the first medium, where the observation has one. ``None`` for ``LIVE``, which has
-        no frame rate anywhere.
-    occurrences : list of BorisOccurrence
+    occurrences : list of _BorisOccurrence
         The events, in the order their first row appears in the file.
     """
 
@@ -212,20 +207,18 @@ class BorisObservation:
     date: str
     description: str
     time_offset: float
-    media_files: list[str]
-    frame_rate: float | None
-    occurrences: list[BorisOccurrence]
+    occurrences: list[_BorisOccurrence]
 
 
 @dataclass
-class BorisProject:
+class _BorisProject:
     """A parsed ``.boris`` document.
 
     Attributes
     ----------
     format_version : float
         The project format version the file declares, which is the first branch a reader takes.
-    behaviors : dict of str to BorisBehavior
+    behaviors : dict of str to _BorisBehavior
         The complete coding scheme, keyed by behavior code, including behaviors nothing was ever scored
         against.
     subject_names : list of str
@@ -236,12 +229,12 @@ class BorisProject:
     """
 
     format_version: float
-    behaviors: dict[str, BorisBehavior]
+    behaviors: dict[str, _BorisBehavior]
     subject_names: list[str]
     observation_names: list[str]
 
 
-def read_boris_project(file_path: str | Path) -> BorisProject:
+def _read_boris_project(file_path: str | Path) -> _BorisProject:
     """Read a ``.boris`` file's coding scheme, subjects and observation names.
 
     Parameters
@@ -251,13 +244,13 @@ def read_boris_project(file_path: str | Path) -> BorisProject:
 
     Returns
     -------
-    BorisProject
+    _BorisProject
         The parsed project. The observations themselves are read separately, one at a time, by
-        :func:`read_boris_observation`.
+        :func:`_read_boris_observation`.
     """
     document = _read_document(file_path=file_path)
     format_version = _format_version(document=document)
-    return BorisProject(
+    return _BorisProject(
         format_version=format_version,
         behaviors=_read_behaviors(document=document, format_version=format_version),
         subject_names=[entry["name"] for entry in document.get("subjects_conf", {}).values()],
@@ -265,7 +258,7 @@ def read_boris_project(file_path: str | Path) -> BorisProject:
     )
 
 
-def get_observation_names(file_path: str | Path) -> list[str]:
+def _get_observation_names(file_path: str | Path) -> list[str]:
     """Return the names of the observations a ``.boris`` file holds, in file order.
 
     Parameters
@@ -282,7 +275,7 @@ def get_observation_names(file_path: str | Path) -> list[str]:
     return list(_read_document(file_path=file_path).get("observations", {}))
 
 
-def read_boris_observation(file_path: str | Path, observation_name: str) -> BorisObservation:
+def _read_boris_observation(file_path: str | Path, observation_name: str) -> _BorisObservation:
     """Read one named observation, pairing its state behaviors into occurrences.
 
     Parameters
@@ -290,11 +283,11 @@ def read_boris_observation(file_path: str | Path, observation_name: str) -> Bori
     file_path : str or pathlib.Path
         Path to the ``.boris`` JSON document.
     observation_name : str
-        The observation to read, as :func:`get_observation_names` lists them.
+        The observation to read, as :func:`_get_observation_names` lists them.
 
     Returns
     -------
-    BorisObservation
+    _BorisObservation
         The observation, its events paired into occurrences.
 
     Raises
@@ -307,7 +300,7 @@ def read_boris_observation(file_path: str | Path, observation_name: str) -> Bori
     if observation_name not in observations:
         raise KeyError(
             f"No observation '{observation_name}' in '{file_path}'. This project holds "
-            f"{sorted(observations)}, which get_observation_names lists."
+            f"{sorted(observations)}, which _get_observation_names lists."
         )
 
     observation = observations[observation_name]
@@ -315,20 +308,17 @@ def read_boris_observation(file_path: str | Path, observation_name: str) -> Bori
     _warn_about_undeclared_codes(
         events=observation.get("events", []), behaviors=behaviors, observation_name=observation_name
     )
-    media_files = _media_files(observation=observation)
-    return BorisObservation(
+    return _BorisObservation(
         name=observation_name,
         observation_type=observation.get("type", ""),
         date=observation.get("date", ""),
         description=observation.get("description", ""),
         time_offset=float(observation.get("time offset", 0.0)),
-        media_files=media_files,
-        frame_rate=_frame_rate(observation=observation, media_files=media_files),
         occurrences=_pair_events(events=observation.get("events", []), behaviors=behaviors),
     )
 
 
-def _warn_about_undeclared_codes(events: list, behaviors: dict[str, BorisBehavior], observation_name: str) -> None:
+def _warn_about_undeclared_codes(events: list, behaviors: dict[str, _BorisBehavior], observation_name: str) -> None:
     """Warn where an event names a behavior the coding scheme does not declare.
 
     BORIS does not rewrite rows already scored when a behavior is renamed or removed from the ethogram, so
@@ -365,13 +355,13 @@ def _format_version(document: dict) -> float:
     return float(document.get("project_format_version", 0.0))
 
 
-def _read_behaviors(document: dict, format_version: float) -> dict[str, BorisBehavior]:
+def _read_behaviors(document: dict, format_version: float) -> dict[str, _BorisBehavior]:
     """Build the coding scheme, keyed by behavior code."""
     behaviors = {}
     for entry in document.get("behaviors_conf", {}).values():
         declared_type = entry.get("type", "")
         excluded = entry.get("excluded", "")
-        behaviors[entry["code"]] = BorisBehavior(
+        behaviors[entry["code"]] = _BorisBehavior(
             code=entry["code"],
             behavior_type="point" if declared_type == _POINT_EVENT else "state",
             description=entry.get("description", ""),
@@ -384,7 +374,7 @@ def _read_behaviors(document: dict, format_version: float) -> dict[str, BorisBeh
     return behaviors
 
 
-def _read_modifier_slots(declared: dict | str, format_version: float) -> list[BorisModifierSlot]:
+def _read_modifier_slots(declared: dict | str, format_version: float) -> list[_BorisModifierSlot]:
     """Read a behavior's declared modifier slots.
 
     The key is a dict of slot objects from format 7.0 on and one flat comma-separated string of values
@@ -396,43 +386,17 @@ def _read_modifier_slots(declared: dict | str, format_version: float) -> list[Bo
         return []
     if format_version >= _SLOT_DICT_FROM_VERSION and isinstance(declared, dict):
         return [
-            BorisModifierSlot(
+            _BorisModifierSlot(
                 name=slot.get("name", ""),
                 slot_type=int(slot.get("type", 0)),
                 values=list(slot.get("values", [])),
             )
             for slot in declared.values()
         ]
-    return [BorisModifierSlot(name="", slot_type=0, values=[value for value in declared.split(",") if value])]
+    return [_BorisModifierSlot(name="", slot_type=0, values=[value for value in declared.split(",") if value])]
 
 
-def _media_files(observation: dict) -> list[str]:
-    """Return the media an observation was scored against, in player order.
-
-    Read off `file`, not off `media_info`, which accumulates entries from other observations and so is not
-    an inventory of the one it sits in. A single player's list holds clips played back to back.
-    """
-    files = observation.get("file") or {}
-    if not isinstance(files, dict):
-        return []
-    return [medium for player in sorted(files) for medium in files[player]]
-
-
-def _frame_rate(observation: dict, media_files: list[str]) -> float | None:
-    """Return the frame rate of the observation's first medium, where it has one.
-
-    A `LIVE` observation has no media and no frame rate anywhere, so this is `None` for it rather than a
-    default. `media_info` is keyed by media name and lists media used by other observations too, which is
-    why the lookup goes through this observation's own `file` entry.
-    """
-    frame_rates = (observation.get("media_info") or {}).get("fps") or {}
-    for medium in media_files:
-        if medium in frame_rates:
-            return float(frame_rates[medium])
-    return None
-
-
-def _pair_events(events: list, behaviors: dict[str, BorisBehavior]) -> list[BorisOccurrence]:
+def _pair_events(events: list, behaviors: dict[str, _BorisBehavior]) -> list[_BorisOccurrence]:
     """Turn event rows into occurrences, pairing each state behavior's start row with its stop row.
 
     Nothing in a row says whether it opens or closes anything, so the pairing runs off the declared type:
@@ -456,11 +420,11 @@ def _pair_events(events: list, behaviors: dict[str, BorisBehavior]) -> list[Bori
         # A code no behavior declares cannot be typed, and treating it as a point event is the reading that
         # keeps the row rather than guessing at an extent it may not have.
         slot_count = len(behavior.modifier_slots) if behavior is not None else 0
-        modifier_values = split_modifier_string(recorded=row[_MODIFIERS], slot_count=slot_count)
+        modifier_values = _split_modifier_string(recorded=row[_MODIFIERS], slot_count=slot_count)
 
         if behavior is None or behavior.behavior_type == "point":
             occurrences.append(
-                BorisOccurrence(
+                _BorisOccurrence(
                     onset=onset,
                     subject=subject,
                     code=code,
@@ -484,7 +448,7 @@ def _pair_events(events: list, behaviors: dict[str, BorisBehavior]) -> list[Bori
             continue
         open_bouts[key] = len(occurrences)
         occurrences.append(
-            BorisOccurrence(
+            _BorisOccurrence(
                 onset=onset,
                 subject=subject,
                 code=code,

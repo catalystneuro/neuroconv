@@ -3,7 +3,6 @@
 import math
 from datetime import datetime
 
-import numpy as np
 import pytest
 from pynwb import read_nwb
 from pynwb.testing.mock.file import mock_NWBFile
@@ -18,50 +17,60 @@ except ImportError:
 
 BORIS_PROJECTS_PATH = BEHAVIOR_DATA_PATH / "boris" / "json_project"
 
-pytestmark = pytest.mark.skipif(
-    not BORIS_PROJECTS_PATH.exists(), reason="The BORIS files are not in the local behavior testing data."
-)
 
-
-class BORISRoundTrip(DataInterfaceTestMixin):
+class BORISTestMixin(DataInterfaceTestMixin):
     """The assertions true of every BORIS conversion, whatever the project holds.
 
-    Nothing here is parameterised. What each observation is there to exercise, its table name, its row
-    counts and its columns, each subclass states for itself in its own ``check_read_nwb``, calling this
-    one first.
+    Nothing here is parameterised and nothing here is configuration. Each test class states its own
+    interface, its own file and its own expectations; this only adds the checks that hold for all of
+    them, and a subclass runs them by calling ``super().check_read_nwb`` before its own.
     """
-
-    data_interface_cls = BORISInterface
-    conversion_options = dict()  # what is written is set at construction, not at write
-    save_directory = OUTPUT_PATH
 
     def check_read_nwb(self, nwbfile_path: str):
         nwbfile = read_nwb(nwbfile_path)
         behavior_module = nwbfile.processing["behavior"]
 
-        catalogue = behavior_module["Ethogram"].to_dataframe()
-        assert set(catalogue["behavior_type"]) <= {"point", "state"}
-        state_behaviors = set(catalogue.loc[catalogue["behavior_type"] == "state", "behavior"])
-
+        # A behavior that declares no slot writes an empty cell in a modifier column it does not own,
+        # never a NaN, which could not share the column with the answers.
         for events_table in nwbfile.events.values():
-            for column_name in events_table.colnames:
-                # A behavior that declares no slot writes an empty cell in a modifier column it does
-                # not own, never a NaN, which could not share the column with the answers.
-                if column_name.startswith("modifier_"):
-                    assert all(isinstance(value, str) for value in events_table[column_name].data)
+            modifier_columns = [name for name in events_table.colnames if name.startswith("modifier_")]
+            for column_name in modifier_columns:
+                answers = events_table[column_name].data
+                are_all_answers_strings = all(isinstance(answer, str) for answer in answers)
+                assert are_all_answers_strings
 
-        for name, container in behavior_module.data_interfaces.items():
-            if not name.endswith("Bouts"):
+        bouts_tables = [
+            container for name, container in behavior_module.data_interfaces.items() if name.endswith("Bouts")
+        ]
+        behaviors_with_a_bout = set()
+        for bouts_table in bouts_tables:
+            behaviors_with_a_bout.update(bouts_table.to_dataframe()["label"])
+
+        # The bouts table holds exactly the bouts that closed: a behavior appears there if and only if
+        # the events table gave it a duration. A point behavior has none, and a bout whose stop was
+        # never scored has NaN, so neither reaches the interval view.
+        behaviors_with_a_duration = set()
+        for events_table in nwbfile.events.values():
+            frame = events_table.to_dataframe()
+            if "duration" not in frame.columns:
                 continue
-            bouts = container.to_dataframe()
-            # A bout is a closed interval by construction, so none may be reversed or unfinished.
-            assert (bouts["stop_time"] >= bouts["start_time"]).all()
-            # Only state behaviors reach a bouts table, and every label there is in the catalogue.
-            assert set(bouts["label"]) <= state_behaviors
+            behaviors_with_a_duration.update(frame.loc[frame["duration"].notna(), "event_type"])
+        assert behaviors_with_a_bout == behaviors_with_a_duration
+
+        # Every label in a bouts table is a state behavior the catalogue declares, which two BORIS
+        # projects written into one file would break.
+        catalogue = behavior_module["Ethogram"].to_dataframe()
+        declared_state_behaviors = set(catalogue.loc[catalogue["behavior_type"] == "state", "behavior"])
+        undeclared_labels = behaviors_with_a_bout - declared_state_behaviors
+        assert undeclared_labels == set()
 
 
-class TestBORISVersion1_6(BORISRoundTrip):
+class TestBORISVersion1_6(BORISTestMixin):
     """Format 1.6: no `category` field on a behavior, and `modifiers` a flat comma-separated string."""
+
+    data_interface_cls = BORISInterface
+    conversion_options = dict()  # what is written is set at construction, not at write
+    save_directory = OUTPUT_PATH
 
     file_path = (
         BORIS_PROJECTS_PATH / "version_1_6" / "string_modifiers_no_categories" / "media_and_live_two_subjects.boris"
@@ -99,8 +108,12 @@ class TestBORISVersion1_6(BORISRoundTrip):
         assert event_types["forage"]["event_description"] == "moves over the substrate collecting food"
 
 
-class TestBORISVersion4_0(BORISRoundTrip):
+class TestBORISVersion4_0(BORISTestMixin):
     """Format 4.0: categories exist, modifiers are still a flat string, and times are in seconds."""
+
+    data_interface_cls = BORISInterface
+    conversion_options = dict()  # what is written is set at construction, not at write
+    save_directory = OUTPUT_PATH
 
     file_path = (
         BORIS_PROJECTS_PATH
@@ -139,8 +152,12 @@ class TestBORISVersion4_0(BORISRoundTrip):
         assert set(catalogue["category"]) == {"Locomotion", "Maintenance", "Social"}
 
 
-class TestBORISCategorizedEthogram(BORISRoundTrip):
+class TestBORISCategorizedEthogram(BORISTestMixin):
     """The BORIS Android demo project: eleven behaviors, of which this observation scores a few."""
+
+    data_interface_cls = BORISInterface
+    conversion_options = dict()  # what is written is set at construction, not at write
+    save_directory = OUTPUT_PATH
 
     file_path = (
         BORIS_PROJECTS_PATH
@@ -172,8 +189,12 @@ class TestBORISCategorizedEthogram(BORISRoundTrip):
         assert len(behavior_module["Test1Bouts"].to_dataframe()) == 3
 
 
-class TestBORISModifierSlots(BORISRoundTrip):
+class TestBORISModifierSlots(BORISTestMixin):
     """All three modifier slot types. Every behavior scored here is a point behavior, so no bouts."""
+
+    data_interface_cls = BORISInterface
+    conversion_options = dict()  # what is written is set at construction, not at write
+    save_directory = OUTPUT_PATH
 
     file_path = (
         BORIS_PROJECTS_PATH
@@ -245,8 +266,12 @@ class TestBORISModifierSlots(BORISRoundTrip):
         assert list(catalogue.loc["p", "modifiers"]) == []
 
 
-class TestBORISMultiSubject(BORISRoundTrip):
+class TestBORISMultiSubject(BORISTestMixin):
     """One observation carrying events from two named subjects, which is why subject is a column."""
+
+    data_interface_cls = BORISInterface
+    conversion_options = dict()  # what is written is set at construction, not at write
+    save_directory = OUTPUT_PATH
 
     file_path = (
         BORIS_PROJECTS_PATH
@@ -288,8 +313,12 @@ class TestBORISMultiSubject(BORISRoundTrip):
         assert set(table["subject"]) == {"subject1", "subject2"}
 
 
-class TestBORISUntidyModifiers(BORISRoundTrip):
+class TestBORISUntidyModifiers(BORISTestMixin):
     """Untidy declared values and the literal `None` token for a slot nobody answered."""
+
+    data_interface_cls = BORISInterface
+    conversion_options = dict()  # what is written is set at construction, not at write
+    save_directory = OUTPUT_PATH
 
     file_path = BORIS_PROJECTS_PATH / "version_7_0" / "untidy_modifier_values" / "whitespace_and_the_none_token.boris"
 
@@ -333,13 +362,17 @@ class TestBORISUntidyModifiers(BORISRoundTrip):
         assert "duration" not in table.columns
 
 
-class TestBORISTimeOffsetAndUndeclaredCodes(BORISRoundTrip):
+class TestBORISTimeOffsetAndUndeclaredCodes(BORISTestMixin):
     """The generated fixture: a non-zero time offset, event comments, and codes the ethogram dropped.
 
     Its three cases come from real files that carry no licence, so the layouts are copied and the
     content invented. The ethogram also declares `Foraging/Caching`, whose slash cannot appear in an
     NWB object name, and `Exploracion` carrying a Spanish accent.
     """
+
+    data_interface_cls = BORISInterface
+    conversion_options = dict()  # what is written is set at construction, not at write
+    save_directory = OUTPUT_PATH
 
     file_path = (
         BORIS_PROJECTS_PATH / "version_7_0" / "nonzero_time_offset" / "undeclared_codes_and_event_comments.boris"
@@ -379,8 +412,14 @@ class TestBORISTimeOffsetAndUndeclaredCodes(BORISRoundTrip):
         assert event_types["Exploraci\u00f3n"]["event_name"] == "Exploraci\u00f3n"
 
 
-def test_nonzero_time_offset_is_applied():
-    """The observation's declared shift reaches the written times through the alignment surface."""
+def test_time_offset_is_read_and_applied():
+    """The observation's declared shift reaches the written times, and nothing else is mistaken for it.
+
+    BORIS has two unrelated offsets. An observation's ``time offset`` shifts the whole observation, which
+    is what an alignment offset is. The per-player offsets in ``media_info`` align two simultaneous
+    players against each other and shift nothing, so ``offset positif``, which declares a +20 there and
+    no ``time offset``, must come out at zero despite its name.
+    """
     forward = BORISInterface(
         file_path=TestBORISTimeOffsetAndUndeclaredCodes.file_path, observation_name="positive offset"
     )
@@ -389,6 +428,8 @@ def test_nonzero_time_offset_is_applied():
         file_path=TestBORISTimeOffsetAndUndeclaredCodes.file_path, observation_name="negative offset"
     )
     assert backward.alignment.offset == pytest.approx(-4.0)
+    media_offsets_only = BORISInterface(file_path=TestBORISMultiSubject.file_path, observation_name="offset positif")
+    assert media_offsets_only.alignment.offset == 0.0
 
     # The reader keeps the file's own times; the offset is added at write.
     nwbfile = mock_NWBFile()
@@ -497,9 +538,9 @@ def test_pairing_ignores_the_modifier_string():
     and closes it with ``None``. The recorded modifier of the opening row is what survives, since that is
     what the coder said was true when the bout began.
     """
-    from neuroconv.datainterfaces.behavior.boris.boris_reader import read_boris_observation
+    from neuroconv.datainterfaces.behavior.boris._boris_reader import _read_boris_observation
 
-    observation = read_boris_observation(file_path=TestBORISCategorizedEthogram.file_path, observation_name="id2")
+    observation = _read_boris_observation(file_path=TestBORISCategorizedEthogram.file_path, observation_name="id2")
     walk_bouts = [occurrence for occurrence in observation.occurrences if occurrence.code == "walk"]
     assert walk_bouts, "the observation exists to exercise closing a bout across a modifier change"
     for bout in walk_bouts:
@@ -547,11 +588,11 @@ def test_observation_without_events_writes_the_scheme():
 def test_project_with_no_observations():
     """A full coding scheme and nothing to convert is a legal file, not an error.
 
-    ``get_observation_names`` reports the empty list, and asking for an observation by name says which
+    ``_get_observation_names`` reports the empty list, and asking for an observation by name says which
     ones exist rather than failing obscurely.
     """
     assert (
-        BORISInterface.get_observation_names(
+        BORISInterface._get_observation_names(
             file_path=BORIS_PROJECTS_PATH
             / "version_7_0"
             / "no_observations"
@@ -639,36 +680,3 @@ def test_a_second_project_cannot_share_the_catalogue():
         BORISInterface(file_path=TestBORISCategorizedEthogram.file_path, observation_name="test1").add_to_nwbfile(
             nwbfile=nwbfile
         )
-
-
-def test_live_observation_has_no_frame_rate():
-    """A LIVE observation has no media and so no resolution to claim; a MEDIA one has the frame period."""
-    live = BORISInterface(file_path=TestBORISVersion1_6.file_path, observation_name="live observation")
-    nwbfile = mock_NWBFile()
-    live.add_to_nwbfile(nwbfile=nwbfile)
-    assert nwbfile.get_events_table("LiveObservation")["timestamp"].resolution is None
-
-    media = BORISInterface(file_path=TestBORISVersion1_6.file_path, observation_name="media observation")
-    nwbfile = mock_NWBFile()
-    media.add_to_nwbfile(nwbfile=nwbfile)
-    # The project's media runs at 25 fps, so a coder could only ever mark a 40 ms boundary.
-    assert nwbfile.get_events_table("MediaObservation")["timestamp"].resolution == pytest.approx(0.04)
-
-
-def test_time_offset_goes_through_alignment():
-    """The observation's declared shift is an alignment offset, not something folded into the times.
-
-    No file harvested upstream declares a non-zero ``time offset``, which is why the only ones that do are
-    in the generated fixture, covered by ``test_nonzero_time_offset_is_applied``. This observation is one
-    that declares none, despite its name: the +20 and -20 in ``offset positif`` and ``offset neg`` are
-    per-player *media* offsets in ``media_info``, which align two simultaneous players against each other
-    rather than shifting the observation. So its alignment offset starts at zero, and what is checked here
-    is that the times are the file's own and that the alignment surface moves them.
-    """
-    interface = BORISInterface(file_path=TestBORISMultiSubject.file_path, observation_name="offset positif")
-    assert interface.alignment.offset == 0.0
-
-    first_code = interface.get_event_type_source_ids()[0]
-    native = interface.get_event_times(event_type_source_id=first_code)
-    interface.alignment.shift_times(20.0)
-    assert np.allclose(interface.get_event_times(event_type_source_id=first_code), native + 20.0)

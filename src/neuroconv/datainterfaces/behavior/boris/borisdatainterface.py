@@ -7,11 +7,11 @@ from pynwb.file import NWBFile
 
 from neuroconv.utils import DeepDict
 
-from .boris_reader import (
-    get_observation_names,
-    read_boris_observation,
-    read_boris_project,
-    strip_modifier_shortcut,
+from ._boris_reader import (
+    _get_observation_names,
+    _read_boris_observation,
+    _read_boris_project,
+    _strip_modifier_shortcut,
 )
 from ...events.baseeventsinterface import BaseEventsInterface, _EventsData
 
@@ -23,7 +23,7 @@ class BORISInterface(BaseEventsInterface):
     observations against video, audio, or a live session. A ``.boris`` file is one JSON document holding
     the whole record: the coding scheme, the subjects, and every observation with its events. An
     observation is the unit that corresponds to a session, so this interface takes one by name; use
-    :meth:`get_observation_names` to see what a file holds.
+    :meth:`_get_observation_names` to see what a file holds.
 
     Every behavior the scheme declares becomes an event type, including one nothing was ever scored
     against, which is written as a zero-row contribution rather than dropped: the vocabulary is part of
@@ -58,7 +58,7 @@ class BORISInterface(BaseEventsInterface):
     associated_suffixes = (".boris",)
 
     @staticmethod
-    def get_observation_names(file_path: FilePath) -> list[str]:
+    def _get_observation_names(file_path: FilePath) -> list[str]:
         """Return the names of the observations a ``.boris`` file holds, in file order.
 
         Parameters
@@ -72,7 +72,7 @@ class BORISInterface(BaseEventsInterface):
             The observation names, which are the handles ``observation_name`` takes. Empty where the
             project declares a coding scheme and was never coded against, which is a legal file.
         """
-        return get_observation_names(file_path=file_path)
+        return _get_observation_names(file_path=file_path)
 
     @validate_call
     def __init__(
@@ -90,7 +90,7 @@ class BORISInterface(BaseEventsInterface):
         file_path : FilePath
             Path to the ``.boris`` JSON document.
         observation_name : str
-            The observation to read, as :meth:`get_observation_names` lists them.
+            The observation to read, as :meth:`_get_observation_names` lists them.
         metadata_key : str, optional
             The key this interface's block sits under in ``metadata["Events"]``. Defaults to the
             observation's own name, ``boris_live_not_paired`` for an observation called
@@ -100,9 +100,13 @@ class BORISInterface(BaseEventsInterface):
             Whether to print progress.
         """
         super().__init__(file_path=file_path, observation_name=observation_name, verbose=verbose)
-        self.metadata_key = metadata_key or _to_metadata_key(name=observation_name)
-        self._project = read_boris_project(file_path=file_path)
-        self._observation = read_boris_observation(file_path=file_path, observation_name=observation_name)
+        # A project holds many observations and each is its own interface, so the key is derived from
+        # the observation rather than fixed: a conversion running several of them would otherwise write
+        # every block under the same handle. Observation names are free text, so the words are joined.
+        observation_words = [word for word in re.split(r"[\W_]+", observation_name, flags=re.UNICODE) if word]
+        self.metadata_key = metadata_key or "_".join(["boris", *(word.lower() for word in observation_words)])
+        self._project = _read_boris_project(file_path=file_path)
+        self._observation = _read_boris_observation(file_path=file_path, observation_name=observation_name)
         # The observation's `time offset` shifts the whole observation, which is what a rigid alignment
         # offset is, so it goes through the alignment surface rather than being folded into the times. That
         # keeps the read times the file's own and leaves the offset re-settable.
@@ -130,9 +134,14 @@ class BORISInterface(BaseEventsInterface):
         """
         metadata = super().get_metadata()
 
-        session_start_time = _parse_observation_date(date=self._observation.date)
-        if session_start_time is not None:
-            metadata["NWBFile"]["session_start_time"] = session_start_time
+        # BORIS writes the date ISO-formatted with either separator, `2016-12-10T15:44:57` and
+        # `2018-05-14 16:22:23` both occurring, and states no timezone, so the datetime is left naive
+        # and pynwb attaches the local one at write.
+        if self._observation.date:
+            try:
+                metadata["NWBFile"]["session_start_time"] = datetime.fromisoformat(self._observation.date)
+            except ValueError:
+                pass
         description = self._observation.description
         if description:
             metadata["NWBFile"]["session_description"] = description
@@ -160,7 +169,14 @@ class BORISInterface(BaseEventsInterface):
         for code, events_data in self._get_events_data_dict().items():
             behavior = self._project.behaviors.get(code)
             entry = {
-                "event_name": _to_event_name(code=code),
+                # A behavior code is free text and BORIS accepts characters an NWB object name cannot
+                # hold, `Grooming/Eating` being an ordinary way to name one behavior covering two
+                # things. The code itself is untouched, staying the identifier and reaching the
+                # catalogue's `behavior` column verbatim; only the display name is made safe, because
+                # routing a behavior to a table of its own derives that table's name from it. The
+                # separator is kept rather than dropped, since `Foraging_Caching` still reads as two
+                # words where `ForagingCaching` reads as one invented one.
+                "event_name": code.replace("/", "_").replace(":", "_"),
                 "table_metadata_key": table_metadata_key,
                 # One column per payload field the read produced, which is subject, comment, whichever
                 # closing-row fields say something new, and one per modifier slot this behavior declares.
@@ -187,30 +203,7 @@ class BORISInterface(BaseEventsInterface):
         if metadata is None:
             metadata = self.get_metadata()
         super().add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
-        self._set_timestamp_resolution(nwbfile=nwbfile, metadata=metadata)
         self._add_ethogram_to_nwbfile(nwbfile=nwbfile)
-
-    def _set_timestamp_resolution(self, nwbfile: NWBFile, metadata: dict) -> None:
-        """Record the frame period as the resolution of a MEDIA observation's times.
-
-        A coder scoring recorded media can only mark a frame, so every time in a ``MEDIA`` observation is
-        quantized to the video's frame period and a duration, being a difference of two such times, is
-        quantized the same way. That period is the real precision of the numbers and it is otherwise lost,
-        since the column holds seconds either way. A ``LIVE`` observation has no frame rate anywhere, so
-        nothing is claimed for it.
-        """
-        frame_rate = self._observation.frame_rate
-        if not frame_rate or nwbfile.events is None:
-            return
-        resolution = 1.0 / frame_rate
-        table_name = metadata["Events"]["EventTables"][self._table_metadata_key()]["table_name"]
-        table = nwbfile.events.get(table_name)
-        if table is None:
-            return
-        for column_name in ("timestamp", "duration"):
-            column = table[column_name] if column_name in table.colnames else None
-            if column is not None and hasattr(column, "resolution"):
-                column.resolution = resolution
 
     def _get_events_data_dict(self) -> dict[str, _EventsData]:
         """Build the internal event representation from the observation, cached after the first call.
@@ -239,50 +232,38 @@ class BORISInterface(BaseEventsInterface):
         for code, occurrences in occurrences_by_code.items():
             behavior = self._project.behaviors.get(code)
             is_point = behavior is None or behavior.behavior_type == "point"
+
+            onsets = np.array([occurrence.onset for occurrence in occurrences], dtype=float)
+            # A point behavior has no extent at all, which is `None`; a state behavior always has the
+            # column, carrying `NaN` for a bout whose stop was never scored.
+            durations = None
+            if not is_point:
+                durations = np.array([occurrence.duration for occurrence in occurrences], dtype=float)
+
+            payload = {
+                "subject": _text_column(occurrences=occurrences, field="subject"),
+                "comment": _text_column(occurrences=occurrences, field="comment"),
+            }
+
+            # A modifier is one answer per declared slot, so it gets one column per slot rather than the
+            # `|`-joined string BORIS records. Which slot each column is stays on the catalogue, since it
+            # is a property of the behavior and not of any occurrence.
+            for position, column_name in enumerate(modifier_columns[code]):
+                payload[column_name] = _modifier_column(occurrences=occurrences, position=position)
+
+            # A bout closes on its own comment and modifier row, and BORIS carries the opening answers
+            # forward, so the closing ones earn a column only where this observation has a bout that
+            # changed mid-way. They are split the same way, so `None` reads as unanswered here too.
+            if closing_comment:
+                payload["stop_comment"] = _text_column(occurrences=occurrences, field="stop_comment")
+            if closing_modifiers:
+                for position, column_name in enumerate(modifier_columns[code]):
+                    payload[f"stop_{column_name}"] = _modifier_column(
+                        occurrences=occurrences, position=position, field="stop_modifier_values"
+                    )
+
             events_data_dict[code] = _EventsData(
-                event_type_source_id=code,
-                timestamps=np.array([occurrence.onset for occurrence in occurrences], dtype=float),
-                # A point behavior has no extent at all, which is `None`; a state behavior always has the
-                # column, carrying `NaN` for a bout whose stop was never scored.
-                durations=(
-                    None if is_point else np.array([occurrence.duration for occurrence in occurrences], dtype=float)
-                ),
-                payload={
-                    "subject": np.array([occurrence.subject for occurrence in occurrences], dtype=object),
-                    "comment": np.array([occurrence.comment for occurrence in occurrences], dtype=object),
-                    # A modifier is one answer per declared slot, so it gets one column per slot rather
-                    # than the `|`-joined string BORIS records. Which slot each column is stays on the
-                    # catalogue, since it is a property of the behavior and not of any occurrence.
-                    **{
-                        column_name: np.array(
-                            [_modifier_answer(occurrence=occurrence, position=position) for occurrence in occurrences],
-                            dtype=object,
-                        )
-                        for position, column_name in enumerate(modifier_columns[code])
-                    },
-                    **(
-                        {
-                            "stop_comment": np.array(
-                                [occurrence.stop_comment for occurrence in occurrences], dtype=object
-                            )
-                        }
-                        if closing_comment
-                        else {}
-                    ),
-                    # A bout closes on its own modifier row, and BORIS carries the opening answer forward,
-                    # so this says something new only where the coder changed it mid-bout. It is split the
-                    # same way rather than left as the raw string, so `None` reads as unanswered here too.
-                    **{
-                        f"stop_{column_name}": np.array(
-                            [
-                                _modifier_answer(occurrence=occurrence, position=position, field="stop_modifier_values")
-                                for occurrence in occurrences
-                            ],
-                            dtype=object,
-                        )
-                        for position, column_name in enumerate(modifier_columns[code] if closing_modifiers else [])
-                    },
-                },
+                event_type_source_id=code, timestamps=onsets, durations=durations, payload=payload
             )
         self._events_data_dict = events_data_dict
         return self._events_data_dict
@@ -342,7 +323,7 @@ class BORISInterface(BaseEventsInterface):
                         {
                             "modifiers": [slot.name.strip() for slot in behavior.modifier_slots],
                             "modifier_values": [
-                                [strip_modifier_shortcut(value) for value in slot.values]
+                                [_strip_modifier_shortcut(value) for value in slot.values]
                                 for slot in behavior.modifier_slots
                             ],
                         }
@@ -407,11 +388,14 @@ class BORISInterface(BaseEventsInterface):
         for occurrence in closed_bouts:
             payload = events_data_dict[occurrence.code].payload
             index = rows_by_occurrence[id(occurrence)]
+            # A behavior writes an empty cell in a column it does not own, since the bouts table keeps
+            # the union of the per-behavior columns.
+            cells = {field: (payload[field][index] if field in payload else "") for field in payload_fields}
             bouts.add_interval(
                 start_time=occurrence.onset + offset,
                 stop_time=occurrence.onset + occurrence.duration + offset,
                 label=occurrence.code,
-                **{field: (payload[field][index] if field in payload else "") for field in payload_fields},
+                **cells,
             )
         behavior_module.add(bouts)
 
@@ -429,12 +413,17 @@ class BORISInterface(BaseEventsInterface):
         happens where the scheme lost a slot after the session was scored.
         """
         behavior = self._project.behaviors.get(code)
-        slots = behavior.modifier_slots if behavior is not None else []
-        recorded = max((len(occurrence.modifier_values) for occurrence in occurrences), default=0)
+        declared_slots = behavior.modifier_slots if behavior is not None else []
+        # A row can carry more answers than the scheme declares, where a slot was removed after the
+        # session was scored, and those still need a column each.
+        answers_recorded = max((len(occurrence.modifier_values) for occurrence in occurrences), default=0)
+        number_of_columns = max(len(declared_slots), answers_recorded)
+
         names = []
-        for position in range(max(len(slots), recorded)):
-            declared = slots[position].name.strip() if position < len(slots) else ""
-            names.append(_to_modifier_column_name(code=code, slot_name=declared, position=position))
+        for position in range(number_of_columns):
+            is_declared = position < len(declared_slots)
+            slot_name = declared_slots[position].name.strip() if is_declared else ""
+            names.append(_to_modifier_column_name(code=code, slot_name=slot_name, position=position))
         return names
 
     def _column_spec(self, field: str, values: np.ndarray) -> dict:
@@ -451,14 +440,20 @@ class BORISInterface(BaseEventsInterface):
         fixed one.
         """
         spec = {"column_name": field, "description": _column_description(field=field)}
-        if not field.removeprefix("stop_").startswith("modifier_"):
+        opening_column = field.removeprefix("stop_")
+        is_modifier_column = opening_column.startswith("modifier_")
+        if not is_modifier_column:
             return spec
+
+        # The vocabulary is what was recorded plus what the slot's menu offers, and the empty string,
+        # which is what a behavior not owning this column writes.
         vocabulary = {""} | {str(value) for value in values}
         for behavior in self._project.behaviors.values():
             for position, slot in enumerate(behavior.modifier_slots):
                 column = _to_modifier_column_name(code=behavior.code, slot_name=slot.name.strip(), position=position)
-                if column == field.removeprefix("stop_"):
-                    vocabulary.update(strip_modifier_shortcut(value) for value in slot.values)
+                writes_into_this_column = column == opening_column
+                if writes_into_this_column:
+                    vocabulary.update(_strip_modifier_shortcut(value) for value in slot.values)
         # Identity labels: BORIS records the value the coder chose, so there is nothing to relabel, and
         # the map is here to declare the vocabulary. Meanings stay empty because BORIS describes a slot
         # and never its values, and the writer skips the MeaningsTable when nothing is described.
@@ -486,6 +481,19 @@ class BORISInterface(BaseEventsInterface):
             for occurrence in self._observation.occurrences
             if occurrence.duration is not None and not np.isnan(occurrence.duration)
         )
+
+
+def _text_column(occurrences: list, field: str) -> np.ndarray:
+    """One of an occurrence's own text fields, as an events-table column."""
+    return np.array([getattr(occurrence, field) for occurrence in occurrences], dtype=object)
+
+
+def _modifier_column(occurrences: list, position: int, field: str = "modifier_values") -> np.ndarray:
+    """The answers one modifier slot received, as an events-table column."""
+    return np.array(
+        [_modifier_answer(occurrence=occurrence, position=position, field=field) for occurrence in occurrences],
+        dtype=object,
+    )
 
 
 def _modifier_answer(occurrence, position: int | None, field: str = "modifier_values") -> str:
@@ -551,30 +559,6 @@ def _column_description(field: str) -> str:
     )
 
 
-def _to_event_name(code: str) -> str:
-    """Turn a behavior code into an editable display name an object name can be derived from.
-
-    A behavior code is free text somebody typed into an ethogram, and BORIS accepts characters an NWB
-    object name cannot hold: `Grooming/Eating` is an ordinary way to name one behavior covering two
-    things. An event type that gets a table of its own is named from this, so a raw slash or colon would
-    raise there. The separator is kept rather than dropped, since `Foraging_Caching` still reads as two
-    words where `ForagingCaching` reads as one invented one. The code itself is untouched: it stays the
-    event_type_source_id and reaches the file verbatim in the catalogue's `behavior` column.
-    """
-    return code.replace("/", "_").replace(":", "_")
-
-
-def _to_metadata_key(name: str) -> str:
-    """Turn an observation name into the snake_case handle its metadata block sits under.
-
-    A project holds many observations and each is its own interface, so the key is derived from the
-    observation rather than fixed, or a conversion running several of them would write every block under
-    the same handle. Observation names are free text, so the words are taken and joined.
-    """
-    words = [word for word in re.split(r"[\W_]+", name, flags=re.UNICODE) if word]
-    return "_".join(["boris", *(word.lower() for word in words)])
-
-
 def _to_object_name(name: str) -> str:
     """Turn an observation name into an NWB object name.
 
@@ -592,17 +576,3 @@ def _to_object_name(name: str) -> str:
     if not object_name or object_name[0].isdigit():
         object_name = f"Observation{object_name}"
     return object_name
-
-
-def _parse_observation_date(date: str | None) -> datetime | None:
-    """Read an observation's ``date``, which BORIS writes ISO-formatted with either separator.
-
-    Real files carry ``2016-12-10T15:44:57``, ``2018-05-14 16:22:23`` and ``2018-05-10 15:19`` alike. No
-    timezone is stated, so the datetime is left naive and pynwb attaches the local one at write.
-    """
-    if not date:
-        return None
-    try:
-        return datetime.fromisoformat(date)
-    except ValueError:
-        return None
