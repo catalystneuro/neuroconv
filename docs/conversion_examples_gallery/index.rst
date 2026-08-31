@@ -151,6 +151,7 @@ Events
 .. toctree::
     :maxdepth: 1
 
+    BORIS <events/boris_events>
     CSV <events/csv_events>
     Doric <events/doric_events>
     NPM <events/npm_events>

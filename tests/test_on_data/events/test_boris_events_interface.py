@@ -73,7 +73,12 @@ class BORISEventsRoundTrip(DataInterfaceTestMixin):
         assert len(catalogue) == self.expected_catalogue_size
         assert set(catalogue["behavior_type"]) <= {"point", "state"}
 
-        bouts = behavior_module[f"{self.expected_table_name}Bouts"].to_dataframe()
+        bouts_name = f"{self.expected_table_name}Bouts"
+        if self.expected_bout_count == 0:
+            # An observation with nothing durative in it gets no interval table at all.
+            assert bouts_name not in behavior_module.data_interfaces
+            return
+        bouts = behavior_module[bouts_name].to_dataframe()
         assert len(bouts) == self.expected_bout_count
         # A bout is a closed interval by construction, so none of these may be reversed or unfinished.
         assert (bouts["stop_time"] >= bouts["start_time"]).all()
@@ -144,7 +149,7 @@ class TestBORISModifierSlots(BORISEventsRoundTrip):
         """The recorded forms of the three slot types, kept as the strings BORIS wrote."""
         interface = BORISEventsInterface(file_path=MODIFIER_SLOTS, observation_name="1")
         nwbfile = mock_NWBFile()
-        interface.add_to_nwbfile(nwbfile=nwbfile, write_ethogram=False)
+        interface.add_to_nwbfile(nwbfile=nwbfile)
         table = nwbfile.get_events_table("Observation1").to_dataframe()
         # A single selection, a multiple selection joined with ",", a free numeric, and two slots
         # joined with "|".
@@ -164,7 +169,7 @@ class TestBORISMultiSubject(BORISEventsRoundTrip):
     def run_custom_checks(self):
         interface = BORISEventsInterface(file_path=MULTI_SUBJECT, observation_name="observation #1")
         nwbfile = mock_NWBFile()
-        interface.add_to_nwbfile(nwbfile=nwbfile, write_ethogram=False)
+        interface.add_to_nwbfile(nwbfile=nwbfile)
         table = nwbfile.get_events_table("Observation1").to_dataframe()
         # Two animals scored in one session. NWB has one Subject per file, so this cannot be that.
         assert set(table["subject"]) == {"subject1", "subject2"}
@@ -183,7 +188,7 @@ class TestBORISUntidyModifiers(BORISEventsRoundTrip):
     def run_custom_checks(self):
         interface = BORISEventsInterface(file_path=UNTIDY_MODIFIERS, observation_name="test1 live")
         nwbfile = mock_NWBFile()
-        interface.add_to_nwbfile(nwbfile=nwbfile, write_ethogram=False)
+        interface.add_to_nwbfile(nwbfile=nwbfile)
         table = nwbfile.get_events_table("Test1Live").to_dataframe()
         # Whitespace is preserved and an unanswered slot writes the literal token, both verbatim: the
         # values are free text somebody typed and normalizing them here would invent data.
@@ -228,9 +233,25 @@ def test_nonzero_time_offset_is_applied():
 
     # The reader keeps the file's own times; the offset is added at write.
     nwbfile = mock_NWBFile()
-    forward.add_to_nwbfile(nwbfile=nwbfile, write_ethogram=False)
+    forward.add_to_nwbfile(nwbfile=nwbfile)
     table = nwbfile.get_events_table("PositiveOffset").to_dataframe()
     assert table["timestamp"].min() == pytest.approx(1.0 + 12.5)  # the first Foraging row
+
+
+def test_undeclared_behavior_code_warns():
+    """The loss has to announce itself, since nothing in the written file records that it happened.
+
+    A code the ethogram no longer declares has no point-or-state kind, so its rows cannot be paired and
+    are written without durations. Read as a state behavior that would be every bout it ever had.
+    """
+    with pytest.warns(UserWarning, match="ethogram does not declare"):
+        BORISEventsInterface(file_path=TIME_OFFSET, observation_name="removed behaviors")
+
+    # One warning per code, naming the code and how many rows carry it.
+    with pytest.warns(UserWarning) as records:
+        BORISEventsInterface(file_path=TIME_OFFSET, observation_name="positive offset")
+    messages = " ".join(str(record.message) for record in records)
+    assert "'Foraging'" in messages and "4 events" in messages
 
 
 def test_undeclared_behavior_code_keeps_the_row():
@@ -242,7 +263,7 @@ def test_undeclared_behavior_code_keeps_the_row():
     """
     interface = BORISEventsInterface(file_path=TIME_OFFSET, observation_name="removed behaviors")
     nwbfile = mock_NWBFile()
-    interface.add_to_nwbfile(nwbfile=nwbfile, write_ethogram=False)
+    interface.add_to_nwbfile(nwbfile=nwbfile)
 
     table = nwbfile.get_events_table("RemovedBehaviors").to_dataframe()
     assert {"Rearing", "Scent-marking"} <= set(table["event_type"])
@@ -255,7 +276,7 @@ def test_event_comments_survive():
     """The comment column carries what the coder typed, which almost no fixture exercises."""
     interface = BORISEventsInterface(file_path=TIME_OFFSET, observation_name="negative offset")
     nwbfile = mock_NWBFile()
-    interface.add_to_nwbfile(nwbfile=nwbfile, write_ethogram=False)
+    interface.add_to_nwbfile(nwbfile=nwbfile)
 
     comments = set(nwbfile.get_events_table("NegativeOffset").to_dataframe()["comment"])
     assert "digging when the clip opens" in comments
@@ -275,7 +296,7 @@ def test_a_behavior_code_with_a_slash_can_take_its_own_table():
     metadata["Events"]["boris"]["event_types"]["Foraging/Caching"]["table_metadata_key"] = "solo"
 
     nwbfile = mock_NWBFile()
-    interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, write_ethogram=False)
+    interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
     # The table name is CamelCased from the event_name, which eats the underscore. The separator still
     # earns its place in the default layout, where the event_name is the value in the event_type column.
     assert "ForagingCaching" in nwbfile.events
@@ -327,6 +348,8 @@ def test_observation_without_events_writes_the_scheme():
 
     assert len(nwbfile.get_events_table("ObservationWithoutEvents").id) == 0
     assert len(nwbfile.processing["behavior"]["Ethogram"].to_dataframe()) == 5
+    # Nothing durative was scored, so there is no interval table to write.
+    assert "ObservationWithoutEventsBouts" not in nwbfile.processing["behavior"].data_interfaces
 
 
 def test_project_with_no_observations():
@@ -345,12 +368,12 @@ def test_live_observation_has_no_frame_rate():
     """A LIVE observation has no media and so no resolution to claim; a MEDIA one has the frame period."""
     live = BORISEventsInterface(file_path=VERSION_1_6, observation_name="live observation")
     nwbfile = mock_NWBFile()
-    live.add_to_nwbfile(nwbfile=nwbfile, write_ethogram=False)
+    live.add_to_nwbfile(nwbfile=nwbfile)
     assert nwbfile.get_events_table("LiveObservation")["timestamp"].resolution is None
 
     media = BORISEventsInterface(file_path=VERSION_1_6, observation_name="media observation")
     nwbfile = mock_NWBFile()
-    media.add_to_nwbfile(nwbfile=nwbfile, write_ethogram=False)
+    media.add_to_nwbfile(nwbfile=nwbfile)
     # The project's media runs at 25 fps, so a coder could only ever mark a 40 ms boundary.
     assert nwbfile.get_events_table("MediaObservation")["timestamp"].resolution == pytest.approx(0.04)
 

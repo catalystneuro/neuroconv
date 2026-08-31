@@ -8,6 +8,7 @@ with its stop row. Nothing here knows about NWB, so the same reader serves whate
 
 import json
 import math
+import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -96,7 +97,15 @@ class BorisOccurrence:
     modifiers : str
         The recorded modifier string, exactly as written.
     comment : str
-        The coder's free-text comment.
+        The coder's free-text comment, from the row that opened the occurrence.
+    stop_comment : str
+        The comment on the row that closed a state bout, empty where there was none and on a point
+        behavior, which has no closing row. A bout is two rows and both carry a comment field, so a coder
+        can say one thing at the start and another at the end, and the second is usually how it ended.
+    stop_modifiers : str
+        The modifier string on the row that closed a state bout. Almost always the same string as
+        ``modifiers``, since BORIS carries the value forward, so it says something new only where the
+        coder changed the answer while the bout ran.
     duration : float or None
         ``None`` for a point behavior, which has no extent. For a state behavior, the length of the bout,
         or ``nan`` where the bout opened and never closed.
@@ -108,6 +117,8 @@ class BorisOccurrence:
     modifiers: str
     comment: str
     duration: float | None
+    stop_comment: str = ""
+    stop_modifiers: str = ""
 
 
 @dataclass
@@ -235,6 +246,9 @@ def read_boris_observation(file_path: str | Path, observation_name: str) -> Bori
 
     observation = observations[observation_name]
     behaviors = _read_behaviors(document=document, format_version=_format_version(document=document))
+    _warn_about_undeclared_codes(
+        events=observation.get("events", []), behaviors=behaviors, observation_name=observation_name
+    )
     media_files = _media_files(observation=observation)
     return BorisObservation(
         name=observation_name,
@@ -244,6 +258,33 @@ def read_boris_observation(file_path: str | Path, observation_name: str) -> Bori
         frame_rate=_frame_rate(observation=observation, media_files=media_files),
         occurrences=_pair_events(events=observation.get("events", []), behaviors=behaviors),
     )
+
+
+def _warn_about_undeclared_codes(events: list, behaviors: dict[str, BorisBehavior], observation_name: str) -> None:
+    """Warn where an event names a behavior the coding scheme does not declare.
+
+    BORIS does not rewrite rows already scored when a behavior is renamed or removed from the ethogram, so
+    a project can hold events whose code is nowhere in `behaviors_conf`. The scheme is the only place a
+    behavior's point-or-state kind is recorded, so such a code has no kind and its rows cannot be paired.
+    They are kept and written without durations, which is the loss this announces: a state behavior read
+    this way loses every bout it ever had, and nothing in the written file would say so.
+    """
+    counts = {}
+    for row in events:
+        code = row[_CODE]
+        if code not in behaviors:
+            counts[code] = counts.get(code, 0) + 1
+    for code, count in counts.items():
+        warnings.warn(
+            f"Observation '{observation_name}' has {count} events naming '{code}', which this project's "
+            "ethogram does not declare. BORIS does not rewrite existing rows when a behavior is renamed or "
+            "removed, so these are usually the old name of a behavior that is still in the scheme under a "
+            "new one. They are read without durations, since only the ethogram says whether a behavior is "
+            f"durative. If '{code}' was a state behavior, its bouts are not in this file. Declare it in the "
+            "project in BORIS and re-save to recover them.",
+            UserWarning,
+            stacklevel=3,
+        )
 
 
 def _read_document(file_path: str | Path) -> dict:
@@ -330,7 +371,8 @@ def _pair_events(events: list, behaviors: dict[str, BorisBehavior]) -> list[Bori
     Nothing in a row says whether it opens or closes anything, so the pairing runs off the declared type:
     a point behavior is one row, and a state behavior's rows alternate start, stop, start, stop for a given
     subject and code. Pairing ignores the modifier string, since a bout can open with one modifier and
-    close with another, and it ignores the comment for the same reason.
+    close with another, and it ignores the comment for the same reason. Both rows' comments are kept,
+    since a coder writes one thing when a bout starts and another when it ends.
 
     A bout that opens and never closes is legal and gets a `nan` duration. It happens whenever a coder
     misses a stop in a live session, which cannot be repaired afterwards, so dropping the event or
@@ -363,6 +405,10 @@ def _pair_events(events: list, behaviors: dict[str, BorisBehavior]) -> list[Bori
         if key in open_bouts:
             opening = occurrences[open_bouts.pop(key)]
             opening.duration = onset - opening.onset
+            # The closing row carries its own comment, and it is the one saying how the bout ended, so it
+            # is kept beside the opening row's rather than dropped when the two rows become one.
+            opening.stop_comment = row[_COMMENT]
+            opening.stop_modifiers = row[_MODIFIERS]
             continue
         open_bouts[key] = len(occurrences)
         occurrences.append(

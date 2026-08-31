@@ -1,6 +1,10 @@
 Events
 ======
 
+BORIS Events
+------------
+.. autoclass:: neuroconv.datainterfaces.events.boris.boriseventsdatainterface.BORISEventsInterface
+
 CSV Events
 ----------
 .. automodule:: neuroconv.datainterfaces.events.csv_events.csveventsdatainterface
