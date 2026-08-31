@@ -97,20 +97,6 @@ def test_a_file_printing_no_decimals_cannot_hold_a_packed_code(tmp_path):
         interface.get_event_type_source_ids()
 
 
-class TestSealedArray:
-    """`-987.987` seals an array at its last real element; it is a marker, not an event."""
-
-    def test_the_seal_and_what_follows_it_are_dropped(self, tmp_path):
-        path = tmp_path / "sealed.txt"
-        write_medpc_file(path, {"A": [1.0, 2.0, 3.0, -987.987, 0.0, 0.0]})
-
-        interface = MedPCArrayEventsInterface(
-            file_path=path, session_header=SESSION_HEADER, event_configuration={"A": None}
-        )
-
-        assert np.allclose(interface.get_event_times("A"), [1.0, 2.0, 3.0])
-
-
 def test_a_space_padded_header_value_still_matches(tmp_path):
     # MED-PC pads a single-digit hour with a space ("Start Time:  9:47:07"), which a caller writing the time out
     # would not reproduce. Matching the whole line made 272 of 936 files of one published corpus unreadable.

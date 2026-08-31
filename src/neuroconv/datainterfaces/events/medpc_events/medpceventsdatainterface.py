@@ -19,11 +19,6 @@ from ...behavior.medpc.medpc_helpers import read_medpc_file
 # and the reader needs no configuration to find it.
 _SESSION_START_FIELD = "Start Date"
 
-# MedPC's own array terminator, documented in Med Associates' shipped programs as "the code value -987.987 can be
-# used to seal or terminate an array at the last valid element", and written automatically by a `Sealed_Array`
-# declaration. It is a marker, not an event.
-_ARRAY_SEAL = -987.987
-
 # What one stored value is worth in seconds. MedPC stores whatever the MSN program divided by before writing,
 # and the file records neither that choice nor the box's timing resolution, so it is stated rather than detected.
 # A raw `BTIME` tick has no name here because its worth is the installed resolution: 0.002 on a 2 ms system.
@@ -310,11 +305,7 @@ class _MedPCEventsInterface(BaseEventsInterface):
                 f"The MedPC variable '{medpc_name}' is not in the session selected by "
                 f"{self.source_data['session_header']} of {self.source_data['file_path']}."
             )
-        values = np.asarray(session_dict[medpc_name], dtype=float)
-        # A sealed array carries `-987.987` after its last real element. The seal marks the end, so everything
-        # from it on is padding rather than data, which is what a `Sealed_Array` declaration writes.
-        sealed = np.flatnonzero(values == _ARRAY_SEAL)
-        return values[: sealed[0]] if len(sealed) else values
+        return np.asarray(session_dict[medpc_name], dtype=float)
 
     def _decode_times(self, values: np.ndarray, medpc_name: str, check_order: bool = True) -> np.ndarray:
         """Turn one array's raw values into onset times in seconds.
