@@ -34,7 +34,7 @@ _TIME_UNIT_TO_SECONDS = {
     "centiseconds": 0.01,
     "milliseconds": 0.001,
 }
-TimeUnit = Literal["decaseconds", "seconds", "deciseconds", "centiseconds", "milliseconds"]
+_TimeUnit = Literal["decaseconds", "seconds", "deciseconds", "centiseconds", "milliseconds"]
 
 
 class _MedPCEventsInterface(BaseEventsInterface):
@@ -398,7 +398,7 @@ class MedPCArrayEventsInterface(_MedPCEventsInterface):
         *,
         session_header: dict,
         event_configuration: dict,
-        time_unit: TimeUnit | float = "seconds",
+        time_unit: _TimeUnit | float = "seconds",
         relative_mode: bool = False,
         metadata_key: str | None = None,
         verbose: bool = False,
@@ -552,7 +552,7 @@ class MedPCPackedEventsInterface(_MedPCEventsInterface):
         *,
         session_header: dict,
         events_variable: str,
-        time_unit: TimeUnit | float = "seconds",
+        time_unit: _TimeUnit | float = "seconds",
         relative_mode: bool = False,
         metadata_key: str | None = None,
         verbose: bool = False,
