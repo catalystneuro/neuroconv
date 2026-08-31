@@ -119,8 +119,6 @@ class BorisBehavior:
     category : str
         The behavioral category this behavior belongs to; empty where the project declares none, and
         always empty in format 1.6, which has no category field.
-    native_code : int
-        The behavior's integer key in ``behaviors_conf``.
     excluded : list of str
         The codes that starting this behavior terminates.
     modifier_slots : list of BorisModifierSlot
@@ -131,7 +129,6 @@ class BorisBehavior:
     behavior_type: str
     description: str
     category: str
-    native_code: int
     excluded: list[str] = field(default_factory=list)
     modifier_slots: list[BorisModifierSlot] = field(default_factory=list)
 
@@ -371,7 +368,7 @@ def _format_version(document: dict) -> float:
 def _read_behaviors(document: dict, format_version: float) -> dict[str, BorisBehavior]:
     """Build the coding scheme, keyed by behavior code."""
     behaviors = {}
-    for native_code, entry in document.get("behaviors_conf", {}).items():
+    for entry in document.get("behaviors_conf", {}).values():
         declared_type = entry.get("type", "")
         excluded = entry.get("excluded", "")
         behaviors[entry["code"]] = BorisBehavior(
@@ -381,7 +378,6 @@ def _read_behaviors(document: dict, format_version: float) -> dict[str, BorisBeh
             # 1.6 has no category field at all, so an absent key is the version showing through rather
             # than a behavior nobody assigned.
             category=entry.get("category", ""),
-            native_code=int(native_code),
             excluded=[code for code in excluded.split(",") if code],
             modifier_slots=_read_modifier_slots(declared=entry.get("modifiers", ""), format_version=format_version),
         )

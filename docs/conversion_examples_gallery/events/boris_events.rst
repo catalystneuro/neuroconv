@@ -8,25 +8,20 @@ Install NeuroConv with the additional dependencies necessary for reading BORIS d
     pip install "neuroconv[boris_events]"
 
 BORIS records behavior a person scored by hand against video, audio or a live session. A ``.boris`` file
-is one JSON document holding the coding scheme, the subjects and every observation with its events. An
-observation is one scoring session, so a file usually holds several and this interface takes one by name.
-
-A behavior's kind is declared in the coding scheme rather than marked on the rows. A point behavior
-occupies one row; a state behavior occupies two, a start and a stop, which pair on subject plus code in
-order of appearance, so the coding scheme is what says which of the two a row belongs to.
+is one JSON document holding the coding scheme, the subjects and every observation with its events. The
+NeuroConv interface converts a single scoring session.
 
 Convert BORIS Events data to NWB
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Use :py:class:`~neuroconv.datainterfaces.events.boris.boriseventsdatainterface.BORISEventsInterface`.
-Every behavior the scheme declares becomes an event type and all of them are written into one
-``pynwb.event.EventsTable`` named after the observation, with ``subject`` and ``comment`` carried per
-event. A behavior may also declare modifier slots, the qualifiers a coder answers each time they score it
-(``Walking`` asking for a speed and a direction), and each slot gets its own column named after it. The
-scheme itself is written as an ``ndx-ethogram`` ``Ethogram`` catalogue in the ``behavior`` processing
-module, where ``modifier_slots`` names the columns each behavior's slots write into and
-``modifier_slot_values`` the menu each one offers, and the closed state bouts as an ``EthogramBouts``
-table beside it.
+Every behavior the scheme declares becomes an event type, and all of them are written into one
+``pynwb.event.EventsTable`` named after the observation. How the behaviors map onto tables, all into one
+by default or a table each, is driven entirely by the editable events metadata; see
+:ref:`annotate_events_metadata` for the format.
+
+The coding scheme itself is written as an ``ndx-ethogram`` ``Ethogram`` catalogue in the ``behavior``
+processing module, and the closed state bouts as an ``EthogramBouts`` table beside it.
 
 .. code-block:: python
 
@@ -40,14 +35,7 @@ table beside it.
 
     >>> interface = BORISEventsInterface(file_path=file_path, observation_name="observation #1", verbose=False)
 
-    >>> # Every behavior the scheme declares is an event type, including ones nothing was scored against.
     >>> metadata = interface.get_metadata()
-    >>> sorted(metadata["Events"]["boris"]["event_types"])
-    ['m', 'p', 'q', 'r', 's']
-
-    >>> # The observation's date is the session start, so it does not have to be supplied.
-    >>> metadata["NWBFile"]["session_start_time"]
-    datetime.datetime(2016, 11, 27, 1, 57, 26)
 
     >>> # Add subject information (required for DANDI upload)
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
@@ -58,11 +46,6 @@ table beside it.
 A behavior nothing was scored against is written as a zero-row contribution rather than dropped, since
 the vocabulary is part of the record. A state bout that opens and never closes keeps a ``NaN`` duration,
 which happens whenever a coder misses a stop in a live session and cannot be repaired afterwards.
-
-A BORIS subject is an animal being scored and one observation routinely carries several, so it cannot map
-onto the file's single ``Subject`` and is written as a per-event column instead. BORIS writes an event
-attributed to nobody two ways, as the empty string and as the literal ``No focal subject``, and both are
-read as nobody.
 
 NeuroConv aims to automatically add all the metadata annotations that are present in the source format.
 It is often the case that crucial information is not available there, such as what a behavior code stands

@@ -34,16 +34,20 @@ class BORISEventsInterface(BaseEventsInterface):
     another. A bout that opens and never closes keeps a ``NaN`` duration, which happens whenever a coder
     misses a stop in a live session and cannot be repaired afterwards.
 
-    All of an observation's behaviors are written into one table by default rather than one table per
-    behavior, since an ethogram routinely declares twenty behaviors and the per-behavior layout would
-    turn a single session into twenty tables of a handful of rows each.
+    All of an observation's behaviors are written into one table by default. A behavior may declare
+    modifier slots, the qualifiers a coder answers whenever they score it (``Walking`` asking for a speed
+    and a direction), and each slot becomes a column named after it rather than surviving as the
+    ``|``-joined string BORIS records; a behavior that declares no such slot writes an empty cell there.
+    The column is named after the slot rather than its position, so a slot two behaviors both ask is one
+    column and can be queried across them, and a slot the scheme leaves unnamed falls back to its
+    position. What each column means per behavior is on the catalogue, in ``modifiers``, along with the
+    menu each offers in ``modifier_values``.
 
-    A behavior may declare modifier slots, the qualifiers a coder answers whenever they score it, and each
-    slot is written as a column of its own named after it rather than as the ``|``-joined string BORIS
-    records. The column is named after the slot rather than its position, so a slot two behaviors both ask
-    is one column and can be queried across them; a slot the scheme leaves unnamed falls back to its
-    position. What each column means per behavior is on the catalogue, in ``modifier_slots``, along with
-    the menu each offers in ``modifier_slot_values``.
+    The layout is stated in ``get_metadata`` rather than fixed in the writer, so a behavior is routed
+    into a table of its own by giving its ``event_types`` entry its own ``table_metadata_key`` and naming
+    it in ``EventTables``. Merging is the default because a modifier slot is rare in real projects: half
+    of them declare none at all, so one table per behavior would buy density that is usually not missing
+    and pay one NWB object per declared behavior for it.
 
     The coding scheme is written alongside the events as an ``ndx-ethogram`` ``Ethogram`` catalogue in the
     ``behavior`` processing module, and the closed state bouts as an ``EthogramBouts`` table beside it
@@ -137,6 +141,17 @@ class BORISEventsInterface(BaseEventsInterface):
         if description:
             metadata["NWBFile"]["session_description"] = description
 
+        # Every event type the observation produces, which is the declared scheme plus any code the
+        # events name that the scheme no longer does. A behavior renamed or removed after the session
+        # was scored leaves its rows behind and BORIS does not rewrite them, so declaring only the
+        # scheme would silently drop those rows at write.
+        #
+        # The layout is stated here rather than fixed in the writer, so it is a metadata edit away.
+        # Every behavior routes into one table by default, because a modifier slot is rare in real
+        # projects: half of them declare none at all, and the median observation needs no modifier
+        # column, so one table per behavior would buy density that is almost never missing and pay for
+        # it in one NWB object per declared behavior. Giving a behavior its own `table_metadata_key`,
+        # and naming it in `EventTables`, is what splits it back out.
         table_metadata_key = self._table_metadata_key()
         metadata["Events"]["EventTables"][table_metadata_key] = {
             "table_name": _to_object_name(name=self._observation.name),
@@ -145,11 +160,6 @@ class BORISEventsInterface(BaseEventsInterface):
                 f"({self._observation.observation_type.lower()})."
             ),
         }
-
-        # Every event type the observation produces, which is the declared scheme plus any code the
-        # events name that the scheme no longer does. A behavior renamed or removed after the session
-        # was scored leaves its rows behind and BORIS does not rewrite them, so declaring only the
-        # scheme would silently drop those rows at write.
         event_types = metadata["Events"][self.metadata_key]["event_types"]
         for code, events_data in self._get_events_data_dict().items():
             behavior = self._project.behaviors.get(code)
@@ -159,7 +169,7 @@ class BORISEventsInterface(BaseEventsInterface):
                 # One column per payload field the read produced, which is subject, comment, whichever
                 # closing-row fields say something new, and one per modifier slot this behavior declares.
                 "columns": {
-                    field: {"column_name": field, "description": _column_description(field=field)}
+                    field: self._column_spec(field=field, values=events_data.payload[field])
                     for field in events_data.payload
                 },
             }
@@ -196,11 +206,11 @@ class BORISEventsInterface(BaseEventsInterface):
         frame_rate = self._observation.frame_rate
         if not frame_rate or nwbfile.events is None:
             return
+        resolution = 1.0 / frame_rate
         table_name = metadata["Events"]["EventTables"][self._table_metadata_key()]["table_name"]
         table = nwbfile.events.get(table_name)
         if table is None:
             return
-        resolution = 1.0 / frame_rate
         for column_name in ("timestamp", "duration"):
             column = table[column_name] if column_name in table.colnames else None
             if column is not None and hasattr(column, "resolution"):
@@ -223,19 +233,11 @@ class BORISEventsInterface(BaseEventsInterface):
         # behavior, so it is settled once here rather than re-walked for every code.
         closing_comment = self._closing_row_differs(field="stop_comment")
         closing_modifiers = self._closing_row_differs(field="stop_modifiers")
-        # Which column each behavior's slots write into, and the union every behavior has to declare.
-        # A behavior that declares no slot named `Speed` still writes an empty cell in that column, since
-        # the merged table has one set of columns and the writer fills an undeclared one with NaN, which
-        # cannot share a column with the answers.
+        # Each behavior writes only its own slots, since it has a table to itself.
         modifier_columns = {
             code: self._modifier_column_names(code=code, occurrences=occurrences)
             for code, occurrences in occurrences_by_code.items()
         }
-        modifier_positions = {
-            code: {column_name: position for position, column_name in enumerate(names)}
-            for code, names in modifier_columns.items()
-        }
-        all_modifier_columns = list(dict.fromkeys(name for names in modifier_columns.values() for name in names))
 
         events_data_dict = {}
         for code, occurrences in occurrences_by_code.items():
@@ -257,15 +259,10 @@ class BORISEventsInterface(BaseEventsInterface):
                     # catalogue, since it is a property of the behavior and not of any occurrence.
                     **{
                         column_name: np.array(
-                            [
-                                _modifier_answer(
-                                    occurrence=occurrence, position=modifier_positions[code].get(column_name)
-                                )
-                                for occurrence in occurrences
-                            ],
+                            [_modifier_answer(occurrence=occurrence, position=position) for occurrence in occurrences],
                             dtype=object,
                         )
-                        for column_name in all_modifier_columns
+                        for position, column_name in enumerate(modifier_columns[code])
                     },
                     **(
                         {
@@ -282,16 +279,12 @@ class BORISEventsInterface(BaseEventsInterface):
                     **{
                         f"stop_{column_name}": np.array(
                             [
-                                _modifier_answer(
-                                    occurrence=occurrence,
-                                    position=modifier_positions[code].get(column_name),
-                                    field="stop_modifier_values",
-                                )
+                                _modifier_answer(occurrence=occurrence, position=position, field="stop_modifier_values")
                                 for occurrence in occurrences
                             ],
                             dtype=object,
                         )
-                        for column_name in (all_modifier_columns if closing_modifiers else [])
+                        for position, column_name in enumerate(modifier_columns[code] if closing_modifiers else [])
                     },
                 },
             )
@@ -317,38 +310,49 @@ class BORISEventsInterface(BaseEventsInterface):
                 # stay in the events table's source file until the catalogue can hold them.
                 exclusive=False,
             )
-            # A behavior's modifier slots are what its columns in the events table mean, and they are a
-            # property of the behavior rather than of any occurrence, so they belong here. The menu is
-            # written as BORIS records it, with the keyboard shortcut stripped, so a declared value and a
-            # recorded answer are the same string.
-            catalogue.add_column(
-                name="modifier_slots",
-                description=(
-                    "The events-table columns this behavior's modifier slots write into, in the order the "
-                    "scheme declares them. Empty where the behavior declares no modifiers."
-                ),
-                index=True,
-            )
-            catalogue.add_column(
-                name="modifier_slot_values",
-                description=(
-                    "The menu each slot in `modifier_slots` offers, in the same order, with the keyboard "
-                    "shortcut stripped as BORIS strips it when recording. Empty for a free numeric slot, "
-                    "which has no menu."
-                ),
-                index=2,
-            )
+            # A behavior's modifier slots are a property of the behavior rather than of any occurrence,
+            # so they belong here. The menu is written as BORIS records it, with the keyboard shortcut
+            # stripped, so a declared value and a recorded answer are the same string.
+            #
+            # Written only where some behavior declares a slot. Half of real projects declare none at
+            # all, and a ragged column whose every row is an empty list gives hdmf no dtype to infer, so
+            # writing it unconditionally fails at write rather than storing an empty column.
+            declares_modifiers = any(behavior.modifier_slots for behavior in self._project.behaviors.values())
+            if declares_modifiers:
+                catalogue.add_column(
+                    name="modifiers",
+                    description=(
+                        "The modifier slots this behavior declares, named as the scheme names them and in "
+                        "the order it declares them. Empty where the behavior declares no modifiers."
+                    ),
+                    index=True,
+                )
+                catalogue.add_column(
+                    name="modifier_values",
+                    description=(
+                        "The menu each slot in `modifiers` offers, in the same order, with the keyboard "
+                        "shortcut stripped as BORIS strips it when recording. Empty for a free numeric "
+                        "slot, which has no menu."
+                    ),
+                    index=2,
+                )
             for behavior in self._project.behaviors.values():
                 catalogue.add_row(
                     behavior=behavior.code,
                     definition=behavior.description,
                     behavior_type=behavior.behavior_type,
-                    native_code=behavior.native_code,
                     category=behavior.category,
-                    modifier_slots=self._modifier_column_names(code=behavior.code, occurrences=[]),
-                    modifier_slot_values=[
-                        [strip_modifier_shortcut(value) for value in slot.values] for slot in behavior.modifier_slots
-                    ],
+                    **(
+                        {
+                            "modifiers": [slot.name.strip() for slot in behavior.modifier_slots],
+                            "modifier_values": [
+                                [strip_modifier_shortcut(value) for value in slot.values]
+                                for slot in behavior.modifier_slots
+                            ],
+                        }
+                        if declares_modifiers
+                        else {}
+                    ),
                 )
             behavior_module.add(catalogue)
         elif list(catalogue["behavior"].data) != list(self._project.behaviors):
@@ -375,23 +379,10 @@ class BORISEventsInterface(BaseEventsInterface):
         if not closed_bouts:
             return
 
-        bouts_name = f"{_to_object_name(name=self._observation.name)}Bouts"
-        bouts = EthogramBouts(
-            name=bouts_name,
-            description=(
-                f"State behavior bouts scored in BORIS observation '{self._observation.name}'. "
-                "Point behaviors and bouts whose stop was never scored are in the events table."
-            ),
-            labeling_method="manual",
-            source_software="BORIS",
-            ethogram=catalogue,
-        )
-        # The same columns the events table carries, so the interval view and the faithful record agree
-        # rather than describing one bout two ways.
+        # One bouts table for the observation, matching the events table. It carries the union of the
+        # per-behavior columns, and a behavior writes an empty cell in a column it never asks.
         events_data_dict = self._get_events_data_dict()
         payload_fields = list(dict.fromkeys(field for data in events_data_dict.values() for field in data.payload))
-        for field in payload_fields:
-            bouts.add_column(name=field, description=_column_description(field=field))
 
         # An `_EventsData` holds one behavior's occurrences in the order they appear, so an occurrence's
         # row is its position among the occurrences sharing its code. Counted once here rather than
@@ -403,6 +394,19 @@ class BORISEventsInterface(BaseEventsInterface):
             rows_by_occurrence[id(occurrence)] = seen.get(occurrence.code, 0)
             seen[occurrence.code] = rows_by_occurrence[id(occurrence)] + 1
 
+        bouts = EthogramBouts(
+            name=f"{_to_object_name(name=self._observation.name)}Bouts",
+            description=(
+                f"State behavior bouts scored in BORIS observation '{self._observation.name}'. "
+                "Point behaviors and bouts whose stop was never scored are in the events table."
+            ),
+            labeling_method="manual",
+            source_software="BORIS",
+            ethogram=catalogue,
+        )
+        for field in payload_fields:
+            bouts.add_column(name=field, description=_column_description(field=field))
+
         offset = self.alignment.offset
         for occurrence in closed_bouts:
             payload = events_data_dict[occurrence.code].payload
@@ -411,7 +415,7 @@ class BORISEventsInterface(BaseEventsInterface):
                 start_time=occurrence.onset + offset,
                 stop_time=occurrence.onset + occurrence.duration + offset,
                 label=occurrence.code,
-                **{field: payload[field][index] for field in payload_fields},
+                **{field: (payload[field][index] if field in payload else "") for field in payload_fields},
             )
         behavior_module.add(bouts)
 
@@ -437,6 +441,39 @@ class BORISEventsInterface(BaseEventsInterface):
             names.append(_to_modifier_column_name(slot_name=declared, position=position))
         return names
 
+    def _column_spec(self, field: str, values: np.ndarray) -> dict:
+        """The metadata for one events-table column.
+
+        A modifier column declares its vocabulary, which is the slot's declared menu together with
+        whatever was actually recorded, since a coder can score a value the menu no longer offers. That
+        does two things. It says in the file what the column may hold, which is the honest description of
+        a categorical column and where a ``MeaningsTable`` would come from once BORIS gives us prose per
+        value. And it decides the fill: the writer fills a column a behavior does not declare with ``""``
+        where the column is categorical and with ``NaN`` otherwise, and a float cannot share a column
+        with text. Since a behavior declares only the slots it has, merging behaviors with different
+        slots depends on that, which is what keeps the table layout a metadata choice rather than a
+        fixed one.
+        """
+        spec = {"column_name": field, "description": _column_description(field=field)}
+        if not field.removeprefix("stop_").startswith("modifier_"):
+            return spec
+        vocabulary = {""} | {str(value) for value in values}
+        for behavior in self._project.behaviors.values():
+            for position, slot in enumerate(behavior.modifier_slots):
+                if _to_modifier_column_name(slot_name=slot.name.strip(), position=position) == field.removeprefix(
+                    "stop_"
+                ):
+                    vocabulary.update(strip_modifier_shortcut(value) for value in slot.values)
+        # Identity labels: BORIS records the value the coder chose, so there is nothing to relabel, and
+        # the map is here to declare the vocabulary. Meanings stay empty because BORIS describes a slot
+        # and never its values, and the writer skips the MeaningsTable when nothing is described.
+        spec["column_categories"] = {"labels": {value: value for value in sorted(vocabulary)}, "meanings": {}}
+        return spec
+
+    def _table_metadata_key(self) -> str:
+        """The routing key every one of this observation's behaviors shares, so they land in one table."""
+        return f"{self.metadata_key}_{self._observation.name}"
+
     def _closing_row_differs(self, field: str) -> bool:
         """Whether any closed bout's ``field`` says something its opening row did not.
 
@@ -454,10 +491,6 @@ class BORISEventsInterface(BaseEventsInterface):
             for occurrence in self._observation.occurrences
             if occurrence.duration is not None and not np.isnan(occurrence.duration)
         )
-
-    def _table_metadata_key(self) -> str:
-        """The routing key every one of this observation's behaviors shares, so they land in one table."""
-        return f"{self.metadata_key}_{self._observation.name}"
 
 
 def _modifier_answer(occurrence, position: int | None, field: str = "modifier_values") -> str:
@@ -480,7 +513,7 @@ def _to_modifier_column_name(slot_name: str, position: int) -> str:
     keeps a slot called ``comment`` or ``subject`` from landing on top of a column that already means
     something else.
     """
-    words = [word for word in re.split(r"[^0-9a-zA-Z]+", slot_name) if word]
+    words = [word for word in re.split(r"[\W_]+", slot_name, flags=re.UNICODE) if word]
     return f"modifier_{'_'.join(words).lower()}" if words else f"modifier_{position + 1}"
 
 
@@ -523,12 +556,16 @@ def _to_event_name(code: str) -> str:
 def _to_object_name(name: str) -> str:
     """Turn an observation name into an NWB object name.
 
-    BORIS observation names are free text and routinely carry spaces and punctuation (``observation #2``,
-    ``live not paired``), none of which belongs in an object name, so the words are taken and capitalized.
-    A name that is only digits is common enough (an observation called ``1``) and would give an object
-    named ``1``, so it is prefixed rather than left to stand alone.
+    BORIS observation names and behavior codes are free text and routinely carry spaces and punctuation
+    (``observation #2``, ``live not paired``), none of which belongs in an object name, so the words are
+    taken and capitalized. A name that is only digits is common enough (an observation called ``1``) and
+    would give an object named ``1``, so it is prefixed rather than left to stand alone.
+
+    The split is on non-word characters rather than on non-ASCII ones, because NWB rejects only ``/`` and
+    ``:`` in a name and accents survive a round trip intact. An ethogram is written in the language its
+    author speaks, so ``Exploración`` has to stay ``Exploración`` rather than become ``ExploraciN``.
     """
-    words = [word for word in re.split(r"[^0-9a-zA-Z]+", name) if word]
+    words = [word for word in re.split(r"[\W_]+", name, flags=re.UNICODE) if word]
     object_name = "".join(word[:1].upper() + word[1:] for word in words)
     if not object_name or object_name[0].isdigit():
         object_name = f"Observation{object_name}"
