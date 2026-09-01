@@ -543,6 +543,14 @@ class BaseEventsInterface(BaseDataInterface):
                     f"Column '{column_name}' on table '{table.name}' holds one value per event, and this "
                     "interface writes several. A column is one shape or the other for every contributor."
                 )
+            elif not is_ragged and isinstance(table[column_name], VectorIndex):
+                # The mirror of the case above, and the one that fails silently without this: a scalar
+                # handed to a ragged column reaches `VectorIndex.add_vector`, which extends the values
+                # with it, so a string is appended one character at a time.
+                raise ValueError(
+                    f"Column '{column_name}' on table '{table.name}' holds several values per event, and "
+                    "this interface writes one. A column is one shape or the other for every contributor."
+                )
             # Only a meaning the user actually wrote earns a row: a column whose meanings are all empty
             # gets no MeaningsTable rather than a table of empty strings, and a partly annotated column
             # keeps just the entries that were filled in.
