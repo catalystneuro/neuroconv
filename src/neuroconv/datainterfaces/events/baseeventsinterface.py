@@ -626,11 +626,7 @@ class BaseEventsInterface(BaseDataInterface):
                 else:  # a column from a prior interface: infer the fill from its existing dtype
                     existing = table[column_name].data
                     row_kwargs[column_name] = "" if len(existing) and isinstance(existing[0], str) else np.nan
-            # check_ragged=False: the check only warns that a column of scalars was handed a value of
-            # a different length, and it cannot fire here, since every column's shape is settled before
-            # the first row and a ragged one is a VectorIndex that add_row fills through `add_vector`
-            # whatever the flag says.
-            table.add_row(check_ragged=False, **row_kwargs)
+            table.add_row(**row_kwargs)
 
     @staticmethod
     def _validate_shared_columns(events_metadata: dict) -> None:

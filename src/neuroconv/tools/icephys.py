@@ -525,8 +525,6 @@ def _add_sweep_time_intervals_to_nwbfile(nwbfile: NWBFile, name: str = "sweeps")
         row = dict(start_time=start_time, stop_time=stop_time)
         if has_sequence_column:
             row["sequence"] = sequence_by_interval[(start_time, stop_time)]
-        # check_ragged=False: hdmf rescans the whole column on every add_row, making this quadratic in the
-        # number of sweeps. Every cell here is a scalar, so the check can only ever return False.
-        sweeps.add_row(**row, check_ragged=False)
+        sweeps.add_row(**row)
 
     nwbfile.add_time_intervals(sweeps)

@@ -1834,9 +1834,7 @@ class GuppyInterface(BaseDataInterface):
             # The recording site is part of a spontaneous-mode event's type here, since two sites'
             # transient trains are different events sharing a name; the registry keeps them structured.
             event_type = registry_key if isinstance(registry_key, str) else "_".join(registry_key)
-            # check_ragged=False: hdmf rescans the whole column on every add_row, making this quadratic in
-            # the number of onsets. Both cells here are scalars, so the check can only ever return False.
-            events_table.add_row(timestamp=onset, event_type=event_type, check_ragged=False)
+            events_table.add_row(timestamp=onset, event_type=event_type)
             registry_key_to_rows[registry_key].append(row_index)
         nwbfile.add_events_table(events_table)
         return events_table, registry_key_to_rows
