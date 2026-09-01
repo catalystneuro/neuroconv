@@ -54,7 +54,8 @@ A state bout that opens and never closes keeps a ``NaN`` duration, which happens
 a stop in a live session and cannot be repaired afterwards.
 
 NeuroConv aims to automatically add all the metadata annotations that are present in the source format.
-It is often the case that crucial information is not available there, such as what a behavior code stands
-for beyond the name a coder typed, or the operational definition an ethogram's author never wrote down.
+It is often the case that crucial information is not available there, such as what a particular modifier
+value stands for, since BORIS describes a modifier set but never the answers it offers, or the apparatus
+the session was scored against.
 Follow :ref:`the events how-to <annotate_events_metadata>` for a modality-relevant guide to adding this
 extra metadata, which makes the data more useful for future users and for the community as a whole.

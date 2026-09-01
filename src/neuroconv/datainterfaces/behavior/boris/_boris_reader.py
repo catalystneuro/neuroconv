@@ -104,11 +104,17 @@ class _BorisModifierSlot:
     values : list of str
         The declared menu entries, each possibly carrying a trailing ``" (key)"`` that the recorded value
         does not.
+    description : str
+        What the ethogram's author wrote about the slot, empty where they wrote nothing. It describes the
+        question the slot asks, not the answers it offers, which BORIS never describes. Rare: 17 of the 95
+        slots in the harvested corpus carry one, and where they do they are coding instructions ("what is
+        obscuring the lens", "wind speed/water roughness").
     """
 
     name: str
     slot_type: int
     values: list[str] = field(default_factory=list)
+    description: str = ""
 
 
 @dataclass
@@ -405,6 +411,7 @@ def _read_modifier_slots(declared: dict | str, format_version: float) -> list[_B
                 name=slot.get("name", ""),
                 slot_type=int(slot.get("type", 0)),
                 values=list(slot.get("values", [])),
+                description=slot.get("description", ""),
             )
             for slot in declared.values()
         ]

@@ -412,6 +412,22 @@ class BORISInterface(BaseEventsInterface):
                     ),
                     index=2,
                 )
+            # What the author wrote about each slot, which describes the question it asks and not the
+            # answers it offers. Its own guard rather than `declares_modifiers`, because a described slot
+            # is much rarer than a slot: 17 of the 95 in the corpus, in 3 of 50 projects, so writing it
+            # with every row empty would fail at write for want of a dtype in most files.
+            describes_modifiers = any(
+                slot.description for behavior in self._project.behaviors.values() for slot in behavior.modifier_slots
+            )
+            if describes_modifiers:
+                catalogue.add_column(
+                    name="modifier_descriptions",
+                    description=(
+                        "What the ethogram's author wrote about each slot in `modifiers`, in the same "
+                        "order. Empty where a slot was left undescribed, which most are."
+                    ),
+                    index=True,
+                )
             for behavior in self._project.behaviors.values():
                 catalogue.add_row(
                     behavior=behavior.code,
@@ -428,6 +444,11 @@ class BORISInterface(BaseEventsInterface):
                             ],
                         }
                         if declares_modifiers
+                        else {}
+                    ),
+                    **(
+                        {"modifier_descriptions": [slot.description for slot in behavior.modifier_slots]}
+                        if describes_modifiers
                         else {}
                     ),
                 )
@@ -505,7 +526,7 @@ class BORISInterface(BaseEventsInterface):
         for field in payload_fields:
             bouts.add_column(
                 name=field,
-                description=_column_description(field=field),
+                description=self._column_description(field=field),
                 **({"index": True} if field in filled_ragged_fields else {}),
             )
 
@@ -558,6 +579,60 @@ class BORISInterface(BaseEventsInterface):
 
         behavior_module.add(bouts)
 
+    def _modifier_set_descriptions(self) -> dict[str, str]:
+        """What each modifier column's set was described as, keyed by column name.
+
+        BORIS lets the ethogram's author write about a modifier set beside its name, type and menu, and
+        what they write describes the question the set asks rather than the answers it offers. Only sets
+        that were described appear here: 17 of the 95 in the harvested corpus carry one.
+        """
+        descriptions = {}
+        for behavior in self._project.behaviors.values():
+            for position, slot in enumerate(behavior.modifier_slots):
+                if not slot.description:
+                    continue
+                column = _to_modifier_column_name(code=behavior.code, slot_name=slot.name.strip(), position=position)
+                descriptions[column] = slot.description
+        return descriptions
+
+    def _column_description(self, field: str) -> str:
+        """The description of an events-table column.
+
+        ``subject``, ``comment`` and ``stop_comment`` are shared: every behavior declares them, and the
+        writer requires every contributor to a shared column to describe it identically, which is why
+        they are fixed strings here rather than built per behavior.
+
+        A modifier column belongs to one behavior, so it is free to carry what that behavior's author
+        wrote about the set, and it does where they wrote anything. The copy is the same trade the
+        `event_type` MeaningsTable makes against the catalogue's `definition`: a bare EventsTable has no
+        link back to the Ethogram, so a reader of this column has no route to the description otherwise.
+        Where the set was never described, the text is derived from the column name as before.
+        """
+        fixed = {
+            "subject": "The subject the event was scored on.",
+            "comment": "The coder's comment, from the row that opened the occurrence.",
+            "stop_comment": "The coder's comment on the row that closed a state bout.",
+        }
+        if field in fixed:
+            return fixed[field]
+        closing = field.startswith("stop_")
+        opening_column = field.removeprefix("stop_")
+        when = "on the row that closed a state bout" if closing else "when the behavior was scored"
+        described = self._modifier_set_descriptions().get(opening_column)
+        if described:
+            # The author's text is a free-text note and mostly ends without punctuation, so the sentence
+            # after it needs a full stop put in rather than run on: "what is obscuring the lens" is a
+            # real one.
+            sentence = described.rstrip()
+            if not sentence.endswith((".", "!", "?")):
+                sentence = f"{sentence}."
+            return f"{sentence} Answered {when}."
+        slot = opening_column.removeprefix("modifier_")
+        return (
+            f"The '{slot}' modifier answered {when}. The Ethogram's `modifiers` column says which slot "
+            "this is for each behavior, and `modifier_values` what it could hold."
+        )
+
     def _modifier_column_names(self, code: str, occurrences: list) -> list[str]:
         """The events-table column each of a behavior's modifier slots writes into.
 
@@ -597,7 +672,7 @@ class BORISInterface(BaseEventsInterface):
         slots depends on that, which is what keeps the table layout a metadata choice rather than a
         fixed one.
         """
-        spec = {"column_name": field, "description": _column_description(field=field)}
+        spec = {"column_name": field, "description": self._column_description(field=field)}
         opening_column = field.removeprefix("stop_")
         is_modifier_column = opening_column.startswith("modifier_")
 
@@ -715,31 +790,6 @@ def _to_modifier_column_name(code: str, slot_name: str, position: int) -> str:
 
     slot = "_".join(words(slot_name)).lower() if words(slot_name) else str(position + 1)
     return "_".join(["modifier", *(word.lower() for word in words(code)), slot])
-
-
-def _column_description(field: str) -> str:
-    """The description of an events-table column.
-
-    ``subject``, ``comment`` and ``stop_comment`` are shared: every behavior declares them, and the
-    writer requires every contributor to a shared column to describe it identically, which is why they
-    are fixed strings here rather than built per behavior. A modifier column belongs to one behavior, so
-    its description could name that behavior, but it is derived from the column name for consistency
-    with the three above and because the column name already carries the behavior.
-    """
-    fixed = {
-        "subject": "The subject the event was scored on.",
-        "comment": "The coder's comment, from the row that opened the occurrence.",
-        "stop_comment": "The coder's comment on the row that closed a state bout.",
-    }
-    if field in fixed:
-        return fixed[field]
-    closing = field.startswith("stop_")
-    slot = field.removeprefix("stop_").removeprefix("modifier_")
-    when = "on the row that closed a state bout" if closing else "when the behavior was scored"
-    return (
-        f"The '{slot}' modifier answered {when}. The Ethogram's `modifiers` column says which slot this "
-        "is for each behavior, and `modifier_values` what it could hold."
-    )
 
 
 def _to_object_name(name: str) -> str:

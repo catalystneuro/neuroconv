@@ -5,6 +5,7 @@ import re
 from datetime import datetime
 
 import pytest
+from hdmf.common import VectorIndex
 from pynwb import read_nwb
 from pynwb.testing.mock.file import mock_NWBFile
 
@@ -389,6 +390,27 @@ class TestBORISModifierSlots(BORISTestMixin):
         assert list(catalogue.loc["numeric", "modifiers"]) == ["numeric modif"]
         assert [list(values) for values in catalogue.loc["numeric", "modifier_values"]] == [[]]
         assert list(catalogue.loc["p", "modifiers"]) == []
+
+        # BORIS lets the author write about a modifier set beside its name and its menu, describing the
+        # question the set asks rather than the answers it offers. It rides on the catalogue with the
+        # names it parallels, and empty where the author wrote nothing.
+        assert list(catalogue.loc["2 sets", "modifier_descriptions"]) == ["description set 1", "description set 2"]
+        assert list(catalogue.loc["numeric", "modifier_descriptions"]) == ["description numeric modif"]
+        assert list(catalogue.loc["p", "modifier_descriptions"]) == []
+
+        # And the events column carries a copy, since a bare EventsTable has no link back to the
+        # catalogue, so a reader of the column has no route to the description otherwise. The full stop
+        # is put in because the author's note mostly ends without one.
+        events_table = nwbfile.get_events_table("Observation1")
+        columns = {
+            name: (column.target if isinstance(column, VectorIndex) else column).description
+            for name, column in ((name, events_table[name]) for name in events_table.colnames)
+            if name.startswith("modifier_")
+        }
+        assert columns["modifier_2_sets_set_1"] == "description set 1. Answered when the behavior was scored."
+        assert columns["modifier_numeric_numeric_modif"] == (
+            "description numeric modif. Answered when the behavior was scored."
+        )
 
 
 class TestBORISMultiSubject(BORISTestMixin):
