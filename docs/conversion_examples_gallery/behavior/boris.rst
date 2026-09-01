@@ -8,19 +8,21 @@ Install NeuroConv with the additional dependencies necessary for reading BORIS d
     pip install "neuroconv[boris]"
 
 BORIS records behavior a person scored by hand against video, audio or a live session. A ``.boris`` file
-is one JSON document holding the coding scheme, the subjects and every observation with its events. The
+is one JSON document holding the ethogram, the subjects involved and every observation with its events. The
 NeuroConv interface converts a single scoring session.
 
 Convert BORIS data to NWB
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Use :py:class:`~neuroconv.datainterfaces.behavior.boris.borisdatainterface.BORISInterface`.
-Every behavior the scheme declares becomes an event type, and all of them are written into one
+Every behavior the ethogram declares becomes an event type, and all of them are written into one
 ``pynwb.event.EventsTable`` named after the observation. How the behaviors map onto tables, all into one
 by default or a table each, is driven entirely by the editable events metadata.
 
-The coding scheme itself is written as an ``ndx-ethogram`` ``Ethogram`` catalogue in the ``behavior``
-processing module, and the closed state bouts as an ``EthogramBouts`` table beside it.
+The ethogram in ``behaviors_conf`` is written as an ``ndx-ethogram`` ``Ethogram`` in the ``behavior``
+processing module. Beside it goes an ``ndx-ethogram`` ``EthogramBouts`` table holding one row per closed
+bout, a bout being an occurrence of a behavior whose ethogram ``type`` is ``State event`` rather than
+``Point event``. Point events and bouts the coder never closed stay in the events table only.
 
 .. code-block:: python
 
@@ -48,12 +50,11 @@ processing module, and the closed state bouts as an ``EthogramBouts`` table besi
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> interface.run_conversion(nwbfile_path=path_to_save_nwbfile, metadata=metadata, overwrite=True)
 
-A behavior nothing was scored against is written as a zero-row contribution rather than dropped, since
-the vocabulary is part of the record. A state bout that opens and never closes keeps a ``NaN`` duration,
-which happens whenever a coder misses a stop in a live session and cannot be repaired afterwards.
+A state bout that opens and never closes keeps a ``NaN`` duration, which happens whenever a coder misses
+a stop in a live session and cannot be repaired afterwards.
 
 NeuroConv aims to automatically add all the metadata annotations that are present in the source format.
 It is often the case that crucial information is not available there, such as what a behavior code stands
-for beyond the name a coder typed, or the operational definition a scheme's author never wrote down.
+for beyond the name a coder typed, or the operational definition an ethogram's author never wrote down.
 Follow :ref:`the events how-to <annotate_events_metadata>` for a modality-relevant guide to adding this
 extra metadata, which makes the data more useful for future users and for the community as a whole.

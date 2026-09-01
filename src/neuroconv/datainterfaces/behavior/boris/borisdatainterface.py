@@ -2,6 +2,7 @@ import re
 from datetime import datetime
 
 import numpy as np
+from hdmf.common import MeaningsTable
 from pydantic import FilePath, validate_call
 from pynwb.file import NWBFile
 
@@ -256,7 +257,8 @@ class BORISInterface(BaseEventsInterface):
         # behavior, so it is settled once here rather than re-walked for every code.
         closing_comment = self._closing_row_differs(field="stop_comment")
         closing_modifiers = self._closing_row_differs(field="stop_modifiers")
-        # Each behavior writes only its own slots, since it has a table to itself.
+        # The slots are worked out per behavior, and the column name carries the behavior, so two
+        # behaviors sharing one table still get a column each.
         modifier_columns = {
             code: self._modifier_column_names(code=code, occurrences=occurrences)
             for code, occurrences in occurrences_by_code.items()
@@ -342,17 +344,10 @@ class BORISInterface(BaseEventsInterface):
                 description="The BORIS coding scheme: every behavior the project declares.",
                 # BORIS states exclusion per behavior, as the set of codes that starting one terminates, so
                 # a scheme can make four behaviors mutually exclusive and leave the rest free. A single
-                # boolean cannot carry that, and asserting True would overclaim, so the per-behavior sets
-                # stay in the events table's source file until the catalogue can hold them.
+                # boolean cannot carry that, and asserting True would overclaim, so the flag stays False
+                # and the per-behavior sets go into the `excludes` column below.
                 exclusive=False,
             )
-            # A behavior's modifier slots are a property of the behavior rather than of any occurrence,
-            # so they belong here. The menu is written as BORIS records it, with the keyboard shortcut
-            # stripped, so a declared value and a recorded answer are the same string.
-            #
-            # Written only where some behavior declares a slot. Half of real projects declare none at
-            # all, and a ragged column whose every row is an empty list gives hdmf no dtype to infer, so
-            # writing it unconditionally fails at write rather than storing an empty column.
             # BORIS states exclusion per behavior, as the codes that starting one terminates, so it is
             # per-behavior data and belongs in a column beside `category` rather than in the table-level
             # `exclusive` flag, which asks a different question: whether the whole scheme is a single
@@ -371,6 +366,13 @@ class BORISInterface(BaseEventsInterface):
                     ),
                     index=True,
                 )
+            # A behavior's modifier slots are a property of the behavior rather than of any occurrence,
+            # so they belong here. The menu is written as BORIS records it, with the keyboard shortcut
+            # stripped, so a declared value and a recorded answer are the same string.
+            #
+            # Written only where some behavior declares a slot. Half of real projects declare none at
+            # all, and a ragged column whose every row is an empty list gives hdmf no dtype to infer, so
+            # writing it unconditionally fails at write rather than storing an empty column.
             declares_modifiers = any(behavior.modifier_slots for behavior in self._project.behaviors.values())
             if declares_modifiers:
                 catalogue.add_column(
@@ -503,16 +505,34 @@ class BORISInterface(BaseEventsInterface):
                 label=occurrence.code,
                 **cells,
             )
+
+        # `label` holds the behavior code, the same vocabulary the events table's `event_type` carries, so
+        # it earns the same MeaningsTable. The two coincide by construction, both being built from the
+        # ethogram's `description`, and the repetition is what the schema asks for: a MeaningsTable targets
+        # a column of the table it sits in, so one object cannot serve both. Only a state behavior can be a
+        # bout, so this lists the state subset of what `event_type` lists. As there, a behavior the scheme
+        # left undescribed earns no row, and a scheme that describes nothing gets no table at all rather
+        # than one restating each code back at the reader.
+        described_state_behaviors = [
+            behavior
+            for behavior in self._project.behaviors.values()
+            if behavior.behavior_type == "state" and behavior.description
+        ]
+        if described_state_behaviors:
+            meanings_table = MeaningsTable(target=bouts["label"], description="Meaning of each behavior.")
+            for behavior in described_state_behaviors:
+                meanings_table.add_row(value=behavior.code, meaning=behavior.description)
+            bouts.add_meanings_table(meanings_table)
+
         behavior_module.add(bouts)
 
     def _modifier_column_names(self, code: str, occurrences: list) -> list[str]:
         """The events-table column each of a behavior's modifier slots writes into.
 
-        Named after the slot rather than its position, because the position mixes unrelated questions:
-        ``Walking``'s first slot is a speed and ``Standing``'s is a distance, and a column holding both
-        can be given no coherent vocabulary. The slot name groups them the way somebody querying the
-        table wants, so ``Speed`` asked of two behaviors is one column and asking for the fast ones works
-        across both.
+        Named after the behavior and the slot rather than after the slot's position, because the position
+        mixes unrelated questions: ``Walking``'s first slot is a speed and ``Standing``'s is a distance,
+        and a column holding both can be given no coherent vocabulary. Why the behavior is in the name as
+        well as the slot is in :func:`_to_modifier_column_name`.
 
         A slot the scheme leaves unnamed falls back to its position, which the BORIS demo project needs
         since it names neither of its slots. So does a recorded answer beyond the declared slots, which

@@ -626,11 +626,13 @@ class BaseEventsInterface(BaseDataInterface):
                 else:  # a column from a prior interface: infer the fill from its existing dtype
                     existing = table[column_name].data
                     row_kwargs[column_name] = "" if len(existing) and isinstance(existing[0], str) else np.nan
-            # check_ragged=False: hdmf rescans the whole column on every add_row, making the fill
-            # quadratic in its rows, and a table of scalars can only ever answer False. A table with a
-            # ragged column has to pay it, because the check is also what tells hdmf that a list cell is
-            # several values to append rather than one value that happens to be a list.
-            table.add_row(check_ragged=bool(ragged_column_names), **row_kwargs)
+            # check_ragged=False: the check only warns that a column of scalars was handed a value of
+            # a different length, and it cannot fire here, since every column's shape is settled before
+            # the first row and a ragged one is a VectorIndex that add_row fills through `add_vector`
+            # whatever the flag says. It is still worth passing rather than left at its default, because
+            # hdmf made it amortized O(1) only in 6.2.0 and the floor is 6.1.0, where it rescans the
+            # whole column on every row and makes filling a table quadratic in its rows.
+            table.add_row(check_ragged=False, **row_kwargs)
 
     @staticmethod
     def _validate_shared_columns(events_metadata: dict) -> None:

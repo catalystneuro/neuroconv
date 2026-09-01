@@ -68,6 +68,23 @@ class BORISTestMixin(DataInterfaceTestMixin):
         undeclared_labels = behaviors_with_a_bout - declared_state_behaviors
         assert undeclared_labels == set()
 
+        # A bouts table's `label` holds the same vocabulary as the events table's `event_type`, so it
+        # carries the same meanings, taken from the catalogue's `definition`. Only a state behavior can
+        # be a bout, so this is the state subset, and an ethogram that describes nothing gets no table.
+        expected_meanings = {
+            row.behavior: row.definition
+            for row in catalogue.itertuples()
+            if row.behavior_type == "state" and row.definition
+        }
+        for bouts_table in bouts_tables:
+            meanings_tables = bouts_table.meanings_tables or {}
+            if not expected_meanings:
+                assert len(meanings_tables) == 0
+                continue
+            meanings = meanings_tables["label_meanings"]
+            written = dict(zip(list(meanings["value"][:]), list(meanings["meaning"][:])))
+            assert written == expected_meanings
+
 
 class TestBORISVersion1_6(BORISTestMixin):
     """Format 1.6: no `category` field on a behavior, and `modifiers` a flat comma-separated string."""
