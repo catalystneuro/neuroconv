@@ -590,9 +590,7 @@ def _add_plane_segmentation_to_nwbfile(
         image_mask_array = image_or_pixel_masks.T
         for roi_index, roi_name in zip(roi_indices, roi_names):
             image_mask = image_mask_array[roi_index]
-            # check_ragged=False: hdmf rescans the whole column on every add_roi, making this quadratic in
-            # the ROI count. (The pixel/voxel branch below goes through a VectorIndex, which is never checked.)
-            plane_segmentation.add_roi(id=roi_index, roi_name=roi_name, image_mask=image_mask, check_ragged=False)
+            plane_segmentation.add_roi(id=roi_index, roi_name=roi_name, image_mask=image_mask)
     else:
         mask_type_kwarg = f"{mask_type}_mask"
         pixel_masks = image_or_pixel_masks

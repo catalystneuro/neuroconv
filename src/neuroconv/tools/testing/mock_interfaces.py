@@ -300,7 +300,9 @@ class MockEventsInterface(BaseEventsInterface):
         num_event_types: int = 1,
         num_events: int = 4,
         event_extent: Literal["point event", "event with duration"] = "point event",
-        event_payload: Literal["timestamps only", "single value", "multi value"] = "timestamps only",
+        event_payload: Literal[
+            "timestamps only", "single value", "single value variable length", "multi value"
+        ] = "timestamps only",
         verbose: bool = False,
     ):
         """Initialize a mock events interface.
@@ -320,14 +322,17 @@ class MockEventsInterface(BaseEventsInterface):
             The temporal extent of the generated events (the taxonomy's Extent axis). ``"point event"``
             (default) generates timestamp-only events; ``"event with duration"`` gives each event a
             duration, so the writer adds a ``duration`` column. Applies to every event type.
-        event_payload : {"timestamps only", "single value", "multi value"}, optional
+        event_payload : {"timestamps only", "single value", "single value variable length", "multi value"}, optional
             The payload carried per event (the taxonomy's Payload axis). ``"timestamps only"``
             (default) is a timestamp-only event with no value column; ``"single value"`` carries one
-            categorical field (a labeled column with a ``MeaningsTable``); ``"multi value"`` carries a
-            three-field struct that fans into three columns on the same rows, one per way the writer
-            treats a value column: ``outcome`` (labels and meanings, so a ``MeaningsTable``), ``cue``
-            (labels but nothing to explain, so no ``MeaningsTable``), and ``amplitude`` (raw numeric
-            values). Applies to every event type.
+            categorical field (a labeled column with a ``MeaningsTable``); ``"single value variable length"``
+            carries that same one field, but each of its cells holds *several* values rather than one, which
+            the writer turns into a ragged column: an event tagged with two conditions at once, or a behavior
+            scored with two qualifiers. The cells vary in length, including the empty one, so it exercises the
+            fill a row with nothing to say gets. ``"multi value"`` carries a three-field struct that fans into
+            three columns on the same rows, one per way the writer treats a value column: ``outcome`` (labels
+            and meanings, so a ``MeaningsTable``), ``cue`` (labels but nothing to explain, so no
+            ``MeaningsTable``), and ``amplitude`` (raw numeric values). Applies to every event type.
         verbose : bool, optional
             Whether to print status messages, by default False.
         """
@@ -366,6 +371,20 @@ class MockEventsInterface(BaseEventsInterface):
                         "column_categories": {
                             "labels": {0: "go", 1: "no_go"},
                             "meanings": {0: "A go outcome.", 1: "A no-go outcome."},
+                        },
+                    },
+                }
+            elif self._event_payload == "single value variable length":
+                # One field holding several values per event, which the writer turns into a ragged
+                # column. Declared exactly like a scalar column: the shape is read off the data, so
+                # nothing in the metadata says "ragged" and there is no second place for it to disagree.
+                columns = {
+                    "conditions": {
+                        "column_name": f"conditions{suffix}",
+                        "description": "The conditions each event was tagged with.",
+                        "column_categories": {
+                            "labels": {0: "go", 1: "no_go", 2: "catch"},
+                            "meanings": {0: "A go condition.", 1: "A no-go condition.", 2: "A catch trial."},
                         },
                     },
                 }
@@ -417,6 +436,12 @@ class MockEventsInterface(BaseEventsInterface):
                 payload = {}
             elif self._event_payload == "single value":
                 payload = {"outcome": np.arange(self._num_events) % 2}  # alternating go / no_go
+            elif self._event_payload == "single value variable length":
+                # Lengths cycle 0, 1, 2, 3 so a single generated type covers the empty cell, the
+                # one-value cell that a scalar column could have held, and the genuinely several.
+                payload = {
+                    "conditions": np.array([list(range(count % 4)) for count in range(self._num_events)], dtype=object)
+                }
             elif self._event_payload == "multi value":
                 payload = {
                     "outcome": np.arange(self._num_events) % 2,  # alternating go / no_go
