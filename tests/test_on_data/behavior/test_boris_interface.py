@@ -10,6 +10,7 @@ from hdmf.common import VectorIndex
 from pynwb import read_nwb
 from pynwb.testing.mock.file import mock_NWBFile
 
+from neuroconv import ConverterPipe
 from neuroconv.datainterfaces import BORISInterface
 from neuroconv.tools.testing.data_interface_mixins import DataInterfaceTestMixin
 
@@ -923,6 +924,36 @@ class TestBORISInConverterWorkflows:
     first one already wrote. One interface reads one observation, so anyone converting several assembles
     them into a converter themselves, and these are the rules that assembly has to respect.
     """
+
+    def test_two_observations_of_one_session_through_a_converter(self, tmp_path):
+        """The documented way to put two observations in one file, run end to end.
+
+        Everything else here calls ``add_to_nwbfile`` directly, which hands each interface its own
+        metadata and so never merges them. A converter does merge, and the merge is where a
+        per-observation ``metadata_key`` has to stay distinct or two blocks land under one handle.
+        `positive offset` and `negative offset` were scored an hour apart and declare different time
+        offsets, +12.5 and -4.0, so this also checks the two do not disturb each other's alignment.
+        """
+        file_path = TestBORISTimeOffsetAndUndeclaredCodes.file_path
+        first = BORISInterface(file_path=file_path, observation_name="positive offset")
+        second = BORISInterface(file_path=file_path, observation_name="negative offset")
+        assert first.metadata_key != second.metadata_key
+
+        converter = ConverterPipe(data_interfaces=[first, second])
+        metadata = converter.get_metadata()
+        metadata["NWBFile"].update(session_start_time=datetime(2026, 1, 2, 10, 0, 0))
+        nwbfile_path = tmp_path / "two_observations.nwb"
+        converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
+
+        nwbfile = read_nwb(nwbfile_path)
+        behavior_module = nwbfile.processing["behavior"]
+        assert set(nwbfile.events) == {"PositiveOffset", "NegativeOffset"}
+        assert {"PositiveOffsetBouts", "NegativeOffsetBouts"} <= set(behavior_module.data_interfaces)
+        # One project, so one catalogue, written by whichever interface ran first and reused by the other.
+        assert len(behavior_module["Ethogram"].to_dataframe()) == 5
+        # Each observation is written on its own offset: 1.0 + 12.5 and 6.0 - 4.0.
+        assert min(nwbfile.events["PositiveOffset"]["timestamp"][:]) == pytest.approx(13.5)
+        assert min(nwbfile.events["NegativeOffset"]["timestamp"][:]) == pytest.approx(2.0)
 
     def test_several_observations_of_one_project_share_the_catalogue(self):
         """Two observations of one project meet one catalogue, because the catalogue is the project's.

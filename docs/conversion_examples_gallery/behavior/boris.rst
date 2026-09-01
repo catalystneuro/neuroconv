@@ -59,3 +59,20 @@ value stands for, since BORIS describes a modifier set but never the answers it 
 the session was scored against.
 Follow :ref:`the events how-to <annotate_events_metadata>` for a modality-relevant guide to adding this
 extra metadata, which makes the data more useful for future users and for the community as a whole.
+
+Combining observations in a single file
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+An NWB file describes one recording session, and a BORIS observation is usually one already: it carries
+its own date, its own clock starting at zero and its own media. So convert one observation per file unless
+they really are the same session, a second coder's pass over one recording or two behaviors scored in
+separate passes over it.
+
+If they are, the thing to check is whether they share a clock. Two observations scored against the same
+media do, since their times are positions in that media and each one's ``time offset`` already places it
+there. Two that do not share media have no relationship the file records, and their dates are when
+somebody sat down to score rather than when anything happened, so putting them on a common clock is yours
+to do with ``interface.alignment.shift_times``. Once they are on one clock, assemble the interfaces into a
+:py:class:`~neuroconv.nwbconverter.ConverterPipe` and convert as above. Each observation keeps its own
+events table and its own bouts table, named after it, and the ethogram is written once, since one project
+has one coding scheme.
