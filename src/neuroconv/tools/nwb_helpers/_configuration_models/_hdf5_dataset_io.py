@@ -34,25 +34,11 @@ if is_package_installed(package_name="hdf5plugin"):
 class HDF5DatasetIOConfiguration(DatasetIOConfiguration):
     """A data model for configuring options about an object that will become a HDF5 Dataset in the file."""
 
+    # Built from the same dictionary the rest of the library reports as available, rather than spelled out
+    # here, so a filter a new hdf5plugin release adds is accepted instead of being announced as available
+    # and then rejected by this field.
     compression_method: (
-        Literal[
-            "szip",
-            "lzf",
-            "gzip",
-            "Bitshuffle",
-            "Blosc",
-            "Blosc2",
-            "BZip2",
-            "FciDecomp",
-            "LZ4",
-            "Sperr",
-            "SZ",
-            "SZ3",
-            "Zfp",
-            "Zstd",
-        ]
-        | InstanceOf[h5py._hl.filters.FilterRefBase]
-        | None
+        Literal[tuple(AVAILABLE_HDF5_COMPRESSION_METHODS.keys())] | InstanceOf[h5py._hl.filters.FilterRefBase] | None
     ) = Field(
         default="gzip",
         description=(
