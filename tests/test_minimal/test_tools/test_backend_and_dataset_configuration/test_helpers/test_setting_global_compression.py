@@ -109,6 +109,11 @@ def create_test_nwbfile():
     return nwbfile
 
 
+# Filters that reject the float datasets written above, rather than compressing them badly: HTJ2K is a
+# JPEG 2000 image codec and only accepts integer datatypes, so the write fails inside HDF5 with
+# "Unsupported datatype class". Testing it needs a dataset of its own rather than a different expectation.
+HDF5_COMPRESSION_METHODS_WITHOUT_FLOAT_SUPPORT = {"Htj2k"}
+
 # We need this so that pytest-xdist can run tests in parallel without issues
 # Otherwise the order of the parameterized test is not deterministic and the
 # Different runners fail to find the same tests
@@ -121,6 +126,9 @@ class TestGlobalCompressionHDF5:
     @pytest.mark.parametrize("compression_method", sorted_hdf5_compression_methods)
     def test_global_compression_method_only(self, tmp_path, compression_method):
         """Test applying only global compression method without options using backend configuration."""
+        if compression_method in HDF5_COMPRESSION_METHODS_WITHOUT_FLOAT_SUPPORT:
+            pytest.skip(f"Compression method '{compression_method}' does not accept the float data written here")
+
         nwbfile = create_test_nwbfile()
         nwbfile_path = tmp_path / f"test_global_compression_{compression_method}.nwb"
 
