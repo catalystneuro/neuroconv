@@ -5,7 +5,7 @@ import re
 import numpy as np
 import pytest
 from jsonschema.validators import Draft7Validator
-from pynwb import read_nwb
+from pynwb import NWBHDF5IO
 from pynwb.event import EventsTable
 from pynwb.testing.mock.file import mock_NWBFile
 
@@ -60,12 +60,13 @@ class TestMockEventsInterface:
         assert len(events) == 0
         assert events.colnames == ("timestamp",)
 
-        nwbfile_path = tmp_path / "empty_events.nwb"
-        interface.run_conversion(nwbfile_path=nwbfile_path, overwrite=True)
-
-        read_events = read_nwb(nwbfile_path).get_events_table("Events")
-        assert len(read_events) == 0
-        assert read_events.colnames == ("timestamp",)
+        path = tmp_path / "empty_events.nwb"
+        with NWBHDF5IO(path, "w") as io:
+            io.write(nwbfile)
+        with NWBHDF5IO(path, "r") as io:
+            read_events = io.read().get_events_table("Events")
+            assert len(read_events) == 0
+            assert read_events.colnames == ("timestamp",)
 
     def test_events_single_value(self):
         # A point event type carrying one categorical value.
@@ -132,11 +133,11 @@ class TestMockEventsInterface:
         # without one, and 'amplitude' writes raw values.
         assert set(events.meanings_tables.keys()) == {"outcome_meanings"}
 
-    def test_events_several_values_per_event(self):
+    def test_variable_length_values_convert_to_ragged_column(self):
         # A payload field holding several values per event becomes a ragged column: an event tagged with
         # two conditions at once, or a behavior scored with two qualifiers. Nothing in the metadata says
         # "ragged"; the shape is read off the data, so there is no second place for it to disagree.
-        interface = MockEventsInterface(num_events=5, event_payload="several values")
+        interface = MockEventsInterface(num_events=5, event_payload="single value variable length")
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile)
 
@@ -158,18 +159,42 @@ class TestMockEventsInterface:
         assert meanings.target.name == "conditions"
         assert list(meanings["value"][:]) == ["go", "no_go", "catch"]
 
-    def test_events_several_values_round_trip(self, tmp_path):
-        # The ragged column has to survive a real write, since the shape is what carries the distinction
-        # between one value and several and nothing else in the file states it.
-        interface = MockEventsInterface(num_events=4, event_payload="several values")
-        nwbfile_path = tmp_path / "ragged.nwb"
-        interface.run_conversion(nwbfile_path=nwbfile_path, overwrite=True)
+    def test_ragged_column_survives_time_sorting_when_merged(self):
+        # Pooling two types time-sorts the merged rows, and a ragged column cannot be permuted the way a
+        # column of scalars is: its rows are spans of a values dataset rather than elements of it, so the
+        # offsets and the values are rebuilt from the reordered rows. The two types are staggered in time,
+        # so the sort really does move rows here.
+        interface = MockEventsInterface(num_event_types=2, num_events=4, event_payload="single value variable length")
+        metadata = interface.get_metadata()
+        event_types = metadata["Events"]["mock_events"]["event_types"]
+        event_types["events_0"]["table_metadata_key"] = "pooled"
+        event_types["events_1"]["table_metadata_key"] = "pooled"
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
 
-        events = read_nwb(nwbfile_path).get_events_table("Events")
-        assert [list(cell) for cell in events["conditions"][:]] == [
+        events = nwbfile.get_events_table("Pooled")
+        assert list(events["timestamp"][:]) == pytest.approx([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8])
+        assert list(events["event_type"][:]) == ["events_0", "events_1"] * 4
+        # Each type owns its own ragged column, so every row holds one type's values and the empty fill
+        # for the other, and both have to land on the row the sort moved them to.
+        assert [list(cell) for cell in events["conditions_0"][:]] == [
+            [],
             [],
             ["go"],
+            [],
             ["go", "no_go"],
+            [],
+            ["go", "no_go", "catch"],
+            [],
+        ]
+        assert [list(cell) for cell in events["conditions_1"][:]] == [
+            [],
+            [],
+            [],
+            ["go"],
+            [],
+            ["go", "no_go"],
+            [],
             ["go", "no_go", "catch"],
         ]
 

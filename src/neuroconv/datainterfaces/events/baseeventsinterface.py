@@ -543,6 +543,14 @@ class BaseEventsInterface(BaseDataInterface):
                     f"Column '{column_name}' on table '{table.name}' holds one value per event, and this "
                     "interface writes several. A column is one shape or the other for every contributor."
                 )
+            elif not is_ragged and isinstance(table[column_name], VectorIndex):
+                # The mirror of the case above, and the one that fails silently without this: a scalar
+                # handed to a ragged column reaches `VectorIndex.add_vector`, which extends the values
+                # with it, so a string is appended one character at a time.
+                raise ValueError(
+                    f"Column '{column_name}' on table '{table.name}' holds several values per event, and "
+                    "this interface writes one. A column is one shape or the other for every contributor."
+                )
             # Only a meaning the user actually wrote earns a row: a column whose meanings are all empty
             # gets no MeaningsTable rather than a table of empty strings, and a partly annotated column
             # keeps just the entries that were filled in.
@@ -626,13 +634,7 @@ class BaseEventsInterface(BaseDataInterface):
                 else:  # a column from a prior interface: infer the fill from its existing dtype
                     existing = table[column_name].data
                     row_kwargs[column_name] = "" if len(existing) and isinstance(existing[0], str) else np.nan
-            # check_ragged=False: the check only warns that a column of scalars was handed a value of
-            # a different length, and it cannot fire here, since every column's shape is settled before
-            # the first row and a ragged one is a VectorIndex that add_row fills through `add_vector`
-            # whatever the flag says. It is still worth passing rather than left at its default, because
-            # hdmf made it amortized O(1) only in 6.2.0 and the floor is 6.1.0, where it rescans the
-            # whole column on every row and makes filling a table quadratic in its rows.
-            table.add_row(check_ragged=False, **row_kwargs)
+            table.add_row(**row_kwargs)
 
     @staticmethod
     def _validate_shared_columns(events_metadata: dict) -> None:
