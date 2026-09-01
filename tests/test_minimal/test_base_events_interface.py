@@ -198,6 +198,61 @@ class TestMockEventsInterface:
             ["go", "no_go", "catch"],
         ]
 
+    def test_writing_one_value_into_a_ragged_column_raises(self):
+        # A column is one shape or the other for every contributor. Without the check this fails silently:
+        # a scalar handed to a ragged column reaches `VectorIndex.add_vector`, which extends the values
+        # with it, so a string is appended one character at a time.
+        ragged = MockEventsInterface(num_events=4, event_payload="single value variable length")
+        ragged_metadata = ragged.get_metadata()
+        ragged_type = ragged_metadata["Events"]["mock_events"]["event_types"]["events"]
+        ragged_type["table_metadata_key"] = "pooled"
+        ragged_type["columns"]["conditions"]["column_name"] = "conditions"
+        ragged_metadata["Events"]["EventTables"] = {"pooled": {"table_name": "Pooled", "description": "Pooled."}}
+        nwbfile = mock_NWBFile()
+        ragged.add_to_nwbfile(nwbfile=nwbfile, metadata=ragged_metadata)
+
+        scalar = MockEventsInterface(num_events=4, event_payload="single value")
+        scalar_metadata = scalar.get_metadata()
+        scalar_type = scalar_metadata["Events"]["mock_events"]["event_types"]["events"]
+        scalar_type["event_name"] = "scalar_events"
+        scalar_type["table_metadata_key"] = "pooled"
+        scalar_type["columns"]["outcome"]["column_name"] = "conditions"
+        scalar_metadata["Events"]["EventTables"] = {"pooled": {"table_name": "Pooled", "description": "Pooled."}}
+
+        expected_error = (
+            "Column 'conditions' on table 'Pooled' holds several values per event, and this interface "
+            "writes one. A column is one shape or the other for every contributor."
+        )
+        with pytest.raises(ValueError, match=re.escape(expected_error)):
+            scalar.add_to_nwbfile(nwbfile=nwbfile, metadata=scalar_metadata)
+
+    def test_writing_several_values_into_a_scalar_column_raises(self):
+        # The same rule from the other side: the column already holds one value per event, so a
+        # contributor writing several into it has to raise rather than reshape what is there.
+        scalar = MockEventsInterface(num_events=4, event_payload="single value")
+        scalar_metadata = scalar.get_metadata()
+        scalar_type = scalar_metadata["Events"]["mock_events"]["event_types"]["events"]
+        scalar_type["table_metadata_key"] = "pooled"
+        scalar_type["columns"]["outcome"]["column_name"] = "conditions"
+        scalar_metadata["Events"]["EventTables"] = {"pooled": {"table_name": "Pooled", "description": "Pooled."}}
+        nwbfile = mock_NWBFile()
+        scalar.add_to_nwbfile(nwbfile=nwbfile, metadata=scalar_metadata)
+
+        ragged = MockEventsInterface(num_events=4, event_payload="single value variable length")
+        ragged_metadata = ragged.get_metadata()
+        ragged_type = ragged_metadata["Events"]["mock_events"]["event_types"]["events"]
+        ragged_type["event_name"] = "ragged_events"
+        ragged_type["table_metadata_key"] = "pooled"
+        ragged_type["columns"]["conditions"]["column_name"] = "conditions"
+        ragged_metadata["Events"]["EventTables"] = {"pooled": {"table_name": "Pooled", "description": "Pooled."}}
+
+        expected_error = (
+            "Column 'conditions' on table 'Pooled' holds one value per event, and this interface writes "
+            "several. A column is one shape or the other for every contributor."
+        )
+        with pytest.raises(ValueError, match=re.escape(expected_error)):
+            ragged.add_to_nwbfile(nwbfile=nwbfile, metadata=ragged_metadata)
+
     def test_events_with_duration(self):
         # An event-with-duration type carries per-event durations, so the writer adds a `duration` column.
         interface = MockEventsInterface(
