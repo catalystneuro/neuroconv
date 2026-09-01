@@ -752,5 +752,14 @@ def _to_table_object_name(name: str) -> str:
     that already carries mixed/upper casing and no underscore (a raw ``event_type_source_id`` like
     ``PtAB`` or ``XD0``) is returned unchanged, because ``to_camel_case("PtAB")`` would lowercase the
     rest and give ``"Ptab"``.
+
+    The two characters NWB rejects in an object name are replaced here rather than by the interface that
+    supplies the name, since this is the only place the name has to satisfy that constraint. Everywhere
+    else an ``event_name`` goes, the ``event_type`` column and its ``MeaningsTable``, any string is legal,
+    and a source identifier is worth more there intact: ``Grooming/Eating`` is an ordinary way to name one
+    behavior covering two things, and only the object name derived from it needs repairing.
+    ``to_camel_case`` does not remove them, so ``"Foraging/Caching"`` would otherwise reach a name as
+    ``"Foraging/caching"``.
     """
+    name = name.replace("/", "_").replace(":", "_")
     return to_camel_case(name) if ("_" in name or name.islower()) else name

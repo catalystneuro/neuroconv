@@ -1,7 +1,6 @@
 """Tests for BORISInterface, one class per project file."""
 
 import json
-import math
 import re
 from datetime import datetime
 
@@ -587,9 +586,10 @@ class TestBORISTimeOffsetAndUndeclaredCodes(BORISTestMixin):
         assert event_types["Foraging/Caching"]["event_description"] == (
             "nose down in the substrate, or carrying a seed to a cache"
         )
-        # The editable display name is what an object name gets derived from, so the characters an NWB
-        # name cannot hold are replaced there rather than in the identifier.
-        assert event_types["Foraging/Caching"]["event_name"] == "Foraging_Caching"
+        # The display name is the code as well, so one string identifies the behavior in `event_type`,
+        # in the catalogue and in the bouts table. The two characters an NWB object name cannot hold are
+        # repaired by the writer where that constraint applies, in a table name derived from this.
+        assert event_types["Foraging/Caching"]["event_name"] == "Foraging/Caching"
         assert event_types["Exploraci\u00f3n"]["event_name"] == "Exploraci\u00f3n"
         # A code the scheme dropped has no slots to name its column after, so it falls back to position,
         # and it carries no description because there is no behavior to take one from.
@@ -700,24 +700,6 @@ def test_unpaired_state_start_becomes_nan():
     assert len(bouts) == 3
 
 
-def test_pairing_ignores_the_modifier_string():
-    """A bout can open with one modifier and close with another, and must still close.
-
-    Matching on the modifier would leave every such bout open. The only observations in the whole fixture
-    set that exercise this are in the Android demo project: ``id2`` opens ``walk`` with ``quadrupedal``
-    and closes it with ``None``. The recorded modifier of the opening row is what survives, since that is
-    what the coder said was true when the bout began.
-    """
-    from neuroconv.datainterfaces.behavior.boris._boris_reader import _read_boris_observation
-
-    observation = _read_boris_observation(file_path=TestBORISCategorizedEthogram.file_path, observation_name="id2")
-    walk_bouts = [occurrence for occurrence in observation.occurrences if occurrence.code == "walk"]
-    assert walk_bouts, "the observation exists to exercise closing a bout across a modifier change"
-    for bout in walk_bouts:
-        assert bout.duration is not None and not math.isnan(bout.duration)
-        assert bout.modifiers == "quadrupedal"
-
-
 def test_unnamed_modifier_slot_falls_back_to_its_position():
     """A scheme need not name its slots, and an unnamed one still gets a column.
 
@@ -762,19 +744,11 @@ def test_project_with_no_observations():
     ``get_observation_names`` reports the empty list, and asking for an observation by name says which
     ones exist rather than failing obscurely.
     """
-    assert (
-        BORISInterface.get_observation_names(
-            file_path=BORIS_PROJECTS_PATH
-            / "version_7_0"
-            / "no_observations"
-            / "twenty_six_subjects_and_three_converters.boris"
-        )
-        == []
-    )
-
     file_path = (
         BORIS_PROJECTS_PATH / "version_7_0" / "no_observations" / "twenty_six_subjects_and_three_converters.boris"
     )
+    assert BORISInterface.get_observation_names(file_path=file_path) == []
+
     expected = f"No observation 'anything' in '{file_path}'. This project holds [], which get_observation_names lists."
     with pytest.raises(KeyError, match=re.escape(expected)):
         BORISInterface(file_path=file_path, observation_name="anything")

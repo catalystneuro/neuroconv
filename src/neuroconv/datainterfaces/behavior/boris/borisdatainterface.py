@@ -173,14 +173,13 @@ class BORISInterface(BaseEventsInterface):
         for code, events_data in self._get_events_data_dict().items():
             behavior = self._project.behaviors.get(code)
             entry = {
-                # A behavior code is free text and BORIS accepts characters an NWB object name cannot
-                # hold, `Grooming/Eating` being an ordinary way to name one behavior covering two
-                # things. The code itself is untouched, staying the identifier and reaching the
-                # catalogue's `behavior` column verbatim; only the display name is made safe, because
-                # routing a behavior to a table of its own derives that table's name from it. The
-                # separator is kept rather than dropped, since `Foraging_Caching` still reads as two
-                # words where `ForagingCaching` reads as one invented one.
-                "event_name": code.replace("/", "_").replace(":", "_"),
+                # The code travels verbatim, so the same string identifies a behavior in the events
+                # table's `event_type`, in the catalogue's `behavior` and in the bouts table's `label`,
+                # and a join across the three needs no transform. BORIS accepts characters an NWB object
+                # name cannot hold, `Grooming/Eating` being an ordinary way to name one behavior covering
+                # two things, and the writer repairs those where the constraint actually applies, in the
+                # table name derived from this when a behavior is routed to a table of its own.
+                "event_name": code,
                 "table_metadata_key": self.metadata_key,
                 # One column per payload field the read produced, which is subject, comment, whichever
                 # closing-row fields say something new, and one per modifier slot this behavior declares.
