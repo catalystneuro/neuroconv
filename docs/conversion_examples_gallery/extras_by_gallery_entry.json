@@ -2,6 +2,9 @@
   "behavior/audio.rst": {
     "extra": "audio"
   },
+  "behavior/boris.rst": {
+    "extra": "boris"
+  },
   "behavior/deeplabcut.rst": {
     "extra": "deeplabcut"
   },

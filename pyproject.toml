@@ -127,7 +127,11 @@ vame = [
     "ndx-vame>=0.3.2",
     "ndx-ethogram>=0.1.0",  # For the curated EthogramBouts/Ethogram derived from MotifSeries
 ]
+boris = [
+    "ndx-ethogram>=0.1.0",  # a BORIS project is a coding scheme plus its events, and the scheme is an Ethogram
+]
 behavior = [
+    "neuroconv[boris]",
     "neuroconv[sleap]",
     "neuroconv[audio]",
     "neuroconv[deeplabcut]",

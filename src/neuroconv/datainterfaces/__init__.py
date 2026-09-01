@@ -1,5 +1,6 @@
 # Behavior
 from .behavior.audio.audiointerface import AudioInterface
+from .behavior.boris.borisdatainterface import BORISInterface
 from .behavior.deeplabcut.deeplabcutdatainterface import DeepLabCutInterface
 from .behavior.fictrac.fictracdatainterface import FicTracDataInterface
 from .behavior.lightningpose.lightningposedatainterface import (
@@ -230,6 +231,7 @@ interface_list = [
     MinianSegmentationInterface,
     ThorImagingInterface,
     # Behavior
+    BORISInterface,
     ExternalVideoInterface,
     InternalVideoInterface,
     AudioInterface,
@@ -310,6 +312,7 @@ interfaces_by_category = dict(
         FicTrac=FicTracDataInterface,
         LightningPose=LightningPoseDataInterface,
         Vame=VameInterface,
+        BORIS=BORISInterface,
         MoseqKeyPoints=MoseqKeyPointsInterface,
         # Text
         CsvTimeIntervals=CsvTimeIntervalsInterface,
