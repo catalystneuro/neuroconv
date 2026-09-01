@@ -22,6 +22,7 @@ The most common contribution is for a user/developer to help us integrate a new 
     Project Structure <project_structure>
     Testing Suite <testing_suite>
     Coding Style <style_guide>
+    Deprecations <deprecations>
     Building the Documentation <building_documentation>
     Building the Docker Image <docker_images>
     Making a Release <making_a_release>

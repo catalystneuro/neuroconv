@@ -207,7 +207,7 @@ class SLEAPInterface(BasePoseEstimationInterface):
         if not writes_one_container:
             warnings.warn(
                 f"This file tracks {len(track_names)} individuals and an NWB file holds one subject, so "
-                "writing them all into one file is deprecated and will be removed on or after August 2027. "
+                "writing them all into one file is deprecated and will be removed in v0.12.0. "
                 "Name the individual with 'track_name' and use one interface per track; "
                 "'get_available_tracks' lists them.",
                 FutureWarning,
