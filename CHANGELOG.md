@@ -1,4 +1,4 @@
-# v0.10.1 (Upcoming)
+# v0.10.1 (September 1, 2026)
 
 ## Removals, Deprecations and Changes
 * Bumped the minimum version of `hdmf` to `>=6.2.0`, where `DynamicTable.add_row`'s ragged check became amortized instead of rescanning the whole column on every row. [PR #1997](https://github.com/catalystneuro/neuroconv/pull/1997)
