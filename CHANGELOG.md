@@ -17,6 +17,7 @@
 * Removed `get_device_metadata` from `spikeglx_utils`, deprecated since [PR #1599](https://github.com/catalystneuro/neuroconv/pull/1599) for removal on or after May 2026. Use `SpikeGLXRecordingInterface._get_device_metadata_from_probe()` instead.
 
 ## Bug Fixes
+* `HDF5DatasetIOConfiguration` accepts every compression filter installed rather than a list written out in its own source, which had frozen in June 2025 and so rejected the `Htj2k` filter that `hdf5plugin` 7.1.0 added while `AVAILABLE_HDF5_COMPRESSION_METHODS` went on reporting it as available. [PR #1998](https://github.com/catalystneuro/neuroconv/pull/1998)
 * `SLEAPInterface.get_available_tracks` now offers only the tracks carrying an instance, so one the tracking run left empty cannot be selected and no longer fails inside numpy. [PR #1993](https://github.com/catalystneuro/neuroconv/pull/1993)
 * `SLEAPInterface` now treats instances carrying no track as SLEAP does, writing a file where nothing is tracked as one individual and otherwise dropping them with a warning naming what was skipped, and raising where such a file holds several of them in one frame. [PR #1993](https://github.com/catalystneuro/neuroconv/pull/1993)
 * `DeepLabCutInterface` now excludes the landmark keypoints saved as "single". [PR #1992](https://github.com/catalystneuro/neuroconv/pull/1992)
