@@ -313,15 +313,19 @@ def _read_boris_observation(file_path: str | Path, observation_name: str) -> _Bo
 
     Raises
     ------
-    KeyError
+    ValueError
         If the file holds no observation of that name, naming the ones it does.
     """
     document = _read_document(file_path=file_path)
     observations = document.get("observations", {})
     if observation_name not in observations:
-        raise KeyError(
-            f"No observation '{observation_name}' in '{file_path}'. This project holds "
-            f"{sorted(observations)}, which get_observation_names lists."
+        # A ValueError rather than a KeyError, which this was: the argument is wrong, not a mapping
+        # lookup, and a KeyError puts its message through `repr`, so the line breaks below would reach
+        # the user as the two characters `\n` on one long line.
+        raise ValueError(
+            f"The observation '{observation_name}' is not available.\n"
+            f"The file path {Path(file_path).resolve()} contains the following observations:\n"
+            f"{list(observations)}"
         )
 
     observation = observations[observation_name]

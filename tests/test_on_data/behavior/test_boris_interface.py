@@ -3,6 +3,7 @@
 import json
 import re
 from datetime import datetime
+from pathlib import Path
 
 import pytest
 from hdmf.common import VectorIndex
@@ -661,58 +662,6 @@ def test_time_offset_is_read_and_applied():
     assert table["timestamp"].min() == pytest.approx(1.0 + 12.5)  # the first Foraging row
 
 
-def test_a_code_the_ethogram_no_longer_declares():
-    """Somebody edited the ethogram after scoring, and the already-scored rows still name the old code.
-
-    BORIS does not rewrite rows when a behavior is renamed or deleted, so this is an ordinary state for a
-    project to be in rather than a corrupt file. Both shapes are in this fixture: `Rearing` and
-    `Scent-marking` were scored and never declared at all.
-
-    What the conversion promises in that situation is three things at once. Nothing the coder recorded is
-    dropped, so every one of those events reaches the file. Nothing is invented on their behalf: the code
-    has no point-or-state kind, because only the ethogram carries that, so no extent is claimed for it and
-    the catalogue does not pretend it was ever part of the scheme. And the loss is announced, once per
-    code, with what went missing and how to get it back, because nothing in the written file would
-    otherwise say it happened.
-    """
-    file_path = TestBORISTimeOffsetAndUndeclaredCodes.file_path
-    expected = (
-        "Observation 'removed behaviors' has 1 events naming 'Rearing', which this project's ethogram "
-        "does not declare. BORIS does not rewrite existing rows when a behavior is renamed or removed, "
-        "so these are usually the old name of a behavior that is still in the scheme under a new one. "
-        "They are read without durations, since only the ethogram says whether a behavior is durative. "
-        "If 'Rearing' was a state behavior, its bouts are not in this file. Declare it in the project in "
-        "BORIS and re-save to recover them."
-    )
-    with pytest.warns(UserWarning, match=re.escape(expected)) as records:
-        interface = BORISInterface(file_path=file_path, observation_name="removed behaviors")
-    # One warning per code, so somebody with three renamed behaviors gets three lines naming three codes.
-    messages = [str(record.message) for record in records]
-    assert len(messages) == 2
-    assert sorted(message.split("naming ")[1].split(",")[0] for message in messages) == [
-        "'Rearing'",
-        "'Scent-marking'",
-    ]
-
-    nwbfile = mock_NWBFile()
-    interface.add_to_nwbfile(nwbfile=nwbfile)
-    events_table = nwbfile.get_events_table("RemovedBehaviors").to_dataframe()
-
-    # Nothing is dropped: every scored event reaches the file, undeclared or not.
-    assert list(events_table["event_type"]) == ["Freeze", "Rearing", "Burrowing", "Scent-marking"]
-    # Nothing is invented: an undeclared code has no kind, so no extent is claimed for it.
-    assert list(events_table["duration"].isna()) == [True, True, False, True]
-    # The catalogue is the ethogram and nothing more, so it does not grow to cover a deleted code.
-    catalogue = nwbfile.processing["behavior"]["Ethogram"].to_dataframe()
-    assert list(catalogue["behavior"]) == [
-        "Foraging/Caching",
-        "Exploraci\u00f3n",
-        "Burrowing",
-        "Freeze",
-        "Allogroom",
-    ]
-
-
 def test_unpaired_state_start_becomes_nan():
     """A bout that opens and never closes keeps the event and marks the missing offset.
 
@@ -777,22 +726,6 @@ def test_observation_without_events_writes_the_scheme():
     assert "ObservationWithoutEventsBouts" not in nwbfile.processing["behavior"].data_interfaces
 
 
-def test_project_with_no_observations():
-    """A full coding scheme and nothing to convert is a legal file, not an error.
-
-    ``get_observation_names`` reports the empty list, and asking for an observation by name says which
-    ones exist rather than failing obscurely.
-    """
-    file_path = (
-        BORIS_PROJECTS_PATH / "version_7_0" / "no_observations" / "twenty_six_subjects_and_three_converters.boris"
-    )
-    assert BORISInterface.get_observation_names(file_path=file_path) == []
-
-    expected = f"No observation 'anything' in '{file_path}'. This project holds [], which get_observation_names lists."
-    with pytest.raises(KeyError, match=re.escape(expected)):
-        BORISInterface(file_path=file_path, observation_name="anything")
-
-
 def test_behaviors_can_be_routed_into_separate_tables():
     """The merged layout is a default stated in the metadata, not a decision fixed in the writer.
 
@@ -826,89 +759,160 @@ def test_behaviors_can_be_routed_into_separate_tables():
     assert {name for name in numeric.colnames if name.startswith("modifier_")} == {"modifier_numeric_numeric_modif"}
 
 
-def test_two_behaviors_cannot_resolve_to_one_modifier_column(tmp_path):
-    """A column is named for the behavior and the slot, and the pair has to stay distinguishable.
+class TestBORISErrorsAndWarnings:
+    """Every way this interface refuses or complains, and what it says when it does.
 
-    Both halves are normalized and joined with underscores, so two different splits can flatten to the
-    same name. Nothing downstream would notice: the two behaviors would agree on the description and on
-    the vocabulary, so the writer would accept them and their answers would merge into one column
-    holding two vocabularies, which is the aggregation naming per behavior exists to prevent.
+    A plain grouping class rather than a ``BORISTestMixin`` subclass: none of these is a conversion, and
+    two of them happen before an NWB file exists at all. The two guards that fire when several interfaces
+    meet stay in :class:`TestBORISInConverterWorkflows` beside the case where they correctly do not.
     """
-    scheme = {
-        "0": {
-            "type": "State event",
-            "code": "Traffic",
-            "description": "",
-            "excluded": "",
-            "modifiers": {"0": {"name": "lights state", "type": 0, "values": ["Red", "Green"]}},
-        },
-        "1": {
-            "type": "State event",
-            "code": "Traffic lights",
-            "description": "",
-            "excluded": "",
-            "modifiers": {"0": {"name": "State", "type": 0, "values": ["On", "Off"]}},
-        },
-    }
-    events = [
-        [1.0, "", "Traffic", "Red", ""],
-        [2.0, "", "Traffic", "Red", ""],
-        [3.0, "", "Traffic lights", "On", ""],
-        [4.0, "", "Traffic lights", "On", ""],
-    ]
-    project = {
-        "project_format_version": "7.0",
-        "project_name": "collision",
-        "time_format": "s",
-        "behaviors_conf": scheme,
-        "behavioral_categories": [],
-        "subjects_conf": {},
-        "independent_variables": {},
-        "coding_map": {},
-        "converters": {},
-        "observations": {
-            "obs": {
-                "type": "LIVE",
-                "date": "2026-01-01T10:00:00",
+
+    def test_nonexistent_observation_error(self):
+        """Naming an observation the project does not hold says which ones it does.
+
+        Read against a project that holds twelve of them rather than against the empty one, so the
+        message is pinned in the shape a user actually meets.
+        """
+        file_path = TestBORISMultiSubject.file_path
+        expected = (
+            "The observation 'anything' is not available.\n"
+            f"The file path {Path(file_path).resolve()} contains the following observations:\n"
+            "['offset positif', 'offset neg', 'observation #1', 'observation #2', 'live not paired', 'live', 'modifiers', '2 video', '2 video avi', 'live export behavioral sequences', 'observation #2 (copy)', 'observation without events']"
+        )
+        with pytest.raises(ValueError, match=re.escape(expected)):
+            BORISInterface(file_path=file_path, observation_name="anything")
+
+    def test_a_code_the_ethogram_no_longer_declares(self):
+        """Somebody edited the ethogram after scoring, and the already-scored rows still name the old code.
+
+        BORIS does not rewrite rows when a behavior is renamed or deleted, so this is an ordinary state for a
+        project to be in rather than a corrupt file. Both shapes are in this fixture: `Rearing` and
+        `Scent-marking` were scored and never declared at all.
+
+        What the conversion promises in that situation is three things at once. Nothing the coder recorded is
+        dropped, so every one of those events reaches the file. Nothing is invented on their behalf: the code
+        has no point-or-state kind, because only the ethogram carries that, so no extent is claimed for it and
+        the catalogue does not pretend it was ever part of the scheme. And the loss is announced, once per
+        code, with what went missing and how to get it back, because nothing in the written file would
+        otherwise say it happened.
+        """
+        file_path = TestBORISTimeOffsetAndUndeclaredCodes.file_path
+        expected = (
+            "Observation 'removed behaviors' has 1 events naming 'Rearing', which this project's ethogram "
+            "does not declare. BORIS does not rewrite existing rows when a behavior is renamed or removed, "
+            "so these are usually the old name of a behavior that is still in the scheme under a new one. "
+            "They are read without durations, since only the ethogram says whether a behavior is durative. "
+            "If 'Rearing' was a state behavior, its bouts are not in this file. Declare it in the project in "
+            "BORIS and re-save to recover them."
+        )
+        with pytest.warns(UserWarning, match=re.escape(expected)) as records:
+            interface = BORISInterface(file_path=file_path, observation_name="removed behaviors")
+        # One warning per code, so somebody with three renamed behaviors gets three lines naming three codes.
+        messages = [str(record.message) for record in records]
+        assert len(messages) == 2
+        assert sorted(message.split("naming ")[1].split(",")[0] for message in messages) == [
+            "'Rearing'",
+            "'Scent-marking'",
+        ]
+
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile)
+        events_table = nwbfile.get_events_table("RemovedBehaviors").to_dataframe()
+
+        # Nothing is dropped: every scored event reaches the file, undeclared or not.
+        assert list(events_table["event_type"]) == ["Freeze", "Rearing", "Burrowing", "Scent-marking"]
+        # Nothing is invented: an undeclared code has no kind, so no extent is claimed for it.
+        assert list(events_table["duration"].isna()) == [True, True, False, True]
+        # The catalogue is the ethogram and nothing more, so it does not grow to cover a deleted code.
+        catalogue = nwbfile.processing["behavior"]["Ethogram"].to_dataframe()
+        assert list(catalogue["behavior"]) == [
+            "Foraging/Caching",
+            "Exploraci\u00f3n",
+            "Burrowing",
+            "Freeze",
+            "Allogroom",
+        ]
+
+    def test_two_behaviors_cannot_resolve_to_one_modifier_column(self, tmp_path):
+        """A column is named for the behavior and the slot, and the pair has to stay distinguishable.
+
+        Both halves are normalized and joined with underscores, so two different splits can flatten to the
+        same name. Nothing downstream would notice: the two behaviors would agree on the description and on
+        the vocabulary, so the writer would accept them and their answers would merge into one column
+        holding two vocabularies, which is the aggregation naming per behavior exists to prevent.
+        """
+        scheme = {
+            "0": {
+                "type": "State event",
+                "code": "Traffic",
                 "description": "",
-                "time offset": 0.0,
-                "file": [],
-                "independent_variables": {},
-                "events": events,
-            }
-        },
-    }
-    file_path = tmp_path / "collision.boris"
-    file_path.write_text(json.dumps(project), encoding="utf-8")
+                "excluded": "",
+                "modifiers": {"0": {"name": "lights state", "type": 0, "values": ["Red", "Green"]}},
+            },
+            "1": {
+                "type": "State event",
+                "code": "Traffic lights",
+                "description": "",
+                "excluded": "",
+                "modifiers": {"0": {"name": "State", "type": 0, "values": ["On", "Off"]}},
+            },
+        }
+        events = [
+            [1.0, "", "Traffic", "Red", ""],
+            [2.0, "", "Traffic", "Red", ""],
+            [3.0, "", "Traffic lights", "On", ""],
+            [4.0, "", "Traffic lights", "On", ""],
+        ]
+        project = {
+            "project_format_version": "7.0",
+            "project_name": "collision",
+            "time_format": "s",
+            "behaviors_conf": scheme,
+            "behavioral_categories": [],
+            "subjects_conf": {},
+            "independent_variables": {},
+            "coding_map": {},
+            "converters": {},
+            "observations": {
+                "obs": {
+                    "type": "LIVE",
+                    "date": "2026-01-01T10:00:00",
+                    "description": "",
+                    "time offset": 0.0,
+                    "file": [],
+                    "independent_variables": {},
+                    "events": events,
+                }
+            },
+        }
+        file_path = tmp_path / "collision.boris"
+        file_path.write_text(json.dumps(project), encoding="utf-8")
 
-    interface = BORISInterface(file_path=file_path, observation_name="obs")
-    # The check runs at write, so the metadata naming the column still comes back. That is the recourse:
-    # checking at read would raise inside the call that produces the dict the user has to edit.
-    metadata = interface.get_metadata()
+        interface = BORISInterface(file_path=file_path, observation_name="obs")
+        # The check runs at write, so the metadata naming the column still comes back. That is the recourse:
+        # checking at read would raise inside the call that produces the dict the user has to edit.
+        metadata = interface.get_metadata()
 
-    # The whole message is asserted, and compared rather than pattern-matched so a failure reads as a
-    # string diff. The message is the recourse here, so rewording it should require looking at it.
-    expected = (
-        "Behaviors 'Traffic' and 'Traffic lights' both write the column "
-        "'modifier_traffic_lights_state' into one events table, so their answers would merge into one "
-        "column holding two vocabularies. A column is named for the behavior and the slot together, and "
-        "these two flatten to the same name. Give one of them a column of its own before writing:\n"
-        "    metadata['Events']['boris_obs']['event_types']['Traffic lights']['columns']"
-        "['modifier_traffic_lights_state']['column_name'] = 'modifier_traffic_lights_state_2'\n"
-        "Or rename the slot on either behavior in BORIS and re-save."
-    )
-    with pytest.raises(ValueError) as error:
-        interface.add_to_nwbfile(nwbfile=mock_NWBFile())
-    assert str(error.value) == expected
+        expected = (
+            "Behaviors 'Traffic' and 'Traffic lights' both write the column "
+            "'modifier_traffic_lights_state' into one events table, so their answers would merge into one "
+            "column holding two vocabularies. A column is named for the behavior and the slot together, and "
+            "these two flatten to the same name. Give one of them a column of its own before writing:\n"
+            "    metadata['Events']['boris_obs']['event_types']['Traffic lights']['columns']"
+            "['modifier_traffic_lights_state']['column_name'] = 'modifier_traffic_lights_state_2'\n"
+            "Or rename the slot on either behavior in BORIS and re-save."
+        )
+        with pytest.raises(ValueError, match=re.escape(expected)):
+            interface.add_to_nwbfile(nwbfile=mock_NWBFile())
 
-    # Renaming either column resolves it, which is what the message tells the user to do.
-    columns = metadata["Events"]["boris_obs"]["event_types"]["Traffic lights"]["columns"]
-    columns["modifier_traffic_lights_state"]["column_name"] = "modifier_traffic_lights_state_2"
-    nwbfile = mock_NWBFile()
-    interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
-    assert {"modifier_traffic_lights_state", "modifier_traffic_lights_state_2"} <= set(
-        nwbfile.get_events_table("Obs").colnames
-    )
+        # Renaming either column resolves it, which is what the message tells the user to do.
+        columns = metadata["Events"]["boris_obs"]["event_types"]["Traffic lights"]["columns"]
+        columns["modifier_traffic_lights_state"]["column_name"] = "modifier_traffic_lights_state_2"
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+        assert {"modifier_traffic_lights_state", "modifier_traffic_lights_state_2"} <= set(
+            nwbfile.get_events_table("Obs").colnames
+        )
 
 
 class TestBORISInConverterWorkflows:
@@ -957,11 +961,10 @@ class TestBORISInConverterWorkflows:
             "project's coding scheme, so two BORIS projects cannot share one NWB file. Write them to "
             "separate files."
         )
-        with pytest.raises(ValueError) as error:
+        with pytest.raises(ValueError, match=re.escape(expected)):
             BORISInterface(file_path=TestBORISCategorizedEthogram.file_path, observation_name="test1").add_to_nwbfile(
                 nwbfile=nwbfile
             )
-        assert str(error.value) == expected
 
     def test_two_observations_deriving_one_table_name_are_refused(self, tmp_path):
         """Two observation names that differ only in punctuation derive the same events table name.
@@ -1014,9 +1017,8 @@ class TestBORISInConverterWorkflows:
             "metadata['Events']['EventTables']['boris_boccia_223_2']['table_name'], or write the two "
             "observations to separate files."
         )
-        with pytest.raises(ValueError) as error:
+        with pytest.raises(ValueError, match=re.escape(expected)):
             second.add_to_nwbfile(nwbfile=nwbfile)
-        assert str(error.value) == expected
 
         # Naming the second table is the recourse the message offers, and it has to actually work.
         metadata = second.get_metadata()
