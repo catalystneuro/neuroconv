@@ -207,6 +207,7 @@ class BORISInterface(BaseEventsInterface):
         if metadata is None:
             metadata = self.get_metadata()
         self._check_table_name_is_free(nwbfile=nwbfile, metadata=metadata)
+        self._check_columns_are_not_shared_by_two_behaviors(metadata=metadata)
         super().add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
         self._add_ethogram_to_nwbfile(nwbfile=nwbfile)
 
@@ -240,6 +241,45 @@ class BORISInterface(BaseEventsInterface):
             "write the two observations to separate files."
         )
 
+    def _check_columns_are_not_shared_by_two_behaviors(self, metadata: dict) -> None:
+        """Refuse to merge two behaviors' modifier answers into one column.
+
+        A column is keyed on the behavior as well as the slot so that two behaviors asking a same-named
+        question get a column each. Both halves are normalized and joined with underscores, so two
+        different splits can still flatten to one name: behavior `Traffic` with slot `lights state` and
+        behavior `Traffic lights` with slot `State` both give `modifier_traffic_lights_state`. Nothing
+        downstream would notice, since the two agree on the description and on the vocabulary, so the
+        writer would accept them and their answers would merge into one column holding two vocabularies.
+
+        Checked here rather than at read, and against the resolved metadata rather than the names this
+        interface derived, for two reasons. `get_metadata` still returns, so the dict naming the column is
+        reachable, which is the whole recourse; and what is checked is what the user actually asked for,
+        so a rename fixes it and a rename that collides afresh is caught too. `subject`, `comment` and
+        `stop_comment` are exempt because every behavior declares them and sharing them is the point.
+        """
+        shared_by_design = ("subject", "comment", "stop_comment")
+        event_types = metadata["Events"][self.metadata_key]["event_types"]
+        owner_of_column = {}
+        for code, entry in event_types.items():
+            table_metadata_key = entry.get("table_metadata_key", code)
+            for field, column_spec in entry.get("columns", {}).items():
+                if field in shared_by_design:
+                    continue
+                column_name = column_spec.get("column_name", field)
+                # Two behaviors in different tables may share a name; only one table is one column.
+                previous_owner = owner_of_column.setdefault((table_metadata_key, column_name), code)
+                if previous_owner == code:
+                    continue
+                raise ValueError(
+                    f"Behaviors '{previous_owner}' and '{code}' both write the column '{column_name}' "
+                    f"into one events table, so their answers would merge into one column holding two "
+                    "vocabularies. A column is named for the behavior and the slot together, and these "
+                    "two flatten to the same name. Give one of them a column of its own before writing:\n"
+                    f"    metadata['Events']['{self.metadata_key}']['event_types']['{code}']"
+                    f"['columns']['{field}']['column_name'] = '{column_name}_2'\n"
+                    "Or rename the slot on either behavior in BORIS and re-save."
+                )
+
     def _get_events_data_dict(self) -> dict[str, _EventsData]:
         """Build the internal event representation from the observation, cached after the first call.
 
@@ -263,25 +303,6 @@ class BORISInterface(BaseEventsInterface):
             code: self._modifier_column_names(code=code, occurrences=occurrences)
             for code, occurrences in occurrences_by_code.items()
         }
-        # A column is keyed on the behavior and the slot so that two behaviors asking a same-named
-        # question get a column each. Both halves are normalized and joined with underscores, so two
-        # different splits can still flatten to one name: behavior `Traffic` with slot `lights state`
-        # and behavior `Traffic lights` with slot `State` both give `modifier_traffic_lights_state`.
-        # Nothing downstream would notice, since the two would agree on the description and on the
-        # vocabulary, and their answers would merge into one column exactly as sharing by slot name did.
-        owner_of_column = {}
-        for code, column_names in modifier_columns.items():
-            for column_name in column_names:
-                previous_owner = owner_of_column.setdefault(column_name, code)
-                if previous_owner != code:
-                    raise ValueError(
-                        f"Behaviors '{previous_owner}' and '{code}' both resolve to the modifier column "
-                        f"'{column_name}', so their answers would merge into one column holding two "
-                        "vocabularies. A column is named for the behavior and the slot together, and "
-                        "these two flatten to the same name. Rename a slot on either behavior in BORIS "
-                        "and re-save."
-                    )
-
         events_data_dict = {}
         for code, occurrences in occurrences_by_code.items():
             behavior = self._project.behaviors.get(code)

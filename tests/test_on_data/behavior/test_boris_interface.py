@@ -868,55 +868,118 @@ def test_two_behaviors_cannot_resolve_to_one_modifier_column(tmp_path):
     file_path = tmp_path / "collision.boris"
     file_path.write_text(json.dumps(project), encoding="utf-8")
 
-    expected = (
-        "Behaviors 'Traffic' and 'Traffic lights' both resolve to the modifier column "
-        "'modifier_traffic_lights_state', so their answers would merge into one column holding two "
-        "vocabularies. A column is named for the behavior and the slot together, and these two flatten "
-        "to the same name. Rename a slot on either behavior in BORIS and re-save."
-    )
-    with pytest.raises(ValueError, match=re.escape(expected)):
-        BORISInterface(file_path=file_path, observation_name="obs").add_to_nwbfile(nwbfile=mock_NWBFile())
+    interface = BORISInterface(file_path=file_path, observation_name="obs")
+    # The check runs at write, so the metadata naming the column still comes back. That is the recourse:
+    # checking at read would raise inside the call that produces the dict the user has to edit.
+    metadata = interface.get_metadata()
 
+    # The message is matched by what identifies the collision, not by its prose, so rewording it later
+    # does not fail a test that has nothing to do with the wording.
+    with pytest.raises(ValueError, match=r"'Traffic' and 'Traffic lights'.*'modifier_traffic_lights_state'"):
+        interface.add_to_nwbfile(nwbfile=mock_NWBFile())
 
-def test_several_observations_of_one_project_share_the_catalogue():
-    """One interface reads one observation, so writing several to a file is a converter's job.
-
-    They come from one project and so from one coding scheme, and the catalogue is that scheme, not any
-    observation's. The second interface therefore meets its own catalogue and reuses it, while each
-    observation keeps its own events table and its own bouts table.
-    """
+    # Renaming either column resolves it, which is what the message tells the user to do.
+    columns = metadata["Events"]["boris_obs"]["event_types"]["Traffic lights"]["columns"]
+    columns["modifier_traffic_lights_state"]["column_name"] = "modifier_traffic_lights_state_2"
     nwbfile = mock_NWBFile()
-    for observation_name in ("observation #1", "live not paired"):
-        BORISInterface(file_path=TestBORISMultiSubject.file_path, observation_name=observation_name).add_to_nwbfile(
+    interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+    assert {"modifier_traffic_lights_state", "modifier_traffic_lights_state_2"} <= set(
+        nwbfile.get_events_table("Obs").colnames
+    )
+
+
+class TestBORISInConverterWorkflows:
+    """The rules for several ``BORISInterface`` objects writing into one NWB file.
+
+    A plain grouping class rather than a ``BORISTestMixin`` subclass: nothing here runs a conversion from
+    ``interface_kwargs``, and what is under test is what a second interface does when it meets what a
+    first one already wrote. One interface reads one observation, so anyone converting several assembles
+    them into a converter themselves, and these are the rules that assembly has to respect.
+    """
+
+    def test_several_observations_of_one_project_share_the_catalogue(self):
+        """Two observations of one project meet one catalogue, because the catalogue is the project's.
+
+        They come from one coding scheme, so the second interface finds its own catalogue and reuses it,
+        while each observation keeps its own events table and its own bouts table.
+        """
+        nwbfile = mock_NWBFile()
+        for observation_name in ("observation #1", "live not paired"):
+            BORISInterface(file_path=TestBORISMultiSubject.file_path, observation_name=observation_name).add_to_nwbfile(
+                nwbfile=nwbfile
+            )
+
+        behavior_module = nwbfile.processing["behavior"]
+        assert set(nwbfile.events) == {"Observation1", "LiveNotPaired"}
+        assert {"Observation1Bouts", "LiveNotPairedBouts"} <= set(behavior_module.data_interfaces)
+        catalogue = behavior_module["Ethogram"].to_dataframe()
+        assert list(catalogue["behavior"]) == ["p", "s", "q", "r", "m"]
+
+    def test_a_second_project_cannot_share_the_catalogue(self):
+        """A catalogue is one project's coding scheme, so two projects in one file have to be refused.
+
+        The object name is fixed, so a second project would either find the name taken and skip writing
+        its own behaviors, leaving a bouts table whose labels are in no catalogue, or extend the first
+        project's and make one catalogue claim to be the scheme of two.
+        """
+        nwbfile = mock_NWBFile()
+        BORISInterface(file_path=TestBORISMultiSubject.file_path, observation_name="observation #1").add_to_nwbfile(
             nwbfile=nwbfile
         )
 
-    behavior_module = nwbfile.processing["behavior"]
-    assert set(nwbfile.events) == {"Observation1", "LiveNotPaired"}
-    assert {"Observation1Bouts", "LiveNotPairedBouts"} <= set(behavior_module.data_interfaces)
-    catalogue = behavior_module["Ethogram"].to_dataframe()
-    assert list(catalogue["behavior"]) == ["p", "s", "q", "r", "m"]
+        with pytest.raises(ValueError, match=r"\['p', 's', 'q', 'r', 'm'\].*'groom', 'run', 'walk'"):
+            BORISInterface(file_path=TestBORISCategorizedEthogram.file_path, observation_name="test1").add_to_nwbfile(
+                nwbfile=nwbfile
+            )
 
+    def test_two_observations_deriving_one_table_name_are_refused(self, tmp_path):
+        """Two observation names that differ only in punctuation derive the same events table name.
 
-def test_a_second_project_cannot_share_the_catalogue():
-    """A catalogue is one project's coding scheme, so two projects in one file have to be refused.
+        `Boccia 223 2` and `Boccia 223_2`, two trials a real study recorded an hour apart against
+        different videos, both come out as `Boccia2232`. The events writer is append-capable, which is
+        right for several interfaces sharing a table on purpose and wrong here, since the second
+        observation's rows would join the first's with nothing to say which trial they came from.
+        """
+        scheme = {"0": {"type": "Point event", "code": "peck", "description": "", "excluded": "", "modifiers": ""}}
 
-    The object name is fixed, so a second project would either find the name taken and skip writing its
-    own behaviors, leaving a bouts table whose labels are in no catalogue, or extend the first project's
-    and make one catalogue claim to be the scheme of two.
-    """
-    nwbfile = mock_NWBFile()
-    BORISInterface(file_path=TestBORISMultiSubject.file_path, observation_name="observation #1").add_to_nwbfile(
-        nwbfile=nwbfile
-    )
+        def observation(events):
+            return {
+                "type": "LIVE",
+                "date": "2026-01-01T10:00:00",
+                "description": "",
+                "time offset": 0.0,
+                "file": [],
+                "independent_variables": {},
+                "events": events,
+            }
 
-    expected = (
-        "The behavior processing module already holds an 'Ethogram' catalogue declaring "
-        "['p', 's', 'q', 'r', 'm'], and this project declares ['groom', 'run', 'walk', 'attack', 'play', "
-        "'jump', 'approach', 'drink', 'eat', 'defecate', 'urinate']. A catalogue is one project's coding "
-        "scheme, so two BORIS projects cannot share one NWB file. Write them to separate files."
-    )
-    with pytest.raises(ValueError, match=re.escape(expected)):
-        BORISInterface(file_path=TestBORISCategorizedEthogram.file_path, observation_name="test1").add_to_nwbfile(
-            nwbfile=nwbfile
-        )
+        project = {
+            "project_format_version": "7.0",
+            "project_name": "boccia",
+            "time_format": "s",
+            "behaviors_conf": scheme,
+            "behavioral_categories": [],
+            "subjects_conf": {},
+            "independent_variables": {},
+            "coding_map": {},
+            "converters": {},
+            "observations": {
+                "Boccia 223 2": observation([[1.0, "", "peck", "", ""]]),
+                "Boccia 223_2": observation([[2.0, "", "peck", "", ""]]),
+            },
+        }
+        file_path = tmp_path / "boccia.boris"
+        file_path.write_text(json.dumps(project), encoding="utf-8")
+
+        nwbfile = mock_NWBFile()
+        BORISInterface(file_path=file_path, observation_name="Boccia 223 2").add_to_nwbfile(nwbfile=nwbfile)
+
+        second = BORISInterface(file_path=file_path, observation_name="Boccia 223_2")
+        with pytest.raises(ValueError, match=r"'Boccia2232' already exists.*'Boccia 223_2'"):
+            second.add_to_nwbfile(nwbfile=nwbfile)
+
+        # Naming the second table is the recourse the message offers, and it has to actually work.
+        metadata = second.get_metadata()
+        metadata["Events"]["EventTables"][second.metadata_key]["table_name"] = "Boccia2232Underscore"
+        second.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+        assert set(nwbfile.events) == {"Boccia2232", "Boccia2232Underscore"}
