@@ -84,6 +84,17 @@ class BORISTestMixin(DataInterfaceTestMixin):
             written = dict(zip(list(meanings["value"][:]), list(meanings["meaning"][:])))
             assert written == expected_meanings
 
+        # The interval view describes a bout the same way the events table does, so its modifier columns
+        # come from there. A subset rather than the same set, because a column no closed bout filled is
+        # dropped: its values dataset would carry nothing for hdmf to take a dtype from.
+        for bouts_table in bouts_tables:
+            events_table = nwbfile.events.get(bouts_table.name.removesuffix("Bouts"))
+            if events_table is None:
+                continue
+            bouts_modifiers = {name for name in bouts_table.colnames if name.startswith("modifier_")}
+            events_modifiers = {name for name in events_table.colnames if name.startswith("modifier_")}
+            assert bouts_modifiers <= events_modifiers
+
 
 class TestBORISVersion1_6(BORISTestMixin):
     """Format 1.6: no `category` field on a behavior, and `modifiers` a flat comma-separated string."""
@@ -700,12 +711,12 @@ def test_unpaired_state_start_becomes_nan():
     assert len(bouts) == 3
 
 
-def test_unnamed_modifier_slot_falls_back_to_its_position():
-    """A scheme need not name its slots, and an unnamed one still gets a column.
+def test_modifier_name_absent():
+    """A modifier set the scheme leaves unnamed still gets a column, named for its position.
 
-    The BORIS demo project leaves the slot name blank on both the behaviors that carry one, so the name
-    cannot be what the column is called there. The position is what is left, and the catalogue is what
-    says which behavior's slot it is.
+    BORIS calls one of these a modifier set and lets it be saved without a name; the demo project leaves
+    it blank on both the behaviors that carry one, so the name cannot be what the column is called there.
+    The position is what is left, and the catalogue's `modifiers` is what says which set it is.
     """
     interface = BORISInterface(file_path=TestBORISCategorizedEthogram.file_path, observation_name="id2")
     nwbfile = mock_NWBFile()
@@ -713,17 +724,23 @@ def test_unnamed_modifier_slot_falls_back_to_its_position():
 
     table = nwbfile.get_events_table("Id2").to_dataframe().set_index("event_type")
     assert [list(cell) for cell in table.loc["walk", "modifier_walk_1"]] == [["quadrupedal"], ["quadrupedal"]]
-    # `run` declares no slot at all, so it writes an empty cell in the column `walk` owns.
-    assert list(table.loc["run", "modifier_walk_1"]) == []
-
-    # This observation is also the one where a bout closes on a different answer than it opened with:
-    # `walk` opens on `quadrupedal` and closes on the `None` token. That token reads as the slot being
-    # cleared rather than as a value, so every closing cell would be empty, and a ragged column nothing
-    # fills is dropped rather than written with no values for hdmf to take a dtype from.
-    assert "stop_modifier_walk_1" not in table.columns
-    # The interval view carries the same columns, so a bout is described one way and not two.
     bouts = nwbfile.processing["behavior"]["Id2Bouts"].to_dataframe().set_index("label")
     assert [list(cell) for cell in bouts.loc["walk", "modifier_walk_1"]] == [["quadrupedal"], ["quadrupedal"]]
+
+
+def test_a_bout_closing_on_the_none_token_writes_no_stop_column():
+    """A closing answer that clears the set is not a second answer, so it earns no column.
+
+    `id2` is where a bout closes on a different answer than it opened with: `walk` opens on
+    `quadrupedal` and closes on the `None` token. That token reads as the set being cleared rather than
+    as a value, so every closing cell would be empty, and a ragged column nothing fills is dropped rather
+    than written with no values for hdmf to take a dtype from.
+    """
+    interface = BORISInterface(file_path=TestBORISCategorizedEthogram.file_path, observation_name="id2")
+    nwbfile = mock_NWBFile()
+    interface.add_to_nwbfile(nwbfile=nwbfile)
+
+    assert "stop_modifier_walk_1" not in nwbfile.get_events_table("Id2").colnames
 
 
 def test_observation_without_events_writes_the_scheme():
