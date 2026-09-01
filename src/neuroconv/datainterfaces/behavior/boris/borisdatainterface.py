@@ -524,6 +524,18 @@ class BORISInterface(BaseEventsInterface):
                 meanings_table.add_row(value=behavior.code, meaning=behavior.description)
             bouts.add_meanings_table(meanings_table)
 
+        # `subject` is categorical here too and BORIS describes a subject, so it earns its meanings on
+        # both tables for the same reason `label` does. Built through `_column_spec`, the same call the
+        # events table's column goes through, so the two cannot drift apart.
+        if "subject" in bouts.colnames:
+            categories = self._column_spec(field="subject", values=np.asarray(bouts["subject"].data, dtype=object))[
+                "column_categories"
+            ]
+            meanings_table = MeaningsTable(target=bouts["subject"], description="Meaning of each subject.")
+            for name, meaning in categories["meanings"].items():
+                meanings_table.add_row(value=categories["labels"][name], meaning=meaning)
+            bouts.add_meanings_table(meanings_table)
+
         behavior_module.add(bouts)
 
     def _modifier_column_names(self, code: str, occurrences: list) -> list[str]:
@@ -575,7 +587,21 @@ class BORISInterface(BaseEventsInterface):
             # BORIS writes an event attributed to nobody as either the empty string or the literal
             # `No focal subject`, and the reader reads both as nobody.
             roster = {""} | set(self._project.subject_names) | {str(value) for value in values}
-            spec["column_categories"] = {"labels": {name: name for name in sorted(roster)}, "meanings": {}}
+            # A subject carries a free-text description in `subjects_conf` exactly as a behavior does in
+            # `behaviors_conf`, so the column earns real meanings rather than the empty ones a source that
+            # only names its categories would give. Nobody is described here rather than in the project,
+            # since the empty label is the one value in the column a reader cannot guess: an unattributed
+            # event is a coding decision and not a gap in the record.
+            meanings = {
+                name: description
+                for name, description in self._project.subject_descriptions.items()
+                if description and name in roster
+            }
+            meanings[""] = (
+                "The event was scored against no subject. BORIS writes this as an empty subject or as the "
+                "literal 'No focal subject', which are the same thing and never a declared name."
+            )
+            spec["column_categories"] = {"labels": {name: name for name in sorted(roster)}, "meanings": meanings}
             return spec
 
         if not is_modifier_column:

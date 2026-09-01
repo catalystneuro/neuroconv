@@ -231,6 +231,10 @@ class _BorisProject:
     subject_names : list of str
         The subjects the project declares. An event may name one of these or nobody, and the two need not
         agree, so this is the declared roster rather than an inventory of what occurs.
+    subject_descriptions : dict of str to str
+        What the project says about each declared subject, keyed by name, empty where it says nothing.
+        BORIS carries a free-text description per subject much as it does per behavior, and 406 of the 498
+        subjects in the harvested corpus have one.
     observation_names : list of str
         The observations the project holds, in file order.
     """
@@ -238,6 +242,7 @@ class _BorisProject:
     format_version: float
     behaviors: dict[str, _BorisBehavior]
     subject_names: list[str]
+    subject_descriptions: dict[str, str]
     observation_names: list[str]
 
 
@@ -261,6 +266,9 @@ def _read_boris_project(file_path: str | Path) -> _BorisProject:
         format_version=format_version,
         behaviors=_read_behaviors(document=document, format_version=format_version),
         subject_names=[entry["name"] for entry in document.get("subjects_conf", {}).values()],
+        subject_descriptions={
+            entry["name"]: entry.get("description", "") for entry in document.get("subjects_conf", {}).values()
+        },
         observation_names=list(document.get("observations", {})),
     )
 

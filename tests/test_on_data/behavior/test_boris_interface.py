@@ -79,7 +79,7 @@ class BORISTestMixin(DataInterfaceTestMixin):
         for bouts_table in bouts_tables:
             meanings_tables = bouts_table.meanings_tables or {}
             if not expected_meanings:
-                assert len(meanings_tables) == 0
+                assert "label_meanings" not in meanings_tables
                 continue
             meanings = meanings_tables["label_meanings"]
             written = dict(zip(list(meanings["value"][:]), list(meanings["meaning"][:])))
