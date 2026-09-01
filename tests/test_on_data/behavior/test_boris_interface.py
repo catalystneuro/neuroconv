@@ -847,10 +847,20 @@ def test_two_behaviors_cannot_resolve_to_one_modifier_column(tmp_path):
     # checking at read would raise inside the call that produces the dict the user has to edit.
     metadata = interface.get_metadata()
 
-    # The message is matched by what identifies the collision, not by its prose, so rewording it later
-    # does not fail a test that has nothing to do with the wording.
-    with pytest.raises(ValueError, match=r"'Traffic' and 'Traffic lights'.*'modifier_traffic_lights_state'"):
+    # The whole message is asserted, and compared rather than pattern-matched so a failure reads as a
+    # string diff. The message is the recourse here, so rewording it should require looking at it.
+    expected = (
+        "Behaviors 'Traffic' and 'Traffic lights' both write the column "
+        "'modifier_traffic_lights_state' into one events table, so their answers would merge into one "
+        "column holding two vocabularies. A column is named for the behavior and the slot together, and "
+        "these two flatten to the same name. Give one of them a column of its own before writing:\n"
+        "    metadata['Events']['boris_obs']['event_types']['Traffic lights']['columns']"
+        "['modifier_traffic_lights_state']['column_name'] = 'modifier_traffic_lights_state_2'\n"
+        "Or rename the slot on either behavior in BORIS and re-save."
+    )
+    with pytest.raises(ValueError) as error:
         interface.add_to_nwbfile(nwbfile=mock_NWBFile())
+    assert str(error.value) == expected
 
     # Renaming either column resolves it, which is what the message tells the user to do.
     columns = metadata["Events"]["boris_obs"]["event_types"]["Traffic lights"]["columns"]
@@ -901,10 +911,18 @@ class TestBORISInConverterWorkflows:
             nwbfile=nwbfile
         )
 
-        with pytest.raises(ValueError, match=r"\['p', 's', 'q', 'r', 'm'\].*'groom', 'run', 'walk'"):
+        expected = (
+            "The behavior processing module already holds an 'Ethogram' catalogue declaring "
+            "['p', 's', 'q', 'r', 'm'], and this project declares ['groom', 'run', 'walk', 'attack', "
+            "'play', 'jump', 'approach', 'drink', 'eat', 'defecate', 'urinate']. A catalogue is one "
+            "project's coding scheme, so two BORIS projects cannot share one NWB file. Write them to "
+            "separate files."
+        )
+        with pytest.raises(ValueError) as error:
             BORISInterface(file_path=TestBORISCategorizedEthogram.file_path, observation_name="test1").add_to_nwbfile(
                 nwbfile=nwbfile
             )
+        assert str(error.value) == expected
 
     def test_two_observations_deriving_one_table_name_are_refused(self, tmp_path):
         """Two observation names that differ only in punctuation derive the same events table name.
@@ -949,8 +967,17 @@ class TestBORISInConverterWorkflows:
         BORISInterface(file_path=file_path, observation_name="Boccia 223 2").add_to_nwbfile(nwbfile=nwbfile)
 
         second = BORISInterface(file_path=file_path, observation_name="Boccia 223_2")
-        with pytest.raises(ValueError, match=r"'Boccia2232' already exists.*'Boccia 223_2'"):
+        expected = (
+            "An events table named 'Boccia2232' already exists and holds a different observation: "
+            "Behaviors scored in BORIS observation 'Boccia 223 2' (live). Two observation names that "
+            "differ only in punctuation derive the same object name, and 'Boccia 223_2' is one of them. "
+            "Give this one a name of its own with "
+            "metadata['Events']['EventTables']['boris_boccia_223_2']['table_name'], or write the two "
+            "observations to separate files."
+        )
+        with pytest.raises(ValueError) as error:
             second.add_to_nwbfile(nwbfile=nwbfile)
+        assert str(error.value) == expected
 
         # Naming the second table is the recourse the message offers, and it has to actually work.
         metadata = second.get_metadata()
