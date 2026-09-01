@@ -297,11 +297,17 @@ class BORISInterface(BaseEventsInterface):
                 "comment": np.array([occurrence.comment for occurrence in occurrences], dtype=object),
             }
 
-            # A modifier is one answer per declared slot, so it gets one column per slot rather than the
-            # `|`-joined string BORIS records. Which slot each column is stays on the catalogue, since it
-            # is a property of the behavior and not of any occurrence.
+            # A modifier is the values ticked in one declared slot, so it gets one ragged column per
+            # slot rather than the `|`- and `,`-joined string BORIS records. Which slot each column is
+            # stays on the catalogue, since it is a property of the behavior and not of any occurrence.
+            #
+            # A slot nobody ticked in this observation writes no column: every cell would be an empty
+            # list, which gives hdmf no dtype to infer and fails at write. The catalogue still records
+            # that the behavior declares the slot, so nothing about the scheme is lost.
             for position, column_name in enumerate(modifier_columns[code]):
-                payload[column_name] = _modifier_column(occurrences=occurrences, position=position)
+                column = _modifier_column(occurrences=occurrences, position=position)
+                if any(len(cell) for cell in column):
+                    payload[column_name] = column
 
             # A bout closes on its own comment and modifier row, and BORIS carries the opening answers
             # forward, so the closing ones earn a column only where this observation has a bout that
@@ -311,9 +317,9 @@ class BORISInterface(BaseEventsInterface):
                 payload["stop_comment"] = np.array(stop_comments, dtype=object)
             if closing_modifiers:
                 for position, column_name in enumerate(modifier_columns[code]):
-                    payload[f"stop_{column_name}"] = _modifier_column(
-                        occurrences=occurrences, position=position, field="stop_modifier_values"
-                    )
+                    column = _modifier_column(occurrences=occurrences, position=position, field="stop_modifier_values")
+                    if any(len(cell) for cell in column):
+                        payload[f"stop_{column_name}"] = column
 
             events_data_dict[code] = _EventsData(
                 event_type_source_id=code, timestamps=onsets, durations=durations, payload=payload
@@ -347,6 +353,24 @@ class BORISInterface(BaseEventsInterface):
             # Written only where some behavior declares a slot. Half of real projects declare none at
             # all, and a ragged column whose every row is an empty list gives hdmf no dtype to infer, so
             # writing it unconditionally fails at write rather than storing an empty column.
+            # BORIS states exclusion per behavior, as the codes that starting one terminates, so it is
+            # per-behavior data and belongs in a column beside `category` rather than in the table-level
+            # `exclusive` flag, which asks a different question: whether the whole scheme is a single
+            # label partition. Written only where some behavior excludes something, for the same dtype
+            # reason as the modifier columns below.
+            declares_exclusions = any(behavior.excluded for behavior in self._project.behaviors.values())
+            if declares_exclusions:
+                catalogue.add_column(
+                    name="excludes",
+                    description=(
+                        "The behaviors that starting this one terminates, as BORIS's exclusion matrix "
+                        "states them. Per behavior and partial, so a scheme can make four behaviors "
+                        "mutually exclusive and leave the rest free, and enforced per subject, so a "
+                        "multi-subject observation has overlapping bouts however complete the matrix "
+                        "is. Empty where the behavior excludes nothing."
+                    ),
+                    index=True,
+                )
             declares_modifiers = any(behavior.modifier_slots for behavior in self._project.behaviors.values())
             if declares_modifiers:
                 catalogue.add_column(
@@ -372,6 +396,7 @@ class BORISInterface(BaseEventsInterface):
                     definition=behavior.description,
                     behavior_type=behavior.behavior_type,
                     category=behavior.category,
+                    **({"excludes": behavior.excluded} if declares_exclusions else {}),
                     **(
                         {
                             "modifiers": [slot.name.strip() for slot in behavior.modifier_slots],
@@ -434,8 +459,33 @@ class BORISInterface(BaseEventsInterface):
             source_software="BORIS",
             ethogram=catalogue,
         )
+        # A modifier field holds the values ticked in one slot, so its column is ragged here too: the
+        # interval view describes a bout the same way the events table does.
+        ragged_fields = {
+            field
+            for data in events_data_dict.values()
+            for field, values in data.payload.items()
+            if any(isinstance(value, list) for value in values)
+        }
+        # A ragged column no bout fills is dropped rather than written empty: its values dataset would
+        # carry nothing for hdmf to infer a dtype from, and it fails at write. That happens whenever a
+        # behavior with modifier slots is a point behavior, since only closed bouts reach this table.
+        filled_ragged_fields = {
+            field
+            for field in ragged_fields
+            if any(
+                len(events_data_dict[occurrence.code].payload[field][rows_by_occurrence[id(occurrence)]])
+                for occurrence in closed_bouts
+                if field in events_data_dict[occurrence.code].payload
+            )
+        }
+        payload_fields = [field for field in payload_fields if field not in ragged_fields - filled_ragged_fields]
         for field in payload_fields:
-            bouts.add_column(name=field, description=_column_description(field=field))
+            bouts.add_column(
+                name=field,
+                description=_column_description(field=field),
+                **({"index": True} if field in filled_ragged_fields else {}),
+            )
 
         offset = self.alignment.offset
         for occurrence in closed_bouts:
@@ -443,7 +493,10 @@ class BORISInterface(BaseEventsInterface):
             index = rows_by_occurrence[id(occurrence)]
             # A behavior writes an empty cell in a column it does not own, since the bouts table keeps
             # the union of the per-behavior columns.
-            cells = {field: (payload[field][index] if field in payload else "") for field in payload_fields}
+            cells = {
+                field: (payload[field][index] if field in payload else ([] if field in ragged_fields else ""))
+                for field in payload_fields
+            }
             bouts.add_interval(
                 start_time=occurrence.onset + offset,
                 stop_time=occurrence.onset + occurrence.duration + offset,
@@ -495,12 +548,23 @@ class BORISInterface(BaseEventsInterface):
         spec = {"column_name": field, "description": _column_description(field=field)}
         opening_column = field.removeprefix("stop_")
         is_modifier_column = opening_column.startswith("modifier_")
+
+        if field == "subject":
+            # The project's declared roster, not only the animals this observation happened to score, so
+            # the file records who could have been attributed an event. The empty string is one of them:
+            # BORIS writes an event attributed to nobody as either the empty string or the literal
+            # `No focal subject`, and the reader reads both as nobody.
+            roster = {""} | set(self._project.subject_names) | {str(value) for value in values}
+            spec["column_categories"] = {"labels": {name: name for name in sorted(roster)}, "meanings": {}}
+            return spec
+
         if not is_modifier_column:
             return spec
 
-        # The vocabulary is what was recorded plus what the slot's menu offers, and the empty string,
-        # which is what a behavior not owning this column writes.
-        vocabulary = {""} | {str(value) for value in values}
+        # The vocabulary is what was recorded plus what the slot's menu offers. A cell is a list of the
+        # values ticked in that slot, so the vocabulary is drawn from inside the cells; a cell with
+        # nothing ticked contributes nothing, since an empty list holds no value to declare.
+        vocabulary = {str(value) for cell in values for value in cell}
         for behavior in self._project.behaviors.values():
             for position, slot in enumerate(behavior.modifier_slots):
                 column = _to_modifier_column_name(code=behavior.code, slot_name=slot.name.strip(), position=position)
@@ -533,22 +597,29 @@ class BORISInterface(BaseEventsInterface):
 
 
 def _modifier_column(occurrences: list, position: int, field: str = "modifier_values") -> np.ndarray:
-    """The answers one modifier slot received, as an events-table column."""
-    return np.array(
-        [_modifier_answer(occurrence=occurrence, position=position, field=field) for occurrence in occurrences],
-        dtype=object,
-    )
+    """The answers one modifier slot received, as a ragged events-table column.
+
+    Each cell is the list of values ticked in that slot, so the array is filled element by element:
+    ``np.array`` on a list of lists gives a 2D array where they happen to share a length and refuses
+    outright where they do not.
+    """
+    column = np.empty(len(occurrences), dtype=object)
+    for index, occurrence in enumerate(occurrences):
+        column[index] = _modifier_answer(occurrence=occurrence, position=position, field=field)
+    return column
 
 
-def _modifier_answer(occurrence, position: int | None, field: str = "modifier_values") -> str:
-    """The answer an occurrence recorded in one modifier column, empty where it has none.
+def _modifier_answer(occurrence, position: int | None, field: str = "modifier_values") -> list[str]:
+    """The values an occurrence ticked in one modifier slot, empty where it ticked none.
 
-    ``None`` means the behavior declares no slot writing into that column, and an index past the recorded
-    answers means the row carried fewer fields than the scheme declares. Both read as unanswered.
+    A list rather than one value, because a multiple-selection slot takes several at once and the cell
+    then carries them as a ragged column rather than as a string somebody has to split. ``None`` means the
+    behavior declares no slot writing into that column, and an index past the recorded answers means the
+    row carried fewer fields than the scheme declares. Both read as unanswered.
     """
     answers = getattr(occurrence, field)
     if position is None or position >= len(answers):
-        return ""
+        return []
     return answers[position]
 
 

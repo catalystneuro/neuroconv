@@ -395,12 +395,31 @@ class BaseEventsInterface(BaseDataInterface):
             if existing_table is None:
                 nwbfile.add_events_table(table)
 
-            # Finalize: re-sort the table chronologically by permuting every full-length column in place
-            # (stable, so equal timestamps keep insertion order). Works while the columns are in-memory lists.
+            # Finalize: re-sort the table chronologically (stable, so equal timestamps keep insertion
+            # order). Works while the columns are in-memory lists.
             n = len(table.id)
             order = list(np.argsort(np.asarray(table["timestamp"].data), kind="stable"))
             if order != list(range(n)):
+                # A ragged column is two datasets, cumulative offsets and the values they slice, and a
+                # row is a span of the second rather than an element of it. Permuting the offsets would
+                # be meaningless and would leave them describing values that had not moved, so its rows
+                # are read out, reordered, and the pair rebuilt from them.
+                ragged_columns = [column for column in table.columns if isinstance(column, VectorIndex)]
+                sliced_by_index = {id(column.target) for column in ragged_columns}
+                for column in ragged_columns:
+                    rows = [list(column[row_index]) for row_index in range(n)]
+                    reordered = [rows[index] for index in order]
+                    column.target.data[:] = [value for row in reordered for value in row]
+                    offsets, running_total = [], 0
+                    for row in reordered:
+                        running_total += len(row)
+                        offsets.append(running_total)
+                    column.data[:] = offsets
                 for column in table.columns:
+                    # A ragged column's values are not one per row, and are rebuilt above; its offsets
+                    # happen to be one per row and must not be permuted as if they were values.
+                    if isinstance(column, VectorIndex) or id(column) in sliced_by_index:
+                        continue
                     if len(column.data) == n:
                         column.data[:] = [column.data[index] for index in order]
 
@@ -608,9 +627,10 @@ class BaseEventsInterface(BaseDataInterface):
                     existing = table[column_name].data
                     row_kwargs[column_name] = "" if len(existing) and isinstance(existing[0], str) else np.nan
             # check_ragged=False: hdmf rescans the whole column on every add_row, making the fill
-            # quadratic in its rows. The check is not needed here, since a ragged column was declared
-            # with index=True when it was created and a scalar column is only ever handed a scalar.
-            table.add_row(check_ragged=False, **row_kwargs)
+            # quadratic in its rows, and a table of scalars can only ever answer False. A table with a
+            # ragged column has to pay it, because the check is also what tells hdmf that a list cell is
+            # several values to append rather than one value that happens to be a list.
+            table.add_row(check_ragged=bool(ragged_column_names), **row_kwargs)
 
     @staticmethod
     def _validate_shared_columns(events_metadata: dict) -> None:

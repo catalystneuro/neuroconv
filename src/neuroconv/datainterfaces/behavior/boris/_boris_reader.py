@@ -57,12 +57,19 @@ def _strip_modifier_shortcut(value: str) -> str:
     return _SHORTCUT.sub("", value)
 
 
-def _split_modifier_string(recorded: str, slot_count: int) -> list[str]:
-    """Split an event row's modifier string into one answer per slot.
+def _split_modifier_string(recorded: str, slot_count: int) -> list[list[str]]:
+    """Split an event row's modifier string into the values ticked in each slot.
 
-    Slots are joined with ``|`` in declaration order, so the split is positional and the caller reads each
-    field against the behavior's own slots. An unanswered slot reads as the empty string, whether it was
-    written as the ``None`` token or as nothing at all.
+    BORIS uses two separators. Slots are joined with ``|`` in declaration order, so the outer split is
+    positional and the caller reads each field against the behavior's own slots. Within one slot, a
+    multiple selection joins the values the coder ticked with ``,``, so a slot's answer is a list rather
+    than one value: `Look around` in `haoyuddd/RtD-WoZ` records ``window,TV`` 846 times, meaning the
+    participant looked at both. An unanswered slot reads as the empty list, whether it was written as the
+    ``None`` token or as nothing at all.
+
+    Both separators are decoded here rather than one, so nothing downstream has to know that a comma in a
+    particular cell is a separator rather than a character somebody typed. No declared menu value in the
+    whole harvested corpus contains a comma, so the split is unambiguous.
 
     Parameters
     ----------
@@ -73,14 +80,14 @@ def _split_modifier_string(recorded: str, slot_count: int) -> list[str]:
 
     Returns
     -------
-    list of str
-        One answer per slot, padded where the row carries fewer fields than the behavior declares. Longer
-        than ``slot_count`` where the row carries more, which happens when the scheme lost a slot after the
-        session was scored; the extra answers are kept rather than dropped.
+    list of list of str
+        The values ticked in each slot, padded where the row carries fewer fields than the behavior
+        declares. Longer than ``slot_count`` where the row carries more, which happens when the scheme
+        lost a slot after the session was scored; the extra answers are kept rather than dropped.
     """
-    answers = recorded.split("|") if recorded else []
-    answers = ["" if answer == _UNANSWERED_SLOT else answer for answer in answers]
-    return answers + [""] * (slot_count - len(answers))
+    fields = recorded.split("|") if recorded else []
+    answers = [[] if field == _UNANSWERED_SLOT or not field else field.split(",") for field in fields]
+    return answers + [[] for _ in range(slot_count - len(answers))]
 
 
 @dataclass
@@ -148,9 +155,9 @@ class _BorisOccurrence:
         The behavior code, joining this occurrence to its entry in the coding scheme.
     modifiers : str
         The recorded modifier string, exactly as written.
-    modifier_values : list of str
-        ``modifiers`` split into one answer per slot the behavior declares, an unanswered slot reading as
-        the empty string. Empty where the behavior declares no slots and the row recorded none.
+    modifier_values : list of list of str
+        ``modifiers`` split into the values ticked in each slot the behavior declares, an unanswered slot
+        reading as the empty list. Empty where the behavior declares no slots and the row recorded none.
     comment : str
         The coder's free-text comment, from the row that opened the occurrence.
     stop_comment : str
@@ -161,7 +168,7 @@ class _BorisOccurrence:
         The modifier string on the row that closed a state bout. Almost always the same string as
         ``modifiers``, since BORIS carries the value forward, so it says something new only where the
         coder changed the answer while the bout ran.
-    stop_modifier_values : list of str
+    stop_modifier_values : list of list of str
         ``stop_modifiers`` split the same way as ``modifier_values``.
     duration : float or None
         ``None`` for a point behavior, which has no extent. For a state behavior, the length of the bout,
@@ -174,10 +181,10 @@ class _BorisOccurrence:
     modifiers: str
     comment: str
     duration: float | None
-    modifier_values: list[str] = field(default_factory=list)
+    modifier_values: list[list[str]] = field(default_factory=list)
     stop_comment: str = ""
     stop_modifiers: str = ""
-    stop_modifier_values: list[str] = field(default_factory=list)
+    stop_modifier_values: list[list[str]] = field(default_factory=list)
 
 
 @dataclass
