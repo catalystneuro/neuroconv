@@ -257,7 +257,7 @@ class BackendConfiguration(BaseModel):
         >>> backend_config.apply_global_compression(["Blosc"], [{"cname": "zstd", "clevel": 5}])
         >>> backend_config.apply_global_compression(["shuffle", "gzip"])
 
-        .. deprecated:: 0.10.1
+        .. deprecated:: 0.10.2
             The `compression_method` and `compression_options` arguments, and passing a single
             compression method and a single options dictionary positionally, are deprecated and will
             be removed in v0.12.0. Pass lists to `compressors` and `compressor_options` instead.
