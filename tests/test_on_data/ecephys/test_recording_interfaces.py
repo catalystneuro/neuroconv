@@ -37,6 +37,7 @@ from neuroconv.datainterfaces import (
     TdtRecordingInterface,
     WhiteMatterRecordingInterface,
 )
+from neuroconv.datainterfaces.ecephys.edf.edfdatainterface import _parse_birthdate
 from neuroconv.tools.testing.data_interface_mixins import (
     RecordingExtractorInterfaceTestMixin,
 )
@@ -417,6 +418,16 @@ class TestEDFRecordingInterfaceMultiStream(RecordingExtractorInterfaceTestMixin)
         )
 
         check_recordings_equal(RX1=recording, RX2=nwb_recording, return_in_uV=True)
+
+
+@pytest.mark.parametrize("birthdate", ["", "X", "not a date", "02 xxx 1951", "31 feb 1951", "02 may"])
+def test_a_patient_field_that_does_not_state_a_date_is_dropped(birthdate):
+    """The field is free text, so a value that is not a date is dropped instead of taking the conversion down.
+
+    The month is mapped rather than read with ``%b``, which goes through ``LC_TIME`` and would fail on the
+    ``02 may 1951`` that the readers hand back, on a machine not running an English locale.
+    """
+    assert _parse_birthdate(birthdate) is None
 
 
 class TestIntanRecordingInterfaceRHS(RecordingExtractorInterfaceTestMixin):
