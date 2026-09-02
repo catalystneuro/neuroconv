@@ -263,8 +263,8 @@ class BackendConfiguration(BaseModel):
             be removed in v0.12.0. Pass lists to `compressors` and `compressor_options` instead.
         """
         # Import here to avoid circular imports
-        from ._hdf5_dataset_io import AVAILABLE_HDF5_COMPRESSION_METHODS
-        from ._zarr_dataset_io import AVAILABLE_ZARR_COMPRESSION_METHODS
+        from ._hdf5_dataset_io import AVAILABLE_HDF5_COMPRESSION_METHODS, HDF5DatasetIOConfiguration
+        from ._zarr_dataset_io import AVAILABLE_ZARR_COMPRESSION_METHODS, ZarrDatasetIOConfiguration
 
         deprecated_message = (
             "Naming a single compression method and options for `apply_global_compression` is deprecated and will "
@@ -294,14 +294,15 @@ class BackendConfiguration(BaseModel):
         # Validate compression method for the backend
         if self.backend == "hdf5":
             available_methods = AVAILABLE_HDF5_COMPRESSION_METHODS
+            pure_filter_names = HDF5DatasetIOConfiguration._pure_filter_names
         elif self.backend == "zarr":
             available_methods = AVAILABLE_ZARR_COMPRESSION_METHODS
+            pure_filter_names = ZarrDatasetIOConfiguration._pure_filter_names
         else:
             raise ValueError(f"Unknown backend: {self.backend}")
 
-        dataset_configuration_class = type(next(iter(self.dataset_configurations.values())))
         for compressor in compressors:
-            if compressor in dataset_configuration_class._pure_filter_names:
+            if compressor in pure_filter_names:
                 continue  # A filter rather than a compression method, so it is not in the registry
             if compressor not in available_methods:
                 raise ValueError(
