@@ -23,6 +23,10 @@ from ...datainterfaces.ecephys.baserecordingextractorinterface import (
 from ...datainterfaces.ecephys.basesortingextractorinterface import (
     BaseSortingExtractorInterface,
 )
+from ...datainterfaces.eeg.basemnecontinuousdatainterface import (
+    BaseMNEElectricalSeriesInterface,
+    BaseMNETimeSeriesInterface,
+)
 from ...datainterfaces.events.baseeventsinterface import (
     BaseEventsInterface,
     _EventsData,
@@ -1041,6 +1045,71 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
         session_start_time = datetime.now().astimezone()
         metadata["NWBFile"]["session_start_time"] = session_start_time
         return metadata
+
+
+class _MockMNERawMixin:
+    """Builds a synthetic ``mne.io.RawArray`` in place of reading a file.
+
+    Shared by the mock MNE interfaces so each one differs only in its write destination, which is the
+    thing under test. Unlike a reader-based fixture this is not circular: it validates the bases'
+    handling of an ``mne.io.BaseRaw``, not a file parser.
+    """
+
+    def __init__(
+        self,
+        *,
+        num_channels: int = 4,
+        sampling_frequency: float = 1000.0,
+        duration: float = 1.0,
+        ch_types: str | list[str] = "eeg",
+        seed: int = 0,
+        **kwargs,
+    ):
+        """
+        Parameters
+        ----------
+        num_channels : int, default: 4
+            Number of channels to generate.
+        sampling_frequency : float, default: 1000.0
+            Sampling frequency in Hz.
+        duration : float, default: 1.0
+            Duration of the data in seconds.
+        ch_types : str or list of str, default: "eeg"
+            The MNE channel type(s) passed to ``mne.create_info``.
+        seed : int, default: 0
+            Seed for the synthetic data.
+        kwargs : dict
+            Passed through to the interface, notably ``channel_type`` and ``metadata_key``.
+        """
+        self.num_channels = num_channels
+        self.sampling_frequency = sampling_frequency
+        self.duration = duration
+        self.ch_types = ch_types
+        self.seed = seed
+        super().__init__(**kwargs)
+
+    def _read_raw(self):
+        import mne
+
+        rng = np.random.default_rng(self.seed)
+        channel_names = [f"CH{index}" for index in range(self.num_channels)]
+        info = mne.create_info(ch_names=channel_names, sfreq=self.sampling_frequency, ch_types=self.ch_types)
+        number_of_samples = int(self.duration * self.sampling_frequency)
+        data = rng.standard_normal(size=(self.num_channels, number_of_samples)) * 1e-5  # ~10 uV, in volts
+        return mne.io.RawArray(data=data, info=info, verbose=False)
+
+    def get_metadata(self) -> DeepDict:
+        metadata = super().get_metadata()
+        metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
+        return metadata
+
+
+class MockMNEElectricalSeriesInterface(_MockMNERawMixin, BaseMNEElectricalSeriesInterface):
+    """A mock MNE-backed interface writing one channel type as an ElectricalSeries."""
+
+
+class MockMNETimeSeriesInterface(_MockMNERawMixin, BaseMNETimeSeriesInterface):
+    """A mock MNE-backed interface writing one channel type as a TimeSeries."""
 
 
 class MockSortingInterface(BaseSortingExtractorInterface):
