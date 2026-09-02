@@ -8,6 +8,7 @@
 ## Features
 
 ## Improvements
+* `EDFRecordingInterface` now reports the patient field's birthdate as `Subject.date_of_birth`, parsed into an ISO 8601 date from the `17 mar 1985` spelling the readers hand back. [PR #1999](https://github.com/catalystneuro/neuroconv/pull/1999)
 
 # v0.10.1 (September 1, 2026)
 
