@@ -1271,7 +1271,15 @@ def _build_channel_id_to_electrodes_table_map(
     for channel_id, group, electrode, channel in zip(channel_ids, group_names, electrode_names, channel_names):
         virtual_id = f"{group}_{electrode}_{channel}"
         row_index = table_lookup.get(virtual_id, None)
-        if row_index is None and not recording_has_electrode_names:
+        if row_index is None and recording_has_electrode_names:
+            # A row is a contact, so a recording that names the contact addresses it by name alone. The
+            # channel is not part of that address: two channels recorded one contact, the row carries
+            # whichever name reached it first, and requiring them to agree would leave the other band
+            # unable to find the row it shares.
+            candidate = identity_lookup.get(f"{group}_{electrode}", None)
+            if candidate is not None:
+                row_index = candidate[0]
+        elif row_index is None:
             # The channel stands in for the contact nobody told us about, which is the same substitution
             # the electrodes-table metadata makes when it derives this row's key.
             #
