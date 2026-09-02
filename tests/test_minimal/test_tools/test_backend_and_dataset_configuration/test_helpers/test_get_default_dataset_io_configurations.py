@@ -385,20 +385,3 @@ def test_timestamps_are_shuffled_by_default(backend: Literal["hdf5", "zarr"]):
 
     assert dataset_io_configurations["acquisition/TestTimeSeries/timestamps"].compressors == ["shuffle", "gzip"]
     assert dataset_io_configurations["acquisition/TestTimeSeries/data"].compressors == ["gzip"]
-
-
-@pytest.mark.parametrize("backend", ["hdf5", "zarr"])
-def test_timestamps_shuffle_default_is_only_on_the_defaults_path(backend: Literal["hdf5", "zarr"]):
-    """A caller who states the codecs is not overridden by the default."""
-    nwbfile = mock_NWBFile()
-    time_series = mock_TimeSeries(name="TestTimeSeries", data=np.zeros(shape=(100,)), timestamps=np.arange(100) / 30.0)
-    nwbfile.add_acquisition(time_series)
-
-    dataset_io_configurations = {
-        configuration.location_in_file: configuration
-        for configuration in get_default_dataset_io_configurations(nwbfile=nwbfile, backend=backend)
-    }
-    timestamps_configuration = dataset_io_configurations["acquisition/TestTimeSeries/timestamps"]
-    timestamps_configuration.compressors = ["gzip"]
-
-    assert timestamps_configuration.compressors == ["gzip"]

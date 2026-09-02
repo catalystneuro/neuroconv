@@ -7,7 +7,7 @@ import pytest
 from hdmf.common import VectorData
 from hdmf_zarr import ZarrDataIO
 from hdmf_zarr.nwb import NWBZarrIO
-from numcodecs import Blosc
+from numcodecs import Blosc, GZip
 from pynwb import NWBHDF5IO, H5DataIO
 from pynwb.base import DynamicTable
 from pynwb.behavior import CompassDirection
@@ -818,3 +818,35 @@ def test_configuration_on_hdf5_dataset_with_filters(tmp_path):
     assert dataset_configuration.get_data_io_kwargs() == dict(
         chunks=(1, 3), compression="gzip", compression_opts=2, shuffle=True, fletcher32=True
     )
+
+
+@pytest.mark.parametrize("backend", ["hdf5", "zarr"])
+def test_timestamps_written_without_shuffle_are_read_back_without_it(tmp_path, backend: Literal["hdf5", "zarr"]):
+    """The shuffle default applies to new configurations, so a file written without it reports what is on disk."""
+    timestamps = np.arange(100, dtype="float64") / 30.0
+    if backend == "hdf5":
+        timestamps = H5DataIO(data=timestamps, chunks=(100,), compression="gzip", shuffle=False)
+    elif backend == "zarr":
+        timestamps = ZarrDataIO(data=timestamps, chunks=(100,), compressor=GZip(level=1), filters=None)
+
+    nwbfile = mock_NWBFile()
+    nwbfile.add_acquisition(mock_TimeSeries(name="TestTimeSeries", data=np.zeros(shape=(100,)), timestamps=timestamps))
+
+    nwbfile_path = tmp_path / "test_existing_dataset_io_configurations_unshuffled_timestamps.nwb"
+    IO = NWBHDF5IO if backend == "hdf5" else NWBZarrIO
+    with IO(str(nwbfile_path), "w") as io:
+        io.write(nwbfile)
+    with IO(str(nwbfile_path), "r") as io:
+        nwbfile = io.read()
+
+        dataset_configuration = next(
+            dataset_configuration
+            for dataset_configuration in get_existing_dataset_io_configurations(nwbfile=nwbfile)
+            if dataset_configuration.location_in_file == "acquisition/TestTimeSeries/timestamps"
+        )
+
+        if backend == "hdf5":
+            assert dataset_configuration.compressors == ["gzip"]
+        elif backend == "zarr":
+            assert dataset_configuration.compressors == [GZip(level=1)]
+            assert dataset_configuration.filter_methods is None
