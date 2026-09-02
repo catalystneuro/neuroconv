@@ -316,11 +316,12 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         and the channel-to-electrode mapping sits on the series entry. Edit what you care about and pass
         the result to ``add_to_nwbfile`` or ``run_conversion``.
 
-        The registry replaces the recording as the source of the table, so a column value is changed by
-        editing the row rather than by calling ``set_property`` on the extractor, and a channel is moved
-        to another group by editing its ``electrode_group_metadata_key`` rather than by regrouping the
-        recording. What the recording still supplies is ``channel_name``, which is the acquisition
-        system's own label and has no metadata to be restated from.
+        What a row states wins over the recording for the fields it states, so a column value is changed
+        by editing the row rather than by calling ``set_property`` on the extractor, and a channel is
+        moved to another group by editing its ``electrode_group_metadata_key`` rather than by regrouping
+        the recording. Anything a row leaves out still comes from the recording, which is why editing one
+        field of one row is a complete statement. ``channel_name`` stays the recording's throughout,
+        being the acquisition system's own label and having no metadata to be restated from.
 
         The electrode keys are derived from the physical identity of each contact, ``(group, contact)``
         where the recording carries contact identifiers and ``(group, channel)`` otherwise, so two

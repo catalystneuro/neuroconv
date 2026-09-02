@@ -329,11 +329,12 @@ deprecated in pynwb:
 Every arrow above is a ``*_metadata_key`` you wrote, and every name is a ``name`` field. The keys
 (``"probe0_device"``, ``"probe0"``, ``"assy_156_p_1"``) are handles that stay in your script.
 
-Two things follow from stating the table rather than deriving it. The rows are the table, so the
-recording is no longer consulted for column values and a ``set_property`` call made after
-``get_metadata_template`` has no effect; put the value in the row instead. And a row you declare is a
-row you get, so select your channels before you call ``get_metadata_template``, or ``remove_channels``
-afterwards leaves rows describing electrodes this session did not record from.
+Two things follow from stating the table. What a row states wins, but only for the fields it states:
+the table is still derived from the recording first, so a column no row mentions keeps the values the
+recording carries and a ``set_property`` call is overruled only where a row already states that field.
+And a row you declare is a row you get, so select your channels before you call
+``get_metadata_template``, or ``remove_channels`` afterwards leaves rows describing electrodes this
+session did not record from.
 
 How to Set the Probe Geometry
 -----------------------------
@@ -416,8 +417,9 @@ SpikeGLX channel has id ``imec0.ap#AP0`` and name ``AP0``, an Intan channel has 
     nwbfile = interface.create_nwbfile(metadata=metadata)
     list(nwbfile.electrodes["group_name"][:])  # -> ['Shank1', 'Shank1', 'Shank1', 'Shank1']
 
-Leave out the mapping there and the conversion stops, naming the keys it derived and could not find, so
-this is a mistake you are told about rather than one you discover in the file.
+Leave out the mapping there and nothing stops: the channels resolve to the keys the recording derives,
+so the file gets those four rows and the four you declared. Write the mapping whenever your keys are not
+the ones ``get_metadata_template`` produced, since it is the only thing that ties them to the channels.
 
 **You do not need it when you edit the rows above**, which is every scenario so far: the mapping
 comes back alongside them, and the two already agree.

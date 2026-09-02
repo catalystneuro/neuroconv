@@ -112,17 +112,39 @@ class TestRegistryWrites:
         assert list(nwbfile.electrodes["group_name"][:]) == ["Shank0", "Shank0", "Shank1", "Shank1"]
         assert interface.recording_extractor.get_property("group_name") is None
 
-    def test_row_order_is_registry_order(self):
+    def test_row_order_is_channel_order_with_the_declared_rows_after_it(self):
+        """The recording is the spine of the table, so reordering a stated block does not reorder it."""
         interface = _interface(num_channels=4)
         metadata = interface.get_metadata_template()
         registry = metadata["Ecephys"]["ElectrodesTable"]["rows"]
         metadata["Ecephys"]["ElectrodesTable"]["rows"] = {key: registry[key] for key in reversed(list(registry))}
+        metadata["Ecephys"]["ElectrodesTable"]["rows"]["spare"] = {"electrode_group_metadata_key": "ElectrodeGroup"}
 
         nwbfile = interface.create_nwbfile(metadata=metadata)
 
-        assert list(nwbfile.electrodes["channel_name"][:]) == ["3", "2", "1", "0"]
-        # The series still reaches the channels it recorded, in channel order.
-        assert nwbfile.acquisition["ElectricalSeries"].electrodes.data[:] == [3, 2, 1, 0]
+        assert list(nwbfile.electrodes["channel_name"][:]) == ["0", "1", "2", "3", ""]
+        assert nwbfile.acquisition["ElectricalSeries"].electrodes.data[:] == [0, 1, 2, 3]
+
+    def test_a_row_states_one_column_and_the_recording_supplies_the_rest(self):
+        """What ``add_recording_to_nwbfile`` on its own needs: annotate one cell, keep every other."""
+        interface = _interface(num_channels=4, properties={"imp": [1.0, 2.0, 3.0, 4.0]})
+        metadata = interface.get_metadata()
+        metadata["Ecephys"]["ElectrodesTable"] = {"rows": {"ElectrodeGroup_2": {"brain_area": "CA1"}}}
+
+        nwbfile = interface.create_nwbfile(metadata=metadata)
+
+        assert list(nwbfile.electrodes["imp"][:]) == [1.0, 2.0, 3.0, 4.0]
+        assert list(nwbfile.electrodes["brain_area"][:]) == ["", "", "CA1", ""]
+
+    def test_a_row_the_metadata_does_not_state_comes_from_the_recording(self):
+        interface = _interface(num_channels=4, properties={"imp": [1.0, 2.0, 3.0, 4.0]})
+        metadata = interface.get_metadata_template()
+        del metadata["Ecephys"]["ElectrodesTable"]["rows"]["ElectrodeGroup_2"]
+
+        nwbfile = interface.create_nwbfile(metadata=metadata)
+
+        assert len(nwbfile.electrodes) == 4
+        assert list(nwbfile.electrodes["imp"][:]) == [1.0, 2.0, 3.0, 4.0]
 
     def test_a_declared_electrode_no_channel_references_is_still_written(self):
         interface = _interface(num_channels=4)
@@ -154,7 +176,9 @@ class TestRegistryWrites:
     def test_a_row_omitting_a_column_gets_a_null(self):
         interface = _interface(num_channels=4, properties={"imp": [1.0, 2.0, 3.0, 4.0]})
         metadata = interface.get_metadata_template()
-        del metadata["Ecephys"]["ElectrodesTable"]["rows"]["ElectrodeGroup_2"]["imp"]
+        # Stated rather than deleted: a row that says nothing about a column inherits the recording's value,
+        # so stating the null is how a row says it has none.
+        metadata["Ecephys"]["ElectrodesTable"]["rows"]["ElectrodeGroup_2"]["imp"] = None
 
         nwbfile = interface.create_nwbfile(metadata=metadata)
 
@@ -437,8 +461,8 @@ class TestRegistryValidation:
     def test_an_electrode_the_channels_resolve_to_but_nobody_declared(self):
         interface = _interface(num_channels=4)
         metadata = interface.get_metadata_template()
-        del metadata["Ecephys"]["ElectrodesTable"]["rows"]["ElectrodeGroup_2"]
-        del metadata["Ecephys"]["ElectricalSeries"][interface.metadata_key]["channel_to_electrode"]
+        mapping = metadata["Ecephys"]["ElectricalSeries"][interface.metadata_key]["channel_to_electrode"]
+        mapping[next(iter(mapping))] = "nobody_declared_this"
 
         with pytest.raises(ValueError, match="does not declare"):
             interface.create_nwbfile(metadata=metadata)
@@ -455,7 +479,7 @@ class TestRegistryValidation:
     def test_an_electrode_stating_no_group(self):
         interface = _interface(num_channels=4)
         metadata = interface.get_metadata_template()
-        del metadata["Ecephys"]["ElectrodesTable"]["rows"]["ElectrodeGroup_0"]["electrode_group_metadata_key"]
+        metadata["Ecephys"]["ElectrodesTable"]["rows"]["spare"] = {"electrode_name": "spare"}
 
         with pytest.raises(ValueError, match="states no 'electrode_group_metadata_key'"):
             interface.create_nwbfile(metadata=metadata)

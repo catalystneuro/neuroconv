@@ -7,9 +7,11 @@ row states, in the shape the events tables already use. A channel reaches a row 
 ``channel_to_electrode`` on the series entry, or, when that is absent, through the same key derivation the
 block was generated with.
 
-The block is an override layer: absent, the pipeline derives the table from the recording exactly as it
-always has. Present, it is authoritative and the recording is consulted only for ``channel_name``, which is
-the acquisition system's own label for a channel and so cannot be restated in metadata.
+The block is an override layer over the recording. The table is derived from the recording's channels and
+properties first, always, so a caller who states nothing gets what it always got. What the block states is
+then written over that, field by field: a stated row wins for the fields it names and inherits the rest,
+and a key the recording derived nothing for becomes a row of its own. ``channel_name`` stays the writer's,
+being the acquisition system's own label for a channel and so not a row's to state.
 
 ``Ecephys.Electrodes`` is a different thing and keeps its old meaning, the list of column descriptions that
 annotates a derived table. One key, one meaning: a block written in the wrong shape is refused by the schema
@@ -200,12 +202,17 @@ def _generate_electrodes_table(
     metadata: dict | None,
     *,
     exclude: tuple = (),
+    metadata_key: str | None = None,
 ) -> dict:
-    """Derive the ``ElectrodesTable`` block for a recording that was handed none, and return the metadata.
+    """Derive the ``ElectrodesTable`` block from the recording, overlaid with what the metadata states.
 
-    This is the whole of what used to be a second writer. A caller who states nothing about the electrodes
-    table gets one generated from the recording's channels and properties, and the writer then has one path
-    rather than two implementations that a test has to keep in agreement.
+    This is the whole of what used to be a second writer. The recording is always read, so a caller who
+    states nothing about the electrodes table gets one generated from its channels and properties, and the
+    writer has one path rather than two implementations that a test has to keep in agreement.
+
+    A caller who states part of the table gets the rest from the recording, which is what lets
+    ``add_recording_to_nwbfile`` be called with a metadata dictionary that annotates one column of one
+    electrode and nothing else.
 
     Electrode groups the caller already declared are kept and matched by ``name`` against the recording's
     channel groups, which is how the metadata that names a group keeps naming it. Groups the caller did not
@@ -217,6 +224,15 @@ def _generate_electrodes_table(
 
     metadata = dict(metadata) if metadata is not None else {}
     ecephys_metadata = dict(metadata.get("Ecephys", {}))
+
+    stated_table = ecephys_metadata.get("ElectrodesTable")
+    electrical_series_metadata = ecephys_metadata.get("ElectricalSeries")
+    series_entry = (
+        electrical_series_metadata.get(metadata_key, {})
+        if metadata_key is not None and isinstance(electrical_series_metadata, dict)
+        else {}
+    )
+    channel_to_electrode = series_entry.get("channel_to_electrode") if isinstance(series_entry, dict) else None
 
     # The column-description list is the older, weaker way of saying the same thing and interfaces still
     # emit it, so it seeds the descriptions rather than being dropped.
@@ -248,9 +264,56 @@ def _generate_electrodes_table(
         exclude=exclude,
     )
     ecephys_metadata["ElectrodeGroups"] = electrode_groups
-    ecephys_metadata["ElectrodesTable"] = generated["ElectrodesTable"]
+    ecephys_metadata["ElectrodesTable"] = _overlay_stated_electrodes_table(
+        derived=generated["ElectrodesTable"], stated=stated_table, channel_to_electrode=channel_to_electrode
+    )
     metadata["Ecephys"] = ecephys_metadata
     return metadata
+
+
+def _overlay_stated_electrodes_table(*, derived: dict, stated, channel_to_electrode: dict | None) -> dict:
+    """The derived block with what the metadata states written over it, field by field.
+
+    A stated row updates the derived row of the same key and inherits every field it does not name, so a
+    dictionary stating one column of one electrode says only that and the recording supplies the rest. A
+    stated key the recording derived nothing for is appended as a row of its own, which is how a converter's
+    merged block carries another interface's electrodes. Row order is therefore the recording's channel
+    order, with the declared extras after it.
+
+    The one derived row that is dropped is one no channel reaches, which happens only when
+    ``channel_to_electrode`` sends every channel to keys of the caller's own: those rows describe electrodes
+    nobody recorded from and were never part of what the caller asked for.
+    """
+    if not (isinstance(stated, dict) and isinstance(stated.get("rows"), dict)):
+        return derived
+
+    stated_rows = stated["rows"]
+    reached = (
+        set(derived["rows"])
+        if channel_to_electrode is None
+        else {str(electrode_key) for electrode_key in channel_to_electrode.values()}
+    )
+    rows = {
+        electrode_key: dict(entry)
+        for electrode_key, entry in derived["rows"].items()
+        if electrode_key in reached or electrode_key in stated_rows
+    }
+    for electrode_key, entry in stated_rows.items():
+        rows.setdefault(electrode_key, {}).update(entry)
+
+    # A derived description of a column no surviving row states describes nothing, which is the case
+    # above where the derived rows were dropped. A stated one is kept, so a description keyed by a field
+    # the rows do not use is still refused rather than ignored.
+    stated_fields = {field for entry in rows.values() for field in entry}.union({"electrode_name", "channel_name"})
+    columns = {
+        column_key: dict(specification)
+        for column_key, specification in derived["columns"].items()
+        if column_key in stated_fields
+    }
+    for column_key, specification in (stated.get("columns") or {}).items():
+        columns.setdefault(column_key, {}).update(specification)
+
+    return {"rows": rows, "columns": columns}
 
 
 def _resolve_channel_to_electrode_key(recording, metadata: dict, metadata_key: str | None) -> dict:

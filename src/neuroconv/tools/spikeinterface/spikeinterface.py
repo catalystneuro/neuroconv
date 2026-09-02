@@ -1392,8 +1392,8 @@ def _add_electrodes_to_nwbfile(
     """
     Write the electrodes table for a recording.
 
-    There is one writer, and it writes what ``metadata["Ecephys"]["ElectrodesTable"]`` states. A caller who
-    states nothing gets a block generated from the recording first, so the derived case is a metadata
+    There is one writer, and it writes the table the recording derives with
+    ``metadata["Ecephys"]["ElectrodesTable"]`` written over it. The derived case is therefore a metadata
     generator rather than a second implementation: the two cannot drift, and there is one shape to
     document, validate and reason about.
 
@@ -1404,14 +1404,16 @@ def _add_electrodes_to_nwbfile(
     nwbfile : NWBFile
         The file the table is written to.
     metadata : dict, optional
-        Metadata for the conversion. ``metadata["Ecephys"]["ElectrodesTable"]`` states the table outright,
-        as ``rows`` (one entry per electrode) and ``columns`` (what each is called and means). When it is
-        absent one is generated from the recording, seeded with any column descriptions the older
-        ``metadata["Ecephys"]["Electrodes"]`` list supplies and with any electrode group the metadata
-        already declares under a name the recording's channels use.
+        Metadata for the conversion. ``metadata["Ecephys"]["ElectrodesTable"]`` states the table, as
+        ``rows`` (one entry per electrode) and ``columns`` (what each is called and means), and what it
+        states wins field by field over what the recording says. Anything it leaves out comes from the
+        recording, seeded with any column descriptions the older ``metadata["Ecephys"]["Electrodes"]`` list
+        supplies and with any electrode group the metadata already declares under a name the recording's
+        channels use.
     exclude : tuple
-        Channel properties to leave out of the generated table. Ignored when the table is stated, since a
-        stated table holds exactly the columns its rows state.
+        Channel properties to leave out of the table, on every path rather than only on the derived one:
+        a row that states nothing about a column inherits the recording's value, so leaving the property
+        out is what keeps it out.
     null_values_for_properties : dict of str to Any, optional
         The value to write where a row states nothing for a column the table carries. A sensible default
         for the column's type is used for anything not named here.
@@ -1428,8 +1430,9 @@ def _add_electrodes_to_nwbfile(
         nwbfile, pynwb.NWBFile
     ), f"'nwbfile' should be of type pynwb.NWBFile but is of type {type(nwbfile)}"
 
-    if not _electrodes_table_is_stated(metadata):
-        metadata = _generate_electrodes_table(recording=recording, metadata=metadata, exclude=exclude)
+    metadata = _generate_electrodes_table(
+        recording=recording, metadata=metadata, exclude=exclude, metadata_key=metadata_key
+    )
 
     return _add_electrodes_from_registry_to_nwbfile(
         recording=recording,
