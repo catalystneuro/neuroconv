@@ -130,11 +130,19 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
 
         return values
 
-    @staticmethod
-    def _instantiate_codec(codec, codec_options: dict[str, Any] | None):
+    def _instantiate_codec(self, codec, codec_options: dict[str, Any] | None):
         if isinstance(codec, numcodecs.abc.Codec):
             return codec
-        return zarr.codec_registry[codec](**(codec_options or dict()))
+
+        codec_options = dict(codec_options or dict())
+        # `numcodecs.Shuffle` defaults `elementsize` to 4 whatever the dtype is, so on anything wider it
+        # transposes the wrong byte planes and recovers almost nothing. The configuration knows the dtype.
+        # TODO: remove once hdmf-zarr moves off `zarr<3.0`, where `Shuffle.evolve_from_array_spec` fills
+        # `elementsize` from the array dtype upstream.
+        if codec == "shuffle" and "elementsize" not in codec_options:
+            codec_options["elementsize"] = self.dtype.itemsize
+
+        return zarr.codec_registry[codec](**codec_options)
 
     def get_data_io_kwargs(self) -> dict[str, Any]:
         filters = None

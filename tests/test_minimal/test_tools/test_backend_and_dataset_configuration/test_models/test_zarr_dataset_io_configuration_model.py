@@ -1,5 +1,6 @@
 """Unit tests for the ZarrDatasetIOConfiguration Pydantic model."""
 
+import numpy as np
 import pytest
 from numcodecs import Delta, GZip, Shuffle
 from pydantic import ValidationError
@@ -70,7 +71,7 @@ def test_get_data_io_kwargs_with_shuffle():
     zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration(compressors=["shuffle", "gzip"])
 
     assert zarr_dataset_configuration.get_data_io_kwargs() == dict(
-        chunks=(78125, 64), compressor=GZip(level=1), filters=[Shuffle()]
+        chunks=(78125, 64), compressor=GZip(level=1), filters=[Shuffle(elementsize=2)]
     )
 
 
@@ -81,7 +82,7 @@ def test_get_data_io_kwargs_with_shuffle_and_a_filter_method():
     )
 
     assert zarr_dataset_configuration.get_data_io_kwargs() == dict(
-        chunks=(78125, 64), compressor=GZip(level=1), filters=[Delta(dtype="int16"), Shuffle()]
+        chunks=(78125, 64), compressor=GZip(level=1), filters=[Delta(dtype="int16"), Shuffle(elementsize=2)]
     )
 
 
@@ -100,3 +101,27 @@ def test_deprecated_compression_method_property():
         zarr_dataset_configuration.compression_method = "zstd"
 
     assert zarr_dataset_configuration.compressors == ["shuffle", "zstd"]
+
+
+def test_shuffle_elementsize_follows_the_dtype():
+    """`numcodecs.Shuffle` defaults `elementsize` to 4, which is wrong for anything else."""
+    zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration(
+        compressors=["shuffle", "gzip"], dtype=np.dtype("float64")
+    )
+
+    assert zarr_dataset_configuration.get_data_io_kwargs()["filters"] == [Shuffle(elementsize=8)]
+
+
+def test_shuffle_elementsize_follows_the_dtype_on_the_deprecated_path():
+    """The deprecated `filter_methods` spelling instantiates through the same helper."""
+    zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration(filter_methods=["shuffle"], dtype=np.dtype("float64"))
+
+    assert zarr_dataset_configuration.get_data_io_kwargs()["filters"] == [Shuffle(elementsize=8)]
+
+
+def test_shuffle_elementsize_is_not_overridden_when_stated():
+    zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration(
+        compressors=["shuffle", "gzip"], compressor_options=[dict(elementsize=2), None], dtype=np.dtype("float64")
+    )
+
+    assert zarr_dataset_configuration.get_data_io_kwargs()["filters"] == [Shuffle(elementsize=2)]

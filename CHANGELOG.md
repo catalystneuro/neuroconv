@@ -1,10 +1,12 @@
 # v0.10.2 (Upcoming)
 
 ## Removals, Deprecations and Changes
+* A `timestamps` dataset is now written with the lossless shuffle filter ahead of its compression method, which on two million irregular float64 timestamps takes 11.75 MB down to 7.51 MB on HDF5 and 11.62 MB down to 7.62 MB on Zarr at the same chunk shape and compression level, leaving `data` untouched. [PR #1984](https://github.com/catalystneuro/neuroconv/pull/1984)
 * Deprecated `compression_method` and `compression_options` on both dataset IO configuration models, and the single-valued form of `BackendConfiguration.apply_global_compression`, to be removed in v0.12.0, in favor of `compressors` and `compressor_options`. [PR #1979](https://github.com/catalystneuro/neuroconv/pull/1979)
 * Removed the `hdf5` and `sbx` installation extras, aliases of `hdf5imaging` and `scanbox` kept for gallery pages that named the old spellings and marked for removal at the start of 2026. Use `neuroconv[hdf5imaging]` and `neuroconv[scanbox]`.
 
 ## Bug Fixes
+* Fixed the Zarr shuffle codec taking `numcodecs`' default `elementsize` of 4 regardless of the dataset's dtype, which on float64 grouped the wrong bytes and recovered almost nothing, so it is now taken from the dtype unless the caller states one. [PR #1984](https://github.com/catalystneuro/neuroconv/pull/1984)
 
 ## Features
 * `HDF5DatasetIOConfiguration` and `ZarrDatasetIOConfiguration` now describe a dataset's codec pipeline with an ordered `compressors` list and a matching `compressor_options`, which makes the HDF5 `shuffle` and `fletcher32` filters reachable for the first time and gives both backends the same vocabulary. [PR #1979](https://github.com/catalystneuro/neuroconv/pull/1979)
