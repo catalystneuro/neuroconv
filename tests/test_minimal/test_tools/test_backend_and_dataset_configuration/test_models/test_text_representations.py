@@ -33,7 +33,7 @@ acquisition/TestElectricalSeries/data
   chunk shape : (78125, 64)
   disk space usage per chunk : 10.00 MB
 
-  compression method : gzip
+  compressors : ['gzip']
 """
     assert str(hdf5_dataset_configuration) == expected_print
 
@@ -55,7 +55,7 @@ acquisition/TestElectricalSeries/data
   chunk shape : (78125, 64)
   disk space usage per chunk : 10.00 MB
 
-  compression method : gzip
+  compressors : ['gzip']
 """
     assert str(zarr_dataset_configuration) == expected_print
 
@@ -80,7 +80,7 @@ acquisition/TestElectricalSeriesAP/data
   chunk shape : (78125, 64)
   disk space usage per chunk : 10.00 MB
 
-  compression method : gzip
+  compressors : ['gzip']
 
 
 acquisition/TestElectricalSeriesLF/data
@@ -95,7 +95,7 @@ acquisition/TestElectricalSeriesLF/data
   chunk shape : (37500, 128)
   disk space usage per chunk : 9.60 MB
 
-  compression method : gzip
+  compressors : ['gzip']
 """
     assert str(hdf5_backend_configuration) == expected_print
 
@@ -120,7 +120,7 @@ acquisition/TestElectricalSeriesAP/data
   chunk shape : (78125, 64)
   disk space usage per chunk : 10.00 MB
 
-  compression method : gzip
+  compressors : ['gzip']
 
   filter methods : ['delta']
 
@@ -137,7 +137,7 @@ acquisition/TestElectricalSeriesLF/data
   chunk shape : (37500, 128)
   disk space usage per chunk : 9.60 MB
 
-  compression method : gzip
+  compressors : ['gzip']
 
   filter methods : ['delta']
 """
@@ -146,22 +146,22 @@ acquisition/TestElectricalSeriesLF/data
 
 def test_hdf5_dataset_configuration_print_omits_unset_compression():
     """An unset field renders as no line at all, not as a line reading `None`."""
-    hdf5_dataset_configuration = mock_HDF5DatasetIOConfiguration(compression_method=None)
+    hdf5_dataset_configuration = mock_HDF5DatasetIOConfiguration(compressors=None)
 
     printout = str(hdf5_dataset_configuration)
 
-    assert "compression method" not in printout
-    assert "compression options" not in printout
+    assert "compressors" not in printout
+    assert "compressor options" not in printout
 
 
 def test_zarr_dataset_configuration_print_omits_unset_compression_and_filters():
     """An unset field renders as no line at all, not as a line reading `None`."""
-    zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration(compression_method=None)
+    zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration(compressors=None)
 
     printout = str(zarr_dataset_configuration)
 
-    assert "compression method" not in printout
-    assert "compression options" not in printout
+    assert "compressors" not in printout
+    assert "compressor options" not in printout
     assert "filter methods" not in printout
     assert "filter options" not in printout
 

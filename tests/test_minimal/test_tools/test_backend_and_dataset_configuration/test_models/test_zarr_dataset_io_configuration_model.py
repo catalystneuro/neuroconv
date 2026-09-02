@@ -1,7 +1,8 @@
 """Unit tests for the ZarrDatasetIOConfiguration Pydantic model."""
 
 import pytest
-from numcodecs import GZip
+from numcodecs import Delta, GZip, Shuffle
+from pydantic import ValidationError
 
 from neuroconv.tools.nwb_helpers import (
     AVAILABLE_ZARR_COMPRESSION_METHODS,
@@ -62,3 +63,40 @@ def test_zarr_dataset_io_configuration_schema():
     assert ZarrDatasetIOConfiguration.schema() is not None
     assert ZarrDatasetIOConfiguration.schema_json() is not None
     assert ZarrDatasetIOConfiguration.model_json_schema() is not None
+
+
+def test_get_data_io_kwargs_with_shuffle():
+    """Zarr v2 has a single compressor slot, so every entry of `compressors` but the last rides in `filters`."""
+    zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration(compressors=["shuffle", "gzip"])
+
+    assert zarr_dataset_configuration.get_data_io_kwargs() == dict(
+        chunks=(78125, 64), compressor=GZip(level=1), filters=[Shuffle()]
+    )
+
+
+def test_get_data_io_kwargs_with_shuffle_and_a_filter_method():
+    """An array-to-array filter method stays ahead of the entries moved out of `compressors`."""
+    zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration(
+        compressors=["shuffle", "gzip"], filter_methods=["delta"], filter_options=[dict(dtype="int16")]
+    )
+
+    assert zarr_dataset_configuration.get_data_io_kwargs() == dict(
+        chunks=(78125, 64), compressor=GZip(level=1), filters=[Delta(dtype="int16"), Shuffle()]
+    )
+
+
+def test_compressor_options_length_mismatch_raises():
+    with pytest.raises(ValidationError, match="Length mismatch between `compressors`"):
+        mock_ZarrDatasetIOConfiguration(compressors=["shuffle", "gzip"], compressor_options=[None])
+
+
+def test_deprecated_compression_method_property():
+    zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration(compressors=["shuffle", "gzip"])
+
+    with pytest.warns(FutureWarning, match="removed in v0.12.0"):
+        assert zarr_dataset_configuration.compression_method == "gzip"
+
+    with pytest.warns(FutureWarning, match="removed in v0.12.0"):
+        zarr_dataset_configuration.compression_method = "zstd"
+
+    assert zarr_dataset_configuration.compressors == ["shuffle", "zstd"]

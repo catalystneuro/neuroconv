@@ -1,11 +1,13 @@
 # v0.10.2 (Upcoming)
 
 ## Removals, Deprecations and Changes
+* Deprecated `compression_method` and `compression_options` on both dataset IO configuration models, and the single-valued form of `BackendConfiguration.apply_global_compression`, to be removed in v0.12.0, in favor of `compressors` and `compressor_options`. [PR #1979](https://github.com/catalystneuro/neuroconv/pull/1979)
 * Removed the `hdf5` and `sbx` installation extras, aliases of `hdf5imaging` and `scanbox` kept for gallery pages that named the old spellings and marked for removal at the start of 2026. Use `neuroconv[hdf5imaging]` and `neuroconv[scanbox]`.
 
 ## Bug Fixes
 
 ## Features
+* `HDF5DatasetIOConfiguration` and `ZarrDatasetIOConfiguration` now describe a dataset's codec pipeline with an ordered `compressors` list and a matching `compressor_options`, which makes the HDF5 `shuffle` and `fletcher32` filters reachable for the first time and gives both backends the same vocabulary. [PR #1979](https://github.com/catalystneuro/neuroconv/pull/1979)
 
 ## Improvements
 
