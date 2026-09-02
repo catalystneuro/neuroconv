@@ -9,6 +9,8 @@ from ....utils import DeepDict
 
 # EDF+ writes the month as an English abbreviation, so it is mapped rather than read with ``%b``, which
 # goes through ``LC_TIME`` and would fail on a machine not running an English locale.
+# TODO: nothing tests this. Asserting it needs a non-English locale, which no runner image ships, so the
+# test has to come with a `locale-gen` step in `testing.yml` and a fixture that restores `LC_TIME`.
 _MONTH_NUMBERS = {
     name: number
     for number, name in enumerate(
