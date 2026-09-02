@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "neuroconv"
-version = "0.10.1"
+version = "0.10.2.dev0"
 description = "Convert data from proprietary formats to NWB format."
 readme = "README.md"
 authors = [
@@ -39,7 +39,7 @@ dependencies = [
     "numpy>=1.26.0; python_version >= '3.12'",
     "PyYAML>=5.4",
     "h5py>=3.9.0",
-    "hdmf>=6.1.0",
+    "hdmf>=6.2.0",
     "hdmf_zarr>=0.11",
     "pynwb>=4.0.0",
     "pydantic>=2.0",
@@ -114,20 +114,34 @@ lightningpose = [
     "neuroconv[video]",
 ]
 medpc = [
-    "ndx-events==0.2.2",
+    # MedPC events are parsed from a raw text file and written as native pynwb 4.0 EventsTable objects, so this
+    # needs nothing beyond core; kept as a stable install alias so `neuroconv[medpc]` remains valid.
+]
+medpc_legacy = [
+    "ndx-events==0.2.2",  # only the deprecated MedPCInterface writes ndx-events; both go in v0.12.0
+]
+moseq = [
+    "ndx-ethogram>=0.1.0",  # For the curated EthogramBouts/Ethogram derived from the syllable sequence
 ]
 vame = [
     "ndx-vame>=0.3.2",
     "ndx-ethogram>=0.1.0",  # For the curated EthogramBouts/Ethogram derived from MotifSeries
 ]
+boris = [
+    "ndx-ethogram>=0.1.0",  # a BORIS project is a coding scheme plus its events, and the scheme is an Ethogram
+]
 behavior = [
+    "neuroconv[boris]",
     "neuroconv[sleap]",
     "neuroconv[audio]",
     "neuroconv[deeplabcut]",
     "neuroconv[fictrac]",
     "neuroconv[video]",
     "neuroconv[lightningpose]",
-    "neuroconv[medpc]",
+    # TODO: drop this when MedPCInterface is removed in v0.12.0; the events interfaces are in
+    # neuroconv[events] and the legacy extra exists only for that interface's ndx-events pin.
+    "neuroconv[medpc_legacy]",
+    "neuroconv[moseq]",
     "neuroconv[vame]",
     "ndx-miniscope>=0.5.1",  # This is for the miniscope behavior data interface, not sure is needed
 ]
@@ -148,10 +162,17 @@ tdt_events = [
 doric_events = [
     "h5py>=3",  # Doric events live in the .doric HDF5 file; the CSV export variant needs only pandas.
 ]
+pyphotometry_events = [
+    # A .ppd is read by neuroconv's own binary reader and written as native pynwb 4.0 EventsTable objects,
+    # so this needs only core numpy + pynwb>=4.0; kept as a stable install alias so
+    # `neuroconv[pyphotometry_events]` and `neuroconv[events]` remain valid.
+]
 events = [
     "neuroconv[csv_events]",
     "neuroconv[doric_events]",
+    "neuroconv[medpc]",
     "neuroconv[npm_events]",
+    "neuroconv[pyphotometry_events]",
     "neuroconv[tdt_events]",
 ]
 
@@ -305,13 +326,23 @@ doric_fp = [
 npm_fp = [
     "neuroconv[fiber_photometry_minimal]",
 ]
+pyphotometry_fp = [
+    "neuroconv[fiber_photometry_minimal]",
+]
+# One .ppd holds both modalities and PyPhotometryConverter writes both, so this is the install for a
+# whole recording. It resolves to the same packages as pyphotometry_fp while pyphotometry_events is
+# empty, and states what the converter needs rather than what it happens to cost today.
+pyphotometry = [
+    "neuroconv[pyphotometry_fp]",
+    "neuroconv[pyphotometry_events]",
+]
 tdt_fp = [
     "neuroconv[fiber_photometry_minimal]",
     "tdt",
 ]
 guppy = [
     "neuroconv[fiber_photometry_minimal]",
-    "ndx-guppy>=0.1.0",
+    "ndx-guppy>=0.2.0",
     "tables",
     # Every acquisition format GuppyConverter can read, so one install covers a GuPPy session
     # whatever it was recorded on.
@@ -329,6 +360,7 @@ fiber_photometry = [
     "neuroconv[doric_fp]",
     "neuroconv[guppy]",
     "neuroconv[npm_fp]",
+    "neuroconv[pyphotometry_fp]",
     "neuroconv[tdt_fp]",
 ]
 
@@ -374,11 +406,6 @@ minian = [
 femtonics = [
     "neuroconv[ophys_minimal]",
 ]
-# Here for backwards compatibility with older versions of the gallery
-# Remove at the start of 2026
-hdf5 = [
-    "neuroconv[hdf5imaging]",
-]
 hdf5imaging = [
     "neuroconv[ophys_minimal]",
 ]
@@ -394,11 +421,6 @@ miniscope = [
     "ndx-miniscope>=0.5.1",
     "neuroconv[ophys_minimal]",
     "neuroconv[video]",
-]
-# Here for backwards compatibility with older versions of the gallery
-# Remove at the start of 2026
-sbx = [
-    "neuroconv[scanbox]",
 ]
 scanbox = [
     "neuroconv[ophys_minimal]",
@@ -473,7 +495,9 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 minversion = "6.0"
-addopts = "-ra --doctest-glob='*.rst'"
+# The `--numprocesses` is not only for speed: `PYTHONWARNDEFAULTENCODING` (set below) reaches the interpreter only through
+# the xdist workers, which start after `pytest-env` has written it, so a serial run cannot see `EncodingWarning`.
+addopts = "-ra --doctest-glob='*.rst' --numprocesses=logical --dist=loadscope"
 testpaths = ["docs/conversion_examples_gallery/", "tests"]
 doctest_optionflags = "ELLIPSIS"
 filterwarnings = [

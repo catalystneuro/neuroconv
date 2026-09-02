@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from platform import python_version
 from sys import platform
 
@@ -333,13 +333,14 @@ class TestEDFRecordingInterfaceFullMetadata(RecordingExtractorInterfaceTestMixin
     def check_extracted_metadata(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2024, 5, 2, 9, 30)
         assert metadata["NWBFile"]["experimenter"] == ["Tech 01"]
-        assert metadata["Subject"] == dict(subject_id="SYNTH-001", sex="F")
+        assert metadata["Subject"] == dict(subject_id="SYNTH-001", sex="F", date_of_birth="1985-03-17")
 
     def check_read_nwb(self, nwbfile_path: str):
         nwbfile = read_nwb(nwbfile_path)
 
         assert nwbfile.subject.subject_id == "SYNTH-001"
         assert nwbfile.subject.sex == "F"
+        assert nwbfile.subject.date_of_birth.date() == date(1985, 3, 17)
 
         nwbfile.read_io.close()
         return super().check_read_nwb(nwbfile_path=nwbfile_path)

@@ -1,166 +1,15 @@
 """Unit tests for the ZarrDatasetIOConfiguration Pydantic model."""
 
-from io import StringIO
-from unittest.mock import patch
-
+import numpy as np
 import pytest
-from numcodecs import GZip
+from numcodecs import Delta, GZip, Shuffle
+from pydantic import ValidationError
 
 from neuroconv.tools.nwb_helpers import (
     AVAILABLE_ZARR_COMPRESSION_METHODS,
     ZarrDatasetIOConfiguration,
 )
 from neuroconv.tools.testing import mock_ZarrDatasetIOConfiguration
-
-
-def test_zarr_dataset_io_configuration_print():
-    """Test the printout display of a ZarrDatasetIOConfiguration model looks nice."""
-    zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration()
-
-    with patch("sys.stdout", new=StringIO()) as out:
-        print(zarr_dataset_configuration)
-
-    expected_print = """
-acquisition/TestElectricalSeries/data
--------------------------------------
-  dtype : int16
-  full shape of source array : (1800000, 384)
-  full size of source array : 1.38 GB
-
-  buffer shape : (1250000, 384)
-  expected RAM usage : 960.00 MB
-
-  chunk shape : (78125, 64)
-  disk space usage per chunk : 10.00 MB
-
-  compression method : gzip
-
-"""
-    assert out.getvalue() == expected_print
-
-
-def test_zarr_dataset_configuration_print_with_compression_options():
-    """Test the printout display of a ZarrDatasetIOConfiguration model looks nice."""
-    zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration(compression_options=dict(level=5))
-
-    with patch("sys.stdout", new=StringIO()) as out:
-        print(zarr_dataset_configuration)
-
-    expected_print = """
-acquisition/TestElectricalSeries/data
--------------------------------------
-  dtype : int16
-  full shape of source array : (1800000, 384)
-  full size of source array : 1.38 GB
-
-  buffer shape : (1250000, 384)
-  expected RAM usage : 960.00 MB
-
-  chunk shape : (78125, 64)
-  disk space usage per chunk : 10.00 MB
-
-  compression method : gzip
-  compression options : {'level': 5}
-
-"""
-    assert out.getvalue() == expected_print
-
-
-def test_zarr_dataset_configuration_print_with_compression_disabled():
-    """Test the printout display of a ZarrDatasetIOConfiguration model looks nice."""
-    zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration(compression_method=None)
-
-    with patch("sys.stdout", new=StringIO()) as out:
-        print(zarr_dataset_configuration)
-
-    expected_print = """
-acquisition/TestElectricalSeries/data
--------------------------------------
-  dtype : int16
-  full shape of source array : (1800000, 384)
-  full size of source array : 1.38 GB
-
-  buffer shape : (1250000, 384)
-  expected RAM usage : 960.00 MB
-
-  chunk shape : (78125, 64)
-  disk space usage per chunk : 10.00 MB
-
-"""
-    assert out.getvalue() == expected_print
-
-
-def test_zarr_dataset_configuration_print_with_filter_methods():
-    """Test the printout display of a ZarrDatasetIOConfiguration model looks nice."""
-    zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration(filter_methods=["delta"])
-
-    with patch("sys.stdout", new=StringIO()) as out:
-        print(zarr_dataset_configuration)
-
-    expected_print = """
-acquisition/TestElectricalSeries/data
--------------------------------------
-  dtype : int16
-  full shape of source array : (1800000, 384)
-  full size of source array : 1.38 GB
-
-  buffer shape : (1250000, 384)
-  expected RAM usage : 960.00 MB
-
-  chunk shape : (78125, 64)
-  disk space usage per chunk : 10.00 MB
-
-  compression method : gzip
-
-  filter methods : ['delta']
-
-"""
-    assert out.getvalue() == expected_print
-
-
-def test_zarr_dataset_configuration_print_with_filter_options():
-    """Test the printout display of a ZarrDatasetIOConfiguration model looks nice."""
-    zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration(
-        filter_methods=["blosc"], filter_options=[dict(clevel=5)]
-    )
-
-    with patch("sys.stdout", new=StringIO()) as out:
-        print(zarr_dataset_configuration)
-
-    expected_print = """
-acquisition/TestElectricalSeries/data
--------------------------------------
-  dtype : int16
-  full shape of source array : (1800000, 384)
-  full size of source array : 1.38 GB
-
-  buffer shape : (1250000, 384)
-  expected RAM usage : 960.00 MB
-
-  chunk shape : (78125, 64)
-  disk space usage per chunk : 10.00 MB
-
-  compression method : gzip
-
-  filter methods : ['blosc']
-  filter options : [{'clevel': 5}]
-
-"""
-    assert out.getvalue() == expected_print
-
-
-def test_zarr_dataset_configuration_repr():
-    """Test the programmatic repr of a ZarrDatasetIOConfiguration model is more dataclass-like."""
-    zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration()
-
-    # Important to keep the `repr` unmodified for appearance inside iterables of DatasetInfo objects
-    expected_repr = (
-        "ZarrDatasetIOConfiguration(object_id='481a0860-3a0c-40ec-b931-df4a3e9b101f', "
-        "location_in_file='acquisition/TestElectricalSeries/data', dataset_name='data', dtype=dtype('int16'), "
-        "full_shape=(1800000, 384), chunk_shape=(78125, 64), buffer_shape=(1250000, 384), compression_method='gzip', "
-        "compression_options=None, filter_methods=None, filter_options=None)"
-    )
-    assert repr(zarr_dataset_configuration) == expected_repr
 
 
 def test_validator_filter_options_has_methods():
@@ -215,3 +64,64 @@ def test_zarr_dataset_io_configuration_schema():
     assert ZarrDatasetIOConfiguration.schema() is not None
     assert ZarrDatasetIOConfiguration.schema_json() is not None
     assert ZarrDatasetIOConfiguration.model_json_schema() is not None
+
+
+def test_get_data_io_kwargs_with_shuffle():
+    """Zarr v2 has a single compressor slot, so every entry of `compressors` but the last rides in `filters`."""
+    zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration(compressors=["shuffle", "gzip"])
+
+    assert zarr_dataset_configuration.get_data_io_kwargs() == dict(
+        chunks=(78125, 64), compressor=GZip(level=1), filters=[Shuffle(elementsize=2)]
+    )
+
+
+def test_get_data_io_kwargs_with_shuffle_and_a_filter_method():
+    """An array-to-array filter method stays ahead of the entries moved out of `compressors`."""
+    zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration(
+        compressors=["shuffle", "gzip"], filter_methods=["delta"], filter_options=[dict(dtype="int16")]
+    )
+
+    assert zarr_dataset_configuration.get_data_io_kwargs() == dict(
+        chunks=(78125, 64), compressor=GZip(level=1), filters=[Delta(dtype="int16"), Shuffle(elementsize=2)]
+    )
+
+
+def test_compressor_options_length_mismatch_raises():
+    with pytest.raises(ValidationError, match="Length mismatch between `compressors`"):
+        mock_ZarrDatasetIOConfiguration(compressors=["shuffle", "gzip"], compressor_options=[None])
+
+
+def test_deprecated_compression_method_property():
+    zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration(compressors=["shuffle", "gzip"])
+
+    with pytest.warns(FutureWarning, match="removed in v0.12.0"):
+        assert zarr_dataset_configuration.compression_method == "gzip"
+
+    with pytest.warns(FutureWarning, match="removed in v0.12.0"):
+        zarr_dataset_configuration.compression_method = "zstd"
+
+    assert zarr_dataset_configuration.compressors == ["shuffle", "zstd"]
+
+
+def test_shuffle_elementsize_follows_the_dtype():
+    """`numcodecs.Shuffle` defaults `elementsize` to 4, which is wrong for anything else."""
+    zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration(
+        compressors=["shuffle", "gzip"], dtype=np.dtype("float64")
+    )
+
+    assert zarr_dataset_configuration.get_data_io_kwargs()["filters"] == [Shuffle(elementsize=8)]
+
+
+def test_shuffle_elementsize_follows_the_dtype_on_the_deprecated_path():
+    """The deprecated `filter_methods` spelling instantiates through the same helper."""
+    zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration(filter_methods=["shuffle"], dtype=np.dtype("float64"))
+
+    assert zarr_dataset_configuration.get_data_io_kwargs()["filters"] == [Shuffle(elementsize=8)]
+
+
+def test_shuffle_elementsize_is_not_overridden_when_stated():
+    zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration(
+        compressors=["shuffle", "gzip"], compressor_options=[dict(elementsize=2), None], dtype=np.dtype("float64")
+    )
+
+    assert zarr_dataset_configuration.get_data_io_kwargs()["filters"] == [Shuffle(elementsize=2)]

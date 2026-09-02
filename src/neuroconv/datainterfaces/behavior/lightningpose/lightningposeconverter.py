@@ -182,15 +182,19 @@ class LightningPoseConverter(BaseDataInterface):
                 parent_container="processing/behavior",
             )
 
-        # The pose estimation container references the videos by the name of the ImageSeries written
-        # above rather than by their source path.
+        # The pose estimation container links the ImageSeries written above rather than naming the
+        # source paths it was read from.
         pose_metadata = deepcopy(metadata)
         if "Pose" in pose_metadata:
             pose_estimation_interface = self.data_interface_objects["PoseEstimation"]
             container_metadata = pose_metadata["Pose"]["PoseEstimations"][pose_estimation_interface.metadata_key]
-            container_metadata["original_videos"] = [self.original_video_name]
+            # A link to the ImageSeries written above rather than the source path it was read from, and the
+            # paths dropped with it: the object is in the file, so the path would only be a weaker copy.
+            container_metadata["source_video_metadata_key"] = "original_video"
+            container_metadata["original_videos"] = None
             if self.labeled_video_name is not None:
-                container_metadata["labeled_videos"] = [self.labeled_video_name]
+                container_metadata["labeled_video_metadata_key"] = "labeled_video"
+            container_metadata["labeled_videos"] = None
         else:
             videos_list = [dict(name=self.original_video_name)]
             if self.labeled_video_name is not None:

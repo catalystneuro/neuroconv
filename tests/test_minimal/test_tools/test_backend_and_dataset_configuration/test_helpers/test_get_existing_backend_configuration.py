@@ -127,8 +127,6 @@ intervals/trials/start_time/data
   chunk shape : (10,)
   disk space usage per chunk : 80 B
 
-  compression options : {'compression_opts': None}
-
 
 intervals/trials/stop_time/data
 -------------------------------
@@ -141,8 +139,6 @@ intervals/trials/stop_time/data
 
   chunk shape : (10,)
   disk space usage per chunk : 80 B
-
-  compression options : {'compression_opts': None}
 
 
 intervals/trials/compressed_start_time/data
@@ -157,8 +153,8 @@ intervals/trials/compressed_start_time/data
   chunk shape : (10,)
   disk space usage per chunk : 80 B
 
-  compression method : gzip
-  compression options : {'compression_opts': 2}
+  compressors : ['gzip']
+  compressor options : [{'compression_opts': 2}]
 
 
 processing/ecephys/ProcessedTimeSeries/data
@@ -170,8 +166,6 @@ processing/ecephys/ProcessedTimeSeries/data
   buffer shape : (4, 2)
   expected RAM usage : 64 B
 
-  compression options : {'compression_opts': None}
-
 
 acquisition/RawTimeSeries/data
 ------------------------------
@@ -181,8 +175,6 @@ acquisition/RawTimeSeries/data
 
   buffer shape : (2, 3)
   expected RAM usage : 48 B
-
-  compression options : {'compression_opts': None}
 
 
 acquisition/CompressedRawTimeSeries/data
@@ -197,8 +189,8 @@ acquisition/CompressedRawTimeSeries/data
   chunk shape : (2, 3)
   disk space usage per chunk : 24 B
 
-  compression method : gzip
-  compression options : {'compression_opts': 2}
+  compressors : ['gzip']
+  compressor options : [{'compression_opts': 2}]
 
 """
     assert stdout.getvalue() == expected_print
@@ -235,7 +227,7 @@ intervals/trials/start_time/data
   chunk shape : (10,)
   disk space usage per chunk : 80 B
 
-  compression method : Blosc(cname='lz4', clevel=5, shuffle=SHUFFLE, blocksize=0)
+  compressors : [Blosc(cname='lz4', clevel=5, shuffle=SHUFFLE, blocksize=0)]
 
 
 intervals/trials/stop_time/data
@@ -250,7 +242,7 @@ intervals/trials/stop_time/data
   chunk shape : (10,)
   disk space usage per chunk : 80 B
 
-  compression method : Blosc(cname='lz4', clevel=5, shuffle=SHUFFLE, blocksize=0)
+  compressors : [Blosc(cname='lz4', clevel=5, shuffle=SHUFFLE, blocksize=0)]
 
 
 intervals/trials/compressed_start_time/data
@@ -265,7 +257,7 @@ intervals/trials/compressed_start_time/data
   chunk shape : (5,)
   disk space usage per chunk : 40 B
 
-  compression method : Blosc(cname='lz4', clevel=5, shuffle=SHUFFLE, blocksize=0)
+  compressors : [Blosc(cname='lz4', clevel=5, shuffle=SHUFFLE, blocksize=0)]
 
   filter methods : [Blosc(cname='zstd', clevel=1, shuffle=SHUFFLE, blocksize=0), Blosc(cname='zstd', clevel=2, shuffle=SHUFFLE, blocksize=0)]
 
@@ -282,7 +274,7 @@ processing/ecephys/ProcessedTimeSeries/data
   chunk shape : (4, 2)
   disk space usage per chunk : 64 B
 
-  compression method : Blosc(cname='lz4', clevel=5, shuffle=SHUFFLE, blocksize=0)
+  compressors : [Blosc(cname='lz4', clevel=5, shuffle=SHUFFLE, blocksize=0)]
 
 
 acquisition/RawTimeSeries/data
@@ -297,7 +289,7 @@ acquisition/RawTimeSeries/data
   chunk shape : (2, 3)
   disk space usage per chunk : 48 B
 
-  compression method : Blosc(cname='lz4', clevel=5, shuffle=SHUFFLE, blocksize=0)
+  compressors : [Blosc(cname='lz4', clevel=5, shuffle=SHUFFLE, blocksize=0)]
 
 
 acquisition/CompressedRawTimeSeries/data
@@ -312,7 +304,7 @@ acquisition/CompressedRawTimeSeries/data
   chunk shape : (1, 3)
   disk space usage per chunk : 12 B
 
-  compression method : Blosc(cname='lz4', clevel=5, shuffle=SHUFFLE, blocksize=0)
+  compressors : [Blosc(cname='lz4', clevel=5, shuffle=SHUFFLE, blocksize=0)]
 
   filter methods : [Blosc(cname='zstd', clevel=1, shuffle=SHUFFLE, blocksize=0), Blosc(cname='zstd', clevel=2, shuffle=SHUFFLE, blocksize=0)]
 

@@ -102,11 +102,36 @@ Fiber Photometry
 .. toctree::
     :maxdepth: 1
 
-    Doric Fiber Photometry <fiberphotometry/doric_fp>
-    TDT Fiber Photometry <fiberphotometry/tdt_fp>
-    NPM Fiber Photometry <fiberphotometry/npm_fp>
-    CSV Fiber Photometry <fiberphotometry/csv_fp>
-    GuPPy Fiber Photometry <fiberphotometry/guppy_fp>
+    Doric <fiberphotometry/doric_fp>
+    TDT <fiberphotometry/tdt_fp>
+    NPM <fiberphotometry/npm_fp>
+    pyPhotometry <fiberphotometry/pyphotometry_fp>
+    CSV <fiberphotometry/csv_fp>
+    GuPPy <fiberphotometry/guppy_fp>
+
+.. _conversion_gallery_pose_estimation:
+
+Pose estimation
+---------------
+
+Keypoint estimation
+~~~~~~~~~~~~~~~~~~~
+
+.. toctree::
+    :maxdepth: 1
+
+    DeepLabCut <behavior/deeplabcut>
+    LightningPose <behavior/lightningpose>
+    SLEAP <behavior/sleap>
+
+Behavioral segmentation
+~~~~~~~~~~~~~~~~~~~~~~~
+
+.. toctree::
+    :maxdepth: 1
+
+    VAME <behavior/vame>
+    keypoint-MoSeq <behavior/moseq_keypoints>
 
 Behavior
 --------
@@ -115,12 +140,9 @@ Behavior
     :maxdepth: 1
 
     Audio <behavior/audio>
-    DeepLabCut <behavior/deeplabcut>
+    BORIS <behavior/boris>
     FicTrac <behavior/fictrac>
-    LightningPose <behavior/lightningpose>
     Neuralynx NVT <behavior/neuralynx_nvt>
-    SLEAP <behavior/sleap>
-    VAME <behavior/vame>
     Videos <behavior/video>
     MedPC <behavior/medpc>
 
@@ -131,10 +153,12 @@ Events
 .. toctree::
     :maxdepth: 1
 
-    CSV Events <events/csv_events>
-    Doric Events <events/doric_events>
-    NPM Events <events/npm_events>
-    TDT Events <events/tdt_events>
+    CSV <events/csv_events>
+    Doric <events/doric_events>
+    MedPC <events/medpc_events>
+    NPM <events/npm_events>
+    pyPhotometry <events/pyphotometry_events>
+    TDT <events/tdt_events>
 
 
 Image

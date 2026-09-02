@@ -1,6 +1,4 @@
-import importlib
 import json
-import uuid
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Literal
@@ -15,6 +13,7 @@ from .tools.nwb_helpers import (
     ZarrBackendConfiguration,
     configure_backend,
     get_default_backend_configuration,
+    get_default_nwbfile_metadata,
     make_nwbfile_from_metadata,
 )
 from .tools.nwb_helpers._metadata_and_file_helpers import (
@@ -97,14 +96,8 @@ class BaseDataInterface(ABC):
         DeepDict
             The metadata dictionary containing basic NWBFile metadata.
         """
-        metadata = DeepDict()
+        metadata = get_default_nwbfile_metadata()
         metadata["NWBFile"]["session_description"] = ""
-        metadata["NWBFile"]["identifier"] = str(uuid.uuid4())
-
-        # Add NeuroConv watermark (overridden if going through the GUIDE)
-        neuroconv_version = importlib.metadata.version("neuroconv")
-        metadata["NWBFile"]["source_script"] = f"Created using NeuroConv v{neuroconv_version}"
-        metadata["NWBFile"]["source_script_file_name"] = __file__  # Required for validation
 
         return metadata
 
@@ -230,7 +223,8 @@ class BaseDataInterface(ABC):
         nwbfile_path : FilePath
             Path for where to write or load (if overwrite=False) the NWBFile.
         nwbfile : NWBFile, optional
-            An in-memory NWBFile object to write to the location.
+            An in-memory NWBFile object. If provided, this conversion's interfaces add their data to
+            it rather than a new file being created; the file still needs `nwbfile_path` to be written.
         metadata : dict, optional
             Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
         overwrite : bool, default: False

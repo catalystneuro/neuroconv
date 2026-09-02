@@ -44,21 +44,23 @@ AVAILABLE_ZARR_COMPRESSION_METHODS = {
 class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
     """A data model for configuring options about an object that will become a Zarr Dataset in the file."""
 
-    compression_method: (
-        Literal[tuple(AVAILABLE_ZARR_COMPRESSION_METHODS.keys())] | InstanceOf[numcodecs.abc.Codec] | None
+    compressors: (
+        list[Literal[tuple(AVAILABLE_ZARR_COMPRESSION_METHODS.keys())] | InstanceOf[numcodecs.abc.Codec]] | None
     ) = Field(
-        default="gzip",  # TODO: would like this to be 'auto'
+        default=["gzip"],  # TODO: would like this to be 'auto'
         description=(
-            "The specified compression method to apply to this dataset. "
-            "Can be either a string that matches an available method on your system, "
-            "or an instantiated numcodec.Codec object."
+            "The ordered collection of codecs to apply to this dataset after it is serialized to bytes. "
+            "Each element can be either a string that matches an available method on your system, "
+            "or an instantiated numcodec.Codec object. "
+            "A filter such as 'shuffle' composes with a compression method rather than replacing one, so both "
+            "live in this list. "
             "Set to `None` to disable compression."
         ),
     )
     # TODO: actually provide better schematic rendering of options. Only support defaults in GUIDE for now.
     # Looks like they'll have to be hand-typed however... Can try parsing the numpy docstrings - no annotation typing.
-    compression_options: dict[str, Any] | None = Field(
-        default=None, description="The optional parameters to use for the specified compression method."
+    compressor_options: list[dict[str, Any] | None] | None = Field(
+        default=None, description="The optional parameters to use for each specified compressor."
     )
     filter_methods: (
         list[Literal[tuple(AVAILABLE_ZARR_COMPRESSION_METHODS.keys())] | InstanceOf[numcodecs.abc.Codec]] | None
@@ -86,6 +88,25 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
 
         return string
 
+    @model_validator(mode="after")
+    def validate_compressors_and_options_length_match(self) -> Self:
+        if self.compressors is None and self.compressor_options is not None:
+            raise ValueError(
+                "`compressors` is `None` but `compressor_options` is not `None` "
+                f"(received `{self.compressor_options=}`)!"
+            )
+        if self.compressor_options is None:
+            return self
+
+        if len(self.compressors) != len(self.compressor_options):
+            raise ValueError(
+                f"Length mismatch between `compressors` ({len(self.compressors)} specified) and "
+                f"`compressor_options` ({len(self.compressor_options)} found)! `compressors` and "
+                "`compressor_options` should be the same length."
+            )
+
+        return self
+
     @model_validator(mode="before")
     def validate_filter_methods_and_options_length_match(cls, values: dict[str, Any]):
         filter_methods = values.get("filter_methods", None)
@@ -109,24 +130,44 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
 
         return values
 
+    def _instantiate_codec(self, codec, codec_options: dict[str, Any] | None):
+        if isinstance(codec, numcodecs.abc.Codec):
+            return codec
+
+        codec_options = dict(codec_options or dict())
+        # `numcodecs.Shuffle` defaults `elementsize` to 4 whatever the dtype is, so on anything wider it
+        # transposes the wrong byte planes and recovers almost nothing. The configuration knows the dtype.
+        # TODO: remove once hdmf-zarr moves off `zarr<3.0`, where `Shuffle.evolve_from_array_spec` fills
+        # `elementsize` from the array dtype upstream.
+        if codec == "shuffle" and "elementsize" not in codec_options:
+            codec_options["elementsize"] = self.dtype.itemsize
+
+        return zarr.codec_registry[codec](**codec_options)
+
     def get_data_io_kwargs(self) -> dict[str, Any]:
         filters = None
         if self.filter_methods:
-            filters = list()
             all_filter_options = self.filter_options or [dict() for _ in self.filter_methods]
-            for filter_method, filter_options in zip(self.filter_methods, all_filter_options):
-                if isinstance(filter_method, str):
-                    filters.append(zarr.codec_registry[filter_method](**filter_options))
-                elif isinstance(filter_method, numcodecs.abc.Codec):
-                    filters.append(filter_method)
+            filters = [
+                self._instantiate_codec(filter_method, filter_options)
+                for filter_method, filter_options in zip(self.filter_methods, all_filter_options)
+            ]
 
-        if isinstance(self.compression_method, str):
-            compression_options = self.compression_options or dict()
-            compressor = zarr.codec_registry[self.compression_method](**compression_options)
-        if isinstance(self.compression_method, numcodecs.abc.Codec):
-            compressor = self.compression_method
-        elif self.compression_method is None:
+        # Zarr v2 has a single compressor slot, so every other entry of `compressors` has to ride in `filters`.
+        # TODO: remove this split once hdmf-zarr moves off `zarr<3.0`, where `compressors` is itself an ordered list.
+        compressors = self.compressors or []
+        compressor_options = self.compressor_options or [None] * len(compressors)
+        compression_index = self._compressor_index()
+
+        for index, (codec, codec_options) in enumerate(zip(compressors, compressor_options)):
+            if index == compression_index:
+                continue
+            filters = (filters or []) + [self._instantiate_codec(codec, codec_options)]
+
+        if compression_index is None:
             compressor = False
+        else:
+            compressor = self._instantiate_codec(compressors[compression_index], compressor_options[compression_index])
 
         return dict(chunks=self.chunk_shape, filters=filters, compressor=compressor)
 
@@ -159,6 +200,6 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
         filter_methods = getattr(neurodata_object, dataset_name).filters
         return cls(
             **kwargs,
-            compression_method=compression_method,
+            compressors=None if compression_method is None else [compression_method],
             filter_methods=filter_methods,
         )
