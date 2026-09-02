@@ -1,14 +1,14 @@
 # v0.10.2 (Upcoming)
 
 ## Removals, Deprecations and Changes
-* `ZarrDatasetIOConfiguration.filter_methods` is renamed to `filters`, with the old name deprecated for removal in v0.12.0, so a dataset's codec stages are named the way `zarr.Array` names them: `filters` for the codecs applied to the values and `compressors` for those applied to the bytes they serialize to. [PR #2000](https://github.com/catalystneuro/neuroconv/pull/2000)
-* Naming `shuffle` in a `ZarrDatasetIOConfiguration`'s `filters` is deprecated, to be removed in v0.12.0, and `shuffle` no longer appears in `AVAILABLE_ZARR_COMPRESSION_METHODS`, since it rearranges the serialized bytes rather than the values and so belongs in `compressors` beside the compression method. [PR #2000](https://github.com/catalystneuro/neuroconv/pull/2000)
+* `ZarrDatasetIOConfiguration.filter_methods` is renamed to `filters`, with the old name deprecated for removal in v0.12.0, so a dataset's codec stages are named the way `zarr.Array` names them: `filters` for the codecs applied to the values and `compressors` for those applied to the bytes they serialize to. [PR #2002](https://github.com/catalystneuro/neuroconv/pull/2002)
+* Naming `shuffle` in a `ZarrDatasetIOConfiguration`'s `filters` is deprecated, to be removed in v0.12.0, and `shuffle` no longer appears in `AVAILABLE_ZARR_COMPRESSION_METHODS`, since it rearranges the serialized bytes rather than the values and so belongs in `compressors` beside the compression method. [PR #2002](https://github.com/catalystneuro/neuroconv/pull/2002)
 * A `timestamps` dataset is now written with the lossless shuffle filter ahead of its compression method, which on two million irregular float64 timestamps takes 11.75 MB down to 7.51 MB on HDF5 and 11.62 MB down to 7.62 MB on Zarr at the same chunk shape and compression level, leaving `data` untouched. [PR #1984](https://github.com/catalystneuro/neuroconv/pull/1984)
 * Deprecated `compression_method` and `compression_options` on both dataset IO configuration models, and the single-valued form of `BackendConfiguration.apply_global_compression`, to be removed in v0.12.0, in favor of `compressors` and `compressor_options`. [PR #1979](https://github.com/catalystneuro/neuroconv/pull/1979)
 * Removed the `hdf5` and `sbx` installation extras, aliases of `hdf5imaging` and `scanbox` kept for gallery pages that named the old spellings and marked for removal at the start of 2026. Use `neuroconv[hdf5imaging]` and `neuroconv[scanbox]`.
 
 ## Bug Fixes
-* Reading an existing Zarr file now reports its shuffle in `compressors` rather than among the filters, so a file this library wrote reports the configuration that wrote it and naming shuffle again does not apply it twice. [PR #2000](https://github.com/catalystneuro/neuroconv/pull/2000)
+* Reading an existing Zarr file now reports its shuffle in `compressors` rather than among the filters, so a file this library wrote reports the configuration that wrote it and naming shuffle again does not apply it twice. [PR #2002](https://github.com/catalystneuro/neuroconv/pull/2002)
 * Fixed the Zarr shuffle codec taking `numcodecs`' default `elementsize` of 4 regardless of the dataset's dtype, which on float64 grouped the wrong bytes and recovered almost nothing, so it is now taken from the dtype unless the caller states one. [PR #1984](https://github.com/catalystneuro/neuroconv/pull/1984)
 
 ## Features
