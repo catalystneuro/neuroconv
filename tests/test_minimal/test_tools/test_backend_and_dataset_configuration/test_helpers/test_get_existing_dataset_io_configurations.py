@@ -7,7 +7,7 @@ import pytest
 from hdmf.common import VectorData
 from hdmf_zarr import ZarrDataIO
 from hdmf_zarr.nwb import NWBZarrIO
-from numcodecs import Blosc, GZip
+from numcodecs import Blosc, Delta, GZip, Shuffle
 from pynwb import NWBHDF5IO, H5DataIO
 from pynwb.base import DynamicTable
 from pynwb.behavior import CompassDirection
@@ -77,7 +77,7 @@ def test_configuration_on_time_series(tmp_path, backend: Literal["hdf5", "zarr"]
         elif backend == "zarr":
             assert dataset_configuration.chunk_shape == (2, 3)
             assert dataset_configuration.compressor_options is None
-            assert dataset_configuration.filter_methods is None
+            assert dataset_configuration.filters is None
             assert dataset_configuration.filter_options is None
 
         dataset_configuration = dataset_configurations[1]
@@ -96,7 +96,7 @@ def test_configuration_on_time_series(tmp_path, backend: Literal["hdf5", "zarr"]
         elif backend == "zarr":
             assert dataset_configuration.compressors == [compressor]
             assert dataset_configuration.compressor_options is None
-            assert dataset_configuration.filter_methods == filters
+            assert dataset_configuration.filters == filters
             assert dataset_configuration.filter_options is None
 
 
@@ -170,7 +170,7 @@ def test_configuration_on_dynamic_table(tmp_path, backend: Literal["hdf5", "zarr
         elif backend == "zarr":
             assert dataset_configuration.chunk_shape == (3,)
             assert dataset_configuration.compressor_options is None
-            assert dataset_configuration.filter_methods is None
+            assert dataset_configuration.filters is None
             assert dataset_configuration.filter_options is None
 
         dataset_configuration = dataset_configurations[1]
@@ -188,7 +188,7 @@ def test_configuration_on_dynamic_table(tmp_path, backend: Literal["hdf5", "zarr
         elif backend == "zarr":
             assert dataset_configuration.compressors == [compressor]
             assert dataset_configuration.compressor_options is None
-            assert dataset_configuration.filter_methods == filters
+            assert dataset_configuration.filters == filters
             assert dataset_configuration.filter_options is None
 
 
@@ -250,7 +250,7 @@ def test_configuration_on_ragged_units_table(tmp_path, backend: Literal["hdf5", 
             assert dataset_configuration.compressors == [compressor]
             assert dataset_configuration.chunk_shape == (5,)
             assert dataset_configuration.compressor_options is None
-            assert dataset_configuration.filter_methods is None
+            assert dataset_configuration.filters is None
             assert dataset_configuration.filter_options is None
 
         dataset_configuration = next(
@@ -270,7 +270,7 @@ def test_configuration_on_ragged_units_table(tmp_path, backend: Literal["hdf5", 
             assert dataset_configuration.compressors == [compressor]
             assert dataset_configuration.chunk_shape == (2,)
             assert dataset_configuration.compressor_options is None
-            assert dataset_configuration.filter_methods is None
+            assert dataset_configuration.filters is None
             assert dataset_configuration.filter_options is None
 
         dataset_configuration = next(
@@ -290,7 +290,7 @@ def test_configuration_on_ragged_units_table(tmp_path, backend: Literal["hdf5", 
             assert dataset_configuration.compressors == [compressor]
             assert dataset_configuration.chunk_shape == (15, 3)
             assert dataset_configuration.compressor_options is None
-            assert dataset_configuration.filter_methods is None
+            assert dataset_configuration.filters is None
             assert dataset_configuration.filter_options is None
 
         dataset_configuration = next(
@@ -310,7 +310,7 @@ def test_configuration_on_ragged_units_table(tmp_path, backend: Literal["hdf5", 
             assert dataset_configuration.compressors == [compressor]
             assert dataset_configuration.chunk_shape == (5,)
             assert dataset_configuration.compressor_options is None
-            assert dataset_configuration.filter_methods is None
+            assert dataset_configuration.filters is None
             assert dataset_configuration.filter_options is None
 
         dataset_configuration = next(
@@ -330,7 +330,7 @@ def test_configuration_on_ragged_units_table(tmp_path, backend: Literal["hdf5", 
             assert dataset_configuration.compressors == [compressor]
             assert dataset_configuration.chunk_shape == (2,)
             assert dataset_configuration.compressor_options is None
-            assert dataset_configuration.filter_methods is None
+            assert dataset_configuration.filters is None
             assert dataset_configuration.filter_options is None
 
         dataset_configuration = next(
@@ -349,7 +349,7 @@ def test_configuration_on_ragged_units_table(tmp_path, backend: Literal["hdf5", 
         elif backend == "zarr":
             assert dataset_configuration.compressors == [compressor]
             assert dataset_configuration.compressor_options is None
-            assert dataset_configuration.filter_methods == filters
+            assert dataset_configuration.filters == filters
             assert dataset_configuration.filter_options is None
 
         dataset_configuration = next(
@@ -368,7 +368,7 @@ def test_configuration_on_ragged_units_table(tmp_path, backend: Literal["hdf5", 
         elif backend == "zarr":
             assert dataset_configuration.compressors == [compressor]
             assert dataset_configuration.compressor_options is None
-            assert dataset_configuration.filter_methods is None
+            assert dataset_configuration.filters is None
             assert dataset_configuration.filter_options is None
             assert dataset_configuration.chunk_shape == (2,)
 
@@ -388,7 +388,7 @@ def test_configuration_on_ragged_units_table(tmp_path, backend: Literal["hdf5", 
         elif backend == "zarr":
             assert dataset_configuration.compressors == [compressor]
             assert dataset_configuration.compressor_options is None
-            assert dataset_configuration.filter_methods == filters
+            assert dataset_configuration.filters == filters
             assert dataset_configuration.filter_options is None
 
         dataset_configuration = next(
@@ -407,7 +407,7 @@ def test_configuration_on_ragged_units_table(tmp_path, backend: Literal["hdf5", 
         elif backend == "zarr":
             assert dataset_configuration.compressors == [compressor]
             assert dataset_configuration.compressor_options is None
-            assert dataset_configuration.filter_methods is None
+            assert dataset_configuration.filters is None
             assert dataset_configuration.filter_options is None
             assert dataset_configuration.chunk_shape == (2,)
 
@@ -467,7 +467,7 @@ def test_configuration_on_compass_direction(tmp_path, backend: Literal["hdf5", "
         elif backend == "zarr":
             assert dataset_configuration.compressor_options is None
             assert dataset_configuration.chunk_shape == data.shape
-            assert dataset_configuration.filter_methods is None
+            assert dataset_configuration.filters is None
             assert dataset_configuration.filter_options is None
 
         dataset_configuration = dataset_configurations[1]
@@ -487,7 +487,7 @@ def test_configuration_on_compass_direction(tmp_path, backend: Literal["hdf5", "
         elif backend == "zarr":
             assert dataset_configuration.compressors == [compressor]
             assert dataset_configuration.compressor_options is None
-            assert dataset_configuration.filter_methods == filters
+            assert dataset_configuration.filters == filters
             assert dataset_configuration.filter_options is None
 
 
@@ -567,7 +567,7 @@ def test_configuration_on_ndx_events(tmp_path, backend: Literal["hdf5", "zarr"])
         elif backend == "zarr":
             assert data_dataset_configuration.compressor_options is None
             assert data_dataset_configuration.chunk_shape == data.shape
-            assert data_dataset_configuration.filter_methods is None
+            assert data_dataset_configuration.filters is None
             assert data_dataset_configuration.filter_options is None
 
         timestamps_dataset_configuration = next(
@@ -587,7 +587,7 @@ def test_configuration_on_ndx_events(tmp_path, backend: Literal["hdf5", "zarr"])
         elif backend == "zarr":
             assert timestamps_dataset_configuration.compressor_options is None
             assert timestamps_dataset_configuration.chunk_shape == timestamps.shape
-            assert timestamps_dataset_configuration.filter_methods is None
+            assert timestamps_dataset_configuration.filters is None
             assert timestamps_dataset_configuration.filter_options is None
 
         data_dataset_configuration = next(
@@ -607,7 +607,7 @@ def test_configuration_on_ndx_events(tmp_path, backend: Literal["hdf5", "zarr"])
         elif backend == "zarr":
             assert data_dataset_configuration.compressors == [compressor]
             assert data_dataset_configuration.compressor_options is None
-            assert data_dataset_configuration.filter_methods == filters
+            assert data_dataset_configuration.filters == filters
             assert data_dataset_configuration.filter_options is None
 
         timestamps_dataset_configuration = next(
@@ -627,7 +627,7 @@ def test_configuration_on_ndx_events(tmp_path, backend: Literal["hdf5", "zarr"])
         elif backend == "zarr":
             assert timestamps_dataset_configuration.compressors == [compressor]
             assert timestamps_dataset_configuration.compressor_options is None
-            assert timestamps_dataset_configuration.filter_methods == filters
+            assert timestamps_dataset_configuration.filters == filters
             assert timestamps_dataset_configuration.filter_options is None
 
 
@@ -683,7 +683,7 @@ def test_configuration_on_time_series_automatic_backend(tmp_path, backend: Liter
         elif backend == "zarr":
             assert dataset_configuration.chunk_shape == (2, 3)
             assert dataset_configuration.compressor_options is None
-            assert dataset_configuration.filter_methods is None
+            assert dataset_configuration.filters is None
             assert dataset_configuration.filter_options is None
 
         dataset_configuration = dataset_configurations[1]
@@ -702,7 +702,7 @@ def test_configuration_on_time_series_automatic_backend(tmp_path, backend: Liter
         elif backend == "zarr":
             assert dataset_configuration.compressors == [compressor]
             assert dataset_configuration.compressor_options is None
-            assert dataset_configuration.filter_methods == filters
+            assert dataset_configuration.filters == filters
             assert dataset_configuration.filter_options is None
 
 
@@ -849,4 +849,66 @@ def test_timestamps_written_without_shuffle_are_read_back_without_it(tmp_path, b
             assert dataset_configuration.compressors == ["gzip"]
         elif backend == "zarr":
             assert dataset_configuration.compressors == [GZip(level=1)]
-            assert dataset_configuration.filter_methods is None
+            assert dataset_configuration.filters is None
+
+
+def test_zarr_shuffle_is_read_back_into_compressors(tmp_path):
+    """Zarr v2 stores shuffle in `filters`, so a file this library wrote has to report `compressors`."""
+    timestamps = ZarrDataIO(
+        data=np.arange(100, dtype="float64") / 30.0,
+        chunks=(100,),
+        compressor=GZip(level=1),
+        filters=[Shuffle(elementsize=8)],
+    )
+
+    nwbfile = mock_NWBFile()
+    nwbfile.add_acquisition(mock_TimeSeries(name="TestTimeSeries", data=np.zeros(shape=(100,)), timestamps=timestamps))
+
+    nwbfile_path = tmp_path / "test_existing_dataset_io_configurations_shuffled_timestamps.nwb.zarr"
+    with NWBZarrIO(str(nwbfile_path), "w") as io:
+        io.write(nwbfile)
+    with NWBZarrIO(str(nwbfile_path), "r") as io:
+        nwbfile = io.read()
+
+        dataset_configuration = next(
+            dataset_configuration
+            for dataset_configuration in get_existing_dataset_io_configurations(nwbfile=nwbfile)
+            if dataset_configuration.location_in_file == "acquisition/TestTimeSeries/timestamps"
+        )
+
+    assert dataset_configuration.compressors == ["shuffle", GZip(level=1)]
+    assert dataset_configuration.compressor_options == [dict(elementsize=8), None]
+    assert dataset_configuration.filters is None
+
+    # The configuration read back reproduces the settings it was read from
+    assert dataset_configuration.get_data_io_kwargs() == dict(
+        chunks=(100,), compressor=GZip(level=1), filters=[Shuffle(elementsize=8)]
+    )
+
+
+def test_zarr_value_filters_are_read_back_into_filters(tmp_path):
+    """Only shuffle moves: a codec that transforms values is still a filter method."""
+    data = ZarrDataIO(
+        data=np.arange(100, dtype="int16"),
+        chunks=(100,),
+        compressor=GZip(level=1),
+        filters=[Delta(dtype="int16")],
+    )
+
+    nwbfile = mock_NWBFile()
+    nwbfile.add_acquisition(mock_TimeSeries(name="TestTimeSeries", data=data))
+
+    nwbfile_path = tmp_path / "test_existing_dataset_io_configurations_delta.nwb.zarr"
+    with NWBZarrIO(str(nwbfile_path), "w") as io:
+        io.write(nwbfile)
+    with NWBZarrIO(str(nwbfile_path), "r") as io:
+        nwbfile = io.read()
+
+        dataset_configuration = next(
+            dataset_configuration
+            for dataset_configuration in get_existing_dataset_io_configurations(nwbfile=nwbfile)
+            if dataset_configuration.location_in_file == "acquisition/TestTimeSeries/data"
+        )
+
+    assert dataset_configuration.compressors == [GZip(level=1)]
+    assert dataset_configuration.filters == [Delta(dtype="int16")]

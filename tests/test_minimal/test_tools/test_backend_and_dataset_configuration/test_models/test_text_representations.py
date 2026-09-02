@@ -101,7 +101,7 @@ acquisition/TestElectricalSeriesLF/data
 
 
 def test_zarr_backend_configuration_print():
-    """The printout of a ZarrBackendConfiguration also renders the filter methods."""
+    """The printout of a ZarrBackendConfiguration also renders the filters."""
     zarr_backend_configuration = mock_ZarrBackendConfiguration()
 
     expected_print = """
@@ -122,7 +122,7 @@ acquisition/TestElectricalSeriesAP/data
 
   compressors : ['gzip']
 
-  filter methods : ['delta']
+  filters : ['delta']
 
 
 acquisition/TestElectricalSeriesLF/data
@@ -139,7 +139,7 @@ acquisition/TestElectricalSeriesLF/data
 
   compressors : ['gzip']
 
-  filter methods : ['delta']
+  filters : ['delta']
 """
     assert str(zarr_backend_configuration) == expected_print
 
@@ -162,7 +162,7 @@ def test_zarr_dataset_configuration_print_omits_unset_compression_and_filters():
 
     assert "compressors" not in printout
     assert "compressor options" not in printout
-    assert "filter methods" not in printout
+    assert "filters :" not in printout
     assert "filter options" not in printout
 
 
