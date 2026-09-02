@@ -17,29 +17,29 @@ def test_validator_filter_options_has_methods():
         mock_ZarrDatasetIOConfiguration(
             chunk_shape=(78_125, 64),
             buffer_shape=(1_250_000, 384),
-            filter_methods=None,
+            filters=None,
             filter_options=[dict(clevel=5)],
         )
 
     expected_error = (
-        "`filter_methods` is `None` but `filter_options` is not `None` "
+        "`filters` is `None` but `filter_options` is not `None` "
         "(received `filter_options=[{'clevel': 5}]`)! [type=value_error, "
     )
     assert expected_error in str(error_info.value)
 
 
-def test_validator_filter_methods_length_match_options():
+def test_validator_filters_length_match_options():
     with pytest.raises(ValueError) as error_info:
         mock_ZarrDatasetIOConfiguration(
             chunk_shape=(78_125, 64),
             buffer_shape=(1_250_000, 384),
-            filter_methods=["blosc", "delta"],
+            filters=["blosc", "delta"],
             filter_options=[dict(clevel=5)],  # Correction would be to add a second element `dict()` to avoid ambiguity
         )
 
     expected_error = (
-        "Length mismatch between `filter_methods` (2 methods specified) and `filter_options` (1 options found)! "
-        "`filter_methods` and `filter_options` should be the same length. [type=value_error, "
+        "Length mismatch between `filters` (2 specified) and `filter_options` (1 options found)! "
+        "`filters` and `filter_options` should be the same length. [type=value_error, "
     )
     assert expected_error in str(error_info.value)
 
@@ -78,7 +78,7 @@ def test_get_data_io_kwargs_with_shuffle():
 def test_get_data_io_kwargs_with_shuffle_and_a_filter_method():
     """An array-to-array filter method stays ahead of the entries moved out of `compressors`."""
     zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration(
-        compressors=["shuffle", "gzip"], filter_methods=["delta"], filter_options=[dict(dtype="int16")]
+        compressors=["shuffle", "gzip"], filters=["delta"], filter_options=[dict(dtype="int16")]
     )
 
     assert zarr_dataset_configuration.get_data_io_kwargs() == dict(
@@ -113,8 +113,8 @@ def test_shuffle_elementsize_follows_the_dtype():
 
 
 def test_shuffle_elementsize_follows_the_dtype_on_the_deprecated_path():
-    """The deprecated `filter_methods` spelling instantiates through the same helper."""
-    zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration(filter_methods=["shuffle"], dtype=np.dtype("float64"))
+    """The deprecated `filters` spelling instantiates through the same helper."""
+    zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration(filters=["shuffle"], dtype=np.dtype("float64"))
 
     assert zarr_dataset_configuration.get_data_io_kwargs()["filters"] == [Shuffle(elementsize=8)]
 
