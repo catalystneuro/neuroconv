@@ -93,7 +93,7 @@ def test_unwrapped_time_series_zarr(zarr_nwbfile_path):
     assert dataset_configuration.buffer_shape == array.shape
     assert dataset_configuration.compressors == ["gzip"]
     assert dataset_configuration.compressor_options is None
-    assert dataset_configuration.filter_methods is None
+    assert dataset_configuration.filters is None
     assert dataset_configuration.filter_options is None
 
 
@@ -143,5 +143,5 @@ def test_unwrapped_dynamic_table_zarr(zarr_nwbfile_path):
     assert dataset_configuration.buffer_shape == array.shape
     assert dataset_configuration.compressors == ["gzip"]
     assert dataset_configuration.compressor_options is None
-    assert dataset_configuration.filter_methods is None
+    assert dataset_configuration.filters is None
     assert dataset_configuration.filter_options is None

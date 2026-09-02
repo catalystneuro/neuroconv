@@ -259,7 +259,7 @@ intervals/trials/compressed_start_time/data
 
   compressors : [Blosc(cname='lz4', clevel=5, shuffle=SHUFFLE, blocksize=0)]
 
-  filter methods : [Blosc(cname='zstd', clevel=1, shuffle=SHUFFLE, blocksize=0), Blosc(cname='zstd', clevel=2, shuffle=SHUFFLE, blocksize=0)]
+  filters : [Blosc(cname='zstd', clevel=1, shuffle=SHUFFLE, blocksize=0), Blosc(cname='zstd', clevel=2, shuffle=SHUFFLE, blocksize=0)]
 
 
 processing/ecephys/ProcessedTimeSeries/data
@@ -306,7 +306,7 @@ acquisition/CompressedRawTimeSeries/data
 
   compressors : [Blosc(cname='lz4', clevel=5, shuffle=SHUFFLE, blocksize=0)]
 
-  filter methods : [Blosc(cname='zstd', clevel=1, shuffle=SHUFFLE, blocksize=0), Blosc(cname='zstd', clevel=2, shuffle=SHUFFLE, blocksize=0)]
+  filters : [Blosc(cname='zstd', clevel=1, shuffle=SHUFFLE, blocksize=0), Blosc(cname='zstd', clevel=2, shuffle=SHUFFLE, blocksize=0)]
 
 """
     assert stdout.getvalue() == expected_print

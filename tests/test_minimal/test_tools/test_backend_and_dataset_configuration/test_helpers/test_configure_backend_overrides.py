@@ -116,3 +116,44 @@ def test_simple_dynamic_table_override(tmpdir: Path, backend: Literal["hdf5", "z
     elif backend == "zarr":
         assert written_data.compressor == numcodecs.GZip(level=5)
     written_nwbfile.read_io.close()
+
+
+def written_filters_and_compressors(array) -> tuple[list, list]:
+    """
+    Read a written Zarr array's codec chain in the terms zarr 3 uses.
+
+    `Array.compressors` is a zarr 3 property that reports the bytes-to-bytes run for a v2 and a v3 array
+    alike, while `Array.compressor` is the v2-only spelling it deprecates. Reading through it here keeps
+    these assertions phrased in the vocabulary the model speaks, and the fallback can go when hdmf-zarr
+    moves off `zarr<3.0`.
+    """
+    filters = list(array.filters or ())
+    if hasattr(array, "compressors"):
+        return filters, list(array.compressors)
+    return filters, [] if array.compressor is None else [array.compressor]
+
+
+def test_shuffle_is_correctly_propagated_as_filter_in_zarr(tmpdir: Path):
+    """Zarr v2 has one compressor slot, so a shuffle named beside a compression method is written as a filter."""
+    array = np.zeros(shape=(3_000, 16), dtype="int16")
+
+    nwbfile = mock_NWBFile()
+    nwbfile.add_acquisition(mock_TimeSeries(name="TestTimeSeries", data=array))
+
+    backend_configuration = get_default_backend_configuration(nwbfile=nwbfile, backend="zarr")
+    dataset_configuration = backend_configuration.dataset_configurations["acquisition/TestTimeSeries/data"]
+    dataset_configuration.compressors = ["shuffle", "gzip"]
+
+    configure_backend(nwbfile=nwbfile, backend_configuration=backend_configuration)
+
+    nwbfile_path = str(tmpdir / "test_configure_overrides_shuffle_with_compression.nwb")
+    with BACKEND_NWB_IO["zarr"](path=nwbfile_path, mode="w") as io:
+        io.write(nwbfile)
+
+    written_nwbfile = read_nwb(nwbfile_path)
+    written_data = written_nwbfile.acquisition["TestTimeSeries"].data
+
+    filters, compressors = written_filters_and_compressors(written_data)
+    assert filters == [numcodecs.Shuffle(elementsize=2)]
+    assert compressors == [numcodecs.GZip(level=1)]
+    written_nwbfile.read_io.close()
