@@ -342,7 +342,8 @@ tdt_fp = [
 ]
 guppy = [
     "neuroconv[fiber_photometry_minimal]",
-    "ndx-guppy>=0.2.0",
+    # Temporary: the GuppyPSTHSignificance type is not released yet. Swap to ">=0.2.1" once it is.
+    "ndx-guppy @ git+https://github.com/catalystneuro/ndx-guppy.git@psth_significance",
     "tables",
     # Every acquisition format GuppyConverter can read, so one install covers a GuPPy session
     # whatever it was recorded on.

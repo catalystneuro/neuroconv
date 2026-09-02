@@ -40,6 +40,10 @@ _DEFAULT_COVARIATES = {"akinesia": ((1.1, 1.6, 1.7, 2.6), (2.0, 3.0, 4.0, 5.0))}
 # Detected transient times, shared by transientsOccurrences_*, the per-bin counts, and the
 # spontaneous-mode event trains.
 _TRANSIENT_PEAK_TIMES = (1.2, 1.5, 1.8, 2.5)
+# Sentinel default for ``psth_comparisons``: pair the session's own first two events, so the default
+# holds for any topology a caller passes rather than only for the default event names. GuPPy tests
+# every event against zero on its own; which two events are worth contrasting is the part a user names.
+_PAIR_THE_FIRST_TWO_EVENTS = "first_two_events"
 # Seconds of raw recording GuPPy's lights-on trim discards before analysis (its default).
 _TIME_FOR_LIGHTS_TURN_ON = 1.0
 
@@ -65,6 +69,7 @@ def generate_mock_guppy_output_folder(
     tonic_epochs: tuple[tuple[str, float, float], ...] = (("baseline", 1.0, 2.0), ("post_injection", 2.0, 3.0)),
     bin_size_in_trials: int = 3,
     use_transients_as_events: bool = False,
+    psth_comparisons: tuple[tuple[str, str], ...] | str | None = _PAIR_THE_FIRST_TWO_EVENTS,
     guppy_version: str = "2.0.0a7",
     zscore_method: str = "standard z-score",
 ) -> Path:
@@ -137,6 +142,13 @@ def generate_mock_guppy_output_folder(
         site), holding a *subset* of that site's detected transients, since trial rejection drops some;
         the two recording sites keep different subsets, as two sites detecting their own transients
         would. Every peri-event product is then emitted for those events as well.
+    psth_comparisons : tuple of (str, str), optional
+        The event pairs GuPPy's optional PSTH significance step compares against each other. Three
+        states: ``None`` means the step did not run, so no ``psth_significance_output/`` directory is
+        written at all; ``()`` runs only the tests against zero, which GuPPy does for every event
+        automatically; and a tuple of pairs adds an event-versus-event comparison for each. Every
+        comparison is written once per (recording site, feature). Defaults to pairing the session's own
+        first two events, so the default holds whatever ``event_store_to_name`` names them.
     guppy_version, zscore_method : str, optional
         Provenance values written to ``GuPPyParamtersUsed.json``.
 
@@ -164,6 +176,8 @@ def generate_mock_guppy_output_folder(
     covariates = covariates if covariates is not None else _DEFAULT_COVARIATES
     recording_sites = list(recording_site_to_stores)
     event_names = list(event_store_to_name.values())
+    if psth_comparisons == _PAIR_THE_FIRST_TWO_EVENTS:
+        psth_comparisons = (tuple(event_names[:2]),) if len(event_names) >= 2 else ()
 
     # Raw store timebase, session-relative and starting at 0.0. The lights-on trim drops its leading
     # second; ``num_samples`` counts what survives, so every downstream array keeps that length.
@@ -210,6 +224,7 @@ def generate_mock_guppy_output_folder(
         remove_artifacts=bool(valid_signal_intervals),
         use_transients_as_events=use_transients_as_events,
         bin_width=bin_width,
+        psth_comparisons=psth_comparisons,
     )
 
     for recording_site in recording_sites:
@@ -280,6 +295,39 @@ def generate_mock_guppy_output_folder(
                     bin_edges=bin_edges,
                     num_windows=len(peak_start_points),
                 )
+
+    if psth_comparisons is not None:
+        # GuPPy tests every event against zero automatically and each named pair against each other, once
+        # per recording site and metric. Trial counts differ per event, so each comparison's n differs.
+        comparison_index = 0
+        for recording_site in recording_sites:
+            for feature in features:
+                for event_name in event_names:
+                    _write_psth_significance(
+                        folder_path,
+                        event=event_name,
+                        event_b=None,
+                        recording_site=recording_site,
+                        feature=feature,
+                        peri_event_time=peri_event_time,
+                        num_trials=len(event_name_to_onsets[event_name]),
+                        num_trials_b=None,
+                        offset=0.1 * comparison_index,
+                    )
+                    comparison_index += 1
+                for event_a, event_b in psth_comparisons:
+                    _write_psth_significance(
+                        folder_path,
+                        event=event_a,
+                        event_b=event_b,
+                        recording_site=recording_site,
+                        feature=feature,
+                        peri_event_time=peri_event_time,
+                        num_trials=len(event_name_to_onsets[event_a]),
+                        num_trials_b=len(event_name_to_onsets[event_b]),
+                        offset=0.1 * comparison_index,
+                    )
+                    comparison_index += 1
 
     if use_transients_as_events:
         # Each recording site stands its own detected transients in for the TTLs, keeping the subset that
@@ -391,6 +439,7 @@ def _write_parameters(
     remove_artifacts,
     use_transients_as_events,
     bin_width,
+    psth_comparisons,
 ) -> None:
     """``GuPPyParamtersUsed.json`` written via ``json.dump``.
 
@@ -427,6 +476,13 @@ def _write_parameters(
         useTransientsAsEvents=use_transients_as_events,
         computeBinnedMetrics=bin_width is not None,
         binnedMetricsWidth=bin_width if bin_width is not None else 60.0,
+        computePsthSignificance=psth_comparisons is not None,
+        # The comparison table is two parallel lists, and it is empty when only the tests against zero
+        # were run. A blank row reaches the JSON as "", which the interface drops.
+        psthComparisonsA=[event_a for event_a, _ in psth_comparisons or ()] or [""],
+        psthComparisonsB=[event_b for _, event_b in psth_comparisons or ()] or [""],
+        psthSignificanceAlpha=0.05,
+        psthBootstrapResamples=1000,
     )
     with open(folder_path / "GuPPyParamtersUsed.json", "w", encoding="utf-8") as parameters_file:
         json.dump(parameters, parameters_file, indent=4)
@@ -671,6 +727,57 @@ def _write_psth(
     filename = f"{event}_{recording_site}_{suffix}{feature}_{recording_site}.h5"
     dataframe = _event_matrix_dataframe(peri_event_time, trial_onsets, bin_edges)
     dataframe.to_hdf(folder_path / filename, key="df", mode="w")
+
+
+def _significance_dataframe(axis, num_trials, num_trials_b, offset) -> pandas.DataFrame:
+    """Build the shared PSTH significance DataFrame layout, one row per timepoint.
+
+    Columns: ``timestamps``, ``estimate``, ``ci_lower``, ``ci_upper``, ``significant``, ``alpha``, ``n``
+    -- plus ``n_b`` for a two-event comparison, which is what tells the two kinds apart on disk. The
+    interval straddles zero over the first half of the window and clears it over the second, so the
+    significance flags are not constant; the second timepoint's interval is NaN, the case GuPPy reports
+    where too few trials overlap to resample.
+
+    ``offset`` shifts the whole comparison, so no two comparisons of one session carry the same values
+    and a column mix-up cannot pass.
+    """
+    num_points = axis.shape[0]
+    estimate = np.linspace(-0.5, 1.5, num_points) + offset
+    lower = estimate - 0.25
+    upper = estimate + 0.25
+    lower[1] = np.nan
+    upper[1] = np.nan
+    data = {
+        "timestamps": axis,
+        "estimate": estimate,
+        "ci_lower": lower,
+        "ci_upper": upper,
+        # A NaN interval cannot exclude zero, so that timepoint is reported as not significant.
+        "significant": np.where(np.isfinite(lower) & (lower > 0.0), 1, 0),
+        "alpha": np.full(num_points, 0.05),
+        "n": np.full(num_points, num_trials, dtype=int),
+    }
+    if num_trials_b is not None:
+        data["n_b"] = np.full(num_points, num_trials_b, dtype=int)
+    return pandas.DataFrame(data)
+
+
+def _write_psth_significance(
+    folder_path, event, event_b, recording_site, feature, peri_event_time, num_trials, num_trials_b, offset
+) -> None:
+    """Significance ``.h5`` and ``.csv`` -- ``psth_significance_output/significance_<comparison>.h5``.
+
+    The comparison stem is the PSTH's own stem, ``<event>_<recording_site>_<feature>_<recording_site>``,
+    with the two events joined by ``_vs_`` for an event-versus-event comparison. The ``.csv`` twin holds
+    the same table, written without the index.
+    """
+    directory = folder_path / "psth_significance_output"
+    directory.mkdir(exist_ok=True)
+    events = event if event_b is None else f"{event}_vs_{event_b}"
+    stem = f"significance_{events}_{recording_site}_{feature}_{recording_site}"
+    dataframe = _significance_dataframe(peri_event_time, num_trials, num_trials_b, offset)
+    dataframe.to_hdf(directory / f"{stem}.h5", key="df", mode="w")
+    dataframe.to_csv(directory / f"{stem}.csv", index=False)
 
 
 def _write_cross_correlation(

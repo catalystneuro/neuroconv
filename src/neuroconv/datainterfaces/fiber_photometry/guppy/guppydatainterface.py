@@ -73,6 +73,7 @@ class GuppyInterface(BaseDataInterface):
     * peri-event PSTHs and peak / AUC summaries, including those GuPPy's spontaneous mode aligned to its
       own detected transients instead of to external TTLs
     * recording-site-pair cross-correlations
+    * bootstrap significance of the PSTHs, where that optional GuPPy step was run
     * whole-session time-binned metrics, and the behavioral covariates binned onto and correlated
       against them, where those optional GuPPy steps were run
     * per-epoch tonic means, where GuPPy's optional tonic analysis was run
@@ -205,6 +206,9 @@ class GuppyInterface(BaseDataInterface):
         peak_aucs = self._discover_peak_aucs(
             folder_path=folder_path, event_names=product_event_names, recording_sites=recording_sites
         )
+        psth_significance = self._discover_psth_significance(
+            folder_path=folder_path, event_names=product_event_names, recording_sites=recording_sites
+        )
         valid_signal_intervals_by_recording_site = self._discover_valid_signal_intervals(
             folder_path=folder_path, recording_sites=recording_sites
         )
@@ -241,6 +245,7 @@ class GuppyInterface(BaseDataInterface):
         self._cross_correlations = cross_correlations
         self._psths = psths
         self._peak_aucs = peak_aucs
+        self._psth_significance = psth_significance
         self._valid_signal_intervals_by_recording_site = valid_signal_intervals_by_recording_site
         self._covariate_to_store_id = covariate_to_store_id
         self._binned_tables_by_recording_site = binned_tables_by_recording_site
@@ -467,6 +472,62 @@ class GuppyInterface(BaseDataInterface):
         return entries
 
     @classmethod
+    def _discover_psth_significance(
+        cls, folder_path: Path, event_names: list[str], recording_sites: list[str]
+    ) -> list[dict]:
+        """Discover GuPPy PSTH significance files, absent unless the optional step ran.
+
+        GuPPy writes one table per comparison into ``psth_significance_output/``, named
+        ``significance_<event>_<recording_site>_<feature>_<recording_site>.h5`` for a test against zero
+        and ``significance_<event_a>_vs_<event_b>_<recording_site>_<feature>_<recording_site>.h5`` for a
+        comparison between two events. Expected names are constructed and checked on disk rather than
+        parsed, for the same reason the PSTHs are: event and recording_site names both contain
+        underscores, so ``_vs_`` is not a safe delimiter.
+
+        Every event is tested against zero; the pairs are whichever the user named, so both directions
+        are looked for. A comparison whose event has fewer than three trials is skipped by GuPPy rather
+        than written, so the entries here are a subset of the PSTHs'.
+        """
+        directory = folder_path / "psth_significance_output"
+        if not directory.is_dir():
+            return []
+
+        entries = []
+        for recording_site in recording_sites:
+            for feature in cls._TRANSIENT_FEATURES:
+                suffix = f"{recording_site}_{feature}_{recording_site}.h5"
+                for event in event_names:
+                    path = directory / f"significance_{event}_{suffix}"
+                    if path.is_file():
+                        entries.append(
+                            dict(
+                                path=path,
+                                event=event,
+                                event_b=None,
+                                recording_site=recording_site,
+                                feature=feature,
+                                paired=False,
+                            )
+                        )
+                for event_a in event_names:
+                    for event_b in event_names:
+                        if event_a == event_b:
+                            continue
+                        path = directory / f"significance_{event_a}_vs_{event_b}_{suffix}"
+                        if path.is_file():
+                            entries.append(
+                                dict(
+                                    path=path,
+                                    event=event_a,
+                                    event_b=event_b,
+                                    recording_site=recording_site,
+                                    feature=feature,
+                                    paired=True,
+                                )
+                            )
+        return entries
+
+    @classmethod
     def _discover_valid_signal_intervals(cls, folder_path: Path, recording_sites: list[str]) -> dict[str, np.ndarray]:
         """Return ``{recording_site: intervals_array}`` for each recording_site with a coords file.
 
@@ -674,8 +735,9 @@ class GuppyInterface(BaseDataInterface):
             removeArtifacts="remove_artifacts",
             useTransientsAsEvents="use_transients_as_events",
             computeBinnedMetrics="compute_binned_metrics",
+            computePsthSignificance="compute_psth_significance",
         )
-        int_keys = dict(bin_psth_trials="bin_psth_trials")
+        int_keys = dict(bin_psth_trials="bin_psth_trials", psthBootstrapResamples="psth_bootstrap_resamples")
         float_keys = dict(
             baselineWindowStart="baseline_window_start",
             baselineWindowEnd="baseline_window_end",
@@ -689,6 +751,7 @@ class GuppyInterface(BaseDataInterface):
             baselineCorrectionStart="baseline_correction_start",
             baselineCorrectionEnd="baseline_correction_end",
             binnedMetricsWidth="binned_metrics_width",
+            psthSignificanceAlpha="psth_significance_alpha",
         )
 
         kwargs = dict(name="guppy_parameters")
@@ -704,6 +767,20 @@ class GuppyInterface(BaseDataInterface):
         for json_key, attribute in float_keys.items():
             if parameters.get(json_key) is not None:
                 kwargs[attribute] = float(parameters[json_key])
+        # The comparison table is stored as two parallel lists and starts with one blank row, so a
+        # session that ran only the tests against zero leaves nothing to record. These are the pairs
+        # that were *requested*: one whose event had too few trials is skipped and appears in no product.
+        comparison_events_a = parameters.get("psthComparisonsA") or []
+        comparison_events_b = parameters.get("psthComparisonsB") or []
+        requested_pairs = [
+            (event_a.strip(), event_b.strip())
+            for event_a, event_b in zip(comparison_events_a, comparison_events_b)
+            # A blank row reaches the JSON as either "" or NaN, depending on how it was cleared.
+            if isinstance(event_a, str) and isinstance(event_b, str) and event_a.strip() and event_b.strip()
+        ]
+        if requested_pairs:
+            kwargs["psth_comparison_events_a"] = [event_a for event_a, _ in requested_pairs]
+            kwargs["psth_comparison_events_b"] = [event_b for _, event_b in requested_pairs]
         # GuPPy pads peak_startPoint/peak_endPoint to a fixed length with NaN; keep only the real windows.
         if parameters.get("peak_startPoint") is not None:
             start_points = np.asarray(parameters["peak_startPoint"], dtype=np.float64)
@@ -743,6 +820,11 @@ class GuppyInterface(BaseDataInterface):
     @staticmethod
     def _peak_auc_name(recording_site: str, feature: str) -> str:
         return f"peak_auc_{recording_site}_{feature}"
+
+    @staticmethod
+    def _psth_significance_name(recording_site: str, feature: str, paired: bool) -> str:
+        kind = "significance_paired" if paired else "significance"
+        return f"psth_{kind}_{recording_site}_{feature}"
 
     def get_metadata(self) -> DeepDict:
         """Return metadata pre-populated from the GuPPy outputs and parameters file."""
@@ -873,6 +955,23 @@ class GuppyInterface(BaseDataInterface):
                     "Descriptive correlation of each behavioral covariate against each per-bin GuPPy " "metric."
                 ),
             )
+        # PSTH significance is an optional GuPPy step, so its entries appear only for a session that ran
+        # it. The two comparison kinds are separate objects, so each gets its own entry.
+        if self._psth_significance:
+            psth_significance_metadata = {}
+            for recording_site, feature, paired in self._group_by_condition(
+                self._psth_significance, ("recording_site", "feature", "paired")
+            ):
+                name = self._psth_significance_name(recording_site, feature, paired)
+                against = "each other" if paired else "zero"
+                psth_significance_metadata[name] = dict(
+                    name=name,
+                    description=(
+                        f"Bootstrap significance of the '{feature}' PSTH for recording_site "
+                        f"'{recording_site}', testing event responses against {against}."
+                    ),
+                )
+            guppy_metadata["PSTHSignificance"] = psth_significance_metadata
         # Tonic analysis is an optional GuPPy step, so its entry appears only for a session that ran it.
         if self._tonic_epochs_by_recording_site:
             guppy_metadata["TonicEpochs"] = dict(
@@ -923,6 +1022,7 @@ class GuppyInterface(BaseDataInterface):
                 CrossCorrelations=named_collection,
                 PSTHs=named_collection,
                 PeakAUCs=named_collection,
+                PSTHSignificance=named_collection,
                 Events=named_object,
                 BinnedMetrics=named_object,
                 Covariates=named_collection,
@@ -955,7 +1055,8 @@ class GuppyInterface(BaseDataInterface):
         ``GuppyEventsTable`` registries, the per-product objects (traces, transients, summary,
         cross-correlation, PSTH, peak/AUC, binned metrics, binned covariates, covariate correlations) each
         referencing its registry rows, the ``GuppyValidSignalIntervals`` object, and, where GuPPy's optional
-        tonic analysis was run, the ``GuppyTonicEpochs`` object. Products are written on the timestamps
+        tonic analysis and PSTH significance testing were run, the ``GuppyTonicEpochs`` and
+        ``GuppyPSTHSignificance`` objects. Products are written on the timestamps
         GuPPy emits. Each behavioral covariate's scored values are written as a ``TimeSeries`` that the two
         covariate products reference.
 
@@ -1119,6 +1220,94 @@ class GuppyInterface(BaseDataInterface):
             events_table=events_table,
             bin_basis=bin_basis,
         )
+
+        # PSTH significance: one GuppyPSTHSignificance per (recording_site, trace_type, comparison kind),
+        # written only for a session that ran that optional GuPPy step.
+        if self._psth_significance:
+            self._add_guppy_psth_significance_to_nwbfile(
+                ndx_guppy=ndx_guppy,
+                processing_module=processing_module,
+                psth_significance_metadata=guppy_metadata["PSTHSignificance"],
+                recording_sites_table=recording_sites_table,
+                events_table=events_table,
+            )
+
+    def _add_guppy_psth_significance_to_nwbfile(
+        self,
+        *,
+        ndx_guppy,
+        processing_module,
+        psth_significance_metadata: dict,
+        recording_sites_table,
+        events_table,
+    ) -> None:
+        """Add one GuppyPSTHSignificance per (recording_site, trace_type, comparison kind).
+
+        Each comparison's table is one row per timepoint over the PSTH's own peri-event axis, so the
+        comparisons of one condition stack into ``(num_samples, num_comparisons)`` matrices. The two
+        comparison kinds are separate objects: the event-versus-event one additionally carries the
+        ``event_b`` region and ``num_trials_b``, which is what distinguishes it, mirroring the ``n_b``
+        column that distinguishes the two kinds on disk.
+        """
+        significance_groups = self._group_by_condition(self._psth_significance, ("recording_site", "feature", "paired"))
+        for (recording_site, feature, paired), entries in significance_groups.items():
+            entry_metadata = psth_significance_metadata[self._psth_significance_name(recording_site, feature, paired)]
+
+            axis = None
+            estimate_columns: list[np.ndarray] = []
+            lower_columns: list[np.ndarray] = []
+            upper_columns: list[np.ndarray] = []
+            significant_columns: list[np.ndarray] = []
+            num_trials: list[int] = []
+            num_trials_b: list[int] = []
+            event_names: list[str] = []
+            event_b_names: list[str] = []
+
+            for entry in entries:
+                dataframe = pandas.read_hdf(entry["path"])
+
+                comparison_axis = dataframe["timestamps"].to_numpy(dtype=np.float64)
+                if axis is None:
+                    axis = comparison_axis
+                else:
+                    assert np.array_equal(axis, comparison_axis), (
+                        f"GuPPy significance files for one condition must share an identical peri-event "
+                        f"axis to be concatenated across comparisons, but '{entry['path'].name}' differs."
+                    )
+
+                estimate_columns.append(dataframe["estimate"].to_numpy(dtype=np.float64))
+                lower_columns.append(dataframe["ci_lower"].to_numpy(dtype=np.float64))
+                upper_columns.append(dataframe["ci_upper"].to_numpy(dtype=np.float64))
+                significant_columns.append(dataframe["significant"].to_numpy(dtype=bool))
+                # alpha and n are constant down a file's rows.
+                num_trials.append(int(dataframe["n"].iloc[0]))
+                event_names.append(entry["event"])
+                if paired:
+                    num_trials_b.append(int(dataframe["n_b"].iloc[0]))
+                    event_b_names.append(entry["event_b"])
+
+            significance_kwargs = dict(
+                name=entry_metadata["name"],
+                description=entry_metadata["description"],
+                trace_type=feature,
+                unit="a.u.",
+                recording_site=self._recording_site_reference(recording_sites_table, [recording_site]),
+                event=self._event_reference(events_table, event_names, recording_site=recording_site),
+                peri_event_time=axis,
+                estimate=np.stack(estimate_columns, axis=1),
+                confidence_interval_lower=np.stack(lower_columns, axis=1),
+                confidence_interval_upper=np.stack(upper_columns, axis=1),
+                significant=np.stack(significant_columns, axis=1),
+                num_trials=np.array(num_trials, dtype=np.int32),
+            )
+            if paired:
+                significance_kwargs.update(
+                    event_b=self._event_reference(
+                        events_table, event_b_names, name="event_b", recording_site=recording_site
+                    ),
+                    num_trials_b=np.array(num_trials_b, dtype=np.int32),
+                )
+            processing_module.add(ndx_guppy.GuppyPSTHSignificance(**significance_kwargs))
 
     def _recording_site_reference(self, recording_sites_table, recording_site_names: list[str]) -> DynamicTableRegion:
         """Build a DynamicTableRegion into the GuppyRecordingSitesTable for the given recording_site name(s)."""
