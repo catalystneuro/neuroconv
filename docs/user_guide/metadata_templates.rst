@@ -8,8 +8,8 @@ what else the NWB file needs from you. ``get_metadata_template()`` answers that 
 returns the same source-derived values wrapped in the full structure the writer expects, with the
 cross-references between entries already resolved and every field only you can supply left blank.
 
-The fiber photometry and optical physiology interfaces are the ones that offer it today. Other
-modalities will follow, and this page grows a section for each.
+The fiber photometry, optical physiology and pose estimation interfaces are the ones that offer it
+today. Other modalities will follow, and this page grows a section for each.
 
 Fill in the blanks and pass the result on:
 
@@ -145,4 +145,38 @@ traces and images the file actually holds.
     .. tab-item:: JSON
 
         .. literalinclude:: metadata_templates/ophys_segmentation.json
+           :language: json
+
+
+.. _pose_estimation_metadata_template:
+
+Pose Estimation
+---------------
+
+One ``PoseEstimation`` container and the ``Skeleton`` naming its body parts, cross-referenced by
+``skeleton_metadata_key``, plus the camera they hang off. Rename ``pose_estimation`` to whatever
+``metadata_key`` the interface was constructed with, in both blocks.
+
+A pose file records coordinates and confidences and almost nothing else, so this block is blanker than
+the others: what the coordinates are measured from, what unit they are in, what the confidence value
+means and which body parts are joined are all yours to state. ``nodes`` is the exception, since the
+tracker named the body parts, and its order is what ``edges`` indexes into.
+
+One container is one camera view of one subject. Several animals in a recording is one file each rather
+than several containers, and several views of one animal is one interface each, so a second view brings
+its own key here and normally points at the same skeleton.
+
+For the same structure filled in with real values, built one block at a time, see
+:ref:`annotate_pose_metadata`.
+
+.. tab-set::
+
+    .. tab-item:: YAML
+
+        .. literalinclude:: metadata_templates/pose_estimation.yaml
+           :language: yaml
+
+    .. tab-item:: JSON
+
+        .. literalinclude:: metadata_templates/pose_estimation.json
            :language: json

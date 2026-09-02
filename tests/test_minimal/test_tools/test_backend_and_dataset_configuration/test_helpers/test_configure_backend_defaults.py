@@ -124,21 +124,6 @@ def test_simple_dynamic_table(tmpdir: Path, integer_array: np.ndarray, backend: 
     written_nwbfile.read_io.close()
 
 
-def test_pynwb_data_io_is_shadowed_on_nwbdata():
-    """Expiry canary for the `_NWBData__data` re-sync in `configure_backend`.
-
-    `NWBData` shadows the `_Data__data` attribute that `Data.set_data_io` writes to, so the DataIO never
-    reaches `.data`. The fix is https://github.com/NeurodataWithoutBorders/pynwb/pull/2233; when this
-    assertion starts failing that has shipped and the workaround can go.
-    """
-    from hdmf.backends.hdf5.h5_utils import H5DataIO
-
-    image = GrayscaleImage(name="TestImage", data=np.zeros(shape=(4, 4), dtype="uint8"))
-    image.set_data_io(data_io_class=H5DataIO, data_io_kwargs=dict(compression="gzip"))
-
-    assert not isinstance(image.data, DataIO)
-
-
 @pytest.mark.parametrize("backend", ["hdf5", "zarr"])
 def test_simple_image(tmpdir: Path, backend: Literal["hdf5", "zarr"]):
     array = np.zeros(shape=(64, 64), dtype="uint8")

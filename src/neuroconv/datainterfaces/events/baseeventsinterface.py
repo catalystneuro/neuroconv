@@ -2,7 +2,7 @@ from abc import abstractmethod
 from dataclasses import dataclass, field
 
 import numpy as np
-from hdmf.common import MeaningsTable
+from hdmf.common import MeaningsTable, VectorIndex
 from pynwb.event import EventsTable
 from pynwb.file import NWBFile
 
@@ -47,6 +47,15 @@ class _EventsData:
     timestamps: np.ndarray
     durations: np.ndarray | None = None
     payload: dict[str, np.ndarray] = field(default_factory=dict)
+
+
+def _holds_several_values(value) -> bool:
+    """Whether one event's value for a payload field is several values rather than one.
+
+    A string is a scalar even though it is iterable, and a numpy string scalar likewise, so the test is
+    for the container types a payload actually uses to mean "more than one".
+    """
+    return isinstance(value, (list, tuple, set)) or (isinstance(value, np.ndarray) and value.ndim > 0)
 
 
 class BaseEventsInterface(BaseDataInterface):
@@ -386,12 +395,31 @@ class BaseEventsInterface(BaseDataInterface):
             if existing_table is None:
                 nwbfile.add_events_table(table)
 
-            # Finalize: re-sort the table chronologically by permuting every full-length column in place
-            # (stable, so equal timestamps keep insertion order). Works while the columns are in-memory lists.
+            # Finalize: re-sort the table chronologically (stable, so equal timestamps keep insertion
+            # order). Works while the columns are in-memory lists.
             n = len(table.id)
             order = list(np.argsort(np.asarray(table["timestamp"].data), kind="stable"))
             if order != list(range(n)):
+                # A ragged column is two datasets, cumulative offsets and the values they slice, and a
+                # row is a span of the second rather than an element of it. Permuting the offsets would
+                # be meaningless and would leave them describing values that had not moved, so its rows
+                # are read out, reordered, and the pair rebuilt from them.
+                ragged_columns = [column for column in table.columns if isinstance(column, VectorIndex)]
+                sliced_by_index = {id(column.target) for column in ragged_columns}
+                for column in ragged_columns:
+                    rows = [list(column[row_index]) for row_index in range(n)]
+                    reordered = [rows[index] for index in order]
+                    column.target.data[:] = [value for row in reordered for value in row]
+                    offsets, running_total = [], 0
+                    for row in reordered:
+                        running_total += len(row)
+                        offsets.append(running_total)
+                    column.data[:] = offsets
                 for column in table.columns:
+                    # A ragged column's values are not one per row, and are rebuilt above; its offsets
+                    # happen to be one per row and must not be permuted as if they were values.
+                    if isinstance(column, VectorIndex) or id(column) in sliced_by_index:
+                        continue
                     if len(column.data) == n:
                         column.data[:] = [column.data[index] for index in order]
 
@@ -422,6 +450,11 @@ class BaseEventsInterface(BaseDataInterface):
         # value-column specs keyed by column_name.
         rows = []
         column_specs = {}
+        # A payload field may hold several values per event rather than one, a behavior scored with two
+        # qualifiers at once or a trial tagged with three conditions. Those become a ragged column, and
+        # which columns those are is read off the data rather than declared: a metadata flag would be a
+        # second place for the same fact to live and to disagree.
+        ragged_column_names = set()
         for event_type_source_id in event_type_source_ids:
             event = event_data[event_type_source_id]
             entry = event_types[event_type_source_id]
@@ -437,12 +470,19 @@ class BaseEventsInterface(BaseDataInterface):
                 # checked for consistency up front by _validate_shared_columns); record it once, then let
                 # each type fill its own rows below.
                 column_specs.setdefault(column_name, column_spec)
+                if any(_holds_several_values(value) for value in event.payload[field_source_id]):
+                    ragged_column_names.add(column_name)
                 resolved_columns.append((field_source_id, column_name, self._labels_map(column_spec)))
             for index, timestamp in enumerate(event.timestamps):
                 cells = {}
                 for field_source_id, column_name, labels_map in resolved_columns:
                     value = event.payload[field_source_id][index]
-                    cells[column_name] = labels_map[str(value)] if labels_map is not None else value
+                    if labels_map is None:
+                        cells[column_name] = value
+                    elif _holds_several_values(value):
+                        cells[column_name] = [labels_map[str(item)] for item in value]
+                    else:
+                        cells[column_name] = labels_map[str(value)]
                 duration = float(event.durations[index]) if event.durations is not None else np.nan
                 rows.append((float(timestamp) + time_offset, event_name, duration, cells))
 
@@ -479,13 +519,37 @@ class BaseEventsInterface(BaseDataInterface):
         # its own labels rather than dropping them.
         for column_name, column_spec in column_specs.items():
             categories = column_spec.get("column_categories")
+            is_ragged = column_name in ragged_column_names
             if column_name not in table.colnames:
-                fill = "" if categories is not None else np.nan
-                empty = np.array([], dtype=str if categories is not None else float)
-                table.add_column(
-                    name=column_name,
-                    description=column_spec.get("description", ""),
-                    data=empty if stays_empty else [fill] * n_existing,
+                if is_ragged:
+                    # A row that has nothing for a ragged column holds an empty list, which is the only
+                    # fill that means the same thing as the scalar fills below.
+                    table.add_column(
+                        name=column_name,
+                        description=column_spec.get("description", ""),
+                        data=[[] for _ in range(n_existing)],
+                        index=True,
+                    )
+                else:
+                    fill = "" if categories is not None else np.nan
+                    empty = np.array([], dtype=str if categories is not None else float)
+                    table.add_column(
+                        name=column_name,
+                        description=column_spec.get("description", ""),
+                        data=empty if stays_empty else [fill] * n_existing,
+                    )
+            elif is_ragged and not isinstance(table[column_name], VectorIndex):
+                raise ValueError(
+                    f"Column '{column_name}' on table '{table.name}' holds one value per event, and this "
+                    "interface writes several. A column is one shape or the other for every contributor."
+                )
+            elif not is_ragged and isinstance(table[column_name], VectorIndex):
+                # The mirror of the case above, and the one that fails silently without this: a scalar
+                # handed to a ragged column reaches `VectorIndex.add_vector`, which extends the values
+                # with it, so a string is appended one character at a time.
+                raise ValueError(
+                    f"Column '{column_name}' on table '{table.name}' holds several values per event, and "
+                    "this interface writes one. A column is one shape or the other for every contributor."
                 )
             # Only a meaning the user actually wrote earns a row: a column whose meanings are all empty
             # gets no MeaningsTable rather than a table of empty strings, and a partly annotated column
@@ -500,7 +564,11 @@ class BaseEventsInterface(BaseDataInterface):
                 # label, matching the column's cells. Create the table the first time the column is seen, else
                 # extend it (dedup by label) so a shared column keeps every contributor's meanings.
                 labels = categories["labels"]
+                # A ragged column is a VectorIndex over the data, and the meanings describe the values,
+                # so the table targets what is underneath rather than the index.
                 column = table[column_name]
+                if isinstance(column, VectorIndex):
+                    column = column.target
                 meanings_table = next(
                     (other for other in (table.meanings_tables or {}).values() if other.target is column),
                     None,
@@ -559,14 +627,14 @@ class BaseEventsInterface(BaseDataInterface):
             for column_name in value_column_names:
                 if column_name in cells:
                     row_kwargs[column_name] = cells[column_name]
+                elif isinstance(table[column_name], VectorIndex):
+                    row_kwargs[column_name] = []
                 elif column_name in column_specs:
                     row_kwargs[column_name] = "" if column_specs[column_name].get("column_categories") else np.nan
                 else:  # a column from a prior interface: infer the fill from its existing dtype
                     existing = table[column_name].data
                     row_kwargs[column_name] = "" if len(existing) and isinstance(existing[0], str) else np.nan
-            # check_ragged=False: hdmf rescans the whole column on every add_row, making the fill quadratic
-            # in its rows. Every cell here is a scalar, so the check can only ever return False.
-            table.add_row(check_ragged=False, **row_kwargs)
+            table.add_row(**row_kwargs)
 
     @staticmethod
     def _validate_shared_columns(events_metadata: dict) -> None:
@@ -684,5 +752,14 @@ def _to_table_object_name(name: str) -> str:
     that already carries mixed/upper casing and no underscore (a raw ``event_type_source_id`` like
     ``PtAB`` or ``XD0``) is returned unchanged, because ``to_camel_case("PtAB")`` would lowercase the
     rest and give ``"Ptab"``.
+
+    The two characters NWB rejects in an object name are replaced here rather than by the interface that
+    supplies the name, since this is the only place the name has to satisfy that constraint. Everywhere
+    else an ``event_name`` goes, the ``event_type`` column and its ``MeaningsTable``, any string is legal,
+    and a source identifier is worth more there intact: ``Grooming/Eating`` is an ordinary way to name one
+    behavior covering two things, and only the object name derived from it needs repairing.
+    ``to_camel_case`` does not remove them, so ``"Foraging/Caching"`` would otherwise reach a name as
+    ``"Foraging/caching"``.
     """
+    name = name.replace("/", "_").replace(":", "_")
     return to_camel_case(name) if ("_" in name or name.islower()) else name

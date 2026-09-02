@@ -66,6 +66,45 @@ def get_module(nwbfile: NWBFile, name: str, description: str = None):
         return nwbfile.create_processing_module(name=name, description=description)
 
 
+def _get_container_by_name(nwbfile: NWBFile, name: str, neurodata_type: str):
+    """
+    Return the container of the given neurodata type carrying the given name.
+
+    Used where an interface must link to an object another interface already wrote, since metadata
+    addresses it by name while the link needs the object itself.
+
+    Parameters
+    ----------
+    nwbfile : NWBFile
+        The NWB file to search, including its processing modules.
+    name : str
+        The name of the container to return.
+    neurodata_type : str
+        The class name of the container, such as ``"PoseEstimation"`` or ``"ImageSeries"``.
+
+    Returns
+    -------
+    The container carrying that name.
+
+    Raises
+    ------
+    ValueError
+        If no container of that type carries that name, naming the ones that do exist.
+    """
+    containers = {obj.name: obj for obj in nwbfile.all_children() if type(obj).__name__ == neurodata_type}
+    if name in containers:
+        return containers[name]
+    if containers:
+        raise ValueError(
+            f"No {neurodata_type} named '{name}' was found in the NWB file. "
+            f"Available {neurodata_type} containers: {list(containers)}."
+        )
+    raise ValueError(
+        f"No {neurodata_type} named '{name}' was found in the NWB file. No {neurodata_type} containers exist "
+        "in the file, so ensure the interface that writes it runs first."
+    )
+
+
 def get_default_nwbfile_metadata() -> DeepDict:
     """
     Return structure with defaulted metadata values required for a NWBFile.
@@ -279,6 +318,31 @@ def _add_device_model_to_nwbfile(
     device_model = model_class(**model_kwargs)
     nwbfile.add_device_model(device_model)
     return device_model
+
+
+def _get_device_template_entry(*, device_model_metadata_key: str) -> dict:
+    """A blank device, ready to be linked to by whatever hangs off it.
+
+    The make and catalog specification belong to the model rather than to the instrument: pynwb
+    deprecated ``Device.manufacturer``, ``model_number`` and ``model_name`` in favor of a linked
+    ``DeviceModel``, so those are offered there and only the serial number of this one instrument
+    stays here.
+    """
+    return dict(
+        name=None,
+        description=None,
+        serial_number=None,
+        device_model_metadata_key=device_model_metadata_key,
+    )
+
+
+def _get_device_model_template_entry() -> dict:
+    """A blank device model: the make and catalog specification, shared by every recording on that instrument.
+
+    Optional as a whole. To drop it, delete the entry and the ``device_model_metadata_key`` pointing
+    at it.
+    """
+    return dict(name=None, manufacturer=None, model_number=None, description=None)
 
 
 def _add_device_to_nwbfile(

@@ -10,12 +10,14 @@ from pynwb.ophys import ImagingPlane, OnePhotonSeries, TwoPhotonSeries
 
 from ._metadata_schema import _get_ophys_registry_entry_definitions, _keyed_registry
 from ._metadata_template import (
-    _get_device_model_template_entry,
-    _get_device_template_entry,
     _get_imaging_plane_template_entry,
     _resolve_device_metadata_key,
 )
 from ...baseextractorinterface import BaseExtractorInterface
+from ...tools.nwb_helpers._metadata_and_file_helpers import (
+    _get_device_model_template_entry,
+    _get_device_template_entry,
+)
 from ...utils import (
     DeepDict,
     dict_deep_update,
