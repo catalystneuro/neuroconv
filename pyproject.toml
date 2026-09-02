@@ -406,11 +406,6 @@ minian = [
 femtonics = [
     "neuroconv[ophys_minimal]",
 ]
-# Here for backwards compatibility with older versions of the gallery
-# Remove at the start of 2026
-hdf5 = [
-    "neuroconv[hdf5imaging]",
-]
 hdf5imaging = [
     "neuroconv[ophys_minimal]",
 ]
@@ -426,11 +421,6 @@ miniscope = [
     "ndx-miniscope>=0.5.1",
     "neuroconv[ophys_minimal]",
     "neuroconv[video]",
-]
-# Here for backwards compatibility with older versions of the gallery
-# Remove at the start of 2026
-sbx = [
-    "neuroconv[scanbox]",
 ]
 scanbox = [
     "neuroconv[ophys_minimal]",
