@@ -58,6 +58,17 @@ TONIC_EPOCHS = [("baseline", 1.0, 2.0), ("post_injection", 2.0, 3.0)]
 MOCK_TRIAL_ONSETS = [10.0, 20.0, 30.0, 40.0]
 # The generator's default significance comparison, the one pair tested against each other.
 PSTH_COMPARISON = ("rewarded_nose_pokes", "unrewarded_nose_pokes")
+# The smallest session the generator will write: one site, one event, no optional products. The
+# significance tests that assert on an *absence* need nothing the rest of the topology provides.
+MINIMAL_SESSION = dict(
+    recording_site_to_stores={"dms": {"signal": "Dv2A", "control": "Dv1A"}},
+    event_store_to_name={"PrtR": "port_entries"},
+    cross_correlation_pairs=(),
+    bin_width=None,
+    covariates={},
+    tonic_epochs=(),
+    num_psth_timepoints=5,
+)
 
 
 class TestExtractBins:
@@ -172,7 +183,15 @@ class TestGuppyInterfaceBehavior:
         derived unit ever leak into the metadata.
         """
         guppy_metadata = interface.get_metadata()["FiberPhotometry"]["Guppy"][interface.metadata_key]
-        for family in ("Traces", "Transients", "CrossCorrelations", "PSTHs", "PeakAUCs", "Covariates"):
+        for family in (
+            "Traces",
+            "Transients",
+            "CrossCorrelations",
+            "PSTHs",
+            "PeakAUCs",
+            "Covariates",
+            "PSTHSignificance",
+        ):
             for name, entry in guppy_metadata[family].items():
                 assert set(entry.keys()) == {"name", "description"}, (family, entry)
                 assert entry["name"] == name
@@ -520,20 +539,23 @@ class TestGuppyInterfaceBehavior:
 
     @pytest.fixture(scope="class")
     @classmethod
-    def significance_output_folder(cls, tmp_path_factory):
-        """A significance session with a five-point PSTH window, so every value is hand-checkable."""
-        return generate_mock_guppy_output_folder(
+    def significance_nwbfile(cls, tmp_path_factory):
+        """One written file for the significance assertions, which only read it.
+
+        A five-point PSTH window keeps every value hand-checkable, and writing once keeps the three
+        assertions below from paying for three full conversions of the same session.
+        """
+        folder_path = generate_mock_guppy_output_folder(
             tmp_path_factory.mktemp("guppy_significance") / "guppy_output", num_psth_timepoints=5
         )
+        interface = GuppyInterface(folder_path=str(folder_path))
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile, interface.get_metadata(), stub_test=False)
+        return nwbfile
 
-    @pytest.fixture
-    def significance_interface(self, significance_output_folder):
-        return GuppyInterface(folder_path=str(significance_output_folder))
-
-    def test_psth_significance_stacks_every_comparison_of_one_condition(self, significance_interface, nwbfile):
+    def test_psth_significance_stacks_every_comparison_of_one_condition(self, significance_nwbfile):
         """The tests against zero of one (recording site, feature) are the columns of one object."""
-        module = self.add_to_nwbfile(significance_interface, nwbfile, stub_test=False)
-        significance = module["psth_significance_dms_z_score"]
+        significance = significance_nwbfile.processing["guppy"]["psth_significance_dms_z_score"]
         assert significance.neurodata_type == "GuppyPSTHSignificance"
         assert significance.trace_type == "z_score"
 
@@ -569,10 +591,9 @@ class TestGuppyInterfaceBehavior:
         assert significance.event_b is None
         assert significance.num_trials_b is None
 
-    def test_paired_psth_significance_names_both_events(self, significance_interface, nwbfile):
+    def test_paired_psth_significance_names_both_events(self, significance_nwbfile):
         """An event-versus-event comparison is its own object, naming event A and event B per column."""
-        module = self.add_to_nwbfile(significance_interface, nwbfile, stub_test=False)
-        paired = module["psth_significance_paired_dms_z_score"]
+        paired = significance_nwbfile.processing["guppy"]["psth_significance_paired_dms_z_score"]
 
         event_names = list(paired.event.table["event_name"].data)
         assert [event_names[index] for index in paired.event.data] == [PSTH_COMPARISON[0]]
@@ -582,12 +603,11 @@ class TestGuppyInterfaceBehavior:
         # The estimate is A minus B, on its own offset, so it is not a copy of either one-sample column.
         np.testing.assert_allclose(paired.estimate[:, 0], [-0.2, 0.3, 0.8, 1.3, 1.8], atol=1e-6)
 
-    def test_psth_significance_covers_every_recording_site_and_feature(self, significance_interface, nwbfile):
+    def test_psth_significance_covers_every_recording_site_and_feature(self, interface):
         """One object per (recording site, feature, comparison kind), and no others."""
-        module = self.add_to_nwbfile(significance_interface, nwbfile, stub_test=False)
+        guppy_metadata = interface.get_metadata()["FiberPhotometry"]["Guppy"][interface.metadata_key]
 
-        written = sorted(name for name in module.data_interfaces if name.startswith("psth_significance"))
-        assert written == sorted(
+        assert sorted(guppy_metadata["PSTHSignificance"]) == sorted(
             f"psth_significance{'_paired' if paired else ''}_{recording_site}_{feature}"
             for recording_site in RECORDING_SITES
             for feature in ["z_score", "dff"]
@@ -597,7 +617,7 @@ class TestGuppyInterfaceBehavior:
     def test_no_psth_significance_writes_no_objects(self, tmp_path, nwbfile):
         """A session that never ran the optional step has no output directory, so no object."""
         folder_path = generate_mock_guppy_output_folder(
-            tmp_path / "guppy_output_no_significance", psth_comparisons=None
+            tmp_path / "guppy_output_no_significance", psth_comparisons=None, **MINIMAL_SESSION
         )
         interface = GuppyInterface(folder_path=str(folder_path))
 
@@ -609,7 +629,9 @@ class TestGuppyInterfaceBehavior:
 
     def test_significance_without_named_pairs_writes_only_the_tests_against_zero(self, tmp_path, nwbfile):
         """Testing against zero needs no configuration, so it runs even with an empty comparison table."""
-        folder_path = generate_mock_guppy_output_folder(tmp_path / "guppy_output_zero_only", psth_comparisons=())
+        folder_path = generate_mock_guppy_output_folder(
+            tmp_path / "guppy_output_zero_only", psth_comparisons=(), **MINIMAL_SESSION
+        )
         interface = GuppyInterface(folder_path=str(folder_path))
 
         module = self.add_to_nwbfile(interface, nwbfile, stub_test=True)
@@ -621,10 +643,9 @@ class TestGuppyInterfaceBehavior:
         assert parameters.psth_comparison_events_a is None
         assert parameters.psth_comparison_events_b is None
 
-    def test_psth_significance_parameters_land_on_guppy_parameters(self, significance_interface, nwbfile):
+    def test_psth_significance_parameters_land_on_guppy_parameters(self, significance_nwbfile):
         """The threshold, the resample count, and the pairs that were asked for."""
-        self.add_to_nwbfile(significance_interface, nwbfile, stub_test=True)
-        parameters = nwbfile.lab_meta_data["guppy_parameters"]
+        parameters = significance_nwbfile.lab_meta_data["guppy_parameters"]
 
         assert parameters.compute_psth_significance
         assert parameters.psth_significance_alpha == 0.05
