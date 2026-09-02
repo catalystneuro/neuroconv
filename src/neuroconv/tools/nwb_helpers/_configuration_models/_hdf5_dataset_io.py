@@ -38,26 +38,12 @@ class HDF5DatasetIOConfiguration(DatasetIOConfiguration):
     # so they can never be the compression method of a dataset.
     _pure_filter_names: ClassVar[tuple[str, ...]] = ("shuffle", "fletcher32")
 
+    # The compression methods are built from the same dictionary the rest of the library reports as available,
+    # rather than spelled out here, so a filter a new hdf5plugin release adds is accepted instead of being
+    # announced as available and then rejected by this field.
     compressors: (
         list[
-            Literal[
-                "shuffle",
-                "fletcher32",
-                "szip",
-                "lzf",
-                "gzip",
-                "Bitshuffle",
-                "Blosc",
-                "Blosc2",
-                "BZip2",
-                "FciDecomp",
-                "LZ4",
-                "Sperr",
-                "SZ",
-                "SZ3",
-                "Zfp",
-                "Zstd",
-            ]
+            Literal[(*_pure_filter_names, *AVAILABLE_HDF5_COMPRESSION_METHODS.keys())]
             | InstanceOf[h5py._hl.filters.FilterRefBase]
         ]
         | None

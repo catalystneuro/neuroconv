@@ -3,7 +3,15 @@ from abc import abstractmethod
 import numpy as np
 from pynwb.file import NWBFile
 
+from ._pose_metadata_template import (
+    _get_pose_estimation_template_entry,
+    _get_skeleton_template_entry,
+)
 from ...basetemporalalignmentinterface import BaseTemporalAlignmentInterface
+from ...tools.nwb_helpers._metadata_and_file_helpers import (
+    _get_device_model_template_entry,
+    _get_device_template_entry,
+)
 from ...tools.pose_estimation import _add_pose_estimation_to_nwbfile
 from ...utils import DeepDict
 
@@ -63,6 +71,51 @@ class BasePoseEstimationInterface(BaseTemporalAlignmentInterface):
         }
 
         return metadata
+
+    def get_metadata_template(self) -> DeepDict:
+        """Return the container, skeleton and camera this interface can write, with the blanks marked.
+
+        The counterpart to :meth:`get_metadata`, which reports only what the tracker recorded and so
+        leaves a user no indication of what else the file could say. This returns those same values
+        wrapped in the full structure the writer accepts. Fill in the blanks and pass the result to
+        ``add_to_nwbfile`` or ``run_conversion``; an optional field left blank is skipped rather than
+        written, and deleting an entry is how you get a file without that object.
+
+        One container and one skeleton under this interface's ``metadata_key``, already
+        cross-referenced, and one camera they hang off. What is blank is what only the experimenter can
+        supply, which for a pose file is nearly everything: what the coordinates are measured from, what
+        their unit is, what the confidence value means, and which body parts are connected.
+
+        Rename the keys to suit the recording; they are handles, not names in the file.
+        """
+        metadata_key = self.metadata_key
+        keypoint_names = self._get_keypoint_names()
+
+        device_metadata_key = "camera"
+        device_model_metadata_key = "camera_model"
+        template = DeepDict(
+            dict(
+                DeviceModels={device_model_metadata_key: _get_device_model_template_entry()},
+                Devices={
+                    device_metadata_key: _get_device_template_entry(device_model_metadata_key=device_model_metadata_key)
+                },
+                Pose=dict(
+                    Skeletons={metadata_key: _get_skeleton_template_entry(keypoint_names=keypoint_names)},
+                    PoseEstimations={
+                        metadata_key: _get_pose_estimation_template_entry(
+                            keypoint_names=keypoint_names,
+                            skeleton_metadata_key=metadata_key,
+                            device_metadata_key=device_metadata_key,
+                        )
+                    },
+                ),
+            )
+        )
+
+        # The blanks are a floor rather than an override: whatever the source recorded wins over the
+        # template, so a field the tracker was able to read is never handed back as one to fill in.
+        template.deep_update(self.get_metadata())
+        return template
 
     def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict | None = None, **conversion_options) -> None:
         """Write this interface's ``PoseEstimation`` container to the file's behavior module.

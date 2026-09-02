@@ -485,7 +485,7 @@ class DatasetIOConfiguration(BaseModel, ABC):
         return dataset
 
     # ==================================================================================================
-    # Deprecated in v0.10.1, to be removed in v0.12.0.
+    # Deprecated in v0.10.2, to be removed in v0.12.0.
     #
     # Everything between this marker and the one closing the block is self-contained: it reads and writes
     # `compressors` and `compressor_options` and nothing outside the block calls into it. Deleting the
@@ -516,7 +516,7 @@ class DatasetIOConfiguration(BaseModel, ABC):
         """
         The compression method applied to this dataset.
 
-        .. deprecated:: 0.10.1
+        .. deprecated:: 0.10.2
             `compression_method` is deprecated and will be removed in v0.12.0. Use `compressors` instead.
         """
         warnings.warn(self._COMPRESSION_METHOD_DEPRECATION_MESSAGE, FutureWarning, stacklevel=2)
@@ -548,7 +548,7 @@ class DatasetIOConfiguration(BaseModel, ABC):
         """
         The parameters of the compression method applied to this dataset.
 
-        .. deprecated:: 0.10.1
+        .. deprecated:: 0.10.2
             `compression_options` is deprecated and will be removed in v0.12.0. Use `compressor_options` instead.
         """
         warnings.warn(self._COMPRESSION_OPTIONS_DEPRECATION_MESSAGE, FutureWarning, stacklevel=2)
@@ -610,5 +610,5 @@ class DatasetIOConfiguration(BaseModel, ABC):
         return values
 
     # ==================================================================================================
-    # End of the block deprecated in v0.10.1, to be removed in v0.12.0.
+    # End of the block deprecated in v0.10.2, to be removed in v0.12.0.
     # ==================================================================================================
