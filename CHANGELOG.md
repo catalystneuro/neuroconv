@@ -12,6 +12,7 @@
 * Fixed the Zarr shuffle codec taking `numcodecs`' default `elementsize` of 4 regardless of the dataset's dtype, which on float64 grouped the wrong bytes and recovered almost nothing, so it is now taken from the dtype unless the caller states one. [PR #1984](https://github.com/catalystneuro/neuroconv/pull/1984)
 
 ## Features
+* `GuppyInterface` now writes the outputs of GuPPy's bootstrap PSTH significance testing as `ndx-guppy` `GuppyPSTHSignificance` objects: the estimate, both confidence bounds and the significance flags over the peri-event window, one object per (recording site, trace type, comparison kind), with the event pairs compared against each other kept separate from the tests against zero. It is written only for a session that ran that optional GuPPy step. [PR #2000](https://github.com/catalystneuro/neuroconv/pull/2000)
 * `HDF5DatasetIOConfiguration` and `ZarrDatasetIOConfiguration` now describe a dataset's codec pipeline with an ordered `compressors` list and a matching `compressor_options`, which makes the HDF5 `shuffle` and `fletcher32` filters reachable for the first time and gives both backends the same vocabulary. [PR #1979](https://github.com/catalystneuro/neuroconv/pull/1979)
 
 ## Improvements
