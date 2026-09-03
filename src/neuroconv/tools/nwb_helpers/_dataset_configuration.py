@@ -10,12 +10,13 @@ from hdmf import Container
 from hdmf.data_utils import DataIO
 from hdmf.utils import get_data_shape
 from hdmf_zarr import NWBZarrIO
-from pynwb import NWBHDF5IO, NWBFile, get_manager
+from pynwb import NWBHDF5IO, NWBFile
 from pynwb.base import DynamicTable, Image, TimeSeriesReferenceVectorData
 from pynwb.file import NWBContainer
 
 from ._configuration_models import DATASET_IO_CONFIGURATIONS
 from ._configuration_models._base_dataset_io import DatasetIOConfiguration
+from ..hdmf import _get_nwbfile_builder
 
 
 def _get_io_mode(io: NWBHDF5IO | NWBZarrIO) -> str:
@@ -24,6 +25,21 @@ def _get_io_mode(io: NWBHDF5IO | NWBZarrIO) -> str:
         return io.mode
     elif isinstance(io, NWBZarrIO):
         return io._ZarrIO__mode
+
+
+def _get_zarr_store_path(zarr_array: zarr.Array) -> str | None:
+    """
+    The path of the Zarr 'file' a Zarr Array was read from, or None when its store keeps no path.
+
+    A `ConsolidatedMetadataStore` holds the path on the store it wraps rather than on itself, and
+    hdmf-zarr hands one back for every dataset reached through a link, `DynamicTable` columns among
+    them, whatever mode the file itself was opened in.
+    """
+    store = zarr_array.store
+    store_path = getattr(store, "path", None)
+    if store_path is None:
+        store_path = getattr(getattr(store, "store", None), "path", None)
+    return store_path
 
 
 def _is_dataset_written_to_file(
@@ -41,17 +57,16 @@ def _is_dataset_written_to_file(
 
     normalized_existing = Path(existing_file_path).resolve()
 
-    return (
-        isinstance(candidate_dataset, h5py.Dataset)  # If the source data is an HDF5 Dataset
-        and backend == "hdf5"
-        and Path(candidate_dataset.file.filename).resolve()
-        == normalized_existing  # If the source HDF5 Dataset is the appending NWBFile
-    ) or (
-        isinstance(candidate_dataset, zarr.Array)  # If the source data is a Zarr Array
-        and backend == "zarr"
-        and Path(candidate_dataset.store.path).resolve()
-        == normalized_existing  # If the source Zarr 'file' is the appending NWBFile
-    )
+    if isinstance(candidate_dataset, h5py.Dataset) and backend == "hdf5":
+        # If the source HDF5 Dataset is the appending NWBFile
+        return Path(candidate_dataset.file.filename).resolve() == normalized_existing
+
+    if isinstance(candidate_dataset, zarr.Array) and backend == "zarr":
+        # If the source Zarr 'file' is the appending NWBFile
+        store_path = _get_zarr_store_path(zarr_array=candidate_dataset)
+        return store_path is not None and Path(store_path).resolve() == normalized_existing
+
+    return False
 
 
 def get_default_dataset_io_configurations(
@@ -107,11 +122,10 @@ def get_default_dataset_io_configurations(
         )
 
     known_dataset_fields = ("data", "timestamps")
-    manager = get_manager()
-    builder = manager.build(nwbfile, export=True)
-    # export = True ensures that the builder is created fresh (as opposed to a cached version),
-    # which is essential to make sure that all of the datasets are properly represented.
-    for neurodata_object in nwbfile.objects.values():
+    builder = _get_nwbfile_builder(nwbfile=nwbfile)
+    # `nwbfile.objects` is built on its first read and never invalidated, so it does not hold anything added
+    # to the file afterwards. `all_children` recomputes the walk.
+    for neurodata_object in nwbfile.all_children():
         if isinstance(neurodata_object, DynamicTable):
             dynamic_table = neurodata_object  # For readability
 
@@ -242,7 +256,7 @@ def get_existing_dataset_io_configurations(nwbfile: NWBFile) -> Generator[Datase
     DatasetIOConfigurationClass = DATASET_IO_CONFIGURATIONS[backend]
 
     known_dataset_fields = ("data", "timestamps")
-    for neurodata_object in nwbfile.objects.values():
+    for neurodata_object in nwbfile.all_children():
         if isinstance(neurodata_object, DynamicTable):
             dynamic_table = neurodata_object  # For readability
 

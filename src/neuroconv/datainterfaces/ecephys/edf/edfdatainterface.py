@@ -1,10 +1,54 @@
 import warnings
+from datetime import date
 
 from pydantic import FilePath
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....tools import get_package
 from ....utils import DeepDict
+
+# EDF+ writes the month as an English abbreviation, so it is mapped rather than read with ``%b``, which
+# goes through ``LC_TIME`` and would fail on a machine not running an English locale.
+# TODO: nothing tests this. Asserting it needs a non-English locale, which no runner image ships, so the
+# test has to come with a `locale-gen` step in `testing.yml` and a fixture that restores `LC_TIME`.
+_MONTH_NUMBERS = {
+    name: number
+    for number, name in enumerate(
+        ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"], start=1
+    )
+}
+
+
+def _parse_birthdate(birthdate: str) -> str | None:
+    """Return an EDF+ birthdate as an ISO 8601 date, or ``None`` where the header does not state one.
+
+    Parameters
+    ----------
+    birthdate : str
+        The header's birthdate, which the readers hand back as ``"02 may 1951"``. EDF+ reserves ``"X"``
+        for a field the recording does not state, and a file written outside the spec can hold anything,
+        since it is a free-text patient field.
+
+    Returns
+    -------
+    str or None
+        The date as ``"1951-05-02"``, or ``None`` where the value is absent or not a date. It is returned
+        as a string because that is what the metadata schema declares; the conversion to a ``datetime``
+        happens once, where the subject is written.
+    """
+    parts = birthdate.strip().split()
+    if len(parts) != 3:
+        return None
+
+    day, month_name, year = parts
+    month = _MONTH_NUMBERS.get(month_name.lower())
+    if month is None or not (day.isdigit() and year.isdigit()):
+        return None
+
+    try:
+        return date(year=int(year), month=month, day=int(day)).isoformat()
+    except ValueError:  # A day the month does not have.
+        return None
 
 
 class EDFRecordingInterface(BaseRecordingExtractorInterface):
@@ -106,7 +150,7 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
         file_path: FilePath,
         *args,  # TODO: change to * (keyword only) on or after August 2026
         verbose: bool = False,
-        es_key: str = "ElectricalSeries",
+        es_key: str | None = None,
         metadata_key: str | None = None,
         channels_to_skip: list | None = None,
         stream_name: str | None = None,
@@ -189,9 +233,11 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
             self.recording_extractor = self.recording_extractor.remove_channels(remove_channel_ids=channels_to_skip)
 
     def extract_nwb_file_metadata(self) -> dict:
+        # The header names a single technician, while experimenter is a list of names.
+        technician = self.edf_header["technician"]
         nwbfile_metadata = dict(
             session_start_time=self.edf_header["startdate"],
-            experimenter=self.edf_header["technician"],
+            experimenter=[technician] if technician else None,
         )
 
         # Filter empty values
@@ -200,9 +246,14 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
         return nwbfile_metadata
 
     def extract_subject_metadata(self) -> dict:
+        # The readers normalize the patient field's sex code to a word, and only wrote it under
+        # "gender" before pyedflib 0.1.36. A file that does not state it leaves both empty.
+        sex_in_header = self.edf_header.get("sex") or self.edf_header.get("gender") or ""
+
         subject_metadata = dict(
             subject_id=self.edf_header["patientcode"],
-            date_of_birth=self.edf_header["birthdate"],
+            sex={"male": "M", "female": "F"}.get(sex_in_header.lower()),
+            date_of_birth=_parse_birthdate(self.edf_header.get("birthdate") or ""),
         )
 
         # Filter empty values
@@ -210,12 +261,15 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
 
         return subject_metadata
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
         nwbfile_metadata = self.extract_nwb_file_metadata()
         metadata["NWBFile"].update(nwbfile_metadata)
 
         subject_metadata = self.extract_subject_metadata()
-        metadata.get("Subject", dict()).update(subject_metadata)
+        # metadata is a DeepDict, which creates a key on access, so a file that carries no patient
+        # information must not reach it at all or it gains an empty Subject.
+        if subject_metadata:
+            metadata["Subject"].update(subject_metadata)
 
         return metadata

@@ -16,11 +16,13 @@ workflow in neuroconv for Tiff imaging files segmented using suite2p. This conve
     >>> from neuroconv import ConverterPipe
     >>> from neuroconv.datainterfaces import TiffImagingInterface, Suite2pSegmentationInterface
     >>>
-    >>> file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Tif" / "demoMovie.tif"
-    >>> interface_tiff = TiffImagingInterface(file_path=file_path, sampling_frequency=15.0, verbose=False)
+    >>> file_paths = [OPHYS_DATA_PATH / "imaging_datasets" / "Tif" / "demoMovie.tif"]
+    >>> interface_tiff = TiffImagingInterface(file_paths=file_paths, sampling_frequency=15.0, verbose=False)
     >>>
     >>> folder_path= OPHYS_DATA_PATH / "segmentation_datasets" / "suite2p"
-    >>> interface_suit2p = Suite2pSegmentationInterface(folder_path=folder_path, verbose=False)
+    >>> interface_suit2p = Suite2pSegmentationInterface(
+    ...     folder_path=folder_path, channel_name="chan1", plane_name="plane0", verbose=False
+    ... )
     >>>
     >>> # Now that we have defined the two interfaces we pass them to the ConverterPipe which will coordinate the
     >>> # concurrent conversion of the data

@@ -44,7 +44,7 @@ from ..nwb_helpers import (
 from ..nwb_helpers._device_types import _build_inline_containers
 from ..nwb_helpers._metadata_and_file_helpers import (
     _add_device_to_nwbfile,
-    _resolve_backend,
+    _fetch_backend_from_nwbfile_on_disk,
     configure_and_write_nwbfile,
 )
 from ...utils import (
@@ -618,6 +618,21 @@ def _add_plane_segmentation_to_nwbfile(
     return nwbfile
 
 
+def _trace_is_all_zero(trace, iterator_options: dict) -> bool:
+    """Check whether a trace holds nothing but zeros without materializing all of it.
+
+    The trace is read through the same ``SliceableDataChunkIterator`` the writer uses, so a buffer is the
+    unit that reaches memory here and the peak is never worse than the peak of writing the trace. The scan
+    returns on the first buffer that holds anything, so a trace with data costs one buffer instead of a
+    full read.
+    """
+    for buffer in SliceableDataChunkIterator(trace, **iterator_options):
+        if np.any(buffer.data):
+            return False
+
+    return True
+
+
 def _add_roi_response_traces_to_nwbfile(
     *,
     segmentation_extractor: SegmentationExtractor,
@@ -693,6 +708,30 @@ def _add_roi_response_traces_to_nwbfile(
                 )
     else:
         roi_responses_metadata = _get_ophys_metadata_placeholders()["Ophys"]["RoiResponses"]["default_metadata_key"]
+
+    # An all-zero trace is a valid output of a segmentation pipeline -suite2p writes one for `spks` when
+    # nothing was deconvolved- but it carries no information, so it is not written. A trace the caller named
+    # is written whatever it holds, as discarding something stated by hand is worse than an empty series.
+    caller_named_traces = set(roi_responses_metadata) if user_provided_roi_responses_metadata else set()
+    all_zero_traces = [
+        trace_name
+        for trace_name, trace in traces_to_add.items()
+        if trace_name not in caller_named_traces and _trace_is_all_zero(trace=trace, iterator_options=iterator_options)
+    ]
+    if all_zero_traces:
+        warnings.warn(
+            f"These traces hold only zeros and are not written: {sorted(all_zero_traces)}. "
+            f"Name them in metadata['Ophys']['RoiResponses'] to write them anyway.",
+            UserWarning,
+            stacklevel=2,
+        )
+        traces_to_add = {
+            trace_name: trace for trace_name, trace in traces_to_add.items() if trace_name not in all_zero_traces
+        }
+
+    # Nothing left to write, so the Fluorescence container is not created either.
+    if not traces_to_add:
+        return nwbfile
 
     # Resolve PlaneSegmentation via the same metadata_key, defaulting its name the same way the
     # segmentation writer does.
@@ -822,21 +861,35 @@ def _add_summary_images_to_nwbfile(
     user_provided_images_metadata = (
         metadata_key in segmentation_images_metadata and metadata_key != "default_metadata_key"
     )
-    if metadata_key in segmentation_images_metadata:
+    if user_provided_images_metadata:
         images_metadata = segmentation_images_metadata[metadata_key]
-        if user_provided_images_metadata:
-            requested_images = set(images_metadata.keys())
-            available_images = set(images_to_add.keys())
-            missing_images = requested_images - available_images
-            if missing_images:
-                warnings.warn(
-                    f"SegmentationImages metadata specifies images {missing_images} "
-                    f"but the segmentation extractor has no data for them. "
-                    f"These images will be skipped."
-                )
+        requested_images = set(images_metadata.keys())
+        available_images = set(images_to_add.keys())
+        missing_images = requested_images - available_images
+        if missing_images:
+            warnings.warn(
+                f"SegmentationImages metadata specifies images {missing_images} "
+                f"but the segmentation extractor has no data for them. "
+                f"These images will be skipped."
+            )
     else:
-        placeholders = _get_ophys_metadata_placeholders()
-        images_metadata = placeholders["Ophys"]["SegmentationImages"]["default_metadata_key"]
+        # The caller stated nothing for this key, so every image the extractor holds is written. The
+        # placeholders only name ``correlation`` and ``mean``, so letting them decide instead would
+        # drop any other summary image the source produced.
+        placeholders = _get_ophys_metadata_placeholders()["Ophys"]["SegmentationImages"]["default_metadata_key"]
+        supplied = segmentation_images_metadata.get(metadata_key, dict())
+        images_metadata = {
+            img_type: supplied.get(img_type, placeholders.get(img_type, dict())) for img_type in images_to_add
+        }
+
+    # ``images_metadata`` decides what is written, so an entry naming none of the images the extractor
+    # holds writes nothing. Resolve that before the container is built: ``Images`` requires at least one
+    # image, and an empty one makes the file invalid.
+    images_to_write = {
+        img_type: img_data for img_type, img_data in images_to_add.items() if img_type in images_metadata
+    }
+    if not images_to_write:
+        return nwbfile
 
     # Get or create the single shared Images container
     container_name = "SegmentationImages"
@@ -847,11 +900,7 @@ def _add_summary_images_to_nwbfile(
         ophys_module.add(Images(name=container_name, description=container_description))
     image_collection = ophys_module.data_interfaces[container_name]
 
-    for img_type, img_data in images_to_add.items():
-        # Skip image types not in metadata (metadata controls what gets written)
-        if img_type not in images_metadata:
-            continue
-
+    for img_type, img_data in images_to_write.items():
         image_metadata = images_metadata[img_type]
         image_name = image_metadata.get("name", img_type)
         image_description = image_metadata.get("description", f"Summary image: {img_type}.")
@@ -983,7 +1032,11 @@ def _imaging_frames_to_hdmf_iterator(
 
     if iterator_type is None:
         _check_if_imaging_fits_into_memory(imaging=imaging)
-        return imaging.get_series().transpose((0, 2, 1))
+        series = imaging.get_series()
+        # (samples, height, width) planar, (samples, height, width, planes) volumetric. The same rule
+        # the v2 iterator applies in ImagingExtractorDataChunkIterator._get_data.
+        transpose_axes = (0, 2, 1) if series.ndim == 3 else (0, 2, 1, 3)
+        return series.transpose(transpose_axes)
 
     return ImagingExtractorDataChunkIterator(imaging_extractor=imaging, **iterator_options)
 
@@ -992,7 +1045,7 @@ def add_imaging_to_nwbfile(
     imaging: ImagingExtractor,
     nwbfile: NWBFile,
     metadata: dict | None = None,
-    *args,  # TODO: change to * (keyword only) on or after September 2026
+    *args,  # TODO: change to * (keyword only) on or after February 2027
     photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "TwoPhotonSeries",
     photon_series_index: int = 0,
     iterator_type: str | None = "v2",
@@ -1239,8 +1292,11 @@ def write_imaging_to_nwbfile(
             "or remove the nwbfile parameter to append to the existing file on disk."
         )
 
-    # Resolve backend
-    backend = _resolve_backend(backend=backend, backend_configuration=backend_configuration)
+    # An append is bound to the backend of the file on disk; a new file gets its backend from the caller
+    if append_on_disk_nwbfile:
+        backend = _fetch_backend_from_nwbfile_on_disk(
+            nwbfile_path=nwbfile_path, backend=backend, backend_configuration=backend_configuration
+        )
 
     # Determine if we're writing a new file or appending
     writing_new_file = not append_on_disk_nwbfile
@@ -1258,9 +1314,6 @@ def write_imaging_to_nwbfile(
             iterator_type=iterator_type,
             iterator_options=iterator_options,
         )
-
-        if backend_configuration is None:
-            backend_configuration = get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
 
         configure_and_write_nwbfile(
             nwbfile=nwbfile,
@@ -1310,11 +1363,35 @@ def write_imaging_to_nwbfile(
         return nwbfile
 
 
+def _segmentation_extractor_has_data(segmentation_extractor: SegmentationExtractor) -> bool:
+    """
+    Whether a segmentation extractor holds anything to write: ROIs, traces or summary images.
+
+    Parameters
+    ----------
+    segmentation_extractor : SegmentationExtractor
+        The extractor to inspect.
+
+    Returns
+    -------
+    bool
+        False only when the extractor reports no ROIs, no traces and no summary images.
+    """
+    if segmentation_extractor.get_num_rois() > 0:
+        return True
+
+    traces = segmentation_extractor.get_traces_dict().values()
+    if any(trace is not None and trace.size != 0 for trace in traces):
+        return True
+
+    return any(image is not None for image in segmentation_extractor.get_images_dict().values())
+
+
 def add_segmentation_to_nwbfile(
     segmentation_extractor: SegmentationExtractor,
     nwbfile: NWBFile,
     metadata: dict | None = None,
-    *args,  # TODO: change to * (keyword only) on or after September 2026
+    *args,  # TODO: change to * (keyword only) on or after February 2027
     plane_segmentation_name: str | None = None,
     background_plane_segmentation_name: str | None = None,
     include_background_segmentation: bool = False,
@@ -1415,9 +1492,21 @@ def add_segmentation_to_nwbfile(
             "`include_roi_acceptance` is deprecated and has no effect. ROI acceptance is now "
             "written automatically as a column on the PlaneSegmentation table whenever the "
             "segmentation extractor exposes acceptance/rejection through its property system. "
-            "This parameter will be removed on or after November 2026.",
+            "This parameter will be removed on or after February 2027.",
             DeprecationWarning,
             stacklevel=2,
+        )
+
+    # Without this the writer either fails inside the mask handling with an AttributeError naming a
+    # private attribute or, where masks are absent, writes an imaging plane and an empty table that read
+    # as a successful conversion. See https://github.com/catalystneuro/neuroconv/issues/1401.
+    if not _segmentation_extractor_has_data(segmentation_extractor=segmentation_extractor):
+        raise ValueError(
+            f"{type(segmentation_extractor).__name__} contains no segmentation data: it reports 0 ROIs, "
+            "no traces and no summary images. This is usually an empty result from the segmentation "
+            "pipeline, or a file whose data is not where the format expected it. Writing it would produce "
+            "an NWB file holding an imaging plane, a device and an empty ROI table and nothing else, which "
+            "is indistinguishable from a successful conversion."
         )
 
     if metadata is None:
@@ -1557,7 +1646,7 @@ def write_segmentation_to_nwbfile(
             "`include_roi_acceptance` is deprecated and has no effect. ROI acceptance is now "
             "written automatically as a column on the PlaneSegmentation table whenever the "
             "segmentation extractor exposes acceptance/rejection through its property system. "
-            "This parameter will be removed on or after November 2026.",
+            "This parameter will be removed on or after February 2027.",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -1630,8 +1719,11 @@ def write_segmentation_to_nwbfile(
             "or remove the nwbfile parameter to append to the existing file on disk."
         )
 
-    # Resolve backend
-    backend = _resolve_backend(backend=backend, backend_configuration=backend_configuration)
+    # An append is bound to the backend of the file on disk; a new file gets its backend from the caller
+    if append_on_disk_nwbfile:
+        backend = _fetch_backend_from_nwbfile_on_disk(
+            nwbfile_path=nwbfile_path, backend=backend, backend_configuration=backend_configuration
+        )
 
     # Determine if we're writing a new file or appending
     writing_new_file = not append_on_disk_nwbfile
@@ -1652,9 +1744,6 @@ def write_segmentation_to_nwbfile(
                 mask_type=mask_type,
                 iterator_options=iterator_options,
             )
-
-        if backend_configuration is None:
-            backend_configuration = get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
 
         configure_and_write_nwbfile(
             nwbfile=nwbfile,

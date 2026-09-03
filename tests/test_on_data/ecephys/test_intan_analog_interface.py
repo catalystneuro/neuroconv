@@ -96,7 +96,11 @@ class TestIntanAnalogInterface:
         # Check device metadata for RHD
         device = metadata["Devices"]["intan_device"]
         assert device["name"] == "Intan"
-        assert device["manufacturer"] == "Intan"
+        assert device["device_model_metadata_key"] == "intan_rhd2000_model"
+        assert metadata["DeviceModels"]["intan_rhd2000_model"] == {
+            "name": "RHD2000 Recording System",
+            "manufacturer": "Intan",
+        }
         assert "RHD Recording System" in device["description"]
 
     def test_get_metadata_rhs_file(self):
@@ -112,7 +116,11 @@ class TestIntanAnalogInterface:
         # Check device metadata for RHS
         device = metadata["Devices"]["intan_device"]
         assert device["name"] == "Intan"
-        assert device["manufacturer"] == "Intan"
+        assert device["device_model_metadata_key"] == "intan_rhs2000_model"
+        assert metadata["DeviceModels"]["intan_rhs2000_model"] == {
+            "name": "RHS2000 Stim-Recording System",
+            "manufacturer": "Intan",
+        }
         assert "RHS Stim/Recording System" in device["description"]
 
     def test_get_channel_names_adc_channels(self):

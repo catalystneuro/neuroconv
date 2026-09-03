@@ -42,8 +42,8 @@ DataInterface conventions
 #. In :code:`add_to_nwbfile` methods of leaf interfaces (not converters), only :code:`nwbfile` and :code:`metadata`
    should be accepted as positional arguments. All other parameters (conversion options) must be keyword-only.
    When deprecating existing positional usage, use the :code:`*args` pattern with a :code:`FutureWarning` to maintain
-   backward compatibility during the transition period. After the deprecation date, replace :code:`*args` with
-   :code:`*` to enforce keyword-only arguments.
+   backward compatibility during the transition period. At the version the warning names, replace
+   :code:`*args` with :code:`*` to enforce keyword-only arguments. See :ref:`deprecations`.
 
 Other conventions
 -----------------

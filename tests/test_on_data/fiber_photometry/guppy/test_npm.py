@@ -67,25 +67,27 @@ class NPMConverterTestMixin:
     ACQUISITION_FILE_NAME = "signals.csv"
     EVENT_FILE_NAME = "ttls.csv"
 
-    @pytest.fixture
-    def session_folder(self, tmp_path):
-        folder_path = tmp_path / "session"
+    @pytest.fixture(scope="class")
+    @classmethod
+    def session_folder(cls, tmp_path_factory):
+        folder_path = tmp_path_factory.mktemp("npm_session") / "session"
         folder_path.mkdir()
-        shutil.copy(self.ACQUISITION_SOURCE, folder_path / self.ACQUISITION_FILE_NAME)
-        shutil.copy(self.EVENT_SOURCE, folder_path / self.EVENT_FILE_NAME)
+        shutil.copy(cls.ACQUISITION_SOURCE, folder_path / cls.ACQUISITION_FILE_NAME)
+        shutil.copy(cls.EVENT_SOURCE, folder_path / cls.EVENT_FILE_NAME)
         return folder_path
 
-    @pytest.fixture
-    def guppy_output_folder(self, tmp_path):
+    @pytest.fixture(scope="class")
+    @classmethod
+    def guppy_output_folder(cls, tmp_path_factory):
         folder_path = generate_mock_guppy_output_folder(
-            tmp_path / "session_output_1",
-            recording_site_to_stores=self.RECORDING_SITE_TO_STORES,
-            event_store_to_name=self.EVENT_STORE_TO_NAME,
+            tmp_path_factory.mktemp("npm_output") / "session_output_1",
+            recording_site_to_stores=cls.RECORDING_SITE_TO_STORES,
+            event_store_to_name=cls.EVENT_STORE_TO_NAME,
             cross_correlation_pairs=(),
         )
         # Which clock and unit a session was read on is a choice made when GuPPy ran; it records them
         # here beside storesList.csv, one unit and one column for the whole session.
-        (folder_path / ".npm_params.json").write_text(json.dumps(self.NPM_PARAMETERS), encoding="utf-8")
+        (folder_path / ".npm_params.json").write_text(json.dumps(cls.NPM_PARAMETERS), encoding="utf-8")
         return folder_path
 
     @pytest.fixture

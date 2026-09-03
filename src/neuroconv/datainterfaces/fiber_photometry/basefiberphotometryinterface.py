@@ -18,11 +18,14 @@ Child interfaces implement only the format-reading seam:
 * ``get_metadata`` — enrich the base metadata with whatever the format embeds (e.g. session start time).
 """
 
+import warnings
 from abc import abstractmethod
+from typing import Literal
 
 import numpy as np
 from pynwb.file import NWBFile
 
+from ..._temporal_alignment import _TemporalAlignment
 from ...basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from ...tools.fiber_photometry import (
     add_commanded_voltage_series,
@@ -30,6 +33,7 @@ from ...tools.fiber_photometry import (
     add_fiber_photometry_lab_metadata,
     get_fiber_photometry_table_region,
 )
+from ...tools.nwb_helpers import get_module
 from ...utils import DeepDict, dict_deep_update, get_base_schema
 from ...utils.checks import calculate_regular_series_rate
 
@@ -76,7 +80,12 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             stream_parts = [str(name).replace(" ", "_").strip("_").lower() for name in self.stream_names]
             metadata_key = "_".join(["fiber_photometry", *stream_parts])
         self.metadata_key = metadata_key
-        self._aligned_timestamps: np.ndarray | None = None
+        # Alignment by composition, the same component the events interfaces hold. This interface writes one
+        # response series, so it names one time-bearing object, under the same key its metadata uses. The
+        # native times are registered as a callable, so naming the object reads nothing.
+        # See neuroconv/_temporal_alignment.py.
+        self.alignment = _TemporalAlignment()
+        self.alignment._register_series(key=self.metadata_key, get_native_times=self.get_original_timestamps)
         super().__init__(verbose=verbose, stream_names=stream_names, **source_data)
         # Keep the ndx extensions registered so pynwb IO works correctly.
         import ndx_fiber_photometry  # noqa: F401
@@ -108,14 +117,64 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         return self._get_stream_timestamps(stream_name=self.stream_names[0])
 
     def get_timestamps(self) -> np.ndarray:
-        """Return aligned timestamps if set, otherwise the original timestamps."""
-        if self._aligned_timestamps is not None:
-            return self._aligned_timestamps
-        return self.get_original_timestamps()
+        """Return the times this interface's response series will be written on.
+
+        .. deprecated::
+            Use ``interface.alignment[key].get_times()``, which reads the object it names rather than
+            assuming the interface writes one. Removed in v0.12.0.
+        """
+        warnings.warn(
+            "`get_timestamps` is deprecated and will be removed in v0.12.0. "
+            "Use `interface.alignment[key].get_times()` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        return self.alignment[self.metadata_key].get_times()
 
     def set_aligned_timestamps(self, aligned_timestamps: np.ndarray) -> None:
-        """Replace this interface's timestamps with externally aligned values."""
-        self._aligned_timestamps = np.asarray(aligned_timestamps)
+        """Replace this interface's timestamps with externally aligned values.
+
+        .. deprecated::
+            Use ``interface.alignment[key].set_times(aligned_timestamps)``, which does the same thing and
+            names the object it lands on. Removed in v0.12.0.
+        """
+        warnings.warn(
+            "`set_aligned_timestamps` is deprecated and will be removed in v0.12.0. "
+            "Use `interface.alignment[key].set_times(times)` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        self.alignment[self.metadata_key].set_times(aligned_timestamps)
+
+    def set_aligned_starting_time(self, aligned_starting_time: float) -> None:
+        """Shift this interface's times by ``aligned_starting_time`` seconds.
+
+        .. deprecated::
+            Use ``interface.alignment.shift_times(delta)``, which is the same rigid shift under a name that
+            says so. Removed in v0.12.0.
+        """
+        warnings.warn(
+            "`set_aligned_starting_time` is deprecated and will be removed in v0.12.0. "
+            "Use `interface.alignment.shift_times(delta)` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        self.alignment.shift_times(aligned_starting_time)
+
+    def align_by_interpolation(self, unaligned_timestamps: np.ndarray, aligned_timestamps: np.ndarray) -> None:
+        """Re-time this interface against a reference clock through synchronization pulses.
+
+        .. deprecated::
+            Use ``interface.alignment.remap_times(local_sync_times=..., reference_sync_times=...)``, whose
+            argument names say which clock each set of pulses came off. Removed in v0.12.0.
+        """
+        warnings.warn(
+            "`align_by_interpolation` is deprecated and will be removed in v0.12.0. Use "
+            "`interface.alignment.remap_times(local_sync_times=..., reference_sync_times=...)` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        self.alignment.remap_times(local_sync_times=unaligned_timestamps, reference_sync_times=aligned_timestamps)
 
     # ------------------------------------------------------------------
     # Metadata
@@ -125,6 +184,122 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         metadata = super().get_metadata()
         series_metadata = dict(name="FiberPhotometryResponseSeries")
         return dict_deep_update(metadata, dict(FiberPhotometry={self.metadata_key: series_metadata}))
+
+    def _get_number_of_traces(self) -> int:
+        """Return how many traces this interface's response series carries, one per table row.
+
+        Reads the data to measure it. Formats that can answer from a header should override this.
+        """
+        data = self._read_response_data()
+        return 1 if data.ndim == 1 else data.shape[1]
+
+    def get_metadata_template(self) -> DeepDict:
+        """Return the full fiber photometry provenance chain, sized to this interface's traces.
+
+        The counterpart to :meth:`get_metadata`, which reports only what the source recorded and so
+        leaves a user no indication of what else the file needs. This returns those same values wrapped
+        in the structure the writer expects. Fill in the blanks and pass the result to ``add_to_nwbfile``
+        or ``run_conversion``; a blank still ``None`` at write time is an error rather than a value.
+
+        One ``FiberPhotometryTable`` row per trace, one optical fiber per row, and a shared excitation
+        source, photodetector and indicator, since one interface writes one series and
+        `ndx-fiber-photometry
+        <https://github.com/catalystneuro/ndx-fiber-photometry#recommended-organization-of-response-series>`_
+        recommends one series per excitation/emission wavelength with one column per fiber.
+
+        The wiring is done for you: every ``*_metadata_key`` cross-reference is resolved and the series'
+        ``fiber_photometry_table_region`` already lists the row keys in column order. What is left
+        ``None`` is what only the experimenter can supply, the brain region each fiber sits in, the two
+        wavelengths, the indicator's label and the fiber insertion geometry. Rename the keys to suit the
+        recording; they are handles, not names in the file.
+        """
+        number_of_traces = self._get_number_of_traces()
+
+        row_keys = [f"trace_{index}" for index in range(number_of_traces)]
+        optical_fiber_keys = [f"optical_fiber_{index}" for index in range(number_of_traces)]
+        excitation_source_key = "excitation_source"
+        photodetector_key = "photodetector"
+        indicator_key = "indicator"
+
+        # Every entry's ``name`` is blank, and deliberately so: an entry all of whose fields are
+        # satisfied reaches no check and is written as stated, so a user who leaves an offered one in
+        # place gets hardware the rig never had. Every NWB object requires a name, which makes it the
+        # one field that can carry that blank for any entry in any modality.
+        devices = {
+            optical_fiber_key: dict(
+                type="OpticalFiber",
+                name=None,
+                fiber_insertion=dict(
+                    insertion_position_ap_in_mm=None,
+                    insertion_position_ml_in_mm=None,
+                    insertion_position_dv_in_mm=None,
+                    depth_in_mm=None,
+                ),
+            )
+            for optical_fiber_key in optical_fiber_keys
+        }
+        devices[excitation_source_key] = dict(type="ExcitationSource", name=None)
+        devices[photodetector_key] = dict(type="Photodetector", name=None)
+        # Optional hardware, offered so a user knows the writer accepts it. Delete what the recording
+        # did not use; a blank left behind is refused at write time rather than guessed at.
+        # ``BandOpticalFilter`` rather than a generic optical filter, as ndx-ophys-devices has no such
+        # class: a filter is a band or an edge one, and the band is the common case here. Swap the type
+        # for ``EdgeOpticalFilter`` if that is what the rig used. The wavelengths belong to the filter's
+        # model rather than to the filter, so the device itself carries nothing but its name.
+        devices["dichroic_mirror"] = dict(type="DichroicMirror", name=None)
+        devices["excitation_filter"] = dict(type="BandOpticalFilter", name=None)
+        devices["emission_filter"] = dict(type="BandOpticalFilter", name=None)
+
+        # Models carry the make and catalog specifications, shared by every recording that used the same
+        # equipment. Optional: fill one and point its device at it, or delete both.
+        device_models = {
+            "optical_fiber_model": dict(
+                type="OpticalFiberModel", name=None, manufacturer=None, numerical_aperture=None
+            ),
+            "excitation_source_model": dict(
+                type="ExcitationSourceModel",
+                name=None,
+                manufacturer=None,
+                source_type=None,
+                excitation_mode=None,
+            ),
+            "photodetector_model": dict(type="PhotodetectorModel", name=None, manufacturer=None, detector_type=None),
+        }
+        for device_metadata in devices.values():
+            device_metadata.setdefault("device_model_metadata_key", None)
+
+        fiber_photometry = dict(
+            FiberPhotometryIndicators={indicator_key: dict(name=None, label=None)},
+            FiberPhotometryTable=dict(
+                name="fiber_photometry_table",
+                description="Each row describes one trace: the fiber, hardware and indicator that produced it.",
+                rows={
+                    row_key: dict(
+                        location=None,
+                        excitation_wavelength_in_nm=None,
+                        emission_wavelength_in_nm=None,
+                        indicator_metadata_key=indicator_key,
+                        optical_fiber_metadata_key=optical_fiber_key,
+                        excitation_source_metadata_key=excitation_source_key,
+                        photodetector_metadata_key=photodetector_key,
+                        coordinates=None,
+                        notes=None,
+                        dichroic_mirror_metadata_key=None,
+                        excitation_filter_metadata_key=None,
+                        emission_filter_metadata_key=None,
+                    )
+                    for row_key, optical_fiber_key in zip(row_keys, optical_fiber_keys)
+                },
+            ),
+        )
+        fiber_photometry[self.metadata_key] = dict(fiber_photometry_table_region=row_keys, description=None)
+
+        template = DeepDict(dict(DeviceModels=device_models, Devices=devices, FiberPhotometry=fiber_photometry))
+
+        # The blanks are a floor rather than an override: whatever the source recorded wins over the
+        # template, so a field the interface was able to read is never handed back as one to fill in.
+        template.deep_update(self.get_metadata())
+        return template
 
     def get_metadata_schema(self) -> dict:
         """Return a permissive schema for the ``FiberPhotometry`` block.
@@ -207,6 +382,7 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         stub_test: bool = False,
         stub_samples: int = 100,
         always_write_timestamps: bool = False,
+        parent_container: Literal["acquisition", "processing/ophys"] = "acquisition",
     ) -> None:
         """Add this interface's ``FiberPhotometryResponseSeries`` (and, once, the shared containers).
 
@@ -230,6 +406,9 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             The number of samples to write when ``stub_test`` is True.
         always_write_timestamps : bool, default: False
             If True, always write an explicit timestamps array even when the series is regularly sampled.
+        parent_container : {"acquisition", "processing/ophys"}, default: "acquisition"
+            The NWBFile container to add the ``FiberPhotometryResponseSeries`` to. Use
+            ``"processing/ophys"`` when the series represents processed data rather than raw acquisition.
         """
         from ndx_fiber_photometry import FiberPhotometryResponseSeries
 
@@ -254,7 +433,12 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
                 index = commanded_voltage_metadata.get("index")
                 if index is not None and commanded_voltage_data.ndim == 2:
                     commanded_voltage_data = commanded_voltage_data[:, index]
-                commanded_voltage_timestamps = self._get_stream_timestamps(stream_name=commanded_voltage_stream_name)
+                # This series reads its own stream rather than going through get_timestamps, so the
+                # alignment offset has to be applied here: a shift is interface-wide, and a commanded
+                # voltage left on its native times would drift from the response series it drove.
+                commanded_voltage_timestamps = (
+                    self._get_stream_timestamps(stream_name=commanded_voltage_stream_name) + self.alignment.offset
+                )
                 add_commanded_voltage_series(
                     nwbfile=nwbfile,
                     name=commanded_voltage_metadata["name"],
@@ -283,15 +467,20 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
 
         # Add this interface's single response series.
         data = stub(self._read_response_data())
-        timestamps = stub(self.get_timestamps())
+        timestamps = stub(self.alignment[self.metadata_key].get_times())
         timing_kwargs = self._timing_kwargs_from_timestamps(timestamps, always_write_timestamps)
 
         response_series = FiberPhotometryResponseSeries(
             name=series_metadata["name"],
             description=series_metadata.get("description", ""),
+            comments=series_metadata.get("comments", "no comments"),
             data=data,
             unit="a.u.",
             fiber_photometry_table_region=table_region,
             **timing_kwargs,
         )
-        nwbfile.add_acquisition(response_series)
+        if parent_container == "acquisition":
+            nwbfile.add_acquisition(response_series)
+        elif parent_container == "processing/ophys":
+            ophys_module = get_module(nwbfile, name="ophys", description="contains optical physiology processed data")
+            ophys_module.add(response_series)

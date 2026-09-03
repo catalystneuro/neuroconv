@@ -7,28 +7,62 @@ Install NeuroConv with the additional dependencies necessary for reading suite2p
 
     pip install "neuroconv[suite2p]"
 
-Convert suite2p segmentation data to NWB using
-:py:class:`~neuroconv.datainterfaces.ophys.suite2p.suite2pdatainterface.Suite2pSegmentationInterface`.
+**Convert a suite2p output folder**
 
-Suite2p segmentation output is saved for each plane in a separate folder (e.g. "plane0", "plane1").
-To specify which plane to convert, use the `plane_name` argument (to see what planes are available use the
-`Suite2pSegmentationInterface.get_available_planes(folder_path)` method).
-For multichannel recordings, use the `channel_name` argument to specify the channel name
-(to see what channels are available use the `Suite2pSegmentationInterface.get_channel_names(folder_path)` method).
-When not specified, the first plane and channel are used.
-
-The optional `plane_segmentation_name` argument specifies the name of the :py:class:`~pynwb.ophys.PlaneSegmentation` to be created.
-When multiple planes and/or channels are present, the name should be unique for each plane and channel combination (e.g. "PlaneSegmentationChan1Plane0").
+Suite2p writes its segmentation output to one folder per plane ("plane0", "plane1"), each holding the
+traces of every channel it segmented. Point :py:class:`~neuroconv.converters.Suite2pConverter` at the
+folder containing them.
 
 .. code-block:: python
 
     >>> from datetime import datetime
     >>> from zoneinfo import ZoneInfo
-    >>> from pathlib import Path
+    >>> from neuroconv.converters import Suite2pConverter
+    >>>
+    >>> folder_path = OPHYS_DATA_PATH / "segmentation_datasets" / "suite2p"
+    >>> converter = Suite2pConverter(folder_path=folder_path, verbose=False)
+    >>>
+    >>> metadata = converter.get_metadata()
+    >>> # For data provenance we add the time zone information to the conversion
+    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
+    >>> metadata["NWBFile"].update(session_start_time=session_start_time)
+    >>> # Add subject information (required for DANDI upload)
+    >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
+    >>>
+    >>> # Choose a path for saving the nwb file and run the conversion
+    >>> nwbfile_path = f"{path_to_save_nwbfile}"
+    >>> converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+
+That call covers any suite2p output folder, one plane or many, one channel or two. Each plane and
+channel is written as its own :py:class:`~pynwb.ophys.PlaneSegmentation` and ``ImagingPlane`` with its
+own traces, named for the pair it came from ("PlaneSegmentationChan1Plane0"). The "combined" folder
+suite2p writes for a multi-plane session is skipped, since its ROIs are the per-plane ones
+concatenated.
+
+NeuroConv aims to automatically add all the metadata annotations that are present in the source format.
+It is often the case that crucial information is not available there, such as the anatomical location,
+the meaning of the values, or a semantically meaningful description of the data. Follow
+:ref:`the ophys how-to <annotate_ophys_metadata>` for a modality-relevant guide to adding
+this extra metadata, which makes the data more useful for future users and for the community as a whole.
+Its :ref:`section on templates <how_to_annotate_ophys_from_a_template>` starts from scratch, and the
+:ref:`reference template <ophys_segmentation_metadata_template>` lists every element the metadata accepts.
+
+**Converting a single plane and channel**
+
+Use :py:class:`~neuroconv.datainterfaces.ophys.suite2p.suite2pdatainterface.Suite2pSegmentationInterface`
+to write one plane and one channel, chosen with the `plane_name` and `channel_name` arguments. To see
+what is available, use `Suite2pSegmentationInterface.get_available_planes(folder_path)` and
+`Suite2pSegmentationInterface.get_available_channels(folder_path)`. When neither is specified, the
+first plane and channel are used.
+
+.. code-block:: python
+
+    >>> from datetime import datetime
+    >>> from zoneinfo import ZoneInfo
     >>> from neuroconv.datainterfaces import Suite2pSegmentationInterface
     >>>
-    >>> folder_path= OPHYS_DATA_PATH / "segmentation_datasets" / "suite2p"
-    >>> interface = Suite2pSegmentationInterface(folder_path=folder_path, verbose=False)
+    >>> folder_path = OPHYS_DATA_PATH / "segmentation_datasets" / "suite2p"
+    >>> interface = Suite2pSegmentationInterface(folder_path=folder_path, plane_name="plane0", channel_name="chan1", verbose=False)
     >>>
     >>> metadata = interface.get_metadata()
     >>> # For data provenance we add the time zone information to the conversion
@@ -38,33 +72,5 @@ When multiple planes and/or channels are present, the name should be unique for 
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion
-    >>> nwbfile_path = f"{path_to_save_nwbfile}"
-    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
-
-**Multi-plane example**
-
-This example shows how to convert multiple planes from the same dataset.
-
-.. code-block:: python
-
-    >>> from datetime import datetime
-    >>> from zoneinfo import ZoneInfo
-    >>> from pathlib import Path
-    >>> from neuroconv import ConverterPipe
-    >>> from neuroconv.datainterfaces import Suite2pSegmentationInterface
-    >>>
-    >>> folder_path= OPHYS_DATA_PATH / "segmentation_datasets" / "suite2p"
-    >>> interface_first_plane = Suite2pSegmentationInterface(folder_path=folder_path, plane_name="plane0", verbose=False)
-    >>> interface_second_plane = Suite2pSegmentationInterface(folder_path=folder_path, plane_name="plane1", verbose=False)
-    >>>
-    >>> converter = ConverterPipe(data_interfaces=[interface_first_plane, interface_second_plane], verbose=False)
-    >>> metadata = converter.get_metadata()
-    >>> # For data provenance we add the time zone information to the conversion
-    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
-    >>> metadata["NWBFile"].update(session_start_time=session_start_time)
-    >>> # Add subject information (required for DANDI upload)
-    >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
-    >>>
-    >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"{output_folder}/file2.nwb"
-    >>> converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)

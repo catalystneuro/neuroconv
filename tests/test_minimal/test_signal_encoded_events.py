@@ -422,3 +422,35 @@ class TestBitsWithinTheDeclaredInventory:
         )
 
         assert interface._get_events_data_dict()["word"].timestamps.size == 0
+
+
+class TestGetEventTimesOnAReading:
+    """The one part of ``get_event_times`` that is about readings rather than about the base class.
+
+    The rest of the query is covered in ``test_base_events_interface.py``, since it is
+    ``BaseEventsInterface`` behaviour and works the same on a pre-extracted source.
+    """
+
+    def test_a_durative_reading_answers_with_the_edge_times(self):
+        """``high_period`` pairs each rising edge with the next falling one, so its onsets are the edges.
+
+        Which is why a line written with its pulse widths needs no second reading to be usable for
+        alignment, and why the query needs no way to ask for one.
+        """
+        durative_interface = MockSignalEncodedEventsInterface(
+            digital_line_waveforms={0: ("camera", "pulses")},
+            detection_configuration={
+                "word": [{"signal_conditioning": {"bits": [0]}, "detection": "high_period", "event_name": "camera"}]
+            },
+        )
+        point_interface = MockSignalEncodedEventsInterface(
+            digital_line_waveforms={0: ("camera", "pulses")},
+            detection_configuration={
+                "word": [{"signal_conditioning": {"bits": [0]}, "detection": "rising", "event_name": "camera"}]
+            },
+        )
+
+        timestamps_from_point_reading = point_interface.get_event_times(event_type_source_id="camera")
+        timestamps_from_durative_reading = durative_interface.get_event_times(event_type_source_id="camera")
+
+        np.testing.assert_allclose(timestamps_from_durative_reading, timestamps_from_point_reading)

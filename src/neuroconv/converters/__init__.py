@@ -20,12 +20,16 @@ from ..datainterfaces.ecephys.intan.intanconverter import IntanConverter
 from ..datainterfaces.ecephys.openephys.openephysbinaryconverter import OpenEphysBinaryConverter
 from ..datainterfaces.ecephys.spikeglx.spikeglxconverter import SpikeGLXConverterPipe
 from ..datainterfaces.fiber_photometry.guppy.guppyconverter import GuppyConverter
+from ..datainterfaces.fiber_photometry.pyphotometry.pyphotometryconverter import PyPhotometryConverter
 from ..datainterfaces.ophys.brukertiff.brukertiffconverter import (
     BrukerTiffConverter,
     BrukerTiffMultiPlaneConverter,
     BrukerTiffSinglePlaneConverter,
 )
 from ..datainterfaces.ophys.miniscope.miniscopeconverter import MiniscopeConverter
+from ..datainterfaces.ophys.scanimage.scanimageconverter import ScanImageConverter
+from ..datainterfaces.ophys.suite2p.suite2pconverter import Suite2pConverter
+from ..datainterfaces.ophys.thor.thorconverter import ThorConverter
 
 converter_list = [
     AxonIntracellularConverter,
@@ -39,7 +43,11 @@ converter_list = [
     BrukerTiffMultiPlaneConverter,
     BrukerTiffSinglePlaneConverter,
     MiniscopeConverter,
+    ScanImageConverter,
+    Suite2pConverter,
+    ThorConverter,
     SortedRecordingConverter,
     SortedSpikeGLXConverter,
     GuppyConverter,
+    PyPhotometryConverter,
 ]

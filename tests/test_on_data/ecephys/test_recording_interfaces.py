@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from platform import python_version
 from sys import platform
 
@@ -76,8 +76,7 @@ class TestAxonRecordingInterface(RecordingExtractorInterfaceTestMixin):
         expected_devices = {
             "axon_device": dict(
                 name="Axon Instruments",
-                description="Axon Instruments data acquisition system (pCLAMP/AxoScope)",
-                manufacturer="Molecular Devices",
+                description="Axon Instruments (now Molecular Devices) data acquisition system (pCLAMP/AxoScope)",
             )
         }
         # The series keeps the name and description the old format gives it.
@@ -104,8 +103,10 @@ class TestAxonRecordingInterface(RecordingExtractorInterfaceTestMixin):
         assert len(devices) >= 1
         axon_device = devices[0]
         assert axon_device["name"] == "Axon Instruments"
-        assert axon_device["description"] == "Axon Instruments data acquisition system (pCLAMP/AxoScope)"
-        assert axon_device["manufacturer"] == "Molecular Devices"
+        assert (
+            axon_device["description"]
+            == "Axon Instruments (now Molecular Devices) data acquisition system (pCLAMP/AxoScope)"
+        )
 
         # Check electrode groups have device assigned
         electrode_groups = metadata["Ecephys"]["ElectrodeGroup"]
@@ -127,8 +128,13 @@ class TestAxonaRecordingInterface(RecordingExtractorInterfaceTestMixin):
     def check_extracted_metadata(self, metadata: dict):
         expected_metadata_key = "axona_recording"
         expected_devices = {
-            "axona_device": dict(name="Axona", description="Axona DacqUSB, sw_version=1.2.2.16", manufacturer="Axona")
+            "axona_device": dict(
+                name="Axona",
+                description="Axona DacqUSB, sw_version=1.2.2.16",
+                device_model_metadata_key="axona_dacqusb_model",
+            )
         }
+        expected_device_models = {"axona_dacqusb_model": dict(name="DacqUSB", manufacturer="Axona")}
         # One group per tetrode, each linked to the single Axona device.
         expected_electrode_groups = {
             group_name: dict(name=group_name, device_metadata_key="axona_device") for group_name in ("1", "2", "3", "4")
@@ -136,14 +142,13 @@ class TestAxonaRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
         assert self.interface.metadata_key == expected_metadata_key
         assert metadata["Devices"] == expected_devices
+        assert metadata["DeviceModels"] == expected_device_models
         assert metadata["Ecephys"]["ElectrodeGroups"] == expected_electrode_groups
 
     def check_extracted_metadata_old_list_format(self, metadata: dict):
         # Old list-based format: the Axona device lives in the Ecephys.Device list and every electrode
         # group points at it by name.
-        assert metadata["Ecephys"]["Device"] == [
-            dict(name="Axona", description="Axona DacqUSB, sw_version=1.2.2.16", manufacturer="Axona")
-        ]
+        assert metadata["Ecephys"]["Device"] == [dict(name="Axona", description="Axona DacqUSB, sw_version=1.2.2.16")]
         for electrode_group in metadata["Ecephys"]["ElectrodeGroup"]:
             assert electrode_group["device"] == "Axona"
 
@@ -286,9 +291,18 @@ class TestCellExplorerRecordingInterface(RecordingExtractorInterfaceTestMixin):
         nwbfile.read_io.close()
 
 
+# The file holds two electrode channels next to a current, a temperature and an unitless channel, so
+# SpikeInterface warns about the mix while building the recording. The three are excluded below, which
+# is what the warning asks for, but it is emitted before the interface can drop them.
+@pytest.mark.filterwarnings("ignore:Found a mix of voltage and non-voltage units:UserWarning")
 class TestEDFRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = EDFRecordingInterface
-    interface_kwargs = dict(file_path=str(ECEPHY_DATA_PATH / "edf" / "edf+C.edf"))
+    # ch3 is in pA, ch5 in Celsius and ch4 states no unit, so none of the three belongs in an
+    # ElectricalSeries. Only ch1 and ch2 are electrode channels.
+    interface_kwargs = dict(
+        file_path=str(ECEPHY_DATA_PATH / "edf" / "edf+C.edf"),
+        channels_to_skip=["ch3", "ch4", "ch5"],
+    )
     save_directory = OUTPUT_PATH
 
     def check_extracted_metadata(self, metadata: dict):
@@ -298,11 +312,38 @@ class TestEDFRecordingInterface(RecordingExtractorInterfaceTestMixin):
         assert self.interface.metadata_key == expected_metadata_key
         assert metadata["Ecephys"]["ElectricalSeries"] == expected_electrical_series
         assert metadata["NWBFile"]["session_start_time"] == datetime(2022, 3, 2, 10, 42, 19)
+        # The patient field of this file states a sex and nothing else.
+        assert metadata["Subject"] == dict(sex="F")
 
     def test_get_stream_names(self):
         stream_names = EDFRecordingInterface.get_stream_names(file_path=self.interface_kwargs["file_path"])
 
         assert stream_names == ["stream ((256.0,) Hz)"]
+
+
+class TestEDFRecordingInterfaceFullMetadata(RecordingExtractorInterfaceTestMixin):
+    """This file states every header field the format defines."""
+
+    data_interface_cls = EDFRecordingInterface
+    interface_kwargs = dict(
+        file_path=str(ECEPHY_DATA_PATH / "edf" / "metadata_annotations" / "full_metadata.edf"),
+    )
+    save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2024, 5, 2, 9, 30)
+        assert metadata["NWBFile"]["experimenter"] == ["Tech 01"]
+        assert metadata["Subject"] == dict(subject_id="SYNTH-001", sex="F", date_of_birth="1985-03-17")
+
+    def check_read_nwb(self, nwbfile_path: str):
+        nwbfile = read_nwb(nwbfile_path)
+
+        assert nwbfile.subject.subject_id == "SYNTH-001"
+        assert nwbfile.subject.sex == "F"
+        assert nwbfile.subject.date_of_birth.date() == date(1985, 3, 17)
+
+        nwbfile.read_io.close()
+        return super().check_read_nwb(nwbfile_path=nwbfile_path)
 
 
 class TestEDFRecordingInterfaceMultiStream(RecordingExtractorInterfaceTestMixin):
@@ -311,12 +352,18 @@ class TestEDFRecordingInterfaceMultiStream(RecordingExtractorInterfaceTestMixin)
     data_interface_cls = EDFRecordingInterface
     interface_kwargs = dict(
         file_path=str(ECEPHY_DATA_PATH / "edf" / "heterogeneous_offsets" / "same_unit_offsets_multirate.edf"),
-        stream_name="stream ((1.0,) Hz)",
+        stream_name="stream ((100.0,) Hz)",
     )
-    # The channels of this stream carry a per-channel offset, which a single ElectricalSeries can
-    # hold only in physical units.
+    # This stream is three electrode channels that all state uV and carry a per-channel offset, which a
+    # single ElectricalSeries can hold only in physical units. The 1 Hz stream is not the case to use
+    # here: its offsets differ because a respiration, a temperature and a marker channel each bring
+    # their own physical range, so it asks to have those channels excluded instead.
     conversion_options = dict(data_representation="physical_units")
     save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        # The patient field of this file states nothing, so no Subject is reported for it.
+        assert "Subject" not in metadata
 
     def test_get_stream_names(self):
         stream_names = EDFRecordingInterface.get_stream_names(file_path=self.interface_kwargs["file_path"])
@@ -328,8 +375,8 @@ class TestEDFRecordingInterfaceMultiStream(RecordingExtractorInterfaceTestMixin)
             EDFRecordingInterface(file_path=self.interface_kwargs["file_path"])
 
     def test_stream_name_selects_the_channels_of_its_stream(self, setup_interface):
-        assert list(self.interface.channel_ids) == ["Resp oro-nasal", "EMG submental", "Temp rectal", "Event marker"]
-        assert self.interface.recording_extractor.get_sampling_frequency() == 1.0
+        assert list(self.interface.channel_ids) == ["EEG Fpz-Cz", "EEG Pz-Oz", "EOG horizontal"]
+        assert self.interface.recording_extractor.get_sampling_frequency() == 100.0
 
     def test_channels_to_skip_applies_within_the_selected_stream(self):
         interface = EDFRecordingInterface(
@@ -379,7 +426,11 @@ class TestIntanRecordingInterfaceRHS(RecordingExtractorInterfaceTestMixin):
     def check_extracted_metadata(self, metadata: dict):
         expected_metadata_key = "intan_recording"
         expected_devices = {
-            "intan_device": dict(name="Intan", description="RHS Stim/Recording System", manufacturer="Intan")
+            "intan_device": dict(
+                name="Intan",
+                description="RHS Stim/Recording System",
+                device_model_metadata_key="intan_rhs2000_model",
+            )
         }
         expected_electrode_groups = {
             "B": dict(
@@ -399,7 +450,7 @@ class TestIntanRecordingInterfaceRHS(RecordingExtractorInterfaceTestMixin):
         # Old list-based format: the Intan device lives in the Ecephys.Device list and every
         # electrode group points at it by name.
         devices = metadata["Ecephys"]["Device"]
-        assert dict(name="Intan", description="RHS Stim/Recording System", manufacturer="Intan") in devices
+        assert dict(name="Intan", description="RHS Stim/Recording System") in devices
         for electrode_group in metadata["Ecephys"]["ElectrodeGroup"]:
             assert electrode_group["device"] == "Intan"
 
@@ -419,7 +470,11 @@ class TestIntanRecordingInterfaceRHD(RecordingExtractorInterfaceTestMixin):
     def check_extracted_metadata(self, metadata: dict):
         expected_metadata_key = "intan_recording"
         expected_devices = {
-            "intan_device": dict(name="Intan", description="RHD Recording System", manufacturer="Intan")
+            "intan_device": dict(
+                name="Intan",
+                description="RHD Recording System",
+                device_model_metadata_key="intan_rhd2000_model",
+            )
         }
         expected_electrical_series = {"intan_recording": dict(name="ElectricalSeries")}
         # The three fixtures use different sets of headstage ports, so the expected groups are pinned per fixture.
@@ -446,7 +501,7 @@ class TestIntanRecordingInterfaceRHD(RecordingExtractorInterfaceTestMixin):
         # Old list-based format: the Intan device lives in the Ecephys.Device list and every
         # electrode group points at it by name.
         devices = metadata["Ecephys"]["Device"]
-        assert dict(name="Intan", description="RHD Recording System", manufacturer="Intan") in devices
+        assert dict(name="Intan", description="RHD Recording System") in devices
         for electrode_group in metadata["Ecephys"]["ElectrodeGroup"]:
             assert electrode_group["device"] == "Intan"
 
@@ -539,12 +594,14 @@ class TestMaxOneRecordingInterface(RecordingExtractorInterfaceTestMixin):
             "maxone_device": dict(
                 name="MaxOne",
                 description="Recorded using Maxwell version '20190530'.",
-                manufacturer="MaxWell Biosystems",
+                device_model_metadata_key="maxone_model",
             )
         }
+        expected_device_models = {"maxone_model": dict(name="MaxOne", manufacturer="MaxWell Biosystems")}
 
         assert self.interface.metadata_key == expected_metadata_key
         assert metadata["Devices"] == expected_devices
+        assert metadata["DeviceModels"] == expected_device_models
         assert all(
             electrode_group["device_metadata_key"] == "maxone_device"
             for electrode_group in metadata["Ecephys"]["ElectrodeGroups"].values()
@@ -876,6 +933,98 @@ class TestOpenEphysBinaryRecordingInterfaceWithBlocks_version_0_6_block_1_stream
         assert metadata["NWBFile"]["session_start_time"] == datetime(2022, 5, 3, 10, 52, 24)
 
 
+class TestOpenEphysBinaryRecordingInterfaceNeuropixelsProbe(RecordingExtractorInterfaceTestMixin):
+    """A probe whose `settings.xml` names both a part number and a serial number.
+
+    The v0.5.3 fixtures carry a serial number and no part number, so probeinterface cannot build a
+    catalogue probe from them and spikeinterface attaches none at all."""
+
+    data_interface_cls = OpenEphysBinaryRecordingInterface
+    interface_kwargs = dict(
+        folder_path=str(ECEPHY_DATA_PATH / "openephysbinary" / "v0.6.x_neuropixels_with_sync" / "Record Node 104"),
+        stream_name="Record Node 104#Neuropix-PXI-100.ProbeA-AP",
+    )
+    save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        expected_devices = {
+            "neuropixels_22112107161": dict(
+                name="NeuropixelsProbeA",
+                serial_number="22112107161",
+                device_model_metadata_key="imec_NP1300",
+            )
+        }
+        expected_device_models = {
+            "imec_NP1300": dict(
+                name="NP1300",
+                model_number="NP1300",
+                manufacturer="imec",
+                description="Optopix phase1",
+            )
+        }
+        expected_ecephys_metadata = {
+            "ElectricalSeries": {"open_ephys_recording": dict(name="ElectricalSeries")},
+            "ElectrodeGroups": {"0": dict(name="0", device_metadata_key="neuropixels_22112107161")},
+        }
+
+        assert metadata["Devices"] == expected_devices
+        assert metadata["DeviceModels"] == expected_device_models
+        assert metadata["Ecephys"] == expected_ecephys_metadata
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 8, 30, 23, 41, 36)
+
+    def check_extracted_metadata_old_list_format(self, metadata: dict):
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 8, 30, 23, 41, 36)
+
+
+class TestOpenEphysBinaryRecordingInterfaceProbeWithoutSerialNumber(RecordingExtractorInterfaceTestMixin):
+    """A probe whose `settings.xml` reports `probe_serial_number="0"`, which names no unit.
+
+    The device key then falls back to the interface-scoped shape, since a key built from the model
+    number would merge two probes of the same model into one device. The four keys are the shanks of
+    the NP2014, all linking to the single probe."""
+
+    data_interface_cls = OpenEphysBinaryRecordingInterface
+    interface_kwargs = dict(
+        folder_path=str(
+            ECEPHY_DATA_PATH / "openephysbinary" / "v0.6.x_onebox_neuropixels_nontrivial_wiring" / "Record Node 101"
+        ),
+        stream_name="Record Node 101#OneBox-111.ProbeA",
+        metadata_key="my_probe",
+    )
+    save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        expected_devices = {"my_probe_probe": dict(name="NeuropixelsProbeA", device_model_metadata_key="imec_NP2014")}
+        expected_device_models = {
+            "imec_NP2014": dict(
+                name="NP2014",
+                model_number="NP2014",
+                manufacturer="imec",
+                description="Neuropixels 2.0 multishank probe with cap",
+            )
+        }
+        expected_electrode_groups = {
+            shank: dict(name=shank, device_metadata_key="my_probe_probe") for shank in ("0", "1", "2", "3")
+        }
+
+        assert metadata["Devices"] == expected_devices
+        assert metadata["DeviceModels"] == expected_device_models
+        assert metadata["Ecephys"]["ElectrodeGroups"] == expected_electrode_groups
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2025, 11, 17, 10, 48, 37)
+
+    def check_extracted_metadata_old_list_format(self, metadata: dict):
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2025, 11, 17, 10, 48, 37)
+
+    def test_no_serial_number_is_written(self, setup_interface):
+        """``"0"`` is what the plugin writes when it cannot read a serial off the probe, so the field is
+        left unset instead of stating it."""
+        interface, test_name = setup_interface
+
+        nwbfile = interface.create_nwbfile(metadata=interface.get_metadata(use_new_metadata_format=True))
+
+        assert nwbfile.devices["NeuropixelsProbeA"].serial_number is None
+
+
 class TestOpenEphysBinaryRecordingInterfaceNonNeuralDataExcluded(RecordingExtractorInterfaceTestMixin):
     """Test that non-neural channels are not written as ElectricalSeries"""
 
@@ -1061,10 +1210,18 @@ class TestSpikeGLXRecordingInterface(RecordingExtractorInterfaceTestMixin):
     def check_extracted_metadata(self, metadata: dict):
         expected_metadata_key = "spikeglx_imec0_ap"
         expected_devices = {
-            "neuropixels_imec0": dict(
+            "neuropixels_18194809281": dict(
                 name="NeuropixelsImec0",
-                description='Neuropixels 1.0 probe. Additional metadata: {"part_number": "PRB_1_4_0480_1", "port": "2", "slot": "2", "model_name": "PRB_1_4_0480_1", "manufacturer": "imec"}',
                 serial_number="18194809281",
+                device_model_metadata_key="imec_PRB_1_4_0480_1",
+            )
+        }
+        expected_device_models = {
+            "imec_PRB_1_4_0480_1": dict(
+                name="PRB_1_4_0480_1",
+                model_number="PRB_1_4_0480_1",
+                manufacturer="imec",
+                description="Neuropixels 1.0 probe",
             )
         }
         expected_electrode_groups = {
@@ -1072,7 +1229,7 @@ class TestSpikeGLXRecordingInterface(RecordingExtractorInterfaceTestMixin):
                 name="NeuropixelsImec0",
                 description="A group representing probe/shank 'NeuropixelsImec0'.",
                 location="unknown",
-                device_metadata_key="neuropixels_imec0",
+                device_metadata_key="neuropixels_18194809281",
             )
         }
         expected_electrical_series = {"spikeglx_imec0_ap": dict(name="ElectricalSeriesAP")}
@@ -1086,6 +1243,7 @@ class TestSpikeGLXRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
         assert self.interface.metadata_key == expected_metadata_key
         assert metadata["Devices"] == expected_devices
+        assert metadata["DeviceModels"] == expected_device_models
         assert metadata["Ecephys"]["ElectrodeGroups"] == expected_electrode_groups
         assert metadata["Ecephys"]["ElectricalSeries"] == expected_electrical_series
         # Electrode-table column descriptions are carried over in list shape; the dict migration is a follow-up.
@@ -1111,10 +1269,18 @@ class TestSpikeGLXRecordingInterfaceLongNHP(RecordingExtractorInterfaceTestMixin
     def check_extracted_metadata(self, metadata: dict):
         expected_metadata_key = "spikeglx_imec0_ap"
         expected_devices = {
-            "neuropixels_imec0": dict(
+            "neuropixels_22327214192": dict(
                 name="NeuropixelsImec0",
-                description='Neuropixels 1.0 NHP long linear probe with cap. Additional metadata: {"part_number": "NP1032", "port": "2", "slot": "2", "model_name": "NP1032", "manufacturer": "imec"}',
                 serial_number="22327214192",
+                device_model_metadata_key="imec_NP1032",
+            )
+        }
+        expected_device_models = {
+            "imec_NP1032": dict(
+                name="NP1032",
+                model_number="NP1032",
+                manufacturer="imec",
+                description="Neuropixels 1.0 NHP long linear probe with cap",
             )
         }
         expected_electrode_groups = {
@@ -1122,7 +1288,7 @@ class TestSpikeGLXRecordingInterfaceLongNHP(RecordingExtractorInterfaceTestMixin
                 name="NeuropixelsImec0",
                 description="A group representing probe/shank 'NeuropixelsImec0'.",
                 location="unknown",
-                device_metadata_key="neuropixels_imec0",
+                device_metadata_key="neuropixels_22327214192",
             )
         }
         expected_electrical_series = {"spikeglx_imec0_ap": dict(name="ElectricalSeriesAP")}
@@ -1136,6 +1302,7 @@ class TestSpikeGLXRecordingInterfaceLongNHP(RecordingExtractorInterfaceTestMixin
 
         assert self.interface.metadata_key == expected_metadata_key
         assert metadata["Devices"] == expected_devices
+        assert metadata["DeviceModels"] == expected_device_models
         assert metadata["Ecephys"]["ElectrodeGroups"] == expected_electrode_groups
         assert metadata["Ecephys"]["ElectricalSeries"] == expected_electrical_series
         # Electrode-table column descriptions are carried over in list shape; the dict migration is a follow-up.
@@ -1230,15 +1397,23 @@ class TestPlexonLFPInterface(RecordingExtractorInterfaceTestMixin):
         assert metadata["Ecephys"]["ElectricalSeries"] == expected_electrical_series
 
 
-def is_macos():
-    import platform
+def wine_is_required_and_missing() -> bool:
+    """Whether these tests need Wine on this platform and it is not installed.
 
-    return platform.system() == "Darwin"
+    Plexon2 reads its files through a Windows DLL, so every platform other than Windows runs that DLL
+    under Wine. macOS has no Wine to install since the wine-crossover Homebrew cask was removed
+    upstream in April 2026, and on Linux the apt install is allowed to fail rather than take an
+    unrelated pull request's whole run down with it, so the binary is not guaranteed to be there.
+    """
+    import platform
+    import shutil
+
+    return platform.system() != "Windows" and shutil.which("wine") is None
 
 
 @pytest.mark.skipif(
-    is_macos(),
-    reason="Plexon2 requires Wine on macOS and the wine-crossover Homebrew cask was removed upstream in April 2026.",
+    wine_is_required_and_missing(),
+    reason="Plexon2 reads its files through a Windows DLL and Wine is not installed on this platform.",
 )
 class TestPlexon2RecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = Plexon2RecordingInterface
