@@ -19,7 +19,6 @@ from pynwb.ophys import (
 )
 from roiextractors import (
     ImagingExtractor,
-    MultiSegmentationExtractor,
     SegmentationExtractor,
 )
 
@@ -1651,22 +1650,9 @@ def write_segmentation_to_nwbfile(
             stacklevel=2,
         )
 
-    # Parse metadata correctly considering the MultiSegmentationExtractor function:
-    if isinstance(segmentation_extractor, MultiSegmentationExtractor):
-        segmentation_extractors = segmentation_extractor.segmentations
-        if metadata is not None:
-            assert isinstance(
-                metadata, list
-            ), "For MultiSegmentationExtractor enter 'metadata' as a list of SegmentationExtractor metadata"
-            assert len(metadata) == len(segmentation_extractor), (
-                "The 'metadata' argument should be a list with the same "
-                "number of elements as the segmentations in the "
-                "MultiSegmentationExtractor"
-            )
-    else:
-        segmentation_extractors = [segmentation_extractor]
-        if metadata is not None and not isinstance(metadata, list):
-            metadata = [metadata]
+    segmentation_extractors = [segmentation_extractor]
+    if metadata is not None and not isinstance(metadata, list):
+        metadata = [metadata]
 
     metadata_base_list = [get_nwb_segmentation_metadata(seg_extractor) for seg_extractor in segmentation_extractors]
 
