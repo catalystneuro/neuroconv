@@ -244,7 +244,7 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
     def __init__(
         self,
         folder_path: DirectoryPath = None,
-        *,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
         file_paths: list = None,
         timeStamps_file_path: str = None,
         verbose: bool = False,
@@ -289,6 +289,35 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
             # TODO: improve docstring once #1653 (ophys metadata documentation) is merged
             Metadata key for this interface. When None, defaults to "miniscope_imaging".
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "file_paths",
+                "timeStamps_file_path",
+                "verbose",
+            ]
+            num_positional_args_before_args = 1  # folder_path
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args + 1} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to MiniscopeImagingInterface.__init__() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            file_paths = positional_values.get("file_paths", file_paths)
+            timeStamps_file_path = positional_values.get("timeStamps_file_path", timeStamps_file_path)
+            verbose = positional_values.get("verbose", verbose)
+
         if folder_path is None and file_paths is None:
             raise ValueError("Either 'folder_path' or 'file_paths' must be provided.")
 
@@ -463,7 +492,7 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
         self,
         nwbfile: NWBFile,
         metadata: dict | None = None,
-        *,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
         photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "OnePhotonSeries",
         **kwargs,
     ):
@@ -472,6 +501,33 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
 
         This method adds the Miniscope device and then delegates to the parent class.
         """
+        # Handle deprecated positional arguments
+        if args:
+            import warnings
+
+            parameter_names = [
+                "photon_series_type",
+            ]
+            num_positional_args_before_args = 2  # nwbfile, metadata
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"add_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                "Passing arguments positionally to MiniscopeImagingInterface.add_to_nwbfile() is deprecated "
+                "and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            photon_series_type = positional_values.get("photon_series_type", photon_series_type)
+
         from ....tools.roiextractors.roiextractors import _is_dict_based_metadata
 
         if not _is_dict_based_metadata(metadata if metadata is not None else self.get_metadata()):
