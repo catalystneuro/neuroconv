@@ -1514,12 +1514,10 @@ class TestMiniscopeImagingInterface(MiniscopeImagingInterfaceMixin):
         )
 
         file_paths = [str(miniscope_folder / "0.avi")]
-        configuration_file_path = str(miniscope_folder / "metaData.json")
         timestamps_path = str(miniscope_folder / "timeStamps.csv")
 
         interface = self.data_interface_cls(
             file_paths=file_paths,
-            configuration_file_path=configuration_file_path,
             timeStamps_file_path=timestamps_path,
         )
 
@@ -1539,18 +1537,11 @@ class TestMiniscopeImagingInterface(MiniscopeImagingInterfaceMixin):
         )
 
         # Test missing required parameters
-        with pytest.raises(ValueError, match="Either 'folder_path' must be provided"):
+        with pytest.raises(ValueError, match="Either 'folder_path' or 'file_paths' must be provided"):
             self.data_interface_cls()
 
-        # Test missing configuration_file_path when using file_paths
-        with pytest.raises(ValueError, match="Either 'folder_path' must be provided"):
-            self.data_interface_cls(file_paths=[str(miniscope_folder / "0.avi")])
-
         # Test conflicting parameters
-        with pytest.raises(
-            ValueError,
-            match="When 'folder_path' is provided, 'file_paths' and 'configuration_file_path' cannot be specified",
-        ):
+        with pytest.raises(ValueError, match="When 'folder_path' is provided, 'file_paths' cannot be specified"):
             self.data_interface_cls(
                 folder_path=str(miniscope_folder),
                 file_paths=[str(miniscope_folder / "0.avi")],

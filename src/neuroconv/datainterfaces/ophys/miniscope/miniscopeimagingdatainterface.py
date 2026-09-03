@@ -212,7 +212,7 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
     and a metaData.json configuration file. It provides two usage modes:
 
     1. folder_path: For standard folder structures where files follow the expected naming convention
-    2. file_paths + configuration_file_path: For non-standard folder structures with custom organization
+    2. file_paths: For non-standard folder structures with custom organization
     """
 
     display_name = "Miniscope Imaging"
@@ -244,9 +244,8 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
     def __init__(
         self,
         folder_path: DirectoryPath = None,
-        *args,  # TODO: change to * (keyword only) on or after August 2026
+        *,
         file_paths: list = None,
-        configuration_file_path: str = None,
         timeStamps_file_path: str = None,
         verbose: bool = False,
         metadata_key: str | None = None,
@@ -256,7 +255,7 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
 
         Two usage modes are supported:
         - Provide only folder_path for standard folder structures
-        - Provide file_paths and configuration_file_path for custom folder structures
+        - Provide file_paths for custom folder structures
         These modes are mutually exclusive.
 
         Parameters
@@ -280,9 +279,6 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
             recording session and must follow the naming convention (0.avi, 1.avi, 2.avi, ...).
             Files will be concatenated in numerical order.
             Use this for non-standard folder structures.
-        configuration_file_path : str, optional
-            Path to the metaData.json configuration file containing recording parameters.
-            Required when using file_paths parameter.
         timeStamps_file_path : str, optional
             Path to the timeStamps.csv file containing timestamps relative to the recording start.
             If not provided, the extractor will look for timeStamps.csv in the same directory
@@ -293,72 +289,23 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
             # TODO: improve docstring once #1653 (ophys metadata documentation) is merged
             Metadata key for this interface. When None, defaults to "miniscope_imaging".
         """
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "file_paths",
-                "configuration_file_path",
-                "timeStamps_file_path",
-                "verbose",
-            ]
-            num_positional_args_before_args = 1  # folder_path
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args + 1} were given. "
-                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
-                    "Please use keyword arguments."
-                )
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to MiniscopeImagingInterface.__init__() is deprecated "
-                f"and will be removed on or after August 2026. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            file_paths = positional_values.get("file_paths", file_paths)
-            configuration_file_path = positional_values.get("configuration_file_path", configuration_file_path)
-            timeStamps_file_path = positional_values.get("timeStamps_file_path", timeStamps_file_path)
-            verbose = positional_values.get("verbose", verbose)
-
-        if folder_path is None and (file_paths is None or configuration_file_path is None):
-            raise ValueError(
-                "Either 'folder_path' must be provided, or both 'file_paths' and 'configuration_file_path' must be provided."
-            )
+        if folder_path is None and file_paths is None:
+            raise ValueError("Either 'folder_path' or 'file_paths' must be provided.")
 
         from ._miniscope_readers import _raise_if_miniscope_v3_format
 
         if folder_path is not None:
             _raise_if_miniscope_v3_format(folder_path=str(folder_path))
-        elif configuration_file_path is not None:
-            _raise_if_miniscope_v3_format(folder_path=str(Path(configuration_file_path).parent))
         elif file_paths is not None:
             _raise_if_miniscope_v3_format(folder_path=str(Path(file_paths[0]).parent))
 
-        if folder_path is not None and (file_paths is not None or configuration_file_path is not None):
-            raise ValueError(
-                "When 'folder_path' is provided, 'file_paths' and 'configuration_file_path' cannot be specified. "
-                "Use either folder_path alone or provide file_paths with configuration_file_path."
-            )
-
-        # Deprecation warning for configuration_file_path
-        if configuration_file_path is not None:
-            warnings.warn(
-                "The 'configuration_file_path' parameter is deprecated and will be removed on or after May 2026. "
-                "Use 'folder_path' instead for standard folder structures.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
+        if folder_path is not None and file_paths is not None:
+            raise ValueError("When 'folder_path' is provided, 'file_paths' cannot be specified.")
 
         # Store the device folder path for metadata extraction
         # The device folder contains metaData.json and .avi files
         if folder_path is not None:
             self._device_folder_path = Path(folder_path)
-        elif configuration_file_path is not None:
-            self._device_folder_path = Path(configuration_file_path).parent
         elif file_paths is not None:
             # Infer from file_paths - all .avi files should be in the same folder
             self._device_folder_path = Path(file_paths[0]).parent
@@ -372,7 +319,6 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
         super().__init__(
             folder_path=folder_path,
             file_paths=file_paths,
-            configuration_file_path=configuration_file_path,
             timestamps_path=timeStamps_file_path,
             verbose=verbose,
             metadata_key=metadata_key,
@@ -517,7 +463,7 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
         self,
         nwbfile: NWBFile,
         metadata: dict | None = None,
-        *args,  # TODO: change to * (keyword only) on or after August 2026
+        *,
         photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "OnePhotonSeries",
         **kwargs,
     ):
@@ -526,33 +472,6 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
 
         This method adds the Miniscope device and then delegates to the parent class.
         """
-        # Handle deprecated positional arguments
-        if args:
-            import warnings
-
-            parameter_names = [
-                "photon_series_type",
-            ]
-            num_positional_args_before_args = 2  # nwbfile, metadata
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"add_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args} were given. "
-                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
-                    "Please use keyword arguments."
-                )
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                "Passing arguments positionally to MiniscopeImagingInterface.add_to_nwbfile() is deprecated "
-                "and will be removed on or after August 2026. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            photon_series_type = positional_values.get("photon_series_type", photon_series_type)
-
         from ....tools.roiextractors.roiextractors import _is_dict_based_metadata
 
         if not _is_dict_based_metadata(metadata if metadata is not None else self.get_metadata()):
