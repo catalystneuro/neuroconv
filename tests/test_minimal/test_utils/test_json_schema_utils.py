@@ -262,3 +262,37 @@ def test_validate_metadata_rejects_duplicate_device_names():
 
     with pytest.raises(ValueError, match="Use 1 key to share a device"):
         validate_metadata(metadata=metadata, schema={"type": "object"})
+
+
+def test_dict_deep_update_forwards_compare_key_into_nested_mappings():
+    # The list sits one level down, so the recursive call has to carry the compare_key with it.
+    a = dict(Ecephys=dict(Electrodes=[dict(id=1, desc="old"), dict(id=2, desc="other")]))
+    b = dict(Ecephys=dict(Electrodes=[dict(id=1, desc="new")]))
+    result = dict_deep_update(a, b, compare_key="id")
+    assert result == dict(Ecephys=dict(Electrodes=[dict(id=1, desc="new"), dict(id=2, desc="other")]))
+
+
+def test_dict_deep_update_forwards_list_dict_deep_update_into_nested_mappings():
+    a = dict(Ecephys=dict(Electrodes=[dict(name="x", desc="old", unit="V")]))
+    b = dict(Ecephys=dict(Electrodes=[dict(name="x", desc="new")]))
+    # Replacement, not a merge: the entry loses the field the update did not restate.
+    result = dict_deep_update(a, b, list_dict_deep_update=False)
+    assert result == dict(Ecephys=dict(Electrodes=[dict(name="x", desc="new")]))
+
+
+def test_dict_deep_update_forwards_compare_key_into_merged_list_entries():
+    # Two list entries matched on the compare_key are merged with dict_deep_update, and that merge has to
+    # keep the compare_key too for any list nested inside the entry.
+    a = dict(groups=[dict(id="g", channels=[dict(id=1, gain=1.0)])])
+    b = dict(groups=[dict(id="g", channels=[dict(id=1, gain=2.0)])])
+    result = dict_deep_update(a, b, compare_key="id")
+    assert result == dict(groups=[dict(id="g", channels=[dict(id=1, gain=2.0)])])
+
+
+def test_dict_deep_update_copy_false_updates_nested_dicts_in_place():
+    inner = dict(x=1)
+    a = dict(outer=inner)
+    result = dict_deep_update(a, dict(outer=dict(y=2)), copy=False)
+    assert result is a
+    assert a["outer"] is inner
+    assert inner == dict(x=1, y=2)

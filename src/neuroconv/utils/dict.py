@@ -101,7 +101,13 @@ def append_replace_dict_in_list(
         if len(indxs) > 0:
             for idx in indxs:
                 if list_dict_deep_update:
-                    ls[idx] = dict_deep_update(ls[idx], d)
+                    ls[idx] = dict_deep_update(
+                        ls[idx],
+                        d,
+                        remove_repeats=remove_repeats,
+                        compare_key=compare_key,
+                        list_dict_deep_update=list_dict_deep_update,
+                    )
                 else:
                     ls[idx] = d
         else:
@@ -193,8 +199,16 @@ def dict_deep_update(
         if isinstance(update_values, collections.abc.Mapping):
             sub_dict_to_update = dict_to_update.get(key_to_update, dict())
             sub_dict_with_update_values = update_values
+            # ``copy`` is not forwarded: the top-level call has already copied everything below it when asked
+            # to, and when it was not asked to, the nested dicts are updated in place like the top one.
             dict_to_update[key_to_update] = dict_deep_update(
-                sub_dict_to_update, sub_dict_with_update_values, append_list=append_list, remove_repeats=remove_repeats
+                sub_dict_to_update,
+                sub_dict_with_update_values,
+                append_list=append_list,
+                remove_repeats=remove_repeats,
+                copy=False,
+                compare_key=compare_key,
+                list_dict_deep_update=list_dict_deep_update,
             )
         # Update with list calls the append_replace_dict_in_list function
         elif append_list and isinstance(update_values, list):
