@@ -239,7 +239,15 @@ class DeepDict(defaultdict):
         """
         for key, value in (other or kwargs).items():
             if key in self and isinstance(self[key], dict) and isinstance(value, dict):
+                # A value stored through ``__setitem__`` or an earlier update may be a plain dict, which has
+                # no ``deep_update``, so it is converted before recursing into it.
+                if not isinstance(self[key], DeepDict):
+                    self[key] = DeepDict(self[key])
                 self[key].deep_update(value)
+            elif isinstance(value, dict) and not isinstance(value, DeepDict):
+                # Stored as a DeepDict, as the constructor does for nested dicts, so a later update into
+                # this key finds a DeepDict there.
+                self[key] = DeepDict(value)
             else:
                 self[key] = value
 
