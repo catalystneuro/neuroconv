@@ -9,6 +9,7 @@
 * Removed the `hdf5` and `sbx` installation extras, aliases of `hdf5imaging` and `scanbox` kept for gallery pages that named the old spellings and marked for removal at the start of 2026. Use `neuroconv[hdf5imaging]` and `neuroconv[scanbox]`.
 
 ## Bug Fixes
+* `dict_deep_update` now forwards `compare_key` and `list_dict_deep_update` into the nested mappings and list entries it recurses into, where both had fallen back to their defaults, so a `compare_key` other than `name` no longer raises `KeyError` below the top level and `list_dict_deep_update=False` replaces nested list entries as asked. [PR #2009](https://github.com/catalystneuro/neuroconv/pull/2009)
 * Filter empty fluorescence traces on `math.prod(trace.shape)` instead of `trace.size`, which the `DatasetView` objects `get_traces_dict()` can return do not have. [PR #2005](https://github.com/catalystneuro/neuroconv/pull/2005)
 * Reading an existing Zarr file now reports its shuffle in `compressors` rather than among the filters, so a file this library wrote reports the configuration that wrote it and naming shuffle again does not apply it twice. [PR #2002](https://github.com/catalystneuro/neuroconv/pull/2002)
 * Fixed the Zarr shuffle codec taking `numcodecs`' default `elementsize` of 4 regardless of the dataset's dtype, which on float64 grouped the wrong bytes and recovered almost nothing, so it is now taken from the dtype unless the caller states one. [PR #1984](https://github.com/catalystneuro/neuroconv/pull/1984)
