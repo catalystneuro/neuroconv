@@ -112,6 +112,21 @@ class TestDeepDict(unittest.TestCase):
         expected = {"a": {"b": {"c": 42, "d": 55}, "e": {"f": 66}}, "g": {"h": 77}}
         self.assertEqual(dict(self.dd), expected)
 
+    def test_deep_update_twice_into_same_new_key(self):
+        # The first update creates the key; the second reaches into it and must find a DeepDict there.
+        dd = DeepDict()
+        dd.deep_update({"a": {"b": 1}})
+        self.assertIsInstance(dd["a"], DeepDict)
+        dd.deep_update({"a": {"c": 2}})
+        self.assertEqual(dd.to_dict(), {"a": {"b": 1, "c": 2}})
+
+    def test_deep_update_into_key_assigned_a_plain_dict(self):
+        dd = DeepDict()
+        dd["a"] = {"b": 1}
+        dd.deep_update({"a": {"c": 2}})
+        self.assertIsInstance(dd["a"], DeepDict)
+        self.assertEqual(dd.to_dict(), {"a": {"b": 1, "c": 2}})
+
     def test_deepcopy(self):
         dd2 = deepcopy(self.dd)
         dd2["a"]["b"]["c"] = 0
