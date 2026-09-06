@@ -47,6 +47,25 @@ def run_conversion_from_yaml_cli(
     )
 
 
+def _resolve_conversion_options(
+    *,
+    interface_names,
+    global_conversion_options: dict,
+    session_conversion_options: dict,
+) -> dict[str, dict]:
+    """
+    Assemble the conversion options handed to each interface of one session.
+
+    The top-level ``conversion_options`` block applies to every interface of every session, and a session's
+    own block is keyed by interface name. The session's values win where both state the same option, the
+    same way the session's metadata wins over the global block.
+    """
+    return {
+        interface_name: {**global_conversion_options, **session_conversion_options.get(interface_name, dict())}
+        for interface_name in interface_names
+    }
+
+
 def run_conversion_from_yaml(
     specification_file_path: FilePath,
     data_folder_path: DirectoryPath | None = None,
@@ -157,10 +176,11 @@ def run_conversion_from_yaml(
                 )
                 raise ValueError(message)
 
-            session_conversion_options = session.get("conversion_options", dict())
-            conversion_options = dict()
-            for key in converter.data_interface_objects:
-                conversion_options[key] = dict(session_conversion_options.get(key, dict()), **global_conversion_options)
+            conversion_options = _resolve_conversion_options(
+                interface_names=converter.data_interface_objects,
+                global_conversion_options=global_conversion_options,
+                session_conversion_options=session.get("conversion_options", dict()),
+            )
 
             nwbfile_name = session.get("nwbfile_name", f"temp_nwbfile_name_{file_counter}").strip(".nwb")
             converter.run_conversion(
