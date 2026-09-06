@@ -412,7 +412,6 @@ class DatasetIOConfiguration(BaseModel, ABC):
 
         return cls(
             object_id=neurodata_object.object_id,
-            object_name=neurodata_object.name,
             location_in_file=location_in_file,
             dataset_name=dataset_name,
             full_shape=full_shape,
@@ -465,7 +464,6 @@ class DatasetIOConfiguration(BaseModel, ABC):
         )
         return dict(
             object_id=neurodata_object.object_id,
-            object_name=neurodata_object.name,
             location_in_file=location_in_file,
             dataset_name=dataset_name,
             full_shape=full_shape,
