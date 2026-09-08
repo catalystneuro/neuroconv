@@ -19,7 +19,6 @@ from pynwb.ophys import (
 )
 from roiextractors import (
     ImagingExtractor,
-    MultiSegmentationExtractor,
     SegmentationExtractor,
 )
 
@@ -680,7 +679,9 @@ def _add_roi_response_traces_to_nwbfile(
     # Get traces from extractor, filter None/empty
     traces_dict = segmentation_extractor.get_traces_dict()
     traces_to_add = {
-        trace_name: trace for trace_name, trace in traces_dict.items() if trace is not None and trace.size != 0
+        trace_name: trace
+        for trace_name, trace in traces_dict.items()
+        if trace is not None and math.prod(trace.shape) != 0
     }
 
     roi_responses = metadata.get("Ophys", {}).get("RoiResponses", {})
@@ -1381,7 +1382,7 @@ def _segmentation_extractor_has_data(segmentation_extractor: SegmentationExtract
         return True
 
     traces = segmentation_extractor.get_traces_dict().values()
-    if any(trace is not None and trace.size != 0 for trace in traces):
+    if any(trace is not None and math.prod(trace.shape) != 0 for trace in traces):
         return True
 
     return any(image is not None for image in segmentation_extractor.get_images_dict().values())
@@ -1529,7 +1530,7 @@ def add_segmentation_to_nwbfile(
         # That is boilerplate rather than a request, and the old writer answered it by writing nothing, so
         # the block goes here rather than letting the writer reject metadata the caller never wrote.
         traces = segmentation_extractor.get_traces_dict().values()
-        if not any(trace is not None and trace.size != 0 for trace in traces):
+        if not any(trace is not None and math.prod(trace.shape) != 0 for trace in traces):
             metadata["Ophys"] = {key: value for key, value in metadata["Ophys"].items() if key != "RoiResponses"}
 
     if _is_dict_based_metadata(metadata):
@@ -1651,22 +1652,9 @@ def write_segmentation_to_nwbfile(
             stacklevel=2,
         )
 
-    # Parse metadata correctly considering the MultiSegmentationExtractor function:
-    if isinstance(segmentation_extractor, MultiSegmentationExtractor):
-        segmentation_extractors = segmentation_extractor.segmentations
-        if metadata is not None:
-            assert isinstance(
-                metadata, list
-            ), "For MultiSegmentationExtractor enter 'metadata' as a list of SegmentationExtractor metadata"
-            assert len(metadata) == len(segmentation_extractor), (
-                "The 'metadata' argument should be a list with the same "
-                "number of elements as the segmentations in the "
-                "MultiSegmentationExtractor"
-            )
-    else:
-        segmentation_extractors = [segmentation_extractor]
-        if metadata is not None and not isinstance(metadata, list):
-            metadata = [metadata]
+    segmentation_extractors = [segmentation_extractor]
+    if metadata is not None and not isinstance(metadata, list):
+        metadata = [metadata]
 
     metadata_base_list = [get_nwb_segmentation_metadata(seg_extractor) for seg_extractor in segmentation_extractors]
 
