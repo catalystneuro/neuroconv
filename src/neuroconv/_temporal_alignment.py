@@ -8,10 +8,11 @@ can be reached and re-timed on its own::
     interface.alignment.keys()                                 # the objects this interface can name
     interface.alignment["response"].get_times()                # the times this object will be written on
     interface.alignment["response"].set_times(times)           # this object's times outright
+    interface.alignment["response"].start_at(12.5)             # this object's first sample at 12.5 s, one number
     interface.alignment["response"].remap_times(...)           # this object's clock against a reference
 
-What an operation is called on is what it applies to: a shift positions the whole interface and so cannot take
-a key, while literal times belong to one object and so cannot be given without one. An interface that names
+What an operation is called on is what it applies to: a shift moves the whole interface and so cannot take
+a key, while literal times and a starting position belong to one object and so cannot be given without one. An interface that names
 nothing still shifts: registration is what a keyed operation needs, and the events interfaces register nothing
 because enumerating their event types means reading the source. The objects are typed by shape, since a series
 is a single sample axis and takes ``set_times`` while a table is timestamps plus durations and cannot, there
@@ -35,15 +36,20 @@ import numpy as np
 class _TimeBearingSeries:
     """One series-shaped time-bearing object, reached as ``interface.alignment[key]``.
 
-    Holds an optional replacement for the object's times and nothing else, so the source times are never
-    mutated and what is written is ``(replacement or native) + the interface's offset``.
+    Holds an optional replacement for the object's times and one offset of its own, so the source times are
+    never mutated and what is written is ``(replacement or native) + this object's offset + the interface's
+    offset``.
     """
 
-    def __init__(self, *, get_native_times, alignment: "_TemporalAlignment"):
-        # A callable rather than an array, so an interface registers its objects without reading its source.
+    def __init__(self, *, get_native_times, alignment: "_TemporalAlignment", get_native_start_time=None):
+        # Callables rather than arrays, so an interface registers its objects without reading its source. The
+        # start is separate so that placing an object needs one number from the header, not every sample time.
         self._get_native_times = get_native_times
+        self._get_native_start_time = get_native_start_time
         self._alignment = alignment
         self._times: np.ndarray | None = None
+        self._object_offset = 0.0
+        self._is_placed = False
 
     @property
     def is_fine_aligned(self) -> bool:
@@ -51,26 +57,76 @@ class _TimeBearingSeries:
 
         True once ``set_times`` or ``remap_times`` has run on it. A shift does not count, and not by
         convention: a shift is *gross* alignment, moving every object at once, so it says nothing about any
-        one of them. See :doc:`the temporal alignment user guide </user_guide/temporal_alignment>` for the
+        one of them. Nor does ``start_at``, which moves this object whole and says nothing about the spacing
+        of its samples. See :doc:`the temporal alignment user guide </user_guide/temporal_alignment>` for the
         gross and fine distinction.
         """
         return self._times is not None
 
+    @property
+    def is_placed(self) -> bool:
+        """Whether ``start_at`` has said where this object begins, and nothing since has superseded it."""
+        return self._is_placed
+
     def get_times(self) -> np.ndarray:
-        """Return the times this object will be written on, the interface's offset included."""
+        """Return the times this object will be written on, its own and the interface's offsets included."""
         times = self._times if self._times is not None else np.asarray(self._get_native_times())
-        return times + self._alignment.offset
+        return times + self._object_offset + self._alignment.offset
+
+    def get_start_time(self) -> float:
+        """Return the time this object's first sample will be written on, without building its times."""
+        return self._get_base_start_time() + self._object_offset + self._alignment.offset
+
+    def _get_base_start_time(self) -> float:
+        """The first time of what the offsets are added to, read from the header where the interface gave one."""
+        if self._times is not None:
+            base_start_time = self._times[0] if self._times.size else np.nan
+        elif self._get_native_start_time is not None:
+            base_start_time = self._get_native_start_time()
+        else:
+            native_times = np.asarray(self._get_native_times())
+            base_start_time = native_times[0] if native_times.size else np.nan
+        return float(base_start_time)
+
+    def start_at(self, starting_time: float) -> None:
+        """Place this object so that its first sample sits at ``starting_time`` seconds on the session clock.
+
+        For a file that was triggered on its own and records nothing about where it sits, a video or an audio
+        file written once per trial: the one number you know about it is when it began. This stores that
+        number and reads nothing, so it costs the same for an hour of audio as for a second, and the object
+        keeps its regular spacing and can still be written as a rate.
+
+        It states a position rather than adding to one, so calling it twice with the same value changes
+        nothing, and a ``shift_times`` applied earlier is superseded for this object while one applied
+        afterwards still moves it. ``set_times`` and ``remap_times`` define the object's times outright and
+        so supersede an earlier ``start_at``; called after them, ``start_at`` moves the given times rigidly.
+        """
+        starting_time = float(starting_time)
+        if not np.isfinite(starting_time):
+            raise ValueError(f"`start_at` needs a finite time in seconds, not {starting_time}.")
+        base_start_time = self._get_base_start_time()
+        if not np.isfinite(base_start_time):
+            raise ValueError(
+                "This object has no finite first time to place: it is empty, or a remap marked its first "
+                "sample as outside the pulses."
+            )
+        # ``get_times`` adds both offsets on the way back out, so store what lands the first sample on
+        # ``starting_time`` once they are.
+        self._object_offset = starting_time - base_start_time - self._alignment.offset
+        self._is_placed = True
 
     def set_times(self, times) -> None:
         """Write these times for this object, exactly as given.
 
         For per-sample times you already trust, from a synchronization signal or a computation of your own.
-        They are the times the file will carry, so a shift applied earlier is superseded for this object;
-        a shift applied afterwards still moves it, the way any later correction would.
+        They are the times the file will carry, so a shift or a ``start_at`` applied earlier is superseded
+        for this object; a shift applied afterwards still moves it, the way any later correction would.
         """
         # ``get_times`` adds the interface's offset on the way back out, so store these less that offset
         # and the caller reads back exactly what they passed.
         self._times = np.asarray(times) - self._alignment.offset
+        self._object_offset = 0.0
+        self._is_placed = False
 
     def remap_times(self, *, local_sync_times, reference_sync_times, interpolation_function=None) -> None:
         """Re-express this object's times on a reference clock through synchronization pulses.
@@ -141,24 +197,33 @@ class _TimeBearingSeries:
         # These are the times to be written, and ``get_times`` adds the interface's offset on the way back
         # out, so what is stored is the remapped times less that offset.
         self._times = remapped_times - self._alignment.offset
+        self._object_offset = 0.0
+        self._is_placed = False
 
 
 class _TemporalAlignment:
     """The alignment surface for an interface's time-bearing objects, exposed as ``interface.alignment``.
 
-    Carries the interface-wide offset, ``output = native + offset``, default ``0.0`` (identity), and names the
-    objects the interface registered. ``shift_times`` positions the whole interface, so it takes no key, and
-    ``remap_times`` is one clock's correction, so it applies to every object. Times for one object are given
-    through the object itself: ``alignment[key].set_times(times)``.
+    Carries the interface-wide offset, ``output = native + object offset + interface offset``, both offsets
+    ``0.0`` by default (identity), and names the objects the interface registered. ``shift_times`` moves the
+    whole interface, so it takes no key, and ``remap_times`` is one clock's correction, so it applies to every
+    object. Times for one object are given through the object itself, ``alignment[key].set_times(times)``,
+    and so is its position, ``alignment[key].start_at(starting_time)``.
     """
 
     def __init__(self):
         self._offset = 0.0
         self._name_to_time_bearing_object: dict[str, _TimeBearingSeries] = {}
 
-    def _register_series(self, *, key: str, get_native_times) -> _TimeBearingSeries:
-        """Name one series-shaped time-bearing object. Called by the interface, not by a user."""
-        time_bearing_object = _TimeBearingSeries(get_native_times=get_native_times, alignment=self)
+    def _register_series(self, *, key: str, get_native_times, get_native_start_time=None) -> _TimeBearingSeries:
+        """Name one series-shaped time-bearing object. Called by the interface, not by a user.
+
+        ``get_native_start_time`` returns the first native time from the header alone, so that ``start_at``
+        and the compact write read no samples. Without it the first native time is read.
+        """
+        time_bearing_object = _TimeBearingSeries(
+            get_native_times=get_native_times, get_native_start_time=get_native_start_time, alignment=self
+        )
         self._name_to_time_bearing_object[key] = time_bearing_object
         return time_bearing_object
 

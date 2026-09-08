@@ -161,14 +161,16 @@ class TestExternalVideoAlignment:
         interface.alignment.shift_times(123.0)
 
         nwbfile = mock_NWBFile()
-        interface.add_to_nwbfile(nwbfile=nwbfile)
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", UserWarning)
+            interface.add_to_nwbfile(nwbfile=nwbfile)
 
         image_series = nwbfile.acquisition[interface._default_name]
         assert image_series.starting_time == 123.0
         assert image_series.num_samples == sum(interface.get_header_frame_counts())
-        # Placed files go through the times array, so the rate is fitted back out of it rather than stated,
-        # which costs the last digits. The compact path only survives for a video nothing has re-timed.
-        assert image_series.rate == pytest.approx(interface.get_header_frame_rates()[0])
+        # Placement stores one number per file, so the rate is stated rather than fitted back out of an array.
+        assert image_series.rate == interface.get_header_frame_rates()[0]
+        assert image_series.timestamps is None
 
     def test_starting_times_are_absolute(self):
         """Placement replaces rather than accumulates, which is what the deprecated setter got wrong."""
@@ -202,8 +204,8 @@ class TestExternalVideoAlignment:
         np.testing.assert_array_equal(interface.alignment["trial_1"].get_times(), [15.0, 15.5])
         np.testing.assert_array_equal(interface.alignment["trial_2"].get_times(), [105.0, 105.5])
 
-    def test_a_placement_and_measured_times_supersede_each_other(self):
-        """Both say where one file is, so the later call wins rather than the two combining."""
+    def test_measured_times_supersede_a_placement_and_are_moved_rigidly_by_a_later_one(self):
+        """Both say where one file is: set times replace a placement, and a placement after them moves them whole."""
         interface = MockExternalVideoInterface(file_paths=["trial_1.avi", "trial_2.avi"], num_frames=2, frame_rate=2.0)
 
         _place(interface, "trial_2", 100.0)
@@ -211,7 +213,60 @@ class TestExternalVideoAlignment:
         np.testing.assert_array_equal(interface.alignment["trial_2"].get_times(), [100.1, 100.7])
 
         _place(interface, "trial_2", 50.0)
-        np.testing.assert_array_equal(interface.alignment["trial_2"].get_times(), [50.0, 50.5])
+        np.testing.assert_allclose(interface.alignment["trial_2"].get_times(), [50.0, 50.6])
+
+    def test_an_earlier_shift_is_superseded_by_a_placement(self):
+        """A placement states where the file is, so a shift before it is absorbed and one after it still moves it."""
+        interface = MockExternalVideoInterface(file_paths=["trial_1.avi"], num_frames=2, frame_rate=2.0)
+        interface.alignment.shift_times(5.0)
+        interface.alignment["trial_1"].start_at(10.0)
+        np.testing.assert_array_equal(interface.alignment["trial_1"].get_times(), [10.0, 10.5])
+
+        interface.alignment.shift_times(1.0)
+        np.testing.assert_array_equal(interface.alignment["trial_1"].get_times(), [11.0, 11.5])
+
+    def test_a_placement_is_remapped_with_the_file(self):
+        """Remapping acts on the times as they currently stand, placement included."""
+        interface = MockExternalVideoInterface(file_paths=["trial_1.avi"], num_frames=2, frame_rate=2.0)
+        interface.alignment["trial_1"].start_at(10.0)
+
+        interface.alignment.remap_times(local_sync_times=[0.0, 20.0], reference_sync_times=[0.0, 40.0])
+
+        np.testing.assert_array_equal(interface.alignment["trial_1"].get_times(), [20.0, 21.0])
+
+    def test_start_at_rejects_a_time_that_is_not_finite(self):
+        interface = MockExternalVideoInterface(file_paths=["trial_1.avi"], num_frames=2, frame_rate=2.0)
+        with pytest.raises(ValueError, match="finite"):
+            interface.alignment["trial_1"].start_at(np.nan)
+
+    def test_placing_a_file_reads_none_of_it(self):
+        """One number is stored, so a file of a billion frames costs what one of two does and keeps its rate."""
+        interface = MockExternalVideoInterface(file_paths=["session.avi"], num_frames=10**9, frame_rate=30.0)
+        interface.alignment["session"].start_at(12.5)
+        assert interface.alignment["session"].get_start_time() == 12.5
+
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile)
+
+        image_series = nwbfile.acquisition[interface._default_name]
+        assert image_series.starting_time == 12.5
+        assert image_series.rate == 30.0
+        assert image_series.num_samples == 10**9
+
+    def test_files_placed_with_gaps_write_timestamps(self):
+        """One rate cannot carry a gap, so files placed apart go through the times array."""
+        interface = MockExternalVideoInterface(file_paths=["trial_1.avi", "trial_2.avi"], num_frames=2, frame_rate=2.0)
+        for segment_key, starting_time in zip(interface.alignment.keys(), [10.0, 100.0]):
+            interface.alignment[segment_key].start_at(starting_time)
+
+        nwbfile = mock_NWBFile()
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", UserWarning)
+            interface.add_to_nwbfile(nwbfile=nwbfile)
+
+        image_series = nwbfile.acquisition[interface._default_name]
+        np.testing.assert_array_equal(image_series.timestamps, [10.0, 10.5, 100.0, 100.5])
+        assert image_series.rate is None
 
     def test_overlapping_files_raise_on_write(self):
         """One ImageSeries carries one timeline, so files that run into each other describe no file."""
@@ -250,11 +305,8 @@ class TestExternalVideoAlignment:
 
 
 def _place(interface, segment_key, starting_time):
-    """Give one segment the times its onset implies, which is what a caller writes without a lazy setter."""
-    file_index = list(interface.alignment.keys()).index(segment_key)
-    frame_count = interface.get_header_frame_counts()[file_index]
-    frame_rate = interface.get_header_frame_rates()[file_index]
-    interface.alignment[segment_key].set_times(starting_time + np.arange(frame_count) / frame_rate)
+    """Place one segment by its onset."""
+    interface.alignment[segment_key].start_at(starting_time)
 
 
 def _place_contiguously(interface):

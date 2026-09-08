@@ -93,8 +93,8 @@ class ExternalVideoInterface(BaseDataInterface):
 
         # Alignment by composition, the component the fiber photometry and events interfaces hold. Each
         # video file is triggered on its own, so each is separately addressable and the file stem is its
-        # key: `alignment[stem].set_times(times)` re-times one file and `alignment.shift_times(delta)`
-        # moves them all. See neuroconv/_temporal_alignment.py.
+        # key: `alignment[stem].start_at(t)` places one file, `alignment[stem].set_times(times)` re-times
+        # one file and `alignment.shift_times(delta)` moves them all. See neuroconv/_temporal_alignment.py.
         self._segment_keys = [file_path.stem for file_path in file_paths]
         duplicated_keys = sorted({key for key in self._segment_keys if self._segment_keys.count(key) > 1})
         if duplicated_keys:
@@ -105,9 +105,11 @@ class ExternalVideoInterface(BaseDataInterface):
             )
         self.alignment = _TemporalAlignment()
         for file_index, segment_key in enumerate(self._segment_keys):
-            # A callable, so registering the files reads none of them.
+            # Callables, so registering the files reads none of them.
             self.alignment._register_series(
-                key=segment_key, get_native_times=partial(self._get_native_times, file_index=file_index)
+                key=segment_key,
+                get_native_times=partial(self._get_native_times, file_index=file_index),
+                get_native_start_time=partial(self._get_native_starting_time, file_index=file_index),
             )
         # metadata_key is the snake_case registry key (for cross-component linking); the ImageSeries
         # name is kept distinct and is never derived from the key. Name precedence: explicit
@@ -276,12 +278,18 @@ class ExternalVideoInterface(BaseDataInterface):
 
         Each file starts where the one before it ended, which is the only reading several files support on
         their own; a file that was triggered independently is moved off that timeline by
-        ``alignment[key].set_times(...)``.
+        ``alignment[key].start_at(...)``.
         """
         frame_counts = self.get_header_frame_counts()
         frame_rates = self.get_header_frame_rates()
-        starting_time = sum(frame_counts[preceding] / frame_rates[preceding] for preceding in range(file_index))
+        starting_time = self._get_native_starting_time(file_index=file_index)
         return starting_time + np.arange(frame_counts[file_index]) / frame_rates[file_index]
+
+    def _get_native_starting_time(self, *, file_index: int) -> float:
+        """Where one file starts on the files' own timeline: the summed duration of the files before it."""
+        frame_counts = self.get_header_frame_counts()
+        frame_rates = self.get_header_frame_rates()
+        return sum(frame_counts[preceding] / frame_rates[preceding] for preceding in range(file_index))
 
     def _warn_if_multi_segment_timings_are_not_set(self) -> None:
         """
@@ -295,20 +303,20 @@ class ExternalVideoInterface(BaseDataInterface):
 
         A single file is exempt: one file starting at the session start is a claim a reader can check.
         """
-        if self._number_of_files == 1 or self.alignment.is_fine_aligned:
-            return
         segment_keys_without_times = [
-            segment_key for segment_key in self._segment_keys if not self.alignment[segment_key].is_fine_aligned
+            segment_key
+            for segment_key in self._segment_keys
+            if not (self.alignment[segment_key].is_fine_aligned or self.alignment[segment_key].is_placed)
         ]
+        if self._number_of_files == 1 or not segment_keys_without_times:
+            return
         warnings.warn(
             f"Writing {self._number_of_files} video files as one recording split in place, each segment "
-            f"starting where the one before it ended, because these have no times of their own: "
+            f"starting where the one before it ended, because nothing says where these sit: "
             f"{segment_keys_without_times}. If the camera was triggered per segment there are gaps between "
-            "them and this is wrong. Give each its times to say so, with "
-            "`alignment[key].set_times(times)`. Where a pulse timed every frame those are the pulse times; "
-            "otherwise build them from the segment's onset and its own spacing, "
-            "`onset + numpy.arange(count) / rate` over `get_header_frame_counts()` and `get_header_frame_rates()`. That "
-            "also silences this warning.",
+            "them and this is wrong. Say where each begins with `alignment[key].start_at(starting_time)`, or "
+            "where a pulse timed every frame give it those times with `alignment[key].set_times(times)`. "
+            "Either also silences this warning.",
             UserWarning,
             stacklevel=3,
         )
@@ -324,14 +332,20 @@ class ExternalVideoInterface(BaseDataInterface):
         at, the answer is given rather than derived, which also means no array is built for the case that
         does not need one.
         """
-        # Times that were set are the case an array exists for; they may be irregular, and once several
-        # segments have been placed independently they generally leave gaps between them.
+        # Times that were set are the case an array exists for, and they may be irregular.
         if any(self.alignment[segment_key].is_fine_aligned for segment_key in self._segment_keys):
             return None
         frame_rates = self.get_header_frame_rates()
         if len(set(frame_rates)) != 1:
             return None
-        return self.alignment.offset, frame_rates[0]
+        # Files placed independently generally leave gaps between them, and one rate cannot carry a gap. The
+        # starts come from the headers, so nothing is built to find out.
+        starting_times = np.array([self.alignment[segment_key].get_start_time() for segment_key in self._segment_keys])
+        durations = np.array(self.get_header_frame_counts()) / np.array(frame_rates)
+        contiguous_starting_times = starting_times[0] + np.concatenate([[0.0], np.cumsum(durations[:-1])])
+        if not np.allclose(starting_times, contiguous_starting_times, rtol=0.0, atol=1e-9):
+            return None
+        return float(starting_times[0]), frame_rates[0]
 
     def _get_aligned_timestamps(self) -> np.ndarray:
         """
@@ -454,8 +468,8 @@ class ExternalVideoInterface(BaseDataInterface):
         Align the individual starting time for each video (segment) in this interface relative to the common session start time.
 
         .. deprecated::
-            Use ``interface.alignment[key].set_times(times)`` per file, which states the times outright
-            instead of adding an offset to whatever the file currently carries, so calling it twice does not
+            Use ``interface.alignment[key].start_at(starting_time)`` per file, which states where the file
+            begins instead of adding an offset to whatever it currently carries, so calling it twice does not
             shift twice. Removed in v0.12.0.
 
         Parameters
@@ -467,7 +481,7 @@ class ExternalVideoInterface(BaseDataInterface):
         """
         warnings.warn(
             "`set_aligned_segment_starting_times` is deprecated and will be removed in v0.12.0. "
-            "Use `interface.alignment[key].set_times(times)` instead, which is absolute rather than "
+            "Use `interface.alignment[key].start_at(starting_time)` instead, which is absolute rather than "
             "relative and so does not accumulate when called twice.",
             FutureWarning,
             stacklevel=2,
@@ -484,11 +498,8 @@ class ExternalVideoInterface(BaseDataInterface):
             )
         times_were_set = any(self.alignment[segment_key]._times is not None for segment_key in self._segment_keys)
         if not times_were_set:
-            for file_index, (segment_key, segment_starting_time) in enumerate(
-                zip(self._segment_keys, aligned_segment_starting_times)
-            ):
-                native_times = self._get_native_times(file_index=file_index)
-                self.alignment[segment_key].set_times(native_times - native_times[0] + segment_starting_time)
+            for segment_key, segment_starting_time in zip(self._segment_keys, aligned_segment_starting_times):
+                self.alignment[segment_key].start_at(segment_starting_time)
             return
         for segment_key, segment_starting_time in zip(self._segment_keys, aligned_segment_starting_times):
             time_bearing_object = self.alignment[segment_key]
