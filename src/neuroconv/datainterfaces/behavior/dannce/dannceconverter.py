@@ -300,23 +300,12 @@ class DANNCEConverter(BaseDataInterface):
 
         return metadata
 
-    def get_conversion_options_schema(self) -> dict:
-        # `camera_calibrations` carries live `numpy.ndarray` values, not JSON-serializable values, so it
-        # cannot be represented in a JSON schema and must be excluded (unlike `nwbfile`/`metadata`, which
-        # the base implementation already excludes).
-        from ....utils import get_json_schema_from_method_signature
-
-        return get_json_schema_from_method_signature(
-            self.add_to_nwbfile, exclude=["nwbfile", "metadata", "camera_calibrations"]
-        )
-
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
         metadata: dict,
         *,
         stub_test: bool = False,
-        camera_calibrations: dict[str, dict] | None = None,
         starting_frames: dict[str, list[int]] | None = None,
     ) -> None:
         """
@@ -331,22 +320,24 @@ class DANNCEConverter(BaseDataInterface):
         stub_test : bool, default: False
             If True, write only the first 100 frames of the DANNCE pose estimation data for quick smoke testing.
             Video data is always written in full.
-        camera_calibrations : dict of str to dict, optional
-            Per-camera calibration overrides; see ``DANNCEInterface.add_to_nwbfile``. Merged on top of any
-            calibrations already loaded from ``calibration_path`` at construction.
         starting_frames : dict of str to list of int, optional
             Per-camera list of start frames for videos written using external mode, keyed by camera name.
             Required for a given camera only if more than one video path was given for it.
+
+        Notes
+        -----
+        Camera calibration is written by marking a camera's ``metadata["Devices"]`` entry with
+        ``type="CalibratedCamera"`` plus its calibration fields; see ``DANNCEInterface.add_to_nwbfile``.
+        Passing ``calibration_path`` at construction fills these in automatically; to override or
+        supply them otherwise, edit ``metadata["Devices"]`` before calling this method.
         """
         metadata_copy = deepcopy(metadata)
 
-        # Pre-create each camera's Device (calibrated, if calibration data is available) before
-        # writing the videos, so that when each ExternalVideoInterface resolves its device_metadata_key
-        # (pointed at the same camera_name entry by get_metadata, above), it reuses this Device instead
-        # of creating its own -- Device creation is idempotent on name.
-        self._dannce_interface.create_camera_devices(
-            nwbfile=nwbfile, metadata=metadata_copy, camera_calibrations=camera_calibrations
-        )
+        # Pre-create each camera's Device (a CalibratedCamera when its metadata["Devices"] entry names
+        # that type) before writing the videos, so that when each ExternalVideoInterface resolves its
+        # device_metadata_key (pointed at the same camera_name entry by get_metadata, above), it reuses
+        # this Device instead of creating its own -- Device creation is idempotent on name.
+        self._dannce_interface.create_camera_devices(nwbfile=nwbfile, metadata=metadata_copy)
 
         source_videos = {}
         for camera_name in self._camera_names:
@@ -364,5 +355,4 @@ class DANNCEConverter(BaseDataInterface):
             metadata=metadata_copy,
             stub_test=stub_test,
             source_videos=source_videos,
-            camera_calibrations=camera_calibrations,
         )

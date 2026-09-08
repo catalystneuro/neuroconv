@@ -339,13 +339,40 @@ class TestDANNCEInterfaceCalibration:
 
         assert interface._camera_names == ["CustomCam"]
 
+    def test_calibration_path_marks_devices_metadata_as_calibrated_camera(
+        self, dannce_mat_file, hires_params_calibration_dir
+    ):
+        """calibration_path writes the non-generic device type the unified way: a ``type`` field plus
+        the calibration fields on each ``metadata["Devices"]`` entry, resolved at write time."""
+        file_path = dannce_mat_file[0]
+        calibration_dir, camera_names = hires_params_calibration_dir
+        interface = DANNCEInterface(file_path=file_path, sampling_rate=30.0, calibration_path=calibration_dir)
+
+        devices_metadata = interface.get_metadata()["Devices"]
+        for i, camera_name in enumerate(camera_names):
+            entry = devices_metadata[camera_name]
+            assert entry["type"] == "CalibratedCamera"
+            expected = _synthetic_calibration_values(i)
+            assert_array_equal(entry["intrinsic_matrix"], expected["intrinsic_matrix"])
+            assert_array_equal(entry["rotation_matrix"], expected["rotation_matrix"])
+            assert_array_equal(entry["translation_vector"], expected["translation_vector"])
+            assert_array_equal(entry["distortion_coefficients"], expected["distortion_coefficients"])
+
+    def test_no_calibration_leaves_devices_metadata_generic(self, dannce_mat_file):
+        file_path = dannce_mat_file[0]
+        interface = DANNCEInterface(file_path=file_path, sampling_rate=30.0, camera_names=["Camera1"])
+
+        entry = interface.get_metadata()["Devices"]["Camera1"]
+        assert "type" not in entry
+        assert "intrinsic_matrix" not in entry
+
     def test_calibration_path_auto_creates_calibrated_cameras(self, dannce_mat_file, hires_params_calibration_dir):
         file_path = dannce_mat_file[0]
         calibration_dir, camera_names = hires_params_calibration_dir
         interface = DANNCEInterface(file_path=file_path, sampling_rate=30.0, calibration_path=calibration_dir)
 
         nwbfile = mock_NWBFile()
-        interface.add_to_nwbfile(nwbfile=nwbfile)  # no camera_calibrations argument passed
+        interface.add_to_nwbfile(nwbfile=nwbfile)  # calibration comes from calibration_path via metadata["Devices"]
 
         for i, camera_name in enumerate(camera_names):
             device = nwbfile.devices[camera_name]
@@ -353,21 +380,23 @@ class TestDANNCEInterfaceCalibration:
             expected = _synthetic_calibration_values(i)
             assert_array_equal(device.intrinsic_matrix, expected["intrinsic_matrix"])
 
-    def test_add_to_nwbfile_camera_calibrations_overrides_calibration_path(
-        self, dannce_mat_file, hires_params_calibration_dir
-    ):
+    def test_metadata_devices_edit_overrides_calibration_path(self, dannce_mat_file, hires_params_calibration_dir):
         file_path = dannce_mat_file[0]
         calibration_dir, camera_names = hires_params_calibration_dir
         interface = DANNCEInterface(file_path=file_path, sampling_rate=30.0, calibration_path=calibration_dir)
 
+        # calibration_path pre-fills each camera's Devices entry as a CalibratedCamera; editing that
+        # entry before the write is how a value is overridden.
+        metadata = interface.get_metadata()
+        assert metadata["Devices"]["Camera1"]["type"] == "CalibratedCamera"
         override_intrinsic_matrix = np.eye(3) * 99
-        nwbfile = mock_NWBFile()
-        interface.add_to_nwbfile(
-            nwbfile=nwbfile,
-            camera_calibrations={"Camera1": dict(intrinsic_matrix=override_intrinsic_matrix)},
-        )
+        metadata["Devices"]["Camera1"]["intrinsic_matrix"] = override_intrinsic_matrix
 
-        # Camera1 is overridden by the explicit argument...
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+        # Camera1 is overridden by the metadata edit...
+        assert isinstance(nwbfile.devices["Camera1"], CalibratedCamera)
         assert_array_equal(nwbfile.devices["Camera1"].intrinsic_matrix, override_intrinsic_matrix)
         # ...while Camera2 still falls back to the calibration loaded from calibration_path.
         expected_camera2 = _synthetic_calibration_values(1)
@@ -572,7 +601,7 @@ class TestDANNCEInterfaceConversion:
 
         assert camera_pose_estimations_by_device[camera_names[-1]].source_video is None
 
-    def test_camera_calibrations_create_calibrated_camera(self, dannce_mat_file):
+    def test_metadata_devices_type_creates_calibrated_camera(self, dannce_mat_file):
         file_path, _, _, _, _ = dannce_mat_file
         camera_names = ["Camera1", "Camera2"]
         interface = DANNCEInterface(file_path=file_path, sampling_rate=30.0, camera_names=camera_names)
@@ -580,26 +609,29 @@ class TestDANNCEInterfaceConversion:
         nwbfile = mock_NWBFile()
 
         rng = np.random.default_rng(0)
-        camera_calibrations = {
-            "Camera1": dict(
-                intrinsic_matrix=rng.standard_normal((3, 3)),
-                rotation_matrix=rng.standard_normal((3, 3)),
-                translation_vector=rng.standard_normal(3),
-                distortion_coefficients=rng.standard_normal(5),
-            ),
-            # Camera2 intentionally has no calibration entry -- should get a plain Device.
-        }
+        calibration = dict(
+            intrinsic_matrix=rng.standard_normal((3, 3)),
+            rotation_matrix=rng.standard_normal((3, 3)),
+            translation_vector=rng.standard_normal(3),
+            distortion_coefficients=rng.standard_normal(5),
+        )
 
-        interface.add_to_nwbfile(nwbfile=nwbfile, camera_calibrations=camera_calibrations)
+        # Supplying calibration by editing metadata["Devices"] before the write: mark the entry with
+        # type="CalibratedCamera" and add the calibration fields alongside it.
+        metadata = interface.get_metadata()
+        metadata["Devices"]["Camera1"].update(type="CalibratedCamera", **calibration)
+        # Camera2 intentionally left as a generic entry -- should get a plain Device.
+
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
 
         camera1 = nwbfile.devices["Camera1"]
         camera2 = nwbfile.devices["Camera2"]
 
         assert isinstance(camera1, CalibratedCamera)
-        assert_array_equal(camera1.intrinsic_matrix, camera_calibrations["Camera1"]["intrinsic_matrix"])
-        assert_array_equal(camera1.rotation_matrix, camera_calibrations["Camera1"]["rotation_matrix"])
-        assert_array_equal(camera1.translation_vector, camera_calibrations["Camera1"]["translation_vector"])
-        assert_array_equal(camera1.distortion_coefficients, camera_calibrations["Camera1"]["distortion_coefficients"])
+        assert_array_equal(camera1.intrinsic_matrix, calibration["intrinsic_matrix"])
+        assert_array_equal(camera1.rotation_matrix, calibration["rotation_matrix"])
+        assert_array_equal(camera1.translation_vector, calibration["translation_vector"])
+        assert_array_equal(camera1.distortion_coefficients, calibration["distortion_coefficients"])
 
         assert not isinstance(camera2, CalibratedCamera)
         assert type(camera2).__name__ == "Device"
