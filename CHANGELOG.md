@@ -9,6 +9,7 @@
 * Removed the `hdf5` and `sbx` installation extras, aliases of `hdf5imaging` and `scanbox` kept for gallery pages that named the old spellings and marked for removal at the start of 2026. Use `neuroconv[hdf5imaging]` and `neuroconv[scanbox]`.
 
 ## Bug Fixes
+* `ConverterPipe` now accepts a tuple of interfaces as it does a list, and raises `TypeError` naming the argument for anything that is neither a list nor a dict. Such a value used to fall through both branches and fail on the next line with an `AttributeError` about an attribute the caller never touched. [PR #2025](https://github.com/catalystneuro/neuroconv/pull/2025)
 * `BaseLFPExtractorInterface.add_to_nwbfile` now accepts and forwards `always_write_timestamps` and `data_representation`, which the recording base already took, so an LFP interface can write an irregular clock as explicit timestamps or heterogeneous offsets as physical units the same way a raw interface does, through `add_to_nwbfile`, `run_conversion` and a converter's `conversion_options`. [PR #2033](https://github.com/catalystneuro/neuroconv/pull/2033)
 * Filter empty fluorescence traces on `math.prod(trace.shape)` instead of `trace.size`, which the `DatasetView` objects `get_traces_dict()` can return do not have. [PR #2005](https://github.com/catalystneuro/neuroconv/pull/2005)
 * Reading an existing Zarr file now reports its shuffle in `compressors` rather than among the filters, so a file this library wrote reports the configuration that wrote it and naming shuffle again does not apply it twice. [PR #2002](https://github.com/catalystneuro/neuroconv/pull/2002)
@@ -20,6 +21,7 @@
 
 ## Improvements
 * Removed the `object_name` argument that two `DatasetIOConfiguration` constructors passed to a model that declares no such field, so pydantic dropped it silently, and a duplicate import in `neuroconv.utils`. [PR #2031](https://github.com/catalystneuro/neuroconv/pull/2031)
+* Removed the `get_conversion_options_schema` overrides on `ConverterPipe`, `SpikeGLXConverterPipe` and `OpenEphysBinaryConverter`, which repeated what `NWBConverter` already does and returned the same schema. [PR #2027](https://github.com/catalystneuro/neuroconv/pull/2027)
 * `EDFRecordingInterface` now reports the patient field's birthdate as `Subject.date_of_birth`, parsed into an ISO 8601 date from the `17 mar 1985` spelling the readers hand back. [PR #1999](https://github.com/catalystneuro/neuroconv/pull/1999)
 
 # v0.10.1 (September 1, 2026)
