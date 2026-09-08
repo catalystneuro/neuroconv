@@ -504,7 +504,7 @@ class ConverterPipe(NWBConverter):
 
     def __init__(self, data_interfaces: list[BaseDataInterface] | dict[str, BaseDataInterface], verbose=False):
         self.verbose = verbose
-        if isinstance(data_interfaces, list):
+        if isinstance(data_interfaces, (list, tuple)):
             # Create unique names for each interface
             counter = {interface.__class__.__name__: 0 for interface in data_interfaces}
             total_counts = Counter([interface.__class__.__name__ for interface in data_interfaces])
@@ -517,6 +517,11 @@ class ConverterPipe(NWBConverter):
                 self.data_interface_objects[interface_name] = interface
         elif isinstance(data_interfaces, dict):
             self.data_interface_objects = data_interfaces
+        else:
+            raise TypeError(
+                "`data_interfaces` must be a list of interfaces, or a dict mapping names to interfaces, "
+                f"not {type(data_interfaces).__name__}."
+            )
 
         self.data_interface_classes = {
             name: interface.__class__ for name, interface in self.data_interface_objects.items()
