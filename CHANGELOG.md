@@ -9,6 +9,7 @@
 * Removed the `hdf5` and `sbx` installation extras, aliases of `hdf5imaging` and `scanbox` kept for gallery pages that named the old spellings and marked for removal at the start of 2026. Use `neuroconv[hdf5imaging]` and `neuroconv[scanbox]`.
 
 ## Bug Fixes
+* `BaseLFPExtractorInterface.add_to_nwbfile` now accepts and forwards `always_write_timestamps` and `data_representation`, which the recording base already took, so an LFP interface can write an irregular clock as explicit timestamps or heterogeneous offsets as physical units the same way a raw interface does, through `add_to_nwbfile`, `run_conversion` and a converter's `conversion_options`. [PR #2033](https://github.com/catalystneuro/neuroconv/pull/2033)
 * Filter empty fluorescence traces on `math.prod(trace.shape)` instead of `trace.size`, which the `DatasetView` objects `get_traces_dict()` can return do not have. [PR #2005](https://github.com/catalystneuro/neuroconv/pull/2005)
 * Reading an existing Zarr file now reports its shuffle in `compressors` rather than among the filters, so a file this library wrote reports the configuration that wrote it and naming shuffle again does not apply it twice. [PR #2002](https://github.com/catalystneuro/neuroconv/pull/2002)
 * Fixed the Zarr shuffle codec taking `numcodecs`' default `elementsize` of 4 regardless of the dataset's dtype, which on float64 grouped the wrong bytes and recovered almost nothing, so it is now taken from the dtype unless the caller states one. [PR #1984](https://github.com/catalystneuro/neuroconv/pull/1984)
