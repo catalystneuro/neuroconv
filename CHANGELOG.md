@@ -10,6 +10,8 @@
 
 ## Bug Fixes
 * `get_json_schema_from_method_signature` no longer extends the caller's `exclude` list in place, and `convert_df_to_time_intervals` works on a copy of the caller's DataFrame instead of renaming its columns and adding `stop_time` to it, so `TimeIntervalsInterface.add_to_nwbfile` can be called more than once with a `column_name_mapping` and the interface's own frame stays as it was read. [PR #2021](https://github.com/catalystneuro/neuroconv/pull/2021)
+* In a YAML conversion specification, a session's own `conversion_options` now override the top-level `conversion_options` block where both state the same option, in the same order the metadata blocks merge. The global values used to win, so a session could not turn off a global `stub_test` or refine a global option for one of its interfaces. [PR #2023](https://github.com/catalystneuro/neuroconv/pull/2023)
+* `ConverterPipe` now accepts a tuple of interfaces as it does a list, and raises `TypeError` naming the argument for anything that is neither a list nor a dict. Such a value used to fall through both branches and fail on the next line with an `AttributeError` about an attribute the caller never touched. [PR #2025](https://github.com/catalystneuro/neuroconv/pull/2025)
 * `BaseLFPExtractorInterface.add_to_nwbfile` now accepts and forwards `always_write_timestamps` and `data_representation`, which the recording base already took, so an LFP interface can write an irregular clock as explicit timestamps or heterogeneous offsets as physical units the same way a raw interface does, through `add_to_nwbfile`, `run_conversion` and a converter's `conversion_options`. [PR #2033](https://github.com/catalystneuro/neuroconv/pull/2033)
 * Filter empty fluorescence traces on `math.prod(trace.shape)` instead of `trace.size`, which the `DatasetView` objects `get_traces_dict()` can return do not have. [PR #2005](https://github.com/catalystneuro/neuroconv/pull/2005)
 * Reading an existing Zarr file now reports its shuffle in `compressors` rather than among the filters, so a file this library wrote reports the configuration that wrote it and naming shuffle again does not apply it twice. [PR #2002](https://github.com/catalystneuro/neuroconv/pull/2002)
@@ -20,6 +22,8 @@
 * `HDF5DatasetIOConfiguration` and `ZarrDatasetIOConfiguration` now describe a dataset's codec pipeline with an ordered `compressors` list and a matching `compressor_options`, which makes the HDF5 `shuffle` and `fletcher32` filters reachable for the first time and gives both backends the same vocabulary. [PR #1979](https://github.com/catalystneuro/neuroconv/pull/1979)
 
 ## Improvements
+* Removed the `object_name` argument that two `DatasetIOConfiguration` constructors passed to a model that declares no such field, so pydantic dropped it silently, and a duplicate import in `neuroconv.utils`. [PR #2031](https://github.com/catalystneuro/neuroconv/pull/2031)
+* Removed the `get_conversion_options_schema` overrides on `ConverterPipe`, `SpikeGLXConverterPipe` and `OpenEphysBinaryConverter`, which repeated what `NWBConverter` already does and returned the same schema. [PR #2027](https://github.com/catalystneuro/neuroconv/pull/2027)
 * `EDFRecordingInterface` now reports the patient field's birthdate as `Subject.date_of_birth`, parsed into an ISO 8601 date from the `17 mar 1985` spelling the readers hand back. [PR #1999](https://github.com/catalystneuro/neuroconv/pull/1999)
 
 # v0.10.1 (September 1, 2026)
