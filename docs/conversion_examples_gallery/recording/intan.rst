@@ -314,14 +314,10 @@ that was recorded but never toggles is still written, as an empty table.
     >>> nwbfile_path_digital = output_folder / "intan_digital_conversion.nwb"
     >>> interface_digital.run_conversion(nwbfile_path=nwbfile_path_digital, metadata=metadata_digital, overwrite=True)
 
-To read specific lines, pass a ``detection_configuration`` keyed by their header names. Each line gets a
-**list** of detection specs, one per event type you want from it, and a spec's ``detection`` is one of
-``"rising"`` or ``"falling"`` (point events at that edge) or ``"high_period"`` / ``"low_period"``
-(durative events with a duration, the latter for an active-low line). Every spec also states how its
-signal becomes a line, in ``signal_conditioning``. An Intan digital line already is one, which is what
-``{"binarize": "midpoint"}`` is for: it cuts strictly between the signal's two levels, whatever they
-are, so you do not have to know them. Stating it is deliberate rather than defaulted, so that what an
-event type is read from is always something you chose:
+To read specific lines, pass a ``detection_configuration`` keyed by their header names. An Intan digital
+line already is a line, so its conditioning is always ``{"binarize": "midpoint"}``, which cuts strictly
+between the signal's two levels whatever they are. The grammar itself, what a spec holds and which
+readings it can ask for, is in :ref:`extract_events_from_signals`:
 
 .. code-block:: python
 
@@ -346,7 +342,7 @@ event type is read from is always something you chose:
 To skip digital events entirely, do not construct this interface (or ``exclude_streams`` the digital
 word in the converter); an empty ``detection_configuration={}`` raises rather than silently writing
 nothing. When several lines should share one events table, point their ``table_metadata_key`` at a
-common key in the editable metadata (see the events metadata guide). ``IntanConverter`` also routes the
+common key in the editable metadata (see :ref:`annotate_events_metadata`). ``IntanConverter`` also routes the
 digital input/output streams to this interface automatically with the default configuration.
 
 
@@ -387,12 +383,10 @@ timestamps make lexicographic order match chronological order):
     >>> interface_split.run_conversion(nwbfile_path=nwbfile_path_split, metadata=metadata_split, overwrite=True)
 
 The same ``saved_files_are_split=True`` flag is accepted by
-:py:class:`~neuroconv.datainterfaces.ecephys.intan.intananaloginterface.IntanAnalogInterface`
+:py:class:`~neuroconv.datainterfaces.ecephys.intan.intananaloginterface.IntanAnalogInterface`,
+:py:class:`~neuroconv.datainterfaces.ecephys.intan.intanstiminterface.IntanStimInterface`
 and
-:py:class:`~neuroconv.datainterfaces.ecephys.intan.intanstiminterface.IntanStimInterface`,
-since all streams rotate together in Intan's Traditional format.
-
-If ``saved_files_are_split=False`` (the default) and the interface detects
-sibling ``.rhd``/``.rhs`` files next to the one you passed, it will emit a
-warning suggesting the flag; you can safely ignore it when the neighbors are
-from an unrelated session.
+:py:class:`~neuroconv.datainterfaces.ecephys.intan.intandigitalinterface.IntanDigitalInterface`,
+since all streams rotate together in Intan's Traditional format. On the digital interface the chunks
+are concatenated before edge detection, so an event that opens in one chunk and closes in the next is
+read as the single event it is rather than being lost at the boundary.

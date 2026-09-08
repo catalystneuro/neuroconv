@@ -100,8 +100,9 @@ interface:
     converter = ConverterPipe(data_interfaces=[recording_interface, oxygen_interface])
 
 A ``TimeSeries`` also holds a single unit for all of its channels, so auxiliary channels of
-different units go one unit type per interface. Writing several unit types into one series makes
-the physical values unrecoverable, and NeuroConv warns when that happens.
+different units go one unit type per interface. Writing several unit types into one series would
+have to state a single unit for all of them, which is a claim about the data rather than a loss of
+precision, so NeuroConv raises instead. Select the channels of one unit per interface, as above.
 
 For interfaces that accept a channel selection at construction, such as
 :py:class:`~neuroconv.datainterfaces.ecephys.edf.edfdatainterface.EDFRecordingInterface` with its

@@ -188,13 +188,13 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
         extractor_instance = extractor_class(**self.extractor_kwargs)
         return extractor_instance
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         """
         Get metadata for the ScanImage imaging data.
 
         Parameters
         ----------
-        use_new_metadata_format : bool, default: False
+        use_new_metadata_format : bool, default: True
             When False, returns the old list-based metadata format (backward compatible).
             When True, returns dict-based metadata with ScanImage provenance.
 
@@ -209,11 +209,7 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
             - Imaging plane details including grid spacing and origin coordinates if available
             - Photon series metadata with scan line rate and other acquisition parameters
         """
-        metadata = (
-            super().get_metadata()
-            if not use_new_metadata_format
-            else super().get_metadata(use_new_metadata_format=True)
-        )
+        metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
 
         session_start_time = self._get_session_start_time()
         if session_start_time:
@@ -587,13 +583,13 @@ class ScanImageLegacyImagingInterface(BaseImagingExtractorInterface):
             metadata_key=metadata_key,
         )
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         """
         Get metadata for the ScanImage imaging data.
 
         Parameters
         ----------
-        use_new_metadata_format : bool, default: False
+        use_new_metadata_format : bool, default: True
             When False, returns the old list-based metadata format (backward compatible).
             When True, returns dict-based metadata with ScanImage provenance keyed by
             ``metadata_key`` under ``Devices``, ``Ophys.ImagingPlanes`` and
@@ -605,11 +601,7 @@ class ScanImageLegacyImagingInterface(BaseImagingExtractorInterface):
             Dictionary containing metadata including session start time and device information
             specific to the ScanImage system.
         """
-        metadata = (
-            super().get_metadata()
-            if not use_new_metadata_format
-            else super().get_metadata(use_new_metadata_format=True)
-        )
+        metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
 
         if "state.internal.triggerTimeString" in self.image_metadata:
             extracted_session_start_time = dateparse(self.image_metadata["state.internal.triggerTimeString"])

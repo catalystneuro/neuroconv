@@ -48,7 +48,8 @@ MOCK_GUPPY_RATE = 200.0
 
 class TestGuppyConverterTDT:
     @pytest.fixture(scope="class")
-    def epoc_onsets(self):
+    @classmethod
+    def epoc_onsets(cls):
         """The first few onsets of each epoc GuPPy listed, read straight from the tank."""
         import tdt
 
@@ -58,9 +59,12 @@ class TestGuppyConverterTDT:
             for epoc_name, event_name in EPOC_TO_EVENT_NAME.items()
         }
 
-    @pytest.fixture
-    def guppy_output_folder(self, tmp_path, epoc_onsets):
-        return generate_mock_guppy_output_folder(tmp_path / "guppy_output", event_onsets=epoc_onsets)
+    @pytest.fixture(scope="class")
+    @classmethod
+    def guppy_output_folder(cls, tmp_path_factory, epoc_onsets):
+        return generate_mock_guppy_output_folder(
+            tmp_path_factory.mktemp("tdt_output") / "guppy_output", event_onsets=epoc_onsets
+        )
 
     @pytest.fixture
     def converter(self, guppy_output_folder):

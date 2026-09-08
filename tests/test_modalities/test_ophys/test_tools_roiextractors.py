@@ -38,6 +38,7 @@ from neuroconv.tools.roiextractors.imagingextractordatachunkiterator import (
 )
 from neuroconv.tools.roiextractors.roiextractors import (
     _get_ophys_metadata_placeholders,
+    _trace_is_all_zero,
     get_full_ophys_metadata,
 )
 from neuroconv.tools.roiextractors.roiextractors_pending_deprecation import (
@@ -3820,6 +3821,107 @@ class TestAddSegmentation:
         image_collection = ophys_module.data_interfaces["SegmentationImages"]
         assert len(image_collection.images) == 1
         assert "mean_img" in image_collection.images
+
+    def test_summary_image_outside_the_placeholders_is_written(self):
+        """An image the placeholders do not name is still written when no metadata entry is given."""
+        nwbfile = mock_NWBFile()
+        segmentation_extractor = generate_dummy_segmentation_extractor(
+            num_samples=10, num_rois=5, num_rows=15, num_columns=20, has_summary_images=False
+        )
+        # Minian's only summary image, and one the placeholders do not name.
+        segmentation_extractor._summary_images["maximum_projection"] = np.random.rand(15, 20)
+
+        add_segmentation_to_nwbfile(
+            segmentation_extractor=segmentation_extractor,
+            nwbfile=nwbfile,
+        )
+
+        ophys_module = nwbfile.processing["ophys"]
+        image_collection = ophys_module.data_interfaces["SegmentationImages"]
+        assert list(image_collection.images) == ["maximum_projection"]
+
+    def test_no_container_when_metadata_names_no_available_image(self):
+        """``Images`` requires at least one image, so a container that would be empty is not created."""
+        nwbfile = mock_NWBFile()
+        segmentation_extractor = generate_dummy_segmentation_extractor(
+            num_samples=10, num_rois=5, num_rows=15, num_columns=20, has_summary_images=False
+        )
+        segmentation_extractor._summary_images["mean"] = np.random.rand(15, 20)
+
+        metadata = {
+            "Ophys": {
+                "PlaneSegmentations": {"my_seg": {"name": "PlaneSegmentation", "description": "Segmented ROIs"}},
+                "SegmentationImages": {"my_seg": {"correlation": {"name": "corr_img"}}},
+            },
+        }
+
+        with pytest.warns(UserWarning, match="SegmentationImages metadata specifies images"):
+            add_segmentation_to_nwbfile(
+                segmentation_extractor=segmentation_extractor,
+                nwbfile=nwbfile,
+                metadata=metadata,
+                metadata_key="my_seg",
+            )
+
+        ophys_module = nwbfile.processing["ophys"]
+        assert "SegmentationImages" not in ophys_module.data_interfaces
+
+    def test_all_zero_trace_is_not_written(self):
+        """A trace holding only zeros carries no information, so it is dropped with a warning."""
+        nwbfile = mock_NWBFile()
+        segmentation_extractor = generate_dummy_segmentation_extractor(num_samples=10, num_rois=5)
+        for roi_response in segmentation_extractor._roi_responses:
+            if roi_response.response_type == "deconvolved":
+                roi_response.data = np.zeros_like(np.asarray(roi_response.data))
+
+        with pytest.warns(UserWarning, match="These traces hold only zeros"):
+            add_segmentation_to_nwbfile(segmentation_extractor=segmentation_extractor, nwbfile=nwbfile)
+
+        fluorescence = nwbfile.processing["ophys"]["Fluorescence"]
+        assert "Deconvolved" not in fluorescence.roi_response_series
+        assert "RoiResponseSeries" in fluorescence.roi_response_series
+
+    def test_all_zero_trace_named_in_metadata_is_written(self):
+        """A trace the caller named is written whatever it holds."""
+        nwbfile = mock_NWBFile()
+        segmentation_extractor = generate_dummy_segmentation_extractor(num_samples=10, num_rois=5)
+        for roi_response in segmentation_extractor._roi_responses:
+            if roi_response.response_type == "deconvolved":
+                roi_response.data = np.zeros_like(np.asarray(roi_response.data))
+
+        metadata = {
+            "Ophys": {
+                "PlaneSegmentations": {"my_seg": {"name": "PlaneSegmentation", "description": "Segmented ROIs"}},
+                "RoiResponses": {"my_seg": {"deconvolved": {"name": "Deconvolved", "unit": "n.a."}}},
+            },
+        }
+
+        add_segmentation_to_nwbfile(
+            segmentation_extractor=segmentation_extractor,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            metadata_key="my_seg",
+        )
+
+        fluorescence = nwbfile.processing["ophys"]["Fluorescence"]
+        assert "Deconvolved" in fluorescence.roi_response_series
+
+    def test_all_zero_check_on_a_lazily_backed_trace(self, tmp_path):
+        """The scan reads a memmap in buffers, which is what a transposed memmap cannot survive otherwise.
+
+        ``np.ravel`` on the transposed memmap suite2p hands over cannot return a view, so the check that
+        used to live here copied the whole trace onto the heap before looking at it.
+        """
+        file_path = tmp_path / "spks.npy"
+        np.save(file_path, np.zeros((5, 10_000), dtype="float32"))
+        all_zero_trace = np.load(file_path, mmap_mode="r").T
+
+        with_data = np.array(all_zero_trace)
+        with_data[-1, -1] = 1.0
+
+        iterator_options = dict(chunk_mb=0.02, buffer_gb=1e-4)  # forces several buffers over a small array
+        assert _trace_is_all_zero(trace=all_zero_trace, iterator_options=iterator_options)
+        assert not _trace_is_all_zero(trace=with_data, iterator_options=iterator_options)
 
     def test_image_masks_written_correctly(self):
         """Mask data values match the extractor's get_roi_image_masks()."""

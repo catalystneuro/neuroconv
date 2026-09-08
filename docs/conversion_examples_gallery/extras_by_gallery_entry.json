@@ -2,6 +2,9 @@
   "behavior/audio.rst": {
     "extra": "audio"
   },
+  "behavior/boris.rst": {
+    "extra": "boris"
+  },
   "behavior/deeplabcut.rst": {
     "extra": "deeplabcut"
   },
@@ -12,11 +15,14 @@
     "extra": "lightningpose"
   },
   "behavior/medpc.rst": {
-    "extra": "medpc"
+    "extra": "medpc_legacy"
   },
   "behavior/neuralynx_nvt.rst": {
     "extra": null,
     "note": "Converts on a base install, so there is no extra to name"
+  },
+  "behavior/moseq_keypoints.rst": {
+    "extra": "moseq"
   },
   "behavior/sleap.rst": {
     "extra": "sleap"
@@ -45,8 +51,14 @@
   "events/doric_events.rst": {
     "extra": "doric_events"
   },
+  "events/medpc_events.rst": {
+    "extra": "medpc"
+  },
   "events/npm_events.rst": {
     "extra": "npm_events"
+  },
+  "events/pyphotometry_events.rst": {
+    "extra": "pyphotometry_events"
   },
   "events/tdt_events.rst": {
     "extra": "tdt_events"
@@ -62,6 +74,9 @@
   },
   "fiberphotometry/npm_fp.rst": {
     "extra": "npm_fp"
+  },
+  "fiberphotometry/pyphotometry_fp.rst": {
+    "extra": "pyphotometry"
   },
   "fiberphotometry/tdt_fp.rst": {
     "extra": "tdt_fp"

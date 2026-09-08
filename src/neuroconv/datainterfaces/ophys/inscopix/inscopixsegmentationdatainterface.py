@@ -66,13 +66,13 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
 
         super().__init__(file_path=file_path, verbose=verbose, metadata_key=metadata_key)
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         """
         Retrieve the metadata for the Inscopix segmentation data.
 
         Parameters
         ----------
-        use_new_metadata_format : bool, default: False
+        use_new_metadata_format : bool, default: True
             When False, returns the old list-based metadata format (backward compatible).
             When True, returns dict-based metadata with Inscopix provenance keyed by
             ``metadata_key`` under ``Devices`` and ``Ophys.PlaneSegmentations``.
@@ -89,11 +89,7 @@ class InscopixSegmentationInterface(BaseSegmentationExtractorInterface):
         See related issue: https://github.com/inscopix/pyisx/issues/62
 
         """
-        metadata = (
-            super().get_metadata()
-            if not use_new_metadata_format
-            else super().get_metadata(use_new_metadata_format=True)
-        )
+        metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
         extractor = self.segmentation_extractor
 
         # Get all metadata from extractor using the consolidated method

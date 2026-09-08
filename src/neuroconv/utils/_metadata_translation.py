@@ -10,6 +10,9 @@ points nest (``run_conversion`` calls ``add_to_nwbfile``, a converter's calls ea
 same metadata reaches it more than once per conversion.
 """
 
+import warnings
+from functools import lru_cache
+
 from .dict import DeepDict
 
 # Column descriptions, which are list-shaped in both formats.
@@ -297,6 +300,26 @@ def _resolve_name_collisions(entries: dict, names_by_role: dict) -> None:
         seen_names.add(name)
 
 
+@lru_cache(maxsize=1)
+def _warn_that_the_old_format_is_deprecated() -> None:
+    """Tell the caller their metadata is in the old format, once per process.
+
+    The entry points nest and a converter translates once per interface, so a single conversion reaches
+    the translator several times and a long-running script reaches it once per session. The message is
+    the same every time and says nothing about which call produced it, so it is emitted once and cached.
+    Tests that assert on it call ``cache_clear`` first.
+    """
+    warnings.warn(
+        "The metadata passed to NeuroConv is in the old list-based format, which is deprecated and will "
+        "be removed on or after August 2027. It was converted for this conversion, so the file written is "
+        "unaffected. The dict-based format keys each entry by a name you choose instead of by its position "
+        "in a list. Call get_metadata() and edit the dictionary it returns to see the shape your interface "
+        "expects.",
+        FutureWarning,
+        stacklevel=2,
+    )
+
+
 def _translate_old_metadata(
     metadata: dict | None,
     *,
@@ -343,6 +366,8 @@ def _translate_old_metadata(
 
     if not ecephys_is_old and not ophys_is_old and not isinstance(registry, list):
         return metadata
+
+    _warn_that_the_old_format_is_deprecated()
 
     translated = {key: value for key, value in metadata.items()}
     if ecephys_is_old:

@@ -16,6 +16,9 @@ from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.tools.nwb_helpers import make_nwbfile_from_metadata, make_or_load_nwbfile
 
+# The tests below exercise `make_or_load_nwbfile` itself, so its own deprecation warning is expected
+pytestmark = pytest.mark.filterwarnings("ignore:`make_or_load_nwbfile` is deprecated:FutureWarning")
+
 
 class TestMakeOrLoadNWBFile(TestCase):
     @classmethod

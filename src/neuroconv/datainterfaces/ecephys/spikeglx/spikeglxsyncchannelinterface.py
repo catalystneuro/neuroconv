@@ -5,11 +5,11 @@ from pathlib import Path
 from pydantic import ConfigDict, DirectoryPath, validate_call
 from pynwb import NWBFile
 
-from ....basedatainterface import BaseDataInterface
+from ..baserecordingastimeseriesinterface import BaseRecordingAsTimeSeriesInterface
 from ....utils import DeepDict, get_json_schema_from_method_signature
 
 
-class SpikeGLXSyncChannelInterface(BaseDataInterface):
+class SpikeGLXSyncChannelInterface(BaseRecordingAsTimeSeriesInterface):
     """
     Data interface for SpikeGLX synchronization channels from Neuropixel probes.
 
@@ -219,18 +219,11 @@ class SpikeGLXSyncChannelInterface(BaseDataInterface):
         if session_start_time:
             metadata["NWBFile"]["session_start_time"] = session_start_time
 
-        # TimeSeries metadata for sync channel
-        if "TimeSeries" not in metadata:
-            metadata["TimeSeries"] = {}
-
-        # Generate TimeSeries name based on probe only (band info in description)
-        # Example: "TimeSeriesImec0Sync" for imec0.ap-SYNC or imec0.lf-SYNC
-        # Multi-segment recordings will have segment suffix added automatically (e.g., "TimeSeriesImec0Sync0")
-        timeseries_name = f"TimeSeriesImec{self._probe_index}Sync"
-
-        metadata["TimeSeries"][self.metadata_key] = {
-            "name": timeseries_name,
-            "description": (
+        # Named after the probe, with the band left to the description. A multi-segment recording has a
+        # segment suffix appended automatically, so "TimeSeriesImec0Sync" becomes "TimeSeriesImec0Sync0".
+        metadata["TimeSeries"][self.metadata_key] = dict(
+            name=f"TimeSeriesImec{self._probe_index}Sync",
+            description=(
                 f"Synchronization channel (SY0) from Neuropixel probe {self._probe_index} "
                 f"{self._stream_kind} stream (stream: {self.stream_id}). Contains a 16-bit status word where bit 6 carries a 1 Hz "
                 f"square wave (toggling between 0 and 1 every 0.5 seconds) used for sub-millisecond timing "
@@ -239,7 +232,7 @@ class SpikeGLXSyncChannelInterface(BaseDataInterface):
                 f"The sync signal can be generated internally by the Imec module (PXIe or OneBox) or externally "
                 f"by an NI-DAQ device acting as the master sync generator for multi-device setups."
             ),
-        }
+        )
 
         return metadata
 
@@ -303,23 +296,11 @@ class SpikeGLXSyncChannelInterface(BaseDataInterface):
             iterator_options = positional_values.get("iterator_options", iterator_options)
             always_write_timestamps = positional_values.get("always_write_timestamps", always_write_timestamps)
 
-        from ....tools.spikeinterface import (
-            _stub_recording,
-            add_recording_as_time_series_to_nwbfile,
-        )
-
-        recording = self.recording_extractor
-        if stub_test:
-            recording = _stub_recording(recording=self.recording_extractor)
-
-        metadata = metadata or self.get_metadata()
-
-        add_recording_as_time_series_to_nwbfile(
-            recording=recording,
+        super().add_to_nwbfile(
             nwbfile=nwbfile,
             metadata=metadata,
+            stub_test=stub_test,
             iterator_type=iterator_type,
             iterator_options=iterator_options,
             always_write_timestamps=always_write_timestamps,
-            metadata_key=self.metadata_key,
         )

@@ -71,14 +71,15 @@ def build_session_metadata(converter):
 
 
 class TestGuppyConverterMixedEvents:
-    @pytest.fixture
-    def session_folder(self, tmp_path):
+    @pytest.fixture(scope="class")
+    @classmethod
+    def session_folder(cls, tmp_path_factory):
         """The tank symlinked into a writable folder, with the imported-event CSV beside it.
 
         One folder holds the traces and both event sources, which is how GuPPy lays a session out --
         and the symlinks keep the ~1 MB tank from being copied per test.
         """
-        session_folder = tmp_path / "session"
+        session_folder = tmp_path_factory.mktemp("mixed_session") / "session"
         session_folder.mkdir()
         for path in TANK_FOLDER.iterdir():
             # Resolved, because a relative target is read relative to the link's own directory rather
@@ -89,8 +90,9 @@ class TestGuppyConverterMixedEvents:
         )
         return session_folder
 
-    @pytest.fixture
-    def event_onsets(self, session_folder):
+    @pytest.fixture(scope="class")
+    @classmethod
+    def event_onsets(cls, session_folder):
         """The onsets GuPPy analyzed: the tank's own epocs, plus the imported event's."""
         import tdt
 
@@ -102,12 +104,13 @@ class TestGuppyConverterMixedEvents:
         onsets[IMPORTED_EVENT_NAME] = list(IMPORTED_EVENT_ONSETS)
         return onsets
 
-    @pytest.fixture
-    def guppy_output_folder(self, tmp_path, event_onsets):
+    @pytest.fixture(scope="class")
+    @classmethod
+    def guppy_output_folder(cls, tmp_path_factory, event_onsets):
         """A storesList.csv listing the tank's three epocs and the imported store side by side."""
         event_store_to_name = {**EPOC_TO_EVENT_NAME, IMPORTED_EVENT_STORE: IMPORTED_EVENT_NAME}
         return generate_mock_guppy_output_folder(
-            tmp_path / "guppy_output",
+            tmp_path_factory.mktemp("mixed_output") / "guppy_output",
             event_store_to_name=event_store_to_name,
             event_onsets=event_onsets,
         )

@@ -408,14 +408,14 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
                 - "sampling_rate": float, the sampling rate of the waveforms in Hz
                 - "unit": str, the unit of measurement (default: "volts")
         write_as : {'units', 'processing'}, optional
-            Deprecated. Use ``parent_container`` instead. Will be removed on or after December 2026.
+            Deprecated. Use ``parent_container`` instead. Will be removed on or after February 2027.
         """
         from ...tools.spikeinterface import add_sorting_to_nwbfile
 
         if write_as is not None:
             warnings.warn(
                 "The 'write_as' parameter of BaseSortingExtractorInterface.add_to_nwbfile() is deprecated and will "
-                "be removed on or after December 2026. Use 'parent_container' instead.",
+                "be removed on or after February 2027. Use 'parent_container' instead.",
                 FutureWarning,
                 stacklevel=2,
             )

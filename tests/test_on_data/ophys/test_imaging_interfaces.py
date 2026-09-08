@@ -438,7 +438,7 @@ class TestScanImageImagingInterfaceSingleChannelNoChannelName(ImagingExtractorIn
     expected_two_photon_series_data_shape = (100, 20, 20, 9)
     # The written rate comes from the timestamps the extractor reports, not from the header's nominal
     # volume rate, so it differs slightly from ``expected_imaging_rate`` below.
-    expected_rate = 32.74837101415483
+    expected_rate = 32.74833656561069
     expected_starting_time = 0.01526797
     expected_metadata_key = "scan_image_imaging"
     expected_imaging_rate = 32.7454
@@ -619,6 +619,9 @@ class TestBrukerTiffImagingInterfaceSinglePlane(ImagingExtractorInterfaceTestMix
 
     expected_metadata_key = "bruker_tiff_imaging"
     expected_imaging_rate = 29.873732099062256
+    # The written rate is recovered from the timestamps rather than reported by the extractor, so it differs
+    # from ``expected_imaging_rate`` in the last ulp.
+    expected_rate = 29.87373209906225
     expected_scan_line_rate = 15840.580398865815
 
     def check_extracted_metadata(self, metadata: dict):
@@ -670,7 +673,7 @@ class TestBrukerTiffImagingInterfaceSinglePlane(ImagingExtractorInterfaceTestMix
         assert "BrukerFluorescenceMicroscope" in nwbfile.devices
         assert "ImagingPlane" in nwbfile.imaging_planes
         two_photon_series = nwbfile.acquisition["TwoPhotonSeries"]
-        assert two_photon_series.rate == self.expected_imaging_rate
+        assert two_photon_series.rate == self.expected_rate
         assert two_photon_series.scan_line_rate == self.expected_scan_line_rate
         assert two_photon_series.data.shape == (10, 64, 64)
 
@@ -1240,8 +1243,15 @@ class TestMicroManagerTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
         nwbfile.read_io.close()
 
 
+@pytest.mark.filterwarnings(
+    "ignore:OME-XML contains Plane elements with DeltaT but only .* of .* timepoints have timestamps:UserWarning"
+)
 class TestThorImagingInterface(ImagingExtractorInterfaceTestMixin):
-    """Test ThorImagingInterface."""
+    """Test ThorImagingInterface.
+
+    The fixture has an incomplete OME ``Plane/@DeltaT`` vector. ROIExtractors correctly rejects it and falls back to
+    the declared sampling rate; these tests cover Thor metadata and writing, not timestamp parsing.
+    """
 
     channel_name = "ChanA"
     optical_series_name: str = f"TwoPhotonSeries{channel_name}"
@@ -1326,6 +1336,9 @@ class TestThorImagingInterface(ImagingExtractorInterfaceTestMixin):
         assert series["field_of_view"] == pytest.approx([452.7e-6, 452.7e-6])
 
 
+@pytest.mark.filterwarnings(
+    "ignore:MiniscopeMultiRecordingImagingExtractor is deprecated and will be removed:FutureWarning"
+)
 class Test_MiniscopeMultiRecordingInterface(MiniscopeImagingInterfaceMixin):
     data_interface_cls = _MiniscopeMultiRecordingInterface
     interface_kwargs = dict(folder_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "C6-J588_Disc5"))
@@ -1511,7 +1524,7 @@ class TestMiniscopeImagingInterface(MiniscopeImagingInterfaceMixin):
         )
 
         # Test that metadata extraction works
-        metadata = interface.get_metadata()
+        metadata = interface.get_metadata(use_new_metadata_format=False)
         assert metadata["Ophys"]["Device"][0]["name"] == "Miniscope"
 
         # Test that it has timestamps

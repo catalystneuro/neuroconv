@@ -191,5 +191,6 @@ class TestIntanDigitalFileWithoutDigitalChannels:
         refused by the shared validator's empty-configuration guard, whose message tells the caller to
         pass the ``None`` they just passed.
         """
-        with pytest.raises(ValueError, match="carries no digital channels"):
-            IntanDigitalInterface(file_path=self.FILE_PATH)
+        with pytest.warns(UserWarning, match="saved_files_are_split=True"):
+            with pytest.raises(ValueError, match="carries no digital channels"):
+                IntanDigitalInterface(file_path=self.FILE_PATH)

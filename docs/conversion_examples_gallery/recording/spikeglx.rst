@@ -112,7 +112,9 @@ SpikeGLX does not save each digital line as its own channel. It packs up to sixt
 integer *word* per sample, so ``~snsChanMap`` lists a single ``XD0`` entry and a line is addressed as
 word plus bit, which is the same addressing SpikeGLX's own CatGT tool uses. That is what
 ``detection_configuration`` spells out: it maps a signal to a list of detection specs, one per event
-type you want derived from it.
+type you want derived from it. The grammar itself, the two stages every spec states and the readings
+each one admits, is in :ref:`extract_events_from_signals`. This page covers what it looks like on a
+NIDQ board.
 
 .. code-block:: python
 
@@ -149,21 +151,13 @@ type you want derived from it.
 This writes two tables, ``CameraExposure`` and ``TrialStart``. Both lines are carved out of the one
 ``XD0`` word, and the word is read from disk once however many lines you take from it.
 
-The two readings are different on purpose. A camera exposure line is meaningfully durative, so
-``high_period`` records each pulse as an onset plus the span to its falling edge, in a ``duration``
-column. A trial-start pulse only marks an instant, so ``rising`` records the onset alone and the table
-has no ``duration`` column at all. (In this particular fixture only line 0 ever toggles, so
+The two readings are chosen to suit their lines: a camera exposure is meaningfully durative, a
+trial-start pulse only marks an instant. (In this particular fixture only line 0 ever toggles, so
 ``TrialStart`` comes out with zero rows.)
 
 To customize how these events are named, described and grouped into tables once they are derived, see
 :ref:`annotate_events_metadata`. ``detection_configuration`` decides *which* events exist; the events
 metadata decides how they are presented.
-
-``detection`` says which transitions become events and is required. ``"rising"`` and ``"falling"``
-give a point event at each edge; ``"high_period"`` and ``"low_period"`` give a durative event, an
-onset plus the span to the opposite edge. ``event_name`` replaces the derived identifier and also
-names the written table (``camera_exposure`` above becomes a table named ``CameraExposure``); without it
-the identifier is derived from the signal and its reading, for example ``XD0_bit0_high_period``.
 
 If ``detection_configuration`` is ``None`` (the default), every line the file's ``niXDChans1`` header
 field declares is read as a ``high_period``. That reading is lossless, since every transition is

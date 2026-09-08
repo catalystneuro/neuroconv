@@ -6,7 +6,7 @@ from warnings import warn
 
 from pydantic import FilePath, validate_call
 
-from ..baseicephysinterface import BaseIcephysInterface
+from ..legacybaseicephysinterface import LegacyBaseIcephysInterface
 from ....utils import DeepDict
 
 
@@ -38,7 +38,7 @@ def get_start_datetime(neo_reader):
         return neo_reader._axon_info["rec_datetime"]
 
 
-class AbfInterface(BaseIcephysInterface):
+class AbfInterface(LegacyBaseIcephysInterface):
     """Interface for ABF intracellular electrophysiology data."""
 
     display_name = "ABF Icephys"
@@ -99,6 +99,20 @@ class AbfInterface(BaseIcephysInterface):
         icephys_metadata_file_path : FilePath, optional
             JSON file containing the Icephys-specific metadata.
         """
+        warnings.warn(
+            "AbfInterface is deprecated and will be removed in release 0.12.0. "
+            "It writes a separate series per sweep, so a file of many sweeps becomes many objects in the "
+            "NWB file, and it infers the clamp mode from ABF metadata that is not reliable, silently "
+            "falling back to izero when it finds no command data, so the series class can be wrong. "
+            "Use AxonIntracellularInterface instead: it takes the clamp mode explicitly and writes one "
+            "continuous series per electrode, with each sweep addressed as a range in the intracellular "
+            "recordings table. "
+            "See the conversion gallery: "
+            "https://neuroconv.readthedocs.io/en/main/conversion_examples_gallery/recording/abf.html",
+            FutureWarning,
+            stacklevel=2,
+        )
+
         # Handle deprecated positional arguments
         if args:
             parameter_names = [

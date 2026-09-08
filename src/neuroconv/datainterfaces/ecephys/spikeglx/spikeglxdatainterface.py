@@ -227,7 +227,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         if "inter_sample_shift" in self.recording_extractor.get_property_keys():
             self.recording_extractor.delete_property(key="inter_sample_shift")
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         from ....tools.spikeinterface.spikeinterface import _get_probe_device_metadata
 
         if use_new_metadata_format:
@@ -323,7 +323,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
 
             return metadata
 
-        metadata = super().get_metadata()
+        metadata = super().get_metadata(use_new_metadata_format=False)
         session_start_time = self._get_session_start_time()
         if session_start_time:
             metadata["NWBFile"]["session_start_time"] = session_start_time
