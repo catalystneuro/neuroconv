@@ -213,7 +213,9 @@ def _modality_locations(nwbfile: NWBFile) -> dict:
 
     fiber_photometry_table = get_fiber_photometry_table(nwbfile)
     if fiber_photometry_table is not None and "location" in fiber_photometry_table.colnames:
-        locations["FiberPhotometry"].update(dict.fromkeys(str(value) for value in fiber_photometry_table["location"].data))
+        locations["FiberPhotometry"].update(
+            dict.fromkeys(str(value) for value in fiber_photometry_table["location"].data)
+        )
 
     return {block: list(values) for block, values in locations.items() if values}
 
@@ -268,7 +270,9 @@ def infer_brain_region_ontology_metadata(nwbfile: NWBFile, metadata: dict) -> di
             if term is not None:
                 resolved[location] = {"id": term.curie, "uri": term.entity_uri}
         if resolved:
-            brain_regions = metadata.setdefault(block_name, {}).setdefault("ontology", {}).setdefault("brain_regions", {})
+            brain_regions = (
+                metadata.setdefault(block_name, {}).setdefault("ontology", {}).setdefault("brain_regions", {})
+            )
             brain_regions.update(resolved)
 
     return metadata
