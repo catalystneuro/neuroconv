@@ -16,11 +16,18 @@ This guide covers :py:class:`~neuroconv.datainterfaces.behavior.video.externalvi
 It leaves the video on disk and writes an ``ImageSeries`` that points at it. The general alignment methods
 are described in the :doc:`temporal alignment user guide <../user_guide/temporal_alignment>`.
 
-What the session produced
--------------------------
+Common recording configurations
+-------------------------------
 
-Two things: a recording that ran for the whole session, and video that ran either for the whole session or
-only during the trials. The recording is the other modality, whichever it is. It matters here for two
+Two things about the rig decide which recipe you need: how the camera split its output into files, and
+what the cable between the camera and the recording system carried. The first says how many files you have
+to place. The second says how well you can place each one.
+
+Free-running and triggered cameras
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The session produced two things: a recording that ran for the whole session, and video that ran either for
+the whole session or only during the trials. The recording is the other modality, whichever it is. It matters here for two
 reasons. Its clock is normally the session
 clock, because everything else in the rig is wired into it. And its digital inputs are where the camera's
 timing signal was recorded, so it is also what measures the video.
@@ -55,12 +62,11 @@ real gaps between them. This is the trialized case. Here the gaps are intended.
 The two figures show the same three files, touching in one and separated in the other. The files on disk
 look identical in both cases. Only knowing what the rig did tells them apart.
 
-How they are wired, and where the times come from
--------------------------------------------------
+Wiring between the camera and the recording system
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 There is usually a cable between the camera and the recording system, and what runs along it decides how
-precise the alignment can be. The arrangement above says how many files you have to place. The cable says
-how well you can place each one.
+precise the alignment can be.
 
 .. image:: ../_static/images/video_wiring.png
    :width: 760px
@@ -98,12 +104,41 @@ missed a pulse.
 **No cable.** Then all you have is what someone wrote down, usually a start time, and nothing that relates
 the two clocks after that.
 
-One combination has no recipe: one file per trial and no line. Nothing in the recording says where the
-trials sit. The starting times have to come from somewhere else, a behavioral log or the modification times
-of the files, and you set them by hand.
+Which recipe applies
+~~~~~~~~~~~~~~~~~~~~
 
-**Reading the line.** Whichever way it points, the line ends on a digital input of the recording system and
-is read the same way. Configure the line and read the event times back without writing anything:
+Each row is one of the two arrangements and has its own section below. Each column is one of the four
+cable cases. The cell names the recipe inside that section and links to it.
+
+.. list-table::
+   :header-rows: 1
+   :stub-columns: 1
+   :widths: 18 20 20 22 20
+
+   * - arrangement
+     - the camera reports
+     - the camera is commanded
+     - a shared sync source
+     - no cable
+   * - free-running camera
+     - :ref:`a pulse per frame <video_free_running_pulse_per_frame>`
+     - :ref:`a known offset <video_free_running_known_offset>`, from the one start pulse
+     - :ref:`the camera keeps its own clock <video_free_running_own_clock>`
+     - :ref:`a known offset <video_free_running_known_offset>`, from your notes
+   * - triggered camera
+     - :ref:`a pulse per frame <video_triggered_pulse_per_frame>`, in bursts
+     - :ref:`trial onsets only <video_triggered_trial_onsets>`
+     - :ref:`the camera keeps its own clock <video_free_running_own_clock>`, file by file, then ``remap_times`` on the interface
+     - :ref:`no recipe <video_uncovered_setups>`
+
+A free-running camera that was split into several files by the recorder is the first row after the files
+are placed back to back, which is :ref:`its own recipe <video_free_running_split_files>`.
+
+Reading the pulse times from the recording system
+-------------------------------------------------
+
+Whichever way the line points, it ends on a digital input of the recording system and is read the same way.
+Configure the line and read the event times back without writing anything:
 
 .. code-block:: python
 
@@ -137,8 +172,8 @@ What goes in ``detection_configuration`` is :ref:`how a signal becomes a line <e
 A free-running camera
 ---------------------
 
-One camera, running for the whole session, writing one file. The interface writes one ``ImageSeries``. The
-only question is what timed it.
+One camera, running for the whole session, writing one file or several that run back to back. The interface
+writes one ``ImageSeries``. The only question is what timed it.
 
 .. code-block:: python
 
@@ -157,7 +192,10 @@ camera's entry in ``metadata["Behavior"]["ExternalVideos"]`` and keeps the two `
 devices apart. It is also what a ``PoseEstimation`` container names to say which video its keypoints were
 tracked from (see :ref:`annotate_pose_metadata`).
 
-**Known offset.** All you know is when the camera started relative to the session start.
+.. _video_free_running_known_offset:
+
+**A known offset (no cable, or one start pulse).** All you know is when the camera started relative to the
+session start, from a note or from the one trigger pulse that started it.
 
 .. code-block:: python
 
@@ -167,7 +205,36 @@ The frame times come from the video's own frame rate, shifted by the offset. Thi
 nothing else. Two clocks drift apart, so on a long session the error at the end of the video grows and no
 single number can fix it.
 
-**A pulse per frame.** The camera sent a pulse for every frame it captured, so the recording system
+.. _video_free_running_split_files:
+
+**When the recorder split the session into several files.** Still one continuous recording, but the software
+opened a new file every few minutes, so it arrives as several. If the recorder dropped no frames between
+closing one file and opening the next, the files run back to back and each starts where the previous one
+ended. The frame counts and rates give you those starts. This is also what the interface assumes when
+several files are written and nothing has been said about them, and it warns you because it is a choice you
+did not make. To make it explicit, place each file where the previous one ends:
+
+.. code-block:: python
+
+    import numpy as np
+
+    interface = ExternalVideoInterface(file_paths=["part_01.avi", "part_02.avi", "part_03.avi"])
+
+    durations = np.array(interface.get_header_frame_counts()) / np.array(interface.get_header_frame_rates())
+    starting_times = np.concatenate([[0.0], np.cumsum(durations)[:-1]])
+
+    for segment_key, start in zip(interface.alignment.keys(), starting_times):
+        interface.alignment[segment_key].start_at(start)
+
+``start_at`` moves one file so that its first frame sits at the time you give on the session clock. It reads
+nothing inside the file. If the camera also started late, shift the interface as in the known-offset case
+and the files keep their layout. Nothing in the files records a gap between them if there was one. If the
+rig has a frame-out line, use it and take each file's times from the pulses instead, as in the trialized
+case below.
+
+.. _video_free_running_pulse_per_frame:
+
+**A pulse per frame (the camera reports).** The camera sent a pulse for every frame it captured, so the recording system
 timestamped each frame directly. This is accurate and corrects drift. Prefer it whenever the pulses exist.
 
 .. code-block:: python
@@ -183,7 +250,9 @@ not trim the pulses to fit. Most recorders stamp each frame with its index inste
 dropped frame closes the gap instead of leaving one, and every later frame is written early. The pulses are
 the only record of where the missing frames were.
 
-**The camera keeps its own clock.** The camera writes a timestamp for every frame it captures, and a shared
+.. _video_free_running_own_clock:
+
+**The camera keeps its own clock (a shared sync source).** The camera writes a timestamp for every frame it captures, and a shared
 sync source sends pulses into both systems. The camera's log then holds a time for every frame and a time
 for every sync pulse, all on the camera's clock. The frame times are already one per frame but on the wrong
 clock. The sync pulses were written down by both systems, so they are what maps one clock onto the other.
@@ -214,31 +283,6 @@ interface at once. The drift belongs to the camera's clock, not to one file, so 
 triggered camera on its own clock: place each of its files first, then one ``alignment.remap_times`` call
 corrects all of them.
 
-**When the recorder split the session into several files.** Still one continuous recording, but the software
-opened a new file every few minutes, so it arrives as several. If the recorder dropped no frames between
-closing one file and opening the next, the files run back to back and each starts where the previous one
-ended. The frame counts and rates give you those starts. This is also what the interface assumes when
-several files are written and nothing has been said about them, and it warns you because it is a choice you
-did not make. To make it explicit, place each file where the previous one ends:
-
-.. code-block:: python
-
-    import numpy as np
-
-    interface = ExternalVideoInterface(file_paths=["part_01.avi", "part_02.avi", "part_03.avi"])
-
-    durations = np.array(interface.get_header_frame_counts()) / np.array(interface.get_header_frame_rates())
-    starting_times = np.concatenate([[0.0], np.cumsum(durations)[:-1]])
-
-    for segment_key, start in zip(interface.alignment.keys(), starting_times):
-        interface.alignment[segment_key].start_at(start)
-
-``start_at`` moves one file so that its first frame sits at the time you give on the session clock. It reads
-nothing inside the file. If the camera also started late, shift the interface as in the known-offset case
-and the files keep their layout. Nothing in the files records a gap between them if there was one. If the
-rig has a frame-out line, use it and take each file's times from the pulses instead, as in the trialized
-case below.
-
 A triggered camera, one file per trial
 --------------------------------------
 
@@ -262,7 +306,9 @@ If two trials wrote files with the same name in different folders, rename them. 
 addressed, so it has to be unique. The interface throws an error at construction instead of silently
 merging the two.
 
-**Trial onsets only.** The digital line recorded the triggers and nothing else.
+.. _video_triggered_trial_onsets:
+
+**Trial onsets only (the camera is commanded).** The digital line recorded the triggers and nothing else.
 
 .. code-block:: python
 
@@ -287,7 +333,9 @@ hardware-measured rate is 150.4083. That is 11.5 seconds of error by the end of 
 are evenly spaced. Over a ten-second trial the error is a millisecond and does not matter. Over a long
 trial, or a session written as one file, use the pulses below instead.
 
-**A pulse per frame.** This is the best case and the one to ask for when a rig is being designed. A
+.. _video_triggered_pulse_per_frame:
+
+**A pulse per frame (the camera reports).** This is the best case and the one to ask for when a rig is being designed. A
 frame-out line that is active only while the camera runs gives you both things at once. The pulses arrive
 in bursts, one burst per trial. The burst onsets are where the files start and the pulses within a burst
 are the frame times of that file.
@@ -325,10 +373,6 @@ catches it, instead of it being silently merged into its neighbour.
     trial_onsets = digital_interface.get_event_times("camera_trigger")
     bursts = np.split(frame_pulse_times, np.searchsorted(frame_pulse_times, trial_onsets[1:]))
 
-One case this does not cover: a camera that free-runs while only some of its frames are written to disk.
-The counts no longer say which frames were saved, so neither the gaps nor the onsets can reconstruct the
-mapping. No alignment recipe repairs this. It needs per-frame metadata from the acquisition software.
-
 Recording which file is which trial
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -349,8 +393,20 @@ somewhere that can hold it: a column on the trials table when the segments are y
     for onset, duration, file_path in zip(trial_onsets, durations, file_paths):
         nwbfile.add_trial(start_time=onset, stop_time=onset + duration, video_file=str(file_path))
 
-A setup this guide does not cover
----------------------------------
+.. _video_uncovered_setups:
+
+Setups this guide does not cover
+--------------------------------
+
+Two setups we know of have no recipe.
+
+**One file per trial and no line.** Nothing in the recording says where the trials sit. The starting times
+have to come from somewhere else, a behavioral log or the modification times of the files, and you place
+each file by hand with ``start_at``.
+
+**A camera that free-runs while only some of its frames are written to disk.** The counts no longer say
+which frames were saved, so neither the gaps nor the onsets can reconstruct the mapping. No alignment recipe
+repairs this. It needs per-frame metadata from the acquisition software.
 
 The recipes here come from the rigs we have seen, and rigs vary more than a guide can cover. If yours does
 not fit any of them, or fits but produces something these calls cannot express, please
