@@ -188,8 +188,8 @@ instance, and the calls in the previous section act on it directly. Others carry
 object per keypoint, an events interface one per event type, and a converter gathers the objects of every interface it
 holds. When there is more than one, you name which you mean.
 
-Alignment acts on an interface's time-bearing objects: the objects it writes that carry a time coordinate relative
-to ``session_start_time``. Which objects those are depends on the interface. A few examples:
+Alignment acts on an interface's time-bearing objects: the parts of its data that carry their own times relative
+to ``session_start_time``. Which parts those are depends on the interface. A few examples:
 
 .. list-table::
    :header-rows: 1
