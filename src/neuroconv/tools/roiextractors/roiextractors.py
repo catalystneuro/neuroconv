@@ -651,9 +651,10 @@ def _add_roi_response_traces_to_nwbfile(
     The same ``metadata_key`` is used to look up both the ``RoiResponses`` entry and the
     ``PlaneSegmentations`` entry, coupling the two implicitly.
 
-    If ``metadata_key`` is not present in ``metadata["Ophys"]["RoiResponses"]``, placeholder
-    metadata is used for all available traces. If ``metadata_key`` is present but the extractor
-    has no trace data, a ``ValueError`` is raised.
+    If the caller wrote no ``RoiResponses`` entry for ``metadata_key``, placeholder metadata is used
+    for all available traces, and an extractor with no trace data writes nothing. The entry the
+    placeholder template carries under ``default_metadata_key`` counts as not written. If the caller
+    did write one but the extractor has no trace data, a ``ValueError`` is raised.
 
     Parameters
     ----------
