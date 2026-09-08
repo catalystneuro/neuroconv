@@ -25,6 +25,7 @@
 
 ## Improvements
 * Added `docs/how_to/align_external_video.rst`, walking from a digital line to an aligned video across the shapes a behavior camera produces, a free-running camera against one triggered per trial, and the wiring that decides how well each of them can be placed.
+* Added new timing model documentation. [PR #1793](https://github.com/catalystneuro/neuroconv/pull/1793)
 * Removed the `object_name` argument that two `DatasetIOConfiguration` constructors passed to a model that declares no such field, so pydantic dropped it silently, and a duplicate import in `neuroconv.utils`. [PR #2031](https://github.com/catalystneuro/neuroconv/pull/2031)
 * Removed the `get_conversion_options_schema` overrides on `ConverterPipe`, `SpikeGLXConverterPipe` and `OpenEphysBinaryConverter`, which repeated what `NWBConverter` already does and returned the same schema. [PR #2027](https://github.com/catalystneuro/neuroconv/pull/2027)
 * `EDFRecordingInterface` now reports the patient field's birthdate as `Subject.date_of_birth`, parsed into an ISO 8601 date from the `17 mar 1985` spelling the readers hand back. [PR #1999](https://github.com/catalystneuro/neuroconv/pull/1999)
