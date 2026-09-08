@@ -11,6 +11,7 @@ from pynwb.ophys import ImagingPlane, OnePhotonSeries, TwoPhotonSeries
 from ._metadata_schema import _get_ophys_registry_entry_definitions, _keyed_registry
 from ...baseextractorinterface import BaseExtractorInterface
 from ...utils import (
+    ONTOLOGY_METADATA_SCHEMA,
     DeepDict,
     dict_deep_update,
     fill_defaults,
@@ -96,6 +97,7 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         metadata_schema["properties"]["Ophys"]["properties"] = dict(
             ImagingPlanes=_keyed_registry("#/properties/Ophys/definitions/ImagingPlaneEntry"),
             MicroscopySeries=_keyed_registry("#/properties/Ophys/definitions/MicroscopySeriesEntry"),
+            ontology=ONTOLOGY_METADATA_SCHEMA,
         )
         metadata_schema["properties"]["Ophys"]["definitions"] = _get_ophys_registry_entry_definitions()
         return metadata_schema
@@ -121,6 +123,7 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         metadata_schema["properties"]["Ophys"]["properties"] = dict(
             Device=dict(type="array", minItems=1, items={"$ref": "#/properties/Ophys/definitions/Device"}),
             ImagingPlane=dict(type="array", minItems=1, items={"$ref": "#/properties/Ophys/definitions/ImagingPlane"}),
+            ontology=ONTOLOGY_METADATA_SCHEMA,
         )
         metadata_schema["properties"]["Ophys"]["properties"].update(
             {

@@ -140,17 +140,16 @@ def make_nwbfile_from_metadata(metadata: dict) -> NWBFile:
         nwbfile_kwargs["source_script_file_name"] = __file__  # Required for validation
 
     if "Subject" in metadata:
-        nwbfile_kwargs["subject"] = metadata["Subject"]
+        # ``ontology`` carries external-resource terms for Subject values (written into the file
+        # by neuroconv.tools.ontology), not arguments the Subject constructor takes.
+        subject_kwargs = {key: value for key, value in metadata["Subject"].items() if key != "ontology"}
+        nwbfile_kwargs["subject"] = subject_kwargs
         # convert ISO 8601 string to datetime
-        if "date_of_birth" in nwbfile_kwargs["subject"] and isinstance(nwbfile_kwargs["subject"]["date_of_birth"], str):
-            nwbfile_kwargs["subject"]["date_of_birth"] = datetime.fromisoformat(
-                nwbfile_kwargs["subject"]["date_of_birth"]
-            )
-        nwbfile_kwargs["subject"] = Subject(**nwbfile_kwargs["subject"])
+        if "date_of_birth" in subject_kwargs and isinstance(subject_kwargs["date_of_birth"], str):
+            subject_kwargs["date_of_birth"] = datetime.fromisoformat(subject_kwargs["date_of_birth"])
+        nwbfile_kwargs["subject"] = Subject(**subject_kwargs)
 
-    nwbfile = NWBFile(**nwbfile_kwargs)
-
-    return nwbfile
+    return NWBFile(**nwbfile_kwargs)
 
 
 def add_device_from_metadata(nwbfile: NWBFile, modality: str = "Ecephys", metadata: dict | None = None):

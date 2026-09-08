@@ -202,6 +202,21 @@ def get_base_schema(
     return base_schema
 
 
+#: Permissive schema fragment for a modality block's ``ontology`` sub-block (populated by
+#: ``neuroconv.tools.ontology.infer_brain_region_ontology_metadata`` and written into the file as
+#: HERD references). Each ``ontology`` maps a value (``"brain_regions"``) to a mapping of the
+#: free-text string it annotates to an explicit ``{"id": <CURIE>, "uri": <URI>}`` term, or a list
+#: of them, so the exact shape is left unconstrained here.
+ONTOLOGY_METADATA_SCHEMA: dict[str, Any] = dict(
+    type="object",
+    description=(
+        "Ontology terms for this modality's values, keyed by the value they annotate (e.g. "
+        "'brain_regions'). Populated by neuroconv.tools.ontology and written into the file as "
+        "HERD references."
+    ),
+)
+
+
 def get_json_schema_from_method_signature(method: Callable, exclude: list[str] | None = None) -> dict[str, Any]:
     """
     Get the equivalent JSON schema for a signature of a method.

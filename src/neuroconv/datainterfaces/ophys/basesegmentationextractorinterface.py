@@ -9,6 +9,7 @@ from pynwb.ophys import Fluorescence, ImageSegmentation, ImagingPlane, TwoPhoton
 from ._metadata_schema import _get_ophys_registry_entry_definitions, _keyed_registry
 from ...baseextractorinterface import BaseExtractorInterface
 from ...utils import (
+    ONTOLOGY_METADATA_SCHEMA,
     DeepDict,
     fill_defaults,
     get_base_schema,
@@ -55,6 +56,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             PlaneSegmentations=_keyed_registry("#/properties/Ophys/definitions/PlaneSegmentationEntry"),
             RoiResponses=_keyed_registry("#/properties/Ophys/definitions/RoiResponsesEntry"),
             SegmentationImages=_keyed_registry("#/properties/Ophys/definitions/SegmentationImagesEntry"),
+            ontology=ONTOLOGY_METADATA_SCHEMA,
         )
         metadata_schema["properties"]["Ophys"]["definitions"] = _get_ophys_registry_entry_definitions()
         return metadata_schema
@@ -86,6 +88,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         metadata_schema["properties"]["Ophys"] = get_base_schema()
         metadata_schema["properties"]["Ophys"]["properties"] = dict(
             Device=dict(type="array", minItems=1, items=get_schema_from_hdmf_class(Device)),
+            ontology=ONTOLOGY_METADATA_SCHEMA,
         )
         metadata_schema["properties"]["Ophys"]["properties"].update(
             Fluorescence=get_schema_from_hdmf_class(Fluorescence),
