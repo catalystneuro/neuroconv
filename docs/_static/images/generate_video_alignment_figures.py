@@ -4,7 +4,7 @@ Run from the repository root::
 
     uv run --with matplotlib --with numpy python docs/_static/images/generate_video_alignment_figures.py
 
-Produces two figures:
+Produces three figures:
 
 - ``video_setup_free_running.png`` and ``video_setup_triggered.png``  - one per setup the guide is
   organised by, free-running against triggered being how cameras are documented and the fact about the
@@ -15,6 +15,9 @@ Produces two figures:
 - ``video_wiring.png``            - the four ways the camera and the recording system are wired, which is
   what decides how well a rig can be aligned: the camera reports, the camera is commanded, a third box
   drives both, or there is no cable at all.
+- ``video_dropped_frame.png``     - a dropped frame as the frame-out line recorded it and as the recorder
+  wrote it, stamped by index so the gap closes and every later frame lands a frame early. It is the
+  argument for never trimming the pulses to fit the file.
 
 One figure rather than one per setup, deliberately: the third row of the first group and the first of the
 second are the same files on disk, and only the line underneath tells them apart, which is the whole
@@ -280,6 +283,88 @@ def build_wiring():
     plt.close(figure)
 
 
+def build_dropped_frame():
+    """One dropped frame, seen from the frame-out line and from the file the recorder wrote."""
+    interval = 0.85
+    width = 0.62
+    exposed = 10
+    dropped = 4
+    pulse_times = 1.0 + interval * np.arange(exposed)
+    figure, ax = plt.subplots(figsize=(9.4, 3.9))
+
+    def frame_boxes(*, y, centres, labels, hollow=None):
+        for centre, label in zip(centres, labels):
+            is_hollow = label == hollow
+            ax.add_patch(
+                mpatches.Rectangle(
+                    (centre - width / 2, y),
+                    width,
+                    FILE_HEIGHT,
+                    facecolor="white" if is_hollow else FILL,
+                    edgecolor=RED if is_hollow else EDGE,
+                    lw=1.4,
+                    linestyle=(0, (3, 2)) if is_hollow else "solid",
+                    joinstyle="miter",
+                )
+            )
+            ax.text(
+                centre, y + FILE_HEIGHT / 2, label, ha="center", va="center", fontsize=8.5, color=RED if is_hollow else EDGE
+            )
+
+    # Row 1: every exposed frame sent a pulse, and one of the frames never reached the file.
+    y = 0.0
+    row_label(ax, y=y, title="Frames the camera exposed")
+    frame_boxes(y=y, centres=pulse_times, labels=[str(index) for index in range(exposed)], hollow=str(dropped))
+    ax.text(pulse_times[dropped], y + FILE_HEIGHT + 0.10, "dropped", ha="center", va="bottom", fontsize=8, color=RED)
+    digital_line(ax, y=y - PULSE_DROP, pulses=pulse_times, label="frame line")
+
+    # Row 2: the recorder stamps by index, so the frames after the drop close the gap and sit a pulse early.
+    y -= ROW_PITCH
+    row_label(ax, y=y, title="Frames as the recorder wrote them")
+    written_labels = [str(index) for index in range(exposed) if index != dropped]
+    frame_boxes(y=y, centres=pulse_times[: exposed - 1], labels=written_labels)
+    digital_line(ax, y=y - PULSE_DROP, pulses=pulse_times, label="frame line")
+    ax.annotate(
+        "",
+        xy=(pulse_times[dropped] + width / 2, y + FILE_HEIGHT + 0.16),
+        xytext=(pulse_times[dropped + 1] + width / 2, y + FILE_HEIGHT + 0.16),
+        arrowprops=dict(arrowstyle="-|>", color=RED, lw=1.2),
+    )
+    ax.text(
+        pulse_times[dropped + 1] + width / 2 + 0.12,
+        y + FILE_HEIGHT + 0.16,
+        "frame 5 lands on pulse 4, and every later frame one pulse early",
+        ha="left",
+        va="center",
+        fontsize=8,
+        color=RED,
+    )
+    ax.text(
+        pulse_times[-1],
+        y - PULSE_DROP - 0.12,
+        f"{exposed} pulses, {exposed - 1} frames",
+        ha="center",
+        va="top",
+        fontsize=8,
+        color=NOTE,
+    )
+
+    # The session clock, as in the setup figures.
+    baseline_y = y - PULSE_DROP - 0.62
+    ax.annotate(
+        "", xy=(9.7, baseline_y), xytext=(0.55, baseline_y), arrowprops=dict(arrowstyle="-|>", color=BLACK, lw=1.4)
+    )
+    ax.text(LABEL_X, baseline_y, "session clock", ha="right", va="center", fontsize=9, color=BLACK)
+
+    ax.set_xlim(GROUP_X - 0.1, 10.0)
+    ax.set_ylim(baseline_y - 0.3, FILE_HEIGHT + 0.45)
+    ax.axis("off")
+    figure.tight_layout()
+    figure.savefig(OUTDIR / "video_dropped_frame.png", dpi=200, bbox_inches="tight")
+    plt.close(figure)
+
+
 if __name__ == "__main__":
     build_recording_setups()
     build_wiring()
+    build_dropped_frame()

@@ -100,6 +100,8 @@ the same value changes nothing, and a ``shift_times`` applied to the interface a
 along with everything else. Nothing inside the file is read or rewritten; the samples stay regularly spaced and only
 the starting point moves.
 
+.. _temporal_alignment_fine:
+
 Fine alignment
 --------------
 

@@ -250,6 +250,14 @@ not trim the pulses to fit. Most recorders stamp each frame with its index inste
 dropped frame closes the gap instead of leaving one, and every later frame is written early. The pulses are
 the only record of where the missing frames were.
 
+.. image:: ../_static/images/video_dropped_frame.png
+   :width: 720px
+   :align: center
+   :alt: Two rows over one frame line with ten pulses. In the first, the ten frames the camera exposed sit one
+         over each pulse and frame 4 is drawn hollow and marked dropped. In the second, the nine frames the
+         recorder wrote sit over the first nine pulses with no hole, so frame 5 lands on pulse 4 and every
+         later frame is one pulse early. A note reads ten pulses, nine frames.
+
 .. _video_free_running_own_clock:
 
 **The camera keeps its own clock (a shared sync source).** The camera writes a timestamp for every frame it captures, and a shared
@@ -276,7 +284,9 @@ A shift will not do it because the two clocks drift.
 Set the times from the log first. That puts the video on the camera's clock. Then remap that clock onto the
 session clock. The two pulse arrays are paired by position, so they have to be the same length and in the
 same order, and a pulse that only one system recorded has to be dropped from both. Frames between two
-pulses are interpolated. No data is resampled, only the times move.
+pulses are interpolated. No data is resampled, only the times move. How the pulse pairs map one clock onto the
+other, and where a frame between two pulses lands, is drawn in the
+:ref:`fine alignment section of the user guide <temporal_alignment_fine>`.
 
 ``remap_times`` can also be called on ``alignment`` with no key, and then it re-times every file of the
 interface at once. The drift belongs to the camera's clock, not to one file, so that is the form for a
