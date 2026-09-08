@@ -108,8 +108,8 @@ class ExternalVideoInterface(BaseDataInterface):
             # Callables, so registering the files reads none of them.
             self.alignment._register_series(
                 key=segment_key,
-                get_native_times=partial(self._get_native_times, file_index=file_index),
-                get_native_start_time=partial(self._get_native_starting_time, file_index=file_index),
+                get_default_times=partial(self._get_default_times, file_index=file_index),
+                default_start_time=partial(self._get_default_start_time, file_index=file_index),
             )
         # metadata_key is the snake_case registry key (for cross-component linking); the ImageSeries
         # name is kept distinct and is never derived from the key. Name precedence: explicit
@@ -259,7 +259,7 @@ class ExternalVideoInterface(BaseDataInterface):
             self._frame_rates = frame_rates
         return self._frame_rates
 
-    def _get_native_times(self, *, file_index: int) -> np.ndarray:
+    def _get_default_times(self, *, file_index: int) -> np.ndarray:
         """
         Return the times of one video file as the files themselves describe them.
 
@@ -282,10 +282,10 @@ class ExternalVideoInterface(BaseDataInterface):
         """
         frame_counts = self.get_header_frame_counts()
         frame_rates = self.get_header_frame_rates()
-        starting_time = self._get_native_starting_time(file_index=file_index)
+        starting_time = self._get_default_start_time(file_index=file_index)
         return starting_time + np.arange(frame_counts[file_index]) / frame_rates[file_index]
 
-    def _get_native_starting_time(self, *, file_index: int) -> float:
+    def _get_default_start_time(self, *, file_index: int) -> float:
         """Where one file starts on the files' own timeline: the summed duration of the files before it."""
         frame_counts = self.get_header_frame_counts()
         frame_rates = self.get_header_frame_rates()

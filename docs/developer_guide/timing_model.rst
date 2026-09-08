@@ -31,7 +31,8 @@ The alignment state is two scalar **offsets** and, optionally, one replacement a
 
     output = base + object_offset + interface_offset
 
-``base`` is the object's native times, or a replacement array once ``set_times`` or ``remap_times`` has provided one.
+``base`` is the object's default times, the ones its source recorded or, where it records none, the ones its
+header gives, or a replacement array once ``set_times`` or ``remap_times`` has provided one.
 ``interface_offset`` is written by ``shift_times`` and is shared by every object the interface names. ``object_offset``
 is written by ``start_at`` and belongs to one object. Both default to ``0.0``, the identity, so an interface that is
 never aligned writes the times its source recorded. The offsets are stored rather than folded into the times, and the
