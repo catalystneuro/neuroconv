@@ -51,26 +51,28 @@ using the format described below.
 .. code-block:: python
 
     >>> ecephys_metadata = {
-    ...     "Ecephys": {
-    ...         "ElectricalSeries": { # This should match the es_key used in the interface
-    ...             "name" : "ElectricalSeries",
-    ...             "description": "My description of the electrical series data",
+    ...     "Devices": {
+    ...         "my_device": {
+    ...             "name": "MyDevice",
+    ...             "description": "My description of the device",
     ...         },
-    ...         "Device": [
-    ...             {
-    ...                 "name": "MyDevice",
-    ...                 "description": "My description of the device",
+    ...     },
+    ...     "Ecephys": {
+    ...         "ElectricalSeries": {
+    ...             "white_matter_recording": { # This should match the metadata_key used in the interface
+    ...                 "name" : "ElectricalSeries",
+    ...                 "description": "My description of the electrical series data",
     ...             },
-    ...         ],
-    ...         "ElectrodeGroup": [
-    ...             {
+    ...         },
+    ...         "ElectrodeGroups": {
+    ...             "my_electrode_group": {
     ...                 "name": "MyElectrodeGroup",
     ...                 "description": "My description of the electrode group",
     ...                 "location": "location of the electrode group ex. hippocampus",
-    ...                 "device": "MyDevice",
+    ...                 "device_metadata_key": "my_device",
     ...             }
-    ...         ],
-    ...     }
+    ...         },
+    ...     },
     ... }
 
 This metadata can then be easily incorporated into the conversion by updating the metadata dictionary.

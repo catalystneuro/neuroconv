@@ -217,7 +217,7 @@ def test_get_json_schema_from_example_data_interface():
                 "description": "Path to the folder of .mpx files.",
             },
             "verbose": {"default": False, "type": "boolean", "description": "Allows verbose.\nDefault is False."},
-            "es_key": {"default": "ElectricalSeries", "type": "string"},
+            "es_key": {"anyOf": [{"type": "string"}, {"type": "null"}], "default": None},
             "metadata_key": {
                 "anyOf": [{"type": "string"}, {"type": "null"}],
                 "default": None,

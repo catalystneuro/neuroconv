@@ -110,7 +110,7 @@ class _MiniscopeMultiRecordingInterface(BaseImagingExtractorInterface):
         """
         from ....tools.roiextractors import get_nwb_imaging_metadata
 
-        metadata = super().get_metadata()
+        metadata = super().get_metadata(use_new_metadata_format=False)
         default_metadata = get_nwb_imaging_metadata(self.imaging_extractor, photon_series_type=self.photon_series_type)
         metadata = dict_deep_update(metadata, default_metadata)
         metadata["Ophys"].pop("TwoPhotonSeries", None)
@@ -423,23 +423,19 @@ class MiniscopeImagingInterface(BaseImagingExtractorInterface):
         )
         return miniscope_config.get("deviceName", "Miniscope")
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         """Get metadata with device information from Miniscope configuration.
 
         Parameters
         ----------
-        use_new_metadata_format : bool, default: False
+        use_new_metadata_format : bool, default: True
             When False, returns the old list-based metadata format (backward compatible).
             When True, returns dict-based metadata keyed by ``metadata_key`` under
             ``Devices``, ``Ophys.ImagingPlanes``, and ``Ophys.MicroscopySeries``.
         """
         from roiextractors import MiniscopeImagingExtractor
 
-        metadata = (
-            super().get_metadata()
-            if not use_new_metadata_format
-            else super().get_metadata(use_new_metadata_format=True)
-        )
+        metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
 
         # Read device metadata from metaData.json using the extractor's static method
         device_metadata_path = self._device_folder_path / "metaData.json"

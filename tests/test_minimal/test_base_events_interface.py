@@ -2,6 +2,7 @@
 
 import re
 
+import numpy as np
 import pytest
 from jsonschema.validators import Draft7Validator
 from pynwb import NWBHDF5IO
@@ -131,6 +132,126 @@ class TestMockEventsInterface:
         # Only the column that declares meanings earns a MeaningsTable: 'cue' writes its display labels
         # without one, and 'amplitude' writes raw values.
         assert set(events.meanings_tables.keys()) == {"outcome_meanings"}
+
+    def test_variable_length_values_convert_to_ragged_column(self):
+        # A payload field holding several values per event becomes a ragged column: an event tagged with
+        # two conditions at once, or a behavior scored with two qualifiers. Nothing in the metadata says
+        # "ragged"; the shape is read off the data, so there is no second place for it to disagree.
+        interface = MockEventsInterface(num_events=5, event_payload="single value variable length")
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile)
+
+        events = nwbfile.get_events_table("Events")
+        assert set(events.colnames) == {"timestamp", "conditions"}
+        # A row with nothing to say holds an empty list, which is the only fill that means what the
+        # scalar fills mean for a one-value column.
+        assert [list(cell) for cell in events["conditions"][:]] == [
+            [],
+            ["go"],
+            ["go", "no_go"],
+            ["go", "no_go", "catch"],
+            [],
+        ]
+        # Relabelling applies per value rather than per cell, and the MeaningsTable targets the values
+        # underneath rather than the index that groups them into rows.
+        assert set(events.meanings_tables.keys()) == {"conditions_meanings"}
+        meanings = events.meanings_tables["conditions_meanings"]
+        assert meanings.target.name == "conditions"
+        assert list(meanings["value"][:]) == ["go", "no_go", "catch"]
+
+    def test_ragged_column_survives_time_sorting_when_merged(self):
+        # Pooling two types time-sorts the merged rows, and a ragged column cannot be permuted the way a
+        # column of scalars is: its rows are spans of a values dataset rather than elements of it, so the
+        # offsets and the values are rebuilt from the reordered rows. The two types are staggered in time,
+        # so the sort really does move rows here.
+        interface = MockEventsInterface(num_event_types=2, num_events=4, event_payload="single value variable length")
+        metadata = interface.get_metadata()
+        event_types = metadata["Events"]["mock_events"]["event_types"]
+        event_types["events_0"]["table_metadata_key"] = "pooled"
+        event_types["events_1"]["table_metadata_key"] = "pooled"
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+        events = nwbfile.get_events_table("Pooled")
+        assert list(events["timestamp"][:]) == pytest.approx([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8])
+        assert list(events["event_type"][:]) == ["events_0", "events_1"] * 4
+        # Each type owns its own ragged column, so every row holds one type's values and the empty fill
+        # for the other, and both have to land on the row the sort moved them to.
+        assert [list(cell) for cell in events["conditions_0"][:]] == [
+            [],
+            [],
+            ["go"],
+            [],
+            ["go", "no_go"],
+            [],
+            ["go", "no_go", "catch"],
+            [],
+        ]
+        assert [list(cell) for cell in events["conditions_1"][:]] == [
+            [],
+            [],
+            [],
+            ["go"],
+            [],
+            ["go", "no_go"],
+            [],
+            ["go", "no_go", "catch"],
+        ]
+
+    def test_writing_one_value_into_a_ragged_column_raises(self):
+        # A column is one shape or the other for every contributor. Without the check this fails silently:
+        # a scalar handed to a ragged column reaches `VectorIndex.add_vector`, which extends the values
+        # with it, so a string is appended one character at a time.
+        ragged = MockEventsInterface(num_events=4, event_payload="single value variable length")
+        ragged_metadata = ragged.get_metadata()
+        ragged_type = ragged_metadata["Events"]["mock_events"]["event_types"]["events"]
+        ragged_type["table_metadata_key"] = "pooled"
+        ragged_type["columns"]["conditions"]["column_name"] = "conditions"
+        ragged_metadata["Events"]["EventTables"] = {"pooled": {"table_name": "Pooled", "description": "Pooled."}}
+        nwbfile = mock_NWBFile()
+        ragged.add_to_nwbfile(nwbfile=nwbfile, metadata=ragged_metadata)
+
+        scalar = MockEventsInterface(num_events=4, event_payload="single value")
+        scalar_metadata = scalar.get_metadata()
+        scalar_type = scalar_metadata["Events"]["mock_events"]["event_types"]["events"]
+        scalar_type["event_name"] = "scalar_events"
+        scalar_type["table_metadata_key"] = "pooled"
+        scalar_type["columns"]["outcome"]["column_name"] = "conditions"
+        scalar_metadata["Events"]["EventTables"] = {"pooled": {"table_name": "Pooled", "description": "Pooled."}}
+
+        expected_error = (
+            "Column 'conditions' on table 'Pooled' holds several values per event, and this interface "
+            "writes one. A column is one shape or the other for every contributor."
+        )
+        with pytest.raises(ValueError, match=re.escape(expected_error)):
+            scalar.add_to_nwbfile(nwbfile=nwbfile, metadata=scalar_metadata)
+
+    def test_writing_several_values_into_a_scalar_column_raises(self):
+        # The same rule from the other side: the column already holds one value per event, so a
+        # contributor writing several into it has to raise rather than reshape what is there.
+        scalar = MockEventsInterface(num_events=4, event_payload="single value")
+        scalar_metadata = scalar.get_metadata()
+        scalar_type = scalar_metadata["Events"]["mock_events"]["event_types"]["events"]
+        scalar_type["table_metadata_key"] = "pooled"
+        scalar_type["columns"]["outcome"]["column_name"] = "conditions"
+        scalar_metadata["Events"]["EventTables"] = {"pooled": {"table_name": "Pooled", "description": "Pooled."}}
+        nwbfile = mock_NWBFile()
+        scalar.add_to_nwbfile(nwbfile=nwbfile, metadata=scalar_metadata)
+
+        ragged = MockEventsInterface(num_events=4, event_payload="single value variable length")
+        ragged_metadata = ragged.get_metadata()
+        ragged_type = ragged_metadata["Events"]["mock_events"]["event_types"]["events"]
+        ragged_type["event_name"] = "ragged_events"
+        ragged_type["table_metadata_key"] = "pooled"
+        ragged_type["columns"]["conditions"]["column_name"] = "conditions"
+        ragged_metadata["Events"]["EventTables"] = {"pooled": {"table_name": "Pooled", "description": "Pooled."}}
+
+        expected_error = (
+            "Column 'conditions' on table 'Pooled' holds one value per event, and this interface writes "
+            "several. A column is one shape or the other for every contributor."
+        )
+        with pytest.raises(ValueError, match=re.escape(expected_error)):
+            ragged.add_to_nwbfile(nwbfile=nwbfile, metadata=ragged_metadata)
 
     def test_events_with_duration(self):
         # An event-with-duration type carries per-event durations, so the writer adds a `duration` column.
@@ -960,3 +1081,145 @@ class TestEventsAcrossInterfaces:
         expected_error = "already exists but holds a single event type"
         with pytest.raises(ValueError, match=re.escape(expected_error)):
             interface_b.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata_b)
+
+
+class TestEventsTemporalAlignment:
+    """Gross temporal alignment on ``BaseEventsInterface``: ``interface.alignment.shift_times`` offsets event times at write.
+
+    The mock's single "events" type has native timestamps ``[0.1, 0.2, 0.3, 0.4]`` (``[0.1, 0.2, 0.3]`` at
+    ``num_events=3``), so two interfaces built the same way sit on top of each other until one is shifted.
+    """
+
+    def test_unshifted_events_are_written_at_native_times(self):
+        interface = MockEventsInterface()
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile)
+        written = np.asarray(nwbfile.get_events_table("Events")["timestamp"][:])
+        np.testing.assert_allclose(written, [0.1, 0.2, 0.3, 0.4])
+
+    def test_shift_times_offsets_written_timestamps_and_accumulates(self):
+        # Relative and rigid: repeated shifts sum, and the written events move by the total.
+        interface = MockEventsInterface()
+        interface.alignment.shift_times(1.0)
+        interface.alignment.shift_times(0.5)
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile)
+        written = np.asarray(nwbfile.get_events_table("Events")["timestamp"][:])
+        np.testing.assert_allclose(written, [1.6, 1.7, 1.8, 1.9])
+
+    def test_shift_preserves_durations(self):
+        # A shift moves timestamps but leaves each event's duration unchanged.
+        interface = MockEventsInterface(event_extent="event with duration")
+        interface.alignment.shift_times(5.0)
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile)
+        events = nwbfile.get_events_table("Events")
+        np.testing.assert_allclose(np.asarray(events["timestamp"][:]), [5.1, 5.2, 5.3, 5.4])
+        np.testing.assert_allclose(np.asarray(events["duration"][:]), [0.05, 0.05, 0.05, 0.05])
+
+    def test_merged_table_is_time_sorted_on_aligned_times(self):
+        # The cross-interface counterpart of TestMockEventsInterface.test_merged_table_is_time_sorted, and the
+        # only case where two different offsets meet: two systems pooling their events into one shared table,
+        # the second one shifted onto the first one's clock. Both interfaces fire at the same native times, so
+        # unshifted they land on top of each other and the table falls back to insertion order, A's block then
+        # B's (asserted in TestEventsAcrossInterfaces.test_merge_across_two_interfaces). The interleaving below
+        # can therefore only come from the offset: the end-of-write re-sort has to see aligned times, which is
+        # what a single-interface shift cannot pin, since a rigid shift never reorders a stream against itself.
+        interface_a = MockEventsInterface(metadata_key="events_a", num_events=3, event_payload="timestamps only")
+        interface_b = MockEventsInterface(metadata_key="events_b", num_events=3, event_payload="timestamps only")
+        interface_b.alignment.shift_times(0.15)  # B's clock started 0.15 s after A's
+        metadata = {
+            "Events": {
+                "EventTables": {"shared": {"table_name": "Trials", "description": "Trials from two systems."}},
+                "events_a": {
+                    "event_types": {
+                        "events": {
+                            "event_name": "acquisition",
+                            "event_description": "From the acquisition system.",
+                            "table_metadata_key": "shared",
+                        }
+                    }
+                },
+                "events_b": {
+                    "event_types": {
+                        "events": {
+                            "event_name": "auxiliary",
+                            "event_description": "From the auxiliary board.",
+                            "table_metadata_key": "shared",
+                        }
+                    }
+                },
+            }
+        }
+        nwbfile = mock_NWBFile()
+        interface_a.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+        interface_b.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+        events = nwbfile.get_events_table("Trials")
+        # A stays at 0.1/0.2/0.3, B is written at 0.25/0.35/0.45, and the two interleave into one timeline.
+        written = np.asarray(events["timestamp"][:])
+        np.testing.assert_allclose(written, [0.1, 0.2, 0.25, 0.3, 0.35, 0.45])
+        # Each row crossed the sort as a unit, so event_type still says which system fired when.
+        assert list(events["event_type"][:]) == [
+            "acquisition",
+            "acquisition",
+            "auxiliary",
+            "acquisition",
+            "auxiliary",
+            "auxiliary",
+        ]
+
+
+class TestGetEventTimes:
+    """``get_event_times``, the read-only query for events a caller wants to read rather than write.
+
+    A camera's frame-out pulse or an alignment pulse is configured like any other event type; the query
+    hands back its times so another stream can be aligned against them. It is base-class behaviour, so it
+    works the same on a pre-extracted source as on a signal-encoded one, and there is no second place to
+    state a reading, which is what makes the array it returns the array the writer writes.
+    """
+
+    def test_returns_the_onsets_the_writer_writes(self):
+        """The property the single path buys: the query cannot disagree with the file."""
+        interface = MockEventsInterface()
+
+        queried_timestamps = interface.get_event_times(event_type_source_id="events")
+        expected_timestamps = [0.1, 0.2, 0.3, 0.4]
+        np.testing.assert_allclose(queried_timestamps, expected_timestamps)
+
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile)
+
+        written_timestamps = np.asarray(nwbfile.get_events_table("Events")["timestamp"][:])
+        np.testing.assert_allclose(queried_timestamps, written_timestamps)
+
+    def test_answers_on_the_interfaces_current_clock(self):
+        """Shifted times, not native ones, so the events can be the input to another stream's alignment."""
+        interface = MockEventsInterface()
+        interface.alignment.shift_times(5.0)
+
+        shifted_timestamps = interface.get_event_times(event_type_source_id="events")
+        expected_timestamps = [5.1, 5.2, 5.3, 5.4]
+
+        np.testing.assert_allclose(shifted_timestamps, expected_timestamps)
+
+    def test_lists_the_event_types_it_reads(self):
+        """The handles the query takes, since a derived identifier is not guessable."""
+        interface = MockEventsInterface(num_event_types=3)
+
+        event_type_source_ids = interface.get_event_type_source_ids()
+        expected_event_type_source_ids = ["events_0", "events_1", "events_2"]
+
+        assert event_type_source_ids == expected_event_type_source_ids
+        for event_type_source_id in event_type_source_ids:
+            assert interface.get_event_times(event_type_source_id=event_type_source_id).size == 4
+
+    def test_an_event_type_that_is_not_read_raises_naming_the_ones_that_are(self):
+        interface = MockEventsInterface(num_event_types=2)
+        expected_error = (
+            "No event type 'camera' in MockEventsInterface. This interface reads ['events_0', 'events_1'], "
+            "which get_event_type_source_ids lists."
+        )
+
+        with pytest.raises(KeyError, match=re.escape(expected_error)):
+            interface.get_event_times(event_type_source_id="camera")

@@ -33,14 +33,42 @@ SESSION = "Photo_249_391-200721-120136"
 # The mock topology: two recording sites, three events, two features, num_trials=4 binned three to a bin.
 RECORDING_SITES = ["dms", "dls"]
 EVENT_NAMES = ["rewarded_nose_pokes", "unrewarded_nose_pokes", "port_entries"]
+# The order the events registry puts them in, which every per-event column follows.
+EVENT_NAMES_IN_REGISTRY_ORDER = ["port_entries", "rewarded_nose_pokes", "unrewarded_nose_pokes"]
 TRACE_PREFIXES = ["cntrl_sig_fit", "dff", "z_score"]
 MOCK_SAMPLING_RATE = 200.0
 MOCK_STARTING_TIME = 1.0
 BIN_EDGES_PER_EVENT = [[0.0, 3.0], [3.0, 4.0]]
 VALID_SIGNAL_INTERVALS = [[1.25, 1.75], [2.0, 2.5]]
+# The transients the mock's detector reports for every (recording site, feature).
+TRANSIENT_PEAK_TIMES = [1.2, 1.5, 1.8, 2.5]
+# In spontaneous mode each site keeps its own subset of them as its event train.
+TRANSIENTS_KEPT = {"dms": [1.2, 1.8], "dls": [1.5, 2.5]}
+TRANSIENT_EVENT_NAMES = ["transients_dff", "transients_z_score"]
+# The generator's default whole-session bins: 0.5 s wide over a 1.0-2.995 s timebase, so the last is short.
+BIN_EDGES = [[1.0, 1.5], [1.5, 2.0], [2.0, 2.5], [2.5, 2.995]]
+# The mean of the mock's -1 to 1 ramp within each of those bins.
+BIN_MEAN_ZSCORE = [-0.751880, -0.250627, 0.250627, 0.751880]
+# The generator's default behavioral covariate.
+COVARIATE_NAME = "akinesia"
+# The generator's default tonic epoch windows, written for every recording site.
+TONIC_EPOCHS = [("baseline", 1.0, 2.0), ("post_injection", 2.0, 3.0)]
 # The generator's default onsets, shared by every event: they label the trial columns of every
 # peri-event product and fill <event>_<recording_site>.hdf5.
 MOCK_TRIAL_ONSETS = [10.0, 20.0, 30.0, 40.0]
+# The generator's default significance comparison, the one pair tested against each other.
+PSTH_COMPARISON = ("rewarded_nose_pokes", "unrewarded_nose_pokes")
+# The smallest session the generator will write: one site, one event, no optional products. The
+# significance tests that assert on an *absence* need nothing the rest of the topology provides.
+MINIMAL_SESSION = dict(
+    recording_site_to_stores={"dms": {"signal": "Dv2A", "control": "Dv1A"}},
+    event_store_to_name={"PrtR": "port_entries"},
+    cross_correlation_pairs=(),
+    bin_width=None,
+    covariates={},
+    tonic_epochs=(),
+    num_psth_timepoints=5,
+)
 
 
 class TestExtractBins:
@@ -126,7 +154,8 @@ class TestGuppyInterfaceBehavior:
     """The caller-visible options and the folder shapes the reference session cannot express."""
 
     @pytest.fixture(scope="class")
-    def guppy_output_folder(self, tmp_path_factory):
+    @classmethod
+    def guppy_output_folder(cls, tmp_path_factory):
         """One mock folder per class: the interface only reads it, and mutation tests copy it first."""
         return generate_mock_guppy_output_folder(tmp_path_factory.mktemp("guppy") / "guppy_output")
 
@@ -154,7 +183,15 @@ class TestGuppyInterfaceBehavior:
         derived unit ever leak into the metadata.
         """
         guppy_metadata = interface.get_metadata()["FiberPhotometry"]["Guppy"][interface.metadata_key]
-        for family in ("Traces", "Transients", "CrossCorrelations", "PSTHs", "PeakAUCs"):
+        for family in (
+            "Traces",
+            "Transients",
+            "CrossCorrelations",
+            "PSTHs",
+            "PeakAUCs",
+            "Covariates",
+            "PSTHSignificance",
+        ):
             for name, entry in guppy_metadata[family].items():
                 assert set(entry.keys()) == {"name", "description"}, (family, entry)
                 assert entry["name"] == name
@@ -302,6 +339,320 @@ class TestGuppyInterfaceBehavior:
         # The removal method is recorded once, on GuppyParameters.
         assert nwbfile.lab_meta_data["guppy_parameters"].artifacts_removal_method == "concatenate"
 
+    # ------------------------------------------------------------------ whole-session binning
+
+    def test_binned_metrics_yield_one_row_per_site_bin_and_trace_type(self, interface, nwbfile):
+        """Each bin contributes a z-score row and a dF/F row, with the bin's own sample count on both."""
+        module = self.add_to_nwbfile(interface, nwbfile, stub_test=False)
+        binned = module["binned_metrics"]
+        assert binned.neurodata_type == "GuppyBinnedMetrics"
+        assert len(binned) == len(RECORDING_SITES) * len(BIN_EDGES) * 2
+
+        recording_site_names = list(module["recording_sites"]["recording_site"].data)
+        for recording_site in RECORDING_SITES:
+            rows = [
+                (label, start, stop, mean, count, n_samples)
+                for site_index, label, start, stop, mean, count, n_samples in zip(
+                    binned["recording_site"].data,
+                    binned["trace_type"].data,
+                    binned["start_time"].data,
+                    binned["stop_time"].data,
+                    binned["mean"].data,
+                    binned["transient_count"].data,
+                    binned["n_samples"].data,
+                )
+                if recording_site_names[site_index] == recording_site
+            ]
+            assert [row[0] for row in rows] == ["z_score", "dff"] * len(BIN_EDGES)
+            # The four bins, the last one short because the session does not divide evenly.
+            np.testing.assert_allclose([row[1] for row in rows[::2]], [1.0, 1.5, 2.0, 2.5])
+            np.testing.assert_allclose([row[2] for row in rows[::2]], [1.5, 2.0, 2.5, 2.995])
+            # The mock's trace ramps linearly from -1 to 1 over 400 samples, so a 100-sample bin's mean
+            # is the value at its middle sample; dF/F is that scaled by a tenth.
+            np.testing.assert_allclose([row[3] for row in rows[::2]], BIN_MEAN_ZSCORE, atol=1e-6)
+            np.testing.assert_allclose([row[3] for row in rows[1::2]], np.array(BIN_MEAN_ZSCORE) / 10.0, atol=1e-6)
+            # Peaks at 1.2 / 1.5 / 1.8 / 2.5 s, binned half-open with the last bin inclusive.
+            np.testing.assert_allclose([row[4] for row in rows[::2]], [1.0, 2.0, 0.0, 1.0])
+            assert [row[5] for row in rows[::2]] == [100, 100, 100, 100]
+
+        # The bin width is recorded once, on GuppyParameters.
+        assert nwbfile.lab_meta_data["guppy_parameters"].compute_binned_metrics is True
+        assert nwbfile.lab_meta_data["guppy_parameters"].binned_metrics_width == 0.5
+
+    def test_binned_covariates_are_on_the_metrics_bins_and_reference_their_series(self, interface, nwbfile):
+        """A covariate is averaged onto the metrics' own bins and points at the series it was scored in."""
+        module = self.add_to_nwbfile(interface, nwbfile, stub_test=False)
+        binned_covariates = module["binned_covariates"]
+        assert binned_covariates.neurodata_type == "GuppyBinnedCovariates"
+        assert len(binned_covariates) == len(RECORDING_SITES) * len(BIN_EDGES)
+
+        recording_site_names = list(module["recording_sites"]["recording_site"].data)
+        for recording_site in RECORDING_SITES:
+            rows = [
+                (start, stop, mean, n_samples)
+                for site_index, start, stop, mean, n_samples in zip(
+                    binned_covariates["recording_site"].data,
+                    binned_covariates["start_time"].data,
+                    binned_covariates["stop_time"].data,
+                    binned_covariates["mean"].data,
+                    binned_covariates["n_samples"].data,
+                )
+                if recording_site_names[site_index] == recording_site
+            ]
+            np.testing.assert_allclose([row[0] for row in rows], [1.0, 1.5, 2.0, 2.5])
+            np.testing.assert_allclose([row[1] for row in rows], [1.5, 2.0, 2.5, 2.995])
+            # Scores 2.0 / 3.0 / 4.0 / 5.0 at 1.1 / 1.6 / 1.7 / 2.6 s: the third bin holds none.
+            np.testing.assert_allclose([row[2] for row in rows], [2.0, 3.5, np.nan, 5.0])
+            assert [row[3] for row in rows] == [1, 2, 0, 1]
+
+        # Every row references the one TimeSeries the covariate's scores were written to.
+        covariate_series = module[COVARIATE_NAME]
+        assert {series.name for series in binned_covariates["covariate"].data} == {COVARIATE_NAME}
+        np.testing.assert_allclose(covariate_series.data[:], [2.0, 3.0, 4.0, 5.0])
+        np.testing.assert_allclose(covariate_series.timestamps[:], [1.1, 1.6, 1.7, 2.6])
+
+    def test_covariate_correlations_split_guppys_composite_metric_name(self, interface, nwbfile):
+        """GuPPy's one metric string becomes the trace_type and metric naming the binned-metrics rows."""
+        module = self.add_to_nwbfile(interface, nwbfile, stub_test=False)
+        correlations = module["covariate_correlations"]
+        assert correlations.neurodata_type == "GuppyCovariateCorrelations"
+
+        recording_site_names = list(module["recording_sites"]["recording_site"].data)
+        rows = [
+            (trace_type, metric, pearson_r, spearman_rho, n_bins)
+            for site_index, trace_type, metric, pearson_r, spearman_rho, n_bins in zip(
+                correlations["recording_site"].data,
+                correlations["trace_type"].data,
+                correlations["metric"].data,
+                correlations["pearson_r"].data,
+                correlations["spearman_rho"].data,
+                correlations["n_bins"].data,
+            )
+            if recording_site_names[site_index] == RECORDING_SITES[0]
+        ]
+        # The mock writes the four metric columns in sorted order, with descending coefficients.
+        assert [(row[0], row[1]) for row in rows] == [
+            ("dff", "mean"),
+            ("z_score", "mean"),
+            ("dff", "transient_count"),
+            ("z_score", "transient_count"),
+        ]
+        np.testing.assert_allclose([row[2] for row in rows], [0.5, 0.4, 0.3, 0.2])
+        np.testing.assert_allclose([row[3] for row in rows], [0.4, 0.3, 0.2, 0.1])
+        assert [row[4] for row in rows] == [3, 3, 3, 3]
+        assert {series.name for series in correlations["covariate"].data} == {COVARIATE_NAME}
+        # GuPPy reports no p-value, so neither does the interface.
+        assert "p_value" not in correlations.colnames
+
+    def test_covariate_store_is_not_read_as_an_event(self, interface):
+        """A covariate is a store like any other, and must not be taken for a behavioral event."""
+        assert interface.event_names == sorted(EVENT_NAMES)
+        assert COVARIATE_NAME not in interface.event_names
+        assert f"covariate_{COVARIATE_NAME}" not in interface.event_store_to_event_name.values()
+
+    def test_unknown_correlated_metric_fails_loudly(self, guppy_output_folder, tmp_path, nwbfile):
+        """A metric the interface cannot map onto a (trace_type, metric) pair is an error, not a guess."""
+        copied_folder = tmp_path / "guppy_output_copy"
+        shutil.copytree(guppy_output_folder, copied_folder)
+        correlations_path = copied_folder / f"covariate_correlations_{RECORDING_SITES[0]}.h5"
+        correlations = pandas.read_hdf(correlations_path)
+        correlations.loc[0, "metric"] = "median_zscore"
+        correlations_path.unlink()
+        correlations.to_hdf(correlations_path, key="df", mode="w")
+
+        interface = GuppyInterface(folder_path=str(copied_folder))
+        with pytest.raises(AssertionError, match="not a binned-metrics column"):
+            self.add_to_nwbfile(interface, nwbfile, stub_test=False)
+
+    def test_no_binning_and_no_covariate_writes_none_of_the_tables(self, tmp_path, nwbfile):
+        """A session that ran neither optional step carries neither the tables nor their metadata."""
+        folder_path = generate_mock_guppy_output_folder(
+            tmp_path / "guppy_output_unbinned", bin_width=None, covariates={}
+        )
+        interface = GuppyInterface(folder_path=str(folder_path))
+
+        guppy_metadata = interface.get_metadata()["FiberPhotometry"]["Guppy"][interface.metadata_key]
+        for key in ("BinnedMetrics", "Covariates", "BinnedCovariates", "CovariateCorrelations"):
+            assert key not in guppy_metadata
+
+        module = self.add_to_nwbfile(interface, nwbfile, stub_test=True)
+        for name in ("binned_metrics", "binned_covariates", "covariate_correlations", COVARIATE_NAME):
+            assert name not in module.data_interfaces
+        assert nwbfile.lab_meta_data["guppy_parameters"].compute_binned_metrics is False
+
+    def test_tonic_epochs_yield_one_row_per_site_epoch_and_trace_type(self, interface, nwbfile):
+        """Every (recording site, epoch, trace type) is a row carrying that trace's mean over the window."""
+        module = self.add_to_nwbfile(interface, nwbfile, stub_test=False)
+        tonic_epochs = module["tonic_epochs"]
+        assert tonic_epochs.neurodata_type == "GuppyTonicEpochs"
+        assert len(tonic_epochs) == len(RECORDING_SITES) * len(TONIC_EPOCHS) * 2
+
+        recording_site_names = list(module["recording_sites"]["recording_site"].data)
+        rows = [
+            (recording_site_names[site_index], label, start, stop, trace_type, mean)
+            for site_index, label, start, stop, trace_type, mean in zip(
+                tonic_epochs["recording_site"].data,
+                tonic_epochs["label"].data,
+                tonic_epochs["start_time"].data,
+                tonic_epochs["stop_time"].data,
+                tonic_epochs["trace_type"].data,
+                tonic_epochs["mean"].data,
+            )
+        ]
+        # The mock writes the same windows for every site, over a trace that ramps linearly from -1 to 1
+        # across its 400 samples: the baseline window covers samples 0-200 (mean = the value at sample
+        # 100) and post_injection covers samples 200-399 (mean = the value at sample 299.5). dF/F is the
+        # z-score mean scaled by a tenth.
+        for recording_site in RECORDING_SITES:
+            site_rows = [row[1:] for row in rows if row[0] == recording_site]
+            assert [row[0] for row in site_rows] == ["baseline"] * 2 + ["post_injection"] * 2
+            np.testing.assert_allclose([row[1] for row in site_rows], [1.0, 1.0, 2.0, 2.0])
+            np.testing.assert_allclose([row[2] for row in site_rows], [2.0, 2.0, 3.0, 3.0])
+            assert [row[3] for row in site_rows] == ["z_score", "dff", "z_score", "dff"]
+            np.testing.assert_allclose(
+                [row[4] for row in site_rows],
+                [-0.498747, -0.0498747, 0.501253, 0.0501253],
+                atol=1e-6,
+            )
+
+    def test_no_tonic_analysis_writes_no_tonic_epochs(self, tmp_path, nwbfile):
+        """A session that never ran the optional tonic analysis has no tonic files, so no object."""
+        folder_path = generate_mock_guppy_output_folder(tmp_path / "guppy_output_no_tonic", tonic_epochs=())
+        interface = GuppyInterface(folder_path=str(folder_path))
+
+        guppy_metadata = interface.get_metadata()["FiberPhotometry"]["Guppy"][interface.metadata_key]
+        assert "TonicEpochs" not in guppy_metadata
+
+        module = self.add_to_nwbfile(interface, nwbfile, stub_test=True)
+        assert "tonic_epochs" not in module.data_interfaces
+
+    def test_tonic_outputs_missing_their_pair_is_an_incomplete_folder(self, guppy_output_folder, tmp_path):
+        """The epoch windows and their means are written together; one without the other is an error."""
+        copied_folder = tmp_path / "guppy_output_copy"
+        shutil.copytree(guppy_output_folder, copied_folder)
+        (copied_folder / f"tonic_{RECORDING_SITES[0]}.h5").unlink()
+
+        with pytest.raises(AssertionError, match="tonic outputs for recording site"):
+            GuppyInterface(folder_path=str(copied_folder))
+
+    # ------------------------------------------------------------------ PSTH significance
+
+    @pytest.fixture(scope="class")
+    @classmethod
+    def significance_nwbfile(cls, tmp_path_factory):
+        """One written file for the significance assertions, which only read it.
+
+        A five-point PSTH window keeps every value hand-checkable, and writing once keeps the three
+        assertions below from paying for three full conversions of the same session.
+        """
+        folder_path = generate_mock_guppy_output_folder(
+            tmp_path_factory.mktemp("guppy_significance") / "guppy_output", num_psth_timepoints=5
+        )
+        interface = GuppyInterface(folder_path=str(folder_path))
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile, interface.get_metadata(), stub_test=False)
+        return nwbfile
+
+    def test_psth_significance_stacks_every_comparison_of_one_condition(self, significance_nwbfile):
+        """The tests against zero of one (recording site, feature) are the columns of one object."""
+        significance = significance_nwbfile.processing["guppy"]["psth_significance_dms_z_score"]
+        assert significance.neurodata_type == "GuppyPSTHSignificance"
+        assert significance.trace_type == "z_score"
+
+        event_names = list(significance.event.table["event_name"].data)
+        assert [event_names[index] for index in significance.event.data] == EVENT_NAMES_IN_REGISTRY_ORDER
+        recording_site_names = list(significance.recording_site.table["recording_site"].data)
+        assert [recording_site_names[index] for index in significance.recording_site.data] == ["dms"]
+
+        # The mock's window is linspace(-5, 10, 5) and each comparison's estimate is a
+        # linspace(-0.5, 1.5, 5) ramp shifted by a per-comparison offset, so no two columns agree.
+        # The columns are ordered by the events registry, which is why port_entries leads.
+        np.testing.assert_allclose(significance.peri_event_time, [-5.0, -1.25, 2.5, 6.25, 10.0])
+        np.testing.assert_allclose(
+            significance.estimate,
+            [[-0.3, -0.5, -0.4], [0.2, 0.0, 0.1], [0.7, 0.5, 0.6], [1.2, 1.0, 1.1], [1.7, 1.5, 1.6]],
+            atol=1e-6,
+        )
+        # The bounds sit a quarter either side of the estimate, except at the one timepoint where too
+        # few trials overlapped to resample, which GuPPy reports as a NaN interval.
+        np.testing.assert_allclose(significance.confidence_interval_lower[0], [-0.55, -0.75, -0.65], atol=1e-6)
+        np.testing.assert_allclose(significance.confidence_interval_upper[0], [-0.05, -0.25, -0.15], atol=1e-6)
+        assert np.all(np.isnan(significance.confidence_interval_lower[1]))
+        assert np.all(np.isnan(significance.confidence_interval_upper[1]))
+
+        # A NaN interval cannot exclude zero, so that timepoint is not significant.
+        np.testing.assert_array_equal(
+            significance.significant,
+            [[False] * 3, [False] * 3, [True] * 3, [True] * 3, [True] * 3],
+        )
+        np.testing.assert_array_equal(significance.num_trials, [len(MOCK_TRIAL_ONSETS)] * len(EVENT_NAMES))
+
+        # Nothing was tested against a second event here, so there is no second event to name.
+        assert significance.event_b is None
+        assert significance.num_trials_b is None
+
+    def test_paired_psth_significance_names_both_events(self, significance_nwbfile):
+        """An event-versus-event comparison is its own object, naming event A and event B per column."""
+        paired = significance_nwbfile.processing["guppy"]["psth_significance_paired_dms_z_score"]
+
+        event_names = list(paired.event.table["event_name"].data)
+        assert [event_names[index] for index in paired.event.data] == [PSTH_COMPARISON[0]]
+        assert [event_names[index] for index in paired.event_b.data] == [PSTH_COMPARISON[1]]
+        np.testing.assert_array_equal(paired.num_trials, [len(MOCK_TRIAL_ONSETS)])
+        np.testing.assert_array_equal(paired.num_trials_b, [len(MOCK_TRIAL_ONSETS)])
+        # The estimate is A minus B, on its own offset, so it is not a copy of either one-sample column.
+        np.testing.assert_allclose(paired.estimate[:, 0], [-0.2, 0.3, 0.8, 1.3, 1.8], atol=1e-6)
+
+    def test_psth_significance_covers_every_recording_site_and_feature(self, interface):
+        """One object per (recording site, feature, comparison kind), and no others."""
+        guppy_metadata = interface.get_metadata()["FiberPhotometry"]["Guppy"][interface.metadata_key]
+
+        assert sorted(guppy_metadata["PSTHSignificance"]) == sorted(
+            f"psth_significance{'_paired' if paired else ''}_{recording_site}_{feature}"
+            for recording_site in RECORDING_SITES
+            for feature in ["z_score", "dff"]
+            for paired in (False, True)
+        )
+
+    def test_no_psth_significance_writes_no_objects(self, tmp_path, nwbfile):
+        """A session that never ran the optional step has no output directory, so no object."""
+        folder_path = generate_mock_guppy_output_folder(
+            tmp_path / "guppy_output_no_significance", psth_comparisons=None, **MINIMAL_SESSION
+        )
+        interface = GuppyInterface(folder_path=str(folder_path))
+
+        guppy_metadata = interface.get_metadata()["FiberPhotometry"]["Guppy"][interface.metadata_key]
+        assert "PSTHSignificance" not in guppy_metadata
+
+        module = self.add_to_nwbfile(interface, nwbfile, stub_test=True)
+        assert not [name for name in module.data_interfaces if name.startswith("psth_significance")]
+
+    def test_significance_without_named_pairs_writes_only_the_tests_against_zero(self, tmp_path, nwbfile):
+        """Testing against zero needs no configuration, so it runs even with an empty comparison table."""
+        folder_path = generate_mock_guppy_output_folder(
+            tmp_path / "guppy_output_zero_only", psth_comparisons=(), **MINIMAL_SESSION
+        )
+        interface = GuppyInterface(folder_path=str(folder_path))
+
+        module = self.add_to_nwbfile(interface, nwbfile, stub_test=True)
+        assert "psth_significance_dms_z_score" in module.data_interfaces
+        assert "psth_significance_paired_dms_z_score" not in module.data_interfaces
+
+        parameters = nwbfile.lab_meta_data["guppy_parameters"]
+        # The blank row GuPPy's comparison table starts with is not a requested pair.
+        assert parameters.psth_comparison_events_a is None
+        assert parameters.psth_comparison_events_b is None
+
+    def test_psth_significance_parameters_land_on_guppy_parameters(self, significance_nwbfile):
+        """The threshold, the resample count, and the pairs that were asked for."""
+        parameters = significance_nwbfile.lab_meta_data["guppy_parameters"]
+
+        assert parameters.compute_psth_significance
+        assert parameters.psth_significance_alpha == 0.05
+        assert parameters.psth_bootstrap_resamples == 1000
+        assert list(parameters.psth_comparison_events_a) == [PSTH_COMPARISON[0]]
+        assert list(parameters.psth_comparison_events_b) == [PSTH_COMPARISON[1]]
+
     def test_cross_correlation_without_bin_columns(self, guppy_output_folder, tmp_path, nwbfile):
         """A GuPPy run with binning disabled writes no bin_ columns, so the bin fields stay unset."""
         copied_folder = tmp_path / "guppy_output_copy"
@@ -326,6 +677,92 @@ class TestGuppyInterfaceBehavior:
         (copied_folder / "GuPPyParamtersUsed.json").unlink()
         with pytest.raises(AssertionError, match="GuPPyParamtersUsed.json not found"):
             GuppyInterface(folder_path=str(copied_folder))
+
+    # ------------------------------------------------------------------ spontaneous mode
+
+    @pytest.fixture(scope="class")
+    @classmethod
+    def spontaneous_output_folder(cls, tmp_path_factory):
+        """A session GuPPy ran in spontaneous mode, aligning to its own transients instead of to TTLs."""
+        return generate_mock_guppy_output_folder(
+            tmp_path_factory.mktemp("guppy_spontaneous") / "guppy_output", use_transients_as_events=True
+        )
+
+    @pytest.fixture
+    def spontaneous_interface(self, spontaneous_output_folder):
+        return GuppyInterface(folder_path=str(spontaneous_output_folder))
+
+    def test_spontaneous_mode_registers_one_event_row_per_recording_site(self, spontaneous_interface, nwbfile):
+        """Each site stands its own transients in for the TTLs, so the sites do not share an event row."""
+        module = self.add_to_nwbfile(spontaneous_interface, nwbfile, stub_test=False)
+        # A transient train stands in for a TTL without becoming a behavioral event of its own.
+        assert spontaneous_interface.event_names == sorted(EVENT_NAMES)
+        events_registry = module["events"]
+        assert len(events_registry) == len(EVENT_NAMES) + len(TRANSIENT_EVENT_NAMES) * len(RECORDING_SITES)
+
+        transient_rows = [
+            (name, list(events_registry["events"][row_index]["timestamp"]))
+            for row_index, name in enumerate(events_registry["event_name"].data)
+            if name in TRANSIENT_EVENT_NAMES
+        ]
+        # dms keeps the first and third detected transient, dls the second and fourth.
+        assert transient_rows == [
+            ("transients_dff", TRANSIENTS_KEPT["dms"]),
+            ("transients_dff", TRANSIENTS_KEPT["dls"]),
+            ("transients_z_score", TRANSIENTS_KEPT["dms"]),
+            ("transients_z_score", TRANSIENTS_KEPT["dls"]),
+        ]
+        # The event train is a subset of the detected transients, which keep their own table.
+        np.testing.assert_allclose(module["transients_dms_z_score"]["timestamp"].data, TRANSIENT_PEAK_TIMES)
+
+    def test_spontaneous_mode_events_are_labeled_by_recording_site_in_the_events_table(
+        self, spontaneous_interface, nwbfile
+    ):
+        """Two sites' trains share an event name, so the core table's event_type names the site too."""
+        self.add_to_nwbfile(spontaneous_interface, nwbfile, stub_test=False)
+        core_events_table = nwbfile.events["GuppyEvents"]
+        event_types = list(core_events_table["event_type"].data)
+        for recording_site in RECORDING_SITES:
+            kept = [
+                timestamp
+                for timestamp, event_type in zip(core_events_table["timestamp"].data, event_types)
+                if event_type == f"transients_z_score_{recording_site}"
+            ]
+            np.testing.assert_allclose(kept, TRANSIENTS_KEPT[recording_site])
+
+    def test_spontaneous_mode_psth_references_its_own_recording_sites_row(self, spontaneous_interface, nwbfile):
+        """A PSTH's trials point at the registry row for the site whose transients it was aligned to."""
+        module = self.add_to_nwbfile(spontaneous_interface, nwbfile, stub_test=False)
+        events_registry = module["events"]
+
+        for recording_site in RECORDING_SITES:
+            psth = module[f"psth_{recording_site}_z_score"]
+            transient_trials = [
+                (int(row_index), float(onset))
+                for row_index, onset in zip(psth.event.data, psth.trial_onset_times[:])
+                if events_registry["event_name"].data[int(row_index)] in TRANSIENT_EVENT_NAMES
+            ]
+            # A trace is aligned to both transient trains, so both of this site's rows are referenced.
+            referenced_rows = sorted({row_index for row_index, _ in transient_trials})
+            assert [events_registry["event_name"].data[row_index] for row_index in referenced_rows] == (
+                TRANSIENT_EVENT_NAMES
+            )
+            # Every referenced row is this site's own, and its occurrences are the trials.
+            for row_index in referenced_rows:
+                np.testing.assert_allclose(
+                    list(events_registry["events"][row_index]["timestamp"]), TRANSIENTS_KEPT[recording_site]
+                )
+            np.testing.assert_allclose(
+                [onset for _, onset in transient_trials], TRANSIENTS_KEPT[recording_site] * len(referenced_rows)
+            )
+
+    def test_without_spontaneous_mode_the_registry_holds_only_behavioral_events(self, interface, nwbfile):
+        """The default session ran no spontaneous mode, so nothing transient reaches the registry."""
+        module = self.add_to_nwbfile(interface, nwbfile, stub_test=True)
+        events_registry = module["events"]
+        assert len(events_registry) == len(EVENT_NAMES)
+        assert not any(name in TRANSIENT_EVENT_NAMES for name in events_registry["event_name"].data)
+        assert nwbfile.lab_meta_data["guppy_parameters"].use_transients_as_events is False
 
     # ------------------------------------------------------------------ the onsets GuPPy analyzed
 

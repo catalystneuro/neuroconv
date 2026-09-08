@@ -29,7 +29,7 @@ class TestYAMLConversionSpecification(TestCase):
         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
             nwbfile = io.read()
             assert nwbfile.session_description == "Subject navigating a Y-shaped maze."
-            assert "Created using NeuroConv" in nwbfile.source_script
+            assert "NeuroConv provenance record" in nwbfile.source_script
             assert nwbfile.lab == "My Lab"
             assert nwbfile.institution == "My Institution"
             assert nwbfile.session_start_time == datetime.fromisoformat("2020-10-09T21:19:09+00:00")
@@ -41,7 +41,7 @@ class TestYAMLConversionSpecification(TestCase):
         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
             nwbfile = io.read()
             assert nwbfile.session_description == "Subject navigating a Y-shaped maze."
-            assert "Created using NeuroConv" in nwbfile.source_script
+            assert "NeuroConv provenance record" in nwbfile.source_script
             assert nwbfile.lab == "My Lab"
             assert nwbfile.institution == "My Institution"
             assert nwbfile.session_start_time == datetime.fromisoformat("2020-10-10T21:19:09+00:00")
@@ -52,7 +52,7 @@ class TestYAMLConversionSpecification(TestCase):
         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
             nwbfile = io.read()
             assert nwbfile.session_description == ""
-            assert "Created using NeuroConv" in nwbfile.source_script
+            assert "NeuroConv provenance record" in nwbfile.source_script
             assert nwbfile.lab == "My Lab"
             assert nwbfile.institution == "My Institution"
             assert nwbfile.session_start_time == datetime.fromisoformat("2020-10-11T21:19:09+00:00")
@@ -76,7 +76,7 @@ class TestYAMLConversionSpecification(TestCase):
         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
             nwbfile = io.read()
             assert nwbfile.session_description == "Subject navigating a Y-shaped maze."
-            assert "Created using NeuroConv" in nwbfile.source_script
+            assert "NeuroConv provenance record" in nwbfile.source_script
             assert nwbfile.lab == "My Lab"
             assert nwbfile.institution == "My Institution"
             assert nwbfile.session_start_time == datetime.fromisoformat("2020-10-09T21:19:09+00:00")
@@ -88,7 +88,7 @@ class TestYAMLConversionSpecification(TestCase):
         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
             nwbfile = io.read()
             assert nwbfile.session_description == "Subject navigating a Y-shaped maze."
-            assert "Created using NeuroConv" in nwbfile.source_script
+            assert "NeuroConv provenance record" in nwbfile.source_script
             assert nwbfile.lab == "My Lab"
             assert nwbfile.institution == "My Institution"
             assert nwbfile.session_start_time == datetime.fromisoformat("2020-11-09T21:19:09+00:00")
@@ -100,7 +100,7 @@ class TestYAMLConversionSpecification(TestCase):
         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
             nwbfile = io.read()
             assert nwbfile.session_description == "Subject navigating a Y-shaped maze."
-            assert "Created using NeuroConv" in nwbfile.source_script
+            assert "NeuroConv provenance record" in nwbfile.source_script
             assert nwbfile.lab == "My Lab"
             assert nwbfile.institution == "My Institution"
             assert nwbfile.session_start_time == datetime.fromisoformat("2020-10-10T21:19:09+00:00")
@@ -111,7 +111,7 @@ class TestYAMLConversionSpecification(TestCase):
         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
             nwbfile = io.read()
             assert nwbfile.session_description == ""
-            assert "Created using NeuroConv" in nwbfile.source_script
+            assert "NeuroConv provenance record" in nwbfile.source_script
             assert nwbfile.lab == "My Lab"
             assert nwbfile.institution == "My Institution"
             assert nwbfile.session_start_time == datetime.fromisoformat("2020-10-11T21:19:09+00:00")

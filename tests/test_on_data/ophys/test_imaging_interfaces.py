@@ -367,6 +367,122 @@ class TestScanImageImagingInterfacesAssertions:
             ScanImageImagingInterface(file_path=file_path, plane_index=20, interleave_slice_samples=True)
 
 
+class TestScanImageImagingInterfaceDiscovery:
+    """The two static methods that answer what a file holds before an interface is built.
+
+    Both delegate to roiextractors, which renamed the methods they called, so both raised
+    ``AttributeError`` for every file until this was fixed and nothing in the suite called either one.
+    """
+
+    planar_two_channel_file_path = str(
+        OPHYS_DATA_PATH
+        / "imaging_datasets"
+        / "ScanImage"
+        / "planar_two_channels_single_file"
+        / "planar_two_ch_single_files_00001_00001.tif"
+    )
+    volumetric_file_path = str(
+        OPHYS_DATA_PATH
+        / "imaging_datasets"
+        / "ScanImage"
+        / "volumetric_single_channel_single_file"
+        / "vol_one_ch_single_files_00002_00001.tif"
+    )
+
+    def test_get_available_channels(self):
+        channel_names = ScanImageImagingInterface.get_available_channels(file_path=self.planar_two_channel_file_path)
+
+        assert channel_names == ["Channel 1", "Channel 2"]
+        # The names are what the interface accepts back, which is the point of asking.
+        ScanImageImagingInterface(file_path=self.planar_two_channel_file_path, channel_name=channel_names[0])
+
+    def test_get_available_planes_of_a_volumetric_file(self):
+        """The extractor reports a count; the interface documents a list of plane names."""
+        plane_names = ScanImageImagingInterface.get_available_planes(file_path=self.volumetric_file_path)
+
+        assert plane_names == ["0", "1", "2", "3", "4", "5", "6", "7", "8"]
+
+    def test_get_available_planes_of_a_planar_file(self):
+        plane_names = ScanImageImagingInterface.get_available_planes(file_path=self.planar_two_channel_file_path)
+
+        assert plane_names == ["0"]
+
+
+class TestScanImageImagingInterfaceSingleChannelNoChannelName(ImagingExtractorInterfaceTestMixin):
+    """A single-channel file opened without naming its channel, which is the documented way to open one.
+
+    This class exists for what its ``interface_kwargs`` omits. Every other ScanImage class passes
+    ``channel_name`` explicitly, so nothing constructed the interface the way its own documentation says
+    to, and the list-based metadata raised ``AttributeError: 'NoneType' object has no attribute
+    'replace'`` on that path for as long as it existed.
+
+    The objects take the plain names. Naming them after the channel the extractor resolved would rename
+    them for everyone who never asked for a channel, so an unnamed channel stays unnamed.
+    """
+
+    data_interface_cls = ScanImageImagingInterface
+    interface_kwargs = dict(
+        file_path=str(
+            OPHYS_DATA_PATH
+            / "imaging_datasets"
+            / "ScanImage"
+            / "volumetric_single_channel_single_file"
+            / "vol_one_ch_single_files_00002_00001.tif"
+        ),
+    )
+    save_directory = OUTPUT_PATH
+
+    photon_series_name = "TwoPhotonSeries"
+    optical_series_name = "TwoPhotonSeries"
+    imaging_plane_name = "ImagingPlane"
+    expected_two_photon_series_data_shape = (100, 20, 20, 9)
+    # The written rate comes from the timestamps the extractor reports, not from the header's nominal
+    # volume rate, so it differs slightly from ``expected_imaging_rate`` below.
+    expected_rate = 32.74833656561069
+    expected_starting_time = 0.01526797
+    expected_metadata_key = "scan_image_imaging"
+    expected_imaging_rate = 32.7454
+    expected_scan_line_rate = 24100.624929204416
+    expected_device_description = "Microscope and acquisition data with ScanImage (version 2021.0.0)"
+
+    # TODO: remove when old list-based metadata format is removed
+    def check_extracted_metadata_old_list_format(self, metadata: dict):
+        imaging_plane_metadata = metadata["Ophys"]["ImagingPlane"][0]
+        assert imaging_plane_metadata["name"] == self.imaging_plane_name
+        assert [channel["name"] for channel in imaging_plane_metadata["optical_channel"]] == ["OpticalChannel"]
+        photon_series_metadata = metadata["Ophys"]["TwoPhotonSeries"][0]
+        assert photon_series_metadata["name"] == self.photon_series_name
+        # This used to interpolate the attribute directly and would otherwise read "for None".
+        assert photon_series_metadata["description"] == "Imaging data acquired using ScanImage"
+
+    def check_extracted_metadata(self, metadata: dict):
+        metadata_key = self.interface.metadata_key
+        assert metadata_key == self.expected_metadata_key
+        assert metadata["Devices"] == {
+            "scan_image_microscope": {"name": "Microscope", "description": self.expected_device_description}
+        }
+        # The two metadata formats agree that an unnamed channel leaves the objects unnamed.
+        assert metadata["Ophys"]["ImagingPlanes"][metadata_key]["name"] == self.imaging_plane_name
+        assert metadata["Ophys"]["MicroscopySeries"][metadata_key] == {
+            "name": self.photon_series_name,
+            "imaging_plane_metadata_key": metadata_key,
+            "description": "Imaging data acquired using ScanImage",
+            "scan_line_rate": self.expected_scan_line_rate,
+        }
+
+    def check_read_nwb(self, nwbfile_path: str):
+        nwbfile = read_nwb(nwbfile_path)
+
+        assert self.imaging_plane_name in nwbfile.imaging_planes
+        assert self.photon_series_name in nwbfile.acquisition
+
+        two_photon_series = nwbfile.acquisition[self.photon_series_name]
+        assert two_photon_series.data.shape == self.expected_two_photon_series_data_shape
+        assert two_photon_series.rate == self.expected_rate
+        assert two_photon_series.starting_time == self.expected_starting_time
+        nwbfile.read_io.close()
+
+
 def test_two_channels_of_one_acquisition_share_one_device_entry():
     """A device is per instrument while an interface is per channel, so the two interfaces of one
     multi-channel acquisition derive the same registry key and merge into a single entry. Keyed by
@@ -503,6 +619,9 @@ class TestBrukerTiffImagingInterfaceSinglePlane(ImagingExtractorInterfaceTestMix
 
     expected_metadata_key = "bruker_tiff_imaging"
     expected_imaging_rate = 29.873732099062256
+    # The written rate is recovered from the timestamps rather than reported by the extractor, so it differs
+    # from ``expected_imaging_rate`` in the last ulp.
+    expected_rate = 29.87373209906225
     expected_scan_line_rate = 15840.580398865815
 
     def check_extracted_metadata(self, metadata: dict):
@@ -554,7 +673,7 @@ class TestBrukerTiffImagingInterfaceSinglePlane(ImagingExtractorInterfaceTestMix
         assert "BrukerFluorescenceMicroscope" in nwbfile.devices
         assert "ImagingPlane" in nwbfile.imaging_planes
         two_photon_series = nwbfile.acquisition["TwoPhotonSeries"]
-        assert two_photon_series.rate == self.expected_imaging_rate
+        assert two_photon_series.rate == self.expected_rate
         assert two_photon_series.scan_line_rate == self.expected_scan_line_rate
         assert two_photon_series.data.shape == (10, 64, 64)
 
@@ -1124,8 +1243,15 @@ class TestMicroManagerTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
         nwbfile.read_io.close()
 
 
+@pytest.mark.filterwarnings(
+    "ignore:OME-XML contains Plane elements with DeltaT but only .* of .* timepoints have timestamps:UserWarning"
+)
 class TestThorImagingInterface(ImagingExtractorInterfaceTestMixin):
-    """Test ThorImagingInterface."""
+    """Test ThorImagingInterface.
+
+    The fixture has an incomplete OME ``Plane/@DeltaT`` vector. ROIExtractors correctly rejects it and falls back to
+    the declared sampling rate; these tests cover Thor metadata and writing, not timestamp parsing.
+    """
 
     channel_name = "ChanA"
     optical_series_name: str = f"TwoPhotonSeries{channel_name}"
@@ -1210,6 +1336,9 @@ class TestThorImagingInterface(ImagingExtractorInterfaceTestMixin):
         assert series["field_of_view"] == pytest.approx([452.7e-6, 452.7e-6])
 
 
+@pytest.mark.filterwarnings(
+    "ignore:MiniscopeMultiRecordingImagingExtractor is deprecated and will be removed:FutureWarning"
+)
 class Test_MiniscopeMultiRecordingInterface(MiniscopeImagingInterfaceMixin):
     data_interface_cls = _MiniscopeMultiRecordingInterface
     interface_kwargs = dict(folder_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "C6-J588_Disc5"))
@@ -1395,7 +1524,7 @@ class TestMiniscopeImagingInterface(MiniscopeImagingInterfaceMixin):
         )
 
         # Test that metadata extraction works
-        metadata = interface.get_metadata()
+        metadata = interface.get_metadata(use_new_metadata_format=False)
         assert metadata["Ophys"]["Device"][0]["name"] == "Miniscope"
 
         # Test that it has timestamps

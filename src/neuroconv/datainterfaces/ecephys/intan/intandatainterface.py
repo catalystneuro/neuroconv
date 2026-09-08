@@ -67,7 +67,7 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
         file_path: FilePath,
         *args,  # TODO: change to * (keyword only) on or after August 2026
         verbose: bool = False,
-        es_key: str = "ElectricalSeries",
+        es_key: str | None = None,
         metadata_key: str | None = None,
         ignore_integrity_checks: bool = False,
         saved_files_are_split: bool = False,
@@ -171,9 +171,11 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
         self.recording_extractor.delete_property("group_names")
         self.recording_extractor.set_property(key="group_name", values=ports)
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         system = self.file_path.suffix  # .rhd or .rhs
         device_description = {".rhd": "RHD Recording System", ".rhs": "RHS Stim/Recording System"}[system]
+        device_model_metadata_key = {".rhd": "intan_rhd2000_model", ".rhs": "intan_rhs2000_model"}[system]
+        device_model_name = {".rhd": "RHD2000 Recording System", ".rhs": "RHS2000 Stim-Recording System"}[system]
 
         if use_new_metadata_format:
             from ....tools.spikeinterface.spikeinterface import _get_group_name
@@ -185,8 +187,15 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
             metadata["Ecephys"]["ElectricalSeries"][self.metadata_key]["name"] = "ElectricalSeries"
 
             device_metadata_key = "intan_device"
+            metadata["DeviceModels"] = {
+                device_model_metadata_key: dict(name=device_model_name, manufacturer="Intan"),
+            }
             metadata["Devices"] = {
-                device_metadata_key: dict(name="Intan", description=device_description, manufacturer="Intan"),
+                device_metadata_key: dict(
+                    name="Intan",
+                    description=device_description,
+                    device_model_metadata_key=device_model_metadata_key,
+                ),
             }
 
             # Link every channel group to the Intan device so it is written to the NWBFile. Devices are
@@ -207,14 +216,13 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
 
             return metadata
 
-        metadata = super().get_metadata()
+        metadata = super().get_metadata(use_new_metadata_format=False)
         ecephys_metadata = metadata["Ecephys"]
 
         # Add device
         intan_device = dict(
             name="Intan",
             description=device_description,
-            manufacturer="Intan",
         )
         device_list = [intan_device]
         ecephys_metadata.update(Device=device_list)

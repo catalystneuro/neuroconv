@@ -42,6 +42,14 @@ streams into a single NWB conversion. Behavioral video is handled automatically 
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
     >>> converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
 
+NeuroConv aims to automatically add all the metadata annotations that are present in the source format.
+It is often the case that crucial information is not available there, such as the anatomical location,
+the meaning of the values, or a semantically meaningful description of the data. Follow
+:ref:`the ophys how-to <annotate_ophys_metadata>` for a modality-relevant guide to adding
+this extra metadata, which makes the data more useful for future users and for the community as a whole.
+Its :ref:`section on templates <how_to_annotate_ophys_from_a_template>` starts from scratch, and the
+:ref:`reference template <ophys_imaging_metadata_template>` lists every element the metadata accepts.
+
 .. deprecated::
    The legacy mode (omitting ``user_configuration_file_path``) is deprecated and will be removed on or after
    December 2026. The legacy path assumes all recordings within a session are back-to-back, which does not hold
@@ -177,13 +185,15 @@ we need to use ``set_aligned_starting_time()`` to shift the timestamps of the se
     >>> # Initialize imaging interfaces for sequential acquisitions
     >>> # Acquisition 1 starts at time 0
     >>> acquisition1_interface = MiniscopeImagingInterface(
-    ...     folder_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "C6-J588_Disc5" / "15_03_28" / "Miniscope")
+    ...     folder_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "C6-J588_Disc5" / "15_03_28" / "Miniscope"),
+    ...     metadata_key="acquisition1",
     ... )
     >>> acquisition1_interface.set_aligned_starting_time(0.0)
     >>>
     >>> # Acquisition 2 starts 180 seconds after acquisition 1 (preserving the time gap)
     >>> acquisition2_interface = MiniscopeImagingInterface(
-    ...     folder_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "C6-J588_Disc5" / "15_06_28" / "Miniscope")
+    ...     folder_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "C6-J588_Disc5" / "15_06_28" / "Miniscope"),
+    ...     metadata_key="acquisition2",
     ... )
     >>> acquisition2_interface.set_aligned_starting_time(180.0)
     >>>
@@ -201,22 +211,14 @@ we need to use ``set_aligned_starting_time()`` to shift the timestamps of the se
     >>> # Add subject information (required for DANDI upload)
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
     >>>
-    >>> # Add a second OnePhotonSeries entry to metadata with a unique name
-    >>> acquisition2_metadata = metadata["Ophys"]["OnePhotonSeries"][0].copy()
-    >>> acquisition2_metadata["name"] = "OnePhotonSeriesAcquisition2"
-    >>> metadata["Ophys"]["OnePhotonSeries"].append(acquisition2_metadata)
-    >>> metadata["Ophys"]["OnePhotonSeries"][0]["name"] = "OnePhotonSeriesAcquisition1"
+    >>> # Each interface has its own entry, keyed by the metadata_key it was given, so name them apart
+    >>> metadata["Ophys"]["MicroscopySeries"]["acquisition1"]["name"] = "OnePhotonSeriesAcquisition1"
+    >>> metadata["Ophys"]["MicroscopySeries"]["acquisition2"]["name"] = "OnePhotonSeriesAcquisition2"
     >>>
-    >>> # Use conversion_options to specify which photon_series_index each interface should use
-    >>> conversion_options = {
-    ...     "MiniscopeAcquisition1": {"photon_series_index": 0},
-    ...     "MiniscopeAcquisition2": {"photon_series_index": 1}
-    ... }
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
     >>> converter.run_conversion(
     ...     nwbfile_path=nwbfile_path,
     ...     metadata=metadata,
-    ...     conversion_options=conversion_options,
     ...     overwrite=True
     ... )
 
@@ -231,8 +233,8 @@ timestamps that naturally start at the same relative time (both starting at 0.0 
 
 To summarize the workflow for aggregating multiple Miniscope acquisitions:
 
-1. Create a ``MiniscopeImagingInterface`` for each folder with data.
+1. Create a ``MiniscopeImagingInterface`` for each folder with data, giving each its own ``metadata_key``.
 2. For sequential acquisitions, use ``set_aligned_starting_time()`` to set the starting time for each acquisition to preserve the temporal relationship between them
 3. Combine interfaces with ``ConverterPipe`` using descriptive names
-4. Configure metadata with unique ``OnePhotonSeries`` names and use ``photon_series_index`` in conversion options
+4. Give each acquisition's ``MicroscopySeries`` entry a unique name, addressing it by its ``metadata_key``
 5. (Optional) Add behavioral video using :py:class:`~neuroconv.datainterfaces.behavior.video.externalvideodatainterface.ExternalVideoInterface`

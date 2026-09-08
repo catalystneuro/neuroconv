@@ -168,7 +168,7 @@ jobs:
               echo "| $name | $type | Failed | File not found |" >> $GITHUB_STEP_SUMMARY
             else
               # Run test
-              if pytest --doctest-glob="*.rst" "$gallery_file"; then
+              if pytest --numprocesses=0 --doctest-glob="*.rst" "$gallery_file"; then
                 echo "$type:$name test passed"
                 # Update Job Summary
                 echo "| $name | $type | Passed | All doctests successful |" >> $GITHUB_STEP_SUMMARY

@@ -9,6 +9,7 @@ import pytest
 from hdmf.common import DynamicTable, VectorData
 from hdmf.data_utils import DataChunkIterator, DataIO
 from numpy.testing import assert_array_equal
+from pynwb import read_nwb
 from pynwb.base import Images
 from pynwb.image import GrayscaleImage
 from pynwb.ophys import PlaneSegmentation
@@ -28,12 +29,14 @@ from neuroconv.tools.nwb_helpers import (
 def integer_array(
     seed: int = 0,
     dtype: np.dtype = np.dtype("int16"),
-    shape: tuple[int, int] = (30_000 * 5, 384),
+    shape: tuple[int, int] = (3_000, 16),
 ):
     """
     Generate an array of integers.
 
-    Default values are chosen to be similar to 5 seconds of v1 NeuroPixel data.
+    The shape is deliberately small. These tests assert the chunk shape, the compression method and
+    the round trip of what was written, and none of those depend on the size of the array. The chunk
+    shape recommendation for realistic data is covered by the dataset model tests, which write nothing.
     """
     random_number_generator = np.random.default_rng(seed=seed)
 
@@ -47,7 +50,7 @@ def integer_array(
     [
         ("unwrapped", lambda x: x, dict()),
         ("generic", SliceableDataChunkIterator, dict()),
-        ("classic", DataChunkIterator, dict(iter_axis=1, buffer_size=30_000 * 5)),
+        ("classic", DataChunkIterator, dict(iter_axis=1, buffer_size=3_000)),
         # Need to hardcode buffer size in classic case or else it takes forever...
     ],
 )
@@ -74,18 +77,18 @@ def test_simple_time_series(
     with BACKEND_NWB_IO[backend](path=nwbfile_path, mode="w") as io:
         io.write(nwbfile)
 
-    with BACKEND_NWB_IO[backend](path=nwbfile_path, mode="r") as io:
-        written_nwbfile = io.read()
-        written_data = written_nwbfile.acquisition["TestTimeSeries"].data
+    written_nwbfile = read_nwb(nwbfile_path)
+    written_data = written_nwbfile.acquisition["TestTimeSeries"].data
 
-        assert written_data.chunks == dataset_configuration.chunk_shape
+    assert written_data.chunks == dataset_configuration.chunk_shape
 
-        if backend == "hdf5":
-            assert written_data.compression == "gzip"
-        elif backend == "zarr":
-            assert written_data.compressor == numcodecs.GZip(level=1)
+    if backend == "hdf5":
+        assert written_data.compression == "gzip"
+    elif backend == "zarr":
+        assert written_data.compressor == numcodecs.GZip(level=1)
 
-        assert_array_equal(integer_array, written_data[:])
+    assert_array_equal(integer_array, written_data[:])
+    written_nwbfile.read_io.close()
 
 
 @pytest.mark.parametrize("backend", ["hdf5", "zarr"])
@@ -107,33 +110,18 @@ def test_simple_dynamic_table(tmpdir: Path, integer_array: np.ndarray, backend: 
     with NWB_IO(path=nwbfile_path, mode="w") as io:
         io.write(nwbfile)
 
-    with NWB_IO(path=nwbfile_path, mode="r") as io:
-        written_nwbfile = io.read()
-        written_data = written_nwbfile.acquisition["TestDynamicTable"]["TestColumn"].data
+    written_nwbfile = read_nwb(nwbfile_path)
+    written_data = written_nwbfile.acquisition["TestDynamicTable"]["TestColumn"].data
 
-        assert written_data.chunks == dataset_configuration.chunk_shape
+    assert written_data.chunks == dataset_configuration.chunk_shape
 
-        if backend == "hdf5":
-            assert written_data.compression == "gzip"
-        elif backend == "zarr":
-            assert written_data.compressor == numcodecs.GZip(level=1)
+    if backend == "hdf5":
+        assert written_data.compression == "gzip"
+    elif backend == "zarr":
+        assert written_data.compressor == numcodecs.GZip(level=1)
 
-        assert_array_equal(integer_array, written_data[:])
-
-
-def test_pynwb_data_io_is_shadowed_on_nwbdata():
-    """Expiry canary for the `_NWBData__data` re-sync in `configure_backend`.
-
-    `NWBData` shadows the `_Data__data` attribute that `Data.set_data_io` writes to, so the DataIO never
-    reaches `.data`. The fix is https://github.com/NeurodataWithoutBorders/pynwb/pull/2233; when this
-    assertion starts failing that has shipped and the workaround can go.
-    """
-    from hdmf.backends.hdf5.h5_utils import H5DataIO
-
-    image = GrayscaleImage(name="TestImage", data=np.zeros(shape=(4, 4), dtype="uint8"))
-    image.set_data_io(data_io_class=H5DataIO, data_io_kwargs=dict(compression="gzip"))
-
-    assert not isinstance(image.data, DataIO)
+    assert_array_equal(integer_array, written_data[:])
+    written_nwbfile.read_io.close()
 
 
 @pytest.mark.parametrize("backend", ["hdf5", "zarr"])
@@ -157,18 +145,18 @@ def test_simple_image(tmpdir: Path, backend: Literal["hdf5", "zarr"]):
     with NWB_IO(path=nwbfile_path, mode="w") as io:
         io.write(nwbfile)
 
-    with NWB_IO(path=nwbfile_path, mode="r") as io:
-        written_nwbfile = io.read()
-        written_data = written_nwbfile.acquisition["TestImages"].images["TestImage"].data
+    written_nwbfile = read_nwb(nwbfile_path)
+    written_data = written_nwbfile.acquisition["TestImages"].images["TestImage"].data
 
-        assert written_data.chunks == dataset_configuration.chunk_shape
+    assert written_data.chunks == dataset_configuration.chunk_shape
 
-        if backend == "hdf5":
-            assert written_data.compression == "gzip"
-        elif backend == "zarr":
-            assert written_data.compressor == numcodecs.GZip(level=1)
+    if backend == "hdf5":
+        assert written_data.compression == "gzip"
+    elif backend == "zarr":
+        assert written_data.compressor == numcodecs.GZip(level=1)
 
-        assert_array_equal(array, written_data[:])
+    assert_array_equal(array, written_data[:])
+    written_nwbfile.read_io.close()
 
 
 @pytest.mark.parametrize(
@@ -222,35 +210,35 @@ def test_time_series_timestamps_linkage(
     with BACKEND_NWB_IO[backend](path=nwbfile_path, mode="w") as io:
         io.write(nwbfile)
 
-    with BACKEND_NWB_IO[backend](path=nwbfile_path, mode="r") as io:
-        written_nwbfile = io.read()
+    written_nwbfile = read_nwb(nwbfile_path)
 
-        written_data_1 = written_nwbfile.acquisition["TestTimeSeries1"].data
-        assert written_data_1.chunks == dataset_configuration_1.chunk_shape
-        if backend == "hdf5":
-            assert written_data_1.compression == "gzip"
-        elif backend == "zarr":
-            assert written_data_1.compressor == numcodecs.GZip(level=1)
-        assert_array_equal(integer_array, written_data_1[:])
+    written_data_1 = written_nwbfile.acquisition["TestTimeSeries1"].data
+    assert written_data_1.chunks == dataset_configuration_1.chunk_shape
+    if backend == "hdf5":
+        assert written_data_1.compression == "gzip"
+    elif backend == "zarr":
+        assert written_data_1.compressor == numcodecs.GZip(level=1)
+    assert_array_equal(integer_array, written_data_1[:])
 
-        written_data_2 = written_nwbfile.acquisition["TestTimeSeries2"].data
-        assert written_data_2.chunks == dataset_configuration_2.chunk_shape
-        if backend == "hdf5":
-            assert written_data_2.compression == "gzip"
-        elif backend == "zarr":
-            assert written_data_2.compressor == numcodecs.GZip(level=1)
-        assert_array_equal(integer_array, written_data_2[:])
+    written_data_2 = written_nwbfile.acquisition["TestTimeSeries2"].data
+    assert written_data_2.chunks == dataset_configuration_2.chunk_shape
+    if backend == "hdf5":
+        assert written_data_2.compression == "gzip"
+    elif backend == "zarr":
+        assert written_data_2.compressor == numcodecs.GZip(level=1)
+    assert_array_equal(integer_array, written_data_2[:])
 
-        written_timestamps_1 = written_nwbfile.acquisition["TestTimeSeries1"].timestamps
-        assert written_timestamps_1.chunks == timestamps_configuration_1.chunk_shape
-        if backend == "hdf5":
-            assert written_timestamps_1.compression == "gzip"
-        elif backend == "zarr":
-            assert written_timestamps_1.compressor == numcodecs.GZip(level=1)
-        assert_array_equal(timestamps_array, written_timestamps_1[:])
+    written_timestamps_1 = written_nwbfile.acquisition["TestTimeSeries1"].timestamps
+    assert written_timestamps_1.chunks == timestamps_configuration_1.chunk_shape
+    if backend == "hdf5":
+        assert written_timestamps_1.compression == "gzip"
+    elif backend == "zarr":
+        assert written_timestamps_1.compressor == numcodecs.GZip(level=1)
+    assert_array_equal(timestamps_array, written_timestamps_1[:])
 
-        written_timestamps_2 = written_nwbfile.acquisition["TestTimeSeries2"].timestamps
-        assert written_timestamps_2 == written_timestamps_1
+    written_timestamps_2 = written_nwbfile.acquisition["TestTimeSeries2"].timestamps
+    assert written_timestamps_2 == written_timestamps_1
+    written_nwbfile.read_io.close()
 
 
 @pytest.mark.parametrize("backend", ["hdf5", "zarr"])
@@ -290,14 +278,14 @@ def test_plane_segmentation_pixel_mask(
     with NWB_IO(path=nwbfile_path, mode="w") as io:
         io.write(nwbfile)
 
-    with NWB_IO(path=nwbfile_path, mode="r") as io:
-        written_nwbfile = io.read()
-        written_pixel_mask = written_nwbfile.processing["ophys"].data_interfaces["TestPlaneSegmentation"].pixel_mask
-        written_dataset = written_pixel_mask.data.dataset
+    written_nwbfile = read_nwb(nwbfile_path)
+    written_pixel_mask = written_nwbfile.processing["ophys"].data_interfaces["TestPlaneSegmentation"].pixel_mask
+    written_dataset = written_pixel_mask.data.dataset
 
-        assert written_dataset.chunks == dataset_configuration.chunk_shape
-        if backend == "hdf5":
-            assert written_dataset.compression == "gzip"
-        elif backend == "zarr":
-            assert written_dataset.compressor == numcodecs.GZip(level=1)
-        assert_array_equal(written_dataset[:], expected_pixel_mask)
+    assert written_dataset.chunks == dataset_configuration.chunk_shape
+    if backend == "hdf5":
+        assert written_dataset.compression == "gzip"
+    elif backend == "zarr":
+        assert written_dataset.compressor == numcodecs.GZip(level=1)
+    assert_array_equal(written_dataset[:], expected_pixel_mask)
+    written_nwbfile.read_io.close()

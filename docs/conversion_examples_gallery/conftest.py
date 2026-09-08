@@ -30,6 +30,11 @@ def add_data_space(doctest_namespace, tmp_path, request):
         doctest_namespace["mda_firings_path"] = _generate_mda_firings(tmp_path)
         doctest_namespace["mda_sampling_frequency"] = 30_000.0
 
+    # The image interfaces take whatever images a lab holds rather than an acquisition format, so there is
+    # no gin fixture to point at; generate a small folder on-the-fly for the image.rst doctests.
+    if test_path is not None and Path(str(test_path)).name == "image.rst":
+        doctest_namespace["path_to_folder_with_images"] = _generate_images(tmp_path)
+
     # CSV fiber photometry has no gin fixture; generate small per-channel CSVs on-the-fly for the
     # csv_fp.rst doctests so the gallery entry itself can stay focused on the conversion API rather
     # than on synthesis code.
@@ -53,6 +58,23 @@ def _generate_mda_firings(tmp_path):
         sorting=sorting, save_path=str(firings_path), write_primary_channels=True,
     )
     return firings_path
+
+
+def _generate_images(tmp_path):
+    """Write one small image per color mode the embedding interface maps, and return the folder."""
+    import numpy as np
+    from PIL import Image
+
+    images_directory = Path(tmp_path) / "images"
+    images_directory.mkdir()
+
+    shapes = dict(rgb_image=("RGB", 3), gray_image=("L", None), rgba_image=("RGBA", 4), la_image=("LA", 2))
+    for name, (mode, num_channels) in shapes.items():
+        shape = (32, 32) if num_channels is None else (32, 32, num_channels)
+        array = np.random.default_rng(seed=0).integers(0, 255, shape, dtype=np.uint8)
+        Image.fromarray(array, mode=mode).save(images_directory / f"{name}.png")
+
+    return images_directory
 
 
 def _generate_csv_signal_channel(tmp_path):
