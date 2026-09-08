@@ -503,3 +503,26 @@ do not.
 ``mouse_001`` matches the file's ``Subject`` and its skeleton is linked to it. ``mouse_002`` does not, so
 its skeleton is written unlinked rather than pointed at the wrong subject. That is what you are trading:
 the second subject is identified by the names you chose and by ``subject``, not by anything NWB models.
+
+.. _how_to_annotate_pose_from_a_template:
+
+How to Annotate from a Template
+-------------------------------
+
+Everything above starts from ``get_metadata()``, which returns what the tracker recorded and so says
+nothing about what else the file could hold. ``get_metadata_template()`` answers that second question: it
+returns the same values wrapped in the full structure the writer accepts, with the cross-references
+between container, skeleton and camera already resolved and every field only you can supply left blank.
+
+.. code-block:: python
+
+    metadata = interface.get_metadata_template()
+    # fill in the blanks it marks, delete the entries that do not apply, then
+    interface.run_conversion(nwbfile_path="session_001.nwb", metadata=metadata)
+
+The blanks are the checklist. A blank you leave is skipped rather than written empty, and an entry you
+do not want is deleted rather than emptied, since deleting the camera block is what gives you a file
+without a camera.
+
+The same structure as a YAML or JSON file, for writing the metadata by hand rather than in Python, is
+published at :ref:`pose_estimation_metadata_template`.

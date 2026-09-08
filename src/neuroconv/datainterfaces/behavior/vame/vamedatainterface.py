@@ -12,6 +12,7 @@ from pynwb import NWBFile
 
 from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from ....tools import get_module
+from ....tools.nwb_helpers import _get_container_by_name
 from ....utils import DeepDict, calculate_regular_series_rate, load_dict_from_file
 
 
@@ -610,39 +611,6 @@ class VameInterface(BaseTemporalAlignmentInterface):
         config = load_dict_from_file(file_path)
         return list(config.get("session_names", []))
 
-    @staticmethod
-    def _get_pose_estimation(nwbfile: NWBFile, name: str):
-        pose_estimation_containers = {
-            obj.name: obj for obj in nwbfile.all_children() if type(obj).__name__ == "PoseEstimation"
-        }
-        if name in pose_estimation_containers:
-            return pose_estimation_containers[name]
-        if pose_estimation_containers:
-            raise ValueError(
-                f"No PoseEstimation container named '{name}' was found in the NWB file. "
-                f"Available PoseEstimation containers: {list(pose_estimation_containers)}."
-            )
-        raise ValueError(
-            f"No PoseEstimation container named '{name}' was found in the NWB file. "
-            "No PoseEstimation containers exist in the file — ensure the pose estimation interface "
-            "runs before VameInterface."
-        )
-
-    @staticmethod
-    def _get_image_series(nwbfile: NWBFile, name: str):
-        image_series = {obj.name: obj for obj in nwbfile.all_children() if type(obj).__name__ == "ImageSeries"}
-        if name in image_series:
-            return image_series[name]
-        if image_series:
-            raise ValueError(
-                f"No ImageSeries named '{name}' was found in the NWB file. "
-                f"Available ImageSeries: {list(image_series)}."
-            )
-        raise ValueError(
-            f"No ImageSeries named '{name}' was found in the NWB file. "
-            "No ImageSeries exist in the file — ensure the video interface runs before VameInterface."
-        )
-
     def _add_ethogram_for_run(
         self,
         *,
@@ -849,7 +817,7 @@ class VameInterface(BaseTemporalAlignmentInterface):
                     f"{list(pose_estimations_registry)}."
                 )
             pose_container_name = pose_estimations_registry[pose_estimation_key]["name"]
-            pose_estimation = self._get_pose_estimation(nwbfile, pose_container_name)
+            pose_estimation = _get_container_by_name(nwbfile, pose_container_name, "PoseEstimation")
 
         # Optional link to an upstream video ImageSeries (internal or external video interface),
         # resolved strictly through the Behavior/InternalVideos + Behavior/ExternalVideos registries.
@@ -869,7 +837,7 @@ class VameInterface(BaseTemporalAlignmentInterface):
                     f"Available keys: {list(videos_registry)}."
                 )
             image_series_name = videos_registry[video_key]["name"]
-            source_video = self._get_image_series(nwbfile, image_series_name)
+            source_video = _get_container_by_name(nwbfile, image_series_name, "ImageSeries")
 
         vame_project_kwargs = dict(
             name=project_name,

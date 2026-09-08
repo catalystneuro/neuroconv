@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import pytest
-from numpy.testing import assert_array_equal
+from numpy.testing import assert_allclose, assert_array_equal
 from pynwb import read_nwb
 from pynwb.testing.mock.file import mock_NWBFile, mock_Subject
 
@@ -143,8 +143,10 @@ class TestLightningPoseDataInterface(PoseEstimationInterfaceTestMixin):
         """The dict-based metadata shape, checked against a full expected dict.
 
         The equality is strict: provenance-first means ``get_metadata`` emits only source-derived
-        values and object names (no ``description``/``unit``/``reference_frame`` defaults, those are
-        applied by the writer), so any extra emitted field would fail the comparison.
+        values and object names (no ``description``/``unit`` defaults, those are applied by the
+        writer), so any extra emitted field would fail the comparison. ``reference_frame`` is
+        source-derived here: image coordinates are a property of the tracker's output rather than a
+        stand-in for something the file failed to record.
         """
         metadata_key = "lightning_pose_key"
 
@@ -170,7 +172,13 @@ class TestLightningPoseDataInterface(PoseEstimationInterfaceTestMixin):
                     "labeled_videos": None,
                     "skeleton_metadata_key": metadata_key,
                     "PoseEstimationSeries": {
-                        keypoint_name: {"name": f"PoseEstimationSeries{keypoint_name}"}
+                        keypoint_name: {
+                            "name": f"PoseEstimationSeries{keypoint_name}",
+                            "reference_frame": (
+                                "(0,0) is the top-left pixel of the video frame, with x increasing "
+                                "to the right and y increasing downward."
+                            ),
+                        }
                         for keypoint_name in self.expected_keypoint_names
                     },
                 },
@@ -227,7 +235,10 @@ class TestLightningPoseDataInterface(PoseEstimationInterfaceTestMixin):
             ]
             assert pose_estimation_series.unit == "pixels"
             assert pose_estimation_series.description == f"Pose estimation series for {keypoint_name}."
-            assert pose_estimation_series.reference_frame == "(0,0) is unknown."
+            assert pose_estimation_series.reference_frame == (
+                "(0,0) is the top-left pixel of the video frame, with x increasing to the right "
+                "and y increasing downward."
+            )
             assert pose_estimation_series.confidence_definition is None
 
     def test_series_conversion_options_are_deprecated(self, setup_interface):
@@ -290,6 +301,10 @@ class TestSLEAPInterface(PoseEstimationInterfaceTestMixin):
         assert container_entry["source_software"] == "SLEAP"
         assert container_entry["source_software_version"] == "1.2.7"
         assert container_entry["scorer"] == "TopDownPredictor"
+
+        # The definition describes what this interface writes, so it is the same on every .slp.
+        for series_entry in container_entry["PoseEstimationSeries"].values():
+            assert series_entry["confidence_definition"].startswith("Height of the peak in the SLEAP network")
 
         skeleton_entry = metadata["Pose"]["Skeletons"]["sleap_track_0"]
         assert skeleton_entry["subject"] == "track_0"
@@ -462,6 +477,240 @@ class TestSLEAPMultipleTracks:
 
 
 @pytest.mark.skipif(
+    SLEAP_MACOS_INTEL_PYTHON_313_UNSUPPORTED,
+    reason="SLEAP conversion is not yet supported on macOS Intel with Python 3.13.",
+)
+class TestSLEAPHumanInstances(PoseEstimationInterfaceTestMixin):
+    """A proofread .slp holds the network's instances and a person's corrections side by side.
+
+    ``track_0`` of this recording carries both arrangements a correction can take: 41 frames where a
+    human instance shares the track with a model one, and 6 where it is alone on the track because the
+    network found nothing there. Reading the rows from the model's instances alone dropped the second
+    kind while the timestamps still counted them, so the samples after one slid onto earlier frames'
+    times.
+
+    The counts below are properties of the file, recorded next to it in ``sleap/README.md`` on gin. They
+    are written out rather than recomputed so that a fixture swapped underneath this fails loudly.
+    """
+
+    data_interface_cls = SLEAPInterface
+    interface_kwargs = dict(
+        file_path=str(
+            BEHAVIOR_DATA_PATH / "sleap" / "human_and_model_instances" / "solo_human_instances" / "remora_video_1.slp"
+        ),
+        track_name="track_0",
+        frames_per_second=30.0,
+    )
+    save_directory = OUTPUT_PATH
+
+    labeled_frames = 251  # every one writes a row, including the six the model missed
+
+    def _rows(self):
+        """The ``(human instance, model instance)`` behind each written row, read from the source.
+
+        One entry per row the conversion produces, so an index here is a row index in every series. Only
+        frames where this track has an instance of either kind produce a row.
+        """
+        import sleap_io
+
+        track_name = self.interface_kwargs["track_name"]
+        labels = sleap_io.load_slp(self.interface_kwargs["file_path"])
+        rows = []
+        for frame in sorted(labels.labeled_frames, key=lambda labeled_frame: labeled_frame.frame_idx):
+            human = [i for i in frame.user_instances if i.track is not None and i.track.name == track_name]
+            model = [i for i in frame.predicted_instances if i.track is not None and i.track.name == track_name]
+            if human or model:
+                rows.append((human[0] if human else None, model[0] if model else None))
+        return rows
+
+    def run_custom_checks(self):
+        """What this file exists to prove, asserted against the file the conversion actually wrote."""
+        nwbfile = read_nwb(self.nwbfile_path)
+        container = nwbfile.processing["behavior"]["PoseEstimationTrack0"]
+        rows = self._rows()
+        assert len(rows) == self.labeled_frames
+
+        # One row per labeled frame. Building the rows from the model's instances alone lost the frames
+        # a person labeled where the network found nothing, and the times then belonged to other frames.
+        for pose_estimation_series in container.pose_estimation_series.values():
+            assert np.asarray(pose_estimation_series.data).shape[0] == self.labeled_frames
+            assert len(pose_estimation_series.get_timestamps()) == self.labeled_frames
+
+        # A person places a point rather than estimating it, so a human row carries 1.0, and a point the
+        # annotator marked not visible carries NaN. Which rows those are comes from the source: SLEAP does
+        # not clamp its own scores, 134 model points on this track exceed 1.0, and six sit within a
+        # thousandth of it, so a confidence of exactly 1.0 does not identify a human point on its own.
+        for index, keypoint_name in enumerate(container.skeleton.nodes):
+            pose_estimation_series = container.pose_estimation_series[self._series_name(keypoint_name)]
+            expected = []
+            for human, model in rows:
+                if human is None:
+                    expected.append(model.numpy(scores=True)[index, 2])
+                    continue
+                placed = not np.isnan(human.numpy()[index, 0])
+                expected.append(1.0 if placed else np.nan)
+            assert_allclose(np.asarray(pose_estimation_series.confidence), expected, equal_nan=True)
+
+        nwbfile.read_io.close()
+
+    @staticmethod
+    def _series_name(keypoint_name: str) -> str:
+        """The container orders its series by name, so a keypoint index cannot be read off their order."""
+        return f"PoseEstimationSeries{keypoint_name.title().replace('_', '')}"
+
+    def test_a_human_instance_wins_over_the_model_one(self, setup_interface):
+        """Proofreading means correcting the network, so the correction is what gets written.
+
+        The expected coordinates come from ``sleap_io`` directly rather than from the interface, so the
+        comparison is against the source and not against the writer's own reading of it.
+        """
+        rows = self._rows()
+        row, (human, model) = next(
+            (index, pair) for index, pair in enumerate(rows) if pair[0] is not None and pair[1] is not None
+        )
+        assert not np.allclose(human.numpy(), model.numpy(), equal_nan=True)
+
+        nwbfile = mock_NWBFile()
+        self.interface.add_to_nwbfile(nwbfile=nwbfile, metadata=self.interface.get_metadata())
+        container = nwbfile.processing["behavior"]["PoseEstimationTrack0"]
+        for index, keypoint_name in enumerate(container.skeleton.nodes):
+            pose_estimation_series = container.pose_estimation_series[self._series_name(keypoint_name)]
+            assert_array_equal(np.asarray(pose_estimation_series.data)[row], human.numpy()[index])
+
+    def check_extracted_metadata(self, metadata: dict):
+        """The definition states the direction that is true.
+
+        A human point is written as 1.0, which does not make a 1.0 a human point: the network's own
+        scores are not bounded by 1 and can reach it.
+        """
+        entries = metadata["Pose"]["PoseEstimations"][self.interface.metadata_key]["PoseEstimationSeries"]
+        for entry in entries.values():
+            definition = entry["confidence_definition"]
+            assert definition.startswith("Height of the peak in the SLEAP network")
+            assert "is not bounded by 1" in definition
+            assert "written with a confidence of 1.0" in definition
+
+
+@pytest.mark.skipif(
+    SLEAP_MACOS_INTEL_PYTHON_313_UNSUPPORTED,
+    reason="SLEAP conversion is not yet supported on macOS Intel with Python 3.13.",
+)
+class TestSLEAPEmptyTracksAndUntrackedInstances:
+    """A .slp records the identities the tracking run created, not the ones that survived it.
+
+    This recording declares four tracks and only ``track_0`` is ever populated, and it also carries 12
+    human-placed instances in 9 frames that no track claims. Both are ordinary results of proofreading:
+    clearing a track leaves the ``Track`` object behind, and an instance added where the model found
+    nothing does not inherit an identity.
+    """
+
+    file_path = str(
+        BEHAVIOR_DATA_PATH / "sleap" / "edge_cases" / "empty_tracks_and_untracked_instances" / "remora_video_2.slp"
+    )
+
+    def test_only_populated_tracks_are_offered(self):
+        assert SLEAPInterface.get_available_tracks(file_path=self.file_path) == ["track_0"]
+
+    def test_declared_but_empty_track_says_so(self):
+        """A name the file declares is a different mistake from a name it does not."""
+        with pytest.raises(ValueError, match=r"Track 'track_2' is declared .* Tracks that do: \['track_0'\]"):
+            SLEAPInterface(file_path=self.file_path, track_name="track_2", frames_per_second=30.0)
+
+    def test_unknown_track_says_so(self):
+        with pytest.raises(ValueError, match="Track 'nobody' is not in this file"):
+            SLEAPInterface(file_path=self.file_path, track_name="nobody", frames_per_second=30.0)
+
+    def test_untracked_instances_are_reported_and_not_written(self):
+        interface = SLEAPInterface(file_path=self.file_path, track_name="track_0", frames_per_second=30.0)
+        nwbfile = mock_NWBFile()
+        with pytest.warns(UserWarning, match="12 instances in 9 frames .* carry no track"):
+            interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
+
+        container = nwbfile.processing["behavior"]["PoseEstimationTrack0"]
+        series = next(iter(container.pose_estimation_series.values()))
+        # One row per frame carrying a track_0 instance, and none for the 8 frames that hold only
+        # untracked ones.
+        assert series.data.shape[0] == 147
+
+
+@pytest.mark.skipif(
+    SLEAP_MACOS_INTEL_PYTHON_313_UNSUPPORTED,
+    reason="SLEAP conversion is not yet supported on macOS Intel with Python 3.13.",
+)
+class TestSLEAPWithoutTracks:
+    """A labeling project, or a single-animal recording that was never tracked, assigns no identities.
+
+    SLEAP's own analysis export reads such a file as one individual (`tracks = labels.tracks or [None]`
+    in ``sleap/info/write_tracking_h5.py``) and so does the interface. Built rather than downloaded,
+    since every .slp in the test data is the output of a tracking run.
+    """
+
+    @staticmethod
+    def _write_untracked_file(file_path, declared_track_name=None, instances_per_frame=1) -> None:
+        import sleap_io
+
+        skeleton = sleap_io.Skeleton(["head", "tail"])
+        video = sleap_io.Video(filename="recording.mp4")
+        labeled_frames = [
+            sleap_io.LabeledFrame(
+                video=video,
+                frame_idx=frame_index,
+                instances=[
+                    sleap_io.Instance.from_numpy(
+                        points_data=np.array([[float(frame_index), float(instance_index)], [2.0, 3.0]]),
+                        skeleton=skeleton,
+                    )
+                    for instance_index in range(instances_per_frame)
+                ],
+            )
+            for frame_index in range(3)
+        ]
+        tracks = [sleap_io.Track(name=declared_track_name)] if declared_track_name is not None else []
+        sleap_io.save_slp(
+            sleap_io.Labels(labeled_frames=labeled_frames, videos=[video], skeletons=[skeleton], tracks=tracks),
+            str(file_path),
+        )
+
+    def test_no_tracks_declared_writes_one_individual(self, tmp_path):
+        file_path = tmp_path / "labeling_project.slp"
+        self._write_untracked_file(file_path=file_path)
+
+        interface = SLEAPInterface(file_path=str(file_path), frames_per_second=1.0)
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
+
+        container = nwbfile.processing["behavior"]["PoseEstimation"]
+        head = container.pose_estimation_series["PoseEstimationSeriesHead"]
+        assert_array_equal(head.data[:, 0], [0.0, 1.0, 2.0])
+
+    def test_tracks_declared_but_all_empty_writes_one_individual(self, tmp_path):
+        """A cleared track leaves the Track object behind, which does not make the file a tracked one."""
+        file_path = tmp_path / "cleared_tracks.slp"
+        self._write_untracked_file(file_path=file_path, declared_track_name="track_0")
+
+        interface = SLEAPInterface(file_path=str(file_path), frames_per_second=1.0)
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
+
+        assert "PoseEstimation" in nwbfile.processing["behavior"].data_interfaces
+
+    def test_naming_a_track_says_the_file_has_none(self, tmp_path):
+        file_path = tmp_path / "labeling_project.slp"
+        self._write_untracked_file(file_path=file_path)
+        with pytest.raises(ValueError, match="no instance in this file carries a track"):
+            SLEAPInterface(file_path=str(file_path), track_name="track_0", frames_per_second=1.0)
+
+    def test_several_untracked_instances_in_a_frame_raises(self, tmp_path):
+        """The multi-animal labeling project, which SLEAP writes into one slot with the last one winning."""
+        file_path = tmp_path / "two_animals_labeled.slp"
+        self._write_untracked_file(file_path=file_path, instances_per_frame=2)
+
+        interface = SLEAPInterface(file_path=str(file_path), frames_per_second=1.0)
+        with pytest.raises(ValueError, match="holds 2 instances and none of them carries a track"):
+            interface.get_timestamps()
+
+
+@pytest.mark.skipif(
     ndx_pose_version < version.parse("0.2.0"),
     reason="Interface requires ndx-pose version >= 0.2.0",
 )
@@ -491,8 +740,10 @@ class TestDeepLabCutInterface(PoseEstimationInterfaceTestMixin):
         """The dict-based ("new") metadata shape, checked against a full expected dict.
 
         The equality is strict: provenance-first means ``get_metadata`` emits only source-derived
-        values and object names (no ``description``/``unit``/``reference_frame`` defaults, those are
-        applied by the writer), so any extra emitted field would fail the comparison.
+        values and object names (no ``description``/``unit`` defaults, those are applied by the
+        writer), so any extra emitted field would fail the comparison. ``reference_frame`` is
+        source-derived here: image coordinates are a property of the tracker's output rather than a
+        stand-in for something the file failed to record.
         """
         metadata_key = "deep_lab_cut_key"
         bodyparts = ["snout", "leftear", "rightear", "tailbase"]
@@ -520,7 +771,14 @@ class TestDeepLabCutInterface(PoseEstimationInterfaceTestMixin):
                     "original_videos": None,
                     "skeleton_metadata_key": metadata_key,
                     "PoseEstimationSeries": {
-                        bodypart: {"name": f"PoseEstimationSeries{bodypart.capitalize()}"} for bodypart in bodyparts
+                        bodypart: {
+                            "name": f"PoseEstimationSeries{bodypart.capitalize()}",
+                            "reference_frame": (
+                                "(0,0) is the top-left pixel of the video frame, with x increasing "
+                                "to the right and y increasing downward."
+                            ),
+                        }
+                        for bodypart in bodyparts
                     },
                 },
             },
@@ -659,6 +917,75 @@ class TestDeepLabCutInterface(PoseEstimationInterfaceTestMixin):
     ndx_pose_version < version.parse("0.2.0"),
     reason="Interface requires ndx-pose version >= 0.2.0",
 )
+class TestDeepLabCutInterfaceWithLandmarks(PoseEstimationInterfaceTestMixin):
+    """A multi-animal project can also track landmarks, points of the scene rather than of a subject.
+
+    DeepLabCut calls them unique bodyparts and files them under an ``individuals`` group named
+    ``single``, so the keypoints in the file are the subjects' plus the landmarks and any one subject's
+    are a strict subset. Reading the bodyparts from the whole file while the series came from one
+    individual wrote a three-series container against a thirty-three node skeleton, silently.
+
+    Leafcutter ants, two of them, three keypoints each, beside thirty arena landmarks whose names they
+    share none of.
+    """
+
+    data_interface_cls = DeepLabCutInterface
+    interface_kwargs = dict(
+        file_path=str(
+            BEHAVIOR_DATA_PATH
+            / "DLC"
+            / "multi_subject_h5"
+            / "landmarks_and_subject_keypoints"
+            / "ant_video_5DLC_dlcrnetms5_AntsFeb11shuffle1_100000_el.h5"
+        ),
+        subject_name="ant_1",
+        sampling_frequency=10.0,  # no config.yaml is published with this data, so the rate is given here
+    )
+    save_directory = OUTPUT_PATH
+
+    subject_bodyparts = ["ant_head", "ant_midbody", "ant_end"]
+
+    def check_extracted_metadata(self, metadata: dict):
+        """The skeleton is the subject's keypoints, not the file's."""
+        skeleton_entry = metadata["Pose"]["Skeletons"][self.interface.metadata_key]
+        assert skeleton_entry["nodes"] == self.subject_bodyparts
+
+        series_entries = metadata["Pose"]["PoseEstimations"][self.interface.metadata_key]["PoseEstimationSeries"]
+        assert list(series_entries) == self.subject_bodyparts
+
+        # Read off the file rather than off its name, which carries the tracker suffix ``_el`` as well.
+        assert metadata["Pose"]["PoseEstimations"][self.interface.metadata_key]["scorer"] == (
+            "DLC_dlcrnetms5_AntsFeb11shuffle1_100000"
+        )
+
+    def run_custom_checks(self):
+        """The written skeleton and the written series describe the same keypoints."""
+        nwbfile = read_nwb(self.nwbfile_path)
+        container = nwbfile.processing["behavior"].data_interfaces["PoseEstimationDeepLabCut"]
+
+        assert list(container.skeleton.nodes) == self.subject_bodyparts
+        assert len(container.pose_estimation_series) == len(self.subject_bodyparts)
+        nwbfile.read_io.close()
+
+    def test_the_file_holds_landmarks_this_subject_does_not(self):
+        """The fixture only tests anything while the two sets differ, so state that they do."""
+        file_bodyparts = pd.read_hdf(self.interface_kwargs["file_path"]).columns.get_level_values("bodyparts")
+        assert set(self.subject_bodyparts) < set(file_bodyparts.unique())
+        assert len(file_bodyparts.unique()) == 33
+
+    def test_every_subject_gets_its_own_keypoints(self):
+        """The other ant reads the same file and must not pick up the landmarks either."""
+        interface = DeepLabCutInterface(
+            file_path=self.interface_kwargs["file_path"], subject_name="drug_ant2", sampling_frequency=10.0
+        )
+        skeleton_entry = interface.get_metadata()["Pose"]["Skeletons"][interface.metadata_key]
+        assert skeleton_entry["nodes"] == self.subject_bodyparts
+
+
+@pytest.mark.skipif(
+    ndx_pose_version < version.parse("0.2.0"),
+    reason="Interface requires ndx-pose version >= 0.2.0",
+)
 class TestDeepLabCutInterfaceNoConfigFile(PoseEstimationInterfaceTestMixin):
     data_interface_cls = DeepLabCutInterface
     interface_kwargs = dict(
@@ -753,9 +1080,39 @@ class TestDeepLabCutInterfaceFromCSV(PoseEstimationInterfaceTestMixin):
 
 @pytest.fixture
 def clean_pose_extension_import():
-    modules_to_remove = [m for m in sys.modules if m.startswith("ndx_pose")]
-    for module in modules_to_remove:
-        del sys.modules[module]
+    """Hide ndx_pose from the test, then put the process back the way it was found.
+
+    Deleting the modules is only half of it. The re-import inside the interface builds a second
+    generation of every ndx-pose container class, and hdmf's ``register_container_type`` evicts the first
+    generation from its class to data type map when the second registers under the same name. Restoring
+    ``sys.modules`` without restoring that registration would leave the process holding classes hdmf no
+    longer recognises, and a later ``PoseEstimation`` build would be handed an ancestor's spec.
+    """
+    saved_modules = {name: module for name, module in sys.modules.items() if name.startswith("ndx_pose")}
+    for name in saved_modules:
+        del sys.modules[name]
+
+    yield
+
+    sys.modules.update(saved_modules)
+    pose_module = saved_modules.get("ndx_pose")
+    if pose_module is None:
+        return
+
+    from pynwb import get_type_map
+
+    type_map = get_type_map(copy=False)
+    for attribute_name in dir(pose_module):
+        candidate = getattr(pose_module, attribute_name)
+        if not isinstance(candidate, type) or not getattr(candidate, "__module__", "").startswith("ndx_pose"):
+            continue
+        # Selected by defining module rather than by the `namespace` class attribute, which hdmf rewrites:
+        # every `merge` into a fresh type map re-registers shared class objects and stamps `namespace` and
+        # `neurodata_type` onto them, so `PoseEstimation.namespace` can read `ndx-vame` in a process that
+        # has imported ndx-vame.
+        data_type = getattr(candidate, "neurodata_type", None)
+        if data_type is not None:
+            type_map.register_container_type("ndx-pose", data_type, candidate)
 
 
 @pytest.mark.skipif(

@@ -463,8 +463,12 @@ class DeepLabCutInterface(BasePoseEstimationInterface):
         # Ensure individuals in header if needed
         df = _ensure_individuals_in_header(df, self.subject_name)
 
-        # Extract bodyparts and individuals
-        bodyparts = df.columns.get_level_values("bodyparts").unique().tolist()
+        # This individual's bodyparts, not the file's. A multi-animal project can also declare unique
+        # bodyparts, landmarks of the scene rather than of any subject, and those arrive under an
+        # ``individuals`` group named ``single``. The file's set is then a superset of the subject's, so
+        # reading it here while the series come from ``_read_animal_dataframe`` wrote a skeleton whose
+        # nodes were not the keypoints the container held.
+        bodyparts = self._read_animal_dataframe().columns.get_level_values("bodyparts").unique().tolist()
 
         # Get video dimensions from config if available
         dimensions = None
@@ -500,17 +504,17 @@ class DeepLabCutInterface(BasePoseEstimationInterface):
             except Exception:
                 pass
 
-        # Extract video name and scorer
-        # If filename contains "DLC", split on it to get video name
-        # Otherwise, use the full stem as video name
+        # The scorer is written into the file by DeepLabCut, so read it from there rather than off the
+        # filename. A multi-animal run appends a tracker suffix to the name (``_el`` for ellipse, ``_bx``
+        # for box, ``_sk`` for skeleton, plus ``_filtered``), and any local rename adds more, all of which
+        # the split swept into the scorer. It also raised ``ValueError`` on a stem holding "DLC" twice,
+        # which a video named after a DeepLabCut project produces.
+        scorer = df.columns.get_level_values("scorer")[0]
+
+        # The filename stays the only source for the video name, which is what looks the recording up in
+        # the project config.
         file_stem = Path(file_path).stem
-        if "DLC" in file_stem:
-            video_name, scorer = Path(file_path).stem.split("DLC")
-            scorer = "DLC" + scorer
-        else:
-            video_name = file_stem
-            # Extract scorer from DataFrame header
-            scorer = df.columns.get_level_values("scorer")[0]
+        video_name = file_stem.split("DLC")[0] if "DLC" in file_stem else file_stem
 
         # Get video info from config file if available
         video_file_path = None
@@ -562,7 +566,13 @@ class DeepLabCutInterface(BasePoseEstimationInterface):
             dimensions=source_metadata["dimensions"],
             original_videos=[video_file_path] if video_file_path else None,
             PoseEstimationSeries={
-                bodypart: {"name": f"PoseEstimationSeries{bodypart.capitalize()}"}
+                bodypart: {
+                    "name": f"PoseEstimationSeries{bodypart.capitalize()}",
+                    "reference_frame": (
+                        "(0,0) is the top-left pixel of the video frame, with x increasing to the right "
+                        "and y increasing downward."
+                    ),
+                }
                 for bodypart in source_metadata["bodyparts"]
             },
         )

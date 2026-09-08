@@ -121,10 +121,10 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
 
         .. deprecated::
             Use ``interface.alignment[key].get_times()``, which reads the object it names rather than
-            assuming the interface writes one. Removed on or after August 2027.
+            assuming the interface writes one. Removed in v0.12.0.
         """
         warnings.warn(
-            "`get_timestamps` is deprecated and will be removed on or after August 2027. "
+            "`get_timestamps` is deprecated and will be removed in v0.12.0. "
             "Use `interface.alignment[key].get_times()` instead.",
             FutureWarning,
             stacklevel=2,
@@ -136,10 +136,10 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
 
         .. deprecated::
             Use ``interface.alignment[key].set_times(aligned_timestamps)``, which does the same thing and
-            names the object it lands on. Removed on or after August 2027.
+            names the object it lands on. Removed in v0.12.0.
         """
         warnings.warn(
-            "`set_aligned_timestamps` is deprecated and will be removed on or after August 2027. "
+            "`set_aligned_timestamps` is deprecated and will be removed in v0.12.0. "
             "Use `interface.alignment[key].set_times(times)` instead.",
             FutureWarning,
             stacklevel=2,
@@ -151,10 +151,10 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
 
         .. deprecated::
             Use ``interface.alignment.shift_times(delta)``, which is the same rigid shift under a name that
-            says so. Removed on or after August 2027.
+            says so. Removed in v0.12.0.
         """
         warnings.warn(
-            "`set_aligned_starting_time` is deprecated and will be removed on or after August 2027. "
+            "`set_aligned_starting_time` is deprecated and will be removed in v0.12.0. "
             "Use `interface.alignment.shift_times(delta)` instead.",
             FutureWarning,
             stacklevel=2,
@@ -166,10 +166,10 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
 
         .. deprecated::
             Use ``interface.alignment.remap_times(local_sync_times=..., reference_sync_times=...)``, whose
-            argument names say which clock each set of pulses came off. Removed on or after August 2027.
+            argument names say which clock each set of pulses came off. Removed in v0.12.0.
         """
         warnings.warn(
-            "`align_by_interpolation` is deprecated and will be removed on or after August 2027. Use "
+            "`align_by_interpolation` is deprecated and will be removed in v0.12.0. Use "
             "`interface.alignment.remap_times(local_sync_times=..., reference_sync_times=...)` instead.",
             FutureWarning,
             stacklevel=2,
@@ -473,6 +473,7 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         response_series = FiberPhotometryResponseSeries(
             name=series_metadata["name"],
             description=series_metadata.get("description", ""),
+            comments=series_metadata.get("comments", "no comments"),
             data=data,
             unit="a.u.",
             fiber_photometry_table_region=table_region,

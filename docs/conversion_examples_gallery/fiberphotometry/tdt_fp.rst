@@ -549,6 +549,14 @@ This metadata can then be easily incorporated into the conversion by updating th
     >>> # t1 and t2 are optional arguments to specify the start and end times for the conversion
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, t1=0.0, t2=1.0, overwrite=True)
 
+NeuroConv aims to automatically add all the metadata annotations that are present in the source format.
+It is often the case that crucial information is not available there, such as the anatomical location,
+the meaning of the values, or a semantically meaningful description of the data. Follow
+:ref:`the fiber photometry how-to <annotate_fiber_photometry_metadata>` for a modality-relevant guide to adding
+this extra metadata, which makes the data more useful for future users and for the community as a whole.
+Its :ref:`section on templates <how_to_annotate_from_a_template>` starts from scratch, and the
+:ref:`reference template <fiber_photometry_metadata_template>` lists every element the metadata accepts.
+
 .. seealso::
 
     Other TDT data interfaces:

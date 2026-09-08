@@ -652,7 +652,7 @@ class TestFiberPhotometryTemporalAlignment:
         # Each of the three writers has a successor now, so they route into it rather than holding a second
         # mechanism. Every one of these lands the series at five seconds by a different road.
         legacy_interface = MockFiberPhotometryInterface()
-        with pytest.warns(FutureWarning, match="removed on or after August 2027"):
+        with pytest.warns(FutureWarning, match="removed in v0.12.0"):
             legacy_call(legacy_interface)
 
         new_interface = MockFiberPhotometryInterface()
@@ -669,7 +669,7 @@ class TestFiberPhotometryTemporalAlignment:
         interface = MockFiberPhotometryInterface()
         interface.alignment.shift_times(5.0)
 
-        with pytest.warns(FutureWarning, match="removed on or after August 2027"):
+        with pytest.warns(FutureWarning, match="removed in v0.12.0"):
             legacy_times = interface.get_timestamps()
 
         assert_array_equal(legacy_times, interface.alignment[interface.metadata_key].get_times())

@@ -1,3 +1,5 @@
+.. _making_a_release:
+
 Release Process for Neuroconv
 =============================
 
@@ -17,6 +19,9 @@ A simple to-do list for the Neuroconv release process:
 
 3. **Perform Checks**:
 
+   - Clear the deprecations that come due at this version. A deprecation names the version it is removed in
+     (see :ref:`deprecations`), so search the source for the version being released and remove what names it.
+     Removals happen at a minor version, never in a patch.
    - Ensure that no requirement files include pointers to `git`-based dependencies (including specific branches or commit hashes). All dependencies for a PyPI release should point to the released package versions that are available on conda-forge or PyPI. This can be done efficiently by searching for `@ git` in the pyproject.toml on an IDE.
 
 4. **Tag on GitHub**:
