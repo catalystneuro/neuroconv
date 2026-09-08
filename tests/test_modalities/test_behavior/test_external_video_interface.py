@@ -113,7 +113,6 @@ class TestExternalVideoAlignment:
     def test_several_files_with_no_times_warn_and_write_contiguously(self):
         """The only reading several files support on their own, taken but not silently."""
         interface = MockExternalVideoInterface(file_paths=["trial_1.avi", "trial_2.avi"], num_frames=2, frame_rate=2.0)
-        assert not interface.alignment.is_fine_aligned
 
         nwbfile = mock_NWBFile()
         with pytest.warns(UserWarning, match="as one recording split in place"):
@@ -129,7 +128,6 @@ class TestExternalVideoAlignment:
         interface = MockExternalVideoInterface(file_paths=["trial_1.avi", "trial_2.avi"], num_frames=2, frame_rate=2.0)
         for file_index, segment_key in enumerate(interface.alignment.keys()):
             interface.alignment[segment_key].set_times(file_index * (1.0 + gap) + np.arange(2) / 2.0)
-        assert interface.alignment.is_fine_aligned
 
         nwbfile = mock_NWBFile()
         with warnings.catch_warnings():
@@ -243,7 +241,7 @@ class TestExternalVideoAlignment:
         """One number is stored, so a file of a billion frames costs what one of two does and keeps its rate."""
         interface = MockExternalVideoInterface(file_paths=["session.avi"], num_frames=10**9, frame_rate=30.0)
         interface.alignment["session"].start_at(12.5)
-        assert interface.alignment["session"].get_start_time() == 12.5
+        assert interface.alignment["session"]._get_start_time() == 12.5
 
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile)

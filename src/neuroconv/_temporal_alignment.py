@@ -52,29 +52,22 @@ class _TimeBearingSeries:
         self._is_placed = False
 
     @property
-    def is_fine_aligned(self) -> bool:
-        """Whether this object has been finely aligned, as against still reporting its source's times.
+    def _has_own_times(self) -> bool:
+        """Whether a caller has said anything about this object's timing, by setting, remapping or placing it.
 
-        True once ``set_times`` or ``remap_times`` has run on it. A shift does not count, and not by
-        convention: a shift is *gross* alignment, moving every object at once, so it says nothing about any
-        one of them. Nor does ``start_at``, which moves this object whole and says nothing about the spacing
-        of its samples. See :doc:`the temporal alignment user guide </user_guide/temporal_alignment>` for the
-        gross and fine distinction.
+        For the interface writing several objects: one left on its source's times is written on an
+        assumption, and this is how the write path tells. A shift does not count, and not by convention: a
+        shift moves every object at once, so it says nothing about any one of them.
         """
-        return self._times is not None
-
-    @property
-    def is_placed(self) -> bool:
-        """Whether ``start_at`` has said where this object begins, and nothing since has superseded it."""
-        return self._is_placed
+        return self._times is not None or self._is_placed
 
     def get_times(self) -> np.ndarray:
         """Return the times this object will be written on, its own and the interface's offsets included."""
         times = self._times if self._times is not None else np.asarray(self._get_native_times())
         return times + self._object_offset + self._alignment.offset
 
-    def get_start_time(self) -> float:
-        """Return the time this object's first sample will be written on, without building its times."""
+    def _get_start_time(self) -> float:
+        """The time this object's first sample will be written on, without building its times, for the write path."""
         return self._get_base_start_time() + self._object_offset + self._alignment.offset
 
     def _get_base_start_time(self) -> float:
@@ -235,18 +228,6 @@ class _TemporalAlignment:
     def keys(self) -> tuple[str, ...]:
         """The time-bearing objects this interface can name, empty when it names none."""
         return tuple(self._name_to_time_bearing_object)
-
-    @property
-    def is_fine_aligned(self) -> bool:
-        """Whether **every** object this interface names has been finely aligned.
-
-        All rather than any, since the question it answers is whether the interface still has to fall back
-        on an assumption anywhere. For an interface whose objects do not say among themselves how they
-        relate, a single object left on its source's times is enough to make the whole thing a guess.
-        """
-        return all(
-            time_bearing_object.is_fine_aligned for time_bearing_object in self._name_to_time_bearing_object.values()
-        )
 
     def __getitem__(self, key: str) -> _TimeBearingSeries:
         if key not in self._name_to_time_bearing_object:

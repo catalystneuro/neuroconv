@@ -304,9 +304,7 @@ class ExternalVideoInterface(BaseDataInterface):
         A single file is exempt: one file starting at the session start is a claim a reader can check.
         """
         segment_keys_without_times = [
-            segment_key
-            for segment_key in self._segment_keys
-            if not (self.alignment[segment_key].is_fine_aligned or self.alignment[segment_key].is_placed)
+            segment_key for segment_key in self._segment_keys if not self.alignment[segment_key]._has_own_times
         ]
         if self._number_of_files == 1 or not segment_keys_without_times:
             return
@@ -333,14 +331,14 @@ class ExternalVideoInterface(BaseDataInterface):
         does not need one.
         """
         # Times that were set are the case an array exists for, and they may be irregular.
-        if any(self.alignment[segment_key].is_fine_aligned for segment_key in self._segment_keys):
+        if any(self.alignment[segment_key]._times is not None for segment_key in self._segment_keys):
             return None
         frame_rates = self.get_header_frame_rates()
         if len(set(frame_rates)) != 1:
             return None
         # Files placed independently generally leave gaps between them, and one rate cannot carry a gap. The
         # starts come from the headers, so nothing is built to find out.
-        starting_times = np.array([self.alignment[segment_key].get_start_time() for segment_key in self._segment_keys])
+        starting_times = np.array([self.alignment[segment_key]._get_start_time() for segment_key in self._segment_keys])
         durations = np.array(self.get_header_frame_counts()) / np.array(frame_rates)
         contiguous_starting_times = starting_times[0] + np.concatenate([[0.0], np.cumsum(durations[:-1])])
         if not np.allclose(starting_times, contiguous_starting_times, rtol=0.0, atol=1e-9):
