@@ -121,3 +121,38 @@ class TestYAMLConversionSpecification(TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_run_conversion_from_yaml_cli_without_output_folder_path(tmp_path):
+    # No data interfaces, so this needs no test data: the point is the path handling around the conversion.
+    # The output folder defaults to the specification's own folder, and the file name is the session's
+    # ``nwbfile_name`` with its ``.nwb`` suffix removed as a suffix, so the leading ``b`` survives.
+    yaml_file_path = tmp_path / "specification.yml"
+    yaml_file_path.write_text(
+        "\n".join(
+            [
+                "metadata:",
+                "  NWBFile:",
+                "    lab: My Lab",
+                "data_interfaces: {}",
+                "experiments:",
+                "  experiment:",
+                "    sessions:",
+                "      - nwbfile_name: brain_waves.nwb",
+                "        source_data: {}",
+                "        metadata:",
+                "          NWBFile:",
+                '            session_start_time: "2020-10-09T21:19:09+00:00"',
+                "",
+            ]
+        )
+    )
+
+    output = deploy_process(command=f"neuroconv {yaml_file_path}", catch_output=True)
+
+    nwbfile_path = tmp_path / "brain_waves.nwb"
+    assert nwbfile_path.exists(), f"The CLI did not write '{nwbfile_path}'. Output was:\n{output}"
+    with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+        nwbfile = io.read()
+        assert nwbfile.lab == "My Lab"
+        assert nwbfile.session_start_time == datetime.fromisoformat("2020-10-09T21:19:09+00:00")

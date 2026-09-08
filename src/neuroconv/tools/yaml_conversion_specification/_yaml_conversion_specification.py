@@ -92,8 +92,11 @@ def run_conversion_from_yaml(
     from dandi.organize import create_unique_filenames_from_metadata
     from dandi.pynwb_utils import _get_pynwb_metadata
 
+    # The command line entry point hands this over as a string.
+    specification_file_path = Path(specification_file_path)
+
     if data_folder_path is None:
-        data_folder_path = Path(specification_file_path).parent
+        data_folder_path = specification_file_path.parent
     else:
         data_folder_path = Path(data_folder_path)
         data_folder_path.mkdir(exist_ok=True)
@@ -182,7 +185,7 @@ def run_conversion_from_yaml(
                 session_conversion_options=session.get("conversion_options", dict()),
             )
 
-            nwbfile_name = session.get("nwbfile_name", f"temp_nwbfile_name_{file_counter}").strip(".nwb")
+            nwbfile_name = session.get("nwbfile_name", f"temp_nwbfile_name_{file_counter}").removesuffix(".nwb")
             converter.run_conversion(
                 nwbfile_path=output_folder_path / f"{nwbfile_name}.nwb",
                 metadata=metadata,
