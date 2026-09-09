@@ -642,9 +642,12 @@ def _rewrite_external_file_paths_relative_to(nwbfile: NWBFile, nwbfile_path: Pat
             continue
         if neurodata_object.container_source is not None:  # read from disk, so already relative to that file
             continue
-        for index, entry in enumerate(neurodata_object.external_file):
+        rewritten_entries = []
+        for entry in neurodata_object.external_file:
             entry = str(entry)  # an interface may have stored a `Path`
-            if _is_url(entry):
+            is_url = "://" in entry
+            if is_url:
+                rewritten_entries.append(entry)
                 continue
             absolute_entry = Path(entry).resolve()
             try:
@@ -652,12 +655,12 @@ def _rewrite_external_file_paths_relative_to(nwbfile: NWBFile, nwbfile_path: Pat
                 # floor is 3.12; before that `Path.relative_to` cannot produce `..` segments.
                 relative_entry = Path(os.path.relpath(absolute_entry, start=output_directory))
             except ValueError:  # Windows, file and output on different drives: no relative path exists
+                rewritten_entries.append(entry)
                 continue
-            neurodata_object.external_file[index] = relative_entry.as_posix()
-
-
-def _is_url(path: str) -> bool:
-    return "://" in path
+            rewritten_entries.append(relative_entry.as_posix())
+        # The setter refuses a field that is already set, and the list itself may belong to the interface that
+        # built the series, so a new list goes in where the setter would have stored it.
+        neurodata_object.fields["external_file"] = rewritten_entries
 
 
 def configure_and_write_nwbfile(
@@ -673,8 +676,8 @@ def configure_and_write_nwbfile(
     the specified backend, provide only ``backend``. To use a custom backend configuration, provide
     ``backend_configuration``. If both are provided, ``backend`` must match ``backend_configuration.backend``.
 
-    Before writing, every ``ImageSeries.external_file`` entry in ``nwbfile`` is rewritten in place so it is relative
-    to the directory of ``nwbfile_path``, as the NWB specification reads it. An ``ImageSeries`` read from an
+    Before writing, every ``ImageSeries.external_file`` in ``nwbfile`` is replaced so its entries are relative to
+    the directory of ``nwbfile_path``, as the NWB specification reads them. An ``ImageSeries`` read from an
     existing file keeps its paths.
 
     Parameters

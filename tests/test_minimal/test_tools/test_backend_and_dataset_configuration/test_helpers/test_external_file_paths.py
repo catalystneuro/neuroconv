@@ -1,13 +1,13 @@
 """Tests for rewriting `ImageSeries.external_file` paths relative to the written NWB file."""
 
 import pytest
-from pynwb import NWBHDF5IO, NWBFile, read_nwb
+from pynwb import NWBHDF5IO, read_nwb
 from pynwb.image import ImageSeries
 from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv import ConverterPipe
 from neuroconv.tools.nwb_helpers import configure_and_write_nwbfile, get_module
-from neuroconv.tools.testing.mock_interfaces import MockInterface
+from neuroconv.tools.testing.mock_interfaces import MockExternalVideoInterface
 
 
 def external_image_series(name: str, external_file: list[str]) -> ImageSeries:
@@ -20,18 +20,6 @@ def external_image_series(name: str, external_file: list[str]) -> ImageSeries:
         num_samples=10,
         unit="n.a.",
     )
-
-
-class ExternalImageSeriesInterface(MockInterface):
-    """Adds one external `ImageSeries` pointing at whatever path the caller gave, like the video interfaces do."""
-
-    def __init__(self, file_path: str, name: str):
-        super().__init__(file_path=file_path, name=name)
-
-    def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict | None):
-        nwbfile.add_acquisition(
-            external_image_series(name=self.source_data["name"], external_file=[self.source_data["file_path"]])
-        )
 
 
 def test_absolute_path_under_the_output_directory(tmp_path):
@@ -122,8 +110,8 @@ def test_export_keeps_the_paths_of_the_source_file(tmp_path):
 @pytest.mark.parametrize("through_converter", [False, True], ids=["interface", "converter"])
 def test_append_rewrites_the_added_image_series(tmp_path, through_converter):
     nwbfile_path = tmp_path / "test.nwb"
-    first = ExternalImageSeriesInterface(file_path=str(tmp_path / "videos" / "a.avi"), name="First")
-    second = ExternalImageSeriesInterface(file_path=str(tmp_path / "videos" / "b.avi"), name="Second")
+    first = MockExternalVideoInterface(file_paths=[str(tmp_path / "videos" / "a.avi")], metadata_key="first")
+    second = MockExternalVideoInterface(file_paths=[str(tmp_path / "videos" / "b.avi")], metadata_key="second")
     if through_converter:
         first, second = ConverterPipe([first]), ConverterPipe([second])
 
@@ -131,5 +119,20 @@ def test_append_rewrites_the_added_image_series(tmp_path, through_converter):
     second.run_conversion(nwbfile_path=nwbfile_path, append_on_disk_nwbfile=True)
 
     written = read_nwb(nwbfile_path)
-    assert list(written.acquisition["First"].external_file) == ["videos/a.avi"]
-    assert list(written.acquisition["Second"].external_file) == ["videos/b.avi"]
+    assert list(written.acquisition["Video a"].external_file) == ["videos/a.avi"]
+    assert list(written.acquisition["Video b"].external_file) == ["videos/b.avi"]
+
+
+def test_interface_paths_survive_a_conversion(tmp_path):
+    """The interface hands its own `file_paths` list to the series, and a second conversion must still see them."""
+    interface = MockExternalVideoInterface(file_paths=[str(tmp_path / "videos" / "a.avi")])
+
+    first_path = tmp_path / "first" / "test.nwb"
+    second_path = tmp_path / "second" / "nested" / "test.nwb"
+    first_path.parent.mkdir()
+    second_path.parent.mkdir(parents=True)
+    interface.run_conversion(nwbfile_path=first_path, backend="hdf5")
+    interface.run_conversion(nwbfile_path=second_path, backend="hdf5")
+
+    assert list(read_nwb(first_path).acquisition["Video a"].external_file) == ["../videos/a.avi"]
+    assert list(read_nwb(second_path).acquisition["Video a"].external_file) == ["../../videos/a.avi"]
