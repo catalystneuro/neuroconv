@@ -133,17 +133,20 @@ class BaseEventsInterface(BaseDataInterface):
     def get_event_type_source_ids(self) -> list[str]:
         """Return the identifiers of the event types this interface reads, in the order it reports them.
 
-        The handles :meth:`get_event_times` takes, and the keys of the metadata's ``event_types`` block.
-        For a signal-encoded interface they are what ``detection_configuration`` resolves to, so a spec
-        carrying an ``event_name`` is addressed by that name; for a pre-extracted one they are the
-        source's own handles for its event types.
+        The handles :meth:`get_event_times` takes, and the keys of the metadata's ``event_types`` block,
+        which :meth:`get_metadata` builds from this list. For a signal-encoded interface they are what
+        ``detection_configuration`` resolves to, so a spec carrying an ``event_name`` is addressed by that
+        name; for a pre-extracted one they are the source's own handles for its event types.
+
+        Subclasses that can list their types from a header or a configuration override this so that
+        listing them reads no events. This default reads the source.
 
         Returns
         -------
         list of str
             The event type identifiers.
         """
-        return list(self.get_metadata()["Events"][self.metadata_key]["event_types"])
+        return list(self._get_events_data_dict())
 
     def get_event_times(self, event_type_source_id: str) -> np.ndarray:
         """Return the onset times of one configured event type, writing nothing.

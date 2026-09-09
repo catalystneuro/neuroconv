@@ -12,7 +12,7 @@ from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv import ConverterPipe
 from neuroconv.datainterfaces import BORISInterface
-from neuroconv.tools.testing.data_interface_mixins import DataInterfaceTestMixin
+from neuroconv.tools.testing.data_interface_mixins import EventsInterfaceTestMixin
 
 try:
     from ..setup_paths import BEHAVIOR_DATA_PATH, OUTPUT_PATH
@@ -22,16 +22,17 @@ except ImportError:
 BORIS_PROJECTS_PATH = BEHAVIOR_DATA_PATH / "boris" / "json_project"
 
 
-class BORISTestMixin(DataInterfaceTestMixin):
+class BORISTestMixin(EventsInterfaceTestMixin):
     """The assertions true of every BORIS conversion, whatever the project holds.
 
     Nothing here is parameterised and nothing here is configuration. Each test class states its own
     interface, its own file and its own expectations; this only adds the checks that hold for all of
-    them, and a subclass runs them by calling ``super().check_read_nwb`` before its own.
+    them, and a subclass that overrides ``run_custom_checks`` runs them by calling ``super().run_custom_checks``
+    before its own.
     """
 
-    def check_read_nwb(self, nwbfile_path: str):
-        nwbfile = read_nwb(nwbfile_path)
+    def run_custom_checks(self):
+        nwbfile = read_nwb(self.nwbfile_path)
         behavior_module = nwbfile.processing["behavior"]
 
         # A modifier cell is the values ticked in one slot, so it is a list: several where the slot takes
@@ -217,6 +218,7 @@ class TestBORISVersion4_0(BORISTestMixin):
         assert len(behavior_module["MediaObservationBouts"].to_dataframe()) == 3
 
     def run_custom_checks(self):
+        super().run_custom_checks()
         interface = BORISInterface(file_path=TestBORISVersion4_0.file_path, observation_name="media observation")
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile)
@@ -359,6 +361,7 @@ class TestBORISModifierSlots(BORISTestMixin):
 
     def run_custom_checks(self):
         """The recorded forms of the three slot types, each answer in the column of its own slot."""
+        super().run_custom_checks()
         interface = BORISInterface(file_path=TestBORISModifierSlots.file_path, observation_name="1")
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile)
@@ -471,6 +474,7 @@ class TestBORISMultiSubject(BORISTestMixin):
         assert len(behavior_module["Observation1Bouts"].to_dataframe()) == 4
 
     def run_custom_checks(self):
+        super().run_custom_checks()
         interface = BORISInterface(file_path=TestBORISMultiSubject.file_path, observation_name="observation #1")
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile)
@@ -531,6 +535,7 @@ class TestBORISUntidyModifiers(BORISTestMixin):
         assert "Test1LiveBouts" not in behavior_module.data_interfaces
 
     def run_custom_checks(self):
+        super().run_custom_checks()
         interface = BORISInterface(file_path=TestBORISUntidyModifiers.file_path, observation_name="test1 live")
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile)
