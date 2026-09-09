@@ -39,17 +39,17 @@ jobs:
   assess-file-changes:
     uses: ./.github/workflows/assess-file-changes.yml
 
-  detect-changelog-updates:
+  detect-changelog-entry:
     needs: assess-file-changes
     if: ${{ needs.assess-file-changes.outputs.SOURCE_CHANGED == 'true' && github.event.pull_request.draft == false }}
-    name: Auto-detecting CHANGELOG.md updates
+    name: Auto-detecting changelog entries
     runs-on: ubuntu-latest
     steps:
-      - if: ${{ needs.assess-file-changes.outputs.CHANGELOG_UPDATED == 'true' }}
-        run: echo "CHANGELOG.md has been updated."
-      - if: ${{ needs.assess-file-changes.outputs.CHANGELOG_UPDATED == 'false' }}
+      - if: ${{ needs.assess-file-changes.outputs.CHANGELOG_ENTRY_ADDED == 'true' }}
+        run: echo "A changelog entry has been added."
+      - if: ${{ needs.assess-file-changes.outputs.CHANGELOG_ENTRY_ADDED == 'false' }}
         run: |
-          echo "::error::This pull request changes source files but does not update CHANGELOG.md. Add an entry under the upcoming version's section, or say in the pull request why the change needs none."
+          echo "::error::This pull request changes source files but adds no changelog entry named after it. Add changelog_entries/${{ github.event.pull_request.number }}.<type>.md, where <type> is deprecation, bugfix, feature or improvement, or say in the pull request why the change needs none."
           exit 1
 
   run-tests:
