@@ -270,6 +270,11 @@ whitematter = [
 xclust = [
     "neuroconv[ecephys_minimal]",
 ]
+# MNE-Python backed interfaces (EEG/MEG family). Shared extra referenced by future format
+# extras (eeglab, brainvision, ...) that build an mne.io.Raw.
+mne = [
+    "mne>=1.5",
+]
 ecephys = [  # Note that these are the requirements of the extractors as they are on pipy
     "neuroconv[alphaomega]",
     "neuroconv[axon]",

@@ -8,6 +8,7 @@ Tools
     tools.roiextractors
     tools.yaml_to_nwb_conversion
     tools.neo
+    tools.mne
     tools.testing
     tools.iterative_write
     tools.path_expansion
