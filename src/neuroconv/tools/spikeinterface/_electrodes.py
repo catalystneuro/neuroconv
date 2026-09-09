@@ -24,8 +24,8 @@ from hdmf.common import MeaningsTable
 
 # Fields of an electrode entry that address other metadata rather than describing a column.
 _STRUCTURAL_ELECTRODE_FIELDS = ("electrode_group_metadata_key",)
-# Columns the writer owns: the group link and the two identity columns, which are not taken from an
-# entry's own fields even when one states them.
+# Columns the writer owns: the group link and the two identity columns. A row stating one is refused,
+# since the value would be dropped and a user who set ``group_name`` would believe the row moved.
 _WRITER_OWNED_COLUMNS = ("group", "group_name", "channel_name")
 
 
@@ -33,9 +33,8 @@ def _electrodes_table_is_stated(metadata: dict | None) -> bool:
     """Whether ``Ecephys.ElectrodesTable`` states the table, rather than leaving it to be derived.
 
     Presence of the block is the whole test; there is no shape to sniff, because the block means one
-    thing. An empty ``rows`` counts as stated rather than as absent, so it is refused downstream for
-    leaving the recording's channels with nowhere to go, which is what a user who deleted a row they
-    still record means.
+    thing. An empty ``rows`` still counts as stated: the block is an overlay, so it writes the table the
+    recording derives and adds nothing to it.
     """
     if metadata is None:
         return False
@@ -472,6 +471,13 @@ def _add_electrodes_from_registry_to_nwbfile(
             )
         if group_metadata_key not in group_metadata_keys:
             group_metadata_keys.append(group_metadata_key)
+        owned_fields = [field for field in entry if field in _WRITER_OWNED_COLUMNS]
+        if owned_fields:
+            raise ValueError(
+                f"metadata['Ecephys']['ElectrodesTable']['rows']['{electrode_key}'] states {owned_fields}, which "
+                "the writer derives: 'group' and 'group_name' follow from 'electrode_group_metadata_key', and "
+                "'channel_name' is the recording's own label for its channel. Remove the field."
+            )
 
     group_name_by_key = _add_electrode_groups_to_nwbfile(
         recording=recording,
@@ -532,7 +538,7 @@ def _add_electrodes_from_registry_to_nwbfile(
     declared_columns = []
     for entry in registry.values():
         for field in entry:
-            if field in _STRUCTURAL_ELECTRODE_FIELDS or field in _WRITER_OWNED_COLUMNS:
+            if field in _STRUCTURAL_ELECTRODE_FIELDS:
                 continue
             # ``electrode_name`` is a field of an entry but the identity block below is what writes it,
             # so it is not built twice.

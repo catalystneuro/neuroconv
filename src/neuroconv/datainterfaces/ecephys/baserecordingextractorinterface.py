@@ -174,7 +174,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
                         additionalProperties=dict(type="string"),
                         description=(
                             "Maps each channel id of this recording to the key of the electrode it is "
-                            "recorded by in metadata['Ecephys']['Electrodes']."
+                            "recorded by in metadata['Ecephys']['ElectrodesTable']['rows']."
                         ),
                     ),
                 ),
@@ -339,22 +339,30 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         metadata = self.get_metadata()
         recording = self.recording_extractor
 
-        # One group per channel group the recording reports, keyed by its own name so that two
+        # One group per channel group the recording reports. A group the interface already describes,
+        # with its device link and its description, is kept under the key the interface gave it, matched
+        # by name the way the writer matches it. The rest are keyed by their own name so that two
         # interfaces over one probe file their groups under the same key and the rows they point at
-        # resolve to one group rather than two.
+        # resolve to one group rather than two. No ``device_metadata_key`` is invented for those: the
+        # writer already resolves a group naming no device to the attached probe's identity, and a
+        # template that guessed one would state hardware in the file that nobody confirmed.
         group_template = _get_ecephys_metadata_placeholders()["Ecephys"]["ElectrodeGroups"]["default_metadata_key"]
         group_names = list(dict.fromkeys(_get_group_name(recording=recording).tolist()))
-        # No ``device_metadata_key``: the writer already resolves a group naming no device to the
-        # attached probe's identity, and a template that guessed one would state hardware in the file
-        # that nobody confirmed.
-        metadata["Ecephys"]["ElectrodeGroups"] = {
-            group_name: {
-                "name": group_name,
-                "description": group_template["description"],
-                "location": group_template["location"],
-            }
-            for group_name in group_names
+        declared_groups = metadata["Ecephys"].get("ElectrodeGroups") or {}
+        group_key_by_name = {
+            entry["name"]: key for key, entry in declared_groups.items() if isinstance(entry, dict) and "name" in entry
         }
+        electrode_groups = {key: dict(entry) for key, entry in declared_groups.items()}
+        group_metadata_key_by_name = {}
+        for group_name in group_names:
+            key = group_key_by_name.get(group_name)
+            if key is None:
+                key = group_name
+                electrode_groups[key] = {"name": group_name}
+            for field in ("description", "location"):
+                electrode_groups[key].setdefault(field, group_template[field])
+            group_metadata_key_by_name[group_name] = key
+        metadata["Ecephys"]["ElectrodeGroups"] = electrode_groups
 
         # What this interface already says about its columns, which it emits as the column-description
         # list under the older ``Electrodes`` key. Carried over so that stating the table does not lose a
@@ -368,7 +376,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
         electrodes_metadata = _build_electrodes_metadata(
             recording=recording,
-            group_metadata_key_by_name={group_name: group_name for group_name in group_names},
+            group_metadata_key_by_name=group_metadata_key_by_name,
             property_descriptions=property_descriptions,
         )
         metadata["Ecephys"]["ElectrodesTable"] = electrodes_metadata["ElectrodesTable"]

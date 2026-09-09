@@ -89,6 +89,69 @@ class TestTemplate:
         nwbfile = interface.create_nwbfile(metadata=metadata)
         assert nwbfile.electrodes["imp"].description == "Impedance in ohms."
 
+    def test_a_group_the_interface_already_describes_is_kept(self):
+        """Stating the table must not lose the device link and description an interface emits for a group.
+
+        SpikeGLX and Intan both describe their groups in ``get_metadata``, and the first version of the
+        template replaced those entries with placeholders, so a file written from it lost the device.
+        """
+        interface = _interface(num_channels=4, groups=[0, 0, 1, 1])
+
+        def get_metadata():
+            metadata = MockRecordingInterface.get_metadata(interface)
+            metadata["Devices"] = {"probe": {"name": "MyProbe", "description": "The probe the header names."}}
+            metadata["Ecephys"]["ElectrodeGroups"] = {
+                "port_0": {"name": "0", "description": "Headstage port 0.", "device_metadata_key": "probe"},
+            }
+            return metadata
+
+        interface.get_metadata = get_metadata
+        metadata = interface.get_metadata_template()
+
+        groups = metadata["Ecephys"]["ElectrodeGroups"]
+        assert groups["port_0"] == {
+            "name": "0",
+            "description": "Headstage port 0.",
+            "device_metadata_key": "probe",
+            "location": "unknown",
+        }
+        assert groups["1"] == {"name": "1", "description": "no description", "location": "unknown"}
+        rows = metadata["Ecephys"]["ElectrodesTable"]["rows"]
+        assert [entry["electrode_group_metadata_key"] for entry in rows.values()] == ["port_0", "port_0", "1", "1"]
+
+        nwbfile = interface.create_nwbfile(metadata=metadata)
+        assert nwbfile.electrode_groups["0"].device.name == "MyProbe"
+        assert nwbfile.electrode_groups["0"].description == "Headstage port 0."
+
+    def test_writing_the_template_reproduces_the_derived_table(self):
+        """The template states the table the writer would derive, so writing it unchanged changes nothing."""
+        properties = {
+            "imp": [1.0, 2.0, 3.0, 4.0],
+            "shank": np.array([0, 1, 0, 1], dtype="int32"),
+            "port": ["A", "A", "B", "B"],
+            "coords": np.arange(8, dtype="float64").reshape(4, 2),
+        }
+        stated = _interface(num_channels=4, groups=[0, 0, 1, 1], properties=properties)
+        derived = _interface(num_channels=4, groups=[0, 0, 1, 1], properties=properties)
+
+        from_template = stated.create_nwbfile(metadata=stated.get_metadata_template())
+        from_recording = derived.create_nwbfile()
+
+        assert from_template.electrodes.colnames == from_recording.electrodes.colnames
+        for column_name in from_recording.electrodes.colnames:
+            if column_name == "group":
+                continue
+            np.testing.assert_array_equal(
+                np.asarray(from_template.electrodes[column_name][:]),
+                np.asarray(from_recording.electrodes[column_name][:]),
+                err_msg=column_name,
+            )
+            assert np.asarray(from_template.electrodes[column_name][:]).dtype == (
+                np.asarray(from_recording.electrodes[column_name][:]).dtype
+            ), column_name
+        assert list(from_template.electrodes["group_name"][:]) == list(from_recording.electrodes["group_name"][:])
+        assert sorted(from_template.electrode_groups) == sorted(from_recording.electrode_groups)
+
 
 class TestRegistryWrites:
     def test_the_group_link_is_the_only_thing_that_decides_a_row_s_group(self):
@@ -474,6 +537,16 @@ class TestRegistryValidation:
         del mapping[next(iter(mapping))]
 
         with pytest.raises(ValueError, match="does not cover every channel"):
+            interface.create_nwbfile(metadata=metadata)
+
+    @pytest.mark.parametrize("field", ["group_name", "channel_name"])
+    def test_a_row_stating_a_column_the_writer_derives(self, field):
+        """Silently dropping it is the failure: a user who set ``group_name`` believes the row moved."""
+        interface = _interface(num_channels=4)
+        metadata = interface.get_metadata_template()
+        metadata["Ecephys"]["ElectrodesTable"]["rows"]["ElectrodeGroup_0"][field] = "elsewhere"
+
+        with pytest.raises(ValueError, match="which the writer derives"):
             interface.create_nwbfile(metadata=metadata)
 
     def test_an_electrode_stating_no_group(self):
