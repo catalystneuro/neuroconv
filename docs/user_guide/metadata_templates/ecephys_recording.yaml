@@ -1,0 +1,80 @@
+# Every `null` is yours to fill. Delete any entry your recording did not use.
+# Every key here is a handle you may rename, not a name in the file; `name` is the name in the file.
+
+# The catalogue part the probe was ordered as, shared by every recording on that rig. Optional. To drop
+# it, delete it here and the `device_model_metadata_key` pointing at it below.
+DeviceModels:
+  probe_model:
+    name: null
+    manufacturer: null
+    model_number: null
+    description: null
+
+# The probe that was implanted. Most formats record no probe identity, so nothing is written unless you
+# say so, and a group naming no device gets a placeholder.
+Devices:
+  probe:
+    name: null
+    description: null
+    serial_number: null                        # of this probe, not of the model
+    device_model_metadata_key: probe_model     # a key in DeviceModels above
+
+Ecephys:
+  # The electrodes that are analysed together: a shank, a tetrode or a whole probe. Two are shown
+  # because a multi-shank probe is several groups sharing one device.
+  ElectrodeGroups:
+    shank_0:
+      name: null
+      description: null                        # say here where `x`, `y` and `z` below are measured from
+      location: null                           # where the group as a whole sat
+      device_metadata_key: probe               # a key in Devices above
+    shank_1:
+      name: null
+      description: null
+      location: null
+      device_metadata_key: probe
+  # The electrodes table, one row per contact. `get_metadata_template()` returns one row per channel,
+  # keyed `{group}_{contact}` where the format names its contacts and `{group}_{channel}` otherwise;
+  # two are shown so the shape of a row is visible.
+  ElectrodesTable:
+    rows:
+      shank_0_e0:
+        electrode_group_metadata_key: shank_0  # a key in ElectrodeGroups above, required
+        electrode_name: null                   # the contact's own identifier; delete it where the format
+                                               #   names no contacts, since the channel is the identity then
+        location: null                         # the brain region, as an atlas name
+        x: null                                # microns, on the schema's axes: +x posterior, +y inferior,
+        y: null                                #   +z right, from the origin the group's description states
+        z: null
+        rel_x: null                            # microns on the probe, from its geometry
+        rel_y: null
+        imp: null                              # impedance in ohms
+        filtering: null                        # the hardware filtering, as a description
+      shank_1_e0:
+        electrode_group_metadata_key: shank_1
+        electrode_name: null
+        location: null
+        x: null
+        y: null
+        z: null
+        rel_x: null
+        rel_y: null
+        imp: null
+        filtering: null
+    # What a column is called and means, keyed by the field the rows use. An entry for a field no row
+    # states is refused. Any other field you put on a row becomes a column of its own.
+    columns:
+      imp:
+        column_name: impedance                 # the header it is written under
+        description: null
+        dtype: float64                         # worth stating for numbers, which a file round trip widens
+  # The traces. Rename `ecephys_recording` to the `metadata_key` the interface was constructed with.
+  ElectricalSeries:
+    ecephys_recording:
+      name: null
+      description: null
+      # Which row each channel recorded, keyed by channel id. `get_metadata_template()` fills it in;
+      # write it yourself only when the row keys are your own.
+      channel_to_electrode:
+        "0": shank_0_e0
+        "1": shank_1_e0

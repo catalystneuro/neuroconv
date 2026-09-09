@@ -9,6 +9,8 @@ library capabilities and to get you to hit the ground running with your own conv
 Extracellular electrophysiology
 -------------------------------
 
+.. _conversion_gallery_ecephys_recording:
+
 Recording
 ~~~~~~~~~
 

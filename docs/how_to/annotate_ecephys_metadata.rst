@@ -12,11 +12,36 @@ most formats record no probe identity and no brain region at all, so a conversio
 adding metadata writes a placeholder device and a placeholder electrode group. Everything that says
 what was implanted, and where, is provenance you supply.
 
+.. code-block:: python
+
+    from neuroconv.tools.testing.mock_interfaces import MockRecordingInterface
+
+    interface = MockRecordingInterface(num_channels=4, durations=[0.1])
+    nwbfile = interface.create_nwbfile()
+
+.. admonition:: Resulting structure
+   :class: tip
+
+   .. code-block:: text
+
+       acquisition
+       └── ElectricalSeries  ──▶  electrodes rows 0-3
+
+       electrodes
+       id   location   group_name       channel_name
+        0   unknown    ElectrodeGroup   0
+        1   unknown    ElectrodeGroup   1
+        2   unknown    ElectrodeGroup   2
+        3   unknown    ElectrodeGroup   3
+
+       ElectrodeGroup  ──▶  PlaceholderElectrodeDevice
+
 The examples here use :py:class:`~neuroconv.tools.testing.mock_interfaces.MockRecordingInterface`,
 which synthesizes traces instead of reading a file, so every snippet runs as written with no data to
 download. Everything after the constructor is the same for any recording interface: swap in
 ``IntanRecordingInterface``, ``SpikeGLXRecordingInterface`` or any other, with the arguments its
-format needs, and annotate the metadata exactly as shown.
+format needs, and annotate the metadata exactly as shown. The :ref:`recording section of the
+Conversion Gallery <conversion_gallery_ecephys_recording>` shows how to construct each one.
 
 A recording interface emits one ``ElectricalSeries`` entry, keyed by its ``metadata_key``, and
 nothing else unless the format records more. Some do: ``IntanRecordingInterface`` names the Intan
@@ -39,7 +64,7 @@ signal is, which nothing in the acquisition file records. Set both on the entry 
 interface's ``metadata_key``:
 
 .. code-block:: python
-   :emphasize-lines: 0-1
+   :emphasize-lines: 3-4,6-7,9-10
 
     from neuroconv.tools.testing.mock_interfaces import MockRecordingInterface
 
@@ -53,8 +78,10 @@ interface's ``metadata_key``:
     ecephys["ElectricalSeries"][metadata_key]["description"] = "Raw broadband traces, 30 kHz."
 
 **Describe the electrodes.** ``ecephys["ElectrodesTable"]["rows"]`` holds one entry per electrode, each
-already pointing at its group with ``electrode_group_metadata_key``. The following properties are very
-useful for downstream users, so fill them in if they are not available in the source format:
+already pointing at its group with ``electrode_group_metadata_key``. The keys, ``ElectrodeGroup_0`` to
+``ElectrodeGroup_3`` here, name the group and the channel each row came from, and are handles that stay
+in your script. The following properties are very useful for downstream users, so fill them in if they
+are not available in the source format:
 
 ``location``
     The brain region, as a name. Use a standard atlas region where there is one, following the
@@ -81,7 +108,7 @@ impedance in ohms and a description of the hardware filtering. Any other field y
 becomes a column of its own.
 
 .. code-block:: python
-   :emphasize-lines: 11-18
+   :emphasize-lines: 11-16
 
     from neuroconv.tools.testing.mock_interfaces import MockRecordingInterface
 
@@ -94,13 +121,11 @@ becomes a column of its own.
     ecephys["ElectricalSeries"][metadata_key]["name"] = "ElectricalSeriesProbe0"
     ecephys["ElectricalSeries"][metadata_key]["description"] = "Raw broadband traces, 30 kHz."
     # Microns from bregma, on the schema's axes: +x posterior, +y inferior, +z right.
-    regions = ["CA1", "CA1", "CA3", "CA3"]
-    depths_in_um = [2100.0, 2100.0, 2600.0, 2600.0]
     rows = ecephys["ElectrodesTable"]["rows"]
-    for entry, region, depth in zip(rows.values(), regions, depths_in_um):
-        entry["location"] = region
-        entry["x"], entry["y"], entry["z"] = 2000.0, depth, 1500.0
-        entry["imp"] = 1.0e6
+    rows["ElectrodeGroup_0"].update(location="CA1", x=2000.0, y=2100.0, z=1500.0, imp=1.0e6)
+    rows["ElectrodeGroup_1"].update(location="CA1", x=2000.0, y=2100.0, z=1500.0, imp=1.0e6)
+    rows["ElectrodeGroup_2"].update(location="CA3", x=2000.0, y=2600.0, z=1500.0, imp=1.0e6)
+    rows["ElectrodeGroup_3"].update(location="CA3", x=2000.0, y=2600.0, z=1500.0, imp=1.0e6)
 
 .. admonition:: The file so far
    :class: note
@@ -122,7 +147,7 @@ know about the electrodes is worth recording too, and a reader can only use it i
 means. Put the value on the rows and describe it under ``ElectrodesTable["columns"]``:
 
 .. code-block:: python
-   :emphasize-lines: 19-32
+   :emphasize-lines: 17-32
 
     from neuroconv.tools.testing.mock_interfaces import MockRecordingInterface
 
@@ -135,15 +160,15 @@ means. Put the value on the rows and describe it under ``ElectrodesTable["column
     ecephys["ElectricalSeries"][metadata_key]["name"] = "ElectricalSeriesProbe0"
     ecephys["ElectricalSeries"][metadata_key]["description"] = "Raw broadband traces, 30 kHz."
     # Microns from bregma, on the schema's axes: +x posterior, +y inferior, +z right.
-    regions = ["CA1", "CA1", "CA3", "CA3"]
-    depths_in_um = [2100.0, 2100.0, 2600.0, 2600.0]
     rows = ecephys["ElectrodesTable"]["rows"]
-    for entry, region, depth in zip(rows.values(), regions, depths_in_um):
-        entry["location"] = region
-        entry["x"], entry["y"], entry["z"] = 2000.0, depth, 1500.0
-        entry["imp"] = 1.0e6
-    for entry, side in zip(rows.values(), [0, 1, 0, 1]):
-        entry["side"] = side
+    rows["ElectrodeGroup_0"].update(location="CA1", x=2000.0, y=2100.0, z=1500.0, imp=1.0e6)
+    rows["ElectrodeGroup_1"].update(location="CA1", x=2000.0, y=2100.0, z=1500.0, imp=1.0e6)
+    rows["ElectrodeGroup_2"].update(location="CA3", x=2000.0, y=2600.0, z=1500.0, imp=1.0e6)
+    rows["ElectrodeGroup_3"].update(location="CA3", x=2000.0, y=2600.0, z=1500.0, imp=1.0e6)
+    rows["ElectrodeGroup_0"]["side"] = 0
+    rows["ElectrodeGroup_1"]["side"] = 1
+    rows["ElectrodeGroup_2"]["side"] = 0
+    rows["ElectrodeGroup_3"]["side"] = 1
 
     ecephys["ElectrodesTable"]["columns"]["side"] = {
         "column_name": "shank_side",
@@ -185,7 +210,7 @@ electrodes were sorted as a unit and which sat on the same shank. Declare the gr
 at it with ``electrode_group_metadata_key``:
 
 .. code-block:: python
-   :emphasize-lines: 33-43
+   :emphasize-lines: 33-46
 
     from neuroconv.tools.testing.mock_interfaces import MockRecordingInterface
 
@@ -198,15 +223,15 @@ at it with ``electrode_group_metadata_key``:
     ecephys["ElectricalSeries"][metadata_key]["name"] = "ElectricalSeriesProbe0"
     ecephys["ElectricalSeries"][metadata_key]["description"] = "Raw broadband traces, 30 kHz."
     # Microns from bregma, on the schema's axes: +x posterior, +y inferior, +z right.
-    regions = ["CA1", "CA1", "CA3", "CA3"]
-    depths_in_um = [2100.0, 2100.0, 2600.0, 2600.0]
     rows = ecephys["ElectrodesTable"]["rows"]
-    for entry, region, depth in zip(rows.values(), regions, depths_in_um):
-        entry["location"] = region
-        entry["x"], entry["y"], entry["z"] = 2000.0, depth, 1500.0
-        entry["imp"] = 1.0e6
-    for entry, side in zip(rows.values(), [0, 1, 0, 1]):
-        entry["side"] = side
+    rows["ElectrodeGroup_0"].update(location="CA1", x=2000.0, y=2100.0, z=1500.0, imp=1.0e6)
+    rows["ElectrodeGroup_1"].update(location="CA1", x=2000.0, y=2100.0, z=1500.0, imp=1.0e6)
+    rows["ElectrodeGroup_2"].update(location="CA3", x=2000.0, y=2600.0, z=1500.0, imp=1.0e6)
+    rows["ElectrodeGroup_3"].update(location="CA3", x=2000.0, y=2600.0, z=1500.0, imp=1.0e6)
+    rows["ElectrodeGroup_0"]["side"] = 0
+    rows["ElectrodeGroup_1"]["side"] = 1
+    rows["ElectrodeGroup_2"]["side"] = 0
+    rows["ElectrodeGroup_3"]["side"] = 1
 
     ecephys["ElectrodesTable"]["columns"]["side"] = {
         "column_name": "shank_side",
@@ -220,16 +245,19 @@ at it with ``electrode_group_metadata_key``:
         },
     }
     group_key = "probe0_shank"
+    device_key = "probe0_device"
     ecephys["ElectrodeGroups"] = {
         group_key: {
             "name": "ElectrodeGroupProbe0",
             "description": "Silicon probe electrodes, dorsal hippocampus penetration",
             "location": "Dorsal hippocampus",
-            "device_metadata_key": "probe0_device",
+            "device_metadata_key": device_key,
         },
     }
-    for entry in rows.values():
-        entry["electrode_group_metadata_key"] = group_key
+    rows["ElectrodeGroup_0"]["electrode_group_metadata_key"] = group_key
+    rows["ElectrodeGroup_1"]["electrode_group_metadata_key"] = group_key
+    rows["ElectrodeGroup_2"]["electrode_group_metadata_key"] = group_key
+    rows["ElectrodeGroup_3"]["electrode_group_metadata_key"] = group_key
 
 The group's ``location`` is where the group as a whole sat. The per-row ``location`` above is the
 electrodes table's own column; setting one does not populate the other.
@@ -242,7 +270,7 @@ group at a ``Devices`` entry, and that entry at a ``DeviceModels`` entry with
 deprecated in pynwb:
 
 .. code-block:: python
-   :emphasize-lines: 44-60
+   :emphasize-lines: 47-64
 
     from neuroconv.tools.testing.mock_interfaces import MockRecordingInterface
 
@@ -255,15 +283,15 @@ deprecated in pynwb:
     ecephys["ElectricalSeries"][metadata_key]["name"] = "ElectricalSeriesProbe0"
     ecephys["ElectricalSeries"][metadata_key]["description"] = "Raw broadband traces, 30 kHz."
     # Microns from bregma, on the schema's axes: +x posterior, +y inferior, +z right.
-    regions = ["CA1", "CA1", "CA3", "CA3"]
-    depths_in_um = [2100.0, 2100.0, 2600.0, 2600.0]
     rows = ecephys["ElectrodesTable"]["rows"]
-    for entry, region, depth in zip(rows.values(), regions, depths_in_um):
-        entry["location"] = region
-        entry["x"], entry["y"], entry["z"] = 2000.0, depth, 1500.0
-        entry["imp"] = 1.0e6
-    for entry, side in zip(rows.values(), [0, 1, 0, 1]):
-        entry["side"] = side
+    rows["ElectrodeGroup_0"].update(location="CA1", x=2000.0, y=2100.0, z=1500.0, imp=1.0e6)
+    rows["ElectrodeGroup_1"].update(location="CA1", x=2000.0, y=2100.0, z=1500.0, imp=1.0e6)
+    rows["ElectrodeGroup_2"].update(location="CA3", x=2000.0, y=2600.0, z=1500.0, imp=1.0e6)
+    rows["ElectrodeGroup_3"].update(location="CA3", x=2000.0, y=2600.0, z=1500.0, imp=1.0e6)
+    rows["ElectrodeGroup_0"]["side"] = 0
+    rows["ElectrodeGroup_1"]["side"] = 1
+    rows["ElectrodeGroup_2"]["side"] = 0
+    rows["ElectrodeGroup_3"]["side"] = 1
 
     ecephys["ElectrodesTable"]["columns"]["side"] = {
         "column_name": "shank_side",
@@ -277,26 +305,30 @@ deprecated in pynwb:
         },
     }
     group_key = "probe0_shank"
+    device_key = "probe0_device"
     ecephys["ElectrodeGroups"] = {
         group_key: {
             "name": "ElectrodeGroupProbe0",
             "description": "Silicon probe electrodes, dorsal hippocampus penetration",
             "location": "Dorsal hippocampus",
-            "device_metadata_key": "probe0_device",
+            "device_metadata_key": device_key,
         },
     }
-    for entry in rows.values():
-        entry["electrode_group_metadata_key"] = group_key
+    rows["ElectrodeGroup_0"]["electrode_group_metadata_key"] = group_key
+    rows["ElectrodeGroup_1"]["electrode_group_metadata_key"] = group_key
+    rows["ElectrodeGroup_2"]["electrode_group_metadata_key"] = group_key
+    rows["ElectrodeGroup_3"]["electrode_group_metadata_key"] = group_key
+    device_model_key = "assy_156_p_1"
     metadata["Devices"] = {
-        "probe0_device": {
+        device_key: {
             "name": "ProbeDorsalCA1",
             "description": "Implanted 2020-01-01, serial 1234",
-            "device_model_metadata_key": "assy_156_p_1",
+            "device_model_metadata_key": device_model_key,
         },
     }
 
     metadata["DeviceModels"] = {
-        "assy_156_p_1": {
+        device_model_key: {
             "name": "ASSY-156-P-1",
             "manufacturer": "Cambridge NeuroTech",
             "description": "64-channel silicon probe, P series",
@@ -397,6 +429,8 @@ SpikeGLX channel has id ``imec0.ap#AP0`` and name ``AP0``, an Intan channel has 
 
 .. code-block:: python
 
+    from neuroconv.tools.testing.mock_interfaces import MockRecordingInterface
+
     interface = MockRecordingInterface(num_channels=4, durations=[0.1], metadata_key="probe0")
     channel_ids = list(interface.channel_ids)
 
@@ -406,12 +440,17 @@ SpikeGLX channel has id ``imec0.ap#AP0`` and name ``AP0``, an Intan channel has 
     }
     metadata["Ecephys"]["ElectrodesTable"] = {
         "rows": {
-            f"CA1_e{index}": {"electrode_group_metadata_key": "shank", "location": "CA1"}
-            for index in range(4)
+            "CA1_e0": {"electrode_group_metadata_key": "shank", "location": "CA1"},
+            "CA1_e1": {"electrode_group_metadata_key": "shank", "location": "CA1"},
+            "CA1_e2": {"electrode_group_metadata_key": "shank", "location": "CA1"},
+            "CA1_e3": {"electrode_group_metadata_key": "shank", "location": "CA1"},
         },
     }
     metadata["Ecephys"]["ElectricalSeries"]["probe0"]["channel_to_electrode"] = {
-        str(channel_id): f"CA1_e{index}" for index, channel_id in enumerate(channel_ids)
+        channel_ids[0]: "CA1_e0",
+        channel_ids[1]: "CA1_e1",
+        channel_ids[2]: "CA1_e2",
+        channel_ids[3]: "CA1_e3",
     }
 
     nwbfile = interface.create_nwbfile(metadata=metadata)
@@ -444,6 +483,8 @@ fills in.
 
 .. code-block:: python
 
+    from neuroconv.tools.testing.mock_interfaces import MockRecordingInterface
+
     interface = MockRecordingInterface(num_channels=4, durations=[0.1], metadata_key="two_shanks")
     metadata = interface.get_metadata_template()
     ecephys = metadata["Ecephys"]
@@ -471,8 +512,10 @@ fills in.
     }
 
     rows = ecephys["ElectrodesTable"]["rows"]
-    for index, entry in enumerate(rows.values()):
-        entry["electrode_group_metadata_key"] = "shank_1" if index < 2 else "shank_2"
+    rows["ElectrodeGroup_0"]["electrode_group_metadata_key"] = "shank_1"
+    rows["ElectrodeGroup_1"]["electrode_group_metadata_key"] = "shank_1"
+    rows["ElectrodeGroup_2"]["electrode_group_metadata_key"] = "shank_2"
+    rows["ElectrodeGroup_3"]["electrode_group_metadata_key"] = "shank_2"
 
     nwbfile = interface.create_nwbfile(metadata=metadata)
     sorted(nwbfile.electrode_groups)  # -> ['Shank1', 'Shank2']
@@ -491,6 +534,8 @@ device with two groups. The difference matters to a reader: it is what says whet
 one piece of silicon or on two separately implanted probes.
 
 .. code-block:: python
+
+    from neuroconv.tools.testing.mock_interfaces import MockRecordingInterface
 
     interface = MockRecordingInterface(num_channels=4, durations=[0.1], metadata_key="two_probes")
     metadata = interface.get_metadata_template()
@@ -517,8 +562,10 @@ one piece of silicon or on two separately implanted probes.
     }
 
     rows = ecephys["ElectrodesTable"]["rows"]
-    for index, entry in enumerate(rows.values()):
-        entry["electrode_group_metadata_key"] = "left" if index < 2 else "right"
+    rows["ElectrodeGroup_0"]["electrode_group_metadata_key"] = "left"
+    rows["ElectrodeGroup_1"]["electrode_group_metadata_key"] = "left"
+    rows["ElectrodeGroup_2"]["electrode_group_metadata_key"] = "right"
+    rows["ElectrodeGroup_3"]["electrode_group_metadata_key"] = "right"
 
     nwbfile = interface.create_nwbfile(metadata=metadata)
     sorted(nwbfile.devices)  # -> ['ProbeLeft', 'ProbeRight']

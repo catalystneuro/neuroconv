@@ -3,325 +3,254 @@
 Ecephys Metadata Structure
 ==========================
 
-This document describes the dict-based metadata structure used by the extracellular electrophysiology
-(ecephys) pipeline in NeuroConv. It is intended for developers who are contributing new recording
-interfaces or modifying existing ones.
+This document describes the extracellular electrophysiology metadata shape and the decisions that
+produced it. It is intended for developers who are contributing new recording interfaces or modifying
+existing ones, and the decisions below are the ones a new ecephys interface has to follow.
 
-For user-facing instructions on annotating ecephys metadata, see :ref:`annotate_ecephys_metadata`.
-
-This is what the pipeline tool functions in ``tools/spikeinterface/spikeinterface.py`` read, and every
-recording interface emits it. NeuroConv writes this format for itself: a conversion that passes no
-metadata takes this path, and one that passes the older list-based format has it converted at the
-boundary before anything downstream sees it.
-
-``get_metadata()`` is the one place that still hands out the old shape by default. Pass
-``use_new_metadata_format=True`` to get the structure described here. That default flips in an
-upcoming release, at which point the argument is what you pass to get the old shape instead, and the
-old format is accepted for one further release after that.
+For user-facing documentation on how to annotate ecephys data, see :ref:`annotate_ecephys_metadata`.
+For the rules that hold across every modality, see :ref:`metadata_principles`.
 
 
-Design Principles
------------------
+The Structure
+-------------
 
-The ecephys metadata system follows the same core principles as every modality
-(see :ref:`metadata_principles`), specialized to extracellular electrophysiology:
-
-1. **Dictionary-Based Organization**
-   Metadata is organized using dictionaries with meaningful keys. Dictionaries allow direct access
-   to specific components by name, which is clearer and less error-prone than positional access.
-
-   .. code-block:: python
-
-       metadata["Ecephys"]["ElectrodeGroups"]["visual_cortex"]["location"] = "V1 binocular zone"
-
-2. **metadata_key Addresses the ElectricalSeries Entry**
-   An ecephys recording interface takes a single ``metadata_key``, and it addresses one thing: the
-   interface's entry under ``metadata["Ecephys"]["ElectricalSeries"]``. The device and electrode group
-   registries are keyed independently of it: ``IntanRecordingInterface`` emits its device under
-   ``"intan_device"`` and one electrode group entry per headstage port, keyed by group name. See
-   :ref:`metadata_key_naming` for the naming and default rules, which are the same in every modality.
-
-3. **Explicit References**
-   Components reference each other using explicit ``_metadata_key`` fields where the relationship
-   is 1:1 (for example an ElectrodeGroup references its Device via ``device_metadata_key``).
-   Where the relationship is many-to-many (ElectricalSeries to ElectrodeGroup), the link is
-   resolved through the electrodes table, not an explicit metadata field. See
-   :ref:`no_electrode_group_metadata_key` below.
-
-4. **Top-Level Devices**
-   Devices are stored at the top level (``metadata["Devices"]``) enabling device sharing across
-   ecephys, ophys, and other modalities. A single probe can be referenced by multiple electrode
-   groups, or the same ``Devices`` entry can be reused by an ophys interface in a mixed recording.
-
-5. **get_metadata() Reports Only What the Source Carries**
-   Every recording interface emits the ``ElectricalSeries`` entry, since it always writes one. A device
-   and electrode groups appear only where the source identifies them: ``IntanRecordingInterface`` reads
-   its device and one group per headstage port out of the file header, while
-   ``BlackrockRecordingInterface`` emits neither and leaves both to the user. Required NWB fields the
-   source does not carry are filled where the object is built, not in ``get_metadata()``.
-
-
-Metadata Structure Overview
----------------------------
-
-The complete ecephys metadata structure:
+The ecephys-specific metadata lives under ``metadata["Ecephys"]``. The devices it links out to live in
+the registries that own them, shared with the other modalities:
 
 .. code-block:: python
 
-    metadata = {
-        "NWBFile": {...},  # Session-level metadata
-        "Subject": {...},  # Subject information
+    metadata["DeviceModels"] = {
+        "neuropixels_1_0": {  # keyed by metadata_key; "name" is the NWB object's name
+            "name": "Neuropixels 1.0",
+            "manufacturer": "IMEC",
+            "model_number": "PRB_1_4_0480_1",
+        },
+    }
 
-        "Devices": {
-            "visual_cortex_probe": {
-                "name": "Neuropixels 1.0",
-                "description": "IMEC Neuropixels 1.0 probe, serial 19011119132",
-                "manufacturer": "IMEC",
-            },
-            "hippocampus_probe": {
-                "name": "A4x8-5mm-50-200-177",
-                "description": "NeuroNexus 4-shank silicon probe, 8 sites per shank",
-                "manufacturer": "NeuroNexus",
+    metadata["Devices"] = {
+        "probe_0": {
+            "name": "NeuropixelsImec0",
+            "description": "Implanted 2020-01-01.",
+            "serial_number": "18194809281",
+            "device_model_metadata_key": "neuropixels_1_0",  # -> DeviceModels
+        },
+    }
+
+    metadata["Ecephys"] = {
+        "ElectrodeGroups": {
+            "shank_0": {
+                "name": "Shank0",
+                "description": "Shank 0 of the probe.",
+                "location": "CA1",
+                "device_metadata_key": "probe_0",            # -> Devices
             },
         },
-
-        "Ecephys": {
-            "ElectrodeGroups": {
-                "visual_cortex_probe": {
-                    "name": "ElectrodeGroupV1",
-                    "description": "IMEC probe shank in V1",
-                    "location": "V1 binocular zone",
-                    "device_metadata_key": "visual_cortex_probe",  # Reference to device
-                },
-                "hippocampus_shank_0": {
-                    "name": "Shank0",
-                    "description": "Shank 0 of the A4x8 probe, dorsal CA1",
-                    "location": "CA1 pyramidal layer",
-                    "device_metadata_key": "hippocampus_probe",  # Multiple groups share one device
-                },
-                "hippocampus_shank_1": {
-                    "name": "Shank1",
-                    "description": "Shank 1 of the A4x8 probe, dorsal CA1",
-                    "location": "CA1 pyramidal layer",
-                    "device_metadata_key": "hippocampus_probe",
-                },
-                "hippocampus_shank_2": {
-                    "name": "Shank2",
-                    "description": "Shank 2 of the A4x8 probe, dorsal CA1",
-                    "location": "CA1 pyramidal layer",
-                    "device_metadata_key": "hippocampus_probe",
-                },
-                "hippocampus_shank_3": {
-                    "name": "Shank3",
-                    "description": "Shank 3 of the A4x8 probe, dorsal CA1",
-                    "location": "CA1 pyramidal layer",
-                    "device_metadata_key": "hippocampus_probe",
+        "ElectrodesTable": {
+            "rows": {                                         # one entry per contact, keyed by a handle
+                "shank_0_e0": {
+                    "electrode_group_metadata_key": "shank_0",  # -> Ecephys.ElectrodeGroups, required
+                    "electrode_name": "e0",                   # the contact's own identifier, where the format has one
+                    "location": "CA1",
+                    "rel_x": 0.0,
+                    "rel_y": 0.0,
+                    "imp": 1.0e6,
+                    "shank_side": 0,                          # any other field becomes a column
                 },
             },
-
-            "ElectricalSeries": {
-                "visual_cortex_probe": {
-                    "name": "ElectricalSeriesV1",
-                    "description": "Raw AP-band acquisition traces from V1",
+            "columns": {                                      # keyed by the field the rows use
+                "imp": {
+                    "column_name": "impedance",               # the header it is written under
+                    "description": "Electrode impedance in ohms, measured at 1 kHz.",
+                    "dtype": "float64",
                 },
-                "hippocampus_probe": {
-                    "name": "ElectricalSeriesHPC",
-                    "description": "Raw broadband traces from the A4x8 probe",
+                "shank_side": {
+                    "description": "Which face of the shank the contact sits on.",
+                    "column_categories": {                    # written as a MeaningsTable beside the column
+                        "labels": {0: "front", 1: "back"},
+                        "meanings": {0: "contact on the front face", 1: "contact on the back face"},
+                    },
                 },
+            },
+        },
+        "ElectricalSeries": {
+            "imec0.ap": {                                     # keyed by the interface's metadata_key
+                "name": "ElectricalSeriesAP",
+                "description": "Raw action-potential band, 30 kHz.",
+                "channel_to_electrode": {"imec0.ap#AP0": "shank_0_e0"},  # channel id -> a key in rows
             },
         },
     }
 
-This layout shows the two patterns the dict format expresses:
+    # The older column-description list. Still read, and superseded by ElectrodesTable.columns above.
+    metadata["Ecephys"]["Electrodes"] = [{"name": "imp", "description": "Electrode impedance in ohms."}]
 
-- **One device per group (1:1).** ``visual_cortex_probe`` appears once in ``Devices`` and once in
-  ``ElectrodeGroups``, with the same key. This is the common single-probe case.
-- **One device shared across many groups (1:N).** ``hippocampus_probe`` appears once in
-  ``Devices``, and each shank gets its own ``ElectrodeGroups`` entry pointing at it via
-  ``device_metadata_key``. This is how multi-shank silicon probes are represented: one physical
-  substrate, several electrode groups.
+A series entry is passed to the ``ElectricalSeries`` constructor, so every field in it is a pynwb
+argument except ``channel_to_electrode``, which the writer pops by name. A ``metadata_key`` naming no
+entry raises: that is a caller mistake and not absent metadata.
 
-Each interface contributes one ``ElectricalSeries`` entry indexed by its ``metadata_key`` (see
-:ref:`single_electrical_series_per_interface`). The per-channel link from a sample in the
-``ElectricalSeries`` to its ``ElectrodeGroup`` is resolved through the electrodes table at write
-time, not through a metadata key (see :ref:`no_electrode_group_metadata_key`).
+A group entry that omits ``description`` or ``location`` has them filled from the modality's placeholder
+factory. A group naming no ``device_metadata_key`` falls to the attached probe's identity when the
+recording carries one probe, and to ``PlaceholderElectrodeDevice`` otherwise. Two group keys that share a
+``name`` raise when rows point at both. The recording's own ``group`` and ``group_name`` properties have
+to agree, and regrouping the channels after an interface set ``group_name`` at construction raises.
 
+``ElectrodesTable`` is optional. Absent, the table is derived from the recording's channels and
+properties. Present, it is an overlay on that table: a row wins for the fields it states and inherits
+the rest, a field stated as ``None`` is written as a null, and a key the recording derives nothing for is
+appended as a row of its own. Row order is the recording's channel order with the appended rows after
+it. Every row needs ``electrode_group_metadata_key``, and a key naming no group raises. A row stating
+``group``, ``group_name`` or ``channel_name`` raises, since the writer derives those. A ``columns`` entry
+naming a field no row states raises, a ``dtype`` the values cannot be cast to raises, and two rows
+describing one ``(group, electrode_name)`` raise. ``channel_to_electrode`` is optional and, when present,
+has to cover every channel of the recording; it may name channels the recording no longer has, which is
+what ``remove_channels`` and ``stub_test`` leave behind, but a key it names that no row declares raises.
 
-The metadata_key Parameter
---------------------------
+The rows are in NWB column space and not in spikeinterface property space: the ``location`` property
+becomes ``rel_x``, ``rel_y`` and ``rel_z``, ``brain_area`` becomes ``location``, and ``gain_to_uV``,
+``offset_to_uV`` and ``physical_unit`` are written into the ``ElectricalSeries`` and never reach the
+table. ``exclude=`` on ``add_recording_to_nwbfile`` is how a property is kept out of the table on every
+path, since a row that omits it inherits the recording's value.
 
-Ecephys recording interfaces accept a ``metadata_key`` parameter that selects the ElectricalSeries
-entry to write, and only that entry; the device and electrode groups are reached from the recording's
-channel groups and the ``device_metadata_key`` links, not from this key.
-When ``None`` (the default), a migrated interface resolves its own constant in ``__init__``
-(``"blackrock_recording"``, ``"intan_recording"``; SpikeGLX derives one per stream, since a session
-produces several at once), and the base class otherwise falls back to ``es_key``, which is how an
-interface that names its own series (``"ElectricalSeriesLFP"``) keys its entry without stating the same
-string twice. :ref:`metadata_key_naming` gives the rules those defaults follow. Explicit
-values let the caller deliberately share keys across interfaces.
+The cross-references resolve as follows. ``device_metadata_key`` goes into the shared top-level
+``metadata["Devices"]`` and ``device_model_metadata_key`` into ``metadata["DeviceModels"]``.
+``electrode_group_metadata_key`` goes into ``metadata["Ecephys"]["ElectrodeGroups"]``, and each value of
+``channel_to_electrode`` is a key of ``metadata["Ecephys"]["ElectrodesTable"]["rows"]``. A key naming no
+entry raises in all four cases. The ``ElectricalSeries`` to ``ElectrodeGroup`` relationship has no key,
+for the reason given below.
 
-``add_recording_to_nwbfile`` takes the same ``metadata_key`` argument and is the pipeline-level entry
-point. It is required rather than optional there: passing metadata whose ``Ecephys.ElectricalSeries``
-holds keyed entries without saying which one to write raises, naming the entry it needs. The write
-path itself is chosen per block from the shape of the metadata, not from this argument.
-
-Key Propagation
-~~~~~~~~~~~~~~~
-
-For a recording interface with ``metadata_key="visual_cortex_probe"``:
-
-- ``metadata["Ecephys"]["ElectricalSeries"]["visual_cortex_probe"]`` - The primary object (direct
-  lookup via ``metadata_key``).
-- ``metadata["Ecephys"]["ElectrodeGroups"][group_name]`` - Resolved from the recording's
-  ``group_name`` channel property. Each channel carries its own ``group_name``, so the pipeline
-  looks up the entry whose ``"name"`` matches.
-- ``metadata["Devices"][device_metadata_key]`` - Resolved via ``device_metadata_key`` inside each
-  matched ``ElectrodeGroups`` entry.
-
-Only the first of the three is reached through ``metadata_key``. An interface that knows its groups
-keys them by group name (Intan), so the group key and the interface's key are different strings, and
-an interface that does not emits no group entry at all. The indirection through
-``device_metadata_key`` lets multiple electrode groups share a single Device entry.
+A recording interface's ``metadata_key`` addresses its ``ElectricalSeries`` entry and nothing else. The
+migrated interfaces resolve a fixed snake_case constant in ``__init__``: ``"intan_recording"``,
+``"blackrock_recording"``, ``"open_ephys_recording"``. SpikeGLX derives one per stream, ``"imec0.ap"``,
+since a session produces several at once. An interface with no constant falls back to its ``es_key``,
+which is how one that names its own series keys its entry without stating the same string twice.
+``add_recording_to_nwbfile`` takes the same argument and requires it when the block is keyed. See
+:ref:`metadata_key_naming` for the cross-modality rule. The older list-based block is translated where it
+enters the library, so nothing downstream is written against it.
 
 
-.. _no_electrode_group_metadata_key:
+Design Decisions
+----------------
 
-No electrode_group_metadata_key on ElectricalSeries
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+No ``electrode_group_metadata_key`` on an ``ElectricalSeries`` entry
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Unlike ophys ``MicroscopySeries`` (which carries ``imaging_plane_metadata_key``), an
-``ElectricalSeries`` entry does **not** carry an ``electrode_group_metadata_key`` field. The reason
-is structural: an NWB ``ElectricalSeries`` does not directly reference an ``ElectrodeGroup``. It
-references the ``electrodes`` table via a ``DynamicTableRegion``, and each row of that table has
-its own ``group`` column. The ``ElectricalSeries`` to ``ElectrodeGroup`` relationship is therefore
-many-to-many, not 1:1.
+An ``ElectricalSeries`` entry does not name its electrode group, unlike an ophys ``MicroscopySeries``,
+which carries ``imaging_plane_metadata_key``.
 
-The pipeline resolves the linkage implicitly from the recording's SpikeInterface channel properties:
-each channel has a ``group`` property, which becomes the ``group_name`` column of the electrodes
-table, which links each row to its ``ElectrodeGroup``. Adding an explicit
-``electrode_group_metadata_key`` on ``ElectricalSeries`` would be wrong-shaped.
-
-Multiple ElectricalSeries per NWBFile are already supported without any such field: the
-``SpikeGLXConverter`` pattern instantiates one recording interface per stream (AP, LF, NIDQ), each
-with its own ``metadata_key``, each writing its own entry under
-``metadata["Ecephys"]["ElectricalSeries"]``. Each interface's recording carries its own channels
-and their own group properties, so the per-row ``group`` linkage is sufficient.
+The reason is structural. An NWB ``ElectricalSeries`` does not reference an ``ElectrodeGroup``. It
+references rows of the electrodes table through a ``DynamicTableRegion``, and each row carries its own
+``group``. The relationship is therefore many-to-many and is resolved through the table: on the derived
+path from the recording's channel groups, and on the stated path from each row's
+``electrode_group_metadata_key``. A key on the series would be wrong-shaped, and several series in one
+file already work without it, since ``SpikeGLXConverterPipe`` instantiates one interface per stream and
+each writes its own entry.
 
 
-.. _single_electrical_series_per_interface:
+One ``ElectricalSeries`` per interface
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Single ElectricalSeries per Interface
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+A recording interface writes exactly one ``ElectricalSeries``, the entry its ``metadata_key`` names. To
+produce several in one file, create several interfaces, as ``SpikeGLXConverterPipe`` does, or call
+``add_recording_to_nwbfile`` several times with different keys.
 
-A recording interface writes exactly one ``ElectricalSeries`` per ``metadata_key``. To produce
-multiple series in one NWB file, create multiple interfaces (as in ``SpikeGLXConverter``) or call
-``add_recording_to_nwbfile`` multiple times with different ``metadata_key`` values.
-
-A future capability in which a single interface produces multiple ``ElectricalSeries`` from the
-same recording (with explicit channel selection per series) is not supported today. That would
-need a separate design and is out of scope for the dict-based pipeline work.
+A single interface producing several series from one recording, with a channel selection per series,
+is not supported and would need its own design.
 
 
-Naming: ElectricalSeries versus other candidates
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The outer key is ``ElectricalSeries``, not a name from ``ndx-extracellular-channels``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The outer key under ``metadata["Ecephys"]`` is ``ElectricalSeries``, matching the NWB core class
-name. The ophys pipeline follows a different convention (``MicroscopySeries``, borrowed from
-``ndx-microscopy``) because ndx-microscopy is an accepted NWB enhancement proposal with a clear
-path to core. ``ndx-extracellular-channels`` does not yet have the same status, so borrowing its
-terminology would adopt unfamiliar vocabulary without the forward-compat payoff. Keeping
-``ElectricalSeries`` mirrors the object users already write today and covers every ecephys use
-case NeuroConv produces (extracellular microelectrodes, LFP, ECoG, EEG).
+The block is keyed by the NWB core class name. The ophys pipeline borrows ``MicroscopySeries`` from
+``ndx-microscopy`` because that extension is an accepted proposal with a path to core.
+``ndx-extracellular-channels`` does not have that status yet, so borrowing its vocabulary would cost
+familiarity without the forward-compatibility payoff. ``ElectricalSeries`` is the object users already
+write and covers every ecephys use case NeuroConv produces.
 
 
-Linking and Object Creation
----------------------------
+The electrodes table has its own key beside ``Electrodes``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Each interface's goal is to create an ``ElectricalSeries`` in NWB, along with its linked
-``ElectrodeGroup`` (one per distinct channel group in the recording) and ``Device`` objects.
+The stated table lives at ``Ecephys.ElectrodesTable`` and ``Ecephys.Electrodes`` keeps its old meaning,
+the list of column descriptions annotating a derived table. The alternative, built first, was to claim
+``Electrodes`` for both and route on shape, a list being descriptions and a mapping being rows.
 
-Contained vs Linked Components
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+That was reversed because a wrong shape became a different feature instead of an error: a list written
+where rows were meant was silently read as descriptions, ``dict_deep_update`` warned on the documented
+converter path, and the schema could not express the union. Under separate keys the schema refuses the
+wrong shape. The name is pynwb's own class name and matches ``nwbfile.electrodes``, and the inner keys
+are lowercase ``rows`` and ``columns`` because in this format CamelCase keys are blocks and lowercase keys
+are fields of one.
 
-In NWB, ``Device`` and ``ElectrodeGroup`` are separate, shareable objects. An ``ElectrodeGroup``
-links to its ``Device``. An ``ElectricalSeries`` links to the ``electrodes`` table rows (which in
-turn link to their ``ElectrodeGroup``). All three are **linked components** and get separate
-metadata entries.
 
-How Linking Works
-~~~~~~~~~~~~~~~~~
+The stated table is an overlay on the recording, not a replacement for it
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-In the metadata dict we do not have actual NWB objects yet, only dictionaries. Relationships use
-``_metadata_key`` fields:
+The table is derived from the recording on every path, and ``ElectrodesTable`` is written over it field
+by field. The alternative, also built first, was strict: a stated block declared every row and the
+recording was not consulted for column values at all.
 
-``device_metadata_key`` is used in ElectrodeGroup to reference its Device:
+The requirement that decided it is that ``add_recording_to_nwbfile`` has to work on its own, so a
+dictionary annotating one column of one electrode must not turn off every column the recording carries.
+There is also one writer instead of two implementations a test has to keep in agreement: the derived
+case is a metadata generator feeding the same code the stated case uses.
 
-.. code-block:: python
+The consequences a new interface will meet: a typo in a row key writes an orphan row instead of
+raising, since a stated key the recording knows nothing about is by design a row of its own; every
+declared row is written whether or not a channel reaches it, so a user who calls
+``get_metadata_template()`` and then ``remove_channels()`` gets rows no series points at; and
+``get_metadata_template()`` on ``BaseRecordingExtractorInterface`` states the whole table so that a user
+edits rows instead of authoring them.
 
-    electrode_group = {
-        "name": "0",
-        "description": "Shank 0",
-        "location": "V1",
-        "device_metadata_key": "visual_cortex_probe",  # Points to metadata["Devices"]["visual_cortex_probe"]
-    }
 
-The ``ElectricalSeries`` to ``ElectrodeGroup`` linkage is resolved through the electrodes table
-and does not have an explicit metadata field (see :ref:`no_electrode_group_metadata_key`).
+A row is a contact where the format names one, a channel otherwise
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-When Objects Are Created
-~~~~~~~~~~~~~~~~~~~~~~~~
+A row's identity in the file is ``(group_name, electrode_name)`` where the recording carries contact
+identifiers, and ``(group_name, channel_name)`` where it does not, and the row keys the template derives
+follow the same rule: ``{group}_{contact}`` or ``{group}_{channel}``. Two channels that recorded one
+contact reach one row. The alternative was the previous triple ``{group}_{electrode}_{channel}``, which
+put every channel on its own row.
 
-Linked objects (Devices, ElectrodeGroups) are created when ``add_recording_to_nwbfile`` is called.
-The metadata dict defines what *could* be created; the ``_metadata_key`` references and the
-recording's channel group properties determine what actually gets written.
+The triple was replaced because it forced a fabrication. The AP and LF bands of a Neuropixels probe are
+the same contacts read through two channels, and the only way to share rows under the triple was for
+``SpikeGLXRecordingInterface`` to write a joined ``AP0,LF0`` into both recordings' ``channel_name`` so the
+identities collided. That put a name in the file that was no channel's own and fired for an AP-only
+conversion. `#2001 <https://github.com/catalystneuro/neuroconv/pull/2001>`_ removed it. The group
+qualifies the key because contact ids are unique per probe and not per recording: two probes in one
+SpikeGLX session were measured sharing 70 contact ids.
 
-The rules are:
+What this obliges of a new interface. ``channel_name`` is the recording's own label and a row cannot
+state it. If the format supplies contact ids, two streams over the same contacts share rows with nothing
+else to do. If it does not, the channel name is the identity, so it must not change between streams of
+one recording, and a row shared by two bands keeps whichever band's channel name reached it first.
 
-1. Devices and ElectrodeGroups are created lazily: only entries reached through a ``_metadata_key``
-   chain or matched to a channel group get written. Entries present in the metadata dict but not
-   reachable are ignored. This means a shared YAML can describe all devices in a project and only
-   the ones actually linked end up in the NWB file.
 
-2. If a required link is missing (an ElectrodeGroup entry has no ``device_metadata_key``), a
-   default Device is created and linked automatically.
+Column declarations are central on the table, not inline per interface
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-3. If the recording contains a channel ``group_name`` with no matching entry in
-   ``metadata["Ecephys"]["ElectrodeGroups"]``, a default ElectrodeGroup is generated for that
-   group and linked to the default Device.
+``columns`` sits on ``ElectrodesTable`` and describes the table as a whole, in the entry format the
+events tables use, with ``column_name``, ``description``, ``dtype`` and ``column_categories``. The
+alternative was the events layout, where each interface declares the columns it contributes.
 
-4. For shared resources (two electrode groups from the same probe), both group entries reference
-   the same ``device_metadata_key``. The Device is created by whichever group is written first
-   and reused thereafter.
+Events needs per-contributor declarations because several interfaces pool rows into one table and each
+brings its own label vocabulary. The electrodes table is one table described by whoever annotates it, so
+a central block is what a user edits and what a converter merges. The cost is accepted and named: two
+interfaces describing one column collide in ``dict_deep_update`` and the second wins silently. An
+interface seeds descriptions through the ``Ecephys.Electrodes`` list and the template carries them into
+``columns``, so stating the table does not lose a description the interface was supplying. ``dtype`` is
+declared only for numeric and boolean kinds, since a numpy string dtype carries a width that would
+truncate a value a user lengthened.
 
-5. ``description`` and ``location`` are required by the NWB ``ElectrodeGroup`` but are rarely in the
-   source, so a group entry that omits either has it filled at creation time from
-   ``_get_ecephys_metadata_placeholders``, the modality's placeholder factory
-   (see :ref:`metadata_principles`). An entry may therefore carry nothing but a ``name`` and a
-   ``device_metadata_key``, which is what an interface that knows its probe but not its anatomy emits.
 
-.. code-block:: python
+A group naming no device falls to the attached probe before the placeholder
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    # Two electrode groups sharing one probe.
-    metadata["Devices"]["shared_probe"] = {
-        "name": "Neuropixels 1.0",
-        "description": "IMEC Neuropixels 1.0 probe",
-        "manufacturer": "IMEC",
-    }
+Device resolution has three tiers: the group's ``device_metadata_key``, then the probe attached to the
+recording, then ``PlaceholderElectrodeDevice``. The alternative was two tiers, key or placeholder.
 
-    metadata["Ecephys"]["ElectrodeGroups"]["shank_0"] = {
-        "name": "0",
-        "description": "Shank 0",
-        "location": "V1",
-        "device_metadata_key": "shared_probe",
-    }
-
-    metadata["Ecephys"]["ElectrodeGroups"]["shank_1"] = {
-        "name": "1",
-        "description": "Shank 1",
-        "location": "V1",
-        "device_metadata_key": "shared_probe",
-    }
-
-Device keys are independent of any interface's ``metadata_key`` and can be any arbitrary string.
-No interface "owns" the device; it is created at write time by whichever interface first follows
-the reference chain to it.
+The probe tier exists because a probe from ``probeinterface`` already carries the provenance the file
+wants, a ``Device`` and a ``DeviceModel`` keyed by serial number, and writing a placeholder over it would
+discard what the recording knows. It fires only for a single-probe recording, since a group cannot be
+traced back to its probe otherwise. The obligation on a new interface is that if the format names its
+hardware, emit it in ``get_metadata`` as a ``Devices`` entry and point the groups at it, which is what
+``IntanRecordingInterface`` and ``SpikeGLXRecordingInterface`` do.
