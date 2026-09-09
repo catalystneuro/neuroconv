@@ -1,4 +1,3 @@
-import os
 import shutil
 import tempfile
 from datetime import datetime
@@ -12,6 +11,9 @@ from pynwb.image import ImageSeries
 from neuroconv import ConverterPipe, NWBConverter
 from neuroconv.converters import LightningPoseConverter
 from neuroconv.tools import get_module
+from neuroconv.tools.nwb_helpers._metadata_and_file_helpers import (
+    _external_file_entry_relative_to,
+)
 from neuroconv.utils import DeepDict
 
 from ..setup_paths import BEHAVIOR_DATA_PATH
@@ -159,11 +161,11 @@ class TestLightningPoseConverter(TestCase):
             self.assertIn(self.original_video_name, nwbfile.acquisition)
             image_series = nwbfile.acquisition[self.original_video_name]
             self.assertIsInstance(image_series, ImageSeries)
-            # `external_file` is written relative to the NWB file
+            # `external_file` is written relative to the NWB file where a relative path exists
             output_directory = Path(nwbfile_path).resolve().parent
             self.assertEqual(
                 image_series.external_file[:],
-                os.path.relpath(Path(self.original_video_file_path).resolve(), start=output_directory),
+                _external_file_entry_relative_to(self.original_video_file_path, output_directory=output_directory),
             )
             self.assertEqual(image_series.description, "The original video used for pose estimation.")
 
@@ -174,7 +176,7 @@ class TestLightningPoseConverter(TestCase):
             self.assertIsInstance(image_series_labeled_video, ImageSeries)
             self.assertEqual(
                 image_series_labeled_video.external_file[:],
-                os.path.relpath(Path(self.labeled_video_file_path).resolve(), start=output_directory),
+                _external_file_entry_relative_to(self.labeled_video_file_path, output_directory=output_directory),
             )
             self.assertEqual(
                 image_series_labeled_video.description,
