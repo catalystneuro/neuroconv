@@ -445,6 +445,7 @@ def _add_electrodes_from_registry_to_nwbfile(
         _get_channel_name,
         _get_null_value_for_column,
         _get_null_value_for_property,
+        _get_nwb_electrode_column_descriptions,
     )
 
     null_values_for_properties = dict() if null_values_for_properties is None else null_values_for_properties
@@ -526,7 +527,10 @@ def _add_electrodes_from_registry_to_nwbfile(
     for electrode_key in ordered_keys:
         entry = registry[electrode_key]
         group_name = group_name_by_key[entry["electrode_group_metadata_key"]]
-        electrode_name = str(entry.get("electrode_name", ""))
+        # A blank ``electrode_name`` is a row with no contact identity, not a field to fill: the contact
+        # identifier is the format's, never the experimenter's, so ``None`` reads as absent.
+        electrode_name = entry.get("electrode_name")
+        electrode_name = "" if electrode_name is None else str(electrode_name)
         identity = row_identity(group_name, electrode_name, str(channel_names_by_key.get(electrode_key, "")))
         if identity in existing_rows:
             row_index_by_key[electrode_key] = existing_rows[identity]
@@ -572,6 +576,7 @@ def _add_electrodes_from_registry_to_nwbfile(
             "Fill it in, or delete the field to have the column written with the description the recording supplies."
         )
 
+    nwb_descriptions = _get_nwb_electrode_column_descriptions()
     column_data = {}
     for field in declared_columns:
         specification = column_specifications.get(field, {})
@@ -612,8 +617,9 @@ def _add_electrodes_from_registry_to_nwbfile(
         categories = specification.get("column_categories")
         if categories is not None:
             data = _apply_column_categories(column_name=field, data=data, categories=categories)
-        column_data[specification.get("column_name", field)] = {
-            "description": specification.get("description", "no description"),
+        written_name = specification.get("column_name", field)
+        column_data[written_name] = {
+            "description": specification.get("description", nwb_descriptions.get(written_name, "no description")),
             "data": data,
             "categories": categories,
             "ragged": ragged,
@@ -622,12 +628,18 @@ def _add_electrodes_from_registry_to_nwbfile(
 
     # The identity columns, which the writer owns. A ``columns`` entry for either of them
     # carries only a description, since the values are not a row's to state.
-    if any("electrode_name" in entry for entry in registry.values()):
+    if any(entry.get("electrode_name") is not None for entry in registry.values()):
         column_data["electrode_name"] = {
             "description": column_specifications.get("electrode_name", {}).get(
                 "description", "unique electrode reference from probe contact identifiers"
             ),
-            "data": np.array([str(registry[key].get("electrode_name", "")) for key in ordered_keys], dtype=str),
+            "data": np.array(
+                [
+                    "" if registry[key].get("electrode_name") is None else str(registry[key]["electrode_name"])
+                    for key in ordered_keys
+                ],
+                dtype=str,
+            ),
             "categories": None,
         }
     column_data["channel_name"] = {

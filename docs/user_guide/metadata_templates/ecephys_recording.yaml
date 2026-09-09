@@ -40,7 +40,7 @@ Ecephys:
     rows:
       shank_0_e0:
         electrode_group_metadata_key: shank_0  # a key in ElectrodeGroups above, required
-        electrode_name: null                   # the contact's own identifier; delete it where the format
+        electrode_name: null                   # the contact's own identifier; left blank where the format
                                                #   names no contacts, since the channel is the identity then
         location: null                         # the brain region, as an atlas name
         x: null                                # microns, on the schema's axes: +x posterior, +y inferior,

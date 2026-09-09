@@ -200,8 +200,10 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
                         type="string",
                         description="Key of this electrode's group in metadata['Ecephys']['ElectrodeGroups'].",
                     ),
+                    # ``null`` is a row with no contact identity, which is what a format naming no contacts
+                    # has, and not a blank to fill.
                     electrode_name=dict(
-                        type="string",
+                        type=["string", "null"],
                         description="This electrode's identity within its group, written to the table.",
                     ),
                     location=dict(type="string", description="The brain region the electrode sits in."),
@@ -342,6 +344,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         from ...tools.spikeinterface._electrodes import _build_electrodes_metadata
         from ...tools.spikeinterface.spikeinterface import (
             _get_group_name,
+            _get_nwb_electrode_column_descriptions,
             _get_probe_device_metadata,
         )
 
@@ -441,8 +444,8 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
         # A column the interface did not describe has no description here, rather than the "no
         # description" the derived table would write for it. The columns the NWB schema predefines are
-        # the exception: their description is the schema's, so there is nothing for a user to say.
-        nwb_predefined_columns = {"x", "y", "z", "imp", "location", "filtering", "rel_x", "rel_y", "rel_z", "reference"}
+        # the exception: they carry pynwb's own description, so there is nothing for a user to say.
+        nwb_predefined_columns = set(_get_nwb_electrode_column_descriptions())
         for column_name, specification in electrodes_table["columns"].items():
             if column_name not in property_descriptions and column_name not in nwb_predefined_columns:
                 specification["description"] = None

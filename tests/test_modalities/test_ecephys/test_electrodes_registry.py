@@ -142,8 +142,9 @@ class TestTemplate:
             "rel_z": None,
             "filtering": None,
         }
-        # A column NWB predefines keeps the derived description, since its meaning is the schema's;
-        # one of the recording's own has nothing to say about itself.
+        # A column NWB predefines carries pynwb's own description; one of the recording's own has nothing
+        # to say about itself.
+        assert ecephys["ElectrodesTable"]["columns"]["imp"]["description"] == "Impedance of the channel, in ohms."
         assert ecephys["ElectrodesTable"]["columns"]["quality"] == {"column_name": "quality", "description": None}
 
     def test_a_blank_left_in_place_is_refused(self):
@@ -415,6 +416,28 @@ class TestRegistryWrites:
 
 
 class TestElectrodeColumns:
+    def test_a_column_nwb_predefines_gets_pynwb_s_description(self):
+        """Whether the table is derived or stated, ``imp`` says what pynwb says and not "no description"."""
+        derived = _interface(properties={"imp": [1.0, 2.0, 3.0, 4.0]}).create_nwbfile()
+        stated_interface = _interface(properties={"imp": [1.0, 2.0, 3.0, 4.0]})
+        stated = stated_interface.create_nwbfile(metadata=_without_blanks(stated_interface.get_metadata_template()))
+
+        for nwbfile in (derived, stated):
+            assert nwbfile.electrodes["imp"].description == "Impedance of the channel, in ohms."
+            assert nwbfile.electrodes["location"].description == "Location of the electrode (channel)."
+
+    def test_a_blank_electrode_name_is_a_row_with_no_contact(self):
+        """The contact identifier is the format's, never the experimenter's, so ``None`` reads as absent."""
+        interface = _interface(num_channels=4)
+        metadata = _without_blanks(interface.get_metadata_template())
+        for entry in metadata["Ecephys"]["ElectrodesTable"]["rows"].values():
+            entry["electrode_name"] = None
+
+        nwbfile = interface.create_nwbfile(metadata=metadata)
+
+        assert "electrode_name" not in nwbfile.electrodes.colnames
+        assert nwbfile.acquisition["ElectricalSeries"].electrodes.data[:] == [0, 1, 2, 3]
+
     def test_a_column_is_renamed_and_described(self):
         interface = _interface(properties={"imp": [1.0, 2.0, 3.0, 4.0]})
         metadata = _without_blanks(interface.get_metadata_template())

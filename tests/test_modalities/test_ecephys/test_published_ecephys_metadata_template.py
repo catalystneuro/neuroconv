@@ -94,8 +94,8 @@ def test_published_ecephys_template_converts_once_filled(tmp_path):
     rows["shank_0_e0"].update(location="CA1", x=2000.0, y=2100.0, z=1500.0, rel_x=0.0, rel_y=0.0, rel_z=0.0, imp=1.0e6)
     rows["shank_1_e0"].update(location="CA3", x=2000.0, y=2600.0, z=1500.0, rel_x=0.0, rel_y=0.0, rel_z=0.0, imp=1.2e6)
     for row in rows.values():
-        # This mock names no contacts and no hardware filter, so the two go rather than being guessed at.
-        del row["electrode_name"]
+        # This mock names no hardware filter, so the field goes rather than being guessed at. The blank
+        # ``electrode_name`` stays: the format names no contacts, and a blank there means exactly that.
         del row["filtering"]
     metadata["Ecephys"]["ElectrodesTable"]["columns"]["imp"]["description"] = "Electrode impedance in ohms."
     metadata["Ecephys"]["ElectricalSeries"]["ecephys_recording"].update(
@@ -111,6 +111,7 @@ def test_published_ecephys_template_converts_once_filled(tmp_path):
     assert electrodes["group_name"].tolist() == ["Shank0", "Shank1"]
     assert electrodes["impedance"].tolist() == [1.0e6, 1.2e6]
     assert electrodes["y"].tolist() == [2100.0, 2600.0]
+    assert "electrode_name" not in electrodes.columns
     probe = read_nwbfile.devices["ProbeDorsalCA1"]
     assert probe.model.manufacturer == "Cambridge NeuroTech"
     series = read_nwbfile.acquisition["ElectricalSeriesRaw"]

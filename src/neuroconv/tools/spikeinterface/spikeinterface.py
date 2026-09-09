@@ -1466,6 +1466,22 @@ def _add_electrodes_to_nwbfile(
     )
 
 
+def _get_nwb_electrode_column_descriptions() -> dict[str, str]:
+    """The descriptions the NWB schema gives the columns it predefines on the electrodes table.
+
+    Read off pynwb's ``ElectrodesTable``, which is what ``add_electrode`` uses when it creates one of
+    these columns by row, so that a column added through ``add_electrode_column`` says the same thing.
+    The two the writer owns, ``group`` and ``group_name``, are left out.
+    """
+    from pynwb.ecephys import ElectrodesTable
+
+    return {
+        column["name"]: column["description"]
+        for column in ElectrodesTable.__columns__
+        if column["name"] not in ("group", "group_name")
+    }
+
+
 def _build_electrode_column_data(
     recording: BaseRecording,
     *,
@@ -1487,6 +1503,7 @@ def _build_electrode_column_data(
     NWBFile has been written to.
     """
     property_descriptions = dict() if property_descriptions is None else property_descriptions
+    nwb_descriptions = _get_nwb_electrode_column_descriptions()
 
     # 1. Build columns details from extractor properties: dict(name: dict(description='',data=data, index=False))
     data_to_add = dict()
@@ -1517,7 +1534,7 @@ def _build_electrode_column_data(
             index = data[0].ndim
 
         # Fill with provided custom descriptions
-        description = property_descriptions.get(property, "no description")
+        description = property_descriptions.get(property, nwb_descriptions.get(property, "no description"))
         data_to_add[property] = dict(description=description, data=data, index=index)
 
     # Special cases properties
@@ -1542,18 +1559,20 @@ def _build_electrode_column_data(
         column_number_to_property = {0: "rel_x", 1: "rel_y", 2: "rel_z"}
         for column_number in range(data.shape[1]):
             property = column_number_to_property[column_number]
-            data_to_add[property] = dict(description=property, data=data[:, column_number], index=False)
+            data_to_add[property] = dict(
+                description=nwb_descriptions[property], data=data[:, column_number], index=False
+            )
         data_to_add.pop("location")
 
     # In the electrode table location is the brain area of spikeinterface
     if "brain_area" in data_to_add:
         data_to_add["location"] = data_to_add["brain_area"]
-        data_to_add["location"].update(description="location")
+        data_to_add["location"].update(description=nwb_descriptions["location"])
         data_to_add.pop("brain_area")
     else:
         default_location = _get_default_ecephys_metadata()["Ecephys"]["ElectrodeGroup"][0]["location"]
         data = np.full(recording.get_num_channels(), fill_value=default_location)
-        data_to_add["location"] = dict(description="location", data=data, index=False)
+        data_to_add["location"] = dict(description=nwb_descriptions["location"], data=data, index=False)
 
     return data_to_add
 
