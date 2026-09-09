@@ -23,7 +23,7 @@ from .tools.nwb_helpers import (
 )
 from .tools.nwb_helpers._metadata_and_file_helpers import (
     _fetch_backend_from_nwbfile_on_disk,
-    _rewrite_external_file_paths_relative_to,
+    _make_image_series_paths_relative_to_nwbfile,
 )
 from .utils import (
     dict_deep_update,
@@ -462,7 +462,7 @@ class NWBConverter:
                 backend_configuration = self.get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
 
             configure_backend(nwbfile=nwbfile, backend_configuration=backend_configuration)
-            _rewrite_external_file_paths_relative_to(nwbfile=nwbfile, nwbfile_path=nwbfile_path)
+            _make_image_series_paths_relative_to_nwbfile(nwbfile=nwbfile, nwbfile_path=nwbfile_path)
 
             io.write(nwbfile)
 

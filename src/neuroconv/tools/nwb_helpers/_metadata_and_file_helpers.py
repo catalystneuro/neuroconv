@@ -625,7 +625,7 @@ def _fetch_backend_from_nwbfile_on_disk(
     return backend_on_disk
 
 
-def _rewrite_external_file_paths_relative_to(nwbfile: NWBFile, nwbfile_path: Path) -> None:
+def _make_image_series_paths_relative_to_nwbfile(nwbfile: NWBFile, nwbfile_path: Path) -> None:
     """
     Rewrite every ``ImageSeries.external_file`` entry so it is relative to the directory of ``nwbfile_path``.
 
@@ -713,7 +713,7 @@ def configure_and_write_nwbfile(
             nwbfile.set_modified()
             io.export(nwbfile=nwbfile, src_io=nwbfile.read_io, write_args=dict(link_data=False))
         else:
-            _rewrite_external_file_paths_relative_to(nwbfile=nwbfile, nwbfile_path=nwbfile_path)
+            _make_image_series_paths_relative_to_nwbfile(nwbfile=nwbfile, nwbfile_path=nwbfile_path)
             io.write(nwbfile)
 
 
