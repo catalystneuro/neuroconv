@@ -419,7 +419,10 @@ class TestMiniscopeConverterLegacyTyeLabFormat:
         assert self.photon_series_name in nwbfile.acquisition
         assert isinstance(nwbfile.acquisition[self.photon_series_name], OnePhotonSeries)
         assert self.image_series_name in nwbfile.acquisition
-        assert isinstance(nwbfile.acquisition[self.image_series_name], ImageSeries)
+        image_series = nwbfile.acquisition[self.image_series_name]
+        assert isinstance(image_series, ImageSeries)
+        # NWB reads `external_file` relative to the NWB file, so the absolute paths the glob found must not survive
+        assert all(not Path(file_path).is_absolute() for file_path in image_series.external_file)
 
     def test_converter_metadata(self):
         """Test that metadata is correctly extracted from legacy format."""

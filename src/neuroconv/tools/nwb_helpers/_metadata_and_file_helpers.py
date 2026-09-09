@@ -1,5 +1,6 @@
 """Collection of helper functions related to NWB."""
 
+import os
 import uuid
 import warnings
 from contextlib import contextmanager
@@ -12,6 +13,7 @@ from pydantic import FilePath
 from pynwb import NWBFile, read_nwb
 from pynwb.device import Device, DeviceModel
 from pynwb.file import Subject
+from pynwb.image import ImageSeries
 
 from . import (
     BACKEND_NWB_IO,
@@ -623,6 +625,41 @@ def _fetch_backend_from_nwbfile_on_disk(
     return backend_on_disk
 
 
+def _rewrite_external_file_paths_relative_to(nwbfile: NWBFile, nwbfile_path: Path) -> None:
+    """
+    Rewrite every ``ImageSeries.external_file`` entry so it is relative to the directory of ``nwbfile_path``.
+
+    The NWB specification reads ``external_file`` relative to the NWB file, while interfaces store whatever
+    path the caller handed them, which is usually absolute or relative to the working directory. An
+    ``ImageSeries`` read from an existing file is left alone, since its entries are already relative to that
+    file and not to the working directory. URLs are left as they are, and so is an entry that has no relative
+    path to the output at all (on Windows, a file on another drive). The result always uses forward slashes so
+    it stays meaningful once the file leaves the machine that wrote it.
+    """
+    output_directory = Path(nwbfile_path).resolve().parent
+    for neurodata_object in nwbfile.objects.values():
+        if not isinstance(neurodata_object, ImageSeries) or not neurodata_object.external_file:
+            continue
+        if neurodata_object.container_source is not None:  # read from disk, so already relative to that file
+            continue
+        for index, entry in enumerate(neurodata_object.external_file):
+            entry = str(entry)  # an interface may have stored a `Path`
+            if _is_url(entry):
+                continue
+            absolute_entry = Path(entry).resolve()
+            try:
+                # TODO: replace with `absolute_entry.relative_to(output_directory, walk_up=True)` once the Python
+                # floor is 3.12; before that `Path.relative_to` cannot produce `..` segments.
+                relative_entry = Path(os.path.relpath(absolute_entry, start=output_directory))
+            except ValueError:  # Windows, file and output on different drives: no relative path exists
+                continue
+            neurodata_object.external_file[index] = relative_entry.as_posix()
+
+
+def _is_url(path: str) -> bool:
+    return "://" in path
+
+
 def configure_and_write_nwbfile(
     nwbfile: NWBFile,
     nwbfile_path: FilePath | None = None,
@@ -635,6 +672,10 @@ def configure_and_write_nwbfile(
     A ``backend`` or a ``backend_configuration`` must be provided. To use the default backend configuration for
     the specified backend, provide only ``backend``. To use a custom backend configuration, provide
     ``backend_configuration``. If both are provided, ``backend`` must match ``backend_configuration.backend``.
+
+    Before writing, every ``ImageSeries.external_file`` entry in ``nwbfile`` is rewritten in place so it is relative
+    to the directory of ``nwbfile_path``, as the NWB specification reads it. An ``ImageSeries`` read from an
+    existing file keeps its paths.
 
     Parameters
     ----------
@@ -669,6 +710,7 @@ def configure_and_write_nwbfile(
             nwbfile.set_modified()
             io.export(nwbfile=nwbfile, src_io=nwbfile.read_io, write_args=dict(link_data=False))
         else:
+            _rewrite_external_file_paths_relative_to(nwbfile=nwbfile, nwbfile_path=nwbfile_path)
             io.write(nwbfile)
 
 

@@ -196,8 +196,9 @@ def test_external_mode_with_timestamps(
     with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
         nwbfile = io.read()
         module = nwbfile.acquisition
-        assert list(module["Video test1"].external_file[:]) == video_files[0:2]
-        assert list(module["Video test3"].external_file[:]) == [video_files[2]]
+        # The videos sit beside the NWB file, and `external_file` is written relative to it
+        assert list(module["Video test1"].external_file[:]) == [Path(file).name for file in video_files[0:2]]
+        assert list(module["Video test3"].external_file[:]) == [Path(video_files[2]).name]
 
 
 def test_external_mode_with_starting_time(nwb_converter, nwbfile_path, metadata, video_files):
@@ -215,8 +216,9 @@ def test_external_mode_with_starting_time(nwb_converter, nwbfile_path, metadata,
     with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
         nwbfile = io.read()
         module = nwbfile.acquisition
-        assert list(module["Video test1"].external_file[:]) == video_files[0:2]
-        assert list(module["Video test3"].external_file[:]) == [video_files[2]]
+        # The videos sit beside the NWB file, and `external_file` is written relative to it
+        assert list(module["Video test1"].external_file[:]) == [Path(file).name for file in video_files[0:2]]
+        assert list(module["Video test3"].external_file[:]) == [Path(video_files[2]).name]
         assert module["Video test1"].starting_time == 123.0
 
 
