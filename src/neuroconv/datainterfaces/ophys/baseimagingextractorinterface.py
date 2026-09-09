@@ -185,7 +185,10 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
             # Mirrors ``BaseRecordingExtractorInterface``: the base states the conventional default name
             # for the series it writes, and interfaces that know better overwrite it. ``MicroscopySeries``
             # is the forward-looking generic, used wherever the source does not say what was imaged.
-            metadata["Ophys"] = {"MicroscopySeries": {self.metadata_key: dict(name="MicroscopySeries")}}
+            # Keyed the way the writer will look it up: ``add_imaging_to_nwbfile`` falls back to the default
+            # key for an interface constructed without one, so the entry has to sit under that key too.
+            metadata_key = self.metadata_key or "default_metadata_key"
+            metadata["Ophys"] = {"MicroscopySeries": {metadata_key: dict(name="MicroscopySeries")}}
             return metadata
 
         # Old list-based path (unchanged)
