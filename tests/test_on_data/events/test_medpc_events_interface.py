@@ -285,8 +285,9 @@ class TestPerArrayTyeLab(MedPCEventsInterfaceMixin):
         interface_kwargs["event_configuration"] = {"S": {"payload": ["N"]}}
         interface = MedPCArrayEventsInterface(**interface_kwargs)
 
+        # Listing the event types reads only the configuration now, so the arrays are checked on the first read.
         with pytest.raises(ValueError, match="has 30 events but its value array 'N' holds 906 values"):
-            interface.get_metadata()
+            interface.add_to_nwbfile(nwbfile=mock_NWBFile())
 
     def test_round_trip(self, interface, metadata, tmp_path):
         nwbfile_path = tmp_path / "test_medpc_tye_lab.nwb"
@@ -458,7 +459,7 @@ def test_variable_missing_from_the_session_is_named():
     )
 
     with pytest.raises(ValueError, match="The MedPC variable 'left_nose_poke_times' is not in the session"):
-        interface.get_metadata()
+        interface.add_to_nwbfile(nwbfile=mock_NWBFile())
 
 
 class TestPackedVariableWidthCodes(MedPCEventsInterfaceMixin):
