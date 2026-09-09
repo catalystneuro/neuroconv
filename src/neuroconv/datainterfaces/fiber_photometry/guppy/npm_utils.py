@@ -69,8 +69,8 @@ def npm_run_parameters(guppy_folder_path: DirectoryPath) -> dict:
 
     Which clock a store was read on, what unit it was in, and -- for the header-less layout -- how
     many channels were interleaved are all choices made when GuPPy ran, and none leave a mark on the
-    raw file. GuPPy records the first two in a ``.npm_params.json`` beside ``storesList.csv`` and the
-    channel count in ``GuPPyParamtersUsed.json``.
+    raw file. GuPPy records them in a ``.npm_params.json`` beside ``storesList.csv``; runs written
+    before it recorded the channel count there carry it in ``GuPPyParamtersUsed.json`` instead.
 
     The clock and the unit are session-wide: GuPPy applies one unit to every stream it decomposes.
     """
@@ -87,8 +87,10 @@ def npm_run_parameters(guppy_folder_path: DirectoryPath) -> dict:
         f"recorded timestamp unit did not always match the one applied. Re-run Step 1 (Label Stores) "
         f"in GuPPy for '{guppy_folder_path}' to record the unit this session's timestamps are in."
     )
-    guppy_parameters = json.loads((guppy_folder_path / "GuPPyParamtersUsed.json").read_text(encoding="utf-8"))
-    number_of_channels = guppy_parameters.get("noChannels")
+    number_of_channels = npm_parameters.get("noChannels")
+    if number_of_channels is None:
+        guppy_parameters = json.loads((guppy_folder_path / "GuPPyParamtersUsed.json").read_text(encoding="utf-8"))
+        number_of_channels = guppy_parameters.get("noChannels")
     return dict(
         timestamp_column_name=npm_parameters["npm_timestamp_column_name"],
         time_unit=npm_parameters["npm_time_unit"],

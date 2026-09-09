@@ -113,6 +113,10 @@ class PyPhotometryEventsInterface(BaseEventsInterface):
         _validate_detection_configuration(detection_configuration, self._available_signals)
         self._detection_configuration = detection_configuration
 
+    def get_event_type_source_ids(self) -> list[str]:
+        """The event types the configuration resolves to, read from nothing."""
+        return _get_event_type_source_ids(self._detection_configuration)
+
     @staticmethod
     def _signal_source_id(digital_signal) -> str:
         """Name a line after the digital input it came off, counting from one as the vendor does."""
@@ -146,7 +150,7 @@ class PyPhotometryEventsInterface(BaseEventsInterface):
         # even a label, so only the name is seeded here. Derived from the configuration rather than from
         # the events, so whether a line happened to fire does not change which event types the
         # configuration asked for.
-        for event_type_source_id in _get_event_type_source_ids(self._detection_configuration):
+        for event_type_source_id in self.get_event_type_source_ids():
             metadata["Events"][self.metadata_key]["event_types"][event_type_source_id] = {
                 "event_name": event_type_source_id
             }

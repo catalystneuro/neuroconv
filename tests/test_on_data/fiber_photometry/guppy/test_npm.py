@@ -268,6 +268,22 @@ class TestNPMRunParameters:
         assert run_parameters["timestamp_column_name"] == "SystemTimestamp"
         assert run_parameters["number_of_channels"] == 2
 
+    def test_the_channel_count_is_read_from_the_npm_parameters(self, guppy_output_folder):
+        """Newer GuPPy runs record the count beside the other NPM settings, not in the snapshot."""
+        (guppy_output_folder / ".npm_params.json").write_text(
+            json.dumps(
+                {
+                    "npm_split_events": [False, False],
+                    "npm_time_unit": "seconds",
+                    "npm_timestamp_column_name": "SystemTimestamp",
+                    "noChannels": 3,
+                }
+            ),
+            encoding="utf-8",
+        )
+        (guppy_output_folder / "GuPPyParamtersUsed.json").unlink()
+        assert npm_run_parameters(guppy_output_folder)["number_of_channels"] == 3
+
     def test_a_file_predating_the_session_wide_unit_is_refused(self, guppy_output_folder):
         """The per-file unit could disagree with the one GuPPy applied, so such a file is unusable."""
         (guppy_output_folder / ".npm_params.json").write_text(
