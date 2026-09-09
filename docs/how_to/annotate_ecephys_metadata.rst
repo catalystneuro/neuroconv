@@ -77,6 +77,23 @@ interface's ``metadata_key``:
     ecephys["ElectricalSeries"][metadata_key]["name"] = "ElectricalSeriesProbe0"
     ecephys["ElectricalSeries"][metadata_key]["description"] = "Raw broadband traces, 30 kHz."
 
+.. admonition:: The file so far
+   :class: note
+
+   The series has its name, and the electrodes it points at are still the ones the recording derives.
+
+   .. code-block:: text
+
+       acquisition
+       └── ElectricalSeriesProbe0  ──▶  electrodes rows 0-3
+
+       electrodes
+       id   group_name       channel_name
+        0   ElectrodeGroup   0
+        1   ElectrodeGroup   1
+        2   ElectrodeGroup   2
+        3   ElectrodeGroup   3
+
 **Describe the electrodes.** ``ecephys["ElectrodesTable"]["rows"]`` holds one entry per electrode, each
 already pointing at its group with ``electrode_group_metadata_key``. The keys, ``ElectrodeGroup_0`` to
 ``ElectrodeGroup_3`` here, name the group and the channel each row came from, and are handles that stay
@@ -106,8 +123,10 @@ are not available in the source format:
 
 ``imp`` and ``filtering`` are the other two columns the NWB schema defines, for the electrode's
 impedance in ohms and a description of the hardware filtering. The template offers all of these blank
-where the recording did not supply them, and a blank left in place is left out of the file. Any other
-field you put on a row becomes a column of its own.
+where the recording did not supply them, and a blank left in place is left out of the file. On a probe
+with hundreds of contacts, drop a field you cannot fill from every row at once with
+``for entry in rows.values(): del entry["filtering"]``. Any other field you put on a row becomes a
+column of its own.
 
 .. code-block:: python
    :emphasize-lines: 11-16
@@ -183,6 +202,27 @@ means. Put the value on the rows and describe it under ``ElectrodesTable["column
             },
         },
     }
+
+.. admonition:: The file so far
+   :class: note
+
+   The ``side`` field became the ``shank_side`` column, written as labels with a table of their meanings.
+
+   .. code-block:: text
+
+       acquisition
+       └── ElectricalSeriesProbe0  ──▶  electrodes rows 0-3
+
+       electrodes
+       id   location   x      y      z      imp   shank_side
+        0   CA1        2000   2100   1500   1e6   front
+        1   CA1        2000   2100   1500   1e6   back
+        2   CA3        2000   2600   1500   1e6   front
+        3   CA3        2000   2600   1500   1e6   back
+
+       shank_side_meanings
+       front   contact on the front face
+       back    contact on the back face
 
 An entry is keyed by the field the rows use and can do four things:
 
@@ -260,6 +300,29 @@ at it with ``electrode_group_metadata_key``:
     rows["ElectrodeGroup_1"]["electrode_group_metadata_key"] = group_key
     rows["ElectrodeGroup_2"]["electrode_group_metadata_key"] = group_key
     rows["ElectrodeGroup_3"]["electrode_group_metadata_key"] = group_key
+
+.. admonition:: The file so far
+   :class: note
+
+   Every row links to the group, which carries where the group as a whole sat.
+
+   .. code-block:: text
+
+       acquisition
+       └── ElectricalSeriesProbe0  ──▶  electrodes rows 0-3
+
+       electrodes
+       id   location   x      y      z      imp   shank_side   group
+        0   CA1        2000   2100   1500   1e6   front        ──▶  ElectrodeGroupProbe0
+        1   CA1        2000   2100   1500   1e6   back         ──▶  ElectrodeGroupProbe0
+        2   CA3        2000   2600   1500   1e6   front        ──▶  ElectrodeGroupProbe0
+        3   CA3        2000   2600   1500   1e6   back         ──▶  ElectrodeGroupProbe0
+
+       shank_side_meanings
+       front   contact on the front face
+       back    contact on the back face
+
+       ElectrodeGroupProbe0 · Dorsal hippocampus
 
 The group's ``location`` is where the group as a whole sat. The per-row ``location`` above is the
 electrodes table's own column; setting one does not populate the other.
