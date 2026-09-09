@@ -1414,6 +1414,7 @@ class MockPoseEstimationInterface(BasePoseEstimationInterface):
         num_samples: int = 1000,
         num_nodes: int = 3,
         seed: int = 0,
+        sampling: Literal["regular", "irregular"] = "regular",
         verbose: bool = False,
         metadata_key: str = "MockPoseEstimation",
         pose_estimation_metadata_key: str | None = None,
@@ -1429,6 +1430,11 @@ class MockPoseEstimationInterface(BasePoseEstimationInterface):
             Number of nodes/body parts to track, by default 3.
         seed : int, optional
             Random seed for reproducible data generation, by default 0.
+        sampling : {"regular", "irregular"}, optional
+            The clock. ``"regular"`` (default) steps at 30 Hz. ``"irregular"`` draws the samples out of
+            a denser 30 Hz grid, which is the shape a SLEAP ``.slp`` has, since it labels a sparse
+            selection of the video's frames, and it is what makes the writer store a timestamps
+            dataset rather than a rate.
         verbose : bool, optional
             Control verbosity, by default False.
         metadata_key : str, default: "MockPoseEstimation"
@@ -1484,7 +1490,12 @@ class MockPoseEstimationInterface(BasePoseEstimationInterface):
         self.edges = np.array([possible_edges[i] for i in selected_edges], dtype="uint8")
 
         # Generate timestamps (private attributes)
-        self._original_timestamps = np.linspace(0.0, float(num_samples) / 30.0, num_samples)
+        if sampling == "irregular":
+            frame_times = np.arange(2 * num_samples) / 30.0
+            labeled_frames = np.random.default_rng(seed).choice(frame_times.size, size=num_samples, replace=False)
+            self._original_timestamps = frame_times[np.sort(labeled_frames)]
+        else:
+            self._original_timestamps = np.linspace(0.0, float(num_samples) / 30.0, num_samples)
         self._timestamps = np.copy(self._original_timestamps)
 
         # Generate pose estimation data
