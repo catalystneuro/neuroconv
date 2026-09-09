@@ -48,6 +48,7 @@ Ecephys:
         z: null
         rel_x: null                            # microns on the probe, from its geometry
         rel_y: null
+        rel_z: null
         imp: null                              # impedance in ohms
         filtering: null                        # the hardware filtering, as a description
       shank_1_e0:
@@ -59,6 +60,7 @@ Ecephys:
         z: null
         rel_x: null
         rel_y: null
+        rel_z: null
         imp: null
         filtering: null
     # What a column is called and means, keyed by the field the rows use. An entry for a field no row
@@ -74,7 +76,8 @@ Ecephys:
       name: null
       description: null
       # Which row each channel recorded, keyed by channel id. `get_metadata_template()` fills it in;
-      # write it yourself only when the row keys are your own.
+      # write it yourself only when the row keys are your own. A blank left in a row above is refused
+      # where NWB requires the value and left out of the file where it does not.
       channel_to_electrode:
         "0": shank_0_e0
         "1": shank_1_e0

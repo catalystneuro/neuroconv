@@ -558,6 +558,20 @@ def _add_electrodes_from_registry_to_nwbfile(
             "the rows use, so rename the entry to match the rows or drop it."
         )
 
+    # A blank the template offered and nobody filled. It is refused rather than written as the string
+    # "None" or handed to pynwb as a type error; deleting the field is how a user says the recording's
+    # own value will do.
+    blank_descriptions = sorted(
+        field
+        for field, specification in column_specifications.items()
+        if "description" in specification and specification["description"] is None
+    )
+    if blank_descriptions:
+        raise ValueError(
+            f"metadata['Ecephys']['ElectrodesTable']['columns'] leaves 'description' blank for {blank_descriptions}. "
+            "Fill it in, or delete the field to have the column written with the description the recording supplies."
+        )
+
     column_data = {}
     for field in declared_columns:
         specification = column_specifications.get(field, {})
@@ -630,6 +644,14 @@ def _add_electrodes_from_registry_to_nwbfile(
         for key in ordered_keys
     ]
     group_names = [group.name for group in group_objects]
+    blank_locations = [key for key in ordered_keys if "location" in registry[key] and registry[key]["location"] is None]
+    if blank_locations:
+        raise ValueError(
+            f"metadata['Ecephys']['ElectrodesTable']['rows'] leaves 'location' blank for {blank_locations[:10]}"
+            f"{' and more' if len(blank_locations) > 10 else ''}. NWB requires a location for every electrode. "
+            "Fill it in, or delete the field from a row to have the recording's value written, which is "
+            "'unknown' where the format records none."
+        )
     locations = [str(registry[key].get("location", "unknown")) for key in ordered_keys]
 
     # ``location`` is required by the schema, so it is written by row rather than as a column, along

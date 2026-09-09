@@ -127,6 +127,13 @@ which is how one that names its own series keys its entry without stating the sa
 :ref:`metadata_key_naming` for the cross-modality rule. The older list-based block is translated where it
 enters the library, so nothing downstream is written against it.
 
+``get_metadata_template()`` returns this whole structure with what the recording carries filled in and
+every field only the experimenter can supply set to ``None``: the series description, a group's
+description and location, the device where no attached probe names one, each row's ``location`` where
+the format records no brain area, and the columns NWB defines that the recording did not carry. A
+required blank still ``None`` at write time is refused by name rather than guessed at, which is the
+rule in :ref:`metadata_principles`, and a deleted field falls back to what the recording says.
+
 
 Design Decisions
 ----------------
@@ -198,8 +205,8 @@ The consequences a new interface will meet: a typo in a row key writes an orphan
 raising, since a stated key the recording knows nothing about is by design a row of its own; every
 declared row is written whether or not a channel reaches it, so a user who calls
 ``get_metadata_template()`` and then ``remove_channels()`` gets rows no series points at; and
-``get_metadata_template()`` on ``BaseRecordingExtractorInterface`` states the whole table so that a user
-edits rows instead of authoring them.
+``get_metadata_template()`` states the whole table, blanks included, so that a user edits rows instead of
+authoring them.
 
 
 A row is a contact where the format names one, a channel otherwise

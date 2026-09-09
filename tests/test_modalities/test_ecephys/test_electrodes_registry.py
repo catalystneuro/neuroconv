@@ -35,12 +35,39 @@ def _with_column_descriptions(metadata, column_descriptions):
     return metadata
 
 
+def _without_blanks(metadata):
+    """Delete every blank the template offers, which is what a user who knows nothing more does.
+
+    A blank left ``None`` is refused at write time, so a test that is not about the blanks deletes them
+    and writes what the recording derives.
+    """
+    ecephys = metadata["Ecephys"]
+    blank_device_keys = {key for key, entry in (metadata.get("Devices") or {}).items() if entry.get("name") is None}
+    for key in blank_device_keys:
+        del metadata["Devices"][key]
+    for key in [key for key, entry in (metadata.get("DeviceModels") or {}).items() if entry.get("name") is None]:
+        del metadata["DeviceModels"][key]
+    for group in ecephys["ElectrodeGroups"].values():
+        if group.get("device_metadata_key") in blank_device_keys:
+            del group["device_metadata_key"]
+    entries = [
+        *ecephys["ElectricalSeries"].values(),
+        *ecephys["ElectrodeGroups"].values(),
+        *ecephys["ElectrodesTable"]["rows"].values(),
+        *ecephys["ElectrodesTable"]["columns"].values(),
+    ]
+    for entry in entries:
+        for field in [field for field, value in entry.items() if value is None]:
+            del entry[field]
+    return metadata
+
+
 class TestTemplate:
     """What ``get_metadata_template`` states, and that it states the table the writer would derive."""
 
     def test_every_electrode_is_stated_once(self):
         interface = _interface(num_channels=4, groups=[0, 0, 1, 1])
-        metadata = interface.get_metadata_template()
+        metadata = _without_blanks(interface.get_metadata_template())
 
         assert list(metadata["Ecephys"]["ElectrodesTable"]["rows"]) == ["0_0", "0_1", "1_2", "1_3"]
         assert list(metadata["Ecephys"]["ElectrodeGroups"]) == ["0", "1"]
@@ -53,7 +80,7 @@ class TestTemplate:
     def test_keys_and_values_are_plain_python(self):
         """A registry is validated as JSON and written to YAML, so a numpy scalar cannot reach it."""
         interface = _interface(properties={"imp": [1.0, 2.0, 3.0, 4.0]})
-        metadata = interface.get_metadata_template()
+        metadata = _without_blanks(interface.get_metadata_template())
 
         assert all(type(key) is str for key in metadata["Ecephys"]["ElectrodesTable"]["rows"])
         for entry in metadata["Ecephys"]["ElectrodesTable"]["rows"].values():
@@ -62,18 +89,123 @@ class TestTemplate:
 
     def test_the_channel_to_electrode_map_covers_every_channel(self):
         interface = _interface(num_channels=4)
-        metadata = interface.get_metadata_template()
+        metadata = _without_blanks(interface.get_metadata_template())
 
         mapping = metadata["Ecephys"]["ElectricalSeries"][interface.metadata_key]["channel_to_electrode"]
         assert set(mapping) == {str(channel_id) for channel_id in interface.channel_ids}
         assert set(mapping.values()) == set(metadata["Ecephys"]["ElectrodesTable"]["rows"])
 
-    def test_it_validates_against_the_interface_schema(self):
+    def test_it_validates_against_the_interface_schema_once_the_blanks_are_gone(self):
         interface = _interface(properties={"imp": [1.0, 2.0, 3.0, 4.0]})
-        metadata = interface.get_metadata_template()
+        metadata = _without_blanks(interface.get_metadata_template())
         metadata["NWBFile"]["session_start_time"] = "2020-01-01T00:00:00"
 
         interface.validate_metadata(metadata=metadata)
+
+    def test_what_only_the_experimenter_can_supply_is_left_blank(self):
+        """The blanks are the checklist: what comes back ``None`` is what the source could not say."""
+        interface = _interface(num_channels=4, properties={"imp": [1.0, 2.0, 3.0, 4.0], "quality": ["good"] * 4})
+        metadata = interface.get_metadata_template()
+        ecephys = metadata["Ecephys"]
+
+        assert ecephys["ElectricalSeries"][interface.metadata_key]["description"] is None
+        assert ecephys["ElectrodeGroups"]["ElectrodeGroup"] == {
+            "name": "ElectrodeGroup",
+            "description": None,
+            "location": None,
+            "device_metadata_key": "probe",
+        }
+        assert metadata["Devices"]["probe"] == {
+            "name": None,
+            "description": None,
+            "serial_number": None,
+            "device_model_metadata_key": "probe_model",
+        }
+        assert metadata["DeviceModels"]["probe_model"] == {
+            "name": None,
+            "manufacturer": None,
+            "model_number": None,
+            "description": None,
+        }
+        # What the recording carries is filled; ``location``, which NWB requires, and the other columns
+        # the schema defines are offered blank.
+        assert ecephys["ElectrodesTable"]["rows"]["ElectrodeGroup_0"] == {
+            "electrode_group_metadata_key": "ElectrodeGroup",
+            "imp": 1.0,
+            "quality": "good",
+            "location": None,
+            "x": None,
+            "y": None,
+            "z": None,
+            "rel_x": None,
+            "rel_y": None,
+            "rel_z": None,
+            "filtering": None,
+        }
+        # A column NWB predefines keeps the derived description, since its meaning is the schema's;
+        # one of the recording's own has nothing to say about itself.
+        assert ecephys["ElectrodesTable"]["columns"]["quality"] == {"column_name": "quality", "description": None}
+
+    def test_a_blank_left_in_place_is_refused(self):
+        """The template must fail as returned, and say which blank it is failing on."""
+        from jsonschema.exceptions import ValidationError
+
+        interface = _interface(num_channels=4, properties={"imp": [1.0, 2.0, 3.0, 4.0]})
+        metadata = interface.get_metadata_template()
+        metadata["NWBFile"]["session_start_time"] = "2020-01-01T00:00:00"
+        with pytest.raises(ValidationError):
+            interface.validate_metadata(metadata=metadata)
+
+        metadata = _without_blanks(interface.get_metadata_template())
+        metadata["Ecephys"]["ElectrodesTable"]["rows"]["ElectrodeGroup_0"]["location"] = None
+        with pytest.raises(ValueError, match="leaves 'location' blank"):
+            interface.create_nwbfile(metadata=metadata)
+
+        metadata = _without_blanks(interface.get_metadata_template())
+        metadata["Ecephys"]["ElectrodesTable"]["columns"]["imp"]["description"] = None
+        with pytest.raises(ValueError, match="leaves 'description' blank"):
+            interface.create_nwbfile(metadata=metadata)
+
+        metadata = _without_blanks(interface.get_metadata_template())
+        metadata["Ecephys"]["ElectricalSeries"][interface.metadata_key]["description"] = None
+        with pytest.raises(ValueError, match="leaves \\['description'\\] blank"):
+            interface.create_nwbfile(metadata=metadata)
+
+        metadata = _without_blanks(interface.get_metadata_template())
+        metadata["Ecephys"]["ElectrodeGroups"]["ElectrodeGroup"]["location"] = None
+        with pytest.raises(ValueError, match="leaves \\['location'\\] blank"):
+            interface.create_nwbfile(metadata=metadata)
+
+    def test_an_attached_probe_prefills_the_device(self):
+        """A probe that names its model is what the writer would fall to, so the template states it."""
+        from probeinterface import Probe
+
+        interface = _interface(num_channels=4)
+        probe = Probe(ndim=2, si_units="um")
+        probe.set_contacts(
+            positions=np.array([[0, 0], [0, 20], [0, 40], [0, 60]]), shapes="circle", shape_params={"radius": 5}
+        )
+        probe.set_contact_ids(["e0", "e1", "e2", "e3"])
+        probe.annotate(model_name="ASSY-156-P-1", manufacturer="cambridgeneurotech")
+        probe.set_device_channel_indices(np.arange(4))
+        interface.set_probe(probe, group_mode="by_probe")
+
+        metadata = interface.get_metadata_template()
+
+        assert metadata["Devices"]["probe"] == {
+            "name": "ProbeASSY-156-P-1",
+            "device_model_metadata_key": "cambridgeneurotech_ASSY-156-P-1",
+        }
+        assert metadata["DeviceModels"]["cambridgeneurotech_ASSY-156-P-1"] == {
+            "name": "ASSY-156-P-1",
+            "model_number": "ASSY-156-P-1",
+            "manufacturer": "cambridgeneurotech",
+        }
+        assert metadata["Ecephys"]["ElectrodeGroups"]["0"]["device_metadata_key"] == "probe"
+
+        nwbfile = interface.create_nwbfile(metadata=_without_blanks(metadata))
+        assert list(nwbfile.devices) == ["ProbeASSY-156-P-1"]
+        assert nwbfile.devices["ProbeASSY-156-P-1"].model.manufacturer == "cambridgeneurotech"
 
     def test_a_column_description_the_interface_already_supplies_is_carried_over(self):
         """Stating the table must not silently downgrade what the interface already said about it."""
@@ -83,7 +215,7 @@ class TestTemplate:
             [{"name": "imp", "description": "Impedance in ohms."}],
         )
 
-        metadata = interface.get_metadata_template()
+        metadata = _without_blanks(interface.get_metadata_template())
 
         assert metadata["Ecephys"]["ElectrodesTable"]["columns"]["imp"]["description"] == "Impedance in ohms."
         nwbfile = interface.create_nwbfile(metadata=metadata)
@@ -99,9 +231,9 @@ class TestTemplate:
 
         def get_metadata():
             metadata = MockRecordingInterface.get_metadata(interface)
-            metadata["Devices"] = {"probe": {"name": "MyProbe", "description": "The probe the header names."}}
+            metadata["Devices"] = {"headstage": {"name": "MyProbe", "description": "The probe the header names."}}
             metadata["Ecephys"]["ElectrodeGroups"] = {
-                "port_0": {"name": "0", "description": "Headstage port 0.", "device_metadata_key": "probe"},
+                "port_0": {"name": "0", "description": "Headstage port 0.", "device_metadata_key": "headstage"},
             }
             return metadata
 
@@ -112,19 +244,20 @@ class TestTemplate:
         assert groups["port_0"] == {
             "name": "0",
             "description": "Headstage port 0.",
-            "device_metadata_key": "probe",
-            "location": "unknown",
+            "device_metadata_key": "headstage",
+            "location": None,
         }
-        assert groups["1"] == {"name": "1", "description": "no description", "location": "unknown"}
+        assert groups["1"] == {"name": "1", "description": None, "location": None, "device_metadata_key": "probe"}
+        assert set(metadata["Devices"]) == {"headstage", "probe"}
         rows = metadata["Ecephys"]["ElectrodesTable"]["rows"]
         assert [entry["electrode_group_metadata_key"] for entry in rows.values()] == ["port_0", "port_0", "1", "1"]
 
-        nwbfile = interface.create_nwbfile(metadata=metadata)
+        nwbfile = interface.create_nwbfile(metadata=_without_blanks(metadata))
         assert nwbfile.electrode_groups["0"].device.name == "MyProbe"
         assert nwbfile.electrode_groups["0"].description == "Headstage port 0."
 
     def test_writing_the_template_reproduces_the_derived_table(self):
-        """The template states the table the writer would derive, so writing it unchanged changes nothing."""
+        """The template states the table the writer would derive, so with its blanks deleted it changes nothing."""
         properties = {
             "imp": [1.0, 2.0, 3.0, 4.0],
             "shank": np.array([0, 1, 0, 1], dtype="int32"),
@@ -134,7 +267,7 @@ class TestTemplate:
         stated = _interface(num_channels=4, groups=[0, 0, 1, 1], properties=properties)
         derived = _interface(num_channels=4, groups=[0, 0, 1, 1], properties=properties)
 
-        from_template = stated.create_nwbfile(metadata=stated.get_metadata_template())
+        from_template = stated.create_nwbfile(metadata=_without_blanks(stated.get_metadata_template()))
         from_recording = derived.create_nwbfile()
 
         assert from_template.electrodes.colnames == from_recording.electrodes.colnames
@@ -161,7 +294,7 @@ class TestRegistryWrites:
         two electrode groups, because the rows say so.
         """
         interface = _interface(num_channels=4, groups=[0, 0, 0, 0])
-        metadata = interface.get_metadata_template()
+        metadata = _without_blanks(interface.get_metadata_template())
         metadata["Ecephys"]["ElectrodeGroups"] = {
             "shank0": {"name": "Shank0", "description": "front", "location": "V1"},
             "shank1": {"name": "Shank1", "description": "back", "location": "CA1"},
@@ -178,7 +311,7 @@ class TestRegistryWrites:
     def test_row_order_is_channel_order_with_the_declared_rows_after_it(self):
         """The recording is the spine of the table, so reordering a stated block does not reorder it."""
         interface = _interface(num_channels=4)
-        metadata = interface.get_metadata_template()
+        metadata = _without_blanks(interface.get_metadata_template())
         registry = metadata["Ecephys"]["ElectrodesTable"]["rows"]
         metadata["Ecephys"]["ElectrodesTable"]["rows"] = {key: registry[key] for key in reversed(list(registry))}
         metadata["Ecephys"]["ElectrodesTable"]["rows"]["spare"] = {"electrode_group_metadata_key": "ElectrodeGroup"}
@@ -201,7 +334,7 @@ class TestRegistryWrites:
 
     def test_a_row_the_metadata_does_not_state_comes_from_the_recording(self):
         interface = _interface(num_channels=4, properties={"imp": [1.0, 2.0, 3.0, 4.0]})
-        metadata = interface.get_metadata_template()
+        metadata = _without_blanks(interface.get_metadata_template())
         del metadata["Ecephys"]["ElectrodesTable"]["rows"]["ElectrodeGroup_2"]
 
         nwbfile = interface.create_nwbfile(metadata=metadata)
@@ -211,7 +344,7 @@ class TestRegistryWrites:
 
     def test_a_declared_electrode_no_channel_references_is_still_written(self):
         interface = _interface(num_channels=4)
-        metadata = interface.get_metadata_template()
+        metadata = _without_blanks(interface.get_metadata_template())
         interface.remove_channels(channel_ids=list(interface.channel_ids)[2:])
 
         nwbfile = interface.create_nwbfile(metadata=metadata)
@@ -223,7 +356,7 @@ class TestRegistryWrites:
 
     def test_channel_to_electrode_decides_which_row_a_channel_reaches(self):
         interface = _interface(num_channels=4)
-        metadata = interface.get_metadata_template()
+        metadata = _without_blanks(interface.get_metadata_template())
         keys = list(metadata["Ecephys"]["ElectrodesTable"]["rows"])
         metadata["Ecephys"]["ElectricalSeries"][interface.metadata_key]["channel_to_electrode"] = {
             channel_id: keys[3 - index]
@@ -238,7 +371,7 @@ class TestRegistryWrites:
 
     def test_a_row_omitting_a_column_gets_a_null(self):
         interface = _interface(num_channels=4, properties={"imp": [1.0, 2.0, 3.0, 4.0]})
-        metadata = interface.get_metadata_template()
+        metadata = _without_blanks(interface.get_metadata_template())
         # Stated rather than deleted: a row that says nothing about a column inherits the recording's value,
         # so stating the null is how a row says it has none.
         metadata["Ecephys"]["ElectrodesTable"]["rows"]["ElectrodeGroup_2"]["imp"] = None
@@ -253,7 +386,7 @@ class TestRegistryWrites:
     def test_a_multi_dimensional_column_keeps_its_shape(self):
         interface = _interface(num_channels=4)
         interface.recording_extractor.set_property("coords", np.arange(8, dtype="float64").reshape(4, 2))
-        metadata = interface.get_metadata_template()
+        metadata = _without_blanks(interface.get_metadata_template())
         assert metadata["Ecephys"]["ElectrodesTable"]["rows"]["ElectrodeGroup_0"]["coords"] == [0.0, 1.0]
 
         nwbfile = interface.create_nwbfile(metadata=metadata)
@@ -267,7 +400,7 @@ class TestRegistryWrites:
             ragged[index] = value
         interface = _interface(num_channels=4)
         interface.recording_extractor.set_property("neighbors", ragged)
-        metadata = interface.get_metadata_template()
+        metadata = _without_blanks(interface.get_metadata_template())
 
         stated = interface.create_nwbfile(metadata=metadata)
 
@@ -284,7 +417,7 @@ class TestRegistryWrites:
 class TestElectrodeColumns:
     def test_a_column_is_renamed_and_described(self):
         interface = _interface(properties={"imp": [1.0, 2.0, 3.0, 4.0]})
-        metadata = interface.get_metadata_template()
+        metadata = _without_blanks(interface.get_metadata_template())
         metadata["Ecephys"]["ElectrodesTable"]["columns"]["imp"] = {
             "column_name": "impedance",
             "description": "Electrode impedance in ohms, measured at 1 kHz.",
@@ -299,7 +432,7 @@ class TestElectrodeColumns:
     def test_a_declared_dtype_survives_a_json_round_trip(self):
         """The reason the dtype is stated: the value alone cannot carry it through YAML or JSON."""
         interface = _interface(properties={"shank": np.array([0, 1, 0, 1], dtype="int32")})
-        metadata = interface.get_metadata_template()
+        metadata = _without_blanks(interface.get_metadata_template())
         assert metadata["Ecephys"]["ElectrodesTable"]["columns"]["shank"]["dtype"] == "int32"
 
         round_tripped = json.loads(json.dumps(dict(metadata["Ecephys"]), default=str))
@@ -317,7 +450,7 @@ class TestElectrodeColumns:
 
     def test_a_categorical_column_is_written_as_labels_with_their_meanings(self):
         interface = _interface(properties={"shank_side": [0, 1, 0, 1]})
-        metadata = interface.get_metadata_template()
+        metadata = _without_blanks(interface.get_metadata_template())
         metadata["Ecephys"]["ElectrodesTable"]["columns"]["shank_side"] = {
             "column_name": "shank_side",
             "description": "Which face of the shank the contact sits on.",
@@ -339,7 +472,7 @@ class TestElectrodeColumns:
 
     def test_a_dtype_the_values_cannot_be_written_as_is_refused(self):
         interface = _interface(properties={"port": ["A", "A", "B", "B"]})
-        metadata = interface.get_metadata_template()
+        metadata = _without_blanks(interface.get_metadata_template())
         metadata["Ecephys"]["ElectrodesTable"]["columns"]["port"] = {"column_name": "port", "dtype": "float64"}
 
         with pytest.raises(ValueError, match="declares dtype 'float64'"):
@@ -348,7 +481,7 @@ class TestElectrodeColumns:
     def test_a_column_described_but_stated_by_no_row(self):
         """Silent otherwise: the writer only looks a description up by a field it found on a row."""
         interface = _interface(properties={"imp": [1.0, 2.0, 3.0, 4.0]})
-        metadata = interface.get_metadata_template()
+        metadata = _without_blanks(interface.get_metadata_template())
         metadata["Ecephys"]["ElectrodesTable"]["columns"]["impedance"] = {
             "column_name": "impedance",
             "description": "Renamed the entry but not the rows.",
@@ -367,8 +500,8 @@ class TestSharedRows:
         lfp = _interface(num_channels=4)
         lfp.metadata_key = "lfp"
 
-        metadata = raw.get_metadata_template()
-        lfp_metadata = lfp.get_metadata_template()
+        metadata = _without_blanks(raw.get_metadata_template())
+        lfp_metadata = _without_blanks(lfp.get_metadata_template())
         metadata["Ecephys"]["ElectricalSeries"].update(lfp_metadata["Ecephys"]["ElectricalSeries"])
         metadata["Ecephys"]["ElectricalSeries"]["raw"]["name"] = "ElectricalSeriesRaw"
         metadata["Ecephys"]["ElectricalSeries"]["lfp"]["name"] = "ElectricalSeriesLFP"
@@ -387,7 +520,7 @@ class TestSharedRows:
 
     def test_a_second_call_adds_no_rows_and_no_columns(self):
         interface = _interface(num_channels=4, properties={"imp": [1.0, 2.0, 3.0, 4.0]})
-        metadata = interface.get_metadata_template()
+        metadata = _without_blanks(interface.get_metadata_template())
 
         nwbfile = mock_NWBFile()
         add_recording_metadata_to_nwbfile(
@@ -481,7 +614,7 @@ class TestOtherWritersFindTheRows:
         )
 
         metadata = converter.get_metadata()
-        metadata["Ecephys"].update(recording_interface.get_metadata_template()["Ecephys"])
+        metadata["Ecephys"].update(_without_blanks(recording_interface.get_metadata_template())["Ecephys"])
         nwbfile = converter.create_nwbfile(metadata=metadata)
 
         assert len(nwbfile.electrodes) == 4
@@ -523,7 +656,7 @@ class TestOtherWritersFindTheRows:
 class TestRegistryValidation:
     def test_an_electrode_the_channels_resolve_to_but_nobody_declared(self):
         interface = _interface(num_channels=4)
-        metadata = interface.get_metadata_template()
+        metadata = _without_blanks(interface.get_metadata_template())
         mapping = metadata["Ecephys"]["ElectricalSeries"][interface.metadata_key]["channel_to_electrode"]
         mapping[next(iter(mapping))] = "nobody_declared_this"
 
@@ -532,7 +665,7 @@ class TestRegistryValidation:
 
     def test_a_channel_to_electrode_map_that_misses_a_channel(self):
         interface = _interface(num_channels=4)
-        metadata = interface.get_metadata_template()
+        metadata = _without_blanks(interface.get_metadata_template())
         mapping = metadata["Ecephys"]["ElectricalSeries"][interface.metadata_key]["channel_to_electrode"]
         del mapping[next(iter(mapping))]
 
@@ -543,7 +676,7 @@ class TestRegistryValidation:
     def test_a_row_stating_a_column_the_writer_derives(self, field):
         """Silently dropping it is the failure: a user who set ``group_name`` believes the row moved."""
         interface = _interface(num_channels=4)
-        metadata = interface.get_metadata_template()
+        metadata = _without_blanks(interface.get_metadata_template())
         metadata["Ecephys"]["ElectrodesTable"]["rows"]["ElectrodeGroup_0"][field] = "elsewhere"
 
         with pytest.raises(ValueError, match="which the writer derives"):
@@ -551,7 +684,7 @@ class TestRegistryValidation:
 
     def test_an_electrode_stating_no_group(self):
         interface = _interface(num_channels=4)
-        metadata = interface.get_metadata_template()
+        metadata = _without_blanks(interface.get_metadata_template())
         metadata["Ecephys"]["ElectrodesTable"]["rows"]["spare"] = {"electrode_name": "spare"}
 
         with pytest.raises(ValueError, match="states no 'electrode_group_metadata_key'"):
@@ -559,7 +692,7 @@ class TestRegistryValidation:
 
     def test_an_electrode_pointing_at_a_group_nobody_declared(self):
         interface = _interface(num_channels=4)
-        metadata = interface.get_metadata_template()
+        metadata = _without_blanks(interface.get_metadata_template())
         metadata["Ecephys"]["ElectrodesTable"]["rows"]["ElectrodeGroup_0"]["electrode_group_metadata_key"] = "absent"
 
         with pytest.raises(ValueError, match="does not declare the keys"):
@@ -567,7 +700,7 @@ class TestRegistryValidation:
 
     def test_two_electrodes_describing_one_contact(self):
         interface = _interface(num_channels=4)
-        metadata = interface.get_metadata_template()
+        metadata = _without_blanks(interface.get_metadata_template())
         metadata["Ecephys"]["ElectrodesTable"]["rows"]["ElectrodeGroup_0"]["electrode_name"] = "0"
         metadata["Ecephys"]["ElectrodesTable"]["rows"]["ElectrodeGroup_1"]["electrode_name"] = "0"
 
@@ -576,7 +709,7 @@ class TestRegistryValidation:
 
     def test_two_group_keys_sharing_a_name(self):
         interface = _interface(num_channels=4)
-        metadata = interface.get_metadata_template()
+        metadata = _without_blanks(interface.get_metadata_template())
         metadata["Ecephys"]["ElectrodeGroups"]["duplicate"] = {"name": "ElectrodeGroup"}
         metadata["Ecephys"]["ElectrodesTable"]["rows"]["ElectrodeGroup_0"]["electrode_group_metadata_key"] = "duplicate"
 
@@ -608,7 +741,7 @@ class TestBackwardCompatibility:
 
 def test_the_registry_survives_a_file_round_trip(tmp_path):
     interface = _interface(num_channels=4, groups=[0, 0, 1, 1], properties={"imp": [1.0, 2.0, 3.0, 4.0]})
-    metadata = interface.get_metadata_template()
+    metadata = _without_blanks(interface.get_metadata_template())
     metadata["Ecephys"]["ElectrodesTable"]["columns"]["imp"] = {
         "column_name": "impedance",
         "description": "Electrode impedance in ohms.",

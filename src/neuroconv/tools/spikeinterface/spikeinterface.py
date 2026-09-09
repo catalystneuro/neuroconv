@@ -328,6 +328,13 @@ def _add_electrode_groups_to_nwbfile(
         # a placeholder; this is the same template already applied to the auto-synthesized entries above.
         for field in ("description", "location"):
             group_kwargs.setdefault(field, default_group_template[field])
+        blank_fields = [field for field in ("name", "description", "location") if group_kwargs.get(field) is None]
+        if blank_fields:
+            entry_label = entry_metadata_key if entry_metadata_key is not None else group_kwargs.get("name")
+            raise ValueError(
+                f"metadata['Ecephys']['ElectrodeGroups']['{entry_label}'] leaves {blank_fields} blank. "
+                "Fill them in, or delete the field to have the placeholder written."
+            )
 
         if entry_metadata_key is not None:
             group_name_by_metadata_key[entry_metadata_key] = group_kwargs["name"]
@@ -817,6 +824,14 @@ def _add_recording_segment_to_nwbfile(
             for field, value in electrical_series_metadata_dict[metadata_key].items()
             if field != "channel_to_electrode"
         }
+        # A blank the template offered and nobody filled. pynwb would quietly take ``None`` for its
+        # default, which is the guess a blank exists to prevent.
+        blank_fields = sorted(field for field, value in series_metadata.items() if value is None)
+        if blank_fields:
+            raise ValueError(
+                f"metadata['Ecephys']['ElectricalSeries']['{metadata_key}'] leaves {blank_fields} blank. "
+                "Fill them in, or delete the field to have the writer's default used."
+            )
         eseries_kwargs.update(series_metadata)
     elif metadata is not None and "Ecephys" in metadata and es_key is not None:
         assert es_key in metadata["Ecephys"], f"metadata['Ecephys'] dictionary does not contain key '{es_key}'"

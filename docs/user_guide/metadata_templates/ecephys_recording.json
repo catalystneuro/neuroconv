@@ -41,6 +41,7 @@
                     "z": null,
                     "rel_x": null,
                     "rel_y": null,
+                    "rel_z": null,
                     "imp": null,
                     "filtering": null
                 },
@@ -53,6 +54,7 @@
                     "z": null,
                     "rel_x": null,
                     "rel_y": null,
+                    "rel_z": null,
                     "imp": null,
                     "filtering": null
                 }

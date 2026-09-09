@@ -86,8 +86,9 @@ are not available in the source format:
 ``location``
     The brain region, as a name. Use a standard atlas region where there is one, following the
     `best practices for the electrode table
-    <https://nwbinspector.readthedocs.io/en/dev/best_practices/ecephys.html#location>`_. An electrode
-    you say nothing about is written as ``"unknown"``.
+    <https://nwbinspector.readthedocs.io/en/dev/best_practices/ecephys.html#location>`_. The template
+    leaves it ``None``, and a row still ``None`` when the file is written is refused. Delete the field
+    from a row you know nothing about and it is written as ``"unknown"``.
 
 ``x``, ``y``, ``z``
     Where the electrode sat **in the brain**, on the axes the NWB schema fixes: **+x is posterior, +y
@@ -104,8 +105,9 @@ are not available in the source format:
     next scenario gets it from the probe rather than by hand.
 
 ``imp`` and ``filtering`` are the other two columns the NWB schema defines, for the electrode's
-impedance in ohms and a description of the hardware filtering. Any other field you put on a row
-becomes a column of its own.
+impedance in ohms and a description of the hardware filtering. The template offers all of these blank
+where the recording did not supply them, and a blank left in place is left out of the file. Any other
+field you put on a row becomes a column of its own.
 
 .. code-block:: python
    :emphasize-lines: 11-16
@@ -393,8 +395,10 @@ away:
     metadata = interface.get_metadata_template()
     list(metadata["Ecephys"]["ElectrodesTable"]["rows"])[:3]  # -> ['0_1', '0_2', '0_3']
     metadata["Ecephys"]["ElectrodesTable"]["rows"]["0_1"]
-    # -> {'electrode_group_metadata_key': '0', 'electrode_name': '1',
-    #     'rel_x': 0.0, 'rel_y': 450.0, 'location': 'unknown'}
+    # -> {'electrode_group_metadata_key': '0', 'electrode_name': '1', 'rel_x': 0.0, 'rel_y': 450.0,
+    #     'location': None, 'x': None, 'y': None, 'z': None, 'rel_z': None, 'imp': None, 'filtering': None}
+    metadata["Devices"]
+    # -> {'probe': {'name': 'ProbeA1x32-Poly3-10mm-50-177', 'device_model_metadata_key': 'neuronexus_A1x32-Poly3-10mm-50-177'}}
 
 The row keys changed too. Without a probe they are ``{group}_{channel}``, one per channel; with one
 they are ``{group}_{contact}``, so a key names the physical contact rather than the path that recorded
@@ -412,7 +416,8 @@ Three things are filled in that you would otherwise write yourself:
 - ``rel_x`` and ``rel_y`` on every row, from the probe's contact positions.
 - ``electrode_name`` on every row, from the probe's contact identifiers. This is what makes two
   channels that recorded one contact share a row rather than duplicating it.
-- The device, named after the probe rather than left as ``PlaceholderElectrodeDevice``.
+- The device and its model, in ``metadata["Devices"]`` and ``metadata["DeviceModels"]``, named after the
+  probe and already pointed at by the group. Without a probe both are offered blank for you to fill.
 
 What the probe cannot supply is where it was implanted. ``location``, and the ``x``, ``y`` and ``z``
 stereotaxic coordinates, stay yours to state exactly as in the previous scenario.
@@ -488,6 +493,7 @@ fills in.
     interface = MockRecordingInterface(num_channels=4, durations=[0.1], metadata_key="two_shanks")
     metadata = interface.get_metadata_template()
     ecephys = metadata["Ecephys"]
+    ecephys["ElectricalSeries"]["two_shanks"]["description"] = "Raw broadband traces, 30 kHz."
 
     metadata["Devices"] = {
         "a4x8_probe": {
@@ -495,6 +501,7 @@ fills in.
             "description": "NeuroNexus 4-shank silicon probe",
         },
     }
+    del metadata["DeviceModels"]  # offered blank by the template; these probes name no catalogue model
 
     ecephys["ElectrodeGroups"] = {
         "shank_1": {
@@ -512,10 +519,10 @@ fills in.
     }
 
     rows = ecephys["ElectrodesTable"]["rows"]
-    rows["ElectrodeGroup_0"]["electrode_group_metadata_key"] = "shank_1"
-    rows["ElectrodeGroup_1"]["electrode_group_metadata_key"] = "shank_1"
-    rows["ElectrodeGroup_2"]["electrode_group_metadata_key"] = "shank_2"
-    rows["ElectrodeGroup_3"]["electrode_group_metadata_key"] = "shank_2"
+    rows["ElectrodeGroup_0"].update(electrode_group_metadata_key="shank_1", location="CA1")
+    rows["ElectrodeGroup_1"].update(electrode_group_metadata_key="shank_1", location="CA1")
+    rows["ElectrodeGroup_2"].update(electrode_group_metadata_key="shank_2", location="CA1")
+    rows["ElectrodeGroup_3"].update(electrode_group_metadata_key="shank_2", location="CA1")
 
     nwbfile = interface.create_nwbfile(metadata=metadata)
     sorted(nwbfile.electrode_groups)  # -> ['Shank1', 'Shank2']
@@ -540,11 +547,13 @@ one piece of silicon or on two separately implanted probes.
     interface = MockRecordingInterface(num_channels=4, durations=[0.1], metadata_key="two_probes")
     metadata = interface.get_metadata_template()
     ecephys = metadata["Ecephys"]
+    ecephys["ElectricalSeries"]["two_probes"]["description"] = "Raw broadband traces, 30 kHz."
 
     metadata["Devices"] = {
         "left_probe": {"name": "ProbeLeft", "description": "Serial 18194814172, left hemisphere"},
         "right_probe": {"name": "ProbeRight", "description": "Serial 18194814173, right hemisphere"},
     }
+    del metadata["DeviceModels"]  # offered blank by the template; these probes name no catalogue model
 
     ecephys["ElectrodeGroups"] = {
         "left": {
@@ -562,10 +571,10 @@ one piece of silicon or on two separately implanted probes.
     }
 
     rows = ecephys["ElectrodesTable"]["rows"]
-    rows["ElectrodeGroup_0"]["electrode_group_metadata_key"] = "left"
-    rows["ElectrodeGroup_1"]["electrode_group_metadata_key"] = "left"
-    rows["ElectrodeGroup_2"]["electrode_group_metadata_key"] = "right"
-    rows["ElectrodeGroup_3"]["electrode_group_metadata_key"] = "right"
+    rows["ElectrodeGroup_0"].update(electrode_group_metadata_key="left", location="CA1")
+    rows["ElectrodeGroup_1"].update(electrode_group_metadata_key="left", location="CA1")
+    rows["ElectrodeGroup_2"].update(electrode_group_metadata_key="right", location="CA1")
+    rows["ElectrodeGroup_3"].update(electrode_group_metadata_key="right", location="CA1")
 
     nwbfile = interface.create_nwbfile(metadata=metadata)
     sorted(nwbfile.devices)  # -> ['ProbeLeft', 'ProbeRight']

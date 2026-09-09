@@ -10,6 +10,21 @@ from ..setup_paths import ECEPHY_DATA_PATH
 SPIKEGLX_PATH = ECEPHY_DATA_PATH / "spikeglx"
 
 
+def _without_blanks(metadata):
+    """Delete the blanks the template offers, since one left ``None`` is refused at write time."""
+    ecephys = metadata["Ecephys"]
+    entries = [
+        *ecephys["ElectricalSeries"].values(),
+        *ecephys["ElectrodeGroups"].values(),
+        *ecephys["ElectrodesTable"]["rows"].values(),
+        *ecephys["ElectrodesTable"]["columns"].values(),
+    ]
+    for entry in entries:
+        for field in [field for field, value in entry.items() if value is None]:
+            del entry[field]
+    return metadata
+
+
 def test_the_two_bands_of_one_probe_land_on_one_set_of_rows():
     """384 rows for 768 channels, because AP and LF are the same 384 contacts.
 
@@ -28,6 +43,7 @@ def test_the_two_bands_of_one_probe_land_on_one_set_of_rows():
     assert list(ap_keys) == list(lf_keys)
     assert list(ap_keys)[:3] == ["NeuropixelsImec0_e0", "NeuropixelsImec0_e1", "NeuropixelsImec0_e2"]
 
+    metadata = _without_blanks(metadata)
     converter.validate_metadata(metadata=metadata)
     nwbfile = converter.create_nwbfile(metadata=metadata)
 
@@ -62,7 +78,7 @@ def test_two_probes_sharing_contact_ids_keep_their_electrodes_apart():
         second_metadata["Ecephys"]["ElectrodesTable"]["rows"]
     )
 
-    metadata = dict_deep_update(dict(first_metadata), dict(second_metadata))
+    metadata = _without_blanks(dict_deep_update(dict(first_metadata), dict(second_metadata)))
     metadata["Ecephys"]["ElectricalSeries"]["imec0"]["name"] = "ElectricalSeriesImec0"
     metadata["Ecephys"]["ElectricalSeries"]["imec1"]["name"] = "ElectricalSeriesImec1"
     nwbfile = make_nwbfile_from_metadata(metadata=metadata)
