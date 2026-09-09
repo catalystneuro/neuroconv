@@ -143,15 +143,10 @@ block. It is **keyword-only** and defaults to ``None``.
 
 .. code-block:: python
 
-    class SomeEventsInterface(BaseEventsInterface):
-        def __init__(self, file_path, *, metadata_key: str | None = None, verbose: bool = False):
-            self.metadata_key = metadata_key or "some_events"
-            ...  # open the source, resolve the detection configuration, whatever the interface needs
-            super().__init__(file_path=file_path, verbose=verbose)
-
-The concrete interface owns the key and its default, since the abstract base has none to offer. It sets it,
-and everything else it needs, **before** calling ``BaseEventsInterface.__init__`` as its last statement: the
-base relies on a fully built interface, so a subclass sets itself up first and calls it last.
+    class SomeEventsInterface(BaseDataInterface):
+        def __init__(self, *, metadata_key: Optional[str] = None, **source_data):
+            self.metadata_key = metadata_key
+            ...
 
 When ``None``, the interface derives a unique, source-derived snake_case key from the source (the
 tank or block name), so even two instances of the *same* interface in one converter get distinct

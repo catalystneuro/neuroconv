@@ -98,8 +98,6 @@ class BaseEventsInterface(BaseDataInterface):
     keywords = ("events",)
 
     def __init__(self, **source_data):
-        # Subclasses set themselves up first, their ``metadata_key`` included, and call this last, so that
-        # anything the base does from here on, now or later, can rely on a fully built interface.
         super().__init__(**source_data)
         # Filled on the first _get_events_data_dict() call and reused thereafter, so the backend is
         # coerced once even though get_metadata, add_to_nwbfile, and alignment all read it.

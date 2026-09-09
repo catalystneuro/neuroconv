@@ -53,12 +53,12 @@ class TDTEventsInterface(TDTLoadMixin, BaseEventsInterface):
         verbose : bool, optional
             Whether to print status messages, default = False.
         """
-        self.metadata_key = metadata_key or "tdt_events"
         super().__init__(
             folder_path=folder_path,
             exclude_events=exclude_events,
             verbose=verbose,
         )
+        self.metadata_key = metadata_key or "tdt_events"
 
     def get_event_type_source_ids(self) -> list[str]:
         """The epoc stores the tank holds, less the excluded ones and those with no events, from the epoc headers."""

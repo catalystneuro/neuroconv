@@ -340,8 +340,8 @@ class MockEventsInterface(BaseEventsInterface):
         self._num_events = num_events
         self._event_extent = event_extent
         self._event_payload = event_payload
-        self.metadata_key = metadata_key or "mock_events"
         super().__init__(verbose=verbose)
+        self.metadata_key = metadata_key or "mock_events"
 
     def get_event_type_source_ids(self) -> list[str]:
         # A single type keeps the plain "events" id; several are indexed so their ids (and, by default,
@@ -601,6 +601,9 @@ class MockSignalEncodedEventsInterface(BaseEventsInterface):
         self._num_events = num_events
         self._sampling_frequency = sampling_frequency
         self._sampling = sampling
+        super().__init__(verbose=verbose)
+        self.metadata_key = metadata_key or "mock_signal_encoded_events"
+
         # Discovery, faked: one packed word, whose kind is what makes bit selection legal on it and a
         # magnitude cut illegal, and whose `bits` are the positions it carries. A real interface
         # settles both from its file's structure: SpikeGLX declares the inventory as niXDChans1, and the
@@ -619,8 +622,6 @@ class MockSignalEncodedEventsInterface(BaseEventsInterface):
         # same identifier. Validation covers structure and identifier resolution (rules 4 and 5) alike.
         _validate_detection_configuration(detection_configuration, self._available_signals)
         self._detection_configuration = detection_configuration
-        self.metadata_key = metadata_key or "mock_signal_encoded_events"
-        super().__init__(verbose=verbose)
 
     def get_event_type_source_ids(self) -> list[str]:
         """The event types the configuration resolves to, read from nothing."""

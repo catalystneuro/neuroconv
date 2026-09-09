@@ -136,12 +136,12 @@ class IntanDigitalInterface(BaseEventsInterface):
         _validate_detection_configuration(detection_configuration, self._available_signals)
         self._detection_configuration = detection_configuration
 
-        self.metadata_key = metadata_key or "intan_digital"
         super().__init__(
             file_path=file_path,
             detection_configuration=detection_configuration,
             verbose=verbose,
         )
+        self.metadata_key = metadata_key or "intan_digital"
 
     def get_event_type_source_ids(self) -> list[str]:
         """The event types the configuration resolves to, read from nothing."""

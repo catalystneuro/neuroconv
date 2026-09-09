@@ -103,6 +103,15 @@ class CSVEventsInterface(BaseEventsInterface):
         verbose : bool, optional
             Whether to print status messages, default = False.
         """
+        super().__init__(
+            file_path=file_path,
+            timestamps_column=timestamps_column,
+            event_type_column=event_type_column,
+            value_columns=value_columns,
+            durations_column=durations_column,
+            verbose=verbose,
+        )
+        self.metadata_key = metadata_key or Path(file_path).stem
         self._time_unit = time_unit
         self._read_kwargs = read_kwargs or dict()
         # Filled on the first _read_source() call and reused thereafter, so the CSV is parsed and
@@ -134,15 +143,6 @@ class CSVEventsInterface(BaseEventsInterface):
             raise ValueError(
                 f"Each column may fill only one role, but the same column was assigned more than once: {specifiers}."
             )
-        self.metadata_key = metadata_key or Path(file_path).stem
-        super().__init__(
-            file_path=file_path,
-            timestamps_column=timestamps_column,
-            event_type_column=event_type_column,
-            value_columns=value_columns,
-            durations_column=durations_column,
-            verbose=verbose,
-        )
 
     def get_event_type_source_ids(self) -> list[str]:
         """One type per distinct label, in first-appearance order, or the file stem when the file is one type.
