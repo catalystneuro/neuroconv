@@ -421,8 +421,13 @@ class TestMiniscopeConverterLegacyTyeLabFormat:
         assert self.image_series_name in nwbfile.acquisition
         image_series = nwbfile.acquisition[self.image_series_name]
         assert isinstance(image_series, ImageSeries)
-        # NWB reads `external_file` relative to the NWB file, so the absolute paths the glob found must not survive
-        assert all(not Path(file_path).is_absolute() for file_path in image_series.external_file)
+        # Written relative to the NWB file, except on Windows CI where the data sits on another drive
+        output_directory = Path(nwbfile_path).resolve().parent
+        for file_path in image_series.external_file:
+            if self.folder_path.resolve().anchor == output_directory.anchor:
+                assert not Path(file_path).is_absolute()
+            else:
+                assert Path(file_path).is_absolute() and "\\" not in file_path
 
     def test_converter_metadata(self):
         """Test that metadata is correctly extracted from legacy format."""
