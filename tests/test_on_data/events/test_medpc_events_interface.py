@@ -9,6 +9,7 @@ from pynwb import read_nwb
 from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.datainterfaces import MedPCArrayEventsInterface, MedPCPackedEventsInterface
+from neuroconv.tools.testing.data_interface_mixins import EventsInterfaceTestMixin
 
 try:
     from ..setup_paths import BEHAVIOR_DATA_PATH
@@ -18,34 +19,11 @@ except ImportError:
 MEDPC_DATA_PATH = BEHAVIOR_DATA_PATH / "medpc"
 
 
-class MedPCEventsInterfaceMixin:
-    """Builds ``self.interface`` from the ``interface_class`` and ``interface_kwargs`` set on the subclass."""
-
-    event_names: dict = {}
-    column_names: dict = {}
-
-    @pytest.fixture
-    def interface(self):
-        return self.interface_class(**self.interface_kwargs)
-
-    @pytest.fixture
-    def metadata(self, interface):
-        """The interface's metadata with the event types named, which is the only place naming happens."""
-        metadata = interface.get_metadata()
-        event_types = metadata["Events"]["medpc"]["event_types"]
-        for event_type_source_id, event_name in self.event_names.items():
-            event_types[event_type_source_id]["event_name"] = event_name
-        for event_type_source_id, columns in self.column_names.items():
-            for field_source_id, column_name in columns.items():
-                event_types[event_type_source_id]["columns"][field_source_id]["column_name"] = column_name
-        return metadata
-
-
-class TestPerArrayLernerLab(MedPCEventsInterfaceMixin):
+class TestPerArrayLernerLab(EventsInterfaceTestMixin):
     """A per-array file from the Lerner lab: one lettered array per event type, plus an interval type
     pairing the port-entry onsets in G with the durations in E."""
 
-    interface_class = MedPCArrayEventsInterface
+    data_interface_cls = MedPCArrayEventsInterface
 
     event_names = {
         "A": "left_nose_poke_times",
@@ -66,7 +44,7 @@ class TestPerArrayLernerLab(MedPCEventsInterfaceMixin):
         },
     )
 
-    def test_get_metadata(self, interface):
+    def test_get_metadata(self, setup_interface):
         expected_metadata = {
             "medpc": {
                 "event_types": {
@@ -81,10 +59,10 @@ class TestPerArrayLernerLab(MedPCEventsInterfaceMixin):
                 },
             },
         }
-        assert interface.get_metadata()["Events"] == expected_metadata
+        assert self.interface.get_metadata()["Events"] == expected_metadata
 
-    def test_get_metadata_reads_the_session_header(self, interface):
-        metadata = interface.get_metadata()
+    def test_get_metadata_reads_the_session_header(self, setup_interface):
+        metadata = self.interface.get_metadata()
 
         # The header states no timezone, so this is the session's own wall clock, left naive for pynwb to
         # localize at write.
@@ -95,9 +73,10 @@ class TestPerArrayLernerLab(MedPCEventsInterfaceMixin):
         # This file's Experiment line is blank, so nothing is reported for it.
         assert "experiment_description" not in metadata["NWBFile"]
 
-    def test_add_to_nwbfile(self, interface, metadata):
+    def test_add_to_nwbfile(self, setup_interface):
+        metadata = self.edit_metadata(self.interface.get_metadata())
         nwbfile = mock_NWBFile()
-        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+        self.interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
 
         assert set(nwbfile.events) == {
             "LeftNosePokeTimes",
@@ -113,17 +92,19 @@ class TestPerArrayLernerLab(MedPCEventsInterfaceMixin):
         assert len(nwbfile.get_events_table("LeftRewardTimes")) == 49
         assert len(nwbfile.get_events_table("RightNosePokeTimes")) == 27
 
-    def test_event_type_that_never_fired(self, interface, metadata):
+    def test_event_type_that_never_fired(self, setup_interface):
+        metadata = self.edit_metadata(self.interface.get_metadata())
         # D is declared by the program and holds nothing in this session, which is a recorded event type that
         # never fired rather than an absent one, so it is written as a zero-row table.
         nwbfile = mock_NWBFile()
-        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+        self.interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
 
         assert len(nwbfile.get_events_table("RightRewardTimes")) == 0
 
-    def test_interval_event_type(self, interface, metadata):
+    def test_interval_event_type(self, setup_interface):
+        metadata = self.edit_metadata(self.interface.get_metadata())
         nwbfile = mock_NWBFile()
-        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+        self.interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
 
         # The onsets in G and the durations in E become one durative event type, rather than the transition
         # points of an IntervalSeries.
@@ -136,45 +117,48 @@ class TestPerArrayLernerLab(MedPCEventsInterfaceMixin):
         # the last event's offset is missing rather than the onset being dropped.
         assert np.isnan(port_entries["duration"][-1])
 
-    def test_alignment_shifts_the_written_times(self, interface, metadata):
-        original_timestamps = interface.get_event_times("A")
-        interface.alignment.shift_times(delta=1.23)
+    def test_alignment_shifts_the_written_times(self, setup_interface):
+        metadata = self.edit_metadata(self.interface.get_metadata())
+        original_timestamps = self.interface.get_event_times("A")
+        self.interface.alignment.shift_times(delta=1.23)
 
-        assert np.allclose(interface.get_event_times("A"), original_timestamps + 1.23)
+        assert np.allclose(self.interface.get_event_times("A"), original_timestamps + 1.23)
 
         nwbfile = mock_NWBFile()
-        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+        self.interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
         written = nwbfile.get_events_table("LeftNosePokeTimes")["timestamp"][:]
         assert np.allclose(written, original_timestamps + 1.23)
 
-    def test_externally_aligned_timestamps(self, interface, metadata):
+    def test_externally_aligned_timestamps(self, setup_interface):
+        metadata = self.edit_metadata(self.interface.get_metadata())
         # Times recovered from another device, such as the TTL pulse a photometry rig recorded for each event, are
         # not the source's times shifted, so they are substituted per event type rather than offset.
-        original_timestamps = interface.get_event_times("A")
+        original_timestamps = self.interface.get_event_times("A")
         aligned_timestamps = original_timestamps + np.linspace(0.0, 0.5, len(original_timestamps))
-        interface.set_aligned_timestamps(aligned_timestamps_dict={"A": aligned_timestamps})
+        self.interface.set_aligned_timestamps(aligned_timestamps_dict={"A": aligned_timestamps})
 
-        assert np.allclose(interface.get_event_times("A"), aligned_timestamps)
+        assert np.allclose(self.interface.get_event_times("A"), aligned_timestamps)
         # An event type left out keeps the times read from the file.
-        assert np.allclose(interface.get_event_times("B")[:3], [12.35, 89.0, 174.45])
+        assert np.allclose(self.interface.get_event_times("B")[:3], [12.35, 89.0, 174.45])
 
         nwbfile = mock_NWBFile()
-        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+        self.interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
         assert np.allclose(nwbfile.get_events_table("LeftNosePokeTimes")["timestamp"][:], aligned_timestamps)
 
-    def test_externally_aligned_timestamps_of_the_wrong_length_raise(self, interface):
+    def test_externally_aligned_timestamps_of_the_wrong_length_raise(self, setup_interface):
         with pytest.raises(ValueError, match="has 114 events but 3 aligned timestamps were given"):
-            interface.set_aligned_timestamps(aligned_timestamps_dict={"A": np.array([1.0, 2.0, 3.0])})
+            self.interface.set_aligned_timestamps(aligned_timestamps_dict={"A": np.array([1.0, 2.0, 3.0])})
 
-    def test_externally_aligned_timestamps_for_an_unknown_event_type_raise(self, interface):
+    def test_externally_aligned_timestamps_for_an_unknown_event_type_raise(self, setup_interface):
         with pytest.raises(KeyError, match="No event type 'Z'"):
-            interface.set_aligned_timestamps(aligned_timestamps_dict={"Z": np.array([1.0])})
+            self.interface.set_aligned_timestamps(aligned_timestamps_dict={"Z": np.array([1.0])})
 
-    def test_round_trip(self, interface, metadata, tmp_path):
+    def test_round_trip(self, setup_interface, tmp_path):
+        metadata = self.edit_metadata(self.interface.get_metadata())
         metadata["Events"]["medpc"]["event_types"]["G"]["event_description"] = "Time spent in the reward port."
         nwbfile_path = tmp_path / "test_medpc_lerner_lab.nwb"
 
-        interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+        self.interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
         nwbfile = read_nwb(nwbfile_path)
         port_entries = nwbfile.get_events_table("PortEntries")
@@ -184,11 +168,11 @@ class TestPerArrayLernerLab(MedPCEventsInterfaceMixin):
         nwbfile.read_io.close()
 
 
-class TestPerArrayTyeLab(MedPCEventsInterfaceMixin):
+class TestPerArrayTyeLab(EventsInterfaceTestMixin):
     """A per-array file from a second lab, whose program writes one value per index line rather than five,
     and whose `.MPC` source names what each array holds."""
 
-    interface_class = MedPCArrayEventsInterface
+    data_interface_cls = MedPCArrayEventsInterface
     event_names = {
         "P": "lick_start_ethanol",
         "N": "lick_end_ethanol",
@@ -197,7 +181,6 @@ class TestPerArrayTyeLab(MedPCEventsInterfaceMixin):
         "S": "cs_presentation",
         "H": "ethanol_laser_trigger_off",
     }
-    column_names = {"S": {"K": "cs_type"}}
 
     interface_kwargs = dict(
         file_path=MEDPC_DATA_PATH / "medpc_tye_lab" / "!2022-10-06_14h12m.Subject cohort10-M3.3",
@@ -216,8 +199,13 @@ class TestPerArrayTyeLab(MedPCEventsInterfaceMixin):
         },
     )
 
-    def test_get_metadata(self, interface):
-        metadata = interface.get_metadata()
+    def edit_metadata(self, metadata):
+        metadata = super().edit_metadata(metadata)
+        metadata["Events"]["medpc"]["event_types"]["S"]["columns"]["K"]["column_name"] = "cs_type"
+        return metadata
+
+    def test_get_metadata(self, setup_interface):
+        metadata = self.interface.get_metadata()
         event_types = metadata["Events"]["medpc"]["event_types"]
 
         # 10/06/22 is October 6, as the recording's own filename states.
@@ -234,9 +222,10 @@ class TestPerArrayTyeLab(MedPCEventsInterfaceMixin):
             "columns": {"K": {"column_name": "K"}},
         }
 
-    def test_add_to_nwbfile(self, interface, metadata):
+    def test_add_to_nwbfile(self, setup_interface):
+        metadata = self.edit_metadata(self.interface.get_metadata())
         nwbfile = mock_NWBFile()
-        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+        self.interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
 
         lick_start = nwbfile.get_events_table("LickStartEthanol")
         assert len(lick_start) == 906
@@ -256,7 +245,8 @@ class TestPerArrayTyeLab(MedPCEventsInterfaceMixin):
         # The laser was never triggered off in this session, so its array is dimensioned and empty.
         assert len(nwbfile.get_events_table("EthanolLaserTriggerOff")) == 0
 
-    def test_value_column_with_labelled_codes(self, interface, metadata):
+    def test_value_column_with_labelled_codes(self, setup_interface):
+        metadata = self.edit_metadata(self.interface.get_metadata())
         # What the codes mean lives in the `.MPC` program, so it reaches the file through the metadata.
         metadata["Events"]["medpc"]["event_types"]["S"]["columns"]["K"] = {
             "column_name": "cs_type",
@@ -272,7 +262,7 @@ class TestPerArrayTyeLab(MedPCEventsInterfaceMixin):
         }
 
         nwbfile = mock_NWBFile()
-        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+        self.interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
 
         cs_presentation = nwbfile.get_events_table("CsPresentation")
         assert list(cs_presentation["cs_type"][:5]) == ["both", "water", "both", "both", "ethanol"]
@@ -285,24 +275,26 @@ class TestPerArrayTyeLab(MedPCEventsInterfaceMixin):
         interface_kwargs["event_configuration"] = {"S": {"payload": ["N"]}}
         interface = MedPCArrayEventsInterface(**interface_kwargs)
 
+        # Listing the event types reads only the configuration now, so the arrays are checked on the first read.
         with pytest.raises(ValueError, match="has 30 events but its value array 'N' holds 906 values"):
-            interface.get_metadata()
+            interface.add_to_nwbfile(nwbfile=mock_NWBFile())
 
-    def test_round_trip(self, interface, metadata, tmp_path):
+    def test_round_trip(self, setup_interface, tmp_path):
+        metadata = self.edit_metadata(self.interface.get_metadata())
         nwbfile_path = tmp_path / "test_medpc_tye_lab.nwb"
 
-        interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+        self.interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
         nwbfile = read_nwb(nwbfile_path)
         assert len(nwbfile.get_events_table("LickStartEthanol")) == 906
         nwbfile.read_io.close()
 
 
-class TestPackedWithLegend(MedPCEventsInterfaceMixin):
+class TestPackedWithLegend(EventsInterfaceTestMixin):
     """A packed-code file whose event codes are known: every event is a TIME.EVENTCODE value in array A,
     and the legend of `ExampleFile2` names each code."""
 
-    interface_class = MedPCPackedEventsInterface
+    data_interface_cls = MedPCPackedEventsInterface
     event_names = {
         "001": "lick",
         "011": "pump_a_on",
@@ -322,8 +314,8 @@ class TestPackedWithLegend(MedPCEventsInterfaceMixin):
         time_unit=0.002,
     )
 
-    def test_get_metadata(self, interface):
-        metadata = interface.get_metadata()
+    def test_get_metadata(self, setup_interface):
+        metadata = self.interface.get_metadata()
         event_types = metadata["Events"]["medpc"]["event_types"]
 
         # One event type per code found in the packed array, keyed by the code's digits as the file writes
@@ -336,9 +328,10 @@ class TestPackedWithLegend(MedPCEventsInterfaceMixin):
         assert list(event_types) == ["001", "011", "051", "021", "052", "012", "050", "022"]
         assert event_types["011"] == {"event_name": "011"}
 
-    def test_add_to_nwbfile(self, interface, metadata):
+    def test_add_to_nwbfile(self, setup_interface):
+        metadata = self.edit_metadata(self.interface.get_metadata())
         nwbfile = mock_NWBFile()
-        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+        self.interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
 
         # 1800 events split over the eight codes, each its own table.
         counts = {name: len(table) for name, table in nwbfile.events.items()}
@@ -381,21 +374,22 @@ class TestPackedWithLegend(MedPCEventsInterfaceMixin):
         with pytest.raises(ValueError, match=re.escape(expected_message)):
             interface.get_event_times("001")
 
-    def test_round_trip(self, interface, metadata, tmp_path):
+    def test_round_trip(self, setup_interface, tmp_path):
+        metadata = self.edit_metadata(self.interface.get_metadata())
         nwbfile_path = tmp_path / "test_medpc_packed.nwb"
 
-        interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+        self.interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
         nwbfile = read_nwb(nwbfile_path)
         assert np.allclose(nwbfile.get_events_table("Lick")["timestamp"][:3], [21.204, 21.8, 57.526])
         nwbfile.read_io.close()
 
 
-class TestPackedWithoutLegend(MedPCEventsInterfaceMixin):
+class TestPackedWithoutLegend(EventsInterfaceTestMixin):
     """A packed-code file whose codes are not known: `ExampleFile1` ships no legend, and the MSN template
     beside it is a later version whose numbering disagrees with the file, so the codes cannot be named."""
 
-    interface_class = MedPCPackedEventsInterface
+    data_interface_cls = MedPCPackedEventsInterface
     event_names = {
         code: f"code_{code}" for code in ("036", "034", "004", "029", "041", "001", "030", "032", "002", "012")
     }
@@ -407,8 +401,8 @@ class TestPackedWithoutLegend(MedPCEventsInterfaceMixin):
         time_unit=0.002,
     )
 
-    def test_get_metadata(self, interface):
-        metadata = interface.get_metadata()
+    def test_get_metadata(self, setup_interface):
+        metadata = self.interface.get_metadata()
         event_types = metadata["Events"]["medpc"]["event_types"]
 
         # A code the legend does not name is still read; it takes its digits as both its identifier and its
@@ -421,9 +415,10 @@ class TestPackedWithoutLegend(MedPCEventsInterfaceMixin):
         assert set(event_types) == {"036", "034", "004", "029", "041", "001", "030", "032", "002", "012"}
         assert event_types["029"] == {"event_name": "029"}
 
-    def test_add_to_nwbfile(self, interface, metadata):
+    def test_add_to_nwbfile(self, setup_interface):
+        metadata = self.edit_metadata(self.interface.get_metadata())
         nwbfile = mock_NWBFile()
-        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+        self.interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
 
         assert len(nwbfile.get_events_table("Code001")) == 1447
         assert len(nwbfile.get_events_table("Code029")) == 106
@@ -458,15 +453,15 @@ def test_variable_missing_from_the_session_is_named():
     )
 
     with pytest.raises(ValueError, match="The MedPC variable 'left_nose_poke_times' is not in the session"):
-        interface.get_metadata()
+        interface.add_to_nwbfile(nwbfile=mock_NWBFile())
 
 
-class TestPackedVariableWidthCodes(MedPCEventsInterfaceMixin):
+class TestPackedVariableWidthCodes(EventsInterfaceTestMixin):
     """A packed-code file whose codes are not all the same width: `.1`, `.11` and `.987` sit in one array and
     print as three decimals apiece. The deposited MSN program states the unit, so the times can be checked
     against it rather than inferred."""
 
-    interface_class = MedPCPackedEventsInterface
+    data_interface_cls = MedPCPackedEventsInterface
     event_names = {
         "999": "session_start",
         "987": "pre_cs_period",
@@ -492,8 +487,8 @@ class TestPackedVariableWidthCodes(MedPCEventsInterfaceMixin):
         time_unit="centiseconds",
     )
 
-    def test_get_metadata(self, interface):
-        metadata = interface.get_metadata()
+    def test_get_metadata(self, setup_interface):
+        metadata = self.interface.get_metadata()
         event_types = metadata["Events"]["medpc"]["event_types"]
 
         assert metadata["NWBFile"]["session_start_time"] == datetime(2021, 5, 8, 10, 33, 49)
@@ -521,9 +516,10 @@ class TestPackedVariableWidthCodes(MedPCEventsInterfaceMixin):
             "155",
         ]
 
-    def test_add_to_nwbfile(self, interface, metadata):
+    def test_add_to_nwbfile(self, setup_interface):
+        metadata = self.edit_metadata(self.interface.get_metadata())
         nwbfile = mock_NWBFile()
-        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+        self.interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
 
         counts = {name: len(table) for name, table in nwbfile.events.items()}
         assert sum(counts.values()) == 631
@@ -564,22 +560,23 @@ class TestPackedVariableWidthCodes(MedPCEventsInterfaceMixin):
         with pytest.raises(ValueError, match=re.escape(expected_message)):
             interface.get_event_times("100")
 
-    def test_round_trip(self, interface, metadata, tmp_path):
+    def test_round_trip(self, setup_interface, tmp_path):
+        metadata = self.edit_metadata(self.interface.get_metadata())
         nwbfile_path = tmp_path / "test_medpc_variable_width.nwb"
 
-        interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+        self.interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
         nwbfile = read_nwb(nwbfile_path)
         assert np.allclose(nwbfile.get_events_table("FoodCupEntry")["timestamp"][:3], [24.32, 24.38, 24.60])
         nwbfile.read_io.close()
 
 
-class TestPackedRelativeMode(MedPCEventsInterfaceMixin):
+class TestPackedRelativeMode(EventsInterfaceTestMixin):
     """A file written in Med Associates' Relative Mode, where each stored value is the interval since the
     previous event rather than the time since the session began, so the array does not increase and the
     values are times only once accumulated."""
 
-    interface_class = MedPCPackedEventsInterface
+    data_interface_cls = MedPCPackedEventsInterface
     event_names = {"1": "lever_press"}
 
     interface_kwargs = dict(
@@ -595,8 +592,8 @@ class TestPackedRelativeMode(MedPCEventsInterfaceMixin):
         relative_mode=True,
     )
 
-    def test_get_metadata(self, interface):
-        metadata = interface.get_metadata()
+    def test_get_metadata(self, setup_interface):
+        metadata = self.interface.get_metadata()
 
         assert metadata["NWBFile"]["session_start_time"] == datetime(2025, 9, 6, 9, 25, 32)
         assert metadata["Subject"]["subject_id"] == "H4"
@@ -605,9 +602,10 @@ class TestPackedRelativeMode(MedPCEventsInterfaceMixin):
         # DISKFORMAT prints one decimal.
         assert list(metadata["Events"]["medpc"]["event_types"]) == ["1"]
 
-    def test_add_to_nwbfile(self, interface, metadata):
+    def test_add_to_nwbfile(self, setup_interface):
+        metadata = self.edit_metadata(self.interface.get_metadata())
         nwbfile = mock_NWBFile()
-        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+        self.interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
 
         table = nwbfile.get_events_table("LeverPress")
         assert len(table) == 141
@@ -639,10 +637,11 @@ class TestPackedRelativeMode(MedPCEventsInterfaceMixin):
         with pytest.raises(ValueError, match=re.escape(expected_message)):
             interface.get_event_times("1")
 
-    def test_round_trip(self, interface, metadata, tmp_path):
+    def test_round_trip(self, setup_interface, tmp_path):
+        metadata = self.edit_metadata(self.interface.get_metadata())
         nwbfile_path = tmp_path / "test_medpc_relative_mode.nwb"
 
-        interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+        self.interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
         nwbfile = read_nwb(nwbfile_path)
         assert np.allclose(nwbfile.get_events_table("LeverPress")["timestamp"][:3], [6.4, 7.6, 14.8])
