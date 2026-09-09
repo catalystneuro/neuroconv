@@ -632,9 +632,9 @@ def _make_image_series_paths_relative_to_nwbfile(nwbfile: NWBFile, nwbfile_path:
     The NWB specification reads ``external_file`` relative to the NWB file, while interfaces store whatever
     path the caller handed them, which is usually absolute or relative to the working directory. An
     ``ImageSeries`` read from an existing file is left alone, since its entries are already relative to that
-    file and not to the working directory. URLs are left as they are, and so is an entry that has no relative
-    path to the output at all (on Windows, a file on another drive). The result always uses forward slashes so
-    it stays meaningful once the file leaves the machine that wrote it.
+    file and not to the working directory. URLs are left as they are, and an entry that has no relative path
+    to the output at all (on Windows, a file on another drive) is written absolute. The result always uses
+    forward slashes so it stays meaningful once the file leaves the machine that wrote it.
     """
     output_directory = Path(nwbfile_path).resolve().parent
     # `nwbfile.objects` is built on its first read and never invalidated, so it does not hold anything added
@@ -649,9 +649,12 @@ def _make_image_series_paths_relative_to_nwbfile(nwbfile: NWBFile, nwbfile_path:
             entry = str(entry)  # an interface may have stored a `Path`
             absolute_entry = Path(entry).resolve()
             is_url = "://" in entry
-            is_on_another_drive = absolute_entry.anchor != output_directory.anchor  # Windows: no relative path exists
-            if is_url or is_on_another_drive:
+            if is_url:
                 rewritten_entries.append(entry)
+                continue
+            is_on_another_drive = absolute_entry.anchor != output_directory.anchor  # Windows: no relative path exists
+            if is_on_another_drive:
+                rewritten_entries.append(absolute_entry.as_posix())
                 continue
             # TODO: replace with `absolute_entry.relative_to(output_directory, walk_up=True)` once the Python
             # floor is 3.12; before that `Path.relative_to` cannot produce `..` segments.

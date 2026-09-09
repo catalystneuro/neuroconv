@@ -240,7 +240,7 @@ class TestMiniscopeInterface(DataInterfaceTestMixin):
             if video_path.anchor == output_directory.anchor:
                 expected_external_files.append(Path(os.path.relpath(video_path, start=output_directory)).as_posix())
             else:
-                expected_external_files.append(file)
+                expected_external_files.append(video_path.as_posix())
         assert_array_equal(image_series.external_file[:], expected_external_files)
         nwbfile.read_io.close()
 

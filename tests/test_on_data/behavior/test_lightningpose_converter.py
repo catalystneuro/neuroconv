@@ -165,7 +165,7 @@ class TestLightningPoseConverter(TestCase):
             if video_path.anchor == output_directory.anchor:
                 expected_external_file = Path(os.path.relpath(video_path, start=output_directory)).as_posix()
             else:
-                expected_external_file = self.original_video_file_path
+                expected_external_file = video_path.as_posix()
             self.assertEqual(image_series.external_file[:], expected_external_file)
             self.assertEqual(image_series.description, "The original video used for pose estimation.")
 
@@ -178,7 +178,7 @@ class TestLightningPoseConverter(TestCase):
             if labeled_video_path.anchor == output_directory.anchor:
                 expected_labeled_file = Path(os.path.relpath(labeled_video_path, start=output_directory)).as_posix()
             else:
-                expected_labeled_file = self.labeled_video_file_path
+                expected_labeled_file = labeled_video_path.as_posix()
             self.assertEqual(image_series_labeled_video.external_file[:], expected_labeled_file)
             self.assertEqual(
                 image_series_labeled_video.description,
