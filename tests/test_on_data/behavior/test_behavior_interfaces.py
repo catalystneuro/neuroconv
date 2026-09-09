@@ -1,3 +1,4 @@
+import os
 import unittest
 from datetime import datetime, timezone
 from pathlib import Path
@@ -19,9 +20,6 @@ from neuroconv.datainterfaces import (
 )
 from neuroconv.datainterfaces.ophys.miniscope._miniscope_readers import (
     _get_fused_timestamps,
-)
-from neuroconv.tools.nwb_helpers._metadata_and_file_helpers import (
-    _external_file_entry_relative_to,
 )
 from neuroconv.tools.testing.data_interface_mixins import (
     DataInterfaceTestMixin,
@@ -234,11 +232,15 @@ class TestMiniscopeInterface(DataInterfaceTestMixin):
         assert image_series.unit == "px"
         assert device == nwbfile.acquisition[self.image_series_name].device
         assert_array_equal(image_series.timestamps[:], self.timestamps)
-        # `external_file` is written relative to the NWB file where a relative path exists
+        # Written relative to the NWB file, except on Windows CI where the data sits on another drive
         output_directory = Path(nwbfile_path).resolve().parent
-        expected_external_files = [
-            _external_file_entry_relative_to(file, output_directory=output_directory) for file in self.external_files
-        ]
+        expected_external_files = []
+        for file in self.external_files:
+            video_path = Path(file).resolve()
+            if video_path.anchor == output_directory.anchor:
+                expected_external_files.append(Path(os.path.relpath(video_path, start=output_directory)).as_posix())
+            else:
+                expected_external_files.append(file)
         assert_array_equal(image_series.external_file[:], expected_external_files)
         nwbfile.read_io.close()
 

@@ -644,32 +644,21 @@ def _make_image_series_paths_relative_to_nwbfile(nwbfile: NWBFile, nwbfile_path:
             continue
         if neurodata_object.container_source is not None:  # read from disk, so already relative to that file
             continue
+        rewritten_entries = []
+        for entry in neurodata_object.external_file:
+            entry = str(entry)  # an interface may have stored a `Path`
+            absolute_entry = Path(entry).resolve()
+            is_url = "://" in entry
+            is_on_another_drive = absolute_entry.anchor != output_directory.anchor  # Windows: no relative path exists
+            if is_url or is_on_another_drive:
+                rewritten_entries.append(entry)
+                continue
+            # TODO: replace with `absolute_entry.relative_to(output_directory, walk_up=True)` once the Python
+            # floor is 3.12; before that `Path.relative_to` cannot produce `..` segments.
+            rewritten_entries.append(Path(os.path.relpath(absolute_entry, start=output_directory)).as_posix())
         # The setter refuses a field that is already set, and the list itself may belong to the interface that
         # built the series, so a new list goes in where the setter would have stored it.
-        neurodata_object.fields["external_file"] = [
-            _external_file_entry_relative_to(entry=entry, output_directory=output_directory)
-            for entry in neurodata_object.external_file
-        ]
-
-
-def _external_file_entry_relative_to(entry: str | Path, output_directory: Path) -> str:
-    """
-    One ``external_file`` entry as it is written when the NWB file lives in ``output_directory``.
-
-    A URL, and on Windows a file on another drive than the output, come back as they were given.
-    """
-    entry = str(entry)  # an interface may have stored a `Path`
-    is_url = "://" in entry
-    if is_url:
-        return entry
-    absolute_entry = Path(entry).resolve()
-    try:
-        # TODO: replace with `absolute_entry.relative_to(output_directory, walk_up=True)` once the Python
-        # floor is 3.12; before that `Path.relative_to` cannot produce `..` segments.
-        relative_entry = Path(os.path.relpath(absolute_entry, start=output_directory))
-    except ValueError:  # Windows, file and output on different drives: no relative path exists
-        return entry
-    return relative_entry.as_posix()
+        neurodata_object.fields["external_file"] = rewritten_entries
 
 
 def configure_and_write_nwbfile(
