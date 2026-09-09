@@ -3,6 +3,7 @@ import pytest
 from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.datainterfaces import TDTEventsInterface
+from neuroconv.tools.testing.data_interface_mixins import EventsInterfaceTestMixin
 
 try:
     from ..setup_paths import ECEPHY_DATA_PATH
@@ -20,7 +21,7 @@ def test_exclude_events():
     assert set(event_types) == {"s1s_"}
 
 
-class TDTEventsInterfaceMixin:
+class TDTEventsInterfaceMixin(EventsInterfaceTestMixin):
     """Builds ``self.interface`` from ``data_interface_cls`` and ``interface_kwargs`` set on the subclass."""
 
     data_interface_cls = TDTEventsInterface

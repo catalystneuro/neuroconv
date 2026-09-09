@@ -1,25 +1,8 @@
 # v0.10.2 (Upcoming)
 
-## Removals, Deprecations and Changes
-* Dropped the `MultiSegmentationExtractor` branch from `write_segmentation_to_nwbfile`, along with the import. The class cannot be instantiated, since `SegmentationExtractor.get_native_timestamps` is abstract and it never implemented it, so the branch guarded a case that no caller could reach. It is deprecated in roiextractors, see [catalystneuro/roiextractors#588](https://github.com/catalystneuro/roiextractors/issues/588).
-* `ZarrDatasetIOConfiguration.filter_methods` is renamed to `filters`, with the old name deprecated for removal in v0.12.0, so a dataset's codec stages are named the way `zarr.Array` names them: `filters` for the codecs applied to the values and `compressors` for those applied to the bytes they serialize to. [PR #2002](https://github.com/catalystneuro/neuroconv/pull/2002)
-* Naming `shuffle` in a `ZarrDatasetIOConfiguration`'s `filters` is deprecated, to be removed in v0.12.0, and `shuffle` no longer appears in `AVAILABLE_ZARR_COMPRESSION_METHODS`, since it rearranges the serialized bytes rather than the values and so belongs in `compressors` beside the compression method. [PR #2002](https://github.com/catalystneuro/neuroconv/pull/2002)
-* A `timestamps` dataset is now written with the lossless shuffle filter ahead of its compression method, which on two million irregular float64 timestamps takes 11.75 MB down to 7.51 MB on HDF5 and 11.62 MB down to 7.62 MB on Zarr at the same chunk shape and compression level, leaving `data` untouched. [PR #1984](https://github.com/catalystneuro/neuroconv/pull/1984)
-* Deprecated `compression_method` and `compression_options` on both dataset IO configuration models, and the single-valued form of `BackendConfiguration.apply_global_compression`, to be removed in v0.12.0, in favor of `compressors` and `compressor_options`. [PR #1979](https://github.com/catalystneuro/neuroconv/pull/1979)
-* Removed the `hdf5` and `sbx` installation extras, aliases of `hdf5imaging` and `scanbox` kept for gallery pages that named the old spellings and marked for removal at the start of 2026. Use `neuroconv[hdf5imaging]` and `neuroconv[scanbox]`.
+The entries for this release are collected one file per entry under [changelog_entries/](changelog_entries/) and are assembled here when it ships.
 
-## Bug Fixes
-* `get_default_dataset_io_configurations` now auto-detects the backend of a file opened for appending when `backend` is left as `None`, as its docstring and error messages have said. The configuration class was looked up from `backend` before the detection ran, so `None` raised `KeyError` instead. The guard for a file read without appending also no longer reads an attribute `NWBZarrIO` lacks, and its message now describes that case. [PR #2013](https://github.com/catalystneuro/neuroconv/pull/2013)
-* Filter empty fluorescence traces on `math.prod(trace.shape)` instead of `trace.size`, which the `DatasetView` objects `get_traces_dict()` can return do not have. [PR #2005](https://github.com/catalystneuro/neuroconv/pull/2005)
-* Reading an existing Zarr file now reports its shuffle in `compressors` rather than among the filters, so a file this library wrote reports the configuration that wrote it and naming shuffle again does not apply it twice. [PR #2002](https://github.com/catalystneuro/neuroconv/pull/2002)
-* Fixed the Zarr shuffle codec taking `numcodecs`' default `elementsize` of 4 regardless of the dataset's dtype, which on float64 grouped the wrong bytes and recovered almost nothing, so it is now taken from the dtype unless the caller states one. [PR #1984](https://github.com/catalystneuro/neuroconv/pull/1984)
-
-## Features
-* `GuppyInterface` now writes the outputs of GuPPy's bootstrap PSTH significance testing as `ndx-guppy` `GuppyPSTHSignificance` objects: the estimate, both confidence bounds and the significance flags over the peri-event window, one object per (recording site, trace type, comparison kind), with the event pairs compared against each other kept separate from the tests against zero. It is written only for a session that ran that optional GuPPy step. [PR #2000](https://github.com/catalystneuro/neuroconv/pull/2000)
-* `HDF5DatasetIOConfiguration` and `ZarrDatasetIOConfiguration` now describe a dataset's codec pipeline with an ordered `compressors` list and a matching `compressor_options`, which makes the HDF5 `shuffle` and `fletcher32` filters reachable for the first time and gives both backends the same vocabulary. [PR #1979](https://github.com/catalystneuro/neuroconv/pull/1979)
-
-## Improvements
-* `EDFRecordingInterface` now reports the patient field's birthdate as `Subject.date_of_birth`, parsed into an ISO 8601 date from the `17 mar 1985` spelling the readers hand back. [PR #1999](https://github.com/catalystneuro/neuroconv/pull/1999)
+<!-- towncrier release notes start -->
 
 # v0.10.1 (September 1, 2026)
 

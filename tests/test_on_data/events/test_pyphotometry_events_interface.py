@@ -30,7 +30,7 @@ from pynwb import read_nwb
 from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.datainterfaces import PyPhotometryEventsInterface
-from neuroconv.tools.testing.data_interface_mixins import DataInterfaceTestMixin
+from neuroconv.tools.testing.data_interface_mixins import EventsInterfaceTestMixin
 
 try:
     from ..setup_paths import OPHYS_DATA_PATH, OUTPUT_PATH
@@ -57,7 +57,7 @@ def widths_of(sample_counts) -> np.ndarray:
     return np.asarray(sample_counts) / RATE_IN_HZ
 
 
-class PyPhotometryEventsRoundTrip(DataInterfaceTestMixin):
+class PyPhotometryEventsRoundTrip(EventsInterfaceTestMixin):
     """What every window shares: how it is built, and what its metadata says.
 
     Which events each window carries is its own claim and lives in its ``check_read_nwb``, since the whole
@@ -114,6 +114,7 @@ class TestPyPhotometryNarrowPulsesAndIdleLine(PyPhotometryEventsRoundTrip):
 
     def check_read_nwb(self, nwbfile_path: str):
         """The default reading is high_period: an onset at each rising edge, closed by the falling one."""
+        super().check_read_nwb(nwbfile_path=nwbfile_path)
         nwbfile = read_nwb(nwbfile_path)
 
         # Each event_name CamelCases into its table's NWB object name.
@@ -160,6 +161,7 @@ class TestPyPhotometryStartsAndEndsHigh(PyPhotometryEventsRoundTrip):
 
     def check_read_nwb(self, nwbfile_path: str):
         """Assert the two boundary pulses, which is what this window exists for."""
+        super().check_read_nwb(nwbfile_path=nwbfile_path)
         nwbfile = read_nwb(nwbfile_path)
         pulses = nwbfile.get_events_table("Digital1")
 
@@ -196,6 +198,7 @@ class TestPyPhotometryWidePulsesOnBothLines(PyPhotometryEventsRoundTrip):
     expected_pulse_widths = {"digital_1": [8, 8], "digital_2": [6, 6]}
 
     def check_read_nwb(self, nwbfile_path: str):
+        super().check_read_nwb(nwbfile_path=nwbfile_path)
         nwbfile = read_nwb(nwbfile_path)
 
         for signal_source_id, table_name in (("digital_1", "Digital1"), ("digital_2", "Digital2")):

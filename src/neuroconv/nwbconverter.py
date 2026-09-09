@@ -504,7 +504,7 @@ class ConverterPipe(NWBConverter):
 
     def __init__(self, data_interfaces: list[BaseDataInterface] | dict[str, BaseDataInterface], verbose=False):
         self.verbose = verbose
-        if isinstance(data_interfaces, list):
+        if isinstance(data_interfaces, (list, tuple)):
             # Create unique names for each interface
             counter = {interface.__class__.__name__: 0 for interface in data_interfaces}
             total_counts = Counter([interface.__class__.__name__ for interface in data_interfaces])
@@ -517,35 +517,12 @@ class ConverterPipe(NWBConverter):
                 self.data_interface_objects[interface_name] = interface
         elif isinstance(data_interfaces, dict):
             self.data_interface_objects = data_interfaces
+        else:
+            raise TypeError(
+                "`data_interfaces` must be a list of interfaces, or a dict mapping names to interfaces, "
+                f"not {type(data_interfaces).__name__}."
+            )
 
         self.data_interface_classes = {
             name: interface.__class__ for name, interface in self.data_interface_objects.items()
         }
-
-    def get_conversion_options_schema(self) -> dict:
-        """
-        Compile conversion option schemas from each of the data interface classes.
-
-        Returns
-        -------
-        dict
-            The compiled conversion options schema containing:
-            - root: True
-            - id: "conversion_options.schema.json"
-            - title: "Conversion options schema"
-            - description: "Schema for the conversion options"
-            - version: "0.1.0"
-            - properties: Dictionary mapping interface names to their unrooted schemas
-        """
-        conversion_options_schema = get_base_schema(
-            root=True,
-            id_="conversion_options.schema.json",
-            title="Conversion options schema",
-            description="Schema for the conversion options",
-            version="0.1.0",
-        )
-        for interface_name, data_interface in self.data_interface_objects.items():
-
-            schema = data_interface.get_conversion_options_schema()
-            conversion_options_schema["properties"].update({interface_name: unroot_schema(schema)})
-        return conversion_options_schema
