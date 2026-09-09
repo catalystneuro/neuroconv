@@ -82,15 +82,9 @@ class PyPhotometryEventsInterface(BaseEventsInterface):
         verbose : bool, optional
             Whether to print status messages, default = False.
         """
-        super().__init__(
-            file_path=file_path,
-            detection_configuration=detection_configuration,
-            verbose=verbose,
-        )
-        self.metadata_key = metadata_key or "pyphotometry_events"
         # Read once and kept: a photometry session is small enough to hold, and separating the words
         # into signals is what tells us which lines the file carries.
-        self._recording = _read_ppd(self.source_data["file_path"])
+        self._recording = _read_ppd(file_path)
         # available_signals: signal_source_id ("digital_1") -> its descriptor. Every signal a .ppd carries
         # here is a digital line, one bit wide by construction, and kind "line" is what lets the validator
         # reject a bit carve on one.
@@ -112,6 +106,16 @@ class PyPhotometryEventsInterface(BaseEventsInterface):
         # same identifier. Validation covers structure and identifier resolution alike.
         _validate_detection_configuration(detection_configuration, self._available_signals)
         self._detection_configuration = detection_configuration
+        self.metadata_key = metadata_key or "pyphotometry_events"
+        super().__init__(
+            file_path=file_path,
+            detection_configuration=detection_configuration,
+            verbose=verbose,
+        )
+
+    def get_event_type_source_ids(self) -> list[str]:
+        """The event types the configuration resolves to, read from nothing."""
+        return _get_event_type_source_ids(self._detection_configuration)
 
     @staticmethod
     def _signal_source_id(digital_signal) -> str:
@@ -146,7 +150,7 @@ class PyPhotometryEventsInterface(BaseEventsInterface):
         # even a label, so only the name is seeded here. Derived from the configuration rather than from
         # the events, so whether a line happened to fire does not change which event types the
         # configuration asked for.
-        for event_type_source_id in _get_event_type_source_ids(self._detection_configuration):
+        for event_type_source_id in self.get_event_type_source_ids():
             metadata["Events"][self.metadata_key]["event_types"][event_type_source_id] = {
                 "event_name": event_type_source_id
             }

@@ -340,10 +340,10 @@ class MockEventsInterface(BaseEventsInterface):
         self._num_events = num_events
         self._event_extent = event_extent
         self._event_payload = event_payload
-        super().__init__(verbose=verbose)
         self.metadata_key = metadata_key or "mock_events"
+        super().__init__(verbose=verbose)
 
-    def _event_type_source_ids(self) -> list[str]:
+    def get_event_type_source_ids(self) -> list[str]:
         # A single type keeps the plain "events" id; several are indexed so their ids (and, by default,
         # their tables and column names) stay unique.
         if self._num_event_types == 1:
@@ -354,7 +354,7 @@ class MockEventsInterface(BaseEventsInterface):
         metadata = super().get_metadata()
         metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
 
-        for index, event_type_source_id in enumerate(self._event_type_source_ids()):
+        for index, event_type_source_id in enumerate(self.get_event_type_source_ids()):
             suffix = "" if self._num_event_types == 1 else f"_{index}"
             # One branch per payload mode, spelled out in full rather than composed from shared pieces:
             # between them the modes cover the three ways the writer treats a value column, and stating
@@ -427,7 +427,7 @@ class MockEventsInterface(BaseEventsInterface):
 
         duration = 0.05 if self._event_extent == "event with duration" else None
         events_data_dict = {}
-        for index, event_type_source_id in enumerate(self._event_type_source_ids()):
+        for index, event_type_source_id in enumerate(self.get_event_type_source_ids()):
             # Stagger timestamps across types so pooling several into one table interleaves in time.
             timestamps = 0.1 * (np.arange(self._num_events) * self._num_event_types + index + 1)
             durations = np.full(self._num_events, duration) if duration is not None else None
@@ -601,9 +601,6 @@ class MockSignalEncodedEventsInterface(BaseEventsInterface):
         self._num_events = num_events
         self._sampling_frequency = sampling_frequency
         self._sampling = sampling
-        super().__init__(verbose=verbose)
-        self.metadata_key = metadata_key or "mock_signal_encoded_events"
-
         # Discovery, faked: one packed word, whose kind is what makes bit selection legal on it and a
         # magnitude cut illegal, and whose `bits` are the positions it carries. A real interface
         # settles both from its file's structure: SpikeGLX declares the inventory as niXDChans1, and the
@@ -622,6 +619,12 @@ class MockSignalEncodedEventsInterface(BaseEventsInterface):
         # same identifier. Validation covers structure and identifier resolution (rules 4 and 5) alike.
         _validate_detection_configuration(detection_configuration, self._available_signals)
         self._detection_configuration = detection_configuration
+        self.metadata_key = metadata_key or "mock_signal_encoded_events"
+        super().__init__(verbose=verbose)
+
+    def get_event_type_source_ids(self) -> list[str]:
+        """The event types the configuration resolves to, read from nothing."""
+        return _get_event_type_source_ids(self._detection_configuration)
 
     SIGNAL_SOURCE_ID = "word"
 
@@ -712,7 +715,7 @@ class MockSignalEncodedEventsInterface(BaseEventsInterface):
         metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
         # Derived from the configuration, so metadata costs no signal generation, does not depend on a
         # plan existing, and lists exactly what will be written, including a line that never fired.
-        for event_type_source_id in _get_event_type_source_ids(self._detection_configuration):
+        for event_type_source_id in self.get_event_type_source_ids():
             metadata["Events"][self.metadata_key]["event_types"][event_type_source_id] = {
                 "event_name": event_type_source_id
             }

@@ -123,7 +123,7 @@ class _MedPCEventsInterface(BaseEventsInterface):
         # are left unlabelled: what an array or a code records lives in the MSN program and in the experimenter's
         # head, and is the user's to add.
         event_types = metadata["Events"][self.metadata_key]["event_types"]
-        for event_type_source_id in self._get_events_data_dict():
+        for event_type_source_id in self.get_event_type_source_ids():
             entry = {"event_name": event_type_source_id}
             payload_variables = self._payload_variables(event_type_source_id=event_type_source_id)
             if payload_variables:
@@ -443,6 +443,8 @@ class MedPCArrayEventsInterface(_MedPCEventsInterface):
         """
 
         _validate_time_arguments(time_unit=time_unit)
+        self._header_dict = None
+        self.metadata_key = metadata_key or "medpc"
         super().__init__(
             file_path=file_path,
             session_header=session_header,
@@ -451,8 +453,10 @@ class MedPCArrayEventsInterface(_MedPCEventsInterface):
             relative_mode=relative_mode,
             verbose=verbose,
         )
-        self.metadata_key = metadata_key or "medpc"
-        self._header_dict = None
+
+    def get_event_type_source_ids(self) -> list[str]:
+        """The arrays the configuration declares as event types, in configuration order, read from nothing."""
+        return list(self.source_data["event_configuration"])
 
     def _read_events(self) -> dict[str, _EventsData]:
         """Read one event type per declared array, plus the arrays named as its durations and payload."""
@@ -588,7 +592,8 @@ class MedPCPackedEventsInterface(_MedPCEventsInterface):
             Whether to print verbose output, by default False.
         """
         _validate_time_arguments(time_unit=time_unit)
-
+        self._header_dict = None
+        self.metadata_key = metadata_key or "medpc"
         super().__init__(
             file_path=file_path,
             session_header=session_header,
@@ -597,8 +602,6 @@ class MedPCPackedEventsInterface(_MedPCEventsInterface):
             relative_mode=relative_mode,
             verbose=verbose,
         )
-        self.metadata_key = metadata_key or "medpc"
-        self._header_dict = None
 
     def _read_events(self) -> dict[str, _EventsData]:
         """Read the one time array, recover each event's code, and group the times by it."""

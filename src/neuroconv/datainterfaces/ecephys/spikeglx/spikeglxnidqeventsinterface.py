@@ -91,8 +91,6 @@ class _SpikeGLXNIDQEventsInterface(BaseEventsInterface):
             SpikeGLXRecordingExtractor,
         )
 
-        super().__init__(folder_path=folder_path, verbose=verbose)
-        self.metadata_key = metadata_key
         # Its own reader rather than the parent's, so this stays an ordinary interface: source data is a
         # path, it can be constructed and tested on its own, and nothing in its signature is a live
         # object. The second open is cheap (the bin file is memmapped) and both readers see the same
@@ -158,6 +156,14 @@ class _SpikeGLXNIDQEventsInterface(BaseEventsInterface):
         if detection_configuration:
             _validate_detection_configuration(detection_configuration, self._available_signals)
         self._detection_configuration = detection_configuration
+        self.metadata_key = metadata_key
+        super().__init__(folder_path=folder_path, verbose=verbose)
+
+    def get_event_type_source_ids(self) -> list[str]:
+        """The event types the configuration resolves to, read from nothing; none for the ``{}`` sentinel."""
+        if not self._detection_configuration:
+            return []
+        return _get_event_type_source_ids(self._detection_configuration)
 
     @staticmethod
     def _get_available_signals(recording_extractor, digital_line_names) -> dict[str, dict]:
@@ -249,7 +255,7 @@ class _SpikeGLXNIDQEventsInterface(BaseEventsInterface):
         The NIDQ board ships no meaning for a line, so only the name is seeded.
         """
         metadata = super().get_metadata()
-        for event_type_source_id in _get_event_type_source_ids(self._detection_configuration):
+        for event_type_source_id in self.get_event_type_source_ids():
             metadata["Events"][self.metadata_key]["event_types"][event_type_source_id] = {
                 "event_name": event_type_source_id
             }

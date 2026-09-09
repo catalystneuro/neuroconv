@@ -104,7 +104,6 @@ class BORISInterface(BaseEventsInterface):
         verbose : bool, default: False
             Whether to print progress.
         """
-        super().__init__(file_path=file_path, observation_name=observation_name, verbose=verbose)
         # A project holds many observations and each is its own interface, so the key is derived from
         # the observation rather than fixed: a conversion running several of them would otherwise write
         # every block under the same handle. Observation names are free text, so the words are joined.
@@ -112,6 +111,7 @@ class BORISInterface(BaseEventsInterface):
         self.metadata_key = metadata_key or "_".join(["boris", *(word.lower() for word in observation_words)])
         self._project = _read_boris_project(file_path=file_path)
         self._observation = _read_boris_observation(file_path=file_path, observation_name=observation_name)
+        super().__init__(file_path=file_path, observation_name=observation_name, verbose=verbose)
         # The observation's `time offset` shifts the whole observation, which is what a rigid alignment
         # offset is, so it goes through the alignment surface rather than being folded into the times. That
         # keeps the read times the file's own and leaves the offset re-settable.

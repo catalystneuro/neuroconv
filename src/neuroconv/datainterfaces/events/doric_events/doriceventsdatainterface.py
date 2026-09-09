@@ -83,16 +83,10 @@ class DoricEventsInterface(BaseEventsInterface):
         verbose : bool, optional
             Whether to print status messages, default = False.
         """
-        super().__init__(
-            file_path=file_path,
-            detection_configuration=detection_configuration,
-            verbose=verbose,
-        )
-        self.metadata_key = metadata_key or "doric_events"
         # available_signals: signal_source_id (the line's dataset key, e.g. "Camera1" or "DI--O-1") -> its
         # {kind, data_path, time_path} descriptor. Every discovered signal is a digital line, already a
         # 0/1 signal, and kind "line" is what lets the validator reject a bit carve on one.
-        self._available_signals = self._get_available_signals(self.source_data["file_path"])
+        self._available_signals = self._get_available_signals(file_path)
         if detection_configuration is None:
             # The default, used only when the caller passes none: read every discovered line as a
             # "high_period", the lossless durative reading (onset at the rising edge, duration to the
@@ -107,6 +101,16 @@ class DoricEventsInterface(BaseEventsInterface):
         # same identifier. Validation covers structure and identifier resolution (rules 4 and 5) alike.
         _validate_detection_configuration(detection_configuration, self._available_signals)
         self._detection_configuration = detection_configuration
+        self.metadata_key = metadata_key or "doric_events"
+        super().__init__(
+            file_path=file_path,
+            detection_configuration=detection_configuration,
+            verbose=verbose,
+        )
+
+    def get_event_type_source_ids(self) -> list[str]:
+        """The event types the configuration resolves to, read from nothing."""
+        return _get_event_type_source_ids(self._detection_configuration)
 
     @staticmethod
     def _get_available_signals(file_path) -> dict[str, dict]:
@@ -231,7 +235,7 @@ class DoricEventsInterface(BaseEventsInterface):
         # so only the name is seeded here. Derived from the configuration rather than from the events or
         # the plan, so metadata costs no data read and does not depend on a plan existing: whether a line
         # happened to fire does not change which event types the configuration asked for.
-        for event_type_source_id in _get_event_type_source_ids(self._detection_configuration):
+        for event_type_source_id in self.get_event_type_source_ids():
             metadata["Events"][self.metadata_key]["event_types"][event_type_source_id] = {
                 "event_name": event_type_source_id
             }
