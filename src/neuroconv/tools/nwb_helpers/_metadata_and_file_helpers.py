@@ -637,7 +637,9 @@ def _make_image_series_paths_relative_to_nwbfile(nwbfile: NWBFile, nwbfile_path:
     it stays meaningful once the file leaves the machine that wrote it.
     """
     output_directory = Path(nwbfile_path).resolve().parent
-    for neurodata_object in nwbfile.objects.values():
+    # `nwbfile.objects` is built on its first read and never invalidated, so it does not hold anything added
+    # to the file afterwards. `all_children` recomputes the walk.
+    for neurodata_object in nwbfile.all_children():
         if not isinstance(neurodata_object, ImageSeries) or not neurodata_object.external_file:
             continue
         if neurodata_object.container_source is not None:  # read from disk, so already relative to that file
