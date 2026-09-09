@@ -574,6 +574,38 @@ relative-imports-order = "closest-to-furthest"
 known-first-party = ["neuroconv"]
 
 
+[tool.towncrier]
+# Each entry is a file under changelog_entries/ named "<PR number>.<type>.md", so two pull requests never
+# touch the same lines and the release notes are assembled at release time. See making_a_release.rst.
+directory = "changelog_entries"
+filename = "CHANGELOG.md"
+template = "changelog_entries/template.md"
+start_string = "<!-- towncrier release notes start -->\n"
+title_format = "# v{version} ({project_date})"
+issue_format = "[PR #{issue}](https://github.com/catalystneuro/neuroconv/pull/{issue})"
+ignore = ["template.md"]
+
+[[tool.towncrier.type]]
+directory = "deprecation"
+name = "Removals, Deprecations and Changes"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "bugfix"
+name = "Bug Fixes"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "feature"
+name = "Features"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "improvement"
+name = "Improvements"
+showcontent = true
+
+
 [tool.codespell]
 skip = '.git*,*.pdf,*.css,*.svg'
 check-hidden = true
@@ -606,5 +638,6 @@ docs = [
 
 dev = [
     "pre-commit",
+    "towncrier",
     {include-group = "test"},
 ]
