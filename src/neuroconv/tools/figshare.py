@@ -1,9 +1,12 @@
+"""Download the files of a Figshare article or collection."""
+
 import json
 import os
 from urllib.request import urlretrieve
 
-import requests
-from tqdm.notebook import tqdm
+from tqdm import tqdm
+
+from .importing import get_package
 
 BASE_URL = "https://api.figshare.com/v2"
 
@@ -37,23 +40,34 @@ def tqdm_hook(t):
     return update_to
 
 
+def _get_json(url: str) -> dict | list:
+    """Fetch a Figshare API endpoint and decode its JSON body."""
+    # Imported here rather than at the top: ``requests`` is not a dependency of neuroconv, so a
+    # user reaches for it only when they call one of these helpers.
+    requests = get_package(package_name="requests", installation_instructions="pip install requests")
+    response = requests.get(url)
+    response.raise_for_status()
+    return json.loads(response.content)
+
+
 def download_article(article_record: dict, destination: str) -> None:
     """
-    Download all files in an article. Files that already exist in the destination will be skipped if they  have the
-    same size as the source. Also add a metadata.yaml json file.
+    Download all files in an article. Files that already exist in the destination will be skipped if they have the
+    same size as the source. Also writes a ``metadata.json`` file holding the article description in the shape
+    ``metadata["NWBFile"]["experiment_description"]`` expects.
 
     Parameters
     ----------
     article_record: dict
+        A Figshare article record, as returned by the collection listing; ``"id"`` and ``"title"`` are used.
     destination: str
+        Folder to download the files into. Created, along with any missing parents, if it does not exist.
 
     """
-    # if article directory does not exist, create it
-    if not os.path.exists(destination):
-        os.mkdir(destination)
+    os.makedirs(destination, exist_ok=True)
 
     # get all metadata for that article
-    article_metadata = json.loads(requests.get(BASE_URL + f'/articles/{article_record["id"]}').content)
+    article_metadata = _get_json(BASE_URL + f'/articles/{article_record["id"]}')
 
     # write metadata file
     metadata_filepath = os.path.join(destination, "metadata.json")
@@ -75,25 +89,23 @@ def download_article(article_record: dict, destination: str) -> None:
 
 
 def download_collection(collection_id: int, destination: str) -> None:
-    """Download all articles in a collection.
+    """Download all articles in a collection, each into a sub-folder named after the article's title.
 
     Parameters
     ----------
     collection_id: int
     destination: str
+        Folder to download the articles into. Created, along with any missing parents, if it does not exist.
 
     Example
     -------
     >>> download_collection(5043830, "/Users/bendichter/Downloads/Schiavo2020")
     """
 
-    if not os.path.exists(destination):
-        os.mkdir(destination)
+    os.makedirs(destination, exist_ok=True)
 
     # get all articles for collection
-    article_records = json.loads(
-        requests.get(BASE_URL + f"/collections/{collection_id}/articles?page=1&page_size=1000").content
-    )
+    article_records = _get_json(BASE_URL + f"/collections/{collection_id}/articles?page=1&page_size=1000")
 
     # iterate over articles
     for article_record in tqdm(article_records, desc="articles in collection", leave=False):
