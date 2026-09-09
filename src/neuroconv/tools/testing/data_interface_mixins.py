@@ -10,7 +10,7 @@ from typing import Literal
 import numpy as np
 import pytest
 from jsonschema.validators import Draft7Validator, validate
-from numpy.testing import assert_array_equal
+from numpy.testing import assert_allclose, assert_array_equal
 from pynwb import read_nwb
 from pynwb.testing.mock.file import mock_NWBFile
 
@@ -21,6 +21,7 @@ from neuroconv.datainterfaces.ecephys.baserecordingextractorinterface import (
 from neuroconv.datainterfaces.ecephys.basesortingextractorinterface import (
     BaseSortingExtractorInterface,
 )
+from neuroconv.datainterfaces.events.baseeventsinterface import _to_table_object_name
 from neuroconv.datainterfaces.ophys.baseimagingextractorinterface import (
     BaseImagingExtractorInterface,
 )
@@ -139,7 +140,7 @@ class DataInterfaceTestMixin:
 
         nwbfile = mock_NWBFile()
 
-        metadata = _get_metadata_for_writing(self.interface)
+        metadata = self.edit_metadata(_get_metadata_for_writing(self.interface))
         metadata_before_add_method = deepcopy(metadata)
 
         self.interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **self.conversion_options)
@@ -153,7 +154,7 @@ class DataInterfaceTestMixin:
         writes the same file; that equivalence is covered once on a mock interface in
         `tests/test_minimal/test_interfaces_run_conversion.py`.
         """
-        metadata = _get_metadata_for_writing(self.interface)
+        metadata = self.edit_metadata(_get_metadata_for_writing(self.interface))
         if "session_start_time" not in metadata["NWBFile"]:
             metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
 
@@ -174,6 +175,10 @@ class DataInterfaceTestMixin:
         # Custom checks tend to write more files of their own, so they run against one backend only
         if backend == "hdf5":
             self.run_custom_checks()
+
+    def edit_metadata(self, metadata: dict) -> dict:
+        """Override this to edit the interface's metadata before it is written, the way a user would."""
+        return metadata
 
     @abstractmethod
     def check_read_nwb(self, nwbfile_path: str):
@@ -1460,3 +1465,59 @@ class FiberPhotometryInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmen
         indicators = nwbfile.lab_meta_data["fiber_photometry"].fiber_photometry_indicators
         for indicator_metadata in fiber_photometry_metadata["FiberPhotometryIndicators"].values():
             assert indicator_metadata["name"] in indicators.indicators
+
+
+class EventsInterfaceTestMixin(DataInterfaceTestMixin):
+    """Shared tests for the interfaces built on ``BaseEventsInterface``.
+
+    A subclass sets ``data_interface_cls`` and ``interface_kwargs`` and inherits the schema, metadata and
+    round-trip tests of ``DataInterfaceTestMixin``, with ``check_read_nwb`` asserting what is true of every
+    events interface whatever its source: the written tables carry the times ``get_event_times`` reports.
+    A subclass may also set ``event_names`` to write under the names a user would give the types, in which
+    case the round trip runs, and is checked, under those names. Nothing here touches ``alignment``. Nothing
+    here reads the source directly either, so a subclass that wants to pin the actual times of its fixture
+    states them in its own ``check_read_nwb``, calling ``super().check_read_nwb`` first.
+    """
+
+    #: ``event_type_source_id`` to ``event_name``. Empty means the interface's own names are written.
+    event_names: dict[str, str] = {}
+
+    def edit_metadata(self, metadata: dict) -> dict:
+        event_types = metadata["Events"][self.interface.metadata_key]["event_types"]
+        for event_type_source_id, event_name in self.event_names.items():
+            event_types[event_type_source_id]["event_name"] = event_name
+        return metadata
+
+    def check_read_nwb(self, nwbfile_path: str):
+        """Each type's rows in the written file carry the times ``get_event_times`` reports for it."""
+        events_metadata = self.edit_metadata(_get_metadata_for_writing(self.interface))["Events"]
+        event_types = events_metadata[self.interface.metadata_key]["event_types"]
+        nwbfile = read_nwb(nwbfile_path)
+
+        for event_type_source_id in self.interface.get_event_type_source_ids():
+            entry = event_types[event_type_source_id]
+
+            # The table this type routes into, named the way the writer names it: a declared EventTables
+            # entry, else the event_name of a type alone on its table, else the shared table_metadata_key.
+            table_metadata_key = entry.get("table_metadata_key", event_type_source_id)
+            declared_entry = events_metadata.get("EventTables", {}).get(table_metadata_key)
+            sharing_the_table = [
+                source_id
+                for source_id, other_entry in event_types.items()
+                if other_entry.get("table_metadata_key", source_id) == table_metadata_key
+            ]
+            if declared_entry is not None:
+                table_name = declared_entry["table_name"]
+            elif len(sharing_the_table) == 1:
+                table_name = _to_table_object_name(entry["event_name"])
+            else:
+                table_name = _to_table_object_name(table_metadata_key)
+            table = nwbfile.get_events_table(table_name)
+
+            # In a shared table this type's rows are the ones labelled with its event_name.
+            rows = np.arange(len(table))
+            if "event_type" in table.colnames:
+                rows = np.flatnonzero(np.asarray(table["event_type"][:]) == entry["event_name"])
+            written_timestamps = np.asarray(table["timestamp"][:])[rows]
+
+            assert_allclose(written_timestamps, self.interface.get_event_times(event_type_source_id))

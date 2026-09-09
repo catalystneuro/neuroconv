@@ -1,11 +1,11 @@
 import pytest
-from jsonschema.validators import Draft7Validator
 from pydantic import ValidationError
 from pynwb import NWBHDF5IO
 from pynwb.event import EventsTable
 from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.datainterfaces import CSVEventsInterface
+from neuroconv.tools.testing.data_interface_mixins import EventsInterfaceTestMixin
 
 # A single-type event file: a single ``timestamps`` column written as one EventsTable named after
 # the file stem, CamelCased ("ttl" -> "Ttl").
@@ -16,21 +16,25 @@ SINGLE_TYPE_TIMESTAMPS = [1.5, 2.5, 3.5, 4.5]
 TWO_TYPE_ROWS = [(1.0, "a"), (2.0, "b"), (3.0, "a"), (4.0, "b"), (5.0, "a")]
 
 
-class TestCSVEventsInterface:
-    @pytest.fixture
-    def single_type_file(self, tmp_path):
-        file_path = tmp_path / "ttl.csv"
+class TestCSVEventsInterface(EventsInterfaceTestMixin):
+    data_interface_cls = CSVEventsInterface
+
+    @pytest.fixture(scope="class", autouse=True)
+    @classmethod
+    def setup_test(cls, tmp_path_factory):
+        # The single-type file is written once per class so ``interface_kwargs`` can name it.
+        file_path = tmp_path_factory.mktemp("csv_events") / "ttl.csv"
         lines = ["timestamps"] + [str(value) for value in SINGLE_TYPE_TIMESTAMPS]
         file_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
-        return file_path
+        cls.interface_kwargs = dict(file_path=file_path, timestamps_column="timestamps", event_type_column=None)
 
     @pytest.fixture
-    def interface(self, single_type_file):
-        return CSVEventsInterface(
-            file_path=single_type_file,
-            timestamps_column="timestamps",
-            event_type_column=None,
-        )
+    def single_type_file(self):
+        return self.interface_kwargs["file_path"]
+
+    @pytest.fixture
+    def interface(self):
+        return CSVEventsInterface(**self.interface_kwargs)
 
     @pytest.fixture
     def two_type_file(self, tmp_path):
@@ -90,9 +94,6 @@ class TestCSVEventsInterface:
     def test_get_metadata_does_not_set_session_start_time(self, interface):
         metadata = interface.get_metadata()
         assert metadata["NWBFile"].get("session_start_time") is None
-
-    def test_metadata_schema_is_valid(self, interface):
-        Draft7Validator.check_schema(interface.get_metadata_schema())
 
     def test_single_type_metadata_keyed_by_file_stem(self, interface):
         event_types = interface.get_metadata()["Events"]["ttl"]["event_types"]
