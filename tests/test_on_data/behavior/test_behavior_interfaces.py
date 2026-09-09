@@ -1,3 +1,4 @@
+import os
 import unittest
 from datetime import datetime, timezone
 from pathlib import Path
@@ -231,7 +232,12 @@ class TestMiniscopeInterface(DataInterfaceTestMixin):
         assert image_series.unit == "px"
         assert device == nwbfile.acquisition[self.image_series_name].device
         assert_array_equal(image_series.timestamps[:], self.timestamps)
-        assert_array_equal(image_series.external_file[:], self.external_files)
+        # `external_file` is written relative to the NWB file
+        output_directory = Path(nwbfile_path).resolve().parent
+        expected_external_files = [
+            os.path.relpath(Path(file).resolve(), start=output_directory) for file in self.external_files
+        ]
+        assert_array_equal(image_series.external_file[:], expected_external_files)
         nwbfile.read_io.close()
 
 

@@ -1,3 +1,4 @@
+import os
 import shutil
 import tempfile
 from datetime import datetime
@@ -158,7 +159,12 @@ class TestLightningPoseConverter(TestCase):
             self.assertIn(self.original_video_name, nwbfile.acquisition)
             image_series = nwbfile.acquisition[self.original_video_name]
             self.assertIsInstance(image_series, ImageSeries)
-            self.assertEqual(image_series.external_file[:], self.original_video_file_path)
+            # `external_file` is written relative to the NWB file
+            output_directory = Path(nwbfile_path).resolve().parent
+            self.assertEqual(
+                image_series.external_file[:],
+                os.path.relpath(Path(self.original_video_file_path).resolve(), start=output_directory),
+            )
             self.assertEqual(image_series.description, "The original video used for pose estimation.")
 
             # Check labeled video added to behavior processing module
@@ -168,7 +174,7 @@ class TestLightningPoseConverter(TestCase):
             self.assertIsInstance(image_series_labeled_video, ImageSeries)
             self.assertEqual(
                 image_series_labeled_video.external_file[:],
-                self.labeled_video_file_path,
+                os.path.relpath(Path(self.labeled_video_file_path).resolve(), start=output_directory),
             )
             self.assertEqual(
                 image_series_labeled_video.description,
