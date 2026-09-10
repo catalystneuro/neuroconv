@@ -102,21 +102,22 @@ class TestIntanConverter:
         assert "ElectricalSeries" in nwbfile.acquisition
         assert len(nwbfile.events["DIGITAL-IN-14"]) == 16
 
-    def test_detection_configuration_is_forwarded(self):
-        first_file = sorted(DIGITAL_SPLIT_FOLDER.glob("*.rhd"))[0]
+    def test_detection_configuration_is_propagated(self):
         converter = IntanConverter(
-            file_path=first_file,
-            saved_files_are_split=True,
+            file_path=RHS_TRADITIONAL,
             detection_configuration={
-                "DIGITAL-IN-14": [{"signal_conditioning": {"binarize": "midpoint"}, "detection": "rising"}]
+                "DIGITAL-IN-14": [{"signal_conditioning": {"binarize": "midpoint"}, "detection": "rising"}],
+                "ANALOG-IN-1": [{"signal_conditioning": {"binarize": "midpoint"}, "detection": "rising"}],
             },
         )
+
+        assert "Digital" in converter.data_interface_objects
+        assert "AnalogEvents" in converter.data_interface_objects
 
         nwbfile = mock_NWBFile()
         converter.add_to_nwbfile(nwbfile)
 
-        assert set(nwbfile.events) == {"DIGITAL-IN-14"}
-        assert len(nwbfile.events["DIGITAL-IN-14"]) == 16
+        assert set(nwbfile.events) == {"DIGITAL-IN-14", "ANALOG-IN-1"}
 
 
 class TestMetadataKeyRouting:
