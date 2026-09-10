@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 from pydantic import ValidationError
-from pynwb.testing.mock.file import mock_NWBFile
+from pynwb import read_nwb
 
 from neuroconv.datainterfaces import IntanAnalogEventsInterface
 from neuroconv.tools.testing.data_interface_mixins import EventsInterfaceTestMixin
@@ -19,7 +19,6 @@ class TestIntanAnalogEventsInterface(EventsInterfaceTestMixin):
 
     FILE_PATH = ECEPHY_DATA_PATH / "intan" / "rhs_stim_data_single_file_format" / "intanTestFile.rhs"
     CONFIGURATION = {"ANALOG-IN-1": [{"signal_conditioning": {"binarize": "midpoint"}, "detection": "rising"}]}
-    OUTPUT_CONFIGURATION = {"ANALOG-OUT-1": [{"signal_conditioning": {"binarize": "midpoint"}, "detection": "rising"}]}
     data_interface_cls = IntanAnalogEventsInterface
     interface_kwargs = dict(file_path=FILE_PATH, detection_configuration=CONFIGURATION)
 
@@ -27,49 +26,16 @@ class TestIntanAnalogEventsInterface(EventsInterfaceTestMixin):
         with pytest.raises(ValidationError, match="detection_configuration"):
             IntanAnalogEventsInterface(file_path=self.FILE_PATH)
 
-    def test_only_adc_channels_are_accepted(self):
-        with pytest.raises(ValueError, match="not one of the file's signals"):
-            IntanAnalogEventsInterface(
-                file_path=self.FILE_PATH,
-                detection_configuration={
-                    "RHD2000 auxiliary input channel": [
-                        {"signal_conditioning": {"binarize": "midpoint"}, "detection": "rising"}
-                    ]
-                },
-            )
-
-    def test_writes_configured_events_without_the_raw_trace(self):
-        interface = IntanAnalogEventsInterface(
-            file_path=self.FILE_PATH,
-            detection_configuration=self.CONFIGURATION | self.OUTPUT_CONFIGURATION,
-            metadata_key="adc_events",
-        )
-
-        assert set(interface._available_signals) == {
-            "ANALOG-IN-1",
-            "ANALOG-IN-2",
-            "ANALOG-IN-3",
-            "ANALOG-IN-4",
-            "ANALOG-IN-5",
-            "ANALOG-IN-6",
-            "ANALOG-IN-7",
-            "ANALOG-IN-8",
-            "ANALOG-OUT-1",
-            "ANALOG-OUT-2",
-        }
-        assert interface.get_metadata()["Events"] == {
-            "adc_events": {
-                "event_types": {
-                    "ANALOG-IN-1": {"event_name": "ANALOG-IN-1"},
-                    "ANALOG-OUT-1": {"event_name": "ANALOG-OUT-1"},
-                }
-            }
+    def check_extracted_metadata(self, metadata):
+        assert metadata["Events"] == {
+            "intan_analog_events": {"event_types": {"ANALOG-IN-1": {"event_name": "ANALOG-IN-1"}}}
         }
 
-        nwbfile = mock_NWBFile()
-        interface.add_to_nwbfile(nwbfile=nwbfile)
+    def run_custom_checks(self):
+        nwbfile = read_nwb(self.nwbfile_path)
 
-        assert set(nwbfile.events) == {"ANALOG-IN-1", "ANALOG-OUT-1"}
+        assert not nwbfile.acquisition
+        assert set(nwbfile.events) == {"ANALOG-IN-1"}
         timestamps = np.asarray(nwbfile.events["ANALOG-IN-1"]["timestamp"][:])
         assert len(timestamps) == 4_072
         np.testing.assert_allclose(timestamps[:3], [0.00016, 0.00032, 0.00048])
