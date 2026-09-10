@@ -102,6 +102,22 @@ class TestIntanConverter:
         assert "ElectricalSeries" in nwbfile.acquisition
         assert len(nwbfile.events["DIGITAL-IN-14"]) == 16
 
+    def test_detection_configuration_is_forwarded(self):
+        first_file = sorted(DIGITAL_SPLIT_FOLDER.glob("*.rhd"))[0]
+        converter = IntanConverter(
+            file_path=first_file,
+            saved_files_are_split=True,
+            detection_configuration={
+                "DIGITAL-IN-14": [{"signal_conditioning": {"binarize": "midpoint"}, "detection": "rising"}]
+            },
+        )
+
+        nwbfile = mock_NWBFile()
+        converter.add_to_nwbfile(nwbfile)
+
+        assert set(nwbfile.events) == {"DIGITAL-IN-14"}
+        assert len(nwbfile.events["DIGITAL-IN-14"]) == 16
+
 
 class TestMetadataKeyRouting:
     """The routing table's key reaches the recording interface as ``metadata_key``, not only as ``es_key``."""

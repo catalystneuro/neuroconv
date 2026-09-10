@@ -3,6 +3,7 @@ from pathlib import Path
 from pydantic import FilePath, validate_call
 
 from .intananaloginterface import IntanAnalogInterface
+from .intananalogueventsinterface import IntanAnalogEventsInterface
 from .intandatainterface import IntanRecordingInterface
 from .intandigitalinterface import IntanDigitalInterface
 from .intanstiminterface import IntanStimInterface
@@ -18,9 +19,9 @@ class IntanConverter(ConverterPipe):
     appropriate sub-interface for each: IntanRecordingInterface for the amplifier
     stream, IntanAnalogInterface for analog streams (auxiliary, ADC inputs/outputs,
     DC amplifier), IntanStimInterface for the RHS stim channel, and
-    IntanDigitalInterface for the digital input/output words (every enabled line is stored
-    as a high pulse: the event timestamp is the 0->1 rise and the duration is the span to the
-    1->0 fall, assuming active-high lines; a line that never toggles is written as an empty table).
+    IntanDigitalInterface for the digital input/output words (by default every enabled line is stored
+    as a high pulse: the event timestamp is the 0->1 rise and the duration is the span to the 1->0 fall,
+    assuming active-high lines; a line that never toggles is written as an empty table).
     """
 
     display_name = "Intan Converter"
@@ -126,6 +127,7 @@ class IntanConverter(ConverterPipe):
         file_path: FilePath,
         *,
         exclude_streams: list[str] | None = None,
+        detection_configuration: dict[str, list[dict]] | None = None,
         verbose: bool = False,
         saved_files_are_split: bool = False,
     ):
@@ -134,7 +136,8 @@ class IntanConverter(ConverterPipe):
 
         Streams present in the file header that do not have a routed sub-interface
         (supply voltage) are skipped automatically. Digital input/output words are
-        routed to ``IntanDigitalInterface`` with its default config, storing every
+        routed to ``IntanDigitalInterface`` with its default config unless
+        ``detection_configuration`` explicitly selects event signals, storing every
         enabled line as a high pulse (onset at the 0->1 rise, duration to the 1->0
         fall, assuming active-high lines; a line that never toggles becomes an empty table); pass
         their names to ``exclude_streams`` to skip them.
@@ -152,6 +155,12 @@ class IntanConverter(ConverterPipe):
             stream (for example the Stim channel) during a fast test conversion.
             ``IntanConverter.get_streams(file_path=...)`` lists what is available.
             Unknown names raise ``ValueError``.
+        detection_configuration : dict, optional
+            A flat ``{source_signal_name: [spec, ...]}`` mapping across digital lines and ADC channels.
+            When omitted, every digital line is derived as a lossless ``"high_period"`` event and ADC
+            streams remain raw-only. When supplied, it is an explicit event selection: only named signals
+            are derived. Digital line names (such as ``"DIGITAL-IN-01"``) and ADC channel names (such as
+            ``"ANALOG-IN-1"`` or ``"ANALOG-OUT-1"``) are read from the source header.
         verbose : bool, default: False
             Whether to output verbose text.
         saved_files_are_split : bool, default: False
@@ -172,29 +181,86 @@ class IntanConverter(ConverterPipe):
                 )
             present_streams = [name for name in present_streams if name not in exclude_streams]
 
+        digital_stream_names = {"USB board digital input channel", "USB board digital output channel"}
+
         data_interfaces = {}
         for stream_name in present_streams:
             if stream_name not in self._STREAM_TO_INTERFACE:
                 continue
             entry = self._STREAM_TO_INTERFACE[stream_name]
+            if entry["interface"] is IntanDigitalInterface:
+                continue
             if entry["interface_name"] in data_interfaces:
-                # Several streams can share one sub-interface, which is how both digital words end up in
-                # a single IntanDigitalInterface: it reads whichever of them the file carries, so the
-                # second stream to come round is already covered by the instance the first one built.
                 continue
             interface_kwargs = dict(file_path=file_path)
-            interface_kwargs.update({k: v for k, v in entry.items() if k not in self._ROUTING_KEYS})
+            interface_kwargs.update({key: value for key, value in entry.items() if key not in self._ROUTING_KEYS})
             if entry["interface"] is IntanAnalogInterface:
                 interface_kwargs["stream_name"] = stream_name
             if saved_files_are_split:
                 interface_kwargs["saved_files_are_split"] = True
             interface = entry["interface"](**interface_kwargs)
             if entry["interface"] is IntanRecordingInterface:
-                # The recording interface uses both: ``metadata_key`` keys the dict-based metadata and
-                # ``es_key`` keys the old list-based metadata, which used this same name before the dict
-                # format existed. It is set here rather than passed to the constructor so that the
-                # deprecation warning stays reserved for callers who state ``es_key`` themselves.
                 interface.es_key = interface_kwargs["metadata_key"]
             data_interfaces[entry["interface_name"]] = interface
+
+        has_digital_streams = bool(digital_stream_names.intersection(present_streams))
+        if detection_configuration is None:
+            if has_digital_streams:
+                data_interfaces["Digital"] = IntanDigitalInterface(
+                    file_path=file_path,
+                    metadata_key="intan_digital",
+                    verbose=verbose,
+                    saved_files_are_split=saved_files_are_split,
+                )
+        else:
+            digital_inventory = {}
+            if has_digital_streams:
+                digital_inventory_interface = IntanDigitalInterface(
+                    file_path=file_path,
+                    metadata_key="intan_digital",
+                    verbose=verbose,
+                    saved_files_are_split=saved_files_are_split,
+                )
+                digital_inventory = digital_inventory_interface._available_signals
+            analog_inventory = {
+                str(channel_id)
+                for interface_name in ("AnalogADCInput", "AnalogADCOutput")
+                if (interface := data_interfaces.get(interface_name)) is not None
+                for channel_id in interface.recording_extractor.get_channel_ids()
+            }
+            available_signal_names = set(digital_inventory) | analog_inventory
+            unknown_signal_names = set(detection_configuration) - available_signal_names
+            if unknown_signal_names:
+                raise ValueError(
+                    "detection_configuration names signal(s) not found in the discovered digital or ADC streams: "
+                    f"{sorted(unknown_signal_names)}. Available signals: {sorted(available_signal_names)}."
+                )
+
+            digital_detection_configuration = {
+                signal_name: specs
+                for signal_name, specs in detection_configuration.items()
+                if signal_name in digital_inventory
+            }
+            analog_detection_configuration = {
+                signal_name: specs
+                for signal_name, specs in detection_configuration.items()
+                if signal_name in analog_inventory
+            }
+            if digital_detection_configuration:
+                data_interfaces["Digital"] = IntanDigitalInterface(
+                    file_path=file_path,
+                    detection_configuration=digital_detection_configuration,
+                    metadata_key="intan_digital",
+                    verbose=verbose,
+                    saved_files_are_split=saved_files_are_split,
+                )
+            if analog_detection_configuration:
+                data_interfaces["AnalogEvents"] = IntanAnalogEventsInterface(
+                    file_path=file_path,
+                    detection_configuration=analog_detection_configuration,
+                    metadata_key="intan_analog_events",
+                    verbose=verbose,
+                    saved_files_are_split=saved_files_are_split,
+                )
 
         super().__init__(data_interfaces=data_interfaces, verbose=verbose)
