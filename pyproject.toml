@@ -590,7 +590,6 @@ known-first-party = ["neuroconv"]
 directory = "changelog_entries"
 filename = "CHANGELOG.md"
 template = "changelog_entries/template.md"
-start_string = "<!-- towncrier release notes start -->\n"
 title_format = "# v{version} ({project_date})"
 issue_format = "[PR #{issue}](https://github.com/catalystneuro/neuroconv/pull/{issue})"
 ignore = ["template.md"]

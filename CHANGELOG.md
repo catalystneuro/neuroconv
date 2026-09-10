@@ -1,5 +1,3 @@
-<!-- towncrier release notes start -->
-
 # v0.10.1 (September 1, 2026)
 
 ## Removals, Deprecations and Changes
