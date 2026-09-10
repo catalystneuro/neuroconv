@@ -1,9 +1,11 @@
 """The electrodes table written from ``metadata["Ecephys"]["ElectrodesTable"]["rows"]`` rather than derived."""
 
 import json
+from copy import deepcopy
 
 import numpy as np
 import pytest
+from probeinterface import Probe
 from pynwb import NWBHDF5IO
 from pynwb.testing.mock.file import mock_NWBFile
 from spikeinterface.core.generate import generate_recording
@@ -326,22 +328,23 @@ class TestRegistryWrites:
         """What ``add_recording_to_nwbfile`` on its own needs: annotate one cell, keep every other."""
         interface = _interface(num_channels=4, properties={"imp": [1.0, 2.0, 3.0, 4.0]})
         metadata = interface.get_metadata()
-        metadata["Ecephys"]["ElectrodesTable"] = {"rows": {"ElectrodeGroup_2": {"brain_area": "CA1"}}}
+        mapping = {str(channel): f"electrode_{channel}" for channel in interface.channel_ids}
+        metadata["Ecephys"]["ElectricalSeries"][interface.metadata_key]["channel_to_electrode"] = mapping
+        metadata["Ecephys"]["ElectrodesTable"] = {"rows": {key: {} for key in mapping.values()}}
+        metadata["Ecephys"]["ElectrodesTable"]["rows"]["electrode_2"]["brain_area"] = "CA1"
 
         nwbfile = interface.create_nwbfile(metadata=metadata)
 
         assert list(nwbfile.electrodes["imp"][:]) == [1.0, 2.0, 3.0, 4.0]
         assert list(nwbfile.electrodes["brain_area"][:]) == ["", "", "CA1", ""]
 
-    def test_a_row_the_metadata_does_not_state_comes_from_the_recording(self):
+    def test_a_mapping_to_an_undeclared_row_is_refused(self):
         interface = _interface(num_channels=4, properties={"imp": [1.0, 2.0, 3.0, 4.0]})
         metadata = _without_blanks(interface.get_metadata_template())
         del metadata["Ecephys"]["ElectrodesTable"]["rows"]["ElectrodeGroup_2"]
 
-        nwbfile = interface.create_nwbfile(metadata=metadata)
-
-        assert len(nwbfile.electrodes) == 4
-        assert list(nwbfile.electrodes["imp"][:]) == [1.0, 2.0, 3.0, 4.0]
+        with pytest.raises(ValueError, match="does not declare"):
+            interface.create_nwbfile(metadata=metadata)
 
     def test_a_declared_electrode_no_channel_references_is_still_written(self):
         interface = _interface(num_channels=4)
@@ -359,6 +362,8 @@ class TestRegistryWrites:
         interface = _interface(num_channels=4)
         metadata = _without_blanks(interface.get_metadata_template())
         keys = list(metadata["Ecephys"]["ElectrodesTable"]["rows"])
+        for index, key in enumerate(keys):
+            metadata["Ecephys"]["ElectrodesTable"]["rows"][key]["location"] = f"region_{index}"
         metadata["Ecephys"]["ElectricalSeries"][interface.metadata_key]["channel_to_electrode"] = {
             channel_id: keys[3 - index]
             for index, channel_id in enumerate(
@@ -368,7 +373,8 @@ class TestRegistryWrites:
 
         nwbfile = interface.create_nwbfile(metadata=metadata)
 
-        assert nwbfile.acquisition["ElectricalSeries"].electrodes.data[:] == [3, 2, 1, 0]
+        assert nwbfile.acquisition["ElectricalSeries"].electrodes.data[:] == [0, 1, 2, 3]
+        assert list(nwbfile.electrodes["location"][:]) == ["region_3", "region_2", "region_1", "region_0"]
 
     def test_a_row_omitting_a_column_gets_a_null(self):
         interface = _interface(num_channels=4, properties={"imp": [1.0, 2.0, 3.0, 4.0]})
@@ -413,6 +419,91 @@ class TestRegistryWrites:
         assert [list(value) for value in stated.electrodes["neighbors"][:]] == [
             list(value) for value in derived.electrodes["neighbors"][:]
         ]
+
+
+class TestPersistentAssociations:
+    @staticmethod
+    def attach_probe(interface, contact_ids=("e0", "e1")):
+        probe = Probe(ndim=2, si_units="um")
+        probe.set_contacts(positions=[[0, 0], [0, 20]], shapes="circle", shape_params={"radius": 5})
+        probe.set_contact_ids(contact_ids)
+        interface.set_probe(
+            probe,
+            group_mode="by_probe",
+            channel_id_to_contact_id=dict(zip(interface.channel_ids, contact_ids)),
+        )
+
+    @pytest.mark.parametrize("restore_metadata", [False, True])
+    def test_annotations_survive_later_probe_attachment(self, restore_metadata, tmp_path):
+        interface = _interface(num_channels=2)
+        metadata = _without_blanks(interface.get_metadata_template())
+        rows = metadata["Ecephys"]["ElectrodesTable"]["rows"]
+        rows["ElectrodeGroup_0"]["location"] = "CA1"
+        rows["ElectrodeGroup_1"]["location"] = "CA3"
+        rows["unrecorded"] = {"electrode_group_metadata_key": "ElectrodeGroup", "location": "CA2"}
+        if restore_metadata:
+            metadata = json.loads(json.dumps(metadata, default=str))
+            interface = _interface(num_channels=2)
+        before = deepcopy(metadata)
+
+        self.attach_probe(interface)
+        nwbfile = interface.create_nwbfile(metadata=metadata)
+
+        assert len(nwbfile.electrodes) == 3
+        assert list(nwbfile.electrodes["location"][:]) == ["CA1", "CA3", "CA2"]
+        assert list(nwbfile.electrodes["electrode_name"][:]) == ["e0", "e1", ""]
+        np.testing.assert_array_equal(nwbfile.electrodes["rel_y"][:2], [0, 20])
+        assert list(nwbfile.acquisition["ElectricalSeries"].electrodes.data[:]) == [0, 1]
+        assert metadata == before
+        with NWBHDF5IO(tmp_path / "stable.nwb", "w") as io:
+            io.write(nwbfile)
+        with NWBHDF5IO(tmp_path / "stable.nwb", "r") as io:
+            restored = io.read()
+            assert list(restored.electrodes["location"][:]) == ["CA1", "CA3", "CA2"]
+            assert list(restored.acquisition["ElectricalSeries"].electrodes.data[:]) == [0, 1]
+
+    def test_custom_row_keys_inherit_source_values_through_the_mapping(self):
+        interface = _interface(num_channels=2, properties={"imp": [10.0, 20.0]})
+        metadata = interface.get_metadata()
+        metadata["Ecephys"]["ElectrodesTable"] = {"rows": {"a": {"location": "CA1"}, "b": {"location": "CA3"}}}
+        metadata["Ecephys"]["ElectricalSeries"][interface.metadata_key]["channel_to_electrode"] = {"0": "b", "1": "a"}
+        self.attach_probe(interface)
+
+        nwbfile = interface.create_nwbfile(metadata=metadata)
+
+        assert list(nwbfile.electrodes["location"][:]) == ["CA3", "CA1"]
+        assert list(nwbfile.electrodes["imp"][:]) == [10.0, 20.0]
+        assert list(nwbfile.electrodes["electrode_name"][:]) == ["e0", "e1"]
+        np.testing.assert_array_equal(nwbfile.electrodes["rel_y"][:], [0, 20])
+
+    @pytest.mark.parametrize("attach_first", [False, True])
+    def test_declared_rows_without_a_saved_mapping_are_refused(self, attach_first):
+        interface = _interface(num_channels=2)
+        metadata = _without_blanks(interface.get_metadata_template())
+        del metadata["Ecephys"]["ElectricalSeries"][interface.metadata_key]["channel_to_electrode"]
+        if attach_first:
+            self.attach_probe(interface)
+        with pytest.raises(ValueError, match="must supply 'channel_to_electrode'"):
+            interface.create_nwbfile(metadata=metadata)
+
+    def test_conflicting_contact_identity_is_not_silently_replaced(self):
+        interface = _interface(num_channels=2)
+        self.attach_probe(interface)
+        metadata = _without_blanks(interface.get_metadata_template())
+        self.attach_probe(interface, contact_ids=("replacement0", "replacement1"))
+
+        with pytest.raises(ValueError, match="states contact 'e0'.*records contact 'replacement0'"):
+            interface.create_nwbfile(metadata=metadata)
+
+    def test_two_different_contacts_cannot_be_mapped_to_one_row(self):
+        interface = _interface(num_channels=2)
+        self.attach_probe(interface)
+        metadata = interface.get_metadata()
+        metadata["Ecephys"]["ElectrodesTable"] = {"rows": {"a": {"location": "CA1"}}}
+        metadata["Ecephys"]["ElectricalSeries"][interface.metadata_key]["channel_to_electrode"] = {"0": "a", "1": "a"}
+
+        with pytest.raises(ValueError, match="conflicting source contact or group identities"):
+            interface.create_nwbfile(metadata=metadata)
 
 
 class TestElectrodeColumns:

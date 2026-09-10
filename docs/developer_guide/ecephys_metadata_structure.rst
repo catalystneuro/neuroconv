@@ -95,15 +95,22 @@ recording carries one probe, and to ``PlaceholderElectrodeDevice`` otherwise. Tw
 to agree, and regrouping the channels after an interface set ``group_name`` at construction raises.
 
 ``ElectrodesTable`` is optional. Absent, the table is derived from the recording's channels and
-properties. Present, it is an overlay on that table: a row wins for the fields it states and inherits
-the rest, a field stated as ``None`` is written as a null, and a key the recording derives nothing for is
-appended as a row of its own. Row order is the recording's channel order with the appended rows after
-it. Every row needs ``electrode_group_metadata_key``, and a key naming no group raises. A row stating
-``group``, ``group_name`` or ``channel_name`` raises, since the writer derives those. A ``columns`` entry
-naming a field no row states raises, a ``dtype`` the values cannot be cast to raises, and two rows
-describing one ``(group, electrode_name)`` raise. ``channel_to_electrode`` is optional and, when present,
-has to cover every channel of the recording; it may name channels the recording no longer has, which is
-what ``remove_channels`` and ``stub_test`` leave behind, but a key it names that no row declares raises.
+properties. Present, each writing series must supply ``channel_to_electrode``, covering every current
+channel and pointing to declared row keys. Source properties follow that saved association before
+annotations are overlaid: a row wins for the fields it states, including explicit ``None`` values,
+and inherits the rest. Row keys are handles, not a formula the writer recomputes to locate annotations.
+The template generates rows and their mapping together; manual registries must save both as well.
+
+Referenced rows are ordered by the recording's channels, followed by declared rows not reached by that
+recording. Removed-channel mapping entries are allowed. A missing mapping or a target row that is not
+declared raises; unreferenced rows are still valid electrodes. A row's ``electrode_group_metadata_key``
+may be inherited from the source, but its resolved link must name a group. Explicit group links remain
+authoritative. ``group``, ``group_name`` and ``channel_name`` remain writer-owned fields.
+
+A source contact identity conflicting with a nonblank identity stated on the mapped row raises, as do
+channels with different source contact/group identities mapped onto one row. Other column validation
+rules are unchanged: descriptions must address existing fields, values must support declared dtypes,
+and two declared rows cannot describe the same ``(group, electrode_name)``.
 
 The rows are in NWB column space and not in spikeinterface property space: the ``location`` property
 becomes ``rel_x``, ``rel_y`` and ``rel_z``, ``brain_area`` becomes ``location``, and ``gain_to_uV``,
@@ -192,21 +199,26 @@ are fields of one.
 The stated table is an overlay on the recording, not a replacement for it
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The table is derived from the recording on every path, and ``ElectrodesTable`` is written over it field
-by field. The alternative, also built first, was strict: a stated block declared every row and the
-recording was not consulted for column values at all.
+The table is derived from the recording on every path. When a registry is supplied, the saved
+``channel_to_electrode`` mapping addresses each source row to its annotation row before applying
+user-stated fields. Source geometry and contact identity therefore reach custom row keys too, rather
+than being discarded because the generated key differs. Explicit nulls still mean null; deleting a
+field requests inheritance from the source.
 
-The requirement that decided it is that ``add_recording_to_nwbfile`` has to work on its own, so a
-dictionary annotating one column of one electrode must not turn off every column the recording carries.
-There is also one writer instead of two implementations a test has to keep in agreement: the derived
-case is a metadata generator feeding the same code the stated case uses.
+This separates three things: a metadata row handle, the channel's association to it, and the physical
+contact identity. Attaching a probe can enrich an existing row without renaming its handle or losing
+its anatomical annotations. The mapping lives in serializable metadata, not hidden interface state,
+so saving the annotations and using a new interface instance preserves the association.
 
-The consequences a new interface will meet: a typo in a row key writes an orphan row instead of
-raising, since a stated key the recording knows nothing about is by design a row of its own; every
-declared row is written whether or not a channel reaches it, so a user who calls
-``get_metadata_template()`` and then ``remove_channels()`` gets rows no series points at; and
-``get_metadata_template()`` states the whole table, blanks included, so that a user edits rows instead of
-authoring them.
+The rejected alternative was to recompute an implicit mapping from ``{group}_{contact}`` or
+``{group}_{channel}`` at write time even when the user had supplied annotation rows. Probe attachment
+could change both parts, leaving the annotated rows unreferenced and generating additional electrodes.
+A configuration-order warning would not prevent that silent error. Declared registries now require an
+explicit association; wholly derived conversions retain their automatic behavior.
+
+The mapping is not permission to overwrite a conflicting known physical identity. Such conflicts
+raise and require the user to reconcile wiring or annotations. This also does not retroactively update
+an already written NWB file: enrichment applies while constructing the file from the supplied metadata.
 
 
 A row is a contact where the format names one, a channel otherwise

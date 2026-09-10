@@ -337,9 +337,11 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         The electrode keys are derived from the physical identity of each contact, ``(group, contact)``
         where the recording carries contact identifiers and ``(group, channel)`` otherwise, so two
         interfaces over the same contacts (the AP and LF bands of one probe) independently produce the
-        same keys and their rows merge rather than doubling. Rename the keys to suit the recording; they
-        are handles, not names in the file, but renaming one on only one side of such a pair splits the
-        rows back apart.
+        same keys and their rows merge rather than doubling. The generated mapping saves each channel's
+        association to its row. Keep it with the rows if probe attachment later supplies more information:
+        source properties are routed through that mapping rather than matched by regenerated key names.
+        Rename keys only together with their mapping entries. Known contact identity conflicts raise;
+        delete an optional blank field to inherit newly available source values instead of stating a null.
         """
         from ...tools.spikeinterface._electrodes import _build_electrodes_metadata
         from ...tools.spikeinterface.spikeinterface import (
@@ -594,7 +596,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         probe: "Probe | ProbeGroup",
         group_mode: Literal["by_shank", "by_probe"],
         *,
-        contact_id_to_channel_id: dict | None = None,
+        channel_id_to_contact_id: dict | None = None,
     ):
         """
         Set the probe information via a ProbeInterface object.
@@ -603,11 +605,11 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         ----------
         probe : probeinterface.Probe or probeinterface.ProbeGroup
             The probe object(s). Can be a single Probe or a ProbeGroup containing multiple probes.
-        contact_id_to_channel_id : dict, optional
-            Which channel recorded each contact, as ``{contact_id: channel_id}``. A probe from a
+        channel_id_to_contact_id : dict, optional
+            Which contact each channel recorded, as ``{channel_id: contact_id}``. A probe from a
             catalogue describes a part rather than a wiring, so it arrives with no channel assignment
             and cannot be attached until one is stated. Pass the wiring here and it is applied for you;
-            a contact absent from the mapping is one nothing recorded.
+            a contact absent from the mapping values is not recorded by this interface.
 
             Both sides are ids, which is what a wiring table gives you and what identifies a contact and
             a channel everywhere else in NeuroConv. The alternative is to call probeinterface's
@@ -630,8 +632,8 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         """
         from probeinterface import ProbeGroup
 
-        if contact_id_to_channel_id is not None:
-            probe = self._probe_wired_to_channels(probe=probe, contact_id_to_channel_id=contact_id_to_channel_id)
+        if channel_id_to_contact_id is not None:
+            probe = self._probe_wired_to_channels(probe=probe, channel_id_to_contact_id=channel_id_to_contact_id)
 
         # Set the probe to the recording extractor. SpikeInterface 0.105 removed the private
         # `_set_probes`, which took either a Probe or a ProbeGroup; the public entry points are split
@@ -649,14 +651,14 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         # So we re-set this here to avoid a conflict
         self.recording_extractor.set_property("group_name", self.recording_extractor.get_property("group").astype(str))
 
-    def _probe_wired_to_channels(self, probe: "Probe | ProbeGroup", contact_id_to_channel_id: dict):
-        """Return a copy of ``probe`` carrying the channel assignment ``contact_id_to_channel_id`` states.
+    def _probe_wired_to_channels(self, probe: "Probe | ProbeGroup", channel_id_to_contact_id: dict):
+        """Return a copy of ``probe`` carrying the channel assignment ``channel_id_to_contact_id`` states.
 
         probeinterface stores the assignment as ``device_channel_indices``, one channel *index* per
         contact in the probe's own contact order, with ``-1`` for a contact nothing recorded. That is
         three conventions the caller has to hold at once, and none of them is what a wiring table says,
         so this translates from ids and validates what a positional list cannot: a contact or channel
-        that does not exist, and two contacts claiming one channel.
+        that does not exist, and two channels claiming one contact in the same recording.
 
         The caller's probe is not modified. A probe already carrying an assignment is refused rather
         than overwritten, since the two would be saying the same thing and only one of them can be right.
@@ -669,39 +671,40 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         if already_wired:
             raise ValueError(
                 "The probe already states which channel recorded each contact, in its "
-                "'device_channel_indices', so passing 'contact_id_to_channel_id' as well states it twice. "
+                "'device_channel_indices', so passing 'channel_id_to_contact_id' as well states it twice. "
                 "Pass the mapping and let it be applied, or set the indices yourself and pass no mapping."
             )
 
         unnamed = [index for index, one in enumerate(probes) if one.contact_ids is None]
         if unnamed:
             raise ValueError(
-                f"The probe names no contacts, so a mapping keyed by contact id cannot be resolved "
+                f"The probe names no contacts, so a mapping to contact ids cannot be resolved "
                 f"(probe index {unnamed[0]} has 'contact_ids' of None). Give the probe contact ids with "
                 "'set_contact_ids', or state the assignment with 'set_device_channel_indices' instead."
             )
 
-        stated = {str(contact_id): str(channel_id) for contact_id, channel_id in contact_id_to_channel_id.items()}
+        stated = {str(channel_id): str(contact_id) for channel_id, contact_id in channel_id_to_contact_id.items()}
 
         channel_index_by_id = {
             str(channel_id): index for index, channel_id in enumerate(self.recording_extractor.get_channel_ids())
         }
-        unknown_channels = sorted(set(stated.values()) - set(channel_index_by_id))
+        unknown_channels = sorted(set(stated) - set(channel_index_by_id))
         if unknown_channels:
             raise ValueError(
-                f"'contact_id_to_channel_id' names channels the recording does not have: {unknown_channels}. "
+                f"'channel_id_to_contact_id' names channels the recording does not have: {unknown_channels}. "
                 f"Its channel ids are {sorted(channel_index_by_id)[:10]}"
                 f"{' and more' if len(channel_index_by_id) > 10 else ''}."
             )
 
-        contact_by_channel: dict[str, str] = {}
-        for contact_id, channel_id in stated.items():
-            if channel_id in contact_by_channel:
+        channel_by_contact: dict[str, str] = {}
+        for channel_id, contact_id in stated.items():
+            if contact_id in channel_by_contact:
                 raise ValueError(
-                    f"'contact_id_to_channel_id' has contacts '{contact_by_channel[channel_id]}' and "
-                    f"'{contact_id}' both recorded by channel '{channel_id}'. One channel records one contact."
+                    f"'channel_id_to_contact_id' has channels '{channel_by_contact[contact_id]}' and "
+                    f"'{channel_id}' both assigned to contact '{contact_id}'. "
+                    "Probe wiring supports one channel per contact within a recording."
                 )
-            contact_by_channel[channel_id] = contact_id
+            channel_by_contact[contact_id] = channel_id
 
         seen_contacts: dict[str, int] = {}
         for probe_index, one in enumerate(probes):
@@ -709,7 +712,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
                 if str(contact_id) in seen_contacts:
                     raise ValueError(
                         f"Contact '{contact_id}' appears on probes {seen_contacts[str(contact_id)]} and "
-                        f"{probe_index} of this group, so a mapping keyed by contact id is ambiguous. "
+                        f"{probe_index} of this group, so a mapping to that contact id is ambiguous. "
                         "Wire each probe separately, or give the contacts ids that are unique across the group."
                     )
                 seen_contacts[str(contact_id)] = probe_index
@@ -724,14 +727,17 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             # ``shank_ids`` and the annotations, and those are what the electrodes table reads off a probe.
             copied = deepcopy(one)
             copied.set_device_channel_indices(
-                [channel_index_by_id.get(stated.get(str(contact_id)), -1) for contact_id in copied.contact_ids]
+                [
+                    channel_index_by_id.get(channel_by_contact.get(str(contact_id)), -1)
+                    for contact_id in copied.contact_ids
+                ]
             )
             wired.append(copied)
 
-        unknown_contacts = sorted(set(stated) - set(seen_contacts))
+        unknown_contacts = sorted(set(stated.values()) - set(seen_contacts))
         if unknown_contacts:
             raise ValueError(
-                f"'contact_id_to_channel_id' names contacts the probe does not have: {unknown_contacts}. "
+                f"'channel_id_to_contact_id' names contacts the probe does not have: {unknown_contacts}. "
                 f"Its contact ids are {sorted(seen_contacts)[:10]}"
                 f"{' and more' if len(seen_contacts) > 10 else ''}."
             )

@@ -3,14 +3,14 @@
 ``metadata["Ecephys"]["ElectrodesTable"]`` states the table as one block with two aspects. ``rows`` holds
 one entry per physical contact, keyed by a handle, each stating its column values in full and pointing at
 its group with ``electrode_group_metadata_key``. ``columns`` describes those columns, keyed by the field a
-row states, in the shape the events tables already use. A channel reaches a row through
-``channel_to_electrode`` on the series entry, or, when that is absent, through the same key derivation the
-block was generated with.
+row states, in the shape the events tables already use. A channel reaches a declared row through
+``channel_to_electrode`` on the series entry. Rows and their mapping are generated together; the saved
+mapping remains authoritative if probe attachment later changes the recording's derived identities.
 
 The block is an override layer over the recording. The table is derived from the recording's channels and
 properties first, always, so a caller who states nothing gets what it always got. What the block states is
-then written over that, field by field: a stated row wins for the fields it names and inherits the rest,
-and a key the recording derived nothing for becomes a row of its own. ``channel_name`` stays the writer's,
+then written over that, field by field: source values follow the saved channel-to-row mapping, a stated
+row wins for the fields it names and inherits the rest, and unreferenced declared rows are retained. ``channel_name`` stays the writer's,
 being the acquisition system's own label for a channel and so not a row's to state.
 
 ``Ecephys.Electrodes`` is a different thing and keeps its old meaning, the list of column descriptions that
@@ -263,47 +263,61 @@ def _generate_electrodes_table(
         property_descriptions=property_descriptions,
         exclude=exclude,
     )
+    if _electrodes_table_is_stated(metadata):
+        if channel_to_electrode is None:
+            raise ValueError(
+                f"metadata['Ecephys']['ElectricalSeries']['{metadata_key}'] must supply "
+                "'channel_to_electrode' when 'ElectrodesTable' is declared. Generate and keep the mapping "
+                "with the electrode rows, or use get_metadata_template(). The writer will not infer "
+                "an association from row names that may have changed after probe attachment."
+            )
+        electrode_key_by_channel = _resolve_channel_to_electrode_key(recording, metadata, metadata_key)
+        mapped_rows = {}
+        for channel_id, electrode_key in electrode_key_by_channel.items():
+            derived_key = generated["channel_to_electrode"][str(channel_id)]
+            entry = generated["ElectrodesTable"]["rows"][derived_key]
+            contact_id = entry.get("electrode_name")
+            stated_contact = stated_table["rows"][electrode_key].get("electrode_name")
+            if contact_id is not None and stated_contact is not None and str(contact_id) != str(stated_contact):
+                raise ValueError(
+                    f"Electrode row '{electrode_key}' states contact '{stated_contact}', but channel "
+                    f"'{channel_id}' records contact '{contact_id}'. Update the wiring or the saved "
+                    "channel-to-electrode association instead of silently changing physical identity."
+                )
+            if electrode_key in mapped_rows:
+                previous = mapped_rows[electrode_key]
+                identity_fields = ("electrode_group_metadata_key", "electrode_name")
+                if any(previous.get(field) != entry.get(field) for field in identity_fields):
+                    raise ValueError(
+                        f"Channels mapped to electrode row '{electrode_key}' have conflicting source "
+                        "contact or group identities. One row cannot represent different electrodes."
+                    )
+            else:
+                mapped_rows[electrode_key] = dict(entry)
+        generated["ElectrodesTable"]["rows"] = mapped_rows
+
     ecephys_metadata["ElectrodeGroups"] = electrode_groups
     ecephys_metadata["ElectrodesTable"] = _overlay_stated_electrodes_table(
-        derived=generated["ElectrodesTable"], stated=stated_table, channel_to_electrode=channel_to_electrode
+        derived=generated["ElectrodesTable"], stated=stated_table
     )
     metadata["Ecephys"] = ecephys_metadata
     return metadata
 
 
-def _overlay_stated_electrodes_table(*, derived: dict, stated, channel_to_electrode: dict | None) -> dict:
-    """The derived block with what the metadata states written over it, field by field.
+def _overlay_stated_electrodes_table(*, derived: dict, stated) -> dict:
+    """Overlay annotations after source rows have been addressed through the saved channel mapping.
 
-    A stated row updates the derived row of the same key and inherits every field it does not name, so a
-    dictionary stating one column of one electrode says only that and the recording supplies the rest. A
-    stated key the recording derived nothing for is appended as a row of its own, which is how a converter's
-    merged block carries another interface's electrodes. Row order is therefore the recording's channel
-    order, with the declared extras after it.
-
-    The one derived row that is dropped is one no channel reaches, which happens only when
-    ``channel_to_electrode`` sends every channel to keys of the caller's own: those rows describe electrodes
-    nobody recorded from and were never part of what the caller asked for.
+    Referenced rows inherit source values and are ordered by the recording's channels. Declared rows
+    not reached by this recording remain after them. Explicit annotations, including nulls, win over
+    source values; the caller's dictionaries are not modified.
     """
     if not (isinstance(stated, dict) and isinstance(stated.get("rows"), dict)):
         return derived
 
-    stated_rows = stated["rows"]
-    reached = (
-        set(derived["rows"])
-        if channel_to_electrode is None
-        else {str(electrode_key) for electrode_key in channel_to_electrode.values()}
-    )
-    rows = {
-        electrode_key: dict(entry)
-        for electrode_key, entry in derived["rows"].items()
-        if electrode_key in reached or electrode_key in stated_rows
-    }
-    for electrode_key, entry in stated_rows.items():
+    rows = {electrode_key: dict(entry) for electrode_key, entry in derived["rows"].items()}
+    for electrode_key, entry in stated["rows"].items():
         rows.setdefault(electrode_key, {}).update(entry)
 
-    # A derived description of a column no surviving row states describes nothing, which is the case
-    # above where the derived rows were dropped. A stated one is kept, so a description keyed by a field
-    # the rows do not use is still refused rather than ignored.
     stated_fields = {field for entry in rows.values() for field in entry}.union({"electrode_name", "channel_name"})
     columns = {
         column_key: dict(specification)
@@ -319,8 +333,8 @@ def _overlay_stated_electrodes_table(*, derived: dict, stated, channel_to_electr
 def _resolve_channel_to_electrode_key(recording, metadata: dict, metadata_key: str | None) -> dict:
     """Map each of the recording's channel ids to the electrode key it is recorded by.
 
-    ``channel_to_electrode`` on the series entry is the statement; the key derivation is the default
-    for a registry the user has not remapped. The map may name channels the recording no longer has,
+    ``channel_to_electrode`` is required for a caller-declared registry. The default derivation is
+    used only for an entirely generated table. The map may name channels the recording no longer has,
     which is the ``stub_test`` and ``remove_channels`` case where the registry describes the full set,
     but it may never miss one the recording does have.
     """
