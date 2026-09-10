@@ -59,7 +59,7 @@ def test_get_data_io_kwargs():
     result = zarr_dataset_configuration.get_data_io_kwargs()
     assert result["chunks"] == (78125, 64)
     assert result["filters"] is None
-    assert isinstance(result["compressor"], GzipCodec)
+    assert result["compressors"] == [GzipCodec(level=4)]
 
 
 def test_zarr_dataset_io_configuration_schema():
@@ -69,22 +69,25 @@ def test_zarr_dataset_io_configuration_schema():
 
 
 def test_get_data_io_kwargs_with_shuffle():
-    """Zarr v2 has a single compressor slot, so every entry of `compressors` but the last rides in `filters`."""
+    """Shuffle is a BytesBytesCodec and lives in compressors alongside the compression method."""
     zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration(compressors=["shuffle", "gzip"])
 
     assert zarr_dataset_configuration.get_data_io_kwargs() == dict(
-        chunks=(78125, 64), compressor=GzipCodec(level=4), filters=[Shuffle(elementsize=2)]
+        chunks=(78125, 64), compressors=[Shuffle(elementsize=2), GzipCodec(level=4)], filters=None, shards=None
     )
 
 
 def test_get_data_io_kwargs_with_shuffle_and_a_filter_method():
-    """An array-to-array filter method stays ahead of the entries moved out of `compressors`."""
+    """ArrayArrayCodec filters stay in `filters`; shuffle (BytesBytesCodec) stays in `compressors`."""
     zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration(
         compressors=["shuffle", "gzip"], filters=["delta"], filter_options=[dict(dtype="int16")]
     )
 
     assert zarr_dataset_configuration.get_data_io_kwargs() == dict(
-        chunks=(78125, 64), compressor=GzipCodec(level=4), filters=[Delta(dtype="int16"), Shuffle(elementsize=2)]
+        chunks=(78125, 64),
+        compressors=[Shuffle(elementsize=2), GzipCodec(level=4)],
+        filters=[Delta(dtype="int16")],
+        shards=None,
     )
 
 
@@ -111,14 +114,17 @@ def test_shuffle_elementsize_follows_the_dtype():
         compressors=["shuffle", "gzip"], dtype=np.dtype("float64")
     )
 
-    assert zarr_dataset_configuration.get_data_io_kwargs()["filters"] == [Shuffle(elementsize=8)]
+    result = zarr_dataset_configuration.get_data_io_kwargs()
+    assert result["compressors"][0] == Shuffle(elementsize=8)
 
 
 def test_shuffle_elementsize_follows_the_dtype_on_the_deprecated_path():
-    """The deprecated `filters` spelling instantiates through the same helper."""
+    """The deprecated `filters=["shuffle"]` spelling routes through the same elementsize helper."""
     zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration(filters=["shuffle"], dtype=np.dtype("float64"))
 
-    assert zarr_dataset_configuration.get_data_io_kwargs()["filters"] == [Shuffle(elementsize=8)]
+    result = zarr_dataset_configuration.get_data_io_kwargs()
+    # shuffle is a BytesBytesCodec so it ends up in compressors, ahead of the default gzip
+    assert result["compressors"][0] == Shuffle(elementsize=8)
 
 
 def test_shuffle_elementsize_is_not_overridden_when_stated():
@@ -126,7 +132,8 @@ def test_shuffle_elementsize_is_not_overridden_when_stated():
         compressors=["shuffle", "gzip"], compressor_options=[dict(elementsize=2), None], dtype=np.dtype("float64")
     )
 
-    assert zarr_dataset_configuration.get_data_io_kwargs()["filters"] == [Shuffle(elementsize=2)]
+    result = zarr_dataset_configuration.get_data_io_kwargs()
+    assert result["compressors"][0] == Shuffle(elementsize=2)
 
 
 # ==================================================================================================

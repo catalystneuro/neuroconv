@@ -54,7 +54,9 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
     compressor_options: list[dict[str, Any] | None] | None = Field(
         default=None, description="The optional parameters to use for each specified compressor."
     )
-    filters: list[Literal[tuple(AVAILABLE_ZARR_FILTER_METHODS.keys())] | InstanceOf[ArrayArrayCodec]] | None = Field(
+    filters: (
+        list[Literal[(*_pure_filter_names, *AVAILABLE_ZARR_FILTER_METHODS.keys())] | InstanceOf[ArrayArrayCodec]] | None
+    ) = Field(
         default=None,
         description=(
             "The ordered collection of codecs to apply to this dataset's values before it is serialized to bytes. "
@@ -247,31 +249,37 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
         return AVAILABLE_ZARR_COMPRESSION_METHODS[codec](**codec_options)
 
     def get_data_io_kwargs(self) -> dict[str, Any]:
-        filters = None
+        # Build ArrayArrayCodec filters. The deprecated path allowed "shuffle" (a BytesBytesCodec) to be
+        # named in `filters`; those entries are collected separately so they can join `compressors` below.
+        filter_codecs = []
+        bytes_from_deprecated_filters = []
         if self.filters:
             all_filter_options = self.filter_options or [dict() for _ in self.filters]
-            filters = [
-                self._instantiate_codec(filter_method, filter_options)
-                for filter_method, filter_options in zip(self.filters, all_filter_options)
+            for method, opts in zip(self.filters, all_filter_options):
+                codec = self._instantiate_codec(method, opts)
+                if isinstance(codec, BytesBytesCodec):
+                    bytes_from_deprecated_filters.append(codec)
+                else:
+                    filter_codecs.append(codec)
+
+        # Build BytesBytesCodec compressors. Shuffle from the deprecated filters path is prepended so the
+        # pipeline order is preserved: shuffle → compression codec (matching the compressors=[..] spelling).
+        compressor_codecs = bytes_from_deprecated_filters
+        if self.compressors is not None:
+            all_compressor_options = self.compressor_options or [None] * len(self.compressors)
+            compressor_codecs = compressor_codecs + [
+                self._instantiate_codec(codec, opts) for codec, opts in zip(self.compressors, all_compressor_options)
             ]
-
-        # hdmf-zarr currently uses a zarr v2-style interface (single compressor + filters list).
-        # Non-main-compressors (like shuffle) ride in filters until hdmf-zarr adopts the zarr v3 pipeline API.
-        compressors = self.compressors or []
-        compressor_options = self.compressor_options or [None] * len(compressors)
-        compression_index = self._compressor_index()
-
-        for index, (codec, codec_options) in enumerate(zip(compressors, compressor_options)):
-            if index == compression_index:
-                continue
-            filters = (filters or []) + [self._instantiate_codec(codec, codec_options)]
-
-        if compression_index is None:
-            compressor = False
+            compressors = compressor_codecs or False
         else:
-            compressor = self._instantiate_codec(compressors[compression_index], compressor_options[compression_index])
+            compressors = compressor_codecs or False  # False = explicitly disable compression
 
-        return dict(chunks=self.chunk_shape, filters=filters, compressor=compressor, shards=self.shard_shape)
+        return dict(
+            chunks=self.chunk_shape,
+            filters=filter_codecs or None,
+            compressors=compressors,
+            shards=self.shard_shape,
+        )
 
     @classmethod
     def from_neurodata_object_with_existing(

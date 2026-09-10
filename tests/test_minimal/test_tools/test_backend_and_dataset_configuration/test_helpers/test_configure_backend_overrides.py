@@ -165,8 +165,8 @@ def test_shard_shape_is_written_and_read_back_in_zarr(tmpdir: Path):
     written_nwbfile.read_io.close()
 
 
-def test_shuffle_is_correctly_propagated_as_filter_in_zarr(tmpdir: Path):
-    """Zarr v2 has one compressor slot, so a shuffle named beside a compression method is written as a filter."""
+def test_shuffle_is_correctly_written_in_compressors_in_zarr(tmpdir: Path):
+    """Shuffle is a BytesBytesCodec and is passed directly in the compressors pipeline alongside gzip."""
     array = np.zeros(shape=(3_000, 16), dtype="int16")
 
     nwbfile = mock_NWBFile()
@@ -178,7 +178,7 @@ def test_shuffle_is_correctly_propagated_as_filter_in_zarr(tmpdir: Path):
 
     configure_backend(nwbfile=nwbfile, backend_configuration=backend_configuration)
 
-    nwbfile_path = str(tmpdir / "test_configure_overrides_shuffle_with_compression.nwb")
+    nwbfile_path = str(tmpdir / "test_configure_overrides_shuffle_with_compression.nwb.zarr")
     with BACKEND_NWB_IO["zarr"](path=nwbfile_path, mode="w") as io:
         io.write(nwbfile)
 
@@ -186,6 +186,6 @@ def test_shuffle_is_correctly_propagated_as_filter_in_zarr(tmpdir: Path):
     written_data = written_nwbfile.acquisition["TestTimeSeries"].data
 
     filters, compressors = written_filters_and_compressors(written_data)
-    assert filters == [Shuffle(elementsize=2)]
-    assert compressors == [GzipCodec(level=4)]
+    assert filters == []
+    assert compressors == [Shuffle(elementsize=2), GzipCodec(level=4)]
     written_nwbfile.read_io.close()
