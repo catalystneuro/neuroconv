@@ -228,7 +228,9 @@ An entry is keyed by the field the rows use and can do four things:
 
 ``column_name``
     The header the column is written under. The rows say ``imp_measured`` and the file says
-    ``impedance_at_1khz``, so you can rename a field without touching every row.
+    ``impedance_at_1khz``, so you can rename a field without touching every row. Each field must have
+    a distinct output name. The names ``id``, ``group``, ``group_name``, ``channel_name``,
+    ``electrode_name``, and ``location`` are reserved and cannot be renamed or overwritten.
 
 ``description``
     What the column means. Without one it is written as ``"no description"``, which is the state most

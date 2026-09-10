@@ -576,6 +576,23 @@ def _add_electrodes_from_registry_to_nwbfile(
             "Fill it in, or delete the field to have the column written with the description the recording supplies."
         )
 
+    fixed_columns = {*_WRITER_OWNED_COLUMNS, "electrode_name", "location", "id"}
+    field_by_written_name = {}
+    for field in dict.fromkeys([*declared_columns, *column_specifications]):
+        written_name = column_specifications.get(field, {}).get("column_name", field)
+        if written_name != field and (field in fixed_columns or written_name in fixed_columns):
+            raise ValueError(
+                f"metadata['Ecephys']['ElectrodesTable']['columns'] cannot rename '{field}' to '{written_name}'. "
+                "The identity, group, and required location columns must keep their names and cannot be overwritten."
+            )
+        if written_name in field_by_written_name:
+            raise ValueError(
+                f"metadata['Ecephys']['ElectrodesTable']['columns'] maps both "
+                f"'{field_by_written_name[written_name]}' and '{field}' to '{written_name}'. "
+                "Use a distinct column_name for each field."
+            )
+        field_by_written_name[written_name] = field
+
     nwb_descriptions = _get_nwb_electrode_column_descriptions()
     column_data = {}
     for field in declared_columns:

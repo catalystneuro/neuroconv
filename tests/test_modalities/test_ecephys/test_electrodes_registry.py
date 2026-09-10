@@ -677,6 +677,35 @@ class TestOtherWritersFindTheRows:
 
 
 class TestRegistryValidation:
+    @pytest.mark.parametrize("column_name", ["group", "group_name", "channel_name", "electrode_name", "location", "id"])
+    def test_a_custom_column_cannot_overwrite_a_fixed_column(self, column_name):
+        interface = _interface(properties={"quality": [1, 2, 3, 4]})
+        metadata = _without_blanks(interface.get_metadata_template())
+        metadata["Ecephys"]["ElectrodesTable"]["columns"]["quality"]["column_name"] = column_name
+
+        with pytest.raises(ValueError, match="cannot rename"):
+            interface.create_nwbfile(metadata=metadata)
+
+    @pytest.mark.parametrize("field", ["channel_name", "electrode_name", "location"])
+    def test_a_fixed_column_cannot_be_renamed(self, field):
+        interface = _interface()
+        metadata = _without_blanks(interface.get_metadata_template())
+        metadata["Ecephys"]["ElectrodesTable"]["columns"][field] = {"column_name": "renamed"}
+
+        with pytest.raises(ValueError, match="cannot rename"):
+            interface.create_nwbfile(metadata=metadata)
+
+    @pytest.mark.parametrize("column_name", ["quality", "shared"])
+    def test_two_fields_cannot_be_written_to_one_column(self, column_name):
+        interface = _interface(properties={"quality": [1, 2, 3, 4], "imp": [10.0, 20.0, 30.0, 40.0]})
+        metadata = _without_blanks(interface.get_metadata_template())
+        columns = metadata["Ecephys"]["ElectrodesTable"]["columns"]
+        columns["quality"]["column_name"] = column_name
+        columns["imp"]["column_name"] = column_name
+
+        with pytest.raises(ValueError, match="Use a distinct column_name"):
+            interface.create_nwbfile(metadata=metadata)
+
     def test_an_electrode_the_channels_resolve_to_but_nobody_declared(self):
         interface = _interface(num_channels=4)
         metadata = _without_blanks(interface.get_metadata_template())
