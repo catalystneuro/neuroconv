@@ -367,7 +367,7 @@ fiber_photometry = [
 
 ## Ophys
 ophys_minimal = [  # Keeps the minimal version of ophys dependencies in the repo
-    "roiextractors>=0.9.0",
+    "roiextractors>=0.10.0",
 ]
 # What it takes to read a tiff, stated once for the formats that are stored as one. Membership is by
 # what the format reads and not by modality, so Inscopix (.isxd) and Miniscope (video) are not here.
