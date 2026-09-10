@@ -13,9 +13,9 @@ on:
       CHANGELOG_ENTRY_ADDED:
         description: "Whether a changelog entry was added under /changelog_entries/."
         value: ${{ jobs.build.outputs.CHANGELOG_ENTRY_ADDED }}
-      PYPROJECT_EXTRAS_CHANGED:
-        description: "Whether pyproject.toml's [project.optional-dependencies] changed, which can move an installation extra out from under a gallery page."
-        value: ${{ jobs.build.outputs.PYPROJECT_EXTRAS_CHANGED }}
+      PYPROJECT_DEPENDENCIES_CHANGED:
+        description: "Whether pyproject.toml's [project.dependencies] or [project.optional-dependencies] changed, which can break what a gallery page installs."
+        value: ${{ jobs.build.outputs.PYPROJECT_DEPENDENCIES_CHANGED }}
       CHANGED_GALLERY_PAGES:
         description: "The changed files under /docs/conversion_examples_gallery/, space separated, so the formatwise job can test only those pages."
         value: ${{ jobs.build.outputs.CHANGED_GALLERY_PAGES }}
@@ -28,7 +28,7 @@ jobs:
       SOURCE_CHANGED: ${{ steps.assess-changes.outputs.SOURCE_CHANGED }}
       CONVERSION_GALLERY_CHANGED: ${{ steps.assess-changes.outputs.CONVERSION_GALLERY_CHANGED }}
       CHANGELOG_ENTRY_ADDED: ${{ steps.assess-changes.outputs.CHANGELOG_ENTRY_ADDED }}
-      PYPROJECT_EXTRAS_CHANGED: ${{ steps.assess-changes.outputs.PYPROJECT_EXTRAS_CHANGED }}
+      PYPROJECT_DEPENDENCIES_CHANGED: ${{ steps.assess-changes.outputs.PYPROJECT_DEPENDENCIES_CHANGED }}
       CHANGED_GALLERY_PAGES: ${{ steps.assess-changes.outputs.CHANGED_GALLERY_PAGES }}
 
     name: Test changed-files
@@ -84,13 +84,13 @@ jobs:
             fi
           done
           echo "CHANGED_GALLERY_PAGES=$(echo $GALLERY_PAGES | xargs)" >> $GITHUB_OUTPUT
-          # Only the extras table can move an extra out from under a gallery page. A version bump, a
-          # dependency floor or a tool's configuration lives in the same file and does not need the sweep.
+          # Only the dependency tables decide what `.[extra]` resolves to. A version bump or a tool's
+          # configuration lives in the same file and does not need the sweep.
           if [[ $PYPROJECT_TOUCHED == "true" ]]
           then
-            EXTRAS_CHANGED=$(python3 .github/scripts/optional_dependencies_changed.py "${{ github.event.pull_request.base.sha }}")
+            DEPENDENCIES_CHANGED=$(python3 .github/scripts/dependencies_changed.py "${{ github.event.pull_request.base.sha }}")
           else
-            EXTRAS_CHANGED=false
+            DEPENDENCIES_CHANGED=false
           fi
-          echo "pyproject extras changed: $EXTRAS_CHANGED"
-          echo "PYPROJECT_EXTRAS_CHANGED=$EXTRAS_CHANGED" >> $GITHUB_OUTPUT
+          echo "pyproject dependencies changed: $DEPENDENCIES_CHANGED"
+          echo "PYPROJECT_DEPENDENCIES_CHANGED=$DEPENDENCIES_CHANGED" >> $GITHUB_OUTPUT
