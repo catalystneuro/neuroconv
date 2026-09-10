@@ -102,7 +102,7 @@ jobs:
   # is checked here rather than waiting for the daily.
   run-formatwise-tests:
     needs: [assess-file-changes, load_python_and_os_versions]
-    if: ${{ needs.assess-file-changes.outputs.CONVERSION_GALLERY_CHANGED == 'true' || needs.assess-file-changes.outputs.PYPROJECT_CHANGED == 'true' }}
+    if: ${{ needs.assess-file-changes.outputs.CONVERSION_GALLERY_CHANGED == 'true' || needs.assess-file-changes.outputs.PYPROJECT_DEPENDENCIES_CHANGED == 'true' }}
     uses: ./.github/workflows/formatwise-installation-testing.yml
     secrets:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -111,6 +111,11 @@ jobs:
     with:  #  Ternary operator: condition && value_if_true || value_if_false
       python-versions: ${{ github.event.pull_request.draft == true && format('["{0}"]', needs.load_python_and_os_versions.outputs.MIN_PYTHON_VERSION) || needs.load_python_and_os_versions.outputs.ALL_PYTHON_VERSIONS }}
       os-versions: ${{ github.event.pull_request.draft == true && '["ubuntu-latest"]' || needs.load_python_and_os_versions.outputs.ALL_OS_VERSIONS }}
+      # Only the changed pages, except when the dependencies moved: those can break any page resolving
+      # through them, and extras reference each other, so that case takes the whole gallery. The condition
+      # is written this way round because `a && '' || b` cannot yield the empty string, GitHub falling
+      # through a falsey middle operand to `b`.
+      gallery-pages: ${{ needs.assess-file-changes.outputs.PYPROJECT_DEPENDENCIES_CHANGED != 'true' && needs.assess-file-changes.outputs.CHANGED_GALLERY_PAGES || '' }}
 
 
   check-final-status:
