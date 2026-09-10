@@ -1,7 +1,3 @@
-# v0.10.2 (Upcoming)
-
-The entries for this release are collected one file per entry under [changelog_entries/](changelog_entries/) and are assembled here when it ships.
-
 <!-- towncrier release notes start -->
 
 # v0.10.1 (September 1, 2026)
