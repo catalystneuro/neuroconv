@@ -45,7 +45,7 @@ class TestGuppyConverterCSV:
         assert set(converter.data_interface_objects) == (
             EXPECTED_ACQUISITION_INTERFACE_NAMES | EXPECTED_EVENTS_INTERFACE_NAMES | {"Guppy"}
         )
-        assert set(converter._events_interface_names) == EXPECTED_EVENTS_INTERFACE_NAMES
+        assert {spec["interface_name"] for spec in converter._events_specs} == EXPECTED_EVENTS_INTERFACE_NAMES
 
     def test_store_ids_resolve_to_their_own_files(self, converter):
         """A CSV store id is its filename stem, so each role interface opens one file per site."""

@@ -7,8 +7,42 @@ Install NeuroConv with the additional dependencies necessary for reading ScanIma
 
     pip install "neuroconv[scanimage]"
 
-Convert ScanImage imaging data
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Convert a ScanImage acquisition
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Point :py:class:`~neuroconv.converters.ScanImageConverter` at a ScanImage TIFF and every channel it
+holds is written, one ``ImagingPlane`` and one ``TwoPhotonSeries`` each. A multi-file acquisition is
+followed from its first file, and a volumetric one is written as a 4D series per channel.
+
+.. code-block:: python
+
+    >>> from zoneinfo import ZoneInfo
+    >>> from neuroconv.converters import ScanImageConverter
+    >>>
+    >>> file_path = OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "planar_two_channels_single_file" / "planar_two_ch_single_files_00001_00001.tif"
+    >>> converter = ScanImageConverter(file_path=file_path)
+    >>>
+    >>> metadata = converter.get_metadata()
+    >>> # For data provenance we add the time zone information to the conversion
+    >>> session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("US/Pacific"))
+    >>> metadata["NWBFile"].update(session_start_time=session_start_time)
+    >>> # Add subject information (required for DANDI upload)
+    >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
+    >>>
+    >>> # Choose a path for saving the nwb file and run the conversion
+    >>> nwbfile_path = f"{path_to_save_nwbfile}"
+    >>> converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+
+NeuroConv aims to automatically add all the metadata annotations that are present in the source format.
+It is often the case that crucial information is not available there, such as the anatomical location,
+the meaning of the values, or a semantically meaningful description of the data. Follow
+:ref:`the ophys how-to <annotate_ophys_metadata>` for a modality-relevant guide to adding
+this extra metadata, which makes the data more useful for future users and for the community as a whole.
+Its :ref:`section on templates <how_to_annotate_ophys_from_a_template>` starts from scratch, and the
+:ref:`reference template <ophys_imaging_metadata_template>` lists every element the metadata accepts.
+
+Convert a single channel or plane
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The `ScanImageImagingInterface` handles both single and multi-file data, as well as multi-channel data.
 For multi-channel data, you need to specify the channel name, and you can use `plane_index` if you want to only write a specific plane.
@@ -38,7 +72,7 @@ For multi-channel data, you need to specify the channel name, and you can use `p
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion
-    >>> nwbfile_path = f"{path_to_save_nwbfile}"
+    >>> nwbfile_path = f"{output_folder}/single_channel.nwb"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
 Align ScanImage data with external sync pulses

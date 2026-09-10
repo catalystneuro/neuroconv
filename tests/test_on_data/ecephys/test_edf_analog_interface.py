@@ -11,6 +11,12 @@ except ImportError:
     from setup_paths import ECEPHY_DATA_PATH
 
 
+# The auxiliary channels this interface exists to read sit in files that also hold electrodes, so
+# SpikeInterface reports the mix while building the recording. It is emitted before any channel
+# selection applies, so no argument on the interface avoids it.
+pytestmark = pytest.mark.filterwarnings("ignore:Found a mix of voltage and non-voltage units:UserWarning")
+
+
 class TestEDFAnalogInterface:
     """Test suite for EDFAnalogInterface."""
 
@@ -80,7 +86,10 @@ class TestEDFAnalogInterface:
     def test_conversion_to_nwb(self, tmp_path):
         """Test conversion to NWB format."""
         file_path = ECEPHY_DATA_PATH / "edf" / "electrode_and_analog_data" / "electrode_and_analog_data.edf"
-        interface = EDFAnalogInterface(file_path=file_path)
+        # One unit type per interface: the file's auxiliary channels are a trigger line, an oxygen
+        # saturation in %, a pulse rate in bpm and a plethysmography trace in uV, and a TimeSeries
+        # states one unit for all of its channels.
+        interface = EDFAnalogInterface(file_path=file_path, channels_to_include=["OSAT"])
 
         # Get metadata and add required session_start_time
         metadata = interface.get_metadata()
@@ -105,10 +114,39 @@ class TestEDFAnalogInterface:
             # This is expected behavior as the description metadata is not being passed through
             assert "Auxiliary signals from the EDF format" in time_series.description
 
+            # The selection states one unit, so the physical values stay recoverable from the file.
+            assert time_series.unit == "%"
+            assert time_series.conversion != 1.0
+
             # Check data dimensions
             assert len(time_series.data.shape) == 2  # [time, channels]
             assert time_series.data.shape[1] == len(interface.channel_ids)
             assert time_series.data.shape[0] > 0  # Should have time points
+
+
+class TestEDFAnalogInterfaceStreamSelection:
+    """The auxiliary channels of a file whose signals were not all sampled at the same rate."""
+
+    file_path = ECEPHY_DATA_PATH / "edf" / "heterogeneous_offsets" / "same_unit_offsets_multirate.edf"
+
+    def test_get_stream_names(self):
+        stream_names = EDFAnalogInterface.get_stream_names(file_path=self.file_path)
+
+        assert stream_names == ["stream ((100.0,) Hz)", "stream ((1.0,) Hz)"]
+
+    def test_stream_name_is_required_for_a_multi_stream_file(self):
+        with pytest.raises(ValueError, match="several streams"):
+            EDFAnalogInterface(file_path=self.file_path, channels_to_include=["Temp rectal"])
+
+    def test_stream_name_reaches_the_channels_of_its_stream(self):
+        interface = EDFAnalogInterface(
+            file_path=self.file_path,
+            stream_name="stream ((1.0,) Hz)",
+            channels_to_include=["Temp rectal"],
+        )
+
+        assert list(interface.channel_ids) == ["Temp rectal"]
+        assert interface.recording_extractor.get_sampling_frequency() == 1.0
 
 
 def test_metadata_key_does_not_rename_series():

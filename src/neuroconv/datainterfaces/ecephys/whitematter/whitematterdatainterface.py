@@ -45,7 +45,7 @@ class WhiteMatterRecordingInterface(BaseRecordingExtractorInterface):
         channel_ids: Optional[list] = None,
         is_filtered: Optional[bool] = None,
         verbose: bool = False,
-        es_key: str = "ElectricalSeries",
+        es_key: str | None = None,
         metadata_key: str | None = None,
     ):
         """

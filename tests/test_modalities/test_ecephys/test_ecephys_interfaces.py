@@ -90,7 +90,7 @@ class TestSortingInterface(SortingExtractorInterfaceTestMixin):
 
     def test_electrode_indices(self, setup_interface):
 
-        recording_interface = MockRecordingInterface(num_channels=4, durations=[0.100])
+        recording_interface = MockRecordingInterface(num_channels=4, durations=[0.100], calibration="uniform")
         recording_extractor = recording_interface.recording_extractor
         recording_extractor = recording_extractor.rename_channels(new_channel_ids=["a", "b", "c", "d"])
         recording_extractor.set_property(key="property", values=["A", "B", "C", "D"])
@@ -207,7 +207,7 @@ class TestSortingInterface(SortingExtractorInterfaceTestMixin):
 
 class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = MockRecordingInterface
-    interface_kwargs = dict(num_channels=4, durations=[0.100])
+    interface_kwargs = dict(num_channels=4, durations=[0.100], calibration="uniform")
 
     def check_extracted_metadata(self, metadata: dict):
         # New dict-based format: the interface emits only the ElectricalSeries entry keyed by
@@ -234,7 +234,7 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
         # Old list-based metadata must pass metadata_key=None so the pipeline routes through es_key
         # (the two are mutually exclusive downstream).
-        old_metadata = interface.get_metadata()
+        old_metadata = interface.get_metadata(use_new_metadata_format=False)
         with patch("neuroconv.tools.spikeinterface.add_recording_to_nwbfile") as mock_add:
             interface.add_to_nwbfile(nwbfile=mock_NWBFile(), metadata=old_metadata)
             assert mock_add.call_args.kwargs["metadata_key"] is None
@@ -244,19 +244,37 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
         passing data_representation as a conversion option (distinct from the tools-level message)."""
         from pynwb.testing.mock.file import mock_NWBFile
 
-        interface = MockRecordingInterface(num_channels=5, durations=[0.100])
+        interface = MockRecordingInterface(num_channels=5, durations=[0.100], calibration="uniform")
         interface.recording_extractor.set_channel_offsets(offsets=[0, 0, 1, 1, 2])  # heterogeneous
 
         expected_error_msg = (
             "The channels of this recording have heterogeneous offsets, which a single NWB "
-            "ElectricalSeries cannot represent. To write them as one series, pass "
-            "data_representation='physical_units' as a conversion option to add_to_nwbfile() "
-            "or run_conversion() (this folds each channel's offset into the data and writes "
-            "float physical values). Alternatively, drop or separate the channels that do not "
-            "share the common offset."
+            "ElectricalSeries cannot represent.\n"
+            "Multiple offsets were found per channel IDs:\n"
+            "  Offset 0: Channel IDs ['0', '1']\n"
+            "  Offset 1: Channel IDs ['2', '3']\n"
+            "  Offset 2: Channel IDs ['4']\n"
+            "\n"
+            "If these channels are all the same kind of signal and the offsets come from "
+            "per-channel scaling, pass data_representation='physical_units' as a conversion "
+            "option to add_to_nwbfile() or run_conversion() to write them as one series (this "
+            "folds each channel's offset into the data and writes float physical values). If the "
+            "channels carrying the odd offsets are not electrode channels, drop them with "
+            "interface.remove_channels(channel_ids=[...]) and write them as TimeSeries instead. "
+            "See https://neuroconv.readthedocs.io/en/main/how_to/handle_heterogeneous_offsets.html"
         )
         with pytest.raises(ValueError, match=re.escape(expected_error_msg)):
             interface.add_to_nwbfile(nwbfile=mock_NWBFile())
+
+    def test_remove_channels(self):
+        """`remove_channels` is the drop the offset error points at: it replaces the held recording with
+        the reduced one, so everything downstream of the interface sees only the channels that are left."""
+        interface = MockRecordingInterface(num_channels=5, durations=[0.100])
+
+        returned_interface = interface.remove_channels(channel_ids=["1", "3"])
+
+        assert returned_interface is interface  # returns self so the call can be chained
+        assert list(interface.channel_ids) == ["0", "2", "4"]
 
     def test_stub(self, setup_interface):
         interface = self.interface
@@ -265,7 +283,7 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
     def test_stub_with_starting_time(self, setup_interface):
 
-        interface = MockRecordingInterface(durations=[1.0])
+        interface = MockRecordingInterface(durations=[1.0], calibration="uniform")
 
         recording = interface.recording_extractor
         recording.shift_times(2.0)
@@ -274,7 +292,7 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
     def test_stub_multi_segment(self):
 
-        interface = MockRecordingInterface(durations=[0.100, 0.100])
+        interface = MockRecordingInterface(durations=[0.100, 0.100], calibration="uniform")
         metadata = interface.get_metadata()
         interface.create_nwbfile(stub_test=True, metadata=metadata)
 
@@ -424,7 +442,7 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
     def test_set_probe_by_shank(self, setup_interface):
         """Test setting probe with by_shank group mode."""
         # Create a probe with multiple shanks (6 channels for this test)
-        interface = MockRecordingInterface(num_channels=6, durations=[0.100])
+        interface = MockRecordingInterface(num_channels=6, durations=[0.100], calibration="uniform")
 
         probe = Probe(ndim=2, si_units="um")
         positions = np.array([[0, 0], [0, 20], [50, 0], [50, 20], [100, 0], [100, 20]])  # shank 0  # shank 1  # shank 2
@@ -471,7 +489,7 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
     def test_set_probe_group_by_shank(self):
         """Test setting a ProbeGroup with multiple probes using by_shank group mode."""
         # Create interface with 6 channels to accommodate two probes with 3 channels each
-        interface = MockRecordingInterface(num_channels=6, durations=[0.100])
+        interface = MockRecordingInterface(num_channels=6, durations=[0.100], calibration="uniform")
 
         # Create first probe with 2 shanks (3 channels total)
         probe1 = Probe(ndim=2, si_units="um")
@@ -531,7 +549,7 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
     def test_electrode_name_column_added_with_probe(self):
         """Test that electrode_name column is added when probe is attached."""
         # Create interface with probe attached
-        interface = MockRecordingInterface(num_channels=4, durations=[0.100], set_probe=True)
+        interface = MockRecordingInterface(num_channels=4, durations=[0.100], set_probe=True, calibration="uniform")
 
         # Verify probe is attached
         assert interface.has_probe()
@@ -553,7 +571,7 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
         np.testing.assert_array_equal(electrode_names, expected_contact_ids)
 
 
-def test_recording_routes_on_its_own_block_in_a_mixed_converter():
+def test_recording_routes_on_its_own_block_in_a_mixed_converter_old_list_format():
     """A converter builds one metadata dictionary and hands the same one to every interface, so an
     interface that emits only the dict-based format contributes a dict-shaped top-level ``Devices``
     while a recording interface contributes a list-based ``Ecephys``. One dictionary, two shapes: the
@@ -561,11 +579,11 @@ def test_recording_routes_on_its_own_block_in_a_mixed_converter():
     keyed ``ElectricalSeries`` entry its own ``get_metadata`` never wrote."""
     from pynwb.testing.mock.file import mock_NWBFile
 
-    recording_interface = MockRecordingInterface(num_channels=4, durations=[0.100])
+    recording_interface = MockRecordingInterface(num_channels=4, durations=[0.100], calibration="uniform")
     dict_only_interface = MockIcephysInterface()
     converter = ConverterPipe(data_interfaces=dict(Recording=recording_interface, Icephys=dict_only_interface))
 
-    metadata = converter.get_metadata()
+    metadata = converter.get_metadata(use_new_metadata_format=False)
     assert isinstance(metadata["Devices"], dict)  # contributed by the dict-only interface
     assert "name" in metadata["Ecephys"]["ElectricalSeries"]  # list-based: a flat dict of fields, not entries
 
@@ -583,7 +601,7 @@ def test_run_conversion_through_converter(tmp_path):
     # Dict metadata has to survive validation to reach the writer, and a converter validates against its own
     # merged schema rather than an interface's. The interface-level equivalent of this test was removed once
     # the shared test mixins started writing dict metadata for every interface on real data.
-    interface = MockRecordingInterface(num_channels=4, durations=[0.100])
+    interface = MockRecordingInterface(num_channels=4, durations=[0.100], calibration="uniform")
     converter = ConverterPipe(data_interfaces=dict(Recording=interface))
 
     metadata = interface.get_metadata(use_new_metadata_format=True)
@@ -636,6 +654,21 @@ class TestMockRecordingInterfaceArgsDeprecation:
 
         future_warnings = [w for w in caught_warnings if issubclass(w.category, FutureWarning)]
         assert len(future_warnings) == 0
+
+    @pytest.mark.parametrize(
+        ("calibration", "expected_gains", "expected_offsets"),
+        [
+            ("unknown", None, None),
+            ("uniform", [1.0, 1.0], [0.0, 0.0]),
+            ("heterogeneous_gains", [1.0, 2.0], [0.0, 0.0]),
+            ("heterogeneous_offsets", [1.0, 1.0], [0.0, 1.0]),
+        ],
+    )
+    def test_calibration(self, calibration, expected_gains, expected_offsets):
+        interface = MockRecordingInterface(num_channels=2, durations=(0.1,), calibration=calibration)
+
+        assert np.array_equal(interface.recording_extractor.get_channel_gains(), expected_gains)
+        assert np.array_equal(interface.recording_extractor.get_channel_offsets(), expected_offsets)
 
     def test_init_too_many_positional_args_raises_error(self):
         """Test that passing too many positional arguments to __init__ raises TypeError.

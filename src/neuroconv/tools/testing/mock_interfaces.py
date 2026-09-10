@@ -1,16 +1,22 @@
 import warnings
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Literal
 
 import numpy as np
 from pynwb import NWBFile
 from pynwb.base import DynamicTable
-from pynwb.device import Device
 
 from .mock_ttl_signals import generate_mock_ttl_signal
 from ...basedatainterface import BaseDataInterface
 from ...basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from ...datainterfaces import SpikeGLXNIDQInterface
+from ...datainterfaces.behavior.baseposeestimationinterface import (
+    BasePoseEstimationInterface,
+)
+from ...datainterfaces.behavior.video.externalvideointerface import (
+    ExternalVideoInterface,
+)
 from ...datainterfaces.ecephys.baserecordingextractorinterface import (
     BaseRecordingExtractorInterface,
 )
@@ -36,7 +42,6 @@ from ...tools.events import (
     _validate_detection_configuration,
 )
 from ...tools.icephys import _RESPONSE_CLASS, _add_intracellular_electrode_to_nwbfile
-from ...tools.nwb_helpers import get_module
 from ...tools.signal_processing import (
     _condition_signal,
     _detect_events,
@@ -66,9 +71,16 @@ class MockInterface(BaseDataInterface):
         metadata["NWBFile"]["session_start_time"] = session_start_time
         return metadata
 
-    def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict | None, **conversion_options):
+    def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict | None, add_subject: bool = False):
+        """Add a mock subject to the NWBFile when asked to, and nothing otherwise.
 
-        return None
+        The one conversion option this interface takes, so that a test can assert an option reached it by
+        reading the file it wrote rather than by reading state off the interface.
+        """
+        if add_subject:
+            from pynwb.testing.mock.file import mock_Subject
+
+            nwbfile.subject = mock_Subject()
 
 
 class MockTimeSeriesInterface(BaseDataInterface):
@@ -288,7 +300,9 @@ class MockEventsInterface(BaseEventsInterface):
         num_event_types: int = 1,
         num_events: int = 4,
         event_extent: Literal["point event", "event with duration"] = "point event",
-        event_payload: Literal["timestamps only", "single value", "multi value"] = "timestamps only",
+        event_payload: Literal[
+            "timestamps only", "single value", "single value variable length", "multi value"
+        ] = "timestamps only",
         verbose: bool = False,
     ):
         """Initialize a mock events interface.
@@ -308,14 +322,17 @@ class MockEventsInterface(BaseEventsInterface):
             The temporal extent of the generated events (the taxonomy's Extent axis). ``"point event"``
             (default) generates timestamp-only events; ``"event with duration"`` gives each event a
             duration, so the writer adds a ``duration`` column. Applies to every event type.
-        event_payload : {"timestamps only", "single value", "multi value"}, optional
+        event_payload : {"timestamps only", "single value", "single value variable length", "multi value"}, optional
             The payload carried per event (the taxonomy's Payload axis). ``"timestamps only"``
             (default) is a timestamp-only event with no value column; ``"single value"`` carries one
-            categorical field (a labeled column with a ``MeaningsTable``); ``"multi value"`` carries a
-            three-field struct that fans into three columns on the same rows, one per way the writer
-            treats a value column: ``outcome`` (labels and meanings, so a ``MeaningsTable``), ``cue``
-            (labels but nothing to explain, so no ``MeaningsTable``), and ``amplitude`` (raw numeric
-            values). Applies to every event type.
+            categorical field (a labeled column with a ``MeaningsTable``); ``"single value variable length"``
+            carries that same one field, but each of its cells holds *several* values rather than one, which
+            the writer turns into a ragged column: an event tagged with two conditions at once, or a behavior
+            scored with two qualifiers. The cells vary in length, including the empty one, so it exercises the
+            fill a row with nothing to say gets. ``"multi value"`` carries a three-field struct that fans into
+            three columns on the same rows, one per way the writer treats a value column: ``outcome`` (labels
+            and meanings, so a ``MeaningsTable``), ``cue`` (labels but nothing to explain, so no
+            ``MeaningsTable``), and ``amplitude`` (raw numeric values). Applies to every event type.
         verbose : bool, optional
             Whether to print status messages, by default False.
         """
@@ -326,7 +343,7 @@ class MockEventsInterface(BaseEventsInterface):
         super().__init__(verbose=verbose)
         self.metadata_key = metadata_key or "mock_events"
 
-    def _event_type_source_ids(self) -> list[str]:
+    def get_event_type_source_ids(self) -> list[str]:
         # A single type keeps the plain "events" id; several are indexed so their ids (and, by default,
         # their tables and column names) stay unique.
         if self._num_event_types == 1:
@@ -337,7 +354,7 @@ class MockEventsInterface(BaseEventsInterface):
         metadata = super().get_metadata()
         metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
 
-        for index, event_type_source_id in enumerate(self._event_type_source_ids()):
+        for index, event_type_source_id in enumerate(self.get_event_type_source_ids()):
             suffix = "" if self._num_event_types == 1 else f"_{index}"
             # One branch per payload mode, spelled out in full rather than composed from shared pieces:
             # between them the modes cover the three ways the writer treats a value column, and stating
@@ -354,6 +371,20 @@ class MockEventsInterface(BaseEventsInterface):
                         "column_categories": {
                             "labels": {0: "go", 1: "no_go"},
                             "meanings": {0: "A go outcome.", 1: "A no-go outcome."},
+                        },
+                    },
+                }
+            elif self._event_payload == "single value variable length":
+                # One field holding several values per event, which the writer turns into a ragged
+                # column. Declared exactly like a scalar column: the shape is read off the data, so
+                # nothing in the metadata says "ragged" and there is no second place for it to disagree.
+                columns = {
+                    "conditions": {
+                        "column_name": f"conditions{suffix}",
+                        "description": "The conditions each event was tagged with.",
+                        "column_categories": {
+                            "labels": {0: "go", 1: "no_go", 2: "catch"},
+                            "meanings": {0: "A go condition.", 1: "A no-go condition.", 2: "A catch trial."},
                         },
                     },
                 }
@@ -396,7 +427,7 @@ class MockEventsInterface(BaseEventsInterface):
 
         duration = 0.05 if self._event_extent == "event with duration" else None
         events_data_dict = {}
-        for index, event_type_source_id in enumerate(self._event_type_source_ids()):
+        for index, event_type_source_id in enumerate(self.get_event_type_source_ids()):
             # Stagger timestamps across types so pooling several into one table interleaves in time.
             timestamps = 0.1 * (np.arange(self._num_events) * self._num_event_types + index + 1)
             durations = np.full(self._num_events, duration) if duration is not None else None
@@ -405,6 +436,12 @@ class MockEventsInterface(BaseEventsInterface):
                 payload = {}
             elif self._event_payload == "single value":
                 payload = {"outcome": np.arange(self._num_events) % 2}  # alternating go / no_go
+            elif self._event_payload == "single value variable length":
+                # Lengths cycle 0, 1, 2, 3 so a single generated type covers the empty cell, the
+                # one-value cell that a scalar column could have held, and the genuinely several.
+                payload = {
+                    "conditions": np.array([list(range(count % 4)) for count in range(self._num_events)], dtype=object)
+                }
             elif self._event_payload == "multi value":
                 payload = {
                     "outcome": np.arange(self._num_events) % 2,  # alternating go / no_go
@@ -540,13 +577,20 @@ class MockSignalEncodedEventsInterface(BaseEventsInterface):
             bit: entry[1] if isinstance(entry, tuple) else entry for bit, entry in entries.items()
         }
         self._digital_line_names = {bit: entry[0] for bit, entry in entries.items() if isinstance(entry, tuple)}
-        unknown_kinds = set(self._digital_line_waveforms.values()) - {"pulses", "idle", "unclosed_pulses"}
+        unknown_kinds = set(self._digital_line_waveforms.values()) - {
+            "pulses",
+            "idle",
+            "unclosed_pulses",
+        }
         if unknown_kinds:
             raise ValueError(
                 f"Unknown waveform kind(s) {sorted(unknown_kinds)}; valid kinds are pulses, idle, " "unclosed_pulses."
             )
         self._analog_waveforms = dict(analog_waveforms or {})
-        unknown_kinds = set(self._analog_waveforms.values()) - {"levels", "noisy_two_level"}
+        unknown_kinds = set(self._analog_waveforms.values()) - {
+            "levels",
+            "noisy_two_level",
+        }
         if unknown_kinds:
             raise ValueError(
                 f"Unknown analog waveform kind(s) {sorted(unknown_kinds)}; valid kinds are levels, " "noisy_two_level."
@@ -565,7 +609,10 @@ class MockSignalEncodedEventsInterface(BaseEventsInterface):
         # settles both from its file's structure: SpikeGLX declares the inventory as niXDChans1, and the
         # keys of digital_line_waveforms stand in for that declaration here.
         self._available_signals = {
-            self.SIGNAL_SOURCE_ID: {"kind": "word", "bits": sorted(self._digital_line_waveforms)}
+            self.SIGNAL_SOURCE_ID: {
+                "kind": "word",
+                "bits": sorted(self._digital_line_waveforms),
+            }
         }
         self._available_signals.update({name: {"kind": "analog"} for name in self._analog_waveforms})
         if detection_configuration is None:
@@ -575,6 +622,10 @@ class MockSignalEncodedEventsInterface(BaseEventsInterface):
         # same identifier. Validation covers structure and identifier resolution (rules 4 and 5) alike.
         _validate_detection_configuration(detection_configuration, self._available_signals)
         self._detection_configuration = detection_configuration
+
+    def get_event_type_source_ids(self) -> list[str]:
+        """The event types the configuration resolves to, read from nothing."""
+        return _get_event_type_source_ids(self._detection_configuration)
 
     SIGNAL_SOURCE_ID = "word"
 
@@ -665,7 +716,7 @@ class MockSignalEncodedEventsInterface(BaseEventsInterface):
         metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
         # Derived from the configuration, so metadata costs no signal generation, does not depend on a
         # plan existing, and lists exactly what will be written, including a line that never fired.
-        for event_type_source_id in _get_event_type_source_ids(self._detection_configuration):
+        for event_type_source_id in self.get_event_type_source_ids():
             metadata["Events"][self.metadata_key]["event_types"][event_type_source_id] = {
                 "event_name": event_type_source_id
             }
@@ -710,10 +761,10 @@ class MockFiberPhotometryInterface(BaseFiberPhotometryInterface):
     def __init__(
         self,
         *,
-        stream_names: str | list[str] = ("signal", "control"),
-        channels_per_stream: int | list[int] = 1,
+        excitation_wavelengths_in_nm: float | list[float] = 470.0,
+        num_fibers: int = 1,
         num_samples: int = 100,
-        sampling_rate: float = 100.0,
+        sampling_frequency: float = 100.0,
         seed: int = 0,
         metadata_key: str | None = None,
         verbose: bool = False,
@@ -722,50 +773,56 @@ class MockFiberPhotometryInterface(BaseFiberPhotometryInterface):
 
         Parameters
         ----------
-        stream_names : str or list of str, default: ("signal", "control")
-            One name per source stream; the streams are column-stacked into the response series.
-        channels_per_stream : int or list of int, default: 1
-            How many channels each stream carries. An ``int`` applies to every stream; a list gives a
-            count per stream, so a multi-fiber store can be mixed with a single-channel one. A stream
-            with one channel reads as a 1-D array, one with several as ``(num_samples, channels)``,
-            which is the shape a real multi-fiber acquisition store returns.
+        excitation_wavelengths_in_nm : float or list of float, default: 470.0
+            The excitation wavelength(s) this interface's series carries, one source stream each.
+            ndx-fiber-photometry recommends one series per excitation/emission wavelength, so the
+            default is a single wavelength and a second one is a second interface writing its own
+            series into the same table. Passing a list aggregates over the wavelength axis instead,
+            which asserts that they share a clock: true of a frequency-multiplexed (lock-in) rig where
+            every LED is on at once, false of a time-multiplexed one where they alternate.
+        num_fibers : int, default: 1
+            How many fibers the series carries, one column per fiber. Columns are wavelength-major,
+            so two wavelengths and two fibers give ``[w0f0, w0f1, w1f0, w1f1]``, and
+            ``fiber_photometry_table_region`` has to list its row keys in that order. A single fiber
+            reads as a 1-D array, several as ``(num_samples, num_fibers)``, which is the shape a real
+            multi-fiber acquisition store returns.
         num_samples : int, default: 100
             Number of samples in the synthetic response series.
-        sampling_rate : float, default: 100.0
-            Sampling rate (Hz) of the synthetic response series.
+        sampling_frequency : float, default: 100.0
+            Sampling frequency (Hz) of the synthetic response series.
         seed : int, default: 0
             Seed for the synthetic data.
         metadata_key : str, optional
-            Override the response-series metadata key (default derived from ``stream_names``).
+            Override the response-series metadata key (default derived from the wavelengths).
         verbose : bool, default: False
             Whether to print status messages.
         """
-        stream_name_list = [stream_names] if isinstance(stream_names, str) else list(stream_names)
-        if isinstance(channels_per_stream, int):
-            channels_per_stream = [channels_per_stream] * len(stream_name_list)
-        elif len(channels_per_stream) != len(stream_name_list):
-            raise ValueError(
-                f"channels_per_stream has {len(channels_per_stream)} entries but there are "
-                f"{len(stream_name_list)} stream(s); they must match one-to-one."
-            )
-        self._channels_per_stream = [int(count) for count in channels_per_stream]
+        if isinstance(excitation_wavelengths_in_nm, (int, float)):
+            excitation_wavelengths_in_nm = [excitation_wavelengths_in_nm]
+        self._excitation_wavelengths_in_nm = [float(wavelength) for wavelength in excitation_wavelengths_in_nm]
+        if not self._excitation_wavelengths_in_nm:
+            raise ValueError("excitation_wavelengths_in_nm must name at least one excitation wavelength.")
+        if int(num_fibers) < 1:
+            raise ValueError(f"num_fibers must be at least 1, got {num_fibers}.")
+        self._num_fibers = int(num_fibers)
         self._num_samples = int(num_samples)
-        self._sampling_rate = float(sampling_rate)
+        self._sampling_frequency = float(sampling_frequency)
         self._seed = int(seed)
-        super().__init__(stream_names=stream_name_list, metadata_key=metadata_key, verbose=verbose)
+        # One source stream per wavelength, named after it so the derived metadata_key is readable.
+        stream_names = [f"{wavelength:g}nm" for wavelength in self._excitation_wavelengths_in_nm]
+        super().__init__(stream_names=stream_names, metadata_key=metadata_key, verbose=verbose)
 
     def _get_stream_data(self, *, stream_name: str) -> np.ndarray:
-        # Deterministic per-stream synthetic trace (a distinct seed per stream so channels differ).
+        # Deterministic per-wavelength synthetic trace (a distinct seed each, so the traces differ).
         index = self.stream_names.index(stream_name)
         rng = np.random.default_rng(self._seed + index)
-        num_channels = self._channels_per_stream[index]
-        # Drawing a 1-D array for a single channel (rather than slicing an (N, 1) one) keeps the
-        # default draw identical to the single-channel case.
-        size = self._num_samples if num_channels == 1 else (self._num_samples, num_channels)
+        # Drawing a 1-D array for a single fiber (rather than slicing an (N, 1) one) keeps the
+        # default draw identical to the single-fiber case.
+        size = self._num_samples if self._num_fibers == 1 else (self._num_samples, self._num_fibers)
         return rng.standard_normal(size).astype("float64")
 
     def _get_stream_timestamps(self, *, stream_name: str) -> np.ndarray:
-        return np.arange(self._num_samples, dtype="float64") / self._sampling_rate
+        return np.arange(self._num_samples, dtype="float64") / self._sampling_frequency
 
     def get_metadata(self) -> DeepDict:
         """Return the base metadata with a fixed session start time; no fiber photometry provenance."""
@@ -788,7 +845,10 @@ class MockSpikeGLXNIDQInterface(SpikeGLXNIDQInterface):
         return source_schema
 
     def __init__(
-        self, signal_duration: float = 7.0, ttl_times: list[list[float]] | None = None, ttl_duration: float = 1.0
+        self,
+        signal_duration: float = 7.0,
+        ttl_times: list[list[float]] | None = None,
+        ttl_duration: float = 1.0,
     ):
         """
         Define a mock SpikeGLXNIDQInterface by overriding the recording extractor to be a mock TTL signal.
@@ -832,14 +892,20 @@ class MockSpikeGLXNIDQInterface(SpikeGLXNIDQInterface):
             )
 
         self.recording_extractor = NumpyRecording(
-            traces_list=traces, sampling_frequency=sampling_frequency, channel_ids=channel_ids
+            traces_list=traces,
+            sampling_frequency=sampling_frequency,
+            channel_ids=channel_ids,
         )
         # NIDQ channel gains
         self.recording_extractor.set_channel_gains(gains=[61.03515625] * self.recording_extractor.get_num_channels())
         self.recording_extractor.set_property(key="group_name", values=channel_groups)
 
         # Minimal meta so `get_metadata` works similarly to real NIDQ header
-        self.meta = {"acqMnMaXaDw": "0,0,8,1", "fileCreateTime": "2020-11-03T10:35:10", "niDev1ProductName": "PCI-6259"}
+        self.meta = {
+            "acqMnMaXaDw": "0,0,8,1",
+            "fileCreateTime": "2020-11-03T10:35:10",
+            "niDev1ProductName": "PCI-6259",
+        }
         self.verbose = None
         self.metadata_key = "spikeglx_nidq"
         self._analog_channel_groups = {
@@ -864,6 +930,7 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
         self.extractor_kwargs.pop("verbose", None)
         self.extractor_kwargs.pop("es_key", None)
         self.extractor_kwargs.pop("metadata_key", None)
+        self.extractor_kwargs.pop("calibration", None)
 
         extractor_class = self.get_extractor_class()
         extractor_instance = extractor_class(**self.extractor_kwargs)
@@ -877,9 +944,10 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
         durations: tuple[float, ...] = (1.0,),
         seed: int = 0,
         verbose: bool = False,
-        es_key: str = "ElectricalSeries",
+        es_key: str | None = None,
         metadata_key: str | None = None,
         set_probe: bool = False,
+        calibration: Literal["unknown", "uniform", "heterogeneous_gains", "heterogeneous_offsets"] = "uniform",
     ):
         # Handle deprecated positional arguments
         if args:
@@ -930,8 +998,29 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
             metadata_key=metadata_key,
         )
 
-        self.recording_extractor.set_channel_gains(gains=[1.0] * self.recording_extractor.get_num_channels())
-        self.recording_extractor.set_channel_offsets(offsets=[0.0] * self.recording_extractor.get_num_channels())
+        number_of_channels = self.recording_extractor.get_num_channels()
+        if calibration == "uniform":
+            gains = np.ones(number_of_channels)
+            offsets = np.zeros(number_of_channels)
+        elif calibration == "heterogeneous_gains":
+            gains = np.arange(1, number_of_channels + 1)
+            offsets = np.zeros(number_of_channels)
+        elif calibration == "heterogeneous_offsets":
+            gains = np.ones(number_of_channels)
+            offsets = np.arange(number_of_channels)
+        elif calibration == "unknown":
+            gains = offsets = None
+        else:
+            raise ValueError(
+                "calibration must be one of 'unknown', 'uniform', 'heterogeneous_gains', or " "'heterogeneous_offsets'."
+            )
+
+        if gains is not None:
+            self.recording_extractor.set_channel_gains(gains=gains)
+            self.recording_extractor.set_channel_offsets(offsets=offsets)
+            self.recording_extractor.set_property("physical_unit", values=["uV"] * number_of_channels)
+            self.recording_extractor.set_property("gain_to_physical_unit", values=gains)
+            self.recording_extractor.set_property("offset_to_physical_unit", values=offsets)
 
         # If probe was set, customize contact IDs to use "e0", "e1", etc. format for testing
         if set_probe and self.recording_extractor.has_probe():
@@ -943,7 +1032,7 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
             # which otherwise returns a new recording and leaves this one unchanged.
             self.recording_extractor.set_probe(probe, group_mode="by_probe", in_place=True)
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         """
         Get metadata for the recording interface.
 
@@ -1095,7 +1184,7 @@ class MockImagingInterface(BaseImagingExtractorInterface):
         self.verbose = verbose
         self.photon_series_type = photon_series_type
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         session_start_time = datetime.now().astimezone()
         metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
         metadata["NWBFile"]["session_start_time"] = session_start_time
@@ -1279,7 +1368,7 @@ class MockSegmentationInterface(BaseSegmentationExtractorInterface):
             metadata_key=metadata_key,
         )
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         session_start_time = datetime.now().astimezone()
 
         if use_new_metadata_format:
@@ -1295,12 +1384,12 @@ class MockSegmentationInterface(BaseSegmentationExtractorInterface):
             }
             return metadata
 
-        metadata = super().get_metadata()
+        metadata = super().get_metadata(use_new_metadata_format=False)
         metadata["NWBFile"]["session_start_time"] = session_start_time
         return metadata
 
 
-class MockPoseEstimationInterface(BaseTemporalAlignmentInterface):
+class MockPoseEstimationInterface(BasePoseEstimationInterface):
     """
     A mock pose estimation interface for testing purposes.
     """
@@ -1325,6 +1414,7 @@ class MockPoseEstimationInterface(BaseTemporalAlignmentInterface):
         num_samples: int = 1000,
         num_nodes: int = 3,
         seed: int = 0,
+        sampling: Literal["regular", "irregular"] = "regular",
         verbose: bool = False,
         metadata_key: str = "MockPoseEstimation",
         pose_estimation_metadata_key: str | None = None,
@@ -1340,18 +1430,23 @@ class MockPoseEstimationInterface(BaseTemporalAlignmentInterface):
             Number of nodes/body parts to track, by default 3.
         seed : int, optional
             Random seed for reproducible data generation, by default 0.
+        sampling : {"regular", "irregular"}, optional
+            The clock. ``"regular"`` (default) steps at 30 Hz. ``"irregular"`` draws the samples out of
+            a denser 30 Hz grid, which is the shape a SLEAP ``.slp`` has, since it labels a sparse
+            selection of the video's frames, and it is what makes the writer store a timestamps
+            dataset rather than a rate.
         verbose : bool, optional
             Control verbosity, by default False.
         metadata_key : str, default: "MockPoseEstimation"
             Metadata key for this interface.
         pose_estimation_metadata_key : str, optional
             Deprecated. Renamed to ``metadata_key``; passing it forwards the value to
-            ``metadata_key`` and will be removed on or after December 2026.
+            ``metadata_key`` and will be removed on or after February 2027.
         """
         if pose_estimation_metadata_key is not None:
             warnings.warn(
                 "The 'pose_estimation_metadata_key' argument has been renamed to 'metadata_key' and "
-                "will be removed on or after December 2026. Please use 'metadata_key' instead.",
+                "will be removed on or after February 2027. Please use 'metadata_key' instead.",
                 DeprecationWarning,
                 stacklevel=2,
             )
@@ -1395,7 +1490,12 @@ class MockPoseEstimationInterface(BaseTemporalAlignmentInterface):
         self.edges = np.array([possible_edges[i] for i in selected_edges], dtype="uint8")
 
         # Generate timestamps (private attributes)
-        self._original_timestamps = np.linspace(0.0, float(num_samples) / 30.0, num_samples)
+        if sampling == "irregular":
+            frame_times = np.arange(2 * num_samples) / 30.0
+            labeled_frames = np.random.default_rng(seed).choice(frame_times.size, size=num_samples, replace=False)
+            self._original_timestamps = frame_times[np.sort(labeled_frames)]
+        else:
+            self._original_timestamps = np.linspace(0.0, float(num_samples) / 30.0, num_samples)
         self._timestamps = np.copy(self._original_timestamps)
 
         # Generate pose estimation data
@@ -1447,145 +1547,123 @@ class MockPoseEstimationInterface(BaseTemporalAlignmentInterface):
         self._timestamps = aligned_timestamps
 
     def get_metadata(self) -> DeepDict:
-        """Get metadata for the mock pose estimation interface in the dict-based shape.
-
-        Returns metadata with top-level ``metadata["Devices"]`` and the top-level pose modality at
-        ``metadata["Pose"]`` holding ``Skeletons`` and ``PoseEstimations`` registries,
-        all keyed by ``self.metadata_key`` and cross-referenced via ``device_metadata_key`` and
-        ``skeleton_metadata_key``.
-        """
+        """Name the objects after this interface's key and add what the mock pretends its source records."""
         metadata = super().get_metadata()
-        session_start_time = datetime.now().astimezone()
-        metadata["NWBFile"]["session_start_time"] = session_start_time
+        metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
 
         container_name = self.metadata_key
-        skeleton_name = f"Skeleton{container_name}"
-        device_name = f"Camera{container_name}"
-
-        pose_estimation_series_entries = {}
-        for node in self.nodes:
-            pascal_case_node = "".join(word.capitalize() for word in node.replace("_", " ").split())
-            pose_estimation_series_entries[node] = {
-                "name": f"PoseEstimationSeries{pascal_case_node}",
-                "description": f"Mock pose estimation series for {node}.",
-                "unit": "pixels",
-                "reference_frame": "(0,0) corresponds to the bottom left corner of the video.",
-                "confidence_definition": "Softmax output of the deep neural network.",
-            }
-
-        metadata["Devices"] = {
-            self.metadata_key: {
-                "name": device_name,
-                "description": "Mock camera device for pose estimation testing.",
-            }
-        }
-        metadata["Pose"] = {
-            "Skeletons": {
-                self.metadata_key: {
-                    "name": skeleton_name,
-                    "nodes": self.nodes,
-                    "edges": self.edges.tolist(),
-                },
+        metadata["Pose"]["Skeletons"][self.metadata_key].update(
+            name=f"Skeleton{container_name}",
+            edges=self.edges.tolist(),
+        )
+        metadata["Pose"]["PoseEstimations"][self.metadata_key].update(
+            name=container_name,
+            description=f"Mock pose estimation data from {self.source_software}.",
+            source_software=self.source_software,
+            scorer=self.scorer,
+            PoseEstimationSeries={
+                node: {
+                    "name": f"PoseEstimationSeries{self._pascal_case(node)}",
+                    "reference_frame": (
+                        "(0,0) is the top-left pixel of the video frame, with x increasing to the right "
+                        "and y increasing downward."
+                    ),
+                }
+                for node in self.nodes
             },
-            "PoseEstimations": {
-                self.metadata_key: {
-                    "name": container_name,
-                    "description": f"Mock pose estimation data from {self.source_software}.",
-                    "source_software": self.source_software,
-                    "scorer": self.scorer,
-                    "dimensions": [[640, 480]],
-                    "original_videos": ["mock_video.mp4"],
-                    "device_metadata_key": self.metadata_key,
-                    "skeleton_metadata_key": self.metadata_key,
-                    "PoseEstimationSeries": pose_estimation_series_entries,
-                },
-            },
-        }
-
+        )
         return metadata
 
-    def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict | None = None, **conversion_options):
-        """Add mock pose estimation data to NWBFile using ndx-pose, reading names from metadata."""
-        from ndx_pose import PoseEstimation, PoseEstimationSeries, Skeleton, Skeletons
+    @staticmethod
+    def _pascal_case(node_name: str) -> str:
+        return "".join(word.capitalize() for word in node_name.replace("_", " ").split())
 
-        if metadata is None:
-            metadata = self.get_metadata()
+    def _get_keypoint_names(self) -> list[str]:
+        return self.nodes
 
-        pose_metadata = metadata["Pose"]
-        container_entry = pose_metadata["PoseEstimations"][self.metadata_key]
+    def _get_keypoint_data(self) -> dict[str, tuple[np.ndarray, np.ndarray | None]]:
+        return {
+            node_name: (self.pose_data[:, index, :], np.ones(self.num_samples))
+            for index, node_name in enumerate(self.nodes)
+        }
 
-        behavior_module = get_module(nwbfile, "behavior")
 
-        # Lazy device creation: only write a device when the container references one. ndx-pose
-        # makes ``devices`` optional, so an absent ``device_metadata_key`` means "no device", not a
-        # fabricated placeholder. Reuse an existing Device with the same name when present, which
-        # lets multiple interfaces share a device by pointing at the same ``device_metadata_key``.
-        device = None
-        device_metadata_key = container_entry.get("device_metadata_key")
-        if device_metadata_key is not None:
-            device_entry = metadata["Devices"][device_metadata_key]
-            device_name = device_entry["name"]
-            if device_name in nwbfile.devices:
-                device = nwbfile.devices[device_name]
-            else:
-                device = Device(name=device_name, description=device_entry.get("description", ""))
-                nwbfile.add_device(device)
+class MockExternalVideoInterface(ExternalVideoInterface):
+    """
+    A mock external video interface for testing purposes.
 
-        # Lazy skeleton creation: only write a skeleton when the container references one. Reuse an
-        # existing Skeleton with the same name when present.
-        skeleton = None
-        skeleton_metadata_key = container_entry.get("skeleton_metadata_key")
-        if skeleton_metadata_key is not None:
-            skeleton_entry = pose_metadata["Skeletons"][skeleton_metadata_key]
-            skeleton_name = skeleton_entry["name"]
-            existing_skeletons = (
-                behavior_module["Skeletons"].skeletons if "Skeletons" in behavior_module.data_interfaces else {}
-            )
-            if skeleton_name in existing_skeletons:
-                skeleton = existing_skeletons[skeleton_name]
-            else:
-                skeleton = Skeleton(name=skeleton_name, nodes=skeleton_entry["nodes"], edges=self.edges)
+    Overrides exactly one thing: what the container header says. The frame count and the frame rate are
+    constructor arguments rather than reads, so a test can compose a video of any length into a conversion
+    at no cost, and everything else runs the real interface's course. In particular the timing is left
+    unset, as it is on a freshly constructed real interface, so a single file writes a starting time and a
+    rate while several files raise until the test says where they sit.
 
-        pose_estimation_series_metadata = container_entry["PoseEstimationSeries"]
-        pose_estimation_series = []
-        for index, node_name in enumerate(self.nodes):
-            series_metadata = pose_estimation_series_metadata[node_name]
-            series = PoseEstimationSeries(
-                name=series_metadata["name"],
-                description=series_metadata["description"],
-                data=self.pose_data[:, index, :],
-                unit=series_metadata["unit"],
-                reference_frame=series_metadata["reference_frame"],
-                timestamps=self.get_timestamps(),
-                confidence=np.ones(self.num_samples),
-                confidence_definition=series_metadata["confidence_definition"],
-            )
-            pose_estimation_series.append(series)
+    Nothing that reads the video itself is stubbed, only the header, so a method that decodes frames
+    (``get_original_timestamps``, and ``set_aligned_segment_starting_times`` which goes through it) will
+    fail here as it would on any missing file. Give the times directly with ``set_aligned_timestamps``.
 
-        pose_estimation = PoseEstimation(
-            name=container_entry["name"],
-            description=container_entry["description"],
-            pose_estimation_series=pose_estimation_series,
-            skeleton=skeleton,
-            devices=[device] if device is not None else None,
-            scorer=container_entry["scorer"],
-            source_software=container_entry["source_software"],
-            dimensions=(
-                np.array(container_entry["dimensions"], dtype="uint16")
-                if container_entry.get("dimensions") is not None
-                else None
-            ),
-            original_videos=container_entry.get("original_videos"),
-            labeled_videos=container_entry.get("labeled_videos"),
+    The paths land in ``external_file`` as they were passed and deliberately do not resolve, which is what
+    keeps the file a mock produces from being mistaken for a publishable one; ``nwbinspector`` flags the
+    dangling path, and that is the intent.
+    """
+
+    display_name = "Mock Video"
+    keywords = ("video", "behavior", "mock")
+    associated_suffixes = ()
+    info = "Mock interface for external video data testing."
+
+    def __init__(
+        self,
+        file_paths: list[str] | None = None,
+        num_frames: int = 100,
+        frame_rate: float = 30.0,
+        verbose: bool = False,
+        *,
+        metadata_key: str | None = None,
+    ):
+        """
+        Initialize a mock external video interface.
+
+        Parameters
+        ----------
+        file_paths : list of str, optional
+            The paths written to ``external_file``; they do not have to exist. Defaults to a single
+            ``"mock_video.mp4"``.
+        num_frames : int, default: 100
+            The frame count each file's header reports, which backs ``num_samples`` and ``starting_frame``.
+        frame_rate : float, default: 30.0
+            The frame rate each file's header reports.
+        verbose : bool, default: False
+            If True, display verbose output.
+        metadata_key : str, optional
+            Snake_case key identifying this video's entry under ``metadata["Behavior"]["ExternalVideos"]``.
+            Defaults to the stem-based key of the parent interface.
+        """
+        file_paths = [Path(file_path) for file_path in file_paths or ["mock_video.mp4"]]
+        # ExternalVideoInterface.__init__ is wrapped by pydantic's validate_call, whose FilePath refuses a
+        # path that does not exist; the undecorated function kept at __wrapped__ is what lets this interface
+        # stand up with nothing behind its paths.
+        ExternalVideoInterface.__init__.__wrapped__(
+            self,
+            file_paths=file_paths,
+            verbose=verbose,
+            metadata_key=metadata_key,
         )
+        self.num_frames = num_frames
+        self.frame_rate = frame_rate
 
-        behavior_module.add(pose_estimation)
-        if skeleton is not None:
-            if "Skeletons" not in behavior_module.data_interfaces:
-                skeletons = Skeletons(skeletons=[skeleton])
-                behavior_module.add(skeletons)
-            elif skeleton.name not in behavior_module["Skeletons"].skeletons:
-                behavior_module["Skeletons"].add_skeletons(skeleton)
+    def get_metadata(self) -> DeepDict:
+        metadata = super().get_metadata()
+        metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
+        return metadata
+
+    def _get_header_frame_counts(self) -> list[int]:
+        """Return the frame count the mock was built with, so the write path opens no files."""
+        return [self.num_frames] * self._number_of_files
+
+    def _get_header_frame_rates(self) -> list[float]:
+        """Return the frame rate the mock was built with, so the write path opens no files."""
+        return [self.frame_rate] * self._number_of_files
 
 
 class MockIcephysInterface(BaseDataInterface):
@@ -1690,7 +1768,10 @@ class MockIcephysInterface(BaseDataInterface):
         # (a single key with a single name), the way several real interfaces recorded on one amplifier do.
         device_metadata_key = "mock_amplifier"
         metadata["Devices"] = {
-            device_metadata_key: {"name": "MockAmplifier", "description": "Mock patch-clamp amplifier."}
+            device_metadata_key: {
+                "name": "MockAmplifier",
+                "description": "Mock patch-clamp amplifier.",
+            }
         }
         metadata["Icephys"]["IntracellularElectrodes"] = {
             self.metadata_key: {

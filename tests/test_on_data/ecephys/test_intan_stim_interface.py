@@ -106,7 +106,11 @@ class TestIntanStimInterfaceFilePerChannel:
 
         device = metadata["Devices"]["intan_device"]
         assert device["name"] == "Intan"
-        assert device["manufacturer"] == "Intan"
+        assert device["device_model_metadata_key"] == "intan_rhs2000_model"
+        assert metadata["DeviceModels"]["intan_rhs2000_model"] == {
+            "name": "RHS2000 Stim-Recording System",
+            "manufacturer": "Intan",
+        }
         assert device["description"] == "RHS Stim/Recording System"
 
         ts_meta = metadata["TimeSeries"][interface.metadata_key]

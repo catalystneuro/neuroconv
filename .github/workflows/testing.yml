@@ -73,13 +73,13 @@ jobs:
           uv pip install --system --group test
       - name: Run import tests
         run: |
-          pytest tests/imports.py::TestImportStructure::test_top_level
-          pytest tests/imports.py::TestImportStructure::test_tools
-          pytest tests/imports.py::TestImportStructure::test_datainterfaces
-          pytest tests/imports.py::test_datainterfaces_import
+          pytest --numprocesses=0 tests/imports.py::TestImportStructure::test_top_level
+          pytest --numprocesses=0 tests/imports.py::TestImportStructure::test_tools
+          pytest --numprocesses=0 tests/imports.py::TestImportStructure::test_datainterfaces
+          pytest --numprocesses=0 tests/imports.py::test_datainterfaces_import
 
       - name: Run minimal tests
-        run: pytest tests/test_minimal -vv -rsx -n logical --dist loadscope
+        run: pytest tests/test_minimal -vv
 
       - name: Test ecephys machinery
         shell: bash
@@ -94,7 +94,7 @@ jobs:
           fi
           uv pip install ".[ecephys_minimal]"
           uv pip install --group test --group sorting_analyzer # we test the sorting analyzer here so we need its dependencies
-          python -m pytest tests/test_modalities/test_ecephys -vv -rsx -n logical --dist loadscope
+          python -m pytest tests/test_modalities/test_ecephys -vv
           deactivate
 
       - name: Test ophys machinery
@@ -110,7 +110,7 @@ jobs:
           fi
           uv pip install ".[ophys_minimal]"
           uv pip install --group test
-          python -m pytest tests/test_modalities/test_ophys -vv -rsx -n logical --dist loadscope
+          python -m pytest tests/test_modalities/test_ophys -vv
           deactivate
 
       - name: Test fiber photometry machinery
@@ -124,9 +124,9 @@ jobs:
           else
             source env_fiber_photometry/bin/activate
           fi
-          uv pip install ".[fiber_photometry]"
+          uv pip install ".[fiber_photometry_minimal]"
           uv pip install --group test
-          python -m pytest tests/test_modalities/test_fiber_photometry -vv -rsx -n logical --dist loadscope
+          python -m pytest tests/test_modalities/test_fiber_photometry -vv
           deactivate
 
       - name: Test guppy machinery
@@ -142,7 +142,7 @@ jobs:
           fi
           uv pip install ".[guppy]"
           uv pip install --group test
-          python -m pytest tests/test_modalities/test_guppy -vv -rsx -n logical --dist loadscope
+          python -m pytest tests/test_modalities/test_guppy -vv
           deactivate
 
       - name: Test behavior machinery
@@ -158,7 +158,7 @@ jobs:
           fi
           uv pip install ".[behavior]"
           uv pip install --group test
-          python -m pytest tests/test_modalities/test_behavior -vv -rsx -n logical --dist loadscope
+          python -m pytest tests/test_modalities/test_behavior -vv
           deactivate
 
       - name: Test events machinery
@@ -174,7 +174,7 @@ jobs:
           fi
           uv pip install ".[events]"
           uv pip install --group test
-          python -m pytest tests/test_modalities/test_events -vv -rsx -n logical --dist loadscope
+          python -m pytest tests/test_modalities/test_events -vv
           deactivate
 
       - name: Prepare data for tests
@@ -194,9 +194,17 @@ jobs:
         with:
           os: ${{ runner.os }}
 
+      # Neo downloads the Plexon reader DLL into the home directory the first time a .pl2 file is
+      # opened, with a bare urlopen that has no timeout. Caching it keeps the test run off the network.
+      - name: Cache the Plexon2 reader DLL
+        uses: actions/cache@v5
+        with:
+          path: ~/.plexon_dlls_for_neo
+          key: plexon-dlls-${{ runner.os }}
+
       - name: Run full pytest
         # Ternary operator: only the job that uploads to Codecov below pays for coverage instrumentation
-        run: pytest -vv -rsx -n logical --dist loadscope ${{ (matrix.python-version == '3.10' && matrix.os == 'ubuntu-latest') && '--cov=neuroconv --cov-report xml:./codecov.xml' || '' }}
+        run: pytest -vv ${{ (matrix.python-version == '3.10' && matrix.os == 'ubuntu-latest') && '--cov=neuroconv --cov-report xml:./codecov.xml' || '' }}
       - name: Upload full coverage to Codecov
         if: ${{ matrix.python-version == '3.10' && matrix.os == 'ubuntu-latest' }}
         uses: codecov/codecov-action@v5

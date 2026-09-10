@@ -1,10 +1,13 @@
 import os
+import sys
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from platform import python_version as get_python_version
 
 import dandi.dandiapi
 import pytest
+import yaml
 from dandi.exceptions import NotFoundError
 
 from neuroconv import run_conversion_from_yaml
@@ -33,15 +36,50 @@ def _asset_is_from_this_run(dandiset: dandi.dandiapi.RemoteDandiset, asset_path:
     return datetime.now(timezone.utc) - date_modified < timedelta(minutes=10)
 
 
+def _write_specification_with_platform_token(
+    yaml_file_path: Path, platform_token: str, destination_folder: Path
+) -> Path:
+    """Copy the specification with `platform_token` appended to every subject and session identifier.
+
+    The identifiers in the checked-in specification are fixed, so every leg of every run wrote the same
+    three asset paths into one dandiset. Two runs overlapping then replaced each other's assets, and since
+    an asset update detaches the record it replaces, whichever run lost the race was left holding
+    identifiers the draft version no longer contained.
+    """
+    with open(file=yaml_file_path, mode="r", encoding="utf-8") as io:
+        specification = yaml.safe_load(io)
+
+    for experiment in specification["experiments"].values():
+        for session in experiment["sessions"]:
+            nwbfile_metadata = session["metadata"]["NWBFile"]
+            subject_metadata = session["metadata"]["Subject"]
+            nwbfile_metadata["session_id"] = f"{nwbfile_metadata['session_id']}-{platform_token}"
+            subject_metadata["subject_id"] = f"{subject_metadata['subject_id']}-{platform_token}"
+
+    destination_path = destination_folder / "GIN_conversion_specification_dandi_upload_with_platform_token.yml"
+    with open(file=destination_path, mode="w", encoding="utf-8") as io:
+        yaml.safe_dump(specification, io)
+
+    return destination_path
+
+
 @pytest.mark.skipif(
     not HAVE_DANDI_KEY,
     reason="You must set your DANDI_SANDBOX_API_KEY to run this test!",
 )
-def test_run_conversion_from_yaml_with_dandi_upload():
+def test_run_conversion_from_yaml_with_dandi_upload(tmp_path):
     path_to_test_yml_files = Path(__file__).parent.parent / "test_on_data" / "test_yaml" / "conversion_specifications"
     yaml_file_path = path_to_test_yml_files / "GIN_conversion_specification_dandi_upload.yml"
+
+    # The same namespace the sibling tests use: bounded by the matrix, so each leg overwrites its own
+    # three assets instead of leaving new ones in the sandbox on every run.
+    platform_token = f"{sys.platform}-{get_python_version().replace('.', '-')}"
+    specification_file_path = _write_specification_with_platform_token(
+        yaml_file_path=yaml_file_path, platform_token=platform_token, destination_folder=tmp_path
+    )
+
     run_conversion_from_yaml(
-        specification_file_path=yaml_file_path,
+        specification_file_path=specification_file_path,
         data_folder_path=ECEPHY_DATA_PATH,
         output_folder_path=OUTPUT_PATH,
         overwrite=True,
@@ -50,10 +88,15 @@ def test_run_conversion_from_yaml_with_dandi_upload():
     client = dandi.dandiapi.DandiAPIClient(api_url="https://api.sandbox.dandiarchive.org/api")
     dandiset = client.get_dandiset("200560")
 
+    # DANDI turns the spaces of the third session's identifiers into dashes, which is why that path is
+    # spelled differently from the specification.
     expected_asset_paths = [
-        "sub-yaml-1/sub-yaml-1_ses-test-yaml-1_ecephys.nwb",
-        "sub-yaml-002/sub-yaml-002_ses-test-yaml-2_ecephys.nwb",
-        "sub-YAML-Subject-Name/sub-YAML-Subject-Name_ses-test-YAML-3_ecephys.nwb",
+        f"sub-yaml-1-{platform_token}/sub-yaml-1-{platform_token}_ses-test-yaml-1-{platform_token}_ecephys.nwb",
+        f"sub-yaml-002-{platform_token}/sub-yaml-002-{platform_token}_ses-test-yaml-2-{platform_token}_ecephys.nwb",
+        (
+            f"sub-YAML-Subject-Name-{platform_token}/"
+            f"sub-YAML-Subject-Name-{platform_token}_ses-test-YAML-3-{platform_token}_ecephys.nwb"
+        ),
     ]
 
     # The sandbox needs a moment to register an upload, so wait for it rather than sleeping a flat minute:

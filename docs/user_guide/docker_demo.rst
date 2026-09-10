@@ -51,7 +51,8 @@ It relies on some of the GIN data from the main testing suite, see :ref:`example
           - nwbfile_name: spikeglx_from_docker_yaml.nwb
             source_data:
               ap:
-                file_path: /demo_neuroconv_docker/spikeglx/Noise4Sam_g0/Noise4Sam_g0_imec0/Noise4Sam_g0_t0.imec0.ap.bin
+                folder_path: /demo_neuroconv_docker/spikeglx/Noise4Sam_g0/Noise4Sam_g0_imec0
+                stream_id: imec0.ap
             metadata:
               NWBFile:
                 session_start_time: "2020-10-10T21:19:09+00:00"
@@ -108,18 +109,15 @@ It relies on some of the GIN data from the main testing suite, see :ref:`example
         neuroconv /demo_neuroconv_docker/demo_neuroconv_docker_yaml.yml \
         --output-folder-path /demo_neuroconv_docker/demo_output
 
-Voilà! If everything occurred successfully, you should see...
+The command prints nothing when it succeeds. Voilà! Each session named in the specification is
+now a file in the output folder...
 
 .. code::
 
-    Source data is valid!
-    Metadata is valid!
-    conversion_options is valid!
-    NWB file saved at /demo_neuroconv_docker/demo_output/spikeglx_from_docker_yaml.nwb!
-    Source data is valid!
-    Metadata is valid!
-    conversion_options is valid!
-    NWB file saved at /demo_neuroconv_docker/demo_output/phy_from_docker_yaml.nwb!
+    demo_neuroconv_docker/
+    ¦   demo_output/
+    ¦   +-- spikeglx_from_docker_yaml.nwb
+    ¦   +-- phy_from_docker_yaml.nwb
 
 
 

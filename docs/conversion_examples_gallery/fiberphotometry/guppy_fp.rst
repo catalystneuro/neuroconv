@@ -19,9 +19,14 @@ Point the converter at three folders
 events, and ``guppy_folder_path`` is GuPPy's ``<session>_output_<N>`` folder. GuPPy writes a session's
 traces and events into one folder, so in practice the first two are usually the same path.
 
-``acquisition_format`` selects how the two raw folders are read — ``"tdt"``, ``"csv"``, ``"doric"``, or
+``acquisition_format`` selects how the raw traces are read — ``"tdt"``, ``"csv"``, ``"doric"``, or
 ``"npm"``, matching the :doc:`TDT <tdt_fp>`, :doc:`CSV <csv_fp>`, :doc:`Doric <doric_fp>`, and
-:doc:`NPM <npm_fp>` interfaces.
+:doc:`NPM <npm_fp>` interfaces. The events are read the same way, except for the ones that did not come
+from the acquisition system: GuPPy's custom-event import writes the events it imported back out as
+one-column ``timestamps`` CSVs, which then sit in the session folder beside whatever the rig recorded.
+``events_folder_path`` is scanned for those files, so a session whose ``storesList.csv`` lists stores
+from two sources at once — the tank's epocs and an imported ``licks.csv``, say — needs nothing extra
+declared.
 
 GuPPy also reads NWB as an input format. If your session is **already in NWB**, see
 :ref:`guppy_existing_nwbfile` below.
@@ -53,8 +58,13 @@ As with every fiber photometry interface, the hardware chain is yours to supply.
 ``FiberPhotometryTable`` carries one row per store, so this two-site isosbestic session has four rows,
 and each series' region must name its stores in column order.
 
-The rest of the format — device models, devices, indicators, and the response series blocks — is shared
-across the fiber photometry interfaces and documented at :ref:`fiber_photometry_metadata_structure`.
+NeuroConv aims to automatically add all the metadata annotations that are present in the source format.
+It is often the case that crucial information is not available there, such as the anatomical location,
+the meaning of the values, or a semantically meaningful description of the data. Follow
+:ref:`the fiber photometry how-to <annotate_fiber_photometry_metadata>` for a modality-relevant guide to adding
+this extra metadata, which makes the data more useful for future users and for the community as a whole.
+Its :ref:`section on templates <how_to_annotate_from_a_template>` starts from scratch, and the
+:ref:`reference template <fiber_photometry_metadata_template>` lists every element the metadata accepts.
 
 .. code-block:: python
 

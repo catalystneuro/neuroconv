@@ -67,25 +67,27 @@ class NPMConverterTestMixin:
     ACQUISITION_FILE_NAME = "signals.csv"
     EVENT_FILE_NAME = "ttls.csv"
 
-    @pytest.fixture
-    def session_folder(self, tmp_path):
-        folder_path = tmp_path / "session"
+    @pytest.fixture(scope="class")
+    @classmethod
+    def session_folder(cls, tmp_path_factory):
+        folder_path = tmp_path_factory.mktemp("npm_session") / "session"
         folder_path.mkdir()
-        shutil.copy(self.ACQUISITION_SOURCE, folder_path / self.ACQUISITION_FILE_NAME)
-        shutil.copy(self.EVENT_SOURCE, folder_path / self.EVENT_FILE_NAME)
+        shutil.copy(cls.ACQUISITION_SOURCE, folder_path / cls.ACQUISITION_FILE_NAME)
+        shutil.copy(cls.EVENT_SOURCE, folder_path / cls.EVENT_FILE_NAME)
         return folder_path
 
-    @pytest.fixture
-    def guppy_output_folder(self, tmp_path):
+    @pytest.fixture(scope="class")
+    @classmethod
+    def guppy_output_folder(cls, tmp_path_factory):
         folder_path = generate_mock_guppy_output_folder(
-            tmp_path / "session_output_1",
-            recording_site_to_stores=self.RECORDING_SITE_TO_STORES,
-            event_store_to_name=self.EVENT_STORE_TO_NAME,
+            tmp_path_factory.mktemp("npm_output") / "session_output_1",
+            recording_site_to_stores=cls.RECORDING_SITE_TO_STORES,
+            event_store_to_name=cls.EVENT_STORE_TO_NAME,
             cross_correlation_pairs=(),
         )
         # Which clock and unit a session was read on is a choice made when GuPPy ran; it records them
         # here beside storesList.csv, one unit and one column for the whole session.
-        (folder_path / ".npm_params.json").write_text(json.dumps(self.NPM_PARAMETERS), encoding="utf-8")
+        (folder_path / ".npm_params.json").write_text(json.dumps(cls.NPM_PARAMETERS), encoding="utf-8")
         return folder_path
 
     @pytest.fixture
@@ -115,8 +117,9 @@ class NPMConverterTestMixin:
 
     def test_event_store_ids_map_to_the_names_guppy_gave_them(self, converter):
         """GuPPy's ``event<N>`` store ids are synthetic too, and must round-trip back to the source file."""
+        (events_spec,) = converter._events_specs
         for store_id in self.EVENT_STORE_TO_NAME:
-            assert store_id in converter._event_source_id_to_store_id.values()
+            assert store_id in events_spec["source_id_to_store_id"].values()
 
 
 class TestGuppyConverterNPMInterleaved(NPMConverterTestMixin):
@@ -232,8 +235,9 @@ class TestGuppyConverterNPMHeaderless(NPMConverterTestMixin):
 
     def test_event0_is_translated_back_to_its_store_id(self, converter):
         """The CSV events interface keys its lone type by file stem, so the seam maps it to `event0`."""
-        assert converter._event_source_id_to_store_id == {"ttls": "event0"}
-        assert converter._store_id_for("ttls") == "event0"
+        (events_spec,) = converter._events_specs
+        assert events_spec["source_id_to_store_id"] == {"ttls": "event0"}
+        assert converter._store_id_for(events_spec, "ttls") == "event0"
 
 
 class TestNPMRunParameters:
@@ -263,6 +267,22 @@ class TestNPMRunParameters:
         assert run_parameters["time_unit"] == "microseconds"
         assert run_parameters["timestamp_column_name"] == "SystemTimestamp"
         assert run_parameters["number_of_channels"] == 2
+
+    def test_the_channel_count_is_read_from_the_npm_parameters(self, guppy_output_folder):
+        """Newer GuPPy runs record the count beside the other NPM settings, not in the snapshot."""
+        (guppy_output_folder / ".npm_params.json").write_text(
+            json.dumps(
+                {
+                    "npm_split_events": [False, False],
+                    "npm_time_unit": "seconds",
+                    "npm_timestamp_column_name": "SystemTimestamp",
+                    "noChannels": 3,
+                }
+            ),
+            encoding="utf-8",
+        )
+        (guppy_output_folder / "GuPPyParamtersUsed.json").unlink()
+        assert npm_run_parameters(guppy_output_folder)["number_of_channels"] == 3
 
     def test_a_file_predating_the_session_wide_unit_is_refused(self, guppy_output_folder):
         """The per-file unit could disagree with the one GuPPy applied, so such a file is unusable."""

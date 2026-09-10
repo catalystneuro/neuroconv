@@ -31,6 +31,17 @@ interface read out of the source format and nothing else: no defaults, no placeh
 scaffold for the user to fill in. Whatever a conversion cannot answer from the source is the user's to
 supply, and an interface that answers on their behalf has removed their chance to notice.
 
+**The source is the format, not only the file.** A value the format fixes for every file it produces
+is source-derived even where no byte of a particular file states it. ``source_software`` is the plain
+case: ``SLEAPInterface`` reports ``"SLEAP"`` because of what it is reading, not because the file names
+itself. A pose series' ``reference_frame`` is the same kind of thing, since SLEAP, DeepLabCut and
+Lightning Pose all express keypoints in image coordinates with the origin at the top-left pixel and y
+increasing downward, so an interface can state it without asking the experimenter. The test is whether
+the value would be identical for every file that format produces. If it would, it is a fact about the
+format and belongs in ``get_metadata()``. If it varies from experiment to experiment and this file does
+not record it, it is missing, and the rules below apply. The writer keeps a placeholder for the second
+case regardless, so an interface that does not know still writes a valid file.
+
 Concretely, if the source carries no value for a field:
 
 - **Omit the key.** Do not emit ``"description": ""``, ``"location": "unknown"``, or an empty
@@ -46,11 +57,51 @@ A placeholder in the dictionary makes it impossible for anything downstream to t
 came from the source, the user, or NeuroConv. Warning about it at write time does not help, since the
 value is written regardless.
 
-See `issue #1557 <https://github.com/catalystneuro/neuroconv/issues/1557>`_ for the discussion.
+See `issue #1557 <https://github.com/catalystneuro/neuroconv/issues/1557>`_ for the original discussion.
 
-Staying faithful is not the whole story, though. Some of what a source leaves out is genuinely
-required by NWB, and a file cannot be written without it, so a value has to come from somewhere even
-when the interface reports none.
+Faithfulness costs the user something, though, and it is worth naming: a dictionary that omits
+everything the source did not record does not tell you what else the file needs. That is what
+``get_metadata_template()`` is for.
+
+
+Templates: the structure, with the blanks marked
+------------------------------------------------
+
+``get_metadata_template()`` is the counterpart to ``get_metadata()``. Where ``get_metadata()`` answers
+what the source recorded, and must never carry a value it did not, ``get_metadata_template()`` answers
+what metadata can be added to the file through this interface.
+
+The design principles of ``get_metadata_template()`` are the following:
+
+**It returns the complete structure that could be added.** A template carries every entry and every
+field the schema accepts including the optional ones. The point here is discoverability, since nobody
+can fill in a field they do not know exists. This is in tension with the principle that neuroconv
+should not provide ways of adding incorrect metadata, so the metadata as returned by
+``get_metadata_template()`` should fail when used as it is. At the moment, this is implemented with
+``None``, which the metadata schema and pynwb both reject. Every entry needs at least one blank for
+that to bite, and the ``name`` is the field that always qualifies, since every NWB object requires one.
+
+**It adapts to the interface.** This means the following things in practice:
+
+* The ``metadata_key`` entries are already the ones the interface would use. This includes the
+  cross-references between ``metadata_key`` entries.
+* The metadata that is available on the source is prefilled.
+* For metadata whose length and extent depends on the data, ``get_metadata_template()`` returns the
+  right shape.
+
+To make the last point concrete, it refers to the variable-length fields like the number of rows in a
+``FiberPhotometryTable``, the number of ``ElectrodeGroups`` on a recording or the number of body parts
+in a ``PoseEstimation``.
+
+Implementing ``get_metadata_template()`` is the responsibility of each modality base class, with
+``BaseDataInterface`` supplying only the generic ``NWBFile`` and ``Subject`` metadata.
+
+In opposition to how ``get_metadata_template()`` adapts itself to the interface, we provide generic
+structures as references in the user guide at :ref:`metadata_templates`. There the metadata keys are
+generic, the fields are blank as there is no source, and whatever repeats is shown twice as an example
+of how to fill the variable-length fields.
+
+See `issue #1802 <https://github.com/catalystneuro/neuroconv/issues/1802>`_ for the original discussion.
 
 
 Placeholders for required fields
@@ -69,6 +120,8 @@ usually does not carry. Where a field has no source value, the decision is:
    field (``np.nan`` for a numeric wavelength), and better still one NWB Inspector already flags: it
    catches empty and known placeholder descriptions (see its `placeholder best practice
    <https://nwbinspector.readthedocs.io/en/dev/best_practices/general.html#best-practice-placeholders>`_).
+   Note that the Inspector only reads descriptions, so for an object whose only required field is its
+   name there is nothing for it to flag; see "Placeholders for required links" below.
 4. **Keep placeholders centralized.** Put the string fallbacks in one factory per modality
    (`ophys <https://github.com/catalystneuro/neuroconv/blob/a02fb353ea19112b7ef81542f5f05359f3b5498f/src/neuroconv/tools/roiextractors/roiextractors.py#L83>`_,
    `ecephys <https://github.com/catalystneuro/neuroconv/blob/a02fb353ea19112b7ef81542f5f05359f3b5498f/src/neuroconv/tools/spikeinterface/spikeinterface.py#L84>`_)
@@ -76,6 +129,50 @@ usually does not carry. Where a field has no source value, the decision is:
 
 See `nwb-schema issue #672 <https://github.com/NeurodataWithoutBorders/nwb-schema/issues/672>`_ for
 the discussion.
+
+
+Placeholders for required links
+---------------------------------
+
+The same question one level up. Here the entry does not omit a field, it omits an *object*: an
+``ElectrodeGroup`` entry names its device with ``device_metadata_key``, an ``ImagingPlane`` entry does
+the same, an ``IntracellularElectrode`` entry too, and a ``FiberPhotometryTable`` row names several.
+When that key is absent, the decision has the same shape as above and turns on the same question:
+
+1. **Required link, absent key: create the modality's placeholder object and link it.** A file cannot be
+   written without it, for the reason a required field cannot be left out.
+2. **Optional link, absent key: write nothing.** An absent key says "there is no device", not "the user
+   forgot one". Inventing an object there asserts hardware the conversion knows nothing about, which is
+   what the first section of this page forbids.
+
+Read the requirement off the schema, not off the ``docval``. ``ElectrodeGroup.device``,
+``ImagingPlane.device`` and ``IntracellularElectrode.device`` all declare the link with no ``quantity``,
+so all three are required and an entry naming no device gets the placeholder. ``ImageSeries.device`` is
+``quantity: '?'``, and the pose estimation links and the fiber photometry table's device columns are
+likewise optional, so those write nothing. The trap is that pynwb gives ``ImagingPlane.device`` a
+default in its ``docval``, so ``get_docval`` reports it as optional while the schema requires it, and
+anyone applying this rule to a new type by reading the constructor signature will get that one wrong.
+
+**Build the placeholder where the object that needs it is created.** Do not add it to
+``metadata["Devices"]`` under a known key so that the ordinary keyed lookup resolves. That is the
+pre-filling forbidden by "Targeted defaults" below, and the cost is not theoretical: the ecephys path
+used to do it by handing the device writer a fresh dictionary holding ``Devices`` and nothing else, so a
+device that named its model with ``device_model_metadata_key`` could never resolve it, because
+``metadata["DeviceModels"]`` was not in the dictionary the writer received. A placeholder has no
+registry entry behind it, so it is built directly with ``nwbfile.create_device`` and reused by name.
+
+**Name a placeholder object so a reader can tell it was defaulted.** They are
+``PlaceholderElectrodeDevice``, ``PlaceholderMicroscope`` and ``PlaceholderIntracellularDevice``. The
+signal lives in the name rather than the description because a ``Device`` requires nothing but a name,
+so rule 1 of the previous section says the description is omitted, and the Inspector's placeholder check
+reads only descriptions. The prefix also keeps an invented object from colliding with a name a user is
+likely to choose: ``Microscope`` is the commonest device name in published ophys files on DANDI, and
+devices named ``Device`` and ``Amplifier`` are both in use there as stated values.
+
+A name is the only thing these placeholders carry. Where the linked instrument class is not the same
+across a modality, do not guess it: published files put a digitizer, an amplifier, a rig, the
+acquisition software or the pipette itself behind ``IntracellularElectrode.device``, which is why the
+icephys placeholder names no class at all.
 
 
 How modality pipelines handle metadata propagation
@@ -109,6 +206,22 @@ the user or from a default, and a caller who reuses one metadata dictionary acro
 earlier ``add_*`` call.
 
 See `issue #1511 <https://github.com/catalystneuro/neuroconv/issues/1511>`_ for the discussion.
+
+
+.. _metadata_plural_naming:
+
+Fields that hold keyed entries are plural
+------------------------------------------
+
+**A field whose entries are addressed by** ``metadata_key`` **is named in the plural, because it can
+hold more than one of them.** The top-level ``Devices`` and ``DeviceModels``, ``ElectrodeGroups`` and
+``ElectricalSeries`` under ``Ecephys``, ``ImagingPlanes``, ``PlaneSegmentations``, ``RoiResponses`` and
+``SegmentationImages`` under ``Ophys``, ``Skeletons`` and ``PoseEstimations`` under ``Pose``, and
+``EventTables`` under ``Events`` all follow it. The rule is a naming convention, but a key is a contract
+with the users who write their metadata edits against it, so one that has to gain the plural later
+breaks every script addressing the old spelling.
+
+See `issue #1280 <https://github.com/catalystneuro/neuroconv/issues/1280>`_ for the original discussion.
 
 
 .. _metadata_key_naming:
@@ -152,7 +265,8 @@ Checklist for a new interface
 When writing or reviewing an interface:
 
 - Every key ``get_metadata()`` returns corresponds to something read from the source.
-- No key holds ``""``, ``{}``, ``None``, ``np.nan``, ``"unknown"``, or any other sentinel.
+- No key holds ``""``, ``{}``, ``None``, ``np.nan``, ``"unknown"``, or any other sentinel. This
+  constrains ``get_metadata()``; ``get_metadata_template()`` is where blanks belong.
 - No object is returned that the source gives no evidence for: no imaging plane without optical
   information, no electrode group without probe information, no fiber without a fiber.
 - Required NWB fields with no source value are filled where the object is built, in the
@@ -162,3 +276,4 @@ When writing or reviewing an interface:
 - The ``metadata_key`` default is a snake_case constant, unless the format inherently produces several
   instances at once (then it is derived from a stable source handle).
 - The ``metadata_key`` is typed ``str | None``, and its default is resolved in ``__init__``.
+- Every metadata field holding entries addressed by ``metadata_key`` is named in the plural.

@@ -5,22 +5,16 @@ from typing import Literal
 
 import numpy as np
 from pydantic import FilePath, validate_call
-from pynwb import NWBFile
 
 from ._bruker_voltage_recording_readers import (
     _CycleHeader,
     _read_cycle_header,
     _read_signal_column,
 )
-from ....basedatainterface import BaseDataInterface
-from ....tools.icephys import (
-    _RESPONSE_CLASS,
-    _add_intracellular_electrode_to_nwbfile,
-    _add_intracellular_recordings_to_nwbfile,
-)
+from ..baseicephysinterface import BaseIcephysInterface
+from ....tools.icephys import _IcephysSeriesData
 from ....utils import (
     DeepDict,
-    calculate_regular_series_rate,
     get_conversion_from_unit,
     to_camel_case,
 )
@@ -35,7 +29,7 @@ _MODE_BEARING_SIGNAL_NAME = "Primary"
 _UNIT_TO_MODE = {"mV": "current_clamp", "pA": "voltage_clamp"}
 
 
-class BrukerVoltageRecordingInterface(BaseDataInterface):
+class BrukerVoltageRecordingInterface(BaseIcephysInterface):
     """
     Interface for intracellular electrophysiology recorded by Bruker PrairieView's VoltageRecording.
 
@@ -274,6 +268,7 @@ class BrukerVoltageRecordingInterface(BaseDataInterface):
 
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
+        metadata["Icephys"] = {}
         metadata["NWBFile"]["session_start_time"] = self._recording_start_datetime
 
         # The metadata-dict keys were resolved at construction. Each series entry stores its
@@ -316,83 +311,17 @@ class BrukerVoltageRecordingInterface(BaseDataInterface):
 
     # ------------------------------------------------------------------ writing
 
-    def add_to_nwbfile(
-        self,
-        nwbfile: NWBFile,
-        metadata: dict | None = None,
-    ) -> None:
-        if metadata is None:
-            metadata = self.get_metadata()
-
-        response_metadata = metadata["Icephys"]["PatchClampSeries"][self._series_metadata_key]
-        electrode = _add_intracellular_electrode_to_nwbfile(
-            nwbfile, metadata, response_metadata["electrode_metadata_key"]
-        )
-
+    def _get_icephys_series_data(self):
+        """Map the PrairieView response into the base writer representation."""
         data, timestamps, sweep_sample_ranges = self._concatenate_cycles()
-        # The series is written on this electrode's own clock (its earliest cycle is time zero). A lone
-        # interface leaves _starting_time_shift at 0; a converter combining electrodes sets it so they share
-        # one session timeline, since that resolution needs sight of all of them.
         timestamps = timestamps + self._starting_time_shift
-
-        # The whole scale chain lives in `conversion` rather than being multiplied into the samples, so the
-        # data stays exactly what PrairieView wrote: raw times Multiplier / Divisor gives the signal in its
-        # stated unit, and the unit factor takes that to volts or amperes.
         signal = self._response_signal
         conversion = (signal.multiplier / signal.divisor) * get_conversion_from_unit(signal.unit_name)
-        response_kwargs = dict(
-            name=response_metadata["name"],
-            data=data,
-            electrode=electrode,
-            conversion=float(conversion),
-            gain=np.nan,
-            description=response_metadata["description"],
-        )
-        # Use a uniform rate when the timestamps are regular (a single cycle, or cycles that happen to abut);
-        # fall back to explicit timestamps once the intervals between cycles make them irregular.
-        rate = calculate_regular_series_rate(series=timestamps)
-        if rate is not None:
-            response_kwargs.update(starting_time=float(timestamps[0]), rate=rate)
-        else:
-            response_kwargs.update(timestamps=timestamps)
-        response_series = _RESPONSE_CLASS[self._mode](**response_kwargs)
-        nwbfile.add_acquisition(response_series)
+        response_data = _IcephysSeriesData(data=data, timestamps=timestamps, conversion=float(conversion))
+        return response_data, None, sweep_sample_ranges
 
-        self._add_intracellular_table_to_nwb(
-            nwbfile,
-            electrode=electrode,
-            response_series=response_series,
-            sweep_sample_ranges=sweep_sample_ranges,
-        )
-
-    def _add_intracellular_table_to_nwb(self, nwbfile, electrode, response_series, sweep_sample_ranges):
-        """Write one IntracellularRecordings row per cycle, each addressing this electrode's continuous
-        response series by the cycle's ``(start_index, count)`` range, and tag every row with the run-level
-        foreign-key columns:
-
-        - ``sequence``: the run identity, shared by every cycle, which is what an aggregator groups on to build
-          a SequentialRecordings entry.
-        - ``stimulus_type``: what kind of run it was, only when the caller said. PrairieView records no
-          protocol, so there is nothing to derive; the column is omitted when no run in the file states one
-          (:func:`~neuroconv.tools.icephys._build_icephys_hierarchical_tables` supplies the one NWB insists on
-          at the sequential level).
-        - ``repetition`` and ``condition``: only when the user gave them (when combining several electrodes in
-          a converter), so the runs group into repetitions and experimental conditions.
-
-        The upper tables are deliberately not built here, for the reason the other icephys interfaces give:
-        constructing them is a terminal step that locks their membership, and a single interface cannot know
-        whether it is the last contributor to the file.
-        """
-        _add_intracellular_recordings_to_nwbfile(
-            nwbfile,
-            electrode=electrode,
-            response_series=response_series,
-            sweep_sample_ranges=sweep_sample_ranges,
-            sequence=self._run_identity,
-            stimulus_type=self._stimulus_type,
-            repetition=self._repetition,
-            condition=self._condition,
-        )
+    def _get_stimulus_type(self) -> str | None:
+        return self._stimulus_type
 
     # ------------------------------------------------------------------ discovery (call before constructing)
 

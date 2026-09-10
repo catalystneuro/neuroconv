@@ -368,7 +368,7 @@ class BrukerTiffImagingInterface(BaseImagingExtractorInterface):
 
 
 # ---------------------------------------------------------------------------
-# Deprecated interfaces. Will be removed on or after December 2026.
+# Deprecated interfaces. Will be removed on or after February 2027.
 # Use BrukerTiffImagingInterface instead.
 # ---------------------------------------------------------------------------
 
@@ -458,7 +458,7 @@ class BrukerTiffMultiPlaneImagingInterface(BaseImagingExtractorInterface):
         verbose : bool, default: False
         """
         warnings.warn(
-            "BrukerTiffMultiPlaneImagingInterface is deprecated and will be removed on or after December 2026. "
+            "BrukerTiffMultiPlaneImagingInterface is deprecated and will be removed on or after February 2027. "
             "Use BrukerTiffImagingInterface instead.",
             FutureWarning,
             stacklevel=2,
@@ -561,7 +561,7 @@ class BrukerTiffMultiPlaneImagingInterface(BaseImagingExtractorInterface):
         DeepDict
             The metadata dictionary containing imaging metadata from the Bruker TIFF files.
         """
-        metadata = super().get_metadata()
+        metadata = super().get_metadata(use_new_metadata_format=False)
 
         xml_metadata = self.imaging_extractor.xml_metadata
         session_start_time = dateparse(xml_metadata["date"])
@@ -689,7 +689,7 @@ class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
         verbose : bool, default: False
         """
         warnings.warn(
-            "BrukerTiffSinglePlaneImagingInterface is deprecated and will be removed on or after December 2026. "
+            "BrukerTiffSinglePlaneImagingInterface is deprecated and will be removed on or after February 2027. "
             "Use BrukerTiffImagingInterface instead.",
             FutureWarning,
             stacklevel=2,
@@ -793,7 +793,7 @@ class BrukerTiffSinglePlaneImagingInterface(BaseImagingExtractorInterface):
         DeepDict
             The metadata dictionary containing imaging metadata from the Bruker TIFF files.
         """
-        metadata = super().get_metadata()
+        metadata = super().get_metadata(use_new_metadata_format=False)
 
         xml_metadata = self.imaging_extractor.xml_metadata
         session_start_time = dateparse(xml_metadata["date"])

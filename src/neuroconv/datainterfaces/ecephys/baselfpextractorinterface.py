@@ -4,6 +4,7 @@ from typing import Literal
 from pynwb import NWBFile
 
 from .baserecordingextractorinterface import BaseRecordingExtractorInterface
+from ...utils import DeepDict
 
 
 class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
@@ -16,8 +17,23 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
         "LF",
     )
 
-    def __init__(self, verbose: bool = False, es_key: str = "ElectricalSeriesLFP", **source_data):
+    _default_es_key = "ElectricalSeriesLFP"
+
+    def __init__(self, verbose: bool = False, es_key: str | None = None, **source_data):
         super().__init__(verbose=verbose, es_key=es_key, **source_data)
+
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
+        metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
+
+        if use_new_metadata_format:
+            # State the series name here, where the metadata is produced, rather than leaving it to the
+            # ``es_key`` default: the dict format names a series from its own entry, so a name carried only
+            # by ``es_key`` (legacy, to be removed) never reaches the file. The name is the one the old
+            # format wrote, and it is independent of ``metadata_key`` (the dict key), so re-keying an entry
+            # never renames the written series.
+            metadata["Ecephys"]["ElectricalSeries"][self.metadata_key]["name"] = "ElectricalSeriesLFP"
+
+        return metadata
 
     def add_to_nwbfile(
         self,
@@ -27,10 +43,18 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
         stub_test: bool = False,
         parent_container: Literal["acquisition", "processing/LFP", "processing/FilteredEphys"] = "processing/LFP",
         write_as: Literal["raw", "lfp", "processed"] | None = None,
+        data_representation: Literal["digital_counts", "physical_units"] = "digital_counts",
         write_electrical_series: bool = True,
         iterator_type: str = "v2",
         iterator_options: dict | None = None,
+        always_write_timestamps: bool = False,
     ):
+        """
+        Add the LFP traces to the NWBFile, into ``processing/LFP`` unless ``parent_container`` says otherwise.
+
+        The arguments are those of :meth:`BaseRecordingExtractorInterface.add_to_nwbfile`, with
+        ``parent_container`` defaulting to ``"processing/LFP"``.
+        """
         # Handle deprecated positional arguments
         if args:
             parameter_names = [
@@ -67,7 +91,7 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
         if write_as is not None:
             warnings.warn(
                 "The 'write_as' parameter of BaseLFPExtractorInterface.add_to_nwbfile() is deprecated and will be "
-                "removed on or after December 2026. Use 'parent_container' instead "
+                "removed on or after February 2027. Use 'parent_container' instead "
                 "('raw' -> 'acquisition', 'lfp' -> 'processing/LFP', 'processed' -> 'processing/FilteredEphys').",
                 FutureWarning,
                 stacklevel=2,
@@ -81,7 +105,9 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
             metadata=metadata,
             stub_test=stub_test,
             parent_container=parent_container,
+            data_representation=data_representation,
             write_electrical_series=write_electrical_series,
             iterator_type=iterator_type,
             iterator_options=iterator_options,
+            always_write_timestamps=always_write_timestamps,
         )

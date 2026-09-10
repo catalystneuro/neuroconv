@@ -48,7 +48,7 @@ class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
         stream_id: str = "trodes",
         gains: ArrayType | None = None,
         verbose: bool = False,
-        es_key: str = "ElectricalSeries",
+        es_key: str | None = None,
         metadata_key: str | None = None,
     ):
         """

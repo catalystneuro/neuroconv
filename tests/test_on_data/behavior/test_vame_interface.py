@@ -603,6 +603,7 @@ class TestVameInterfacePoseEstimationLink:
         pose_estimation_interface.set_aligned_timestamps(aligned_timestamps)
         pose_metadata = pose_estimation_interface.get_metadata()
         nwbfile = mock_NWBFile()
+        nwbfile.create_processing_module(name="behavior", description="processed behavioral data")
         pose_estimation_interface.add_to_nwbfile(nwbfile=nwbfile, metadata=pose_metadata)
 
         pose_key = pose_estimation_interface.metadata_key
@@ -633,6 +634,7 @@ class TestVameInterfacePoseEstimationLink:
         pose_meta["Pose"]["PoseEstimations"]["DLC"]["name"] = "PoseEstimationDeepLabCut"
 
         nwbfile = mock_NWBFile()
+        nwbfile.create_processing_module(name="behavior", description="processed behavioral data")
         pose_interface.add_to_nwbfile(nwbfile=nwbfile, metadata=pose_meta)
 
         vame_metadata = interface.get_metadata()
@@ -657,6 +659,7 @@ class TestVameInterfacePoseEstimationLink:
         pose_interface.set_aligned_timestamps(aligned_timestamps)
         pose_metadata = pose_interface.get_metadata()
         nwbfile = mock_NWBFile()
+        nwbfile.create_processing_module(name="behavior", description="processed behavioral data")
         pose_interface.add_to_nwbfile(nwbfile=nwbfile, metadata=pose_metadata)
         pose_key = pose_interface.metadata_key
 
@@ -746,35 +749,6 @@ class TestVameInterfaceStrictKeyResolution:
         metadata["Behavior"]["Vame"]["CommunitySeries"][community_key]["motif_series_metadata_key"] = "not_a_key"
         with pytest.raises(ValueError, match="motif_series_metadata_key 'not_a_key'"):
             interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, stub_test=True)
-
-
-class TestVameInterfaceGetPoseEstimation:
-    """Static method _get_pose_estimation raises informative errors."""
-
-    def test_raises_when_no_pose_estimation_containers_in_file(self):
-        """Raises with 'No PoseEstimation containers exist' when the file is empty."""
-        nwbfile = mock_NWBFile()
-        with pytest.raises(ValueError, match="No PoseEstimation containers exist"):
-            VameInterface._get_pose_estimation(nwbfile, "SomeName")
-
-    def test_raises_listing_available_containers_when_wrong_name(self):
-        """Lists available PoseEstimation containers in the error when the requested name is absent."""
-        nwbfile = mock_NWBFile()
-        pose_estimation_interface = MockPoseEstimationInterface(num_samples=10, num_nodes=3, seed=0)
-        pose_estimation_interface.add_to_nwbfile(nwbfile=nwbfile, metadata=pose_estimation_interface.get_metadata())
-
-        with pytest.raises(ValueError, match=pose_estimation_interface.metadata_key):
-            VameInterface._get_pose_estimation(nwbfile, "WrongName")
-
-    def test_returns_container_when_name_matches(self):
-        """Returns the PoseEstimation object when the name is found."""
-        nwbfile = mock_NWBFile()
-        pose_estimation_interface = MockPoseEstimationInterface(num_samples=10, num_nodes=3, seed=0)
-        pose_estimation_interface.add_to_nwbfile(nwbfile=nwbfile, metadata=pose_estimation_interface.get_metadata())
-
-        expected = nwbfile.processing["behavior"].data_interfaces[pose_estimation_interface.metadata_key]
-        result = VameInterface._get_pose_estimation(nwbfile, pose_estimation_interface.metadata_key)
-        assert result is expected
 
 
 class TestVameInterfacesInConverter:

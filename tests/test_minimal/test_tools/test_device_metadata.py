@@ -5,6 +5,7 @@ extension installed. The lazy extension-resolution path (``type`` naming an ndx 
 in ``tests/test_modalities/test_fiber_photometry`` where ``ndx-ophys-devices`` is available.
 """
 
+import re
 from datetime import datetime
 
 import pytest
@@ -24,6 +25,7 @@ from neuroconv.tools.nwb_helpers._device_types import (
     _resolve_type,
 )
 from neuroconv.tools.testing.mock_interfaces import MockBehaviorEventInterface
+from neuroconv.utils import DeepDict
 from neuroconv.utils.json_schema import (
     _validate_device_registry_names,
     validate_metadata,
@@ -61,8 +63,32 @@ class TestAddDeviceModel:
 
     def test_missing_key_raises(self):
         nwbfile = mock_NWBFile()
-        with pytest.raises(ValueError, match="not present in metadata\\['DeviceModels'\\]"):
-            _add_device_model_to_nwbfile(nwbfile=nwbfile, metadata={"DeviceModels": {}}, metadata_key="absent")
+        metadata = {"DeviceModels": {"a_model": {"name": "Model", "manufacturer": "ACME"}}}
+        expected_message = (
+            "device_model_metadata_key 'absent' was not found in metadata['DeviceModels'] "
+            "(available keys: ['a_model'])."
+        )
+        with pytest.raises(ValueError, match=re.escape(expected_message)):
+            _add_device_model_to_nwbfile(nwbfile=nwbfile, metadata=metadata, metadata_key="absent")
+
+
+class TestAddDeviceMissingKey:
+    """A ``device_metadata_key`` naming nothing names the key, the registry and what is in it.
+
+    Checked rather than indexed because the metadata reaching this helper is usually a ``DeepDict``,
+    where a missing key auto-vivifies instead of raising and the failure surfaces several frames later
+    as ``TypeError: unhashable type: 'DeepDict'``."""
+
+    @pytest.mark.parametrize("registry", [dict(), DeepDict()], ids=["plain_dict", "deep_dict"])
+    def test_missing_key_raises_the_curated_message(self, registry):
+        nwbfile = mock_NWBFile()
+        registry["a_camera"] = {"name": "Camera"}
+        metadata = {"Devices": registry}
+        expected_message = (
+            "device_metadata_key 'a_camrea' was not found in metadata['Devices'] " "(available keys: ['a_camera'])."
+        )
+        with pytest.raises(ValueError, match=re.escape(expected_message)):
+            _add_device_to_nwbfile(nwbfile=nwbfile, metadata=metadata, metadata_key="a_camrea")
 
 
 @pytest.mark.parametrize(
