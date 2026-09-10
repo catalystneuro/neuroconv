@@ -53,7 +53,7 @@ def mock_ZarrDatasetIOConfiguration(
         "gzip",
     ),
     compressor_options: Iterable[dict[str, Any] | None] | None = None,
-    filter_methods: (
+    filters: (
         Iterable[Literal[tuple(AVAILABLE_ZARR_COMPRESSION_METHODS.keys())] | numcodecs.abc.Codec | None] | None
     ) = None,
     filter_options: Iterable[dict[str, Any]] | None = None,
@@ -69,7 +69,7 @@ def mock_ZarrDatasetIOConfiguration(
         buffer_shape=buffer_shape,
         compressors=None if compressors is None else list(compressors),
         compressor_options=None if compressor_options is None else list(compressor_options),
-        filter_methods=filter_methods,
+        filters=filters,
         filter_options=filter_options,
     )
 
@@ -101,7 +101,7 @@ def mock_ZarrBackendConfiguration() -> ZarrBackendConfiguration:
         "acquisition/TestElectricalSeriesAP/data": mock_ZarrDatasetIOConfiguration(
             location_in_file="acquisition/TestElectricalSeriesAP/data",
             dataset_name="data",
-            filter_methods=["delta"],
+            filters=["delta"],
         ),
         "acquisition/TestElectricalSeriesLF/data": mock_ZarrDatasetIOConfiguration(
             object_id="bc37e164-519f-4b65-a976-206440f1d325",
@@ -110,7 +110,7 @@ def mock_ZarrBackendConfiguration() -> ZarrBackendConfiguration:
             full_shape=(75_000, 384),
             chunk_shape=(37_500, 128),  # ~10 MB
             buffer_shape=(75_000, 384),
-            filter_methods=["delta"],
+            filters=["delta"],
         ),
     }
 

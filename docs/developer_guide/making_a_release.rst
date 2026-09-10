@@ -5,10 +5,15 @@ Release Process for Neuroconv
 
 A simple to-do list for the Neuroconv release process:
 
-1. **Format Changelog**:
+1. **Build the Changelog**:
 
-   - Double check changelog entries to ensure they are in the correct format.
-   - Set the data to the current date of the release: `Example <https://github.com/catalystneuro/neuroconv/commit/129ab774ccb04677a2037ff6deab9d647d7b0e25>`_
+   - The entries for the release are one file each under ``changelog_entries/`` (see :ref:`sec-contributing`). Assemble them into ``CHANGELOG.md``, which also deletes the entry files, with the release version and its date:
+
+     .. code-block:: bash
+
+         $ towncrier build --version 0.10.2 --date "September 15, 2026"
+
+   - Read the assembled section to check the entries hold up as a list.
 
 
 2. **Set the Correct Version for Release**:
@@ -39,4 +44,3 @@ A simple to-do list for the Neuroconv release process:
    - To comply with the one patch version ahead policy, bump the version after the release `Example <https://github.com/catalystneuro/neuroconv/commit/1f4c90d1d1a8095937f9a9bca883e89b36341d5c>`_, and give it a ``.dev0`` suffix: after releasing ``0.10.1``, `main` becomes ``0.10.2.dev0``.
    - The suffix stays on `main` for the whole cycle. Every NWB file records the NeuroConv version that wrote it in its provenance record (see :ref:`provenance`), so ``0.10.2.dev0`` says the file was written from a checkout and ``0.10.2`` says it was written by the release. Without the suffix the two are indistinguishable and every file written during development claims to have been written by a version that did not exist yet.
    - PyPI only ever sees the clean number, since the suffix is dropped at step 2, so pins such as ``neuroconv==0.10.2`` resolve exactly as before. A ``.dev`` version is a pre-release, so ``pip install neuroconv`` would never resolve it even if one were published by mistake.
-   - Update the changelog with a new Upcoming header and the empty sections `Example <https://github.com/catalystneuro/neuroconv/commit/bb555d04375f21a266d5bbe5e0eaece823f3393b>`_.

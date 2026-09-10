@@ -84,8 +84,9 @@ def test_simple_time_series(
 
     if backend == "hdf5":
         assert written_data.compression == "gzip"
+        assert written_data.compression_opts == 4
     elif backend == "zarr":
-        assert written_data.compressor == numcodecs.GZip(level=1)
+        assert written_data.compressor == numcodecs.GZip(level=4)
 
     assert_array_equal(integer_array, written_data[:])
     written_nwbfile.read_io.close()
@@ -117,8 +118,9 @@ def test_simple_dynamic_table(tmpdir: Path, integer_array: np.ndarray, backend: 
 
     if backend == "hdf5":
         assert written_data.compression == "gzip"
+        assert written_data.compression_opts == 4
     elif backend == "zarr":
-        assert written_data.compressor == numcodecs.GZip(level=1)
+        assert written_data.compressor == numcodecs.GZip(level=4)
 
     assert_array_equal(integer_array, written_data[:])
     written_nwbfile.read_io.close()
@@ -152,8 +154,9 @@ def test_simple_image(tmpdir: Path, backend: Literal["hdf5", "zarr"]):
 
     if backend == "hdf5":
         assert written_data.compression == "gzip"
+        assert written_data.compression_opts == 4
     elif backend == "zarr":
-        assert written_data.compressor == numcodecs.GZip(level=1)
+        assert written_data.compressor == numcodecs.GZip(level=4)
 
     assert_array_equal(array, written_data[:])
     written_nwbfile.read_io.close()
@@ -216,24 +219,27 @@ def test_time_series_timestamps_linkage(
     assert written_data_1.chunks == dataset_configuration_1.chunk_shape
     if backend == "hdf5":
         assert written_data_1.compression == "gzip"
+        assert written_data_1.compression_opts == 4
     elif backend == "zarr":
-        assert written_data_1.compressor == numcodecs.GZip(level=1)
+        assert written_data_1.compressor == numcodecs.GZip(level=4)
     assert_array_equal(integer_array, written_data_1[:])
 
     written_data_2 = written_nwbfile.acquisition["TestTimeSeries2"].data
     assert written_data_2.chunks == dataset_configuration_2.chunk_shape
     if backend == "hdf5":
         assert written_data_2.compression == "gzip"
+        assert written_data_2.compression_opts == 4
     elif backend == "zarr":
-        assert written_data_2.compressor == numcodecs.GZip(level=1)
+        assert written_data_2.compressor == numcodecs.GZip(level=4)
     assert_array_equal(integer_array, written_data_2[:])
 
     written_timestamps_1 = written_nwbfile.acquisition["TestTimeSeries1"].timestamps
     assert written_timestamps_1.chunks == timestamps_configuration_1.chunk_shape
     if backend == "hdf5":
         assert written_timestamps_1.compression == "gzip"
+        assert written_timestamps_1.compression_opts == 4
     elif backend == "zarr":
-        assert written_timestamps_1.compressor == numcodecs.GZip(level=1)
+        assert written_timestamps_1.compressor == numcodecs.GZip(level=4)
     assert_array_equal(timestamps_array, written_timestamps_1[:])
 
     written_timestamps_2 = written_nwbfile.acquisition["TestTimeSeries2"].timestamps
@@ -285,7 +291,8 @@ def test_plane_segmentation_pixel_mask(
     assert written_dataset.chunks == dataset_configuration.chunk_shape
     if backend == "hdf5":
         assert written_dataset.compression == "gzip"
+        assert written_dataset.compression_opts == 4
     elif backend == "zarr":
-        assert written_dataset.compressor == numcodecs.GZip(level=1)
+        assert written_dataset.compressor == numcodecs.GZip(level=4)
     assert_array_equal(written_dataset[:], expected_pixel_mask)
     written_nwbfile.read_io.close()

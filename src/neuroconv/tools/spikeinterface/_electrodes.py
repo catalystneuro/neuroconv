@@ -21,6 +21,7 @@ instead of being read as the other feature.
 import numpy as np
 import pynwb
 from hdmf.common import MeaningsTable
+from natsort import natsorted
 
 # Fields of an electrode entry that address other metadata rather than describing a column.
 _STRUCTURAL_ELECTRODE_FIELDS = ("electrode_group_metadata_key",)
@@ -721,7 +722,10 @@ def _add_electrodes_from_registry_to_nwbfile(
     registry_index_set = set(indices_for_registry)
     indices_for_null_values = [index for index in range(table_size) if index not in registry_index_set]
 
-    for column_name, column in column_data.items():
+    identity_columns = [name for name in ("channel_name", "electrode_name") if name in column_data]
+    ordered_columns = identity_columns + natsorted(set(column_data).difference(identity_columns))
+    for column_name in ordered_columns:
+        column = column_data[column_name]
         if column_name in previous_columns or column_name in row_only_columns:
             continue
         data = column["data"]

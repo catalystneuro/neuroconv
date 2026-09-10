@@ -1,3 +1,4 @@
+import math
 import warnings
 from typing import Literal
 
@@ -217,7 +218,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         # extractor does not hold is a blank nobody can fill, since the object is never written.
         traces_dict = self.segmentation_extractor.get_traces_dict()
         available_traces = [
-            trace_name for trace_name, trace in traces_dict.items() if trace is not None and trace.size != 0
+            trace_name for trace_name, trace in traces_dict.items() if trace is not None and math.prod(trace.shape) != 0
         ]
         if available_traces:
             ophys["RoiResponses"] = {

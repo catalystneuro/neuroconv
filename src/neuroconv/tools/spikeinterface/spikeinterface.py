@@ -7,6 +7,7 @@ import psutil
 import pynwb
 from hdmf.common.table import VectorIndex
 from hdmf.data_utils import AbstractDataChunkIterator
+from natsort import natsorted
 from pydantic import FilePath
 from spikeinterface import BaseRecording, BaseSorting, SortingAnalyzer
 from spikeinterface.core.segmentutils import AppendSegmentRecording
@@ -2945,8 +2946,10 @@ def _add_units_table_to_nwbfile(
     indices_for_null_values = [index for index in range(unit_table_size) if index not in new_indices_set]
     extending_column = len(indices_for_null_values) > 0
 
-    # Add properties as columns
-    for property in properties_to_add_by_columns - {"unit_name"}:
+    # Add properties as columns.
+    # Sorted for the same reason as the electrodes table above, see
+    # https://github.com/catalystneuro/neuroconv/issues/792
+    for property in natsorted(properties_to_add_by_columns - {"unit_name"}):
         cols_args = data_to_add[property]
         data = cols_args["data"]
 

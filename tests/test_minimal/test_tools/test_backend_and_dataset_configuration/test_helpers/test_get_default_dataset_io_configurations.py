@@ -49,7 +49,7 @@ def test_configuration_on_time_series(iterator: callable, backend: Literal["hdf5
     assert dataset_configuration.compressor_options is None
 
     if backend == "zarr":
-        assert dataset_configuration.filter_methods is None
+        assert dataset_configuration.filters is None
         assert dataset_configuration.filter_options is None
 
 
@@ -162,7 +162,7 @@ def test_configuration_on_dynamic_table(iterator: callable, backend: Literal["hd
     assert dataset_configuration.compressor_options is None
 
     if backend == "zarr":
-        assert dataset_configuration.filter_methods is None
+        assert dataset_configuration.filters is None
         assert dataset_configuration.filter_options is None
 
 
@@ -199,7 +199,7 @@ def test_configuration_on_ragged_units_table(backend: Literal["hdf5", "zarr"]):
     assert dataset_configuration.compressor_options is None
 
     if backend == "zarr":
-        assert dataset_configuration.filter_methods is None
+        assert dataset_configuration.filters is None
         assert dataset_configuration.filter_options is None
 
     dataset_configuration = next(
@@ -216,7 +216,7 @@ def test_configuration_on_ragged_units_table(backend: Literal["hdf5", "zarr"]):
     assert dataset_configuration.compressor_options is None
 
     if backend == "zarr":
-        assert dataset_configuration.filter_methods is None
+        assert dataset_configuration.filters is None
         assert dataset_configuration.filter_options is None
 
     dataset_configuration = next(
@@ -233,7 +233,7 @@ def test_configuration_on_ragged_units_table(backend: Literal["hdf5", "zarr"]):
     assert dataset_configuration.compressor_options is None
 
     if backend == "zarr":
-        assert dataset_configuration.filter_methods is None
+        assert dataset_configuration.filters is None
         assert dataset_configuration.filter_options is None
 
     dataset_configuration = next(
@@ -250,7 +250,7 @@ def test_configuration_on_ragged_units_table(backend: Literal["hdf5", "zarr"]):
     assert dataset_configuration.compressor_options is None
 
     if backend == "zarr":
-        assert dataset_configuration.filter_methods is None
+        assert dataset_configuration.filters is None
         assert dataset_configuration.filter_options is None
 
     dataset_configuration = next(
@@ -267,7 +267,7 @@ def test_configuration_on_ragged_units_table(backend: Literal["hdf5", "zarr"]):
     assert dataset_configuration.compressor_options is None
 
     if backend == "zarr":
-        assert dataset_configuration.filter_methods is None
+        assert dataset_configuration.filters is None
         assert dataset_configuration.filter_options is None
 
 
@@ -299,7 +299,7 @@ def test_configuration_on_compass_direction(iterator: callable, backend: Literal
     assert dataset_configuration.compressor_options is None
 
     if backend == "zarr":
-        assert dataset_configuration.filter_methods is None
+        assert dataset_configuration.filters is None
         assert dataset_configuration.filter_options is None
 
 
@@ -348,7 +348,7 @@ def test_configuration_on_ndx_events(backend: Literal["hdf5", "zarr"]):
     assert data_dataset_configuration.compressor_options is None
 
     if backend == "zarr":
-        assert data_dataset_configuration.filter_methods is None
+        assert data_dataset_configuration.filters is None
         assert data_dataset_configuration.filter_options is None
 
     timestamps_dataset_configuration = next(
@@ -367,7 +367,7 @@ def test_configuration_on_ndx_events(backend: Literal["hdf5", "zarr"]):
     assert timestamps_dataset_configuration.compressor_options is None
 
     if backend == "zarr":
-        assert timestamps_dataset_configuration.filter_methods is None
+        assert timestamps_dataset_configuration.filters is None
         assert timestamps_dataset_configuration.filter_options is None
 
 

@@ -159,6 +159,12 @@ class _SpikeGLXNIDQEventsInterface(BaseEventsInterface):
             _validate_detection_configuration(detection_configuration, self._available_signals)
         self._detection_configuration = detection_configuration
 
+    def get_event_type_source_ids(self) -> list[str]:
+        """The event types the configuration resolves to, read from nothing; none for the ``{}`` sentinel."""
+        if not self._detection_configuration:
+            return []
+        return _get_event_type_source_ids(self._detection_configuration)
+
     @staticmethod
     def _get_available_signals(recording_extractor, digital_line_names) -> dict[str, dict]:
         """Return ``signal_source_id -> {kind, channel_id, bits}`` for every NIDQ signal.
@@ -249,7 +255,7 @@ class _SpikeGLXNIDQEventsInterface(BaseEventsInterface):
         The NIDQ board ships no meaning for a line, so only the name is seeded.
         """
         metadata = super().get_metadata()
-        for event_type_source_id in _get_event_type_source_ids(self._detection_configuration):
+        for event_type_source_id in self.get_event_type_source_ids():
             metadata["Events"][self.metadata_key]["event_types"][event_type_source_id] = {
                 "event_name": event_type_source_id
             }
