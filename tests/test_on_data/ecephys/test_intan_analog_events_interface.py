@@ -46,8 +46,16 @@ class TestIntanAnalogEventsInterface(EventsInterfaceTestMixin):
         )
 
         assert set(interface._available_signals) == {
-            *{f"ANALOG-IN-{index}" for index in range(1, 9)},
-            *{f"ANALOG-OUT-{index}" for index in range(1, 3)},
+            "ANALOG-IN-1",
+            "ANALOG-IN-2",
+            "ANALOG-IN-3",
+            "ANALOG-IN-4",
+            "ANALOG-IN-5",
+            "ANALOG-IN-6",
+            "ANALOG-IN-7",
+            "ANALOG-IN-8",
+            "ANALOG-OUT-1",
+            "ANALOG-OUT-2",
         }
         assert interface.get_metadata()["Events"] == {
             "adc_events": {
