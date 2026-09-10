@@ -271,7 +271,7 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
         else:
             compressor = self._instantiate_codec(compressors[compression_index], compressor_options[compression_index])
 
-        return dict(chunks=self.chunk_shape, filters=filters, compressor=compressor)
+        return dict(chunks=self.chunk_shape, filters=filters, compressor=compressor, shards=self.shard_shape)
 
     @classmethod
     def from_neurodata_object_with_existing(

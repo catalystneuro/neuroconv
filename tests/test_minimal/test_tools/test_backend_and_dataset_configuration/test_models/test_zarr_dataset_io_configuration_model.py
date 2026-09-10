@@ -173,8 +173,14 @@ def test_shard_shape_not_divisible_raises():
         mock_ZarrDatasetIOConfiguration(shard_shape=(78_126, 128))
 
 
-@pytest.mark.xfail(reason="hdmf-zarr ZarrDataIO does not yet expose a shard_shape parameter")
 def test_shard_shape_in_get_data_io_kwargs():
     config = mock_ZarrDatasetIOConfiguration(shard_shape=(78_125 * 2, 64 * 2))
     result = config.get_data_io_kwargs()
-    assert result["shard_shape"] == (156_250, 128)
+    # hdmf-zarr ZarrDataIO uses the key "shards" (not "shard_shape")
+    assert result["shards"] == (156_250, 128)
+
+
+def test_no_shard_shape_passes_none():
+    config = mock_ZarrDatasetIOConfiguration()
+    result = config.get_data_io_kwargs()
+    assert result["shards"] is None

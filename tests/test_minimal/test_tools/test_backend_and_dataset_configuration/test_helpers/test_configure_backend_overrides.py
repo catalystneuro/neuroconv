@@ -138,6 +138,33 @@ def written_filters_and_compressors(array) -> tuple[list, list]:
     return filters, [] if array.compressor is None else [array.compressor]
 
 
+def test_shard_shape_is_written_and_read_back_in_zarr(tmpdir: Path):
+    array = np.zeros(shape=(3_000, 16), dtype="int16")
+
+    nwbfile = mock_NWBFile()
+    nwbfile.add_acquisition(mock_TimeSeries(name="TestTimeSeries", data=array))
+
+    backend_configuration = get_default_backend_configuration(nwbfile=nwbfile, backend="zarr")
+    dataset_configuration = backend_configuration.dataset_configurations["acquisition/TestTimeSeries/data"]
+
+    # chunk_shape chosen by the backend; pick a shard that is an exact multiple on every axis
+    chunk_shape = dataset_configuration.chunk_shape
+    shard_shape = tuple(c * 2 for c in chunk_shape)
+    dataset_configuration.shard_shape = shard_shape
+
+    configure_backend(nwbfile=nwbfile, backend_configuration=backend_configuration)
+
+    nwbfile_path = str(tmpdir / "test_configure_overrides_sharding.nwb.zarr")
+    with BACKEND_NWB_IO["zarr"](path=nwbfile_path, mode="w") as io:
+        io.write(nwbfile)
+
+    written_nwbfile = read_nwb(nwbfile_path)
+    written_data = written_nwbfile.acquisition["TestTimeSeries"].data
+    assert written_data.shards is not None
+    assert written_data.shards == shard_shape
+    written_nwbfile.read_io.close()
+
+
 def test_shuffle_is_correctly_propagated_as_filter_in_zarr(tmpdir: Path):
     """Zarr v2 has one compressor slot, so a shuffle named beside a compression method is written as a filter."""
     array = np.zeros(shape=(3_000, 16), dtype="int16")
