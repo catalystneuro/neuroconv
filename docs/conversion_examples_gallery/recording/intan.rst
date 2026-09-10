@@ -227,6 +227,7 @@ For RHS systems, you can also convert ADC output channels:
     >>> # Convert ADC output channels (RHS system)
     >>> interface_output = IntanAnalogInterface(
     ...     file_path=file_path_output,
+    ...     stream_name="USB board ADC output channel",
     ...     verbose=False
     ... )
     >>>

@@ -191,6 +191,9 @@ class IntanConverter(ConverterPipe):
             if entry["interface"] is IntanDigitalInterface:
                 continue
             if entry["interface_name"] in data_interfaces:
+                # Several streams can share one sub-interface, which is how both digital words end up in
+                # a single IntanDigitalInterface: it reads whichever of them the file carries, so the
+                # second stream to come round is already covered by the instance the first one built.
                 continue
             interface_kwargs = dict(file_path=file_path)
             interface_kwargs.update({key: value for key, value in entry.items() if key not in self._ROUTING_KEYS})
@@ -200,6 +203,10 @@ class IntanConverter(ConverterPipe):
                 interface_kwargs["saved_files_are_split"] = True
             interface = entry["interface"](**interface_kwargs)
             if entry["interface"] is IntanRecordingInterface:
+                # The recording interface uses both: ``metadata_key`` keys the dict-based metadata and
+                # ``es_key`` keys the old list-based metadata, which used this same name before the dict
+                # format existed. It is set here rather than passed to the constructor so that the
+                # deprecation warning stays reserved for callers who state ``es_key`` themselves.
                 interface.es_key = interface_kwargs["metadata_key"]
             data_interfaces[entry["interface_name"]] = interface
 
