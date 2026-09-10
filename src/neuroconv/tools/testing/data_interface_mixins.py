@@ -298,9 +298,6 @@ class ImagingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
     data_interface_cls: type[BaseImagingExtractorInterface]
     optical_series_name: str = "TwoPhotonSeries"
 
-    # `check_read_nwb` goes through roiextractors' NwbImagingExtractor, which opens the file with NWBHDF5IO
-    check_read_nwb_backends = ("hdf5",)
-
     # TODO: remove test_metadata_old_list_format and check_extracted_metadata_old_list_format
     # when old list-based metadata format is removed
     def test_metadata_old_list_format(self, setup_interface):
@@ -1041,9 +1038,6 @@ class MiniscopeImagingInterfaceMixin(ImagingExtractorInterfaceTestMixin):
     """
 
     optical_series_name = "OnePhotonSeries"
-
-    # This mixin reads the file itself instead of going through NwbImagingExtractor, so zarr is checkable
-    check_read_nwb_backends = ("hdf5", "zarr")
 
     def check_read_nwb(self, nwbfile_path: str):
         from ndx_miniscope import Miniscope
