@@ -7,10 +7,10 @@ Ecephys metadata describes the recording device, the electrode groups (the elect
 to be analyzed together, typically a shank, a tetrode or a probe), and the ElectricalSeries that
 carries the traces.
 
-Almost none of it comes from the source. NeuroConv reads only what the acquisition file records, and
-most formats record no probe identity and no brain region at all, so a conversion you run without
-adding metadata writes a placeholder device and a placeholder electrode group. Everything that says
-what was implanted, and where, is provenance you supply.
+The metadata available from the source depends on the recording format. NeuroConv reads what the
+acquisition file provides, but details such as probe identity and anatomical location may need to be
+supplied separately. Where device or electrode group information is missing, NeuroConv uses placeholder
+entries that you can annotate.
 
 .. code-block:: python
 
@@ -36,19 +36,10 @@ what was implanted, and where, is provenance you supply.
 
        ElectrodeGroup  ──▶  PlaceholderElectrodeDevice
 
-The examples here use :py:class:`~neuroconv.tools.testing.mock_interfaces.MockRecordingInterface`,
-which synthesizes traces instead of reading a file, so every snippet runs as written with no data to
-download. Everything after the constructor is the same for any recording interface: swap in
-``IntanRecordingInterface``, ``SpikeGLXRecordingInterface`` or any other, with the arguments its
-format needs, and annotate the metadata exactly as shown. The :ref:`recording section of the
-Conversion Gallery <conversion_gallery_ecephys_recording>` shows how to construct each one.
-
-A recording interface emits one ``ElectricalSeries`` entry, keyed by its ``metadata_key``, and
-nothing else unless the format records more. Some do: ``IntanRecordingInterface`` names the Intan
-system it read, ``NeuralynxRecordingInterface`` reads the acquisition system out of the header, and
-``SpikeGLXRecordingInterface`` names the probe. For the rest, the device and the electrode groups
-are yours to create, which is what the first section below walks through in full. Every section
-after it changes one link in that chain.
+To illustrate how to annotate your ecephys data, we use
+:py:class:`~neuroconv.tools.testing.mock_interfaces.MockRecordingInterface`. You can follow along
+with this mock interface or load your own data from any of our
+:ref:`supported recording formats <conversion_gallery_ecephys_recording>` in the Conversion Gallery.
 
 How to Annotate a Recording Session
 -----------------------------------
@@ -64,14 +55,14 @@ signal is, which nothing in the acquisition file records. Set both on the entry 
 interface's ``metadata_key``:
 
 .. code-block:: python
-   :emphasize-lines: 3-4,6-7,9-10
+   :emphasize-lines: 1-10
 
     from neuroconv.tools.testing.mock_interfaces import MockRecordingInterface
 
     metadata_key = "probe0"
     interface = MockRecordingInterface(num_channels=4, durations=[0.1], metadata_key=metadata_key)
 
-    metadata = interface.get_metadata_template()
+    metadata = interface.get_metadata()
     ecephys = metadata["Ecephys"]
 
     ecephys["ElectricalSeries"][metadata_key]["name"] = "ElectricalSeriesProbe0"
@@ -94,22 +85,28 @@ interface's ``metadata_key``:
         2   ElectrodeGroup   2
         3   ElectrodeGroup   3
 
-**Describe the electrodes.** ``ecephys["ElectrodesTable"]["rows"]`` holds one entry per electrode, each
-already pointing at its group with ``electrode_group_metadata_key``. The keys, ``ElectrodeGroup_0`` to
-``ElectrodeGroup_3`` here, name the group and the channel each row came from, and are handles that stay
-in your script. The following properties are very useful for downstream users, so fill them in if they
-are not available in the source format:
+**Describe the electrodes.** Add an ``ElectrodesTable`` block to hold the annotations. Its ``rows``
+dictionary has one entry per electrode, each pointing at its group with
+``electrode_group_metadata_key``. For this mock recording, the writer derives the keys
+``ElectrodeGroup_0`` to ``ElectrodeGroup_3`` from the group and channel names. Using those same keys
+lets us annotate the existing electrodes. Later, we show how to choose your own keys and map the
+channels to them.
+
+Create the rows, then add the values you know. Fields you omit keep the values the recording supplies.
+The following properties are useful for downstream users, so fill them in if they are not available
+in the source format:
 
 ``location``
     The brain region, as a name. Use a standard atlas region where there is one, following the
     `best practices for the electrode table
-    <https://nwbinspector.readthedocs.io/en/dev/best_practices/ecephys.html#location>`_. The template
-    leaves it ``None``, and a row still ``None`` when the file is written is refused. Delete the field
-    from a row you know nothing about and it is written as ``"unknown"``.
+    <https://nwbinspector.readthedocs.io/en/dev/best_practices/ecephys.html#location>`_. If you omit it,
+    the writer uses the recording's brain region, or ``"unknown"`` when the source provides none.
 
 ``x``, ``y``, ``z``
     Where the electrode sat **in the brain**, on the axes the NWB schema fixes: **+x is posterior, +y
-    is inferior, +z is right**, in **microns**. The origin is not fixed by the schema, so say what it
+    is inferior, +z is right**, in **microns**. This is **PIR** in the three-letter anatomical orientation
+    notation: Posterior, Inferior, Right are the positive directions of x, y, and z, respectively.
+    The origin is not fixed by the schema, so say what it
     is (bregma, typically) in the electrode group's description. Nothing in the recording knows these,
     since they depend on how the probe was implanted, so they are yours to supply. Where you need to
     state the reference frame explicitly, or give a position in a named atlas, `ndx-anatomical-localization
@@ -122,26 +119,31 @@ are not available in the source format:
     next scenario gets it from the probe rather than by hand.
 
 ``imp`` and ``filtering`` are the other two columns the NWB schema defines, for the electrode's
-impedance in ohms and a description of the hardware filtering. The template offers all of these blank
-where the recording did not supply them, and a blank left in place is left out of the file. On a probe
-with hundreds of contacts, drop a field you cannot fill from every row at once with
-``for entry in rows.values(): del entry["filtering"]``. Any other field you put on a row becomes a
-column of its own.
+impedance in ohms and a description of the hardware filtering. Add these fields where you have values
+to supply. Optional columns absent from both the recording and your annotations are left out of the
+file. Any other field you put on a row becomes a column of its own.
 
 .. code-block:: python
-   :emphasize-lines: 11-16
+   :emphasize-lines: 11-23
 
     from neuroconv.tools.testing.mock_interfaces import MockRecordingInterface
 
     metadata_key = "probe0"
     interface = MockRecordingInterface(num_channels=4, durations=[0.1], metadata_key=metadata_key)
 
-    metadata = interface.get_metadata_template()
+    metadata = interface.get_metadata()
     ecephys = metadata["Ecephys"]
 
     ecephys["ElectricalSeries"][metadata_key]["name"] = "ElectricalSeriesProbe0"
     ecephys["ElectricalSeries"][metadata_key]["description"] = "Raw broadband traces, 30 kHz."
     # Microns from bregma, on the schema's axes: +x posterior, +y inferior, +z right.
+    ecephys["ElectrodesTable"] = {
+        "rows": {
+            f"ElectrodeGroup_{channel_id}": {"electrode_group_metadata_key": "ElectrodeGroup"}
+            for channel_id in interface.channel_ids
+        },
+        "columns": {},
+    }
     rows = ecephys["ElectrodesTable"]["rows"]
     rows["ElectrodeGroup_0"].update(location="CA1", x=2000.0, y=2100.0, z=1500.0, imp=1.0e6)
     rows["ElectrodeGroup_1"].update(location="CA1", x=2000.0, y=2100.0, z=1500.0, imp=1.0e6)
@@ -168,19 +170,26 @@ know about the electrodes is worth recording too, and a reader can only use it i
 means. Put the value on the rows and describe it under ``ElectrodesTable["columns"]``:
 
 .. code-block:: python
-   :emphasize-lines: 17-32
+   :emphasize-lines: 24-39
 
     from neuroconv.tools.testing.mock_interfaces import MockRecordingInterface
 
     metadata_key = "probe0"
     interface = MockRecordingInterface(num_channels=4, durations=[0.1], metadata_key=metadata_key)
 
-    metadata = interface.get_metadata_template()
+    metadata = interface.get_metadata()
     ecephys = metadata["Ecephys"]
 
     ecephys["ElectricalSeries"][metadata_key]["name"] = "ElectricalSeriesProbe0"
     ecephys["ElectricalSeries"][metadata_key]["description"] = "Raw broadband traces, 30 kHz."
     # Microns from bregma, on the schema's axes: +x posterior, +y inferior, +z right.
+    ecephys["ElectrodesTable"] = {
+        "rows": {
+            f"ElectrodeGroup_{channel_id}": {"electrode_group_metadata_key": "ElectrodeGroup"}
+            for channel_id in interface.channel_ids
+        },
+        "columns": {},
+    }
     rows = ecephys["ElectrodesTable"]["rows"]
     rows["ElectrodeGroup_0"].update(location="CA1", x=2000.0, y=2100.0, z=1500.0, imp=1.0e6)
     rows["ElectrodeGroup_1"].update(location="CA1", x=2000.0, y=2100.0, z=1500.0, imp=1.0e6)
@@ -254,19 +263,26 @@ electrodes were sorted as a unit and which sat on the same shank. Declare the gr
 at it with ``electrode_group_metadata_key``:
 
 .. code-block:: python
-   :emphasize-lines: 33-46
+   :emphasize-lines: 40-53
 
     from neuroconv.tools.testing.mock_interfaces import MockRecordingInterface
 
     metadata_key = "probe0"
     interface = MockRecordingInterface(num_channels=4, durations=[0.1], metadata_key=metadata_key)
 
-    metadata = interface.get_metadata_template()
+    metadata = interface.get_metadata()
     ecephys = metadata["Ecephys"]
 
     ecephys["ElectricalSeries"][metadata_key]["name"] = "ElectricalSeriesProbe0"
     ecephys["ElectricalSeries"][metadata_key]["description"] = "Raw broadband traces, 30 kHz."
     # Microns from bregma, on the schema's axes: +x posterior, +y inferior, +z right.
+    ecephys["ElectrodesTable"] = {
+        "rows": {
+            f"ElectrodeGroup_{channel_id}": {"electrode_group_metadata_key": "ElectrodeGroup"}
+            for channel_id in interface.channel_ids
+        },
+        "columns": {},
+    }
     rows = ecephys["ElectrodesTable"]["rows"]
     rows["ElectrodeGroup_0"].update(location="CA1", x=2000.0, y=2100.0, z=1500.0, imp=1.0e6)
     rows["ElectrodeGroup_1"].update(location="CA1", x=2000.0, y=2100.0, z=1500.0, imp=1.0e6)
@@ -329,7 +345,7 @@ at it with ``electrode_group_metadata_key``:
 The group's ``location`` is where the group as a whole sat. The per-row ``location`` above is the
 electrodes table's own column; setting one does not populate the other.
 
-**Name the device and its model, and write.** The device is the probe you implanted; the model is the
+**Name the device and its model.** The device is the probe you implanted; the model is the
 catalogue part it was ordered as. Together they tell someone reading the file exactly what recorded the
 data, and the part number is what lets them look up the geometry rather than guess at it. Point the
 group at a ``Devices`` entry, and that entry at a ``DeviceModels`` entry with
@@ -337,19 +353,26 @@ group at a ``Devices`` entry, and that entry at a ``DeviceModels`` entry with
 deprecated in pynwb:
 
 .. code-block:: python
-   :emphasize-lines: 47-64
+   :emphasize-lines: 54-71
 
     from neuroconv.tools.testing.mock_interfaces import MockRecordingInterface
 
     metadata_key = "probe0"
     interface = MockRecordingInterface(num_channels=4, durations=[0.1], metadata_key=metadata_key)
 
-    metadata = interface.get_metadata_template()
+    metadata = interface.get_metadata()
     ecephys = metadata["Ecephys"]
 
     ecephys["ElectricalSeries"][metadata_key]["name"] = "ElectricalSeriesProbe0"
     ecephys["ElectricalSeries"][metadata_key]["description"] = "Raw broadband traces, 30 kHz."
     # Microns from bregma, on the schema's axes: +x posterior, +y inferior, +z right.
+    ecephys["ElectrodesTable"] = {
+        "rows": {
+            f"ElectrodeGroup_{channel_id}": {"electrode_group_metadata_key": "ElectrodeGroup"}
+            for channel_id in interface.channel_ids
+        },
+        "columns": {},
+    }
     rows = ecephys["ElectrodesTable"]["rows"]
     rows["ElectrodeGroup_0"].update(location="CA1", x=2000.0, y=2100.0, z=1500.0, imp=1.0e6)
     rows["ElectrodeGroup_1"].update(location="CA1", x=2000.0, y=2100.0, z=1500.0, imp=1.0e6)
@@ -388,7 +411,7 @@ deprecated in pynwb:
     device_model_key = "assy_156_p_1"
     metadata["Devices"] = {
         device_key: {
-            "name": "ProbeDorsalCA1",
+            "name": "ProbeDorsal",
             "description": "Implanted 2020-01-01, serial 1234",
             "device_model_metadata_key": device_model_key,
         },
@@ -423,27 +446,25 @@ deprecated in pynwb:
        front   contact on the front face
        back    contact on the back face
 
-       ElectrodeGroupProbe0  ──▶  ProbeDorsalCA1  ──▶  ASSY-156-P-1 (Cambridge NeuroTech)
+       ElectrodeGroupProbe0  ──▶  ProbeDorsal  ──▶  ASSY-156-P-1 (Cambridge NeuroTech)
 
-Every arrow above is a ``*_metadata_key`` you wrote, and every name is a ``name`` field. The keys
+The group-to-device and device-to-model links use the ``*_metadata_key`` fields you wrote.
+Their displayed names come from the ``name`` fields. The keys
 (``"probe0_device"``, ``"probe0"``, ``"assy_156_p_1"``) are handles that stay in your script.
 
-Two things follow from stating the table. What a row states wins, but only for the fields it states:
-the table is still derived from the recording first, so a column no row mentions keeps the values the
-recording carries and a ``set_property`` call is overruled only where a row already states that field.
-And a row you declare is a row you get, so select your channels before you call
-``get_metadata_template``, or ``remove_channels`` afterwards leaves rows describing electrodes this
-session did not record from.
+How to Add Probe Geometry
+-------------------------
 
-How to Set the Probe Geometry
------------------------------
+If your recording already has an attached probe with the correct contact layout and wiring, use that
+geometry rather than replacing it. When the layout is missing and you know the probe model, you can
+attach a catalogue probe instead of entering each contact's position yourself. The
+`probeinterface library <https://github.com/SpikeInterface/probeinterface_library>`_ provides layouts
+for supported models.
 
-The probe's geometry is what lets a reader place the electrodes relative to each other, which is what
-any analysis of distance, drift or spatial spread needs. The scenario above wrote it by hand; if you
-know which probe recorded the data, attach it instead and the geometry comes from the probe. The
-`probeinterface library <https://github.com/SpikeInterface/probeinterface_library>`_ carries the contact
-geometry of published probes from most manufacturers, so a catalogue part is one ``get_probe`` call
-away:
+This example adds a layout to a mock recording with no attached probe. It assumes the contact order
+matches the recording's channel order; for your data, use the contact-to-channel connections from your
+wiring table. These positions describe where electrodes sit on the probe, not where the probe was
+implanted in the brain:
 
 .. code-block:: python
 
@@ -457,17 +478,16 @@ away:
     wiring = dict(zip(probe.contact_ids, interface.channel_ids))
     interface.set_probe(probe=probe, group_mode="by_probe", contact_id_to_channel_id=wiring)
 
-    metadata = interface.get_metadata_template()
-    list(metadata["Ecephys"]["ElectrodesTable"]["rows"])[:3]  # -> ['0_1', '0_2', '0_3']
-    metadata["Ecephys"]["ElectrodesTable"]["rows"]["0_1"]
-    # -> {'electrode_group_metadata_key': '0', 'electrode_name': '1', 'rel_x': 0.0, 'rel_y': 450.0,
-    #     'location': None, 'x': None, 'y': None, 'z': None, 'rel_z': None, 'imp': None, 'filtering': None}
-    metadata["Devices"]
-    # -> {'probe': {'name': 'ProbeA1x32-Poly3-10mm-50-177', 'device_model_metadata_key': 'neuronexus_A1x32-Poly3-10mm-50-177'}}
+    metadata = interface.get_metadata()
+    nwbfile = interface.create_nwbfile(metadata=metadata)
+    nwbfile.electrodes.to_dataframe()[["electrode_name", "rel_x", "rel_y"]].head()
+    list(nwbfile.devices)
 
-The row keys changed too. Without a probe they are ``{group}_{channel}``, one per channel; with one
-they are ``{group}_{contact}``, so a key names the physical contact rather than the path that recorded
-it. That is the whole mechanism behind two channels sharing a row.
+The derived row keys change too. Without a probe they are ``{group}_{channel}``; with contact
+identifiers they are ``{group}_{contact}``. When adding row annotations to this example, use keys such
+as ``0_1`` for group ``0``, contact ``1``, or provide an explicit channel-to-electrode mapping as shown
+:ref:`in the mapping section <ecephys_channel_to_electrode>`. Two recordings that name the same group
+and contact can share an electrode row.
 
 A catalogue probe describes a part rather than a wiring, so it arrives with no channel assignment and
 cannot be attached until you say which channel recorded each contact. That is
@@ -476,87 +496,38 @@ gives you; a contact left out of it is one nothing recorded. ``group_mode`` deci
 becomes one electrode group or one per shank, which :ref:`set_probe_on_recording_interfaces` covers
 along with building a probe from scratch.
 
-Three things are filled in that you would otherwise write yourself:
+Attaching the probe supplies three things when the file is written:
 
 - ``rel_x`` and ``rel_y`` on every row, from the probe's contact positions.
 - ``electrode_name`` on every row, from the probe's contact identifiers. This is what makes two
   channels that recorded one contact share a row rather than duplicating it.
-- The device and its model, in ``metadata["Devices"]`` and ``metadata["DeviceModels"]``, named after the
-  probe and already pointed at by the group. Without a probe both are offered blank for you to fill.
+- The device and its model, when the probe provides model information, linked to the electrode group.
 
 What the probe cannot supply is where it was implanted. ``location``, and the ``x``, ``y`` and ``z``
 stereotaxic coordinates, stay yours to state exactly as in the previous scenario.
 
-How to Write Your Own Electrode Rows
-------------------------------------
+How to Assign Electrodes to Shanks or Tetrodes
+----------------------------------------------
 
-Every scenario above edited rows that came ready-made. If you would rather write them yourself,
-under keys of your own choosing, one thing has to be said that those rows were saying for you: which
-channel recorded which electrode. That is ``channel_to_electrode`` on the series entry, and it maps each
-**channel id** to a row key. Channel ids are not channel names, and the two differ in most formats: a
-SpikeGLX channel has id ``imec0.ap#AP0`` and name ``AP0``, an Intan channel has id ``A-000`` and name
-``F1-01``.
+Use this section when electrodes within one recording need to be assigned to shanks or tetrodes.
+First check whether the recording already carries the grouping you need. If it does, annotate those
+groups rather than rebuilding their membership. Acquisition ports or headstage labels alone do not
+establish which electrodes form a tetrode or belong to a shank; use your experimental arrangement.
 
-.. code-block:: python
+The mock recording below starts with one default group. We assign its four recorded electrodes to
+two shanks on the same probe by changing each row's ``electrode_group_metadata_key``. For a tetrode,
+the same field would assign its four electrodes to one group.
 
-    from neuroconv.tools.testing.mock_interfaces import MockRecordingInterface
-
-    interface = MockRecordingInterface(num_channels=4, durations=[0.1], metadata_key="probe0")
-    channel_ids = list(interface.channel_ids)
-
-    metadata = interface.get_metadata()
-    metadata["Ecephys"]["ElectrodeGroups"] = {
-        "shank": {"name": "Shank1", "description": "One shank", "location": "CA1"},
-    }
-    metadata["Ecephys"]["ElectrodesTable"] = {
-        "rows": {
-            "CA1_e0": {"electrode_group_metadata_key": "shank", "location": "CA1"},
-            "CA1_e1": {"electrode_group_metadata_key": "shank", "location": "CA1"},
-            "CA1_e2": {"electrode_group_metadata_key": "shank", "location": "CA1"},
-            "CA1_e3": {"electrode_group_metadata_key": "shank", "location": "CA1"},
-        },
-    }
-    metadata["Ecephys"]["ElectricalSeries"]["probe0"]["channel_to_electrode"] = {
-        channel_ids[0]: "CA1_e0",
-        channel_ids[1]: "CA1_e1",
-        channel_ids[2]: "CA1_e2",
-        channel_ids[3]: "CA1_e3",
-    }
-
-    nwbfile = interface.create_nwbfile(metadata=metadata)
-    list(nwbfile.electrodes["group_name"][:])  # -> ['Shank1', 'Shank1', 'Shank1', 'Shank1']
-
-Leave out the mapping there and nothing stops: the channels resolve to the keys the recording derives,
-so the file gets those four rows and the four you declared. Write the mapping whenever your keys are not
-the ones ``get_metadata_template`` produced, since it is the only thing that ties them to the channels.
-
-**You do not need it when you edit the rows above**, which is every scenario so far: the mapping
-comes back alongside them, and the two already agree.
-
-One thing it cannot do is make two recordings share electrodes when nothing in the file says they are
-the same. Two bands of one probe share rows because both name the same contacts, not because of this
-mapping. Where neither recording names a contact and their channel names differ, pointing both series
-at one set of keys still writes two sets of rows, because the file has no contact identity to match
-them on.
-
-How to Annotate a Recording from a Multi-Shank Probe
-----------------------------------------------------
-
-One acquisition file often carries channels from more than one physical structure: an Intan controller
-with two headstages, or a multi-shank probe. Each structure gets its own ``ElectrodeGroups`` entry, so
-that a reader can tell which electrodes were sorted as a unit and which shared a shank.
-
-Say which electrodes belong to which group the same way the first section did, by pointing each row at
-its group. The recording's own ``group_name`` channel property is the other route, and a group's
-``name`` then has to match it; that is what :ref:`setting a probe <set_probe_on_recording_interfaces>`
-fills in.
+The recording's ``group_name`` channel property is another way to supply membership, as described in
+:ref:`set_probe_on_recording_interfaces`. The example uses electrode-row metadata so the grouping and
+its annotations are visible together.
 
 .. code-block:: python
 
     from neuroconv.tools.testing.mock_interfaces import MockRecordingInterface
 
     interface = MockRecordingInterface(num_channels=4, durations=[0.1], metadata_key="two_shanks")
-    metadata = interface.get_metadata_template()
+    metadata = interface.get_metadata()
     ecephys = metadata["Ecephys"]
     ecephys["ElectricalSeries"]["two_shanks"]["description"] = "Raw broadband traces, 30 kHz."
 
@@ -566,7 +537,6 @@ fills in.
             "description": "NeuroNexus 4-shank silicon probe",
         },
     }
-    del metadata["DeviceModels"]  # offered blank by the template; these probes name no catalogue model
 
     ecephys["ElectrodeGroups"] = {
         "shank_1": {
@@ -583,6 +553,13 @@ fills in.
         },
     }
 
+    ecephys["ElectrodesTable"] = {
+        "rows": {
+            f"ElectrodeGroup_{channel_id}": {"electrode_group_metadata_key": "ElectrodeGroup"}
+            for channel_id in interface.channel_ids
+        },
+        "columns": {},
+    }
     rows = ecephys["ElectrodesTable"]["rows"]
     rows["ElectrodeGroup_0"].update(electrode_group_metadata_key="shank_1", location="CA1")
     rows["ElectrodeGroup_1"].update(electrode_group_metadata_key="shank_1", location="CA1")
@@ -595,22 +572,28 @@ fills in.
     list(nwbfile.devices)  # -> ['A4x8-5mm-50-200-177']
 
 Both groups name the same ``device_metadata_key``, so one device is written and both groups link to
-it. That is how a multi-shank probe is represented: one physical substrate, several electrode
-groups. Two headstages on separate probes would instead be two ``Devices`` entries, one per group.
+it. This example describes recorded electrodes on two shanks of one probe. If the groups instead belong
+to separate implanted probes, give each probe its own device, as in the next section.
 
-How to Annotate a Recording from Several Probes
------------------------------------------------
+How to Annotate Multiple Probes
+-------------------------------
 
-Two probes in one recording are two ``Devices`` entries, one per electrode group, rather than one
-device with two groups. The difference matters to a reader: it is what says whether two groups sat on
-one piece of silicon or on two separately implanted probes.
+Use this section when a session includes distinct implanted probes that need their own identities
+and descriptions. Keep any correct device identities and group links already supplied by the source;
+add or update them where that information is missing. Each physical probe has its own ``Devices`` entry,
+and every electrode group belonging to that probe points to it. A probe can have several groups.
+
+The example below starts with a single mock recording containing channels from two probes, without
+metadata identifying them. We describe one group per probe and assign the first two electrodes to the
+left probe and the other two to the right probe. This is different from assigning shanks within one
+probe: the groups now point to distinct devices.
 
 .. code-block:: python
 
     from neuroconv.tools.testing.mock_interfaces import MockRecordingInterface
 
     interface = MockRecordingInterface(num_channels=4, durations=[0.1], metadata_key="two_probes")
-    metadata = interface.get_metadata_template()
+    metadata = interface.get_metadata()
     ecephys = metadata["Ecephys"]
     ecephys["ElectricalSeries"]["two_probes"]["description"] = "Raw broadband traces, 30 kHz."
 
@@ -618,7 +601,6 @@ one piece of silicon or on two separately implanted probes.
         "left_probe": {"name": "ProbeLeft", "description": "Serial 18194814172, left hemisphere"},
         "right_probe": {"name": "ProbeRight", "description": "Serial 18194814173, right hemisphere"},
     }
-    del metadata["DeviceModels"]  # offered blank by the template; these probes name no catalogue model
 
     ecephys["ElectrodeGroups"] = {
         "left": {
@@ -635,6 +617,13 @@ one piece of silicon or on two separately implanted probes.
         },
     }
 
+    ecephys["ElectrodesTable"] = {
+        "rows": {
+            f"ElectrodeGroup_{channel_id}": {"electrode_group_metadata_key": "ElectrodeGroup"}
+            for channel_id in interface.channel_ids
+        },
+        "columns": {},
+    }
     rows = ecephys["ElectrodesTable"]["rows"]
     rows["ElectrodeGroup_0"].update(electrode_group_metadata_key="left", location="CA1")
     rows["ElectrodeGroup_1"].update(electrode_group_metadata_key="left", location="CA1")
@@ -646,5 +635,165 @@ one piece of silicon or on two separately implanted probes.
     list(nwbfile.electrodes["group_name"][:])
     # -> ['ElectrodeGroupLeft', 'ElectrodeGroupLeft', 'ElectrodeGroupRight', 'ElectrodeGroupRight']
 
-Whether two groups share a device or get one each is the whole difference between a multi-shank probe
-and two probes, and it is stated in one place: the ``device_metadata_key`` each group names.
+The ``device_metadata_key`` on each group records which physical probe it belongs to. For multiple
+multi-shank probes, define a device per probe and connect each shank's group to the appropriate device.
+The number of groups does not determine the number of probes.
+
+When different recording interfaces supply the probes' signals, their metadata must preserve those
+distinct device identities and group links as well. Conversely, separate streams from one probe should
+not create additional probe identities; :ref:`ecephys_channel_to_electrode` explains the related issue
+of sharing electrode rows.
+
+
+.. _ecephys_channel_to_electrode:
+
+How to Map Recorded Channels to Electrodes
+------------------------------------------
+
+When the recorded channels already resolve to the intended electrode rows, no explicit mapping is
+needed. The following cases explain when the electrode inventory and the recorded signals need to be
+described separately.
+
+Electrodes without recorded channels
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A probe can have electrodes that are not connected to any
+of the channels in this recording. You can still describe those electrodes in
+``ElectrodesTable["rows"]``. The series' ``channel_to_electrode`` mapping then identifies which
+electrode supplied each recorded channel: its keys are **channel ids**, and its values are
+**electrode row keys**.
+
+For example, suppose a probe has four electrodes, listed in your metadata as ``electrode_0`` through
+``electrode_3``, but only two recording channels. If channel 0 is connected to electrode 0 and channel 1
+to electrode 2, the mapping is:
+
+.. code-block:: python
+
+    channel_to_electrode = {
+        "0": "electrode_0",
+        "1": "electrode_2",
+    }
+
+Supply this dictionary under
+``metadata["Ecephys"]["ElectricalSeries"][metadata_key]["channel_to_electrode"]``. The resulting file has:
+
+- Two columns of traces in the ``ElectricalSeries``, one per recorded channel.
+- Four rows in the electrodes table, describing all four electrodes.
+- An ``ElectricalSeries.electrodes`` reference connecting the first trace to electrode 0 and the second
+  trace to electrode 2. The other two electrodes have metadata, but no traces in this series.
+
+The electrode table describes the electrodes; the mapping describes their connections to the recorded
+channels. Each recorded channel must map to an electrode, but not every electrode needs a recorded
+channel. When your row keys match those derived from the recording, as in the earlier four-channel
+example, the writer can derive this mapping. With keys of your own choosing, supply it explicitly, as in the complete example below.
+
+The first example used the derived row keys, such as ``ElectrodeGroup_0``. You can choose different row
+keys, provided ``channel_to_electrode`` points to them. Each series has its own mapping, connecting its
+**channel ids** to keys in the shared ``ElectrodesTable["rows"]`` dictionary. The keys are metadata
+handles; the writer translates them into numeric row indices for ``ElectricalSeries.electrodes``. Channel ids are not channel names: a SpikeGLX
+channel has id ``imec0.ap#AP0`` and name ``AP0``, while an Intan channel can have id ``A-000`` and name
+``F1-01``.
+
+.. code-block:: python
+
+    from neuroconv.tools.testing.mock_interfaces import MockRecordingInterface
+
+    interface = MockRecordingInterface(num_channels=2, durations=[0.1], metadata_key="probe0")
+    channel_ids = list(interface.channel_ids)
+
+    metadata = interface.get_metadata()
+    metadata["Ecephys"]["ElectrodeGroups"] = {
+        "shank": {"name": "Shank1", "description": "One shank", "location": "CA1"},
+    }
+    metadata["Ecephys"]["ElectrodesTable"] = {
+        "rows": {
+            "CA1_e0": {"electrode_group_metadata_key": "shank", "location": "CA1"},
+            "CA1_e1": {"electrode_group_metadata_key": "shank", "location": "CA1"},
+            "CA1_e2": {"electrode_group_metadata_key": "shank", "location": "CA1"},
+            "CA1_e3": {"electrode_group_metadata_key": "shank", "location": "CA1"},
+        },
+    }
+    metadata["Ecephys"]["ElectricalSeries"]["probe0"]["channel_to_electrode"] = {
+        channel_ids[0]: "CA1_e0",
+        channel_ids[1]: "CA1_e2",
+    }
+
+    nwbfile = interface.create_nwbfile(metadata=metadata)
+    assert len(nwbfile.electrodes) == 4
+    assert list(nwbfile.acquisition["ElectricalSeries"].electrodes.data[:]) == [0, 2]
+
+Leave out the mapping there and nothing stops: the channels resolve to the keys the recording derives,
+so the file gets additional derived rows alongside the four you declared. Write the mapping whenever your keys are not
+the ones the recording derives, since the mapping connects your keys to the channels.
+
+When your row keys match the derived keys, as in the first example, the mapping is optional:
+the writer derives it from the recording.
+An explicit mapping must cover every channel still present in the recording. It can also contain
+entries for channels that have been removed; those entries are not used by that series.
+
+Multiple streams from the same electrodes
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+One electrode can supply a channel in more than one recording stream. For example, `Plexon OmniPlex
+<https://plexon.com/plexon-systems/omniplex-neural-recording-system/>`_ can save wideband, continuous
+spike-band and field-potential signals from the same neural input. `Neuralynx digital systems
+<https://neuralynx.com/cheetah-ref-guide/HardwareSystems/HardwareSystemsOverview.html>`_ can send one
+digitized input to multiple acquisition entities with different filtering and amplification settings.
+These are multiple representations of the signal from one physical electrode, not additional electrodes.
+Their corresponding channels should reference the same electrode row. These system capabilities do not
+by themselves guarantee that a reader supplies the contact identity needed for automatic matching.
+
+An explicit mapping cannot make two recordings share electrodes when nothing in the file says they are
+the same. Two bands of one probe share rows because both name the same contacts, not because of this
+mapping. Where neither recording names a contact and their channel names differ, pointing both series
+at one set of keys still writes two sets of rows, because the file has no contact identity to match
+them on.
+
+.. _how_to_annotate_ecephys_from_a_template:
+
+How to Annotate from a Template
+-------------------------------
+
+The examples above start from ``get_metadata()`` and build the annotations one block at a time,
+so that each entry and reference is visible. Once you know the structure,
+``get_metadata_template()`` assembles it for you: the electrode rows and groups are sized to your
+recording, their references are connected, and values available from the source are prefilled.
+Fields you can supply are marked with ``None`` where their values are missing.
+
+Fill what applies and delete what does not. This example annotates the electrodes and their group,
+names the probe, and removes the model entry because no model information is being supplied:
+
+.. code-block:: python
+
+    from neuroconv.tools.testing.mock_interfaces import MockRecordingInterface
+
+    interface = MockRecordingInterface(num_channels=4, durations=[0.1], metadata_key="probe0")
+    metadata = interface.get_metadata_template()
+    ecephys = metadata["Ecephys"]
+
+    ecephys["ElectricalSeries"]["probe0"]["description"] = "Raw broadband traces, 30 kHz."
+    for row in ecephys["ElectrodesTable"]["rows"].values():
+        row["location"] = "CA1"
+    for group in ecephys["ElectrodeGroups"].values():
+        group["description"] = "Silicon probe electrodes, dorsal hippocampus penetration"
+        group["location"] = "CA1"
+
+    device = metadata["Devices"]["probe"]
+    device["name"] = "ProbeDorsal"
+    device["description"] = "Implanted 2020-01-01"
+    device["serial_number"] = "1234"
+    del device["device_model_metadata_key"]
+    del metadata["DeviceModels"]
+
+    nwbfile = interface.create_nwbfile(metadata=metadata)
+
+A required field left ``None`` fails validation or conversion. Optional electrode values such as
+``imp`` and ``filtering`` can remain ``None`` and are omitted when no row supplies a value.
+Deleting a row field lets the writer use the recording's value; for ``location``, it uses
+``"unknown"`` if the source provides none. A custom column's blank description must be filled in or
+deleted to use the description supplied by the recording.
+
+Attach any probe before requesting the template. You can add rows for electrodes that are not
+connected to this recording's channels; those rows do not need an entry in ``channel_to_electrode``.
+The same structure is available as YAML and JSON at
+:ref:`ecephys_metadata_template`.
