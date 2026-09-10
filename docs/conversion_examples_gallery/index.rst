@@ -59,6 +59,7 @@ Intracellular electrophysiology
     :maxdepth: 1
 
     Axon Binary Format (ABF) <recording/abf>
+    Bruker VoltageRecording <recording/brukervoltagerecording>
 
 Optical physiology
 ------------------
@@ -93,13 +94,44 @@ Segmentation
     Inscopix <segmentation/inscopix>
     Suite2P <segmentation/suite2p>
 
+.. _conversion_gallery_fiber_photometry:
+
 Fiber Photometry
 ~~~~~~~~~~~~~~~~
 
 .. toctree::
     :maxdepth: 1
 
-    TDT Fiber Photometry <fiberphotometry/tdt_fp>
+    Doric <fiberphotometry/doric_fp>
+    TDT <fiberphotometry/tdt_fp>
+    NPM <fiberphotometry/npm_fp>
+    pyPhotometry <fiberphotometry/pyphotometry_fp>
+    CSV <fiberphotometry/csv_fp>
+    GuPPy <fiberphotometry/guppy_fp>
+
+.. _conversion_gallery_pose_estimation:
+
+Pose estimation
+---------------
+
+Keypoint estimation
+~~~~~~~~~~~~~~~~~~~
+
+.. toctree::
+    :maxdepth: 1
+
+    DeepLabCut <behavior/deeplabcut>
+    LightningPose <behavior/lightningpose>
+    SLEAP <behavior/sleap>
+
+Behavioral segmentation
+~~~~~~~~~~~~~~~~~~~~~~~
+
+.. toctree::
+    :maxdepth: 1
+
+    VAME <behavior/vame>
+    keypoint-MoSeq <behavior/moseq_keypoints>
 
 Behavior
 --------
@@ -108,13 +140,25 @@ Behavior
     :maxdepth: 1
 
     Audio <behavior/audio>
-    DeepLabCut <behavior/deeplabcut>
+    BORIS <behavior/boris>
     FicTrac <behavior/fictrac>
-    LightningPose <behavior/lightningpose>
     Neuralynx NVT <behavior/neuralynx_nvt>
-    SLEAP <behavior/sleap>
     Videos <behavior/video>
     MedPC <behavior/medpc>
+
+
+Events
+------
+
+.. toctree::
+    :maxdepth: 1
+
+    CSV <events/csv_events>
+    Doric <events/doric_events>
+    MedPC <events/medpc_events>
+    NPM <events/npm_events>
+    pyPhotometry <events/pyphotometry_events>
+    TDT <events/tdt_events>
 
 
 Image

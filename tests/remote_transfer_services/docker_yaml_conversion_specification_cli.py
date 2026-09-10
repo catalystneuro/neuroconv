@@ -99,7 +99,7 @@ class TestLatestDockerYAMLConversionSpecification(TestCase):
 
     def test_run_conversion_from_yaml_variable(self):
 
-        with open(file=self.yaml_file_path, mode="r") as io:
+        with open(file=self.yaml_file_path, mode="r", encoding="utf-8") as io:
             yaml_lines = io.readlines()
 
         yaml_string = "".join(yaml_lines)

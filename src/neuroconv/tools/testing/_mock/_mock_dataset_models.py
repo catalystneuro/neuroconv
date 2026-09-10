@@ -23,10 +23,10 @@ def mock_HDF5DatasetIOConfiguration(
     dtype: np.dtype = np.dtype("int16"),
     chunk_shape: tuple[int, ...] = (78_125, 64),  # ~10 MB
     buffer_shape: tuple[int, ...] = (1_250_000, 384),  # ~1 GB
-    compression_method: (
-        Literal[tuple(AVAILABLE_HDF5_COMPRESSION_METHODS.keys())] | h5py._hl.filters.FilterRefBase | None
-    ) = "gzip",
-    compression_options: dict[str, Any] | None = None,
+    compressors: (
+        Iterable[Literal[tuple(AVAILABLE_HDF5_COMPRESSION_METHODS.keys())] | h5py._hl.filters.FilterRefBase] | None
+    ) = ("gzip",),
+    compressor_options: Iterable[dict[str, Any] | None] | None = None,
 ) -> HDF5DatasetIOConfiguration:
     """Mock object of a HDF5DatasetIOConfiguration with NeuroPixel-like values to show chunk/buffer recommendations."""
     return HDF5DatasetIOConfiguration(
@@ -37,8 +37,8 @@ def mock_HDF5DatasetIOConfiguration(
         dtype=dtype,
         chunk_shape=chunk_shape,
         buffer_shape=buffer_shape,
-        compression_method=compression_method,
-        compression_options=compression_options,
+        compressors=None if compressors is None else list(compressors),
+        compressor_options=None if compressor_options is None else list(compressor_options),
     )
 
 
@@ -50,11 +50,11 @@ def mock_ZarrDatasetIOConfiguration(
     dtype: np.dtype = np.dtype("int16"),
     chunk_shape: tuple[int, ...] = (78_125, 64),  # ~10 MB
     buffer_shape: tuple[int, ...] = (1_250_000, 384),  # ~1 GB
-    compression_method: Literal[tuple(AVAILABLE_ZARR_COMPRESSION_METHODS.keys())] | BytesBytesCodec | None = "gzip",
-    compression_options: dict[str, Any] | None = None,
-    filter_methods: (
-        Iterable[Literal[tuple(AVAILABLE_ZARR_FILTER_METHODS.keys())] | ArrayArrayCodec | None] | None
-    ) = None,
+    compressors: Iterable[Literal[tuple(AVAILABLE_ZARR_COMPRESSION_METHODS.keys())] | BytesBytesCodec] | None = (
+        "gzip",
+    ),
+    compressor_options: Iterable[dict[str, Any] | None] | None = None,
+    filters: Iterable[Literal[tuple(AVAILABLE_ZARR_FILTER_METHODS.keys())] | ArrayArrayCodec | None] | None = None,
     filter_options: Iterable[dict[str, Any]] | None = None,
     shard_shape: tuple[int, ...] | None = None,
 ) -> ZarrDatasetIOConfiguration:
@@ -67,9 +67,9 @@ def mock_ZarrDatasetIOConfiguration(
         dtype=dtype,
         chunk_shape=chunk_shape,
         buffer_shape=buffer_shape,
-        compression_method=compression_method,
-        compression_options=compression_options,
-        filter_methods=filter_methods,
+        compressors=None if compressors is None else list(compressors),
+        compressor_options=None if compressor_options is None else list(compressor_options),
+        filters=filters,
         filter_options=filter_options,
         shard_shape=shard_shape,
     )
@@ -102,7 +102,7 @@ def mock_ZarrBackendConfiguration() -> ZarrBackendConfiguration:
         "acquisition/TestElectricalSeriesAP/data": mock_ZarrDatasetIOConfiguration(
             location_in_file="acquisition/TestElectricalSeriesAP/data",
             dataset_name="data",
-            filter_methods=["delta"],
+            filters=["delta"],
         ),
         "acquisition/TestElectricalSeriesLF/data": mock_ZarrDatasetIOConfiguration(
             object_id="bc37e164-519f-4b65-a976-206440f1d325",
@@ -111,7 +111,7 @@ def mock_ZarrBackendConfiguration() -> ZarrBackendConfiguration:
             full_shape=(75_000, 384),
             chunk_shape=(37_500, 128),  # ~10 MB
             buffer_shape=(75_000, 384),
-            filter_methods=["delta"],
+            filters=["delta"],
         ),
     }
 

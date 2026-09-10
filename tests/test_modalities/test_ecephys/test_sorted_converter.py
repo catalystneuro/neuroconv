@@ -16,11 +16,9 @@ class TestSortedConverterPipe:
         recording1 = MockRecordingInterface(num_channels=4, durations=[0.100])
         recording1.recording_extractor = recording1.recording_extractor.rename_channels(["A1", "A2", "A3", "A4"])
 
-        # Create second recording interface
-        recording2 = MockRecordingInterface(num_channels=3, durations=[0.100])
+        # Create second recording interface, under its own metadata key so its series can be named apart
+        recording2 = MockRecordingInterface(num_channels=3, durations=[0.100], metadata_key="electrical_series_2")
         recording2.recording_extractor = recording2.recording_extractor.rename_channels(["B1", "B2", "B3"])
-        # Set different es_key to avoid naming conflicts
-        recording2.es_key = "ElectricalSeries2"
 
         # Create sorting interfaces with unique unit IDs
         sorting1 = MockSortingInterface(num_units=2, durations=[0.100])
@@ -47,8 +45,13 @@ class TestSortedConverterPipe:
 
         converter = _SortedConverterPipe(converter=mock_converter, sorting_configuration=sorting_configuration)
 
+        # Two recordings in one file need two series names, and the dict format takes the name from the
+        # entry rather than from the key that addresses it.
+        metadata = converter.get_metadata(use_new_metadata_format=True)
+        metadata["Ecephys"]["ElectricalSeries"]["electrical_series_2"]["name"] = "ElectricalSeries2"
+
         # Create NWB file and test
-        nwbfile = converter.create_nwbfile()
+        nwbfile = converter.create_nwbfile(metadata=metadata)
         units_df = nwbfile.units.to_dataframe()
 
         # Should have 4 units total with original names (no conflicts)
@@ -62,10 +65,8 @@ class TestSortedConverterPipe:
         recording1 = MockRecordingInterface(num_channels=4, durations=[0.100])
         recording1.recording_extractor = recording1.recording_extractor.rename_channels(["A1", "A2", "A3", "A4"])
 
-        recording2 = MockRecordingInterface(num_channels=3, durations=[0.100])
+        recording2 = MockRecordingInterface(num_channels=3, durations=[0.100], metadata_key="electrical_series_2")
         recording2.recording_extractor = recording2.recording_extractor.rename_channels(["B1", "B2", "B3"])
-        # Set different es_key to avoid naming conflicts
-        recording2.es_key = "ElectricalSeries2"
 
         # Create sorting interfaces with overlapping unit IDs
         sorting1 = MockSortingInterface(num_units=2, durations=[0.100])
@@ -92,8 +93,11 @@ class TestSortedConverterPipe:
 
         converter = _SortedConverterPipe(converter=mock_converter, sorting_configuration=sorting_configuration)
 
+        metadata = converter.get_metadata(use_new_metadata_format=True)
+        metadata["Ecephys"]["ElectricalSeries"]["electrical_series_2"]["name"] = "ElectricalSeries2"
+
         # Create NWB file and test
-        nwbfile = converter.create_nwbfile()
+        nwbfile = converter.create_nwbfile(metadata=metadata)
         units_df = nwbfile.units.to_dataframe()
 
         # Should have 4 units total with renamed units due to conflicts

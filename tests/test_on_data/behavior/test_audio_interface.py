@@ -1,6 +1,6 @@
 import unittest
 
-from pynwb import NWBHDF5IO
+from pynwb import read_nwb
 
 from neuroconv.datainterfaces import AudioInterface
 from neuroconv.tools.testing.data_interface_mixins import DataInterfaceTestMixin
@@ -19,14 +19,14 @@ class TestAudioInterfaceWavIEEEFloat(DataInterfaceTestMixin):
     save_directory = OUTPUT_PATH
 
     def check_read_nwb(self, nwbfile_path: str):
-        with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
-            nwbfile = io.read()
-            # Verify the acoustic waveform series exists in the file
-            assert "AcousticWaveformSeries" in nwbfile.stimulus
-            # Verify we can read the data
-            data = nwbfile.stimulus["AcousticWaveformSeries"].data[:]
-            assert len(data) > 0
-            assert data.dtype == "float32"
+        nwbfile = read_nwb(nwbfile_path)
+        # Verify the acoustic waveform series exists in the file
+        assert "AcousticWaveformSeries" in nwbfile.stimulus
+        # Verify we can read the data
+        data = nwbfile.stimulus["AcousticWaveformSeries"].data[:]
+        assert len(data) > 0
+        assert data.dtype == "float32"
+        nwbfile.read_io.close()
 
 
 if __name__ == "__main__":

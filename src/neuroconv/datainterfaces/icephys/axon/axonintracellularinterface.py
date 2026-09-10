@@ -5,23 +5,17 @@ from typing import Literal
 
 import numpy as np
 from pydantic import FilePath, validate_call
-from pynwb import NWBFile
 
-from ....basedatainterface import BaseDataInterface
-from ....tools.icephys import (
-    _RESPONSE_CLASS,
-    _STIMULUS_CLASS,
-    _add_intracellular_electrode_to_nwbfile,
-)
+from ..baseicephysinterface import BaseIcephysInterface
+from ....tools.icephys import _IcephysSeriesData
 from ....utils import (
     DeepDict,
-    calculate_regular_series_rate,
     get_conversion_from_unit,
     to_camel_case,
 )
 
 
-class AxonIntracellularInterface(BaseDataInterface):
+class AxonIntracellularInterface(BaseIcephysInterface):
     """
     Interface for intracellular electrophysiology data recorded in Axon Binary Format (.abf).
 
@@ -59,6 +53,8 @@ class AxonIntracellularInterface(BaseDataInterface):
         mode: Literal["voltage_clamp", "current_clamp", "izero"],
         stimulus_channel_name: str | None = None,
         stimulus_command: str | None = None,
+        repetition: str | None = None,
+        condition: str | None = None,
         metadata_key: str | None = None,
         verbose: bool = False,
     ):
@@ -82,6 +78,13 @@ class AxonIntracellularInterface(BaseDataInterface):
             A digital-to-analog converter command channel name (for example ``"Cmd 0"``) whose waveform is
             reconstructed from the protocol and written as the stimulus. ABF v2 only. Mutually exclusive
             with ``stimulus_channel_name``. See ``get_command_names``.
+        repetition : str, optional
+            Label grouping this run's sequential recording with others into a ``Repetitions`` entry (the same
+            protocol repeated). Used only when combining interfaces in a converter; if set on any interface it
+            must be set on all of them.
+        condition : str, optional
+            Label grouping this run's repetition with others into an ``ExperimentalConditions`` entry. Requires
+            ``repetition`` (conditions group repetitions); if set on any interface it must be set on all.
         metadata_key : str, optional
             Identity of this interface's response ``PatchClampSeries`` in the metadata dict. Defaults to the
             file stem plus the response channel name (a plain identifier).
@@ -90,12 +93,19 @@ class AxonIntracellularInterface(BaseDataInterface):
         super().__init__(verbose=verbose)
         self._file_path = file_path
         self._mode = mode
+        self._repetition = repetition
+        self._condition = condition
+        # Seconds added to this interface's series timestamps; a converter sets it for multi-file alignment.
+        # Default 0 leaves single-file output unchanged.
+        self._starting_time_shift = 0.0
         self.source_data = dict(
             file_path=file_path,
             response_channel_name=response_channel_name,
             mode=mode,
             stimulus_channel_name=stimulus_channel_name,
             stimulus_command=stimulus_command,
+            repetition=repetition,
+            condition=condition,
             metadata_key=metadata_key,
             verbose=verbose,
         )
@@ -144,24 +154,60 @@ class AxonIntracellularInterface(BaseDataInterface):
         self._has_stimulus = stimulus_channel_name is not None or stimulus_command is not None
 
         self._response_channel_name = self._channel_names[self._response_channel_index]
+        self._metadata_key = metadata_key
 
-        # Metadata-dict keys, seeded once from the file stem: the device is per file, the electrode per response
-        # channel, and the series key is the user's `metadata_key` if given, else the electrode key. Each series
-        # entry links to its electrode key and each electrode to its device key (see get_metadata), and those links
-        # are editable, so two series can be pointed at one electrode to share it. The bare stem is a fine default
-        # for a single file; making these unique across several files is a combining converter's responsibility.
-        self._device_metadata_key = self._file_path.stem
-        self._electrode_metadata_key = f"{self._file_path.stem}_{self._response_channel_name}"
-        self._series_metadata_key = metadata_key or self._electrode_metadata_key
+        # The run identity: the per-file grouping handle that `sequence` and the device/electrode/series keys all
+        # derive from (see the properties below). Defaults to the file stem; a converter combining several files
+        # overrides it with a unique, disambiguated label, because the stem collides across folders (Clampex names
+        # files per folder, e.g. 0000.abf). A lone interface keeps the stem, so single-file output is unchanged.
+        self._run_identity = self._file_path.stem
 
-        # Derived once from the parsed header.
+        # Derived once from the parsed header; read here and by a combining converter (for multi-file alignment).
+        self._recording_start_datetime = reader._axon_info.get("rec_datetime")
         self._num_sweeps = int(reader.header["nb_segment"][0])
         self._sampling_rate = float(reader.get_signal_sampling_rate())
+
+    # Registry keys derive from the run identity so a converter that overrides `_run_identity` propagates to all
+    # of them. The electrode is per response channel and the series key is the user's `metadata_key` if given,
+    # else the electrode key. Each series entry links to its electrode key and each electrode to its device key
+    # (see get_metadata), and those links are editable, so two series can be pointed at one electrode to share it.
+    # The device is the exception: it identifies the amplifier, which runs share, not the run itself.
+    @property
+    def _amplifier_name(self) -> str | None:
+        """The amplifier model the telegraph header reports, or None when the file reports none.
+
+        Read from the ABF File Support Pack ``nTelegraphInstrument`` constants. Absent for ABF v1 (no telegraph
+        block) or a manual / unknown instrument, in which case the interface reports no device at all.
+        """
+        telegraph_device = {15: "Axopatch 200B", 24: "MultiClamp 700", 27: "Axoclamp 900"}
+        adc_info = self._reader._axon_info.get("listADCInfo")
+        instrument_code = int(adc_info[0].get("nTelegraphInstrument", 0)) if adc_info else 0
+        return telegraph_device.get(instrument_code)
+
+    @property
+    def _device_metadata_key(self) -> str | None:
+        # Keyed by the amplifier rather than the run: the registry holds one key per device name, so several runs
+        # recorded on one amplifier have to meet at a single entry once a converter merges their metadata. A file
+        # whose header reports no model names no amplifier, since the telegraph is what identifies one and a file
+        # that carries none may not be on Axon hardware at all; the write path supplies the placeholder device.
+        amplifier_name = self._amplifier_name
+        if amplifier_name is None:
+            return None
+        return amplifier_name.lower().replace(" ", "_")
+
+    @property
+    def _electrode_metadata_key(self) -> str:
+        return f"{self._run_identity}_{self._response_channel_name}"
+
+    @property
+    def _series_metadata_key(self) -> str:
+        return self._metadata_key or self._electrode_metadata_key
 
     # ------------------------------------------------------------------ metadata
 
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
+        metadata["Icephys"] = {}
         info = self._reader._axon_info
 
         # neo already builds rec_datetime from the header (real date+time for v2, time-of-day placeholder for v1).
@@ -169,13 +215,7 @@ class AxonIntracellularInterface(BaseDataInterface):
         if start_time is not None:
             metadata["NWBFile"]["session_start_time"] = start_time
 
-        # Amplifier model from the telegraph header (ABF File Support Pack nTelegraphInstrument constants). Absent
-        # for ABF v1 (no telegraph block) or a manual/unknown instrument; we don't invent a model here, the
-        # write-time placeholder supplies a generic device name instead.
-        telegraph_device = {15: "Axopatch 200B", 24: "MultiClamp 700", 27: "Axoclamp 900"}
-        adc_info = info.get("listADCInfo")
-        instrument_code = int(adc_info[0].get("nTelegraphInstrument", 0)) if adc_info else 0
-        amplifier_name = telegraph_device.get(instrument_code)
+        amplifier_name = self._amplifier_name
 
         # The metadata-dict keys were seeded at construction. Each series entry stores its electrode_metadata_key as
         # an editable link: repointing two series at one electrode key merges them onto a single electrode; distinct
@@ -185,22 +225,21 @@ class AxonIntracellularInterface(BaseDataInterface):
         series_metadata_key = self._series_metadata_key
         electrode_name_suffix = to_camel_case(electrode_metadata_key)
 
-        if amplifier_name is not None:
-            device_metadata = {
-                "name": amplifier_name,
-                "description": "Axon Instruments amplifier (telegraph-reported model).",
-            }
-        else:
-            # No telegraph model: don't invent a name (the write-time placeholder fills it); just describe the type.
-            device_metadata = {"description": "Axon Instruments amplifier."}
-        metadata["Devices"] = {device_metadata_key: device_metadata}
-        metadata["Icephys"]["IntracellularElectrodes"] = {
-            electrode_metadata_key: {
-                "name": f"IntracellularElectrode{electrode_name_suffix}",
-                "description": "Patch-clamp electrode.",
-                "device_metadata_key": device_metadata_key,
-            }
+        electrode_metadata = {
+            "name": f"IntracellularElectrode{electrode_name_suffix}",
+            "description": "Patch-clamp electrode.",
         }
+        # A device only where the telegraph named the amplifier. With no telegraph block there is nothing to
+        # report, so the electrode links no device and the write path supplies its placeholder.
+        if device_metadata_key is not None:
+            metadata["Devices"] = {
+                device_metadata_key: {
+                    "name": amplifier_name,
+                    "description": "Axon Instruments amplifier (telegraph-reported model).",
+                }
+            }
+            electrode_metadata["device_metadata_key"] = device_metadata_key
+        metadata["Icephys"]["IntracellularElectrodes"] = {electrode_metadata_key: electrode_metadata}
 
         # Default series name = the NWB neurodata type + the electrode suffix, written out per clamp mode so the
         # naming pattern is explicit here (add_to_nwbfile instantiates the matching class via _RESPONSE_CLASS).
@@ -236,109 +275,26 @@ class AxonIntracellularInterface(BaseDataInterface):
 
     # ------------------------------------------------------------------ writing
 
-    def add_to_nwbfile(
-        self,
-        nwbfile: NWBFile,
-        metadata: dict | None = None,
-    ) -> None:
-        if metadata is None:
-            metadata = self.get_metadata()
-
-        # Locate this interface's response entry by its series metadata key (resolved at construction) and follow
-        # the editable link to the electrode. The paired stimulus, if any, is read further down where it is used.
-        series_metadata_key = self._series_metadata_key
-        response_metadata = metadata["Icephys"]["PatchClampSeries"][series_metadata_key]
-        electrode = _add_intracellular_electrode_to_nwbfile(
-            nwbfile, metadata, response_metadata["electrode_metadata_key"]
-        )
-
+    def _get_icephys_series_data(self):
+        """Map the ABF response and optional stimulus into the base writer representation."""
         data, timestamps, sweep_sample_ranges = self._concatenate_channel_sweeps(
             self._reader, self._response_channel_index, self._num_sweeps, self._sampling_rate
         )
-        # The series is written on this file's own clock (timestamps start at the ABF header's t_start). The
-        # interface does not shift them: placing several files on one shared session timeline is a multi-file
-        # concern that only something seeing all the files can resolve, so temporal alignment is deferred rather
-        # than handled here with a per-interface offset.
+        timestamps = timestamps + self._starting_time_shift
         channel = self._signal_channels[self._response_channel_index]
-        response_kwargs = dict(
-            name=response_metadata["name"],
+        response_data = _IcephysSeriesData(
             data=data,
-            electrode=electrode,
+            timestamps=timestamps,
             conversion=float(channel["gain"]) * get_conversion_from_unit(channel["units"]),
             offset=float(channel["offset"]) * get_conversion_from_unit(channel["units"]),
-            gain=np.nan,
-            description=response_metadata["description"],
         )
-        # Use a uniform rate when the timestamps are regular (a single sweep, or contiguous sweeps); fall back to
-        # explicit timestamps only when inter-sweep gaps make them irregular.
-        rate = calculate_regular_series_rate(series=timestamps)
-        if rate is not None:
-            response_kwargs.update(starting_time=float(timestamps[0]), rate=rate)
-        else:
-            response_kwargs.update(timestamps=timestamps)
-        response_series = _RESPONSE_CLASS[self._mode](**response_kwargs)
-        nwbfile.add_acquisition(response_series)
-
-        stimulus_series = None
+        stimulus_data = None
         if self._has_stimulus:
-            # Read the stimulus directly (same key, parallel registry); a missing entry fails loud, no silent drop.
-            stimulus_metadata = metadata["Icephys"]["PatchClampStimulusSeries"][series_metadata_key]
-            stimulus_series = self._build_stimulus_series(
-                self._reader, stimulus_metadata, electrode, timestamps, self._sampling_rate, self._num_sweeps
-            )
-            nwbfile.add_stimulus(stimulus_series)
+            stimulus_data = self._get_stimulus_data(self._reader, timestamps, self._sampling_rate, self._num_sweeps)
+        return response_data, stimulus_data, sweep_sample_ranges
 
-        self._add_intracellular_table_to_nwb(
-            nwbfile,
-            electrode=electrode,
-            response_series=response_series,
-            stimulus_series=stimulus_series,
-            sweep_sample_ranges=sweep_sample_ranges,
-        )
-
-    def _add_intracellular_table_to_nwb(
-        self, nwbfile, electrode, response_series, sweep_sample_ranges, stimulus_series=None
-    ):
-        """Write one IntracellularRecordings row per sweep, each addressing this electrode's continuous response
-        series (and, when present, its stimulus series) by the sweep's ``(start_index, count)`` range, and tag
-        every row with two run-level foreign-key columns:
-
-        - ``sequence``: the run identity (the file stem; the whole file is one run, so every sweep shares it).
-          This is the column an aggregator later groups on to build a SequentialRecordings entry.
-        - ``stimulus_type``: what kind of run it was (gap-free, the protocol file name, or "not described").
-
-        These carry the run information in denormalized form, so the file stays information-complete even though
-        the upper tables are not built. Those tables (SimultaneousRecordings, SequentialRecordings, and above) are
-        deliberately not built by the interface: constructing them is a terminal step that locks their membership,
-        and a single interface cannot know whether it is the last contributor to the file (a future converter may
-        combine it with another electrode in the same simultaneous recording). Building the hierarchy is left to
-        whatever reaches the known-complete file; the per-sweep rows written here are always safe to append to, so
-        this contribution stays composable.
-        """
-        columns = {
-            "sequence": self._file_path.stem,
-            "stimulus_type": self._extract_and_format_stimulus_type(),
-        }
-        column_descriptions = {
-            "sequence": "Run identity grouping rows into a sequential recording (one run per source file).",
-            "stimulus_type": "Stimulus type of the run, carried up to its sequential recording when aggregated.",
-        }
-        table = nwbfile.get_intracellular_recordings()
-        for name in columns:
-            if name not in table.colnames:
-                table.add_column(name=name, description=column_descriptions[name])
-
-        for start_index, count in sweep_sample_ranges:
-            kwargs = dict(
-                electrode=electrode,
-                response=response_series,
-                response_start_index=start_index,
-                response_index_count=count,
-            )
-            if stimulus_series is not None:
-                kwargs.update(stimulus=stimulus_series, stimulus_start_index=start_index, stimulus_index_count=count)
-            kwargs.update(columns)
-            nwbfile.add_intracellular_recording(**kwargs)
+    def _get_stimulus_type(self) -> str:
+        return self._extract_and_format_stimulus_type()
 
     # ------------------------------------------------------------------ discovery (call before constructing)
 
@@ -435,41 +391,26 @@ class AxonIntracellularInterface(BaseDataInterface):
 
         return data, timestamps, sweep_sample_ranges
 
-    def _build_stimulus_series(self, reader, stimulus_metadata, electrode, timestamps, sampling_rate, num_sweeps):
+    def _get_stimulus_data(self, reader, timestamps, sampling_rate, num_sweeps):
+        """Map the ABF stimulus source into the base writer representation."""
         if self._stimulus_command is not None:
-            # Reconstructed command (DAC): resolve the command name to its DAC index, then synthesize the
-            # waveform from the protocol epoch table.
             dac_index = self._command_name_to_index(self._stimulus_command)
             sigs_by_segment, _, units = reader.read_raw_protocol()
             data = np.concatenate(
-                [np.asarray(sigs_by_segment[seg][dac_index]).reshape(-1) for seg in range(num_sweeps)]
+                [
+                    np.asarray(sigs_by_segment[segment_index][dac_index]).reshape(-1)
+                    for segment_index in range(num_sweeps)
+                ]
             )
             conversion = get_conversion_from_unit(units[dac_index])
             offset = 0.0
         else:
-            # Recorded monitor (ADC): resolve the monitor channel, then read it like the response.
             stimulus_channel_index = self._channel_name_to_index(self._stimulus_channel_name)
             data, _, _ = self._concatenate_channel_sweeps(reader, stimulus_channel_index, num_sweeps, sampling_rate)
             channel = self._signal_channels[stimulus_channel_index]
             conversion = float(channel["gain"]) * get_conversion_from_unit(channel["units"])
             offset = float(channel["offset"]) * get_conversion_from_unit(channel["units"])
-
-        kwargs = dict(
-            name=stimulus_metadata["name"],
-            data=data,
-            electrode=electrode,
-            conversion=conversion,
-            offset=offset,
-            gain=np.nan,
-            description=stimulus_metadata["description"],
-        )
-        # Same timing rule as the response: regular -> rate, irregular (inter-sweep gaps) -> timestamps.
-        rate = calculate_regular_series_rate(series=timestamps)
-        if rate is not None:
-            kwargs.update(starting_time=float(timestamps[0]), rate=rate)
-        else:
-            kwargs.update(timestamps=timestamps)
-        return _STIMULUS_CLASS[self._mode](**kwargs)
+        return _IcephysSeriesData(data=data, timestamps=timestamps, conversion=conversion, offset=offset)
 
     def _extract_and_format_stimulus_type(self) -> str:
         r"""Short label for the run's stimulus type.
@@ -508,9 +449,9 @@ class AxonIntracellularInterface(BaseDataInterface):
         return "not described"
 
     # ------------------------------------------------------ neo name/index disambiguation
-    # Corralled here because these exist only to work around neo's channel/command naming: it strips spaces from
-    # the stored names (which can leave a name empty) and otherwise addresses channels positionally. They turn
-    # neo's names into stable, non-empty, name-addressable handles, and resolve a name back to its index.
+    # Corralled here because these exist only to work around neo's channel/command naming: the stored names vary
+    # in spacing across neo versions, can be empty, and are otherwise addressed positionally. They turn neo's
+    # names into stable, non-empty, name-addressable handles, and resolve a name back to its index.
     # Candidates for removal once neo exposes reliable names upstream (see the neo robustness handoff).
 
     @staticmethod
@@ -518,12 +459,14 @@ class AxonIntracellularInterface(BaseDataInterface):
         """
         Recorded analog-to-digital converter channel names (the `response_channel_name` / `stimulus_channel_name` options).
 
-        neo builds each name by stripping spaces from the stored name, which can yield an empty string (see neo
-        handoff Gap 4); fall back to ``ch{index}`` so every channel stays addressable by name.
+        Interior spaces are removed so a channel keeps one spelling across neo versions: neo below 0.15 reports
+        ``IN0`` and neo 0.15 or above reports ``IN 0`` for the same channel, and these names are what the electrode
+        metadata keys and the NWB series names are built from, so letting them drift would rename written objects.
+        A stored name can be empty either way; fall back to ``ch{index}`` so every channel stays addressable by name.
         """
         names = []
         for index, channel in enumerate(reader.header["signal_channels"]):
-            name = str(channel["name"]).strip()
+            name = str(channel["name"]).replace(" ", "")
             names.append(name or f"ch{index}")
         return names
 
@@ -540,6 +483,8 @@ class AxonIntracellularInterface(BaseDataInterface):
 
     def _channel_name_to_index(self, name: str) -> int:
         """Resolve a recorded ADC channel name to its signal_channels index."""
+        # Normalized like the stored names, so either spelling a user may have read off neo resolves.
+        name = name.replace(" ", "")
         if name in self._channel_names:
             return self._channel_names.index(name)
         raise ValueError(

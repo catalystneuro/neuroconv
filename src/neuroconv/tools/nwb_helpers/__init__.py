@@ -26,8 +26,11 @@ from ._configuration_models._zarr_dataset_io import (
 from ._configure_backend import configure_backend
 from ._dataset_configuration import get_default_dataset_io_configurations, get_existing_dataset_io_configurations
 from ._metadata_and_file_helpers import (
+    _add_device_model_to_nwbfile,
     _add_device_to_nwbfile,
     add_device_from_metadata,
+    _get_container_by_name,
+    add_subject_to_nwbfile,
     configure_and_write_nwbfile,
     get_default_nwbfile_metadata,
     get_module,
@@ -57,6 +60,7 @@ __all__ = [
     "get_default_dataset_io_configurations",
     "get_default_backend_configuration",
     "add_device_from_metadata",
+    "add_subject_to_nwbfile",
     "configure_and_write_nwbfile",
     "get_default_nwbfile_metadata",
     "get_module",

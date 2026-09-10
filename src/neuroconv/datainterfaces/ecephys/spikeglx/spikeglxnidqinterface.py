@@ -1,4 +1,5 @@
 import warnings
+from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
 
@@ -6,6 +7,10 @@ import numpy as np
 from pydantic import ConfigDict, DirectoryPath, validate_call
 from pynwb import NWBFile
 
+from .spikeglxnidqeventsinterface import (
+    _NEO_ADDRESSING_DEPRECATION,
+    _SpikeGLXNIDQEventsInterface,
+)
 from ....basedatainterface import BaseDataInterface
 from ....tools.signal_processing import get_rising_frames_from_ttl
 from ....utils import (
@@ -22,6 +27,15 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
     keywords = ("Neuropixels", "nidq", "NIDQ", "SpikeGLX")
     associated_suffixes = (".nidq", ".meta", ".bin")
     info = "Interface for NIDQ board recording data."
+
+    # Defaults for the digital half, as class attributes rather than only as __init__ assignments.
+    # MockSpikeGLXNIDQInterface substitutes a synthetic recording by skipping this __init__ and setting
+    # the handful of attributes it needs, so anything __init__ alone establishes is absent there. These
+    # describe a board with no digital half, which is what such a subclass has.
+    _uses_legacy_digital_path = False
+    _digital_channel_groups: dict = {}
+    _legacy_events_routing: dict = {}
+    _events_interface = None
 
     @classmethod
     def get_source_schema(cls) -> dict:
@@ -40,9 +54,10 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         folder_path: DirectoryPath,
         *args,  # TODO: change to * (keyword only) on or after August 2026
         verbose: bool = False,
-        metadata_key: str = "SpikeGLXNIDQ",
+        metadata_key: str = "spikeglx_nidq",
         analog_channel_groups: dict[str, dict] | None = None,
         digital_channel_groups: dict[str, dict] | None = None,
+        detection_configuration: dict | None = None,
     ):
         """
         Read analog and digital channel data from the NIDQ board for the SpikeGLX recording.
@@ -57,10 +72,11 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
             Path to the folder containing the .nidq.bin file.
         verbose : bool, default: False
             Whether to output verbose text.
-        metadata_key : str, default: "SpikeGLXNIDQ"
+        metadata_key : str, default: "spikeglx_nidq"
             Key used to organize metadata in the metadata dictionary. This is especially useful
             when multiple NIDQ interfaces are used in the same conversion. The metadata_key is used
-            to organize TimeSeries and Events metadata.
+            to organize TimeSeries and Events metadata. It addresses the entries; the written objects'
+            names are their ``name`` fields.
         analog_channel_groups : dict[str, dict], optional
             Dictionary mapping group names to analog channel configurations.
             Each group specifies which channels to include and will be written as a separate
@@ -68,31 +84,37 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
             If None (default), all analog channels are written as a single TimeSeries.
             If empty dict {}, no analog channels are written.
 
+            Channels are named as the board names them (``"XA0"``), which is what ``get_channel_names``
+            returns. neo's stream-qualified ids (``"nidq#XA0"``) are also accepted, deprecated and
+            removed on or after August 2027.
+
             Structure:
                 {
                     "group_key": {
-                        "channels": ["channel_id_1", "channel_id_2", ...],
+                        "channels": ["channel_name_1", "channel_name_2", ...],
                     },
                 }
 
             Example:
                 {
                     "audio": {
-                        "channels": ["nidq#XA0"],
+                        "channels": ["XA0"],
                     },
                     "accel": {
-                        "channels": ["nidq#XA3", "nidq#XA4", "nidq#XA5"],
+                        "channels": ["XA3", "XA4", "XA5"],
                     },
                 }
         digital_channel_groups : dict[str, dict], optional
+            **Deprecated.** Superseded by ``detection_configuration``, which reaches the same lines
+            through the shared signal-encoded grammar and writes native ``pynwb.event.EventsTable``
+            objects into ``nwbfile.events`` instead of ``ndx-events`` ``LabeledEvents`` objects into
+            ``acquisition``. Passing it keeps the old behaviour and raises a ``FutureWarning``.
+
             Dictionary mapping group names to digital channel configurations.
             Each group specifies which channels to include and their label mappings.
-            If None (default), all digital channels are written with auto-generated defaults.
             If empty dict {}, no digital channels are written.
 
-            Currently, only single-channel groups are supported (each group maps to one
-            LabeledEvents object). Multi-channel groups will be supported in future versions
-            when ndx-events EventsTable is integrated into NWB core.
+            Only single-channel groups are supported (each group maps to one LabeledEvents object).
 
 
             Structure:
@@ -117,6 +139,16 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
                         },
                     },
                 }
+        detection_configuration : dict, optional
+            Which NIDQ signals to derive events from and how, keyed by the board's own handle
+            (``"XD0"`` for a digital word, ``"XA1"`` for an analog channel). SpikeGLX saves its digital
+            lines packed into one integer word per channel, so a line is reached by naming the word and
+            the bit: ``{"XD0": [{"signal_conditioning": {"bits": [0]}, "detection": "high_period"}]}``.
+            An analog channel is cut into events with ``{"binarize": c}`` plus an
+            ``event_name``. If None (default), every line of every digital word is read as a
+            ``high_period`` and the analog channels are skipped.
+
+            Mutually exclusive with the deprecated ``digital_channel_groups``.
 
         """
         # Handle deprecated positional arguments
@@ -167,8 +199,50 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         self.analog_channel_ids = [ch for ch in channel_ids if "XA" in ch or "MA" in ch]
         self.has_analog_channels = len(self.analog_channel_ids) > 0
         self.has_digital_channels = len(self.analog_channel_ids) < len(channel_ids)
-        if self.has_digital_channels:
-            import ndx_events  # noqa: F401
+
+        # SpikeGLX groups NIDQ channels into four categories, {MN, MA, XA, XD}, and this interface covers
+        # three of them: XA/MA become TimeSeries and XD becomes events. MN is multiplexed *neural* data
+        # and is not written at all. The reason is lack of data rather than a decision that it does not
+        # belong here: MN needs a Whisper multiplexer and no recording containing one was available, so
+        # the right output shape was never settled. Say so rather than dropping the channel in silence,
+        # since a missing channel is otherwise only discovered by noticing its absence from the file.
+        unconverted_channel_ids = [ch for ch in channel_ids if not any(kind in ch for kind in ("XA", "MA", "XD"))]
+        if unconverted_channel_ids:
+            warnings.warn(
+                f"The following NIDQ channels are not converted and will be absent from the NWB file: "
+                f"{list(unconverted_channel_ids)}. This interface writes the analog channels (XA, MA) as "
+                "TimeSeries and the digital word (XD) as events. The remaining category, multiplexed "
+                "neural channels (MN), is unsupported only because no recording containing one was "
+                "available when this was written, so there was nothing to build or test against. If you "
+                "have such a file, please open an issue at "
+                "https://github.com/catalystneuro/neuroconv/issues and support can be added.",
+                UserWarning,
+                stacklevel=2,
+            )
+
+        if digital_channel_groups is not None and detection_configuration is not None:
+            raise ValueError(
+                "Pass either detection_configuration or the deprecated digital_channel_groups, not both. "
+                "They are two spellings of the same thing and write different NWB objects."
+            )
+        # The deprecated path is opt-in from here on: it is selected only by passing
+        # digital_channel_groups, so the default conversion takes the events interface below.
+        self._uses_legacy_digital_path = digital_channel_groups is not None
+        if self._uses_legacy_digital_path:
+            warnings.warn(
+                "digital_channel_groups is deprecated and will be removed on or after August 2027. "
+                "Use detection_configuration instead, which reaches the same lines through the shared "
+                "signal-encoded grammar. Note that the events are now written as a pynwb EventsTable "
+                "into nwbfile.events rather than as an ndx-events LabeledEvents into acquisition; the "
+                "group still becomes one object with one row per edge, and labels_map still names the "
+                "two edges, now through the table's event_type column.",
+                FutureWarning,
+                stacklevel=2,
+            )
+
+        if self.has_digital_channels and self._uses_legacy_digital_path:
+            # Only to validate the deprecated argument (which channel names are legal, and that a
+            # labels_map covers the values actually present). The write itself no longer goes through it.
             from spikeinterface.extractors.extractor_classes import (
                 SpikeGLXEventExtractor,
             )
@@ -179,14 +253,15 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
 
         # Resolve to defaults if None, then validate
         self._analog_channel_groups = (
-            analog_channel_groups if analog_channel_groups is not None else self._get_default_analog_channel_groups()
+            self._normalize_analog_channel_groups(analog_channel_groups)
+            if analog_channel_groups is not None
+            else self._get_default_analog_channel_groups()
         )
         self._validate_analog_channel_groups()
 
-        self._digital_channel_groups = (
-            digital_channel_groups if digital_channel_groups is not None else self._get_default_digital_channel_groups()
-        )
-        self._validate_digital_channel_groups()
+        self._digital_channel_groups = digital_channel_groups if self._uses_legacy_digital_path else {}
+        if self._uses_legacy_digital_path:
+            self._validate_digital_channel_groups()
 
         super().__init__(
             verbose=verbose,
@@ -196,6 +271,144 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         signal_info_key = (0, "nidq")  # Key format is (segment_index, stream_id)
         self._signals_info_dict = self.recording_extractor.neo_reader.signals_info_dict[signal_info_key]
         self.meta = self._signals_info_dict["meta"]
+
+        # The events half of the board. Private and constructed here rather than by the user: NIDQ analog
+        # and digital signals share one board and one clock, so the board keeps one public interface and
+        # this object is the part of it that owns the EventsTable writer. It opens its own reader on the
+        # same file rather than borrowing this one, for the reasons its own __init__ gives; both readers
+        # see one immutable file and therefore one clock.
+        # A deprecated digital_channel_groups is translated into the new grammar rather than writing
+        # through a second path: each group becomes a rising and a falling spec on its line, routed into
+        # one table, which is structurally what its LabeledEvents was. `None` is not translated, since
+        # the new default is the better reading and nobody chose the old auto-generated names.
+        self._legacy_events_routing = {}
+        if self._uses_legacy_digital_path:
+            detection_configuration, self._legacy_events_routing = self._translate_digital_channel_groups(
+                self._digital_channel_groups
+            )
+
+        self._events_interface = None
+        if self.has_digital_channels and not (self._uses_legacy_digital_path and not self._digital_channel_groups):
+            self._events_interface = _SpikeGLXNIDQEventsInterface(
+                folder_path=self.folder_path,
+                detection_configuration=detection_configuration,
+                metadata_key=self.metadata_key,
+                verbose=verbose,
+            )
+
+    def _translate_digital_channel_groups(self, digital_channel_groups: dict) -> tuple[dict, dict]:
+        """Map the deprecated argument onto ``detection_configuration``, plus the table routing it implies.
+
+        A group named one line and gave a ``labels_map`` naming the two states it takes. The line's own
+        values are what the old writer recorded, so ``labels_map[1]`` labels the rising edge and
+        ``labels_map[0]`` the falling one (its labels sorted ``OFF`` before ``ON``). Both readings of the
+        same line become two specs, and the returned routing sends them into a single table, which is the
+        one ``LabeledEvents`` the group used to produce.
+
+        A label names a state inside one group's table, so two groups may legitimately give theirs the
+        same one, the way two ``LabeledEvents`` could each carry ``["off", "on"]``. An identifier is
+        global, and ``event_name`` is both in the shared grammar, so the identifier is qualified by the
+        group here and :meth:`_rewrite_legacy_events_metadata` puts the bare label back as what the
+        ``event_type`` column shows. The routing carries both, keyed by identifier.
+        """
+        word_handles = [str(ch).split("#")[-1] for ch in self.recording_extractor.get_channel_ids() if "XD" in str(ch)]
+        word_handle = word_handles[0]
+
+        detection_configuration: dict[str, list] = {}
+        routing: dict[str, dict] = {}
+        for group_key, group_config in digital_channel_groups.items():
+            channel_id, channel_config = next(iter(group_config["channels"].items()))
+            line_name = str(channel_id).split("#")[-1]  # the reader's per-line name, e.g. "XD5"
+            line = int(line_name[2:])
+            labels_map = channel_config["labels_map"]
+            rising_label = str(labels_map.get(1, f"{group_key}_on"))
+            falling_label = str(labels_map.get(0, f"{group_key}_off"))
+            rising_id = f"{group_key}_{rising_label}"
+            falling_id = f"{group_key}_{falling_label}"
+            detection_configuration.setdefault(word_handle, []).extend(
+                [
+                    {"signal_conditioning": {"bits": [line]}, "detection": "rising", "event_name": rising_id},
+                    {"signal_conditioning": {"bits": [line]}, "detection": "falling", "event_name": falling_id},
+                ]
+            )
+            routing[group_key] = {rising_id: rising_label, falling_id: falling_label}
+        return detection_configuration, routing
+
+    def _rewrite_legacy_events_metadata(self, metadata: dict) -> dict:
+        """Move a deprecated-shape ``Events`` block onto the shape the events writer reads.
+
+        The user edits ``metadata["Events"][metadata_key][group_key]`` with ``name``, ``description`` and
+        ``meanings``, because that is what ``get_metadata`` handed them. Those edits arrive here rather
+        than at ``get_metadata``, which is why the translation happens at write time.
+
+        This deliberately does not propagate the metadata as the user wrote it, which is otherwise the
+        rule. It is a temporary exception for the sake of backwards compatibility, and it goes when
+        ``digital_channel_groups`` does.
+        """
+        metadata = deepcopy(dict(metadata))
+        metadata["Events"] = dict(metadata.get("Events", {}))
+        legacy_block = dict(metadata["Events"].pop(self.metadata_key, {}))
+        default_metadata = self._get_default_events_metadata()
+
+        event_tables = dict(metadata["Events"].get("EventTables", {}))
+        event_types = {}
+        for group_key, labels_by_event_type_source_id in self._legacy_events_routing.items():
+            group_metadata = legacy_block.get(group_key, {})
+            defaults = default_metadata.get(group_key, {})
+            event_tables[group_key] = {
+                "table_name": group_metadata.get("name", defaults.get("name", to_camel_case(group_key))),
+                "description": group_metadata.get("description", defaults.get("description", "")),
+            }
+            # `meanings` was appended to the description as a stopgap; it has a real home now, as the
+            # per-type description that the writer turns into a MeaningsTable.
+            meanings = group_metadata.get("meanings", {})
+            for event_type_source_id, label in labels_by_event_type_source_id.items():
+                entry = {"event_name": label, "table_metadata_key": group_key}
+                if label in meanings:
+                    entry["event_description"] = meanings[label]
+                event_types[event_type_source_id] = entry
+
+        metadata["Events"]["EventTables"] = event_tables
+        metadata["Events"][self.metadata_key] = {"event_types": event_types}
+        return metadata
+
+    def _resolve_channel_id(self, channel_name: str) -> str:
+        """Map either spelling of a channel onto the reader's own id, which is what reads a trace.
+
+        The board's name (``XA0``) is what a caller states and what :meth:`get_channel_names` shows;
+        neo's stream-qualified id (``nidq#XA0``) is what ``get_traces`` and ``select_channels`` take.
+        A name the board does not have comes back unchanged, so the caller's own spelling is what the
+        validation below names in its error.
+        """
+        channel_name = str(channel_name)
+        if "#" in channel_name:  # already neo addressing; the caller warns
+            return channel_name
+        for channel_id in self.recording_extractor.get_channel_ids():
+            if str(channel_id).split("#")[-1] == channel_name:
+                return str(channel_id)
+        return channel_name
+
+    def _normalize_analog_channel_groups(self, analog_channel_groups: dict) -> dict:
+        """Rewrite a caller's ``channels`` onto the reader's ids, warning once on neo addressing.
+
+        Everything downstream (validation, ``select_channels``, the group's channel names) works in the
+        reader's ids, so the two accepted spellings collapse here and nowhere else.
+        """
+        normalized = {}
+        used_neo_addressing = False
+        for group_key, group_config in analog_channel_groups.items():
+            if not isinstance(group_config, dict) or "channels" not in group_config:
+                normalized[group_key] = group_config  # left for _validate_analog_channel_groups to reject
+                continue
+            channels = [str(channel_name) for channel_name in group_config["channels"]]
+            used_neo_addressing |= any("#" in channel_name for channel_name in channels)
+            normalized[group_key] = {
+                **group_config,
+                "channels": [self._resolve_channel_id(channel_name) for channel_name in channels],
+            }
+        if used_neo_addressing:
+            warnings.warn(_NEO_ADDRESSING_DEPRECATION, FutureWarning, stacklevel=4)
+        return normalized
 
     def _validate_analog_channel_groups(self) -> None:
         """Validate analog_channel_groups structure and channel IDs."""
@@ -209,7 +422,7 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
             if invalid_channels:
                 raise ValueError(
                     f"Invalid channels in group '{group_key}': {invalid_channels}. "
-                    f"Available analog channels: {self.analog_channel_ids}"
+                    f"Available analog channels: {[name.split('#')[-1] for name in self.analog_channel_ids]}"
                 )
 
     def _validate_digital_channel_groups(self) -> None:
@@ -264,39 +477,6 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
                             f"labels_map must cover all {num_unique_values} unique values from the extractor. "
                             f"Example: {example_labels}"
                         )
-
-    def _get_default_digital_channel_groups(self) -> dict:
-        """
-        Return default digital channel groups configuration.
-
-        Creates one group per digital channel with auto-generated labels_map.
-        Used when digital_channel_groups is None (backward compatibility).
-
-        Returns
-        -------
-        dict
-            Dictionary with one group per channel, each containing channels config with labels_map.
-        """
-        if not self.has_digital_channels:
-            return {}
-
-        groups = {}
-        for channel_id in self.event_extractor.channel_ids:
-            events_structure = self.event_extractor.get_events(channel_id=channel_id)
-            raw_labels = events_structure["label"]
-
-            if raw_labels.size > 0:
-                unique_labels = np.unique(raw_labels)
-                labels_map = {idx: str(label) for idx, label in enumerate(unique_labels)}
-            else:
-                labels_map = {}
-
-            groups[channel_id] = {
-                "channels": {
-                    channel_id: {"labels_map": labels_map},
-                },
-            }
-        return groups
 
     def _get_default_analog_channel_groups(self) -> dict:
         """
@@ -429,15 +609,24 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
             description="A NIDQ board used in conjunction with SpikeGLX.",
         )
 
-        metadata["Devices"] = [device]
+        metadata["Devices"] = {"spikeglx_nidq_device": device}
 
         # TimeSeries metadata for analog channels
         if self.has_analog_channels:
             metadata["TimeSeries"][self.metadata_key] = self._get_default_analog_metadata()
 
         # Events metadata for digital channels
-        if self.has_digital_channels:
-            metadata["Events"][self.metadata_key] = self._get_default_events_metadata()
+        if self._uses_legacy_digital_path:
+            # The deprecated argument keeps the deprecated metadata shape, so code that edits
+            # metadata["Events"][metadata_key][group_key]["name"] still finds the key it expects.
+            # add_to_nwbfile translates it onto the writer's shape.
+            if self._digital_channel_groups:
+                metadata["Events"][self.metadata_key] = self._get_default_events_metadata()
+        elif self._events_interface is not None:
+            events_metadata = self._events_interface.get_metadata()["Events"][self.metadata_key]
+            # A suppressed events half (detection_configuration={}) seeds nothing rather than an empty block.
+            if events_metadata:
+                metadata["Events"][self.metadata_key] = events_metadata
 
         return metadata
 
@@ -448,9 +637,10 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         Returns
         -------
         list of str
-            The names of all channels in the NIDQ recording.
+            The names of all channels in the NIDQ recording, as the board itself names them
+            (``XA0``, ``XD0``), which is what ``~snsChanMap`` and the SpikeGLX user interface show.
         """
-        return list(self.recording_extractor.get_channel_ids())
+        return [str(channel_id).split("#")[-1] for channel_id in self.recording_extractor.get_channel_ids()]
 
     def add_to_nwbfile(
         self,
@@ -519,9 +709,17 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
 
         metadata = metadata or self.get_metadata()
 
-        # Add devices
-        device_metadata = metadata.get("Devices", [])
-        for device in device_metadata:
+        # Add devices from the top-level registry, which is keyed by metadata key. The list shape this
+        # interface used to emit is named rather than silently accepted, so a script written against it
+        # is told what to change instead of failing on an attribute deep in here.
+        device_metadata = metadata.get("Devices", {})
+        if isinstance(device_metadata, list):
+            raise ValueError(
+                "metadata['Devices'] is a list. It is now a registry keyed by metadata key, so this "
+                "interface's entry belongs under 'spikeglx_nidq_device': "
+                "metadata['Devices'] = {'spikeglx_nidq_device': {'name': ..., 'description': ...}}."
+            )
+        for device in device_metadata.values():
             if device["name"] not in nwbfile.devices:
                 nwbfile.create_device(**device)
 
@@ -536,8 +734,11 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
                 metadata=metadata,
             )
 
-        if self.has_digital_channels:
-            self._add_digital_channels(nwbfile=nwbfile, metadata=metadata)
+        if self._events_interface is not None:
+            events_metadata = (
+                self._rewrite_legacy_events_metadata(metadata) if self._uses_legacy_digital_path else metadata
+            )
+            self._events_interface.add_to_nwbfile(nwbfile=nwbfile, metadata=events_metadata)
 
     def _add_analog_channels(
         self,
@@ -597,84 +798,6 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
                 metadata_key=group_key,
             )
 
-    def _add_digital_channels(
-        self,
-        nwbfile: NWBFile,
-        metadata: dict,
-    ):
-        """
-        Add digital channels from the NIDQ board to the NWB file as events.
-
-        Data structure (which channels, labels_map) comes from channel groups config.
-        NWB properties (name, description, meanings) come from metadata.
-
-        Parameters
-        ----------
-        nwbfile : NWBFile
-            The NWB file to add the digital channels to
-        metadata : dict
-            Metadata dictionary containing channel configurations.
-        """
-        from ndx_events import LabeledEvents
-
-        if not self._digital_channel_groups:
-            return
-
-        events_metadata = metadata.get("Events", {}).get(self.metadata_key, {})
-
-        for group_key, group_config in self._digital_channel_groups.items():
-            channels_config = group_config["channels"]
-            # Get the single channel (validated at init to be single-channel for user groups)
-            channel_id, channel_config = next(iter(channels_config.items()))
-
-            # Get labels_map from config (data structure)
-            labels_map = channel_config["labels_map"]
-
-            # Get NWB properties from metadata
-            group_metadata = events_metadata.get(group_key, {})
-            default_metadata = self._get_default_events_metadata().get(group_key, {})
-            name = group_metadata.get("name", default_metadata.get("name", to_camel_case(group_key)))
-            description = group_metadata.get("description", default_metadata.get("description", ""))
-
-            # Append meanings to description if provided
-            # Future: when ndx-events MeaningsTable is integrated into NWB core,
-            # these will be written to MeaningsTable instead of the description
-            meanings = group_metadata.get("meanings", {})
-            if meanings:
-                meanings_text = "\n".join(f"  - {label}: {meaning}" for label, meaning in meanings.items())
-                description = f"{description}\n\nLabel meanings:\n{meanings_text}"
-
-            # Get event data
-            events_structure = self.event_extractor.get_events(channel_id=channel_id)
-            timestamps = events_structure["time"]
-            raw_labels = events_structure["label"]
-
-            if timestamps.size == 0:
-                continue
-
-            # Sort by timestamp
-            ordered_indices = np.argsort(timestamps)
-            ordered_timestamps = timestamps[ordered_indices]
-            ordered_raw_labels = raw_labels[ordered_indices]
-
-            # Map raw labels to data values
-            unique_raw_labels = np.unique(raw_labels)
-            extractor_label_to_value = {str(label): index for index, label in enumerate(unique_raw_labels)}
-            data = [extractor_label_to_value[str(label)] for label in ordered_raw_labels]
-
-            # Build labels list from labels_map
-            sorted_items = sorted(labels_map.items())
-            labels_list = [label for _, label in sorted_items]
-
-            labeled_events = LabeledEvents(
-                name=name,
-                description=description,
-                timestamps=ordered_timestamps,
-                data=data,
-                labels=labels_list,
-            )
-            nwbfile.add_acquisition(labeled_events)
-
     def get_event_times_from_ttl(self, channel_name: str) -> np.ndarray:
         """
         Return the start of event times from the rising part of TTL pulses on one of the NIDQ channels.
@@ -682,17 +805,19 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         Parameters
         ----------
         channel_name : str
-            Name of the channel in the .nidq.bin file.
+            Name of the channel in the .nidq.bin file, as the board names it (``"XA0"``).
 
         Returns
         -------
         rising_times : numpy.ndarray
             The times of the rising TTL pulses.
         """
+        if "#" in str(channel_name):
+            warnings.warn(_NEO_ADDRESSING_DEPRECATION, FutureWarning, stacklevel=2)
+        channel_id = self._resolve_channel_id(channel_name)
+
         # TODO: consider RAM cost of these operations and implement safer buffering version
-        rising_frames = get_rising_frames_from_ttl(
-            trace=self.recording_extractor.get_traces(channel_ids=[channel_name])
-        )
+        rising_frames = get_rising_frames_from_ttl(trace=self.recording_extractor.get_traces(channel_ids=[channel_id]))
 
         nidq_timestamps = self.recording_extractor.get_times()
         rising_times = nidq_timestamps[rising_frames]

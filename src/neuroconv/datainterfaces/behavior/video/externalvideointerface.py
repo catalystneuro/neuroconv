@@ -6,13 +6,13 @@ from typing import Literal
 import numpy as np
 from pydantic import FilePath, validate_call
 from pynwb import NWBFile
-from pynwb.device import Device
+from pynwb.device import Device, DeviceModel
 from pynwb.image import ImageSeries
 
 from .video_utils import VideoCaptureContext
 from ....basedatainterface import BaseDataInterface
 from ....tools import get_package
-from ....tools.nwb_helpers import get_module
+from ....tools.nwb_helpers import _add_device_to_nwbfile, get_module
 from ....utils import (
     DeepDict,
     calculate_regular_series_rate,
@@ -37,6 +37,7 @@ class ExternalVideoInterface(BaseDataInterface):
         file_paths: list[FilePath],
         verbose: bool = False,
         *,
+        metadata_key: str | None = None,
         video_name: str | None = None,
     ):
         """
@@ -52,24 +53,28 @@ class ExternalVideoInterface(BaseDataInterface):
             Pass the file paths for this videos as a list in sorted, consecutive order.
         verbose : bool, optional
             If True, display verbose output. Defaults to False.
-        video_name : str, optional
-            The name of this video as it will appear in the ImageSeries.
-            Defaults to f"Video {file_paths[0].stem}" if not provided.
-
-            This key is essential when multiple video streams are present in a single experiment.
-            The associated metadata should be a list of dictionaries, with each dictionary
-            containing metadata for a single video stream comprised of potentially multiple segments:
+        metadata_key : str, optional
+            Snake_case key that identifies this video's entry under
+            ``metadata["Behavior"]["ExternalVideos"]`` and is used for cross-component linking. Defaults
+            to ``f"video_{file_paths[0].stem}"`` if not provided. The ImageSeries name is the entry's
+            ``name`` field (a human-readable name, defaulting to ``f"Video {file_paths[0].stem}"``, kept
+            distinct from the key), so multiple video streams in one experiment each get a unique entry:
 
             ```
             metadata["Behavior"]["ExternalVideos"] = {
-                "ExternalVideo1": dict(description="description 1.", unit="Frames", **video1_metadata),
-                "ExternalVideo2": dict(description="description 2.", unit="Frames", **video2_metadata),
+                # key is the metadata_key (address); "name" is the ImageSeries name (distinct)
+                "back_camera": dict(name="BackCamera", description="description 1.", unit="Frames"),
+                "side_camera": dict(name="SideCamera", description="description 2.", unit="Frames"),
                 ...
             }
             ```
 
-            Where each entry corresponds to a separate VideoInterface and ImageSeries. Note, that
+            Each entry corresponds to a separate ExternalVideoInterface and ImageSeries. Note that
             metadata["Behavior"]["ExternalVideos"] is specific to the ExternalVideoInterface.
+        video_name : str, optional
+            Convenience for setting the ImageSeries ``name`` (the entry's ``name`` field) without
+            editing the metadata dict. Defaults to ``f"Video {file_paths[0].stem}"``. An explicit
+            ``name`` in the metadata passed to ``add_to_nwbfile`` takes precedence over this.
         """
         get_package(package_name="cv2", installation_instructions="pip install opencv-python-headless")
         file_paths = [Path(file_path) for file_path in file_paths]
@@ -77,27 +82,41 @@ class ExternalVideoInterface(BaseDataInterface):
         self._number_of_files = len(file_paths)
         self._timestamps = None
         self._starting_time = None
-        self.video_name = video_name if video_name else f"Video {file_paths[0].stem}"
-        self._default_device_name = f"{video_name} Camera Device"
+        # metadata_key is the snake_case registry key (for cross-component linking); the ImageSeries
+        # name is kept distinct and is never derived from the key. Name precedence: explicit
+        # video_name, else a stem-based default. video_name is retained as a back-compat convenience.
+        self.metadata_key = metadata_key if metadata_key else f"video_{file_paths[0].stem}"
+        self._default_name = video_name if video_name else f"Video {file_paths[0].stem}"
+        self._default_device_metadata_key = f"{self.metadata_key}_camera"
+        self._default_device_name = f"{self._default_name} Camera Device"
         super().__init__(file_paths=file_paths)
 
     def get_metadata_schema(self):
         metadata_schema = super().get_metadata_schema()
         image_series_metadata_schema = get_schema_from_hdmf_class(ImageSeries)
         # TODO: in future PR, add 'exclude' option to get_schema_from_hdmf_class to bypass this popping
-        exclude = ["format", "conversion", "starting_time", "rate", "name"]
+        exclude = ["format", "conversion", "starting_time", "rate"]
         for key in exclude:
             image_series_metadata_schema["properties"].pop(key)
             if key in image_series_metadata_schema["required"]:
                 image_series_metadata_schema["required"].remove(key)
         device_metadata_schema = get_schema_from_hdmf_class(Device)
+        # A device entry may name its model, the same way the video entry names its device.
+        device_metadata_schema["properties"]["device_model_metadata_key"] = {"type": "string"}
+        device_model_metadata_schema = get_schema_from_hdmf_class(DeviceModel)
+        # 'manufacturer' is required by NWB but is rarely recorded by an acquisition file, so it is
+        # filled when the model is built rather than demanded of whoever writes the metadata.
+        device_model_metadata_schema["required"].remove("manufacturer")
+        # The camera Device lives at top-level metadata["Devices"], referenced from the video entry
+        # by ``device_metadata_key``. A nested ``device`` dict is still accepted for back-compat.
+        image_series_metadata_schema["properties"]["device_metadata_key"] = {"type": "string"}
         image_series_metadata_schema["properties"]["device"] = device_metadata_schema
         metadata_schema["properties"]["Behavior"] = get_base_schema(tag="Behavior")
         metadata_schema["properties"]["Behavior"]["required"].append("ExternalVideos")
         metadata_schema["properties"]["Behavior"]["properties"]["ExternalVideos"] = {
             "type": "object",
-            "properties": {self.video_name: image_series_metadata_schema},
-            "required": [self.video_name],
+            "properties": {self.metadata_key: image_series_metadata_schema},
+            "required": [self.metadata_key],
             "additionalProperties": True,
         }
         return metadata_schema
@@ -105,17 +124,99 @@ class ExternalVideoInterface(BaseDataInterface):
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
         video_metadata = {
+            "Devices": {
+                self._default_device_metadata_key: dict(
+                    name=self._default_device_name,
+                    description="Video camera used for recording.",
+                ),
+            },
             "Behavior": {
                 "ExternalVideos": {
-                    self.video_name: dict(
+                    self.metadata_key: dict(
+                        name=self._default_name,
                         description="Video recorded by camera.",
                         unit="Frames",
-                        device=dict(name=self._default_device_name, description="Video camera used for recording."),
+                        device_metadata_key=self._default_device_metadata_key,
                     )
                 },
-            }
+            },
         }
         return dict_deep_update(metadata, video_metadata)
+
+    def _get_header_frame_counts(self) -> list[int]:
+        """
+        Return the number of frames held by each video file.
+
+        Named for where the number comes from, because a container header can be missing it or state it
+        wrongly, which is what :meth:`_check_timestamps_number_matches_frames` has to allow for. A cheap
+        read rather than a decode, and a method rather than an inline read so that an interface which knows
+        the count without a file to open can supply it, which is what :class:`.MockExternalVideoInterface`
+        does.
+
+        Returns
+        -------
+        list of int
+            The frame count of each file, in the order the files were passed.
+        """
+        frame_counts = []
+        for file_path in self.source_data["file_paths"]:
+            with VideoCaptureContext(file_path=str(file_path)) as video:
+                frame_counts.append(video.get_video_frame_count())
+        return frame_counts
+
+    def _check_timestamps_number_matches_frames(self) -> None:
+        """
+        Raise when the timestamps that were set do not number one per frame of the video files.
+
+        An external ``ImageSeries`` carries no data, so the length of its ``timestamps`` *is* its sample
+        count, while ``external_file`` and ``starting_frame`` describe however many frames the files
+        actually hold. A mismatch therefore writes a series that contradicts itself, and nothing downstream
+        reports it, which is why it is caught here rather than left to a reader.
+
+        A file whose header cannot say how many frames it holds reports a non-positive count, and a count
+        that is unknown cannot contradict anything, so the check is skipped rather than failed for it.
+        """
+        if self._timestamps is None:
+            return
+        # OpenCV reads this out of the container header rather than by counting, and returns 0 where the
+        # header does not carry it, which happens with streams and with growing or truncated files. Zero
+        # frames cannot contradict any number of timestamps, so an unreadable count disables the check
+        # rather than failing it. Negative is guarded against too, defensively rather than from a known case.
+        frame_counts = self._get_header_frame_counts()
+        a_count_is_unknown = any(frame_count <= 0 for frame_count in frame_counts)
+        if a_count_is_unknown:
+            return
+
+        number_of_timestamps = sum(len(timestamps) for timestamps in self._timestamps)
+        number_of_frames = sum(frame_counts)
+        if number_of_timestamps != number_of_frames:
+            raise ValueError(
+                f"{number_of_timestamps} timestamps were set for the {number_of_frames} frames held by "
+                f"{self._number_of_files} video file(s), and an external ImageSeries carries one time per "
+                "frame. A few timestamps short of the frame count usually means the camera dropped frames, "
+                "and many more than it usually means the signal you read them from was already running "
+                "before the camera started."
+            )
+
+    def _get_header_frame_rates(self) -> list[float]:
+        """
+        Return the frames per second each video file's container header states.
+
+        The companion of :meth:`_get_header_frame_counts`, and named the same way for the same reason: both
+        are header reads rather than decodes, and both are methods rather than inline reads so that an
+        interface which knows the answer without a file to open can supply it, which is what
+        :class:`.MockExternalVideoInterface` does.
+
+        Returns
+        -------
+        list of float
+            The frame rate each file's header states, in the order the files were passed.
+        """
+        frame_rates = []
+        for file_path in self.source_data["file_paths"]:
+            with VideoCaptureContext(file_path=str(file_path)) as video:
+                frame_rates.append(video.get_video_fps())
+        return frame_rates
 
     def get_original_timestamps(self, stub_test: bool = False) -> list[np.ndarray]:
         """
@@ -235,7 +336,7 @@ class ExternalVideoInterface(BaseDataInterface):
         *args,  # TODO: change to * (keyword only) on or after August 2026
         starting_frames: list[int] | None = None,
         parent_container: Literal["acquisition", "processing/behavior"] = "acquisition",
-        module_description: str | None = None,
+        module_description: str = "processed behavioral data",
         always_write_timestamps: bool = False,
     ):
         """
@@ -250,39 +351,45 @@ class ExternalVideoInterface(BaseDataInterface):
         metadata : dict, optional
             Dictionary of metadata information such as name and description of the video, as well as
             device information for the camera that captured the video. The keys must correspond to
-            the video_name specified in the constructor.
+            the metadata_key specified in the constructor.
             Should be organized as follows::
 
                 metadata = dict(
+                    Devices=dict(
+                        external_video_camera=dict(name="CameraName", description="Camera description", ...),
+                    ),
                     Behavior=dict(
                         ExternalVideos=dict(
-                            ExternalVideo=dict(
+                            external_video=dict(
+                                name="ExternalVideo",
                                 description="Description of the video..",
-                                device=dict(name="Camera name", description="Camera description", ...),
+                                device_metadata_key="external_video_camera",
                                 ...,
                             )
                         )
-                    )
+                    ),
                 )
 
             The ExternalVideo section may contain most keywords normally accepted by an ImageSeries
             (https://pynwb.readthedocs.io/en/stable/pynwb.image.html#pynwb.image.ImageSeries).
 
-            The device section may contain most keywords normally accepted by a Device
-            (https://pynwb.readthedocs.io/en/stable/pynwb.device.html#pynwb.device.Device).
-
-            The device will be created and linked to the ImageSeries, establishing a connection between
-            the video data and the camera that captured it.
+            The camera is a top-level ``metadata["Devices"]`` entry (most keywords accepted by a Device,
+            https://pynwb.readthedocs.io/en/stable/pynwb.device.html#pynwb.device.Device), referenced from
+            the video entry by ``device_metadata_key``; it is created and linked to the ImageSeries,
+            establishing a connection between the video data and the camera that captured it. Passing the
+            camera nested under the video entry as ``device=dict(...)`` is still accepted but deprecated
+            (removal on or after February 2027).
         starting_frames : list, optional
             List of start frames for each video written using external mode.
-            Required if more than one path is specified.
+            If not provided, it is computed from the frame count of each video file.
         parent_container: {'acquisition', 'processing/behavior'}
             The container where the ImageSeries is added, default is nwbfile.acquisition.
             When 'processing/behavior' is chosen, the ImageSeries is added to nwbfile.processing['behavior'].
-        module_description: str, optional
-            If parent_container is 'processing/behavior', and the module does not exist,
-            it will be created with this description. The default description is the same as used by the
-            conversion_tools.get_module function.
+        module_description: str, default: "processed behavioral data"
+            If parent_container is 'processing/behavior', and the module does not exist, it will be
+            created with this description. The default matches what every other interface writing to that
+            module uses, so a conversion combining several of them does not warn about a description
+            mismatch.
         always_write_timestamps: bool, default: False
             Set to True to always write timestamps.
             By default (False), the function checks if timestamps are available, and if not, uses starting_time and rate.
@@ -330,19 +437,40 @@ class ExternalVideoInterface(BaseDataInterface):
         # Be sure to copy metadata at this step to avoid mutating in-place
         videos_metadata = deepcopy(metadata).get("Behavior", dict()).get("ExternalVideos", None)
         # If no metadata is provided use the default metadata
-        if videos_metadata is None or self.video_name not in videos_metadata:
+        if videos_metadata is None or self.metadata_key not in videos_metadata:
             videos_metadata = deepcopy(self.get_metadata()["Behavior"]["ExternalVideos"])
-        image_series_kwargs = videos_metadata[self.video_name]
-        image_series_kwargs["name"] = self.video_name
-        device_kwargs = image_series_kwargs.pop("device", None)
+        image_series_kwargs = videos_metadata[self.metadata_key]
+        image_series_kwargs.setdefault("name", self._default_name)
 
-        if device_kwargs is not None:
-            if device_kwargs["name"] in nwbfile.devices:
-                device = nwbfile.devices[device_kwargs["name"]]
-            else:
-                device = Device(**device_kwargs)
-                nwbfile.add_device(device)
-            image_series_kwargs["device"] = device
+        # Resolve the camera Device: prefer the top-level Devices registry referenced by
+        # device_metadata_key; fall back to a (deprecated) nested "device" dict for back-compat.
+        device_metadata_key = image_series_kwargs.pop("device_metadata_key", None)
+        legacy_device_kwargs = image_series_kwargs.pop("device", None)
+        if device_metadata_key is not None:
+            # The whole metadata goes to the helper, which resolves the key strictly and raises naming
+            # the registry if it holds nothing. Only the registry is swapped, for the caller who passed
+            # none and gets this interface's default camera; a device entry may also name its model by
+            # 'device_model_metadata_key', which the helper resolves against the rest of the metadata.
+            metadata_copy = deepcopy(metadata)
+            metadata_copy["Devices"] = metadata_copy.get("Devices") or deepcopy(self.get_metadata()["Devices"])
+            image_series_kwargs["device"] = _add_device_to_nwbfile(
+                nwbfile=nwbfile, metadata=metadata_copy, metadata_key=device_metadata_key
+            )
+        elif legacy_device_kwargs is not None:
+            warnings.warn(
+                "Passing the camera device nested under the video metadata entry is deprecated and will be "
+                "removed on or after February 2027. Use a top-level metadata['Devices'][key] entry referenced "
+                "by 'device_metadata_key' instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            # The deprecated nested form has no registry key, so it keeps the transitional call until
+            # the December 2026 removal.
+            image_series_kwargs["device"] = _add_device_to_nwbfile(
+                nwbfile=nwbfile, device_metadata=legacy_device_kwargs
+            )
+
+        self._check_timestamps_number_matches_frames()
 
         if always_write_timestamps:
             timestamps = self.get_timestamps()
@@ -363,18 +491,27 @@ class ExternalVideoInterface(BaseDataInterface):
                     "Please specify the temporal alignment of each video."
                 )
             starting_time = self._starting_time if self._starting_time is not None else 0.0
-            with VideoCaptureContext(file_path=str(file_paths[0])) as video:
-                rate = video.get_video_fps()
+            rate = self._get_header_frame_rates()[0]
             image_series_kwargs.update(starting_time=starting_time, rate=rate)
 
-        if self._number_of_files > 1 and starting_frames is None:
-            raise TypeError("Multiple paths were specified for the ImageSeries, but no starting_frames were specified!")
-        elif starting_frames is not None and len(starting_frames) != self._number_of_files:
-            raise ValueError(
-                f"Multiple paths ({self._number_of_files}) were specified for the ImageSeries, "
-                f"but the length of starting_frames ({len(starting_frames)}) did not match the number of paths!"
-            )
-        elif starting_frames is not None:
+        # The frame count of each external file backs both `num_samples` and `starting_frame`, so read it once.
+        compute_starting_frames = self._number_of_files > 1 and starting_frames is None
+        if "rate" in image_series_kwargs or compute_starting_frames:
+            frame_counts = self._get_header_frame_counts()
+
+        # pynwb>=4 requires num_samples on an external ImageSeries when timing is rate-based, because the
+        # empty data array cannot convey the frame count. Sum the frame count across the external video files.
+        if "rate" in image_series_kwargs:
+            image_series_kwargs.update(num_samples=sum(frame_counts))
+
+        if compute_starting_frames:
+            starting_frames = np.cumsum([0, *frame_counts[:-1]]).tolist()
+        if starting_frames is not None:
+            if len(starting_frames) != self._number_of_files:
+                raise ValueError(
+                    f"Multiple paths ({self._number_of_files}) were specified for the ImageSeries, "
+                    f"but the length of starting_frames ({len(starting_frames)}) did not match the number of paths!"
+                )
             image_series_kwargs.update(starting_frame=starting_frames)
 
         image_series_kwargs.update(format="external", external_file=file_paths)

@@ -1,6 +1,20 @@
 import pytest
 
-from neuroconv.utils.str_utils import human_readable_size
+from neuroconv.utils.str_utils import human_readable_size, to_snake_case
+
+
+@pytest.mark.parametrize(
+    "name,expected",
+    [
+        ("Miniscope", "miniscope"),  # already one word
+        ("HPC_miniscope1", "hpc_miniscope1"),  # an acronym the device name carries
+        ("Miniscope_V4_BNO", "miniscope_v4_bno"),  # a hardware design name
+        ("MyDeviceName", "my_device_name"),  # written without separators
+        ("my-device name", "my_device_name"),  # hyphen and space are separators
+    ],
+)
+def test_to_snake_case(name, expected):
+    assert to_snake_case(name) == expected
 
 
 def test_small_bytes():

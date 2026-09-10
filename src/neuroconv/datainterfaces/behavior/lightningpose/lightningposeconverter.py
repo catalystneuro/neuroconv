@@ -60,6 +60,7 @@ class LightningPoseConverter(BaseDataInterface):
         self.data_interface_objects = dict(
             OriginalVideo=ExternalVideoInterface(
                 file_paths=[original_video_file_path],
+                metadata_key="original_video",
                 video_name=self.original_video_name,
             ),
             PoseEstimation=LightningPoseDataInterface(
@@ -72,14 +73,16 @@ class LightningPoseConverter(BaseDataInterface):
             self.labeled_video_name = image_series_labeled_video_name or "ImageSeriesLabeledVideo"
             self.data_interface_objects["LabeledVideo"] = ExternalVideoInterface(
                 file_paths=[labeled_video_file_path],
+                metadata_key="labeled_video",
                 video_name=self.labeled_video_name,
             )
 
-    def get_metadata(self) -> DeepDict:
-        metadata = self.data_interface_objects["PoseEstimation"].get_metadata()
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
+        pose_estimation_interface = self.data_interface_objects["PoseEstimation"]
+        metadata = pose_estimation_interface.get_metadata(use_new_metadata_format=use_new_metadata_format)
         original_video_interface = self.data_interface_objects["OriginalVideo"]
         original_videos_metadata = original_video_interface.get_metadata()
-        original_videos_metadata["Behavior"]["ExternalVideos"][self.original_video_name].update(
+        original_videos_metadata["Behavior"]["ExternalVideos"]["original_video"].update(
             description="The original video used for pose estimation.",
         )
         metadata = dict_deep_update(metadata, original_videos_metadata)
@@ -87,7 +90,7 @@ class LightningPoseConverter(BaseDataInterface):
         if "LabeledVideo" in self.data_interface_objects:
             labeled_video_interface = self.data_interface_objects["LabeledVideo"]
             labeled_videos_metadata = labeled_video_interface.get_metadata()
-            labeled_videos_metadata["Behavior"]["ExternalVideos"][self.labeled_video_name].update(
+            labeled_videos_metadata["Behavior"]["ExternalVideos"]["labeled_video"].update(
                 description="The video recorded by camera with the pose estimation labels.",
             )
             metadata = dict_deep_update(metadata, labeled_videos_metadata)
@@ -179,11 +182,24 @@ class LightningPoseConverter(BaseDataInterface):
                 parent_container="processing/behavior",
             )
 
+        # The pose estimation container links the ImageSeries written above rather than naming the
+        # source paths it was read from.
         pose_metadata = deepcopy(metadata)
-        videos_list = [dict(name=self.original_video_name)]
-        if self.labeled_video_name is not None:
-            videos_list.append(dict(name=self.labeled_video_name))
-        pose_metadata["Behavior"]["Videos"] = videos_list
+        if "Pose" in pose_metadata:
+            pose_estimation_interface = self.data_interface_objects["PoseEstimation"]
+            container_metadata = pose_metadata["Pose"]["PoseEstimations"][pose_estimation_interface.metadata_key]
+            # A link to the ImageSeries written above rather than the source path it was read from, and the
+            # paths dropped with it: the object is in the file, so the path would only be a weaker copy.
+            container_metadata["source_video_metadata_key"] = "original_video"
+            container_metadata["original_videos"] = None
+            if self.labeled_video_name is not None:
+                container_metadata["labeled_video_metadata_key"] = "labeled_video"
+            container_metadata["labeled_videos"] = None
+        else:
+            videos_list = [dict(name=self.original_video_name)]
+            if self.labeled_video_name is not None:
+                videos_list.append(dict(name=self.labeled_video_name))
+            pose_metadata["Behavior"]["Videos"] = videos_list
         self.data_interface_objects["PoseEstimation"].add_to_nwbfile(
             nwbfile=nwbfile,
             metadata=pose_metadata,

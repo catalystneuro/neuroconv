@@ -47,13 +47,6 @@ class TestSpikeGLXSyncChannelInterface:
 
         metadata = interface.get_metadata()
 
-        # Define expected metadata structure
-        expected_device = {
-            "name": "NeuropixelsImec0",
-            "description": "Neuropixels probe 0 used with SpikeGLX.",
-            "manufacturer": "Imec",
-        }
-
         expected_timeseries = {
             "name": "TimeSeriesImec0Sync",
             "description": (
@@ -67,10 +60,9 @@ class TestSpikeGLXSyncChannelInterface:
             ),
         }
 
-        # Check device metadata
-        assert "Devices" in metadata
-        assert len(metadata["Devices"]) == 1
-        assert metadata["Devices"][0] == expected_device
+        # No device is claimed: the sync trace is a plain TimeSeries, which has no device link, and the
+        # probe's provenance comes from SpikeGLXRecordingInterface.
+        assert "Devices" not in metadata
 
         # Check TimeSeries metadata
         assert "TimeSeries" in metadata
@@ -102,10 +94,8 @@ class TestSpikeGLXSyncChannelInterface:
         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
             nwbfile = io.read()
 
-            # Check that device was added
-            assert "NeuropixelsImec0" in nwbfile.devices
-            device = nwbfile.devices["NeuropixelsImec0"]
-            assert device.manufacturer == "Imec"
+            # No device is written: nothing in the file would reference it.
+            assert len(nwbfile.devices) == 0
 
             # Check that TimeSeries was added to acquisition
             assert "TimeSeriesImec0Sync" in nwbfile.acquisition
@@ -147,8 +137,8 @@ class TestSpikeGLXSyncChannelInterface:
 
         # Verify metadata is generated correctly for LF stream
         metadata = interface.get_metadata()
-        assert metadata["TimeSeries"]["SpikeGLXSync"]["name"] == "TimeSeriesImec0Sync"
-        assert "LF stream" in metadata["TimeSeries"]["SpikeGLXSync"]["description"]
+        assert metadata["TimeSeries"]["spikeglx_sync"]["name"] == "TimeSeriesImec0Sync"
+        assert "LF stream" in metadata["TimeSeries"]["spikeglx_sync"]["description"]
 
         # Create NWBFile without iterator wrapping to access data directly
         nwbfile = interface.create_nwbfile(stub_test=True, iterator_type=None)
@@ -172,6 +162,22 @@ class TestSpikeGLXSyncChannelInterface:
         import numpy as np
 
         np.testing.assert_array_equal(timeseries.data[:], expected_traces)
+
+
+def test_metadata_key_does_not_rename_series():
+    """The key addresses the entry; the TimeSeries name is derived from the probe and is unaffected."""
+    folder_path = SPIKEGLX_PATH / "Noise4Sam_g0"
+
+    default_interface = SpikeGLXSyncChannelInterface(folder_path=folder_path, stream_id="imec0.ap-SYNC")
+    assert default_interface.metadata_key == "spikeglx_sync"
+    assert default_interface.get_metadata()["TimeSeries"]["spikeglx_sync"]["name"] == "TimeSeriesImec0Sync"
+
+    custom_interface = SpikeGLXSyncChannelInterface(
+        folder_path=folder_path, stream_id="imec0.ap-SYNC", metadata_key="my_sync"
+    )
+    time_series_metadata = custom_interface.get_metadata()["TimeSeries"]
+    assert set(time_series_metadata) == {"my_sync"}
+    assert time_series_metadata["my_sync"]["name"] == "TimeSeriesImec0Sync"
 
 
 if __name__ == "__main__":

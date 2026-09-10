@@ -38,6 +38,7 @@ from neuroconv.tools.roiextractors.imagingextractordatachunkiterator import (
 )
 from neuroconv.tools.roiextractors.roiextractors import (
     _get_ophys_metadata_placeholders,
+    _trace_is_all_zero,
     get_full_ophys_metadata,
 )
 from neuroconv.tools.roiextractors.roiextractors_pending_deprecation import (
@@ -2416,6 +2417,48 @@ class TestAddImaging:
         plane = nwbfile.imaging_planes["ImagingPlane"]
         assert plane.device is device
 
+    def test_device_model_is_written_and_linked(self):
+        """A device reached from an imaging plane can name its model with ``device_model_metadata_key``.
+        The model is resolved against ``metadata["DeviceModels"]``, so the whole metadata has to reach the
+        device writer, not just the ``Devices`` registry."""
+        nwbfile = mock_NWBFile()
+        imaging = generate_dummy_imaging_extractor(num_samples=10, num_rows=5, num_columns=5)
+
+        metadata = {
+            "DeviceModels": {
+                "microscope_model": {"name": "Bergamo III", "manufacturer": "Thorlabs"},
+            },
+            "Devices": {
+                "my_device": {"name": "Microscope", "device_model_metadata_key": "microscope_model"},
+            },
+            "Ophys": {
+                "ImagingPlanes": {
+                    "my_plane": {
+                        "name": "ImagingPlane",
+                        "excitation_lambda": 920.0,
+                        "indicator": "GCaMP6s",
+                        "location": "V1",
+                        "device_metadata_key": "my_device",
+                        "optical_channel": [{"name": "Green", "description": "GCaMP", "emission_lambda": 510.0}],
+                    },
+                },
+                "MicroscopySeries": {
+                    "my_series": {
+                        "name": "TwoPhotonSeries",
+                        "unit": "n.a.",
+                        "imaging_plane_metadata_key": "my_plane",
+                    },
+                },
+            },
+        }
+
+        add_imaging_to_nwbfile(imaging=imaging, nwbfile=nwbfile, metadata=metadata, metadata_key="my_series")
+
+        device = nwbfile.devices["Microscope"]
+        assert nwbfile.imaging_planes["ImagingPlane"].device is device
+        assert device.model is nwbfile.device_models["Bergamo III"]
+        assert device.model.manufacturer == "Thorlabs"
+
     def test_shared_imaging_plane_two_microscopy_series(self):
         """Two microscopy series referencing the same imaging plane via imaging_plane_metadata_key."""
         nwbfile = mock_NWBFile()
@@ -2615,8 +2658,10 @@ class TestAddImaging:
         assert len(nwbfile.imaging_planes) == 1
         assert len(nwbfile.acquisition) == 2
 
-    def test_missing_required_imaging_plane_fields_raises(self):
-        """When an imaging plane entry is missing schema-required fields, a clear error is raised."""
+    def test_missing_required_imaging_plane_fields_are_defaulted(self):
+        """An imaging plane entry that omits schema-required optics fields is not rejected; the write path
+        fills them from the placeholder template instead of raising, so an interface can provide just a
+        name and a device link."""
         nwbfile = mock_NWBFile()
         imaging = generate_dummy_imaging_extractor(num_samples=10, num_rows=5, num_columns=5)
 
@@ -2629,6 +2674,8 @@ class TestAddImaging:
                 "ImagingPlanes": {
                     plane_key: {
                         "name": "ImagingPlane",
+                        # excitation_lambda, indicator, location and optical_channel intentionally
+                        # omitted -> defaulted at write time
                         "device_metadata_key": device_key,
                     },
                 },
@@ -2642,19 +2689,101 @@ class TestAddImaging:
             },
         }
 
-        expected_error = re.escape(
-            "Imaging plane metadata is missing required fields.\n"
-            "For a complete NWB file, the following fields should be provided. If missing, a placeholder can be used instead:\n"
-            "  excitation_lambda: nan\n"
-            "  indicator: 'unknown'\n"
-            "  location: 'unknown'\n"
-            "  optical_channel: [{'name': 'OpticalChannel', 'emission_lambda': nan, 'description': 'An optical channel of the microscope.'}]"
-        )
-        with pytest.raises(ValueError, match=expected_error):
-            add_imaging_to_nwbfile(imaging=imaging, nwbfile=nwbfile, metadata=metadata, metadata_key=metadata_key)
+        add_imaging_to_nwbfile(imaging=imaging, nwbfile=nwbfile, metadata=metadata, metadata_key=metadata_key)
 
-    def test_missing_required_series_fields_raises(self):
-        """When a series entry is missing schema-required fields, a clear error is raised."""
+        imaging_plane = nwbfile.imaging_planes["ImagingPlane"]
+        assert np.isnan(imaging_plane.excitation_lambda)
+        assert imaging_plane.indicator == "unknown"
+        assert imaging_plane.location == "unknown"
+        assert imaging_plane.device.name == "Microscope"
+        optical_channel = imaging_plane.optical_channel[0]
+        assert optical_channel.name == "OpticalChannel"
+        assert np.isnan(optical_channel.emission_lambda)
+
+    def test_partially_stated_optical_channel_is_defaulted(self):
+        """An interface that knows a channel's name but not its emission wavelength states the name alone.
+        The entry is completed from the placeholder template rather than rejected by ``OpticalChannel``,
+        so knowing more about the source cannot produce a worse outcome than knowing nothing."""
+        nwbfile = mock_NWBFile()
+        imaging = generate_dummy_imaging_extractor(num_samples=10, num_rows=5, num_columns=5)
+
+        metadata = {
+            "Ophys": {
+                "ImagingPlanes": {
+                    "my_plane": {
+                        "name": "ImagingPlane",
+                        # Only the channel name is known; description and emission_lambda are not.
+                        "optical_channel": [{"name": "ChanA"}],
+                    },
+                },
+                "MicroscopySeries": {
+                    "my_series": {"name": "TwoPhotonSeries", "imaging_plane_metadata_key": "my_plane"},
+                },
+            },
+        }
+
+        add_imaging_to_nwbfile(imaging=imaging, nwbfile=nwbfile, metadata=metadata, metadata_key="my_series")
+
+        optical_channel = nwbfile.imaging_planes["ImagingPlane"].optical_channel[0]
+        assert optical_channel.name == "ChanA"
+        assert np.isnan(optical_channel.emission_lambda)
+        assert optical_channel.description == "An optical channel of the microscope."
+
+    def test_several_partially_stated_optical_channels_keep_their_own_names(self):
+        """The default name is withheld when the list holds several entries, since two channels defaulted
+        to one name would collide inside the imaging plane."""
+        nwbfile = mock_NWBFile()
+        imaging = generate_dummy_imaging_extractor(num_samples=10, num_rows=5, num_columns=5)
+
+        metadata = {
+            "Ophys": {
+                "ImagingPlanes": {
+                    "my_plane": {
+                        "name": "ImagingPlane",
+                        "optical_channel": [{"name": "ChanA"}, {"name": "ChanB"}],
+                    },
+                },
+                "MicroscopySeries": {
+                    "my_series": {"name": "TwoPhotonSeries", "imaging_plane_metadata_key": "my_plane"},
+                },
+            },
+        }
+
+        add_imaging_to_nwbfile(imaging=imaging, nwbfile=nwbfile, metadata=metadata, metadata_key="my_series")
+
+        optical_channels = nwbfile.imaging_planes["ImagingPlane"].optical_channel
+        assert [channel.name for channel in optical_channels] == ["ChanA", "ChanB"]
+        assert all(np.isnan(channel.emission_lambda) for channel in optical_channels)
+
+    def test_registered_device_is_written_rather_than_shadowed(self):
+        """A device the interface registers is only reached through an imaging plane that links it. An
+        entry nothing references is replaced by the placeholder, and its description is lost, so the link
+        is what makes the registered device the one in the file."""
+        nwbfile = mock_NWBFile()
+        imaging = generate_dummy_imaging_extractor(num_samples=10, num_rows=5, num_columns=5)
+
+        metadata = {
+            "Devices": {"my_device": {"name": "Microscope", "description": "Scanbox imaging"}},
+            "Ophys": {
+                "ImagingPlanes": {
+                    "my_plane": {"name": "ImagingPlane", "device_metadata_key": "my_device"},
+                },
+                "MicroscopySeries": {
+                    "my_series": {"name": "TwoPhotonSeries", "imaging_plane_metadata_key": "my_plane"},
+                },
+            },
+        }
+
+        add_imaging_to_nwbfile(imaging=imaging, nwbfile=nwbfile, metadata=metadata, metadata_key="my_series")
+
+        assert len(nwbfile.devices) == 1
+        device = nwbfile.imaging_planes["ImagingPlane"].device
+        assert device.name == "Microscope"
+        assert device.description == "Scanbox imaging"
+
+    def test_missing_required_series_fields_are_defaulted(self):
+        """A series entry that omits `unit` is not rejected; the write path fills it from the placeholder
+        template instead of raising."""
         nwbfile = mock_NWBFile()
         imaging = generate_dummy_imaging_extractor(num_samples=10, num_rows=5, num_columns=5)
 
@@ -2664,18 +2793,15 @@ class TestAddImaging:
                 "MicroscopySeries": {
                     metadata_key: {
                         "name": "TwoPhotonSeries",
+                        # unit intentionally omitted -> defaulted at write time
                     },
                 },
             },
         }
 
-        expected_error = re.escape(
-            "Microscopy series metadata is missing required fields.\n"
-            "For a complete NWB file, the following fields should be provided. If missing, a placeholder can be used instead:\n"
-            "  unit: 'n.a.'"
-        )
-        with pytest.raises(ValueError, match=expected_error):
-            add_imaging_to_nwbfile(imaging=imaging, nwbfile=nwbfile, metadata=metadata, metadata_key=metadata_key)
+        add_imaging_to_nwbfile(imaging=imaging, nwbfile=nwbfile, metadata=metadata, metadata_key=metadata_key)
+
+        assert nwbfile.acquisition["TwoPhotonSeries"].unit == "n.a."
 
     def test_one_photon_series(self):
         """OnePhotonSeries is created correctly with extra NWB fields."""
@@ -2772,6 +2898,36 @@ class TestAddImaging:
         series = nwbfile.acquisition[series_name]
         assert not isinstance(series.data, ImagingExtractorDataChunkIterator)
         assert series.data.shape == (num_samples, num_columns, num_rows)
+
+    def test_non_iterative_write_of_volumetric_data(self):
+        """`get_series` is 4D for a volumetric extractor, so the planar three-axis transpose does not
+        apply to it and used to raise `ValueError: axes don't match array`. Nothing here is
+        format-specific: it broke `iterator_type=None` for every volumetric extractor."""
+        nwbfile = mock_NWBFile()
+        num_samples = 10
+        num_rows = 5
+        num_columns = 4
+        num_planes = 3
+        imaging = generate_dummy_imaging_extractor(
+            num_samples=num_samples, num_rows=num_rows, num_columns=num_columns, num_planes=num_planes
+        )
+
+        metadata = get_full_ophys_metadata()
+        series_key = "my_series"
+
+        add_imaging_to_nwbfile(
+            imaging=imaging,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            metadata_key=series_key,
+            iterator_type=None,
+        )
+
+        series_name = metadata["Ophys"]["MicroscopySeries"][series_key]["name"]
+        series = nwbfile.acquisition[series_name]
+        assert not isinstance(series.data, ImagingExtractorDataChunkIterator)
+        # The planes axis stays last, which is the layout the v2 iterator advertises.
+        assert series.data.shape == (num_samples, num_columns, num_rows, num_planes)
 
     def test_metadata_not_mutated(self):
         """Dict-based metadata is not mutated by add_imaging_to_nwbfile."""
@@ -3256,6 +3412,32 @@ class TestAddSegmentation:
                 metadata_key="my_seg",
             )
 
+    def test_default_metadata_no_traces(self):
+        """With no metadata at all, an extractor holding ROIs but no traces writes its PlaneSegmentation.
+
+        The placeholder metadata carries a RoiResponses entry under the default key, which must not be taken
+        for metadata the caller wrote.
+        """
+        nwbfile = mock_NWBFile()
+        num_rois = 5
+        segmentation_extractor = generate_dummy_segmentation_extractor(
+            num_samples=10,
+            num_rois=num_rois,
+            num_rows=15,
+            num_columns=15,
+            has_raw_signal=False,
+            has_dff_signal=False,
+            has_deconvolved_signal=False,
+            has_neuropil_signal=False,
+        )
+
+        add_segmentation_to_nwbfile(segmentation_extractor=segmentation_extractor, nwbfile=nwbfile)
+
+        ophys_module = nwbfile.processing["ophys"]
+        plane_seg = ophys_module["ImageSegmentation"].plane_segmentations["PlaneSegmentation"]
+        assert len(plane_seg.id) == num_rois
+        assert "Fluorescence" not in ophys_module.data_interfaces
+
     def test_shared_device_two_imaging_planes(self):
         """Two segmentations with different imaging planes that share the same device."""
         nwbfile = mock_NWBFile()
@@ -3470,36 +3652,97 @@ class TestAddSegmentation:
         assert series_a.rois.table.name == "PlaneSegmentationA"
         assert series_b.rois.table.name == "PlaneSegmentationB"
 
-    def test_missing_required_plane_segmentation_fields_raises(self):
-        """When PlaneSegmentation metadata is missing required fields, a clear error is raised."""
+    def test_missing_required_plane_segmentation_fields_are_defaulted(self):
+        """A PlaneSegmentation entry that omits `name` and `description` is not rejected; the write path
+        fills both from the placeholder template instead of raising, and leaves the caller's dict alone."""
         nwbfile = mock_NWBFile()
         segmentation_extractor = generate_dummy_segmentation_extractor()
 
         metadata = {
             "Ophys": {
                 "PlaneSegmentations": {
-                    "my_seg": {
-                        "name": "PlaneSegmentation",
-                    },
+                    # name and description intentionally omitted -> defaulted at write time
+                    "my_seg": {},
                 },
             },
         }
 
-        expected_error = re.escape(
-            "Plane segmentation metadata is missing required fields.\n"
-            "For a complete NWB file, the following fields should be provided. If missing, a placeholder can be used instead:\n"
-            "  description: 'Segmented ROIs'"
+        add_segmentation_to_nwbfile(
+            segmentation_extractor=segmentation_extractor,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            metadata_key="my_seg",
         )
-        with pytest.raises(ValueError, match=expected_error):
+
+        plane_segmentation = nwbfile.processing["ophys"]["ImageSegmentation"]["PlaneSegmentation"]
+        assert plane_segmentation.name == "PlaneSegmentation"
+        assert plane_segmentation.description == "Segmented ROIs"
+        # The traces resolve the same defaulted name rather than raising on the missing key.
+        fluorescence = nwbfile.processing["ophys"]["Fluorescence"]
+        assert fluorescence.roi_response_series["RoiResponseSeries"].rois.table is plane_segmentation
+        assert metadata["Ophys"]["PlaneSegmentations"]["my_seg"] == {}
+
+    def test_second_unnamed_plane_segmentation_raises(self):
+        """Two entries that both leave `name` to the default would collapse onto one PlaneSegmentation and
+        silently drop the second one's ROIs, so the second write raises instead. A name the caller states
+        is how two interfaces deliberately share one, and that stays allowed."""
+        nwbfile = mock_NWBFile()
+        segmentation_extractor = generate_dummy_segmentation_extractor()
+
+        metadata = {
+            "Ophys": {
+                "PlaneSegmentations": {
+                    "first_seg": {"description": "First segmentation"},
+                    "second_seg": {"description": "Second segmentation"},
+                },
+            },
+        }
+
+        add_segmentation_to_nwbfile(
+            segmentation_extractor=segmentation_extractor,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            metadata_key="first_seg",
+        )
+
+        with pytest.raises(ValueError, match="does not name its own"):
             add_segmentation_to_nwbfile(
                 segmentation_extractor=segmentation_extractor,
                 nwbfile=nwbfile,
                 metadata=metadata,
-                metadata_key="my_seg",
+                metadata_key="second_seg",
             )
 
-    def test_missing_required_roi_response_fields_raises(self):
-        """When ROI response series metadata is missing required fields, a clear error is raised."""
+    def test_quality_metric_properties_are_described(self):
+        """The quality metrics every segmenter names identically are written with the descriptions the old
+        list-based path gives them; any other extractor property keeps an empty one."""
+        nwbfile = mock_NWBFile()
+        num_rois = 5
+        segmentation_extractor = generate_dummy_segmentation_extractor(num_rois=num_rois)
+
+        roi_ids = segmentation_extractor.get_roi_ids()
+        for property_key in ("snr", "r_values", "cnn_preds"):
+            segmentation_extractor.set_property(property_key, np.arange(num_rois, dtype=np.float32), ids=roi_ids)
+        segmentation_extractor.set_property("accepted", np.ones(num_rois, dtype=bool), ids=roi_ids)
+
+        metadata = {"Ophys": {"PlaneSegmentations": {"my_seg": {"name": "PlaneSegmentation"}}}}
+
+        add_segmentation_to_nwbfile(
+            segmentation_extractor=segmentation_extractor,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            metadata_key="my_seg",
+        )
+
+        plane_segmentation = nwbfile.processing["ophys"]["ImageSegmentation"]["PlaneSegmentation"]
+        assert plane_segmentation["snr"].description == "Signal-to-noise ratio for each component"
+        assert plane_segmentation["r_values"].description == "Spatial correlation values for each component"
+        assert plane_segmentation["cnn_preds"].description == "CNN classifier predictions for component quality"
+        assert plane_segmentation["accepted"].description == ""
+
+    def test_missing_required_roi_response_fields_are_defaulted(self):
+        """An ROI response entry that omits `unit` is not rejected; the write path fills it from the
+        placeholder template instead of raising, and the caller's metadata dict is left untouched."""
         nwbfile = mock_NWBFile()
         segmentation_extractor = generate_dummy_segmentation_extractor()
 
@@ -3513,24 +3756,24 @@ class TestAddSegmentation:
                 },
                 "RoiResponses": {
                     "my_seg": {
+                        # unit intentionally omitted -> defaulted at write time
                         "raw": {"name": "RoiResponseSeries"},
                     },
                 },
             },
         }
 
-        expected_error = re.escape(
-            "ROI response series 'raw' metadata is missing required fields.\n"
-            "For a complete NWB file, the following fields should be provided. If missing, a placeholder can be used instead:\n"
-            "  unit: 'n.a.'"
+        add_segmentation_to_nwbfile(
+            segmentation_extractor=segmentation_extractor,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            metadata_key="my_seg",
         )
-        with pytest.raises(ValueError, match=expected_error):
-            add_segmentation_to_nwbfile(
-                segmentation_extractor=segmentation_extractor,
-                nwbfile=nwbfile,
-                metadata=metadata,
-                metadata_key="my_seg",
-            )
+
+        fluorescence = nwbfile.processing["ophys"]["Fluorescence"]
+        assert fluorescence.roi_response_series["RoiResponseSeries"].unit == "n.a."
+        # The write path defaults onto a copy, so the entry the caller passed in is unchanged.
+        assert "unit" not in metadata["Ophys"]["RoiResponses"]["my_seg"]["raw"]
 
     def test_warns_when_metadata_specifies_missing_traces(self):
         """Warning is emitted when RoiResponses metadata references traces the extractor doesn't have."""
@@ -3604,6 +3847,107 @@ class TestAddSegmentation:
         image_collection = ophys_module.data_interfaces["SegmentationImages"]
         assert len(image_collection.images) == 1
         assert "mean_img" in image_collection.images
+
+    def test_summary_image_outside_the_placeholders_is_written(self):
+        """An image the placeholders do not name is still written when no metadata entry is given."""
+        nwbfile = mock_NWBFile()
+        segmentation_extractor = generate_dummy_segmentation_extractor(
+            num_samples=10, num_rois=5, num_rows=15, num_columns=20, has_summary_images=False
+        )
+        # Minian's only summary image, and one the placeholders do not name.
+        segmentation_extractor._summary_images["maximum_projection"] = np.random.rand(15, 20)
+
+        add_segmentation_to_nwbfile(
+            segmentation_extractor=segmentation_extractor,
+            nwbfile=nwbfile,
+        )
+
+        ophys_module = nwbfile.processing["ophys"]
+        image_collection = ophys_module.data_interfaces["SegmentationImages"]
+        assert list(image_collection.images) == ["maximum_projection"]
+
+    def test_no_container_when_metadata_names_no_available_image(self):
+        """``Images`` requires at least one image, so a container that would be empty is not created."""
+        nwbfile = mock_NWBFile()
+        segmentation_extractor = generate_dummy_segmentation_extractor(
+            num_samples=10, num_rois=5, num_rows=15, num_columns=20, has_summary_images=False
+        )
+        segmentation_extractor._summary_images["mean"] = np.random.rand(15, 20)
+
+        metadata = {
+            "Ophys": {
+                "PlaneSegmentations": {"my_seg": {"name": "PlaneSegmentation", "description": "Segmented ROIs"}},
+                "SegmentationImages": {"my_seg": {"correlation": {"name": "corr_img"}}},
+            },
+        }
+
+        with pytest.warns(UserWarning, match="SegmentationImages metadata specifies images"):
+            add_segmentation_to_nwbfile(
+                segmentation_extractor=segmentation_extractor,
+                nwbfile=nwbfile,
+                metadata=metadata,
+                metadata_key="my_seg",
+            )
+
+        ophys_module = nwbfile.processing["ophys"]
+        assert "SegmentationImages" not in ophys_module.data_interfaces
+
+    def test_all_zero_trace_is_not_written(self):
+        """A trace holding only zeros carries no information, so it is dropped with a warning."""
+        nwbfile = mock_NWBFile()
+        segmentation_extractor = generate_dummy_segmentation_extractor(num_samples=10, num_rois=5)
+        for roi_response in segmentation_extractor._roi_responses:
+            if roi_response.response_type == "deconvolved":
+                roi_response.data = np.zeros_like(np.asarray(roi_response.data))
+
+        with pytest.warns(UserWarning, match="These traces hold only zeros"):
+            add_segmentation_to_nwbfile(segmentation_extractor=segmentation_extractor, nwbfile=nwbfile)
+
+        fluorescence = nwbfile.processing["ophys"]["Fluorescence"]
+        assert "Deconvolved" not in fluorescence.roi_response_series
+        assert "RoiResponseSeries" in fluorescence.roi_response_series
+
+    def test_all_zero_trace_named_in_metadata_is_written(self):
+        """A trace the caller named is written whatever it holds."""
+        nwbfile = mock_NWBFile()
+        segmentation_extractor = generate_dummy_segmentation_extractor(num_samples=10, num_rois=5)
+        for roi_response in segmentation_extractor._roi_responses:
+            if roi_response.response_type == "deconvolved":
+                roi_response.data = np.zeros_like(np.asarray(roi_response.data))
+
+        metadata = {
+            "Ophys": {
+                "PlaneSegmentations": {"my_seg": {"name": "PlaneSegmentation", "description": "Segmented ROIs"}},
+                "RoiResponses": {"my_seg": {"deconvolved": {"name": "Deconvolved", "unit": "n.a."}}},
+            },
+        }
+
+        add_segmentation_to_nwbfile(
+            segmentation_extractor=segmentation_extractor,
+            nwbfile=nwbfile,
+            metadata=metadata,
+            metadata_key="my_seg",
+        )
+
+        fluorescence = nwbfile.processing["ophys"]["Fluorescence"]
+        assert "Deconvolved" in fluorescence.roi_response_series
+
+    def test_all_zero_check_on_a_lazily_backed_trace(self, tmp_path):
+        """The scan reads a memmap in buffers, which is what a transposed memmap cannot survive otherwise.
+
+        ``np.ravel`` on the transposed memmap suite2p hands over cannot return a view, so the check that
+        used to live here copied the whole trace onto the heap before looking at it.
+        """
+        file_path = tmp_path / "spks.npy"
+        np.save(file_path, np.zeros((5, 10_000), dtype="float32"))
+        all_zero_trace = np.load(file_path, mmap_mode="r").T
+
+        with_data = np.array(all_zero_trace)
+        with_data[-1, -1] = 1.0
+
+        iterator_options = dict(chunk_mb=0.02, buffer_gb=1e-4)  # forces several buffers over a small array
+        assert _trace_is_all_zero(trace=all_zero_trace, iterator_options=iterator_options)
+        assert not _trace_is_all_zero(trace=with_data, iterator_options=iterator_options)
 
     def test_image_masks_written_correctly(self):
         """Mask data values match the extractor's get_roi_image_masks()."""

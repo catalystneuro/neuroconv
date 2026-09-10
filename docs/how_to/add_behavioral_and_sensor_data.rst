@@ -151,6 +151,10 @@ Use ``recording.select_channels()`` to extract specific channels:
     # Select wheel encoder channel
     wheel_recording = full_recording.select_channels(channel_ids=['nidq#2'])
 
+If you reached this guide from an error about heterogeneous channel offsets, see
+:doc:`handle_heterogeneous_offsets` first: it explains when the sensor channels should be split out
+as shown here and when the recording should instead be written in physical units.
+
 Adding Data
 -----------
 
@@ -197,7 +201,7 @@ Example: Adding a Wheel Encoder Signal (Neuralynx)
     # Prepare metadata with descriptive name and detailed description
     metadata = {
         "TimeSeries": {
-            "WheelEncoder": {
+            "wheel_encoder": {
                 "name": "TimeSeriesWheelEncoder",
                 "description": (
                     "Wheel encoder signal from running wheel. "
@@ -216,7 +220,7 @@ Example: Adding a Wheel Encoder Signal (Neuralynx)
         recording=wheel_recording,
         nwbfile=nwbfile,
         metadata=metadata,
-        metadata_key="WheelEncoder",
+        metadata_key="wheel_encoder",
     )
 
 Adding Data as SpatialSeries
@@ -237,7 +241,7 @@ Example: Adding 2D Position Tracking Data (Blackrock)
     # Prepare metadata with descriptive information
     metadata = {
         "SpatialSeries": {
-            "Position2D": {
+            "position_2d": {
                 "name": "SpatialSeriesPosition2D",
                 "description": (
                     "Position of the animal in the 2D arena tracked via overhead camera. "
@@ -259,7 +263,7 @@ Example: Adding 2D Position Tracking Data (Blackrock)
         recording=position_recording,
         nwbfile=nwbfile,
         metadata=metadata,
-        metadata_key="Position2D",
+        metadata_key="position_2d",
     )
 
 Example: Adding 2D Gaze Position Data (Plexon)
@@ -280,7 +284,7 @@ Example: Adding 2D Gaze Position Data (Plexon)
 
     metadata = {
         "SpatialSeries": {
-            "GazePosition": {
+            "gaze_position": {
                 "name": "SpatialSeriesGazePosition",
                 "description": (
                     "Eye position in 2D screen coordinates tracked via video-based eye tracker. "
@@ -301,7 +305,7 @@ Example: Adding 2D Gaze Position Data (Plexon)
         recording=gaze_recording,
         nwbfile=nwbfile,
         metadata=metadata,
-        metadata_key="GazePosition",
+        metadata_key="gaze_position",
     )
 
 Writing the NWB File to Disk
@@ -346,7 +350,7 @@ Metadata is organized as nested dictionaries. The ``metadata_key`` parameter sel
     # TimeSeries metadata structure
     metadata = {
         "TimeSeries": {                    # Top-level key: data type
-            "WheelEncoder": {              # metadata_key: identifies this specific data stream
+            "wheel_encoder": {             # metadata_key: identifies this specific data stream
                 "name": "TimeSeriesWheelEncoder",     # Required: unique object name in NWB file
                 "description": "Wheel encoder signal...",  # Required: detailed description
                 "unit": "degrees",         # Required: measurement unit
@@ -358,7 +362,7 @@ Metadata is organized as nested dictionaries. The ``metadata_key`` parameter sel
     # SpatialSeries metadata structure
     metadata = {
         "SpatialSeries": {                 # Top-level key: data type
-            "Position": {                  # metadata_key: identifies this specific data stream
+            "position": {                  # metadata_key: identifies this specific data stream
                 "name": "SpatialSeriesPosition",  # Required: unique object name in NWB file
                 "description": "2D position tracking...",  # Required: detailed description
                 "unit": "meters",          # Required: measurement unit for spatial coordinates
@@ -379,20 +383,20 @@ selects which stream's metadata to use for each function call:
     # Metadata for multiple data streams
     combined_metadata = {
         "TimeSeries": {
-            "WheelSpeed": {
+            "wheel_speed": {
                 "name": "TimeSeriesWheelSpeed",  # Each TimeSeries must have unique name
                 "description": "Wheel rotation speed from optical encoder",
                 "unit": "degrees_per_second",
             },
-            "LickSensor": {
+            "lick_sensor": {
                 "name": "TimeSeriesLickSensor",  # Different name from WheelSpeed
                 "description": "Lick detection from capacitive sensor",
                 "unit": "volts",
             }
         },
         "SpatialSeries": {
-            "Position": {
-                "name": "SpatialSeriesPosition",  # Can reuse "Position" since it's in SpatialSeries
+            "position": {
+                "name": "SpatialSeriesPosition",  # Can reuse "position" since it's in SpatialSeries
                 "description": "2D position from overhead camera",
                 "unit": "meters",
                 "reference_frame": "Arena center (0,0), X-axis right, Y-axis forward",
@@ -405,21 +409,21 @@ selects which stream's metadata to use for each function call:
         recording=wheel_recording,
         nwbfile=nwbfile,
         metadata=combined_metadata,
-        metadata_key="WheelSpeed",  # Selects TimeSeries -> WheelSpeed metadata
+        metadata_key="wheel_speed",  # Selects TimeSeries -> wheel_speed metadata
     )
 
     add_recording_as_time_series_to_nwbfile(
         recording=lick_recording,
         nwbfile=nwbfile,
         metadata=combined_metadata,
-        metadata_key="LickSensor",  # Selects TimeSeries -> LickSensor metadata
+        metadata_key="lick_sensor",  # Selects TimeSeries -> lick_sensor metadata
     )
 
     add_recording_as_spatial_series_to_nwbfile(
         recording=position_recording,
         nwbfile=nwbfile,
         metadata=combined_metadata,
-        metadata_key="Position",  # Selects SpatialSeries -> Position metadata
+        metadata_key="position",  # Selects SpatialSeries -> position metadata
     )
 
 .. note::
@@ -462,7 +466,7 @@ and behavioral data (using the SpikeInterface integration) from the same Intan r
             "institution": "University",
         },
         "SpatialSeries": {
-            "Accelerometer": {
+            "accelerometer": {
                 "name": "SpatialSeriesAccelerometer",
                 "description": (
                     "3D acceleration data from Intan headstage-mounted accelerometer recorded via auxiliary inputs. "
@@ -478,7 +482,7 @@ and behavioral data (using the SpikeInterface integration) from the same Intan r
             }
         },
         "TimeSeries": {
-            "Photodiode": {
+            "photodiode": {
                 "name": "TimeSeriesPhotodiode",
                 "description": (
                     "Photodiode signal detecting visual stimulus onset for precise synchronization. "
@@ -490,7 +494,7 @@ and behavioral data (using the SpikeInterface integration) from the same Intan r
                 "unit": "volts",
                 "comments": "Rising edges indicate stimulus onset; falling edges indicate stimulus offset",
             },
-            "LickSensor": {
+            "lick_sensor": {
                 "name": "TimeSeriesLickSensor",
                 "description": (
                     "Capacitive lick sensor detecting tongue contact with water port. "
@@ -500,7 +504,7 @@ and behavioral data (using the SpikeInterface integration) from the same Intan r
                 ),
                 "unit": "volts",
             },
-            "WheelVelocity": {
+            "wheel_velocity": {
                 "name": "TimeSeriesWheelVelocity",
                 "description": (
                     "Running wheel velocity from rotary encoder. "
@@ -532,7 +536,7 @@ and behavioral data (using the SpikeInterface integration) from the same Intan r
         recording=accel_recording,
         nwbfile=nwbfile,
         metadata=metadata,
-        metadata_key="Accelerometer",
+        metadata_key="accelerometer",
     )
 
     # Load analog signals from USB board ADC inputs
@@ -544,7 +548,7 @@ and behavioral data (using the SpikeInterface integration) from the same Intan r
         recording=photodiode_recording,
         nwbfile=nwbfile,
         metadata=metadata,
-        metadata_key="Photodiode",
+        metadata_key="photodiode",
     )
 
     # Add lick sensor signal (ADC-1)
@@ -553,7 +557,7 @@ and behavioral data (using the SpikeInterface integration) from the same Intan r
         recording=lick_recording,
         nwbfile=nwbfile,
         metadata=metadata,
-        metadata_key="LickSensor",
+        metadata_key="lick_sensor",
     )
 
     # Add wheel velocity signal (ADC-2)
@@ -562,7 +566,7 @@ and behavioral data (using the SpikeInterface integration) from the same Intan r
         recording=wheel_recording,
         nwbfile=nwbfile,
         metadata=metadata,
-        metadata_key="WheelVelocity",
+        metadata_key="wheel_velocity",
     )
 
     # STEP 6: Save NWB file with optimized settings
@@ -591,6 +595,10 @@ Follow `NWB best practices for naming <https://nwbinspector.readthedocs.io/en/de
     * ``SpatialSeriesReachEndpoint``
 * Avoid special characters (slashes, colons) that confuse HDF5/Zarr parsers
 * Make names self-documenting but keep them concise
+
+The ``metadata_key`` is not one of these names. It is a snake_case handle addressing an entry in the
+metadata dictionary (``"wheel_velocity"``), while the CamelCase name of the written object lives inside
+that entry (``"name": "TimeSeriesWheelVelocity"``). See :ref:`metadata_key_naming`.
 
 Writing Descriptions
 ^^^^^^^^^^^^^^^^^^^^

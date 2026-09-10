@@ -93,7 +93,7 @@ class TestNIDQInterfacePulseTimesAlignment(TestCase):
     def test_alignment_interfaces(self):
         unaligned_trial_start_times = self.trial_interface.get_original_timestamps(column="start_time")
         inferred_aligned_trial_start_timestamps = self.nidq_interface.get_event_times_from_ttl(
-            channel_name="nidq#XA0"  # The channel receiving pulses from the DLC system
+            channel_name="XA0"  # The channel receiving pulses from the DLC system
         )
 
         self.trial_interface.set_aligned_timestamps(
@@ -157,7 +157,7 @@ class TestNIDQInterfacePulseTimesAlignment(TestCase):
             column="start_time"
         )
         inferred_aligned_trial_start_timestamps = converter.data_interface_objects["NIDQ"].get_event_times_from_ttl(
-            channel_name="nidq#XA0"  # The channel receiving pulses from the DLC system
+            channel_name="XA0"  # The channel receiving pulses from the DLC system
         )
 
         converter.data_interface_objects["Trials"].set_aligned_timestamps(
@@ -192,7 +192,7 @@ class TestNIDQInterfacePulseTimesAlignment(TestCase):
                     column="start_time"
                 )
                 inferred_aligned_trial_start_timestamps = self.data_interface_objects["NIDQ"].get_event_times_from_ttl(
-                    channel_name="nidq#XA0"  # The channel receiving pulses from the DLC system
+                    channel_name="XA0"  # The channel receiving pulses from the DLC system
                 )
 
                 self.data_interface_objects["Trials"].set_aligned_timestamps(
@@ -433,7 +433,7 @@ class TestNIDQInterfaceOnSignalAlignment(TestNIDQInterfacePulseTimesAlignment):
 
     def test_alignment_interfaces(self):
         inferred_aligned_trial_start_time = self.nidq_interface.get_event_times_from_ttl(
-            channel_name="nidq#XA0"  # The channel receiving pulses from the DLC system
+            channel_name="XA0"  # The channel receiving pulses from the DLC system
         )[0]
 
         self.trial_interface.set_aligned_starting_time(aligned_starting_time=inferred_aligned_trial_start_time)
@@ -483,7 +483,7 @@ class TestNIDQInterfaceOnSignalAlignment(TestNIDQInterfacePulseTimesAlignment):
         metadata = converter.get_metadata()
 
         inferred_aligned_trial_start_time = converter.data_interface_objects["NIDQ"].get_event_times_from_ttl(
-            channel_name="nidq#XA0"  # The channel receiving pulses from the DLC system
+            channel_name="XA0"  # The channel receiving pulses from the DLC system
         )[0]
 
         converter.data_interface_objects["Trials"].set_aligned_starting_time(
@@ -508,7 +508,7 @@ class TestNIDQInterfaceOnSignalAlignment(TestNIDQInterfacePulseTimesAlignment):
                 super().__init__(source_data=source_data, verbose=verbose)
 
                 inferred_aligned_trial_start_time = self.data_interface_objects["NIDQ"].get_event_times_from_ttl(
-                    channel_name="nidq#XA0"  # The channel receiving pulses from the DLC system
+                    channel_name="XA0"  # The channel receiving pulses from the DLC system
                 )[0]
 
                 self.data_interface_objects["Trials"].set_aligned_starting_time(

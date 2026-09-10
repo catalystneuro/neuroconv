@@ -113,6 +113,16 @@ def test_get_json_schema_from_method_signature_exclude():
     assert test_json_schema == expected_json_schema
 
 
+def test_get_json_schema_from_method_signature_leaves_exclude_alone():
+    def basic_method(integer_to_keep: int, floating_to_ignore: float):
+        pass
+
+    test_exclude = ["floating_to_ignore"]
+    get_json_schema_from_method_signature(method=basic_method, exclude=test_exclude)
+
+    assert test_exclude == ["floating_to_ignore"]
+
+
 def test_get_json_schema_from_method_signature_init():
     """Test that 'self' is automatically skipped."""
 
@@ -217,7 +227,15 @@ def test_get_json_schema_from_example_data_interface():
                 "description": "Path to the folder of .mpx files.",
             },
             "verbose": {"default": False, "type": "boolean", "description": "Allows verbose.\nDefault is False."},
-            "es_key": {"default": "ElectricalSeries", "type": "string"},
+            "es_key": {"anyOf": [{"type": "string"}, {"type": "null"}], "default": None},
+            "metadata_key": {
+                "anyOf": [{"type": "string"}, {"type": "null"}],
+                "default": None,
+                "description": (
+                    "Key that indexes this interface's entries in the dict-based metadata. Defaults to\n"
+                    '``"alpha_omega_recording"``.'
+                ),
+            },
         },
         "required": ["folder_path"],
         "type": "object",

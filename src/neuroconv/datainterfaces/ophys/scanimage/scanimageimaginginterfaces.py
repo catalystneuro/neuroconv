@@ -188,13 +188,13 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
         extractor_instance = extractor_class(**self.extractor_kwargs)
         return extractor_instance
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         """
         Get metadata for the ScanImage imaging data.
 
         Parameters
         ----------
-        use_new_metadata_format : bool, default: False
+        use_new_metadata_format : bool, default: True
             When False, returns the old list-based metadata format (backward compatible).
             When True, returns dict-based metadata with ScanImage provenance.
 
@@ -209,11 +209,7 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
             - Imaging plane details including grid spacing and origin coordinates if available
             - Photon series metadata with scan line rate and other acquisition parameters
         """
-        metadata = (
-            super().get_metadata()
-            if not use_new_metadata_format
-            else super().get_metadata(use_new_metadata_format=True)
-        )
+        metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
 
         session_start_time = self._get_session_start_time()
         if session_start_time:
@@ -260,12 +256,22 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
             device_description = "Microscope controlled by ScanImage"
             if version is not None:
                 device_description = f"Microscope and acquisition data with ScanImage (version {version})"
+            # Keyed by the microscope rather than by this interface, whose key carries the channel and
+            # plane: a multi-channel acquisition is several interfaces on one microscope.
+            device_metadata_key = "scan_image_microscope"
             metadata["Devices"] = {
-                self.metadata_key: {"description": device_description},
+                device_metadata_key: {"name": "Microscope", "description": device_description},
             }
 
+            # The channel and plane are what distinguish one interface's objects from another's in a
+            # multi-channel conversion, so they are named here rather than left to the generic defaults.
+            # A single-channel single-plane file states neither, and its objects take the plain names.
+            channel_string = self.channel_name.replace(" ", "").capitalize() if self.channel_name is not None else ""
+            plane_string = f"Plane{self.plane_index}" if self.plane_index is not None else ""
+
             imaging_plane_entry = {
-                "device_metadata_key": self.metadata_key,
+                "name": f"ImagingPlane{channel_string}{plane_string}",
+                "device_metadata_key": device_metadata_key,
                 "imaging_rate": sampling_frequency,
             }
             if grid_spacing is not None:
@@ -276,8 +282,13 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
                 imaging_plane_entry["origin_coords_unit"] = "meters"
 
             microscopy_series_entry = {
+                "name": f"{self.photon_series_type}{channel_string}{plane_string}",
                 "imaging_plane_metadata_key": self.metadata_key,
-                "description": f"Imaging data acquired using ScanImage for {self.channel_name}",
+                "description": (
+                    f"Imaging data acquired using ScanImage for {self.channel_name}"
+                    if self.channel_name is not None
+                    else "Imaging data acquired using ScanImage"
+                ),
             }
             if scan_line_rate is not None:
                 microscopy_series_entry["scan_line_rate"] = scan_line_rate
@@ -291,7 +302,10 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
         # Old list-based format
         device_name = "Microscope"
         metadata["Ophys"]["Device"][0].update(name=device_name, description="Microscope controlled by ScanImage")
-        channel_name_string = self.channel_name.replace(" ", "").capitalize()
+        # A single-channel file states no channel and its objects take the plain names, the same rule
+        # the dict-based branch above applies. The extractor resolves which channel that is, but
+        # reading the resolved name back would rename the objects of every user who never asked for one.
+        channel_name_string = self.channel_name.replace(" ", "").capitalize() if self.channel_name is not None else ""
 
         optical_channel_name = f"OpticalChannel{channel_name_string}"
         optical_channel_metadata = {
@@ -316,7 +330,10 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
         photon_series_name = f"{photon_series_key}{channel_name_string}{plane_index_string}"
         photon_series_metadata["imaging_plane"] = imaging_plane_name
         photon_series_metadata["name"] = photon_series_name
-        photon_series_metadata["description"] = f"Imaging data acquired using ScanImage for {self.channel_name}"
+        photon_series_description = "Imaging data acquired using ScanImage"
+        if self.channel_name is not None:
+            photon_series_description = f"{photon_series_description} for {self.channel_name}"
+        photon_series_metadata["description"] = photon_series_description
 
         if scan_line_rate is not None:
             photon_series_metadata.update(scan_line_rate=scan_line_rate)
@@ -428,7 +445,7 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
         """
         from roiextractors import ScanImageImagingExtractor
 
-        return ScanImageImagingExtractor.get_available_channels(file_path=file_path)
+        return ScanImageImagingExtractor.get_available_channel_names(file_path=file_path)
 
     @staticmethod
     def get_available_planes(file_path: Path | str) -> list[str]:
@@ -452,7 +469,8 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
         """
         from roiextractors import ScanImageImagingExtractor
 
-        return ScanImageImagingExtractor.get_available_planes(file_path=file_path)
+        num_planes = ScanImageImagingExtractor.get_available_num_planes(file_path=file_path)
+        return [str(plane_index) for plane_index in range(num_planes)]
 
 
 class ScanImageLegacyImagingInterface(BaseImagingExtractorInterface):
@@ -565,13 +583,13 @@ class ScanImageLegacyImagingInterface(BaseImagingExtractorInterface):
             metadata_key=metadata_key,
         )
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         """
         Get metadata for the ScanImage imaging data.
 
         Parameters
         ----------
-        use_new_metadata_format : bool, default: False
+        use_new_metadata_format : bool, default: True
             When False, returns the old list-based metadata format (backward compatible).
             When True, returns dict-based metadata with ScanImage provenance keyed by
             ``metadata_key`` under ``Devices``, ``Ophys.ImagingPlanes`` and
@@ -583,11 +601,7 @@ class ScanImageLegacyImagingInterface(BaseImagingExtractorInterface):
             Dictionary containing metadata including session start time and device information
             specific to the ScanImage system.
         """
-        metadata = (
-            super().get_metadata()
-            if not use_new_metadata_format
-            else super().get_metadata(use_new_metadata_format=True)
-        )
+        metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
 
         if "state.internal.triggerTimeString" in self.image_metadata:
             extracted_session_start_time = dateparse(self.image_metadata["state.internal.triggerTimeString"])
@@ -596,11 +610,15 @@ class ScanImageLegacyImagingInterface(BaseImagingExtractorInterface):
         extracted_description = json.dumps(self.image_metadata) if self.image_metadata else None
 
         if use_new_metadata_format:
+            device_metadata_key = "scan_image_microscope"
             metadata["Devices"] = {
-                self.metadata_key: {"description": "Microscope controlled by ScanImage (legacy v3.8)"},
+                device_metadata_key: {
+                    "name": "Microscope",
+                    "description": "Microscope controlled by ScanImage (legacy v3.8)",
+                },
             }
             imaging_plane_entry = {
-                "device_metadata_key": self.metadata_key,
+                "device_metadata_key": device_metadata_key,
                 "imaging_rate": float(self.sampling_frequency),
             }
             microscopy_series_entry = {

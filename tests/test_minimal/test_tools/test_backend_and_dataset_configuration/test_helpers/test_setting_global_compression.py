@@ -3,7 +3,7 @@
 import h5py
 import numpy as np
 import pytest
-from pynwb import NWBHDF5IO
+from pynwb import read_nwb
 from pynwb.testing.mock.base import mock_TimeSeries
 from pynwb.testing.mock.file import mock_NWBFile
 
@@ -54,46 +54,27 @@ def get_hdf5_filter_info(dataset):
     return dcpl.get_filter(0)
 
 
-# Mapping of compression method names to their expected HDF5 filter IDs and descriptions
-# See the gist https://gist.github.com/h-mayorquin/d6ea547f8061c9658011bb66edf9789d for details on how to generate
-# this mapping.
+# Mapping of compression method names to their expected HDF5 filter IDs.
+# The numeric filter ID is a stable identifier registered with The HDF Group, so it is safe to assert on.
+# We deliberately do not assert on the filter's free-text description string: it is internal HDF5 metadata
+# that neuroconv never consumes or surfaces, and upstream (hdf5plugin) can reword it across releases.
 HDF5_COMPRESSION_EXPECTED = {
     # Built-in HDF5 compression methods - these show up in both compression attribute and filter pipeline
-    "gzip": {"compression_attribute": "gzip", "filter_id": 1, "filter_description": "deflate"},
-    "lzf": {"compression_attribute": "lzf", "filter_id": 32000, "filter_description": "lzf"},
-    "szip": {"compression_attribute": "szip", "filter_id": 4, "filter_description": "szip"},
+    "gzip": {"compression_attribute": "gzip", "filter_id": 1},
+    "lzf": {"compression_attribute": "lzf", "filter_id": 32000},
+    "szip": {"compression_attribute": "szip", "filter_id": 4},
     # Advanced compression methods from hdf5plugin - these only show up in filter pipeline
-    "Bitshuffle": {
-        "compression_attribute": None,
-        "filter_id": 32008,
-        "filter_description": "bitshuffle; see https://github.com/kiyo-masui/bitshuffle",
-    },
-    "Blosc": {"compression_attribute": None, "filter_id": 32001, "filter_description": "blosc"},
-    "Blosc2": {"compression_attribute": None, "filter_id": 32026, "filter_description": "blosc2"},
-    "BZip2": {"compression_attribute": None, "filter_id": 307, "filter_description": "bzip2"},
-    "FciDecomp": {"compression_attribute": None, "filter_id": 32018, "filter_description": "HDF5 JPEG-LS filter"},
-    "LZ4": {
-        "compression_attribute": None,
-        "filter_id": 32004,
-        "filter_description": "HDF5 lz4 filter; see http://www.hdfgroup.org/services/contributions.html",
-    },
-    "Sperr": {"compression_attribute": None, "filter_id": 32028, "filter_description": "H5Z-SPERR"},
-    "SZ": {
-        "compression_attribute": None,
-        "filter_id": 32017,
-        "filter_description": "SZ compressor/decompressor for floating-point data.",
-    },
-    "SZ3": {
-        "compression_attribute": None,
-        "filter_id": 32024,
-        "filter_description": "SZ3 compressor/decompressor for floating-point data.",
-    },
-    "Zfp": {"compression_attribute": None, "filter_id": 32013, "filter_description": "H5Z-ZFP-1.1.1 (ZFP-1.0.1)"},
-    "Zstd": {
-        "compression_attribute": None,
-        "filter_id": 32015,
-        "filter_description": "Zstandard compression: http://www.zstd.net",
-    },
+    "Bitshuffle": {"compression_attribute": None, "filter_id": 32008},
+    "Blosc": {"compression_attribute": None, "filter_id": 32001},
+    "Blosc2": {"compression_attribute": None, "filter_id": 32026},
+    "BZip2": {"compression_attribute": None, "filter_id": 307},
+    "FciDecomp": {"compression_attribute": None, "filter_id": 32018},
+    "LZ4": {"compression_attribute": None, "filter_id": 32004},
+    "Sperr": {"compression_attribute": None, "filter_id": 32028},
+    "SZ": {"compression_attribute": None, "filter_id": 32017},
+    "SZ3": {"compression_attribute": None, "filter_id": 32024},
+    "Zfp": {"compression_attribute": None, "filter_id": 32013},
+    "Zstd": {"compression_attribute": None, "filter_id": 32015},
 }
 
 # Mapping of compression method names to their expected Zarr compressor class names
@@ -127,6 +108,11 @@ def create_test_nwbfile():
     return nwbfile
 
 
+# Filters that reject the float datasets written above, rather than compressing them badly: HTJ2K is a
+# JPEG 2000 image codec and only accepts integer datatypes, so the write fails inside HDF5 with
+# "Unsupported datatype class". Testing it needs a dataset of its own rather than a different expectation.
+HDF5_COMPRESSION_METHODS_WITHOUT_FLOAT_SUPPORT = {"Htj2k"}
+
 # We need this so that pytest-xdist can run tests in parallel without issues
 # Otherwise the order of the parameterized test is not deterministic and the
 # Different runners fail to find the same tests
@@ -139,12 +125,15 @@ class TestGlobalCompressionHDF5:
     @pytest.mark.parametrize("compression_method", sorted_hdf5_compression_methods)
     def test_global_compression_method_only(self, tmp_path, compression_method):
         """Test applying only global compression method without options using backend configuration."""
+        if compression_method in HDF5_COMPRESSION_METHODS_WITHOUT_FLOAT_SUPPORT:
+            pytest.skip(f"Compression method '{compression_method}' does not accept the float data written here")
+
         nwbfile = create_test_nwbfile()
         nwbfile_path = tmp_path / f"test_global_compression_{compression_method}.nwb"
 
         # Get default backend configuration and apply global compression
         backend_configuration = get_default_backend_configuration(nwbfile, backend="hdf5")
-        backend_configuration.apply_global_compression(compression_method)
+        backend_configuration.apply_global_compression([compression_method])
 
         configure_and_write_nwbfile(
             nwbfile=nwbfile,
@@ -155,10 +144,9 @@ class TestGlobalCompressionHDF5:
         assert nwbfile_path.exists()
 
         # Verify compression was applied by reading the file
-        with NWBHDF5IO(str(nwbfile_path), mode="r") as io:
-            read_nwbfile = io.read()
-            assert "TestTimeSeries1" in read_nwbfile.acquisition
-            assert "TestTimeSeries2" in read_nwbfile.acquisition
+        read_nwbfile = read_nwb(nwbfile_path)
+        assert "TestTimeSeries1" in read_nwbfile.acquisition
+        assert "TestTimeSeries2" in read_nwbfile.acquisition
 
         # Check compression at HDF5 level for both datasets using proper filter pipeline inspection
         with h5py.File(str(nwbfile_path), "r") as f:
@@ -175,34 +163,26 @@ class TestGlobalCompressionHDF5:
 
                 # Check filter pipeline for all compression methods
                 expected_filter_id = expected["filter_id"]
-                expected_filter_description = expected["filter_description"]
 
                 # Use our helper function to inspect the filter pipeline
                 filter_info1 = get_hdf5_filter_info(dataset1)
                 filter_info2 = get_hdf5_filter_info(dataset2)
 
-                # Extract filter ID and description from the filter info tuple
+                # Extract the filter ID from the filter info tuple
                 actual_filter_id1 = filter_info1[0]
-                actual_filter_description1 = filter_info1[3].decode("utf-8")
                 assert (
                     actual_filter_id1 == expected_filter_id
                 ), f"Expected filter ID {expected_filter_id} but got {actual_filter_id1} for dataset1"
-                assert (
-                    actual_filter_description1 == expected_filter_description
-                ), f"Expected filter description '{expected_filter_description}' but got '{actual_filter_description1}' for dataset1"
 
                 actual_filter_id2 = filter_info2[0]
-                actual_filter_description2 = filter_info2[3].decode("utf-8")
                 assert (
                     actual_filter_id2 == expected_filter_id
                 ), f"Expected filter ID {expected_filter_id} but got {actual_filter_id2} for dataset2"
-                assert (
-                    actual_filter_description2 == expected_filter_description
-                ), f"Expected filter description '{expected_filter_description}' but got '{actual_filter_description2}' for dataset2"
             else:
                 # For compression methods that don't work properly, we just verify the file was created
                 # The compression may be None or fallback to a default method
                 pass
+        read_nwbfile.read_io.close()
 
     def test_global_compression_with_options(self, tmp_path):
         """Test applying global compression method with options using backend configuration."""
@@ -211,7 +191,7 @@ class TestGlobalCompressionHDF5:
 
         # Get default backend configuration and apply global compression with options
         backend_configuration = get_default_backend_configuration(nwbfile, backend="hdf5")
-        backend_configuration.apply_global_compression("gzip", {"level": 9})
+        backend_configuration.apply_global_compression(["gzip"], [{"level": 9}])
 
         configure_and_write_nwbfile(
             nwbfile=nwbfile,
@@ -222,10 +202,9 @@ class TestGlobalCompressionHDF5:
         assert nwbfile_path.exists()
 
         # Verify compression was applied by reading the file
-        with NWBHDF5IO(str(nwbfile_path), mode="r") as io:
-            read_nwbfile = io.read()
-            assert "TestTimeSeries1" in read_nwbfile.acquisition
-            assert "TestTimeSeries2" in read_nwbfile.acquisition
+        read_nwbfile = read_nwb(nwbfile_path)
+        assert "TestTimeSeries1" in read_nwbfile.acquisition
+        assert "TestTimeSeries2" in read_nwbfile.acquisition
 
         # Check compression at HDF5 level for both datasets
         with h5py.File(str(nwbfile_path), "r") as f:
@@ -235,6 +214,7 @@ class TestGlobalCompressionHDF5:
             assert dataset1.compression_opts == 9
             assert dataset2.compression == "gzip"
             assert dataset2.compression_opts == 9
+        read_nwbfile.read_io.close()
 
     def test_global_compression_invalid_method(self):
         """Test that invalid compression method raises error when using apply_global_compression."""
@@ -242,7 +222,7 @@ class TestGlobalCompressionHDF5:
         backend_configuration = get_default_backend_configuration(nwbfile, backend="hdf5")
 
         with pytest.raises(ValueError, match="Compression method 'invalid_method' is not available"):
-            backend_configuration.apply_global_compression("invalid_method")
+            backend_configuration.apply_global_compression(["invalid_method"])
 
 
 # We need this so that pytest-xdist can run tests in parallel without issues
@@ -269,7 +249,7 @@ class TestGlobalCompressionZarr:
 
         # Get default backend configuration and apply global compression
         backend_configuration = get_default_backend_configuration(nwbfile, backend="zarr")
-        backend_configuration.apply_global_compression(compression_method)
+        backend_configuration.apply_global_compression([compression_method])
 
         configure_and_write_nwbfile(
             nwbfile=nwbfile,
@@ -280,12 +260,10 @@ class TestGlobalCompressionZarr:
         assert nwbfile_path.exists()
 
         # Verify compression was applied by reading the file
-        from hdmf_zarr import NWBZarrIO
 
-        with NWBZarrIO(str(nwbfile_path), mode="r") as io:
-            read_nwbfile = io.read()
-            assert "TestTimeSeries1" in read_nwbfile.acquisition
-            assert "TestTimeSeries2" in read_nwbfile.acquisition
+        read_nwbfile = read_nwb(nwbfile_path)
+        assert "TestTimeSeries1" in read_nwbfile.acquisition
+        assert "TestTimeSeries2" in read_nwbfile.acquisition
 
         # Check compression at Zarr level for both datasets
         import zarr
@@ -300,6 +278,7 @@ class TestGlobalCompressionZarr:
         # Check that the compressor name matches the expected compression method
         assert expected_compression in str(dataset1.compressors[0]).lower()
         assert expected_compression in str(dataset2.compressors[0]).lower()
+        read_nwbfile.read_io.close()
 
     def test_global_compression_with_options(self, tmp_path):
         """Test applying global compression method with options using backend configuration."""
@@ -308,7 +287,7 @@ class TestGlobalCompressionZarr:
 
         # Get default backend configuration and apply global compression with options
         backend_configuration = get_default_backend_configuration(nwbfile, backend="zarr")
-        backend_configuration.apply_global_compression("gzip", {"level": 6})
+        backend_configuration.apply_global_compression(["gzip"], [{"level": 6}])
 
         configure_and_write_nwbfile(
             nwbfile=nwbfile,
@@ -319,12 +298,10 @@ class TestGlobalCompressionZarr:
         assert nwbfile_path.exists()
 
         # Verify compression was applied by reading the file
-        from hdmf_zarr import NWBZarrIO
 
-        with NWBZarrIO(str(nwbfile_path), mode="r") as io:
-            read_nwbfile = io.read()
-            assert "TestTimeSeries1" in read_nwbfile.acquisition
-            assert "TestTimeSeries2" in read_nwbfile.acquisition
+        read_nwbfile = read_nwb(nwbfile_path)
+        assert "TestTimeSeries1" in read_nwbfile.acquisition
+        assert "TestTimeSeries2" in read_nwbfile.acquisition
 
         # Check compression at Zarr level for both datasets
         import zarr
@@ -346,6 +323,7 @@ class TestGlobalCompressionZarr:
             assert compressor1.level == 6
         if hasattr(compressor2, "level"):
             assert compressor2.level == 6
+        read_nwbfile.read_io.close()
 
     def test_global_compression_invalid_method(self, tmp_path):
         """Test that invalid compression method raises error when using apply_global_compression."""
@@ -353,4 +331,81 @@ class TestGlobalCompressionZarr:
         backend_configuration = get_default_backend_configuration(nwbfile, backend="zarr")
 
         with pytest.raises(ValueError, match="Compression method 'invalid_method' is not available"):
-            backend_configuration.apply_global_compression("invalid_method")
+            backend_configuration.apply_global_compression(["invalid_method"])
+
+
+def test_global_compression_applies_a_filter():
+    """A filter composes with a compression method, so naming both puts both on every dataset."""
+    nwbfile = create_test_nwbfile()
+    backend_configuration = get_default_backend_configuration(nwbfile, backend="hdf5")
+
+    backend_configuration.apply_global_compression(["shuffle", "gzip"])
+
+    for dataset_configuration in backend_configuration.dataset_configurations.values():
+        assert dataset_configuration.compressors == ["shuffle", "gzip"]
+        assert dataset_configuration.get_data_io_kwargs()["shuffle"] is True
+
+
+def test_global_compression_replaces_the_whole_pipeline():
+    """Naming the pipeline replaces it, so a filter that is not named again does not survive."""
+    nwbfile = create_test_nwbfile()
+    backend_configuration = get_default_backend_configuration(nwbfile, backend="hdf5")
+    backend_configuration.apply_global_compression(["shuffle", "gzip"])
+
+    backend_configuration.apply_global_compression(["lzf"])
+
+    for dataset_configuration in backend_configuration.dataset_configurations.values():
+        assert dataset_configuration.compressors == ["lzf"]
+
+
+def test_global_compression_length_mismatch_raises():
+    nwbfile = create_test_nwbfile()
+    backend_configuration = get_default_backend_configuration(nwbfile, backend="hdf5")
+
+    with pytest.raises(ValueError, match="Length mismatch between `compressors`"):
+        backend_configuration.apply_global_compression(["shuffle", "gzip"], [None])
+
+
+def test_global_compression_deprecated_singular_form():
+    """The single method and single options dictionary remain accepted for one release cycle."""
+    nwbfile = create_test_nwbfile()
+    backend_configuration = get_default_backend_configuration(nwbfile, backend="hdf5")
+
+    with pytest.warns(FutureWarning, match="removed in v0.12.0"):
+        backend_configuration.apply_global_compression("gzip", {"level": 9})
+
+    for dataset_configuration in backend_configuration.dataset_configurations.values():
+        assert dataset_configuration.compressors == ["gzip"]
+        assert dataset_configuration.compressor_options == [{"level": 9}]
+
+
+def test_global_compression_deprecated_keyword_form():
+    """The keyword spelling the user guide used to teach still works and warns."""
+    nwbfile = create_test_nwbfile()
+    backend_configuration = get_default_backend_configuration(nwbfile, backend="hdf5")
+
+    with pytest.warns(FutureWarning, match="removed in v0.12.0"):
+        backend_configuration.apply_global_compression(
+            compression_method="gzip",
+            compression_options={"level": 9},
+        )
+
+    for dataset_configuration in backend_configuration.dataset_configurations.values():
+        assert dataset_configuration.compressors == ["gzip"]
+        assert dataset_configuration.compressor_options == [{"level": 9}]
+
+
+def test_global_compression_both_spellings_raises():
+    nwbfile = create_test_nwbfile()
+    backend_configuration = get_default_backend_configuration(nwbfile, backend="hdf5")
+
+    with pytest.raises(ValueError, match="Use only `compressors` and `compressor_options`"):
+        backend_configuration.apply_global_compression(["gzip"], compression_method="gzip")
+
+
+def test_global_compression_without_compressors_raises():
+    nwbfile = create_test_nwbfile()
+    backend_configuration = get_default_backend_configuration(nwbfile, backend="hdf5")
+
+    with pytest.raises(TypeError, match="requires `compressors`"):
+        backend_configuration.apply_global_compression()

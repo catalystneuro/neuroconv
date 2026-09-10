@@ -145,3 +145,6 @@ ophys_testing_data/
 
 # Local uv configuration
 uv.toml
+
+# Temporary files
+temp_notebooks/

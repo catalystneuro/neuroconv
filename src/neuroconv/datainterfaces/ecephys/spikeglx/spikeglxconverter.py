@@ -130,17 +130,13 @@ class SpikeGLXConverterPipe(ConverterPipe):
             sync_stream_list.sort()  # "ap" < "lf" alphabetically, so AP comes first
             selected_sync_stream = sync_stream_list[0]
 
+            # One sync interface per probe, so the key disambiguates by probe rather than by band: the
+            # band is an arbitrary pick (AP preferred above) and naming it would suggest a choice the
+            # user made. ``probe_device`` is already a snake_case-safe token (e.g. "imec0").
             data_interfaces[selected_sync_stream] = SpikeGLXSyncChannelInterface(
                 folder_path=folder_path,
                 stream_id=selected_sync_stream,
-                metadata_key=f"SpikeGLXSync{selected_sync_stream}",
+                metadata_key=f"spikeglx_sync_{probe_device}",
             )
 
         super().__init__(data_interfaces=data_interfaces, verbose=verbose)
-
-    def get_conversion_options_schema(self) -> dict:
-        conversion_options_schema = super().get_conversion_options_schema()
-        conversion_options_schema["properties"].update(
-            {name: interface.get_conversion_options_schema() for name, interface in self.data_interface_objects.items()}
-        )
-        return conversion_options_schema

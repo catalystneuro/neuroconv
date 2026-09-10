@@ -6,9 +6,9 @@ import numpy as np
 import pytest
 from hdmf.common import VectorData
 from hdmf.data_utils import DataChunkIterator
-from pynwb.base import DynamicTable
+from pynwb.base import DynamicTable, ExternalImage, Images
 from pynwb.behavior import CompassDirection
-from pynwb.image import ImageSeries
+from pynwb.image import GrayscaleImage, ImageSeries
 from pynwb.misc import Units
 from pynwb.testing.mock.base import mock_TimeSeries
 from pynwb.testing.mock.behavior import mock_SpatialSeries
@@ -45,11 +45,11 @@ def test_configuration_on_time_series(iterator: callable, backend: Literal["hdf5
     assert dataset_configuration.dtype == array.dtype
     assert dataset_configuration.chunk_shape == array.shape
     assert dataset_configuration.buffer_shape == array.shape
-    assert dataset_configuration.compression_method == "gzip"
-    assert dataset_configuration.compression_options is None
+    assert dataset_configuration.compressors == ["gzip"]
+    assert dataset_configuration.compressor_options is None
 
     if backend == "zarr":
-        assert dataset_configuration.filter_methods is None
+        assert dataset_configuration.filters is None
         assert dataset_configuration.filter_options is None
 
 
@@ -57,20 +57,31 @@ def test_configuration_on_time_series(iterator: callable, backend: Literal["hdf5
 def test_configuration_on_electrical_series_with_non_wrapped_data(backend: Literal["hdf5", "zarr"]):
     # Test that ElectricalSeries is chunked appropriately even if data is passed as an array
     # See https://github.com/catalystneuro/neuroconv/issues/1099
-    from pynwb.testing.mock.ecephys import mock_ElectricalSeries
+    from pynwb.testing.mock.ecephys import (
+        mock_ElectricalSeries,
+        mock_ElectrodesTable,
+    )
     from pynwb.testing.mock.file import mock_NWBFile
 
     data = np.ones((10_000, 128))
 
     nwbfile = mock_NWBFile()
 
-    es = mock_ElectricalSeries(data=data, name="ElectricalSeries")
+    # mock_electrodes sizes the region to n_electrodes but hardcodes a 5-row table, so the default
+    # electrodes built for 128 channels point out of bounds and hdmf>=4 rejects them at construction.
+    # Attach an explicitly sized table to the NWBFile and create the region through the file so the
+    # region and its target table share an ancestor.
+    nwbfile.electrodes = mock_ElectrodesTable(n_rows=128)
+    electrodes = nwbfile.create_electrode_table_region(region=list(range(128)), description="test electrodes")
+    es = mock_ElectricalSeries(data=data, name="ElectricalSeries", electrodes=electrodes)
     nwbfile.add_acquisition(es)
     dataset_configurations = list(get_default_dataset_io_configurations(nwbfile=nwbfile, backend=backend))
 
-    assert len(dataset_configurations) == 1
-
-    electrical_series_configuration = dataset_configurations[0]
+    electrical_series_configuration = next(
+        dataset_configuration
+        for dataset_configuration in dataset_configurations
+        if dataset_configuration.location_in_file == "acquisition/ElectricalSeries/data"
+    )
 
     exppected_chunk_for_channels = 64
     assert electrical_series_configuration.chunk_shape[1] == exppected_chunk_for_channels
@@ -79,8 +90,45 @@ def test_configuration_on_electrical_series_with_non_wrapped_data(backend: Liter
 @pytest.mark.parametrize("backend", ["hdf5", "zarr"])
 def test_configuration_on_external_image_series(backend: Literal["hdf5", "zarr"]):
     nwbfile = mock_NWBFile()
-    image_series = ImageSeries(name="TestImageSeries", external_file=[""], rate=1.0, format="external")
+    image_series = ImageSeries(name="TestImageSeries", external_file=[""], rate=1.0, format="external", num_samples=1)
     nwbfile.add_acquisition(image_series)
+
+    dataset_configurations = list(get_default_dataset_io_configurations(nwbfile=nwbfile, backend=backend))
+
+    assert len(dataset_configurations) == 0
+
+
+@pytest.mark.parametrize("backend", ["hdf5", "zarr"])
+def test_configuration_on_image(backend: Literal["hdf5", "zarr"]):
+    # The pixel-data image types inherit from NWBData rather than NWBContainer and so need their own dispatch
+    array = np.zeros(shape=(64, 64), dtype="uint8")
+    image = GrayscaleImage(name="TestImage", data=array)
+
+    nwbfile = mock_NWBFile()
+    nwbfile.add_acquisition(Images(name="TestImages", images=[image]))
+
+    dataset_configurations = list(get_default_dataset_io_configurations(nwbfile=nwbfile, backend=backend))
+
+    assert len(dataset_configurations) == 1
+
+    dataset_configuration = dataset_configurations[0]
+    assert isinstance(dataset_configuration, DATASET_IO_CONFIGURATIONS[backend])
+    assert dataset_configuration.object_id == image.object_id
+    assert dataset_configuration.location_in_file == "acquisition/TestImages/TestImage/data"
+    assert dataset_configuration.full_shape == array.shape
+    assert dataset_configuration.dtype == array.dtype
+    assert dataset_configuration.chunk_shape == array.shape
+    assert dataset_configuration.buffer_shape == array.shape
+    assert dataset_configuration.compressors == ["gzip"]
+
+
+@pytest.mark.parametrize("backend", ["hdf5", "zarr"])
+def test_configuration_on_external_image(backend: Literal["hdf5", "zarr"]):
+    # ExternalImage shares the BaseImage parent but its data is a single path string, not an array
+    external_image = ExternalImage(name="TestExternalImage", data="image.png", image_format="PNG")
+
+    nwbfile = mock_NWBFile()
+    nwbfile.add_acquisition(Images(name="TestImages", images=[external_image]))
 
     dataset_configurations = list(get_default_dataset_io_configurations(nwbfile=nwbfile, backend=backend))
 
@@ -110,11 +158,11 @@ def test_configuration_on_dynamic_table(iterator: callable, backend: Literal["hd
     assert dataset_configuration.dtype == array.dtype
     assert dataset_configuration.chunk_shape == array.shape
     assert dataset_configuration.buffer_shape == array.shape
-    assert dataset_configuration.compression_method == "gzip"
-    assert dataset_configuration.compression_options is None
+    assert dataset_configuration.compressors == ["gzip"]
+    assert dataset_configuration.compressor_options is None
 
     if backend == "zarr":
-        assert dataset_configuration.filter_methods is None
+        assert dataset_configuration.filters is None
         assert dataset_configuration.filter_options is None
 
 
@@ -147,11 +195,11 @@ def test_configuration_on_ragged_units_table(backend: Literal["hdf5", "zarr"]):
     assert dataset_configuration.dtype == np.dtype("float64")
     assert dataset_configuration.chunk_shape == (5,)
     assert dataset_configuration.buffer_shape == (5,)
-    assert dataset_configuration.compression_method == "gzip"
-    assert dataset_configuration.compression_options is None
+    assert dataset_configuration.compressors == ["gzip"]
+    assert dataset_configuration.compressor_options is None
 
     if backend == "zarr":
-        assert dataset_configuration.filter_methods is None
+        assert dataset_configuration.filters is None
         assert dataset_configuration.filter_options is None
 
     dataset_configuration = next(
@@ -164,11 +212,11 @@ def test_configuration_on_ragged_units_table(backend: Literal["hdf5", "zarr"]):
     assert dataset_configuration.dtype == np.dtype("uint8")
     assert dataset_configuration.chunk_shape == (2,)
     assert dataset_configuration.buffer_shape == (2,)
-    assert dataset_configuration.compression_method == "gzip"
-    assert dataset_configuration.compression_options is None
+    assert dataset_configuration.compressors == ["gzip"]
+    assert dataset_configuration.compressor_options is None
 
     if backend == "zarr":
-        assert dataset_configuration.filter_methods is None
+        assert dataset_configuration.filters is None
         assert dataset_configuration.filter_options is None
 
     dataset_configuration = next(
@@ -181,11 +229,11 @@ def test_configuration_on_ragged_units_table(backend: Literal["hdf5", "zarr"]):
     assert dataset_configuration.dtype == np.dtype("int32")
     assert dataset_configuration.chunk_shape == (12, 3)
     assert dataset_configuration.buffer_shape == (12, 3)
-    assert dataset_configuration.compression_method == "gzip"
-    assert dataset_configuration.compression_options is None
+    assert dataset_configuration.compressors == ["gzip"]
+    assert dataset_configuration.compressor_options is None
 
     if backend == "zarr":
-        assert dataset_configuration.filter_methods is None
+        assert dataset_configuration.filters is None
         assert dataset_configuration.filter_options is None
 
     dataset_configuration = next(
@@ -198,11 +246,11 @@ def test_configuration_on_ragged_units_table(backend: Literal["hdf5", "zarr"]):
     assert dataset_configuration.dtype == np.dtype("uint8")
     assert dataset_configuration.chunk_shape == (4,)
     assert dataset_configuration.buffer_shape == (4,)
-    assert dataset_configuration.compression_method == "gzip"
-    assert dataset_configuration.compression_options is None
+    assert dataset_configuration.compressors == ["gzip"]
+    assert dataset_configuration.compressor_options is None
 
     if backend == "zarr":
-        assert dataset_configuration.filter_methods is None
+        assert dataset_configuration.filters is None
         assert dataset_configuration.filter_options is None
 
     dataset_configuration = next(
@@ -215,11 +263,11 @@ def test_configuration_on_ragged_units_table(backend: Literal["hdf5", "zarr"]):
     assert dataset_configuration.dtype == np.dtype("uint8")
     assert dataset_configuration.chunk_shape == (2,)
     assert dataset_configuration.buffer_shape == (2,)
-    assert dataset_configuration.compression_method == "gzip"
-    assert dataset_configuration.compression_options is None
+    assert dataset_configuration.compressors == ["gzip"]
+    assert dataset_configuration.compressor_options is None
 
     if backend == "zarr":
-        assert dataset_configuration.filter_methods is None
+        assert dataset_configuration.filters is None
         assert dataset_configuration.filter_options is None
 
 
@@ -247,11 +295,11 @@ def test_configuration_on_compass_direction(iterator: callable, backend: Literal
     assert dataset_configuration.dtype == array.dtype
     assert dataset_configuration.chunk_shape == array.shape
     assert dataset_configuration.buffer_shape == array.shape
-    assert dataset_configuration.compression_method == "gzip"
-    assert dataset_configuration.compression_options is None
+    assert dataset_configuration.compressors == ["gzip"]
+    assert dataset_configuration.compressor_options is None
 
     if backend == "zarr":
-        assert dataset_configuration.filter_methods is None
+        assert dataset_configuration.filters is None
         assert dataset_configuration.filter_options is None
 
 
@@ -296,11 +344,11 @@ def test_configuration_on_ndx_events(backend: Literal["hdf5", "zarr"]):
     assert data_dataset_configuration.dtype == data.dtype
     assert data_dataset_configuration.chunk_shape == data.shape
     assert data_dataset_configuration.buffer_shape == data.shape
-    assert data_dataset_configuration.compression_method == "gzip"
-    assert data_dataset_configuration.compression_options is None
+    assert data_dataset_configuration.compressors == ["gzip"]
+    assert data_dataset_configuration.compressor_options is None
 
     if backend == "zarr":
-        assert data_dataset_configuration.filter_methods is None
+        assert data_dataset_configuration.filters is None
         assert data_dataset_configuration.filter_options is None
 
     timestamps_dataset_configuration = next(
@@ -315,9 +363,25 @@ def test_configuration_on_ndx_events(backend: Literal["hdf5", "zarr"]):
     assert timestamps_dataset_configuration.dtype == timestamps.dtype
     assert timestamps_dataset_configuration.chunk_shape == timestamps.shape
     assert timestamps_dataset_configuration.buffer_shape == timestamps.shape
-    assert timestamps_dataset_configuration.compression_method == "gzip"
-    assert timestamps_dataset_configuration.compression_options is None
+    assert timestamps_dataset_configuration.compressors == ["shuffle", "gzip"]
+    assert timestamps_dataset_configuration.compressor_options is None
 
     if backend == "zarr":
-        assert timestamps_dataset_configuration.filter_methods is None
+        assert timestamps_dataset_configuration.filters is None
         assert timestamps_dataset_configuration.filter_options is None
+
+
+@pytest.mark.parametrize("backend", ["hdf5", "zarr"])
+def test_timestamps_are_shuffled_by_default(backend: Literal["hdf5", "zarr"]):
+    """A timestamps dataset is close to a monotonic ramp, so shuffle is applied ahead of the compressor."""
+    nwbfile = mock_NWBFile()
+    time_series = mock_TimeSeries(name="TestTimeSeries", data=np.zeros(shape=(100,)), timestamps=np.arange(100) / 30.0)
+    nwbfile.add_acquisition(time_series)
+
+    dataset_io_configurations = {
+        configuration.location_in_file: configuration
+        for configuration in get_default_dataset_io_configurations(nwbfile=nwbfile, backend=backend)
+    }
+
+    assert dataset_io_configurations["acquisition/TestTimeSeries/timestamps"].compressors == ["shuffle", "gzip"]
+    assert dataset_io_configurations["acquisition/TestTimeSeries/data"].compressors == ["gzip"]

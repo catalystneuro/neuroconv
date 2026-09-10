@@ -115,7 +115,7 @@ For behavioral videos (recommended to store as external files):
     interface = ExternalVideoInterface(
         file_paths=[converted_video_path],
         verbose=False,
-        video_name="BehaviorVideo"
+        metadata_key="behavior_video"
     )
 
     # Continue with normal NeuroConv workflow
@@ -132,7 +132,7 @@ For neural data videos (store internally when lossless compression is needed):
     interface = InternalVideoInterface(
         file_path=converted_video_path,
         verbose=False,
-        video_name="NeuralVideo"
+        metadata_key="neural_video"
     )
 
 For detailed information on using NeuroConv's video interfaces, see the

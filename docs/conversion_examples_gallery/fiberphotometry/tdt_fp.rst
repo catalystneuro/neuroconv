@@ -8,7 +8,7 @@ Install NeuroConv with the additional dependencies necessary for reading TDT Fib
     pip install "neuroconv[tdt_fp]"
 
 Specify the minimal metadata required for the conversion.
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: python
 
@@ -113,7 +113,7 @@ Convert TDT Fiber Photometry data to NWB
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Convert TDT Fiber Photometry data to NWB using
-:py:class:`~neuroconv.datainterfaces.ophys.tdt_fp.tdtfiberphotometrydatainterface.TDTFiberPhotometryInterface`.
+:py:class:`~neuroconv.datainterfaces.fiber_photometry.tdt.tdtfiberphotometrydatainterface.TDTFiberPhotometryInterface`.
 
 .. code-block:: python
 
@@ -127,17 +127,28 @@ Convert TDT Fiber Photometry data to NWB using
     >>> folder_path = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "TDT" / "Photo_249_391-200721-120136_stubbed"
     >>> LOCAL_PATH = Path(".") # Path to neuroconv
 
-    >>> interface = TDTFiberPhotometryInterface(folder_path=folder_path, verbose=False)
+    >>> # Discover the stream stores available in the TDT tank (callable before construction)
+    >>> available_streams = TDTFiberPhotometryInterface.get_available_streams(folder_path=folder_path)
+
+    >>> # Each interface writes a single FiberPhotometryResponseSeries, assembled from one or more input
+    >>> # streams (TDT stores). Combine multiple interfaces (with distinct metadata_key values) in a
+    >>> # converter to share one FiberPhotometryTable.
+    >>> interface = TDTFiberPhotometryInterface(folder_path=folder_path, stream_names="Dv1A", metadata_key="GCaMP", verbose=False)
     >>> metadata = interface.get_metadata()
     >>> metadata["NWBFile"]["session_start_time"] = datetime.now(tz=ZoneInfo("US/Pacific"))
     >>> # Add subject information (required for DANDI upload)
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
-    >>> metadata = dict_deep_update(metadata, fiber_photometry_metadata)
 
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path =  f"{path_to_save_nwbfile}"
-    >>> # t1 and t2 are optional arguments to specify the start and end times for the conversion
-    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, t1=0.0, t2=1.0)
+    >>> # stub_test writes only the first stub_samples samples, which is useful for quick tests
+    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, stub_test=True)
+
+.. note::
+
+    Constructing ``TDTFiberPhotometryInterface`` without ``stream_names`` uses the deprecated
+    multi-series behavior (writing every stream at once), which emits a ``DeprecationWarning`` and
+    will be removed on or after February 2027. Pass ``stream_names`` to use the single-series interface.
 
 
 Specifying Metadata
@@ -146,6 +157,26 @@ Specifying Metadata
 The example above shows how to convert TDT Fiber Photometry data without specifying all the metadata,
 in which case the metadata will be automatically generated with default values.
 To ensure that the NWB file is fully annotated, specify the metadata using the format described below.
+
+.. note::
+
+    For the single-series interface, several things differ from the block below (which predates the
+    single-series refactor and is retained here as a field reference for the shared device, indicator,
+    and virus sections). The single-series format is covered by
+    :ref:`the fiber photometry how-to <annotate_fiber_photometry_metadata>` and
+    :ref:`its section on templates <how_to_annotate_from_a_template>`, and every element it accepts is
+    listed in the :ref:`reference template <fiber_photometry_metadata_template>`. In short:
+
+    * The metadata lives at the top-level key ``metadata["FiberPhotometry"]``, not nested under
+      ``metadata["Ophys"]``.
+    * Shared containers are dicts keyed by ``metadata_key`` (not lists), and entries reference each
+      other with ``_metadata_key`` fields (e.g. a row's ``optical_fiber_metadata_key``) rather than by
+      name.
+    * The input streams are selected via the ``stream_names`` constructor argument, so response-series
+      entries no longer carry a ``stream_name`` field.
+    * The response series references table rows via ``fiber_photometry_table_region`` (a list of row
+      keys, not integer indices), and a single interface writes one response series, supplied under
+      ``metadata["FiberPhotometry"][metadata_key]``.
 
 .. code-block:: python
 
@@ -517,3 +548,18 @@ This metadata can then be easily incorporated into the conversion by updating th
     >>> nwbfile_path =  f"{path_to_save_nwbfile}"
     >>> # t1 and t2 are optional arguments to specify the start and end times for the conversion
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, t1=0.0, t2=1.0, overwrite=True)
+
+NeuroConv aims to automatically add all the metadata annotations that are present in the source format.
+It is often the case that crucial information is not available there, such as the anatomical location,
+the meaning of the values, or a semantically meaningful description of the data. Follow
+:ref:`the fiber photometry how-to <annotate_fiber_photometry_metadata>` for a modality-relevant guide to adding
+this extra metadata, which makes the data more useful for future users and for the community as a whole.
+Its :ref:`section on templates <how_to_annotate_from_a_template>` starts from scratch, and the
+:ref:`reference template <fiber_photometry_metadata_template>` lists every element the metadata accepts.
+
+.. seealso::
+
+    Other TDT data interfaces:
+
+    - :doc:`../recording/tdt` to convert TDT extracellular electrophysiology recordings.
+    - :doc:`../events/tdt_events` to convert discrete TDT events (epocs such as port entries or nose pokes).

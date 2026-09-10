@@ -18,20 +18,20 @@ from neuroconv.tools.testing.mock_interfaces import (
 class TestMockImagingInterface(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = MockImagingInterface
     interface_kwargs = dict()
+    # The mock reads no imaging modality from its source, so it keeps the base's generic series name.
+    optical_series_name = "MicroscopySeries"
 
     def test_always_write_timestamps(self, setup_interface):
         # By default the MockImagingInterface has a uniform sampling rate
 
         nwbfile = self.interface.create_nwbfile(always_write_timestamps=True)
-        two_photon_series = nwbfile.acquisition["TwoPhotonSeries"]
+        # The base names the series it writes, as the recording base does; interfaces that know the
+        # imaging modality overwrite it.
+        two_photon_series = nwbfile.acquisition["MicroscopySeries"]
         imaging = self.interface.imaging_extractor
         expected_timestamps = imaging.get_timestamps()
 
         np.testing.assert_array_equal(two_photon_series.timestamps[:], expected_timestamps)
-
-    # Remove this after roiextractors 0.5.10 is released
-    def test_all_conversion_checks(self):
-        pass
 
     def check_extracted_metadata(self, metadata: dict):
         """MockImagingInterface returns a mock-specific series description.
@@ -41,7 +41,10 @@ class TestMockImagingInterface(ImagingExtractorInterfaceTestMixin):
         metadata_key = self.interface.metadata_key
         assert metadata["Ophys"] == {
             "MicroscopySeries": {
-                metadata_key: {"description": "Imaging data from mock generator."},
+                metadata_key: {
+                    "name": "MicroscopySeries",
+                    "description": "Imaging data from mock generator.",
+                },
             },
         }
 
@@ -70,7 +73,10 @@ class TestMockSegmentationInterface(SegmentationExtractorInterfaceTestMixin):
         metadata_key = self.interface.metadata_key
         assert metadata["Ophys"] == {
             "PlaneSegmentations": {
-                metadata_key: {"description": "Segmentation data from mock generator."},
+                metadata_key: {
+                    "name": "PlaneSegmentation",
+                    "description": "Segmentation data from mock generator.",
+                },
             },
         }
 
@@ -172,7 +178,7 @@ class TestMockImagingInterfaceArgsDeprecation:
             w for w in caught_warnings if issubclass(w.category, FutureWarning) and "positionally" in str(w.message)
         ]
         assert len(positional_arg_warnings) == 0
-        assert "TwoPhotonSeries" in nwbfile.acquisition
+        assert "MicroscopySeries" in nwbfile.acquisition
 
     def test_create_nwbfile_passes_conversion_options_as_keywords(self):
         """Test that create_nwbfile passes conversion options as keywords to add_to_nwbfile."""
@@ -189,4 +195,40 @@ class TestMockImagingInterfaceArgsDeprecation:
         assert len(positional_arg_warnings) == 0
         # Verify data was written to processing/ophys
         assert "ophys" in nwbfile.processing
-        assert "TwoPhotonSeries" in nwbfile.processing["ophys"].data_interfaces
+        assert "MicroscopySeries" in nwbfile.processing["ophys"].data_interfaces
+
+
+class TestSegmentationWithoutData:
+    """A source holding no ROIs, no traces and no summary images has no segmentation to write."""
+
+    # A trace is one column per ROI, so an extractor reporting no ROIs cannot hold one either; the
+    # cases that must keep writing are the ones carrying ROIs or summary images.
+    nothing_to_write = dict(
+        num_rois=0,
+        has_summary_images=False,
+        has_raw_signal=False,
+        has_dff_signal=False,
+        has_deconvolved_signal=False,
+        has_neuropil_signal=False,
+    )
+
+    def test_empty_segmentation_raises(self):
+        interface = MockSegmentationInterface(**self.nothing_to_write)
+
+        with pytest.raises(ValueError, match="contains no segmentation data"):
+            interface.add_to_nwbfile(nwbfile=mock_NWBFile(), metadata=interface.get_metadata())
+
+    def test_rois_without_traces_or_images_are_written(self):
+        interface = MockSegmentationInterface(**{**self.nothing_to_write, "num_rois": 3})
+
+        nwbfile = interface.create_nwbfile()
+
+        plane_segmentation = nwbfile.processing["ophys"]["ImageSegmentation"]["PlaneSegmentation"]
+        assert len(plane_segmentation.id) == 3
+
+    def test_summary_images_without_rois_are_written(self):
+        interface = MockSegmentationInterface(**{**self.nothing_to_write, "has_summary_images": True})
+
+        nwbfile = interface.create_nwbfile()
+
+        assert "SegmentationImages" in nwbfile.processing["ophys"].data_interfaces

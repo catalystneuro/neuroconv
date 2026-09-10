@@ -101,7 +101,13 @@ def append_replace_dict_in_list(
         if len(indxs) > 0:
             for idx in indxs:
                 if list_dict_deep_update:
-                    ls[idx] = dict_deep_update(ls[idx], d)
+                    ls[idx] = dict_deep_update(
+                        ls[idx],
+                        d,
+                        remove_repeats=remove_repeats,
+                        compare_key=compare_key,
+                        list_dict_deep_update=list_dict_deep_update,
+                    )
                 else:
                     ls[idx] = d
         else:
@@ -193,8 +199,16 @@ def dict_deep_update(
         if isinstance(update_values, collections.abc.Mapping):
             sub_dict_to_update = dict_to_update.get(key_to_update, dict())
             sub_dict_with_update_values = update_values
+            # ``copy`` is not forwarded: the top-level call has already copied everything below it when asked
+            # to, and when it was not asked to, the nested dicts are updated in place like the top one.
             dict_to_update[key_to_update] = dict_deep_update(
-                sub_dict_to_update, sub_dict_with_update_values, append_list=append_list, remove_repeats=remove_repeats
+                sub_dict_to_update,
+                sub_dict_with_update_values,
+                append_list=append_list,
+                remove_repeats=remove_repeats,
+                copy=False,
+                compare_key=compare_key,
+                list_dict_deep_update=list_dict_deep_update,
             )
         # Update with list calls the append_replace_dict_in_list function
         elif append_list and isinstance(update_values, list):
@@ -250,6 +264,18 @@ class DeepDict(defaultdict):
             return {key: _to_dict(value) for key, value in d.items()} if isinstance(d, dict) else d
 
         return _to_dict(self)
+
+    def copy(self) -> "DeepDict":
+        """Return a copy of this DeepDict.
+
+        ``defaultdict.copy()`` reconstructs via ``type(self)(self.default_factory, self)``,
+        passing the factory as the first positional argument. ``DeepDict.__init__`` hardcodes
+        its own factory and forwards ``*args`` to ``defaultdict.__init__``, so that call becomes
+        ``defaultdict.__init__(factory, self.default_factory, self)`` and raises ``TypeError``.
+        Rebuilding from ``to_dict()`` sidesteps the incompatible signature, mirroring
+        ``__deepcopy__``. Nested dicts are fresh DeepDicts; leaf (non-dict) values are shared.
+        """
+        return DeepDict(self.to_dict())
 
     def __deepcopy__(self, memodict: dict = {}) -> "DeepDict":
         return DeepDict(deepcopy(self.to_dict()))

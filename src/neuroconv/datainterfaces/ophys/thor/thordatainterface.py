@@ -116,13 +116,13 @@ class ThorImagingInterface(BaseImagingExtractorInterface):
         extractor_instance = extractor_class(**self.extractor_kwargs)
         return extractor_instance
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         """
         Retrieve the metadata for the Thor imaging data.
 
         Parameters
         ----------
-        use_new_metadata_format : bool, default: False
+        use_new_metadata_format : bool, default: True
             When False, returns the old list-based metadata format (backward compatible).
             When True, returns dict-based metadata with ThorImageLS provenance.
 
@@ -132,11 +132,7 @@ class ThorImagingInterface(BaseImagingExtractorInterface):
             Dictionary containing metadata including device information, imaging plane details,
             and photon series configuration.
         """
-        metadata = (
-            super().get_metadata()
-            if not use_new_metadata_format
-            else super().get_metadata(use_new_metadata_format=True)
-        )
+        metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
 
         # Access the experiment XML dictionary from the extractor
         xml_dict = self.imaging_extractor._experiment_xml_dict
@@ -168,11 +164,15 @@ class ThorImagingInterface(BaseImagingExtractorInterface):
         ChannelName = _to_camel_case(self.channel_name)
 
         if use_new_metadata_format:
-            metadata["Devices"] = {self.metadata_key: {"description": device_description}}
+            # Keyed by the microscope rather than by this interface, since one ThorLabs system images
+            # every channel and each channel is its own interface.
+            device_metadata_key = "thor_microscope"
+            metadata["Devices"] = {device_metadata_key: {"name": "ThorMicroscope", "description": device_description}}
             metadata["Ophys"] = {
                 "ImagingPlanes": {
                     self.metadata_key: {
                         "name": f"ImagingPlane{ChannelName}",
+                        "device_metadata_key": device_metadata_key,
                         "optical_channel": [{"name": ChannelName}],
                         "grid_spacing": [pixel_size_um * 1e-6, pixel_size_um * 1e-6],
                         "grid_spacing_unit": "meters",
@@ -180,6 +180,7 @@ class ThorImagingInterface(BaseImagingExtractorInterface):
                 },
                 "MicroscopySeries": {
                     self.metadata_key: {
+                        "name": f"TwoPhotonSeries{ChannelName}",
                         "imaging_plane_metadata_key": self.metadata_key,
                         "field_of_view": [width_um * 1e-6, height_um * 1e-6],
                     },

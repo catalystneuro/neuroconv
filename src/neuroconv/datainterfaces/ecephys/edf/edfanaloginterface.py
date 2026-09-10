@@ -4,11 +4,11 @@ from pathlib import Path
 from pydantic import FilePath
 from pynwb import NWBFile
 
-from ....basedatainterface import BaseDataInterface
+from ..baserecordingastimeseriesinterface import BaseRecordingAsTimeSeriesInterface
 from ....utils import DeepDict, get_json_schema_from_method_signature
 
 
-class EDFAnalogInterface(BaseDataInterface):
+class EDFAnalogInterface(BaseRecordingAsTimeSeriesInterface):
     """
     Primary data interface for converting auxiliary data streams from EDF files.
 
@@ -31,10 +31,38 @@ class EDFAnalogInterface(BaseDataInterface):
         source_schema["properties"]["file_path"]["description"] = "Path to the .edf file."
         return source_schema
 
+    @classmethod
+    def get_stream_names(cls, file_path: FilePath) -> list[str]:
+        """
+        Get the names of the streams available in an EDF file.
+
+        A stream is a set of channels that share a sampling rate, so a file that sampled some of
+        its signals at a different rate than the rest carries more than one.
+
+        Parameters
+        ----------
+        file_path : FilePath
+            Path to the EDF file
+
+        Returns
+        -------
+        list of str
+            List of the stream names in the EDF file
+        """
+        from spikeinterface.extractors.extractor_classes import EDFRecordingExtractor
+
+        stream_names, _ = EDFRecordingExtractor.get_streams(file_path=file_path)
+        return stream_names
+
     @staticmethod
     def get_available_channel_ids(file_path: FilePath) -> list:
         """
         Get all available channel names from an EDF file.
+
+        The names span the whole file. A file that sampled some of its signals at a different rate
+        than the rest holds them in separate streams, and an interface reads one stream at a time, so
+        the channels of the stream it holds are a subset of these. They are read from the file's
+        header, so this works on a file with more than one stream.
 
         Parameters
         ----------
@@ -46,15 +74,17 @@ class EDFAnalogInterface(BaseDataInterface):
         list
             List of all channel names in the EDF file
         """
-        from spikeinterface.extractors import read_edf
+        from pyedflib import EdfReader
 
-        recording = read_edf(file_path=file_path, all_annotations=True, use_names_as_ids=True)
-        channel_ids = recording.get_channel_ids()
+        edf_reader = EdfReader(str(file_path))
+        try:
+            channel_names = edf_reader.getSignalLabels()
+        finally:
+            # EDFlib refuses to open a file it already has open, so the handle is released here
+            # rather than left to garbage collection.
+            edf_reader.close()
 
-        # Clean up to avoid dangling references
-        del recording
-
-        return channel_ids.tolist()
+        return channel_names
 
     def __init__(
         self,
@@ -62,7 +92,8 @@ class EDFAnalogInterface(BaseDataInterface):
         *args,  # TODO: change to * (keyword only) on or after August 2026
         channels_to_include: list[str] | None = None,
         verbose: bool = False,
-        metadata_key: str = "analog_edf_metadata_key",
+        metadata_key: str = "edf_analog",
+        stream_name: str | None = None,
     ):
         """
         Load and prepare analog data from EDF format.
@@ -75,8 +106,14 @@ class EDFAnalogInterface(BaseDataInterface):
             Specific channel IDs to include.
         verbose : bool, default: False
             Verbose output
-        metadata_key : str, default: "analog_edf_metadata_key"
-            Key for the TimeSeries metadata in the metadata dictionary.
+        metadata_key : str, default: "edf_analog"
+            Key for the TimeSeries metadata in the metadata dictionary. This addresses the entry;
+            the written object's name is the entry's ``name`` field.
+        stream_name : str, optional
+            Name of the stream the channels are read from, as returned by ``get_stream_names``. A file
+            that sampled some of its signals at a different rate than the rest carries more than one
+            stream and cannot be read without naming one, since a single recording holds a single
+            sampling rate.
         """
         # Handle deprecated positional arguments
         if args:
@@ -112,7 +149,9 @@ class EDFAnalogInterface(BaseDataInterface):
         self._file_path = Path(file_path)
         self.metadata_key = metadata_key
 
-        full_recording = read_edf(file_path=self._file_path, all_annotations=True, use_names_as_ids=True)
+        full_recording = read_edf(
+            file_path=self._file_path, stream_name=stream_name, all_annotations=True, use_names_as_ids=True
+        )
 
         # Validate that the requested channels exist
         self._channels_to_include = channels_to_include or full_recording.get_channel_ids().tolist()
@@ -132,6 +171,7 @@ class EDFAnalogInterface(BaseDataInterface):
             file_path=self._file_path,
             channels_to_include=self._channels_to_include,
             verbose=verbose,
+            stream_name=stream_name,
         )
 
     @property
@@ -142,17 +182,11 @@ class EDFAnalogInterface(BaseDataInterface):
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
 
-        # Add TimeSeries metadata
-        channel_names = self.channel_ids
-        channels_string = ", ".join(channel_names)
-        description = f"Auxiliary signals from the EDF format. Channels: {channels_string}"
-
-        metadata["TimeSeries"] = {
-            self.metadata_key: dict(
-                name="TimeSeriesAnalogEDF",
-                description=description,
-            )
-        }
+        channels_string = ", ".join(self.get_channel_names())
+        metadata["TimeSeries"][self.metadata_key] = dict(
+            name="TimeSeriesAnalogEDF",
+            description=f"Auxiliary signals from the EDF format. Channels: {channels_string}",
+        )
 
         return metadata
 
@@ -184,11 +218,6 @@ class EDFAnalogInterface(BaseDataInterface):
         always_write_timestamps : bool, default: False
             If True, always writes timestamps instead of using sampling rate
         """
-        from ....tools.spikeinterface import (
-            _stub_recording,
-            add_recording_as_time_series_to_nwbfile,
-        )
-
         # Handle deprecated positional arguments
         if args:
             parameter_names = [
@@ -220,19 +249,11 @@ class EDFAnalogInterface(BaseDataInterface):
             iterator_options = positional_values.get("iterator_options", iterator_options)
             always_write_timestamps = positional_values.get("always_write_timestamps", always_write_timestamps)
 
-        if metadata is None:
-            metadata = self.get_metadata()
-
-        recording = self.recording_extractor
-        if stub_test:
-            recording = _stub_recording(recording=recording)
-
-        add_recording_as_time_series_to_nwbfile(
-            recording=recording,
+        super().add_to_nwbfile(
             nwbfile=nwbfile,
             metadata=metadata,
+            stub_test=stub_test,
             iterator_type=iterator_type,
             iterator_options=iterator_options,
             always_write_timestamps=always_write_timestamps,
-            metadata_key=self.metadata_key,
         )

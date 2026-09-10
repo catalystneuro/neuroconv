@@ -1,160 +1,77 @@
-import importlib.util
-import warnings
+"""Shared writing contract for modern intracellular-electrophysiology interfaces."""
 
-import numpy as np
-from pydantic import FilePath, validate_call
+from abc import abstractmethod
+
 from pynwb import NWBFile
 
-from ...baseextractorinterface import BaseExtractorInterface
-from ...tools.nwb_helpers import make_nwbfile_from_metadata
-from ...utils import (
-    DeepDict,
-    get_json_schema_from_method_signature,
-    get_metadata_schema_for_icephys,
-    get_schema_from_hdmf_class,
+from ...basedatainterface import BaseDataInterface
+from ...tools.icephys import (
+    _add_intracellular_electrode_to_nwbfile,
+    _add_intracellular_recordings_to_nwbfile,
+    _add_patch_clamp_series_to_nwbfile,
+    _IcephysSeriesData,
 )
 
 
-class BaseIcephysInterface(BaseExtractorInterface):
-    """Primary class for all intracellular NeoInterfaces."""
+class BaseIcephysInterface(BaseDataInterface):
+    """Base interface for patch-clamp data written as NWB icephys series.
 
-    keywords = ("intracellular electrophysiology", "patch clamp", "current clamp")
+    Concrete interfaces return source data through :meth:`_get_icephys_series_data`. This base owns NWB object
+    construction, metadata-linked electrode resolution, and the per-sweep ``IntracellularRecordings`` rows.
+    The hierarchy above those rows remains a converter responsibility, once every interface has contributed.
+    """
 
-    @classmethod
-    def get_source_schema(cls) -> dict:
-        source_schema = get_json_schema_from_method_signature(method=cls.__init__, exclude=[])
-        return source_schema
+    def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict | None = None) -> None:
+        """Write this interface's response, optional stimulus, and sweep rows to an NWB file."""
+        if metadata is None:
+            metadata = self.get_metadata()
 
-    @validate_call
-    def __init__(self, file_paths: list[FilePath]):
-        # Check if the ndx_dandi_icephys module is available
-        dandi_icephys_spec = importlib.util.find_spec("ndx_dandi_icephys")
-        if dandi_icephys_spec is not None:
-            from ndx_dandi_icephys import DandiIcephysMetadata
-
-            self.DandiIcephysMetadata = DandiIcephysMetadata
-
-            self.HAVE_NDX_DANDI_ICEPHYS = True
-        else:
-            self.DandiIcephysMetadata = None
-            self.HAVE_NDX_DANDI_ICEPHYS = False
-
-        from ...tools.neo import get_number_of_electrodes, get_number_of_segments
-
-        super().__init__(file_paths=file_paths)
-
-        self.readers_list = list()
-        for f in file_paths:
-            file_source_data = {"filename": f}
-            self.readers_list.append(self._initialize_extractor(file_source_data))
-
-        self.n_segments = get_number_of_segments(neo_reader=self.readers_list[0], block=0)
-        self.n_channels = get_number_of_electrodes(neo_reader=self.readers_list[0])
-
-        self._timestamps = None
-
-    def get_metadata_schema(self) -> dict:
-        metadata_schema = super().get_metadata_schema()
-        if self.DandiIcephysMetadata is not None:
-            metadata_schema["properties"]["ndx-dandi-icephys"] = get_schema_from_hdmf_class(self.DandiIcephysMetadata)
-        metadata_schema["properties"]["Icephys"] = get_metadata_schema_for_icephys()
-        return metadata_schema
-
-    def get_metadata(self) -> DeepDict:
-        from ...tools.neo import get_number_of_electrodes
-
-        metadata = super().get_metadata()
-        metadata["Icephys"] = dict(
-            Device=[dict(name="DeviceIcephys", description="no description")],
-            Electrodes=[
-                dict(name=f"electrode-{i}", description="no description", device="DeviceIcephys")
-                for i in range(get_number_of_electrodes(self.readers_list[0]))
-            ],
+        series_metadata_key = self._series_metadata_key
+        response_metadata = metadata["Icephys"]["PatchClampSeries"][series_metadata_key]
+        electrode = _add_intracellular_electrode_to_nwbfile(
+            nwbfile=nwbfile,
+            metadata=metadata,
+            electrode_metadata_key=response_metadata["electrode_metadata_key"],
         )
-        return metadata
+        response_data, stimulus_data, sweep_sample_ranges = self._get_icephys_series_data()
+        response_series = _add_patch_clamp_series_to_nwbfile(
+            nwbfile=nwbfile,
+            metadata=metadata,
+            series_metadata_key=series_metadata_key,
+            series_data=response_data,
+            electrode=electrode,
+            mode=self._mode,
+            is_stimulus=False,
+        )
 
-    def get_original_timestamps(self) -> np.ndarray:
-        raise NotImplementedError("Icephys interfaces do not yet support timestamps.")
-
-    def get_timestamps(self) -> np.ndarray:
-        raise NotImplementedError("Icephys interfaces do not yet support timestamps.")
-
-    def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
-        raise NotImplementedError("Icephys interfaces do not yet support timestamps.")
-
-    def set_aligned_starting_time(self, aligned_starting_time: float):
-        raise NotImplementedError("This icephys interface has not specified the method for aligning starting time.")
-
-    def align_by_interpolation(self, unaligned_timestamps: np.ndarray, aligned_timestamps: np.ndarray):
-        raise NotImplementedError("Icephys interfaces do not yet support timestamps.")
-
-    def add_to_nwbfile(
-        self,
-        nwbfile: NWBFile,
-        metadata: dict = None,
-        *args,  # TODO: change to * (keyword only) on or after August 2026
-        icephys_experiment_type: str = "voltage_clamp",
-        skip_electrodes: tuple[int] = (),
-    ):
-        """
-        Primary function for converting raw (unprocessed) intracellular data to the NWB standard.
-
-        Parameters
-        ----------
-        nwbfile : NWBFile
-            nwb file to which the recording information is to be added
-        metadata : dict, optional
-            metadata info for constructing the nwb file (optional).
-        icephys_experiment_type : {'voltage_clamp', 'current_clamp', 'izero'}
-            Type of icephys recording.
-        skip_electrodes : tuple, optional
-            Electrode IDs to skip. Defaults to ().
-        """
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "icephys_experiment_type",
-                "skip_electrodes",
-            ]
-            num_positional_args_before_args = 2  # nwbfile, metadata
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"add_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args} were given. "
-                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
-                    "Please use keyword arguments."
-                )
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to BaseIcephysInterface.add_to_nwbfile() is deprecated "
-                f"and will be removed on or after August 2026. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            icephys_experiment_type = positional_values.get("icephys_experiment_type", icephys_experiment_type)
-            skip_electrodes = positional_values.get("skip_electrodes", skip_electrodes)
-
-        from ...tools.neo import add_neo_to_nwb
-
-        if nwbfile is None:
-            nwbfile = make_nwbfile_from_metadata(metadata)
-
-        if (
-            self.HAVE_NDX_DANDI_ICEPHYS
-            and "ndx-dandi-icephys" in metadata
-            and "DandiIcephysMetadata" not in nwbfile.lab_meta_data
-        ):
-            nwbfile.add_lab_meta_data(self.DandiIcephysMetadata(**metadata["ndx-dandi-icephys"]))
-
-        for i, reader in enumerate(self.readers_list):
-            add_neo_to_nwb(
-                neo_reader=reader,
+        stimulus_series = None
+        if stimulus_data is not None:
+            stimulus_series = _add_patch_clamp_series_to_nwbfile(
                 nwbfile=nwbfile,
                 metadata=metadata,
-                icephys_experiment_type=metadata["Icephys"]["Sessions"][i]["icephys_experiment_type"],
-                stimulus_type=metadata["Icephys"]["Sessions"][i]["stimulus_type"],
-                skip_electrodes=skip_electrodes,
+                series_metadata_key=series_metadata_key,
+                series_data=stimulus_data,
+                electrode=electrode,
+                mode=self._mode,
+                is_stimulus=True,
             )
+
+        _add_intracellular_recordings_to_nwbfile(
+            nwbfile=nwbfile,
+            electrode=electrode,
+            response_series=response_series,
+            stimulus_series=stimulus_series,
+            sweep_sample_ranges=sweep_sample_ranges,
+            sequence=self._run_identity,
+            stimulus_type=self._get_stimulus_type(),
+            repetition=self._repetition,
+            condition=self._condition,
+        )
+
+    @abstractmethod
+    def _get_icephys_series_data(self) -> tuple[_IcephysSeriesData, _IcephysSeriesData | None, list[tuple[int, int]]]:
+        """Return response, optional stimulus, and sweep ranges in the standard internal representation."""
+
+    def _get_stimulus_type(self) -> str | None:
+        """Return the run's source-described stimulus type, if any."""
+        return None
