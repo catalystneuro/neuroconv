@@ -52,7 +52,7 @@ sub-interface, so a single call writes them all to NWB.
     >>> converter = IntanConverter(file_path=file_path, verbose=False)
     >>>
     >>> metadata = converter.get_metadata()
-    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
+    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
     >>>
@@ -88,7 +88,7 @@ This interface handles the primary neural recordings from the RHD2000 or RHS2000
     >>> metadata = interface.get_metadata()
     >>> # session_start_time is required for conversion. If it cannot be inferred
     >>> # automatically from the source files you must supply one.
-    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
+    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>> # Add subject information (required for DANDI upload)
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
@@ -132,7 +132,7 @@ USB board ADC input channels
     >>> # Extract what metadata we can from the source files
     >>> metadata = interface.get_metadata()
     >>> # session_start_time is required but not available on intan
-    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
+    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>> # Add subject information (required for DANDI upload)
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
@@ -166,7 +166,7 @@ You can also convert auxiliary input channels (e.g., accelerometer data):
     >>> # Extract what metadata we can from the source files
     >>> metadata_aux = interface_aux.get_metadata()
     >>> # session_start_time is required but not available on intan
-    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
+    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
     >>> metadata_aux["NWBFile"].update(session_start_time=session_start_time)
     >>> # Add subject information (required for DANDI upload)
     >>> metadata_aux["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
@@ -200,7 +200,7 @@ For RHS systems, you can also convert DC amplifier channels:
     >>> # Extract what metadata we can from the source files
     >>> metadata_dc = interface_dc.get_metadata()
     >>> # session_start_time is required but not available on intan
-    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
+    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
     >>> metadata_dc["NWBFile"].update(session_start_time=session_start_time)
     >>> # Add subject information (required for DANDI upload)
     >>> metadata_dc["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
@@ -235,7 +235,7 @@ For RHS systems, you can also convert ADC output channels:
     >>> metadata_output = interface_output.get_metadata()
     >>> # session_start_time is required for conversion. If it cannot be inferred
     >>> # automatically from the source files you must supply one.
-    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
+    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
     >>> metadata_output["NWBFile"].update(session_start_time=session_start_time)
     >>> # Add subject information (required for DANDI upload)
     >>> metadata_output["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
@@ -271,7 +271,7 @@ with the conversion factor derived automatically from the ``stim_step_size`` in 
     >>> # Extract what metadata we can from the source files
     >>> metadata_stim = interface_stim.get_metadata()
     >>> # session_start_time is required but not available on intan
-    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
+    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
     >>> metadata_stim["NWBFile"].update(session_start_time=session_start_time)
     >>> # Add subject information (required for DANDI upload)
     >>> metadata_stim["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
@@ -316,7 +316,7 @@ that was recorded but never toggles is still written, as an empty table.
     >>>
     >>> metadata_digital = interface_digital.get_metadata()
     >>> # session_start_time is required but not available on intan
-    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
+    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
     >>> metadata_digital["NWBFile"].update(session_start_time=session_start_time)
     >>> metadata_digital["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
     >>>
@@ -437,7 +437,7 @@ timestamps make lexicographic order match chronological order):
     ... )
     >>>
     >>> metadata_split = interface_split.get_metadata()
-    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
+    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
     >>> metadata_split["NWBFile"].update(session_start_time=session_start_time)
     >>> metadata_split["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
     >>>
