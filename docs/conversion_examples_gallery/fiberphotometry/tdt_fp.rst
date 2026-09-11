@@ -135,7 +135,7 @@ Convert TDT Fiber Photometry data to NWB using
     >>> # converter to share one FiberPhotometryTable.
     >>> interface = TDTFiberPhotometryInterface(folder_path=folder_path, stream_names="Dv1A", metadata_key="GCaMP", verbose=False)
     >>> metadata = interface.get_metadata()
-    >>> metadata["NWBFile"]["session_start_time"] = datetime.now(tz=ZoneInfo("US/Pacific"))
+    >>> metadata["NWBFile"]["session_start_time"] = datetime.now(tz=ZoneInfo("Asia/Tokyo"))
     >>> # Add subject information (required for DANDI upload)
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
 
@@ -539,7 +539,7 @@ This metadata can then be easily incorporated into the conversion by updating th
 
     >>> interface = TDTFiberPhotometryInterface(folder_path=folder_path, verbose=False)
     >>> metadata = interface.get_metadata()
-    >>> metadata["NWBFile"]["session_start_time"] = datetime.now(tz=ZoneInfo("US/Pacific"))
+    >>> metadata["NWBFile"]["session_start_time"] = datetime.now(tz=ZoneInfo("Asia/Tokyo"))
     >>> # Add subject information (required for DANDI upload)
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
     >>> metadata = dict_deep_update(metadata, fiber_photometry_metadata)

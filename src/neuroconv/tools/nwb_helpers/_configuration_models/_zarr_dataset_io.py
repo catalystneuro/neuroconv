@@ -10,7 +10,7 @@ from numcodecs import Shuffle
 from pydantic import Field, InstanceOf, model_validator
 from typing_extensions import Self
 
-from ._base_dataset_io import DatasetIOConfiguration
+from ._base_dataset_io import _DEFAULT_GZIP_LEVEL, DatasetIOConfiguration
 
 _base_zarr_codecs = set(zarr.codec_registry.keys())
 _lossy_zarr_codecs = set(("astype", "bitround", "quantize"))
@@ -217,6 +217,9 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
             return codec
 
         codec_options = dict(codec_options or dict())
+        if codec == "gzip":
+            codec_options.setdefault("level", _DEFAULT_GZIP_LEVEL)
+
         # `numcodecs.Shuffle` defaults `elementsize` to 4 whatever the dtype is, so on anything wider it
         # transposes the wrong byte planes and recovers almost nothing. The configuration knows the dtype.
         # TODO: remove once hdmf-zarr moves off `zarr<3.0`, where `Shuffle.evolve_from_array_spec` fills
