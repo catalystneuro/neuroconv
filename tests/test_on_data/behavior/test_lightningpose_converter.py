@@ -5,7 +5,7 @@ from pathlib import Path
 from warnings import warn
 
 from hdmf.testing import TestCase
-from pynwb import NWBHDF5IO
+from pynwb import read_nwb
 from pynwb.image import ImageSeries
 
 from neuroconv import ConverterPipe, NWBConverter
@@ -149,8 +149,8 @@ class TestLightningPoseConverter(TestCase):
     def assertNWBFileStructure(self, nwbfile_path: str, stub_test: bool = False, links_video: bool = True):
         from ndx_pose import PoseEstimation
 
-        with NWBHDF5IO(path=nwbfile_path) as io:
-            nwbfile = io.read()
+        nwbfile = read_nwb(nwbfile_path)
+        try:
 
             self.assertEqual(nwbfile.session_start_time, datetime(2023, 11, 9, 10, 14, 37).astimezone())
 
@@ -196,6 +196,8 @@ class TestLightningPoseConverter(TestCase):
             for pose_estimation_series in pose_estimation_container.pose_estimation_series.values():
                 self.assertEqual(pose_estimation_series.data.shape[0], num_frames)
                 self.assertEqual(pose_estimation_series.confidence.shape[0], num_frames)
+        finally:
+            nwbfile.read_io.close()
 
     def test_converter_in_converter(self):
         class TestConverter(NWBConverter):

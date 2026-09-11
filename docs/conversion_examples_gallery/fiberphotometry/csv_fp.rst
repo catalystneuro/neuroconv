@@ -88,7 +88,7 @@ and ``data`` columns:
     >>> interface = CSVFiberPhotometryInterface(file_path=csv_signal_channel_path, data_columns="data", timestamps_column="timestamps", metadata_key="calcium_signal", verbose=False)
     >>> metadata = interface.get_metadata()
     >>> # CSV recordings have no embedded start time, so it must be set explicitly.
-    >>> metadata["NWBFile"]["session_start_time"] = datetime.now(tz=ZoneInfo("US/Pacific"))
+    >>> metadata["NWBFile"]["session_start_time"] = datetime.now(tz=ZoneInfo("Asia/Tokyo"))
     >>> # Add subject information (required for DANDI upload)
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
 
@@ -130,7 +130,7 @@ each with ``timestamps`` and ``data`` columns on a common timebase:
     >>> interface = MultiFileCSVFiberPhotometryInterface(file_paths=[csv_signal_channel_path, csv_control_channel_path], data_columns="data", timestamps_column="timestamps", metadata_key="calcium_signal", verbose=False)
     >>> metadata = interface.get_metadata()
     >>> # CSV recordings have no embedded start time, so it must be set explicitly.
-    >>> metadata["NWBFile"]["session_start_time"] = datetime.now(tz=ZoneInfo("US/Pacific"))
+    >>> metadata["NWBFile"]["session_start_time"] = datetime.now(tz=ZoneInfo("Asia/Tokyo"))
     >>> # Add subject information (required for DANDI upload)
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
 
