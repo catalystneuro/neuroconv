@@ -176,7 +176,7 @@ or the Converter method :py:meth:`~neuroconv.nwbconverter.NWBConverter.create_nw
     nwbfile = NWBFile(
         session_description="Spatial navigation task in open field",
         identifier=str(uuid4()),  # Generate globally unique identifier
-        session_start_time=datetime(2025, 1, 15, 10, 30, 0, tzinfo=ZoneInfo("US/Pacific")),
+        session_start_time=datetime(2025, 1, 15, 10, 30, 0, tzinfo=ZoneInfo("Asia/Tokyo")),
     )
 
 These three fields are required. The ``identifier`` must be globally unique - using :py:func:`uuid.uuid4` ensures this.
@@ -461,7 +461,7 @@ and behavioral data (using the SpikeInterface integration) from the same Intan r
         "NWBFile": {
             "session_description": "Visual discrimination task with lick response and wheel running",
             "identifier": str(uuid4()),
-            "session_start_time": datetime(2025, 3, 20, 14, 30, 0, tzinfo=ZoneInfo("US/Pacific")),  # Note: Intan does not store session start time
+            "session_start_time": datetime(2025, 3, 20, 14, 30, 0, tzinfo=ZoneInfo("Asia/Tokyo")),  # Note: Intan does not store session start time
             "lab": "Systems Neuroscience Lab",
             "institution": "University",
         },

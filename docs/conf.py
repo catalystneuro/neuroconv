@@ -20,6 +20,7 @@ extensions = [
     "sphinx_search.extension",  # Allows for auto search function the documentation
     "sphinx.ext.viewcode",  # Shows source code in the documentation
     "sphinx.ext.extlinks",  # Allows to use shorter external links defined in the extlinks variable.
+    "sphinx_design",  # Provides the tabs used by metadata_templates.rst.
 ]
 
 templates_path = ["_templates"]
@@ -89,6 +90,8 @@ linkcheck_ignore = [
     "https://doi.org/10.25080/cehj4257",  # Does not seem to support multiple access
     "https://ibl.flatironinstitute.org/public",  # Fails with bot access
     "https://www.winehq.org/",  # Wine prevents bot access
+    r"https://ffmpeg\.org/.*",  # Their host drops connections on 443 under load, so the check times out
+    "https://nwb-users.slack.com",  # Slack answers a bot with 403
 ]
 
 # --------------------------------------------------

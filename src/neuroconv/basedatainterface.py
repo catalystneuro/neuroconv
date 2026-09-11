@@ -1,6 +1,4 @@
-import importlib
 import json
-import uuid
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Literal
@@ -15,13 +13,18 @@ from .tools.nwb_helpers import (
     ZarrBackendConfiguration,
     configure_backend,
     get_default_backend_configuration,
+    get_default_nwbfile_metadata,
     make_nwbfile_from_metadata,
 )
 from .tools.nwb_helpers._metadata_and_file_helpers import (
-    _resolve_backend,
+    _fetch_backend_from_nwbfile_on_disk,
     configure_and_write_nwbfile,
 )
-from .tools.ontology import OntologyAnnotationMixin
+from .tools.ontology import (
+    add_brain_region_external_resources,
+    add_species_external_resource,
+    add_strain_external_resource,
+)
 from .utils import (
     get_json_schema_from_method_signature,
     load_dict_from_file,
@@ -35,7 +38,7 @@ from .utils.json_schema import (
 )
 
 
-class BaseDataInterface(OntologyAnnotationMixin, ABC):
+class BaseDataInterface(ABC):
     """Abstract class defining the structure of all DataInterfaces."""
 
     display_name: str | None = None
@@ -98,14 +101,8 @@ class BaseDataInterface(OntologyAnnotationMixin, ABC):
         DeepDict
             The metadata dictionary containing basic NWBFile metadata.
         """
-        metadata = DeepDict()
+        metadata = get_default_nwbfile_metadata()
         metadata["NWBFile"]["session_description"] = ""
-        metadata["NWBFile"]["identifier"] = str(uuid.uuid4())
-
-        # Add NeuroConv watermark (overridden if going through the GUIDE)
-        neuroconv_version = importlib.metadata.version("neuroconv")
-        metadata["NWBFile"]["source_script"] = f"Created using NeuroConv v{neuroconv_version}"
-        metadata["NWBFile"]["source_script_file_name"] = __file__  # Required for validation
 
         return metadata
 
@@ -192,12 +189,12 @@ class BaseDataInterface(OntologyAnnotationMixin, ABC):
         nwbfile = make_nwbfile_from_metadata(metadata=metadata)
         self.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **conversion_options)
 
-        # Annotate the assembled file with ontology references (in-file HERD). Runs after data is
-        # added so the electrodes table and imaging planes exist. All hooks are overridable
-        # (see OntologyAnnotationMixin).
-        self.add_species_external_resource(nwbfile, metadata=metadata)
-        self.add_strain_external_resource(nwbfile, metadata=metadata)
-        self.add_brain_region_external_resources(nwbfile, metadata=metadata)
+        # Write any ontology terms stated in the metadata into the file as HERD references. A
+        # no-op unless metadata carries an "ontology" block (see neuroconv.tools.ontology); run
+        # the infer_*_ontology_metadata functions first to have NeuroConv propose those terms.
+        add_species_external_resource(nwbfile, metadata=metadata)
+        add_strain_external_resource(nwbfile, metadata=metadata)
+        add_brain_region_external_resources(nwbfile, metadata=metadata)
 
         return nwbfile
 
@@ -238,7 +235,8 @@ class BaseDataInterface(OntologyAnnotationMixin, ABC):
         nwbfile_path : FilePath
             Path for where to write or load (if overwrite=False) the NWBFile.
         nwbfile : NWBFile, optional
-            An in-memory NWBFile object to write to the location.
+            An in-memory NWBFile object. If provided, this conversion's interfaces add their data to
+            it rather than a new file being created; the file still needs `nwbfile_path` to be written.
         metadata : dict, optional
             Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
         overwrite : bool, default: False
@@ -253,6 +251,7 @@ class BaseDataInterface(OntologyAnnotationMixin, ABC):
             To customize, call the `.get_default_backend_configuration(...)` method, modify the returned
             BackendConfiguration object, and pass that instead.
             Otherwise, all datasets will use default configuration settings.
+            Cannot be combined with `nwbfile` or `append_on_disk_nwbfile=True`.
         append_on_disk_nwbfile : bool, default: False
             Whether to append to an existing NWBFile on disk. If True, the `nwbfile` parameter must be None.
             This is useful for appending data to an existing file without overwriting it.
@@ -272,6 +271,23 @@ class BaseDataInterface(OntologyAnnotationMixin, ABC):
             raise ValueError(
                 "Cannot append to an existing file while also providing an in-memory NWBFile. "
                 "Either set overwrite=True to replace the existing file, or remove the nwbfile parameter to append to the existing file on disk."
+            )
+
+        if backend_configuration is not None and appending_to_in_memory_nwbfile:
+            raise ValueError(
+                "Cannot provide a backend_configuration while also providing an in-memory NWBFile. This "
+                "interface's data is added to that file before it is written, so a configuration built from "
+                "it beforehand does not describe the file being written. Add this interface with "
+                "add_to_nwbfile, derive the configuration from the result, and write it with "
+                "configure_and_write_nwbfile."
+            )
+
+        if backend_configuration is not None and append_on_disk_nwbfile:
+            raise ValueError(
+                "Cannot provide a backend_configuration while also appending to an existing file on disk. "
+                "The file is read and this interface's data added to it before it is configured, so a "
+                "configuration built beforehand does not describe the file being written. Specify `backend` "
+                "instead, which derives the configuration after the data is added."
             )
 
         if metadata is None:
@@ -315,9 +331,9 @@ class BaseDataInterface(OntologyAnnotationMixin, ABC):
         """
         if nwbfile is not None:
             self.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **conversion_options)
-            self.add_species_external_resource(nwbfile, metadata=metadata)
-            self.add_strain_external_resource(nwbfile, metadata=metadata)
-            self.add_brain_region_external_resources(nwbfile, metadata=metadata)
+            add_species_external_resource(nwbfile, metadata=metadata)
+            add_strain_external_resource(nwbfile, metadata=metadata)
+            add_brain_region_external_resources(nwbfile, metadata=metadata)
         else:
             nwbfile = self.create_nwbfile(metadata=metadata, **conversion_options)
 
@@ -342,7 +358,9 @@ class BaseDataInterface(OntologyAnnotationMixin, ABC):
         Private helper method for run_conversion in append mode.
         Reads existing file, adds interface data, and writes back.
         """
-        backend = _resolve_backend(backend, backend_configuration)
+        backend = _fetch_backend_from_nwbfile_on_disk(
+            nwbfile_path=nwbfile_path, backend=backend, backend_configuration=backend_configuration
+        )
         IO = BACKEND_NWB_IO[backend]
 
         with IO(path=str(nwbfile_path), mode="r+", load_namespaces=True) as io:

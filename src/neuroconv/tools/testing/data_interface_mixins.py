@@ -1,3 +1,4 @@
+import inspect
 import json
 import tempfile
 from abc import abstractmethod
@@ -9,7 +10,7 @@ from typing import Literal
 import numpy as np
 import pytest
 from jsonschema.validators import Draft7Validator, validate
-from numpy.testing import assert_array_equal
+from numpy.testing import assert_allclose, assert_array_equal
 from pynwb import read_nwb
 from pynwb.testing.mock.file import mock_NWBFile
 
@@ -20,6 +21,7 @@ from neuroconv.datainterfaces.ecephys.baserecordingextractorinterface import (
 from neuroconv.datainterfaces.ecephys.basesortingextractorinterface import (
     BaseSortingExtractorInterface,
 )
+from neuroconv.datainterfaces.events.baseeventsinterface import _to_table_object_name
 from neuroconv.datainterfaces.ophys.baseimagingextractorinterface import (
     BaseImagingExtractorInterface,
 )
@@ -105,7 +107,22 @@ class DataInterfaceTestMixin:
         Draft7Validator.check_schema(schema=schema)
 
     def test_metadata(self, setup_interface):
-        metadata = self.interface.get_metadata()
+        """Test the dict-based metadata, which is the format every interface will emit.
+
+        See https://github.com/catalystneuro/neuroconv/issues/1557 for discussion on
+        what get_metadata() should return (provenance vs convenience).
+
+        Dual-mode interfaces (those that still expose the old list-based format) opt
+        into the dict format via ``use_new_metadata_format=True``. Dict-only interfaces
+        return it unconditionally from ``get_metadata()``.
+        """
+        # When the default flips to the dict format this branch goes and the whole thing becomes a bare
+        # ``self.interface.get_metadata()``, since that is what the argument would be asking for anyway.
+        # The old-format tests keep stating ``use_new_metadata_format=False`` until they are removed.
+        if "use_new_metadata_format" in inspect.signature(self.interface.get_metadata).parameters:
+            metadata = self.interface.get_metadata(use_new_metadata_format=True)
+        else:
+            metadata = self.interface.get_metadata()
 
         metadata_for_validation = deepcopy(metadata)
         if "session_start_time" not in metadata_for_validation["NWBFile"]:
@@ -123,7 +140,7 @@ class DataInterfaceTestMixin:
 
         nwbfile = mock_NWBFile()
 
-        metadata = _get_metadata_for_writing(self.interface)
+        metadata = self.edit_metadata(_get_metadata_for_writing(self.interface))
         metadata_before_add_method = deepcopy(metadata)
 
         self.interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **self.conversion_options)
@@ -137,12 +154,13 @@ class DataInterfaceTestMixin:
         writes the same file; that equivalence is covered once on a mock interface in
         `tests/test_minimal/test_interfaces_run_conversion.py`.
         """
-        metadata = _get_metadata_for_writing(self.interface)
+        metadata = self.edit_metadata(_get_metadata_for_writing(self.interface))
         if "session_start_time" not in metadata["NWBFile"]:
             metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
 
         nwbfile_path = str(tmp_path / f"{self.__class__.__name__}_{self.test_name}_{backend}.nwb")
         self.nwbfile_path = nwbfile_path
+        self.backend = backend
 
         self.interface.run_conversion(
             nwbfile_path=nwbfile_path,
@@ -155,9 +173,11 @@ class DataInterfaceTestMixin:
         if backend in self.check_read_nwb_backends:
             self.check_read_nwb(nwbfile_path=nwbfile_path)
 
-        # Custom checks tend to write more files of their own, so they run against one backend only
-        if backend == "hdf5":
-            self.run_custom_checks()
+        self.run_custom_checks()
+
+    def edit_metadata(self, metadata: dict) -> dict:
+        """Override this to edit the interface's metadata before it is written, the way a user would."""
+        return metadata
 
     @abstractmethod
     def check_read_nwb(self, nwbfile_path: str):
@@ -165,7 +185,7 @@ class DataInterfaceTestMixin:
         pass
 
     def run_custom_checks(self):
-        """Override this in child classes to inject additional custom checks."""
+        """Check each conversion using ``self.nwbfile_path`` and ``self.backend`` for any additional writes."""
         pass
 
 
@@ -277,43 +297,19 @@ class ImagingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
     data_interface_cls: type[BaseImagingExtractorInterface]
     optical_series_name: str = "TwoPhotonSeries"
 
-    # `check_read_nwb` goes through roiextractors' NwbImagingExtractor, which opens the file with NWBHDF5IO
-    check_read_nwb_backends = ("hdf5",)
-
-    # TODO: remove test_metadata and check_extracted_metadata_old_list_format
+    # TODO: remove test_metadata_old_list_format and check_extracted_metadata_old_list_format
     # when old list-based metadata format is removed
-    def test_metadata(self, setup_interface):
-        from ..roiextractors.roiextractors import _is_dict_based_metadata
-
-        metadata = self.interface.get_metadata()
+    def test_metadata_old_list_format(self, setup_interface):
         # Dict-only interfaces no longer expose the old list-based format,
         # so there is nothing for check_extracted_metadata_old_list_format to assert.
-        if _is_dict_based_metadata(metadata):
+        if "use_new_metadata_format" not in inspect.signature(self.interface.get_metadata).parameters:
             pytest.skip("Interface returns the new dict-based metadata format only")
+        metadata = self.interface.get_metadata(use_new_metadata_format=False)
         self.check_extracted_metadata_old_list_format(metadata)
 
     def check_extracted_metadata_old_list_format(self, metadata: dict):
         """Override this method to make assertions about extracted metadata in old list-based format."""
         pass
-
-    def test_get_metadata(self, setup_interface):
-        """Test get_metadata with the new dict-based format.
-
-        See https://github.com/catalystneuro/neuroconv/issues/1557 for discussion on
-        what get_metadata() should return (provenance vs convenience).
-
-        Dual-mode interfaces (those that still expose the old list-based format) opt
-        into the new format via ``use_new_metadata_format=True``. Dict-only interfaces
-        return the new format unconditionally from ``get_metadata()``.
-        """
-        import inspect
-
-        sig = inspect.signature(self.interface.get_metadata)
-        if "use_new_metadata_format" in sig.parameters:
-            metadata = self.interface.get_metadata(use_new_metadata_format=True)
-        else:
-            metadata = self.interface.get_metadata()
-        self.check_extracted_metadata(metadata)
 
     def check_read_nwb(self, nwbfile_path: str):
         from roiextractors import NwbImagingExtractor
@@ -361,26 +357,17 @@ class ImagingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
 class SegmentationExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
     data_interface_cls: BaseSegmentationExtractorInterface
 
-    # TODO: remove test_metadata and check_extracted_metadata_old_list_format
+    # TODO: remove test_metadata_old_list_format and check_extracted_metadata_old_list_format
     # when old list-based metadata format is removed
-    def test_metadata(self, setup_interface):
-        metadata = self.interface.get_metadata()
+    def test_metadata_old_list_format(self, setup_interface):
+        if "use_new_metadata_format" not in inspect.signature(self.interface.get_metadata).parameters:
+            pytest.skip("Interface returns the new dict-based metadata format only")
+        metadata = self.interface.get_metadata(use_new_metadata_format=False)
         self.check_extracted_metadata_old_list_format(metadata)
 
     def check_extracted_metadata_old_list_format(self, metadata: dict):
         """Override this method to make assertions about extracted metadata in old list-based format."""
         pass
-
-    def test_get_metadata(self, setup_interface):
-        """Test get_metadata with the new dict-based format."""
-        import inspect
-
-        sig = inspect.signature(self.interface.get_metadata)
-        if "use_new_metadata_format" not in sig.parameters:
-            pytest.skip("Interface does not support use_new_metadata_format yet")
-
-        metadata = self.interface.get_metadata(use_new_metadata_format=True)
-        self.check_extracted_metadata(metadata)
 
     def check_read(self, nwbfile_path: str):
         from roiextractors import NwbSegmentationExtractor
@@ -399,26 +386,17 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
     data_interface_cls: type[BaseRecordingExtractorInterface]
     is_lfp_interface: bool = False
 
-    # TODO: remove test_metadata and check_extracted_metadata_old_list_format
+    # TODO: remove test_metadata_old_list_format and check_extracted_metadata_old_list_format
     # when old list-based metadata format is removed
-    def test_metadata(self, setup_interface):
-        metadata = self.interface.get_metadata()
+    def test_metadata_old_list_format(self, setup_interface):
+        if "use_new_metadata_format" not in inspect.signature(self.interface.get_metadata).parameters:
+            pytest.skip("Interface returns the new dict-based metadata format only")
+        metadata = self.interface.get_metadata(use_new_metadata_format=False)
         self.check_extracted_metadata_old_list_format(metadata)
 
     def check_extracted_metadata_old_list_format(self, metadata: dict):
         """Override this method to make assertions about extracted metadata in old list-based format."""
         pass
-
-    def test_get_metadata(self, setup_interface):
-        """Test get_metadata with the new dict-based format."""
-        import inspect
-
-        sig = inspect.signature(self.interface.get_metadata)
-        if "use_new_metadata_format" not in sig.parameters:
-            pytest.skip("Interface does not support use_new_metadata_format yet")
-
-        metadata = self.interface.get_metadata(use_new_metadata_format=True)
-        self.check_extracted_metadata(metadata)
 
     def check_read_nwb(self, nwbfile_path: str):
         from spikeinterface.core.testing import check_recordings_equal
@@ -1060,9 +1038,6 @@ class MiniscopeImagingInterfaceMixin(ImagingExtractorInterfaceTestMixin):
 
     optical_series_name = "OnePhotonSeries"
 
-    # This mixin reads the file itself instead of going through NwbImagingExtractor, so zarr is checkable
-    check_read_nwb_backends = ("hdf5", "zarr")
-
     def check_read_nwb(self, nwbfile_path: str):
         from ndx_miniscope import Miniscope
 
@@ -1289,44 +1264,115 @@ class TDTFiberPhotometryInterfaceMixin(DataInterfaceTestMixin, TemporalAlignment
                 self.check_nwbfile_temporal_alignment()
 
 
-class PoseEstimationInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
+class PoseEstimationInterfaceTestMixin(DataInterfaceTestMixin):
     """
     Generic class for testing any pose estimation interface.
+
+    Format-specific assertions belong in ``run_custom_checks``. ``TemporalAlignmentMixin`` is not a base
+    because the pose interfaces' alignment methods are on the way out; a child that wants them adds it.
     """
 
     def check_read_nwb(self, nwbfile_path: str):
-        """Check that pose estimation data can be read back from NWB file."""
+        """Every container the metadata declares is in the file, named and shaped as the metadata says."""
+        metadata = _get_metadata_for_writing(self.interface)
         nwbfile = read_nwb(nwbfile_path)
 
-        # Check that behavior module exists
         assert "behavior" in nwbfile.processing
         behavior_module = nwbfile.processing["behavior"]
 
-        # Check for pose estimation container (this may vary by interface)
-        # Most interfaces will have some pose estimation container in behavior
-        pose_containers = [
-            data_interface
-            for name, data_interface in behavior_module.data_interfaces.items()
-            if hasattr(data_interface, "pose_estimation_series")
-        ]
-        assert len(pose_containers) > 0, "No pose estimation containers found in behavior module"
-
-        # Check that pose estimation series exist
-        pose_container = pose_containers[0]
-        assert hasattr(pose_container, "pose_estimation_series")
-        assert len(pose_container.pose_estimation_series) > 0
-
-        # Check that timestamps are properly written
-        for series_name, series in pose_container.pose_estimation_series.items():
-            assert hasattr(series, "timestamps")
-            assert len(series.timestamps) > 0
-            assert hasattr(series, "data")
-            assert len(series.data) > 0
-
-            # Check data dimensions (should be 2D: time x spatial_dims)
-            assert len(series.data.shape) == 2
-            assert series.data.shape[0] == len(series.timestamps)
+        containers_metadata = metadata["Pose"]["PoseEstimations"]
+        assert len(containers_metadata) > 0, "The interface declares no PoseEstimation container."
+        for container_entry in containers_metadata.values():
+            self._check_pose_estimation_container(
+                nwbfile=nwbfile,
+                behavior_module=behavior_module,
+                metadata=metadata,
+                container_entry=container_entry,
+            )
         nwbfile.read_io.close()
+
+    def test_metadata_propagation(self, setup_interface):
+        """Every editable name and description under ``metadata["Pose"]`` reaches the written objects.
+
+        The interface's own metadata is edited and handed back, so this covers the whole addressing chain:
+        ``metadata_key`` to the container entry, its two cross-references to the skeleton and the device,
+        and each keypoint to its series entry.
+        """
+        metadata = _get_metadata_for_writing(self.interface)
+        pose_metadata = metadata["Pose"]
+
+        for metadata_key, container_entry in pose_metadata["PoseEstimations"].items():
+            container_entry["name"] = f"Custom{container_entry['name']}"
+            container_entry["description"] = f"Custom description for {metadata_key}."
+            skeleton_metadata_key = container_entry.get("skeleton_metadata_key")
+            if skeleton_metadata_key is not None:
+                skeleton_entry = pose_metadata["Skeletons"][skeleton_metadata_key]
+                skeleton_entry["name"] = f"Custom{skeleton_entry['name']}"
+            for keypoint_name, series_entry in container_entry["PoseEstimationSeries"].items():
+                series_entry["name"] = f"Custom{series_entry['name']}"
+                series_entry["description"] = f"Custom description for {keypoint_name}."
+                series_entry["unit"] = "custom_units"
+                series_entry["reference_frame"] = "Custom reference frame."
+
+        nwbfile = mock_NWBFile()
+        self.interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+        behavior_module = nwbfile.processing["behavior"]
+        for container_entry in pose_metadata["PoseEstimations"].values():
+            container = behavior_module.data_interfaces[container_entry["name"]]
+            assert container.description == container_entry["description"]
+
+            skeleton_metadata_key = container_entry.get("skeleton_metadata_key")
+            if skeleton_metadata_key is not None:
+                assert container.skeleton.name == pose_metadata["Skeletons"][skeleton_metadata_key]["name"]
+
+            for series_entry in container_entry["PoseEstimationSeries"].values():
+                series = container.pose_estimation_series[series_entry["name"]]
+                assert series.description == series_entry["description"]
+                assert series.unit == series_entry["unit"]
+                assert series.reference_frame == series_entry["reference_frame"]
+
+    def _check_pose_estimation_container(self, nwbfile, behavior_module, metadata: dict, container_entry: dict):
+        """One container entry, its cross-referenced device and skeleton, and one series per keypoint."""
+        from ndx_pose import PoseEstimation, PoseEstimationSeries
+
+        container_name = container_entry["name"]
+        assert container_name in behavior_module.data_interfaces
+        container = behavior_module.data_interfaces[container_name]
+        assert isinstance(container, PoseEstimation)
+
+        # Only fields the metadata actually carries are checked: the rest are left to ndx-pose's defaults
+        # by the writer, so asserting on them here would be asserting on the extension.
+        for field in ("description", "scorer", "source_software"):
+            if container_entry.get(field) is not None:
+                assert getattr(container, field) == container_entry[field]
+
+        device_metadata_key = container_entry.get("device_metadata_key")
+        if device_metadata_key is not None:
+            assert metadata["Devices"][device_metadata_key]["name"] in nwbfile.devices
+
+        skeleton_metadata_key = container_entry.get("skeleton_metadata_key")
+        if skeleton_metadata_key is not None:
+            skeleton_entry = metadata["Pose"]["Skeletons"][skeleton_metadata_key]
+            assert "Skeletons" in behavior_module.data_interfaces
+            assert skeleton_entry["name"] in behavior_module["Skeletons"].skeletons
+            assert container.skeleton.name == skeleton_entry["name"]
+            assert container.skeleton.nodes[:].tolist() == list(skeleton_entry["nodes"])
+
+        series_entries = container_entry["PoseEstimationSeries"]
+        assert len(container.pose_estimation_series) == len(series_entries)
+        for series_entry in series_entries.values():
+            series_name = series_entry["name"]
+            assert series_name in container.pose_estimation_series
+            series = container.pose_estimation_series[series_name]
+            assert isinstance(series, PoseEstimationSeries)
+
+            # A regularly sampled series carries a rate and a starting time instead of an explicit
+            # timestamps vector, so ask for the times either way.
+            timestamps = series.get_timestamps()
+            assert len(timestamps) > 0
+            assert series.data.ndim == 2
+            assert series.data.shape[0] == len(timestamps)
 
 
 class FiberPhotometryInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
@@ -1412,3 +1458,59 @@ class FiberPhotometryInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmen
         indicators = nwbfile.lab_meta_data["fiber_photometry"].fiber_photometry_indicators
         for indicator_metadata in fiber_photometry_metadata["FiberPhotometryIndicators"].values():
             assert indicator_metadata["name"] in indicators.indicators
+
+
+class EventsInterfaceTestMixin(DataInterfaceTestMixin):
+    """Shared tests for the interfaces built on ``BaseEventsInterface``.
+
+    A subclass sets ``data_interface_cls`` and ``interface_kwargs`` and inherits the schema, metadata and
+    round-trip tests of ``DataInterfaceTestMixin``, with ``check_read_nwb`` asserting what is true of every
+    events interface whatever its source: the written tables carry the times ``get_event_times`` reports.
+    A subclass may also set ``event_names`` to write under the names a user would give the types, in which
+    case the round trip runs, and is checked, under those names. Nothing here touches ``alignment``. Nothing
+    here reads the source directly either, so a subclass that wants to pin the actual times of its fixture
+    states them in its own ``check_read_nwb``, calling ``super().check_read_nwb`` first.
+    """
+
+    #: ``event_type_source_id`` to ``event_name``. Empty means the interface's own names are written.
+    event_names: dict[str, str] = {}
+
+    def edit_metadata(self, metadata: dict) -> dict:
+        event_types = metadata["Events"][self.interface.metadata_key]["event_types"]
+        for event_type_source_id, event_name in self.event_names.items():
+            event_types[event_type_source_id]["event_name"] = event_name
+        return metadata
+
+    def check_read_nwb(self, nwbfile_path: str):
+        """Each type's rows in the written file carry the times ``get_event_times`` reports for it."""
+        events_metadata = self.edit_metadata(_get_metadata_for_writing(self.interface))["Events"]
+        event_types = events_metadata[self.interface.metadata_key]["event_types"]
+        nwbfile = read_nwb(nwbfile_path)
+
+        for event_type_source_id in self.interface.get_event_type_source_ids():
+            entry = event_types[event_type_source_id]
+
+            # The table this type routes into, named the way the writer names it: a declared EventTables
+            # entry, else the event_name of a type alone on its table, else the shared table_metadata_key.
+            table_metadata_key = entry.get("table_metadata_key", event_type_source_id)
+            declared_entry = events_metadata.get("EventTables", {}).get(table_metadata_key)
+            sharing_the_table = [
+                source_id
+                for source_id, other_entry in event_types.items()
+                if other_entry.get("table_metadata_key", source_id) == table_metadata_key
+            ]
+            if declared_entry is not None:
+                table_name = declared_entry["table_name"]
+            elif len(sharing_the_table) == 1:
+                table_name = _to_table_object_name(entry["event_name"])
+            else:
+                table_name = _to_table_object_name(table_metadata_key)
+            table = nwbfile.get_events_table(table_name)
+
+            # In a shared table this type's rows are the ones labelled with its event_name.
+            rows = np.arange(len(table))
+            if "event_type" in table.colnames:
+                rows = np.flatnonzero(np.asarray(table["event_type"][:]) == entry["event_name"])
+            written_timestamps = np.asarray(table["timestamp"][:])[rows]
+
+            assert_allclose(written_timestamps, self.interface.get_event_times(event_type_source_id))

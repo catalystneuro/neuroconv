@@ -36,7 +36,7 @@ class TdtRecordingInterface(BaseRecordingExtractorInterface):
         gain: float,
         stream_id: str = "0",  # Stream "0" corresponds to LFP for gin data. Other streams seem non-electrical.
         verbose: bool = False,
-        es_key: str = "ElectricalSeries",
+        es_key: str | None = None,
         stream_name: str | None = None,
         metadata_key: str | None = None,
     ):

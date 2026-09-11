@@ -341,6 +341,8 @@ def add_fiber_photometry_lab_metadata(*, nwbfile: NWBFile, fiber_photometry_meta
         row_data["indicator"] = key_to_indicator[row_metadata["indicator_metadata_key"]]
         if "coordinates" in row_metadata:
             row_data["coordinates"] = row_metadata["coordinates"]
+        if "notes" in row_metadata:
+            row_data["notes"] = row_metadata["notes"]
         if "commanded_voltage_series_metadata_key" in row_metadata:
             commanded_voltage_name = commanded_voltage_key_to_name[
                 row_metadata["commanded_voltage_series_metadata_key"]
