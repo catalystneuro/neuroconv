@@ -85,7 +85,7 @@ def test_time_series_skip_zero_length_axis(
     #     if backend == "hdf5":
     #         assert written_data.compression == "gzip"
     #     elif backend == "zarr":
-    #         assert written_data.compressor == numcodecs.GZip(level=4)
+    #         assert written_data.compressors[0] == GzipCodec(level=4)
     #
     #     assert_array_equal(integer_array, written_data[:])
 

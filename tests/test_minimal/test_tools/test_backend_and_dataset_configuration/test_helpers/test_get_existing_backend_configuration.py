@@ -75,14 +75,14 @@ def zarr_nwbfile_path(tmp_path_factory):
 
     # Add a ZarrDataIO-compressed time series
     raw_array = np.array([[11, 21, 31], [41, 51, 61]], dtype="int32")
-    data = ZarrDataIO(data=raw_array, chunks=(1, 3), compressor=compressor)
+    data = ZarrDataIO(data=raw_array, chunks=(1, 3), compressors=compressor)
     raw_time_series = mock_TimeSeries(name="CompressedRawTimeSeries", data=data)
     nwbfile.add_acquisition(raw_time_series)
 
     # Add ZarrDataIO-compressed trials column
     number_of_trials = 10
     start_time = np.linspace(start=0.0, stop=10.0, num=number_of_trials)
-    data = ZarrDataIO(data=start_time, chunks=(5,), compressor=compressor)
+    data = ZarrDataIO(data=start_time, chunks=(5,), compressors=compressor)
     nwbfile.add_trial_column(
         name="compressed_start_time",
         description="start time of epoch",

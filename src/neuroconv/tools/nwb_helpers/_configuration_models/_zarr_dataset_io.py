@@ -7,8 +7,7 @@ from hdmf import Container
 from pydantic import Field, InstanceOf, PositiveInt, model_validator
 from typing_extensions import Self
 from zarr.abc.codec import ArrayArrayCodec, BytesBytesCodec
-from zarr.codecs import BloscCodec, GzipCodec, ZstdCodec
-from zarr.codecs.numcodecs import BZ2, LZ4, LZMA, Shuffle, Zlib
+from zarr.codecs import BZ2, LZ4, LZMA, BloscCodec, GzipCodec, Shuffle, Zlib, ZstdCodec
 
 from ._base_dataset_io import _DEFAULT_GZIP_LEVEL, DatasetIOConfiguration
 

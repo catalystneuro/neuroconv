@@ -16,6 +16,7 @@ from pynwb.testing.mock.base import mock_TimeSeries
 from pynwb.testing.mock.file import mock_NWBFile
 from pynwb.testing.mock.ophys import mock_ImagingPlane
 from zarr.abc.codec import BytesBytesCodec
+from zarr.codecs import GzipCodec
 
 from neuroconv.tools.hdmf import SliceableDataChunkIterator
 from neuroconv.tools.nwb_helpers import (
@@ -158,7 +159,7 @@ def test_simple_image(tmpdir: Path, backend: Literal["hdf5", "zarr"]):
         assert written_data.compression == "gzip"
         assert written_data.compression_opts == 4
     elif backend == "zarr":
-        assert written_data.compressor == numcodecs.GZip(level=4)
+        assert written_data.compressors[0] == GzipCodec(level=4)
 
     assert_array_equal(array, written_data[:])
     written_nwbfile.read_io.close()
