@@ -11,29 +11,37 @@ from neuroconv.tools.ontology import (
     HBA_TERMS,
     MBA_TERMS,
     SPECIES_TERMS,
+    STRAIN_TERMS,
     BrainRegionTerm,
     SpeciesTerm,
+    StrainTerm,
     add_brain_region_external_resources,
     add_species_external_resource,
+    add_strain_external_resource,
     get_brain_region_term,
     get_species_suggestion,
     get_species_term,
+    get_strain_suggestion,
+    get_strain_term,
     infer_brain_region_ontology_metadata,
     infer_species_ontology_metadata,
+    infer_strain_ontology_metadata,
     validate_species,
+    validate_strain,
 )
 
 MOUSE_SPECIES_TERM = {"id": "NCBITaxon:10090", "uri": "http://purl.obolibrary.org/obo/NCBITaxon_10090"}
+LONG_EVANS_STRAIN_TERM = {"id": "RRID:RGD_2308852", "uri": "https://scicrunch.org/resolver/RRID:RGD_2308852"}
 
 
-def _make_nwbfile(species="Mus musculus", with_subject=True) -> NWBFile:
+def _make_nwbfile(species="Mus musculus", strain=None, with_subject=True) -> NWBFile:
     nwbfile = NWBFile(
         session_description="d",
         identifier="id",
         session_start_time=datetime(2020, 1, 1, tzinfo=tzutc()),
     )
     if with_subject:
-        nwbfile.subject = Subject(subject_id="s1", species=species)
+        nwbfile.subject = Subject(subject_id="s1", species=species, strain=strain)
     return nwbfile
 
 
@@ -115,6 +123,64 @@ class TestSpeciesTerms:
     def test_validate_species_warning_points_to_bioregistry(self):
         with pytest.warns(UserWarning, match="bioregistry.io/NCBITaxon:9606"):
             validate_species("human")
+
+
+# ---------------------------------------------------------------------------
+# Strain term resolution
+# ---------------------------------------------------------------------------
+
+
+class TestStrainTerms:
+    def test_table_entries_are_self_consistent(self):
+        for canonical_name, term in STRAIN_TERMS.items():
+            assert isinstance(term, StrainTerm)
+            assert term.canonical_name == canonical_name
+            assert term.rrid.startswith("RRID:")
+
+    def test_entity_uri_is_derived_from_rrid(self):
+        term = STRAIN_TERMS["Long-Evans"]
+        assert term.rrid == "RRID:RGD_2308852"
+        assert term.entity_uri == "https://scicrunch.org/resolver/RRID:RGD_2308852"
+
+    def test_exact_canonical_name_resolves(self):
+        term = get_strain_term("Long-Evans")
+        assert term.canonical_name == "Long-Evans"
+        assert term.rrid == "RRID:RGD_2308852"
+
+    def test_informal_spelling_suggestion(self):
+        suggestion = get_strain_suggestion("black 6")
+        term, reason = suggestion
+        assert term.canonical_name == "C57BL/6J"
+        assert "informal spelling" in reason
+        assert get_strain_term("black 6").canonical_name == "C57BL/6J"
+
+    def test_informal_spelling_is_case_insensitive_and_stripped(self):
+        term, _ = get_strain_suggestion("  Long Evans  ")
+        assert term.canonical_name == "Long-Evans"
+
+    def test_typo_suggestion(self):
+        suggestion = get_strain_suggestion("Sprague Dawly")
+        term, reason = suggestion
+        assert term.canonical_name == "Sprague Dawley"
+        assert "closely matches" in reason
+
+    @pytest.mark.parametrize("strain", ["Octodon degus strain X", "", None, 42])
+    def test_unrecognized_returns_none(self, strain):
+        assert get_strain_suggestion(strain) is None
+        assert get_strain_term(strain) is None
+
+    def test_validate_strain_no_warning_for_canonical_name(self, recwarn):
+        assert validate_strain("Long-Evans") is None
+        assert len(recwarn) == 0
+
+    def test_validate_strain_warns_and_returns_term_for_informal_spelling(self):
+        with pytest.warns(UserWarning, match="C57BL/6J"):
+            term = validate_strain("black 6")
+        assert term.canonical_name == "C57BL/6J"
+
+    def test_validate_strain_warning_points_to_bioregistry(self):
+        with pytest.warns(UserWarning, match="bioregistry.io/RRID:RGD_2308852"):
+            validate_strain("long evans")
 
 
 # ---------------------------------------------------------------------------
@@ -216,6 +282,39 @@ class TestInferSpeciesOntologyMetadata:
     def test_no_subject_block_is_a_noop(self):
         metadata = {"NWBFile": {}}
         assert infer_species_ontology_metadata(metadata) is metadata
+
+
+# ---------------------------------------------------------------------------
+# Strain ontology inference (metadata -> metadata)
+# ---------------------------------------------------------------------------
+
+
+class TestInferStrainOntologyMetadata:
+    def test_recognized_strain_writes_term(self):
+        metadata = {"Subject": {"strain": "Long-Evans"}}
+        infer_strain_ontology_metadata(metadata)
+        assert metadata["Subject"]["ontology"]["strain"] == LONG_EVANS_STRAIN_TERM
+
+    def test_informal_spelling_is_resolved_and_warns(self):
+        metadata = {"Subject": {"strain": "black 6"}}
+        with pytest.warns(UserWarning, match="C57BL/6J"):
+            infer_strain_ontology_metadata(metadata)
+        assert metadata["Subject"]["ontology"]["strain"]["id"] == "RRID:IMSR_JAX:000664"
+
+    def test_unrecognized_strain_leaves_metadata_untouched(self):
+        metadata = {"Subject": {"strain": "my in-house line"}}
+        infer_strain_ontology_metadata(metadata)
+        assert metadata["Subject"].get("ontology", {}).get("strain") is None
+
+    def test_existing_user_term_is_not_overwritten(self):
+        curated = {"id": "RRID:EXAMPLE:1", "uri": "https://example.org/1"}
+        metadata = {"Subject": {"strain": "Long-Evans", "ontology": {"strain": curated}}}
+        infer_strain_ontology_metadata(metadata)
+        assert metadata["Subject"]["ontology"]["strain"] == curated
+
+    def test_no_subject_block_is_a_noop(self):
+        metadata = {"NWBFile": {}}
+        assert infer_strain_ontology_metadata(metadata) is metadata
 
 
 # ---------------------------------------------------------------------------
@@ -336,6 +435,94 @@ class TestSpeciesExternalResource:
         assert add_species_external_resource(nwbfile, metadata=metadata) is True
         assert nwbfile.external_resources is herd  # extended in place, not replaced
         assert len(herd.entities[:]) == 2
+
+
+# ---------------------------------------------------------------------------
+# Strain HERD annotation (metadata -> file)
+# ---------------------------------------------------------------------------
+
+
+class TestStrainExternalResource:
+    @pytest.mark.parametrize(
+        "kwargs, metadata",
+        [
+            (dict(with_subject=False), {"Subject": {"ontology": {"strain": LONG_EVANS_STRAIN_TERM}}}),
+            (dict(strain="Long-Evans"), None),  # no metadata
+            (dict(strain="Long-Evans"), {"Subject": {"strain": "Long-Evans"}}),  # metadata but no ontology term
+            (dict(strain=None), {"Subject": {"strain": None, "ontology": {"strain": LONG_EVANS_STRAIN_TERM}}}),
+        ],
+    )
+    def test_noop_cases(self, kwargs, metadata):
+        nwbfile = _make_nwbfile(**kwargs)
+        assert add_strain_external_resource(nwbfile, metadata=metadata) is False
+        assert nwbfile.external_resources is None
+
+    def test_strain_term_from_metadata_is_annotated(self):
+        nwbfile = _make_nwbfile(strain="Long-Evans")
+        metadata = {"Subject": {"strain": "Long-Evans", "ontology": {"strain": LONG_EVANS_STRAIN_TERM}}}
+        assert add_strain_external_resource(nwbfile, metadata=metadata) is True
+
+        dataframe = nwbfile.external_resources.to_dataframe()
+        assert dataframe["key"].tolist() == ["Long-Evans"]
+        assert dataframe["entity_id"].tolist() == ["RRID:RGD_2308852"]
+
+        objects = nwbfile.external_resources.objects.to_dataframe()
+        assert objects["object_id"].tolist() == [nwbfile.subject.object_id]
+        assert objects["relative_path"].tolist() == ["strain"]
+
+    def test_idempotent(self):
+        nwbfile = _make_nwbfile(strain="Long-Evans")
+        metadata = {"Subject": {"ontology": {"strain": LONG_EVANS_STRAIN_TERM}}}
+        assert add_strain_external_resource(nwbfile, metadata=metadata) is True
+        assert add_strain_external_resource(nwbfile, metadata=metadata) is False
+        assert len(nwbfile.external_resources.entities[:]) == 1
+
+    def test_extends_existing_herd_in_place(self):
+        from hdmf.common import HERD
+        from pynwb import get_type_map
+
+        nwbfile = _make_nwbfile(strain="Long-Evans")
+        herd = HERD(type_map=get_type_map())
+        herd.add_ref(
+            container=nwbfile.subject,
+            attribute="subject_id",
+            key="s1",
+            entity_id="EXAMPLE:1",
+            entity_uri="https://example.org/1",
+        )
+        nwbfile.external_resources = herd
+
+        metadata = {"Subject": {"ontology": {"strain": LONG_EVANS_STRAIN_TERM}}}
+        assert add_strain_external_resource(nwbfile, metadata=metadata) is True
+        assert nwbfile.external_resources is herd  # extended in place, not replaced
+        assert len(herd.entities[:]) == 2
+
+    def test_maps_strain_to_multiple_ontology_terms(self):
+        nwbfile = _make_nwbfile(strain="Long-Evans")
+        metadata = {
+            "Subject": {
+                "ontology": {
+                    "strain": [
+                        LONG_EVANS_STRAIN_TERM,
+                        {"id": "RRID:EXAMPLE:3", "uri": "https://example.org/3"},
+                    ]
+                }
+            }
+        }
+
+        assert add_strain_external_resource(nwbfile, metadata=metadata) is True
+        dataframe = nwbfile.external_resources.to_dataframe()
+        assert sorted(dataframe["entity_id"].tolist()) == ["RRID:EXAMPLE:3", "RRID:RGD_2308852"]
+
+    @pytest.mark.parametrize(
+        "bad_value",
+        ["RRID:EXAMPLE:1", {"id": "RRID:EXAMPLE:1"}, {"uri": "https://example.org/1"}, {"id": "", "uri": ""}],
+    )
+    def test_malformed_metadata_term_raises(self, bad_value):
+        nwbfile = _make_nwbfile(strain="a strain")
+        metadata = {"Subject": {"ontology": {"strain": bad_value}}}
+        with pytest.raises((TypeError, ValueError)):
+            add_strain_external_resource(nwbfile, metadata=metadata)
 
 
 # ---------------------------------------------------------------------------
@@ -552,7 +739,7 @@ class TestConversionPipelineAnnotation:
 
     def _mouse_metadata(self, interface):
         metadata = interface.get_metadata()
-        metadata["Subject"] = dict(subject_id="m1", species="Mus musculus", sex="M", age="P30D")
+        metadata["Subject"] = dict(subject_id="m1", species="Mus musculus", strain="C57BL/6J", sex="M", age="P30D")
         return metadata
 
     def test_plain_metadata_writes_no_external_resources(self):
@@ -567,11 +754,14 @@ class TestConversionPipelineAnnotation:
         # Inference needs the populated file to see the electrode locations.
         staging_nwbfile = interface.create_nwbfile(metadata=metadata)
         infer_species_ontology_metadata(metadata)
+        infer_strain_ontology_metadata(metadata)
         infer_brain_region_ontology_metadata(staging_nwbfile, metadata)
 
         nwbfile = interface.create_nwbfile(metadata=metadata)
         entity_ids = set(nwbfile.external_resources.to_dataframe()["entity_id"].tolist())
+        # Species (NCBITaxon), strain (RRID), and brain-region (MBA) references are all written.
         assert "NCBITaxon:10090" in entity_ids
+        assert "RRID:IMSR_JAX:000664" in entity_ids
         assert {"MBA:382", "MBA:385"}.issubset(entity_ids)
 
     def test_references_round_trip_through_file(self, tmp_path):
@@ -581,6 +771,7 @@ class TestConversionPipelineAnnotation:
         metadata = self._mouse_metadata(interface)
         staging_nwbfile = interface.create_nwbfile(metadata=metadata)
         infer_species_ontology_metadata(metadata)
+        infer_strain_ontology_metadata(metadata)
         infer_brain_region_ontology_metadata(staging_nwbfile, metadata)
         nwbfile = interface.create_nwbfile(metadata=metadata)
 
@@ -591,4 +782,4 @@ class TestConversionPipelineAnnotation:
             read_nwbfile = io.read()
             entity_ids = set(read_nwbfile.external_resources.to_dataframe()["entity_id"].tolist())
 
-        assert {"NCBITaxon:10090", "MBA:382", "MBA:385"}.issubset(entity_ids)
+        assert {"NCBITaxon:10090", "RRID:IMSR_JAX:000664", "MBA:382", "MBA:385"}.issubset(entity_ids)
