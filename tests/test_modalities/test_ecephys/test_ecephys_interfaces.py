@@ -389,6 +389,114 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
         expected_electrode_groups = ["0", "0", "0", "0"]
         np.testing.assert_array_equal(electrode_group_names, expected_electrode_groups)
 
+    @pytest.mark.parametrize(
+        "shanks, sides, mode, expected",
+        [
+            (None, None, None, [0, 0, 0, 0]),
+            ([0, 0, 1, 1], None, None, [0, 0, 1, 1]),
+            (None, ["front", "back", "front", "back"], None, [1, 0, 1, 0]),
+            ([0, 0, 1, 1], ["front", "back", "front", "back"], None, [1, 0, 3, 2]),
+            ([0, 0, 1, 1], ["front", "back", "front", "back"], "by_probe", [0, 0, 0, 0]),
+            ([0, 0, 1, 1], ["front", "back", "front", "back"], "by_shank", [0, 0, 1, 1]),
+            ([0, 0, 1, 1], ["front", "back", "front", "back"], "by_side", [1, 0, 3, 2]),
+        ],
+    )
+    def test_set_probe_automatic_grouping_and_overrides(self, setup_interface, shanks, sides, mode, expected):
+        probe = Probe(ndim=2, si_units="um")
+        probe.set_contacts(
+            positions=[[0, 0], [0, 20], [100, 0], [100, 20]],
+            shapes="circle",
+            shape_params={"radius": 5},
+            shank_ids=shanks,
+            contact_sides=sides,
+        )
+        probe.set_device_channel_indices(np.arange(4))
+        options = {} if mode is None else {"group_mode": mode}
+
+        self.interface.set_probe(probe, **options)
+
+        np.testing.assert_array_equal(self.interface.recording_extractor.get_property("group"), expected)
+        np.testing.assert_array_equal(
+            self.interface.recording_extractor.get_property("group_name"), np.asarray(expected).astype(str)
+        )
+        nwbfile = self.interface.create_nwbfile()
+        assert len(nwbfile.electrode_groups) == len(set(expected))
+        np.testing.assert_array_equal(nwbfile.electrodes["group_name"][:], np.asarray(expected).astype(str))
+
+    @pytest.mark.parametrize("group_property", [None, "tetrode"])
+    def test_set_probe_group_preserves_probe_boundaries_with_id_wiring(self, setup_interface, group_property):
+        probe_group = ProbeGroup()
+        for probe_index in range(2):
+            probe = Probe(ndim=2, si_units="um")
+            probe.set_contacts(
+                positions=[[probe_index * 100, 0], [probe_index * 100, 20]],
+                shapes="circle",
+                shape_params={"radius": 5},
+                shank_ids=[0, 0],
+            )
+            probe.set_contact_ids([f"p{probe_index}_a", f"p{probe_index}_b"])
+            probe.annotate_contacts(tetrode=["a", "b"])
+            probe_group.add_probe(probe)
+        self.interface.set_probe(
+            probe_group,
+            channel_id_to_contact_id=dict(zip(self.interface.channel_ids, ["p1_b", "p0_a", "p1_a", "p0_b"])),
+            group_property=group_property,
+        )
+
+        expected = [1, 0, 1, 0] if group_property is None else [3, 0, 2, 1]
+        np.testing.assert_array_equal(self.interface.recording_extractor.get_property("group"), expected)
+        assert all(probe.device_channel_indices is None for probe in probe_group.probes)
+        assert len(self.interface.create_nwbfile().electrode_groups) == len(set(expected))
+
+    @pytest.mark.parametrize("mode, expected", [("auto", [3, 1, 2, 0]), ("by_probe", [1, 1, 0, 0])])
+    def test_set_probe_contact_property_respects_wiring_and_group_mode(self, setup_interface, mode, expected):
+        probe = Probe(ndim=2, si_units="um")
+        probe.set_contacts(
+            positions=[[0, 0], [0, 20], [100, 0], [100, 20], [100, 40]],
+            shapes="circle",
+            shape_params={"radius": 5},
+            shank_ids=[0, 0, 1, 1, 1],
+        )
+        probe.set_contact_ids(["e0", "e1", "e2", "e3", "spare"])
+        probe.annotate_contacts(site_group=["a", "b", "a", "b", "unused"])
+        self.interface.set_probe(
+            probe,
+            group_mode=mode,
+            group_property="site_group",
+            channel_id_to_contact_id=dict(zip(self.interface.channel_ids, ["e3", "e1", "e2", "e0"])),
+        )
+
+        np.testing.assert_array_equal(self.interface.recording_extractor.get_property("group"), expected)
+        assert len(self.interface.create_nwbfile().electrode_groups) == len(set(expected))
+
+    @pytest.mark.parametrize(
+        "values, match",
+        [
+            (None, "has no contact annotation"),
+            (["a", " ", "b", "b"], "blank or nonfinite"),
+            ([0, 1, np.nan, 1], "blank or nonfinite"),
+            ([[0], [0], [1], [1]], "one scalar value"),
+            ([None, None, None, None], "strings or finite numbers"),
+        ],
+    )
+    def test_set_probe_invalid_group_property_does_not_change_recording(self, setup_interface, values, match):
+        probe = Probe(ndim=2, si_units="um")
+        probe.set_contacts(positions=[[0, 0], [0, 20], [0, 40], [0, 60]], shapes="circle", shape_params={"radius": 5})
+        probe.set_device_channel_indices(np.arange(4))
+        if values is not None:
+            probe.annotate_contacts(tetrode=values)
+        original_properties = {
+            name: self.interface.recording_extractor.get_property(name).copy()
+            for name in self.interface.recording_extractor.get_property_keys()
+        }
+
+        with pytest.raises(ValueError, match=match):
+            self.interface.set_probe(probe, group_property="tetrode")
+
+        assert set(self.interface.recording_extractor.get_property_keys()) == set(original_properties)
+        for name, value in original_properties.items():
+            np.testing.assert_array_equal(self.interface.recording_extractor.get_property(name), value)
+
     def test_set_probe_with_channel_id_to_contact_id(self, setup_interface):
         """A wiring stated by ids, which is what a wiring table gives you."""
         probe = Probe(ndim=2, si_units="um")

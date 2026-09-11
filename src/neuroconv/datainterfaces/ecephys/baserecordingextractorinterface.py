@@ -594,9 +594,10 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
     def set_probe(
         self,
         probe: "Probe | ProbeGroup",
-        group_mode: Literal["by_shank", "by_probe"],
+        group_mode: Literal["auto", "by_shank", "by_probe", "by_side"] = "auto",
         *,
         channel_id_to_contact_id: dict | None = None,
+        group_property: str | None = None,
     ):
         """
         Set the probe information via a ProbeInterface object.
@@ -616,24 +617,32 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             ``probe.set_device_channel_indices`` yourself, which takes channel *indices* positional to
             the probe's own contact order, so an off-by-a-permutation mistake has the right length,
             raises nothing, and attributes every channel to the wrong contact.
-        group_mode : {'by_shank', 'by_probe'}
-            How to group the channels for electrode group assignment in the NWB file:
+        group_mode : {'auto', 'by_shank', 'by_probe', 'by_side'}, default: 'auto'
+            How to group the recorded contacts into electrode groups. Automatic grouping uses each
+            unique combination of probe, shank id when present, and contact side when present.
+            Without subdivisions it produces one group per probe. This replaces the recording's
+            channel grouping with the organization of the supplied probe.
 
-            - 'by_probe': Each probe becomes a separate electrode group. For a ProbeGroup with
-            multiple probes, each probe gets its own group (group 0, 1, 2, etc.). For a single
-            probe, all channels are assigned to group 0.
-
-            - 'by_shank': Each unique combination of probe and shank becomes a separate electrode
-            group. Requires that shank_ids are defined for all probes. Groups are assigned
-            sequentially for each unique (probe_index, shank_id) pair.
-
-            The resulting groups determine how electrode groups and electrodes are organized
-            in the NWB file, with each group corresponding to one ElectrodeGroup.
+            'by_probe' ignores subdivisions. 'by_shank' groups within each probe and requires shank
+            ids. 'by_side' groups within each probe and shank, if present, and requires contact sides.
+        group_property : str, optional
+            A per-contact annotation set with ``probe.annotate_contacts`` to further subdivide the
+            groups selected by ``group_mode``, for example 'tetrode'. It must exist on every probe
+            and contain one nonblank string or finite numeric value per contact. Identical values
+            in different probe/shank/side groups do not merge those groups. Values are aligned to
+            recording channels through the probe wiring; unconnected contacts do not form groups.
         """
         from probeinterface import ProbeGroup
 
+        if group_mode not in ("auto", "by_probe", "by_shank", "by_side"):
+            raise ValueError("group_mode must be 'auto', 'by_probe', 'by_shank', or 'by_side'.")
+        if group_property is not None and (not isinstance(group_property, str) or not group_property):
+            raise ValueError("group_property must name a per-contact annotation.")
+
         if channel_id_to_contact_id is not None:
             probe = self._probe_wired_to_channels(probe=probe, channel_id_to_contact_id=channel_id_to_contact_id)
+
+        grouping_values = self._get_probe_grouping_values(probe, group_property) if group_property is not None else None
 
         # Set the probe to the recording extractor. SpikeInterface 0.105 removed the private
         # `_set_probes`, which took either a Probe or a ProbeGroup; the public entry points are split
@@ -646,10 +655,50 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         else:
             self.recording_extractor.set_probe(probe, group_mode=group_mode, in_place=True)
 
+        if grouping_values is not None:
+            grouping_keys = np.rec.fromarrays(
+                [self.recording_extractor.get_property("group"), grouping_values], names=["group", "value"]
+            )
+            _, groups = np.unique(grouping_keys, return_inverse=True)
+            self.recording_extractor.set_channel_groups(groups)
+
         # Spike interface sets the "group" property
         # But neuroconv allows "group_name" property to override spike interface "group" value
         # So we re-set this here to avoid a conflict
         self.recording_extractor.set_property("group_name", self.recording_extractor.get_property("group").astype(str))
+
+    def _get_probe_grouping_values(self, probe: "Probe | ProbeGroup", group_property: str) -> np.ndarray:
+        """Resolve a contact annotation to recording-channel order before changing the recording."""
+        from probeinterface import ProbeGroup
+
+        probes = probe.probes if isinstance(probe, ProbeGroup) else [probe]
+        values_by_channel = {}
+        channel_count = self.recording_extractor.get_num_channels()
+        for probe_index, current_probe in enumerate(probes):
+            if group_property not in current_probe.contact_annotations:
+                raise ValueError(f"Probe {probe_index} has no contact annotation '{group_property}'.")
+            values = np.asarray(current_probe.contact_annotations[group_property])
+            if values.ndim != 1 or len(values) != current_probe.get_contact_count():
+                raise ValueError(f"Contact annotation '{group_property}' must have one scalar value per contact.")
+            if values.dtype.kind not in "biufUS":
+                raise ValueError(f"Contact annotation '{group_property}' must contain strings or finite numbers.")
+            if values.dtype.kind in "US":
+                valid = np.all(np.char.str_len(np.char.strip(values)) > 0)
+            else:
+                valid = np.all(np.isfinite(values))
+            if not valid:
+                raise ValueError(f"Contact annotation '{group_property}' contains blank or nonfinite values.")
+            if current_probe.device_channel_indices is None:
+                raise ValueError("Supply probe wiring before grouping by a contact annotation.")
+            for channel_index, value in zip(current_probe.device_channel_indices, values):
+                if channel_index < 0:
+                    continue
+                if channel_index >= channel_count or channel_index in values_by_channel:
+                    raise ValueError("Probe wiring must assign each recorded channel to exactly one contact.")
+                values_by_channel[channel_index] = value
+        if len(values_by_channel) != channel_count:
+            raise ValueError("Probe wiring must cover every recording channel to group by a contact annotation.")
+        return np.asarray([values_by_channel[index] for index in range(channel_count)])
 
     def _probe_wired_to_channels(self, probe: "Probe | ProbeGroup", channel_id_to_contact_id: dict):
         """Return a copy of ``probe`` carrying the channel assignment ``channel_id_to_contact_id`` states.
@@ -717,22 +766,15 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
                     )
                 seen_contacts[str(contact_id)] = probe_index
 
-        wired = []
-        for one in probes:
-            # ``Probe.copy`` drops ``contact_ids``, ``shank_ids`` and the annotations, which is most of
-            # what identifies the probe and all of what the electrodes table reads off it, so the copy
-            # TODO: use ``one.copy()`` once probeinterface releases the version carrying its #428,
-            # which makes ``copy`` identity-preserving and drops only ``device_channel_indices``, which is
-            # exactly what is wanted here. Until then ``copy`` silently loses ``contact_ids``,
-            # ``shank_ids`` and the annotations, and those are what the electrodes table reads off a probe.
-            copied = deepcopy(one)
-            copied.set_device_channel_indices(
+        copied = deepcopy(probe)
+        copied_probes = copied.probes if isinstance(copied, ProbeGroup) else [copied]
+        for current_probe in copied_probes:
+            current_probe.set_device_channel_indices(
                 [
                     channel_index_by_id.get(channel_by_contact.get(str(contact_id)), -1)
-                    for contact_id in copied.contact_ids
+                    for contact_id in current_probe.contact_ids
                 ]
             )
-            wired.append(copied)
 
         unknown_contacts = sorted(set(stated.values()) - set(seen_contacts))
         if unknown_contacts:
@@ -742,13 +784,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
                 f"{' and more' if len(seen_contacts) > 10 else ''}."
             )
 
-        if not isinstance(probe, ProbeGroup):
-            return wired[0]
-
-        group = ProbeGroup()
-        for one in wired:
-            group.add_probe(one)
-        return group
+        return copied
 
     def has_probe(self) -> bool:
         """

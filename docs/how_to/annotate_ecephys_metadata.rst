@@ -465,19 +465,22 @@ The group-to-device and device-to-model links use the ``*_metadata_key`` fields 
 Their displayed names come from the ``name`` fields. The keys
 (``"probe0_device"``, ``"probe0"``, ``"assy_156_p_1"``) are handles that stay in your script.
 
+.. _ecephys_probe_geometry:
+
+.. _set_probe_on_recording_interfaces:
+
 How to Add Probe Geometry
 -------------------------
 
-If your recording already has an attached probe with the correct contact layout and wiring, use that
-geometry rather than replacing it. When the layout is missing and you know the probe model, you can
+When the layout is missing and you know the probe model, you can
 attach a catalogue probe instead of entering each contact's position yourself. The
 `probeinterface library <https://spikeinterface.github.io/probeinterface_library/>`_ provides layouts
 for supported models.
 
-This example adds a layout to a mock recording with no attached probe. It assumes the contact order
-matches the recording's channel order; for your data, use the channel-to-contact connections from your
-wiring table. These positions describe where electrodes sit on the probe, not where the probe was
-implanted in the brain:
+This example loads a catalogue layout and uses ``zip`` to pair the mock recording's channels with
+the probe's contacts in list order. For your data, replace this example wiring with the actual
+channel-to-contact connections. The contact positions describe the probe's geometry, not its
+placement in the brain:
 
 .. code-block:: python
 
@@ -489,30 +492,22 @@ implanted in the brain:
 
     probe = probeinterface.get_probe(manufacturer="neuronexus", probe_name="A1x32-Poly3-10mm-50-177")
     wiring = dict(zip(interface.channel_ids, probe.contact_ids))
-    interface.set_probe(probe=probe, group_mode="by_probe", channel_id_to_contact_id=wiring)
+    interface.set_probe(probe=probe, channel_id_to_contact_id=wiring)
 
     metadata = interface.get_metadata()
     nwbfile = interface.create_nwbfile(metadata=metadata)
     nwbfile.electrodes.to_dataframe()[["electrode_name", "rel_x", "rel_y"]].head()
     list(nwbfile.devices)
 
-If you already created electrode-row annotations, keep their ``channel_to_electrode`` mapping when
-attaching the probe. The writer uses the channel wiring to add contact identity and geometry to those
-same rows; their keys do not need to change. Values explicitly stated in the rows still take precedence,
-so delete a field if you want it to inherit the recording's value. A conflicting nonblank contact
-identity raises rather than silently changing the electrode an annotation describes.
+``channel_id_to_contact_id`` takes **channel ids as keys** and **probe contact ids as values**.
+Contacts absent from the values are not recorded by this interface. This differs from
+``channel_to_electrode``, whose values are electrode-row metadata keys (see
+:ref:`ecephys_channel_to_electrode`). If you already wired the probe with
+``probe.set_device_channel_indices``, omit ``channel_id_to_contact_id``.
 
-A catalogue probe describes a part rather than a wiring, so it arrives with no channel assignment and
-cannot be attached until you say which contact each channel recorded. Supply
-``channel_id_to_contact_id`` with **channel ids as keys** and **contact ids as values**. A contact that
-never appears among the values was not recorded by this interface. This follows the same direction as
-``channel_to_electrode``: start from the recorded channel and identify its physical contact. The two
-mappings target different identifiers: probe contact ids here, electrode-row metadata keys in
-:ref:`ecephys_channel_to_electrode`.
-
-``group_mode`` decides whether the probe
-becomes one electrode group or one per shank, which :ref:`set_probe_on_recording_interfaces` covers
-along with building a probe from scratch.
+Electrode groups follow the probe's organization automatically: one per probe, subdivided by shank
+and then contact side when that information is present. No subdivisions are inferred from contact
+positions. For grouping options, see :ref:`ecephys_electrode_grouping`.
 
 Attaching the probe supplies three things when the file is written:
 
@@ -524,21 +519,96 @@ Attaching the probe supplies three things when the file is written:
 What the probe cannot supply is where it was implanted. ``location``, and the ``x``, ``y`` and ``z``
 stereotaxic coordinates, stay yours to state exactly as in the previous scenario.
 
+.. _ecephys_electrode_grouping:
+
 How to Assign Electrodes to Shanks or Tetrodes
 ----------------------------------------------
 
-Use this section when electrodes within one recording need to be assigned to shanks or tetrodes.
+Use electrode groups to describe which electrodes belong to the same shank or tetrode.
 First check whether the recording already carries the grouping you need. If it does, annotate those
 groups rather than rebuilding their membership. Acquisition ports or headstage labels alone do not
 establish which electrodes form a tetrode or belong to a shank; use your experimental arrangement.
+
+Automatic grouping and overrides
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+By default, ``set_probe`` uses SpikeInterface's ``group_mode="auto"``. Each probe gets its own group,
+subdivided by ``shank_ids`` and then ``contact_sides`` when provided. For example, two probes with two
+shanks each produce four groups; if each shank has recorded contacts on its front and back sides,
+they produce eight. A probe without either subdivision produces one group. Positions alone do not
+establish shanks or sides.
+
+You can override this when your experiment calls for a different grouping:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 20 80
+
+   * - ``group_mode``
+     - Electrode groups
+   * - ``"auto"`` (default)
+     - Each probe, subdivided by shank and contact side when present.
+   * - ``"by_probe"``
+     - One per probe, ignoring shanks and sides.
+   * - ``"by_shank"``
+     - One per shank within each probe, ignoring sides. Requires shank ids.
+   * - ``"by_side"``
+     - One per side within each probe and shank, if present. Requires contact sides.
+
+For example, pass ``group_mode="by_probe"`` to keep all contacts of each probe together.
+Attaching a probe replaces the recording's channel groups with this grouping. Explicit electrode-group
+assignments in your electrode-row metadata still take precedence when writing NWB.
+
+Grouping by another contact property
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If another property identifies the groups in your experiment, attach it with
+``probe.annotate_contacts`` and pass its name as ``group_property``. Here, eight contacts form two
+tetrodes:
+
+.. code-block:: python
+
+    from probeinterface import Probe
+    from neuroconv.tools.testing.mock_interfaces import MockRecordingInterface
+
+    interface = MockRecordingInterface(num_channels=8, durations=[0.1])
+    probe = Probe(ndim=2, si_units="um")
+    probe.set_contacts(
+        positions=[[0, 0], [0, 10], [10, 0], [10, 10], [100, 0], [100, 10], [110, 0], [110, 10]],
+        shapes="circle",
+        shape_params={"radius": 5},
+    )
+    contact_ids = [f"e{index}" for index in range(8)]
+    probe.set_contact_ids(contact_ids)
+    probe.annotate_contacts(tetrode=["first"] * 4 + ["second"] * 4)
+
+    interface.set_probe(
+        probe,
+        channel_id_to_contact_id=dict(zip(interface.channel_ids, contact_ids)),
+        group_property="tetrode",
+    )
+    nwbfile = interface.create_nwbfile()
+    assert len(nwbfile.electrode_groups) == 2
+
+The property further subdivides the groups selected by ``group_mode``; the same label on different
+probes does not combine their contacts. With the automatic default, shank and side boundaries also
+remain separate. Use ``group_mode="by_probe"`` together with ``group_property`` if the custom property
+should determine subdivisions within each probe regardless of shanks or sides.
+
+This must be a per-contact annotation on every probe, with one nonblank string or finite numeric value
+per contact, not a recording channel property. Wiring associates those values with the recorded
+channels, so the order of your channels need not match the contact order. Unconnected contacts do not
+form groups.
+
+Assigning groups in electrode-row metadata
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The mock recording below starts with one default group. We assign its four recorded electrodes to
 two shanks on the same probe by changing each row's ``electrode_group_metadata_key``. For a tetrode,
 the same field would assign its four electrodes to one group.
 
-The recording's ``group_name`` channel property is another way to supply membership, as described in
-:ref:`set_probe_on_recording_interfaces`. The example uses electrode-row metadata so the grouping and
-its annotations are visible together.
+This approach does not require a ProbeInterface probe. Group membership and its annotations are
+visible together in the electrode-row metadata.
 
 .. code-block:: python
 
@@ -606,8 +676,8 @@ and every electrode group belonging to that probe points to it. A probe can have
 
 The example below starts with a single mock recording containing channels from two probes, without
 metadata identifying them. We describe one group per probe and assign the first two electrodes to the
-left probe and the other two to the right probe. This is different from assigning shanks within one
-probe: the groups now point to distinct devices.
+left probe in CA1 and the other two to the right probe in CA3. This is different from assigning shanks
+within one probe: the groups now point to distinct devices.
 
 .. code-block:: python
 
@@ -633,7 +703,7 @@ probe: the groups now point to distinct devices.
         "right": {
             "name": "ElectrodeGroupRight",
             "description": "Right hemisphere penetration",
-            "location": "CA1",
+            "location": "CA3",
             "device_metadata_key": "right_probe",
         },
     }
@@ -651,8 +721,8 @@ probe: the groups now point to distinct devices.
     )
     rows["electrode_0"].update(electrode_group_metadata_key="left", location="CA1")
     rows["electrode_1"].update(electrode_group_metadata_key="left", location="CA1")
-    rows["electrode_2"].update(electrode_group_metadata_key="right", location="CA1")
-    rows["electrode_3"].update(electrode_group_metadata_key="right", location="CA1")
+    rows["electrode_2"].update(electrode_group_metadata_key="right", location="CA3")
+    rows["electrode_3"].update(electrode_group_metadata_key="right", location="CA3")
 
     nwbfile = interface.create_nwbfile(metadata=metadata)
     sorted(nwbfile.devices)  # -> ['ProbeLeft', 'ProbeRight']
@@ -751,7 +821,7 @@ from the recording are allowed and are not used by that series. Rows unreference
 recording remain in the table. Without an ``ElectrodesTable`` block, conversion still derives the table
 automatically and requires no user-supplied mapping.
 
-Multiple streams from the same electrodes
+Multiple channels from the same electrodes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 One electrode can supply a channel in more than one recording stream. For example, `Plexon OmniPlex
@@ -787,8 +857,8 @@ relationships, not Plexon or Neuralynx reader behavior.
     probe = Probe(ndim=2, si_units="um")
     probe.set_contacts(positions=[[0, 0], [0, 20]], shapes="circle", shape_params={"radius": 5})
     probe.set_contact_ids(["e0", "e1"])
-    raw.set_probe(probe, group_mode="by_probe", channel_id_to_contact_id={"0": "e0", "1": "e1"})
-    field.set_probe(probe, group_mode="by_probe", channel_id_to_contact_id={"0": "e1", "1": "e0"})
+    raw.set_probe(probe, channel_id_to_contact_id={"0": "e0", "1": "e1"})
+    field.set_probe(probe, channel_id_to_contact_id={"0": "e1", "1": "e0"})
 
     converter = ConverterPipe(data_interfaces={"Raw": raw, "Field": field})
     metadata = converter.get_metadata()

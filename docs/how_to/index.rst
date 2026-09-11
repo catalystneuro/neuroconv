@@ -9,7 +9,6 @@ This section contains practical guides for using NeuroConv effectively.
    :maxdepth: 1
    :caption: Contents:
 
-   set_probe_on_recording_interfaces
    annotate_ecephys_metadata
    annotate_ophys_metadata
    annotate_events_metadata

@@ -1,6 +1,7 @@
 # v0.10.2 (September 9, 2026)
 
 ## Removals, Deprecations and Changes
+* Recording interfaces now default to SpikeInterface's automatic probe grouping: separate groups per probe, shank, and contact side when provided. Explicit `by_probe`, `by_shank`, and `by_side` modes remain available, and `group_property` allows further subdivision by a per-contact annotation. [PR #2001](https://github.com/catalystneuro/neuroconv/pull/2001)
 * Deprecated `compression_method` and `compression_options` on both dataset IO configuration models, and the single-valued form of `BackendConfiguration.apply_global_compression`, to be removed in v0.12.0, in favor of `compressors` and `compressor_options`. [PR #1979](https://github.com/catalystneuro/neuroconv/pull/1979)
 * A `timestamps` dataset is now written with the lossless shuffle filter ahead of its compression method, which on two million irregular float64 timestamps takes 11.75 MB down to 7.51 MB on HDF5 and 11.62 MB down to 7.62 MB on Zarr at the same chunk shape and compression level, leaving `data` untouched. [PR #1984](https://github.com/catalystneuro/neuroconv/pull/1984)
 * Naming `shuffle` in a `ZarrDatasetIOConfiguration`'s `filters` is deprecated, to be removed in v0.12.0, and `shuffle` no longer appears in `AVAILABLE_ZARR_COMPRESSION_METHODS`, since it rearranges the serialized bytes rather than the values and so belongs in `compressors` beside the compression method. [PR #2002](https://github.com/catalystneuro/neuroconv/pull/2002)
