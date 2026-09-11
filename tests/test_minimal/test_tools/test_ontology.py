@@ -934,7 +934,9 @@ class TestAnatomyExternalResources:
         )
         nwbfile.external_resources = herd
 
-        metadata = _pose_estimation_anatomy({"Snout": {"id": "UBERON:0006333", "uri": "https://example.org/UBERON_0006333"}})
+        metadata = _pose_estimation_anatomy(
+            {"Snout": {"id": "UBERON:0006333", "uri": "https://example.org/UBERON_0006333"}}
+        )
         assert add_anatomy_external_resources(nwbfile, metadata=metadata) == 1
         assert nwbfile.external_resources is herd  # extended in place, not replaced
         assert len(herd.entities[:]) == 2
