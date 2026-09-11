@@ -16,9 +16,9 @@ def test_gzip_level_agrees_across_backends(options, expected_level, with_shuffle
     hdf5 = mock_HDF5DatasetIOConfiguration(compressors=compressors, compressor_options=compressor_options)
     zarr = mock_ZarrDatasetIOConfiguration(compressors=compressors, compressor_options=compressor_options)
 
-    print(compressors)
     assert hdf5.get_data_io_kwargs()["compression_opts"] == expected_level
-    assert zarr.get_data_io_kwargs()["compressors"][0].level == expected_level
+    compressor_index = 0 if not with_shuffle else 1
+    assert zarr.get_data_io_kwargs()["compressors"][compressor_index].level == expected_level
     assert hdf5.compressor_options == compressor_options
     assert zarr.compressor_options == compressor_options
 

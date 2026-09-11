@@ -15,7 +15,7 @@ from pynwb.testing.mock.base import mock_TimeSeries
 from pynwb.testing.mock.behavior import mock_SpatialSeries
 from pynwb.testing.mock.ecephys import mock_ElectrodesTable
 from pynwb.testing.mock.file import mock_NWBFile
-from zarr.codecs import BloscCodec, Delta, GzipCodec, Shuffle
+from zarr.codecs import BloscCodec, Delta, GzipCodec, Shuffle, ZstdCodec
 
 from neuroconv.tools.importing import is_package_installed
 from neuroconv.tools.nwb_helpers import (
@@ -23,6 +23,10 @@ from neuroconv.tools.nwb_helpers import (
     get_existing_dataset_io_configurations,
     get_module,
 )
+
+# The compressor zarr applies to a dataset that was written without an explicit one. Datasets hdmf writes
+# itself, ragged-index columns among them, are never wrapped in a `ZarrDataIO` and so are stored with this.
+_ZARR_DEFAULT_COMPRESSOR = ZstdCodec(level=0, checksum=False)
 
 
 def _assert_blosc_codec_equal(actual, expected):
@@ -255,7 +259,7 @@ def test_configuration_on_ragged_units_table(tmp_path, backend: Literal["hdf5", 
             assert dataset_configuration.chunk_shape == (5,)
             assert dataset_configuration.compressor_options is None
         elif backend == "zarr":
-            assert dataset_configuration.compressors == [compressor]
+            assert dataset_configuration.compressors == [_ZARR_DEFAULT_COMPRESSOR]
             assert dataset_configuration.chunk_shape == (5,)
             assert dataset_configuration.compressor_options is None
             assert dataset_configuration.filters is None
@@ -275,7 +279,7 @@ def test_configuration_on_ragged_units_table(tmp_path, backend: Literal["hdf5", 
             assert dataset_configuration.chunk_shape == (2,)
             assert dataset_configuration.compressor_options is None
         elif backend == "zarr":
-            assert dataset_configuration.compressors == [compressor]
+            assert dataset_configuration.compressors == [_ZARR_DEFAULT_COMPRESSOR]
             assert dataset_configuration.chunk_shape == (2,)
             assert dataset_configuration.compressor_options is None
             assert dataset_configuration.filters is None
@@ -295,7 +299,7 @@ def test_configuration_on_ragged_units_table(tmp_path, backend: Literal["hdf5", 
             assert dataset_configuration.chunk_shape == (15, 3)
             assert dataset_configuration.compressor_options is None
         elif backend == "zarr":
-            assert dataset_configuration.compressors == [compressor]
+            assert dataset_configuration.compressors == [_ZARR_DEFAULT_COMPRESSOR]
             assert dataset_configuration.chunk_shape == (15, 3)
             assert dataset_configuration.compressor_options is None
             assert dataset_configuration.filters is None
@@ -315,7 +319,7 @@ def test_configuration_on_ragged_units_table(tmp_path, backend: Literal["hdf5", 
             assert dataset_configuration.chunk_shape == (5,)
             assert dataset_configuration.compressor_options is None
         elif backend == "zarr":
-            assert dataset_configuration.compressors == [compressor]
+            assert dataset_configuration.compressors == [_ZARR_DEFAULT_COMPRESSOR]
             assert dataset_configuration.chunk_shape == (5,)
             assert dataset_configuration.compressor_options is None
             assert dataset_configuration.filters is None
@@ -335,7 +339,7 @@ def test_configuration_on_ragged_units_table(tmp_path, backend: Literal["hdf5", 
             assert dataset_configuration.chunk_shape == (2,)
             assert dataset_configuration.compressor_options is None
         elif backend == "zarr":
-            assert dataset_configuration.compressors == [compressor]
+            assert dataset_configuration.compressors == [_ZARR_DEFAULT_COMPRESSOR]
             assert dataset_configuration.chunk_shape == (2,)
             assert dataset_configuration.compressor_options is None
             assert dataset_configuration.filters is None
@@ -375,7 +379,7 @@ def test_configuration_on_ragged_units_table(tmp_path, backend: Literal["hdf5", 
             assert dataset_configuration.compressor_options is None
             assert dataset_configuration.chunk_shape == (2,)
         elif backend == "zarr":
-            assert dataset_configuration.compressors == [compressor]
+            assert dataset_configuration.compressors == [_ZARR_DEFAULT_COMPRESSOR]
             assert dataset_configuration.compressor_options is None
             assert dataset_configuration.filters is None
             assert dataset_configuration.filter_options is None
@@ -415,7 +419,7 @@ def test_configuration_on_ragged_units_table(tmp_path, backend: Literal["hdf5", 
             assert dataset_configuration.compressor_options is None
             assert dataset_configuration.chunk_shape == (2,)
         elif backend == "zarr":
-            assert dataset_configuration.compressors == [compressor]
+            assert dataset_configuration.compressors == [_ZARR_DEFAULT_COMPRESSOR]
             assert dataset_configuration.compressor_options is None
             assert dataset_configuration.filters is None
             assert dataset_configuration.filter_options is None
@@ -737,13 +741,10 @@ def test_configuration_electrodes_table(tmp_path, backend: Literal["hdf5", "zarr
         nwbfile = io.read()
         dataset_configurations = list(get_existing_dataset_io_configurations(nwbfile=nwbfile))
 
-    if backend == "hdf5":
-        assert len(dataset_configurations) == 2
-        assert dataset_configurations[0].location_in_file == "electrodes/location/data"
-        assert dataset_configurations[1].location_in_file == "electrodes/group_name/data"
-    elif backend == "zarr":
-        # In zarr v3, string columns are read as plain lists and are skipped
-        assert len(dataset_configurations) == 0
+    # The string columns are datasets on both backends; the `group` column is a reference and is skipped.
+    assert len(dataset_configurations) == 2
+    assert dataset_configurations[0].location_in_file == "electrodes/location/data"
+    assert dataset_configurations[1].location_in_file == "electrodes/group_name/data"
 
 
 @pytest.mark.parametrize("backend", ["hdf5", "zarr"])
@@ -868,12 +869,11 @@ def test_timestamps_written_without_shuffle_are_read_back_without_it(tmp_path, b
 
 
 def test_zarr_shuffle_is_read_back_into_compressors(tmp_path):
-    """Zarr v2 stores shuffle in `filters`, so a file this library wrote has to report `compressors`."""
+    """Shuffle rearranges the serialized bytes, so a file this library wrote reports it among `compressors`."""
     timestamps = ZarrDataIO(
         data=np.arange(100, dtype="float64") / 30.0,
         chunks=(100,),
-        compressors=GzipCodec(level=1),
-        filters=[Shuffle(elementsize=8)],
+        compressors=[Shuffle(elementsize=8), GzipCodec(level=1)],
     )
 
     nwbfile = mock_NWBFile()
@@ -891,13 +891,17 @@ def test_zarr_shuffle_is_read_back_into_compressors(tmp_path):
             if dataset_configuration.location_in_file == "acquisition/TestTimeSeries/timestamps"
         )
 
-    assert dataset_configuration.compressors == ["shuffle", GzipCodec(level=1)]
-    assert dataset_configuration.compressor_options == [dict(elementsize=8), None]
+    # Shuffle stays ahead of the compression codec, which is the order the bytes were written in.
+    assert dataset_configuration.compressors == [Shuffle(elementsize=8), GzipCodec(level=1)]
+    assert dataset_configuration.compressor_options is None
     assert dataset_configuration.filters is None
 
     # The configuration read back reproduces the settings it was read from
     assert dataset_configuration.get_data_io_kwargs() == dict(
-        chunks=(100,), compressors=GzipCodec(level=1), filters=[Shuffle(elementsize=8)]
+        chunks=(100,),
+        filters=None,
+        compressors=[Shuffle(elementsize=8), GzipCodec(level=1)],
+        shards=None,
     )
 
 

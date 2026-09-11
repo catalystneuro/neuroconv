@@ -254,7 +254,7 @@ intervals/trials/compressed_start_time/data
   chunk shape : (5,)
   disk space usage per chunk : 40 B
 
-  compressors : [BloscCodec(_tunable_attrs=set(), typesize=8, cname=<BloscCname.lz4: 'lz4'>, clevel=5, shuffle=<BloscShuffle.shuffle: 'shuffle'>, blocksize=0)]
+  compressors : [BloscCodec(_tunable_attrs=set(), typesize=8, cname='lz4', clevel=5, shuffle='shuffle', blocksize=0)]
 
 
 processing/ecephys/ProcessedTimeSeries/data
@@ -299,7 +299,7 @@ acquisition/CompressedRawTimeSeries/data
   chunk shape : (1, 3)
   disk space usage per chunk : 12 B
 
-  compressors : [BloscCodec(_tunable_attrs=set(), typesize=4, cname=<BloscCname.lz4: 'lz4'>, clevel=5, shuffle=<BloscShuffle.shuffle: 'shuffle'>, blocksize=0)]
+  compressors : [BloscCodec(_tunable_attrs=set(), typesize=4, cname='lz4', clevel=5, shuffle='shuffle', blocksize=0)]
 
 """
     assert stdout.getvalue() == expected_print
