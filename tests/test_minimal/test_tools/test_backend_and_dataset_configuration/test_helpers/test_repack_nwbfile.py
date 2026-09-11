@@ -118,7 +118,7 @@ def zarr_nwbfile_path(tmpdir_factory):
 
 @pytest.mark.parametrize("backend", ["hdf5", "zarr"])
 def test_repack_nwbfile(hdf5_nwbfile_path, zarr_nwbfile_path, backend):
-    default_compressor = GZip(level=1)
+    default_compressor = GZip(level=4)
 
     if backend == "hdf5":
         nwbfile_path = hdf5_nwbfile_path
@@ -157,7 +157,7 @@ def test_repack_nwbfile(hdf5_nwbfile_path, zarr_nwbfile_path, backend):
 def test_repack_nwbfile_hdf5_to_zarr(hdf5_nwbfile_path: str, tmp_path: Path):
     """Test repackaging an NWB file from HDF5 to Zarr."""
     export_nwbfile_path = tmp_path / "repacked_hdf5_to_zarr.nwb.zarr"
-    default_compressor = GZip(level=1)
+    default_compressor = GZip(level=4)
 
     repack_nwbfile(
         nwbfile_path=Path(hdf5_nwbfile_path),

@@ -76,4 +76,4 @@ def test_configure_and_write_nwbfile_with_unimported_extension(
         if backend == "hdf5":
             assert written_data.compression == "gzip"
         else:
-            assert written_data.compressor == numcodecs.GZip(level=1)
+            assert written_data.compressor == numcodecs.GZip(level=4)

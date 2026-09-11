@@ -27,7 +27,7 @@ import h5py
 import numpy as np
 import pandas
 import pytest
-from pynwb import NWBHDF5IO
+from pynwb import read_nwb
 
 from neuroconv.converters import GuppyConverter
 from neuroconv.utils import dict_deep_update
@@ -202,8 +202,11 @@ class TestGuppyReferenceSession:
     @pytest.fixture(scope="class")
     @classmethod
     def nwbfile(cls, nwbfile_path):
-        with NWBHDF5IO(str(nwbfile_path), "r") as io:
-            yield io.read()
+        nwbfile = read_nwb(str(nwbfile_path))
+        try:
+            yield nwbfile
+        finally:
+            nwbfile.read_io.close()
 
     @pytest.fixture(scope="class")
     @classmethod

@@ -54,3 +54,24 @@ def test_appended_time_series(nwbfile_path: str):
 
     assert_array_equal(written_nwbfile.acquisition["ExistingTimeSeries"].data[:], EXISTING_ARRAY)
     written_nwbfile.read_io.close()
+
+
+@pytest.mark.parametrize("backend", ["hdf5", "zarr"])
+def test_configuring_existing_data_does_not_read_iterator_buffer(nwbfile_path, backend, monkeypatch):
+    """The source dtype is already known, so constructing its iterator should not read data."""
+    from hdmf.data_utils import DataChunkIterator
+
+    def unexpected_read(self):
+        raise AssertionError("Iterator construction should use the configured dtype without reading a buffer")
+
+    with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+        nwbfile = io.read()
+        configuration = get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
+        with monkeypatch.context() as patch:
+            patch.setattr(DataChunkIterator, "_read_next_chunk", unexpected_read)
+            configure_backend(nwbfile=nwbfile, backend_configuration=configuration)
+
+        iterator = nwbfile.acquisition["ExistingTimeSeries"].data.data
+        assert isinstance(iterator, DataChunkIterator)
+        assert iterator.dtype == EXISTING_ARRAY.dtype
+        assert_array_equal(next(iterator).data, EXISTING_ARRAY)

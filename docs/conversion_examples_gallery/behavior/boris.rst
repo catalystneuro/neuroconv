@@ -41,7 +41,7 @@ bout, a bout being an occurrence of a behavior whose ethogram ``type`` is ``Stat
     >>> metadata = interface.get_metadata()
 
     >>> # For data provenance we add the time zone information to the conversion
-    >>> session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("US/Pacific"))
+    >>> session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("Asia/Tokyo"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
 
     >>> # Add subject information (required for DANDI upload)
