@@ -9,6 +9,8 @@ library capabilities and to get you to hit the ground running with your own conv
 Extracellular electrophysiology
 -------------------------------
 
+.. _conversion_gallery_ecephys_recording:
+
 Recording
 ~~~~~~~~~
 
@@ -189,5 +191,5 @@ Common interface combinations
     combinations/ecephys_pose_estimation
 
 .. note::
-If you do not see the format you need, feel free to `request it <https://github.com/catalystneuro/neuroconv/issues/new?assignees=&labels=enhancement,data+interfaces&template=format_request.yml>`_ or
-  :ref:`build-data-interface`.
+    If you do not see the format you need, feel free to `request it <https://github.com/catalystneuro/neuroconv/issues/new?assignees=&labels=enhancement,data+interfaces&template=format_request.yml>`_ or
+    :ref:`build-data-interface`.

@@ -1,4 +1,5 @@
 import warnings
+from copy import deepcopy
 from typing import Literal
 
 import numpy as np
@@ -122,12 +123,30 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
                 type="object",
                 additionalProperties={"$ref": "#/properties/Ecephys/definitions/ElectricalSeriesEntry"},
             ),
-            # The electrode table's column descriptions are still a list in both formats.
+            # The column descriptions annotating a table derived from the recording. Superseded by
+            # ``ElectrodesTable`` below, which states the table instead, and kept until that block goes.
             Electrodes=dict(
                 type="array",
                 minItems=0,
                 renderForm=False,
                 items={"$ref": "#/properties/Ecephys/definitions/Electrodes"},
+            ),
+            # The table stated outright: ``rows`` is one entry per electrode, ``columns`` describes them.
+            # It does not render as a form, since a row per contact is 384 of them for a Neuropixels probe.
+            ElectrodesTable=dict(
+                type="object",
+                renderForm=False,
+                additionalProperties=False,
+                properties=dict(
+                    rows=dict(
+                        type="object",
+                        additionalProperties={"$ref": "#/properties/Ecephys/definitions/ElectrodeEntry"},
+                    ),
+                    columns=dict(
+                        type="object",
+                        additionalProperties={"$ref": "#/properties/Ecephys/definitions/ElectrodeColumnEntry"},
+                    ),
+                ),
             ),
         )
         metadata_schema["properties"]["Ecephys"]["definitions"] = dict(
@@ -150,6 +169,14 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
                 properties=dict(
                     name=dict(type="string", pattern="^[^/]*$"),
                     description=dict(type="string"),
+                    channel_to_electrode=dict(
+                        type="object",
+                        additionalProperties=dict(type="string"),
+                        description=(
+                            "Maps each channel id of this recording to the key of the electrode it is "
+                            "recorded by in metadata['Ecephys']['ElectrodesTable']['rows']."
+                        ),
+                    ),
                 ),
             ),
             Electrodes=dict(
@@ -159,6 +186,41 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
                 properties=dict(
                     name=dict(type="string", description="name of this electrodes column"),
                     description=dict(type="string", description="description of this electrodes column"),
+                ),
+            ),
+            # An entry is a row of the electrodes table, so it may carry any column the table holds and
+            # stays permissive. What is pinned is the group link, which is the one field the writer
+            # requires of every row.
+            ElectrodeEntry=dict(
+                type="object",
+                additionalProperties=True,
+                required=["electrode_group_metadata_key"],
+                properties=dict(
+                    electrode_group_metadata_key=dict(
+                        type="string",
+                        description="Key of this electrode's group in metadata['Ecephys']['ElectrodeGroups'].",
+                    ),
+                    # ``null`` is a row with no contact identity, which is what a format naming no contacts
+                    # has, and not a blank to fill.
+                    electrode_name=dict(
+                        type=["string", "null"],
+                        description="This electrode's identity within its group, written to the table.",
+                    ),
+                    location=dict(type="string", description="The brain region the electrode sits in."),
+                ),
+            ),
+            ElectrodeColumnEntry=dict(
+                type="object",
+                additionalProperties=False,
+                properties=dict(
+                    column_name=dict(type="string", description="The header this column is written under."),
+                    description=dict(type="string", description="description of this electrodes column"),
+                    dtype=dict(type="string", description="The dtype the column's values are written as."),
+                    column_categories=dict(
+                        type="object",
+                        properties=dict(labels=dict(type="object"), meanings=dict(type="object")),
+                        description="Display label and meaning per raw value, written as a MeaningsTable.",
+                    ),
                 ),
             ),
         )
@@ -244,6 +306,159 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             metadata["Ecephys"][self.es_key] = dict(
                 name=self.es_key, description=f"Acquisition traces for the {self.es_key}."
             )
+
+        return metadata
+
+    def get_metadata_template(self) -> DeepDict:
+        """Return the electrodes table this interface writes, stated row by row.
+
+        The counterpart to :meth:`get_metadata`, which reports only what the source recorded and leaves
+        the electrodes table to be derived from the recording at write time. This states that table
+        outright, as ``metadata["Ecephys"]["ElectrodesTable"]``: ``rows`` holds one entry per electrode,
+        each carrying its column values and pointing at its group, ``columns`` describes those columns,
+        and the channel-to-electrode mapping sits on the series entry. Around it sit the electrode groups
+        and the device they hang off, filled from the attached probe where it names its model.
+
+        What only the experimenter can supply is left ``None``: the series' description, a group's
+        description and location, the device where no probe names one, each row's ``location`` where the
+        format records no brain area, and the columns NWB defines that the recording did not carry. Fill
+        in what applies and delete what does not, then pass the result to ``add_to_nwbfile`` or
+        ``run_conversion``. A required blank still ``None`` at write time is refused rather than guessed
+        at, and a deleted field falls back to what the recording says, which for ``location`` is
+        ``"unknown"``.
+
+        What a row states wins over the recording for the fields it states, so a column value is changed
+        by editing the row rather than by calling ``set_property`` on the extractor, and a channel is
+        moved to another group by editing its ``electrode_group_metadata_key`` rather than by regrouping
+        the recording. Anything a row leaves out still comes from the recording, which is why editing one
+        field of one row is a complete statement. ``channel_name`` stays the recording's throughout,
+        being the acquisition system's own label and having no metadata to be restated from.
+
+        The electrode keys are derived from the physical identity of each contact, ``(group, contact)``
+        where the recording carries contact identifiers and ``(group, channel)`` otherwise, so two
+        interfaces over the same contacts (the AP and LF bands of one probe) independently produce the
+        same keys and their rows merge rather than doubling. The generated mapping saves each channel's
+        association to its row. Keep it with the rows if probe attachment later supplies more information:
+        source properties are routed through that mapping rather than matched by regenerated key names.
+        Rename keys only together with their mapping entries. Known contact identity conflicts raise;
+        delete an optional blank field to inherit newly available source values instead of stating a null.
+        """
+        from ...tools.spikeinterface._electrodes import _build_electrodes_metadata
+        from ...tools.spikeinterface.spikeinterface import (
+            _get_group_name,
+            _get_nwb_electrode_column_descriptions,
+            _get_probe_device_metadata,
+        )
+
+        metadata = self.get_metadata()
+        recording = self.recording_extractor
+
+        # One group per channel group the recording reports. A group the interface already describes,
+        # with its device link and its description, is kept under the key the interface gave it, matched
+        # by name the way the writer matches it. The rest are keyed by their own name so that two
+        # interfaces over one probe file their groups under the same key and the rows they point at
+        # resolve to one group rather than two. What the interface did not say is left ``None``.
+        group_names = list(dict.fromkeys(_get_group_name(recording=recording).tolist()))
+        declared_groups = metadata["Ecephys"].get("ElectrodeGroups") or {}
+        group_key_by_name = {
+            entry["name"]: key for key, entry in declared_groups.items() if isinstance(entry, dict) and "name" in entry
+        }
+        electrode_groups = {key: dict(entry) for key, entry in declared_groups.items()}
+        group_metadata_key_by_name = {}
+        for group_name in group_names:
+            key = group_key_by_name.get(group_name)
+            if key is None:
+                key = group_name
+                electrode_groups[key] = {"name": group_name}
+            for field in ("description", "location"):
+                electrode_groups[key].setdefault(field, None)
+            group_metadata_key_by_name[group_name] = key
+
+        # The device behind the groups that name none. It is filled from the attached probe where the
+        # probe names its model, which is what the writer falls to on its own, and offered blank
+        # otherwise, so that the hardware is a field to fill and not a placeholder to notice. One entry
+        # serves all of them, since the common case is one probe wired as several groups.
+        groups_without_device = [
+            key
+            for key in dict.fromkeys(group_metadata_key_by_name.values())
+            if "device_metadata_key" not in electrode_groups[key]
+        ]
+        if groups_without_device:
+            devices = dict(metadata.get("Devices") or {})
+            device_models = dict(metadata.get("DeviceModels") or {})
+            device_key = "probe" if "probe" not in devices else f"{self.metadata_key}_probe"
+            probes = recording.get_probegroup().probes if recording.has_probe() else []
+            probe_metadata = _get_probe_device_metadata(probe=probes[0]) if len(probes) == 1 else None
+            if probe_metadata is not None:
+                device_model = dict(probe_metadata["device_model"])
+                device_model_key = f"{device_model.get('manufacturer')}_{device_model['model_number']}"
+                device = dict(probe_metadata["device"])
+                device.setdefault("name", f"Probe{device.get('serial_number') or device_model['model_number']}")
+                device["device_model_metadata_key"] = device_model_key
+            else:
+                device_model_key = f"{device_key}_model"
+                device_model = {"name": None, "manufacturer": None, "model_number": None, "description": None}
+                device = {
+                    "name": None,
+                    "description": None,
+                    "serial_number": None,
+                    "device_model_metadata_key": device_model_key,
+                }
+            devices[device_key] = device
+            device_models[device_model_key] = device_model
+            metadata["Devices"] = devices
+            metadata["DeviceModels"] = device_models
+            for key in groups_without_device:
+                electrode_groups[key]["device_metadata_key"] = device_key
+        metadata["Ecephys"]["ElectrodeGroups"] = electrode_groups
+
+        # The interface names the series; what the signal is, only the experimenter can say.
+        metadata["Ecephys"]["ElectricalSeries"][self.metadata_key].setdefault("description", None)
+
+        # What this interface already says about its columns, which it emits as the column-description
+        # list under the older ``Electrodes`` key. Carried over so that stating the table does not lose a
+        # description the interface was supplying; SpikeGLX describes five of its columns this way.
+        column_descriptions = metadata["Ecephys"].get("Electrodes")
+        property_descriptions = (
+            {entry["name"]: entry["description"] for entry in column_descriptions if "description" in entry}
+            if isinstance(column_descriptions, list)
+            else {}
+        )
+
+        electrodes_metadata = _build_electrodes_metadata(
+            recording=recording,
+            group_metadata_key_by_name=group_metadata_key_by_name,
+            property_descriptions=property_descriptions,
+        )
+        electrodes_table = electrodes_metadata["ElectrodesTable"]
+
+        # ``location`` is the one column NWB requires of every electrode. Where the recording carries no
+        # brain area it is left ``None`` rather than stated as the placeholder the derived table writes,
+        # and the other columns the NWB schema defines are offered blank wherever the recording did not
+        # supply them. A blank ``location`` at write time is refused; a blank optional column is left out.
+        recording_has_location = "brain_area" in recording.get_property_keys()
+        offered_columns = ("location", "x", "y", "z", "rel_x", "rel_y", "rel_z", "imp", "filtering")
+        for entry in electrodes_table["rows"].values():
+            if not recording_has_location:
+                entry["location"] = None
+            for column_name in offered_columns:
+                entry.setdefault(column_name, None)
+
+        # A column the interface did not describe has no description here, rather than the "no
+        # description" the derived table would write for it. The columns the NWB schema predefines are
+        # the exception: they carry pynwb's own description, so there is nothing for a user to say.
+        nwb_predefined_columns = set(_get_nwb_electrode_column_descriptions())
+        for column_name, specification in electrodes_table["columns"].items():
+            if column_name not in property_descriptions and column_name not in nwb_predefined_columns:
+                specification["description"] = None
+
+        metadata["Ecephys"]["ElectrodesTable"] = electrodes_table
+        metadata["Ecephys"]["ElectricalSeries"][self.metadata_key]["channel_to_electrode"] = electrodes_metadata[
+            "channel_to_electrode"
+        ]
+        # The column-description list said the same thing in the weaker form and its descriptions have
+        # been carried across, so leaving it would describe the table twice.
+        metadata["Ecephys"].pop("Electrodes", None)
 
         return metadata
 
@@ -376,7 +591,14 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             ]
             self.set_aligned_segment_timestamps(aligned_segment_timestamps=aligned_segment_timestamps)
 
-    def set_probe(self, probe: "Probe | ProbeGroup", group_mode: Literal["by_shank", "by_probe"]):
+    def set_probe(
+        self,
+        probe: "Probe | ProbeGroup",
+        group_mode: Literal["auto", "by_shank", "by_probe", "by_side"] = "auto",
+        *,
+        channel_id_to_contact_id: dict | None = None,
+        group_property: str | None = None,
+    ):
         """
         Set the probe information via a ProbeInterface object.
 
@@ -384,21 +606,43 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         ----------
         probe : probeinterface.Probe or probeinterface.ProbeGroup
             The probe object(s). Can be a single Probe or a ProbeGroup containing multiple probes.
-        group_mode : {'by_shank', 'by_probe'}
-            How to group the channels for electrode group assignment in the NWB file:
+        channel_id_to_contact_id : dict, optional
+            Which contact each channel recorded, as ``{channel_id: contact_id}``. A probe from a
+            catalogue describes a part rather than a wiring, so it arrives with no channel assignment
+            and cannot be attached until one is stated. Pass the wiring here and it is applied for you;
+            a contact absent from the mapping values is not recorded by this interface.
 
-            - 'by_probe': Each probe becomes a separate electrode group. For a ProbeGroup with
-            multiple probes, each probe gets its own group (group 0, 1, 2, etc.). For a single
-            probe, all channels are assigned to group 0.
+            Both sides are ids, which is what a wiring table gives you and what identifies a contact and
+            a channel everywhere else in NeuroConv. The alternative is to call probeinterface's
+            ``probe.set_device_channel_indices`` yourself, which takes channel *indices* positional to
+            the probe's own contact order, so an off-by-a-permutation mistake has the right length,
+            raises nothing, and attributes every channel to the wrong contact.
+        group_mode : {'auto', 'by_shank', 'by_probe', 'by_side'}, default: 'auto'
+            How to group the recorded contacts into electrode groups. Automatic grouping uses each
+            unique combination of probe, shank id when present, and contact side when present.
+            Without subdivisions it produces one group per probe. This replaces the recording's
+            channel grouping with the organization of the supplied probe.
 
-            - 'by_shank': Each unique combination of probe and shank becomes a separate electrode
-            group. Requires that shank_ids are defined for all probes. Groups are assigned
-            sequentially for each unique (probe_index, shank_id) pair.
-
-            The resulting groups determine how electrode groups and electrodes are organized
-            in the NWB file, with each group corresponding to one ElectrodeGroup.
+            'by_probe' ignores subdivisions. 'by_shank' groups within each probe and requires shank
+            ids. 'by_side' groups within each probe and shank, if present, and requires contact sides.
+        group_property : str, optional
+            A per-contact annotation set with ``probe.annotate_contacts`` to further subdivide the
+            groups selected by ``group_mode``, for example 'tetrode'. It must exist on every probe
+            and contain one nonblank string or finite numeric value per contact. Identical values
+            in different probe/shank/side groups do not merge those groups. Values are aligned to
+            recording channels through the probe wiring; unconnected contacts do not form groups.
         """
         from probeinterface import ProbeGroup
+
+        if group_mode not in ("auto", "by_probe", "by_shank", "by_side"):
+            raise ValueError("group_mode must be 'auto', 'by_probe', 'by_shank', or 'by_side'.")
+        if group_property is not None and (not isinstance(group_property, str) or not group_property):
+            raise ValueError("group_property must name a per-contact annotation.")
+
+        if channel_id_to_contact_id is not None:
+            probe = self._probe_wired_to_channels(probe=probe, channel_id_to_contact_id=channel_id_to_contact_id)
+
+        grouping_values = self._get_probe_grouping_values(probe, group_property) if group_property is not None else None
 
         # Set the probe to the recording extractor. SpikeInterface 0.105 removed the private
         # `_set_probes`, which took either a Probe or a ProbeGroup; the public entry points are split
@@ -411,10 +655,136 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         else:
             self.recording_extractor.set_probe(probe, group_mode=group_mode, in_place=True)
 
+        if grouping_values is not None:
+            grouping_keys = np.rec.fromarrays(
+                [self.recording_extractor.get_property("group"), grouping_values], names=["group", "value"]
+            )
+            _, groups = np.unique(grouping_keys, return_inverse=True)
+            self.recording_extractor.set_channel_groups(groups)
+
         # Spike interface sets the "group" property
         # But neuroconv allows "group_name" property to override spike interface "group" value
         # So we re-set this here to avoid a conflict
         self.recording_extractor.set_property("group_name", self.recording_extractor.get_property("group").astype(str))
+
+    def _get_probe_grouping_values(self, probe: "Probe | ProbeGroup", group_property: str) -> np.ndarray:
+        """Resolve a contact annotation to recording-channel order before changing the recording."""
+        from probeinterface import ProbeGroup
+
+        probes = probe.probes if isinstance(probe, ProbeGroup) else [probe]
+        values_by_channel = {}
+        channel_count = self.recording_extractor.get_num_channels()
+        for probe_index, current_probe in enumerate(probes):
+            if group_property not in current_probe.contact_annotations:
+                raise ValueError(f"Probe {probe_index} has no contact annotation '{group_property}'.")
+            values = np.asarray(current_probe.contact_annotations[group_property])
+            if values.ndim != 1 or len(values) != current_probe.get_contact_count():
+                raise ValueError(f"Contact annotation '{group_property}' must have one scalar value per contact.")
+            if values.dtype.kind not in "biufUS":
+                raise ValueError(f"Contact annotation '{group_property}' must contain strings or finite numbers.")
+            if values.dtype.kind in "US":
+                valid = np.all(np.char.str_len(np.char.strip(values)) > 0)
+            else:
+                valid = np.all(np.isfinite(values))
+            if not valid:
+                raise ValueError(f"Contact annotation '{group_property}' contains blank or nonfinite values.")
+            if current_probe.device_channel_indices is None:
+                raise ValueError("Supply probe wiring before grouping by a contact annotation.")
+            for channel_index, value in zip(current_probe.device_channel_indices, values):
+                if channel_index < 0:
+                    continue
+                if channel_index >= channel_count or channel_index in values_by_channel:
+                    raise ValueError("Probe wiring must assign each recorded channel to exactly one contact.")
+                values_by_channel[channel_index] = value
+        if len(values_by_channel) != channel_count:
+            raise ValueError("Probe wiring must cover every recording channel to group by a contact annotation.")
+        return np.asarray([values_by_channel[index] for index in range(channel_count)])
+
+    def _probe_wired_to_channels(self, probe: "Probe | ProbeGroup", channel_id_to_contact_id: dict):
+        """Return a copy of ``probe`` carrying the channel assignment ``channel_id_to_contact_id`` states.
+
+        probeinterface stores the assignment as ``device_channel_indices``, one channel *index* per
+        contact in the probe's own contact order, with ``-1`` for a contact nothing recorded. That is
+        three conventions the caller has to hold at once, and none of them is what a wiring table says,
+        so this translates from ids and validates what a positional list cannot: a contact or channel
+        that does not exist, and two channels claiming one contact in the same recording.
+
+        The caller's probe is not modified. A probe already carrying an assignment is refused rather
+        than overwritten, since the two would be saying the same thing and only one of them can be right.
+        """
+        from probeinterface import ProbeGroup
+
+        probes = list(probe.probes) if isinstance(probe, ProbeGroup) else [probe]
+
+        already_wired = [one for one in probes if one.device_channel_indices is not None]
+        if already_wired:
+            raise ValueError(
+                "The probe already states which channel recorded each contact, in its "
+                "'device_channel_indices', so passing 'channel_id_to_contact_id' as well states it twice. "
+                "Pass the mapping and let it be applied, or set the indices yourself and pass no mapping."
+            )
+
+        unnamed = [index for index, one in enumerate(probes) if one.contact_ids is None]
+        if unnamed:
+            raise ValueError(
+                f"The probe names no contacts, so a mapping to contact ids cannot be resolved "
+                f"(probe index {unnamed[0]} has 'contact_ids' of None). Give the probe contact ids with "
+                "'set_contact_ids', or state the assignment with 'set_device_channel_indices' instead."
+            )
+
+        stated = {str(channel_id): str(contact_id) for channel_id, contact_id in channel_id_to_contact_id.items()}
+
+        channel_index_by_id = {
+            str(channel_id): index for index, channel_id in enumerate(self.recording_extractor.get_channel_ids())
+        }
+        unknown_channels = sorted(set(stated) - set(channel_index_by_id))
+        if unknown_channels:
+            raise ValueError(
+                f"'channel_id_to_contact_id' names channels the recording does not have: {unknown_channels}. "
+                f"Its channel ids are {sorted(channel_index_by_id)[:10]}"
+                f"{' and more' if len(channel_index_by_id) > 10 else ''}."
+            )
+
+        channel_by_contact: dict[str, str] = {}
+        for channel_id, contact_id in stated.items():
+            if contact_id in channel_by_contact:
+                raise ValueError(
+                    f"'channel_id_to_contact_id' has channels '{channel_by_contact[contact_id]}' and "
+                    f"'{channel_id}' both assigned to contact '{contact_id}'. "
+                    "Probe wiring supports one channel per contact within a recording."
+                )
+            channel_by_contact[contact_id] = channel_id
+
+        seen_contacts: dict[str, int] = {}
+        for probe_index, one in enumerate(probes):
+            for contact_id in one.contact_ids:
+                if str(contact_id) in seen_contacts:
+                    raise ValueError(
+                        f"Contact '{contact_id}' appears on probes {seen_contacts[str(contact_id)]} and "
+                        f"{probe_index} of this group, so a mapping to that contact id is ambiguous. "
+                        "Wire each probe separately, or give the contacts ids that are unique across the group."
+                    )
+                seen_contacts[str(contact_id)] = probe_index
+
+        copied = deepcopy(probe)
+        copied_probes = copied.probes if isinstance(copied, ProbeGroup) else [copied]
+        for current_probe in copied_probes:
+            current_probe.set_device_channel_indices(
+                [
+                    channel_index_by_id.get(channel_by_contact.get(str(contact_id)), -1)
+                    for contact_id in current_probe.contact_ids
+                ]
+            )
+
+        unknown_contacts = sorted(set(stated.values()) - set(seen_contacts))
+        if unknown_contacts:
+            raise ValueError(
+                f"'channel_id_to_contact_id' names contacts the probe does not have: {unknown_contacts}. "
+                f"Its contact ids are {sorted(seen_contacts)[:10]}"
+                f"{' and more' if len(seen_contacts) > 10 else ''}."
+            )
+
+        return copied
 
     def has_probe(self) -> bool:
         """
