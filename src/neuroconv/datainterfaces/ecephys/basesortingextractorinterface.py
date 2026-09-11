@@ -9,7 +9,7 @@ from pynwb.ecephys import ElectrodeGroup
 
 from .baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ...baseextractorinterface import BaseExtractorInterface
-from ...utils import DeepDict, get_base_schema, get_schema_from_hdmf_class
+from ...utils import ONTOLOGY_METADATA_SCHEMA, DeepDict, get_base_schema, get_schema_from_hdmf_class
 
 
 class BaseSortingExtractorInterface(BaseExtractorInterface):
@@ -60,6 +60,7 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
                 renderForm=False,
                 items={"$ref": "#/properties/Ecephys/definitions/ColumnDescription"},
             ),
+            ontology=ONTOLOGY_METADATA_SCHEMA,
         )
         metadata_schema["properties"]["Ecephys"]["definitions"] = dict(
             ElectrodeGroupEntry=dict(
@@ -119,6 +120,7 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
                 renderForm=False,
                 items={"$ref": "#/properties/Ecephys/definitions/UnitProperties"},
             ),
+            ontology=ONTOLOGY_METADATA_SCHEMA,
         )
 
         # Schema definition for arrays

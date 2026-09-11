@@ -26,6 +26,7 @@ from ._device_types import (
     _resolve_type,
 )
 from ._provenance import describe_source_script
+from ..ontology import validate_species
 from ...utils.dict import DeepDict, load_dict_from_file
 from ...utils.json_schema import _validate_device_registry_names, validate_metadata
 
@@ -155,6 +156,13 @@ def make_nwbfile_from_metadata(metadata: dict) -> NWBFile:
     schema_path = Path(__file__).resolve().parent.parent.parent / "schemas" / "base_metadata_schema.json"
     base_metadata_schema = load_dict_from_file(file_path=schema_path)
     assert metadata is not None, "Metadata is required to create an NWBFile but metadata=None was passed."
+
+    # Recommend a standardized species term (non-blocking). Runs before schema validation so
+    # that common names (e.g. "mouse") surface a helpful suggestion even though the schema's
+    # binomial pattern will subsequently reject them.
+    if isinstance(metadata.get("Subject"), dict):
+        validate_species(metadata["Subject"].get("species"))
+
     validate_metadata(metadata=metadata, schema=base_metadata_schema)
 
     # Anything the caller did not provide falls back to the same defaults an interface would have given
@@ -207,6 +215,9 @@ def add_subject_to_nwbfile(nwbfile: NWBFile, metadata: dict | None = None) -> No
     # Copied because the ISO 8601 conversion below writes into the entry, and the metadata belongs to
     # the caller.
     subject_metadata = deepcopy(metadata["Subject"])
+    # ``ontology`` carries external-resource terms for Subject values (written into the file by
+    # neuroconv.tools.ontology), not arguments the Subject constructor takes.
+    subject_metadata.pop("ontology", None)
     date_of_birth = subject_metadata.get("date_of_birth")
     if isinstance(date_of_birth, str):
         subject_metadata["date_of_birth"] = datetime.fromisoformat(date_of_birth)

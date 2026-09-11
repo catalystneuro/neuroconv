@@ -1,0 +1,62 @@
+id: https://neuroconv.readthedocs.io/termset/uberoncommonregions
+name: UberonCommonRegions
+version: 0.0.1
+prefixes:
+  UBERON: http://purl.obolibrary.org/obo/UBERON_
+imports:
+- linkml:types
+default_range: string
+enums:
+  BrainRegion:
+    permissible_values:
+      CTX:
+        description: cerebral cortex
+        meaning: UBERON:0000956
+      NCX:
+        description: neocortex
+        meaning: UBERON:0001950
+      M1:
+        description: primary motor cortex
+        meaning: UBERON:0001384
+      M2:
+        description: secondary motor cortex
+        meaning: UBERON:0016634
+      S1:
+        description: primary somatosensory cortex
+        meaning: UBERON:0008933
+      S1BF:
+        description: barrel cortex
+        meaning: UBERON:0010415
+      V1:
+        description: primary visual cortex
+        meaning: UBERON:0002436
+      V2:
+        description: secondary visual cortex
+        meaning: UBERON:0022232
+      ENT:
+        description: entorhinal cortex
+        meaning: UBERON:0002728
+      HIP:
+        description: hippocampus
+        meaning: UBERON:0002421
+      STR:
+        description: dorsal striatum
+        meaning: UBERON:0005382
+      SNc:
+        description: substantia nigra pars compacta
+        meaning: UBERON:0001965
+      SNr:
+        description: substantia nigra pars reticulata
+        meaning: UBERON:0001966
+      PAG:
+        description: periaqueductal grey
+        meaning: UBERON:0003040
+      LC:
+        description: locus coeruleus
+        meaning: UBERON:0002148
+      CB:
+        description: cerebellum
+        meaning: UBERON:0002037
+      TRAP:
+        description: trapezius muscle
+        meaning: UBERON:0002380
