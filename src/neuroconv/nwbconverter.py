@@ -21,8 +21,15 @@ from .tools.nwb_helpers import (
     get_default_nwbfile_metadata,
     make_nwbfile_from_metadata,
 )
-from .tools.nwb_helpers._metadata_and_file_helpers import _resolve_backend
-from .tools.ontology import OntologyAnnotationMixin
+from .tools.nwb_helpers._metadata_and_file_helpers import (
+    _fetch_backend_from_nwbfile_on_disk,
+)
+from .tools.ontology import (
+    add_anatomy_external_resources,
+    add_brain_region_external_resources,
+    add_species_external_resource,
+    add_strain_external_resource,
+)
 from .utils import (
     dict_deep_update,
     fill_defaults,
@@ -40,7 +47,7 @@ from .utils.json_schema import (
 )
 
 
-class NWBConverter(OntologyAnnotationMixin):
+class NWBConverter:
     """Primary class for all NWB conversion classes."""
 
     display_name: str | None = None
@@ -139,13 +146,13 @@ class NWBConverter(OntologyAnnotationMixin):
         fill_defaults(metadata_schema, default_values)
         return metadata_schema
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         """
         Auto-fill as much of the metadata as possible. Must comply with metadata schema.
 
         Parameters
         ----------
-        use_new_metadata_format : bool, default: False
+        use_new_metadata_format : bool, default: True
             Ask each interface for the dict-based format. Interfaces that emit only that format ignore the
             argument, so a converter mixing the two kinds returns one consistently dict-based dictionary.
 
@@ -165,12 +172,9 @@ class NWBConverter(OntologyAnnotationMixin):
     @staticmethod
     def _get_interface_metadata(interface, *, use_new_metadata_format: bool) -> DeepDict:
         """Ask an interface for a format it understands: only some of them take the argument."""
-        if not use_new_metadata_format:
-            return interface.get_metadata()
-
         takes_the_argument = "use_new_metadata_format" in inspect.signature(interface.get_metadata).parameters
         if takes_the_argument:
-            return interface.get_metadata(use_new_metadata_format=True)
+            return interface.get_metadata(use_new_metadata_format=use_new_metadata_format)
         return interface.get_metadata()
 
     def _get_metadata_for_writing(self) -> DeepDict:
@@ -274,13 +278,13 @@ class NWBConverter(OntologyAnnotationMixin):
         nwbfile = make_nwbfile_from_metadata(metadata=metadata)
         self.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, conversion_options=conversion_options)
 
-        # Annotate the assembled file with ontology references (in-file HERD). Runs after data is
-        # added so the electrodes table and imaging planes exist. All hooks are overridable
-        # (see OntologyAnnotationMixin).
-        self.add_species_external_resource(nwbfile, metadata=metadata)
-        self.add_strain_external_resource(nwbfile, metadata=metadata)
-        self.add_brain_region_external_resources(nwbfile, metadata=metadata)
-        self.add_anatomy_external_resources(nwbfile, metadata=metadata)
+        # Write any ontology terms stated in the metadata into the file as HERD references. A
+        # no-op unless metadata carries an "ontology" block (see neuroconv.tools.ontology); run
+        # the infer_*_ontology_metadata functions first to have NeuroConv propose those terms.
+        add_species_external_resource(nwbfile, metadata=metadata)
+        add_strain_external_resource(nwbfile, metadata=metadata)
+        add_brain_region_external_resources(nwbfile, metadata=metadata)
+        add_anatomy_external_resources(nwbfile, metadata=metadata)
 
         return nwbfile
 
@@ -303,10 +307,14 @@ class NWBConverter(OntologyAnnotationMixin):
         metadata = metadata or self._get_metadata_for_writing()
 
         conversion_options = conversion_options or dict()
-        for interface_name, data_interface in self.data_interface_objects.items():
-            data_interface.add_to_nwbfile(
-                nwbfile=nwbfile, metadata=metadata, **conversion_options.get(interface_name, dict())
-            )
+        for child_name, child in self.data_interface_objects.items():
+            child_options = conversion_options.get(child_name, dict())
+            if isinstance(child, NWBConverter):
+                # A nested converter takes its options as one mapping keyed by its own children's names,
+                # not unpacked into keyword arguments the way a data interface does.
+                child.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, conversion_options=child_options)
+            else:
+                child.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **child_options)
 
     def run_conversion(
         self,
@@ -328,7 +336,8 @@ class NWBConverter(OntologyAnnotationMixin):
             Path for where to write or load (if overwrite=False) the NWBFile.
             If specified, the context will always write to this location.
         nwbfile : NWBFile, optional
-            An in-memory NWBFile object to write to the location.
+            An in-memory NWBFile object. If provided, this conversion's interfaces add their data to
+            it rather than a new file being created; the file still needs `nwbfile_path` to be written.
         metadata : dict, optional
             Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
         overwrite : bool, default: False
@@ -343,6 +352,7 @@ class NWBConverter(OntologyAnnotationMixin):
             To customize, call the `.get_default_backend_configuration(...)` method, modify the returned
             BackendConfiguration object, and pass that instead.
             Otherwise, all datasets will use default configuration settings.
+            Cannot be combined with `nwbfile` or `append_on_disk_nwbfile=True`.
         conversion_options : dict, optional
             Similar to source_data, a dictionary containing keywords for each interface for which non-default
             conversion specification is requested.
@@ -365,6 +375,23 @@ class NWBConverter(OntologyAnnotationMixin):
             raise ValueError(
                 "Cannot append to an existing file while also providing an in-memory NWBFile. "
                 "Either set overwrite=True to replace the existing file, or remove the nwbfile parameter to append to the existing file on disk."
+            )
+
+        if backend_configuration is not None and appending_to_in_memory_nwbfile:
+            raise ValueError(
+                "Cannot provide a backend_configuration while also providing an in-memory NWBFile. This "
+                "conversion's data is added to that file before it is written, so a configuration built from "
+                "it beforehand does not describe the file being written. Add this conversion with "
+                "add_to_nwbfile, derive the configuration from the result, and write it with "
+                "configure_and_write_nwbfile."
+            )
+
+        if backend_configuration is not None and append_on_disk_nwbfile:
+            raise ValueError(
+                "Cannot provide a backend_configuration while also appending to an existing file on disk. "
+                "The file is read and this conversion's data added to it before it is configured, so a "
+                "configuration built beforehand does not describe the file being written. Specify `backend` "
+                "instead, which derives the configuration after the data is added."
             )
 
         if metadata is None:
@@ -411,10 +438,10 @@ class NWBConverter(OntologyAnnotationMixin):
         """
         if nwbfile is not None:
             self.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, conversion_options=conversion_options)
-            self.add_species_external_resource(nwbfile, metadata=metadata)
-            self.add_strain_external_resource(nwbfile, metadata=metadata)
-            self.add_brain_region_external_resources(nwbfile, metadata=metadata)
-            self.add_anatomy_external_resources(nwbfile, metadata=metadata)
+            add_species_external_resource(nwbfile, metadata=metadata)
+            add_strain_external_resource(nwbfile, metadata=metadata)
+            add_brain_region_external_resources(nwbfile, metadata=metadata)
+            add_anatomy_external_resources(nwbfile, metadata=metadata)
         else:
             nwbfile = self.create_nwbfile(metadata=metadata, conversion_options=conversion_options)
 
@@ -439,7 +466,9 @@ class NWBConverter(OntologyAnnotationMixin):
         Private helper method for run_conversion in append mode.
         Reads existing file, adds interface data, and writes back.
         """
-        backend = _resolve_backend(backend, backend_configuration)
+        backend = _fetch_backend_from_nwbfile_on_disk(
+            nwbfile_path=nwbfile_path, backend=backend, backend_configuration=backend_configuration
+        )
         IO = BACKEND_NWB_IO[backend]
 
         with IO(path=str(nwbfile_path), mode="r+", load_namespaces=True) as io:
@@ -494,7 +523,7 @@ class ConverterPipe(NWBConverter):
 
     def __init__(self, data_interfaces: list[BaseDataInterface] | dict[str, BaseDataInterface], verbose=False):
         self.verbose = verbose
-        if isinstance(data_interfaces, list):
+        if isinstance(data_interfaces, (list, tuple)):
             # Create unique names for each interface
             counter = {interface.__class__.__name__: 0 for interface in data_interfaces}
             total_counts = Counter([interface.__class__.__name__ for interface in data_interfaces])
@@ -507,35 +536,12 @@ class ConverterPipe(NWBConverter):
                 self.data_interface_objects[interface_name] = interface
         elif isinstance(data_interfaces, dict):
             self.data_interface_objects = data_interfaces
+        else:
+            raise TypeError(
+                "`data_interfaces` must be a list of interfaces, or a dict mapping names to interfaces, "
+                f"not {type(data_interfaces).__name__}."
+            )
 
         self.data_interface_classes = {
             name: interface.__class__ for name, interface in self.data_interface_objects.items()
         }
-
-    def get_conversion_options_schema(self) -> dict:
-        """
-        Compile conversion option schemas from each of the data interface classes.
-
-        Returns
-        -------
-        dict
-            The compiled conversion options schema containing:
-            - root: True
-            - id: "conversion_options.schema.json"
-            - title: "Conversion options schema"
-            - description: "Schema for the conversion options"
-            - version: "0.1.0"
-            - properties: Dictionary mapping interface names to their unrooted schemas
-        """
-        conversion_options_schema = get_base_schema(
-            root=True,
-            id_="conversion_options.schema.json",
-            title="Conversion options schema",
-            description="Schema for the conversion options",
-            version="0.1.0",
-        )
-        for interface_name, data_interface in self.data_interface_objects.items():
-
-            schema = data_interface.get_conversion_options_schema()
-            conversion_options_schema["properties"].update({interface_name: unroot_schema(schema)})
-        return conversion_options_schema

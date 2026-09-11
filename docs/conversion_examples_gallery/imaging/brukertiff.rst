@@ -24,7 +24,7 @@ describes them. Point :py:class:`~neuroconv.converters.BrukerTiffConverter` at t
     >>> metadata = converter.get_metadata()
     >>> # For data provenance we can add the time zone information to the conversion if missing
     >>> session_start_time = metadata["NWBFile"]["session_start_time"]
-    >>> tzinfo = ZoneInfo("US/Pacific")
+    >>> tzinfo = ZoneInfo("Asia/Tokyo")
     >>> metadata["NWBFile"].update(session_start_time=session_start_time.replace(tzinfo=tzinfo))
     >>> # Add subject information (required for DANDI upload)
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
@@ -36,11 +36,13 @@ That call covers any Prairie View session, planar or volumetric, single-channel 
 Every channel in the session is written as its own ``ImagingPlane`` and ``TwoPhotonSeries``, all
 referring to a single ``Device`` named ``BrukerFluorescenceMicroscope``.
 
-.. seealso::
-
-    :ref:`annotate_ophys_metadata` for how to edit the metadata before writing, such as naming the
-    indicator, the imaging location, or the excitation wavelength that the Bruker ``.xml`` does not
-    record.
+NeuroConv aims to automatically add all the metadata annotations that are present in the source format.
+It is often the case that crucial information is not available there, such as the anatomical location,
+the meaning of the values, or a semantically meaningful description of the data. Follow
+:ref:`the ophys how-to <annotate_ophys_metadata>` for a modality-relevant guide to adding
+this extra metadata, which makes the data more useful for future users and for the community as a whole.
+Its :ref:`section on templates <how_to_annotate_ophys_from_a_template>` starts from scratch, and the
+:ref:`reference template <ophys_imaging_metadata_template>` lists every element the metadata accepts.
 
 **Writing a volumetric session**
 
@@ -64,7 +66,7 @@ The setting has no effect on planar sessions.
     >>>
     >>> metadata = converter.get_metadata()
     >>> session_start_time = metadata["NWBFile"]["session_start_time"]
-    >>> tzinfo = ZoneInfo("US/Pacific")
+    >>> tzinfo = ZoneInfo("Asia/Tokyo")
     >>> metadata["NWBFile"].update(session_start_time=session_start_time.replace(tzinfo=tzinfo))
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
     >>>
@@ -89,7 +91,7 @@ yourself. ``channel_name`` selects one channel
     >>>
     >>> metadata = interface.get_metadata()
     >>> session_start_time = metadata["NWBFile"]["session_start_time"]
-    >>> tzinfo = ZoneInfo("US/Pacific")
+    >>> tzinfo = ZoneInfo("Asia/Tokyo")
     >>> metadata["NWBFile"].update(session_start_time=session_start_time.replace(tzinfo=tzinfo))
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
     >>>
@@ -114,7 +116,7 @@ microscope stays shared.
     >>>
     >>> metadata = converter.get_metadata()
     >>> session_start_time = metadata["NWBFile"]["session_start_time"]
-    >>> tzinfo = ZoneInfo("US/Pacific")
+    >>> tzinfo = ZoneInfo("Asia/Tokyo")
     >>> metadata["NWBFile"].update(session_start_time=session_start_time.replace(tzinfo=tzinfo))
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
     >>>

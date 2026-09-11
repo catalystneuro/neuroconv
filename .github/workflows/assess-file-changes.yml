@@ -10,12 +10,15 @@ on:
       CONVERSION_GALLERY_CHANGED:
         description: "Whether the files under /docs/conversion_examples_gallery/ were changed."
         value: ${{ jobs.build.outputs.CONVERSION_GALLERY_CHANGED }}
-      CHANGELOG_UPDATED:
-        description: "Whether or the CHANGELOG.md file was updated."
-        value: ${{ jobs.build.outputs.CHANGELOG_UPDATED }}
-      PYPROJECT_CHANGED:
-        description: "Whether pyproject.toml was changed, which can move an installation extra out from under a gallery page."
-        value: ${{ jobs.build.outputs.PYPROJECT_CHANGED }}
+      CHANGELOG_ENTRY_ADDED:
+        description: "Whether a changelog entry was added under /changelog_entries/."
+        value: ${{ jobs.build.outputs.CHANGELOG_ENTRY_ADDED }}
+      PYPROJECT_DEPENDENCIES_CHANGED:
+        description: "Whether pyproject.toml's [project.dependencies] or [project.optional-dependencies] changed, which can break what a gallery page installs."
+        value: ${{ jobs.build.outputs.PYPROJECT_DEPENDENCIES_CHANGED }}
+      CHANGED_GALLERY_PAGES:
+        description: "The changed files under /docs/conversion_examples_gallery/, space separated, so the formatwise job can test only those pages."
+        value: ${{ jobs.build.outputs.CHANGED_GALLERY_PAGES }}
 
 jobs:
   build:
@@ -24,8 +27,9 @@ jobs:
     outputs:
       SOURCE_CHANGED: ${{ steps.assess-changes.outputs.SOURCE_CHANGED }}
       CONVERSION_GALLERY_CHANGED: ${{ steps.assess-changes.outputs.CONVERSION_GALLERY_CHANGED }}
-      CHANGELOG_UPDATED: ${{ steps.assess-changes.outputs.CHANGELOG_UPDATED }}
-      PYPROJECT_CHANGED: ${{ steps.assess-changes.outputs.PYPROJECT_CHANGED }}
+      CHANGELOG_ENTRY_ADDED: ${{ steps.assess-changes.outputs.CHANGELOG_ENTRY_ADDED }}
+      PYPROJECT_DEPENDENCIES_CHANGED: ${{ steps.assess-changes.outputs.PYPROJECT_DEPENDENCIES_CHANGED }}
+      CHANGED_GALLERY_PAGES: ${{ steps.assess-changes.outputs.CHANGED_GALLERY_PAGES }}
 
     name: Test changed-files
     steps:
@@ -42,8 +46,9 @@ jobs:
         run: |
           echo "SOURCE_CHANGED=false" >> $GITHUB_OUTPUT
           echo "CONVERSION_GALLERY_CHANGED=false" >> $GITHUB_OUTPUT
-          echo "CHANGELOG_UPDATED=false" >> $GITHUB_OUTPUT
-          echo "PYPROJECT_CHANGED=false" >> $GITHUB_OUTPUT
+          echo "CHANGELOG_ENTRY_ADDED=false" >> $GITHUB_OUTPUT
+          PYPROJECT_TOUCHED=false
+          GALLERY_PAGES=""
           for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
             echo $file
             if [[ $file == "src/"* || $file == "tests/"* || $file == "pyproject.toml"   || $file == "setup.py" || $file == ".github/"* ]]
@@ -57,21 +62,35 @@ jobs:
             then
               echo "Conversion gallery changed"
               echo "CONVERSION_GALLERY_CHANGED=true" >> $GITHUB_OUTPUT
+              GALLERY_PAGES="$GALLERY_PAGES $file"
             else
               echo "Conversion gallery not changed"
             fi
-            if [[ $file == "CHANGELOG.md" ]]
+            # The name has to carry this pull request's own number, since `give_next_pr_number` predicts
+            # the number and does not reserve it, so an entry can end up pointing at somebody else's.
+            if [[ $file == "changelog_entries/${{ github.event.pull_request.number }}."*".md" ]]
             then
-              echo "Changelog updated"
-              echo "CHANGELOG_UPDATED=true" >> $GITHUB_OUTPUT
+              echo "Changelog entry added"
+              echo "CHANGELOG_ENTRY_ADDED=true" >> $GITHUB_OUTPUT
             else
-              echo "Changelog not updated"
+              echo "Changelog entry not added"
             fi
             if [[ $file == "pyproject.toml" ]]
             then
               echo "pyproject changed"
-              echo "PYPROJECT_CHANGED=true" >> $GITHUB_OUTPUT
+              PYPROJECT_TOUCHED=true
             else
               echo "pyproject not changed"
             fi
           done
+          echo "CHANGED_GALLERY_PAGES=$(echo $GALLERY_PAGES | xargs)" >> $GITHUB_OUTPUT
+          # Only the dependency tables decide what `.[extra]` resolves to. A version bump or a tool's
+          # configuration lives in the same file and does not need the sweep.
+          if [[ $PYPROJECT_TOUCHED == "true" ]]
+          then
+            DEPENDENCIES_CHANGED=$(python3 .github/scripts/dependencies_changed.py "${{ github.event.pull_request.base.sha }}")
+          else
+            DEPENDENCIES_CHANGED=false
+          fi
+          echo "pyproject dependencies changed: $DEPENDENCIES_CHANGED"
+          echo "PYPROJECT_DEPENDENCIES_CHANGED=$DEPENDENCIES_CHANGED" >> $GITHUB_OUTPUT

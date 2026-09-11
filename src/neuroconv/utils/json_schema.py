@@ -202,6 +202,21 @@ def get_base_schema(
     return base_schema
 
 
+#: Permissive schema fragment for a modality block's ``ontology`` sub-block (populated by
+#: ``neuroconv.tools.ontology.infer_brain_region_ontology_metadata`` and written into the file as
+#: HERD references). Each ``ontology`` maps a value (``"brain_regions"``) to a mapping of the
+#: free-text string it annotates to an explicit ``{"id": <CURIE>, "uri": <URI>}`` term, or a list
+#: of them, so the exact shape is left unconstrained here.
+ONTOLOGY_METADATA_SCHEMA: dict[str, Any] = dict(
+    type="object",
+    description=(
+        "Ontology terms for this modality's values, keyed by the value they annotate (e.g. "
+        "'brain_regions'). Populated by neuroconv.tools.ontology and written into the file as "
+        "HERD references."
+    ),
+)
+
+
 def get_json_schema_from_method_signature(method: Callable, exclude: list[str] | None = None) -> dict[str, Any]:
     """
     Get the equivalent JSON schema for a signature of a method.
@@ -221,8 +236,8 @@ def get_json_schema_from_method_signature(method: Callable, exclude: list[str] |
     json_schema : dict
         The JSON schema corresponding to the method signature.
     """
-    exclude = exclude or []
-    exclude += ["self", "cls"]
+    # A new list rather than ``+=``, which would extend the caller's own list in place.
+    exclude = [*(exclude or []), "self", "cls"]
 
     split_qualname = method.__qualname__.split(".")[-2:]
     method_display = ".".join(split_qualname) if "<" not in split_qualname[0] else method.__name__
@@ -364,6 +379,22 @@ def _is_member(types: type | tuple[type, ...], target_types: type | tuple[type, 
     return any(t in target_types for t in types)
 
 
+# Small array-valued metadata that must stay in the generated schema whatever pynwb declares for it.
+# The branch below infers "this is a bulk dataset, leave it out" from `DataIO` appearing among the
+# accepted types, since only bulk data is ever wrapped for chunked and compressed writing. pynwb's
+# development branch replaced the `collections.abc.Iterable` these fields used to declare, which was too
+# wide because it also accepted `str`, with the same explicit tuple that `data` and `timestamps` carry,
+# `DataIO` included. That reclassified a fixed-length pair of integers as bulk data. Nobody compresses a
+# frame size, so the signal carries no information for these and they are named instead of inferred.
+ARRAY_VALUED_METADATA_ARGUMENTS = (
+    "dimension",
+    "field_of_view",
+    "starting_frame",
+    "control",
+    "control_description",
+)
+
+
 def get_schema_from_hdmf_class(hdmf_class: type) -> dict[str, Any]:
     """
     Get metadata schema from hdmf class.
@@ -409,6 +440,8 @@ def get_schema_from_hdmf_class(hdmf_class: type) -> dict[str, Any]:
         elif _is_member(arg_type, str):
             schema_val.update(type="string")
         elif _is_member(arg_type, collections.abc.Iterable):
+            schema_val.update(type="array")
+        elif arg_name in ARRAY_VALUED_METADATA_ARGUMENTS:
             schema_val.update(type="array")
         elif isinstance(arg_type, tuple) and (np.ndarray in arg_type and hdmf.data_utils.DataIO not in arg_type):
             # extend type array without including type where DataIO in tuple

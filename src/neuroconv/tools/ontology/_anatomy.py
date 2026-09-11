@@ -15,9 +15,11 @@ anything else (e.g. a lab-specific keypoint name like ``"EarL"``) rather than gu
 
 from dataclasses import dataclass
 
+from pynwb import NWBFile
+
 from ._term_sets import load_term_set
 
-__all__ = ["ANATOMY_TERMS", "AnatomyTerm", "get_anatomy_term"]
+__all__ = ["ANATOMY_TERMS", "AnatomyTerm", "get_anatomy_term", "infer_anatomy_ontology_metadata"]
 
 
 @dataclass(frozen=True)
@@ -90,3 +92,69 @@ def get_anatomy_term(name: str | None) -> AnatomyTerm | None:
     lowered = stripped.lower()
     canonical_name = _LOWER_TO_CANONICAL.get(lowered) or _ALIAS_TO_CANONICAL.get(lowered)
     return ANATOMY_TERMS.get(canonical_name) if canonical_name is not None else None
+
+
+def _skeleton_node_names(nwbfile: NWBFile) -> list:
+    """Every distinct ``ndx-pose`` ``Skeleton.nodes`` entry on the file, or ``[]`` if there is none.
+
+    Reads ``nwbfile.processing["behavior"]["Skeletons"]``, the container path NeuroConv's own
+    pose-estimation interfaces write to.
+    """
+    behavior_module = nwbfile.processing.get("behavior")
+    if behavior_module is None:
+        return []
+    skeletons_container = behavior_module.data_interfaces.get("Skeletons")
+    if skeletons_container is None:
+        return []
+    names: dict = {}
+    for skeleton in skeletons_container.skeletons.values():
+        names.update(dict.fromkeys(str(node_name) for node_name in skeleton.nodes))
+    return list(names)
+
+
+def infer_anatomy_ontology_metadata(nwbfile: NWBFile, metadata: dict) -> dict:
+    """
+    Fill ``metadata["PoseEstimation"]["ontology"]["anatomy"]`` from the file's skeleton node names.
+
+    This is the **inference** half of anatomy annotation: it walks every ``ndx-pose``
+    ``Skeleton.nodes`` entry on ``nwbfile`` (pose-estimation keypoints, e.g. ``"Snout"``,
+    ``"Shoulder"``), resolves each distinct name to a UBERON term with :func:`get_anatomy_term`, and
+    writes explicit ``{"id": ..., "uri": ...}`` terms under
+    ``metadata["PoseEstimation"]["ontology"]["anatomy"]``. The deterministic
+    :func:`neuroconv.tools.ontology.add_anatomy_external_resources` then writes those terms into the
+    file as HERD references.
+
+    The metadata is modified in place (and also returned). A name that does not resolve, or one
+    already present in the map (a user-curated term is never overwritten), is left as is. This is a
+    no-op when the file has no ``Skeleton`` or nothing resolves.
+
+    Parameters
+    ----------
+    nwbfile : NWBFile
+        A populated file (data already added) whose ``Skeleton`` node names are read.
+    metadata : dict
+        Conversion metadata. Terms are written under
+        ``metadata["PoseEstimation"]["ontology"]["anatomy"]``.
+
+    Returns
+    -------
+    dict
+        The same ``metadata`` object, for chaining.
+    """
+    if not isinstance(metadata, dict):
+        return metadata
+
+    existing = metadata.get("PoseEstimation", {}).get("ontology", {}).get("anatomy", {})
+    resolved = {}
+    for node_name in _skeleton_node_names(nwbfile):
+        if node_name in existing:
+            continue
+        term = get_anatomy_term(node_name)
+        if term is not None:
+            resolved[node_name] = {"id": term.curie, "uri": term.entity_uri}
+
+    if resolved:
+        anatomy = metadata.setdefault("PoseEstimation", {}).setdefault("ontology", {}).setdefault("anatomy", {})
+        anatomy.update(resolved)
+
+    return metadata

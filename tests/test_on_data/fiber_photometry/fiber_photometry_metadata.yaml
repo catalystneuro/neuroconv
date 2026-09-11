@@ -31,7 +31,7 @@ Ophys:
         model_number: Connectorized LED
         source_type: LED
         excitation_mode: one-photon
-        wavelength_range_in_nm: [400, 470]
+        wavelength_range_in_nm: [400.0, 470.0]
 
     ExcitationSources:
       - name: excitation_source_calcium_signal
@@ -53,7 +53,7 @@ Ophys:
         manufacturer: Doric Lenses
         model_number: Newport Visible Femtowatt Photoreceiver Module
         detector_type: photodiode
-        wavelength_range_in_nm: [400, 700]
+        wavelength_range_in_nm: [400.0, 700.0]
         gain: 1.0e+10
         gain_unit: V/W
 
@@ -103,8 +103,8 @@ Ophys:
         manufacturer: Doric Lenses
         model_number: 4 ports Fluorescence Mini Cube - GCaMP
         cut_on_wavelength_in_nm: 495.0
-        reflection_band_in_nm: [400, 495]
-        transmission_band_in_nm: [505, 700]
+        reflection_band_in_nm: [400.0, 495.0]
+        transmission_band_in_nm: [505.0, 700.0]
         angle_of_incidence_in_degrees: 45.0
 
     DichroicMirrors:

@@ -1,4 +1,4 @@
-"""Tests for neuroconv.tools.ontology: species/brain-region term resolution and HERD annotation."""
+"""Tests for neuroconv.tools.ontology: term resolution, metadata inference, and HERD annotation."""
 
 from datetime import datetime
 
@@ -27,9 +27,16 @@ from neuroconv.tools.ontology import (
     get_species_term,
     get_strain_suggestion,
     get_strain_term,
+    infer_anatomy_ontology_metadata,
+    infer_brain_region_ontology_metadata,
+    infer_species_ontology_metadata,
+    infer_strain_ontology_metadata,
     validate_species,
     validate_strain,
 )
+
+MOUSE_SPECIES_TERM = {"id": "NCBITaxon:10090", "uri": "http://purl.obolibrary.org/obo/NCBITaxon_10090"}
+LONG_EVANS_STRAIN_TERM = {"id": "RRID:RGD_2308852", "uri": "https://scicrunch.org/resolver/RRID:RGD_2308852"}
 
 
 def _make_nwbfile(species="Mus musculus", strain=None, with_subject=True) -> NWBFile:
@@ -68,6 +75,16 @@ def _optical_channel():
     from pynwb.ophys import OpticalChannel
 
     return OpticalChannel(name="channel0", description="d", emission_lambda=500.0)
+
+
+def _ecephys_brain_regions(mapping: dict) -> dict:
+    """A metadata dict carrying an ``Ecephys.ontology.brain_regions`` map."""
+    return {"Ecephys": {"ontology": {"brain_regions": mapping}}}
+
+
+def _pose_estimation_anatomy(mapping: dict) -> dict:
+    """A metadata dict carrying a ``PoseEstimation.ontology.anatomy`` map."""
+    return {"PoseEstimation": {"ontology": {"anatomy": mapping}}}
 
 
 # ---------------------------------------------------------------------------
@@ -301,20 +318,187 @@ class TestAnatomyTerms:
 
 
 # ---------------------------------------------------------------------------
-# Species HERD annotation
+# Species ontology inference (metadata -> metadata)
+# ---------------------------------------------------------------------------
+
+
+class TestInferSpeciesOntologyMetadata:
+    def test_recognized_species_writes_term(self):
+        metadata = {"Subject": {"species": "Mus musculus"}}
+        infer_species_ontology_metadata(metadata)
+        assert metadata["Subject"]["ontology"]["species"] == MOUSE_SPECIES_TERM
+
+    def test_common_name_is_resolved_and_warns(self):
+        metadata = {"Subject": {"species": "mouse"}}
+        with pytest.warns(UserWarning, match="Mus musculus"):
+            infer_species_ontology_metadata(metadata)
+        assert metadata["Subject"]["ontology"]["species"] == MOUSE_SPECIES_TERM
+
+    def test_unrecognized_species_leaves_metadata_untouched(self):
+        metadata = {"Subject": {"species": "Octodon degus"}}
+        infer_species_ontology_metadata(metadata)
+        assert metadata["Subject"].get("ontology", {}).get("species") is None
+
+    def test_existing_user_term_is_not_overwritten(self):
+        curated = {"id": "NCBITaxon:99999", "uri": "https://example.org/custom"}
+        metadata = {"Subject": {"species": "Mus musculus", "ontology": {"species": curated}}}
+        infer_species_ontology_metadata(metadata)
+        assert metadata["Subject"]["ontology"]["species"] == curated
+
+    def test_no_subject_block_is_a_noop(self):
+        metadata = {"NWBFile": {}}
+        assert infer_species_ontology_metadata(metadata) is metadata
+
+
+# ---------------------------------------------------------------------------
+# Strain ontology inference (metadata -> metadata)
+# ---------------------------------------------------------------------------
+
+
+class TestInferStrainOntologyMetadata:
+    def test_recognized_strain_writes_term(self):
+        metadata = {"Subject": {"strain": "Long-Evans"}}
+        infer_strain_ontology_metadata(metadata)
+        assert metadata["Subject"]["ontology"]["strain"] == LONG_EVANS_STRAIN_TERM
+
+    def test_informal_spelling_is_resolved_and_warns(self):
+        metadata = {"Subject": {"strain": "black 6"}}
+        with pytest.warns(UserWarning, match="C57BL/6J"):
+            infer_strain_ontology_metadata(metadata)
+        assert metadata["Subject"]["ontology"]["strain"]["id"] == "RRID:IMSR_JAX:000664"
+
+    def test_unrecognized_strain_leaves_metadata_untouched(self):
+        metadata = {"Subject": {"strain": "my in-house line"}}
+        infer_strain_ontology_metadata(metadata)
+        assert metadata["Subject"].get("ontology", {}).get("strain") is None
+
+    def test_existing_user_term_is_not_overwritten(self):
+        curated = {"id": "RRID:EXAMPLE:1", "uri": "https://example.org/1"}
+        metadata = {"Subject": {"strain": "Long-Evans", "ontology": {"strain": curated}}}
+        infer_strain_ontology_metadata(metadata)
+        assert metadata["Subject"]["ontology"]["strain"] == curated
+
+    def test_no_subject_block_is_a_noop(self):
+        metadata = {"NWBFile": {}}
+        assert infer_strain_ontology_metadata(metadata) is metadata
+
+
+# ---------------------------------------------------------------------------
+# Brain-region ontology inference (file + metadata -> metadata)
+# ---------------------------------------------------------------------------
+
+
+class TestInferBrainRegionOntologyMetadata:
+    def test_electrode_locations_are_resolved_under_ecephys(self):
+        nwbfile = _make_nwbfile(species="Mus musculus")
+        _add_electrodes(nwbfile, ["CA1", "VISp", "unknown"])
+        metadata = {}
+
+        infer_brain_region_ontology_metadata(nwbfile, metadata)
+        brain_regions = metadata["Ecephys"]["ontology"]["brain_regions"]
+        assert brain_regions["CA1"] == {"id": "MBA:382", "uri": MBA_TERMS["CA1"].entity_uri}
+        assert brain_regions["VISp"]["id"] == "MBA:385"
+        assert "unknown" not in brain_regions  # unresolved locations are skipped
+
+    def test_species_selects_the_atlas(self):
+        nwbfile = _make_nwbfile(species="Homo sapiens")
+        _add_electrodes(nwbfile, ["CA1"])
+        metadata = {}
+
+        infer_brain_region_ontology_metadata(nwbfile, metadata)
+        assert metadata["Ecephys"]["ontology"]["brain_regions"]["CA1"]["id"] == "HBA:12892"
+
+    def test_imaging_plane_locations_are_resolved_under_ophys(self):
+        nwbfile = _make_nwbfile(species="Mus musculus")
+        device = nwbfile.create_device(name="scope")
+        nwbfile.create_imaging_plane(
+            name="plane0",
+            optical_channel=_optical_channel(),
+            description="d",
+            device=device,
+            excitation_lambda=600.0,
+            indicator="GCaMP",
+            location="SSp",
+            imaging_rate=30.0,
+        )
+        metadata = {}
+
+        infer_brain_region_ontology_metadata(nwbfile, metadata)
+        assert metadata["Ophys"]["ontology"]["brain_regions"]["SSp"]["id"] == "MBA:322"
+
+    def test_unrecognized_species_is_a_noop(self):
+        nwbfile = _make_nwbfile(species="Octodon degus")
+        _add_electrodes(nwbfile, ["CA1"])
+        metadata = {}
+        infer_brain_region_ontology_metadata(nwbfile, metadata)
+        assert metadata == {}
+
+    def test_existing_user_term_is_not_overwritten(self):
+        nwbfile = _make_nwbfile(species="Mus musculus")
+        _add_electrodes(nwbfile, ["CA1"])
+        curated = {"id": "MBA:999", "uri": "https://example.org/custom"}
+        metadata = _ecephys_brain_regions({"CA1": curated})
+
+        infer_brain_region_ontology_metadata(nwbfile, metadata)
+        assert metadata["Ecephys"]["ontology"]["brain_regions"]["CA1"] == curated
+
+
+# ---------------------------------------------------------------------------
+# Anatomy ontology inference (file + metadata -> metadata)
+# ---------------------------------------------------------------------------
+
+
+class TestInferAnatomyOntologyMetadata:
+    def test_skeleton_node_names_are_resolved(self):
+        nwbfile = _make_nwbfile()
+        _add_skeleton(nwbfile, ["Snout", "Shoulder", "EarL"])
+        metadata = {}
+
+        infer_anatomy_ontology_metadata(nwbfile, metadata)
+        anatomy = metadata["PoseEstimation"]["ontology"]["anatomy"]
+        assert anatomy["Snout"]["id"] == get_anatomy_term("Snout").curie
+        assert anatomy["Shoulder"]["id"] == get_anatomy_term("Shoulder").curie
+        assert "EarL" not in anatomy  # unresolved (lab-specific, laterality marker) is skipped
+
+    def test_no_skeleton_is_a_noop(self):
+        nwbfile = _make_nwbfile()
+        metadata = {}
+        infer_anatomy_ontology_metadata(nwbfile, metadata)
+        assert metadata == {}
+
+    def test_existing_user_term_is_not_overwritten(self):
+        nwbfile = _make_nwbfile()
+        _add_skeleton(nwbfile, ["Snout"])
+        curated = {"id": "UBERON:9999999", "uri": "https://example.org/custom"}
+        metadata = _pose_estimation_anatomy({"Snout": curated})
+
+        infer_anatomy_ontology_metadata(nwbfile, metadata)
+        assert metadata["PoseEstimation"]["ontology"]["anatomy"]["Snout"] == curated
+
+
+# ---------------------------------------------------------------------------
+# Species HERD annotation (metadata -> file)
 # ---------------------------------------------------------------------------
 
 
 class TestSpeciesExternalResource:
-    @pytest.mark.parametrize("kwargs", [dict(with_subject=False), dict(species=None), dict(species="Octodon degus")])
-    def test_noop_cases(self, kwargs):
+    @pytest.mark.parametrize(
+        "kwargs, metadata",
+        [
+            (dict(with_subject=False), {"Subject": {"ontology": {"species": MOUSE_SPECIES_TERM}}}),
+            (dict(), None),  # no metadata
+            (dict(), {"Subject": {"species": "Mus musculus"}}),  # metadata but no ontology term
+        ],
+    )
+    def test_noop_cases(self, kwargs, metadata):
         nwbfile = _make_nwbfile(**kwargs)
-        assert add_species_external_resource(nwbfile) is False
+        assert add_species_external_resource(nwbfile, metadata=metadata) is False
         assert nwbfile.external_resources is None
 
-    def test_recognized_species_is_annotated(self):
+    def test_species_term_from_metadata_is_annotated(self):
         nwbfile = _make_nwbfile(species="Mus musculus")
-        assert add_species_external_resource(nwbfile) is True
+        metadata = {"Subject": {"species": "Mus musculus", "ontology": {"species": MOUSE_SPECIES_TERM}}}
+        assert add_species_external_resource(nwbfile, metadata=metadata) is True
 
         dataframe = nwbfile.external_resources.to_dataframe()
         assert dataframe["key"].tolist() == ["Mus musculus"]
@@ -326,8 +510,9 @@ class TestSpeciesExternalResource:
 
     def test_idempotent(self):
         nwbfile = _make_nwbfile(species="Mus musculus")
-        assert add_species_external_resource(nwbfile) is True
-        assert add_species_external_resource(nwbfile) is False
+        metadata = {"Subject": {"ontology": {"species": MOUSE_SPECIES_TERM}}}
+        assert add_species_external_resource(nwbfile, metadata=metadata) is True
+        assert add_species_external_resource(nwbfile, metadata=metadata) is False
         assert len(nwbfile.external_resources.entities[:]) == 1
 
     def test_extends_existing_herd_in_place(self):
@@ -345,28 +530,36 @@ class TestSpeciesExternalResource:
         )
         nwbfile.external_resources = herd
 
-        assert add_species_external_resource(nwbfile) is True
+        metadata = {"Subject": {"ontology": {"species": MOUSE_SPECIES_TERM}}}
+        assert add_species_external_resource(nwbfile, metadata=metadata) is True
         assert nwbfile.external_resources is herd  # extended in place, not replaced
         assert len(herd.entities[:]) == 2
 
 
 # ---------------------------------------------------------------------------
-# Strain HERD annotation
+# Strain HERD annotation (metadata -> file)
 # ---------------------------------------------------------------------------
 
 
 class TestStrainExternalResource:
     @pytest.mark.parametrize(
-        "kwargs", [dict(with_subject=False), dict(strain=None), dict(strain="a custom in-house line")]
+        "kwargs, metadata",
+        [
+            (dict(with_subject=False), {"Subject": {"ontology": {"strain": LONG_EVANS_STRAIN_TERM}}}),
+            (dict(strain="Long-Evans"), None),  # no metadata
+            (dict(strain="Long-Evans"), {"Subject": {"strain": "Long-Evans"}}),  # metadata but no ontology term
+            (dict(strain=None), {"Subject": {"strain": None, "ontology": {"strain": LONG_EVANS_STRAIN_TERM}}}),
+        ],
     )
-    def test_noop_cases(self, kwargs):
+    def test_noop_cases(self, kwargs, metadata):
         nwbfile = _make_nwbfile(**kwargs)
-        assert add_strain_external_resource(nwbfile) is False
+        assert add_strain_external_resource(nwbfile, metadata=metadata) is False
         assert nwbfile.external_resources is None
 
-    def test_recognized_strain_is_annotated(self):
+    def test_strain_term_from_metadata_is_annotated(self):
         nwbfile = _make_nwbfile(strain="Long-Evans")
-        assert add_strain_external_resource(nwbfile) is True
+        metadata = {"Subject": {"strain": "Long-Evans", "ontology": {"strain": LONG_EVANS_STRAIN_TERM}}}
+        assert add_strain_external_resource(nwbfile, metadata=metadata) is True
 
         dataframe = nwbfile.external_resources.to_dataframe()
         assert dataframe["key"].tolist() == ["Long-Evans"]
@@ -378,8 +571,9 @@ class TestStrainExternalResource:
 
     def test_idempotent(self):
         nwbfile = _make_nwbfile(strain="Long-Evans")
-        assert add_strain_external_resource(nwbfile) is True
-        assert add_strain_external_resource(nwbfile) is False
+        metadata = {"Subject": {"ontology": {"strain": LONG_EVANS_STRAIN_TERM}}}
+        assert add_strain_external_resource(nwbfile, metadata=metadata) is True
+        assert add_strain_external_resource(nwbfile, metadata=metadata) is False
         assert len(nwbfile.external_resources.entities[:]) == 1
 
     def test_extends_existing_herd_in_place(self):
@@ -397,30 +591,21 @@ class TestStrainExternalResource:
         )
         nwbfile.external_resources = herd
 
-        assert add_strain_external_resource(nwbfile) is True
+        metadata = {"Subject": {"ontology": {"strain": LONG_EVANS_STRAIN_TERM}}}
+        assert add_strain_external_resource(nwbfile, metadata=metadata) is True
         assert nwbfile.external_resources is herd  # extended in place, not replaced
         assert len(herd.entities[:]) == 2
-
-    def test_metadata_mapping_annotates_unrecognized_and_takes_precedence(self):
-        nwbfile = _make_nwbfile(strain="Long-Evans")
-        metadata = {
-            "Strain": {
-                # Overrides the curated result (RRID:RGD_2308852) with an explicit term.
-                "Long-Evans": {"id": "RRID:EXAMPLE:2", "uri": "https://example.org/2"},
-            }
-        }
-        assert add_strain_external_resource(nwbfile, metadata=metadata) is True
-        dataframe = nwbfile.external_resources.to_dataframe()
-        assert dataframe["entity_id"].tolist() == ["RRID:EXAMPLE:2"]
 
     def test_maps_strain_to_multiple_ontology_terms(self):
         nwbfile = _make_nwbfile(strain="Long-Evans")
         metadata = {
-            "Strain": {
-                "Long-Evans": [
-                    {"id": "RRID:RGD_2308852", "uri": "https://scicrunch.org/resolver/RRID:RGD_2308852"},
-                    {"id": "RRID:EXAMPLE:3", "uri": "https://example.org/3"},
-                ]
+            "Subject": {
+                "ontology": {
+                    "strain": [
+                        LONG_EVANS_STRAIN_TERM,
+                        {"id": "RRID:EXAMPLE:3", "uri": "https://example.org/3"},
+                    ]
+                }
             }
         }
 
@@ -428,41 +613,34 @@ class TestStrainExternalResource:
         dataframe = nwbfile.external_resources.to_dataframe()
         assert sorted(dataframe["entity_id"].tolist()) == ["RRID:EXAMPLE:3", "RRID:RGD_2308852"]
 
-    def test_metadata_mapping_without_matching_entry_falls_back_to_offline_lookup(self):
-        nwbfile = _make_nwbfile(strain="Long-Evans")
-        metadata = {"Strain": {"a different strain": {"id": "RRID:EXAMPLE:4", "uri": "https://example.org/4"}}}
-
-        assert add_strain_external_resource(nwbfile, metadata=metadata) is True
-        dataframe = nwbfile.external_resources.to_dataframe()
-        assert dataframe["entity_id"].tolist() == ["RRID:RGD_2308852"]
-
     @pytest.mark.parametrize(
         "bad_value",
         ["RRID:EXAMPLE:1", {"id": "RRID:EXAMPLE:1"}, {"uri": "https://example.org/1"}, {"id": "", "uri": ""}],
     )
     def test_malformed_metadata_term_raises(self, bad_value):
         nwbfile = _make_nwbfile(strain="a strain")
-        metadata = {"Strain": {"a strain": bad_value}}
+        metadata = {"Subject": {"ontology": {"strain": bad_value}}}
         with pytest.raises((TypeError, ValueError)):
             add_strain_external_resource(nwbfile, metadata=metadata)
 
 
 # ---------------------------------------------------------------------------
-# Brain-region HERD annotation
+# Brain-region HERD annotation (metadata -> file)
 # ---------------------------------------------------------------------------
 
 
 class TestBrainRegionExternalResources:
-    def test_noop_when_no_subject(self):
-        nwbfile = _make_nwbfile(with_subject=False)
+    def test_noop_without_metadata(self):
+        nwbfile = _make_nwbfile()
         _add_electrodes(nwbfile, ["CA1"])
         assert add_brain_region_external_resources(nwbfile) == 0
         assert nwbfile.external_resources is None
 
-    def test_noop_when_nothing_recognized(self):
-        nwbfile = _make_nwbfile(species="Rattus norvegicus")  # no dedicated atlas
-        _add_electrodes(nwbfile, ["CA1", "VISp", "unknown"])  # mouse-only acronyms
-        assert add_brain_region_external_resources(nwbfile) == 0
+    def test_noop_when_metadata_covers_no_present_location(self):
+        nwbfile = _make_nwbfile()
+        _add_electrodes(nwbfile, ["CA1", "VISp", "unknown"])
+        metadata = _ecephys_brain_regions({"some other area": {"id": "MBA:1", "uri": "https://example.org/1"}})
+        assert add_brain_region_external_resources(nwbfile, metadata=metadata) == 0
         assert nwbfile.external_resources is None
 
     def test_electrodes_groups_and_imaging_planes_are_annotated(self):
@@ -480,8 +658,20 @@ class TestBrainRegionExternalResources:
             location="SSp",
             imaging_rate=30.0,
         )
+        metadata = {
+            "Ecephys": {
+                "ontology": {
+                    "brain_regions": {
+                        "CA1": {"id": "MBA:382", "uri": "https://example.org/MBA_382"},
+                        "VISp": {"id": "MBA:385", "uri": "https://example.org/MBA_385"},
+                        "MOp": {"id": "MBA:985", "uri": "https://example.org/MBA_985"},
+                    }
+                }
+            },
+            "Ophys": {"ontology": {"brain_regions": {"SSp": {"id": "MBA:322", "uri": "https://example.org/MBA_322"}}}},
+        }
 
-        assert add_brain_region_external_resources(nwbfile) == 4
+        assert add_brain_region_external_resources(nwbfile, metadata=metadata) == 4
         dataframe = nwbfile.external_resources.to_dataframe()
         by_key = dict(zip(dataframe["key"], dataframe["entity_id"]))
         assert by_key == {"CA1": "MBA:382", "VISp": "MBA:385", "MOp": "MBA:985", "SSp": "MBA:322"}
@@ -489,22 +679,6 @@ class TestBrainRegionExternalResources:
         # HERD records the electrodes reference against the ``location`` column, not the table.
         objects = nwbfile.external_resources.objects.to_dataframe()
         assert nwbfile.electrodes["location"].object_id in objects["object_id"].tolist()
-
-    def test_human_locations_are_annotated_with_hba(self):
-        nwbfile = _make_nwbfile(species="Homo sapiens")
-        _add_electrodes(nwbfile, ["CA1", "unknown"])
-
-        assert add_brain_region_external_resources(nwbfile) == 1
-        dataframe = nwbfile.external_resources.to_dataframe()
-        # Same "CA1" acronym resolves to the human atlas id, not the mouse one.
-        assert dataframe["entity_id"].tolist() == ["HBA:12892"]
-
-    def test_uberon_fallback_is_used_for_species_without_a_dedicated_atlas(self):
-        nwbfile = _make_nwbfile(species="Rattus norvegicus")
-        _add_electrodes(nwbfile, ["hippocampus"])
-        assert add_brain_region_external_resources(nwbfile) == 1
-        dataframe = nwbfile.external_resources.to_dataframe()
-        assert dataframe["entity_id"].tolist() == ["UBERON:0002421"]
 
     def test_fiber_photometry_table_location_is_annotated(self):
         from neuroconv.tools.fiber_photometry import get_fiber_photometry_table
@@ -559,6 +733,9 @@ class TestBrainRegionExternalResources:
                 )
             ),
         )
+        fiber_photometry_metadata["ontology"] = dict(
+            brain_regions={"CA1": {"id": "MBA:382", "uri": "https://example.org/MBA_382"}}
+        )
         series_metadata = fiber_photometry_metadata[interface.metadata_key]
         series_metadata["fiber_photometry_table_region"] = ["row0"]
         series_metadata["fiber_photometry_table_region_description"] = "d"
@@ -572,50 +749,29 @@ class TestBrainRegionExternalResources:
         location_column = get_fiber_photometry_table(nwbfile)["location"]
         assert location_column.object_id in objects["object_id"].tolist()
 
-    def test_metadata_mapping_annotates_unrecognized_and_takes_precedence(self):
-        nwbfile = _make_nwbfile()
-        _add_electrodes(nwbfile, ["my special area", "CA1"])
-        metadata = {
-            "BrainRegions": {
-                "my special area": {"id": "MBA:42", "uri": "https://example.org/MBA_42"},
-                # Overrides the offline result (MBA:382) with an explicit term.
-                "CA1": {"id": "MBA:999", "uri": "https://example.org/MBA_999"},
-            }
-        }
-
-        assert add_brain_region_external_resources(nwbfile, metadata=metadata) == 2
-        dataframe = nwbfile.external_resources.to_dataframe()
-        assert dict(zip(dataframe["key"], dataframe["entity_id"])) == {
-            "my special area": "MBA:42",
-            "CA1": "MBA:999",
-        }
-
     def test_maps_one_area_to_multiple_ontology_terms(self):
         nwbfile = _make_nwbfile()
         _add_electrodes(nwbfile, ["CA1"])
-        metadata = {
-            "BrainRegions": {
+        metadata = _ecephys_brain_regions(
+            {
                 "CA1": [
                     {"id": "MBA:382", "uri": "https://purl.brain-bican.org/ontology/mbao/MBA_382"},
                     {"id": "UBERON:0003881", "uri": "http://purl.obolibrary.org/obo/UBERON_0003881"},
                 ]
             }
-        }
+        )
 
         assert add_brain_region_external_resources(nwbfile, metadata=metadata) == 2
         dataframe = nwbfile.external_resources.to_dataframe()
         assert sorted(dataframe["entity_id"].tolist()) == ["MBA:382", "UBERON:0003881"]
 
-    def test_metadata_mapping_applies_regardless_of_species(self):
-        # Ontology-agnostic and not gated on species; "CA1" is not in the rat's UBERON fallback
-        # vocabulary, so only the metadata-defined region resolves.
+    def test_annotation_is_species_agnostic(self):
+        # The writer never looks at the subject; a rat file is annotated from metadata alone.
         nwbfile = _make_nwbfile(species="Rattus norvegicus")
         _add_electrodes(nwbfile, ["my region", "CA1"])
-        metadata = {
-            "BrainRegions": {
-                "my region": {"id": "UBERON:0002436", "uri": "http://purl.obolibrary.org/obo/UBERON_0002436"}
-            }
-        }
+        metadata = _ecephys_brain_regions(
+            {"my region": {"id": "UBERON:0002436", "uri": "http://purl.obolibrary.org/obo/UBERON_0002436"}}
+        )
 
         assert add_brain_region_external_resources(nwbfile, metadata=metadata) == 1
         dataframe = nwbfile.external_resources.to_dataframe()
@@ -628,15 +784,21 @@ class TestBrainRegionExternalResources:
     def test_malformed_metadata_term_raises(self, bad_value):
         nwbfile = _make_nwbfile()
         _add_electrodes(nwbfile, ["area"])
-        metadata = {"BrainRegions": {"area": bad_value}}
+        metadata = _ecephys_brain_regions({"area": bad_value})
         with pytest.raises((TypeError, ValueError)):
             add_brain_region_external_resources(nwbfile, metadata=metadata)
 
     def test_idempotent(self):
         nwbfile = _make_nwbfile()
         _add_electrodes(nwbfile, ["CA1", "VISp"])
-        assert add_brain_region_external_resources(nwbfile) == 2
-        assert add_brain_region_external_resources(nwbfile) == 0
+        metadata = _ecephys_brain_regions(
+            {
+                "CA1": {"id": "MBA:382", "uri": "https://example.org/MBA_382"},
+                "VISp": {"id": "MBA:385", "uri": "https://example.org/MBA_385"},
+            }
+        )
+        assert add_brain_region_external_resources(nwbfile, metadata=metadata) == 2
+        assert add_brain_region_external_resources(nwbfile, metadata=metadata) == 0
         assert len(nwbfile.external_resources.entities[:]) == 2
 
     def test_extends_existing_herd_in_place(self):
@@ -655,33 +817,42 @@ class TestBrainRegionExternalResources:
         )
         nwbfile.external_resources = herd
 
-        assert add_brain_region_external_resources(nwbfile) == 1
+        metadata = _ecephys_brain_regions({"CA1": {"id": "MBA:382", "uri": "https://example.org/MBA_382"}})
+        assert add_brain_region_external_resources(nwbfile, metadata=metadata) == 1
         assert nwbfile.external_resources is herd  # extended in place, not replaced
         assert len(herd.entities[:]) == 2
 
 
 # ---------------------------------------------------------------------------
-# General-anatomy HERD annotation
+# General-anatomy HERD annotation (metadata -> file)
 # ---------------------------------------------------------------------------
 
 
 class TestAnatomyExternalResources:
-    def test_noop_when_no_skeleton(self):
+    def test_noop_without_metadata(self):
         nwbfile = _make_nwbfile()
+        _add_skeleton(nwbfile, ["Snout"])
         assert add_anatomy_external_resources(nwbfile) == 0
         assert nwbfile.external_resources is None
 
-    def test_noop_when_nothing_recognized(self):
+    def test_noop_when_metadata_covers_no_present_node(self):
         nwbfile = _make_nwbfile()
-        _add_skeleton(nwbfile, ["EarL", "EarR"])
-        assert add_anatomy_external_resources(nwbfile) == 0
+        _add_skeleton(nwbfile, ["Snout", "EarL"])
+        metadata = _pose_estimation_anatomy({"some other node": {"id": "UBERON:1", "uri": "https://example.org/1"}})
+        assert add_anatomy_external_resources(nwbfile, metadata=metadata) == 0
         assert nwbfile.external_resources is None
 
     def test_skeleton_nodes_are_annotated(self):
         nwbfile = _make_nwbfile()
         skeleton = _add_skeleton(nwbfile, ["Snout", "Snout", "EarL", "Shoulder"])  # duplicates collapse
+        metadata = _pose_estimation_anatomy(
+            {
+                "Snout": {"id": "UBERON:0006333", "uri": "https://example.org/UBERON_0006333"},
+                "Shoulder": {"id": "UBERON:0001467", "uri": "https://example.org/UBERON_0001467"},
+            }
+        )
 
-        assert add_anatomy_external_resources(nwbfile) == 2
+        assert add_anatomy_external_resources(nwbfile, metadata=metadata) == 2
         dataframe = nwbfile.external_resources.to_dataframe()
         by_key = dict(zip(dataframe["key"], dataframe["entity_id"]))
         assert by_key == {"Snout": "UBERON:0006333", "Shoulder": "UBERON:0001467"}
@@ -696,40 +867,28 @@ class TestAnatomyExternalResources:
         nwbfile = _make_nwbfile()
         _add_skeleton(nwbfile, ["Snout"], name="skeleton_rat1")
         _add_skeleton(nwbfile, ["Tail"], name="skeleton_rat2")
-
-        assert add_anatomy_external_resources(nwbfile) == 2
-        dataframe = nwbfile.external_resources.to_dataframe()
-        assert sorted(dataframe["key"].tolist()) == ["Snout", "Tail"]
-
-    def test_metadata_mapping_annotates_unrecognized_and_takes_precedence(self):
-        nwbfile = _make_nwbfile()
-        _add_skeleton(nwbfile, ["EarL", "Snout"])
-        metadata = {
-            "Anatomy": {
-                "EarL": {"id": "UBERON:0001691", "uri": "http://purl.obolibrary.org/obo/UBERON_0001691"},
-                # Overrides the offline result with an explicit term.
-                "Snout": {"id": "UBERON:9999999", "uri": "https://example.org/9999999"},
+        metadata = _pose_estimation_anatomy(
+            {
+                "Snout": {"id": "UBERON:0006333", "uri": "https://example.org/UBERON_0006333"},
+                "Tail": {"id": "UBERON:0002415", "uri": "https://example.org/UBERON_0002415"},
             }
-        }
+        )
 
         assert add_anatomy_external_resources(nwbfile, metadata=metadata) == 2
         dataframe = nwbfile.external_resources.to_dataframe()
-        assert dict(zip(dataframe["key"], dataframe["entity_id"])) == {
-            "EarL": "UBERON:0001691",
-            "Snout": "UBERON:9999999",
-        }
+        assert sorted(dataframe["key"].tolist()) == ["Snout", "Tail"]
 
     def test_maps_one_node_to_multiple_ontology_terms(self):
         nwbfile = _make_nwbfile()
         _add_skeleton(nwbfile, ["Snout"])
-        metadata = {
-            "Anatomy": {
+        metadata = _pose_estimation_anatomy(
+            {
                 "Snout": [
                     {"id": "UBERON:0006333", "uri": "http://purl.obolibrary.org/obo/UBERON_0006333"},
                     {"id": "EXAMPLE:1", "uri": "https://example.org/1"},
                 ]
             }
-        }
+        )
 
         assert add_anatomy_external_resources(nwbfile, metadata=metadata) == 2
         dataframe = nwbfile.external_resources.to_dataframe()
@@ -742,15 +901,21 @@ class TestAnatomyExternalResources:
     def test_malformed_metadata_term_raises(self, bad_value):
         nwbfile = _make_nwbfile()
         _add_skeleton(nwbfile, ["Snout"])
-        metadata = {"Anatomy": {"Snout": bad_value}}
+        metadata = _pose_estimation_anatomy({"Snout": bad_value})
         with pytest.raises((TypeError, ValueError)):
             add_anatomy_external_resources(nwbfile, metadata=metadata)
 
     def test_idempotent(self):
         nwbfile = _make_nwbfile()
         _add_skeleton(nwbfile, ["Snout", "Tail"])
-        assert add_anatomy_external_resources(nwbfile) == 2
-        assert add_anatomy_external_resources(nwbfile) == 0
+        metadata = _pose_estimation_anatomy(
+            {
+                "Snout": {"id": "UBERON:0006333", "uri": "https://example.org/UBERON_0006333"},
+                "Tail": {"id": "UBERON:0002415", "uri": "https://example.org/UBERON_0002415"},
+            }
+        )
+        assert add_anatomy_external_resources(nwbfile, metadata=metadata) == 2
+        assert add_anatomy_external_resources(nwbfile, metadata=metadata) == 0
         assert len(nwbfile.external_resources.entities[:]) == 2
 
     def test_extends_existing_herd_in_place(self):
@@ -769,17 +934,18 @@ class TestAnatomyExternalResources:
         )
         nwbfile.external_resources = herd
 
-        assert add_anatomy_external_resources(nwbfile) == 1
+        metadata = _pose_estimation_anatomy({"Snout": {"id": "UBERON:0006333", "uri": "https://example.org/UBERON_0006333"}})
+        assert add_anatomy_external_resources(nwbfile, metadata=metadata) == 1
         assert nwbfile.external_resources is herd  # extended in place, not replaced
         assert len(herd.entities[:]) == 2
 
 
 # ---------------------------------------------------------------------------
-# OntologyAnnotationMixin (overridable hooks) and write/read round trip
+# Conversion pipeline: infer -> create_nwbfile writes the stated terms
 # ---------------------------------------------------------------------------
 
 
-class TestOntologyAnnotationMixin:
+class TestConversionPipelineAnnotation:
     def _mouse_recording_interface(self, brain_areas):
         from neuroconv.tools.testing.mock_interfaces import MockRecordingInterface
 
@@ -792,52 +958,38 @@ class TestOntologyAnnotationMixin:
         metadata["Subject"] = dict(subject_id="m1", species="Mus musculus", strain="C57BL/6J", sex="M", age="P30D")
         return metadata
 
-    def test_default_hooks_annotate_species_strain_and_brain_region_through_create_nwbfile(self):
+    def test_plain_metadata_writes_no_external_resources(self):
         interface = self._mouse_recording_interface(["CA1", "VISp"])
         nwbfile = interface.create_nwbfile(metadata=self._mouse_metadata(interface))
+        assert nwbfile.external_resources is None
 
+    def test_inferred_terms_are_written_through_create_nwbfile(self):
+        interface = self._mouse_recording_interface(["CA1", "VISp"])
+        metadata = self._mouse_metadata(interface)
+
+        # Inference needs the populated file to see the electrode locations.
+        staging_nwbfile = interface.create_nwbfile(metadata=metadata)
+        infer_species_ontology_metadata(metadata)
+        infer_strain_ontology_metadata(metadata)
+        infer_brain_region_ontology_metadata(staging_nwbfile, metadata)
+
+        nwbfile = interface.create_nwbfile(metadata=metadata)
         entity_ids = set(nwbfile.external_resources.to_dataframe()["entity_id"].tolist())
-        # Species (NCBITaxon), strain (RRID), and brain-region (MBA) references are all attached
-        # by the mixin.
+        # Species (NCBITaxon), strain (RRID), and brain-region (MBA) references are all written.
         assert "NCBITaxon:10090" in entity_ids
         assert "RRID:IMSR_JAX:000664" in entity_ids
         assert {"MBA:382", "MBA:385"}.issubset(entity_ids)
 
-    def test_subclass_can_override_brain_region_hook(self):
-        from neuroconv.tools.testing.mock_interfaces import MockRecordingInterface
-
-        class NoBrainRegionInterface(MockRecordingInterface):
-            def add_brain_region_external_resources(self, nwbfile, metadata=None):
-                return 0  # disable brain-region annotation entirely
-
-        interface = NoBrainRegionInterface(num_channels=2, durations=(0.1,))
-        interface.recording_extractor.set_property("brain_area", ["CA1", "VISp"])
-        nwbfile = interface.create_nwbfile(metadata=self._mouse_metadata(interface))
-
-        entity_ids = nwbfile.external_resources.to_dataframe()["entity_id"].tolist()
-        assert not any(entity_id.startswith("MBA:") for entity_id in entity_ids)
-        assert "NCBITaxon:10090" in entity_ids  # species annotation is unaffected
-
-    def test_subclass_can_override_species_hook(self):
-        from neuroconv.tools.testing.mock_interfaces import MockRecordingInterface
-
-        class NoSpeciesInterface(MockRecordingInterface):
-            def add_species_external_resource(self, nwbfile, metadata=None):
-                return False  # disable species annotation entirely
-
-        interface = NoSpeciesInterface(num_channels=2, durations=(0.1,))
-        interface.recording_extractor.set_property("brain_area", ["CA1", "VISp"])
-        nwbfile = interface.create_nwbfile(metadata=self._mouse_metadata(interface))
-
-        entity_ids = nwbfile.external_resources.to_dataframe()["entity_id"].tolist()
-        assert not any(entity_id.startswith("NCBITaxon:") for entity_id in entity_ids)
-        assert {"MBA:382", "MBA:385"}.issubset(set(entity_ids))  # brain-region annotation is unaffected
-
-    def test_species_strain_and_brain_region_references_round_trip_through_file(self, tmp_path):
+    def test_references_round_trip_through_file(self, tmp_path):
         from pynwb import NWBHDF5IO
 
         interface = self._mouse_recording_interface(["CA1", "VISp"])
-        nwbfile = interface.create_nwbfile(metadata=self._mouse_metadata(interface))
+        metadata = self._mouse_metadata(interface)
+        staging_nwbfile = interface.create_nwbfile(metadata=metadata)
+        infer_species_ontology_metadata(metadata)
+        infer_strain_ontology_metadata(metadata)
+        infer_brain_region_ontology_metadata(staging_nwbfile, metadata)
+        nwbfile = interface.create_nwbfile(metadata=metadata)
 
         path = tmp_path / "ontology_herd.nwb"
         with NWBHDF5IO(path, "w") as io:
@@ -848,48 +1000,19 @@ class TestOntologyAnnotationMixin:
 
         assert {"NCBITaxon:10090", "RRID:IMSR_JAX:000664", "MBA:382", "MBA:385"}.issubset(entity_ids)
 
-    def test_subclass_can_override_strain_hook(self):
-        from neuroconv.tools.testing.mock_interfaces import MockRecordingInterface
-
-        class NoStrainInterface(MockRecordingInterface):
-            def add_strain_external_resource(self, nwbfile, metadata=None):
-                # Override to disable strain annotation entirely.
-                return False
-
-        interface = NoStrainInterface(num_channels=2, durations=(0.1,))
-        interface.recording_extractor.set_property("brain_area", ["CA1", "VISp"])
-        nwbfile = interface.create_nwbfile(metadata=self._mouse_metadata(interface))
-
-        # No strain reference was added, but species and brain-region references still are.
-        entity_ids = nwbfile.external_resources.to_dataframe()["entity_id"].tolist()
-        assert not any(entity_id.startswith("RRID:") for entity_id in entity_ids)
-        assert "NCBITaxon:10090" in entity_ids
-        assert {"MBA:382", "MBA:385"}.issubset(set(entity_ids))
-
-    def test_default_hooks_annotate_anatomy_through_create_nwbfile(self):
+    def test_inferred_anatomy_terms_are_written_through_create_nwbfile(self):
         from neuroconv.tools.testing.mock_interfaces import MockPoseEstimationInterface
 
         interface = MockPoseEstimationInterface(num_nodes=3)  # nodes: head, neck, left_shoulder
         metadata = interface.get_metadata()
         metadata["Subject"] = dict(subject_id="m1", species="Mus musculus", sex="M", age="P30D")
-        nwbfile = interface.create_nwbfile(metadata=metadata)
 
+        # Inference needs the populated file to see the skeleton node names.
+        staging_nwbfile = interface.create_nwbfile(metadata=metadata)
+        infer_species_ontology_metadata(metadata)
+        infer_anatomy_ontology_metadata(staging_nwbfile, metadata)
+
+        nwbfile = interface.create_nwbfile(metadata=metadata)
         entity_ids = set(nwbfile.external_resources.to_dataframe()["entity_id"].tolist())
         assert "NCBITaxon:10090" in entity_ids
         assert {"UBERON:0000033", "UBERON:0000974"}.issubset(entity_ids)  # head, neck
-
-    def test_subclass_can_override_anatomy_hook(self):
-        from neuroconv.tools.testing.mock_interfaces import MockPoseEstimationInterface
-
-        class NoAnatomyInterface(MockPoseEstimationInterface):
-            def add_anatomy_external_resources(self, nwbfile, metadata=None):
-                return 0  # disable anatomy annotation entirely
-
-        interface = NoAnatomyInterface(num_nodes=3)
-        metadata = interface.get_metadata()
-        metadata["Subject"] = dict(subject_id="m1", species="Mus musculus", sex="M", age="P30D")
-        nwbfile = interface.create_nwbfile(metadata=metadata)
-
-        entity_ids = nwbfile.external_resources.to_dataframe()["entity_id"].tolist()
-        assert not any(entity_id.startswith("UBERON:") for entity_id in entity_ids)
-        assert "NCBITaxon:10090" in entity_ids  # species annotation is unaffected

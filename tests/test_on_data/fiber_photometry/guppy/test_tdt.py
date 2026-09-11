@@ -18,7 +18,7 @@ from datetime import datetime, timezone
 
 import numpy as np
 import pytest
-from pynwb import NWBHDF5IO
+from pynwb import read_nwb
 
 from neuroconv.converters import GuppyConverter
 from neuroconv.tools.testing import generate_mock_guppy_output_folder
@@ -48,7 +48,8 @@ MOCK_GUPPY_RATE = 200.0
 
 class TestGuppyConverterTDT:
     @pytest.fixture(scope="class")
-    def epoc_onsets(self):
+    @classmethod
+    def epoc_onsets(cls):
         """The first few onsets of each epoc GuPPy listed, read straight from the tank."""
         import tdt
 
@@ -58,9 +59,12 @@ class TestGuppyConverterTDT:
             for epoc_name, event_name in EPOC_TO_EVENT_NAME.items()
         }
 
-    @pytest.fixture
-    def guppy_output_folder(self, tmp_path, epoc_onsets):
-        return generate_mock_guppy_output_folder(tmp_path / "guppy_output", event_onsets=epoc_onsets)
+    @pytest.fixture(scope="class")
+    @classmethod
+    def guppy_output_folder(cls, tmp_path_factory, epoc_onsets):
+        return generate_mock_guppy_output_folder(
+            tmp_path_factory.mktemp("tdt_output") / "guppy_output", event_onsets=epoc_onsets
+        )
 
     @pytest.fixture
     def converter(self, guppy_output_folder):
@@ -118,10 +122,13 @@ class TestGuppyConverterTDT:
         nwbfile_path = tmp_path / "tdt_guppy_alignment.nwb"
         converter.run_conversion(nwbfile_path=str(nwbfile_path), metadata=metadata, overwrite=True)
 
-        with NWBHDF5IO(str(nwbfile_path), "r") as io:
-            processing_module = io.read().processing["guppy"]
+        nwbfile = read_nwb(str(nwbfile_path))
+        try:
+            processing_module = nwbfile.processing["guppy"]
             for recording_site in RECORDING_SITES:
                 dff_series = processing_module.data_interfaces[f"dff_{recording_site}"]
                 assert dff_series.timestamps is None
                 assert float(dff_series.starting_time) == pytest.approx(MOCK_GUPPY_STARTING_TIME)
                 assert float(dff_series.rate) == pytest.approx(MOCK_GUPPY_RATE)
+        finally:
+            nwbfile.read_io.close()

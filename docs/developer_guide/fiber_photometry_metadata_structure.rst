@@ -160,6 +160,10 @@ The complete fiber photometry metadata structure (one interface with ``metadata_
     }
 
 
+The same structure with its blanks unfilled, in YAML and JSON, is at
+:ref:`fiber_photometry_metadata_template`.
+
+
 The metadata_key Parameter
 --------------------------
 

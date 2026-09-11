@@ -22,6 +22,7 @@ __all__ = [
     "StrainTerm",
     "get_strain_suggestion",
     "get_strain_term",
+    "infer_strain_ontology_metadata",
     "validate_strain",
 ]
 
@@ -176,3 +177,47 @@ def validate_strain(strain: str | None) -> StrainTerm | None:
         stacklevel=2,
     )
     return term
+
+
+def infer_strain_ontology_metadata(metadata: dict) -> dict:
+    """
+    Fill ``metadata["Subject"]["ontology"]["strain"]`` from the subject's strain value.
+
+    This is the **inference** half of strain annotation: it resolves
+    ``metadata["Subject"]["strain"]`` (an informal spelling, a likely typo, or a canonical
+    designation) to its RRID term via :func:`get_strain_term` and writes an explicit
+    ``{"id": ..., "uri": ...}`` term next to the value it describes. The deterministic
+    :func:`neuroconv.tools.ontology.add_strain_external_resource` then writes that term into the
+    file as a HERD reference.
+
+    The metadata is modified in place (and also returned). This is a no-op when there is no
+    ``Subject`` block, no strain is set, the strain is not recognized, or an ``ontology.strain``
+    term is already present (a user-curated term is never overwritten). A recognized informal
+    spelling or typo also emits the :func:`validate_strain` ``UserWarning``.
+
+    Parameters
+    ----------
+    metadata : dict
+        Conversion metadata. ``metadata["Subject"]["strain"]`` is read; the term is written under
+        ``metadata["Subject"]["ontology"]["strain"]``.
+
+    Returns
+    -------
+    dict
+        The same ``metadata`` object, for chaining.
+    """
+    subject_metadata = metadata.get("Subject") if isinstance(metadata, dict) else None
+    if not isinstance(subject_metadata, dict):
+        return metadata
+
+    strain = subject_metadata.get("strain")
+    validate_strain(strain)  # non-blocking suggestion for informal spellings / typos
+
+    ontology_metadata = subject_metadata.setdefault("ontology", {})
+    if ontology_metadata.get("strain") is not None:
+        return metadata
+
+    term = get_strain_term(strain)
+    if term is not None:
+        ontology_metadata["strain"] = {"id": term.rrid, "uri": term.entity_uri}
+    return metadata

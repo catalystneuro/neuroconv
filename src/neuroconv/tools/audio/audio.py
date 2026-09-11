@@ -43,7 +43,7 @@ def add_acoustic_waveform_series(
     iterator_options : dict, optional
         Dictionary of options for the SliceableDataChunkIterator.
     write_as : {'stimulus', 'acquisition'}, optional
-        Deprecated. Use ``parent_container`` instead. Will be removed on or after December 2026.
+        Deprecated. Use ``parent_container`` instead. Will be removed on or after February 2027.
 
     Returns
     -------
@@ -54,7 +54,7 @@ def add_acoustic_waveform_series(
     if write_as is not None:
         warn(
             "The 'write_as' parameter of add_acoustic_waveform_series is deprecated and will be removed "
-            "on or after December 2026. Use 'parent_container' instead.",
+            "on or after February 2027. Use 'parent_container' instead.",
             FutureWarning,
             stacklevel=2,
         )

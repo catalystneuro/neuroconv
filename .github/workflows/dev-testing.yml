@@ -51,6 +51,13 @@ jobs:
         uses: ./.github/actions/install-wine
         with:
           os: ${{ runner.os }}
+      # Neo downloads the Plexon reader DLL into the home directory the first time a .pl2 file is
+      # opened, with a bare urlopen that has no timeout. Caching it keeps the test run off the network.
+      - name: Cache the Plexon2 reader DLL
+        uses: actions/cache@v5
+        with:
+          path: ~/.plexon_dlls_for_neo
+          key: plexon-dlls-${{ runner.os }}
 
       - name: Install full requirements
         run: |
@@ -80,6 +87,23 @@ jobs:
       - name: Dev gallery - HDMF-ZARR
         run : pip install --no-cache-dir --force-reinstall --no-deps git+https://github.com/hdmf-dev/hdmf-zarr@dev
 
+      # The dev installs above pass --no-deps, so a dependency that a dev branch newly declared is never
+      # fetched: roiextractors added lazyslice on 2026-09-03 and every ophys test failed to import for six
+      # days. Install the ones that are absent and leave the version-mismatch lines alone, since installing
+      # eight dev branches over their released dependencies produces those on purpose.
+      - name: Install the dependencies the dev installs skipped
+        run: |
+          missing=$(pip check | sed -n 's/.* requires \([A-Za-z0-9._-]*\), which is not installed\./\1/p' | sort -u)
+          if [ -n "$missing" ]; then
+            echo "Installing dependencies the dev branches added: $missing"
+            pip install --no-cache-dir $missing
+          fi
+          remaining=$(pip check | sed -n 's/.* requires \([A-Za-z0-9._-]*\), which is not installed\./\1/p' | sort -u)
+          if [ -n "$remaining" ]; then
+            echo "Still missing after install: $remaining"
+            exit 1
+          fi
+
       - name: Display installed packages and their sources
         run: |
           pip list
@@ -93,4 +117,4 @@ jobs:
 
 
       - name: Run full pytest
-        run: pytest -rsx -n logical --dist loadscope
+        run: pytest

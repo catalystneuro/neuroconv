@@ -52,7 +52,7 @@ class CnmfeSegmentationInterface(BaseSegmentationExtractorInterface):
         super().__init__(file_path=file_path, metadata_key=metadata_key)
         self.verbose = verbose
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False):
+    def get_metadata(self, *, use_new_metadata_format: bool = True):
         if use_new_metadata_format:
             metadata = super().get_metadata(use_new_metadata_format=True)
             metadata["Ophys"] = {
@@ -62,4 +62,4 @@ class CnmfeSegmentationInterface(BaseSegmentationExtractorInterface):
             }
             return metadata
 
-        return super().get_metadata()
+        return super().get_metadata(use_new_metadata_format=False)

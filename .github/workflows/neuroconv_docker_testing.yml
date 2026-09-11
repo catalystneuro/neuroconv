@@ -32,7 +32,7 @@ jobs:
 
       - name: Install pytest and neuroconv minimal
         run: |
-          pip install pytest
+          pip install pytest pytest-xdist  # xdist because `addopts` in pyproject.toml carries `--numprocesses`
           pip install .
 
       - name: Prepare data for tests

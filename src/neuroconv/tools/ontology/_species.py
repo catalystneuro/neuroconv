@@ -22,6 +22,7 @@ __all__ = [
     "SpeciesTerm",
     "get_species_suggestion",
     "get_species_term",
+    "infer_species_ontology_metadata",
     "validate_species",
 ]
 
@@ -198,3 +199,47 @@ def validate_species(species: str | None) -> SpeciesTerm | None:
         stacklevel=2,
     )
     return term
+
+
+def infer_species_ontology_metadata(metadata: dict) -> dict:
+    """
+    Fill ``metadata["Subject"]["ontology"]["species"]`` from the subject's species value.
+
+    This is the **inference** half of species annotation: it resolves
+    ``metadata["Subject"]["species"]`` (a common name, a likely typo, or a Latin binomial) to its
+    NCBITaxon term via :func:`get_species_term` and writes an explicit
+    ``{"id": ..., "uri": ...}`` term next to the value it describes. The deterministic
+    :func:`neuroconv.tools.ontology.add_species_external_resource` then writes that term into the
+    file as a HERD reference.
+
+    The metadata is modified in place (and also returned). This is a no-op when there is no
+    ``Subject`` block, the species is not recognized, or an ``ontology.species`` term is already
+    present (a user-curated term is never overwritten). A recognized common name or typo also
+    emits the :func:`validate_species` ``UserWarning``.
+
+    Parameters
+    ----------
+    metadata : dict
+        Conversion metadata. ``metadata["Subject"]["species"]`` is read; the term is written under
+        ``metadata["Subject"]["ontology"]["species"]``.
+
+    Returns
+    -------
+    dict
+        The same ``metadata`` object, for chaining.
+    """
+    subject_metadata = metadata.get("Subject") if isinstance(metadata, dict) else None
+    if not isinstance(subject_metadata, dict):
+        return metadata
+
+    species = subject_metadata.get("species")
+    validate_species(species)  # non-blocking suggestion for common names / typos
+
+    ontology_metadata = subject_metadata.setdefault("ontology", {})
+    if ontology_metadata.get("species") is not None:
+        return metadata
+
+    term = get_species_term(species)
+    if term is not None:
+        ontology_metadata["species"] = {"id": term.ncbitaxon_id, "uri": term.entity_uri}
+    return metadata
