@@ -127,6 +127,25 @@ class TestDeepDict(unittest.TestCase):
         self.assertIsInstance(dd["a"], DeepDict)
         self.assertEqual(dd.to_dict(), {"a": {"b": 1, "c": 2}})
 
+    def test_setitem_stores_nested_dicts_as_deepdicts(self):
+        dd = DeepDict()
+        dd["a"] = {"b": {"c": 1}}
+        self.assertIsInstance(dd["a"], DeepDict)
+        self.assertIsInstance(dd["a"]["b"], DeepDict)
+        # A missing path below an assigned plain dict is created on access, as at the top level.
+        dd["a"]["x"]["y"] = 2
+        self.assertEqual(dd.to_dict(), {"a": {"b": {"c": 1}, "x": {"y": 2}}})
+
+    def test_update_stores_nested_dicts_as_deepdicts(self):
+        # ``dict.update`` bypasses ``__setitem__``, so this is a separate path from assignment.
+        dd = DeepDict()
+        dd.update(a={"b": 1})
+        dd.update({"c": {"d": 2}})
+        self.assertIsInstance(dd["a"], DeepDict)
+        self.assertIsInstance(dd["c"], DeepDict)
+        dd.deep_update({"a": {"e": 3}})
+        self.assertEqual(dd.to_dict(), {"a": {"b": 1, "e": 3}, "c": {"d": 2}})
+
     def test_deepcopy(self):
         dd2 = deepcopy(self.dd)
         dd2["a"]["b"]["c"] = 0

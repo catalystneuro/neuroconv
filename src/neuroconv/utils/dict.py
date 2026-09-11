@@ -229,10 +229,20 @@ class DeepDict(defaultdict):
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         """A defaultdict of defaultdicts"""
-        super().__init__(lambda: DeepDict(), *args, **kwargs)
-        for key, value in self.items():
-            if isinstance(value, dict):
-                self[key] = DeepDict(value)
+        super().__init__(lambda: DeepDict())
+        self.update(*args, **kwargs)
+
+    # Every dict stored in a DeepDict is itself a DeepDict, so that reaching into a value that was assigned as a
+    # plain dict, ``d["a"] = {"b": 1}; d["a"]["c"]["e"] = 2``, and updating into it with ``deep_update`` both work.
+    # ``dict.update`` is implemented in C and does not go through ``__setitem__``, so it needs its own override.
+    def __setitem__(self, key: Any, value: Any) -> None:
+        if isinstance(value, dict) and not isinstance(value, DeepDict):
+            value = DeepDict(value)
+        super().__setitem__(key, value)
+
+    def update(self, *args: Any, **kwargs: Any) -> None:
+        for key, value in dict(*args, **kwargs).items():
+            self[key] = value
 
     def deep_update(self, other: "dict[str, Any] | DeepDict | None" = None, **kwargs: Any) -> None:
         """
@@ -253,15 +263,7 @@ class DeepDict(defaultdict):
         """
         for key, value in (other or kwargs).items():
             if key in self and isinstance(self[key], dict) and isinstance(value, dict):
-                # A value stored through ``__setitem__`` or an earlier update may be a plain dict, which has
-                # no ``deep_update``, so it is converted before recursing into it.
-                if not isinstance(self[key], DeepDict):
-                    self[key] = DeepDict(self[key])
                 self[key].deep_update(value)
-            elif isinstance(value, dict) and not isinstance(value, DeepDict):
-                # Stored as a DeepDict, as the constructor does for nested dicts, so a later update into
-                # this key finds a DeepDict there.
-                self[key] = DeepDict(value)
             else:
                 self[key] = value
 
