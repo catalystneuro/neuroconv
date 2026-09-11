@@ -1,5 +1,6 @@
 """Integration tests for `get_existing_backend_configuration`."""
 
+import re
 from io import StringIO
 from unittest.mock import patch
 
@@ -7,10 +8,10 @@ import numpy as np
 import pytest
 from hdmf_zarr import ZarrDataIO
 from hdmf_zarr.nwb import NWBZarrIO
-from numcodecs import Blosc
 from pynwb import NWBHDF5IO, H5DataIO, NWBFile
 from pynwb.testing.mock.base import mock_TimeSeries
 from pynwb.testing.mock.file import mock_NWBFile
+from zarr.codecs import BloscCodec
 
 from neuroconv.tools.nwb_helpers import (
     HDF5BackendConfiguration,
@@ -18,6 +19,19 @@ from neuroconv.tools.nwb_helpers import (
     get_existing_backend_configuration,
     get_module,
 )
+
+
+def _normalize_blosc_repr(text: str) -> str:
+    """Normalize BloscCodec repr to a canonical form that is stable across zarr versions.
+
+    Older zarr releases render enum members as ``<BloscCname.lz4: 'lz4'>``; newer ones
+    use plain strings such as ``'lz4'``.  Strip the enum wrapper so both forms compare equal.
+    """
+    # cname=<BloscCname.lz4: 'lz4'>  →  cname='lz4'
+    text = re.sub(r"cname=<\w+\.(\w+): '(\w+)'>", r"cname='\2'", text)
+    # shuffle=<BloscShuffle.shuffle: 'shuffle'>  →  shuffle='shuffle'
+    text = re.sub(r"shuffle=<\w+\.(\w+): '(\w+)'>", r"shuffle='\2'", text)
+    return text
 
 
 def generate_complex_nwbfile() -> NWBFile:
@@ -68,24 +82,21 @@ def hdf5_nwbfile_path(tmp_path_factory):
 
 @pytest.fixture(scope="session")
 def zarr_nwbfile_path(tmp_path_factory):
-    compressor = Blosc(cname="lz4", clevel=5, shuffle=Blosc.SHUFFLE, blocksize=0)
-    filter1 = Blosc(cname="zstd", clevel=1, shuffle=Blosc.SHUFFLE)
-    filter2 = Blosc(cname="zstd", clevel=2, shuffle=Blosc.SHUFFLE)
-    filters = [filter1, filter2]
+    compressor = BloscCodec(cname="lz4", clevel=5)
 
     nwbfile_path = tmp_path_factory.mktemp("data") / "test_default_backend_configuration_hdf5_nwbfile.nwb.zarr"
     nwbfile = generate_complex_nwbfile()
 
     # Add a ZarrDataIO-compressed time series
     raw_array = np.array([[11, 21, 31], [41, 51, 61]], dtype="int32")
-    data = ZarrDataIO(data=raw_array, chunks=(1, 3), compressor=compressor, filters=filters)
+    data = ZarrDataIO(data=raw_array, chunks=(1, 3), compressors=compressor)
     raw_time_series = mock_TimeSeries(name="CompressedRawTimeSeries", data=data)
     nwbfile.add_acquisition(raw_time_series)
 
     # Add ZarrDataIO-compressed trials column
     number_of_trials = 10
     start_time = np.linspace(start=0.0, stop=10.0, num=number_of_trials)
-    data = ZarrDataIO(data=start_time, chunks=(5,), compressor=compressor, filters=filters)
+    data = ZarrDataIO(data=start_time, chunks=(5,), compressors=compressor)
     nwbfile.add_trial_column(
         name="compressed_start_time",
         description="start time of epoch",
@@ -227,7 +238,7 @@ intervals/trials/start_time/data
   chunk shape : (10,)
   disk space usage per chunk : 80 B
 
-  compressors : [Blosc(cname='lz4', clevel=5, shuffle=SHUFFLE, blocksize=0)]
+  compressors : [ZstdCodec(level=0, checksum=False)]
 
 
 intervals/trials/stop_time/data
@@ -242,7 +253,7 @@ intervals/trials/stop_time/data
   chunk shape : (10,)
   disk space usage per chunk : 80 B
 
-  compressors : [Blosc(cname='lz4', clevel=5, shuffle=SHUFFLE, blocksize=0)]
+  compressors : [ZstdCodec(level=0, checksum=False)]
 
 
 intervals/trials/compressed_start_time/data
@@ -257,9 +268,7 @@ intervals/trials/compressed_start_time/data
   chunk shape : (5,)
   disk space usage per chunk : 40 B
 
-  compressors : [Blosc(cname='lz4', clevel=5, shuffle=SHUFFLE, blocksize=0)]
-
-  filters : [Blosc(cname='zstd', clevel=1, shuffle=SHUFFLE, blocksize=0), Blosc(cname='zstd', clevel=2, shuffle=SHUFFLE, blocksize=0)]
+  compressors : [BloscCodec(_tunable_attrs=set(), typesize=8, cname='lz4', clevel=5, shuffle='shuffle', blocksize=0)]
 
 
 processing/ecephys/ProcessedTimeSeries/data
@@ -274,7 +283,7 @@ processing/ecephys/ProcessedTimeSeries/data
   chunk shape : (4, 2)
   disk space usage per chunk : 64 B
 
-  compressors : [Blosc(cname='lz4', clevel=5, shuffle=SHUFFLE, blocksize=0)]
+  compressors : [ZstdCodec(level=0, checksum=False)]
 
 
 acquisition/RawTimeSeries/data
@@ -289,7 +298,7 @@ acquisition/RawTimeSeries/data
   chunk shape : (2, 3)
   disk space usage per chunk : 48 B
 
-  compressors : [Blosc(cname='lz4', clevel=5, shuffle=SHUFFLE, blocksize=0)]
+  compressors : [ZstdCodec(level=0, checksum=False)]
 
 
 acquisition/CompressedRawTimeSeries/data
@@ -304,9 +313,7 @@ acquisition/CompressedRawTimeSeries/data
   chunk shape : (1, 3)
   disk space usage per chunk : 12 B
 
-  compressors : [Blosc(cname='lz4', clevel=5, shuffle=SHUFFLE, blocksize=0)]
-
-  filters : [Blosc(cname='zstd', clevel=1, shuffle=SHUFFLE, blocksize=0), Blosc(cname='zstd', clevel=2, shuffle=SHUFFLE, blocksize=0)]
+  compressors : [BloscCodec(_tunable_attrs=set(), typesize=4, cname='lz4', clevel=5, shuffle='shuffle', blocksize=0)]
 
 """
-    assert stdout.getvalue() == expected_print
+    assert _normalize_blosc_repr(stdout.getvalue()) == expected_print

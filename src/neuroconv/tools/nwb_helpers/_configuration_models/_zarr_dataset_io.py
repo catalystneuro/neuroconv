@@ -3,44 +3,29 @@
 import warnings
 from typing import Any, ClassVar, Literal
 
-import numcodecs
-import zarr
 from hdmf import Container
-from numcodecs import Shuffle
-from pydantic import Field, InstanceOf, model_validator
+from pydantic import Field, InstanceOf, PositiveInt, model_validator
 from typing_extensions import Self
+from zarr.abc.codec import ArrayArrayCodec, BytesBytesCodec
+from zarr.codecs import BZ2, LZ4, LZMA, BloscCodec, GzipCodec, Shuffle, Zlib, ZstdCodec
 
 from ._base_dataset_io import _DEFAULT_GZIP_LEVEL, DatasetIOConfiguration
 
-_base_zarr_codecs = set(zarr.codec_registry.keys())
-_lossy_zarr_codecs = set(("astype", "bitround", "quantize"))
+# Curated mapping of string names to zarr v3 BytesBytesCodec classes.
+# Prefer native zarr codecs where available; fall back to numcodecs wrappers otherwise.
+AVAILABLE_ZARR_COMPRESSION_METHODS: dict[str, type[BytesBytesCodec]] = {
+    "gzip": GzipCodec,
+    "blosc": BloscCodec,
+    "zstd": ZstdCodec,
+    "bz2": BZ2,
+    "lzma": LZMA,
+    "zlib": Zlib,
+    "lz4": LZ4,
+}
 
-# These filters do nothing for us, or are things that ought to be implemented at lower HDMF levels
-# or indirectly using HDMF data structures
-_excluded_zarr_codecs = set(
-    (
-        "json2",  # no data savings
-        "pickle",  # no data savings
-        "vlen-utf8",  # enforced by HDMF
-        "vlen-array",  # enforced by HDMF
-        "vlen-bytes",  # enforced by HDMF
-        "msgpack2",  # think more on if we want to include this for variable length string datasets
-        "adler32",  # checksum
-        "crc32",  # checksum
-        "fixedscaleoffset",  # enforced indirectly by HDMF/PyNWB data types
-        "shuffle",  # not a compression method; reachable as an entry of `compressors`
-        "base64",  # unsure what this would ever be used for
-        "n5_wrapper",  # different data format
-        "pcodec",  # is erroneously imported before numcodecs 0.15, see https://numcodecs.readthedocs.io/en/stable/release.html?utm_source=chatgpt.com#id9
-    )
-)
-
-# Forbidding lossy codecs for now, but they could be allowed in the future with warnings?
-# (Users can always initialize and pass explicitly via code)
-_available_zarr_codecs = set(_base_zarr_codecs - _lossy_zarr_codecs - _excluded_zarr_codecs)
-
-AVAILABLE_ZARR_COMPRESSION_METHODS = {
-    codec_name: zarr.codec_registry[codec_name] for codec_name in _available_zarr_codecs
+# Curated mapping of string names to zarr v3 ArrayArrayCodec classes for filters.
+AVAILABLE_ZARR_FILTER_METHODS: dict[str, type[ArrayArrayCodec]] = {
+    "delta": __import__("zarr.codecs.numcodecs", fromlist=["Delta"]).Delta,
 }
 
 
@@ -48,46 +33,48 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
     """A data model for configuring options about an object that will become a Zarr Dataset in the file."""
 
     # Shuffle rearranges bytes rather than compressing them, so it can never be the compression method of a
-    # dataset. Zarr v2 has nowhere but `filters` to store it, which is where `get_data_io_kwargs()` puts it.
+    # dataset. It is listed separately here so _compressor_index() can skip it when finding the main compressor.
     _pure_filter_names: ClassVar[tuple[str, ...]] = ("shuffle",)
 
     compressors: (
-        list[
-            Literal[(*_pure_filter_names, *AVAILABLE_ZARR_COMPRESSION_METHODS.keys())] | InstanceOf[numcodecs.abc.Codec]
-        ]
+        list[Literal[(*_pure_filter_names, *AVAILABLE_ZARR_COMPRESSION_METHODS.keys())] | InstanceOf[BytesBytesCodec]]
         | None
     ) = Field(
-        default=["gzip"],  # TODO: would like this to be 'auto'
+        default=["gzip"],
         description=(
             "The ordered collection of codecs to apply to this dataset after it is serialized to bytes. "
             "Each element can be either a string that matches an available method on your system, "
-            "or an instantiated numcodec.Codec object. "
+            "or an instantiated zarr BytesBytesCodec object (e.g. zarr.codecs.GzipCodec(level=5)). "
             "A filter such as 'shuffle' composes with a compression method rather than replacing one, so both "
             "live in this list. "
             "Set to `None` to disable compression."
         ),
     )
-    # TODO: actually provide better schematic rendering of options. Only support defaults in GUIDE for now.
-    # Looks like they'll have to be hand-typed however... Can try parsing the numpy docstrings - no annotation typing.
     compressor_options: list[dict[str, Any] | None] | None = Field(
         default=None, description="The optional parameters to use for each specified compressor."
     )
     filters: (
-        list[
-            Literal[(*_pure_filter_names, *AVAILABLE_ZARR_COMPRESSION_METHODS.keys())] | InstanceOf[numcodecs.abc.Codec]
-        ]
-        | None
+        list[Literal[(*_pure_filter_names, *AVAILABLE_ZARR_FILTER_METHODS.keys())] | InstanceOf[ArrayArrayCodec]] | None
     ) = Field(
         default=None,
         description=(
             "The ordered collection of codecs to apply to this dataset's values before it is serialized to bytes. "
             "Each element can be either a string that matches an available method on your system, "
-            "or an instantiated numcodec.Codec object."
+            "or an instantiated zarr ArrayArrayCodec object (e.g. zarr.codecs.numcodecs.Delta()). "
             "Set to `None` to disable filtering."
         ),
     )
     filter_options: list[dict[str, Any]] | None = Field(
         default=None, description="The optional parameters to use for each specified filter."
+    )
+    shard_shape: tuple[PositiveInt, ...] | None = Field(
+        default=None,
+        description=(
+            "The specified shape to use for sharding the dataset. "
+            "Each shard contains one or more chunks. When set, each axis must be >= the corresponding "
+            "chunk_shape axis, and chunk axes must evenly divide shard axes. "
+            "Set to `None` to disable sharding (default)."
+        ),
     )
 
     def __str__(self) -> str:  # Inherited docstring from parent. noqa: D105
@@ -98,6 +85,8 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
             string += f"\n  filter options : {self.filter_options}"
         if self.filters is not None or self.filter_options is not None:
             string += "\n"
+        if self.shard_shape is not None:
+            string += f"\n  shard shape : {self.shard_shape}\n"
 
         return string
 
@@ -140,6 +129,31 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
             )
 
         return values
+
+    @model_validator(mode="after")
+    def validate_shard_shape(self) -> Self:
+        if self.shard_shape is None or self.chunk_shape is None:
+            return self
+
+        if len(self.shard_shape) != len(self.chunk_shape):
+            raise ValueError(
+                f"Length of shard_shape ({len(self.shard_shape)}) does not match "
+                f"chunk_shape ({len(self.chunk_shape)}) for dataset at location '{self.location_in_file}'!"
+            )
+
+        if any(shard_axis < chunk_axis for shard_axis, chunk_axis in zip(self.shard_shape, self.chunk_shape)):
+            raise ValueError(
+                f"Some dimensions of the shard_shape {self.shard_shape} are smaller than the "
+                f"chunk_shape {self.chunk_shape} for dataset at location '{self.location_in_file}'!"
+            )
+
+        if any(shard_axis % chunk_axis != 0 for shard_axis, chunk_axis in zip(self.shard_shape, self.chunk_shape)):
+            raise ValueError(
+                f"Some dimensions of the chunk_shape {self.chunk_shape} do not evenly divide the "
+                f"shard_shape {self.shard_shape} for dataset at location '{self.location_in_file}'!"
+            )
+
+        return self
 
     # ==================================================================================================
     # Deprecated in v0.10.2, to be removed in v0.12.0.
@@ -213,48 +227,58 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
     # ==================================================================================================
 
     def _instantiate_codec(self, codec, codec_options: dict[str, Any] | None):
-        if isinstance(codec, numcodecs.abc.Codec):
+        if isinstance(codec, (BytesBytesCodec, ArrayArrayCodec)):
             return codec
 
-        codec_options = dict(codec_options or dict())
+        codec_options = dict(codec_options or {})
         if codec == "gzip":
             codec_options.setdefault("level", _DEFAULT_GZIP_LEVEL)
 
-        # `numcodecs.Shuffle` defaults `elementsize` to 4 whatever the dtype is, so on anything wider it
-        # transposes the wrong byte planes and recovers almost nothing. The configuration knows the dtype.
-        # TODO: remove once hdmf-zarr moves off `zarr<3.0`, where `Shuffle.evolve_from_array_spec` fills
-        # `elementsize` from the array dtype upstream.
+        # Shuffle defaults `elementsize` to 4 regardless of dtype, so on wider types it transposes the
+        # wrong byte planes. The configuration knows the dtype so we fill it in here.
         if codec == "shuffle" and "elementsize" not in codec_options:
             codec_options["elementsize"] = self.dtype.itemsize
 
-        return zarr.codec_registry[codec](**codec_options)
+        if codec == "shuffle":
+            return Shuffle(**codec_options)
+
+        if codec in AVAILABLE_ZARR_FILTER_METHODS:
+            return AVAILABLE_ZARR_FILTER_METHODS[codec](**codec_options)
+
+        return AVAILABLE_ZARR_COMPRESSION_METHODS[codec](**codec_options)
 
     def get_data_io_kwargs(self) -> dict[str, Any]:
-        filters = None
+        # Build ArrayArrayCodec filters. The deprecated path allowed "shuffle" (a BytesBytesCodec) to be
+        # named in `filters`; those entries are collected separately so they can join `compressors` below.
+        filter_codecs = []
+        bytes_from_deprecated_filters = []
         if self.filters:
             all_filter_options = self.filter_options or [dict() for _ in self.filters]
-            filters = [
-                self._instantiate_codec(filter_method, filter_options)
-                for filter_method, filter_options in zip(self.filters, all_filter_options)
+            for method, opts in zip(self.filters, all_filter_options):
+                codec = self._instantiate_codec(method, opts)
+                if isinstance(codec, BytesBytesCodec):
+                    bytes_from_deprecated_filters.append(codec)
+                else:
+                    filter_codecs.append(codec)
+
+        # Build BytesBytesCodec compressors. Shuffle from the deprecated filters path is prepended so the
+        # pipeline order is preserved: shuffle → compression codec (matching the compressors=[..] spelling).
+        compressor_codecs = bytes_from_deprecated_filters
+        if self.compressors is not None:
+            all_compressor_options = self.compressor_options or [None] * len(self.compressors)
+            compressor_codecs = compressor_codecs + [
+                self._instantiate_codec(codec, opts) for codec, opts in zip(self.compressors, all_compressor_options)
             ]
-
-        # Zarr v2 has a single compressor slot, so every other entry of `compressors` has to ride in `filters`.
-        # TODO: remove this split once hdmf-zarr moves off `zarr<3.0`, where `compressors` is itself an ordered list.
-        compressors = self.compressors or []
-        compressor_options = self.compressor_options or [None] * len(compressors)
-        compression_index = self._compressor_index()
-
-        for index, (codec, codec_options) in enumerate(zip(compressors, compressor_options)):
-            if index == compression_index:
-                continue
-            filters = (filters or []) + [self._instantiate_codec(codec, codec_options)]
-
-        if compression_index is None:
-            compressor = False
+            compressors = compressor_codecs or False
         else:
-            compressor = self._instantiate_codec(compressors[compression_index], compressor_options[compression_index])
+            compressors = compressor_codecs or False  # False = explicitly disable compression
 
-        return dict(chunks=self.chunk_shape, filters=filters, compressor=compressor)
+        return dict(
+            chunks=self.chunk_shape,
+            filters=filter_codecs or None,
+            compressors=compressors,
+            shards=self.shard_shape,
+        )
 
     @classmethod
     def from_neurodata_object_with_existing(
@@ -281,24 +305,13 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
             neurodata_object=neurodata_object,
             dataset_name=dataset_name,
         )
-        compression_method = getattr(neurodata_object, dataset_name).compressor
-        filters = list(getattr(neurodata_object, dataset_name).filters or [])
-
-        # Shuffle lives in `compressors` in this model and in `filters` on disk, since Zarr v2 has nowhere
-        # else to put it, so it is moved back here. Without this a file this library wrote reports a
-        # different configuration than the one that wrote it.
-        shuffle_methods = [filter_method for filter_method in filters if isinstance(filter_method, Shuffle)]
-        filters = [filter_method for filter_method in filters if not isinstance(filter_method, Shuffle)]
-
-        compressors = ["shuffle" for _ in shuffle_methods]
-        compressor_options = [dict(elementsize=shuffle.elementsize) for shuffle in shuffle_methods]
-        if compression_method is not None:
-            compressors.append(compression_method)
-            compressor_options.append(None)
+        dataset = getattr(neurodata_object, dataset_name)
+        # zarr v3: .compressors is a tuple of BytesBytesCodec; .filters is a tuple of ArrayArrayCodec
+        compressors_on_disk = dataset.compressors
+        filters_on_disk = dataset.filters
 
         return cls(
             **kwargs,
-            compressors=compressors or None,
-            compressor_options=compressor_options if any(compressor_options) else None,
-            filters=filters or None,
+            compressors=list(compressors_on_disk) if compressors_on_disk else None,
+            filters=list(filters_on_disk) if filters_on_disk else None,
         )

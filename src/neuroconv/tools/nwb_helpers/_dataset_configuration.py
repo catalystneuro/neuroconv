@@ -31,15 +31,16 @@ def _get_zarr_store_path(zarr_array: zarr.Array) -> str | None:
     """
     The path of the Zarr 'file' a Zarr Array was read from, or None when its store keeps no path.
 
-    A `ConsolidatedMetadataStore` holds the path on the store it wraps rather than on itself, and
-    hdmf-zarr hands one back for every dataset reached through a link, `DynamicTable` columns among
-    them, whatever mode the file itself was opened in.
+    Stores spell that path under different names: a `LocalStore` keeps it on `root`, while the
+    remote stores keep it on `path`. Stores that hold no path at all, `MemoryStore` among them,
+    have neither and give back `None`.
     """
     store = zarr_array.store
-    store_path = getattr(store, "path", None)
-    if store_path is None:
-        store_path = getattr(getattr(store, "store", None), "path", None)
-    return store_path
+    for attribute_name in ("root", "path"):
+        store_path = getattr(store, attribute_name, None)
+        if store_path is not None:
+            return str(store_path)
+    return None
 
 
 def _is_dataset_written_to_file(
@@ -154,6 +155,16 @@ def get_default_dataset_io_configurations(
                 # Skip datasets with any zero-length axes
                 dataset_name = "data"
                 candidate_dataset = getattr(column, dataset_name)
+
+                # Skip datasets that are plain string lists (e.g., string columns in zarr v3)
+                if (
+                    backend == "zarr"
+                    and isinstance(candidate_dataset, list)
+                    and len(candidate_dataset) > 0
+                    and isinstance(candidate_dataset[0], str)
+                ):
+                    continue
+
                 full_shape = get_data_shape(data=candidate_dataset)
                 if any(axis_length == 0 for axis_length in full_shape):
                     continue
@@ -267,13 +278,22 @@ def get_existing_dataset_io_configurations(nwbfile: NWBFile) -> Generator[Datase
                 if any(isinstance(value, Container) for value in candidate_dataset):
                     continue  # Skip
 
-                # Skip when columns whose values are a reference type
+                # Skip over columns whose values are a reference type
                 if isinstance(column, TimeSeriesReferenceVectorData):
                     continue
 
                 # Skip datasets with any zero-length axes
                 dataset_name = "data"
                 candidate_dataset = getattr(column, dataset_name)
+
+                # Skip datasets that are plain string lists (e.g., string columns in zarr v3)
+                if (
+                    isinstance(candidate_dataset, list)
+                    and len(candidate_dataset) > 0
+                    and isinstance(candidate_dataset[0], str)
+                ):
+                    continue
+
                 full_shape = get_data_shape(data=candidate_dataset)
                 if any(axis_length == 0 for axis_length in full_shape):
                     continue

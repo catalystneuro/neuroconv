@@ -1,12 +1,13 @@
 from typing import Any, Iterable, Literal
 
 import h5py
-import numcodecs
 import numpy as np
+from zarr.abc.codec import ArrayArrayCodec, BytesBytesCodec
 
 from ...nwb_helpers import (
     AVAILABLE_HDF5_COMPRESSION_METHODS,
     AVAILABLE_ZARR_COMPRESSION_METHODS,
+    AVAILABLE_ZARR_FILTER_METHODS,
     HDF5BackendConfiguration,
     HDF5DatasetIOConfiguration,
     ZarrBackendConfiguration,
@@ -49,14 +50,13 @@ def mock_ZarrDatasetIOConfiguration(
     dtype: np.dtype = np.dtype("int16"),
     chunk_shape: tuple[int, ...] = (78_125, 64),  # ~10 MB
     buffer_shape: tuple[int, ...] = (1_250_000, 384),  # ~1 GB
-    compressors: Iterable[Literal[tuple(AVAILABLE_ZARR_COMPRESSION_METHODS.keys())] | numcodecs.abc.Codec] | None = (
+    compressors: Iterable[Literal[tuple(AVAILABLE_ZARR_COMPRESSION_METHODS.keys())] | BytesBytesCodec] | None = (
         "gzip",
     ),
     compressor_options: Iterable[dict[str, Any] | None] | None = None,
-    filters: (
-        Iterable[Literal[tuple(AVAILABLE_ZARR_COMPRESSION_METHODS.keys())] | numcodecs.abc.Codec | None] | None
-    ) = None,
+    filters: Iterable[Literal[tuple(AVAILABLE_ZARR_FILTER_METHODS.keys())] | ArrayArrayCodec | None] | None = None,
     filter_options: Iterable[dict[str, Any]] | None = None,
+    shard_shape: tuple[int, ...] | None = None,
 ) -> ZarrDatasetIOConfiguration:
     """Mock object of a ZarrDatasetIOConfiguration with NeuroPixel-like values to show chunk/buffer recommendations."""
     return ZarrDatasetIOConfiguration(
@@ -71,6 +71,7 @@ def mock_ZarrDatasetIOConfiguration(
         compressor_options=None if compressor_options is None else list(compressor_options),
         filters=filters,
         filter_options=filter_options,
+        shard_shape=shard_shape,
     )
 
 
