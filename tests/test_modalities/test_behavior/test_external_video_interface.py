@@ -69,7 +69,7 @@ class TestTimestampCountValidation:
         interface.set_aligned_timestamps(aligned_timestamps=[np.arange(99) / 30.0])
 
         expected_message = (
-            "99 timestamps were set for the 100 frames held by 1 video file(s), and an external ImageSeries "
+            "99 timestamps were set on 'session', a video file of 100 frames, and an external ImageSeries "
             "carries one time per frame. A few timestamps short of the frame count usually means the camera "
             "dropped frames, and many more than it usually means the signal you read them from was already "
             "running before the camera started."

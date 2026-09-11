@@ -195,41 +195,42 @@ class ExternalVideoInterface(BaseDataInterface):
             self._frame_counts = frame_counts
         return self._frame_counts
 
-    def _check_timestamps_number_matches_frames(self, timestamps: np.ndarray) -> None:
+    def _check_timestamps_number_matches_frames(self, segment_timestamps: list[np.ndarray]) -> None:
         """
-        Raise when the times about to be written do not number one per frame of the video files.
+        Raise when the times about to be written for a video file do not number one per frame of that file.
 
         An external ``ImageSeries`` carries no data, so the length of its ``timestamps`` *is* its sample
         count, while ``external_file`` and ``starting_frame`` describe however many frames the files
         actually hold. A mismatch therefore writes a series that contradicts itself, and nothing downstream
         reports it, which is why it is caught here rather than left to a reader.
 
+        Checked file by file rather than on the total: times given to the wrong file can leave the total
+        right, and the error can then name the file.
+
         Only the array path is checked. Where the times come from the files themselves, nothing has been
         set and the count matches by construction.
 
         Parameters
         ----------
-        timestamps : numpy.ndarray
-            The concatenated times across every file, as they are about to be written.
+        segment_timestamps : list of numpy.ndarray
+            The times of each file, in the order the files were passed, as they are about to be written.
         """
         # OpenCV reads this out of the container header rather than by counting, and returns 0 where the
         # header does not carry it, which happens with streams and with growing or truncated files. Zero
         # frames cannot contradict any number of timestamps, so an unreadable count disables the check
-        # rather than failing it. Negative is guarded against too, defensively rather than from a known case.
+        # for that file rather than failing it. Negative is guarded against too, defensively rather than
+        # from a known case.
         frame_counts = self.get_header_frame_counts()
-        a_count_is_unknown = any(frame_count <= 0 for frame_count in frame_counts)
-        if a_count_is_unknown:
-            return
-
-        number_of_frames = sum(frame_counts)
-        if len(timestamps) != number_of_frames:
-            raise ValueError(
-                f"{len(timestamps)} timestamps were set for the {number_of_frames} frames held by "
-                f"{self._number_of_files} video file(s), and an external ImageSeries carries one time per "
-                "frame. A few timestamps short of the frame count usually means the camera dropped frames, "
-                "and many more than it usually means the signal you read them from was already running "
-                "before the camera started."
-            )
+        for segment_key, timestamps, frame_count in zip(self._segment_keys, segment_timestamps, frame_counts):
+            if frame_count <= 0:
+                continue
+            if len(timestamps) != frame_count:
+                raise ValueError(
+                    f"{len(timestamps)} timestamps were set on '{segment_key}', a video file of {frame_count} "
+                    "frames, and an external ImageSeries carries one time per frame. A few timestamps short of "
+                    "the frame count usually means the camera dropped frames, and many more than it usually "
+                    "means the signal you read them from was already running before the camera started."
+                )
 
     def get_header_frame_rates(self) -> list[float]:
         """
@@ -353,6 +354,8 @@ class ExternalVideoInterface(BaseDataInterface):
         have to merge into one increasing series; a set of files that overlap describes no such thing.
         """
         segment_times = [self.alignment[segment_key].get_times() for segment_key in self._segment_keys]
+        # Before the overlap check, since times on the wrong file usually cause both and the count names it.
+        self._check_timestamps_number_matches_frames(segment_timestamps=segment_times)
         timestamps = np.concatenate(segment_times)
         if np.any(np.diff(timestamps) < 0):
             raise ValueError(
@@ -669,7 +672,6 @@ class ExternalVideoInterface(BaseDataInterface):
             image_series_kwargs.update(starting_time=starting_time, rate=rate)
         else:
             timestamps = self._get_aligned_timestamps()
-            self._check_timestamps_number_matches_frames(timestamps=timestamps)
             rate = None if always_write_timestamps else calculate_regular_series_rate(series=timestamps)
             if rate is not None:
                 image_series_kwargs.update(starting_time=timestamps[0], rate=rate)
