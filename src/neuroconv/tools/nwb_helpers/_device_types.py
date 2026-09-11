@@ -27,6 +27,7 @@ _DEVICE_TYPE_SOURCES: dict[str, tuple[str, str | None]] = {
     "EdgeOpticalFilter": ("ndx_ophys_devices", "pip install ndx-ophys-devices"),
     "DichroicMirror": ("ndx_ophys_devices", "pip install ndx-ophys-devices"),
     "Miniscope": ("ndx_miniscope", "pip install ndx-miniscope"),
+    "CalibratedCamera": ("ndx_pose", "pip install ndx-pose"),
 }
 
 #: Extension device-model types (subclasses of ``pynwb.device.DeviceModel``) that may appear as the
