@@ -54,7 +54,7 @@ a frame rate, because the rate is a property of the video the keypoints came fro
     >>> metadata = interface.get_metadata()
     >>> # session_start_time is required for conversion. keypoint-MoSeq records no acquisition date,
     >>> # so you must supply one.
-    >>> session_start_time = datetime(2024, 1, 1, 12, 0, 0, tzinfo=ZoneInfo("US/Pacific"))
+    >>> session_start_time = datetime(2024, 1, 1, 12, 0, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>> # Add subject information (required for DANDI upload)
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
@@ -82,7 +82,7 @@ metadata supplies them.
 
     >>> custom_metadata = {
     ...     "NWBFile": {
-    ...         "session_start_time": datetime(2024, 1, 1, 12, 0, 0, tzinfo=ZoneInfo("US/Pacific")),
+    ...         "session_start_time": datetime(2024, 1, 1, 12, 0, 0, tzinfo=ZoneInfo("Asia/Tokyo")),
     ...     },
     ...     "Subject": dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D"),
     ...     "Behavior": {
@@ -154,7 +154,7 @@ The default object names collide when two instances share a file, so rename them
 
     >>> custom_metadata = {
     ...     "NWBFile": {
-    ...         "session_start_time": datetime(2024, 1, 1, 12, 0, 0, tzinfo=ZoneInfo("US/Pacific")),
+    ...         "session_start_time": datetime(2024, 1, 1, 12, 0, 0, tzinfo=ZoneInfo("Asia/Tokyo")),
     ...     },
     ...     "Subject": dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D"),
     ...     "Behavior": {

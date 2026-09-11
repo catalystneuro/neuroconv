@@ -21,7 +21,7 @@ Convert Inscopix imaging data to NWB using :py:class:`~neuroconv.datainterfaces.
     >>>
     >>> metadata = interface.get_metadata()
     >>> # For data provenance we add the time zone information to the conversion
-    >>> session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("US/Pacific"))
+    >>> session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("Asia/Tokyo"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>> # Add subject information (required for DANDI upload)
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")

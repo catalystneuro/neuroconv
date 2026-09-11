@@ -559,46 +559,11 @@ For example, pass ``group_mode="by_probe"`` to keep all contacts of each probe t
 Attaching a probe replaces the recording's channel groups with this grouping. Explicit electrode-group
 assignments in your electrode-row metadata still take precedence when writing NWB.
 
-Grouping by another contact property
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-If another property identifies the groups in your experiment, attach it with
-``probe.annotate_contacts`` and pass its name as ``group_property``. Here, eight contacts form two
-tetrodes:
-
-.. code-block:: python
-
-    from probeinterface import Probe
-    from neuroconv.tools.testing.mock_interfaces import MockRecordingInterface
-
-    interface = MockRecordingInterface(num_channels=8, durations=[0.1])
-    probe = Probe(ndim=2, si_units="um")
-    probe.set_contacts(
-        positions=[[0, 0], [0, 10], [10, 0], [10, 10], [100, 0], [100, 10], [110, 0], [110, 10]],
-        shapes="circle",
-        shape_params={"radius": 5},
-    )
-    contact_ids = [f"e{index}" for index in range(8)]
-    probe.set_contact_ids(contact_ids)
-    probe.annotate_contacts(tetrode=["first"] * 4 + ["second"] * 4)
-
-    interface.set_probe(
-        probe,
-        channel_id_to_contact_id=dict(zip(interface.channel_ids, contact_ids)),
-        group_property="tetrode",
-    )
-    nwbfile = interface.create_nwbfile()
-    assert len(nwbfile.electrode_groups) == 2
-
-The property further subdivides the groups selected by ``group_mode``; the same label on different
-probes does not combine their contacts. With the automatic default, shank and side boundaries also
-remain separate. Use ``group_mode="by_probe"`` together with ``group_property`` if the custom property
-should determine subdivisions within each probe regardless of shanks or sides.
-
-This must be a per-contact annotation on every probe, with one nonblank string or finite numeric value
-per contact, not a recording channel property. Wiring associates those values with the recorded
-channels, so the order of your channels need not match the contact order. Unconnected contacts do not
-form groups.
+If a probe you are attaching already carries a per-contact grouping annotation, you can use it with
+``group_property``, for example ``interface.set_probe(probe, group_property="tetrode")`` for an
+already-wired probe with a ``tetrode`` annotation. This further subdivides the groups selected by
+``group_mode``; identical labels on separate probes do not combine their contacts. To describe group
+membership yourself, use electrode-row metadata as shown below.
 
 Assigning groups in electrode-row metadata
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
