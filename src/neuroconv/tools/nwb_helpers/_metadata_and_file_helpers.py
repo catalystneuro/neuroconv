@@ -1,5 +1,6 @@
 """Collection of helper functions related to NWB."""
 
+import os
 import uuid
 import warnings
 from contextlib import contextmanager
@@ -12,6 +13,7 @@ from pydantic import FilePath
 from pynwb import NWBFile, read_nwb
 from pynwb.device import Device, DeviceModel
 from pynwb.file import Subject
+from pynwb.image import ImageSeries
 
 from . import (
     BACKEND_NWB_IO,
@@ -623,6 +625,45 @@ def _fetch_backend_from_nwbfile_on_disk(
     return backend_on_disk
 
 
+def _make_image_series_paths_relative_to_nwbfile(nwbfile: NWBFile, nwbfile_path: Path) -> None:
+    """
+    Rewrite every ``ImageSeries.external_file`` entry so it is relative to the directory of ``nwbfile_path``.
+
+    The NWB specification reads ``external_file`` relative to the NWB file, while interfaces store whatever
+    path the caller handed them, which is usually absolute or relative to the working directory. An
+    ``ImageSeries`` read from an existing file is left alone, since its entries are already relative to that
+    file and not to the working directory. URLs are left as they are, and an entry that has no relative path
+    to the output at all (on Windows, a file on another drive) is written absolute. The result always uses
+    forward slashes so it stays meaningful once the file leaves the machine that wrote it.
+    """
+    output_directory = Path(nwbfile_path).resolve().parent
+    # `nwbfile.objects` is built on its first read and never invalidated, so it does not hold anything added
+    # to the file afterwards. `all_children` recomputes the walk.
+    for neurodata_object in nwbfile.all_children():
+        if not isinstance(neurodata_object, ImageSeries) or not neurodata_object.external_file:
+            continue
+        if neurodata_object.container_source is not None:  # read from disk, so already relative to that file
+            continue
+        rewritten_entries = []
+        for entry in neurodata_object.external_file:
+            entry = str(entry)  # an interface may have stored a `Path`
+            absolute_entry = Path(entry).resolve()
+            is_url = "://" in entry
+            if is_url:
+                rewritten_entries.append(entry)
+                continue
+            is_on_another_drive = absolute_entry.anchor != output_directory.anchor  # Windows: no relative path exists
+            if is_on_another_drive:
+                rewritten_entries.append(absolute_entry.as_posix())
+                continue
+            # TODO: replace with `absolute_entry.relative_to(output_directory, walk_up=True)` once the Python
+            # floor is 3.12; before that `Path.relative_to` cannot produce `..` segments.
+            rewritten_entries.append(Path(os.path.relpath(absolute_entry, start=output_directory)).as_posix())
+        # The setter refuses a field that is already set, and the list itself may belong to the interface that
+        # built the series, so a new list goes in where the setter would have stored it.
+        neurodata_object.fields["external_file"] = rewritten_entries
+
+
 def configure_and_write_nwbfile(
     nwbfile: NWBFile,
     nwbfile_path: FilePath | None = None,
@@ -635,6 +676,10 @@ def configure_and_write_nwbfile(
     A ``backend`` or a ``backend_configuration`` must be provided. To use the default backend configuration for
     the specified backend, provide only ``backend``. To use a custom backend configuration, provide
     ``backend_configuration``. If both are provided, ``backend`` must match ``backend_configuration.backend``.
+
+    Before writing, every ``ImageSeries.external_file`` in ``nwbfile`` is replaced so its entries are relative to
+    the directory of ``nwbfile_path``, as the NWB specification reads them. An ``ImageSeries`` read from an
+    existing file keeps its paths.
 
     Parameters
     ----------
@@ -669,6 +714,7 @@ def configure_and_write_nwbfile(
             nwbfile.set_modified()
             io.export(nwbfile=nwbfile, src_io=nwbfile.read_io, write_args=dict(link_data=False))
         else:
+            _make_image_series_paths_relative_to_nwbfile(nwbfile=nwbfile, nwbfile_path=nwbfile_path)
             io.write(nwbfile)
 
 

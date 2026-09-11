@@ -1,3 +1,4 @@
+import os
 import shutil
 import tempfile
 from datetime import datetime
@@ -158,7 +159,14 @@ class TestLightningPoseConverter(TestCase):
             self.assertIn(self.original_video_name, nwbfile.acquisition)
             image_series = nwbfile.acquisition[self.original_video_name]
             self.assertIsInstance(image_series, ImageSeries)
-            self.assertEqual(image_series.external_file[:], self.original_video_file_path)
+            # Written relative to the NWB file, except on Windows CI where the data sits on another drive
+            output_directory = Path(nwbfile_path).resolve().parent
+            video_path = Path(self.original_video_file_path).resolve()
+            if video_path.anchor == output_directory.anchor:
+                expected_external_file = Path(os.path.relpath(video_path, start=output_directory)).as_posix()
+            else:
+                expected_external_file = video_path.as_posix()
+            self.assertEqual(image_series.external_file[:], expected_external_file)
             self.assertEqual(image_series.description, "The original video used for pose estimation.")
 
             # Check labeled video added to behavior processing module
@@ -166,10 +174,12 @@ class TestLightningPoseConverter(TestCase):
             self.assertIn(self.labeled_video_name, behavior.data_interfaces)
             image_series_labeled_video = behavior.data_interfaces[self.labeled_video_name]
             self.assertIsInstance(image_series_labeled_video, ImageSeries)
-            self.assertEqual(
-                image_series_labeled_video.external_file[:],
-                self.labeled_video_file_path,
-            )
+            labeled_video_path = Path(self.labeled_video_file_path).resolve()
+            if labeled_video_path.anchor == output_directory.anchor:
+                expected_labeled_file = Path(os.path.relpath(labeled_video_path, start=output_directory)).as_posix()
+            else:
+                expected_labeled_file = labeled_video_path.as_posix()
+            self.assertEqual(image_series_labeled_video.external_file[:], expected_labeled_file)
             self.assertEqual(
                 image_series_labeled_video.description,
                 "The video recorded by camera with the pose estimation labels.",

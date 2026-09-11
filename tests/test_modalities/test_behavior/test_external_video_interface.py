@@ -6,13 +6,15 @@ from pathlib import Path
 import numpy as np
 import pytest
 from dateutil.tz import gettz
-from pynwb import NWBHDF5IO
+from pynwb import NWBHDF5IO, read_nwb
+from pynwb.image import ImageSeries
 from pynwb.testing.mock.file import mock_NWBFile
 
-from neuroconv import NWBConverter
+from neuroconv import ConverterPipe, NWBConverter
 from neuroconv.datainterfaces.behavior.video.externalvideointerface import (
     ExternalVideoInterface,
 )
+from neuroconv.tools.nwb_helpers import configure_and_write_nwbfile, get_module
 from neuroconv.tools.testing.mock_interfaces import MockExternalVideoInterface
 from neuroconv.utils import dict_deep_update
 
@@ -58,6 +60,141 @@ class TestMockExternalVideoInterface:
         assert image_series.rate == pytest.approx(30.0)
         assert image_series.num_samples == 30
         assert image_series.starting_frame == [0, 10, 20]
+
+
+class TestExternalFilePathsAreWrittenRelative:
+    """Every `ImageSeries.external_file` entry is written relative to the NWB file, as the NWB specification reads it.
+
+    The write path is the same for every interface that builds an external `ImageSeries`, so the cases that need
+    no interface build the series directly, and the ones about `run_conversion` go through the mock above.
+    """
+
+    @staticmethod
+    def external_image_series(name: str, external_file: list[str]) -> ImageSeries:
+        return ImageSeries(
+            name=name,
+            external_file=external_file,
+            format="external",
+            starting_frame=[0] * len(external_file),
+            rate=30.0,
+            num_samples=10,
+            unit="n.a.",
+        )
+
+    def test_absolute_path_under_the_output_directory(self, tmp_path):
+        nwbfile = mock_NWBFile()
+        nwbfile.add_acquisition(
+            self.external_image_series(name="Video", external_file=[str(tmp_path / "videos" / "a.avi")])
+        )
+
+        nwbfile_path = tmp_path / "test.nwb"
+        configure_and_write_nwbfile(nwbfile=nwbfile, nwbfile_path=nwbfile_path, backend="hdf5")
+
+        assert list(read_nwb(nwbfile_path).acquisition["Video"].external_file) == ["videos/a.avi"]
+
+    def test_absolute_path_outside_the_output_directory(self, tmp_path):
+        nwbfile = mock_NWBFile()
+        nwbfile.add_acquisition(
+            self.external_image_series(name="Video", external_file=[str(tmp_path / "videos" / "a.avi")])
+        )
+
+        nwbfile_path = tmp_path / "output" / "nwb" / "test.nwb"
+        nwbfile_path.parent.mkdir(parents=True)
+        configure_and_write_nwbfile(nwbfile=nwbfile, nwbfile_path=nwbfile_path, backend="hdf5")
+
+        assert list(read_nwb(nwbfile_path).acquisition["Video"].external_file) == ["../../videos/a.avi"]
+
+    def test_working_directory_relative_path_is_rebased_onto_the_output_directory(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        nwbfile = mock_NWBFile()
+        nwbfile.add_acquisition(self.external_image_series(name="Video", external_file=["videos/a.avi"]))
+
+        nwbfile_path = tmp_path / "output" / "test.nwb"
+        nwbfile_path.parent.mkdir()
+        configure_and_write_nwbfile(nwbfile=nwbfile, nwbfile_path=nwbfile_path, backend="hdf5")
+
+        assert list(read_nwb(nwbfile_path).acquisition["Video"].external_file) == ["../videos/a.avi"]
+
+    def test_url_is_left_untouched(self, tmp_path):
+        url = "https://example.org/videos/a.avi"
+        nwbfile = mock_NWBFile()
+        nwbfile.add_acquisition(self.external_image_series(name="Video", external_file=[url]))
+
+        nwbfile_path = tmp_path / "test.nwb"
+        configure_and_write_nwbfile(nwbfile=nwbfile, nwbfile_path=nwbfile_path, backend="hdf5")
+
+        assert list(read_nwb(nwbfile_path).acquisition["Video"].external_file) == [url]
+
+    def test_file_without_image_series_is_written_unchanged(self, tmp_path):
+        nwbfile = mock_NWBFile()
+
+        nwbfile_path = tmp_path / "test.nwb"
+        configure_and_write_nwbfile(nwbfile=nwbfile, nwbfile_path=nwbfile_path, backend="hdf5")
+
+        assert read_nwb(nwbfile_path).acquisition == {}
+
+    def test_every_image_series_is_rewritten(self, tmp_path):
+        nwbfile = mock_NWBFile()
+        nwbfile.add_acquisition(
+            self.external_image_series(
+                name="Acquired", external_file=[str(tmp_path / "videos" / "a.avi"), str(tmp_path / "videos" / "b.avi")]
+            )
+        )
+        behavior_module = get_module(nwbfile=nwbfile, name="behavior", description="Behavior data.")
+        behavior_module.add(
+            self.external_image_series(name="Processed", external_file=[str(tmp_path / "videos" / "c.avi")])
+        )
+
+        nwbfile_path = tmp_path / "test.nwb"
+        configure_and_write_nwbfile(nwbfile=nwbfile, nwbfile_path=nwbfile_path, backend="hdf5")
+
+        written = read_nwb(nwbfile_path)
+        assert list(written.acquisition["Acquired"].external_file) == ["videos/a.avi", "videos/b.avi"]
+        assert list(written.processing["behavior"]["Processed"].external_file) == ["videos/c.avi"]
+
+    def test_export_keeps_the_paths_of_the_source_file(self, tmp_path):
+        source_path = tmp_path / "source.nwb"
+        nwbfile = mock_NWBFile()
+        nwbfile.add_acquisition(
+            self.external_image_series(name="Video", external_file=[str(tmp_path / "videos" / "a.avi")])
+        )
+        configure_and_write_nwbfile(nwbfile=nwbfile, nwbfile_path=source_path, backend="hdf5")
+
+        export_path = tmp_path / "exported" / "export.nwb"
+        export_path.parent.mkdir()
+        with NWBHDF5IO(source_path, mode="r") as io:
+            configure_and_write_nwbfile(nwbfile=io.read(), nwbfile_path=export_path, backend="hdf5")
+
+        assert list(read_nwb(export_path).acquisition["Video"].external_file) == ["videos/a.avi"]
+
+    @pytest.mark.parametrize("through_converter", [False, True], ids=["interface", "converter"])
+    def test_append_rewrites_the_added_image_series(self, tmp_path, through_converter):
+        nwbfile_path = tmp_path / "test.nwb"
+        first = MockExternalVideoInterface(file_paths=[str(tmp_path / "videos" / "a.avi")], metadata_key="first")
+        second = MockExternalVideoInterface(file_paths=[str(tmp_path / "videos" / "b.avi")], metadata_key="second")
+        if through_converter:
+            first, second = ConverterPipe([first]), ConverterPipe([second])
+
+        first.run_conversion(nwbfile_path=nwbfile_path, backend="hdf5")
+        second.run_conversion(nwbfile_path=nwbfile_path, append_on_disk_nwbfile=True)
+
+        written = read_nwb(nwbfile_path)
+        assert list(written.acquisition["Video a"].external_file) == ["videos/a.avi"]
+        assert list(written.acquisition["Video b"].external_file) == ["videos/b.avi"]
+
+    def test_interface_paths_survive_a_conversion(self, tmp_path):
+        """The interface hands its own `file_paths` list to the series, and a second conversion must still see them."""
+        interface = MockExternalVideoInterface(file_paths=[str(tmp_path / "videos" / "a.avi")])
+
+        first_path = tmp_path / "first" / "test.nwb"
+        second_path = tmp_path / "second" / "nested" / "test.nwb"
+        first_path.parent.mkdir()
+        second_path.parent.mkdir(parents=True)
+        interface.run_conversion(nwbfile_path=first_path, backend="hdf5")
+        interface.run_conversion(nwbfile_path=second_path, backend="hdf5")
+
+        assert list(read_nwb(first_path).acquisition["Video a"].external_file) == ["../videos/a.avi"]
+        assert list(read_nwb(second_path).acquisition["Video a"].external_file) == ["../../videos/a.avi"]
 
 
 class TestTimestampCountValidation:
@@ -196,8 +333,9 @@ def test_external_mode_with_timestamps(
     with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
         nwbfile = io.read()
         module = nwbfile.acquisition
-        assert list(module["Video test1"].external_file[:]) == video_files[0:2]
-        assert list(module["Video test3"].external_file[:]) == [video_files[2]]
+        # The videos sit beside the NWB file, and `external_file` is written relative to it
+        assert list(module["Video test1"].external_file[:]) == [Path(file).name for file in video_files[0:2]]
+        assert list(module["Video test3"].external_file[:]) == [Path(video_files[2]).name]
 
 
 def test_external_mode_with_starting_time(nwb_converter, nwbfile_path, metadata, video_files):
@@ -215,8 +353,9 @@ def test_external_mode_with_starting_time(nwb_converter, nwbfile_path, metadata,
     with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
         nwbfile = io.read()
         module = nwbfile.acquisition
-        assert list(module["Video test1"].external_file[:]) == video_files[0:2]
-        assert list(module["Video test3"].external_file[:]) == [video_files[2]]
+        # The videos sit beside the NWB file, and `external_file` is written relative to it
+        assert list(module["Video test1"].external_file[:]) == [Path(file).name for file in video_files[0:2]]
+        assert list(module["Video test3"].external_file[:]) == [Path(video_files[2]).name]
         assert module["Video test1"].starting_time == 123.0
 
 
