@@ -410,10 +410,11 @@ class _VideoInterface(BaseDataInterface):
             )
 
             # Copy timing information
+            # The undeprecated bodies, so this already-deprecated wrapper does not warn twice over.
             if self._timestamps is not None:
-                external_interface.set_aligned_timestamps(self._timestamps)
+                external_interface._set_aligned_timestamps(self._timestamps)
             elif self._segment_starting_times is not None:
-                external_interface.set_aligned_segment_starting_times(self._segment_starting_times)
+                external_interface._set_aligned_segment_starting_times(self._segment_starting_times)
 
             # Call ExternalVideoInterface's add_to_nwbfile method
             return external_interface.add_to_nwbfile(
