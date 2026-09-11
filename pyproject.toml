@@ -40,7 +40,7 @@ dependencies = [
     "h5py>=3.9.0",
     "hdmf>=4.1.1",
     # For testing Zarr v3
-    "hdmf_zarr @ git+https://github.com/alejoe91/hdmf-zarr.git@add-sharding",
+    "hdmf_zarr @ git+https://github.com/hdmf-dev/hdmf-zarr.git@fix/sharded-iterator-writes",
     # "hdmf_zarr>=0.12.1.dev40",
     "pynwb>=3.0.0",
     "pydantic>=2.0",
@@ -180,7 +180,10 @@ events = [
 
 ## Ecephys
 ecephys_minimal = [  # Keeps the minimal versions of ecephys dependencies in the repo
-    "spikeinterface>=0.104.7",
+    # For testing Zarr v3
+    "probeinterface @ git+https://github.com/alejoe91/probeinterface.git@zarrv3",
+    "spikeinterface @ git+https://github.com/alejoe91/spikeinterface.git@zarrv3",
+    # "spikeinterface>=0.104.7",
     "neo>=0.14.5",
     "natsort>=7.1.1",
 ]
