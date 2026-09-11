@@ -160,6 +160,10 @@ Configure the line and read the event times back without writing anything:
 
     frame_pulse_times = digital_interface.get_event_times("camera_frame")
 
+Each key of ``detection_configuration`` names one input of the recording system as the file names it, here
+``"DIGITAL-IN-02"``. Use the input the camera's cable is plugged into on your rig. A name the file does not
+hold throws an error that lists the ones it does.
+
 The pulses are on the clock of the system that recorded them. Times read from an Intan digital line are on
 the Intan clock, so the frames you give them to land on that clock too. That is the session clock as long
 as the recording interface is not shifted, and that is the usual arrangement: one system is the master
@@ -179,8 +183,8 @@ writes one ``ImageSeries``. The only question is what timed it.
 
     from neuroconv.datainterfaces import ExternalVideoInterface
 
-    interface = ExternalVideoInterface(file_paths=["session.avi"], video_name="BehaviorCamera")
-    interface.alignment.keys()
+    video_interface = ExternalVideoInterface(file_paths=["session.mp4"], video_name="BehaviorCamera")
+    video_interface.alignment.keys()
     # ('session',)
 
 Each video file is addressed for alignment by the stem of its path, so a single video has one key. A single
@@ -199,7 +203,7 @@ session start, from a note or from the one trigger pulse that started it.
 
 .. code-block:: python
 
-    interface.alignment.shift_times(12.5)
+    video_interface.alignment.shift_times(12.5)
 
 The frame times come from the video's own frame rate, shifted by the offset. This corrects the start and
 nothing else. Two clocks drift apart, so on a long session the error at the end of the video grows and no
@@ -218,13 +222,14 @@ did not make. To make it explicit, place each file where the previous one ends:
 
     import numpy as np
 
-    interface = ExternalVideoInterface(file_paths=["part_01.avi", "part_02.avi", "part_03.avi"])
+    video_interface = ExternalVideoInterface(file_paths=["part_01.mp4", "part_02.mp4", "part_03.mp4"])
 
-    durations = np.array(interface.get_header_frame_counts()) / np.array(interface.get_header_frame_rates())
+    frame_counts = np.array(video_interface.get_header_frame_counts())
+    durations = frame_counts / np.array(video_interface.get_header_frame_rates())
     starting_times = np.concatenate([[0.0], np.cumsum(durations)[:-1]])
 
-    for segment_key, start in zip(interface.alignment.keys(), starting_times):
-        interface.alignment[segment_key].start_at(start)
+    for segment_key, start in zip(video_interface.alignment.keys(), starting_times):
+        video_interface.alignment[segment_key].start_at(start)
 
 ``start_at`` moves one file so that its first frame sits at the time you give on the session clock. It reads
 nothing inside the file. If the camera also started late, shift the interface as in the known-offset case
@@ -241,7 +246,7 @@ timestamped each frame directly. This is accurate and corrects drift. Prefer it 
 
     frame_pulse_times = digital_interface.get_event_times("camera_frame")
 
-    interface.alignment["session"].set_times(frame_pulse_times)
+    video_interface.alignment["session"].set_times(frame_pulse_times)
 
 You do not have to count them first. The interface throws an error when the number of times does not match
 the number of frames and says by how much. Many more pulses than frames usually means the line was running
@@ -275,8 +280,8 @@ A shift will not do it because the two clocks drift.
     # The same pulses, as the recording system timestamped them, on the session clock.
     recording_system_sync_times = digital_interface.get_event_times("camera_sync")
 
-    interface.alignment["session"].set_times(frame_times)
-    interface.alignment["session"].remap_times(
+    video_interface.alignment["session"].set_times(frame_times)
+    video_interface.alignment["session"].remap_times(
         local_sync_times=camera_sync_times,
         reference_sync_times=recording_system_sync_times,
     )
@@ -308,8 +313,8 @@ each file begins within the series. It is computed from the frame counts and nev
 
 .. code-block:: python
 
-    interface = ExternalVideoInterface(file_paths=["trial_01.avi", "trial_02.avi", "trial_03.avi"])
-    interface.alignment.keys()
+    video_interface = ExternalVideoInterface(file_paths=["trial_01.mp4", "trial_02.mp4", "trial_03.mp4"])
+    video_interface.alignment.keys()
     # ('trial_01', 'trial_02', 'trial_03')
 
 If two trials wrote files with the same name in different folders, rename them. The stem is how a file is
@@ -323,11 +328,11 @@ merging the two.
 .. code-block:: python
 
     trial_onsets = digital_interface.get_event_times("camera_trigger")
-    segment_keys = interface.alignment.keys()
+    segment_keys = video_interface.alignment.keys()
     assert len(trial_onsets) == len(segment_keys)
 
     for segment_key, onset in zip(segment_keys, trial_onsets):
-        interface.alignment[segment_key].start_at(onset)
+        video_interface.alignment[segment_key].start_at(onset)
 
 Each file is placed where its trigger fired. Within a file the frame times come from the nominal frame
 rate, so the drift caveat from the known-offset case applies again, per trial instead of once for the
@@ -361,17 +366,33 @@ are the frame times of that file.
     gap_indices = np.flatnonzero(np.diff(frame_pulse_times) > 10 * frame_interval) + 1
     bursts = np.split(frame_pulse_times, gap_indices)
 
-    segment_keys = interface.alignment.keys()
+    segment_keys = video_interface.alignment.keys()
 
     assert len(bursts) == len(segment_keys), f"{len(bursts)} bursts for {len(segment_keys)} files."
     for segment_key, burst in zip(segment_keys, bursts):
-        interface.alignment[segment_key].set_times(burst)
+        video_interface.alignment[segment_key].set_times(burst)
+
+    # Each file starts on the first pulse of its burst, which the trials table below can use.
+    trial_onsets = np.array([burst[0] for burst in bursts])
 
 Keep the assertion on the burst count. Without it ``zip`` stops at the shorter of the two lists and the
 result looks fine. The interface checks the count within a file and throws an error when a burst does not
 have one pulse per frame. In either case the pulse record and the files disagree about
 the session, and you have to find the cause before the timestamps mean anything. The usual cause is a trial
 that was triggered but never reached disk. That puts every later file onto the pulses of the wrong trial.
+
+If your acquisition software logs which trials never reached disk, drop their bursts before pairing the
+rest with the files:
+
+.. code-block:: python
+
+    # Positions, in the full sequence of triggered trials, of the trials whose video is missing.
+    missing_trial_indices = {12, 47}
+    bursts = [burst for index, burst in enumerate(bursts) if index not in missing_trial_indices]
+
+The count check then confirms each burst against its file. It cannot tell two trials of the same length
+apart, so on a rig where every trial runs for a fixed time the log is the only record of which burst is
+which.
 
 **A second line makes the split more robust.** If the rig also has a line that marks when each trial began,
 bin the frame pulses between consecutive trial onsets instead of splitting on the gaps. This needs no
@@ -397,7 +418,8 @@ somewhere that can hold it: a column on the trials table when the segments are y
 
 .. code-block:: python
 
-    durations = np.array(interface.get_header_frame_counts()) / np.array(interface.get_header_frame_rates())
+    frame_counts = np.array(video_interface.get_header_frame_counts())
+    durations = frame_counts / np.array(video_interface.get_header_frame_rates())
 
     nwbfile.add_trial_column(name="video_file", description="The external_file entry holding this trial's frames.")
     for onset, duration, file_path in zip(trial_onsets, durations, file_paths):

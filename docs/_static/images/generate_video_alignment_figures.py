@@ -32,11 +32,15 @@ matplotlib.use("Agg")
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.lines import Line2D
 
 BLACK = "black"
 RED = "firebrick"
 FILL = "#dce7f0"  # the body of a video file
-EDGE = "#2f6f9f"  # its outline, and the colour of anything derived from the camera
+EDGE = "#2f6f9f"  # its label, and the colour of anything derived from the camera
+OUTLINE = "#7fa7c6"  # its outline, the same hue lighter, so the boxes do not compete with the pulses
+SYSTEM_OUTLINE = "0.75"  # the recording system's outline, lightened the same way
+OUTLINE_WIDTH = 0.8
 NOTE = "0.35"  # captions and asides
 OUTDIR = Path(__file__).parent
 
@@ -55,7 +59,13 @@ def video_files(ax, *, y, spans, labels):
     for (start, stop), label in zip(spans, labels):
         ax.add_patch(
             mpatches.Rectangle(
-                (start, y), stop - start, FILE_HEIGHT, facecolor=FILL, edgecolor=EDGE, lw=1.6, joinstyle="miter"
+                (start, y),
+                stop - start,
+                FILE_HEIGHT,
+                facecolor=FILL,
+                edgecolor=OUTLINE,
+                lw=OUTLINE_WIDTH,
+                joinstyle="miter",
             )
         )
         ax.text((start + stop) / 2, y + FILE_HEIGHT / 2, label, ha="center", va="center", fontsize=8.5, color=EDGE)
@@ -78,7 +88,13 @@ def recording_system(ax, *, y):
     """
     ax.add_patch(
         mpatches.Rectangle(
-            (0.55, y), 9.05, SYSTEM_HEIGHT, facecolor="0.93", edgecolor="0.6", lw=1.2, joinstyle="miter"
+            (0.55, y),
+            9.05,
+            SYSTEM_HEIGHT,
+            facecolor="0.93",
+            edgecolor=SYSTEM_OUTLINE,
+            lw=OUTLINE_WIDTH,
+            joinstyle="miter",
         )
     )
     ax.text(5.075, y + SYSTEM_HEIGHT / 2, "recording system", ha="center", va="center", fontsize=7.5, color="0.35")
@@ -133,6 +149,21 @@ def build_setup_figure(*, file_name, title, rows):
     # A guide at the session start, so the gap before each row's first file reads as its offset.
     ax.vlines(0.55, baseline_y, FILE_HEIGHT + 0.2, color="0.8", lw=1.0, linestyle=(0, (4, 4)))
 
+    # What the colors stand for, since the file names alone do not say that a block is a video.
+    legend_handles = [
+        mpatches.Patch(facecolor=FILL, edgecolor=OUTLINE, lw=OUTLINE_WIDTH, label="video file"),
+        Line2D([], [], color=RED, marker="|", linestyle="None", markersize=9, markeredgewidth=1.3, label="pulse"),
+        mpatches.Patch(facecolor="0.93", edgecolor=SYSTEM_OUTLINE, lw=OUTLINE_WIDTH, label="recording system"),
+    ]
+    ax.legend(
+        handles=legend_handles,
+        loc="upper center",
+        bbox_to_anchor=(0.5, 0.0),
+        ncol=len(legend_handles),
+        frameon=False,
+        fontsize=8.5,
+    )
+
     ax.set_xlim(GROUP_X - 0.1, 10.0)
     ax.set_ylim(baseline_y - 0.6, FILE_HEIGHT + 0.62)
     ax.axis("off")
@@ -151,15 +182,21 @@ def build_recording_setups():
         file_name="video_setup_free_running.png",
         title="A free-running camera",
         rows=[
-            ("Known offset", session, ["session.avi"], [1.0], "start pulse"),
+            ("Known offset", session, ["session.mp4"], [1.0], "start pulse"),
             (
                 "A pulse per frame",
                 session,
-                ["session.avi"],
+                ["session.mp4"],
                 frame_pulses(session, interval=0.16),
                 "frame line",
             ),
-            ("Written to several files", split, ["part_01", "part_02", "part_03"], [], "either of the above"),
+            (
+                "Written to several files",
+                split,
+                ["part_01.mp4", "part_02.mp4", "part_03.mp4"],
+                [],
+                "either of the above",
+            ),
         ],
     )
     build_setup_figure(
@@ -169,14 +206,14 @@ def build_recording_setups():
             (
                 "Trial onsets only",
                 trials,
-                ["trial_01", "trial_02", "trial_03"],
+                ["trial_01.mp4", "trial_02.mp4", "trial_03.mp4"],
                 [start for start, _ in trials],
                 "trigger line",
             ),
             (
                 "A pulse per frame",
                 trials,
-                ["trial_01", "trial_02", "trial_03"],
+                ["trial_01.mp4", "trial_02.mp4", "trial_03.mp4"],
                 frame_pulses(trials, interval=0.16),
                 "frame line",
             ),
@@ -204,8 +241,8 @@ def wiring_endpoints(ax, *, title, note):
                 0.30,
                 BOX_HEIGHT,
                 facecolor=FILL if is_camera else "0.93",
-                edgecolor=EDGE if is_camera else "0.55",
-                lw=1.6,
+                edgecolor=OUTLINE if is_camera else SYSTEM_OUTLINE,
+                lw=OUTLINE_WIDTH,
                 joinstyle="miter",
             )
         )
@@ -301,8 +338,8 @@ def build_dropped_frame():
                     width,
                     FILE_HEIGHT,
                     facecolor="white" if is_hollow else FILL,
-                    edgecolor=RED if is_hollow else EDGE,
-                    lw=1.4,
+                    edgecolor=RED if is_hollow else OUTLINE,
+                    lw=1.4 if is_hollow else OUTLINE_WIDTH,
                     linestyle=(0, (3, 2)) if is_hollow else "solid",
                     joinstyle="miter",
                 )
