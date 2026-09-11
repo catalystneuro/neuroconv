@@ -25,6 +25,7 @@ from .tools.nwb_helpers._metadata_and_file_helpers import (
     _fetch_backend_from_nwbfile_on_disk,
 )
 from .tools.ontology import (
+    add_anatomy_external_resources,
     add_brain_region_external_resources,
     add_species_external_resource,
     add_strain_external_resource,
@@ -283,6 +284,7 @@ class NWBConverter:
         add_species_external_resource(nwbfile, metadata=metadata)
         add_strain_external_resource(nwbfile, metadata=metadata)
         add_brain_region_external_resources(nwbfile, metadata=metadata)
+        add_anatomy_external_resources(nwbfile, metadata=metadata)
 
         return nwbfile
 
@@ -439,6 +441,7 @@ class NWBConverter:
             add_species_external_resource(nwbfile, metadata=metadata)
             add_strain_external_resource(nwbfile, metadata=metadata)
             add_brain_region_external_resources(nwbfile, metadata=metadata)
+            add_anatomy_external_resources(nwbfile, metadata=metadata)
         else:
             nwbfile = self.create_nwbfile(metadata=metadata, conversion_options=conversion_options)
 

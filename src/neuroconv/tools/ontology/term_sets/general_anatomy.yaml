@@ -1,0 +1,95 @@
+id: https://neuroconv.readthedocs.io/termset/generalanatomy
+name: GeneralAnatomy
+version: 0.0.1
+prefixes:
+  UBERON: http://purl.obolibrary.org/obo/UBERON_
+imports:
+- linkml:types
+default_range: string
+enums:
+  AnatomicalStructure:
+    permissible_values:
+      Head:
+        description: head
+        meaning: UBERON:0000033
+      Snout:
+        description: snout
+        meaning: UBERON:0006333
+      Ear:
+        description: external ear
+        meaning: UBERON:0001691
+      Eye:
+        description: eye
+        meaning: UBERON:0000970
+      Neck:
+        description: neck
+        meaning: UBERON:0000974
+      Trunk:
+        description: trunk
+        meaning: UBERON:0002100
+      Spine:
+        description: vertebral column
+        meaning: UBERON:0001130
+      Tail:
+        description: tail
+        meaning: UBERON:0002415
+      Shoulder:
+        description: shoulder
+        meaning: UBERON:0001467
+      Upper arm:
+        description: forelimb stylopod (arm)
+        meaning: UBERON:0003822
+      Elbow:
+        description: elbow
+        meaning: UBERON:0001461
+      Forearm:
+        description: forelimb zeugopod (forearm)
+        meaning: UBERON:0002386
+      Wrist:
+        description: carpus (wrist)
+        meaning: UBERON:0004452
+      Hand:
+        description: manus (forepaw)
+        meaning: UBERON:0002398
+      Hip:
+        description: hip
+        meaning: UBERON:0001464
+      Thigh:
+        description: hindlimb stylopod (thigh)
+        meaning: UBERON:0000376
+      Knee:
+        description: knee
+        meaning: UBERON:0001465
+      Shank:
+        description: hindlimb zeugopod (shank)
+        meaning: UBERON:0003823
+      Ankle:
+        description: tarsal region (ankle)
+        meaning: UBERON:0004454
+      Foot:
+        description: pes (hindpaw)
+        meaning: UBERON:0002387
+      Digit:
+        description: digit
+        meaning: UBERON:0002544
+      Trapezius muscle:
+        description: trapezius muscle
+        meaning: UBERON:0002380
+      Gastrocnemius:
+        description: gastrocnemius muscle
+        meaning: UBERON:0001388
+      Biceps brachii:
+        description: biceps brachii muscle
+        meaning: UBERON:0001507
+      Quadriceps femoris:
+        description: quadriceps femoris muscle
+        meaning: UBERON:0001377
+      Masseter muscle:
+        description: masseter muscle
+        meaning: UBERON:0001597
+      Sternocleidomastoid:
+        description: sternocleidomastoid muscle
+        meaning: UBERON:0001128
+      Skeletal muscle:
+        description: skeletal muscle tissue (generic)
+        meaning: UBERON:0001134

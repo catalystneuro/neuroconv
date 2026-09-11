@@ -8,7 +8,7 @@ means instead of guessing from free text. References are stored **in-file** unde
 file. In-file HERD storage requires ``pynwb >= 4.0.0``, which is NeuroConv's minimum supported
 version.
 
-Three kinds of value are annotated:
+Four kinds of value are annotated:
 
 - the subject's **species**, mapped to `NCBITaxon <https://bioregistry.io/registry/ncbitaxon>`_;
 - the subject's **strain**, mapped to `RRID <https://bioregistry.io/registry/rrid>`_ (Research
@@ -18,7 +18,11 @@ Three kinds of value are annotated:
   `Allen Human Brain Atlas <https://bioregistry.io/registry/hba>`_ (HBA) for human subjects, a
   species-agnostic `UBERON <https://bioregistry.io/registry/uberon>`_ vocabulary of common region
   names for every other recognized species (e.g. rat, which has no dedicated Allen atlas), or to
-  any ontology you specify in metadata.
+  any ontology you specify in metadata;
+- **general anatomy** -- skeleton parts and muscles named as ``ndx-pose`` ``Skeleton`` nodes
+  (pose-estimation keypoints, e.g. ``"Snout"``, ``"Shoulder"``) -- mapped to a species-agnostic
+  UBERON vocabulary. This is independent of brain-region annotation: it targets pose-estimation
+  keypoints, not ``location`` fields, and does not vary per species or atlas.
 
 Brain-region annotation covers every ``location`` field NeuroConv knows about: the electrodes table
 ``location`` column and ``ElectrodeGroup.location`` (ecephys), ``ImagingPlane.location`` (ophys), and
@@ -31,14 +35,16 @@ Ontology support is deliberately split into two independent halves, both in
 :py:mod:`neuroconv.tools.ontology`:
 
 1. **Inference** — :py:func:`~neuroconv.tools.ontology.infer_species_ontology_metadata`,
-   :py:func:`~neuroconv.tools.ontology.infer_strain_ontology_metadata`, and
-   :py:func:`~neuroconv.tools.ontology.infer_brain_region_ontology_metadata` take the free-text
-   values a lab wrote (``"mouse"``, ``"black 6"``, ``"CA1"``) and resolve them to ontology terms,
-   writing each term into ``metadata`` **next to the value it describes**. This step guesses; run
-   it when you want NeuroConv to propose terms, then inspect and edit the result.
+   :py:func:`~neuroconv.tools.ontology.infer_strain_ontology_metadata`,
+   :py:func:`~neuroconv.tools.ontology.infer_brain_region_ontology_metadata`, and
+   :py:func:`~neuroconv.tools.ontology.infer_anatomy_ontology_metadata` take the free-text values a
+   lab wrote (``"mouse"``, ``"black 6"``, ``"CA1"``, ``"Snout"``) and resolve them to ontology
+   terms, writing each term into ``metadata`` **next to the value it describes**. This step
+   guesses; run it when you want NeuroConv to propose terms, then inspect and edit the result.
 2. **Annotation** — :py:func:`~neuroconv.tools.ontology.add_species_external_resource`,
-   :py:func:`~neuroconv.tools.ontology.add_strain_external_resource`, and
-   :py:func:`~neuroconv.tools.ontology.add_brain_region_external_resources` take the terms already
+   :py:func:`~neuroconv.tools.ontology.add_strain_external_resource`,
+   :py:func:`~neuroconv.tools.ontology.add_brain_region_external_resources`, and
+   :py:func:`~neuroconv.tools.ontology.add_anatomy_external_resources` take the terms already
    stated in ``metadata`` and write them into the file as HERD references. This step is
    deterministic — nothing is inferred, so what lands in the file is exactly what the metadata
    says — and **a conversion runs it automatically**. It is a no-op unless the metadata carries an
@@ -72,11 +78,19 @@ Each term is an explicit ``{"id": <CURIE>, "uri": <resolvable URI>}`` dict, plac
         },
     }
 
+    metadata["PoseEstimation"]["ontology"] = {
+        "anatomy": {
+            "Snout": {"id": "UBERON:0002536", "uri": "http://purl.obolibrary.org/obo/UBERON_0002536"},
+        },
+    }
+
 Brain-region terms are keyed by the free-text ``location`` string and live under the modality block
 whose objects carry that location: ``metadata["Ecephys"]["ontology"]["brain_regions"]`` (electrodes
 table and electrode groups), ``metadata["Ophys"]["ontology"]["brain_regions"]`` (imaging planes),
-and ``metadata["FiberPhotometry"]["ontology"]["brain_regions"]`` (the ``FiberPhotometryTable``). To
-annotate one value with **several** ontologies, map it to a list of terms:
+and ``metadata["FiberPhotometry"]["ontology"]["brain_regions"]`` (the ``FiberPhotometryTable``).
+Anatomy terms are keyed the same way by the free-text ``Skeleton`` node name, under
+``metadata["PoseEstimation"]["ontology"]["anatomy"]``. To annotate one value with **several**
+ontologies, map it to a list of terms:
 
 .. code-block:: python
 
@@ -316,6 +330,72 @@ that the map covers, attaches the term(s) as HERD references. A conversion calls
 Locations the map does not name are left untouched. The call is idempotent and extends an existing
 ``external_resources`` HERD in place.
 
+General anatomy
+----------------
+
+``ndx-pose`` stores a pose-estimation skeleton's body-part names as free text in
+``Skeleton.nodes`` (e.g. ``"Snout"``, ``"Shoulder"``, ``"Tail"``). NeuroConv can attach a UBERON
+reference to each recognized node name, so downstream tools can resolve the exact anatomical
+structure a keypoint tracks. This is independent of brain-region annotation above: it never looks
+at ``location`` fields, and the vocabulary (:py:data:`~neuroconv.tools.ontology.ANATOMY_TERMS`,
+~28 curated skeleton parts and muscles) is species-agnostic -- there is no per-species atlas
+selection.
+
+How node names are resolved
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+:py:func:`~neuroconv.tools.ontology.infer_anatomy_ontology_metadata` walks a populated file's
+``Skeleton.nodes`` entries and resolves each distinct name against the curated general-anatomy
+vocabulary, writing terms under ``metadata["PoseEstimation"]["ontology"]["anatomy"]``. A name
+matches an exact canonical structure name (e.g. ``"Trapezius muscle"``) or a small set of common
+informal names and abbreviations (e.g. ``"nose"``, ``"forepaw"``, ``"trapezius"``). A lab-specific
+keypoint name with a laterality marker (e.g. ``"EarL"``) does not resolve and is left out of the
+map.
+
+.. code-block:: python
+
+    from neuroconv.tools.ontology import get_anatomy_term, infer_anatomy_ontology_metadata
+
+    term = get_anatomy_term("trapezius muscle")
+    term.curie        # 'UBERON:0002380'
+    term.entity_uri   # 'http://purl.obolibrary.org/obo/UBERON_0002380'
+
+    # skeleton.nodes == ["Snout", "Shoulder", "EarL"] on an nwbfile.processing["behavior"]["Skeletons"] entry
+    infer_anatomy_ontology_metadata(nwbfile, metadata)
+    metadata["PoseEstimation"]["ontology"]["anatomy"]
+    #   {"Snout": {"id": "UBERON:0002536", "uri": "..."}, "Shoulder": {"id": "UBERON:...", "uri": "..."}}
+    #   "EarL" is not recognized and does not appear.
+
+Curating the map by hand
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Like brain regions, an unrecognized node name (e.g. ``"EarL"``) can be mapped explicitly, using the
+same ``{"id": ..., "uri": ...}`` (or list-of-terms) shape:
+
+.. code-block:: python
+
+    metadata["PoseEstimation"]["ontology"] = {
+        "anatomy": {
+            "EarL": {"id": "UBERON:0001691", "uri": "http://purl.obolibrary.org/obo/UBERON_0001691"},
+        },
+    }
+
+Writing the references into the file
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+:py:func:`~neuroconv.tools.ontology.add_anatomy_external_resources` reads
+``metadata["PoseEstimation"]["ontology"]["anatomy"]`` and, for each node name on the file that the
+map covers, attaches the term(s) as HERD references. A conversion calls it for you:
+
+.. code-block:: python
+
+    from neuroconv.tools.ontology import add_anatomy_external_resources
+
+    number_added = add_anatomy_external_resources(nwbfile, metadata=metadata)
+
+Node names the map does not name are left untouched. The call is idempotent and extends an existing
+``external_resources`` HERD in place.
+
 Putting it together
 -------------------
 
@@ -328,15 +408,17 @@ blocks in, run inference on the assembled file first, inspect the result, then c
         infer_species_ontology_metadata,
         infer_strain_ontology_metadata,
         infer_brain_region_ontology_metadata,
+        infer_anatomy_ontology_metadata,
     )
 
     metadata["Subject"] = dict(subject_id="m1", species="Mus musculus", strain="C57BL/6J", sex="M", age="P30D")
 
-    # Assemble the file once so inference can see the electrode locations, ...
+    # Assemble the file once so inference can see the electrode locations and skeleton nodes, ...
     staging_nwbfile = interface.create_nwbfile(metadata=metadata)
     infer_species_ontology_metadata(metadata)
     infer_strain_ontology_metadata(metadata)
     infer_brain_region_ontology_metadata(staging_nwbfile, metadata)
+    infer_anatomy_ontology_metadata(staging_nwbfile, metadata)
     # ... optionally edit metadata["Ecephys"]["ontology"]["brain_regions"] here, ...
 
     # ... then convert: create_nwbfile / run_conversion write the stated terms as HERD references.
@@ -347,6 +429,7 @@ blocks in, run inference on the assembled file first, inspect the result, then c
     #   C57BL/6J     -> RRID:IMSR_JAX:000664
     #   CA1          -> MBA:382
     #   VISp         -> MBA:385
+    #   Snout        -> UBERON:0002536
 
 To disable an annotation, simply do not populate its ``ontology`` block (or delete it from the
 metadata before converting). To use a different atlas or an external ontology service, skip
