@@ -1,5 +1,6 @@
 """Integration tests for `get_existing_backend_configuration`."""
 
+import re
 from io import StringIO
 from unittest.mock import patch
 
@@ -18,6 +19,19 @@ from neuroconv.tools.nwb_helpers import (
     get_existing_backend_configuration,
     get_module,
 )
+
+
+def _normalize_blosc_repr(text: str) -> str:
+    """Normalize BloscCodec repr to a canonical form that is stable across zarr versions.
+
+    Older zarr releases render enum members as ``<BloscCname.lz4: 'lz4'>``; newer ones
+    use plain strings such as ``'lz4'``.  Strip the enum wrapper so both forms compare equal.
+    """
+    # cname=<BloscCname.lz4: 'lz4'>  →  cname='lz4'
+    text = re.sub(r"cname=<\w+\.(\w+): '(\w+)'>", r"cname='\2'", text)
+    # shuffle=<BloscShuffle.shuffle: 'shuffle'>  →  shuffle='shuffle'
+    text = re.sub(r"shuffle=<\w+\.(\w+): '(\w+)'>", r"shuffle='\2'", text)
+    return text
 
 
 def generate_complex_nwbfile() -> NWBFile:
@@ -302,4 +316,4 @@ acquisition/CompressedRawTimeSeries/data
   compressors : [BloscCodec(_tunable_attrs=set(), typesize=4, cname='lz4', clevel=5, shuffle='shuffle', blocksize=0)]
 
 """
-    assert stdout.getvalue() == expected_print
+    assert _normalize_blosc_repr(stdout.getvalue()) == expected_print
