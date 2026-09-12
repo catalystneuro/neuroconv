@@ -22,6 +22,7 @@ from spikeinterface.core.generate import (
 )
 from spikeinterface.extractors import NumpyRecording
 
+from neuroconv.tools.iterative_write import get_electrical_series_chunk_shape
 from neuroconv.tools.nwb_helpers import get_module
 from neuroconv.tools.spikeinterface import (
     _add_electrode_groups_to_nwbfile,
@@ -3019,6 +3020,13 @@ class TestAddRecording:
 
         chunk_bytes = np.prod(iterator.chunk_shape) * iterator._get_dtype().itemsize
         assert chunk_bytes <= chunk_mb * 1e6
+
+    def test_electrical_series_chunk_shape_is_integers_when_the_budget_is_smaller_than_the_recording(self):
+        chunk_shape = get_electrical_series_chunk_shape(
+            number_of_channels=384, number_of_frames=30_000 * 3_600, dtype=np.dtype("int16"), chunk_mb=10.0
+        )
+        assert chunk_shape == (78_125, 64)
+        assert all(type(size) is int for size in chunk_shape)
 
     def test_full_metadata_specification(self):
         """User-supplied fields land on every created object and the cross-links resolve.
