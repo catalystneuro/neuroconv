@@ -2836,6 +2836,41 @@ class TestWriteSortingAnalyzer(TestCase):
         self.assertIn("ElectricalSeriesRaw", self.nwbfile.acquisition)
 
 
+@pytest.mark.parametrize("return_in_uV, expected_unit", [(True, "microvolts"), (False, "a.u.")])
+def test_sorting_analyzer_waveform_metadata(tmp_path, return_in_uV, expected_unit):
+    """The rate, unit and alignment point of the analyzer's templates reach the file."""
+    from spikeinterface import create_sorting_analyzer
+
+    recording, sorting = generate_ground_truth_recording(num_channels=4, durations=[3.0])
+    recording.annotate(is_filtered=True)
+    sorting.delete_property("gt_unit_locations")
+    if "main_channel_id" in sorting.get_property_keys():
+        sorting.delete_property("main_channel_id")
+
+    analyzer = create_sorting_analyzer(sorting, recording, sparse=False, return_in_uV=return_in_uV)
+    analyzer.compute("random_spikes")
+    # 0.6 rather than the 1.0 default, so an alignment point that is not read off the analyzer cannot pass.
+    analyzer.compute("templates", ms_before=0.6, ms_after=1.4)
+
+    nwbfile = NWBFile(
+        session_description="session_description1", identifier="file_id1", session_start_time=testing_session_time
+    )
+    add_sorting_analyzer_to_nwbfile(sorting_analyzer=analyzer, nwbfile=nwbfile)
+
+    assert nwbfile.units.waveform_rate == analyzer.sampling_frequency
+    assert nwbfile.units.waveform_unit == expected_unit
+    assert nwbfile.units.waveform_time_before_peak_in_ms == 0.6
+
+    nwbfile_path = tmp_path / "analyzer_waveform_metadata.nwb"
+    with NWBHDF5IO(nwbfile_path, mode="w") as io:
+        io.write(nwbfile)
+    with NWBHDF5IO(nwbfile_path, mode="r") as io:
+        read_units_table = io.read().units
+        assert read_units_table.waveform_rate == analyzer.sampling_frequency
+        assert read_units_table.waveform_unit == expected_unit
+        assert read_units_table.waveform_time_before_peak_in_ms == 0.6
+
+
 def test_stub_recording_with_t_start():
     """Test that the _stub recording functionality does not fail when it has a start time. See issue #1355"""
     recording = generate_recording(durations=[1.0])
