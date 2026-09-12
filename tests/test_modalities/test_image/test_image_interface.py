@@ -278,9 +278,10 @@ def test_images_are_chunked_and_compressed(tmp_path):
     configure_and_write_nwbfile(nwbfile=nwbfile, nwbfile_path=nwbfile_path, backend="hdf5")
 
     with h5py.File(nwbfile_path, "r") as file:
-        written_images = file["acquisition/Images"]
+        images_group = file["acquisition/Images"]
+        written_images = [images_group[name] for name in images_group if name != "order_of_images"]
         assert len(written_images) == 2
-        for written_image in written_images.values():
+        for written_image in written_images:
             assert written_image.compression == "gzip"
             assert written_image.chunks == (256, 256, 3)
 
