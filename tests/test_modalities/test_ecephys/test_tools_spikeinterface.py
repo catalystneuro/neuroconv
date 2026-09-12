@@ -12,7 +12,7 @@ import psutil
 import pynwb.ecephys
 import pytest
 from hdmf.testing import TestCase
-from pynwb import NWBHDF5IO, NWBFile
+from pynwb import NWBHDF5IO, NWBFile, read_nwb
 from pynwb.testing.mock.file import mock_NWBFile
 from spikeinterface.core import NumpySorting
 from spikeinterface.core.generate import (
@@ -2864,11 +2864,10 @@ def test_sorting_analyzer_waveform_metadata(tmp_path, return_in_uV, expected_uni
     nwbfile_path = tmp_path / "analyzer_waveform_metadata.nwb"
     with NWBHDF5IO(nwbfile_path, mode="w") as io:
         io.write(nwbfile)
-    with NWBHDF5IO(nwbfile_path, mode="r") as io:
-        read_units_table = io.read().units
-        assert read_units_table.waveform_rate == analyzer.sampling_frequency
-        assert read_units_table.waveform_unit == expected_unit
-        assert read_units_table.waveform_time_before_peak_in_ms == 0.6
+    read_units_table = read_nwb(nwbfile_path).units
+    assert read_units_table.waveform_rate == analyzer.sampling_frequency
+    assert read_units_table.waveform_unit == expected_unit
+    assert read_units_table.waveform_time_before_peak_in_ms == 0.6
 
 
 def test_stub_recording_with_t_start():
@@ -3003,10 +3002,9 @@ class TestAddRecording:
         with NWBHDF5IO(path=nwbfile_path, mode="w") as io:
             io.write(nwbfile)
 
-        with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
-            stored_data = io.read().acquisition["ElectricalSeriesRaw"].data
-            assert stored_data.dtype == np.dtype("float32")
-            np.testing.assert_array_equal(stored_data[:], traces * np.float32(0.195))
+        stored_data = read_nwb(nwbfile_path).acquisition["ElectricalSeriesRaw"].data
+        assert stored_data.dtype == np.dtype("float32")
+        np.testing.assert_array_equal(stored_data[:], traces * np.float32(0.195))
 
     def test_scaled_chunk_shape_is_sized_on_the_dtype_written(self):
         """The chunk budget is in bytes, so sizing it on the recording's int16 while writing float32
@@ -3654,8 +3652,6 @@ if __name__ == "__main__":
 @pytest.mark.parametrize("backend", ["hdf5", "zarr"])
 def test_write_recording_to_nwbfile_append_on_disk(tmp_path, backend):
     """The append branch reads the backend off the file, so it is reached without naming one."""
-    from pynwb import read_nwb
-
     from neuroconv.tools.spikeinterface import write_recording_to_nwbfile
 
     nwbfile_path = tmp_path / ("recording.nwb" if backend == "hdf5" else "recording.nwb.zarr")
