@@ -311,6 +311,7 @@ icephys = [
 ## Image
 image = [
     "pillow>=10.0.0",
+    "natsort>=7.1.1",
 ]
 
 ## Fiber Photometry
