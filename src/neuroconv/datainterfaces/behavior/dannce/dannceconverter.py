@@ -110,7 +110,7 @@ class DANNCEConverter(BaseDataInterface):
         ``"cameraModel","a2A1920-160ucBAS"``) recording the capture software's acquisition settings
         for that camera. All values come back as strings (the file has no type information).
         """
-        with open(metadata_csv_file_path, newline="") as csv_file:
+        with open(metadata_csv_file_path, newline="", encoding="utf-8") as csv_file:
             return {row[0]: row[1] for row in csv.reader(csv_file) if len(row) == 2}
 
     @staticmethod

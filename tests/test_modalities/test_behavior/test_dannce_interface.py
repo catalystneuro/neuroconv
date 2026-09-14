@@ -100,7 +100,7 @@ def calibration_json_file(tmp_path):
         )
 
     file_path = tmp_path / "calibration.json"
-    with open(file_path, "w") as f:
+    with open(file_path, "w", encoding="utf-8") as f:
         json.dump(dict(camera_names=camera_names, camera_params=camera_params, n_cameras=len(camera_names)), f)
 
     return file_path, camera_names

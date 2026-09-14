@@ -38,7 +38,7 @@ def _write_metadata_csv(file_path, *, camera_make: str, camera_model: str, seria
     """Write a campy-style headerless two-column 'metadata.csv' (a small subset of the real fields)."""
     import csv
 
-    with open(file_path, "w", newline="") as csv_file:
+    with open(file_path, "w", newline="", encoding="utf-8") as csv_file:
         writer = csv.writer(csv_file, quoting=csv.QUOTE_ALL)
         writer.writerow(["cameraMake", camera_make])
         writer.writerow(["cameraModel", camera_model])
