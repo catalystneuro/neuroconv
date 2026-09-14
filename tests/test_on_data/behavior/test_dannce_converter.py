@@ -66,8 +66,12 @@ class TestDANNCEConverter(TestCase):
         assert set(videos_metadata.keys()) == {"video_Camera1", "video_Camera2"}
         assert videos_metadata["video_Camera1"]["name"] == "VideoCamera1"
 
-        container = metadata["Pose"]["PoseEstimations"]["PoseEstimationDANNCE"]
-        assert container["device_metadata_keys"] == self.camera_names
+        container = metadata["Pose"]["MultiCameraPoseEstimations"]["PoseEstimationDANNCE"]
+        pose_estimations = metadata["Pose"]["PoseEstimations"]
+        camera_names_by_pose_estimation_metadata_key = [
+            pose_estimations[key]["device_metadata_key"] for key in container["pose_estimation_metadata_keys"]
+        ]
+        assert camera_names_by_pose_estimation_metadata_key == self.camera_names
 
     def test_run_conversion(self):
         nwbfile_path = str(self.test_dir / "test_dannce_converter.nwb")

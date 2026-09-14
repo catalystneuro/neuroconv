@@ -205,7 +205,7 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
             The subject name used for linking the skeleton to the NWB subject.
         metadata_key : str, optional
             Registry key used to store this instance's pose estimation data under
-            ``metadata["Pose"]["Skeletons"|"PoseEstimations"]``, and the name of the
+            ``metadata["Pose"]["Skeletons"|"MultiCameraPoseEstimations"]``, and the name of the
             ``MultiCameraPoseEstimation`` container written to the NWB file. When ``None``, defaults
             to ``"PoseEstimationDANNCE"``. Writing multiple sDANNCE animals to the same NWBFile
             requires a distinct ``metadata_key`` per interface instance.
@@ -401,7 +401,62 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
             },
         }
 
+        series_schema = {
+            "type": ["object", "null"],
+            "description": "Dictionary of PoseEstimationSeries, one per landmark",
+            "additionalProperties": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": ["string", "null"], "description": "Name for this series"},
+                    "description": {
+                        "type": ["string", "null"],
+                        "description": "Description for this series",
+                    },
+                    "unit": {
+                        "type": ["string", "null"],
+                        "description": "Unit of measurement",
+                        "default": "millimeters",
+                    },
+                    "reference_frame": {
+                        "type": ["string", "null"],
+                        "description": "Description of the reference frame",
+                    },
+                    "confidence_definition": {
+                        "type": ["string", "null"],
+                        "description": "How the confidence was computed",
+                    },
+                },
+                "required": ["name"],
+            },
+        }
+
+        # Per-camera `PoseEstimation` children of a `MultiCameraPoseEstimation` group -- one per camera,
+        # linked back to that camera's `Devices` entry via `device_metadata_key`. Shares the same shape
+        # as any other `Pose.PoseEstimations` entry (e.g. `skeleton_metadata_key`, `PoseEstimationSeries`)
+        # so tools recording their own per-camera 2D series (e.g. Anipose) can populate those fields too;
+        # DANNCE/sDANNCE only ever need the camera link.
         pose_estimations_schema = {
+            "type": "object",
+            "additionalProperties": {
+                "type": "object",
+                "description": "Metadata for a per-camera PoseEstimation child of a MultiCameraPoseEstimation group",
+                "properties": {
+                    "name": {"type": "string", "description": "Name of the PoseEstimation"},
+                    "device_metadata_key": {
+                        "type": ["string", "null"],
+                        "description": "Key of the associated camera Device entry in Devices",
+                    },
+                    "skeleton_metadata_key": {
+                        "type": ["string", "null"],
+                        "description": "Key of the associated skeleton in Pose.Skeletons",
+                    },
+                    "PoseEstimationSeries": series_schema,
+                },
+                "required": ["name"],
+            },
+        }
+
+        multi_camera_pose_estimations_schema = {
             "type": "object",
             "additionalProperties": {
                 "type": "object",
@@ -416,39 +471,14 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
                         "type": ["string", "null"],
                         "description": "Key of the associated skeleton in Pose.Skeletons",
                     },
-                    "device_metadata_keys": {
+                    "pose_estimation_metadata_keys": {
                         "type": ["array", "null"],
-                        "description": "Keys of the per-camera Device entries in Devices, one per camera.",
+                        "description": (
+                            "Keys of the per-camera PoseEstimation entries in Pose.PoseEstimations, one per camera."
+                        ),
                         "items": {"type": "string"},
                     },
-                    "PoseEstimationSeries": {
-                        "type": ["object", "null"],
-                        "description": "Dictionary of PoseEstimationSeries, one per landmark",
-                        "additionalProperties": {
-                            "type": "object",
-                            "properties": {
-                                "name": {"type": ["string", "null"], "description": "Name for this series"},
-                                "description": {
-                                    "type": ["string", "null"],
-                                    "description": "Description for this series",
-                                },
-                                "unit": {
-                                    "type": ["string", "null"],
-                                    "description": "Unit of measurement",
-                                    "default": "millimeters",
-                                },
-                                "reference_frame": {
-                                    "type": ["string", "null"],
-                                    "description": "Description of the reference frame",
-                                },
-                                "confidence_definition": {
-                                    "type": ["string", "null"],
-                                    "description": "How the confidence was computed",
-                                },
-                            },
-                            "required": ["name"],
-                        },
-                    },
+                    "PoseEstimationSeries": series_schema,
                 },
                 "required": ["name"],
             },
@@ -459,6 +489,7 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
             "properties": {
                 "Skeletons": skeleton_schema,
                 "PoseEstimations": pose_estimations_schema,
+                "MultiCameraPoseEstimations": multi_camera_pose_estimations_schema,
             },
         }
 
@@ -508,13 +539,25 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
             "subject": self.subject_name,
         }
 
-        metadata["Pose"]["PoseEstimations"][metadata_key] = {
+        # One PoseEstimation entry per camera -- each carries no series of its own (DANNCE/sDANNCE only
+        # produce triangulated 3D landmarks, not raw per-camera 2D data) and exists solely to link that
+        # camera's Device under the MultiCameraPoseEstimation container built below.
+        pose_estimation_metadata_keys = []
+        for camera_name in self._camera_names:
+            camera_pose_estimation_metadata_key = f"{metadata_key}_{camera_name}_pose_estimation"
+            metadata["Pose"]["PoseEstimations"][camera_pose_estimation_metadata_key] = {
+                "name": f"{camera_name}PoseEstimation",
+                "device_metadata_key": camera_name,
+            }
+            pose_estimation_metadata_keys.append(camera_pose_estimation_metadata_key)
+
+        metadata["Pose"]["MultiCameraPoseEstimations"][metadata_key] = {
             "name": metadata_key,
             "description": "3D keypoint coordinates estimated using DANNCE.",
             "source_software": "DANNCE",
             "scorer": "DANNCE",
             "skeleton_metadata_key": metadata_key,
-            "device_metadata_keys": list(self._camera_names),
+            "pose_estimation_metadata_keys": pose_estimation_metadata_keys,
             "PoseEstimationSeries": pose_estimation_series_metadata,
         }
 
@@ -635,7 +678,7 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
         metadata_key = self.metadata_key or "PoseEstimationDANNCE"
         skeletons_registry = default_metadata["Pose"]["Skeletons"]
         pose_estimations_registry = default_metadata["Pose"]["PoseEstimations"]
-        container_metadata = pose_estimations_registry[metadata_key]
+        container_metadata = default_metadata["Pose"]["MultiCameraPoseEstimations"][metadata_key]
 
         # Get timestamps (sliced when stub_test=True)
         timestamps = self.get_timestamps(stub_test=stub_test)
@@ -714,7 +757,9 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
         source_videos = source_videos or {}
         cameras = self.create_camera_devices(nwbfile=nwbfile, metadata=default_metadata)
         camera_pose_estimations = []
-        for camera_name in container_metadata["device_metadata_keys"]:
+        for camera_pose_estimation_metadata_key in container_metadata["pose_estimation_metadata_keys"]:
+            camera_pose_entry = pose_estimations_registry[camera_pose_estimation_metadata_key]
+            camera_name = camera_pose_entry["device_metadata_key"]
             camera = cameras[camera_name]
 
             # Per-camera PoseEstimation child: DANNCE/sDANNCE only produce triangulated 3D world-space
@@ -722,7 +767,7 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
             # its own -- it exists solely to formally link the camera Device (and, when available, that
             # camera's source video) under the MultiCameraPoseEstimation container.
             camera_pose_estimation = PoseEstimation(
-                name=f"{camera.name}PoseEstimation",
+                name=camera_pose_entry.get("name", f"{camera.name}PoseEstimation"),
                 device=camera,
                 source_video=source_videos.get(camera_name),
             )

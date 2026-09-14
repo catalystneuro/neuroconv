@@ -1292,13 +1292,18 @@ class TestDANNCEInterface(DataInterfaceTestMixin, TemporalAlignmentMixin):
         assert skeleton["name"] == skeleton_name
         assert len(skeleton["nodes"]) == 23
 
-        # Check PoseEstimations
-        assert metadata_key in pose_metadata["PoseEstimations"]
-        container = pose_metadata["PoseEstimations"][metadata_key]
+        # Check MultiCameraPoseEstimations
+        assert metadata_key in pose_metadata["MultiCameraPoseEstimations"]
+        container = pose_metadata["MultiCameraPoseEstimations"][metadata_key]
         assert container["name"] == metadata_key
         assert container["source_software"] == "DANNCE"
         assert container["skeleton_metadata_key"] == metadata_key
-        assert container["device_metadata_keys"] == [device_name]
+
+        camera_names = [
+            pose_metadata["PoseEstimations"][key]["device_metadata_key"]
+            for key in container["pose_estimation_metadata_keys"]
+        ]
+        assert camera_names == [device_name]
 
         # Check PoseEstimationSeries
         series = container["PoseEstimationSeries"]
@@ -1355,8 +1360,12 @@ class TestDANNCEInterfaceWithCalibration(DataInterfaceTestMixin, TemporalAlignme
         assert "Camera1" in metadata["Devices"]
         assert "Camera2" in metadata["Devices"]
 
-        container = metadata["Pose"]["PoseEstimations"]["PoseEstimationDANNCE"]
-        assert container["device_metadata_keys"] == ["Camera1", "Camera2"]
+        container = metadata["Pose"]["MultiCameraPoseEstimations"]["PoseEstimationDANNCE"]
+        camera_names = [
+            metadata["Pose"]["PoseEstimations"][key]["device_metadata_key"]
+            for key in container["pose_estimation_metadata_keys"]
+        ]
+        assert camera_names == ["Camera1", "Camera2"]
 
     def check_read_nwb(self, nwbfile_path: str):
         from ndx_pose import CalibratedCamera, MultiCameraPoseEstimation
@@ -1392,7 +1401,7 @@ class TestDANNCEInterfaceMultiAnimal(DataInterfaceTestMixin, TemporalAlignmentMi
     save_directory = OUTPUT_PATH
 
     def check_extracted_metadata(self, metadata: dict):
-        container = metadata["Pose"]["PoseEstimations"]["PoseEstimationRat2"]
+        container = metadata["Pose"]["MultiCameraPoseEstimations"]["PoseEstimationRat2"]
         assert container["name"] == "PoseEstimationRat2"
         skeleton = metadata["Pose"]["Skeletons"]["PoseEstimationRat2"]
         assert skeleton["subject"] == "rat2"
