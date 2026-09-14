@@ -1,10 +1,10 @@
 """Reading the raw side of a GuPPy session recorded on a Neurophotometrics system.
 
 Covers both NPM layouts, the state-column and the header-less one. NPM store names are synthetic:
-GuPPy invents them while demultiplexing an interleaved recording. They are, however, descriptive --
-a name carries the source file, and then either the excitation wavelength and the region column it
-was read from, or the position in the interleave cycle and the data column when the file names no
-LED. See :func:`npm_store_to_demux`.
+GuPPy invents them while demultiplexing an interleaved recording, and no column of the raw file
+carries one. A run folder records what each store was demultiplexed from, which is read as given;
+one written before GuPPy recorded that leaves only the names, which have to be decoded by
+reproducing its arithmetic. See :func:`npm_store_to_demux`.
 """
 
 import re
@@ -22,13 +22,16 @@ ASSOCIATED_SUFFIXES = tuple(
     dict.fromkeys(NPMFiberPhotometryInterface.associated_suffixes + NPMEventsInterface.associated_suffixes)
 )
 
-# What GuPPy appends to the source file's stem, having demultiplexed it. A file carrying a
-# Flags/LedState column names the excitation that lit each frame and the region column the trace was
-# read from; one that does not can only say where in the interleave cycle the channel sat, and which
-# data column it came from.
-_NPM_WAVELENGTH_SUFFIX_PATTERN = re.compile(r"^(?P<wavelength>415|470|560)nm_(?P<region>.+)$")
-_NPM_SLOT_SUFFIX_PATTERN = re.compile(r"^ch(?P<slot>ev|od|pr)(?P<column>\d+)$")
+# How a GuPPy run that predates the "stores" record names its NPM stores: a file index, one of
+# three ordinal channel slots, and a positional column index, every part of which has to be
+# reproduced to resolve. See _npm_store_from_legacy_name.
+_NPM_LEGACY_STORE_PATTERN = re.compile(r"^file(\d+)_ch(ev|od|pr)(\d+)$")
 _NPM_SLOTS = ("ev", "od", "pr")
+# The low three bits of an NPM state word are one flag per excitation LED; the higher bits are
+# digital lines. A legacy run's slots are ordered by the whole word, so the wavelength a slot stands
+# for is recovered from the bits.
+_NPM_EXCITATION_CODE_TO_WAVELENGTH = {1: 415, 2: 470, 4: 560}
+_NPM_EXCITATION_BITS = 0b111
 
 
 def _npm_column_count(file_path) -> int:
@@ -96,6 +99,10 @@ def npm_run_parameters(guppy_folder_path: DirectoryPath) -> dict:
         # Only the header-less layout needs this: a file carrying a state column derives its own
         # channel count, so a run that never read a header-less file need not have recorded one.
         number_of_channels=None if number_of_channels is None else int(number_of_channels),
+        # What each store was demultiplexed from, as GuPPy recorded it. Empty for a run written
+        # before GuPPy recorded it, whose store names are decoded instead -- see
+        # :func:`npm_store_to_demux`.
+        store_provenance=npm_parameters.get("stores") or dict(),
     )
 
 
@@ -114,93 +121,167 @@ def npm_source_files(folder_path: DirectoryPath) -> list:
     return [path for path in candidates if not is_event_csv(path)]
 
 
-def npm_store_to_demux(folder_path: DirectoryPath, store_id: str, *, number_of_channels: int) -> dict:
-    """Decode a GuPPy NPM store name into the file, channel and column it was demultiplexed from.
-
-    A name like ``signals_470nm_G2`` is synthetic -- GuPPy invented it while splitting an
-    interleaved NPM recording -- but descriptive: ``signals`` is the stem of the source CSV,
-    ``470nm`` the excitation that lit those frames, and ``G2`` the region column the trace came
-    from. A file that names no LED yields ``PagCeAVgatFear_1512_1_chod1`` instead, where ``chod``
-    is the second position in the interleave cycle and ``1`` the first data column.
-
-    The stem is resolved against the folder's actual files rather than parsed out, since both a
-    stem and a region name may contain underscores; the longest matching stem wins, so
-    ``signals_extra_470nm_G0`` resolves to ``signals_extra.csv`` even alongside ``signals.csv``.
-
-    ``number_of_channels`` is used only for the slot form, whose cycle length has no on-disk
-    signature; a file naming its LEDs needs no such argument.
-    """
+def _npm_file_header(file_path) -> tuple[bool, str | int | None]:
+    """Return whether an NPM file is header-less, and the first timestamp column it offers."""
     import pandas
-
-    source_files = npm_source_files(folder_path)
-    # Longest stem first, so a stem that is a prefix of another does not claim its stores.
-    matching_files = sorted(
-        (path for path in source_files if store_id.startswith(f"{path.stem}_")),
-        key=lambda path: len(path.stem),
-        reverse=True,
-    )
-    assert matching_files, (
-        f"Store '{store_id}' names no source file of '{folder_path}'. GuPPy prefixes an NPM store "
-        f"with the stem of the file it was demultiplexed from; this folder holds "
-        f"{[path.name for path in source_files]}."
-    )
-    file_path = matching_files[0]
-    suffix = store_id[len(file_path.stem) + 1 :]
 
     dataframe = pandas.read_csv(file_path, index_col=False, nrows=1)
     headerless = any(_parses_as_float(column) for column in dataframe.columns)
+    if headerless:
+        return True, 0
     timestamp_columns = [column for column in dataframe.columns if "timestamp" in str(column).lower()]
-    timestamps_column = 0 if headerless else (timestamp_columns[0] if timestamp_columns else None)
+    return False, timestamp_columns[0] if timestamp_columns else None
 
-    wavelength_match = _NPM_WAVELENGTH_SUFFIX_PATTERN.match(suffix)
-    if wavelength_match is not None:
-        return dict(
-            file_path=file_path,
-            headerless=headerless,
-            excitation_wavelength_in_nm=int(wavelength_match.group("wavelength")),
-            slot_index=None,
-            num_channels=None,
-            data_column=wavelength_match.group("region"),
-            timestamps_column=timestamps_column,
+
+def _npm_store_from_provenance(folder_path: DirectoryPath, store_id: str, record: dict, number_of_channels) -> dict:
+    """Resolve a store from the record GuPPy wrote of what it demultiplexed."""
+    file_path = folder_path / record["file"]
+    assert file_path.is_file(), (
+        f"The run folder records store '{store_id}' as read from '{record['file']}', which is not in "
+        f"'{folder_path}'. The raw session folder and the GuPPy output folder have to belong together."
+    )
+    headerless, first_timestamp_column = _npm_file_header(file_path)
+    wavelength = record["excitation_wavelength_in_nm"]
+    if wavelength is None:
+        assert number_of_channels is not None, (
+            f"Store '{store_id}' was demultiplexed by row position, whose cycle length has no on-disk "
+            f"signature, but the GuPPy run recorded no 'noChannels'."
         )
-
-    slot_match = _NPM_SLOT_SUFFIX_PATTERN.match(suffix)
-    assert slot_match is not None, (
-        f"'{store_id}' is not a GuPPy NPM store name; expected the source file's stem followed by "
-        f"either '<415|470|560>nm_<region>' or 'ch<ev|od|pr><column>', but '{file_path.stem}' is "
-        f"followed by '{suffix}'."
-    )
-    assert number_of_channels is not None, (
-        f"'{file_path}' names no LED, so GuPPy demultiplexed it by row position and the cycle length "
-        f"has no on-disk signature, but the GuPPy run recorded no 'noChannels'. Store '{store_id}' "
-        f"cannot be demultiplexed."
-    )
-    slot_index = _NPM_SLOTS.index(slot_match.group("slot"))
-    assert slot_index < number_of_channels, (
-        f"Store '{store_id}' names channel slot 'ch{slot_match.group('slot')}' (index {slot_index}), "
-        f"but the GuPPy run interleaved only {number_of_channels} channel(s)."
-    )
-    # A slot name means GuPPy found no Flags/LedState column. In every such recording seen so far
-    # that file has no header either -- the vendor writer always emits one, so a header-less file is
-    # the generic Bonsai writer with the state field left out. A headered file with no state column
-    # would number its data columns over the regions GuPPy picked out, which is a rule this bridge
-    # would have to duplicate and could silently disagree with, so it is refused rather than guessed.
-    assert headerless, (
-        f"'{file_path}' has a header but no 'Flags' or 'LedState' column, so GuPPy demultiplexed it "
-        f"by row position into '{store_id}'. Reading that back would mean re-deriving which of its "
-        f"columns GuPPy counted as data, which this bridge does not do."
-    )
-    # GuPPy numbers the data columns from 1, the timestamps being column 0.
-    data_column = int(slot_match.group("column"))
     return dict(
         file_path=file_path,
         headerless=headerless,
-        excitation_wavelength_in_nm=None,
-        slot_index=slot_index,
-        num_channels=number_of_channels,
-        data_column=data_column,
-        timestamps_column=timestamps_column,
+        excitation_wavelength_in_nm=wavelength,
+        slot_index=record.get("interleave_position"),
+        num_channels=None if wavelength is not None else number_of_channels,
+        data_column=record["data_column"],
+        timestamps_column=first_timestamp_column,
     )
+
+
+def _npm_store_from_legacy_name(folder_path: DirectoryPath, store_id: str, number_of_channels) -> dict:
+    """Resolve a store written before GuPPy recorded what it demultiplexed.
+
+    Such a run names its stores ``file<N>_ch<ev|od|pr><column>``, where every part is positional:
+    ``file<N>`` indexes :func:`npm_source_files`, ``ch<slot>`` is an ordinal into the LED states
+    sorted ascending and sampled from rows 2-11 so the startup frame is skipped, and the trailing
+    number indexes the columns left after GuPPy canonicalized the timestamps and dropped
+    ``FrameCounter`` and the state column. Reading one back means reproducing that arithmetic,
+    which is why GuPPy now records the answer instead.
+    """
+    import numpy
+    import pandas
+
+    match = _NPM_LEGACY_STORE_PATTERN.match(store_id)
+    assert match is not None, (
+        f"'{store_id}' is not a GuPPy NPM store name. The run folder records no 'stores' mapping, so "
+        f"its stores are expected in the older positional form 'file<N>_ch<ev|od|pr><column>'."
+    )
+    file_index, slot, column_position = int(match.group(1)), match.group(2), int(match.group(3))
+    slot_ordinal = _NPM_SLOTS.index(slot)
+
+    source_files = npm_source_files(folder_path)
+    assert file_index < len(source_files), (
+        f"Store '{store_id}' names file index {file_index}, but '{folder_path}' holds only "
+        f"{len(source_files)} NPM source file(s): {[path.name for path in source_files]}."
+    )
+    file_path = source_files[file_index]
+
+    dataframe = pandas.read_csv(file_path, index_col=False, nrows=12)
+    headerless = any(_parses_as_float(column) for column in dataframe.columns)
+    if headerless:
+        assert number_of_channels is not None, (
+            f"'{file_path}' is a header-less NPM file, whose interleave has no on-disk signature, but "
+            f"the GuPPy run recorded no 'noChannels'. Store '{store_id}' cannot be demultiplexed."
+        )
+        return dict(
+            file_path=file_path,
+            headerless=True,
+            excitation_wavelength_in_nm=None,
+            slot_index=slot_ordinal,
+            num_channels=number_of_channels,
+            data_column=column_position,
+            timestamps_column=0,
+        )
+
+    column_by_lowercase_name = {str(column).lower(): column for column in dataframe.columns}
+    state_column = column_by_lowercase_name.get("flags") or column_by_lowercase_name.get("ledstate")
+    assert state_column is not None, (
+        f"'{file_path}' has a header but no 'Flags' or 'LedState' column, so GuPPy could not have "
+        f"demultiplexed it into '{store_id}'."
+    )
+    state = pandas.read_csv(file_path, index_col=False)[state_column].to_numpy().astype(int)
+    unique_states = numpy.unique(state[2:12])
+    assert slot_ordinal < len(unique_states), (
+        f"Store '{store_id}' names channel slot '{slot}' (index {slot_ordinal}), but '{file_path}' "
+        f"interleaves only {len(unique_states)} channel(s) (states {unique_states.tolist()})."
+    )
+    state_value = int(unique_states[slot_ordinal])
+    excitation_code = state_value & _NPM_EXCITATION_BITS
+    assert excitation_code in _NPM_EXCITATION_CODE_TO_WAVELENGTH, (
+        f"Store '{store_id}' was demultiplexed from NPM state {state_value}, whose excitation bits "
+        f"({excitation_code:#05b}) are not a single wavelength. GuPPy treated such a frame as its own "
+        f"channel, but a fiber photometry series is written per excitation."
+    )
+
+    # Reproduce GuPPy's column trimming: the canonical timestamps column replaced the several it
+    # found (only when there were several), then FrameCounter and the state column went.
+    timestamp_columns = [column for column in dataframe.columns if "timestamp" in str(column).lower()]
+    remaining = list(dataframe.columns)
+    if len(timestamp_columns) > 1:
+        remaining.insert(1, "Timestamp")
+        remaining = [column for column in remaining if column not in timestamp_columns]
+    remaining = [
+        column for column in remaining if column not in (column_by_lowercase_name.get("framecounter"), state_column)
+    ]
+    assert column_position < len(remaining), (
+        f"Store '{store_id}' names column position {column_position}, but '{file_path}' leaves only "
+        f"{len(remaining)} column(s) after GuPPy's trimming: {remaining}."
+    )
+    return dict(
+        file_path=file_path,
+        headerless=False,
+        excitation_wavelength_in_nm=_NPM_EXCITATION_CODE_TO_WAVELENGTH[excitation_code],
+        slot_index=None,
+        num_channels=None,
+        data_column=remaining[column_position],
+        timestamps_column=timestamp_columns[0] if timestamp_columns else None,
+    )
+
+
+def npm_store_to_demux(
+    folder_path: DirectoryPath, store_id: str, *, number_of_channels: int, store_provenance: dict | None = None
+) -> dict:
+    """Resolve a GuPPy NPM store to the file, channel and column it was demultiplexed from.
+
+    An NPM store name is invented: GuPPy makes it up while splitting an interleaved recording, and
+    no column of the raw file carries it. A run folder written by a GuPPy that records what it
+    demultiplexed says so directly, under ``stores`` in ``.npm_params.json``, and that record is
+    read as given. One written before that records only the names, and they have to be decoded by
+    reproducing GuPPy's arithmetic -- see :func:`_npm_store_from_legacy_name`.
+
+    Parameters
+    ----------
+    folder_path : DirectoryPath
+        Path to the raw session folder holding the acquisition CSVs.
+    store_id : str
+        The ``storesList.csv`` id to resolve.
+    number_of_channels : int
+        The run's ``noChannels``, needed only where the channels cycle by row position.
+    store_provenance : dict, optional
+        What the run folder records about its stores, from :func:`npm_run_parameters`. Empty or
+        ``None`` for a run predating that record, which takes the decoding path.
+
+    Returns
+    -------
+    dict
+        The file, whether it has a header, the excitation wavelength (``None`` where the channels
+        cycle by row position, with ``slot_index`` and ``num_channels`` instead), the data column,
+        and the file's first timestamp column.
+    """
+    record = (store_provenance or dict()).get(store_id)
+    if record is not None:
+        return _npm_store_from_provenance(folder_path, store_id, record, number_of_channels)
+    return _npm_store_from_legacy_name(folder_path, store_id, number_of_channels)
 
 
 def build_npm_acquisition_interface(
@@ -248,7 +329,12 @@ def build_npm_acquisition_interface(
     """
     run_parameters = npm_run_parameters(guppy_folder_path)
     demuxes = [
-        npm_store_to_demux(folder_path, store_id, number_of_channels=run_parameters["number_of_channels"])
+        npm_store_to_demux(
+            folder_path,
+            store_id,
+            number_of_channels=run_parameters["number_of_channels"],
+            store_provenance=run_parameters["store_provenance"],
+        )
         for store_id in store_ids
     ]
     # A role becomes one interface, so its stores must all be the same channel of the same file;
