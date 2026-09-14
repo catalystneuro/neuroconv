@@ -5,6 +5,9 @@
   "behavior/boris.rst": {
     "extra": "boris"
   },
+  "behavior/dannce.rst": {
+    "extra": "dannce"
+  },
   "behavior/deeplabcut.rst": {
     "extra": "deeplabcut"
   },
