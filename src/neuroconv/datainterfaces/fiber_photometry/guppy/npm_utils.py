@@ -1,14 +1,14 @@
 """Reading the raw side of a GuPPy session recorded on a Neurophotometrics system.
 
-Covers both NPM layouts, the state-column and the header-less one. NPM store names are entirely
-synthetic: GuPPy invents them while demultiplexing an interleaved recording, and none of their parts
-appear on disk. Recovering what a name refers to means reproducing GuPPy's own demultiplexing
-arithmetic -- see :func:`npm_store_to_demux`.
+Covers both NPM layouts, the state-column and the header-less one. NPM store names are synthetic:
+GuPPy invents them while demultiplexing an interleaved recording, and no column of the raw file
+carries one. A run folder records what each store was demultiplexed from, which is read as given;
+one written before GuPPy recorded that leaves only the names, which have to be decoded by
+reproducing its arithmetic. See :func:`npm_store_to_demux`.
 """
 
 import re
 
-import numpy
 from pydantic import DirectoryPath
 
 from ._session_files import is_event_csv
@@ -22,12 +22,14 @@ ASSOCIATED_SUFFIXES = tuple(
     dict.fromkeys(NPMFiberPhotometryInterface.associated_suffixes + NPMEventsInterface.associated_suffixes)
 )
 
-# GuPPy invents these names while demultiplexing an interleaved NPM recording: a file index, one of
-# three ordinal channel slots, and a positional column index. See npm_store_to_demux.
-_NPM_STORE_PATTERN = re.compile(r"^file(\d+)_ch(ev|od|pr)(\d+)$")
+# How a GuPPy run that predates the "stores" record names its NPM stores: a file index, one of
+# three ordinal channel slots, and a positional column index, every part of which has to be
+# reproduced to resolve. See _npm_store_from_legacy_name.
+_NPM_LEGACY_STORE_PATTERN = re.compile(r"^file(\d+)_ch(ev|od|pr)(\d+)$")
 _NPM_SLOTS = ("ev", "od", "pr")
-# The low three bits of an NPM state word are one flag per excitation LED; the higher bits are digital
-# lines. GuPPy orders its channel slots by the whole word, so the wavelength is recovered from the bits.
+# The low three bits of an NPM state word are one flag per excitation LED; the higher bits are
+# digital lines. A legacy run's slots are ordered by the whole word, so the wavelength a slot stands
+# for is recovered from the bits.
 _NPM_EXCITATION_CODE_TO_WAVELENGTH = {1: 415, 2: 470, 4: 560}
 _NPM_EXCITATION_BITS = 0b111
 
@@ -97,6 +99,10 @@ def npm_run_parameters(guppy_folder_path: DirectoryPath) -> dict:
         # Only the header-less layout needs this: a file carrying a state column derives its own
         # channel count, so a run that never read a header-less file need not have recorded one.
         number_of_channels=None if number_of_channels is None else int(number_of_channels),
+        # What each store was demultiplexed from, as GuPPy recorded it. Empty for a run written
+        # before GuPPy recorded it, whose store names are decoded instead -- see
+        # :func:`npm_store_to_demux`.
+        store_provenance=npm_parameters.get("stores") or dict(),
     )
 
 
@@ -115,26 +121,61 @@ def npm_source_files(folder_path: DirectoryPath) -> list:
     return [path for path in candidates if not is_event_csv(path)]
 
 
-def npm_store_to_demux(folder_path: DirectoryPath, store_id: str, *, number_of_channels: int) -> dict:
-    """Decode a GuPPy NPM store name into the file, slot and column it was demultiplexed from.
-
-    A name like ``file0_chod3`` is entirely synthetic: GuPPy invented it while splitting an
-    interleaved NPM recording, and none of its three parts appear on disk. ``file0`` indexes
-    :func:`npm_source_files`; ``chod`` is an ordinal into the LED states sorted ascending, sampled
-    from rows 2-11 so the startup frame is skipped; ``3`` is a positional index into the columns left
-    after GuPPy canonicalizes the timestamps and drops ``FrameCounter`` and the state column, with
-    position 0 being the timestamps themselves.
-
-    ``number_of_channels`` is used only for the legacy headerless layout, whose channel count has no
-    on-disk signature; a file carrying a state column derives its own and ignores the argument, just
-    as GuPPy does.
-    """
+def _npm_file_header(file_path) -> tuple[bool, str | int | None]:
+    """Return whether an NPM file is header-less, and the first timestamp column it offers."""
     import pandas
 
-    match = _NPM_STORE_PATTERN.match(store_id)
-    assert (
-        match is not None
-    ), f"'{store_id}' is not a GuPPy NPM store name; expected the form 'file<N>_ch<ev|od|pr><column>'."
+    dataframe = pandas.read_csv(file_path, index_col=False, nrows=1)
+    headerless = any(_parses_as_float(column) for column in dataframe.columns)
+    if headerless:
+        return True, 0
+    timestamp_columns = [column for column in dataframe.columns if "timestamp" in str(column).lower()]
+    return False, timestamp_columns[0] if timestamp_columns else None
+
+
+def _npm_store_from_provenance(folder_path: DirectoryPath, store_id: str, record: dict, number_of_channels) -> dict:
+    """Resolve a store from the record GuPPy wrote of what it demultiplexed."""
+    file_path = folder_path / record["file"]
+    assert file_path.is_file(), (
+        f"The run folder records store '{store_id}' as read from '{record['file']}', which is not in "
+        f"'{folder_path}'. The raw session folder and the GuPPy output folder have to belong together."
+    )
+    headerless, first_timestamp_column = _npm_file_header(file_path)
+    wavelength = record["excitation_wavelength_in_nm"]
+    if wavelength is None:
+        assert number_of_channels is not None, (
+            f"Store '{store_id}' was demultiplexed by row position, whose cycle length has no on-disk "
+            f"signature, but the GuPPy run recorded no 'noChannels'."
+        )
+    return dict(
+        file_path=file_path,
+        headerless=headerless,
+        excitation_wavelength_in_nm=wavelength,
+        slot_index=record.get("interleave_position"),
+        num_channels=None if wavelength is not None else number_of_channels,
+        data_column=record["data_column"],
+        timestamps_column=first_timestamp_column,
+    )
+
+
+def _npm_store_from_legacy_name(folder_path: DirectoryPath, store_id: str, number_of_channels) -> dict:
+    """Resolve a store written before GuPPy recorded what it demultiplexed.
+
+    Such a run names its stores ``file<N>_ch<ev|od|pr><column>``, where every part is positional:
+    ``file<N>`` indexes :func:`npm_source_files`, ``ch<slot>`` is an ordinal into the LED states
+    sorted ascending and sampled from rows 2-11 so the startup frame is skipped, and the trailing
+    number indexes the columns left after GuPPy canonicalized the timestamps and dropped
+    ``FrameCounter`` and the state column. Reading one back means reproducing that arithmetic,
+    which is why GuPPy now records the answer instead.
+    """
+    import numpy
+    import pandas
+
+    match = _NPM_LEGACY_STORE_PATTERN.match(store_id)
+    assert match is not None, (
+        f"'{store_id}' is not a GuPPy NPM store name. The run folder records no 'stores' mapping, so "
+        f"its stores are expected in the older positional form 'file<N>_ch<ev|od|pr><column>'."
+    )
     file_index, slot, column_position = int(match.group(1)), match.group(2), int(match.group(3))
     slot_ordinal = _NPM_SLOTS.index(slot)
 
@@ -148,8 +189,6 @@ def npm_store_to_demux(folder_path: DirectoryPath, store_id: str, *, number_of_c
     dataframe = pandas.read_csv(file_path, index_col=False, nrows=12)
     headerless = any(_parses_as_float(column) for column in dataframe.columns)
     if headerless:
-        # The legacy layout has no state column at all: channels cycle by row parity alone, and the
-        # cycle length is whatever the GuPPy run was told it was.
         assert number_of_channels is not None, (
             f"'{file_path}' is a header-less NPM file, whose interleave has no on-disk signature, but "
             f"the GuPPy run recorded no 'noChannels'. Store '{store_id}' cannot be demultiplexed."
@@ -157,11 +196,11 @@ def npm_store_to_demux(folder_path: DirectoryPath, store_id: str, *, number_of_c
         return dict(
             file_path=file_path,
             headerless=True,
+            excitation_wavelength_in_nm=None,
+            slot_index=slot_ordinal,
             num_channels=number_of_channels,
-            first_row=slot_ordinal,
             data_column=column_position,
             timestamps_column=0,
-            state_value=None,
         )
 
     column_by_lowercase_name = {str(column).lower(): column for column in dataframe.columns}
@@ -177,9 +216,15 @@ def npm_store_to_demux(folder_path: DirectoryPath, store_id: str, *, number_of_c
         f"interleaves only {len(unique_states)} channel(s) (states {unique_states.tolist()})."
     )
     state_value = int(unique_states[slot_ordinal])
+    excitation_code = state_value & _NPM_EXCITATION_BITS
+    assert excitation_code in _NPM_EXCITATION_CODE_TO_WAVELENGTH, (
+        f"Store '{store_id}' was demultiplexed from NPM state {state_value}, whose excitation bits "
+        f"({excitation_code:#05b}) are not a single wavelength. GuPPy treated such a frame as its own "
+        f"channel, but a fiber photometry series is written per excitation."
+    )
 
-    # Reproduce GuPPy's column trimming: the canonical timestamps column replaces the several it
-    # found (only when there are several), then FrameCounter and the state column go.
+    # Reproduce GuPPy's column trimming: the canonical timestamps column replaced the several it
+    # found (only when there were several), then FrameCounter and the state column went.
     timestamp_columns = [column for column in dataframe.columns if "timestamp" in str(column).lower()]
     remaining = list(dataframe.columns)
     if len(timestamp_columns) > 1:
@@ -195,12 +240,48 @@ def npm_store_to_demux(folder_path: DirectoryPath, store_id: str, *, number_of_c
     return dict(
         file_path=file_path,
         headerless=False,
-        num_channels=len(unique_states),
-        first_row=int(numpy.where(state == state_value)[0][0]),
+        excitation_wavelength_in_nm=_NPM_EXCITATION_CODE_TO_WAVELENGTH[excitation_code],
+        slot_index=None,
+        num_channels=None,
         data_column=remaining[column_position],
         timestamps_column=timestamp_columns[0] if timestamp_columns else None,
-        state_value=state_value,
     )
+
+
+def npm_store_to_demux(
+    folder_path: DirectoryPath, store_id: str, *, number_of_channels: int, store_provenance: dict | None = None
+) -> dict:
+    """Resolve a GuPPy NPM store to the file, channel and column it was demultiplexed from.
+
+    An NPM store name is invented: GuPPy makes it up while splitting an interleaved recording, and
+    no column of the raw file carries it. A run folder written by a GuPPy that records what it
+    demultiplexed says so directly, under ``stores`` in ``.npm_params.json``, and that record is
+    read as given. One written before that records only the names, and they have to be decoded by
+    reproducing GuPPy's arithmetic -- see :func:`_npm_store_from_legacy_name`.
+
+    Parameters
+    ----------
+    folder_path : DirectoryPath
+        Path to the raw session folder holding the acquisition CSVs.
+    store_id : str
+        The ``storesList.csv`` id to resolve.
+    number_of_channels : int
+        The run's ``noChannels``, needed only where the channels cycle by row position.
+    store_provenance : dict, optional
+        What the run folder records about its stores, from :func:`npm_run_parameters`. Empty or
+        ``None`` for a run predating that record, which takes the decoding path.
+
+    Returns
+    -------
+    dict
+        The file, whether it has a header, the excitation wavelength (``None`` where the channels
+        cycle by row position, with ``slot_index`` and ``num_channels`` instead), the data column,
+        and the file's first timestamp column.
+    """
+    record = (store_provenance or dict()).get(store_id)
+    if record is not None:
+        return _npm_store_from_provenance(folder_path, store_id, record, number_of_channels)
+    return _npm_store_from_legacy_name(folder_path, store_id, number_of_channels)
 
 
 def build_npm_acquisition_interface(
@@ -214,8 +295,10 @@ def build_npm_acquisition_interface(
     """Build the interface writing one series from the ordered ``store_ids``.
 
     Each store name is decoded back into the file, channel and column GuPPy demultiplexed it from.
-    Which interface reads them depends on the layout: the header-less one has no state column to
-    select on, so GuPPy's blind stride is reproduced through the generic CSV interface instead.
+    Which interface reads them follows from the name: a store naming an excitation wavelength is
+    read by selecting that LED's frames, while one naming a cycle position came from a file with no
+    state column to select on, so GuPPy's blind stride is reproduced through the generic CSV
+    interface instead.
 
     Parameters
     ----------
@@ -242,48 +325,45 @@ def build_npm_acquisition_interface(
     Raises
     ------
     AssertionError
-        If the stores do not all come from one file and one channel, or were demultiplexed from a
-        strobed frame carrying more than one excitation wavelength.
+        If the stores do not all come from one file and one channel.
     """
     run_parameters = npm_run_parameters(guppy_folder_path)
     demuxes = [
-        npm_store_to_demux(folder_path, store_id, number_of_channels=run_parameters["number_of_channels"])
+        npm_store_to_demux(
+            folder_path,
+            store_id,
+            number_of_channels=run_parameters["number_of_channels"],
+            store_provenance=run_parameters["store_provenance"],
+        )
         for store_id in store_ids
     ]
     # A role becomes one interface, so its stores must all be the same channel of the same file;
     # only the column may differ between recording sites.
-    distinct = {(demux["file_path"], demux["first_row"], demux["num_channels"]) for demux in demuxes}
+    distinct = {(demux["file_path"], demux["excitation_wavelength_in_nm"], demux["slot_index"]) for demux in demuxes}
     assert len(distinct) == 1, (
         f"The '{metadata_key}' stores {store_ids} do not share one NPM file and channel "
-        f"({[(demux['file_path'].name, demux['first_row']) for demux in demuxes]}), so they cannot "
-        f"be written as one series."
+        f"({sorted(distinct)}), so they cannot be written as one series."
     )
     first = demuxes[0]
     time_unit = run_parameters["time_unit"]
+    timestamps_column = run_parameters["timestamp_column_name"] or first["timestamps_column"]
 
-    if first["headerless"]:
-        # No state column to select on, so reproduce GuPPy's blind stride. skip_rows carries the
-        # phase rather than index, which is capped below the channel count.
+    if first["excitation_wavelength_in_nm"] is None:
+        # The file names no LED, so reproduce GuPPy's blind stride. skip_rows carries the cycle
+        # position rather than index, which the demux validates against the channel count.
         return CSVFiberPhotometryInterface(
             file_path=first["file_path"],
             data_columns=[demux["data_column"] for demux in demuxes],
-            timestamps_column=0,
-            demux_configuration=StrideDemux(channels=first["num_channels"], index=0, skip_rows=first["first_row"]),
+            timestamps_column=timestamps_column,
+            demux_configuration=StrideDemux(channels=first["num_channels"], index=0, skip_rows=first["slot_index"]),
             time_unit=time_unit,
             metadata_key=metadata_key,
             verbose=verbose,
         )
 
-    excitation_code = first["state_value"] & _NPM_EXCITATION_BITS
-    assert excitation_code in _NPM_EXCITATION_CODE_TO_WAVELENGTH, (
-        f"The '{metadata_key}' stores were demultiplexed from NPM state {first['state_value']}, whose "
-        f"excitation bits ({excitation_code:#05b}) are not a single wavelength. GuPPy treats such a "
-        f"frame as its own channel, but a fiber photometry series is written per excitation."
-    )
-    timestamps_column = run_parameters["timestamp_column_name"] or first["timestamps_column"]
     return NPMFiberPhotometryInterface(
         file_path=first["file_path"],
-        excitation_wavelength_in_nm=_NPM_EXCITATION_CODE_TO_WAVELENGTH[excitation_code],
+        excitation_wavelength_in_nm=first["excitation_wavelength_in_nm"],
         regions=[demux["data_column"] for demux in demuxes],
         timestamps_column=timestamps_column,
         time_unit=time_unit,
