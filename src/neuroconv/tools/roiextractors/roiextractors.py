@@ -651,9 +651,10 @@ def _add_roi_response_traces_to_nwbfile(
     The same ``metadata_key`` is used to look up both the ``RoiResponses`` entry and the
     ``PlaneSegmentations`` entry, coupling the two implicitly.
 
-    If ``metadata_key`` is not present in ``metadata["Ophys"]["RoiResponses"]``, placeholder
-    metadata is used for all available traces. If ``metadata_key`` is present but the extractor
-    has no trace data, a ``ValueError`` is raised.
+    If the caller wrote no ``RoiResponses`` entry for ``metadata_key``, placeholder metadata is used
+    for all available traces, and an extractor with no trace data writes nothing. The entry the
+    placeholder template carries under ``default_metadata_key`` counts as not written. If the caller
+    did write one but the extractor has no trace data, a ``ValueError`` is raised.
 
     Parameters
     ----------
@@ -686,15 +687,17 @@ def _add_roi_response_traces_to_nwbfile(
 
     roi_responses = metadata.get("Ophys", {}).get("RoiResponses", {})
     user_provided_roi_responses = metadata_key in roi_responses
+    # The placeholder template names a RoiResponses entry under the default key, so an entry there says
+    # nothing about what the caller asked for.
+    user_provided_roi_responses_metadata = user_provided_roi_responses and metadata_key != "default_metadata_key"
 
-    if user_provided_roi_responses and not traces_to_add:
+    if user_provided_roi_responses_metadata and not traces_to_add:
         raise ValueError("RoiResponses metadata was provided but the segmentation extractor has no trace data.")
 
     if not traces_to_add:
         return nwbfile
 
     # Use user-provided metadata or fall back to placeholders
-    user_provided_roi_responses_metadata = user_provided_roi_responses and metadata_key != "default_metadata_key"
     if user_provided_roi_responses:
         roi_responses_metadata = roi_responses[metadata_key].copy()
         if user_provided_roi_responses_metadata:

@@ -43,10 +43,18 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
         stub_test: bool = False,
         parent_container: Literal["acquisition", "processing/LFP", "processing/FilteredEphys"] = "processing/LFP",
         write_as: Literal["raw", "lfp", "processed"] | None = None,
+        data_representation: Literal["digital_counts", "physical_units"] = "digital_counts",
         write_electrical_series: bool = True,
         iterator_type: str = "v2",
         iterator_options: dict | None = None,
+        always_write_timestamps: bool = False,
     ):
+        """
+        Add the LFP traces to the NWBFile, into ``processing/LFP`` unless ``parent_container`` says otherwise.
+
+        The arguments are those of :meth:`BaseRecordingExtractorInterface.add_to_nwbfile`, with
+        ``parent_container`` defaulting to ``"processing/LFP"``.
+        """
         # Handle deprecated positional arguments
         if args:
             parameter_names = [
@@ -97,7 +105,9 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
             metadata=metadata,
             stub_test=stub_test,
             parent_container=parent_container,
+            data_representation=data_representation,
             write_electrical_series=write_electrical_series,
             iterator_type=iterator_type,
             iterator_options=iterator_options,
+            always_write_timestamps=always_write_timestamps,
         )

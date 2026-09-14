@@ -260,3 +260,18 @@ def test_nested_converter_receives_its_conversion_options():
     )
 
     assert nwbfile.subject is not None
+
+
+def test_converter_pipe_accepts_a_tuple_of_interfaces():
+    from neuroconv.tools.testing.mock_interfaces import MockBehaviorEventInterface
+
+    converter = ConverterPipe(data_interfaces=(MockBehaviorEventInterface(), MockBehaviorEventInterface()))
+
+    assert list(converter.data_interface_objects) == ["MockBehaviorEventInterface001", "MockBehaviorEventInterface002"]
+
+
+def test_converter_pipe_rejects_other_types_up_front():
+    from neuroconv.tools.testing.mock_interfaces import MockBehaviorEventInterface
+
+    with pytest.raises(TypeError, match="`data_interfaces` must be a list of interfaces, or a dict.*not set"):
+        ConverterPipe(data_interfaces={MockBehaviorEventInterface()})

@@ -221,8 +221,8 @@ def get_json_schema_from_method_signature(method: Callable, exclude: list[str] |
     json_schema : dict
         The JSON schema corresponding to the method signature.
     """
-    exclude = exclude or []
-    exclude += ["self", "cls"]
+    # A new list rather than ``+=``, which would extend the caller's own list in place.
+    exclude = [*(exclude or []), "self", "cls"]
 
     split_qualname = method.__qualname__.split(".")[-2:]
     method_display = ".".join(split_qualname) if "<" not in split_qualname[0] else method.__name__

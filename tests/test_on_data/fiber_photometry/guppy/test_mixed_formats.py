@@ -14,7 +14,7 @@ can be dropped in beside it without touching the shared fixture.
 import numpy as np
 import pandas
 import pytest
-from pynwb import NWBHDF5IO
+from pynwb import read_nwb
 
 from neuroconv.converters import GuppyConverter
 from neuroconv.tools.testing import generate_mock_guppy_output_folder
@@ -156,8 +156,8 @@ class TestGuppyConverterMixedEvents:
         nwbfile_path = tmp_path / "mixed_events.nwb"
         converter.run_conversion(nwbfile_path=str(nwbfile_path), metadata=metadata, overwrite=True)
 
-        with NWBHDF5IO(str(nwbfile_path), "r") as io:
-            nwbfile = io.read()
+        nwbfile = read_nwb(str(nwbfile_path))
+        try:
             assert set(nwbfile.events) == set(EVENT_NAME_TO_RAW_TABLE_NAME.values()) | {GUPPY_EVENTS_TABLE_NAME}
 
             imported_table = nwbfile.get_events_table(EVENT_NAME_TO_RAW_TABLE_NAME[IMPORTED_EVENT_NAME])
@@ -166,6 +166,8 @@ class TestGuppyConverterMixedEvents:
             np.testing.assert_allclose(
                 np.sort(imported_table.to_dataframe().timestamp.to_numpy()), IMPORTED_EVENT_ONSETS
             )
+        finally:
+            nwbfile.read_io.close()
 
     def test_a_session_whose_every_event_was_imported_reads_none_from_the_tank(self, session_folder, tmp_path):
         """With nothing left for the acquisition format, only the imported stores' interfaces are built."""

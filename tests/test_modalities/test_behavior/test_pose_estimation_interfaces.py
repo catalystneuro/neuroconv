@@ -1,4 +1,8 @@
+from datetime import datetime, timezone
+
+import numpy as np
 import pytest
+from pynwb import read_nwb
 from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv import NWBConverter
@@ -438,3 +442,54 @@ class TestPoseEstimationVideoLink:
         nwbfile = mock_NWBFile()
         with pytest.raises(ValueError, match=r"was not found in metadata\['Behavior'\]\['ExternalVideos'\]"):
             interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+
+class TestPoseEstimationTimestamps:
+    """How the series inside one container carry their times.
+
+    Every series in a container is a keypoint of the same animal on the same frames, so the times are
+    identical by construction. A regular series is stored as a rate and carries no timestamps dataset at
+    all, and an irregular one is stored once and linked, which is the case a SLEAP file produces.
+    """
+
+    def test_regular_timestamps_are_written_as_a_rate(self):
+        """Nothing is duplicated on the regular path, since no series holds a timestamps dataset."""
+        interface = MockPoseEstimationInterface(num_samples=50, num_nodes=3, metadata_key="regular_pose")
+
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile)
+
+        container = nwbfile.processing["behavior"]["regular_pose"]
+        for series in container.pose_estimation_series.values():
+            assert series.timestamps is None
+            assert series.rate is not None
+
+    def test_equal_timestamps_are_linked_in_pose_series(self, tmp_path):
+        """Every series after the first takes the first one as its ``timestamps``, in memory and on disk."""
+        interface = MockPoseEstimationInterface(
+            num_samples=50, num_nodes=3, sampling="irregular", metadata_key="irregular_pose"
+        )
+
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile)
+
+        container = nwbfile.processing["behavior"]["irregular_pose"]
+        series = list(container.pose_estimation_series.values())
+        assert len(series) == 3
+        # ``TimeSeries.timestamps`` resolves a link back to the values, so the link itself reads off the
+        # series that owns the dataset and every series still reports the same times.
+        assert series[0].timestamp_link == set(series[1:])
+        for linked_series in series:
+            assert np.array_equal(linked_series.timestamps, interface.get_timestamps())
+
+        nwbfile_path = tmp_path / "irregular_pose.nwb"
+        metadata = interface.get_metadata()
+        metadata["NWBFile"]["session_start_time"] = datetime(2026, 9, 9, tzinfo=timezone.utc)
+        interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
+
+        read_nwbfile = read_nwb(nwbfile_path)
+        read_series = read_nwbfile.processing["behavior"]["irregular_pose"].pose_estimation_series
+        assert read_series[series[0].name].timestamp_link == {read_series[other.name] for other in series[1:]}
+        for read_one in read_series.values():
+            assert np.array_equal(read_one.timestamps[:], interface.get_timestamps())
+        read_nwbfile.read_io.close()

@@ -3412,6 +3412,32 @@ class TestAddSegmentation:
                 metadata_key="my_seg",
             )
 
+    def test_default_metadata_no_traces(self):
+        """With no metadata at all, an extractor holding ROIs but no traces writes its PlaneSegmentation.
+
+        The placeholder metadata carries a RoiResponses entry under the default key, which must not be taken
+        for metadata the caller wrote.
+        """
+        nwbfile = mock_NWBFile()
+        num_rois = 5
+        segmentation_extractor = generate_dummy_segmentation_extractor(
+            num_samples=10,
+            num_rois=num_rois,
+            num_rows=15,
+            num_columns=15,
+            has_raw_signal=False,
+            has_dff_signal=False,
+            has_deconvolved_signal=False,
+            has_neuropil_signal=False,
+        )
+
+        add_segmentation_to_nwbfile(segmentation_extractor=segmentation_extractor, nwbfile=nwbfile)
+
+        ophys_module = nwbfile.processing["ophys"]
+        plane_seg = ophys_module["ImageSegmentation"].plane_segmentations["PlaneSegmentation"]
+        assert len(plane_seg.id) == num_rois
+        assert "Fluorescence" not in ophys_module.data_interfaces
+
     def test_shared_device_two_imaging_planes(self):
         """Two segmentations with different imaging planes that share the same device."""
         nwbfile = mock_NWBFile()

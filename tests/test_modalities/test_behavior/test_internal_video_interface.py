@@ -72,7 +72,7 @@ def nwb_converter(video_files):
 def metadata(nwb_converter):
     """Get and return metadata for the test converter."""
     metadata = nwb_converter.get_metadata()
-    metadata["NWBFile"].update(session_start_time=datetime.now(tz=gettz(name="US/Pacific")))
+    metadata["NWBFile"].update(session_start_time=datetime.now(tz=gettz(name="Asia/Tokyo")))
     return metadata
 
 

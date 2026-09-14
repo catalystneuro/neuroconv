@@ -23,7 +23,7 @@ Convert Micro-Manager TIFF imaging data to NWB using
     >>> # For data provenance we can add the time zone information to the conversion if missing
     >>> session_start_time = metadata["NWBFile"]["session_start_time"]
     >>> if session_start_time.tzinfo is None:
-    ...     tzinfo = ZoneInfo("US/Pacific")
+    ...     tzinfo = ZoneInfo("Asia/Tokyo")
     ...     metadata["NWBFile"].update(session_start_time=session_start_time.replace(tzinfo=tzinfo))
     >>> # Add subject information (required for DANDI upload)
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")

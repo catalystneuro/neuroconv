@@ -343,7 +343,7 @@ class MockEventsInterface(BaseEventsInterface):
         super().__init__(verbose=verbose)
         self.metadata_key = metadata_key or "mock_events"
 
-    def _event_type_source_ids(self) -> list[str]:
+    def get_event_type_source_ids(self) -> list[str]:
         # A single type keeps the plain "events" id; several are indexed so their ids (and, by default,
         # their tables and column names) stay unique.
         if self._num_event_types == 1:
@@ -354,7 +354,7 @@ class MockEventsInterface(BaseEventsInterface):
         metadata = super().get_metadata()
         metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
 
-        for index, event_type_source_id in enumerate(self._event_type_source_ids()):
+        for index, event_type_source_id in enumerate(self.get_event_type_source_ids()):
             suffix = "" if self._num_event_types == 1 else f"_{index}"
             # One branch per payload mode, spelled out in full rather than composed from shared pieces:
             # between them the modes cover the three ways the writer treats a value column, and stating
@@ -427,7 +427,7 @@ class MockEventsInterface(BaseEventsInterface):
 
         duration = 0.05 if self._event_extent == "event with duration" else None
         events_data_dict = {}
-        for index, event_type_source_id in enumerate(self._event_type_source_ids()):
+        for index, event_type_source_id in enumerate(self.get_event_type_source_ids()):
             # Stagger timestamps across types so pooling several into one table interleaves in time.
             timestamps = 0.1 * (np.arange(self._num_events) * self._num_event_types + index + 1)
             durations = np.full(self._num_events, duration) if duration is not None else None
@@ -623,6 +623,10 @@ class MockSignalEncodedEventsInterface(BaseEventsInterface):
         _validate_detection_configuration(detection_configuration, self._available_signals)
         self._detection_configuration = detection_configuration
 
+    def get_event_type_source_ids(self) -> list[str]:
+        """The event types the configuration resolves to, read from nothing."""
+        return _get_event_type_source_ids(self._detection_configuration)
+
     SIGNAL_SOURCE_ID = "word"
 
     def _default_detection_configuration(self) -> dict:
@@ -712,7 +716,7 @@ class MockSignalEncodedEventsInterface(BaseEventsInterface):
         metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
         # Derived from the configuration, so metadata costs no signal generation, does not depend on a
         # plan existing, and lists exactly what will be written, including a line that never fired.
-        for event_type_source_id in _get_event_type_source_ids(self._detection_configuration):
+        for event_type_source_id in self.get_event_type_source_ids():
             metadata["Events"][self.metadata_key]["event_types"][event_type_source_id] = {
                 "event_name": event_type_source_id
             }
@@ -1410,6 +1414,7 @@ class MockPoseEstimationInterface(BasePoseEstimationInterface):
         num_samples: int = 1000,
         num_nodes: int = 3,
         seed: int = 0,
+        sampling: Literal["regular", "irregular"] = "regular",
         verbose: bool = False,
         metadata_key: str = "MockPoseEstimation",
         pose_estimation_metadata_key: str | None = None,
@@ -1425,6 +1430,11 @@ class MockPoseEstimationInterface(BasePoseEstimationInterface):
             Number of nodes/body parts to track, by default 3.
         seed : int, optional
             Random seed for reproducible data generation, by default 0.
+        sampling : {"regular", "irregular"}, optional
+            The clock. ``"regular"`` (default) steps at 30 Hz. ``"irregular"`` draws the samples out of
+            a denser 30 Hz grid, which is the shape a SLEAP ``.slp`` has, since it labels a sparse
+            selection of the video's frames, and it is what makes the writer store a timestamps
+            dataset rather than a rate.
         verbose : bool, optional
             Control verbosity, by default False.
         metadata_key : str, default: "MockPoseEstimation"
@@ -1480,7 +1490,12 @@ class MockPoseEstimationInterface(BasePoseEstimationInterface):
         self.edges = np.array([possible_edges[i] for i in selected_edges], dtype="uint8")
 
         # Generate timestamps (private attributes)
-        self._original_timestamps = np.linspace(0.0, float(num_samples) / 30.0, num_samples)
+        if sampling == "irregular":
+            frame_times = np.arange(2 * num_samples) / 30.0
+            labeled_frames = np.random.default_rng(seed).choice(frame_times.size, size=num_samples, replace=False)
+            self._original_timestamps = frame_times[np.sort(labeled_frames)]
+        else:
+            self._original_timestamps = np.linspace(0.0, float(num_samples) / 30.0, num_samples)
         self._timestamps = np.copy(self._original_timestamps)
 
         # Generate pose estimation data
