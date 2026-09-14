@@ -66,7 +66,7 @@ class TestDANNCEConverter(TestCase):
         assert set(videos_metadata.keys()) == {"video_Camera1", "video_Camera2"}
         assert videos_metadata["video_Camera1"]["name"] == "VideoCamera1"
 
-        container = metadata["Behavior"]["Pose"]["PoseEstimations"]["PoseEstimationDANNCE"]
+        container = metadata["Pose"]["PoseEstimations"]["PoseEstimationDANNCE"]
         assert container["device_metadata_keys"] == self.camera_names
 
     def test_run_conversion(self):

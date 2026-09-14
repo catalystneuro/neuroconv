@@ -10,7 +10,7 @@ from pynwb.image import ImageSeries
 from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from ....tools import get_module
 from ....tools.nwb_helpers import _add_device_to_nwbfile
-from ....utils import DeepDict, calculate_regular_series_rate, get_base_schema
+from ....utils import DeepDict, calculate_regular_series_rate
 
 
 class DANNCEInterface(BaseTemporalAlignmentInterface):
@@ -205,7 +205,7 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
             The subject name used for linking the skeleton to the NWB subject.
         metadata_key : str, optional
             Registry key used to store this instance's pose estimation data under
-            ``metadata["Behavior"]["Pose"]["Skeletons"|"PoseEstimations"]``, and the name of the
+            ``metadata["Pose"]["Skeletons"|"PoseEstimations"]``, and the name of the
             ``MultiCameraPoseEstimation`` container written to the NWB file. When ``None``, defaults
             to ``"PoseEstimationDANNCE"``. Writing multiple sDANNCE animals to the same NWBFile
             requires a distinct ``metadata_key`` per interface instance.
@@ -414,7 +414,7 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
                     "scorer": {"type": ["string", "null"], "description": "Name of the scorer or algorithm"},
                     "skeleton_metadata_key": {
                         "type": ["string", "null"],
-                        "description": "Key of the associated skeleton in Behavior.Pose.Skeletons",
+                        "description": "Key of the associated skeleton in Pose.Skeletons",
                     },
                     "device_metadata_keys": {
                         "type": ["array", "null"],
@@ -454,21 +454,12 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
             },
         }
 
-        # `Behavior` is a shared namespace: other interfaces in the same converter (e.g.
-        # ExternalVideoInterface) may write their own top-level keys under it (e.g.
-        # `Behavior.ExternalVideos`), so this must stay open (`additionalProperties: True`) rather
-        # than declaring `Behavior` itself closed -- only `Behavior.Pose` is DANNCE's own namespace
-        # and is therefore fully specified below.
-        metadata_schema["properties"]["Behavior"] = get_base_schema(tag="Behavior")
-        metadata_schema["properties"]["Behavior"]["additionalProperties"] = True
-        metadata_schema["properties"]["Behavior"]["properties"] = {
-            "Pose": {
-                "type": "object",
-                "properties": {
-                    "Skeletons": skeleton_schema,
-                    "PoseEstimations": pose_estimations_schema,
-                },
-            }
+        metadata_schema["properties"]["Pose"] = {
+            "type": "object",
+            "properties": {
+                "Skeletons": skeleton_schema,
+                "PoseEstimations": pose_estimations_schema,
+            },
         }
 
         return metadata_schema
@@ -510,14 +501,14 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
                 "confidence_definition": "Maximum probability from the 3D probability volume.",
             }
 
-        metadata["Behavior"]["Pose"]["Skeletons"][metadata_key] = {
+        metadata["Pose"]["Skeletons"][metadata_key] = {
             "name": skeleton_name,
             "nodes": list(self._landmark_names),
             "edges": [],
             "subject": self.subject_name,
         }
 
-        metadata["Behavior"]["Pose"]["PoseEstimations"][metadata_key] = {
+        metadata["Pose"]["PoseEstimations"][metadata_key] = {
             "name": metadata_key,
             "description": "3D keypoint coordinates estimated using DANNCE.",
             "source_software": "DANNCE",
@@ -642,8 +633,8 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
             default_metadata.deep_update(metadata)
 
         metadata_key = self.metadata_key or "PoseEstimationDANNCE"
-        skeletons_registry = default_metadata["Behavior"]["Pose"]["Skeletons"]
-        pose_estimations_registry = default_metadata["Behavior"]["Pose"]["PoseEstimations"]
+        skeletons_registry = default_metadata["Pose"]["Skeletons"]
+        pose_estimations_registry = default_metadata["Pose"]["PoseEstimations"]
         container_metadata = pose_estimations_registry[metadata_key]
 
         # Get timestamps (sliced when stub_test=True)

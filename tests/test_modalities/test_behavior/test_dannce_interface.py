@@ -250,7 +250,7 @@ class TestDANNCEInterfaceMetadata:
         metadata = interface.get_metadata()
 
         assert "Devices" in metadata
-        pose = metadata["Behavior"]["Pose"]
+        pose = metadata["Pose"]
         assert "Skeletons" in pose
         assert "PoseEstimations" in pose
 
@@ -259,7 +259,7 @@ class TestDANNCEInterfaceMetadata:
         interface = DANNCEInterface(file_path=file_path, sampling_rate=30.0)
         metadata = interface.get_metadata()
 
-        container = metadata["Behavior"]["Pose"]["PoseEstimations"]["PoseEstimationDANNCE"]
+        container = metadata["Pose"]["PoseEstimations"]["PoseEstimationDANNCE"]
         assert container["source_software"] == "DANNCE"
         assert container["name"] == "PoseEstimationDANNCE"
 
@@ -274,7 +274,7 @@ class TestDANNCEInterfaceMetadata:
         interface = DANNCEInterface(file_path=file_path, sampling_rate=30.0, metadata_key="CustomDANNCE")
         metadata = interface.get_metadata()
 
-        assert "CustomDANNCE" in metadata["Behavior"]["Pose"]["PoseEstimations"]
+        assert "CustomDANNCE" in metadata["Pose"]["PoseEstimations"]
 
 
 class TestDANNCEInterfaceCalibration:
@@ -716,7 +716,7 @@ class TestDANNCEInterfaceConversion:
         interface = DANNCEInterface(file_path=file_path, sampling_rate=30.0)
 
         metadata = interface.get_metadata()
-        container = metadata["Behavior"]["Pose"]["PoseEstimations"]["PoseEstimationDANNCE"]
+        container = metadata["Pose"]["PoseEstimations"]["PoseEstimationDANNCE"]
         container["description"] = "3D keypoint coordinates estimated using sDANNCE (social DANNCE)."
         container["source_software"] = "sDANNCE"
         container["scorer"] = "sDANNCE"

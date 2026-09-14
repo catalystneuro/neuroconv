@@ -1284,7 +1284,7 @@ class TestDANNCEInterface(DataInterfaceTestMixin, TemporalAlignmentMixin):
 
         assert device_name in metadata["Devices"]
 
-        pose_metadata = metadata["Behavior"]["Pose"]
+        pose_metadata = metadata["Pose"]
 
         # Check Skeletons
         assert metadata_key in pose_metadata["Skeletons"]
@@ -1355,7 +1355,7 @@ class TestDANNCEInterfaceWithCalibration(DataInterfaceTestMixin, TemporalAlignme
         assert "Camera1" in metadata["Devices"]
         assert "Camera2" in metadata["Devices"]
 
-        container = metadata["Behavior"]["Pose"]["PoseEstimations"]["PoseEstimationDANNCE"]
+        container = metadata["Pose"]["PoseEstimations"]["PoseEstimationDANNCE"]
         assert container["device_metadata_keys"] == ["Camera1", "Camera2"]
 
     def check_read_nwb(self, nwbfile_path: str):
@@ -1392,9 +1392,9 @@ class TestDANNCEInterfaceMultiAnimal(DataInterfaceTestMixin, TemporalAlignmentMi
     save_directory = OUTPUT_PATH
 
     def check_extracted_metadata(self, metadata: dict):
-        container = metadata["Behavior"]["Pose"]["PoseEstimations"]["PoseEstimationRat2"]
+        container = metadata["Pose"]["PoseEstimations"]["PoseEstimationRat2"]
         assert container["name"] == "PoseEstimationRat2"
-        skeleton = metadata["Behavior"]["Pose"]["Skeletons"]["PoseEstimationRat2"]
+        skeleton = metadata["Pose"]["Skeletons"]["PoseEstimationRat2"]
         assert skeleton["subject"] == "rat2"
 
     def check_read_nwb(self, nwbfile_path: str):
