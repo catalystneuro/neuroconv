@@ -1269,7 +1269,7 @@ class TestDeepLabCutInterfaceGetAvailableSubjects:
     ndx_pose_version < version.parse("0.3.0"),
     reason="Interface requires ndx-pose version >= 0.3.0",
 )
-class TestDANNCEInterface(DataInterfaceTestMixin, TemporalAlignmentMixin):
+class TestDANNCEInterface(PoseEstimationInterfaceTestMixin, TemporalAlignmentMixin):
     data_interface_cls = DANNCEInterface
     interface_kwargs = dict(
         file_path=str(BEHAVIOR_DATA_PATH / "dannce" / "save_data_MAX.mat"),
@@ -1344,7 +1344,7 @@ class TestDANNCEInterface(DataInterfaceTestMixin, TemporalAlignmentMixin):
     ndx_pose_version < version.parse("0.3.0"),
     reason="Interface requires ndx-pose version >= 0.3.0",
 )
-class TestDANNCEInterfaceWithCalibration(DataInterfaceTestMixin, TemporalAlignmentMixin):
+class TestDANNCEInterfaceWithCalibration(PoseEstimationInterfaceTestMixin, TemporalAlignmentMixin):
     """Real-data coverage for the DANNCE-specific multi-camera + calibration-parsing path, which
     the plain `TestDANNCEInterface` above (single camera, no calibration) does not exercise."""
 
@@ -1386,7 +1386,7 @@ class TestDANNCEInterfaceWithCalibration(DataInterfaceTestMixin, TemporalAlignme
     ndx_pose_version < version.parse("0.3.0"),
     reason="Interface requires ndx-pose version >= 0.3.0",
 )
-class TestDANNCEInterfaceMultiAnimal(DataInterfaceTestMixin, TemporalAlignmentMixin):
+class TestDANNCEInterfaceMultiAnimal(PoseEstimationInterfaceTestMixin, TemporalAlignmentMixin):
     """Real-data coverage for the multi-animal sDANNCE path (4D 'pred', selected via
     animal_index), which the plain `TestDANNCEInterface` above (3D 'pred') does not exercise."""
 
