@@ -24,9 +24,8 @@ class TestFacemapInterface(DataInterfaceTestMixin, TemporalAlignmentMixin, unitt
     interface_kwargs = dict(
         mat_file_path=str(BEHAVIOR_DATA_PATH / "Facemap" / "facemap_output_test.mat"),
         video_file_path=str(BEHAVIOR_DATA_PATH / "Facemap" / "raw_behavioral_video.avi"),
-        first_n_components=3,
     )
-    conversion_options = dict()
+    conversion_options = dict(first_n_components=3)
     save_directory = OUTPUT_PATH
 
     @classmethod
@@ -70,11 +69,11 @@ class TestFacemapInterface(DataInterfaceTestMixin, TemporalAlignmentMixin, unitt
     def check_extracted_metadata(self, metadata: dict):
 
         self.assertIn(self.eye_tracking_module, metadata["Behavior"])
-        self.assertEqual(self.eye_com_expected_metadata, metadata["Behavior"]["EyeTracking"])
+        self.assertEqual(self.eye_com_expected_metadata, metadata["Behavior"]["EyeTracking"][0])
 
         self.assertIn(self.pupil_tracking_module, metadata["Behavior"])
-        self.assertEqual(self.pupil_area_expected_metadata, metadata["Behavior"]["PupilTracking"]["area"])
-        self.assertEqual(self.pupil_area_raw_expected_metadata, metadata["Behavior"]["PupilTracking"]["area_raw"])
+        self.assertEqual(self.pupil_area_expected_metadata, metadata["Behavior"]["PupilTracking"][0])
+        self.assertEqual(self.pupil_area_raw_expected_metadata, metadata["Behavior"]["PupilTracking"][1])
 
         self.assertIn(self.motion_masks_module, metadata["Behavior"])
         self.assertEqual(self.motion_masks_expected_metadata, metadata["Behavior"]["MotionSVDMasks"])
