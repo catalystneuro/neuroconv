@@ -232,3 +232,32 @@ class TestSegmentationWithoutData:
         nwbfile = interface.create_nwbfile()
 
         assert "SegmentationImages" in nwbfile.processing["ophys"].data_interfaces
+
+
+class TestImagingInterfaceWithoutMetadataKey:
+    """A direct subclass of the imaging base that leaves ``metadata_key`` alone, as a downstream package might."""
+
+    @staticmethod
+    def _make_interface():
+        from neuroconv.datainterfaces.ophys.baseimagingextractorinterface import BaseImagingExtractorInterface
+
+        class MinimalImagingInterface(BaseImagingExtractorInterface):
+            @classmethod
+            def get_extractor_class(cls):
+                from roiextractors.testing import generate_dummy_imaging_extractor
+
+                return generate_dummy_imaging_extractor
+
+        return MinimalImagingInterface(num_samples=5, num_rows=4, num_columns=4)
+
+    def test_metadata_is_keyed_the_way_the_writer_looks_it_up(self):
+        interface = self._make_interface()
+        assert interface.metadata_key is None
+        metadata = interface.get_metadata()
+        assert list(metadata["Ophys"]["MicroscopySeries"]) == ["default_metadata_key"]
+
+    def test_add_to_nwbfile_writes_the_series(self):
+        interface = self._make_interface()
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
+        assert "MicroscopySeries" in nwbfile.acquisition
