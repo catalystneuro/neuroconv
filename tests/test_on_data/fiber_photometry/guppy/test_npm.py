@@ -156,6 +156,7 @@ class TestGuppyConverterNPMInterleaved(NPMConverterTestMixin):
                 "file": "signals.csv",
                 "excitation_wavelength_in_nm": wavelength,
                 "data_column": f"Region{index}G",
+                "timestamp_column": "Timestamp",
             }
             for wavelength in (415, 470)
             for index in (0, 1, 2)
@@ -199,6 +200,7 @@ class TestGuppyConverterNPMTwoClocks(NPMConverterTestMixin):
                 "file": "signals.csv",
                 "excitation_wavelength_in_nm": wavelength,
                 "data_column": f"G{index}",
+                "timestamp_column": "ComputerTimestamp",
             }
             for wavelength in (415, 470)
             for index in (0, 1, 2, 3)
@@ -251,6 +253,7 @@ class TestGuppyConverterNPMHeaderless(NPMConverterTestMixin):
                 "excitation_wavelength_in_nm": None,
                 "interleave_position": position,
                 "data_column": column,
+                "timestamp_column": 0,
             }
             for slot, position in (("chev", 0), ("chod", 1))
             for column in (1, 2, 3)
@@ -390,13 +393,14 @@ class TestNPMStoreDecoding:
     # -- the recorded path ---------------------------------------------------------------
 
     def test_a_recorded_store_is_read_as_given(self, session_folder):
-        """The record names the file, excitation and column, so nothing is derived from the name."""
+        """The record names the file, excitation, column and clock, so nothing is derived."""
         shutil.copy(NPM_FOLDER / "multi_timestamp" / "signals.csv", session_folder / "signals.csv")
         store_provenance = {
             "anything_at_all": {
                 "file": "signals.csv",
                 "excitation_wavelength_in_nm": 470,
                 "data_column": "G0",
+                "timestamp_column": "ComputerTimestamp",
             }
         }
 
@@ -407,7 +411,34 @@ class TestNPMStoreDecoding:
         assert demux["file_path"].name == "signals.csv"
         assert demux["excitation_wavelength_in_nm"] == 470
         assert demux["data_column"] == "G0"
-        assert demux["timestamps_column"] == "SystemTimestamp"
+        # The file's first timestamp column is SystemTimestamp; the record names the other one, and
+        # the record is what GuPPy actually read.
+        assert demux["timestamps_column"] == "ComputerTimestamp"
+
+    def test_the_recorded_clock_beats_the_session_wide_choice(self, session_folder):
+        """A file offering one clock is read on that one, whatever the session named."""
+        shutil.copy(
+            NPM_FOLDER / "multi_led_state_per_wavelength" / "digital_input_transition.csv",
+            session_folder / "signals.csv",
+        )
+        store_provenance = {
+            "signals_470nm_Region0G": {
+                "file": "signals.csv",
+                "excitation_wavelength_in_nm": 470,
+                "data_column": "Region0G",
+                "timestamp_column": "Timestamp",
+            }
+        }
+
+        demux = npm_store_to_demux(
+            session_folder,
+            "signals_470nm_Region0G",
+            number_of_channels=2,
+            store_provenance=store_provenance,
+            timestamp_column_name="ComputerTimestamp",
+        )
+
+        assert demux["timestamps_column"] == "Timestamp"
 
     def test_a_recorded_store_that_cycles_by_position_carries_its_slot(self, session_folder):
         shutil.copy(
@@ -420,6 +451,7 @@ class TestNPMStoreDecoding:
                 "excitation_wavelength_in_nm": None,
                 "interleave_position": 1,
                 "data_column": 2,
+                "timestamp_column": 0,
             }
         }
 
@@ -441,6 +473,7 @@ class TestNPMStoreDecoding:
                 "file": "elsewhere.csv",
                 "excitation_wavelength_in_nm": 470,
                 "data_column": "G0",
+                "timestamp_column": "SystemTimestamp",
             }
         }
 
@@ -464,6 +497,18 @@ class TestNPMStoreDecoding:
         assert demux["excitation_wavelength_in_nm"] == 415
 
     # -- the legacy path -----------------------------------------------------------------
+
+    def test_a_legacy_store_takes_the_session_wide_clock(self, session_folder):
+        """With no record to name one, the run's own choice stands, else the file's first."""
+        shutil.copy(NPM_FOLDER / "multi_timestamp" / "signals.csv", session_folder / "signals.csv")
+
+        named = npm_store_to_demux(
+            session_folder, "file0_chev1", number_of_channels=2, timestamp_column_name="ComputerTimestamp"
+        )
+        unnamed = npm_store_to_demux(session_folder, "file0_chev1", number_of_channels=2)
+
+        assert named["timestamps_column"] == "ComputerTimestamp"
+        assert unnamed["timestamps_column"] == "SystemTimestamp"
 
     def test_event_file_occupies_a_file_index(self, session_folder):
         """A legacy name indexes every surviving CSV, so an event file sorting first shifts them."""

@@ -74,7 +74,10 @@ def npm_run_parameters(guppy_folder_path: DirectoryPath) -> dict:
     raw file. GuPPy records them in a ``.npm_params.json`` beside ``storesList.csv``; runs written
     before it recorded the channel count there carry it in ``GuPPyParamtersUsed.json`` instead.
 
-    The clock and the unit are session-wide: GuPPy applies one unit to every stream it decomposes.
+    The unit is session-wide: GuPPy applies one to every stream it decomposes. The clock is not --
+    a file offering a single timestamp column is read on that one -- so ``timestamp_column_name`` is
+    the run's choice rather than what any store was read on, and only a store with no record of its
+    own falls back to it.
     """
     import json
 
@@ -121,16 +124,12 @@ def npm_source_files(folder_path: DirectoryPath) -> list:
     return [path for path in candidates if not is_event_csv(path)]
 
 
-def _npm_file_header(file_path) -> tuple[bool, str | int | None]:
-    """Return whether an NPM file is header-less, and the first timestamp column it offers."""
+def _npm_file_is_headerless(file_path) -> bool:
+    """Return whether an NPM file carries a text header, which is how GuPPy classifies one."""
     import pandas
 
     dataframe = pandas.read_csv(file_path, index_col=False, nrows=1)
-    headerless = any(_parses_as_float(column) for column in dataframe.columns)
-    if headerless:
-        return True, 0
-    timestamp_columns = [column for column in dataframe.columns if "timestamp" in str(column).lower()]
-    return False, timestamp_columns[0] if timestamp_columns else None
+    return any(_parses_as_float(column) for column in dataframe.columns)
 
 
 def _npm_store_from_provenance(folder_path: DirectoryPath, store_id: str, record: dict, number_of_channels) -> dict:
@@ -140,7 +139,6 @@ def _npm_store_from_provenance(folder_path: DirectoryPath, store_id: str, record
         f"The run folder records store '{store_id}' as read from '{record['file']}', which is not in "
         f"'{folder_path}'. The raw session folder and the GuPPy output folder have to belong together."
     )
-    headerless, first_timestamp_column = _npm_file_header(file_path)
     wavelength = record["excitation_wavelength_in_nm"]
     if wavelength is None:
         assert number_of_channels is not None, (
@@ -149,24 +147,30 @@ def _npm_store_from_provenance(folder_path: DirectoryPath, store_id: str, record
         )
     return dict(
         file_path=file_path,
-        headerless=headerless,
+        headerless=_npm_file_is_headerless(file_path),
         excitation_wavelength_in_nm=wavelength,
         slot_index=record.get("interleave_position"),
         num_channels=None if wavelength is not None else number_of_channels,
         data_column=record["data_column"],
-        timestamps_column=first_timestamp_column,
+        # Which clock GuPPy read is a per-file resolution, not the session-wide choice: a file
+        # offering a single timestamp column is read on that one whatever the session names.
+        timestamps_column=record["timestamp_column"],
     )
 
 
-def _npm_store_from_legacy_name(folder_path: DirectoryPath, store_id: str, number_of_channels) -> dict:
+def _npm_store_from_legacy_name(
+    folder_path: DirectoryPath, store_id: str, number_of_channels, timestamp_column_name
+) -> dict:
     """Resolve a store written before GuPPy recorded what it demultiplexed.
 
     Such a run names its stores ``file<N>_ch<ev|od|pr><column>``, where every part is positional:
     ``file<N>`` indexes :func:`npm_source_files`, ``ch<slot>`` is an ordinal into the LED states
     sorted ascending and sampled from rows 2-11 so the startup frame is skipped, and the trailing
     number indexes the columns left after GuPPy canonicalized the timestamps and dropped
-    ``FrameCounter`` and the state column. Reading one back means reproducing that arithmetic,
-    which is why GuPPy now records the answer instead.
+    ``FrameCounter`` and the state column. The clock is positional too: the session-wide
+    ``npm_timestamp_column_name`` where the run recorded one, and the file's first timestamp column
+    otherwise. Reading one back means reproducing that arithmetic, which is why GuPPy now records the
+    answer instead.
     """
     import numpy
     import pandas
@@ -200,6 +204,8 @@ def _npm_store_from_legacy_name(folder_path: DirectoryPath, store_id: str, numbe
             slot_index=slot_ordinal,
             num_channels=number_of_channels,
             data_column=column_position,
+            # Nothing names these columns, so the timestamps are the leading one whatever the
+            # session-wide choice names.
             timestamps_column=0,
         )
 
@@ -244,12 +250,17 @@ def _npm_store_from_legacy_name(folder_path: DirectoryPath, store_id: str, numbe
         slot_index=None,
         num_channels=None,
         data_column=remaining[column_position],
-        timestamps_column=timestamp_columns[0] if timestamp_columns else None,
+        timestamps_column=timestamp_column_name or (timestamp_columns[0] if timestamp_columns else None),
     )
 
 
 def npm_store_to_demux(
-    folder_path: DirectoryPath, store_id: str, *, number_of_channels: int, store_provenance: dict | None = None
+    folder_path: DirectoryPath,
+    store_id: str,
+    *,
+    number_of_channels: int,
+    store_provenance: dict | None = None,
+    timestamp_column_name: str | None = None,
 ) -> dict:
     """Resolve a GuPPy NPM store to the file, channel and column it was demultiplexed from.
 
@@ -270,18 +281,21 @@ def npm_store_to_demux(
     store_provenance : dict, optional
         What the run folder records about its stores, from :func:`npm_run_parameters`. Empty or
         ``None`` for a run predating that record, which takes the decoding path.
+    timestamp_column_name : str, optional
+        The run's ``npm_timestamp_column_name``, used only on the decoding path: a recorded store
+        names the clock it was read on itself.
 
     Returns
     -------
     dict
         The file, whether it has a header, the excitation wavelength (``None`` where the channels
         cycle by row position, with ``slot_index`` and ``num_channels`` instead), the data column,
-        and the file's first timestamp column.
+        and the timestamps column, ready to read as they are.
     """
     record = (store_provenance or dict()).get(store_id)
     if record is not None:
         return _npm_store_from_provenance(folder_path, store_id, record, number_of_channels)
-    return _npm_store_from_legacy_name(folder_path, store_id, number_of_channels)
+    return _npm_store_from_legacy_name(folder_path, store_id, number_of_channels, timestamp_column_name)
 
 
 def build_npm_acquisition_interface(
@@ -334,6 +348,7 @@ def build_npm_acquisition_interface(
             store_id,
             number_of_channels=run_parameters["number_of_channels"],
             store_provenance=run_parameters["store_provenance"],
+            timestamp_column_name=run_parameters["timestamp_column_name"],
         )
         for store_id in store_ids
     ]
@@ -346,7 +361,7 @@ def build_npm_acquisition_interface(
     )
     first = demuxes[0]
     time_unit = run_parameters["time_unit"]
-    timestamps_column = run_parameters["timestamp_column_name"] or first["timestamps_column"]
+    timestamps_column = first["timestamps_column"]
 
     if first["excitation_wavelength_in_nm"] is None:
         # The file names no LED, so reproduce GuPPy's blind stride. skip_rows carries the cycle
