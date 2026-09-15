@@ -124,12 +124,14 @@ def npm_source_files(folder_path: DirectoryPath) -> list:
     return [path for path in candidates if not is_event_csv(path)]
 
 
-def _npm_file_is_headerless(file_path) -> bool:
-    """Return whether an NPM file carries a text header, which is how GuPPy classifies one."""
-    import pandas
-
-    dataframe = pandas.read_csv(file_path, index_col=False, nrows=1)
-    return any(_parses_as_float(column) for column in dataframe.columns)
+def _npm_channel_label(demux: dict) -> str:
+    """Describe the file and channel a resolved store came from, for a failure message."""
+    channel = (
+        f"cycle position {demux['slot_index']}"
+        if demux["excitation_wavelength_in_nm"] is None
+        else f"{demux['excitation_wavelength_in_nm']} nm"
+    )
+    return f"{demux['file_path'].name} {channel}"
 
 
 def _npm_store_from_provenance(folder_path: DirectoryPath, store_id: str, record: dict, number_of_channels) -> dict:
@@ -147,7 +149,6 @@ def _npm_store_from_provenance(folder_path: DirectoryPath, store_id: str, record
         )
     return dict(
         file_path=file_path,
-        headerless=_npm_file_is_headerless(file_path),
         excitation_wavelength_in_nm=wavelength,
         slot_index=record.get("interleave_position"),
         num_channels=None if wavelength is not None else number_of_channels,
@@ -199,7 +200,6 @@ def _npm_store_from_legacy_name(
         )
         return dict(
             file_path=file_path,
-            headerless=True,
             excitation_wavelength_in_nm=None,
             slot_index=slot_ordinal,
             num_channels=number_of_channels,
@@ -245,7 +245,6 @@ def _npm_store_from_legacy_name(
     )
     return dict(
         file_path=file_path,
-        headerless=False,
         excitation_wavelength_in_nm=_NPM_EXCITATION_CODE_TO_WAVELENGTH[excitation_code],
         slot_index=None,
         num_channels=None,
@@ -288,9 +287,9 @@ def npm_store_to_demux(
     Returns
     -------
     dict
-        The file, whether it has a header, the excitation wavelength (``None`` where the channels
-        cycle by row position, with ``slot_index`` and ``num_channels`` instead), the data column,
-        and the timestamps column, ready to read as they are.
+        The file, the excitation wavelength (``None`` where the channels cycle by row position, with
+        ``slot_index`` and ``num_channels`` instead), the data column, and the timestamps column,
+        ready to read as they are.
     """
     record = (store_provenance or dict()).get(store_id)
     if record is not None:
@@ -356,21 +355,23 @@ def build_npm_acquisition_interface(
     # only the column may differ between recording sites.
     distinct = {(demux["file_path"], demux["excitation_wavelength_in_nm"], demux["slot_index"]) for demux in demuxes}
     assert len(distinct) == 1, (
-        f"The '{metadata_key}' stores {store_ids} do not share one NPM file and channel "
-        f"({sorted(distinct)}), so they cannot be written as one series."
+        f"The '{metadata_key}' stores do not share one NPM file and channel "
+        f"({[f'{store_id}: {_npm_channel_label(demux)}' for store_id, demux in zip(store_ids, demuxes)]}), "
+        f"so they cannot be written as one series."
     )
     first = demuxes[0]
     time_unit = run_parameters["time_unit"]
     timestamps_column = first["timestamps_column"]
 
     if first["excitation_wavelength_in_nm"] is None:
-        # The file names no LED, so reproduce GuPPy's blind stride. skip_rows carries the cycle
-        # position rather than index, which the demux validates against the channel count.
+        # The file names no LED, so reproduce GuPPy's blind stride, whose index is the position in
+        # the cycle. StrideDemux bounds that below the channel count, so a position the cycle has no
+        # room for is refused rather than read as another channel's rows.
         return CSVFiberPhotometryInterface(
             file_path=first["file_path"],
             data_columns=[demux["data_column"] for demux in demuxes],
             timestamps_column=timestamps_column,
-            demux_configuration=StrideDemux(channels=first["num_channels"], index=0, skip_rows=first["slot_index"]),
+            demux_configuration=StrideDemux(channels=first["num_channels"], index=first["slot_index"]),
             time_unit=time_unit,
             metadata_key=metadata_key,
             verbose=verbose,

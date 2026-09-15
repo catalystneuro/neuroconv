@@ -22,6 +22,7 @@ import shutil
 import numpy as np
 import pandas
 import pytest
+from pydantic import ValidationError
 
 from neuroconv.converters import GuppyConverter
 from neuroconv.datainterfaces.events.csv_events.csveventsdatainterface import (
@@ -31,6 +32,7 @@ from neuroconv.datainterfaces.fiber_photometry.csv.csvfiberphotometrydatainterfa
     CSVFiberPhotometryInterface,
 )
 from neuroconv.datainterfaces.fiber_photometry.guppy.npm_utils import (
+    build_npm_acquisition_interface,
     npm_run_parameters,
     npm_source_files,
     npm_store_to_demux,
@@ -459,11 +461,53 @@ class TestNPMStoreDecoding:
             session_folder, "signals_chod2", number_of_channels=2, store_provenance=store_provenance
         )
 
-        assert demux["headerless"] is True
         assert demux["slot_index"] == 1
         assert demux["num_channels"] == 2
         assert demux["data_column"] == 2
         assert demux["timestamps_column"] == 0
+
+    def test_a_cycle_position_the_interleave_has_no_room_for_is_refused(self, session_folder):
+        """Position 2 of a two-channel cycle would otherwise be read as position 0's rows."""
+        shutil.copy(
+            NPM_FOLDER / "no_header_no_state_column" / "three_regions_milliseconds.csv",
+            session_folder / "signals.csv",
+        )
+        store_provenance = {
+            "signals_chpr2": {
+                "file": "signals.csv",
+                "excitation_wavelength_in_nm": None,
+                "interleave_position": 2,
+                "data_column": 2,
+                "timestamp_column": 0,
+            }
+        }
+        guppy_output_folder = generate_mock_guppy_output_folder(
+            session_folder.parent / "session_output_1",
+            recording_site_to_stores={"roi01": {"signal": "signals_chpr2", "control": "signals_chpr2"}},
+            event_store_to_name={"event0": "ttl"},
+            cross_correlation_pairs=(),
+        )
+        (guppy_output_folder / ".npm_params.json").write_text(
+            json.dumps(
+                {
+                    "npm_split_events": [False, False],
+                    "npm_time_unit": "milliseconds",
+                    "npm_timestamp_column_name": None,
+                    "noChannels": 2,
+                    "stores": store_provenance,
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        with pytest.raises(ValidationError, match="must be < channels"):
+            build_npm_acquisition_interface(
+                folder_path=session_folder,
+                guppy_folder_path=guppy_output_folder,
+                store_ids=["signals_chpr2"],
+                metadata_key="FiberPhotometry_signal",
+                verbose=False,
+            )
 
     def test_a_recorded_store_naming_an_absent_file_raises(self, session_folder):
         """The raw folder and the GuPPy output folder have to be the pair they were written as."""
