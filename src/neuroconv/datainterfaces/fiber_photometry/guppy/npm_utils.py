@@ -273,7 +273,9 @@ def npm_store_to_demux(
         The run's ``noChannels``, needed only where the channels cycle by row position.
     store_provenance : dict, optional
         What the run folder records about its stores, from :func:`npm_run_parameters`. Empty or
-        ``None`` for a run predating that record, which takes the decoding path.
+        ``None`` for a run predating that record, which takes the decoding path; where it is
+        present it has to name every store, since a run that recorded its stores recorded all of
+        them.
     timestamp_column_name : str, optional
         The run's ``npm_timestamp_column_name``, used only on the decoding path.
 
@@ -284,10 +286,15 @@ def npm_store_to_demux(
         ``slot_index`` and ``num_channels`` instead), the data column, and the timestamps column,
         ready to read as they are.
     """
-    record = (store_provenance or dict()).get(store_id)
-    if record is not None:
-        return _npm_store_from_provenance(folder_path, store_id, record, number_of_channels)
-    return _npm_store_from_legacy_name(folder_path, store_id, number_of_channels, timestamp_column_name)
+    if not store_provenance:
+        return _npm_store_from_legacy_name(folder_path, store_id, number_of_channels, timestamp_column_name)
+    record = store_provenance.get(store_id)
+    assert record is not None, (
+        f"The run folder records what its stores were demultiplexed from but says nothing about "
+        f"'{store_id}', naming {sorted(store_provenance)} instead. Its 'storesList.csv' and its "
+        f"'.npm_params.json' describe different stores, so they were not written by one run."
+    )
+    return _npm_store_from_provenance(folder_path, store_id, record, number_of_channels)
 
 
 def build_npm_acquisition_interface(
@@ -300,17 +307,17 @@ def build_npm_acquisition_interface(
 ):
     """Build the interface writing one series from the ordered ``store_ids``.
 
-    Each store name is decoded back into the file, channel and column GuPPy demultiplexed it from.
-    Which interface reads them follows from the name: a store naming an excitation wavelength is
-    read by selecting that LED's frames, while one naming a cycle position came from a file with no
-    state column to select on, so GuPPy's blind stride is reproduced through the generic CSV
-    interface instead.
+    Each store is resolved to the file, channel and column GuPPy demultiplexed it from -- see
+    :func:`npm_store_to_demux`. Which interface reads them follows from what that resolves to: a
+    store lit by a named excitation wavelength is read by selecting that LED's frames, while one
+    carrying a cycle position came from a file with no state column to select on, so GuPPy's blind
+    stride is reproduced through the generic CSV interface instead.
 
     Parameters
     ----------
     folder_path : DirectoryPath
-        Path to the GuPPy session folder itself, since ``file<N>`` store names index that folder's
-        CSVs in sorted order.
+        Path to the raw session folder holding the acquisition CSVs, which a recorded store names by
+        file name and a legacy ``file<N>`` name indexes in sorted order.
     guppy_folder_path : DirectoryPath
         Path to the GuPPy ``<session>_output_<N>`` folder, for the run settings that leave no mark on
         the raw files -- see :func:`npm_run_parameters`.

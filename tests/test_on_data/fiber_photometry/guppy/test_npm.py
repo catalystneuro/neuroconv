@@ -524,19 +524,21 @@ class TestNPMStoreDecoding:
                 session_folder, "elsewhere_470nm_G0", number_of_channels=2, store_provenance=store_provenance
             )
 
-    def test_a_store_missing_from_the_record_falls_through_to_the_names(self, session_folder):
-        """A record that does not mention a store says nothing about it, so it is decoded."""
+    def test_a_store_missing_from_the_record_raises(self, session_folder):
+        """A run folder that records its stores records all of them, so an absence is a mismatch.
+
+        The name would decode on the older path, which is what makes falling through to it wrong:
+        it resolves against arithmetic the run that wrote this folder no longer used.
+        """
         shutil.copy(NPM_FOLDER / "multi_timestamp" / "signals.csv", session_folder / "signals.csv")
 
-        demux = npm_store_to_demux(
-            session_folder,
-            "file0_chev1",
-            number_of_channels=2,
-            store_provenance={"some_other_store": {"file": "signals.csv", "excitation_wavelength_in_nm": 415}},
-        )
-
-        assert demux["file_path"].name == "signals.csv"
-        assert demux["excitation_wavelength_in_nm"] == 415
+        with pytest.raises(AssertionError, match="says nothing about 'file0_chev1'"):
+            npm_store_to_demux(
+                session_folder,
+                "file0_chev1",
+                number_of_channels=2,
+                store_provenance={"some_other_store": {"file": "signals.csv", "excitation_wavelength_in_nm": 415}},
+            )
 
     # -- the legacy path -----------------------------------------------------------------
 
