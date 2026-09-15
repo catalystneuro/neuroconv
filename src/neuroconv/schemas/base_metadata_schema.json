@@ -161,6 +161,10 @@
         "strain": {
           "type": "string",
           "description": "The strain of the subject, e.g., 'C57BL/6J'"
+        },
+        "ontology": {
+          "type": "object",
+          "description": "Ontology terms for Subject values, keyed by the value they annotate (e.g. 'species'). Each term is an explicit {'id': <CURIE>, 'uri': <resolvable URI>} dict, or a list of them. Populated by neuroconv.tools.ontology.infer_species_ontology_metadata and written into the file as HERD references."
         }
       }
     },
