@@ -93,16 +93,15 @@ def get_default_dataset_io_configurations(
         A summary of each detected object that can be wrapped in a hdmf.DataIO.
     """
 
-    DatasetIOConfigurationClass = DATASET_IO_CONFIGURATIONS[backend]
-
     if backend is None and nwbfile.read_io is None:
         raise ValueError(
             "Keyword argument `backend` (either 'hdf5' or 'zarr') must be specified if the `nwbfile` was not "
             "read from an existing file!"
         )
-    if backend is None and nwbfile.read_io is not None and nwbfile.read_io.mode not in ("r+", "a"):
+    if backend is None and nwbfile.read_io is not None and _get_io_mode(io=nwbfile.read_io) not in ("r+", "a"):
         raise ValueError(
-            "Keyword argument `backend` (either 'hdf5' or 'zarr') must be specified if the `nwbfile` is being appended."
+            "Keyword argument `backend` (either 'hdf5' or 'zarr') must be specified if the `nwbfile` was read "
+            "from an existing file without opening it for appending (mode 'r+' or 'a')!"
         )
 
     detected_backend = None
@@ -120,6 +119,9 @@ def get_default_dataset_io_configurations(
             f"Detected backend '{detected_backend}' for appending file, but specified `backend` "
             f"({backend}) does not match! Set `backend=None` or remove the keyword argument to allow it to auto-detect."
         )
+
+    # Looked up only now: ``backend`` may have been None on the way in and resolved by the detection above.
+    DatasetIOConfigurationClass = DATASET_IO_CONFIGURATIONS[backend]
 
     known_dataset_fields = ("data", "timestamps")
     builder = _get_nwbfile_builder(nwbfile=nwbfile)
