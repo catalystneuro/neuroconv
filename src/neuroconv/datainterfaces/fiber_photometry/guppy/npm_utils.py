@@ -74,10 +74,8 @@ def npm_run_parameters(guppy_folder_path: DirectoryPath) -> dict:
     raw file. GuPPy records them in a ``.npm_params.json`` beside ``storesList.csv``; runs written
     before it recorded the channel count there carry it in ``GuPPyParamtersUsed.json`` instead.
 
-    The unit is session-wide: GuPPy applies one to every stream it decomposes. The clock is not --
-    a file offering a single timestamp column is read on that one -- so ``timestamp_column_name`` is
-    the run's choice rather than what any store was read on, and only a store with no record of its
-    own falls back to it.
+    The unit is session-wide: GuPPy applies one to every stream it decomposes. ``timestamp_column_name``
+    is the run's choice rather than the clock any particular store was read on.
     """
     import json
 
@@ -153,8 +151,6 @@ def _npm_store_from_provenance(folder_path: DirectoryPath, store_id: str, record
         slot_index=record.get("interleave_position"),
         num_channels=None if wavelength is not None else number_of_channels,
         data_column=record["data_column"],
-        # Which clock GuPPy read is a per-file resolution, not the session-wide choice: a file
-        # offering a single timestamp column is read on that one whatever the session names.
         timestamps_column=record["timestamp_column"],
     )
 
@@ -170,8 +166,7 @@ def _npm_store_from_legacy_name(
     number indexes the columns left after GuPPy canonicalized the timestamps and dropped
     ``FrameCounter`` and the state column. The clock is positional too: the session-wide
     ``npm_timestamp_column_name`` where the run recorded one, and the file's first timestamp column
-    otherwise. Reading one back means reproducing that arithmetic, which is why GuPPy now records the
-    answer instead.
+    otherwise.
     """
     import numpy
     import pandas
@@ -204,8 +199,7 @@ def _npm_store_from_legacy_name(
             slot_index=slot_ordinal,
             num_channels=number_of_channels,
             data_column=column_position,
-            # Nothing names these columns, so the timestamps are the leading one whatever the
-            # session-wide choice names.
+            # Nothing names these columns, so the timestamps are the leading one.
             timestamps_column=0,
         )
 
@@ -281,8 +275,7 @@ def npm_store_to_demux(
         What the run folder records about its stores, from :func:`npm_run_parameters`. Empty or
         ``None`` for a run predating that record, which takes the decoding path.
     timestamp_column_name : str, optional
-        The run's ``npm_timestamp_column_name``, used only on the decoding path: a recorded store
-        names the clock it was read on itself.
+        The run's ``npm_timestamp_column_name``, used only on the decoding path.
 
     Returns
     -------
@@ -365,8 +358,7 @@ def build_npm_acquisition_interface(
 
     if first["excitation_wavelength_in_nm"] is None:
         # The file names no LED, so reproduce GuPPy's blind stride, whose index is the position in
-        # the cycle. StrideDemux bounds that below the channel count, so a position the cycle has no
-        # room for is refused rather than read as another channel's rows.
+        # the cycle.
         return CSVFiberPhotometryInterface(
             file_path=first["file_path"],
             data_columns=[demux["data_column"] for demux in demuxes],

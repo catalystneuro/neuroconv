@@ -286,9 +286,7 @@ class TestGuppyConverterNPMLegacyStoreNames(NPMConverterTestMixin):
     """A run folder written before GuPPy recorded what it demultiplexed.
 
     Its ``.npm_params.json`` carries no ``stores`` mapping and its stores are named positionally,
-    so every part has to be decoded. Such folders exist wherever a session was processed by an
-    earlier GuPPy, and they have to keep converting: re-running Step 1 to regenerate them is not
-    something a lab with a backlog of processed sessions should have to do.
+    so every part has to be decoded.
 
     Same source file as ``TestGuppyConverterNPMInterleaved``, so the two paths are asserted
     against identical data and any divergence between them shows up here.
