@@ -1,4 +1,5 @@
 import json
+import warnings
 
 import numpy as np
 from pydantic import FilePath, validate_call
@@ -21,7 +22,9 @@ class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
     info = "Interface for writing Neuralynx position tracking .nvt files to NWB."
 
     @validate_call
-    def __init__(self, file_path: FilePath, verbose: bool = False):
+    def __init__(
+        self, file_path: FilePath, *args, verbose: bool = False
+    ):  # TODO: change to * (keyword only) on or after August 2026
         """
         Interface for writing Neuralynx .nvt files to nwb.
 
@@ -32,6 +35,30 @@ class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
         verbose : bool, default: False
             controls verbosity.
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "verbose",
+            ]
+            num_positional_args_before_args = 1  # file_path
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args + 1} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to NeuralynxNvtInterface.__init__() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            verbose = positional_values.get("verbose", verbose)
 
         self.file_path = file_path
         self.verbose = verbose
@@ -97,6 +124,7 @@ class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
         self,
         nwbfile: NWBFile,
         metadata: dict | None = None,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
         add_position: bool = True,
         add_angle: bool | None = None,
     ):
@@ -113,6 +141,32 @@ class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
         add_angle : bool, optional
             If None, write angle as long as it is not all 0s
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "add_position",
+                "add_angle",
+            ]
+            num_positional_args_before_args = 2  # nwbfile, metadata
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"add_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to NeuralynxNVTInterface.add_to_nwbfile() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            add_position = positional_values.get("add_position", add_position)
+            add_angle = positional_values.get("add_angle", add_angle)
 
         metadata = metadata or self.get_metadata()
         if isinstance(metadata, DeepDict):

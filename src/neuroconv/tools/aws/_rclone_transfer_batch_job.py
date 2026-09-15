@@ -90,7 +90,7 @@ def rclone_transfer_batch_job(
             f"Rclone configuration file not found at: {rclone_config_file_path}! "
             "Please check that `rclone config` successfully created the file."
         )
-    with open(file=rclone_config_file_path, mode="r") as io:
+    with open(file=rclone_config_file_path, mode="r", encoding="utf-8") as io:
         rclone_config_file_stream = io.read()
 
     region = region or "us-east-2"

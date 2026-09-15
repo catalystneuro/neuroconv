@@ -81,8 +81,11 @@ def convert_df_to_time_intervals(
     - Column names ending with '_time' are treated as timing columns
 
     """
+    # A copy, so the renaming and the generated ``stop_time`` below stay out of the caller's frame; the
+    # interface passes its own frame here and writes more than once.
+    df = df.copy()
     if column_name_mapping is not None:
-        df.rename(columns=column_name_mapping, inplace=True)
+        df = df.rename(columns=column_name_mapping)
 
     default_column_descriptions = dict(
         start_time="Start time of epoch, in seconds.",
@@ -103,6 +106,9 @@ def convert_df_to_time_intervals(
         if col not in ("start_time", "stop_time"):
             time_intervals.add_column(col, column_descriptions.get(col, col))
     for i, row in df.iterrows():
-        time_intervals.add_row(row.to_dict())
+        # Convert to native Python types for HDMF compatibility with pandas 3.0+
+        # See https://github.com/hdmf-dev/hdmf/issues/1384
+        row_dict = {k: (v.item() if hasattr(v, "item") else v) for k, v in row.items()}
+        time_intervals.add_row(row_dict)
 
     return time_intervals

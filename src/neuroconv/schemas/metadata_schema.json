@@ -69,7 +69,6 @@
     },
     "Subject": {
       "type": "object",
-      "required": ["subject_id"],
       "properties": {
         "description": {"type": "string", "default": "no description", "description": "Description of subject and where subject came from (e.g., breeder, if animal)."},
         "genotype": {"type": "string", "description": "Genetic strain. If absent, assume Wild Type (WT)"},

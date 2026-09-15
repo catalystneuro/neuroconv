@@ -15,7 +15,9 @@ def generate_path_expander_demo_ibl(folder_path: str | None = None) -> None:
     """
     folder_path = Path(folder_path or Path.cwd())
 
-    with open(Path(__file__).parent / "_path_expander_demo_ibl_filepaths.txt", "r") as video_file_paths:
+    with open(
+        Path(__file__).parent / "_path_expander_demo_ibl_filepaths.txt", "r", encoding="utf-8"
+    ) as video_file_paths:
         for line in video_file_paths.readlines():
             if line.strip():
                 video_file_path = folder_path / line.strip()

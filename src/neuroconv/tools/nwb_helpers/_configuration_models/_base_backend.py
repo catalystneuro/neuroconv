@@ -1,5 +1,6 @@
 """Base Pydantic models for DatasetInfo and DatasetConfiguration."""
 
+import warnings
 from typing import Any, ClassVar, Literal
 
 from hdmf.container import DataIO
@@ -164,7 +165,9 @@ class BackendConfiguration(BaseModel):
         if len(default_configurations) != len(self.dataset_configurations):
             raise ValueError(
                 f"The number of default configurations ({len(default_configurations)}) does not match the number of "
-                f"specified configurations ({len(self.dataset_configurations)})!"
+                f"specified configurations ({len(self.dataset_configurations)})! This usually occurs when the file "
+                "gained or lost datasets after the configuration was built; derive the configuration from the file "
+                "you are about to write."
             )
 
         objects_requiring_remapping = {}
@@ -220,53 +223,100 @@ class BackendConfiguration(BaseModel):
 
     def apply_global_compression(
         self,
-        compression_method: str,
+        compressors: list[str] | str | None = None,
+        compressor_options: list[dict[str, Any] | None] | dict[str, Any] | None = None,
+        *,
+        compression_method: str | None = None,
         compression_options: dict[str, Any] | None = None,
     ) -> None:
         """
-        Apply compression settings to all datasets in this backend configuration.
+        Apply a codec pipeline to all datasets in this backend configuration.
 
-        This method modifies the backend configuration in-place, applying the specified
-        compression method and options to ALL datasets, regardless of their current
-        compression settings.
+        This method modifies the backend configuration in-place, applying the specified codecs to ALL
+        datasets, regardless of what each one currently holds. Naming the pipeline replaces the
+        pipeline, so a filter a dataset already had is only kept if it is named here too.
 
         Parameters
         ----------
-        compression_method : str
-            The compression method to apply to all datasets (e.g., "gzip", "Blosc", "Zstd").
-        compression_options : dict, optional
-            Additional compression options to apply. The available options depend on the
-            compression method chosen.
+        compressors : list of str
+            The ordered codecs to apply to every dataset, for example ``["gzip"]`` or
+            ``["shuffle", "Blosc"]``. A filter such as ``"shuffle"`` composes with a compression
+            method rather than replacing one, so both live in this list.
+        compressor_options : list of dict, optional
+            The optional parameters for each entry of ``compressors``, positionally matched. Use
+            ``None`` for an entry that takes no parameters.
 
         Raises
         ------
         ValueError
-            If the compression method is not available for this backend type.
+            If a named compression method is not available for this backend type.
 
         Examples
         --------
         >>> backend_config = get_default_backend_configuration(nwbfile, backend="hdf5")
-        >>> backend_config.apply_global_compression("Blosc", {"cname": "zstd", "clevel": 5})
+        >>> backend_config.apply_global_compression(["Blosc"], [{"cname": "zstd", "clevel": 5}])
+        >>> backend_config.apply_global_compression(["shuffle", "gzip"])
+
+        .. deprecated:: 0.10.2
+            The `compression_method` and `compression_options` arguments, and passing a single
+            compression method and a single options dictionary positionally, are deprecated and will
+            be removed in v0.12.0. Pass lists to `compressors` and `compressor_options` instead.
         """
         # Import here to avoid circular imports
-        from ._hdf5_dataset_io import AVAILABLE_HDF5_COMPRESSION_METHODS
-        from ._zarr_dataset_io import AVAILABLE_ZARR_COMPRESSION_METHODS
+        from ._hdf5_dataset_io import AVAILABLE_HDF5_COMPRESSION_METHODS, HDF5DatasetIOConfiguration
+        from ._zarr_dataset_io import AVAILABLE_ZARR_COMPRESSION_METHODS, ZarrDatasetIOConfiguration
+
+        deprecated_message = (
+            "Naming a single compression method and options for `apply_global_compression` is deprecated and will "
+            "be removed in v0.12.0. Pass lists instead, for example "
+            '`apply_global_compression(["gzip"], [{"level": 9}])`.'
+        )
+
+        if compression_method is not None or compression_options is not None:
+            if compressors is not None or compressor_options is not None:
+                raise ValueError(
+                    "Both the deprecated `compression_method`/`compression_options` and the new "
+                    "`compressors`/`compressor_options` were specified. Use only `compressors` and "
+                    "`compressor_options`."
+                )
+            warnings.warn(deprecated_message, FutureWarning, stacklevel=2)
+            compressors = compression_method
+            compressor_options = compression_options
+        elif isinstance(compressors, str) or isinstance(compressor_options, dict):
+            warnings.warn(deprecated_message, FutureWarning, stacklevel=2)
+
+        compressors = [compressors] if isinstance(compressors, str) else compressors
+        compressor_options = [compressor_options] if isinstance(compressor_options, dict) else compressor_options
+
+        if compressors is None:
+            raise TypeError("`apply_global_compression` requires `compressors`.")
 
         # Validate compression method for the backend
         if self.backend == "hdf5":
             available_methods = AVAILABLE_HDF5_COMPRESSION_METHODS
+            pure_filter_names = HDF5DatasetIOConfiguration._pure_filter_names
         elif self.backend == "zarr":
             available_methods = AVAILABLE_ZARR_COMPRESSION_METHODS
+            pure_filter_names = ZarrDatasetIOConfiguration._pure_filter_names
         else:
             raise ValueError(f"Unknown backend: {self.backend}")
 
-        if compression_method not in available_methods:
+        for compressor in compressors:
+            if compressor in pure_filter_names:
+                continue  # A filter rather than a compression method, so it is not in the registry
+            if compressor not in available_methods:
+                raise ValueError(
+                    f"Compression method '{compressor}' is not available for backend "
+                    f"'{self.backend}'. Available methods: {list(available_methods.keys())}"
+                )
+
+        if compressor_options is not None and len(compressor_options) != len(compressors):
             raise ValueError(
-                f"Compression method '{compression_method}' is not available for backend "
-                f"'{self.backend}'. Available methods: {list(available_methods.keys())}"
+                f"Length mismatch between `compressors` ({len(compressors)} specified) and "
+                f"`compressor_options` ({len(compressor_options)} found)! They should be the same length."
             )
 
-        # Apply global compression to ALL datasets
+        # Apply the pipeline to ALL datasets
         for dataset_configuration in self.dataset_configurations.values():
-            dataset_configuration.compression_method = compression_method
-            dataset_configuration.compression_options = compression_options
+            dataset_configuration.compressors = list(compressors)
+            dataset_configuration.compressor_options = None if compressor_options is None else list(compressor_options)

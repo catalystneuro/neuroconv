@@ -14,7 +14,7 @@ Find out more about memory buffering of large source files in the `advanced NWB 
 Default configuration
 ---------------------
 
-To retrieve a default configuration for an in-memory ``pynwb.NWBFile`` object, use the :py:method:`~neuroconv.tools.nwb_helpers.get_default_backend_configuration` function:
+To retrieve a default configuration for an in-memory ``pynwb.NWBFile`` object, use the :py:meth:`~neuroconv.tools.nwb_helpers.get_default_backend_configuration` function:
 
 .. code-block:: python
 
@@ -69,7 +69,7 @@ returns:
       chunk shape : (3,)
       disk space usage per chunk : 24 B
 
-      compression method : gzip
+      compressors : ['gzip']
 
     acquisition/MyTimeSeries/timestamps
     -----------------------------------
@@ -83,7 +83,7 @@ returns:
       chunk shape : (3,)
       disk space usage per chunk : 24 B
 
-      compression method : gzip
+      compressors : ['gzip']
 
 
 
@@ -102,8 +102,8 @@ Let's demonstrate this by modifying everything we can for the ``data`` field of 
 
     dataset_configuration.chunk_shape = (1,)
     dataset_configuration.buffer_shape = (2,)
-    dataset_configuration.compression_method = "Zstd"
-    dataset_configuration.compression_options = dict(clevel=3)
+    dataset_configuration.compressors = ["Zstd"]
+    dataset_configuration.compressor_options = [dict(clevel=3)]
 
 We can confirm these values are saved by re-printing that particular dataset configuration:
 
@@ -125,8 +125,8 @@ We can confirm these values are saved by re-printing that particular dataset con
       chunk shape : (1,)
       disk space usage per chunk : 8 B
 
-      compression method : Zstd
-      compression options : {'clevel': 3}
+      compressors : ['Zstd']
+      compressor options : [{'clevel': 3}]
 
 Then we can use this configuration to write the NWB file:
 
@@ -142,16 +142,15 @@ Then we can use this configuration to write the NWB file:
 Existing configuration
 ----------------------
 
-If you have already written a file and want to get the configuration that was used, you can use the :py:method:`~neuroconv.tools.nwb_helpers.get_existing_backend_configuration` function:
+If you have already written a file and want to get the configuration that was used, you can use the :py:meth:`~neuroconv.tools.nwb_helpers.get_existing_backend_configuration` function:
 
 .. code-block:: python
 
     from neuroconv.tools.nwb_helpers import get_existing_backend_configuration
-    from pynwb import NWBHDF5IO
+    from pynwb import read_nwb
 
-    with NWBHDF5IO(nwbfile_path="output.nwb", mode="r") as io:
-        nwbfile = io.read()
-        backend_configuration = get_existing_backend_configuration(nwbfile=nwbfile)
+    nwbfile = read_nwb("output.nwb")
+    backend_configuration = get_existing_backend_configuration(nwbfile=nwbfile)
 
     print(backend_configuration)
 
@@ -160,11 +159,10 @@ the compression level but leave all the other settings the same.
 
 .. code-block:: python
 
-    backend_configuration.dataset_configurations["acquisition/MyTimeSeries/data"].compression_options["clevel"] = 4
+    backend_configuration.dataset_configurations["acquisition/MyTimeSeries/data"].compressor_options = [dict(compression_opts=9)]
 
-    with NWBHDF5IO(nwbfile_path="output.nwb", mode="r") as io:
-        nwbfile = io.read()
-        configure_and_write_nwbfile(nwbfile=nwbfile, backend_configuration=backend_configuration, nwbfile_path="output2.nwb", export=True)
+    nwbfile = read_nwb("output.nwb")
+    configure_and_write_nwbfile(nwbfile=nwbfile, backend_configuration=backend_configuration, nwbfile_path="output2.nwb")
 
 
 Interfaces and Converters
@@ -184,11 +182,7 @@ The following example uses the :ref:`example data <example_data>` available from
     from zoneinfo import ZoneInfo
     from neuroconv import ConverterPipe
     from neuroconv.datainterfaces import SpikeGLXRecordingInterface, PhySortingInterface
-    from neuroconv.tools.nwb_helpers import (
-        make_or_load_nwbfile,
-        get_default_backend_configuration,
-        configure_backend,
-    )
+    from neuroconv.tools import configure_and_write_nwbfile
 
     # Instantiate interfaces and converter
     ap_interface = SpikeGLXRecordingInterface(
@@ -214,15 +208,17 @@ The following example uses the :ref:`example data <example_data>` available from
     # Make any modifications to the configuration in this step, for example...
     dataset_configurations = backend_configuration.dataset_configurations
     dataset_configuration = dataset_configurations["acquisition/ElectricalSeriesAP/data"]
-    dataset_configuration.compression_method = "Blosc"
+    dataset_configuration.compressors = ["Blosc"]
 
     # Configure and write the NWB file
     nwbfile_path = "./my_nwbfile_name.nwb"
-    converter.run_conversion(
-        nwbfile_path=nwbfile_path,
+    configure_and_write_nwbfile(
         nwbfile=nwbfile,
+        nwbfile_path=nwbfile_path,
         backend_configuration=backend_configuration,
     )
+
+A configuration describes the file it was derived from, so build it once the NWB file holds everything it is going to hold, and write that same file. Adding anything to the file after this point raises when the configuration is applied.
 
 If you do not intend to make any alterations to the default configuration for the given backend type, then you can follow a more streamlined approach:
 
@@ -233,15 +229,12 @@ If you do not intend to make any alterations to the default configuration for th
         # Fetch available metadata
         metadata = converter.get_metadata()
 
-        # Create the in-memory NWBFile object and apply the default configuration for HDF5
-        backend="hdf5"
-
-        # Configure and write the NWB file
+        # Configure and write the NWB file, applying the default configuration for HDF5
         nwbfile_path = "./my_nwbfile_name.nwb"
         converter.run_conversion(
             nwbfile_path=nwbfile_path,
-            nwbfile=nwbfile,
-            backend=backend,
+            metadata=metadata,
+            backend="hdf5",
         )
 
 and all datasets in the NWB file will automatically use the default configurations!
@@ -270,11 +263,13 @@ You can use the :py:meth:`~neuroconv.tools.nwb_helpers._configuration_models._ba
 
     # Apply Blosc compression with zstd compressor to all datasets
     backend_configuration.apply_global_compression(
-        compression_method="Blosc",
-        compression_options={
-            "cname": "zstd",
-            "clevel": 5,
-        }
+        compressors=["Blosc"],
+        compressor_options=[
+            {
+                "cname": "zstd",
+                "clevel": 5,
+            }
+        ],
     )
 
     # Write the file with the modified configuration
@@ -289,7 +284,7 @@ Repacking
 ---------
 
 If you simply want to update the backend configuration of an existing NWB file to conform with our recommended settings,
-you can use the :py:method:`~neuroconv.tools.nwb_helpers.repack_nwbfile` function.
+you can use the :py:meth:`~neuroconv.tools.nwb_helpers.repack_nwbfile` function.
 For example, this function can be used to apply recommended chunking and compression settings to an NWB file that was created without them.
 
 .. code-block:: python
@@ -377,7 +372,7 @@ This was found to give significant performance increases compared to previous da
 
 **How do I disable chunking and compression completely?**
 
-To completely disable chunking for HDF5 backends (i.e., 'contiguous' layout), set both ``chunk_shape=None`` and ``compression_method=None``. Zarr requires all datasets to be chunked.
+To completely disable chunking for HDF5 backends (i.e., 'contiguous' layout), set both ``chunk_shape=None`` and ``compressors=None``. Zarr requires all datasets to be chunked.
 
 You could also delete the entry from the NeuroConv backend configuration, which would cause the neurodata object to fallback to whatever default method wrapped the dataset field when it was added to the in-memory ``pynwb.NWBFile``.
 

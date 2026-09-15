@@ -1,0 +1,222 @@
+<link rel="stylesheet" href="../../_static/css/dimension-order-visualizer.css">
+<script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+<!-- div for react root -->
+<div id="dimension-order-visualizer-root"></div>
+
+<script type="text/babel">
+  /**
+   * Generate the sequence of frames based on dimension order.
+   *
+   * This is a pure function (no React dependencies) that computes how frames
+   * are laid out on disk given a dimension order string like "ZCT".
+   *
+   * The dimension order follows the OME-TIFF convention where:
+   * - The leftmost dimension varies fastest (changes most frequently between consecutive frames)
+   * - The rightmost dimension varies slowest
+   *
+   * For example, with dimensionOrder="ZCT", zSize=3, cSize=2, tSize=4:
+   * - Frame 1: Z0-C0-T0
+   * - Frame 2: Z1-C0-T0
+   * - Frame 3: Z2-C0-T0  (Z exhausted, increment C)
+   * - Frame 4: Z0-C1-T0
+   * - ...and so on
+   *
+   * @param {string} dimensionOrder - Three-letter string like "ZCT", "CZT", etc.
+   * @param {number} zSize - Number of Z-planes (depth levels)
+   * @param {number} cSize - Number of channels
+   * @param {number} tSize - Number of timepoints
+   * @returns {Array<{z: number, c: number, t: number, index: number}>} Array of frame objects
+   */
+  const generateSequence = (dimensionOrder, zSize, cSize, tSize) => {
+    let result = [];
+
+    // Split "ZCT" into ['Z', 'C', 'T']
+    const order = dimensionOrder.split('');
+
+    // Reverse to get loop nesting order: leftmost dimension = innermost loop
+    // For "ZCT" -> ['T', 'C', 'Z'], so Z varies fastest
+    const loopOrder = [...order].reverse();
+
+    let index = 0;
+
+    // Recursive function to generate all combinations
+    // level 0 = outermost loop (slowest varying dimension)
+    // level 2 = innermost loop (fastest varying dimension)
+    const generateFrames = (indices = {}, level = 0) => {
+      // Base case: all dimensions assigned, emit a frame
+      if (level === order.length) {
+        result.push({
+          z: indices.Z,
+          c: indices.C,
+          t: indices.T,
+          index: index++
+        });
+        return;
+      }
+
+      // Get the dimension for this nesting level and its size
+      const dimension = loopOrder[level];
+      const size = dimension === 'Z' ? zSize : dimension === 'C' ? cSize : tSize;
+
+      // Iterate through all values of this dimension
+      for (let i = 0; i < size; i++) {
+        const newIndices = { ...indices };
+        newIndices[dimension] = i;
+        generateFrames(newIndices, level + 1);
+      }
+    };
+
+    generateFrames();
+    return result;
+  };
+
+  /*
+   * Explains how frames are organized on disk for each ordering.
+   */
+  const DIMENSION_ORDER_DESCRIPTIONS = {
+    'ZTC': 'Frames are stored with all Z-planes for one timepoint first, then the next timepoint, and finally switching to the next channel.',
+    'ZCT': 'Frames are stored with all Z-planes for one channel first, then switching channels, and finally moving to the next timepoint.',
+    'TZC': 'Frames are stored with all timepoints for one Z-plane first, then the next Z-plane, and finally switching to the next channel.',
+    'TCZ': 'Frames are stored with all timepoints for one channel first, then switching channels, and finally changing Z-planes.',
+    'CZT': 'Frames are stored with all channels for one Z-plane first, then the next Z-plane, and finally advancing to the next timepoint.',
+    'CTZ': 'Frames are stored with all channels for one timepoint first, then the next timepoint, and finally changing Z-planes.'
+  };
+
+  /*
+   * React component that visualizes TIFF frame layouts for different dimension orders.
+   */
+  const DimensionOrderVisualizer = () => {
+    // The only piece of state: which dimension order is currently selected
+    const [dimensionOrder, setDimensionOrder] = React.useState('CZT'); // ScanImage is the default
+
+    // Fixed dimension sizes for the visualization
+    // Chosen to be small enough to visualize but different from each other
+    const zSize = 3;  // 3 depth planes
+    const cSize = 2;  // 2 channels
+    const tSize = 4;  // 4 timepoints
+    // Total: 3 * 2 * 4 = 24 frames
+
+    // Channel color palette for visualization
+    const channelColors = ['#4A90B8', '#D4845C'];  // Blue, Orange
+
+    // Compute the frame sequence (derived from dimensionOrder, not independent state)
+    const sequence = generateSequence(dimensionOrder, zSize, cSize, tSize);
+
+    // empirically tested until they looked fine
+    // tested on some monitors with different pixel densities
+    const frameSize = 60;
+    const xSpacing = 70;
+
+    const getDescription = (order) => {
+      return DIMENSION_ORDER_DESCRIPTIONS[order] || '';
+    };
+
+    return (
+      <div className="visualizer-container">
+        <h2 style={{textAlign: 'center', marginBottom: '1.5rem'}}>TIFF Frame Layout Visualizer</h2>
+
+        <div className="dimension-selector">
+          <label>Dimension Order:</label>
+          <div className="button-group">
+            {['ZTC', 'ZCT', 'TZC', 'TCZ', 'CZT', 'CTZ'].map(order => (
+              <button
+                key={order}
+                onClick={() => setDimensionOrder(order)}
+                className={`order-button ${dimensionOrder === order ? 'active' : ''}`}
+              >
+                {order}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Top level description */}
+        <div className="viz-section">
+          <h3>Frame Layout: {dimensionOrder}</h3>
+
+          <div className="description">
+            {getDescription(dimensionOrder)}
+          </div>
+
+          <div style={{marginBottom: '1rem', display: 'flex', gap: '1.5rem', justifyContent: 'center', alignItems: 'center'}}>
+            <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
+              <div style={{width: '20px', height: '20px', backgroundColor: channelColors[0], border: '1px solid #ccc'}}></div>
+              <span>Channel 0</span>
+            </div>
+            <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
+              <div style={{width: '20px', height: '20px', backgroundColor: channelColors[1], border: '1px solid #ccc'}}></div>
+              <span>Channel 1</span>
+            </div>
+          </div>
+
+          {/* Display Frame Grid */}
+          <div className="frame-display">
+            <div className="depth-label-container">
+              <span className="depth-label-text">Depth</span>
+            </div>
+            <div className="frame-grid-container">
+              <div className="frame-grid-header">Frame Index on Disk</div>
+              <div className="frame-grid">
+                {sequence.map((frame, i) => (
+                  <div
+                    key={i}
+                    className="frame-cell"
+                    style={{
+                      backgroundColor: channelColors[frame.c],
+                      width: frameSize,
+                      height: frameSize,
+                      color: frame.c === 0 ? 'black' : 'white',
+                      fontSize: frameSize * 0.3,
+                      left: `${(i + 1) * xSpacing}px`,
+                      top: `${(zSize - 1 - frame.z) * (frameSize + 30)}px`,
+                    }}
+                  >
+                    <div>{i + 1}</div>
+                    <div className="timepoint-label">
+                      T{frame.t}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Frame Sequence Table */}
+          <div>
+            <h3>Frame Sequence on Disk</h3>
+            <div className="sequence-table-container">
+              <table className="sequence-table">
+                <thead>
+                  <tr>
+                    <th>Frame #</th>
+                    <th>Dimensions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sequence.map((frame, i) => (
+                    <tr key={i}>
+                      <td style={{fontWeight: '600'}}>{i+1}</td>
+                      <td>
+                        <span
+                          className="frame-indicator"
+                          style={{backgroundColor: channelColors[frame.c]}}
+                        ></span>
+                        Z{frame.z}-C{frame.c}-T{frame.t}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const root = ReactDOM.createRoot(document.getElementById('dimension-order-visualizer-root'));
+  root.render(<DimensionOrderVisualizer />);
+</script>

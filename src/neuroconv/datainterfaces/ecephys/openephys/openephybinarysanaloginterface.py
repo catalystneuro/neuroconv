@@ -4,14 +4,14 @@ from pydantic import ConfigDict, DirectoryPath, validate_call
 from pynwb import NWBFile
 
 from ._openephys_utils import _get_session_start_time, _read_settings_xml
-from ....basedatainterface import BaseDataInterface
+from ..baserecordingastimeseriesinterface import BaseRecordingAsTimeSeriesInterface
 from ....utils import (
     DeepDict,
     get_json_schema_from_method_signature,
 )
 
 
-class OpenEphysBinaryAnalogInterface(BaseDataInterface):
+class OpenEphysBinaryAnalogInterface(BaseRecordingAsTimeSeriesInterface):
     """Primary data interface class for converting analog channels from OpenEphysBinary data."""
 
     display_name = "OpenEphysBinary Analog Recording"
@@ -29,9 +29,11 @@ class OpenEphysBinaryAnalogInterface(BaseDataInterface):
     def __init__(
         self,
         folder_path: DirectoryPath,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
         stream_name: str | None = None,
         block_index: int | None = None,
         verbose: bool = False,
+        metadata_key: str = "open_ephys_analog",
         time_series_name: str = "TimeSeriesOpenEphysAnalog",
     ):
         """
@@ -48,16 +50,52 @@ class OpenEphysBinaryAnalogInterface(BaseDataInterface):
             The index of the block to extract from the data.
         verbose : bool, default: False
             Controls verbosity.
+        metadata_key : str, default: "open_ephys_analog"
+            Key for the TimeSeries metadata in the metadata dictionary. This addresses the entry;
+            the written object's name is ``time_series_name``.
         time_series_name : str, default: "TimeSeriesOpenEphysAnalog"
-            The name of the TimeSeries object in the NWBFile and also
-            the key of the associated metadata
+            The name of the TimeSeries object in the NWBFile.
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "stream_name",
+                "block_index",
+                "verbose",
+                "metadata_key",
+                "time_series_name",
+            ]
+            num_positional_args_before_args = 1  # folder_path
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args + 1} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to OpenEphysBinaryAnalogInterface.__init__() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            stream_name = positional_values.get("stream_name", stream_name)
+            block_index = positional_values.get("block_index", block_index)
+            verbose = positional_values.get("verbose", verbose)
+            metadata_key = positional_values.get("metadata_key", metadata_key)
+            time_series_name = positional_values.get("time_series_name", time_series_name)
+
         from spikeinterface.extractors.extractor_classes import (
             OpenEphysBinaryRecordingExtractor,
         )
 
         self.folder_path = folder_path
         self._xml_root = _read_settings_xml(folder_path)
+        self.metadata_key = metadata_key
         self.time_series_name = time_series_name
 
         available_streams = OpenEphysBinaryRecordingExtractor.get_streams(folder_path=folder_path)[0]
@@ -112,6 +150,11 @@ class OpenEphysBinaryAnalogInterface(BaseDataInterface):
         if session_start_time is not None:
             metadata["NWBFile"].update(session_start_time=session_start_time)
 
+        metadata["TimeSeries"][self.metadata_key] = dict(
+            name=self.time_series_name,
+            description=f"ADC data acquired with OpenEphys system. \n Channels are {self.get_channel_names()} in that order.",
+        )
+
         return metadata
 
     def get_channel_names(self) -> list[str]:
@@ -129,10 +172,10 @@ class OpenEphysBinaryAnalogInterface(BaseDataInterface):
         self,
         nwbfile: NWBFile,
         metadata: dict | None = None,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
         stub_test: bool = False,
         iterator_type: str | None = "v2",
         iterator_options: dict | None = None,
-        iterator_opts: dict | None = None,
         always_write_timestamps: bool = False,
     ):
         """
@@ -150,46 +193,45 @@ class OpenEphysBinaryAnalogInterface(BaseDataInterface):
             Type of iterator to use for data streaming
         iterator_options : dict, optional
             Additional options for the iterator
-        iterator_opts : dict, optional
-            Deprecated. Use 'iterator_options' instead.
         always_write_timestamps : bool, default: False
             If True, always writes timestamps instead of using sampling rate
         """
-        from ....tools.spikeinterface import (
-            _stub_recording,
-            add_recording_as_time_series_to_nwbfile,
-        )
-
-        # Handle deprecated iterator_opts parameter
-        if iterator_opts is not None:
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "stub_test",
+                "iterator_type",
+                "iterator_options",
+                "always_write_timestamps",
+            ]
+            num_positional_args_before_args = 2  # nwbfile, metadata
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"add_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
             warnings.warn(
-                "The 'iterator_opts' parameter is deprecated and will be removed in May 2026 or after. "
-                "Use 'iterator_options' instead.",
+                f"Passing arguments positionally to OpenEphysBinaryAnalogInterface.add_to_nwbfile() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
                 FutureWarning,
                 stacklevel=2,
             )
-            if iterator_options is not None:
-                raise ValueError("Cannot specify both 'iterator_opts' and 'iterator_options'. Use 'iterator_options'.")
-            iterator_options = iterator_opts
+            stub_test = positional_values.get("stub_test", stub_test)
+            iterator_type = positional_values.get("iterator_type", iterator_type)
+            iterator_options = positional_values.get("iterator_options", iterator_options)
+            always_write_timestamps = positional_values.get("always_write_timestamps", always_write_timestamps)
 
-        if metadata is None:
-            metadata = self.get_metadata()
-
-        recording = self.recording_extractor
-        if stub_test:
-            recording = _stub_recording(recording=recording)
-
-        description = (
-            f"ADC data acquired with OpenEphys system. \n Channels are {self.get_channel_names()} in that order."
-        )
-        metadata["TimeSeries"][self.time_series_name] = dict(name=self.time_series_name, description=description)
-
-        add_recording_as_time_series_to_nwbfile(
-            recording=recording,
+        super().add_to_nwbfile(
             nwbfile=nwbfile,
             metadata=metadata,
+            stub_test=stub_test,
             iterator_type=iterator_type,
             iterator_options=iterator_options,
             always_write_timestamps=always_write_timestamps,
-            metadata_key=self.time_series_name,
         )

@@ -145,7 +145,7 @@ def deploy_neuroconv_batch_job(
 
     docker_image = "ghcr.io/catalystneuro/neuroconv_yaml_variable:latest"
 
-    with open(file=yaml_specification_file_path, mode="r") as io:
+    with open(file=yaml_specification_file_path, mode="r", encoding="utf-8") as io:
         yaml_specification_file_stream = io.read()
 
     neuroconv_job_name = f"{job_name}_neuroconv_deployment"

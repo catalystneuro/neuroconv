@@ -1,13 +1,66 @@
 Intan Data Conversion
 ---------------------
 
-This guide covers the conversion of Intan data, including both amplifier data (primary neural recordings) and analog data (auxiliary inputs, ADC inputs, DC amplifiers) from RHD2000 and RHS2000 systems.
+This guide covers the conversion of Intan data, including amplifier data (primary neural recordings), analog data (auxiliary inputs, ADC inputs, DC amplifiers), stimulation current, and digital TTL lines (converted to discrete events) from RHD2000 and RHS2000 systems.
 
 Install NeuroConv with the additional dependencies necessary for reading Intan data.
 
 .. code-block:: bash
 
     pip install "neuroconv[intan]"
+
+File formats and save modes
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Intan RHX software can save a recording in one of three on-disk formats:
+
+.. list-table::
+    :header-rows: 1
+    :widths: 30 70
+
+    * - Save mode
+      - What to pass as ``file_path``
+    * - Traditional Intan File Format
+      - The single ``.rhd`` or ``.rhs`` file
+    * - One File Per Signal Type
+      - The ``info.rhd`` or ``info.rhs`` header file in the session directory
+    * - One File Per Channel
+      - The ``info.rhd`` or ``info.rhs`` header file in the session directory
+
+The interface API is identical across all three modes; the layout is inferred automatically from the header.
+
+Traditional format also offers an option to "create a new save file every N minutes,"
+which splits one session across several rotated ``.rhd``/``.rhs`` files in the same
+folder. For that case, see :ref:`intan-split-files` below.
+
+Converting all streams in one call
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Most Intan recordings contain more than one stream: the main amplifier plus some
+combination of ADC inputs/outputs, auxiliary, DC amplifier, and stimulation.
+:py:class:`~neuroconv.converters.IntanConverter` parses the file header,
+discovers which streams are present, and routes each one to the appropriate
+sub-interface, so a single call writes them all to NWB.
+
+.. code-block:: python
+
+    >>> from datetime import datetime
+    >>> from zoneinfo import ZoneInfo
+    >>> from neuroconv.converters import IntanConverter
+    >>>
+    >>> file_path = f"{ECEPHY_DATA_PATH}/intan/rhs_stim_data_single_file_format/intanTestFile.rhs"
+    >>> converter = IntanConverter(file_path=file_path, verbose=False)
+    >>>
+    >>> metadata = converter.get_metadata()
+    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
+    >>> metadata["NWBFile"].update(session_start_time=session_start_time)
+    >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
+    >>>
+    >>> nwbfile_path = f"{path_to_save_nwbfile}"
+    >>> converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
+
+To inspect what streams are in a file before constructing the converter, use
+``IntanConverter.get_streams(file_path=...)``.
 
 Intan Amplifier Data Conversion
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -29,7 +82,7 @@ This interface handles the primary neural recordings from the RHD2000 or RHS2000
     >>> metadata = interface.get_metadata()
     >>> # session_start_time is required for conversion. If it cannot be inferred
     >>> # automatically from the source files you must supply one.
-    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
+    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>> # Add subject information (required for DANDI upload)
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
@@ -73,7 +126,7 @@ USB board ADC input channels
     >>> # Extract what metadata we can from the source files
     >>> metadata = interface.get_metadata()
     >>> # session_start_time is required but not available on intan
-    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
+    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>> # Add subject information (required for DANDI upload)
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
@@ -107,7 +160,7 @@ You can also convert auxiliary input channels (e.g., accelerometer data):
     >>> # Extract what metadata we can from the source files
     >>> metadata_aux = interface_aux.get_metadata()
     >>> # session_start_time is required but not available on intan
-    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
+    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
     >>> metadata_aux["NWBFile"].update(session_start_time=session_start_time)
     >>> # Add subject information (required for DANDI upload)
     >>> metadata_aux["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
@@ -141,7 +194,7 @@ For RHS systems, you can also convert DC amplifier channels:
     >>> # Extract what metadata we can from the source files
     >>> metadata_dc = interface_dc.get_metadata()
     >>> # session_start_time is required but not available on intan
-    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
+    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
     >>> metadata_dc["NWBFile"].update(session_start_time=session_start_time)
     >>> # Add subject information (required for DANDI upload)
     >>> metadata_dc["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
@@ -176,7 +229,7 @@ For RHS systems, you can also convert ADC output channels:
     >>> metadata_output = interface_output.get_metadata()
     >>> # session_start_time is required for conversion. If it cannot be inferred
     >>> # automatically from the source files you must supply one.
-    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
+    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
     >>> metadata_output["NWBFile"].update(session_start_time=session_start_time)
     >>> # Add subject information (required for DANDI upload)
     >>> metadata_output["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
@@ -184,3 +237,156 @@ For RHS systems, you can also convert ADC output channels:
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path_output = output_folder / "intan_adc_output_conversion.nwb"
     >>> interface_output.run_conversion(nwbfile_path=nwbfile_path_output, metadata=metadata_output, overwrite=True)
+
+Intan Stimulation Data Conversion (RHS systems)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Convert electrical stimulation current data from RHS2000 systems to NWB using
+:py:class:`~neuroconv.datainterfaces.ecephys.intan.intanstiminterface.IntanStimInterface`.
+
+The RHS Stim/Recording System records stimulation current alongside neural data. Each
+amplifier channel has a corresponding stimulation channel named ``{channel}_STIM``
+(e.g., ``A-000_STIM``). Data are stored as a ``TimeSeries`` with ``unit="A"`` (Amperes),
+with the conversion factor derived automatically from the ``stim_step_size`` in the file header.
+
+.. code-block:: python
+
+    >>> from datetime import datetime
+    >>> from zoneinfo import ZoneInfo
+    >>> from pathlib import Path
+    >>> from neuroconv.datainterfaces import IntanStimInterface
+    >>>
+    >>> # For this interface we need to pass the location of the .rhs file
+    >>> file_path_stim = f"{ECEPHY_DATA_PATH}/intan/rhs_stim_data_single_file_format/intanTestFile.rhs"
+    >>>
+    >>> # Convert stimulation channels (RHS system only)
+    >>> interface_stim = IntanStimInterface(file_path=file_path_stim, verbose=False)
+    >>>
+    >>> # Extract what metadata we can from the source files
+    >>> metadata_stim = interface_stim.get_metadata()
+    >>> # session_start_time is required but not available on intan
+    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
+    >>> metadata_stim["NWBFile"].update(session_start_time=session_start_time)
+    >>> # Add subject information (required for DANDI upload)
+    >>> metadata_stim["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
+    >>>
+    >>> # Choose a path for saving the nwb file and run the conversion
+    >>> nwbfile_path_stim = output_folder / "intan_stim_conversion.nwb"
+    >>> interface_stim.run_conversion(nwbfile_path=nwbfile_path_stim, metadata=metadata_stim, overwrite=True)
+
+Intan Digital Data Conversion
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Convert Intan digital TTL lines to discrete events using
+:py:class:`~neuroconv.datainterfaces.ecephys.intan.intandigitalinterface.IntanDigitalInterface`.
+The controller packs its 16 digital input lines (and its 16 digital output lines) into one 16-bit word
+per sample, and the header names every line it recorded. This interface reads each named line,
+edge-detects it, and writes them as ``pynwb.event.EventsTable`` objects into ``nwbfile.events``.
+
+Lines are addressed by the header's own name (``DIGITAL-IN-01``, ``DIN-00``, ``DIGITAL-OUT-05``), which
+is what the acquisition software shows. Because every line is named individually, one interface covers
+whichever digital words the file carries and there is no stream to pick. To see the names a file offers,
+construct the interface with no configuration and read the event types off ``get_metadata()``.
+
+With no ``detection_configuration`` (the default), every line the header exposes is derived as one event
+type, using the lossless ``"high_period"`` reading (a durative event per pulse, with a duration). A line
+that was recorded but never toggles is still written, as an empty table.
+
+.. code-block:: python
+
+    >>> from datetime import datetime
+    >>> from zoneinfo import ZoneInfo
+    >>> from neuroconv.datainterfaces import IntanDigitalInterface
+    >>>
+    >>> file_path_digital = f"{ECEPHY_DATA_PATH}/intan/intan_fps_test_231117_052500/info.rhd"
+    >>>
+    >>> interface_digital = IntanDigitalInterface(
+    ...     file_path=file_path_digital,
+    ...     verbose=False,
+    ... )
+    >>>
+    >>> metadata_digital = interface_digital.get_metadata()
+    >>> # session_start_time is required but not available on intan
+    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
+    >>> metadata_digital["NWBFile"].update(session_start_time=session_start_time)
+    >>> metadata_digital["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
+    >>>
+    >>> nwbfile_path_digital = output_folder / "intan_digital_conversion.nwb"
+    >>> interface_digital.run_conversion(nwbfile_path=nwbfile_path_digital, metadata=metadata_digital, overwrite=True)
+
+To read specific lines, pass a ``detection_configuration`` keyed by their header names. An Intan digital
+line already is a line, so its conditioning is always ``{"binarize": "midpoint"}``, which cuts strictly
+between the signal's two levels whatever they are. The grammar itself, what a spec holds and which
+readings it can ask for, is in :ref:`extract_events_from_signals`:
+
+.. code-block:: python
+
+    >>> interface_digital = IntanDigitalInterface(
+    ...     file_path=file_path_digital,
+    ...     detection_configuration={
+    ...         # The key is the line's name in the Intan header. The optional "event_name" is a name you
+    ...         # choose for whatever device is wired to it; it replaces the derived identifier, and
+    ...         # pinning it now means the identifier does not move if you later read the same line two
+    ...         # ways. Without it, the line keeps its header name.
+    ...         "DIGITAL-IN-01": [
+    ...             {
+    ...                 "signal_conditioning": {"binarize": "midpoint"},
+    ...                 "detection": "rising",
+    ...                 "event_name": "camera_sync",
+    ...             }
+    ...         ],
+    ...     },
+    ...     verbose=False,
+    ... )
+
+To skip digital events entirely, do not construct this interface (or ``exclude_streams`` the digital
+word in the converter); an empty ``detection_configuration={}`` raises rather than silently writing
+nothing. When several lines should share one events table, point their ``table_metadata_key`` at a
+common key in the editable metadata (see :ref:`annotate_events_metadata`). ``IntanConverter`` also routes the
+digital input/output streams to this interface automatically with the default configuration.
+
+
+.. _intan-split-files:
+
+Converting a session saved as multiple files
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+When a Traditional-format recording is saved with the "create a new save file
+every N minutes" option, Intan RHX writes one file per N-minute chunk into a
+single session folder, each named with a ``{prefix}_YYMMDD_HHMMSS`` timestamp.
+Set ``saved_files_are_split=True`` on any Intan interface to concatenate all
+sibling ``.rhd``/``.rhs`` files in the folder in filename order (fixed-width
+timestamps make lexicographic order match chronological order):
+
+.. code-block:: python
+
+    >>> from datetime import datetime
+    >>> from zoneinfo import ZoneInfo
+    >>> from pathlib import Path
+    >>> from neuroconv.datainterfaces import IntanRecordingInterface
+    >>>
+    >>> # Any single file in the session folder; its parent directory is scanned
+    >>> file_path_split = f"{ECEPHY_DATA_PATH}/intan/test_tetrode_240502_162925/test_tetrode_240502_162925.rhd"
+    >>>
+    >>> interface_split = IntanRecordingInterface(
+    ...     file_path=file_path_split,
+    ...     saved_files_are_split=True,
+    ...     verbose=False,
+    ... )
+    >>>
+    >>> metadata_split = interface_split.get_metadata()
+    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
+    >>> metadata_split["NWBFile"].update(session_start_time=session_start_time)
+    >>> metadata_split["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
+    >>>
+    >>> nwbfile_path_split = output_folder / "intan_split_conversion.nwb"
+    >>> interface_split.run_conversion(nwbfile_path=nwbfile_path_split, metadata=metadata_split, overwrite=True)
+
+The same ``saved_files_are_split=True`` flag is accepted by
+:py:class:`~neuroconv.datainterfaces.ecephys.intan.intananaloginterface.IntanAnalogInterface`,
+:py:class:`~neuroconv.datainterfaces.ecephys.intan.intanstiminterface.IntanStimInterface`
+and
+:py:class:`~neuroconv.datainterfaces.ecephys.intan.intandigitalinterface.IntanDigitalInterface`,
+since all streams rotate together in Intan's Traditional format. On the digital interface the chunks
+are concatenated before edge detection, so an event that opens in one chunk and closes in the next is
+read as the single event it is rather than being lost at the boundary.

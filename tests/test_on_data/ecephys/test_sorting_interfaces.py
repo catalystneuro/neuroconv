@@ -1,7 +1,7 @@
 from datetime import datetime
 
 import numpy as np
-from pynwb import NWBHDF5IO
+from pynwb import read_nwb
 
 from neuroconv.datainterfaces import (
     BlackrockRecordingInterface,
@@ -12,6 +12,7 @@ from neuroconv.datainterfaces import (
     NeuroScopeSortingInterface,
     PhySortingInterface,
     PlexonSortingInterface,
+    XClustSortingInterface,
 )
 from neuroconv.tools.testing.data_interface_mixins import (
     SortingExtractorInterfaceTestMixin,
@@ -144,12 +145,14 @@ class TestCellExplorerSortingInterface(SortingExtractorInterfaceTestMixin):
                 assert expected_value == extracted_value
 
         # Test that the electrode table has the expected values
-        with NWBHDF5IO(self.nwbfile_path, "r") as io:
-            nwbfile = io.read()
+        nwbfile = read_nwb(self.nwbfile_path)
+        try:
             electrode_table = nwbfile.electrodes.to_dataframe()
             electrode_table_row = electrode_table.query(f"channel_name=='{channel_id}'").iloc[0]
             for key, value in expected_channel_properties_electrodes.items():
                 assert electrode_table_row[key] == value
+        finally:
+            nwbfile.read_io.close()
 
 
 class TestNeuralynxSortingInterfaceCheetahV551(SortingExtractorInterfaceTestMixin):
@@ -306,3 +309,50 @@ class TestPlexonSortingInterface(SortingExtractorInterfaceTestMixin):
 
     def check_extracted_metadata(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2000, 10, 30, 15, 56, 56)
+
+
+class TestXClustSortingInterfaceSingleCluster(SortingExtractorInterfaceTestMixin):
+    """TT2: 3 files, all cluster 1 (same neuron across session types). Tests duplicate cluster ID handling."""
+
+    data_interface_cls = XClustSortingInterface
+    interface_kwargs = dict(
+        folder_path=str(DATA_PATH / "xclust" / "TT2"),
+        sampling_frequency=30_000.0,
+    )
+    save_directory = OUTPUT_PATH
+
+
+class TestXClustSortingInterfaceMultiUnit(SortingExtractorInterfaceTestMixin):
+    """TT6: 8 files, 2 clusters across 4 session types. Tests multi-unit loading."""
+
+    data_interface_cls = XClustSortingInterface
+    interface_kwargs = dict(
+        folder_path=str(DATA_PATH / "xclust" / "TT6"),
+        sampling_frequency=30_000.0,
+    )
+    save_directory = OUTPUT_PATH
+
+
+class TestXClustSortingInterfaceFilePathList:
+    """Test the file_path_list input mode with a subset of files."""
+
+    def test_file_path_list_loads_correct_unit_ids(self):
+        file_list = [
+            str(DATA_PATH / "xclust" / "TT6" / "BL1~1.CEL"),
+            str(DATA_PATH / "xclust" / "TT6" / "BL1~2.CEL"),
+        ]
+        interface = XClustSortingInterface(file_path_list=file_list, sampling_frequency=30_000.0)
+        unit_ids = interface.sorting_extractor.unit_ids
+        assert list(unit_ids) == ["BL1_1", "BL1_2"]
+
+    def test_raises_when_folder_path_and_file_path_list_both_provided(self):
+        with pytest.raises(ValueError, match="Specify either"):
+            XClustSortingInterface(
+                folder_path=str(DATA_PATH / "xclust" / "TT2"),
+                file_path_list=[str(DATA_PATH / "xclust" / "TT2" / "BL2~1.CEL")],
+                sampling_frequency=30_000.0,
+            )
+
+    def test_raises_when_neither_folder_path_nor_file_path_list_provided(self):
+        with pytest.raises(ValueError, match="Must specify either"):
+            XClustSortingInterface(sampling_frequency=30_000.0)

@@ -1,3 +1,4 @@
+import warnings
 from datetime import datetime
 from warnings import warn
 
@@ -71,10 +72,12 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
     def __init__(
         self,
         folder_path: DirectoryPath,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
         stream_name: str | None = None,
         block_index: int | None = None,
         verbose: bool = False,
-        es_key: str = "ElectricalSeries",
+        es_key: str | None = None,
+        metadata_key: str | None = None,
     ):
         """
         Initialize reading of OpenEphys legacy recording (.continuous files).
@@ -90,7 +93,41 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
             The index of the block to extract from the data.
         verbose : bool, default: False
         es_key : str, default: "ElectricalSeries"
+        metadata_key : str, optional
+            Key that indexes this interface's entries in the dict-based metadata. Defaults to
+            ``"open_ephys_recording"``.
         """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "stream_name",
+                "block_index",
+                "verbose",
+                "es_key",
+            ]
+            num_positional_args_before_args = 1  # folder_path
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args + 1} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to OpenEphysLegacyRecordingInterface.__init__() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            stream_name = positional_values.get("stream_name", stream_name)
+            block_index = positional_values.get("block_index", block_index)
+            verbose = positional_values.get("verbose", verbose)
+            es_key = positional_values.get("es_key", es_key)
+
         available_streams = self.get_stream_names(folder_path=folder_path)
         if len(available_streams) > 1 and stream_name is None:
             raise ValueError(
@@ -105,11 +142,28 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
             )
 
         super().__init__(
-            folder_path=folder_path, stream_name=stream_name, block_index=block_index, verbose=verbose, es_key=es_key
+            folder_path=folder_path,
+            stream_name=stream_name,
+            block_index=block_index,
+            verbose=verbose,
+            es_key=es_key,
+            metadata_key=metadata_key,
         )
 
-    def get_metadata(self) -> DeepDict:
-        metadata = super().get_metadata()
+        # ``metadata_key`` is a snake_case dict handle, not the series name. A session is a single Open Ephys
+        # recording, so the default is a constant; conversions that combine several streams pass their own.
+        if metadata_key is None:
+            self.metadata_key = "open_ephys_recording"
+
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
+        metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
+
+        if use_new_metadata_format:
+            # State the series name here, where the metadata is produced: it is the interface's own, and it is
+            # independent of ``metadata_key`` (the dict key), so re-keying an entry never renames the series.
+            # No device or electrode groups are emitted: this interface has never claimed either, and the
+            # pipeline synthesizes its defaults from the channel-group properties.
+            metadata["Ecephys"]["ElectricalSeries"][self.metadata_key]["name"] = "ElectricalSeries"
 
         neo_reader = self.recording_extractor.neo_reader
         block_annotations = neo_reader.raw_annotations.get("blocks", [])

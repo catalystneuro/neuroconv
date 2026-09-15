@@ -52,11 +52,11 @@ class TestRcloneWithConfig(TestCase):
             "team_drive = \n",
             "\n",
         ]
-        with open(file=self.test_config_file, mode="w") as io:
+        with open(file=self.test_config_file, mode="w", encoding="utf-8") as io:
             io.writelines(rclone_config_contents)
 
     def test_direct_usage_of_rclone_with_config(self):
-        with open(file=self.test_config_file, mode="r") as io:
+        with open(file=self.test_config_file, mode="r", encoding="utf-8") as io:
             rclone_config_file_stream = io.read()
 
         os.environ["RCLONE_CONFIG"] = rclone_config_file_stream
@@ -83,7 +83,7 @@ class TestRcloneWithConfig(TestCase):
         testing_file_path = self.test_folder / "ci_tests" / "test_text_file.txt"
         assert testing_file_path.is_file(), "The specific test transfer file does not exist!"
 
-        with open(file=testing_file_path, mode="r") as io:
+        with open(file=testing_file_path, mode="r", encoding="utf-8") as io:
             file_content = io.read()
             assert (
                 file_content == "This is a test file for the Rclone (with config) docker image hosted on NeuroConv!"

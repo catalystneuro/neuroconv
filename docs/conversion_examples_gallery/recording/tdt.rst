@@ -25,7 +25,7 @@ Convert TDT data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.tdt.t
     >>> metadata = interface.get_metadata()
     >>> # session_start_time is required for conversion. If it cannot be inferred
     >>> # automatically from the source files you must supply one.
-    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
+    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>> # Add subject information (required for DANDI upload)
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
@@ -33,3 +33,10 @@ Convert TDT data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.tdt.t
     >>>  # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"  # This should be something like: "./saved_file.nwb"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+
+.. seealso::
+
+    Other TDT data interfaces:
+
+    - :doc:`../fiberphotometry/tdt_fp` to convert TDT fiber photometry signals.
+    - :doc:`../events/tdt_events` to convert discrete TDT events (epocs such as port entries or nose pokes).

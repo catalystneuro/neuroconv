@@ -20,6 +20,7 @@ extensions = [
     "sphinx_search.extension",  # Allows for auto search function the documentation
     "sphinx.ext.viewcode",  # Shows source code in the documentation
     "sphinx.ext.extlinks",  # Allows to use shorter external links defined in the extlinks variable.
+    "sphinx_design",  # Provides the tabs used by metadata_templates.rst.
 ]
 
 templates_path = ["_templates"]
@@ -61,7 +62,7 @@ version_match = os.environ.get("READTHEDOCS_VERSION_NAME", "stable")
 
 html_theme_options = {
     "use_edit_page_button": True,
-    "navbar_end": ["version-switcher", "navbar-icon-links"],  # Version switcher in navbar like NumPy/SciPy
+    "navbar_end": ["theme-switcher", "version-switcher", "navbar-icon-links"],  # Theme and version switchers in navbar
     "icon_links": [
         {
             "name": "GitHub",
@@ -87,6 +88,10 @@ linkcheck_ignore = [
     r"https://stackoverflow\.com/.*",  # The r is because of the regex, stackoverflow links are forbidden to bots
     "https://catalystneuro.com/*/",
     "https://doi.org/10.25080/cehj4257",  # Does not seem to support multiple access
+    "https://ibl.flatironinstitute.org/public",  # Fails with bot access
+    "https://www.winehq.org/",  # Wine prevents bot access
+    r"https://ffmpeg\.org/.*",  # Their host drops connections on 443 under load, so the check times out
+    "https://nwb-users.slack.com",  # Slack answers a bot with 403
 ]
 
 # --------------------------------------------------
@@ -174,7 +179,7 @@ def update_version_switcher_in_read_the_docs(app, config):
 
     # Update switcher.json with PR/branch entry
     # switcher.json structure: [{"name": str, "version": str, "url": str}, ...]
-    with open(switcher_path, "r") as f:
+    with open(switcher_path, "r", encoding="utf-8") as f:
         switcher_entries = json.load(f)
 
     # Avoid duplicated entries
@@ -184,7 +189,7 @@ def update_version_switcher_in_read_the_docs(app, config):
 
     # Add and save new entry
     switcher_entries.append(entry_to_add)
-    with open(switcher_path, "w") as f:
+    with open(switcher_path, "w", encoding="utf-8") as f:
         json.dump(switcher_entries, f, indent=4)
 
 

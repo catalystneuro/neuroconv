@@ -16,8 +16,7 @@ def automatic_dandi_upload(
     nwb_folder_path: DirectoryPath,
     dandiset_folder_path: DirectoryPath | None = None,
     version: str = "draft",
-    sandbox: bool | None = None,
-    staging: bool | None = None,
+    sandbox: bool = False,
     cleanup: bool = False,
     number_of_jobs: int | None = None,
     number_of_threads: int | None = None,
@@ -52,13 +51,8 @@ def automatic_dandi_upload(
     version : str, default="draft"
         The version of the Dandiset to download. Even if no data has been uploaded yes, this step downloads an essential
         Dandiset metadata yaml file. Default is "draft", which is the latest state.
-    sandbox : bool, optional
+    sandbox : bool, default: False
         Is the Dandiset hosted on the sandbox server? This is mostly for testing purposes.
-        Defaults to False.
-    staging : bool, optional
-        .. deprecated:: 0.6.0
-            The 'staging' parameter is deprecated and will be removed in February 2026.
-            Use 'sandbox' instead.
     cleanup : bool, default: False
         Whether to remove the Dandiset folder path and nwb_folder_path.
     number_of_jobs : int, optional
@@ -77,21 +71,6 @@ def automatic_dandi_upload(
         message = "The 'instance' parameter must be either 'dandi', 'ember', or a full URL starting with 'https://'."
         raise ValueError(message)
 
-    # Handle deprecated 'staging' parameter and set defaults
-    if staging is not None and sandbox is not None:
-        raise ValueError("Cannot specify both 'staging' and 'sandbox' parameters. Use 'sandbox' only.")
-
-    if staging is not None:
-        warn(
-            "The 'staging' parameter is deprecated and will be removed in February 2026. " "Use 'sandbox' instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        sandbox = staging
-
-    if sandbox is None:
-        sandbox = False
-
     # Determine the actual dandi_instance name and URL based on instance and sandbox parameters
     if instance == "dandi" and sandbox:
         url_base = "https://sandbox.dandiarchive.org"
@@ -100,11 +79,11 @@ def automatic_dandi_upload(
         url_base = "https://dandiarchive.org"
         dandi_instance = "dandi"
     elif instance == "ember" and sandbox:
-        url_base = "https://dandi-sandbox.emberarchive.org"
-        dandi_instance = "ember-sandbox"
+        url_base = "https://dandi.sandbox.emberarchive.org"
+        dandi_instance = "ember-dandi-sandbox"
     elif instance == "ember" and not sandbox:
         url_base = "https://dandi.emberarchive.org"
-        dandi_instance = "ember"
+        dandi_instance = "ember-dandi"
     else:
         url_base = instance.removesuffix("/")
         dandi_instance = instance
@@ -114,8 +93,8 @@ def automatic_dandi_upload(
     api_key_map = {
         "dandi": "DANDI_API_KEY",
         "dandi-sandbox": "DANDI_SANDBOX_API_KEY",
-        "ember": "EMBER_API_KEY",
-        "ember-sandbox": "EMBER_SANDBOX_API_KEY",
+        "ember-dandi": "EMBER_API_KEY",
+        "ember-dandi-sandbox": "EMBER_SANDBOX_API_KEY",
     }
 
     # Only check for known instances; custom URLs don't have a predefined env var

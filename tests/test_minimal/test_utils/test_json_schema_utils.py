@@ -3,6 +3,8 @@ import os
 from copy import deepcopy
 
 import numpy as np
+import pytest
+from pynwb.image import ImageSeries
 from pynwb.ophys import ImagingPlane, TwoPhotonSeries
 
 from neuroconv.utils import (
@@ -11,7 +13,7 @@ from neuroconv.utils import (
     get_schema_from_hdmf_class,
     load_dict_from_file,
 )
-from neuroconv.utils.json_schema import _NWBMetaDataEncoder
+from neuroconv.utils.json_schema import _NWBMetaDataEncoder, validate_metadata
 
 
 def compare_dicts(a: dict, b: dict):
@@ -150,6 +152,38 @@ def test_fill_defaults():
     compare_dicts(schema, correct_new_schema)
 
 
+def test_fill_defaults_skips_additional_properties_node():
+    """A node validated only by additionalProperties has no named properties to fill, so it is skipped.
+
+    Regression test: such a node (produced e.g. by TDTEventsInterface, whose Events block is keyed by a
+    dynamic metadata_key) used to raise ``KeyError: 'properties'`` when reached via a default value.
+    """
+    schema = dict(
+        type="object",
+        properties=dict(
+            Events=dict(
+                type="object",
+                additionalProperties=dict(type="object"),
+            ),
+        ),
+    )
+    defaults = dict(Events=dict(tdt_events=dict(event_columns=dict())))
+
+    fill_defaults(schema, defaults)
+
+    # The additionalProperties node is left untouched (no "default" injected, no error).
+    correct_new_schema = dict(
+        type="object",
+        properties=dict(
+            Events=dict(
+                type="object",
+                additionalProperties=dict(type="object"),
+            ),
+        ),
+    )
+    compare_dicts(schema, correct_new_schema)
+
+
 def test_load_metadata_from_file():
     m0 = dict(
         NWBFile=dict(
@@ -202,7 +236,63 @@ def test_get_schema_from_TwoPhotonSeries_array_type():
     assert "external_file" not in two_photon_series_schema["properties"]
 
 
+@pytest.mark.parametrize("hdmf_class", [ImageSeries, TwoPhotonSeries])
+def test_array_valued_metadata_survives_a_widened_type_declaration(hdmf_class):
+    """Small array-valued metadata stays in the schema even where pynwb declares it as `data` is declared.
+
+    Whether an argument accepts a `DataIO` is the generator's proxy for it being a bulk dataset. pynwb's
+    development branch widened these fields to the same declaration `data` carries, so the proxy stopped
+    separating them and every conversion supplying one failed validation.
+    """
+    schema = get_schema_from_hdmf_class(hdmf_class)
+
+    assert schema["properties"]["dimension"]["type"] == "array"
+    if hdmf_class is TwoPhotonSeries:
+        assert schema["properties"]["field_of_view"]["type"] == "array"
+
+
 def test_np_array_encoding():
     np_array = np.array([1, 2, 3])
     encoded = json.dumps(np_array, cls=_NWBMetaDataEncoder)
     assert encoded == "[1, 2, 3]"
+
+
+def test_validate_metadata_rejects_duplicate_device_names():
+    metadata = {"Devices": {"a": {"name": "shared"}, "b": {"name": "shared"}}}
+
+    with pytest.raises(ValueError, match="Use 1 key to share a device"):
+        validate_metadata(metadata=metadata, schema={"type": "object"})
+
+
+def test_dict_deep_update_forwards_compare_key_into_nested_mappings():
+    # The list sits one level down, so the recursive call has to carry the compare_key with it.
+    a = dict(Ecephys=dict(Electrodes=[dict(id=1, desc="old"), dict(id=2, desc="other")]))
+    b = dict(Ecephys=dict(Electrodes=[dict(id=1, desc="new")]))
+    result = dict_deep_update(a, b, compare_key="id")
+    assert result == dict(Ecephys=dict(Electrodes=[dict(id=1, desc="new"), dict(id=2, desc="other")]))
+
+
+def test_dict_deep_update_forwards_list_dict_deep_update_into_nested_mappings():
+    a = dict(Ecephys=dict(Electrodes=[dict(name="x", desc="old", unit="V")]))
+    b = dict(Ecephys=dict(Electrodes=[dict(name="x", desc="new")]))
+    # Replacement, not a merge: the entry loses the field the update did not restate.
+    result = dict_deep_update(a, b, list_dict_deep_update=False)
+    assert result == dict(Ecephys=dict(Electrodes=[dict(name="x", desc="new")]))
+
+
+def test_dict_deep_update_forwards_compare_key_into_merged_list_entries():
+    # Two list entries matched on the compare_key are merged with dict_deep_update, and that merge has to
+    # keep the compare_key too for any list nested inside the entry.
+    a = dict(groups=[dict(id="g", channels=[dict(id=1, gain=1.0)])])
+    b = dict(groups=[dict(id="g", channels=[dict(id=1, gain=2.0)])])
+    result = dict_deep_update(a, b, compare_key="id")
+    assert result == dict(groups=[dict(id="g", channels=[dict(id=1, gain=2.0)])])
+
+
+def test_dict_deep_update_copy_false_updates_nested_dicts_in_place():
+    inner = dict(x=1)
+    a = dict(outer=inner)
+    result = dict_deep_update(a, dict(outer=dict(y=2)), copy=False)
+    assert result is a
+    assert a["outer"] is inner
+    assert inner == dict(x=1, y=2)

@@ -70,3 +70,25 @@ def test_openephys_analog_interface_nidq(tmp_path):
         # Check data dimensions
         assert len(time_series.data.shape) == 2  # [time, channels]
         assert time_series.data.shape[1] == len(interface.analog_channel_ids)
+
+
+def test_metadata_key_does_not_rename_series():
+    """The key addresses the entry; ``time_series_name`` names the object, independently."""
+    folder_path = ECEPHY_DATA_PATH / "openephysbinary" / "neural_and_non_neural_data_mixed"
+    stream_name = "Rhythm_FPGA-100.0_ADC"
+
+    default_interface = OpenEphysBinaryAnalogInterface(folder_path=folder_path, stream_name=stream_name)
+    assert default_interface.metadata_key == "open_ephys_analog"
+    entry = default_interface.get_metadata()["TimeSeries"]["open_ephys_analog"]
+    assert entry["name"] == "TimeSeriesOpenEphysAnalog"
+
+    # The key moves the entry; the name does not follow it, and stays settable on its own.
+    custom_interface = OpenEphysBinaryAnalogInterface(
+        folder_path=folder_path,
+        stream_name=stream_name,
+        metadata_key="my_adc",
+        time_series_name="TimeSeriesMyADC",
+    )
+    time_series_metadata = custom_interface.get_metadata()["TimeSeries"]
+    assert set(time_series_metadata) == {"my_adc"}
+    assert time_series_metadata["my_adc"]["name"] == "TimeSeriesMyADC"

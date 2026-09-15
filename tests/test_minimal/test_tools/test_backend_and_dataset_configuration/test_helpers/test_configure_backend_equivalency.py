@@ -7,6 +7,7 @@ import numcodecs
 import numpy as np
 import pytest
 from numpy.testing import assert_array_equal
+from pynwb import read_nwb
 from pynwb.testing.mock.base import mock_TimeSeries
 from pynwb.testing.mock.file import mock_NWBFile
 
@@ -66,26 +67,26 @@ def test_configure_backend_equivalency(
     # assert False, f"{backend_configuration_2=}"
 
     dataset_configuration = backend_configuration_2.dataset_configurations["acquisition/TestTimeSeries/data"]
-    dataset_configuration.compression_options = {"level": 2}
+    dataset_configuration.compressor_options = [{"level": 2}]
     configure_backend(nwbfile=nwbfile_1, backend_configuration=backend_configuration_2)
 
     nwbfile_path = str(tmpdir / f"test_configure_backend_equivalency.nwb")
     with BACKEND_NWB_IO[backend](path=nwbfile_path, mode="w") as io:
         io.write(nwbfile_1)
 
-    with BACKEND_NWB_IO[backend](path=nwbfile_path, mode="r") as io:
-        written_nwbfile = io.read()
-        written_data = written_nwbfile.acquisition["TestTimeSeries"].data
+    written_nwbfile = read_nwb(nwbfile_path)
+    written_data = written_nwbfile.acquisition["TestTimeSeries"].data
 
-        assert written_data.chunks == dataset_configuration.chunk_shape
+    assert written_data.chunks == dataset_configuration.chunk_shape
 
-        if backend == "hdf5":
-            assert written_data.compression == "gzip"
-            assert written_data.compression_opts == 2
-        elif backend == "zarr":
-            assert written_data.compressor == numcodecs.GZip(level=2)
+    if backend == "hdf5":
+        assert written_data.compression == "gzip"
+        assert written_data.compression_opts == 2
+    elif backend == "zarr":
+        assert written_data.compressor == numcodecs.GZip(level=2)
 
-        assert_array_equal(array_1, written_data[:])
+    assert_array_equal(array_1, written_data[:])
+    written_nwbfile.read_io.close()
 
 
 @pytest.mark.parametrize("backend", ["hdf5", "zarr"])
@@ -130,7 +131,9 @@ def test_configure_backend_equivalency_empty_to_nonempty_failure(array_1: np.nda
         configure_backend(nwbfile=nwbfile, backend_configuration=empty_backend_configuration)
 
     expected_message = (
-        "The number of default configurations (1) does not match the number of specified configurations (0)!"
+        "The number of default configurations (1) does not match the number of specified configurations (0)! "
+        "This usually occurs when the file gained or lost datasets after the configuration was built; derive the "
+        "configuration from the file you are about to write."
     )
     assert expected_message == str(exception_info.value)
 
@@ -149,6 +152,8 @@ def test_configure_backend_equivalency_nonempty_to_empty_failure(array_1: np.nda
         configure_backend(nwbfile=empty_nwbfile, backend_configuration=nonempty_backend_configuration)
 
     expected_message = (
-        "The number of default configurations (0) does not match the number of specified configurations (1)!"
+        "The number of default configurations (0) does not match the number of specified configurations (1)! "
+        "This usually occurs when the file gained or lost datasets after the configuration was built; derive the "
+        "configuration from the file you are about to write."
     )
     assert expected_message == str(exception_info.value)

@@ -6,12 +6,19 @@ from typing import Literal
 
 import numpy as np
 from hdmf.data_utils import AbstractDataChunkIterator, DataChunk
-from pynwb import NWBFile
-from pynwb.base import Images
+from pynwb.base import Image
 from pynwb.image import GrayscaleImage, RGBAImage, RGBImage
 
-from ...basedatainterface import BaseDataInterface
-from ...utils import DeepDict
+from .baseimageinterface import BaseImageInterface
+
+# Map PIL image mode -> numpy dtype, for modes supported by ImageInterface.
+_PIL_MODE_TO_NUMPY_DTYPE = {
+    "L": np.uint8,
+    "RGB": np.uint8,
+    "RGBA": np.uint8,
+    "LA": np.uint8,
+    "I;16": np.uint16,
+}
 
 
 class SingleImageIterator(AbstractDataChunkIterator):
@@ -26,22 +33,21 @@ class SingleImageIterator(AbstractDataChunkIterator):
         with Image.open(self._file_path) as img:
             self.image_mode = img.mode
             self._image_shape = img.size[::-1]  # PIL uses (width, height) instead of (height, width)
-            self._max_shape = (None, None)
 
             self.number_of_bands = len(img.getbands())
             if self.number_of_bands > 1:
                 self._image_shape += (self.number_of_bands,)
-                self._max_shape += (self.number_of_bands,)
 
             # For LA mode, adjust shape to RGBA
             if self.image_mode == "LA":
                 self._image_shape = self._image_shape[:-1] + (4,)
-                self._max_shape = self._max_shape[:-1] + (4,)
+
+            self._dtype = np.dtype(_PIL_MODE_TO_NUMPY_DTYPE.get(self.image_mode, np.uint8))
 
             # Calculate file size in bytes
             self._size_bytes = self._file_path.stat().st_size
             # Calculate approximate memory size when loaded as numpy array
-            self._memory_size = np.prod(self._image_shape) * np.dtype(float).itemsize
+            self._memory_size = np.prod(self._image_shape) * self._dtype.itemsize
 
         self._images_returned = 0  # Number of images returned in __next__
 
@@ -97,12 +103,15 @@ class SingleImageIterator(AbstractDataChunkIterator):
     @property
     def dtype(self):
         """Define the data type of the array"""
-        return np.dtype(float)
+        return self._dtype
 
     @property
     def maxshape(self):
         """Property describing the maximum shape of the data array that is being iterated over"""
-        return self._max_shape
+        # A single image has a fixed shape, so the maximum shape is the image shape itself. Reporting concrete
+        # axes (rather than `None`) is also what allows the default chunking and compression estimators in
+        # `tools.nwb_helpers` to size a chunk for this dataset.
+        return self._image_shape
 
     def __len__(self):
         return self._image_shape[0]
@@ -119,12 +128,12 @@ class SingleImageIterator(AbstractDataChunkIterator):
         }
 
 
-class ImageInterface(BaseDataInterface):
+class ImageInterface(BaseImageInterface):
     """Interface for converting single or multiple images to NWB format."""
 
     display_name = "Image Interface"
     keywords = ("image",)
-    associated_suffixes = (".png", ".jpg", ".jpeg", ".tiff", ".tif", "webp")
+    associated_suffixes = (".png", ".jpg", ".jpeg", ".tiff", ".tif", ".webp")
     info = "Interface for converting single or multiple images to NWB format."
 
     # Mapping from PIL mode to NWB image class
@@ -136,29 +145,12 @@ class ImageInterface(BaseDataInterface):
         "I;16": GrayscaleImage,  # 16-bit grayscale image
     }
 
-    @classmethod
-    def get_source_schema(cls) -> dict:
-        """Return the schema for the source_data."""
-        return dict(
-            required=["file_paths"],
-            properties=dict(
-                file_paths=dict(
-                    type="array",
-                    items=dict(type="string"),
-                    description="List of paths to image files to be converted",
-                ),
-                folder_path=dict(
-                    type="string",
-                    description="Path to folder containing images to be converted. Used if file_paths not provided.",
-                ),
-            ),
-        )
-
     def __init__(
         self,
         file_paths: list[str | Path] | None = None,
         folder_path: str | Path | None = None,
-        images_location: Literal["acquisition", "stimulus"] = "acquisition",
+        *args,  # TODO: change to * (keyword only) on or after August 2026
+        images_location: Literal["acquisition", "stimulus"] | None = None,
         metadata_key: str = "Images",
         verbose: bool = True,
     ):
@@ -171,207 +163,77 @@ class ImageInterface(BaseDataInterface):
             List of paths to image files to be converted
         folder_path : str | Path, optional
             Path to folder containing images to be converted. Used if file_paths not provided.
-        images_location : Literal["acquisition", "stimulus"], default: "acquisition"
-            Location to store images in the NWB file
+        images_location : Literal["acquisition", "stimulus"], optional
+            Deprecated. Pass ``parent_container`` to ``add_to_nwbfile`` instead. Will be removed in v0.12.0.
         metadata_key : str, default: "Images"
             Key to use in metadata["Images"][metadata_key] for storing container metadata
         verbose : bool, default: True
             Whether to print status messages
         """
-        if file_paths is None and folder_path is None:
-            raise ValueError("Either file_paths or folder_path must be provided")
-
-        if file_paths is not None and folder_path is not None:
-            raise ValueError("Only one of file_paths or folder_path should be provided")
-
-        self.file_paths = file_paths
-        self.folder_path = folder_path
-        self.images_location = images_location
-        self.metadata_key = metadata_key
-
-        super().__init__(
-            verbose=verbose,
-            file_paths=file_paths,
-            folder_path=folder_path,
-            images_location=images_location,
-            metadata_key=metadata_key,
-        )
-
-        # Process paths
-        if folder_path is not None:
-            folder = Path(folder_path)
-            if not folder.exists():
-                raise ValueError(f"Folder path {folder} does not exist")
-
-            # Get all image files in folder
-            file_paths = []
-            for suffix in self.associated_suffixes:
-                file_paths.extend(folder.glob(f"*{suffix}"))
-
-            if not file_paths:
-                raise ValueError(f"No image files found in {folder}")
-
-        self.file_paths = [Path(p) for p in file_paths]
-
-    def get_metadata(self) -> DeepDict:
-        """
-        Get metadata for the images.
-
-        This method returns a metadata structure that includes both container-level and per-image metadata.
-        The per-image metadata allows customization of individual image properties such as name, resolution,
-        and description.
-
-        Returns
-        -------
-        DeepDict
-            Metadata dictionary with the following structure:
-            {
-                "Images": {
-                    "<metadata_key>": {
-                        "name": str,
-                            Name of the Images container (defaults to metadata_key)
-                        "description": str,
-                            Description of the Images container
-                        "images": {
-                            "<file_path_1>": {
-                                "name": str,
-                                    Name for the individual image (defaults to file stem)
-                                "resolution": float, optional
-                                    Resolution in pixels/cm (can be added by user)
-                                "description": str, optional
-                                    Description of the individual image (can be added by user)
-                            },
-                            "<file_path_2>": {
-                                ...
-                            }
-                        }
-                    }
-                }
-            }
-
-        Examples
-        --------
-        Basic usage:
-        >>> interface = ImageInterface(file_paths=["/data/img1.png", "/data/img2.jpg"])
-        >>> metadata = interface.get_metadata()
-        >>> print(metadata["Images"]["ImagesRGB"]["images"])
-        {
-            "/data/img1.png": {"name": "img1"},
-            "/data/img2.jpg": {"name": "img2"}
-        }
-
-        Customizing per-image metadata:
-        >>> metadata = interface.get_metadata()
-        >>> metadata["Images"]["ImagesRGB"]["images"]["/data/img1.png"]["resolution"] = 2.5
-        >>> metadata["Images"]["ImagesRGB"]["images"]["/data/img1.png"]["description"] = "Baseline image"
-        >>> metadata["Images"]["ImagesRGB"]["images"]["/data/img2.jpg"]["name"] = "treatment_image"
-        >>> interface.add_to_nwbfile(nwbfile, metadata=metadata)
-
-        Notes
-        -----
-        - The "images" dictionary maps file paths (as strings) to individual image metadata
-        - Users can modify the returned metadata to customize image properties before calling add_to_nwbfile()
-        - Resolution should be specified in pixels/cm if provided
-        - If resolution or description are not specified, they will not be passed to the NWB image objects
-        - Image names default to the file stem but can be overridden in the metadata
-        """
-        metadata = super().get_metadata()
-
-        # Add basic metadata about the images under the specified key
-        if "Images" not in metadata:
-            metadata["Images"] = {}
-
-        # Create images_dict mapping file_path to individual image metadata
-        images_metadata_dict = {}
-        for file_path in self.file_paths:
-            file_path_str = str(file_path)
-            images_metadata_dict[file_path_str] = {
-                "name": Path(file_path).stem,  # Default name from file stem
-                # Users can add "resolution" and "description" keys as needed
-            }
-
-        metadata["Images"][self.metadata_key] = dict(
-            name=self.metadata_key,
-            description="Images loaded through ImageInterface",
-            images=images_metadata_dict,
-        )
-
-        return metadata
-
-    def add_to_nwbfile(
-        self,
-        nwbfile: NWBFile,
-        metadata: DeepDict | None = None,
-        container_name: str | None = None,
-    ) -> None:
-        """
-        Add the image data to an NWB file.
-
-        Parameters
-        ----------
-        nwbfile : NWBFile
-            The NWB file to add the images to
-        metadata : dict, optional
-            Metadata for the images
-        container_name : str, optional, deprecated
-            Name of the Images container. This parameter is deprecated and will be removed
-            on or after February 2026. Use metadata_key in __init__ instead.
-            If provided, it overrides the name from metadata.
-        """
-
-        if container_name is not None:
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "images_location",
+                "metadata_key",
+                "verbose",
+            ]
+            num_positional_args_before_args = 2  # file_paths, folder_path
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args + 1} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
             warnings.warn(
-                "The 'container_name' parameter is deprecated and will be removed on or after February 2026. "
-                "Use 'metadata_key' in the __init__ method instead.",
+                f"Passing arguments positionally to ImageInterface.__init__() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
                 FutureWarning,
                 stacklevel=2,
             )
+            images_location = positional_values.get("images_location", images_location)
+            metadata_key = positional_values.get("metadata_key", metadata_key)
+            verbose = positional_values.get("verbose", verbose)
 
-        if metadata is None:
-            metadata = self.get_metadata()
-
-        # Get metadata for this specific container
-        images_metadata = metadata.get("Images", {})
-        container_metadata = images_metadata.get(self.metadata_key, {})
-
-        # Use container_name only if explicitly provided (deprecated), otherwise use metadata
-        if container_name is not None:
-            name = container_name
-        else:
-            name = container_metadata.get("name", self.metadata_key)
-
-        description = container_metadata.get("description", "Images loaded through ImageInterface")
-
-        # Create Images container
-        images_container = Images(
-            name=name,
-            description=description,
+        super().__init__(
+            file_paths=file_paths,
+            folder_path=folder_path,
+            metadata_key=metadata_key,
+            verbose=verbose,
         )
 
-        # Process each image
-        images_metadata_dict = container_metadata.get("images", {})
-        for file_path in self.file_paths:
-            # Create iterator for memory-efficient loading
-            iterator = SingleImageIterator(file_path)
-            # Validate mode and get image class
-            if iterator.image_mode not in self.IMAGE_MODE_TO_NWB_TYPE_MAP:
-                raise ValueError(f"Unsupported image mode: {iterator.image_mode} for image {file_path.name}")
+        if images_location is not None:
+            warnings.warn(
+                "The 'images_location' parameter of ImageInterface.__init__() is deprecated and will be removed "
+                "in v0.12.0. Pass 'parent_container' to add_to_nwbfile() instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            self.parent_container = images_location
 
-            # Build the Image
-            nwb_image_class = self.IMAGE_MODE_TO_NWB_TYPE_MAP[iterator.image_mode]
-            image_kwargs = dict(data=iterator)
-            image_metadata = images_metadata_dict.get(str(file_path), {})
-            image_kwargs.update(image_metadata)
-            # If name is not available use the file stem
-            image_kwargs["name"] = image_kwargs.get("name", Path(file_path).stem)
+    def _get_image_metadata_properties(self) -> dict:
+        properties = super()._get_image_metadata_properties()
+        properties["resolution"] = dict(
+            type="number", description="Pixel resolution of the image, in pixels per centimeter."
+        )
+        return properties
 
-            nwb_image = nwb_image_class(**image_kwargs)
+    def _create_nwb_image(self, *, file_path: Path, image_metadata: dict) -> Image:
+        # Create iterator for memory-efficient loading
+        iterator = SingleImageIterator(file_path)
+        # Validate mode and get image class
+        if iterator.image_mode not in self.IMAGE_MODE_TO_NWB_TYPE_MAP:
+            raise ValueError(f"Unsupported image mode: {iterator.image_mode} for image {file_path.name}")
 
-            # Add to images container
-            images_container.add_image(nwb_image)
+        # Build the Image
+        nwb_image_class = self.IMAGE_MODE_TO_NWB_TYPE_MAP[iterator.image_mode]
+        image_kwargs = dict(data=iterator)
+        image_kwargs.update(image_metadata)
+        # If name is not available use the file stem
+        image_kwargs["name"] = image_kwargs.get("name", Path(file_path).stem)
 
-        # Add images container to nwb file
-        if self.images_location == "acquisition":
-            nwbfile.add_acquisition(images_container)
-        else:
-            nwbfile.add_stimulus(images_container)
+        return nwb_image_class(**image_kwargs)

@@ -7,8 +7,42 @@ Install NeuroConv with the additional dependencies necessary for reading ScanIma
 
     pip install "neuroconv[scanimage]"
 
-Convert ScanImage imaging data
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Convert a ScanImage acquisition
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Point :py:class:`~neuroconv.converters.ScanImageConverter` at a ScanImage TIFF and every channel it
+holds is written, one ``ImagingPlane`` and one ``TwoPhotonSeries`` each. A multi-file acquisition is
+followed from its first file, and a volumetric one is written as a 4D series per channel.
+
+.. code-block:: python
+
+    >>> from zoneinfo import ZoneInfo
+    >>> from neuroconv.converters import ScanImageConverter
+    >>>
+    >>> file_path = OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "planar_two_channels_single_file" / "planar_two_ch_single_files_00001_00001.tif"
+    >>> converter = ScanImageConverter(file_path=file_path)
+    >>>
+    >>> metadata = converter.get_metadata()
+    >>> # For data provenance we add the time zone information to the conversion
+    >>> session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("Asia/Tokyo"))
+    >>> metadata["NWBFile"].update(session_start_time=session_start_time)
+    >>> # Add subject information (required for DANDI upload)
+    >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
+    >>>
+    >>> # Choose a path for saving the nwb file and run the conversion
+    >>> nwbfile_path = f"{path_to_save_nwbfile}"
+    >>> converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+
+NeuroConv aims to automatically add all the metadata annotations that are present in the source format.
+It is often the case that crucial information is not available there, such as the anatomical location,
+the meaning of the values, or a semantically meaningful description of the data. Follow
+:ref:`the ophys how-to <annotate_ophys_metadata>` for a modality-relevant guide to adding
+this extra metadata, which makes the data more useful for future users and for the community as a whole.
+Its :ref:`section on templates <how_to_annotate_ophys_from_a_template>` starts from scratch, and the
+:ref:`reference template <ophys_imaging_metadata_template>` lists every element the metadata accepts.
+
+Convert a single channel or plane
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The `ScanImageImagingInterface` handles both single and multi-file data, as well as multi-channel data.
 For multi-channel data, you need to specify the channel name, and you can use `plane_index` if you want to only write a specific plane.
@@ -32,14 +66,89 @@ For multi-channel data, you need to specify the channel name, and you can use `p
     ... )
     >>> metadata = interface.get_metadata()
     >>> # For data provenance we add the time zone information to the conversion
-    >>> session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("US/Pacific"))
+    >>> session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("Asia/Tokyo"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>> # Add subject information (required for DANDI upload)
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion
-    >>> nwbfile_path = f"{path_to_save_nwbfile}"
+    >>> nwbfile_path = f"{output_folder}/single_channel.nwb"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+
+Align ScanImage data with external sync pulses
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A common setup in two-photon imaging experiments is to have the microscope send a TTL
+sync pulse to a DAQ (e.g., National Instruments) each time a frame is acquired. The DAQ
+records these pulses alongside behavioral data, providing a shared clock for alignment.
+
+The challenge is that the imaging extractor presents data as a sequence of *samples*
+(one per volume in volumetric mode), but the sync pulses correspond to *raw frames*
+in the TIFF file. For multi-channel volumetric data, a single sample can span dozens
+of raw frames due to channel interleaving, multiple Z-planes, and flyback frames.
+
+The ``get_original_frame_indices`` method on ``ScanImageImagingExtractor`` bridges this
+gap by mapping each extractor sample back to its raw frame index in the TIFF.
+
+.. code-block:: python
+
+    from neuroconv.datainterfaces import ScanImageImagingInterface
+
+    # 1. Extract sync pulse timestamps from the DAQ recording
+    #    Each rising edge corresponds to one raw imaging frame
+    sync_signal = daq_data["two_photon_sync"]
+    threshold = 0.5
+    rising_edges = (sync_signal[1:] >= threshold) & (sync_signal[:-1] < threshold)
+    frame_timestamps = daq_timestamps[1:][rising_edges]
+
+    # 2. Create the imaging interface
+    interface = ScanImageImagingInterface(
+        file_path="session_00001.tif",
+        channel_name="Channel 1",
+    )
+    extractor = interface.imaging_extractor
+
+    # 3. Map extractor samples to raw frame indices
+    frame_indices = extractor.get_original_frame_indices()
+
+    # 4. Adjust for multi-channel data if needed
+    #    If the sync pulse fires once per plane (not once per channel per plane),
+    #    the raw frame index includes the channel dimension and must be divided out.
+    num_channels = 2  # e.g., GCaMP + jRGECO
+    sync_pulse_indices = frame_indices // num_channels
+
+    # 5. Handle cases where the DAQ stopped before the microscope
+    #    The extractor may have more samples than there are sync pulses.
+    valid_mask = sync_pulse_indices < len(frame_timestamps)
+    if not valid_mask.all():
+        last_valid = valid_mask.nonzero()[0][-1]
+        interface.imaging_extractor = extractor.slice_samples(
+            start_sample=0,
+            end_sample=last_valid + 1,
+        )
+        sync_pulse_indices = sync_pulse_indices[valid_mask]
+
+    # 6. Look up the aligned timestamps
+    aligned_timestamps = frame_timestamps[sync_pulse_indices]
+    interface.set_aligned_timestamps(aligned_timestamps=aligned_timestamps)
+
+**Key considerations:**
+
+- **Which plane to reference:** By default, ``get_original_frame_indices`` returns the
+  index of the last plane in each volume. This matches setups where the volume timestamp
+  is assigned at the end of the scan. Pass ``plane_index=0`` if your system timestamps
+  the start of each volume instead.
+
+- **DAQ vs. microscope shutdown order:** If the DAQ is turned off before the microscope
+  stops acquiring, some imaging samples will have no corresponding sync pulses. Always
+  check for this and slice the extractor accordingly, as shown in step 5 above. This
+  check assumes invalid samples are contiguous at the tail, which is the typical case
+  when the DAQ shuts down before the microscope.
+
+- **Channel adjustment:** ScanImage writes frames in CZT order (Channel, Z-depth, Time).
+  The sync system typically fires once per plane regardless of how many channels are being
+  recorded. Dividing the frame index by the number of channels converts from raw-frame-space
+  to sync-pulse-space.
 
 .. note::
     For older ScanImage files (v3.8 and earlier), use the :doc:`ScanImageLegacyImagingInterface <scanimage_legacy>` interface instead.

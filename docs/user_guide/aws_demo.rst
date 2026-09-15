@@ -65,10 +65,12 @@ level (not nested in any other folders).
         sessions:
           - source_data:
               ap:
-                file_path: spikeglx/Noise4Sam_g0/Noise4Sam_g0_imec0/Noise4Sam_g0_t0.imec0.ap.bin
+                folder_path: spikeglx/Noise4Sam_g0/Noise4Sam_g0_imec0
+                stream_id: imec0.ap
             metadata:
               NWBFile:
                 session_start_time: "2020-10-10T21:19:09+00:00"
+                session_id: "demo-aws-1"
               Subject:
                 subject_id: "1"
                 sex: F
@@ -77,6 +79,7 @@ level (not nested in any other folders).
           - metadata:
               NWBFile:
                 session_start_time: "2020-10-10T21:19:09+00:00"
+                session_id: "demo-aws-2"
               Subject:
                 subject_id: "002"
                 sex: F
