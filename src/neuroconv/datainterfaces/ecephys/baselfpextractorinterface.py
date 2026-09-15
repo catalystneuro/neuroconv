@@ -1,8 +1,10 @@
-from typing import Literal, Optional
+import warnings
+from typing import Literal
 
 from pynwb import NWBFile
 
 from .baserecordingextractorinterface import BaseRecordingExtractorInterface
+from ...utils import DeepDict
 
 
 class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
@@ -15,27 +17,97 @@ class BaseLFPExtractorInterface(BaseRecordingExtractorInterface):
         "LF",
     )
 
-    def __init__(self, verbose: bool = False, es_key: str = "ElectricalSeriesLFP", **source_data):
+    _default_es_key = "ElectricalSeriesLFP"
+
+    def __init__(self, verbose: bool = False, es_key: str | None = None, **source_data):
         super().__init__(verbose=verbose, es_key=es_key, **source_data)
+
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
+        metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
+
+        if use_new_metadata_format:
+            # State the series name here, where the metadata is produced, rather than leaving it to the
+            # ``es_key`` default: the dict format names a series from its own entry, so a name carried only
+            # by ``es_key`` (legacy, to be removed) never reaches the file. The name is the one the old
+            # format wrote, and it is independent of ``metadata_key`` (the dict key), so re-keying an entry
+            # never renames the written series.
+            metadata["Ecephys"]["ElectricalSeries"][self.metadata_key]["name"] = "ElectricalSeriesLFP"
+
+        return metadata
 
     def add_to_nwbfile(
         self,
-        nwbfile: Optional[NWBFile] = None,
-        metadata: Optional[dict] = None,
+        nwbfile: NWBFile | None = None,
+        metadata: dict | None = None,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
         stub_test: bool = False,
-        starting_time: Optional[float] = None,
-        write_as: Literal["raw", "lfp", "processed"] = "lfp",
+        parent_container: Literal["acquisition", "processing/LFP", "processing/FilteredEphys"] = "processing/LFP",
+        write_as: Literal["raw", "lfp", "processed"] | None = None,
+        data_representation: Literal["digital_counts", "physical_units"] = "digital_counts",
         write_electrical_series: bool = True,
         iterator_type: str = "v2",
-        iterator_opts: Optional[dict] = None,
+        iterator_options: dict | None = None,
+        always_write_timestamps: bool = False,
     ):
+        """
+        Add the LFP traces to the NWBFile, into ``processing/LFP`` unless ``parent_container`` says otherwise.
+
+        The arguments are those of :meth:`BaseRecordingExtractorInterface.add_to_nwbfile`, with
+        ``parent_container`` defaulting to ``"processing/LFP"``.
+        """
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "stub_test",
+                "write_as",
+                "write_electrical_series",
+                "iterator_type",
+                "iterator_options",
+            ]
+            num_positional_args_before_args = 2  # nwbfile, metadata
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"add_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to BaseLFPExtractorInterface.add_to_nwbfile() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            stub_test = positional_values.get("stub_test", stub_test)
+            write_as = positional_values.get("write_as", write_as)
+            write_electrical_series = positional_values.get("write_electrical_series", write_electrical_series)
+            iterator_type = positional_values.get("iterator_type", iterator_type)
+            iterator_options = positional_values.get("iterator_options", iterator_options)
+
+        if write_as is not None:
+            warnings.warn(
+                "The 'write_as' parameter of BaseLFPExtractorInterface.add_to_nwbfile() is deprecated and will be "
+                "removed on or after February 2027. Use 'parent_container' instead "
+                "('raw' -> 'acquisition', 'lfp' -> 'processing/LFP', 'processed' -> 'processing/FilteredEphys').",
+                FutureWarning,
+                stacklevel=2,
+            )
+            parent_container = {"raw": "acquisition", "lfp": "processing/LFP", "processed": "processing/FilteredEphys"}[
+                write_as
+            ]
+
         return super().add_to_nwbfile(
             nwbfile=nwbfile,
             metadata=metadata,
             stub_test=stub_test,
-            starting_time=starting_time,
-            write_as=write_as,
+            parent_container=parent_container,
+            data_representation=data_representation,
             write_electrical_series=write_electrical_series,
             iterator_type=iterator_type,
-            iterator_opts=iterator_opts,
+            iterator_options=iterator_options,
+            always_write_timestamps=always_write_timestamps,
         )

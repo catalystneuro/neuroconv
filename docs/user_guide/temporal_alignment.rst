@@ -119,18 +119,18 @@ that as the start time of the audio stream.
     from neuroconv.datainterfaces import (
         SpikeGLXRecordingInterface,
         AudioDataInterface,
-        SpikeGLXNIDQRecordingInterface,
+        SpikeGLXNIDQInterface,
     )
 
     class ExampleNWBConverter(NWBConverter):
         data_interface_classes = dict(
             SpikeGLXRecording=SpikeGLXRecordingInterface,
-            SpikeGLXNIDQ=SpikeGLXNIDQRecordingInterface,
+            NIDQ=SpikeGLXNIDQInterface,
             Audio=AudioDataInterface,
         )
 
         def temporally_align_data_interfaces(self):
-            nidq_interface = self.data_interface_objects["SpikeGLXNIDQ"]
+            nidq_interface = self.data_interface_objects["NIDQ"]
             audio_interface = self.data_interface_objects["Audio"]
             ttl_times = nidq_interface.get_event_times_from_ttl("channel-name")
             assert len(ttl_times) == 1, "more than one ttl pulse detected"

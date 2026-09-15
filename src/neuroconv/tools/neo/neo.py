@@ -1,9 +1,7 @@
-import distutils.version
 import uuid
 import warnings
 from copy import deepcopy
 from pathlib import Path
-from typing import Optional
 
 import neo.io.baseio
 import numpy as np
@@ -11,6 +9,7 @@ import pynwb
 from pydantic import FilePath
 
 from ..nwb_helpers import add_device_from_metadata
+from ...utils import get_conversion_from_unit
 
 response_classes = dict(
     voltage_clamp=pynwb.icephys.VoltageClampSeries,
@@ -118,37 +117,6 @@ def get_command_traces(neo_reader, segment: int = 0, cmd_channel: int = 0) -> tu
         msg = ".\n\n WARNING - get_command_traces() only works for AxonIO interface."
         e.args = (str(e) + msg,)
         return e
-
-
-def get_conversion_from_unit(unit: str) -> float:
-    """
-    Get conversion (to Volt or Ampere) from unit in string format.
-
-    Parameters
-    ----------
-    unit : str
-        Unit as string. E.g. pA, mV, uV, etc...
-
-    Returns
-    -------
-    float
-        The conversion factor to convert to Ampere or Volt.
-        For example, for 'pA' returns 1e-12 to convert to Ampere.
-    """
-    if unit in ["pA", "pV"]:
-        conversion = 1e-12
-    elif unit in ["nA", "nV"]:
-        conversion = 1e-9
-    elif unit in ["uA", "uV"]:
-        conversion = 1e-6
-    elif unit in ["mA", "mV"]:
-        conversion = 1e-3
-    elif unit in ["A", "V"]:
-        conversion = 1.0
-    else:
-        conversion = 1.0
-        warnings.warn("No valid units found for traces in the current file. Gain is set to 1, but this might be wrong.")
-    return float(conversion)
 
 
 def get_nwb_metadata(neo_reader, metadata: dict = None) -> dict:
@@ -413,7 +381,7 @@ def add_neo_to_nwb(
     nwbfile: pynwb.NWBFile,
     metadata: dict = None,
     icephys_experiment_type: str = "voltage_clamp",
-    stimulus_type: Optional[str] = None,
+    stimulus_type: str | None = None,
     skip_electrodes: tuple[int] = (),
 ):
     """
@@ -461,13 +429,13 @@ def add_neo_to_nwb(
 
 def write_neo_to_nwb(
     neo_reader: neo.io.baseio.BaseIO,
-    save_path: Optional[FilePath] = None,  # pragma: no cover
+    save_path: FilePath | None = None,  # pragma: no cover
     overwrite: bool = False,
     nwbfile=None,
     metadata: dict = None,
-    icephys_experiment_type: Optional[str] = None,
-    stimulus_type: Optional[str] = None,
-    skip_electrodes: Optional[tuple] = (),
+    icephys_experiment_type: str | None = None,
+    stimulus_type: str | None = None,
+    skip_electrodes: tuple | None = (),
 ):
     """
     Primary method for writing a Neo reader object to an NWBFile.
@@ -529,10 +497,6 @@ def write_neo_to_nwb(
     """
     if nwbfile is not None:
         assert isinstance(nwbfile, pynwb.NWBFile), "'nwbfile' should be of type pynwb.NWBFile"
-
-    assert (
-        distutils.version.LooseVersion(pynwb.__version__) >= "1.3.3"
-    ), "'write_neo_to_nwb' not supported for version < 1.3.3. Run pip install --upgrade pynwb"
 
     assert save_path is None or nwbfile is None, "Either pass a save_path location, or nwbfile object, but not both!"
 

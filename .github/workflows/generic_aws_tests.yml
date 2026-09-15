@@ -22,10 +22,10 @@ jobs:
         python-version: ["3.12"]
         os: [ubuntu-latest]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - run: git fetch --prune --unshallow --tags
       - name: Setup Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -39,4 +39,4 @@ jobs:
         run: pip install .[aws,test]
 
       - name: Run generic AWS tests
-        run: pytest -rsx -n auto tests/test_minimal/test_tools/aws_tools_tests.py
+        run: pytest -rsx -n auto tests/remote_transfer_services/aws_tools_tests.py

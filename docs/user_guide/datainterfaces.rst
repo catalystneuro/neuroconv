@@ -92,7 +92,7 @@ If it is not found, you must add it:
     from datetime import datetime
     from zoneinfo import ZoneInfo
 
-    metadata["NWBFile"]["session_start_time"] = datetime(2021, 1, 1, 12, 0, 0, tzinfo=ZoneInfo("US/Pacific"))
+    metadata["NWBFile"]["session_start_time"] = datetime(2021, 1, 1, 12, 0, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
 
 You can use ``tz.tzlocal()`` to get the local timezone.
 
@@ -101,7 +101,7 @@ This is not required but is a recommended best practice. Here is how you would a
 
 .. code-block:: python
 
-    metadata["NWBFile"]["session_start_time"] = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("US/Pacific"))
+    metadata["NWBFile"]["session_start_time"] = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("Asia/Tokyo"))
 
 NWB Best Practices also recommends several other fields that are rarely present in the extracted metadata.
 The metadata dictionary is the place to add this information:
@@ -161,7 +161,7 @@ the path of an NWB file, and launches the actual data conversion into NWB:
 .. code-block:: python
 
     spikeglx_interface.run_conversion(
-        save_path="path/to/destination.nwb",
+        nwbfile_path="path/to/destination.nwb",
         metadata=metadata
     )
 
@@ -188,8 +188,8 @@ The following code automatically optimizes datasets for cloud compute and writes
 
 .. code-block:: python
 
-    from neuroconv.tools.nwb_helpers import configure_and_write_nwbfile
+    from neuroconv.tools import configure_and_write_nwbfile
 
     configure_and_write_nwbfile(
-        nwbfile, save_path="path/to/destination.nwb", backend="hdf5"
+        nwbfile, nwbfile_path="path/to/destination.nwb", backend="hdf5"
     )

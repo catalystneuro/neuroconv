@@ -1,9 +1,8 @@
 import re
 from pathlib import Path, PureWindowsPath
-from typing import Union
 
 
-def infer_path(path: str) -> Union[PureWindowsPath, Path]:
+def infer_path(path: str) -> PureWindowsPath | Path:
     """
     Infers and returns the appropriate path object based on the path string.
 
@@ -14,7 +13,7 @@ def infer_path(path: str) -> Union[PureWindowsPath, Path]:
 
     Returns
     -------
-    Union[PureWindowsPath, Path]
+    PureWindowsPath | Path
         Returns a ``PureWindowsPath`` object if the string is in Windows format,
         else returns a ``Path`` object.
 

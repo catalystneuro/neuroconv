@@ -1,6 +1,7 @@
 """Collection of helper functions related to configuration of datasets dependent on backend."""
 
-from typing import Generator, Literal, Union
+from pathlib import Path
+from typing import Generator, Literal
 
 import h5py
 import numpy as np
@@ -9,15 +10,16 @@ from hdmf import Container
 from hdmf.data_utils import DataIO
 from hdmf.utils import get_data_shape
 from hdmf_zarr import NWBZarrIO
-from pynwb import NWBHDF5IO, NWBFile, get_manager
-from pynwb.base import DynamicTable, TimeSeriesReferenceVectorData
+from pynwb import NWBHDF5IO, NWBFile
+from pynwb.base import DynamicTable, Image, TimeSeriesReferenceVectorData
 from pynwb.file import NWBContainer
 
 from ._configuration_models import DATASET_IO_CONFIGURATIONS
 from ._configuration_models._base_dataset_io import DatasetIOConfiguration
+from ..hdmf import _get_nwbfile_builder
 
 
-def _get_io_mode(io: Union[NWBHDF5IO, NWBZarrIO]) -> str:
+def _get_io_mode(io: NWBHDF5IO | NWBZarrIO) -> str:
     """NWBHDF5IO and NWBZarrIO have different ways of storing the io mode (e.g. "r", "a", "w") they used on a path."""
     if isinstance(io, NWBHDF5IO):
         return io.mode
@@ -25,33 +27,51 @@ def _get_io_mode(io: Union[NWBHDF5IO, NWBZarrIO]) -> str:
         return io._ZarrIO__mode
 
 
+def _get_zarr_store_path(zarr_array: zarr.Array) -> str | None:
+    """
+    The path of the Zarr 'file' a Zarr Array was read from, or None when its store keeps no path.
+
+    A `ConsolidatedMetadataStore` holds the path on the store it wraps rather than on itself, and
+    hdmf-zarr hands one back for every dataset reached through a link, `DynamicTable` columns among
+    them, whatever mode the file itself was opened in.
+    """
+    store = zarr_array.store
+    store_path = getattr(store, "path", None)
+    if store_path is None:
+        store_path = getattr(getattr(store, "store", None), "path", None)
+    return store_path
+
+
 def _is_dataset_written_to_file(
-    candidate_dataset: Union[h5py.Dataset, zarr.Array],
+    candidate_dataset: h5py.Dataset | zarr.Array,
     backend: Literal["hdf5", "zarr"],
-    existing_file: Union[h5py.File, zarr.Group, None],
+    existing_file_path: str | None,
 ) -> bool:
     """
     Determine if the neurodata object is already written to the file on disk.
 
     This object should then be skipped by the `get_io_datasets` function when working in append mode.
     """
-    if existing_file is None:
+    if existing_file_path is None:
         return False
 
-    return (
-        isinstance(candidate_dataset, h5py.Dataset)  # If the source data is an HDF5 Dataset
-        and backend == "hdf5"
-        and candidate_dataset.file == existing_file  # If the source HDF5 Dataset is the appending NWBFile
-    ) or (
-        isinstance(candidate_dataset, zarr.Array)  # If the source data is a Zarr Array
-        and backend == "zarr"
-        and candidate_dataset.store == existing_file  # If the source Zarr 'file' is the appending NWBFile
-    )
+    normalized_existing = Path(existing_file_path).resolve()
+
+    if isinstance(candidate_dataset, h5py.Dataset) and backend == "hdf5":
+        # If the source HDF5 Dataset is the appending NWBFile
+        return Path(candidate_dataset.file.filename).resolve() == normalized_existing
+
+    if isinstance(candidate_dataset, zarr.Array) and backend == "zarr":
+        # If the source Zarr 'file' is the appending NWBFile
+        store_path = _get_zarr_store_path(zarr_array=candidate_dataset)
+        return store_path is not None and Path(store_path).resolve() == normalized_existing
+
+    return False
 
 
 def get_default_dataset_io_configurations(
     nwbfile: NWBFile,
-    backend: Union[None, Literal["hdf5", "zarr"]] = None,  # None for auto-detect from append mode, otherwise required
+    backend: None | Literal["hdf5", "zarr"] = None,  # None for auto-detect from append mode, otherwise required
 ) -> Generator[DatasetIOConfiguration, None, None]:
     """
     Generate DatasetIOConfiguration objects for wrapping NWB file objects with a specific backend.
@@ -86,13 +106,13 @@ def get_default_dataset_io_configurations(
         )
 
     detected_backend = None
-    existing_file = None
+    existing_file_path = None
     if isinstance(nwbfile.read_io, NWBHDF5IO) and _get_io_mode(io=nwbfile.read_io) in ("r+", "a"):
         detected_backend = "hdf5"
-        existing_file = nwbfile.read_io._file
+        existing_file_path = nwbfile.read_io.source
     elif isinstance(nwbfile.read_io, NWBZarrIO) and _get_io_mode(io=nwbfile.read_io) in ("r+", "a"):
         detected_backend = "zarr"
-        existing_file = nwbfile.read_io.file.store
+        existing_file_path = nwbfile.read_io.source
     backend = backend or detected_backend
 
     if detected_backend is not None and detected_backend != backend:
@@ -102,9 +122,10 @@ def get_default_dataset_io_configurations(
         )
 
     known_dataset_fields = ("data", "timestamps")
-    manager = get_manager()
-    builder = manager.build(nwbfile)
-    for neurodata_object in nwbfile.objects.values():
+    builder = _get_nwbfile_builder(nwbfile=nwbfile)
+    # `nwbfile.objects` is built on its first read and never invalidated, so it does not hold anything added
+    # to the file afterwards. `all_children` recomputes the walk.
+    for neurodata_object in nwbfile.all_children():
         if isinstance(neurodata_object, DynamicTable):
             dynamic_table = neurodata_object  # For readability
 
@@ -112,7 +133,9 @@ def get_default_dataset_io_configurations(
                 candidate_dataset = column.data  # VectorData object
                 # noinspection PyTypeChecker
                 if _is_dataset_written_to_file(
-                    candidate_dataset=candidate_dataset, backend=backend, existing_file=existing_file
+                    candidate_dataset=candidate_dataset,
+                    backend=backend,
+                    existing_file_path=existing_file_path,
                 ):
                     continue  # Skip
 
@@ -135,7 +158,7 @@ def get_default_dataset_io_configurations(
                 if any(axis_length == 0 for axis_length in full_shape):
                     continue
 
-                dataset_io_configuration = DatasetIOConfigurationClass.from_neurodata_object(
+                dataset_io_configuration = DatasetIOConfigurationClass.from_neurodata_object_with_defaults(
                     neurodata_object=column, dataset_name=dataset_name, builder=builder
                 )
 
@@ -151,7 +174,7 @@ def get_default_dataset_io_configurations(
                 # Skip if already written to file
                 # noinspection PyTypeChecker
                 if _is_dataset_written_to_file(
-                    candidate_dataset=candidate_dataset, backend=backend, existing_file=existing_file
+                    candidate_dataset=candidate_dataset, backend=backend, existing_file_path=existing_file_path
                 ):
                     continue
 
@@ -169,8 +192,115 @@ def get_default_dataset_io_configurations(
                 if any(axis_length == 0 for axis_length in full_shape):
                     continue
 
-                dataset_io_configuration = DatasetIOConfigurationClass.from_neurodata_object(
+                dataset_io_configuration = DatasetIOConfigurationClass.from_neurodata_object_with_defaults(
                     neurodata_object=neurodata_object, dataset_name=known_dataset_field, builder=builder
+                )
+
+                yield dataset_io_configuration
+        elif isinstance(neurodata_object, Image):
+            # The pixel-data image types (GrayscaleImage, RGBImage, RGBAImage) inherit from NWBData rather than
+            # NWBContainer, so the branch above does not reach them. Their `data` can be large (z-stacks of
+            # 256x256 and up) and benefits from the same default chunking and compression as everything else.
+            # `Image` rather than its parent `BaseImage` is used here so that `ExternalImage`, whose data is a
+            # single path string, stays out.
+            dataset_name = "data"
+            candidate_dataset = neurodata_object.data
+
+            # Skip if already written to file
+            # noinspection PyTypeChecker
+            if _is_dataset_written_to_file(
+                candidate_dataset=candidate_dataset, backend=backend, existing_file_path=existing_file_path
+            ):
+                continue
+
+            # Skip over datasets that are already wrapped in DataIO
+            if isinstance(candidate_dataset, DataIO):
+                continue
+
+            # Skip datasets with any zero-length axes
+            full_shape = get_data_shape(data=candidate_dataset)
+            if any(axis_length == 0 for axis_length in full_shape):
+                continue
+
+            dataset_io_configuration = DatasetIOConfigurationClass.from_neurodata_object_with_defaults(
+                neurodata_object=neurodata_object, dataset_name=dataset_name, builder=builder
+            )
+
+            yield dataset_io_configuration
+
+
+def get_existing_dataset_io_configurations(nwbfile: NWBFile) -> Generator[DatasetIOConfiguration, None, None]:
+    """
+    Generate DatasetIOConfiguration objects for each neurodata object in an nwbfile.
+
+    Parameters
+    ----------
+    nwbfile : pynwb.NWBFile
+        An NWBFile object that has been read from an existing file with an existing backend configuration.
+    backend : "hdf5" or "zarr"
+        Which backend format type you would like to use in configuring each dataset's compression methods and options.
+
+    Yields
+    ------
+    DatasetIOConfiguration
+        A configuration object for each dataset in the NWB file.
+    """
+    if nwbfile.read_io is None:
+        raise ValueError("nwbfile must be read from an existing file!")
+    backend = None
+    if isinstance(nwbfile.read_io, NWBHDF5IO):
+        backend = "hdf5"
+    elif isinstance(nwbfile.read_io, NWBZarrIO):
+        backend = "zarr"
+
+    DatasetIOConfigurationClass = DATASET_IO_CONFIGURATIONS[backend]
+
+    known_dataset_fields = ("data", "timestamps")
+    for neurodata_object in nwbfile.all_children():
+        if isinstance(neurodata_object, DynamicTable):
+            dynamic_table = neurodata_object  # For readability
+
+            for column in dynamic_table.columns:
+                candidate_dataset = column.data  # VectorData object
+
+                # Skip over columns whose values are links, such as the 'group' of an ElectrodesTable
+                if any(isinstance(value, Container) for value in candidate_dataset):
+                    continue  # Skip
+
+                # Skip when columns whose values are a reference type
+                if isinstance(column, TimeSeriesReferenceVectorData):
+                    continue
+
+                # Skip datasets with any zero-length axes
+                dataset_name = "data"
+                candidate_dataset = getattr(column, dataset_name)
+                full_shape = get_data_shape(data=candidate_dataset)
+                if any(axis_length == 0 for axis_length in full_shape):
+                    continue
+
+                dataset_io_configuration = DatasetIOConfigurationClass.from_neurodata_object_with_existing(
+                    neurodata_object=column,
+                    dataset_name=dataset_name,
+                )
+
+                yield dataset_io_configuration
+        elif isinstance(neurodata_object, NWBContainer):
+            for known_dataset_field in known_dataset_fields:
+                # Skip optional fields that aren't present
+                if known_dataset_field not in neurodata_object.fields:
+                    continue
+
+                candidate_dataset = getattr(neurodata_object, known_dataset_field)
+
+                # Skip datasets with any zero-length axes
+                candidate_dataset = getattr(neurodata_object, known_dataset_field)
+                full_shape = get_data_shape(data=candidate_dataset)
+                if any(axis_length == 0 for axis_length in full_shape):
+                    continue
+
+                dataset_io_configuration = DatasetIOConfigurationClass.from_neurodata_object_with_existing(
+                    neurodata_object=neurodata_object,
+                    dataset_name=known_dataset_field,
                 )
 
                 yield dataset_io_configuration

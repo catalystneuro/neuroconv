@@ -1,0 +1,163 @@
+from datetime import datetime
+
+import pytest
+from pynwb import NWBHDF5IO
+
+from neuroconv.datainterfaces import EDFAnalogInterface
+
+try:
+    from ..setup_paths import ECEPHY_DATA_PATH
+except ImportError:
+    from setup_paths import ECEPHY_DATA_PATH
+
+
+# The auxiliary channels this interface exists to read sit in files that also hold electrodes, so
+# SpikeInterface reports the mix while building the recording. It is emitted before any channel
+# selection applies, so no argument on the interface avoids it.
+pytestmark = pytest.mark.filterwarnings("ignore:Found a mix of voltage and non-voltage units:UserWarning")
+
+
+class TestEDFAnalogInterface:
+    """Test suite for EDFAnalogInterface."""
+
+    def test_interface_initialization_with_specific_channels(self):
+        """
+        Test initialization of EDFAnalogInterface with specific auxiliary channels.
+        """
+        file_path = ECEPHY_DATA_PATH / "edf" / "electrode_and_analog_data" / "electrode_and_analog_data.edf"
+
+        # Get all available channels using static method
+        available_channels = EDFAnalogInterface.get_available_channel_ids(file_path)
+
+        # Define expected auxiliary channels
+        expected_auxiliary_channels = ["TRIG", "OSAT", "PR", "Pleth"]
+
+        # Test that expected channels are in available channels
+        available_channels_set = set(available_channels)
+        for channel in expected_auxiliary_channels:
+            assert channel in available_channels_set, f"Expected channel {channel} not found in available channels"
+
+        # Test that we can pass them and get them back
+        interface = EDFAnalogInterface(file_path=file_path, channels_to_include=expected_auxiliary_channels)
+
+        interface_channel_ids = interface.channel_ids
+        assert len(interface_channel_ids) == len(expected_auxiliary_channels)
+
+        # Convert to sets for comparison since order might differ
+        expected_set = set(expected_auxiliary_channels)
+        actual_set = set(str(ch_id) for ch_id in interface_channel_ids)
+        assert actual_set == expected_set
+
+    def test_invalid_channels_raises_error(self):
+        """Test that specifying non-existent channels raises ValueError."""
+        file_path = ECEPHY_DATA_PATH / "edf" / "electrode_and_analog_data" / "electrode_and_analog_data.edf"
+
+        with pytest.raises(ValueError, match="Channels not found in EDF file"):
+            EDFAnalogInterface(file_path=file_path, channels_to_include=["NonExistentChannel"])
+
+    def test_custom_metadata_key(self):
+        """Test custom metadata key."""
+        file_path = ECEPHY_DATA_PATH / "edf" / "electrode_and_analog_data" / "electrode_and_analog_data.edf"
+        custom_key = "CustomEDFTimeSeries"
+
+        interface = EDFAnalogInterface(file_path=file_path, metadata_key=custom_key)
+        assert interface.metadata_key == custom_key
+
+        # Check that metadata uses the custom key
+        metadata = interface.get_metadata()
+        assert "TimeSeries" in metadata
+        assert custom_key in metadata["TimeSeries"]
+
+    def test_get_metadata(self):
+        """Test metadata generation for EDF file."""
+        file_path = ECEPHY_DATA_PATH / "edf" / "electrode_and_analog_data" / "electrode_and_analog_data.edf"
+        interface = EDFAnalogInterface(file_path=file_path)
+        metadata = interface.get_metadata()
+
+        assert "TimeSeries" in metadata
+        assert interface.metadata_key in metadata["TimeSeries"]
+
+        # Check TimeSeries metadata structure
+        ts_metadata = metadata["TimeSeries"][interface.metadata_key]
+        assert "name" in ts_metadata
+        assert "description" in ts_metadata
+        assert "Auxiliary signals from the EDF format" in ts_metadata["description"]
+
+    def test_conversion_to_nwb(self, tmp_path):
+        """Test conversion to NWB format."""
+        file_path = ECEPHY_DATA_PATH / "edf" / "electrode_and_analog_data" / "electrode_and_analog_data.edf"
+        # One unit type per interface: the file's auxiliary channels are a trigger line, an oxygen
+        # saturation in %, a pulse rate in bpm and a plethysmography trace in uV, and a TimeSeries
+        # states one unit for all of its channels.
+        interface = EDFAnalogInterface(file_path=file_path, channels_to_include=["OSAT"])
+
+        # Get metadata and add required session_start_time
+        metadata = interface.get_metadata()
+        metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
+        time_series_name = metadata["TimeSeries"][interface.metadata_key]["name"]
+
+        # Run conversion
+        nwbfile_path = tmp_path / "edf_analog_test.nwb"
+        interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+
+        # Verify the output
+        with NWBHDF5IO(nwbfile_path, "r") as io:
+            nwbfile = io.read()
+
+            # Check that the TimeSeries was added to acquisition
+            assert time_series_name in nwbfile.acquisition
+            time_series = nwbfile.acquisition[time_series_name]
+
+            # Check properties of the TimeSeries
+            assert time_series.name == time_series_name
+            # Note: The current implementation shows "no description" in the NWB file
+            # This is expected behavior as the description metadata is not being passed through
+            assert "Auxiliary signals from the EDF format" in time_series.description
+
+            # The selection states one unit, so the physical values stay recoverable from the file.
+            assert time_series.unit == "%"
+            assert time_series.conversion != 1.0
+
+            # Check data dimensions
+            assert len(time_series.data.shape) == 2  # [time, channels]
+            assert time_series.data.shape[1] == len(interface.channel_ids)
+            assert time_series.data.shape[0] > 0  # Should have time points
+
+
+class TestEDFAnalogInterfaceStreamSelection:
+    """The auxiliary channels of a file whose signals were not all sampled at the same rate."""
+
+    file_path = ECEPHY_DATA_PATH / "edf" / "heterogeneous_offsets" / "same_unit_offsets_multirate.edf"
+
+    def test_get_stream_names(self):
+        stream_names = EDFAnalogInterface.get_stream_names(file_path=self.file_path)
+
+        assert stream_names == ["stream ((100.0,) Hz)", "stream ((1.0,) Hz)"]
+
+    def test_stream_name_is_required_for_a_multi_stream_file(self):
+        with pytest.raises(ValueError, match="several streams"):
+            EDFAnalogInterface(file_path=self.file_path, channels_to_include=["Temp rectal"])
+
+    def test_stream_name_reaches_the_channels_of_its_stream(self):
+        interface = EDFAnalogInterface(
+            file_path=self.file_path,
+            stream_name="stream ((1.0,) Hz)",
+            channels_to_include=["Temp rectal"],
+        )
+
+        assert list(interface.channel_ids) == ["Temp rectal"]
+        assert interface.recording_extractor.get_sampling_frequency() == 1.0
+
+
+def test_metadata_key_does_not_rename_series():
+    """The key addresses the entry; the TimeSeries name lives inside it and is unaffected."""
+    file_path = ECEPHY_DATA_PATH / "edf" / "electrode_and_analog_data" / "electrode_and_analog_data.edf"
+
+    default_interface = EDFAnalogInterface(file_path=file_path, channels_to_include=["TRIG"])
+    assert default_interface.metadata_key == "edf_analog"
+    assert default_interface.get_metadata()["TimeSeries"]["edf_analog"]["name"] == "TimeSeriesAnalogEDF"
+
+    custom_interface = EDFAnalogInterface(file_path=file_path, channels_to_include=["TRIG"], metadata_key="my_analog")
+    time_series_metadata = custom_interface.get_metadata()["TimeSeries"]
+    assert set(time_series_metadata) == {"my_analog"}
+    assert time_series_metadata["my_analog"]["name"] == "TimeSeriesAnalogEDF"

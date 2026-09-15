@@ -1,5 +1,6 @@
+import warnings
 from copy import deepcopy
-from typing import Literal, Optional, Union
+from typing import Literal
 
 import numpy as np
 from pynwb import NWBFile
@@ -16,16 +17,77 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
 
     keywords = ("extracellular electrophysiology", "spike sorting")
 
-    ExtractorModuleName = "spikeinterface.extractors"
-
     def __init__(self, verbose: bool = False, **source_data):
 
         super().__init__(**source_data)
-        self.sorting_extractor = self.get_extractor()(**source_data)
+        self.sorting_extractor = self._extractor_instance
         self.verbose = verbose
         self._number_of_segments = self.sorting_extractor.get_num_segments()
 
     def get_metadata_schema(self) -> dict:
+        """
+        Compile the metadata schema.
+
+        A sorting interface registers no series of its own: what it reads from ``metadata["Ecephys"]`` is
+        the description of the columns it writes, on the units table and, when a recording is attached, on
+        the electrode table. Both are lists. It also declares ``ElectrodeGroups``, because a sorting
+        interface that was given a recording carries the groups that recording describes
+        (``NeuroScopeSortingInterface`` reads them from the session's XML), and they reach validation in
+        the dict format like any other.
+
+        Metadata in the old list-based format is validated against
+        ``_get_metadata_schema_for_old_list_format``, and both go when that format does.
+        """
+        from ...basedatainterface import BaseDataInterface
+
+        metadata_schema = BaseDataInterface.get_metadata_schema(self)
+        metadata_schema["properties"]["Ecephys"] = get_base_schema(tag="Ecephys")
+        metadata_schema["properties"]["Ecephys"]["required"] = []
+        metadata_schema["properties"]["Ecephys"]["properties"] = dict(
+            ElectrodeGroups=dict(
+                type="object",
+                additionalProperties={"$ref": "#/properties/Ecephys/definitions/ElectrodeGroupEntry"},
+            ),
+            Electrodes=dict(
+                type="array",
+                minItems=0,
+                renderForm=False,
+                items={"$ref": "#/properties/Ecephys/definitions/ColumnDescription"},
+            ),
+            UnitProperties=dict(
+                type="array",
+                minItems=0,
+                renderForm=False,
+                items={"$ref": "#/properties/Ecephys/definitions/ColumnDescription"},
+            ),
+        )
+        metadata_schema["properties"]["Ecephys"]["definitions"] = dict(
+            ElectrodeGroupEntry=dict(
+                type="object",
+                additionalProperties=True,
+                properties=dict(
+                    name=dict(type="string", pattern="^[^/]*$"),
+                    description=dict(type="string"),
+                    location=dict(type="string"),
+                    device_metadata_key=dict(
+                        type="string",
+                        description="Key of this group's device in metadata['Devices'].",
+                    ),
+                ),
+            ),
+            ColumnDescription=dict(
+                type="object",
+                additionalProperties=False,
+                required=["name"],
+                properties=dict(
+                    name=dict(type="string", description="name of this column"),
+                    description=dict(type="string", description="description of this column"),
+                ),
+            ),
+        )
+        return metadata_schema
+
+    def _get_metadata_schema_for_old_list_format(self) -> dict:
         """
         Compile metadata schema for the RecordingExtractor.
 
@@ -97,7 +159,7 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
             "Unable to fetch original timestamps for a SortingInterface since it relies upon an attached recording."
         )
 
-    def get_timestamps(self) -> Union[np.ndarray, list[np.ndarray]]:
+    def get_timestamps(self) -> np.ndarray | list[np.ndarray]:
         if not self.sorting_extractor.has_recording():
             raise NotImplementedError(
                 "In order to align timestamps for a SortingInterface, it must have a recording "
@@ -261,7 +323,7 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         stub_sorting_extractor = self.sorting_extractor.frame_slice(start_frame=0, end_frame=end_frame)
         return stub_sorting_extractor
 
-    def add_channel_metadata_to_nwb(self, nwbfile: NWBFile, metadata: Optional[DeepDict] = None):
+    def add_channel_metadata_to_nwb(self, nwbfile: NWBFile, metadata: DeepDict | None = None):
         """
         Add channel metadata to an NWBFile object using information extracted from a SortingExtractor and
         optional metadata.
@@ -275,7 +337,7 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         ----------
         nwbfile : NWBFile
             The NWBFile object to which the metadata is added.
-        metadata : Optional[DeepDict]
+        metadata : DeepDict | None
             Optional metadata to use for the addition of electrode-related data. If it's provided, it should contain an
             "Ecephys" field with a nested "Electrodes" field.
 
@@ -293,29 +355,25 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         -----
         This function adds metadata to the `nwbfile` in-place, meaning the `nwbfile` object is modified directly.
         """
-        from ...tools.spikeinterface import (
-            add_devices_to_nwbfile,
-            add_electrode_groups_to_nwbfile,
-            add_electrodes_to_nwbfile,
-        )
+        from ...tools.spikeinterface import add_recording_metadata_to_nwbfile
 
         if hasattr(self, "generate_recording_with_channel_metadata"):
             recording = self.generate_recording_with_channel_metadata()
-
-            add_devices_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
-            add_electrode_groups_to_nwbfile(recording=recording, nwbfile=nwbfile, metadata=metadata)
-            add_electrodes_to_nwbfile(recording=recording, nwbfile=nwbfile, metadata=metadata)
+            add_recording_metadata_to_nwbfile(recording=recording, nwbfile=nwbfile, metadata=metadata)
 
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
-        metadata: Optional[DeepDict] = None,
+        metadata: DeepDict | None = None,
         stub_test: bool = False,
         write_ecephys_metadata: bool = False,
-        write_as: Literal["units", "processing"] = "units",
+        write_as: Literal["units", "processing"] | None = None,
         units_name: str = "units",
         units_description: str = "Autogenerated by neuroconv.",
-        unit_electrode_indices: Optional[list[list[int]]] = None,
+        unit_electrode_indices: list[list[int]] | None = None,
+        *,
+        parent_container: Literal["units", "processing"] = "units",
+        waveform_data_dict: dict | None = None,
     ):
         """
         Primary function for converting the data in a SortingExtractor to NWB format.
@@ -333,18 +391,36 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
             If True, will truncate the data to run the conversion faster and take up less memory.
         write_ecephys_metadata : bool, default: False
             Write electrode information contained in the metadata.
-        write_as : {'units', 'processing'}
-            How to save the units table in the nwb file. Options:
-            - 'units' will save it to the official NWBFile.Units position; recommended only for the final form of the data.
+        parent_container : {'units', 'processing'}, default: 'units'
+            Where to save the units table in the nwb file. Options:
+            - 'units' will save it to the official NWBFile.units position; recommended only for the final form of the data.
             - 'processing' will save it to the processing module to serve as a historical provenance for the official table.
         units_name : str, default: 'units'
-            The name of the units table. If write_as=='units', then units_name must also be 'units'.
+            The name of the units table. If parent_container == 'units', then units_name must also be 'units'.
         units_description : str, default: 'Autogenerated by neuroconv.'
         unit_electrode_indices : list of lists of int, optional
             A list of lists of integers indicating the indices of the electrodes that each unit is associated with.
             The length of the list must match the number of units in the sorting extractor.
+        waveform_data_dict : dict, optional
+            Dictionary containing waveform data and metadata. Keys:
+                - "means": np.ndarray of shape (num_units, num_samples, num_channels)
+                - "sds": np.ndarray of shape (num_units, num_samples, num_channels), optional
+                - "sampling_rate": float, the sampling rate of the waveforms in Hz
+                - "unit": str, the unit of measurement (default: "volts")
+                - "time_before_peak_in_ms": float, the time from the start of each waveform to the spike peak, optional
+        write_as : {'units', 'processing'}, optional
+            Deprecated. Use ``parent_container`` instead. Will be removed on or after February 2027.
         """
         from ...tools.spikeinterface import add_sorting_to_nwbfile
+
+        if write_as is not None:
+            warnings.warn(
+                "The 'write_as' parameter of BaseSortingExtractorInterface.add_to_nwbfile() is deprecated and will "
+                "be removed on or after February 2027. Use 'parent_container' instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            parent_container = write_as
 
         if metadata is None:
             metadata = self.get_metadata()
@@ -377,8 +453,54 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
             sorting_extractor,
             nwbfile=nwbfile,
             property_descriptions=property_descriptions,
-            write_as=write_as,
+            parent_container=parent_container,
             units_name=units_name,
             units_description=units_description,
             unit_electrode_indices=unit_electrode_indices,
+            waveform_data_dict=waveform_data_dict,
         )
+
+    def rename_unit_ids(self, unit_ids_map: dict):
+        """
+        Rename unit IDs using a mapping dictionary.
+
+        Parameters
+        ----------
+        unit_ids_map : dict
+            A dictionary mapping current unit IDs to new unit IDs.
+            Format: {old_unit_id: new_unit_id, ...}
+
+        Raises
+        ------
+        ValueError
+            If any of the old unit IDs in the mapping do not exist in the sorting extractor.
+        TypeError
+            If unit_ids_map is not a dictionary.
+
+        Examples
+        --------
+        >>> sorting_interface = MockSortingInterface()
+        >>> print(sorting_interface.units_ids)  # ['0', '1', '2', '3']
+        >>> sorting_interface.rename_unit_ids({'0': 'unit_a', '1': 'unit_b'})
+        >>> print(sorting_interface.units_ids)  # ['unit_a', 'unit_b', '2', '3']
+        """
+        if not isinstance(unit_ids_map, dict):
+            raise TypeError("unit_ids_map must be a dictionary")
+
+        if not unit_ids_map:
+            return
+
+        current_unit_ids = list(self.sorting_extractor.get_unit_ids())
+
+        # Validate that all old unit IDs exist
+        missing_ids = [old_id for old_id in unit_ids_map.keys() if old_id not in current_unit_ids]
+        if missing_ids:
+            raise ValueError(
+                f"Unit IDs {missing_ids} not found in sorting extractor. " f"Available unit IDs: {current_unit_ids}"
+            )
+
+        # Create the new unit IDs list, keeping non-mapped IDs unchanged
+        new_unit_ids = [unit_ids_map.get(unit_id, unit_id) for unit_id in current_unit_ids]
+
+        # Rename the units in the sorting extractor
+        self.sorting_extractor = self.sorting_extractor.rename_units(new_unit_ids=new_unit_ids)

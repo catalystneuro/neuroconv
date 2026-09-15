@@ -5,6 +5,7 @@ import pytest
 from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.tools.nwb_helpers import DatasetIOConfiguration
+from neuroconv.tools.testing import mock_HDF5DatasetIOConfiguration
 
 
 def test_get_data_io_kwargs_abstract_error():
@@ -17,7 +18,7 @@ def test_get_data_io_kwargs_abstract_error():
             dtype=np.dtype("int16"),
             chunk_shape=(78_125, 64),
             buffer_shape=(1_250_000, 384),
-            compression_method="gzip",
+            compressors=["gzip"],
         )
     assert "Can't instantiate abstract class DatasetIOConfiguration" in str(error_info.value)
 
@@ -27,6 +28,9 @@ def test_get_data_io_kwargs_not_implemented():
         def get_data_io_kwargs(self):
             super().get_data_io_kwargs()
 
+        def from_neurodata_object_with_existing():  # define abstract method to avoid error
+            pass
+
     dataset_io_configuration = TestDatasetIOConfiguration(
         object_id="481a0860-3a0c-40ec-b931-df4a3e9b101f",
         location_in_file="acquisition/TestElectricalSeries/data",
@@ -35,7 +39,7 @@ def test_get_data_io_kwargs_not_implemented():
         dtype=np.dtype("int16"),
         chunk_shape=(78_125, 64),
         buffer_shape=(1_250_000, 384),
-        compression_method="gzip",
+        compressors=["gzip"],
     )
 
     with pytest.raises(NotImplementedError):
@@ -70,7 +74,7 @@ def test_model_json_schema_generator_assertion():
 #     nwbfile.add_trial_column(name="test", description="test column with object dtype", data=data)
 #     neurodata_object = nwbfile.trials.columns[2]
 
-#     dataset_io_configuration = TestDatasetIOConfiguration.from_neurodata_object(neurodata_object, dataset_name="data")
+#     dataset_io_configuration = TestDatasetIOConfiguration.from_neurodata_object_with_defaults(neurodata_object, dataset_name="data")
 
 #     assert dataset_io_configuration.chunk_shape == (3,)
 #     assert dataset_io_configuration.buffer_shape == (3,)
@@ -82,6 +86,9 @@ def test_from_neurodata_object_dtype_object_all_strings():
         def get_data_io_kwargs(self):
             super().get_data_io_kwargs()
 
+        def from_neurodata_object_with_existing():  # define abstract method to avoid error
+            pass
+
     nwbfile = mock_NWBFile()
     nwbfile.add_trial(start_time=0.0, stop_time=1.0)
     nwbfile.add_trial(start_time=1.0, stop_time=2.0)
@@ -90,8 +97,35 @@ def test_from_neurodata_object_dtype_object_all_strings():
     nwbfile.add_trial_column(name="test", description="test column with object dtype but all strings", data=data)
     neurodata_object = nwbfile.trials.columns[2]
 
-    dataset_io_configuration = TestDatasetIOConfiguration.from_neurodata_object(neurodata_object, dataset_name="data")
+    dataset_io_configuration = TestDatasetIOConfiguration.from_neurodata_object_with_defaults(
+        neurodata_object, dataset_name="data"
+    )
 
     assert dataset_io_configuration.chunk_shape == (3,)
     assert dataset_io_configuration.buffer_shape == (3,)
-    assert dataset_io_configuration.compression_method == "gzip"
+    assert dataset_io_configuration.compressors == ["gzip"]
+
+
+def test_derived_size_properties():
+    """The three sizes the printout reports are computed from the shapes and the dtype."""
+    dataset_configuration = mock_HDF5DatasetIOConfiguration()
+
+    assert dataset_configuration.full_size_in_bytes == 1_800_000 * 384 * 2
+    assert dataset_configuration.maximum_ram_usage_per_iteration_in_bytes == 1_250_000 * 384 * 2
+    assert dataset_configuration.disk_space_usage_per_chunk_in_bytes == 78_125 * 64 * 2
+
+
+def test_disk_space_usage_per_chunk_is_none_when_unchunked():
+    """An unchunked dataset has no per-chunk size to report."""
+    dataset_configuration = mock_HDF5DatasetIOConfiguration(chunk_shape=None, buffer_shape=None)
+
+    assert dataset_configuration.disk_space_usage_per_chunk_in_bytes is None
+    assert dataset_configuration.full_size_in_bytes == 1_800_000 * 384 * 2
+
+
+def test_derived_size_properties_follow_the_dtype():
+    """The sizes scale with the itemsize of the dtype, not just the shape."""
+    dataset_configuration = mock_HDF5DatasetIOConfiguration(dtype=np.dtype("float64"))
+
+    assert dataset_configuration.full_size_in_bytes == 1_800_000 * 384 * 8
+    assert dataset_configuration.disk_space_usage_per_chunk_in_bytes == 78_125 * 64 * 8

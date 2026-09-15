@@ -5,7 +5,7 @@ Install NeuroConv with the additional dependencies necessary for reading Plexon 
 
 .. code-block:: bash
 
-    pip install neuroconv[plexon]
+    pip install neuroconv[plexon2]
 
 .. warning::
     When running plexon2 conversion on platforms other than Windows, you also need to install `wine <https://www.winehq.org/>`_.
@@ -26,9 +26,11 @@ Convert Plexon2 recording data to NWB using :py:class:`~neuroconv.datainterfaces
     # Extract what metadata we can from the source files
     metadata = interface.get_metadata()
     # For data provenance we add the time zone information to the conversion
-    tzinfo = ZoneInfo("US/Pacific")
+    tzinfo = ZoneInfo("Asia/Tokyo")
     session_start_time = metadata["NWBFile"]["session_start_time"]
     metadata["NWBFile"].update(session_start_time=session_start_time.replace(tzinfo=tzinfo))
+    # Add subject information (required for DANDI upload)
+    metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
 
     # Choose a path for saving the nwb file and run the conversion
     nwbfile_path = f"{path_to_save_nwbfile}"

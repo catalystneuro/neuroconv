@@ -16,12 +16,13 @@ Recording
     :maxdepth: 1
 
     AlphaOmega <recording/alphaomega>
+    Axon <recording/axon>
     Axona <recording/axona>
     Biocam <recording/biocam>
     Blackrock <recording/blackrock>
     European Data Format (EDF) <recording/edf>
     Intan <recording/intan>
-    MaxOne <recording/maxone>
+    MaxOne <recording/maxwell>
     MCSRaw <recording/mcsraw>
     MEArec <recording/mearec>
     Neuralynx <recording/neuralynx>
@@ -33,6 +34,7 @@ Recording
     Spikegadgets <recording/spikegadgets>
     SpikeGLX <recording/spikeglx>
     Tucker-Davis Technologies (TDT) <recording/tdt>
+    White Matter <recording/whitematter>
 
 Sorting
 ~~~~~~~
@@ -43,10 +45,12 @@ Sorting
     Blackrock  <sorting/blackrock>
     Cell Explorer <sorting/cellexplorer>
     KiloSort <sorting/kilosort>
+    MountainSort <sorting/mda>
     Neuralynx <sorting/neuralynx>
     NeuroScope <sorting/neuroscope>
     Phy <sorting/phy>
     Plexon <sorting/plexon>
+    XClust <sorting/xclust>
 
 Intracellular electrophysiology
 -------------------------------
@@ -54,7 +58,8 @@ Intracellular electrophysiology
 .. toctree::
     :maxdepth: 1
 
-    ABF <recording/abf>
+    Axon Binary Format (ABF) <recording/abf>
+    Bruker VoltageRecording <recording/brukervoltagerecording>
 
 Optical physiology
 ------------------
@@ -66,11 +71,14 @@ Imaging
     :maxdepth: 1
 
     Bruker <imaging/brukertiff>
+    Femtonics <imaging/femtonics>
     HDF5 <imaging/hdf5imaging>
     Micro-Manager <imaging/micromanagertiff>
     Miniscope <imaging/miniscope>
+    Inscopix <imaging/inscopix>
     Scanbox <imaging/scanbox>
     ScanImage <imaging/scanimage>
+    ScanImage Legacy (v3.8 and older) <imaging/scanimage_legacy>
     Thor <imaging/thor>
     Tiff <imaging/tiff>
 
@@ -83,7 +91,10 @@ Segmentation
     Caiman <segmentation/caiman>
     CNMFE <segmentation/cnmfe>
     EXTRACT <segmentation/extract>
+    Inscopix <segmentation/inscopix>
     Suite2P <segmentation/suite2p>
+
+.. _conversion_gallery_fiber_photometry:
 
 Fiber Photometry
 ~~~~~~~~~~~~~~~~
@@ -91,7 +102,36 @@ Fiber Photometry
 .. toctree::
     :maxdepth: 1
 
-    TDT Fiber Photometry <fiberphotometry/tdt_fp>
+    Doric <fiberphotometry/doric_fp>
+    TDT <fiberphotometry/tdt_fp>
+    NPM <fiberphotometry/npm_fp>
+    pyPhotometry <fiberphotometry/pyphotometry_fp>
+    CSV <fiberphotometry/csv_fp>
+    GuPPy <fiberphotometry/guppy_fp>
+
+.. _conversion_gallery_pose_estimation:
+
+Pose estimation
+---------------
+
+Keypoint estimation
+~~~~~~~~~~~~~~~~~~~
+
+.. toctree::
+    :maxdepth: 1
+
+    DeepLabCut <behavior/deeplabcut>
+    LightningPose <behavior/lightningpose>
+    SLEAP <behavior/sleap>
+
+Behavioral segmentation
+~~~~~~~~~~~~~~~~~~~~~~~
+
+.. toctree::
+    :maxdepth: 1
+
+    VAME <behavior/vame>
+    keypoint-MoSeq <behavior/moseq_keypoints>
 
 Behavior
 --------
@@ -100,13 +140,25 @@ Behavior
     :maxdepth: 1
 
     Audio <behavior/audio>
-    DeepLabCut <behavior/deeplabcut>
+    BORIS <behavior/boris>
     FicTrac <behavior/fictrac>
-    LightningPose <behavior/lightningpose>
     Neuralynx NVT <behavior/neuralynx_nvt>
-    SLEAP <behavior/sleap>
     Videos <behavior/video>
     MedPC <behavior/medpc>
+
+
+Events
+------
+
+.. toctree::
+    :maxdepth: 1
+
+    CSV <events/csv_events>
+    Doric <events/doric_events>
+    MedPC <events/medpc_events>
+    NPM <events/npm_events>
+    pyPhotometry <events/pyphotometry_events>
+    TDT <events/tdt_events>
 
 
 Image
@@ -137,5 +189,5 @@ Common interface combinations
     combinations/ecephys_pose_estimation
 
 .. note::
-  If you do not see the format you need, feel free to :format-request-form:`request it<>` or
+If you do not see the format you need, feel free to `request it <https://github.com/catalystneuro/neuroconv/issues/new?assignees=&labels=enhancement,data+interfaces&template=format_request.yml>`_ or
   :ref:`build-data-interface`.

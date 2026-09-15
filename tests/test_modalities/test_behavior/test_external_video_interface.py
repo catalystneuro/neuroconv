@@ -1,0 +1,543 @@
+import re
+from copy import deepcopy
+from datetime import datetime
+from pathlib import Path
+
+import numpy as np
+import pytest
+from dateutil.tz import gettz
+from pynwb import NWBHDF5IO
+from pynwb.testing.mock.file import mock_NWBFile
+
+from neuroconv import NWBConverter
+from neuroconv.datainterfaces.behavior.video.externalvideointerface import (
+    ExternalVideoInterface,
+)
+from neuroconv.tools.testing.mock_interfaces import MockExternalVideoInterface
+from neuroconv.utils import dict_deep_update
+
+
+class TestMockExternalVideoInterface:
+    """Whether the mock is a faithful stand-in for ``ExternalVideoInterface`` with no video behind its paths.
+
+    These deliberately repeat assertions the real-video tests below already make, on the same write paths,
+    because that is the only way to test fidelity: the mock is right exactly when the real tests give the
+    same answers against it. So an assertion appearing twice in this file is the point rather than an
+    oversight. What is unique here is the negative, that no file is ever opened, and the two things the mock
+    overrides, the frame count and the frame rate a container header would report.
+    """
+
+    def test_add_to_nwbfile(self, tmp_path):
+        """That it works with no real file behind the path, which is the whole premise of the mock."""
+        file_path = tmp_path / "never_written.mp4"
+        interface = MockExternalVideoInterface(file_paths=[file_path], num_frames=5000, frame_rate=30.0)
+
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile)
+
+        image_series = nwbfile.acquisition[interface._default_name]
+        assert image_series.num_samples == 5000
+        assert image_series.rate == 30.0
+        assert image_series.starting_time == 0.0
+        assert list(image_series.external_file) == [file_path]
+        assert not file_path.exists()
+
+    def test_add_to_nwbfile_multi_segment(self):
+        """The same with several files, where the frame counts back `num_samples` and `starting_frame`."""
+        interface = MockExternalVideoInterface(
+            file_paths=["segment1.mp4", "segment2.mp4", "segment3.mp4"], num_frames=10, frame_rate=30.0
+        )
+        interface.set_aligned_timestamps(
+            aligned_timestamps=[(file_index * 10 + np.arange(10)) / 30.0 for file_index in range(3)]
+        )
+
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile)
+
+        image_series = nwbfile.acquisition[interface._default_name]
+        assert image_series.rate == pytest.approx(30.0)
+        assert image_series.num_samples == 30
+        assert image_series.starting_frame == [0, 10, 20]
+
+
+class TestTimestampCountValidation:
+    """An external ``ImageSeries`` carries one time per frame, so a mismatch describes no video at all."""
+
+    def test_too_few_timestamps_raise(self):
+        interface = MockExternalVideoInterface(file_paths=["session.mp4"], num_frames=100)
+        interface.set_aligned_timestamps(aligned_timestamps=[np.arange(99) / 30.0])
+
+        expected_message = (
+            "99 timestamps were set for the 100 frames held by 1 video file(s), and an external ImageSeries "
+            "carries one time per frame. A few timestamps short of the frame count usually means the camera "
+            "dropped frames, and many more than it usually means the signal you read them from was already "
+            "running before the camera started."
+        )
+        nwbfile = mock_NWBFile()
+        with pytest.raises(ValueError, match=re.escape(expected_message)):
+            interface.add_to_nwbfile(nwbfile=nwbfile)
+
+    def test_an_unknown_frame_count_is_not_a_contradiction(self):
+        """Some codecs report no frame count, and an unknown count cannot disagree with anything."""
+        interface = MockExternalVideoInterface(file_paths=["session.mp4"], num_frames=0)
+        # Irregular, so they are written out rather than collapsing to a rate and vanishing from the file.
+        interface.set_aligned_timestamps(aligned_timestamps=[np.array([0.0, 0.1, 0.3, 0.4, 0.7, 0.8, 1.2])])
+
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile)
+
+        assert len(nwbfile.acquisition[interface._default_name].timestamps[:]) == 7
+
+
+NUMBER_OF_FRAMES_PER_FILE = 30  # every fixture video holds this many
+
+
+def _timestamps_starting_at(*starting_times, spacing=0.04):
+    """One timestamp per frame of each file, which is what an external ``ImageSeries`` carries."""
+    return [start + np.arange(NUMBER_OF_FRAMES_PER_FILE) * spacing for start in starting_times]
+
+
+def test_initialization_without_metadata(video_files):
+
+    nwbfile = mock_NWBFile()
+    interface = ExternalVideoInterface(file_paths=[video_files[0]])
+
+    interface.add_to_nwbfile(nwbfile=nwbfile)
+
+
+def test_adding_two_videos_without_name(video_files):
+    """Test that two interfaces can be added without the user having to specify a different name for each"""
+
+    nwbfile = mock_NWBFile()
+
+    file_path1 = Path(video_files[0])
+    file_path2 = Path(video_files[1])
+    interface1 = ExternalVideoInterface(file_paths=[file_path1])
+    interface2 = ExternalVideoInterface(file_paths=[file_path2])
+
+    # This should not raise an error
+    interface1.add_to_nwbfile(nwbfile=nwbfile)
+    interface2.add_to_nwbfile(nwbfile=nwbfile)
+
+    assert len(nwbfile.acquisition) == 2
+    assert f"Video {file_path1.stem}" in nwbfile.acquisition
+    assert f"Video {file_path2.stem}" in nwbfile.acquisition
+
+
+@pytest.fixture
+def nwb_converter(video_files):
+    """Create and return a test NWBConverter instance."""
+
+    class VideoTestNWBConverter(NWBConverter):
+        data_interface_classes = dict(
+            Video1=ExternalVideoInterface,
+            Video2=ExternalVideoInterface,
+        )
+
+    source_data = dict(
+        Video1=dict(
+            file_paths=video_files[0:2],
+            metadata_key="video_test1",
+        ),
+        Video2=dict(
+            file_paths=[video_files[2]],
+            metadata_key="video_test3",
+        ),
+    )
+    return VideoTestNWBConverter(source_data=source_data)
+
+
+@pytest.fixture
+def metadata(nwb_converter):
+    """Get and return metadata for the test converter."""
+    metadata = nwb_converter.get_metadata()
+    metadata["NWBFile"].update(session_start_time=datetime.now(tz=gettz(name="Asia/Tokyo")))
+    return metadata
+
+
+@pytest.fixture
+def nwbfile_path(tmp_path_session):
+    """Return path for the test NWB file."""
+    return tmp_path_session / "external_video_test.nwb"
+
+
+@pytest.fixture
+def aligned_segment_starting_times():
+    """Return aligned segment starting times for tests."""
+    return [0.0, 50.0]
+
+
+def test_multiple_file_paths_error(nwb_converter, nwbfile_path, metadata):
+    """Test that an error is raised when multiple file paths are provided without timing information."""
+    with pytest.raises(ValueError, match="No timing information is specified and there are 2 total video files!"):
+        nwb_converter.run_conversion(
+            nwbfile_path=nwbfile_path,
+            overwrite=True,
+            metadata=metadata,
+        )
+
+
+def test_external_mode_with_timestamps(
+    nwb_converter, nwbfile_path, metadata, aligned_segment_starting_times, video_files
+):
+    """Test that external mode works correctly with timestamps."""
+    timestamps = _timestamps_starting_at(2.2, 3.2)
+    interface = nwb_converter.data_interface_objects["Video1"]
+    interface.set_aligned_timestamps(aligned_timestamps=timestamps)
+    interface.set_aligned_segment_starting_times(aligned_segment_starting_times=aligned_segment_starting_times)
+
+    conversion_options = dict(Video1=dict(starting_frames=[0, 4]))
+    nwb_converter.run_conversion(
+        nwbfile_path=nwbfile_path,
+        overwrite=True,
+        conversion_options=conversion_options,
+        metadata=metadata,
+    )
+    with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+        nwbfile = io.read()
+        module = nwbfile.acquisition
+        assert list(module["Video test1"].external_file[:]) == video_files[0:2]
+        assert list(module["Video test3"].external_file[:]) == [video_files[2]]
+
+
+def test_external_mode_with_starting_time(nwb_converter, nwbfile_path, metadata, video_files):
+    """Test that external mode works correctly with starting time."""
+    interface = nwb_converter.data_interface_objects["Video1"]
+    interface.set_aligned_starting_time(aligned_starting_time=123.0)
+
+    conversion_options = dict(Video1=dict(starting_frames=[0, 4]))
+    nwb_converter.run_conversion(
+        nwbfile_path=nwbfile_path,
+        overwrite=True,
+        conversion_options=conversion_options,
+        metadata=metadata,
+    )
+    with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+        nwbfile = io.read()
+        module = nwbfile.acquisition
+        assert list(module["Video test1"].external_file[:]) == video_files[0:2]
+        assert list(module["Video test3"].external_file[:]) == [video_files[2]]
+        assert module["Video test1"].starting_time == 123.0
+
+
+def test_irregular_timestamps(nwb_converter, nwbfile_path, metadata, aligned_segment_starting_times):
+    """Test that irregular timestamps are handled correctly."""
+    aligned_timestamps = _timestamps_starting_at(1.0, 5.0)
+    aligned_timestamps[0][2:] += 1.0  # a gap partway through the first file, so no rate stands in for it
+    interface = nwb_converter.data_interface_objects["Video1"]
+    interface.set_aligned_timestamps(aligned_timestamps=aligned_timestamps)
+    interface.set_aligned_segment_starting_times(aligned_segment_starting_times=aligned_segment_starting_times)
+
+    conversion_options = dict(Video1=dict(starting_frames=[0, 4]))
+    nwb_converter.run_conversion(
+        nwbfile_path=nwbfile_path,
+        overwrite=True,
+        conversion_options=conversion_options,
+        metadata=metadata,
+    )
+
+    expected_timestamps = np.concatenate(
+        [
+            aligned_timestamps[0] + aligned_segment_starting_times[0],
+            aligned_timestamps[1] + aligned_segment_starting_times[1],
+        ]
+    )
+    with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+        nwbfile = io.read()
+        np.testing.assert_array_equal(expected_timestamps, nwbfile.acquisition["Video test1"].timestamps[:])
+
+
+def test_starting_frames_computed_from_video_files(nwb_converter, nwbfile_path, metadata):
+    """Test that starting_frames is computed from the video frame counts when it is not provided."""
+    timestamps = _timestamps_starting_at(2.2, 3.2)
+    interface = nwb_converter.data_interface_objects["Video1"]
+    interface.set_aligned_timestamps(aligned_timestamps=timestamps)
+
+    nwb_converter.run_conversion(
+        nwbfile_path=nwbfile_path,
+        overwrite=True,
+        metadata=metadata,
+    )
+
+    number_of_frames_per_file = 30  # Each of the test video files holds 30 frames
+    with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+        nwbfile = io.read()
+        starting_frame = nwbfile.acquisition["Video test1"].starting_frame
+        np.testing.assert_array_equal(starting_frame, [0, number_of_frames_per_file])
+
+
+def test_starting_frames_value_error(nwb_converter, nwbfile_path, metadata):
+    """Test that an error is raised when the length of starting_frames doesn't match the number of file paths."""
+    timestamps = _timestamps_starting_at(2.2, 3.2)
+    interface = nwb_converter.data_interface_objects["Video1"]
+    interface.set_aligned_timestamps(aligned_timestamps=timestamps)
+
+    conversion_options = dict(Video1=dict(starting_frames=[0]))
+    with pytest.raises(
+        ValueError,
+        match="Multiple paths .2. were specified for the ImageSeries, but the length of starting_frames .1. did not match the number of paths!",
+    ):
+        nwb_converter.run_conversion(
+            nwbfile_path=nwbfile_path,
+            overwrite=True,
+            conversion_options=conversion_options,
+            metadata=metadata,
+        )
+
+
+def test_always_write_timestamps(nwb_converter, nwbfile_path, metadata, aligned_segment_starting_times):
+    """Test that always_write_timestamps forces the use of timestamps even when timestamps are regular."""
+    interface = nwb_converter.data_interface_objects["Video1"]
+    interface.set_aligned_timestamps(aligned_timestamps=_timestamps_starting_at(1.0, 5.0))
+
+    # Run conversion with always_write_timestamps=True
+    conversion_options = dict(Video1=dict(starting_frames=[0, 4], always_write_timestamps=True))
+    nwb_converter.run_conversion(
+        nwbfile_path=nwbfile_path,
+        overwrite=True,
+        conversion_options=conversion_options,
+        metadata=metadata,
+    )
+
+    # Verify that timestamps were written
+    with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+        nwbfile = io.read()
+        # Check that timestamps exist in the ImageSeries
+        assert nwbfile.acquisition["Video test1"].timestamps is not None
+        # Verify timestamps are not None and have the expected length
+        assert len(nwbfile.acquisition["Video test1"].timestamps[:]) > 0
+
+
+def test_custom_module(nwb_converter, nwbfile_path, metadata, aligned_segment_starting_times):
+    """Test that videos can be added to a custom module."""
+    timestamps = _timestamps_starting_at(2.2, 3.2)
+    interface = nwb_converter.data_interface_objects["Video1"]
+    interface.set_aligned_timestamps(aligned_timestamps=timestamps)
+    interface.set_aligned_segment_starting_times(aligned_segment_starting_times=aligned_segment_starting_times)
+
+    parent_container = "processing/behavior"
+    module_description = "This is a test module."
+    conversion_options = dict(
+        Video1=dict(
+            starting_frames=[0, 4],
+            parent_container=parent_container,
+            module_description=module_description,
+        ),
+        Video2=dict(
+            parent_container=parent_container,
+            module_description=module_description,
+        ),
+    )
+    nwb_converter.run_conversion(
+        nwbfile_path=nwbfile_path,
+        overwrite=True,
+        conversion_options=conversion_options,
+        metadata=metadata,
+    )
+    with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+        nwbfile = io.read()
+        assert "behavior" in nwbfile.processing
+        assert module_description == nwbfile.processing["behavior"].description
+        assert "Video test1" in nwbfile.processing["behavior"].data_interfaces
+        assert "Video test3" in nwbfile.processing["behavior"].data_interfaces
+
+
+def test_set_aligned_segment_starting_times_alone(nwb_converter):
+    """Test that setting segment_starting_times without setting aligned timestamps automatically sets the timestamps."""
+    interface = nwb_converter.data_interface_objects["Video1"]
+
+    interface._timestamps = None
+    interface.set_aligned_segment_starting_times(aligned_segment_starting_times=[10.0, 20.0])
+
+    original_timestamps = interface.get_original_timestamps()
+    expected_timestamps = [
+        timestamps + starting_time for timestamps, starting_time in zip(original_timestamps, [10.0, 20.0])
+    ]
+    for (
+        original,
+        expected,
+        starting_time,
+    ) in zip(original_timestamps, expected_timestamps, [10.0, 20.0]):
+        np.testing.assert_array_equal(original + starting_time, expected)
+
+
+def test_get_original_timestamps_stub(nwb_converter):
+    """Test that get_original_timestamps respects stub_test parameter."""
+    interface = nwb_converter.data_interface_objects["Video2"]  # Using Video2 which has a single file
+
+    # Get stub timestamps
+    stub_timestamps = interface.get_original_timestamps(stub_test=True)
+
+    # Stub should have exactly 10 timestamps in the first array
+    assert len(stub_timestamps[0]) == 10
+
+    # Get full timestamps
+    full_timestamps = interface.get_original_timestamps(stub_test=False)
+
+    # Full should have more timestamps
+    assert len(full_timestamps[0]) > len(stub_timestamps[0])
+
+
+def test_add_to_nwbfile_with_custom_metadata(nwb_converter, nwbfile_path, metadata):
+    """Test adding to NWBFile with custom metadata."""
+    metadata_copy = deepcopy(metadata)
+    custom_metadata = {
+        "Devices": {
+            "custom_device": {
+                "name": "CustomDevice",
+                "description": "Custom device description",
+            },
+        },
+        "Behavior": {
+            "ExternalVideos": {
+                "video_test1": {
+                    "description": "Custom description",
+                    "unit": "CustomUnit",
+                    "device_metadata_key": "custom_device",
+                }
+            }
+        },
+    }
+    metadata_copy = dict_deep_update(metadata_copy, custom_metadata)
+
+    # Set up the interface for conversion
+    interface = nwb_converter.data_interface_objects["Video1"]
+    interface.set_aligned_timestamps(aligned_timestamps=_timestamps_starting_at(1.0, 5.0))
+
+    conversion_options = dict(Video1=dict(starting_frames=[0, 4]))
+    nwb_converter.run_conversion(
+        nwbfile_path=nwbfile_path,
+        overwrite=True,
+        conversion_options=conversion_options,
+        metadata=metadata_copy,
+    )
+
+    with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+        nwbfile = io.read()
+        assert nwbfile.acquisition["Video test1"].description == "Custom description"
+        assert nwbfile.acquisition["Video test1"].unit == "CustomUnit"
+        assert nwbfile.devices["CustomDevice"].description == "Custom device description"
+        assert nwbfile.acquisition["Video test1"].device == nwbfile.devices["CustomDevice"]
+
+
+def test_device_propagation(nwb_converter, nwbfile_path, metadata, aligned_segment_starting_times):
+    """Test that devices are properly created and linked to videos."""
+    # Setup interface with timing information to allow conversion
+    timestamps = _timestamps_starting_at(1.0, 5.0)
+    interface = nwb_converter.data_interface_objects["Video1"]
+    interface.set_aligned_timestamps(aligned_timestamps=timestamps)
+    interface.set_aligned_segment_starting_times(aligned_segment_starting_times=aligned_segment_starting_times)
+
+    # Run conversion with multiple cameras
+    conversion_options = dict(Video1=dict(starting_frames=[0, 4]))
+    nwb_converter.run_conversion(
+        nwbfile_path=nwbfile_path,
+        overwrite=True,
+        conversion_options=conversion_options,
+        metadata=metadata,
+    )
+
+    # Verify device creation and linking
+    with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+        nwbfile = io.read()
+        # Check devices exist
+        assert "Video test1 Camera Device" in nwbfile.devices
+        assert "Video test3 Camera Device" in nwbfile.devices
+
+        # Check videos are linked to correct devices
+        assert nwbfile.acquisition["Video test1"].device == nwbfile.devices["Video test1 Camera Device"]
+        assert nwbfile.acquisition["Video test3"].device == nwbfile.devices["Video test3 Camera Device"]
+
+
+def test_device_model_propagation(nwb_converter, nwbfile_path, metadata):
+    """A camera Device that names its model gets that DeviceModel written and linked."""
+    custom_metadata = {
+        "DeviceModels": {"camera_model": {"name": "CameraModel"}},
+        "Devices": {"custom_device": {"name": "CustomDevice", "device_model_metadata_key": "camera_model"}},
+        "Behavior": {"ExternalVideos": {"video_test1": {"device_metadata_key": "custom_device"}}},
+    }
+    metadata_copy = dict_deep_update(deepcopy(metadata), custom_metadata)
+
+    interface = nwb_converter.data_interface_objects["Video1"]
+    interface.set_aligned_timestamps(aligned_timestamps=_timestamps_starting_at(1.0, 5.0))
+
+    nwb_converter.run_conversion(
+        nwbfile_path=nwbfile_path,
+        overwrite=True,
+        conversion_options=dict(Video1=dict(starting_frames=[0, 4])),
+        metadata=metadata_copy,
+    )
+
+    with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+        nwbfile = io.read()
+        assert nwbfile.acquisition["Video test1"].device.model == nwbfile.device_models["CameraModel"]
+        # 'manufacturer' is required by NWB and absent from the metadata, so it is filled at write time
+        assert nwbfile.device_models["CameraModel"].manufacturer == "unknown"
+
+
+def test_no_device(nwb_converter, nwbfile_path, metadata, aligned_segment_starting_times):
+    """Test that no device is created when the metadata doesn't have a device."""
+    # Setup interface with timing information to allow conversion
+    timestamps = _timestamps_starting_at(1.0, 5.0)
+    interface = nwb_converter.data_interface_objects["Video1"]
+    interface.set_aligned_timestamps(aligned_timestamps=timestamps)
+    interface.set_aligned_segment_starting_times(aligned_segment_starting_times=aligned_segment_starting_times)
+
+    metadata["Behavior"]["ExternalVideos"]["video_test1"].pop("device_metadata_key")  # Unlink the device
+
+    # Run conversion with multiple cameras
+    conversion_options = dict(Video1=dict(starting_frames=[0, 4]))
+    nwb_converter.run_conversion(
+        nwbfile_path=nwbfile_path,
+        overwrite=True,
+        conversion_options=conversion_options,
+        metadata=metadata,
+    )
+
+    with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
+        nwbfile = io.read()
+
+        assert "Video test1 Camera Device" not in nwbfile.devices
+        assert nwbfile.acquisition["Video test1"].device is None
+
+
+def test_dangling_device_metadata_key_raises(nwb_converter, nwbfile_path, metadata, aligned_segment_starting_times):
+    """A device_metadata_key with no matching Devices entry raises instead of silently dropping the device."""
+    timestamps = _timestamps_starting_at(1.0, 5.0)
+    interface = nwb_converter.data_interface_objects["Video1"]
+    interface.set_aligned_timestamps(aligned_timestamps=timestamps)
+    interface.set_aligned_segment_starting_times(aligned_segment_starting_times=aligned_segment_starting_times)
+    metadata["Behavior"]["ExternalVideos"]["video_test1"]["device_metadata_key"] = "missing_camera"
+
+    conversion_options = dict(Video1=dict(starting_frames=[0, 4]))
+    expected_message = (
+        "device_metadata_key 'missing_camera' was not found in metadata['Devices'] "
+        "(available keys: ['video_test1_camera', 'video_test3_camera'])."
+    )
+    with pytest.raises(ValueError, match=re.escape(expected_message)):
+        nwb_converter.run_conversion(
+            nwbfile_path=nwbfile_path,
+            overwrite=True,
+            conversion_options=conversion_options,
+            metadata=metadata,
+        )
+
+
+def test_invalid_device_metadata(nwb_converter, nwbfile_path, metadata):
+    """Test that an error is raised when the device metadata is invalid."""
+    # Setup interface with timing information to allow conversion
+    timestamps = _timestamps_starting_at(1.0, 5.0)
+    interface = nwb_converter.data_interface_objects["Video1"]
+    interface.set_aligned_timestamps(aligned_timestamps=timestamps)
+
+    # Modify metadata to have invalid device information
+    metadata["Behavior"]["ExternalVideos"]["video_test1"]["device"] = {"description": "missing required name"}
+
+    from jsonschema import ValidationError
+
+    with pytest.raises(ValidationError):
+        nwb_converter.run_conversion(
+            nwbfile_path=nwbfile_path,
+            overwrite=True,
+            metadata=metadata,
+        )  # Run conversion with modified metadata

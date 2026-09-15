@@ -1,5 +1,6 @@
 # Behavior
 from .behavior.audio.audiointerface import AudioInterface
+from .behavior.boris.borisdatainterface import BORISInterface
 from .behavior.deeplabcut.deeplabcutdatainterface import DeepLabCutInterface
 from .behavior.fictrac.fictracdatainterface import FicTracDataInterface
 from .behavior.lightningpose.lightningposedatainterface import (
@@ -7,12 +8,17 @@ from .behavior.lightningpose.lightningposedatainterface import (
 )
 from .behavior.medpc.medpcdatainterface import MedPCInterface
 from .behavior.miniscope.miniscopedatainterface import MiniscopeBehaviorInterface
+from .behavior.miniscope.miniscopeheadorientationinterface import MiniscopeHeadOrientationInterface
+from .behavior.moseq.moseqkeypointsinterface import MoseqKeyPointsInterface
 from .behavior.neuralynx.neuralynx_nvt_interface import NeuralynxNvtInterface
 from .behavior.sleap.sleapdatainterface import SLEAPInterface
-from .behavior.video.videodatainterface import VideoInterface
+from .behavior.vame.vamedatainterface import VameInterface
+from .behavior.video.externalvideointerface import ExternalVideoInterface
+from .behavior.video.internalvideointerface import InternalVideoInterface
 
 # Ecephys
 from .ecephys.alphaomega.alphaomegadatainterface import AlphaOmegaRecordingInterface
+from .ecephys.axon.axondatainterface import AxonRecordingInterface
 from .ecephys.axona.axonadatainterface import (
     AxonaLFPDataInterface,
     AxonaPositionDataInterface,
@@ -30,9 +36,14 @@ from .ecephys.cellexplorer.cellexplorerdatainterface import (
     CellExplorerSortingInterface,
 )
 from .ecephys.edf.edfdatainterface import EDFRecordingInterface
+from .ecephys.edf.edfanaloginterface import EDFAnalogInterface
 from .ecephys.intan.intandatainterface import IntanRecordingInterface
+from .ecephys.intan.intananaloginterface import IntanAnalogInterface
+from .ecephys.intan.intandigitalinterface import IntanDigitalInterface
+from .ecephys.intan.intanstiminterface import IntanStimInterface
 from .ecephys.kilosort.kilosortdatainterface import KiloSortSortingInterface
 from .ecephys.maxwell.maxonedatainterface import MaxOneRecordingInterface
+from .ecephys.mda.mdadatainterface import MdaSortingInterface
 from .ecephys.mcsraw.mcsrawdatainterface import MCSRawRecordingInterface
 from .ecephys.mearec.mearecdatainterface import MEArecRecordingInterface
 from .ecephys.neuralynx.neuralynxdatainterface import (
@@ -44,6 +55,7 @@ from .ecephys.neuroscope.neuroscopedatainterface import (
     NeuroScopeRecordingInterface,
     NeuroScopeSortingInterface,
 )
+from .ecephys.openephys.openephybinarysanaloginterface import OpenEphysBinaryAnalogInterface
 from .ecephys.openephys.openephysbinarydatainterface import (
     OpenEphysBinaryRecordingInterface,
 )
@@ -65,41 +77,78 @@ from .ecephys.spikegadgets.spikegadgetsdatainterface import (
 )
 from .ecephys.spikeglx.spikeglxdatainterface import SpikeGLXRecordingInterface
 from .ecephys.spikeglx.spikeglxnidqinterface import SpikeGLXNIDQInterface
+from .ecephys.spikeglx.spikeglxsyncchannelinterface import SpikeGLXSyncChannelInterface
 from .ecephys.tdt.tdtdatainterface import TdtRecordingInterface
+from .ecephys.whitematter.whitematterdatainterface import WhiteMatterRecordingInterface
+from .ecephys.xclust.xclustdatainterface import XClustSortingInterface
 
 # Icephys
 from .icephys.abf.abfdatainterface import AbfInterface
+from .icephys.axon.axonintracellularinterface import AxonIntracellularInterface
+from .icephys.brukervoltagerecording.brukervoltagerecordinginterface import BrukerVoltageRecordingInterface
 
 # Ophys
 from .ophys.brukertiff.brukertiffdatainterface import (
+    BrukerTiffImagingInterface,
     BrukerTiffMultiPlaneImagingInterface,
     BrukerTiffSinglePlaneImagingInterface,
 )
 from .ophys.caiman.caimandatainterface import CaimanSegmentationInterface
 from .ophys.cnmfe.cnmfedatainterface import CnmfeSegmentationInterface
 from .ophys.extract.extractdatainterface import ExtractSegmentationInterface
+from .ophys.femtonics.femtonicsdatainterface import FemtonicsImagingInterface
 from .ophys.hdf5.hdf5datainterface import Hdf5ImagingInterface
+from .ophys.inscopix.inscopixsegmentationdatainterface import InscopixSegmentationInterface
+from .ophys.inscopix.inscopiximagingdatainterface import InscopixImagingInterface
 from .ophys.micromanagertiff.micromanagertiffdatainterface import (
     MicroManagerTiffImagingInterface,
 )
+from .ophys.minian.miniandatainterface import MinianSegmentationInterface
 from .ophys.miniscope.miniscopeimagingdatainterface import MiniscopeImagingInterface
 from .ophys.sbx.sbxdatainterface import SbxImagingInterface
 from .ophys.scanimage.scanimageimaginginterfaces import (
     ScanImageImagingInterface,
-    ScanImageMultiFileImagingInterface,
+    ScanImageLegacyImagingInterface,
 )
 from .ophys.sima.simadatainterface import SimaSegmentationInterface
 from .ophys.suite2p.suite2pdatainterface import Suite2pSegmentationInterface
-from .ophys.tdt_fp.tdtfiberphotometrydatainterface import TDTFiberPhotometryInterface
+from .fiber_photometry.csv.csvfiberphotometrydatainterface import CSVFiberPhotometryInterface
+from .fiber_photometry.csv.multifilecsvfiberphotometrydatainterface import (
+    MultiFileCSVFiberPhotometryInterface,
+)
+from .fiber_photometry.doric.doricfiberphotometrydatainterface import DoricFiberPhotometryInterface
+from .fiber_photometry.guppy.guppydatainterface import GuppyInterface
+from .fiber_photometry.npm.npmfiberphotometrydatainterface import (
+    NPMFiberPhotometryInterface,
+)
+from .fiber_photometry.pyphotometry.pyphotometrydatainterface import (
+    PyPhotometryFiberPhotometryInterface,
+)
+from .fiber_photometry.tdt.tdtfiberphotometrydatainterface import TDTFiberPhotometryInterface
 from .ophys.tiff.tiffdatainterface import TiffImagingInterface
 from .ophys.thor.thordatainterface import ThorImagingInterface
 
 # Image
+from .image.externalimageinterface import ExternalImageInterface
 from .image.imageinterface import ImageInterface
 
 # Text
 from .text.csv.csvtimeintervalsinterface import CsvTimeIntervalsInterface
 from .text.excel.exceltimeintervalsinterface import ExcelTimeIntervalsInterface
+
+# Events
+from .events.csv_events.csveventsdatainterface import CSVEventsInterface
+from .events.doric_events.doriccsveventsdatainterface import DoricCSVEventsInterface
+from .events.doric_events.doriceventsdatainterface import DoricEventsInterface
+from .events.medpc_events.medpceventsdatainterface import (
+    MedPCArrayEventsInterface,
+    MedPCPackedEventsInterface,
+)
+from .events.npm_events.npmeventsdatainterface import NPMEventsInterface
+from .events.pyphotometry_events.pyphotometryeventsdatainterface import (
+    PyPhotometryEventsInterface,
+)
+from .events.tdt_events.tdteventsdatainterface import TDTEventsInterface
 
 interface_list = [
     # Ecephys
@@ -111,8 +160,12 @@ interface_list = [
     Spike2RecordingInterface,
     SpikeGLXRecordingInterface,
     SpikeGLXNIDQInterface,
+    SpikeGLXSyncChannelInterface,
     SpikeGadgetsRecordingInterface,
     IntanRecordingInterface,
+    IntanAnalogInterface,
+    IntanDigitalInterface,
+    IntanStimInterface,
     CellExplorerSortingInterface,
     CellExplorerRecordingInterface,
     CellExplorerLFPInterface,
@@ -122,13 +175,16 @@ interface_list = [
     OpenEphysBinaryRecordingInterface,
     OpenEphysLegacyRecordingInterface,
     OpenEphysSortingInterface,
+    OpenEphysBinaryAnalogInterface,
     PhySortingInterface,
     KiloSortSortingInterface,
+    MdaSortingInterface,
     AxonaRecordingInterface,
     AxonaPositionDataInterface,
     AxonaLFPDataInterface,
     AxonaUnitRecordingInterface,
     EDFRecordingInterface,
+    EDFAnalogInterface,
     TdtRecordingInterface,
     PlexonRecordingInterface,
     PlexonLFPInterface,
@@ -136,43 +192,74 @@ interface_list = [
     PlexonSortingInterface,
     BiocamRecordingInterface,
     AlphaOmegaRecordingInterface,
+    AxonRecordingInterface,
     MEArecRecordingInterface,
     MCSRawRecordingInterface,
     MaxOneRecordingInterface,
+    WhiteMatterRecordingInterface,
+    XClustSortingInterface,
     # Icephys
     AbfInterface,
+    AxonIntracellularInterface,
+    BrukerVoltageRecordingInterface,
     # Ophys
     CaimanSegmentationInterface,
     CnmfeSegmentationInterface,
-    Suite2pSegmentationInterface,
     ExtractSegmentationInterface,
+    FemtonicsImagingInterface,
+    InscopixSegmentationInterface,
     SimaSegmentationInterface,
+    Suite2pSegmentationInterface,
     SbxImagingInterface,
     TiffImagingInterface,
     Hdf5ImagingInterface,
+    InscopixImagingInterface,
     ScanImageImagingInterface,
-    ScanImageMultiFileImagingInterface,
+    ScanImageLegacyImagingInterface,
+    BrukerTiffImagingInterface,
     BrukerTiffMultiPlaneImagingInterface,
     BrukerTiffSinglePlaneImagingInterface,
     MicroManagerTiffImagingInterface,
     MiniscopeImagingInterface,
+    CSVFiberPhotometryInterface,
+    MultiFileCSVFiberPhotometryInterface,
+    DoricFiberPhotometryInterface,
     TDTFiberPhotometryInterface,
+    NPMFiberPhotometryInterface,
+    PyPhotometryFiberPhotometryInterface,
+    GuppyInterface,
+    MinianSegmentationInterface,
     ThorImagingInterface,
     # Behavior
-    VideoInterface,
+    BORISInterface,
+    ExternalVideoInterface,
+    InternalVideoInterface,
     AudioInterface,
     DeepLabCutInterface,
     SLEAPInterface,
     MiniscopeBehaviorInterface,
+    MiniscopeHeadOrientationInterface,
     FicTracDataInterface,
     NeuralynxNvtInterface,
     LightningPoseDataInterface,
     MedPCInterface,
+    VameInterface,
+    MoseqKeyPointsInterface,
     # Text
     CsvTimeIntervalsInterface,
     ExcelTimeIntervalsInterface,
     # Image
     ImageInterface,
+    ExternalImageInterface,
+    # Events
+    CSVEventsInterface,
+    DoricCSVEventsInterface,
+    DoricEventsInterface,
+    MedPCArrayEventsInterface,
+    MedPCPackedEventsInterface,
+    NPMEventsInterface,
+    PyPhotometryEventsInterface,
+    TDTEventsInterface,
 ]
 
 interfaces_by_category = dict(
@@ -196,14 +283,37 @@ interfaces_by_category = dict(
         for interface in interface_list
         if "Segmentation" in interface.__name__
     },
-    fiber_photometry={"TDTFiberPhotometry": TDTFiberPhotometryInterface},
-    icephys=dict(Abf=AbfInterface),
+    fiber_photometry={
+        "DoricFiberPhotometry": DoricFiberPhotometryInterface,
+        "TDTFiberPhotometry": TDTFiberPhotometryInterface,
+        "NPMFiberPhotometry": NPMFiberPhotometryInterface,
+        "PyPhotometryFiberPhotometry": PyPhotometryFiberPhotometryInterface,
+        "CSVFiberPhotometry": CSVFiberPhotometryInterface,
+        "MultiFileCSVFiberPhotometry": MultiFileCSVFiberPhotometryInterface,
+    },
+    analog=dict(
+        OpenEphysAnalog=OpenEphysBinaryAnalogInterface,
+        SpikeGLXNIDQ=SpikeGLXNIDQInterface,
+        SpikeGLXSync=SpikeGLXSyncChannelInterface,
+        IntanAnalog=IntanAnalogInterface,
+        IntanDigital=IntanDigitalInterface,
+        IntanStim=IntanStimInterface,
+    ),
+    icephys=dict(
+        Abf=AbfInterface,
+        AxonIntracellular=AxonIntracellularInterface,
+        BrukerVoltageRecording=BrukerVoltageRecordingInterface,
+    ),
     behavior=dict(
-        Video=VideoInterface,
+        ExternalVideo=ExternalVideoInterface,
+        InternalVideo=InternalVideoInterface,
         DeepLabCut=DeepLabCutInterface,
         SLEAP=SLEAPInterface,
         FicTrac=FicTracDataInterface,
         LightningPose=LightningPoseDataInterface,
+        Vame=VameInterface,
+        BORIS=BORISInterface,
+        MoseqKeyPoints=MoseqKeyPointsInterface,
         # Text
         CsvTimeIntervals=CsvTimeIntervalsInterface,
         ExcelTimeIntervals=ExcelTimeIntervalsInterface,
@@ -211,5 +321,16 @@ interfaces_by_category = dict(
     ),
     image=dict(
         Image=ImageInterface,
+        ExternalImage=ExternalImageInterface,
+    ),
+    events=dict(
+        CSVEvents=CSVEventsInterface,
+        DoricCSVEvents=DoricCSVEventsInterface,
+        DoricEvents=DoricEventsInterface,
+        MedPCArrayEvents=MedPCArrayEventsInterface,
+        MedPCPackedEvents=MedPCPackedEventsInterface,
+        NPMEvents=NPMEventsInterface,
+        PyPhotometryEvents=PyPhotometryEventsInterface,
+        TDTEvents=TDTEventsInterface,
     ),
 )

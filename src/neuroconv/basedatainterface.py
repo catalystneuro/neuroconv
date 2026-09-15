@@ -1,41 +1,45 @@
-import importlib
 import json
-import uuid
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Literal, Optional, Union
+from typing import Literal
 
 from jsonschema.validators import validate
 from pydantic import FilePath, validate_call
 from pynwb import NWBFile
 
 from .tools.nwb_helpers import (
+    BACKEND_NWB_IO,
     HDF5BackendConfiguration,
     ZarrBackendConfiguration,
     configure_backend,
     get_default_backend_configuration,
+    get_default_nwbfile_metadata,
     make_nwbfile_from_metadata,
-    make_or_load_nwbfile,
 )
 from .tools.nwb_helpers._metadata_and_file_helpers import (
-    _resolve_backend,
+    _fetch_backend_from_nwbfile_on_disk,
     configure_and_write_nwbfile,
 )
 from .utils import (
     get_json_schema_from_method_signature,
     load_dict_from_file,
 )
+from .utils._metadata_translation import _translate_old_metadata
 from .utils.dict import DeepDict
-from .utils.json_schema import _NWBMetaDataEncoder, _NWBSourceDataEncoder
+from .utils.json_schema import (
+    _metadata_uses_old_list_format,
+    _NWBSourceDataEncoder,
+    validate_metadata,
+)
 
 
 class BaseDataInterface(ABC):
     """Abstract class defining the structure of all DataInterfaces."""
 
-    display_name: Union[str, None] = None
+    display_name: str | None = None
     keywords: tuple[str] = tuple()
     associated_suffixes: tuple[str] = tuple()
-    info: Union[str, None] = None
+    info: str | None = None
 
     @classmethod
     def get_source_schema(cls) -> dict:
@@ -92,31 +96,60 @@ class BaseDataInterface(ABC):
         DeepDict
             The metadata dictionary containing basic NWBFile metadata.
         """
-        metadata = DeepDict()
+        metadata = get_default_nwbfile_metadata()
         metadata["NWBFile"]["session_description"] = ""
-        metadata["NWBFile"]["identifier"] = str(uuid.uuid4())
-
-        # Add NeuroConv watermark (overridden if going through the GUIDE)
-        neuroconv_version = importlib.metadata.version("neuroconv")
-        metadata["NWBFile"]["source_script"] = f"Created using NeuroConv v{neuroconv_version}"
-        metadata["NWBFile"]["source_script_file_name"] = __file__  # Required for validation
 
         return metadata
 
+    def _get_metadata_schema_for_old_list_format(self) -> dict:
+        """
+        Return the schema used to validate metadata in the old list-based format.
+
+        Transitional. Most interfaces describe one format only, so this is their own schema. The modality
+        bases whose ``get_metadata_schema`` still describes the old format override it the other way
+        round: they answer here with that schema and hand ``get_metadata_schema`` callers the base schema,
+        which is what dict-based metadata can be validated against. Both go when those schemas are
+        migrated.
+        """
+        return self.get_metadata_schema()
+
+    def _get_metadata_for_writing(self) -> DeepDict:
+        """
+        Return the metadata used when the caller passes none.
+
+        Transitional: ``get_metadata`` still hands users the old list-based format by default, but what
+        NeuroConv writes for itself is the dict-based one. Interfaces that emit only the dict format do not
+        take the argument and are asked plainly.
+
+        Remove this method when the old list-based format is removed. At that point ``get_metadata``
+        returns the dict format unconditionally, ``use_new_metadata_format`` is gone, and every caller
+        below goes back to ``metadata or self.get_metadata()``.
+        """
+        import inspect
+
+        if "use_new_metadata_format" in inspect.signature(self.get_metadata).parameters:
+            return self.get_metadata(use_new_metadata_format=True)
+        return self.get_metadata()
+
     def validate_metadata(self, metadata: dict, append_mode: bool = False) -> None:
         """Validate the metadata against the schema."""
-        encoder = _NWBMetaDataEncoder()
-        # The encoder produces a serialized object, so we deserialized it for comparison
+        # Old-shaped metadata is converted before it is checked, so validation only ever sees one shape.
+        # The conversion is thrown away afterwards: the schema accepts any key under a keyed block, so
+        # validation needs the right shape but not the right label, and what the writers receive is the
+        # caller's own dictionary, converted again there with the label in hand.
+        metadata = _translate_old_metadata(metadata)
 
-        serialized_metadata = encoder.encode(metadata)
-        decoded_metadata = json.loads(serialized_metadata)
-        metdata_schema = self.get_metadata_schema()
+        if _metadata_uses_old_list_format(metadata):
+            metdata_schema = self._get_metadata_schema_for_old_list_format()
+        else:
+            metdata_schema = self.get_metadata_schema()
+
         if append_mode:
             # Eliminate required from NWBFile
             nwbfile_schema = metdata_schema["properties"]["NWBFile"]
             nwbfile_schema.pop("required", None)
 
-        validate(instance=decoded_metadata, schema=metdata_schema)
+        validate_metadata(metadata=metadata, schema=metdata_schema)
 
     def get_conversion_options_schema(self) -> dict:
         """
@@ -129,7 +162,7 @@ class BaseDataInterface(ABC):
         """
         return get_json_schema_from_method_signature(self.add_to_nwbfile, exclude=["nwbfile", "metadata"])
 
-    def create_nwbfile(self, metadata: Optional[dict] = None, **conversion_options) -> NWBFile:
+    def create_nwbfile(self, metadata: dict | None = None, **conversion_options) -> NWBFile:
         """
         Create and return an in-memory pynwb.NWBFile object with this interface's data added to it.
 
@@ -146,7 +179,7 @@ class BaseDataInterface(ABC):
             The in-memory object with this interface's data added to it.
         """
         if metadata is None:
-            metadata = self.get_metadata()
+            metadata = self._get_metadata_for_writing()
 
         nwbfile = make_nwbfile_from_metadata(metadata=metadata)
         self.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **conversion_options)
@@ -154,7 +187,7 @@ class BaseDataInterface(ABC):
         return nwbfile
 
     @abstractmethod
-    def add_to_nwbfile(self, nwbfile: NWBFile, metadata: Optional[dict], **conversion_options) -> None:
+    def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict | None, **conversion_options) -> None:
         """
         Define a protocol for mapping the data from this interface to NWB neurodata objects.
 
@@ -174,11 +207,12 @@ class BaseDataInterface(ABC):
     def run_conversion(
         self,
         nwbfile_path: FilePath,
-        nwbfile: Optional[NWBFile] = None,
-        metadata: Optional[dict] = None,
+        nwbfile: NWBFile | None = None,
+        metadata: dict | None = None,
         overwrite: bool = False,
-        backend: Optional[Literal["hdf5", "zarr"]] = None,
-        backend_configuration: Optional[Union[HDF5BackendConfiguration, ZarrBackendConfiguration]] = None,
+        backend: Literal["hdf5", "zarr"] | None = None,
+        backend_configuration: HDF5BackendConfiguration | ZarrBackendConfiguration | None = None,
+        append_on_disk_nwbfile: bool = False,
         **conversion_options,
     ):
         """
@@ -189,7 +223,8 @@ class BaseDataInterface(ABC):
         nwbfile_path : FilePath
             Path for where to write or load (if overwrite=False) the NWBFile.
         nwbfile : NWBFile, optional
-            An in-memory NWBFile object to write to the location.
+            An in-memory NWBFile object. If provided, this conversion's interfaces add their data to
+            it rather than a new file being created; the file still needs `nwbfile_path` to be written.
         metadata : dict, optional
             Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
         overwrite : bool, default: False
@@ -204,59 +239,132 @@ class BaseDataInterface(ABC):
             To customize, call the `.get_default_backend_configuration(...)` method, modify the returned
             BackendConfiguration object, and pass that instead.
             Otherwise, all datasets will use default configuration settings.
+            Cannot be combined with `nwbfile` or `append_on_disk_nwbfile=True`.
+        append_on_disk_nwbfile : bool, default: False
+            Whether to append to an existing NWBFile on disk. If True, the `nwbfile` parameter must be None.
+            This is useful for appending data to an existing file without overwriting it.
         """
 
         appending_to_in_memory_nwbfile = nwbfile is not None
         file_initially_exists = Path(nwbfile_path).exists() if nwbfile_path is not None else False
-        appending_to_in_disk_nwbfile = file_initially_exists and not overwrite
+        allowed_to_modify_existing = overwrite or append_on_disk_nwbfile
 
-        if appending_to_in_disk_nwbfile and appending_to_in_memory_nwbfile:
+        if file_initially_exists and not allowed_to_modify_existing:
+            raise ValueError(
+                f"The file at '{nwbfile_path}' already exists. Set overwrite=True to overwrite the existing file "
+                "or append_on_disk_nwbfile=True to append to the existing file."
+            )
+
+        if append_on_disk_nwbfile and appending_to_in_memory_nwbfile:
             raise ValueError(
                 "Cannot append to an existing file while also providing an in-memory NWBFile. "
                 "Either set overwrite=True to replace the existing file, or remove the nwbfile parameter to append to the existing file on disk."
             )
 
-        if metadata is None:
-            metadata = self.get_metadata()
-        self.validate_metadata(metadata=metadata, append_mode=appending_to_in_disk_nwbfile)
-
-        if not appending_to_in_disk_nwbfile:
-            if appending_to_in_memory_nwbfile:
-                self.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **conversion_options)
-            else:
-                nwbfile = self.create_nwbfile(metadata=metadata, **conversion_options)
-
-            configure_and_write_nwbfile(
-                nwbfile=nwbfile,
-                output_filepath=nwbfile_path,
-                backend=backend,
-                backend_configuration=backend_configuration,
+        if backend_configuration is not None and appending_to_in_memory_nwbfile:
+            raise ValueError(
+                "Cannot provide a backend_configuration while also providing an in-memory NWBFile. This "
+                "interface's data is added to that file before it is written, so a configuration built from "
+                "it beforehand does not describe the file being written. Add this interface with "
+                "add_to_nwbfile, derive the configuration from the result, and write it with "
+                "configure_and_write_nwbfile."
             )
 
-        else:  # We are only using the context in append mode, see issue #1143
+        if backend_configuration is not None and append_on_disk_nwbfile:
+            raise ValueError(
+                "Cannot provide a backend_configuration while also appending to an existing file on disk. "
+                "The file is read and this interface's data added to it before it is configured, so a "
+                "configuration built beforehand does not describe the file being written. Specify `backend` "
+                "instead, which derives the configuration after the data is added."
+            )
 
-            backend = _resolve_backend(backend, backend_configuration)
-            with make_or_load_nwbfile(
+        if metadata is None:
+            metadata = self._get_metadata_for_writing()
+        self.validate_metadata(metadata=metadata, append_mode=append_on_disk_nwbfile)
+
+        writing_new_file = not append_on_disk_nwbfile
+
+        if writing_new_file:
+            self._write_nwbfile(
                 nwbfile_path=nwbfile_path,
                 nwbfile=nwbfile,
                 metadata=metadata,
-                overwrite=overwrite,
                 backend=backend,
-                verbose=getattr(self, "verbose", False),
-            ) as nwbfile_out:
+                backend_configuration=backend_configuration,
+                conversion_options=conversion_options,
+            )
+        else:
+            self._append_nwbfile(
+                nwbfile_path=nwbfile_path,
+                metadata=metadata,
+                backend=backend,
+                backend_configuration=backend_configuration,
+                conversion_options=conversion_options,
+            )
 
-                self.add_to_nwbfile(nwbfile=nwbfile_out, metadata=metadata, **conversion_options)
+    def _write_nwbfile(
+        self,
+        nwbfile_path: FilePath,
+        nwbfile: NWBFile | None,
+        metadata: dict,
+        backend: Literal["hdf5", "zarr"],
+        backend_configuration: dict,
+        conversion_options: dict,
+    ) -> None:
+        """
+        Write NWBFile to a file path on disk.
 
-                if backend_configuration is None:
-                    backend_configuration = self.get_default_backend_configuration(nwbfile=nwbfile_out, backend=backend)
+        Private helper method for run_conversion in write mode.
+        Creates a new NWBFile or uses provided one, then writes to disk.
+        """
+        if nwbfile is not None:
+            self.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **conversion_options)
+        else:
+            nwbfile = self.create_nwbfile(metadata=metadata, **conversion_options)
 
-                configure_backend(nwbfile=nwbfile_out, backend_configuration=backend_configuration)
+        configure_and_write_nwbfile(
+            nwbfile=nwbfile,
+            nwbfile_path=nwbfile_path,
+            backend=backend,
+            backend_configuration=backend_configuration,
+        )
+
+    def _append_nwbfile(
+        self,
+        nwbfile_path: FilePath,
+        metadata: dict,
+        backend: Literal["hdf5", "zarr"],
+        backend_configuration: dict,
+        conversion_options: dict,
+    ) -> None:
+        """
+        Append data to an existing NWB file.
+
+        Private helper method for run_conversion in append mode.
+        Reads existing file, adds interface data, and writes back.
+        """
+        backend = _fetch_backend_from_nwbfile_on_disk(
+            nwbfile_path=nwbfile_path, backend=backend, backend_configuration=backend_configuration
+        )
+        IO = BACKEND_NWB_IO[backend]
+
+        with IO(path=str(nwbfile_path), mode="r+", load_namespaces=True) as io:
+            nwbfile = io.read()
+
+            self.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **conversion_options)
+
+            if backend_configuration is None:
+                backend_configuration = self.get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
+
+            configure_backend(nwbfile=nwbfile, backend_configuration=backend_configuration)
+
+            io.write(nwbfile)
 
     @staticmethod
     def get_default_backend_configuration(
         nwbfile: NWBFile,
         backend: Literal["hdf5", "zarr"] = "hdf5",
-    ) -> Union[HDF5BackendConfiguration, ZarrBackendConfiguration]:
+    ) -> HDF5BackendConfiguration | ZarrBackendConfiguration:
         """
         Fill and return a default backend configuration to serve as a starting point for further customization.
 
@@ -270,7 +378,7 @@ class BaseDataInterface(ABC):
 
         Returns
         -------
-        Union[HDF5BackendConfiguration, ZarrBackendConfiguration]
+        HDF5BackendConfiguration | ZarrBackendConfiguration
             The default configuration for the specified backend type.
         """
         return get_default_backend_configuration(nwbfile=nwbfile, backend=backend)

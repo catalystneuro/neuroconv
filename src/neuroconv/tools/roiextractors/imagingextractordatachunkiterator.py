@@ -1,13 +1,14 @@
 """General purpose iterator for all ImagingExtractor data."""
 
-import math
-from typing import Optional
-
 import numpy as np
 from roiextractors import ImagingExtractor
 from tqdm import tqdm
 
 from neuroconv.tools.hdmf import GenericDataChunkIterator
+from neuroconv.tools.iterative_write import (
+    get_image_series_buffer_shape,
+    get_image_series_chunk_shape,
+)
 
 
 class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
@@ -16,13 +17,13 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
     def __init__(
         self,
         imaging_extractor: ImagingExtractor,
-        buffer_gb: Optional[float] = None,
-        buffer_shape: Optional[tuple] = None,
-        chunk_mb: Optional[float] = None,
-        chunk_shape: Optional[tuple] = None,
+        buffer_gb: float | None = None,
+        buffer_shape: tuple | None = None,
+        chunk_mb: float | None = None,
+        chunk_shape: tuple | None = None,
         display_progress: bool = False,
-        progress_bar_class: Optional[tqdm] = None,
-        progress_bar_options: Optional[dict] = None,
+        progress_bar_class: tqdm | None = None,
+        progress_bar_options: dict | None = None,
     ):
         """
         Initialize an Iterable object which returns DataChunks with data and their selections on each iteration.
@@ -71,8 +72,6 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
         if chunk_mb is None and chunk_shape is None:
             chunk_mb = 10.0
 
-        self._maxshape = self._get_maxshape()
-        self._dtype = self._get_dtype()
         if chunk_shape is None:
             chunk_shape = self._get_default_chunk_shape(chunk_mb=chunk_mb)
 
@@ -90,22 +89,35 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
             progress_bar_options=progress_bar_options,
         )
 
+    def _get_sample_shape(self) -> tuple:
+        """This translate the sample shape in roiextractors to the nwb convention by transposing the frame shape."""
+
+        roi_extractors_frame_shape = self.imaging_extractor.get_frame_shape()
+        height, width = roi_extractors_frame_shape[0], roi_extractors_frame_shape[1]
+        nwb_frame_shape = (width, height)
+
+        if self.imaging_extractor.is_volumetric:
+            num_planes = self.imaging_extractor.get_num_planes()
+            sample_shape = nwb_frame_shape + (num_planes,)
+        else:
+            sample_shape = nwb_frame_shape
+
+        return sample_shape
+
     def _get_default_chunk_shape(self, chunk_mb: float) -> tuple:
         """Select the chunk_shape less than the threshold of chunk_mb while keeping the original image size."""
         assert chunk_mb > 0, f"chunk_mb ({chunk_mb}) must be greater than zero!"
 
-        num_frames = self._maxshape[0]
-        width = self._maxshape[1]
-        height = self._maxshape[2]
+        num_samples = self.imaging_extractor.get_num_samples()
+        sample_shape = self._get_sample_shape()
+        dtype = self.imaging_extractor.get_dtype()
 
-        frame_size_bytes = width * height * self._dtype.itemsize
-        chunk_size_bytes = chunk_mb * 1e6
-        num_frames_per_chunk = int(chunk_size_bytes / frame_size_bytes)
-
-        if len(self._maxshape) == 3:
-            chunk_shape = (max(min(num_frames_per_chunk, num_frames), 1), width, height)
-        elif len(self._maxshape) == 4:
-            chunk_shape = (max(min(num_frames_per_chunk, num_frames), 1), width, height, 1)
+        chunk_shape = get_image_series_chunk_shape(
+            num_samples=num_samples,
+            sample_shape=sample_shape,
+            dtype=dtype,
+            chunk_mb=chunk_mb,
+        )
 
         return chunk_shape
 
@@ -114,35 +126,74 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
         assert buffer_gb > 0, f"buffer_gb ({buffer_gb}) must be greater than zero!"
         assert all(np.array(chunk_shape) > 0), f"Some dimensions of chunk_shape ({chunk_shape}) are less than zero!"
 
-        image_size = self._get_maxshape()[1:]
-        min_buffer_shape = tuple([chunk_shape[0]]) + image_size
-        scaling_factor = math.floor((buffer_gb * 1e9 / (math.prod(min_buffer_shape) * self._get_dtype().itemsize)))
-        max_buffer_shape = tuple([int(scaling_factor * min_buffer_shape[0])]) + image_size
-        scaled_buffer_shape = tuple(
-            [
-                min(max(int(dimension_length), chunk_shape[dimension_index]), self._get_maxshape()[dimension_index])
-                for dimension_index, dimension_length in enumerate(max_buffer_shape)
-            ]
+        sample_shape = self._get_sample_shape()
+        series_shape = self.shape
+        dtype = self._get_dtype()
+
+        buffer_shape = get_image_series_buffer_shape(
+            chunk_shape=chunk_shape,
+            sample_shape=sample_shape,
+            series_shape=series_shape,
+            dtype=dtype,
+            buffer_gb=buffer_gb,
         )
-        return scaled_buffer_shape
+
+        return buffer_shape
+
+    @property
+    def shape(self):
+        """Return (num_frames, width, height) or (num_frames, width, height, num_planes) for volumetric."""
+        num_samples = self.imaging_extractor.get_num_samples()
+        sample_shape = self._get_sample_shape()
+        return (num_samples,) + sample_shape
+
+    @property
+    def ndim(self):
+        """Return the number of dimensions (3 for 2D imaging, 4 for volumetric)."""
+        return len(self.shape)
+
+    def __len__(self):
+        """Return the number of frames in this imaging session."""
+        return self.imaging_extractor.get_num_samples()
+
+    def __getitem__(self, selection):
+        """Enable array-like slicing with proper transpose handling for imaging data.
+
+        The imaging extractor returns data in (frames, height, width) order, but NWB
+        expects (frames, width, height), so this method transposes before applying
+        spatial slices.
+
+        Note that get_series always returns full spatial frames, so spatial slicing
+        happens in memory after the fetch. This is a roiextractors API limitation.
+        """
+        resolved = self._convert_index_to_slices(selection)
+        return self._get_data(resolved)
 
     def _get_dtype(self) -> np.dtype:
         return self.imaging_extractor.get_dtype()
 
     def _get_maxshape(self) -> tuple:
-        video_shape = (self.imaging_extractor.get_num_frames(),)
-        image_shape = self.imaging_extractor.get_image_size()
-        width, height = image_shape[1], image_shape[0]  # ROIExtractors convention is flipped
-        video_shape += (width, height)
-        if len(image_shape) == 3:
-            depth = image_shape[2]
-            video_shape += (depth,)
-        return video_shape
+        return self.shape
 
     def _get_data(self, selection: tuple[slice]) -> np.ndarray:
-        data = self.imaging_extractor.get_video(
-            start_frame=selection[0].start,
-            end_frame=selection[0].stop,
+        """Fetch frames from the imaging extractor and apply spatial slicing.
+
+        The imaging extractor returns data in (frames, height, width) order, but NWB
+        expects (frames, width, height), so we transpose after fetching.
+
+        Note that get_series always returns full spatial frames, so spatial slicing
+        happens in memory after the fetch. This is a roiextractors API limitation.
+        """
+        data = self.imaging_extractor.get_series(
+            start_sample=selection[0].start,
+            end_sample=selection[0].stop,
         )
-        tranpose_axes = (0, 2, 1) if len(data.shape) == 3 else (0, 2, 1, 3)
-        return data.transpose(tranpose_axes)[(slice(0, self.buffer_shape[0]),) + selection[1:]]
+
+        # Transpose from roiextractors (frames, height, width) to NWB (frames, width, height)
+        transpose_axes = (0, 2, 1) if len(data.shape) == 3 else (0, 2, 1, 3)
+        data = data.transpose(transpose_axes)
+
+        # get_series returns full spatial frames, so apply spatial slicing after transpose
+        num_frames_fetched = selection[0].stop - selection[0].start
+        spatial_selection = (slice(0, num_frames_fetched),) + selection[1:]
+        return data[spatial_selection]

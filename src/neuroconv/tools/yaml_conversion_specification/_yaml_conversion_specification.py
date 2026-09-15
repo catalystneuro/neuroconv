@@ -2,7 +2,6 @@ import json
 import os
 from importlib import import_module
 from pathlib import Path
-from typing import Optional
 
 import click
 from jsonschema import validate
@@ -30,8 +29,8 @@ from ...utils import dict_deep_update, load_dict_from_file
 @click.option("--overwrite", help="Overwrite an existing NWBFile at the location.", is_flag=True)
 def run_conversion_from_yaml_cli(
     specification_file_path: str,
-    data_folder_path: Optional[str] = None,
-    output_folder_path: Optional[str] = None,
+    data_folder_path: str | None = None,
+    output_folder_path: str | None = None,
     overwrite: bool = False,
 ):
     """
@@ -48,10 +47,29 @@ def run_conversion_from_yaml_cli(
     )
 
 
+def _resolve_conversion_options(
+    *,
+    interface_names,
+    global_conversion_options: dict,
+    session_conversion_options: dict,
+) -> dict[str, dict]:
+    """
+    Assemble the conversion options handed to each interface of one session.
+
+    The top-level ``conversion_options`` block applies to every interface of every session, and a session's
+    own block is keyed by interface name. The session's values win where both state the same option, the
+    same way the session's metadata wins over the global block.
+    """
+    return {
+        interface_name: {**global_conversion_options, **session_conversion_options.get(interface_name, dict())}
+        for interface_name in interface_names
+    }
+
+
 def run_conversion_from_yaml(
     specification_file_path: FilePath,
-    data_folder_path: Optional[DirectoryPath] = None,
-    output_folder_path: Optional[DirectoryPath] = None,
+    data_folder_path: DirectoryPath | None = None,
+    output_folder_path: DirectoryPath | None = None,
     overwrite: bool = False,
 ) -> None:
     """
@@ -61,10 +79,10 @@ def run_conversion_from_yaml(
     ----------
     specification_file_path : FilePath
         File path leading to .yml specification file for NWB conversion.
-    data_folder_path : FolderPathType, optional
+    data_folder_path : DirectoryPath, optional
         Folder path leading to root location of the data files.
         The default is the parent directory of the specification_file_path.
-    output_folder_path : FolderPathType, optional
+    output_folder_path : DirectoryPath, optional
         Folder path leading to the desired output location of the .nwb files.
         The default is the parent directory of the specification_file_path.
     overwrite : bool, default: False
@@ -74,8 +92,11 @@ def run_conversion_from_yaml(
     from dandi.organize import create_unique_filenames_from_metadata
     from dandi.pynwb_utils import _get_pynwb_metadata
 
+    # The command line entry point hands this over as a string.
+    specification_file_path = Path(specification_file_path)
+
     if data_folder_path is None:
-        data_folder_path = Path(specification_file_path).parent
+        data_folder_path = specification_file_path.parent
     else:
         data_folder_path = Path(data_folder_path)
         data_folder_path.mkdir(exist_ok=True)
@@ -104,12 +125,19 @@ def run_conversion_from_yaml(
     )
 
     upload_to_dandiset = "upload_to_dandiset" in specification
-    if upload_to_dandiset and "DANDI_API_KEY" not in os.environ:
-        message = (
-            "The 'upload_to_dandiset' prompt was found in the YAML specification, "
-            "but the environment variable 'DANDI_API_KEY' was not set."
-        )
-        raise ValueError(message)
+    if upload_to_dandiset:
+        dandiset_id = specification["upload_to_dandiset"]
+        sandbox = (
+            int(dandiset_id) >= 200_000
+        )  # This is a heuristic for determining sandboxed Dandiset from the ID alone -- see https://github.com/catalystneuro/neuroconv/pull/1588 for more details
+        # Check for the appropriate API key based on whether this is a sandbox upload
+        expected_env_var = "DANDI_SANDBOX_API_KEY" if sandbox else "DANDI_API_KEY"
+        if not os.getenv(expected_env_var):
+            message = (
+                "The 'upload_to_dandiset' prompt was found in the YAML specification, "
+                f"but the environment variable '{expected_env_var}' was not set."
+            )
+            raise ValueError(message)
 
     global_metadata = specification.get("metadata", dict())
     global_conversion_options = specification.get("conversion_options", dict())
@@ -151,12 +179,13 @@ def run_conversion_from_yaml(
                 )
                 raise ValueError(message)
 
-            session_conversion_options = session.get("conversion_options", dict())
-            conversion_options = dict()
-            for key in converter.data_interface_objects:
-                conversion_options[key] = dict(session_conversion_options.get(key, dict()), **global_conversion_options)
+            conversion_options = _resolve_conversion_options(
+                interface_names=converter.data_interface_objects,
+                global_conversion_options=global_conversion_options,
+                session_conversion_options=session.get("conversion_options", dict()),
+            )
 
-            nwbfile_name = session.get("nwbfile_name", f"temp_nwbfile_name_{file_counter}").strip(".nwb")
+            nwbfile_name = session.get("nwbfile_name", f"temp_nwbfile_name_{file_counter}").removesuffix(".nwb")
             converter.run_conversion(
                 nwbfile_path=output_folder_path / f"{nwbfile_name}.nwb",
                 metadata=metadata,
@@ -166,11 +195,13 @@ def run_conversion_from_yaml(
 
     if upload_to_dandiset:
         dandiset_id = specification["upload_to_dandiset"]
-        staging = int(dandiset_id) >= 200_000
+        sandbox = (
+            int(dandiset_id) >= 200_000
+        )  # This is a heuristic for determining sandboxed Dandiset from the ID alone -- see https://github.com/catalystneuro/neuroconv/pull/1588 for more details
         automatic_dandi_upload(
             dandiset_id=dandiset_id,
             nwb_folder_path=output_folder_path,
-            staging=staging,
+            sandbox=sandbox,
         )
 
         return None  # We can early return since organization below will occur within the upload step

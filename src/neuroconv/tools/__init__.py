@@ -9,3 +9,4 @@ from .importing import (
 from .nwb_helpers import get_module
 from .path_expansion import LocalPathExpander
 from .processes import deploy_process
+from .nwb_helpers import configure_and_write_nwbfile

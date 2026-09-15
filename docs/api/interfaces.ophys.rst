@@ -1,6 +1,6 @@
-*****
-Ophys
-*****
+******************
+Optical Physiology
+******************
 
 Imaging
 =======
@@ -13,9 +13,17 @@ Bruker Tiff Imaging
 -------------------
 .. automodule:: neuroconv.datainterfaces.ophys.brukertiff.brukertiffconverter
 
+Femtonics Imaging
+-----------------
+.. automodule:: neuroconv.datainterfaces.ophys.femtonics.femtonicsdatainterface
+
 HDF5 Imaging
 ------------
 .. automodule:: neuroconv.datainterfaces.ophys.hdf5.hdf5datainterface
+
+Inscopix Imaging
+----------------
+.. automodule:: neuroconv.datainterfaces.ophys.inscopix.inscopiximagingdatainterface
 
 MicroManager Tiff Imaging
 -------------------------
@@ -57,6 +65,10 @@ Extract Segmentation
 --------------------
 .. automodule:: neuroconv.datainterfaces.ophys.extract.extractdatainterface
 
+Inscopix Segmentation
+---------------------
+.. automodule:: neuroconv.datainterfaces.ophys.inscopix.inscopixsegmentationdatainterface
+
 Sima Segmentation
 -----------------
 .. automodule:: neuroconv.datainterfaces.ophys.sima.simadatainterface
@@ -64,11 +76,3 @@ Sima Segmentation
 Suite2p Segmentation
 --------------------
 .. automodule:: neuroconv.datainterfaces.ophys.suite2p.suite2pdatainterface
-
-
-Fiber Photometry
-================
-
-TDT Fiber Photometry
---------------------
-.. automodule:: neuroconv.datainterfaces.ophys.tdt_fp.tdtfiberphotometrydatainterface

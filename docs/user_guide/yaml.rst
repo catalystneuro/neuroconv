@@ -73,7 +73,7 @@ dictionary using :py:meth:`~neuroconv.utils.dict.load_dict_from_file`. Then the 
     metadata = dict_deep_update(metadata, metadata_from_yaml)
 
     spikeglx_interface.run_conversion(
-        save_path="path/to/destination.nwb",
+        nwbfile_path="path/to/destination.nwb",
         metadata=metadata
     )
 

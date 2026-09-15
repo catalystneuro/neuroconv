@@ -1,0 +1,46 @@
+/* NeuroConv Assistant Chatbot Styles */
+/* Popup window approach - only button styling needed */
+
+/* Assistant toggle button - bottom-right position (industry standard) */
+.assistant-toggle {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    z-index: 1001;
+    padding: 12px 16px;
+    background-color: #2980b9;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    transition: all 0.3s ease-in-out;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 120px;
+    white-space: nowrap;
+}
+
+.assistant-toggle:hover {
+    background-color: #3498db;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.3);
+}
+
+/* Mobile devices - smaller button */
+@media (max-width: 767px) {
+    .assistant-toggle {
+        right: 16px;
+        bottom: 16px;
+        padding: 10px 14px;
+        font-size: 13px;
+        min-width: 100px;
+    }
+
+    .assistant-toggle:hover {
+        transform: translateY(-1px);
+    }
+}

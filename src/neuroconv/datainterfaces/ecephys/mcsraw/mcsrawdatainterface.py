@@ -1,3 +1,5 @@
+import warnings
+
 from pydantic import FilePath
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
@@ -7,7 +9,7 @@ class MCSRawRecordingInterface(BaseRecordingExtractorInterface):
     """
     Primary data interface class for converting MCSRaw data.
 
-    Using the :py:class:`~spikeinterface.extractors.MCSRawRecordingExtractor`.
+    Uses the :py:func:`~spikeinterface.extractors.read_mcsraw` reader from SpikeInterface.
     """
 
     display_name = "MCSRaw Recording"
@@ -15,12 +17,25 @@ class MCSRawRecordingInterface(BaseRecordingExtractorInterface):
     info = "Interface for MCSRaw recording data."
 
     @classmethod
+    def get_extractor_class(cls):
+        from spikeinterface.extractors.extractor_classes import MCSRawRecordingExtractor
+
+        return MCSRawRecordingExtractor
+
+    @classmethod
     def get_source_schema(cls) -> dict:
         source_schema = super().get_source_schema()
         source_schema["properties"]["file_path"]["description"] = "Path to the .raw file."
         return source_schema
 
-    def __init__(self, file_path: FilePath, verbose: bool = False, es_key: str = "ElectricalSeries"):
+    def __init__(
+        self,
+        file_path: FilePath,
+        *args,  # TODO: change to * (keyword only) on or after August 2026
+        verbose: bool = False,
+        es_key: str | None = None,
+        metadata_key: str | None = None,
+    ):
         """
         Load and prepare data for MCSRaw.
 
@@ -31,5 +46,38 @@ class MCSRawRecordingInterface(BaseRecordingExtractorInterface):
         verbose: bool, default: True
             Allows verbose.
         es_key: str, default: "ElectricalSeries"
+        metadata_key : str, optional
+            Key that indexes this interface's entries in the dict-based metadata. Defaults to
+            ``"mcs_raw_recording"``.
         """
-        super().__init__(file_path=file_path, verbose=verbose, es_key=es_key)
+        # Handle deprecated positional arguments
+        if args:
+            parameter_names = [
+                "verbose",
+                "es_key",
+            ]
+            num_positional_args_before_args = 1  # file_path
+            if len(args) > len(parameter_names):
+                raise TypeError(
+                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
+                    f"{len(args) + num_positional_args_before_args + 1} were given. "
+                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
+                    "Please use keyword arguments."
+                )
+            positional_values = dict(zip(parameter_names, args))
+            passed_as_positional = list(positional_values.keys())
+            warnings.warn(
+                f"Passing arguments positionally to MCSRawRecordingInterface.__init__() is deprecated "
+                f"and will be removed on or after August 2026. "
+                f"The following arguments were passed positionally: {passed_as_positional}. "
+                "Please use keyword arguments instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            verbose = positional_values.get("verbose", verbose)
+            es_key = positional_values.get("es_key", es_key)
+
+        super().__init__(file_path=file_path, verbose=verbose, es_key=es_key, metadata_key=metadata_key)
+
+        if metadata_key is None:
+            self.metadata_key = "mcs_raw_recording"

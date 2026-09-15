@@ -5,7 +5,6 @@ Derived from https://www.mathworks.com/matlabcentral/fileexchange/26226-readnvt
 import os
 from datetime import datetime
 from shutil import copy
-from typing import Union
 
 import numpy as np
 from pydantic import FilePath
@@ -26,7 +25,7 @@ RECORD_FORMAT = [
 ]
 
 
-def read_header(filename: str) -> dict[str, Union[str, datetime, float, int, list[int]]]:
+def read_header(filename: str) -> dict[str, str | datetime | float | int | list[int]]:
     """
     Parses a Neuralynx NVT File Header and returns it as a dictionary.
 

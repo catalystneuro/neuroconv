@@ -27,10 +27,10 @@ generate some credentials by creating a new user with programmatic access. Save 
 somewhere safe (such as installing the `AWS CLI <https://aws.amazon.com/cli>`_ and running ``aws configure``
 to store the values on your local device).
 
-e. Have access to an account on both the `staging/testing server <https://gui-staging.dandiarchive.org/>`_ (you
+e. Have access to an account on both the `sandbox/testing server <https://sandbox.dandiarchive.org/>`_ (you
 will probably want one on the main archive as well, but please do not upload demonstration data to the primary
 server). This request can take a few days for the admin team to process. Once you have access, you will need
-to create a new Dandiset on the staging server and record the six-digit Dandiset ID.
+to create a new Dandiset on the sandbox server and record the six-digit Dandiset ID.
 
 .. warning::
 
@@ -65,10 +65,12 @@ level (not nested in any other folders).
         sessions:
           - source_data:
               ap:
-                file_path: spikeglx/Noise4Sam_g0/Noise4Sam_g0_imec0/Noise4Sam_g0_t0.imec0.ap.bin
+                folder_path: spikeglx/Noise4Sam_g0/Noise4Sam_g0_imec0
+                stream_id: imec0.ap
             metadata:
               NWBFile:
                 session_start_time: "2020-10-10T21:19:09+00:00"
+                session_id: "demo-aws-1"
               Subject:
                 subject_id: "1"
                 sex: F
@@ -77,6 +79,7 @@ level (not nested in any other folders).
           - metadata:
               NWBFile:
                 session_start_time: "2020-10-10T21:19:09+00:00"
+                session_id: "demo-aws-2"
               Subject:
                 subject_id: "002"
                 sex: F
@@ -132,5 +135,5 @@ folder so that you have the following structure...
         )
 
 Voilà! If everything occurred successfully, you should eventually (~2-10 minutes) see the files uploaded to your
-Dandiset on the staging server. You should also be able to monitor the resources running in the AWS Batch dashboard
+Dandiset on the sandbox server. You should also be able to monitor the resources running in the AWS Batch dashboard
 as well as on the DynamoDB table.

@@ -1,5 +1,5 @@
-Recording & Sorting
-===================
+Extracellular Electrophysiology
+===============================
 
 Base Recording
 --------------
@@ -12,6 +12,10 @@ Base Sorting
 AlphaOmega
 ----------
 .. automodule:: neuroconv.datainterfaces.ecephys.alphaomega.alphaomegadatainterface
+
+Axon Recording
+--------------
+.. automodule:: neuroconv.datainterfaces.ecephys.axon.axondatainterface
 
 Axona Recording
 ---------------
@@ -33,9 +37,21 @@ European Data Format (EDF) Recording
 ------------------------------------
 .. automodule:: neuroconv.datainterfaces.ecephys.edf.edfdatainterface
 
-Intan Recording
+European Data Format (EDF) Analog
+----------------------------------
+.. automodule:: neuroconv.datainterfaces.ecephys.edf.edfanaloginterface
+
+Intan Amplifier
 ---------------
 .. automodule:: neuroconv.datainterfaces.ecephys.intan.intandatainterface
+
+Intan Analog
+------------
+.. automodule:: neuroconv.datainterfaces.ecephys.intan.intananaloginterface
+
+Intan Stimulation
+-----------------
+.. automodule:: neuroconv.datainterfaces.ecephys.intan.intanstiminterface
 
 KiloSort Sorting
 ----------------
@@ -44,6 +60,10 @@ KiloSort Sorting
 MaxOne Recording
 ----------------
 .. automodule:: neuroconv.datainterfaces.ecephys.maxwell.maxonedatainterface
+
+MCSRaw Recording
+----------------
+.. automodule:: neuroconv.datainterfaces.ecephys.mcsraw.mcsrawdatainterface
 
 MEArec Recording
 ----------------
@@ -60,7 +80,7 @@ NeuroScope Recording & Sorting
 OpenEphys Recording
 -------------------
 .. automodule:: neuroconv.datainterfaces.ecephys.openephys.openephysdatainterface
-
+.. automodule:: neuroconv.datainterfaces.ecephys.openephys.openephysbinaryconverter
 
 Phy Sorting
 -----------
@@ -89,3 +109,11 @@ SpikeGLX Recording
 Tucker-Davis Technologies (TDT) Recording
 -----------------------------------------
 .. automodule:: neuroconv.datainterfaces.ecephys.tdt.tdtdatainterface
+
+White Matter Recording
+----------------------
+.. automodule:: neuroconv.datainterfaces.ecephys.whitematter.whitematterdatainterface
+
+XClust Sorting
+--------------
+.. automodule:: neuroconv.datainterfaces.ecephys.xclust.xclustdatainterface

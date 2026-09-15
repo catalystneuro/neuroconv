@@ -5,7 +5,9 @@ from shutil import rmtree
 from tempfile import mkdtemp
 
 import numpy as np
+import pytest
 from pynwb import NWBFile
+from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv import (
     BaseDataInterface,
@@ -13,6 +15,8 @@ from neuroconv import (
     ConverterPipe,
     NWBConverter,
 )
+from neuroconv.tools.testing.mock_interfaces import MockInterface
+from neuroconv.utils import DeepDict
 
 try:
     from ndx_events import LabeledEvents
@@ -28,7 +32,7 @@ def test_converter():
         nwbfile_path = str(test_dir / "extension_test.nwb")
 
         class NdxEventsInterface(BaseTemporalAlignmentInterface):
-            def __init__(self):
+            def __init__(self, verbose: bool = False):
                 self._timestamps = np.array([0.0, 0.5, 0.6, 2.0, 2.05, 3.0, 3.5, 3.6, 4.0])
                 self._original_timestamps = np.array(self._timestamps)
 
@@ -160,3 +164,114 @@ class TestNWBConverterAndPipeInitialization(unittest.TestCase):
         data_interface_names = list(converter.data_interface_objects.keys())
         expected_interface_names = ["InterfaceA001", "InterfaceB", "InterfaceA002"]
         self.assertListEqual(data_interface_names, expected_interface_names)
+
+
+@pytest.mark.parametrize("backend", ["hdf5", "zarr"])
+def test_converter_pipe_append_on_disk(tmp_path, backend):
+    """Test that append_on_disk_nwbfile works for ConverterPipe with multiple interfaces."""
+    from pynwb.testing.mock.file import mock_NWBFile
+
+    from neuroconv.tools.nwb_helpers import BACKEND_NWB_IO
+    from neuroconv.tools.testing.mock_interfaces import MockTimeSeriesInterface
+
+    nwbfile_path = tmp_path / ("test_append.nwb" if backend == "hdf5" else "test_append.nwb.zarr")
+
+    nwbfile = mock_NWBFile()
+    IO = BACKEND_NWB_IO[backend]
+    with IO(str(nwbfile_path), mode="w") as io:
+        io.write(nwbfile)
+
+    # Append to existing file with converter containing two TimeSeries interfaces
+    timeseries_interface1 = MockTimeSeriesInterface(num_channels=2, duration=0.1, metadata_key="TimeSeriesAnalog")
+    timeseries_interface2 = MockTimeSeriesInterface(num_channels=3, duration=0.1, metadata_key="TimeSeriesAuxiliary")
+    converter = ConverterPipe(data_interfaces=[timeseries_interface1, timeseries_interface2])
+
+    # Get metadata and modify TimeSeries names to be unique
+    metadata = converter.get_metadata()
+    metadata["TimeSeries"]["TimeSeriesAnalog"]["name"] = "MockTimeSeriesAnalog"
+    metadata["TimeSeries"]["TimeSeriesAuxiliary"]["name"] = "MockTimeSeriesAuxiliary"
+
+    converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, append_on_disk_nwbfile=True)
+
+    # Verify all interfaces' data was appended, in a file still written with the backend it started with
+    with IO(str(nwbfile_path), "r") as io:
+        nwbfile = io.read()
+        # Original mock file data still exists
+        assert nwbfile.session_description is not None
+        # First TimeSeries interface data
+        assert "MockTimeSeriesAnalog" in nwbfile.acquisition
+        assert nwbfile.acquisition["MockTimeSeriesAnalog"].data.shape[1] == 2
+        # Second TimeSeries interface data
+        assert "MockTimeSeriesAuxiliary" in nwbfile.acquisition
+        assert nwbfile.acquisition["MockTimeSeriesAuxiliary"].data.shape[1] == 3
+        # Verify we have exactly 2 TimeSeries
+        timeseries_names = list(nwbfile.acquisition.keys())
+        assert len(timeseries_names) == 2
+
+
+def test_converter_forwards_the_metadata_format_it_was_asked_for():
+    """A converter asks each interface for the format the caller asked for, not for the default.
+
+    The two are indistinguishable while the default is `False`, so this asks the interface itself what it
+    was handed rather than reading the shape that comes back.
+    """
+
+    class RecordingTheArgumentInterface(BaseDataInterface):
+        def __init__(self):
+            super().__init__()
+            self.asked_for = []
+
+        # The default is deliberately the opposite of what the test asks for, so a converter that drops
+        # the argument and lets this default answer is caught whatever the library's own default is.
+        def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
+            self.asked_for.append(use_new_metadata_format)
+            return super().get_metadata()
+
+        def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict | None = None):
+            pass
+
+    interface = RecordingTheArgumentInterface()
+    converter = ConverterPipe(data_interfaces=dict(Recording=interface))
+
+    converter.get_metadata(use_new_metadata_format=False)
+    converter.get_metadata(use_new_metadata_format=True)
+
+    assert interface.asked_for == [False, True]
+
+
+def test_nested_converter_receives_its_conversion_options():
+    """A converter nested in another one is handed its options as a mapping, not as keyword arguments.
+
+    An outer converter unpacks one level of `conversion_options` per container, and the entry for a nested
+    converter names that converter's own children, so it has to arrive whole. The two halves are asserted
+    together because they used to disagree: the shape the schema describes was the shape the call rejected.
+    """
+    inner_converter = ConverterPipe(data_interfaces=dict(Recording=MockInterface()))
+    outer_converter = ConverterPipe(data_interfaces=dict(Inner=inner_converter))
+
+    conversion_options = dict(Inner=dict(Recording=dict(add_subject=True)))
+
+    outer_converter.validate_conversion_options(conversion_options=conversion_options)
+    nwbfile = mock_NWBFile()
+    outer_converter.add_to_nwbfile(
+        nwbfile=nwbfile,
+        metadata=outer_converter.get_metadata(),
+        conversion_options=conversion_options,
+    )
+
+    assert nwbfile.subject is not None
+
+
+def test_converter_pipe_accepts_a_tuple_of_interfaces():
+    from neuroconv.tools.testing.mock_interfaces import MockBehaviorEventInterface
+
+    converter = ConverterPipe(data_interfaces=(MockBehaviorEventInterface(), MockBehaviorEventInterface()))
+
+    assert list(converter.data_interface_objects) == ["MockBehaviorEventInterface001", "MockBehaviorEventInterface002"]
+
+
+def test_converter_pipe_rejects_other_types_up_front():
+    from neuroconv.tools.testing.mock_interfaces import MockBehaviorEventInterface
+
+    with pytest.raises(TypeError, match="`data_interfaces` must be a list of interfaces, or a dict.*not set"):
+        ConverterPipe(data_interfaces={MockBehaviorEventInterface()})

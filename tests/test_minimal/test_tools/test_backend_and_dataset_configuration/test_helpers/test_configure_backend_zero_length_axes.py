@@ -6,13 +6,14 @@ helper function which is called by `BackendConfiguration.from_nwbfile(...)`.
 """
 
 from pathlib import Path
-from typing import Literal, Tuple
+from typing import Literal
 
 import numcodecs
 import numpy as np
 import pytest
 from hdmf.common import DynamicTable, VectorData
 from numpy.testing import assert_array_equal
+from pynwb import read_nwb
 from pynwb.testing.mock.base import mock_TimeSeries
 from pynwb.testing.mock.file import mock_NWBFile
 
@@ -27,7 +28,7 @@ from neuroconv.tools.nwb_helpers import (
 def integer_array(
     seed: int = 0,
     dtype: np.dtype = np.dtype("int16"),
-    shape: Tuple[int, int] = (12, 34),
+    shape: tuple[int, int] = (12, 34),
 ):
     random_number_generator = np.random.default_rng(seed=seed)
 
@@ -40,7 +41,7 @@ def integer_array(
 def integer_array_with_zero_length_axis(
     seed: int = 1,
     dtype: np.dtype = np.dtype("int16"),
-    shape: Tuple[int, int] = (12, 0),  # 12 so it matches the dimension of the other column
+    shape: tuple[int, int] = (12, 0),  # 12 so it matches the dimension of the other column
 ):
     """Generate an array of integers with a zero-length axis."""
     assert 0 in shape, "The shape must contain a zero-length axis."
@@ -84,9 +85,9 @@ def test_time_series_skip_zero_length_axis(
     #     if backend == "hdf5":
     #         assert written_data.compression == "gzip"
     #     elif backend == "zarr":
-    #         assert written_data.compressor == numcodecs.GZip(level=1)
+    #         assert written_data.compressor == numcodecs.GZip(level=4)
     #
-    #     assert_array_equal(x=integer_array, y=written_data[:])
+    #     assert_array_equal(integer_array, written_data[:])
 
 
 @pytest.mark.parametrize("backend", ["hdf5", "zarr"])
@@ -119,15 +120,15 @@ def test_dynamic_table_skip_zero_length_axis(
     with NWB_IO(path=nwbfile_path, mode="w") as io:
         io.write(nwbfile)
 
-    with NWB_IO(path=nwbfile_path, mode="r") as io:
-        written_nwbfile = io.read()
-        written_data = written_nwbfile.acquisition["TestDynamicTable"]["TestColumn"].data
+    written_nwbfile = read_nwb(nwbfile_path)
+    written_data = written_nwbfile.acquisition["TestDynamicTable"]["TestColumn"].data
 
-        assert written_data.chunks == dataset_configuration.chunk_shape
+    assert written_data.chunks == dataset_configuration.chunk_shape
 
-        if backend == "hdf5":
-            assert written_data.compression == "gzip"
-        elif backend == "zarr":
-            assert written_data.compressor == numcodecs.GZip(level=1)
+    if backend == "hdf5":
+        assert written_data.compression == "gzip"
+    elif backend == "zarr":
+        assert written_data.compressor == numcodecs.GZip(level=4)
 
-        assert_array_equal(x=integer_array, y=written_data[:])
+    assert_array_equal(integer_array, written_data[:])
+    written_nwbfile.read_io.close()

@@ -7,24 +7,23 @@ import pytest
 from hdmf.testing import TestCase
 from natsort import natsorted
 from ndx_miniscope import Miniscope
-from ndx_miniscope.utils import get_timestamps
 from numpy.testing import assert_array_equal
-from pynwb import NWBHDF5IO
+from pynwb import read_nwb
 from pynwb.behavior import Position, SpatialSeries
 
-from neuroconv import NWBConverter
 from neuroconv.datainterfaces import (
     FicTracDataInterface,
     MedPCInterface,
     MiniscopeBehaviorInterface,
     NeuralynxNvtInterface,
-    VideoInterface,
+)
+from neuroconv.datainterfaces.ophys.miniscope._miniscope_readers import (
+    _get_fused_timestamps,
 )
 from neuroconv.tools.testing.data_interface_mixins import (
     DataInterfaceTestMixin,
     MedPCInterfaceMixin,
     TemporalAlignmentMixin,
-    VideoInterfaceMixin,
 )
 
 try:
@@ -75,31 +74,31 @@ class TestFicTracDataInterface(DataInterfaceTestMixin):
             '"thr_win_pc": 0.25, '
             '"vfov": 45.0}'
         )
-        with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
-            nwbfile = io.read()
+        nwbfile = read_nwb(nwbfile_path)
 
-            fictrac_position_container = nwbfile.processing["behavior"].data_interfaces["FicTrac"]
-            assert isinstance(fictrac_position_container, Position)
+        fictrac_position_container = nwbfile.processing["behavior"].data_interfaces["FicTrac"]
+        assert isinstance(fictrac_position_container, Position)
 
-            assert len(fictrac_position_container.spatial_series) == 10
+        assert len(fictrac_position_container.spatial_series) == 10
 
-            column_to_nwb_mapping = self.interface.column_to_nwb_mapping
-            for data_dict in column_to_nwb_mapping.values():
-                spatial_series_name = data_dict["spatial_series_name"]
-                assert spatial_series_name in fictrac_position_container.spatial_series
+        column_to_nwb_mapping = self.interface.column_to_nwb_mapping
+        for data_dict in column_to_nwb_mapping.values():
+            spatial_series_name = data_dict["spatial_series_name"]
+            assert spatial_series_name in fictrac_position_container.spatial_series
 
-                reference_frame = data_dict["reference_frame"]
-                spatial_series = fictrac_position_container.spatial_series[spatial_series_name]
-                assert reference_frame == spatial_series.reference_frame
+            reference_frame = data_dict["reference_frame"]
+            spatial_series = fictrac_position_container.spatial_series[spatial_series_name]
+            assert reference_frame == spatial_series.reference_frame
 
-                expected_units = "radians"
-                assert spatial_series.unit == expected_units
-                assert spatial_series.conversion == 1.0
+            expected_units = "radians"
+            assert spatial_series.unit == expected_units
+            assert spatial_series.conversion == 1.0
 
-                expected_metadata = f"{configuration_metadata}"
-                assert spatial_series.comments == expected_metadata
+            expected_metadata = f"{configuration_metadata}"
+            assert spatial_series.comments == expected_metadata
 
-                assert spatial_series.timestamps[0] == 0.0
+            assert spatial_series.timestamps[0] == 0.0
+        nwbfile.read_io.close()
 
 
 class TestFicTracDataInterfaceWithRadius(DataInterfaceTestMixin):
@@ -144,30 +143,30 @@ class TestFicTracDataInterfaceWithRadius(DataInterfaceTestMixin):
             '"vfov": 45.0}'
         )
 
-        with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
-            nwbfile = io.read()
+        nwbfile = read_nwb(nwbfile_path)
 
-            fictrac_position_container = nwbfile.processing["behavior"].data_interfaces["FicTrac"]
-            assert isinstance(fictrac_position_container, Position)
+        fictrac_position_container = nwbfile.processing["behavior"].data_interfaces["FicTrac"]
+        assert isinstance(fictrac_position_container, Position)
 
-            assert len(fictrac_position_container.spatial_series) == 10
+        assert len(fictrac_position_container.spatial_series) == 10
 
-            column_to_nwb_mapping = self.interface.column_to_nwb_mapping
-            for data_dict in column_to_nwb_mapping.values():
-                spatial_series_name = data_dict["spatial_series_name"]
-                assert spatial_series_name in fictrac_position_container.spatial_series
+        column_to_nwb_mapping = self.interface.column_to_nwb_mapping
+        for data_dict in column_to_nwb_mapping.values():
+            spatial_series_name = data_dict["spatial_series_name"]
+            assert spatial_series_name in fictrac_position_container.spatial_series
 
-                reference_frame = data_dict["reference_frame"]
-                spatial_series = fictrac_position_container.spatial_series[spatial_series_name]
-                assert reference_frame == spatial_series.reference_frame
-                expected_units = "meters"
-                assert spatial_series.unit == expected_units
-                assert spatial_series.conversion == self.interface.radius
+            reference_frame = data_dict["reference_frame"]
+            spatial_series = fictrac_position_container.spatial_series[spatial_series_name]
+            assert reference_frame == spatial_series.reference_frame
+            expected_units = "meters"
+            assert spatial_series.unit == expected_units
+            assert spatial_series.conversion == self.interface.radius
 
-                expected_metadata = f"{configuration_metadata}"
-                assert spatial_series.comments == expected_metadata
+            expected_metadata = f"{configuration_metadata}"
+            assert spatial_series.comments == expected_metadata
 
-                assert spatial_series.timestamps[0] == 0.0
+            assert spatial_series.timestamps[0] == 0.0
+        nwbfile.read_io.close()
 
 
 class TestFicTracDataInterfaceTiming(TemporalAlignmentMixin):
@@ -183,8 +182,8 @@ class TestMiniscopeInterface(DataInterfaceTestMixin):
     save_directory = OUTPUT_PATH
 
     @pytest.fixture(scope="class", autouse=True)
-    def setup_metadata(self, request):
-        cls = request.cls
+    @classmethod
+    def setup_metadata(cls):
         folder_path = Path(OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "C6-J588_Disc5")
         cls.device_name = "BehavCam2"
         cls.image_series_name = "BehavCamImageSeries"
@@ -198,10 +197,10 @@ class TestMiniscopeInterface(DataInterfaceTestMixin):
         )
         cls.starting_frames = np.array([0, 5, 10])  # there are 5 frames in each of the three avi files
         cls.external_files = [str(file) for file in list(natsorted(folder_path.glob("*/BehavCam*/0.avi")))]
-        cls.timestamps = get_timestamps(folder_path=str(folder_path), file_pattern="BehavCam*/timeStamps.csv")
+        cls.timestamps = _get_fused_timestamps(folder_path=str(folder_path), file_pattern="BehavCam*/timeStamps.csv")
 
     def check_extracted_metadata(self, metadata: dict):
-        assert metadata["NWBFile"]["session_start_time"] == datetime(2021, 10, 7, 15, 3, 28, 635)
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2021, 10, 7, 15, 3, 28, 635000)
         assert metadata["Behavior"]["Device"][0] == self.device_metadata
 
         image_series_metadata = metadata["Behavior"]["ImageSeries"][0]
@@ -211,29 +210,29 @@ class TestMiniscopeInterface(DataInterfaceTestMixin):
         assert image_series_metadata["dimension"] == [1280, 720]  # width x height
 
     def check_read_nwb(self, nwbfile_path: str):
-        with NWBHDF5IO(nwbfile_path, "r") as io:
-            nwbfile = io.read()
+        nwbfile = read_nwb(nwbfile_path)
 
-            # Check device metadata
-            assert self.device_name in nwbfile.devices
-            device = nwbfile.devices[self.device_name]
-            assert isinstance(device, Miniscope)
-            assert device.compression == self.device_metadata["compression"]
-            assert device.deviceType == self.device_metadata["deviceType"]
-            assert device.framesPerFile == self.device_metadata["framesPerFile"]
-            roi = [self.device_metadata["ROI"]["height"], self.device_metadata["ROI"]["width"]]
-            assert_array_equal(device.ROI[:], roi)
+        # Check device metadata
+        assert self.device_name in nwbfile.devices
+        device = nwbfile.devices[self.device_name]
+        assert isinstance(device, Miniscope)
+        assert device.compression == self.device_metadata["compression"]
+        assert device.deviceType == self.device_metadata["deviceType"]
+        assert device.framesPerFile == self.device_metadata["framesPerFile"]
+        roi = [self.device_metadata["ROI"]["height"], self.device_metadata["ROI"]["width"]]
+        assert_array_equal(device.ROI[:], roi)
 
-            # Check ImageSeries
-            assert self.image_series_name in nwbfile.acquisition
-            image_series = nwbfile.acquisition[self.image_series_name]
-            assert image_series.format == "external"
-            assert_array_equal(image_series.starting_frame, self.starting_frames)
-            assert_array_equal(image_series.dimension[:], [1280, 720])
-            assert image_series.unit == "px"
-            assert device == nwbfile.acquisition[self.image_series_name].device
-            assert_array_equal(image_series.timestamps[:], self.timestamps)
-            assert_array_equal(image_series.external_file[:], self.external_files)
+        # Check ImageSeries
+        assert self.image_series_name in nwbfile.acquisition
+        image_series = nwbfile.acquisition[self.image_series_name]
+        assert image_series.format == "external"
+        assert_array_equal(image_series.starting_frame, self.starting_frames)
+        assert_array_equal(image_series.dimension[:], [1280, 720])
+        assert image_series.unit == "px"
+        assert device == nwbfile.acquisition[self.image_series_name].device
+        assert_array_equal(image_series.timestamps[:], self.timestamps)
+        assert_array_equal(image_series.external_file[:], self.external_files)
+        nwbfile.read_io.close()
 
 
 class TestNeuralynxNvtInterface(DataInterfaceTestMixin, TemporalAlignmentMixin):
@@ -243,169 +242,17 @@ class TestNeuralynxNvtInterface(DataInterfaceTestMixin, TemporalAlignmentMixin):
     save_directory = OUTPUT_PATH
 
     def check_read_nwb(self, nwbfile_path: str):  # This is currently structured to be file-specific
-        with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
-            nwbfile = io.read()
-            assert isinstance(nwbfile.acquisition["NvtPosition"].spatial_series["NvtSpatialSeries"], SpatialSeries)
-            assert isinstance(
-                nwbfile.acquisition["NvtCompassDirection"].spatial_series["NvtAngleSpatialSeries"], SpatialSeries
-            )
+        nwbfile = read_nwb(nwbfile_path)
+        assert isinstance(nwbfile.acquisition["NvtPosition"].spatial_series["NvtSpatialSeries"], SpatialSeries)
+        assert isinstance(
+            nwbfile.acquisition["NvtCompassDirection"].spatial_series["NvtAngleSpatialSeries"], SpatialSeries
+        )
+        nwbfile.read_io.close()
 
     def check_metadata(self):
         super().check_metadata()
         metadata = self.interface.get_metadata()
         assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 5, 15, 10, 35, 29)
-
-
-class TestVideoInterface(VideoInterfaceMixin):
-    data_interface_cls = VideoInterface
-    save_directory = OUTPUT_PATH
-
-    @pytest.fixture(
-        params=[
-            (dict(file_paths=[str(BEHAVIOR_DATA_PATH / "videos" / "CFR" / "video_avi.avi")])),
-            (dict(file_paths=[str(BEHAVIOR_DATA_PATH / "videos" / "CFR" / "video_flv.flv")])),
-            (dict(file_paths=[str(BEHAVIOR_DATA_PATH / "videos" / "CFR" / "video_mov.mov")])),
-            (dict(file_paths=[str(BEHAVIOR_DATA_PATH / "videos" / "CFR" / "video_mp4.mp4")])),
-            (dict(file_paths=[str(BEHAVIOR_DATA_PATH / "videos" / "CFR" / "video_wmv.wmv")])),
-        ],
-        ids=["avi", "flv", "mov", "mp4", "wmv"],
-    )
-    def setup_interface(self, request):
-
-        test_id = request.node.callspec.id
-        self.test_name = test_id
-        self.interface_kwargs = request.param
-        self.interface = self.data_interface_cls(**self.interface_kwargs)
-
-        return self.interface, self.test_name
-
-
-class TestVideoConversions(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.video_files = list((BEHAVIOR_DATA_PATH / "videos" / "CFR").iterdir())
-        cls.video_files.sort()
-        cls.number_of_video_files = len(cls.video_files)
-        cls.aligned_segment_starting_times = [0.0, 50.0, 100.0, 150.0, 175.0]
-
-    def _get_metadata(self):
-        """TODO: temporary helper function to fetch new metadata each time; need to debug in follow-up."""
-        self.metadata = self.converter.get_metadata()
-        self.metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
-        self.image_series_name = self.metadata["Behavior"]["Videos"][0]["name"]
-
-    def test_real_videos(self):
-        # TODO - merge this with the data mixin in follow-up
-        for file_index, (file_path, segment_starting_time) in enumerate(
-            zip(self.video_files, self.aligned_segment_starting_times)
-        ):
-            self.file_index = file_index
-
-            class VideoTestNWBConverter(NWBConverter):
-                data_interface_classes = dict(Video=VideoInterface)
-
-            source_data = dict(Video=dict(file_paths=[file_path]))
-            self.converter = VideoTestNWBConverter(source_data)
-            self.interface = self.converter.data_interface_objects["Video"]
-            self.interface.set_aligned_segment_starting_times(
-                aligned_segment_starting_times=[self.aligned_segment_starting_times[self.file_index]]
-            )
-
-            self.check_video_set_aligned_starting_times()
-            self.check_video_custom_module()
-            self.check_video_chunking()
-
-    def check_video_set_aligned_starting_times(self):
-        self._get_metadata()
-        conversion_options = dict(Video=dict(external_mode=False))
-        nwbfile_path = OUTPUT_PATH / "check_video_starting_times.nwb"
-        self.converter.run_conversion(
-            nwbfile_path=nwbfile_path,
-            overwrite=True,
-            conversion_options=conversion_options,
-            metadata=self.metadata,
-        )
-        with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
-            nwbfile = io.read()
-            assert self.image_series_name in nwbfile.acquisition
-            self.image_series = nwbfile.acquisition[self.image_series_name]
-
-            if self.image_series.starting_time is not None:
-                assert self.aligned_segment_starting_times[self.file_index] == self.image_series.starting_time
-            else:
-                assert self.aligned_segment_starting_times[self.file_index] == self.image_series.timestamps[0]
-
-    def check_video_custom_module(self):
-        self._get_metadata()
-        module_name = "TestModule"
-        module_description = "This is a test module."
-        conversion_options = dict(
-            Video=dict(
-                external_mode=False,
-                module_name=module_name,
-                module_description=module_description,
-            )
-        )
-        nwbfile_path = OUTPUT_PATH / "test_video_custom_module.nwb"
-        self.converter.run_conversion(
-            nwbfile_path=nwbfile_path,
-            overwrite=True,
-            conversion_options=conversion_options,
-            metadata=self.metadata,
-        )
-        with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
-            nwbfile = io.read()
-            assert module_name in nwbfile.processing
-            assert module_description == nwbfile.processing[module_name].description
-            assert self.image_series_name in nwbfile.processing[module_name].data_interfaces
-
-    def check_video_chunking(self):
-        self._get_metadata()
-        conversion_options = dict(Video=dict(external_mode=False, stub_test=True, chunk_data=False))
-        nwbfile_path = OUTPUT_PATH / "check_video_chunking.nwb"
-        self.converter.run_conversion(
-            nwbfile_path=nwbfile_path,
-            overwrite=True,
-            conversion_options=conversion_options,
-            metadata=self.metadata,
-        )
-
-        with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
-            nwbfile = io.read()
-            assert self.image_series_name in nwbfile.acquisition
-            assert nwbfile.acquisition[self.image_series_name].data.chunks is not None
-
-    def check_external_mode(self):
-        self._get_metadata()
-        conversion_options = dict(Video=dict(external_mode=True))
-        nwbfile_path = OUTPUT_PATH / "check_external_mode.nwb"
-        self.converter.run_conversion(
-            nwbfile_path=nwbfile_path,
-            overwrite=True,
-            conversion_options=conversion_options,
-            metadata=self.metadata,
-        )
-        with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
-            nwbfile = io.read()
-            assert self.image_series_name in nwbfile.acquisition
-            assert nwbfile.acquisition[self.image_series_name].external_file[0] == str(
-                self.video_files[self.file_index]
-            )
-
-    def check_video_stub(self):
-        self._get_metadata()
-        conversion_options = dict(Video=dict(external_mode=False, stub_test=True))
-        nwbfile_path = OUTPUT_PATH / "check_video_stub.nwb"
-        self.converter.run_conversion(
-            nwbfile_path=nwbfile_path,
-            overwrite=True,
-            conversion_options=conversion_options,
-            metadata=self.metadata,
-        )
-        with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
-            nwbfile = io.read()
-            assert self.image_series_name in nwbfile.acquisition
-            assert nwbfile.acquisition[self.image_series_name].data.shape[0] == 10
 
 
 class TestMedPCInterface(TestCase, MedPCInterfaceMixin):
@@ -461,21 +308,21 @@ class TestMedPCInterface(TestCase, MedPCInterfaceMixin):
         assert metadata["MedPC"] == self.expected_metadata
 
     def check_read_nwb(self, nwbfile_path: str):
-        with NWBHDF5IO(nwbfile_path, "r") as io:
-            nwbfile = io.read()
-            for event_dict in self.expected_events:
-                expected_name = event_dict["name"]
-                expected_description = event_dict["description"]
-                assert expected_name in nwbfile.processing["behavior"].data_interfaces
-                event = nwbfile.processing["behavior"].data_interfaces[expected_name]
-                assert event.description == expected_description
+        nwbfile = read_nwb(nwbfile_path)
+        for event_dict in self.expected_events:
+            expected_name = event_dict["name"]
+            expected_description = event_dict["description"]
+            assert expected_name in nwbfile.processing["behavior"].data_interfaces
+            event = nwbfile.processing["behavior"].data_interfaces[expected_name]
+            assert event.description == expected_description
 
-            for interval_dict in self.expected_interval_series:
-                expected_name = interval_dict["name"]
-                expected_description = interval_dict["description"]
-                assert expected_name in nwbfile.processing["behavior"]["behavioral_epochs"].interval_series
-                interval_series = nwbfile.processing["behavior"]["behavioral_epochs"].interval_series[expected_name]
-                assert interval_series.description == expected_description
+        for interval_dict in self.expected_interval_series:
+            expected_name = interval_dict["name"]
+            expected_description = interval_dict["description"]
+            assert expected_name in nwbfile.processing["behavior"]["behavioral_epochs"].interval_series
+            interval_series = nwbfile.processing["behavior"]["behavioral_epochs"].interval_series[expected_name]
+            assert interval_series.description == expected_description
+        nwbfile.read_io.close()
 
     def test_all_conversion_checks(self):
         metadata = {

@@ -22,6 +22,15 @@ on:
       CODECOV_TOKEN:
         required: true
   workflow_dispatch:
+    inputs:
+      python-versions:
+        description: 'List of Python versions to use in matrix, as JSON string'
+        required: true
+        type: string
+      os-versions:
+        description: 'List of OS versions to use in matrix, as JSON string'
+        required: true
+        type: string
 
 jobs:
   run:
@@ -33,62 +42,140 @@ jobs:
         python-version: ${{ fromJson(inputs.python-versions) }}
         os: ${{ fromJson(inputs.os-versions) }}
     steps:
-      - uses: actions/checkout@v4
-      - run: git fetch --prune --unshallow --tags
+      - uses: actions/checkout@v6
       - name: Setup Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Global Setup
-        run: |
-          python -m pip install -U pip  # Official recommended way
-          git config --global user.email "CI@example.com"
-          git config --global user.name "CI Almighty"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v9.0.0
+        with:
+          version: "latest"
+          # No cross-run cache: the isolated-extras steps below are here to prove each group installs from
+          # scratch, and a wheel served from a cache GitHub restored is not a download that happened today.
+          enable-cache: false
 
       - name: Install NeuroConv with minimal requirements
-        run: pip install .
+        run: uv pip install --system "."
       - name: Test initial import of all non-lazy dependencies
-        run: python -c "import neuroconv"
-      - name: Install Wine (For Plexon2 Tests)
-        uses: ./.github/actions/install-wine
-        with:
-          os: ${{ runner.os }}
+        run: |  # This tests that everything can be imported without errors
+          python -c "import neuroconv"
+          python -c "import neuroconv.datainterfaces"
+          python -c "import neuroconv.tools"
+          python -c "import neuroconv.utils"
+          python -c "import neuroconv.converters"
+
 
       - name: Install NeuroConv with testing requirements
-        run: pip install .[test]
+        run: |
+          uv pip install --system "."
+          uv pip install --system --group test
       - name: Run import tests
         run: |
-          pytest tests/imports.py::TestImportStructure::test_top_level
-          pytest tests/imports.py::TestImportStructure::test_tools
-          pytest tests/imports.py::TestImportStructure::test_datainterfaces
+          pytest --numprocesses=0 tests/imports.py::TestImportStructure::test_top_level
+          pytest --numprocesses=0 tests/imports.py::TestImportStructure::test_tools
+          pytest --numprocesses=0 tests/imports.py::TestImportStructure::test_datainterfaces
+          pytest --numprocesses=0 tests/imports.py::test_datainterfaces_import
 
       - name: Run minimal tests
-        run: pytest tests/test_minimal -vv -rsx -n auto --dist loadscope
+        run: pytest tests/test_minimal -vv
 
-      - name: Install additional specific testing-only requirements
-        run: pip install .[test]
+      - name: Test ecephys machinery
+        shell: bash
+        run: |
+          # Create ecephys environment
+          uv venv env_ecephys
+          # Activate ecephys environment and install requirements
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            . env_ecephys/Scripts/activate
+          else
+            source env_ecephys/bin/activate
+          fi
+          uv pip install ".[ecephys_minimal]"
+          uv pip install --group test --group sorting_analyzer # we test the sorting analyzer here so we need its dependencies
+          python -m pytest tests/test_modalities/test_ecephys -vv
+          deactivate
 
-      - name: Install with ecephys requirements
-        run: pip install .[ecephys]
-      - name: Run ecephys tests
-        run: pytest tests/test_ecephys -vv -rsx -n auto --dist loadscope
+      - name: Test ophys machinery
+        shell: bash
+        run: |
+          # Create ophys environment
+          uv venv env_ophys
+          # Activate ophys environment and install requirements
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            . env_ophys/Scripts/activate
+          else
+            source env_ophys/bin/activate
+          fi
+          uv pip install ".[ophys_minimal]"
+          uv pip install --group test
+          python -m pytest tests/test_modalities/test_ophys -vv
+          deactivate
 
-      - name: Install with ophys requirements
-        run: pip install .[ophys]
-      - name: Run ophys tests
-        run: pytest tests/test_ophys -vv -rsx -n auto --dist loadscope
+      - name: Test fiber photometry machinery
+        shell: bash
+        run: |
+          # Create fiber_photometry environment
+          uv venv env_fiber_photometry
+          # Activate fiber_photometry environment and install requirements
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            . env_fiber_photometry/Scripts/activate
+          else
+            source env_fiber_photometry/bin/activate
+          fi
+          uv pip install ".[fiber_photometry_minimal]"
+          uv pip install --group test
+          python -m pytest tests/test_modalities/test_fiber_photometry -vv
+          deactivate
 
-      - name: Install with behavior requirements
-        run: pip install .[behavior]
-      - name: Run behavior tests
-        run: pytest tests/test_behavior -vv -rsx -n auto --dist loadscope
+      - name: Test guppy machinery
+        shell: bash
+        run: |
+          # Create guppy environment
+          uv venv env_guppy
+          # Activate guppy environment and install requirements
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            . env_guppy/Scripts/activate
+          else
+            source env_guppy/bin/activate
+          fi
+          uv pip install ".[guppy]"
+          uv pip install --group test
+          python -m pytest tests/test_modalities/test_guppy -vv
+          deactivate
 
-      - name: Install with icephys requirements
-        run: pip install .[icephys]
+      - name: Test behavior machinery
+        shell: bash
+        run: |
+          # Create behavior environment
+          uv venv env_behavior
+          # Activate behavior environment and install requirements
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            . env_behavior/Scripts/activate
+          else
+            source env_behavior/bin/activate
+          fi
+          uv pip install ".[behavior]"
+          uv pip install --group test
+          python -m pytest tests/test_modalities/test_behavior -vv
+          deactivate
 
-      #- name: Run icephys tests  # There are no icephys specific tests without data
-      #  run: pytest tests/test_icephys -rsx -n auto --dist loadscope
+      - name: Test events machinery
+        shell: bash
+        run: |
+          # Create events environment
+          uv venv env_events
+          # Activate events environment and install requirements
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            . env_events/Scripts/activate
+          else
+            source env_events/bin/activate
+          fi
+          uv pip install ".[events]"
+          uv pip install --group test
+          python -m pytest tests/test_modalities/test_events -vv
+          deactivate
 
       - name: Prepare data for tests
         uses: ./.github/actions/load-data
@@ -96,25 +183,34 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           s3-gin-bucket: ${{ secrets.S3_GIN_BUCKET }}
-          os: ${{ matrix.os }}
 
-      # TODO: remove this setp after this is merged https://github.com/talmolab/sleap-io/pull/143
-      - name: Run Sleap Tests until sleap.io adds support for ndx-pose > 2.0
-        run : |
-          pip install ndx-pose==0.1.1
-          pytest tests/test_on_data/behavior/test_pose_estimation_interfaces.py
+      - name: Install full requirements in base environment
+        run: |
+          uv pip install --system ".[full]"
+          uv pip install --system --group sorting_analyzer
 
-      - name: Install full requirements
-        run: pip install .[full]
+      - name: Install Wine (For Plexon2 Data Tests)
+        uses: ./.github/actions/install-wine
+        with:
+          os: ${{ runner.os }}
 
-      - name: Run full pytest with coverage
-        run: pytest -vv -rsx -n auto --dist loadscope --cov=neuroconv --cov-report xml:./codecov.xml
+      # Neo downloads the Plexon reader DLL into the home directory the first time a .pl2 file is
+      # opened, with a bare urlopen that has no timeout. Caching it keeps the test run off the network.
+      - name: Cache the Plexon2 reader DLL
+        uses: actions/cache@v5
+        with:
+          path: ~/.plexon_dlls_for_neo
+          key: plexon-dlls-${{ runner.os }}
+
+      - name: Run full pytest
+        # Ternary operator: only the job that uploads to Codecov below pays for coverage instrumentation
+        run: pytest -vv ${{ (matrix.python-version == '3.10' && matrix.os == 'ubuntu-latest') && '--cov=neuroconv --cov-report xml:./codecov.xml' || '' }}
       - name: Upload full coverage to Codecov
-        if: ${{ matrix.python-version == '3.9' && matrix.os == 'ubuntu-latest' }}
-        uses: codecov/codecov-action@v4
+        if: ${{ matrix.python-version == '3.10' && matrix.os == 'ubuntu-latest' }}
+        uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          file: ./codecov.xml
+          files: ./codecov.xml
           flags: unittests
           name: codecov-umbrella
           codecov_yml_path: ./codecov.yml

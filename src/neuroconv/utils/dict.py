@@ -3,9 +3,8 @@ import json
 import warnings
 from collections import defaultdict
 from copy import deepcopy
-from ctypes import Union
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any
 
 import numpy as np
 import yaml
@@ -36,27 +35,33 @@ class _NoDatesSafeLoader(yaml.SafeLoader):
 _NoDatesSafeLoader.remove_implicit_resolver("tag:yaml.org,2002:timestamp")
 
 
-def load_dict_from_file(file_path: FilePath) -> dict:
+def load_dict_from_file(file_path: FilePath) -> dict[str, Any]:
     """Safely load metadata from .yml or .json files."""
     file_path = Path(file_path)
     assert file_path.is_file(), f"{file_path} is not a file."
     assert file_path.suffix in (".json", ".yml", ".yaml"), f"{file_path} is not a valid yaml or .json file."
 
     if file_path.suffix in (".yml", ".yaml"):
-        with open(file=file_path, mode="r") as stream:
+        with open(file=file_path, mode="r", encoding="utf-8") as stream:
             dictionary = yaml.load(stream=stream, Loader=_NoDatesSafeLoader)
     elif file_path.suffix == ".json":
-        with open(file=file_path, mode="r") as fp:
+        with open(file=file_path, mode="r", encoding="utf-8") as fp:
             dictionary = json.load(fp=fp)
     return dictionary
 
 
-def exist_dict_in_list(d, ls):
+def exist_dict_in_list(d: dict[str, Any], ls: list[dict[str, Any]]) -> bool:
     """Check if an identical dictionary exists in the list."""
     return any([d == i for i in ls])
 
 
-def append_replace_dict_in_list(ls, d, compare_key, list_dict_deep_update: bool = True, remove_repeats: bool = True):
+def append_replace_dict_in_list(
+    ls: list[dict[str, Any]],
+    d: dict[str, Any],
+    compare_key: str,
+    list_dict_deep_update: bool = True,
+    remove_repeats: bool = True,
+) -> list[dict[str, Any]]:
     """
     Update the list ls with the dict d.
 
@@ -96,7 +101,13 @@ def append_replace_dict_in_list(ls, d, compare_key, list_dict_deep_update: bool 
         if len(indxs) > 0:
             for idx in indxs:
                 if list_dict_deep_update:
-                    ls[idx] = dict_deep_update(ls[idx], d)
+                    ls[idx] = dict_deep_update(
+                        ls[idx],
+                        d,
+                        remove_repeats=remove_repeats,
+                        compare_key=compare_key,
+                        list_dict_deep_update=list_dict_deep_update,
+                    )
                 else:
                     ls[idx] = d
         else:
@@ -107,14 +118,14 @@ def append_replace_dict_in_list(ls, d, compare_key, list_dict_deep_update: bool 
 
 
 def dict_deep_update(
-    d: collections.abc.Mapping,
-    u: collections.abc.Mapping,
+    d: dict[str, Any],
+    u: dict[str, Any],
     append_list: bool = True,
     remove_repeats: bool = True,
     copy: bool = True,
     compare_key: str = "name",
     list_dict_deep_update: bool = True,
-) -> collections.abc.Mapping:
+) -> dict[str, Any]:
     """
     Perform an update to all nested keys of dictionary d(input) from dictionary u(updating dict).
 
@@ -188,8 +199,16 @@ def dict_deep_update(
         if isinstance(update_values, collections.abc.Mapping):
             sub_dict_to_update = dict_to_update.get(key_to_update, dict())
             sub_dict_with_update_values = update_values
+            # ``copy`` is not forwarded: the top-level call has already copied everything below it when asked
+            # to, and when it was not asked to, the nested dicts are updated in place like the top one.
             dict_to_update[key_to_update] = dict_deep_update(
-                sub_dict_to_update, sub_dict_with_update_values, append_list=append_list, remove_repeats=remove_repeats
+                sub_dict_to_update,
+                sub_dict_with_update_values,
+                append_list=append_list,
+                remove_repeats=remove_repeats,
+                copy=False,
+                compare_key=compare_key,
+                list_dict_deep_update=list_dict_deep_update,
             )
         # Update with list calls the append_replace_dict_in_list function
         elif append_list and isinstance(update_values, list):
@@ -215,7 +234,7 @@ class DeepDict(defaultdict):
             if isinstance(value, dict):
                 self[key] = DeepDict(value)
 
-    def deep_update(self, other: Optional[Union[dict, "DeepDict"]] = None, **kwargs) -> None:
+    def deep_update(self, other: "dict[str, Any] | DeepDict | None" = None, **kwargs: Any) -> None:
         """
         Recursively update the DeepDict with another dictionary or DeepDict.
 
@@ -238,28 +257,34 @@ class DeepDict(defaultdict):
             else:
                 self[key] = value
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Any]:
         """Turn a DeepDict into a normal dictionary"""
 
-        def _to_dict(d: Union[dict, "DeepDict"]) -> dict:
+        def _to_dict(d: "dict[str, Any] | DeepDict") -> dict[str, Any]:
             return {key: _to_dict(value) for key, value in d.items()} if isinstance(d, dict) else d
 
         return _to_dict(self)
 
-    def __deepcopy__(self, memodict={}):
+    def copy(self) -> "DeepDict":
+        """Return a copy of this DeepDict.
+
+        ``defaultdict.copy()`` reconstructs via ``type(self)(self.default_factory, self)``,
+        passing the factory as the first positional argument. ``DeepDict.__init__`` hardcodes
+        its own factory and forwards ``*args`` to ``defaultdict.__init__``, so that call becomes
+        ``defaultdict.__init__(factory, self.default_factory, self)`` and raises ``TypeError``.
+        Rebuilding from ``to_dict()`` sidesteps the incompatible signature, mirroring
+        ``__deepcopy__``. Nested dicts are fresh DeepDicts; leaf (non-dict) values are shared.
         """
+        return DeepDict(self.to_dict())
 
-        Parameters
-        ----------
-        memodict: dict
-            unused
-
-        Returns
-        -------
-        DeepDict
-
-        """
+    def __deepcopy__(self, memodict: dict = {}) -> "DeepDict":
         return DeepDict(deepcopy(self.to_dict()))
 
     def __repr__(self) -> str:
-        return "DeepDict: " + dict.__repr__(self.to_dict())
+        return f"DeepDict({repr(self.to_dict())})"
+
+    def _repr_pretty_(self, p, cycle):
+        "This is used by IPython to pretty-print the object and used here to achieve printing parity with dicts."
+        p.text("DeepDict(\n")
+        p.pretty(self.to_dict())
+        p.text("\n)")

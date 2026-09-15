@@ -1,8 +1,6 @@
-from typing import Optional, Union
-
 import numpy as np
 
-ArrayType = Union[list, np.ndarray]
-OptionalArrayType = Optional[ArrayType]
+ArrayType = list | np.ndarray
+OptionalArrayType = ArrayType | None
 FloatType = float
-IntType = Union[int, np.integer]
+IntType = int | np.integer

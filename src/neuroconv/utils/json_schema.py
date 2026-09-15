@@ -1,10 +1,11 @@
 import collections.abc
 import inspect
 import json
+import typing
 import warnings
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any, Callable
 
 import docstring_parser
 import hdmf.data_utils
@@ -60,19 +61,98 @@ class _NWBConversionOptionsEncoder(_GenericNeuroconvEncoder):
     Custom JSON encoder for conversion options of the data interfaces and converters (i.e. kwargs).
     """
 
+    def default(self, obj):
+
+        # Serialize callable objects (e.g. callback functions in progress_bar_options)
+        if callable(obj):
+            return f"{obj.__module__}.{obj.__qualname__}"
+
+        return super().default(obj)
+
 
 # This is used in the Guide so we will keep it public.
 NWBMetaDataEncoder = _NWBMetaDataEncoder
 
 
+def _metadata_uses_old_list_format(metadata: dict) -> bool:
+    """
+    Detect whether a metadata dictionary is in the old list-based format.
+
+    Transitional, and deliberately written around the format that is going away: the singular,
+    list-valued modality keys and the legacy list-valued top-level ``Devices``. When the old format is
+    removed this function goes with it, and the callers keep the branch they already take for everything
+    else.
+
+    This is a shape sniff for validation routing only. The write pipelines have their own,
+    modality-specific detectors (``tools.spikeinterface._is_dict_based_metadata`` and
+    ``tools.roiextractors._is_dict_based_metadata``), which also choose a write path and therefore treat
+    ambiguous metadata differently from each other.
+
+    Parameters
+    ----------
+    metadata : dict
+        The metadata dictionary to inspect.
+
+    Returns
+    -------
+    bool
+        True when the metadata carries old list-based structures, False otherwise (including for empty
+        or ambiguous metadata, which the current schemas describe just as well).
+    """
+    if isinstance(metadata.get("Devices"), list):
+        return True
+
+    list_valued_keys = {
+        "Ecephys": ("Device", "ElectrodeGroup"),
+        "Ophys": ("Device", "ImagingPlane"),
+    }
+    for modality, key_names in list_valued_keys.items():
+        modality_metadata = metadata.get(modality, {})
+        if any(isinstance(modality_metadata.get(key_name), list) for key_name in key_names):
+            return True
+
+    # "ElectricalSeries" exists in both formats: a flat mapping of fields is the old one, a mapping of
+    # per-``metadata_key`` entries is not.
+    electrical_series = metadata.get("Ecephys", {}).get("ElectricalSeries")
+    if isinstance(electrical_series, dict) and electrical_series:
+        first_entry = next(iter(electrical_series.values()))
+        if not isinstance(first_entry, dict):
+            return True
+
+    return False
+
+
+def _validate_device_registry_names(metadata: dict[str, dict]) -> None:
+    """Require 1 metadata key for each device or device model name."""
+    for registry_name, object_name in (
+        ("Devices", "device"),
+        ("DeviceModels", "device model"),
+    ):
+        registry = metadata.get(registry_name)
+        if not isinstance(registry, dict):
+            continue
+        keys_by_name: dict[str, str] = {}
+        for metadata_key, entry in registry.items():
+            if not isinstance(entry, dict) or not isinstance(entry.get("name"), str):
+                continue
+            name = entry["name"]
+            if name in keys_by_name:
+                first_key = keys_by_name[name]
+                raise ValueError(
+                    f"metadata['{registry_name}'] keys '{first_key}' and '{metadata_key}' "
+                    f"use name '{name}'. Use 1 key to share a {object_name}."
+                )
+            keys_by_name[name] = metadata_key
+
+
 def get_base_schema(
-    tag: Optional[str] = None,
+    tag: str | None = None,
     root: bool = False,
-    id_: Optional[str] = None,
-    required: Optional[list[str]] = None,
-    properties: Optional[dict] = None,
+    id_: str | None = None,
+    required: list[str] | None = None,
+    properties: dict[str, Any] | None = None,
     **kwargs,
-) -> dict:
+) -> dict[str, Any]:
     """
     Return the base schema used for all other schemas.
 
@@ -122,7 +202,7 @@ def get_base_schema(
     return base_schema
 
 
-def get_json_schema_from_method_signature(method: Callable, exclude: Optional[list[str]] = None) -> dict:
+def get_json_schema_from_method_signature(method: Callable, exclude: list[str] | None = None) -> dict[str, Any]:
     """
     Get the equivalent JSON schema for a signature of a method.
 
@@ -141,8 +221,8 @@ def get_json_schema_from_method_signature(method: Callable, exclude: Optional[li
     json_schema : dict
         The JSON schema corresponding to the method signature.
     """
-    exclude = exclude or []
-    exclude += ["self", "cls"]
+    # A new list rather than ``+=``, which would extend the caller's own list in place.
+    exclude = [*(exclude or []), "self", "cls"]
 
     split_qualname = method.__qualname__.split(".")[-2:]
     method_display = ".".join(split_qualname) if "<" not in split_qualname[0] else method.__name__
@@ -151,6 +231,17 @@ def get_json_schema_from_method_signature(method: Callable, exclude: Optional[li
     parameters = signature.parameters
     additional_properties = False
     arguments_to_annotations = {}
+
+    # Resolve string annotations from PEP 563 (from __future__ import annotations)
+    # TODO: Remove PEP 563 handling once minimum Python version is 3.14+
+    # and external consumers no longer use `from __future__ import annotations`
+    # When a class is passed, inspect.signature uses __init__, so we must too
+    hints_target = method.__init__ if inspect.isclass(method) else method
+    try:
+        type_hints = typing.get_type_hints(hints_target, include_extras=True)
+    except NameError:
+        type_hints = {}
+
     for argument_name in parameters:
         if argument_name in exclude:
             continue
@@ -159,6 +250,9 @@ def get_json_schema_from_method_signature(method: Callable, exclude: Optional[li
 
         if parameter.kind == inspect.Parameter.VAR_KEYWORD:  # Skip all **{...} usage
             additional_properties = True
+            continue
+
+        if parameter.kind == inspect.Parameter.VAR_POSITIONAL:  # Skip all *args usage
             continue
 
         # Raise error if the type annotation is missing as a json schema cannot be generated in that case
@@ -170,7 +264,11 @@ def get_json_schema_from_method_signature(method: Callable, exclude: Optional[li
 
         # Pydantic uses ellipsis for required
         pydantic_default = ... if parameter.default is inspect._empty else parameter.default
-        arguments_to_annotations.update({argument_name: (parameter.annotation, pydantic_default)})
+        # Only use resolved type hints for string annotations (PEP 563)
+        annotation = parameter.annotation
+        if isinstance(annotation, str):
+            annotation = type_hints.get(argument_name, annotation)
+        arguments_to_annotations.update({argument_name: (annotation, pydantic_default)})
 
     # The ConfigDict is required to support custom types like NumPy arrays
     model = pydantic.create_model(
@@ -209,14 +307,14 @@ def get_json_schema_from_method_signature(method: Callable, exclude: Optional[li
     return json_schema
 
 
-def _copy_without_title_keys(d: Any, /) -> Optional[dict]:
+def _copy_without_title_keys(d: Any) -> dict[str, Any] | None:
     if not isinstance(d, dict):
         return d
 
     return {key: _copy_without_title_keys(value) for key, value in d.items() if key != "title"}
 
 
-def fill_defaults(schema: dict, defaults: dict, overwrite: bool = True):
+def fill_defaults(schema: dict[str, Any], defaults: dict[str, Any], overwrite: bool = True) -> None:
     """
     Insert the values of the defaults dict as default values in the schema in place.
 
@@ -232,6 +330,11 @@ def fill_defaults(schema: dict, defaults: dict, overwrite: bool = True):
     if properties_reference not in schema and "patternProperties" in schema:
         properties_reference = "patternProperties"
 
+    # A node validated only by additionalProperties (e.g. an object keyed by a dynamic metadata_key,
+    # as in TDTEventsInterface) has no named properties to attach defaults to; nothing to fill.
+    if properties_reference not in schema:
+        return
+
     for key, val in schema[properties_reference].items():
         if key in defaults:
             if val["type"] == "object":
@@ -241,7 +344,7 @@ def fill_defaults(schema: dict, defaults: dict, overwrite: bool = True):
                     val["default"] = defaults[key]
 
 
-def unroot_schema(schema: dict):
+def unroot_schema(schema: dict[str, Any]) -> dict[str, Any]:
     """
     Modify a json-schema dictionary to make it not root.
 
@@ -253,7 +356,7 @@ def unroot_schema(schema: dict):
     return {k: v for k, v in schema.items() if k in terms}
 
 
-def _is_member(types, target_types):
+def _is_member(types: type | tuple[type, ...], target_types: type | tuple[type, ...]) -> bool:
     if not isinstance(target_types, tuple):
         target_types = (target_types,)
     if not isinstance(types, tuple):
@@ -261,7 +364,23 @@ def _is_member(types, target_types):
     return any(t in target_types for t in types)
 
 
-def get_schema_from_hdmf_class(hdmf_class):
+# Small array-valued metadata that must stay in the generated schema whatever pynwb declares for it.
+# The branch below infers "this is a bulk dataset, leave it out" from `DataIO` appearing among the
+# accepted types, since only bulk data is ever wrapped for chunked and compressed writing. pynwb's
+# development branch replaced the `collections.abc.Iterable` these fields used to declare, which was too
+# wide because it also accepted `str`, with the same explicit tuple that `data` and `timestamps` carry,
+# `DataIO` included. That reclassified a fixed-length pair of integers as bulk data. Nobody compresses a
+# frame size, so the signal carries no information for these and they are named instead of inferred.
+ARRAY_VALUED_METADATA_ARGUMENTS = (
+    "dimension",
+    "field_of_view",
+    "starting_frame",
+    "control",
+    "control_description",
+)
+
+
+def get_schema_from_hdmf_class(hdmf_class: type) -> dict[str, Any]:
     """
     Get metadata schema from hdmf class.
 
@@ -290,6 +409,7 @@ def get_schema_from_hdmf_class(hdmf_class):
     # Temporary solution before this is solved: https://github.com/hdmf-dev/hdmf/issues/475
     if "device" in pynwb_children_fields:
         pynwb_children_fields.remove("device")
+
     docval = hdmf_class.__init__.__docval__
     for docval_arg in docval["args"]:
         arg_name = docval_arg["name"]
@@ -305,6 +425,8 @@ def get_schema_from_hdmf_class(hdmf_class):
         elif _is_member(arg_type, str):
             schema_val.update(type="string")
         elif _is_member(arg_type, collections.abc.Iterable):
+            schema_val.update(type="array")
+        elif arg_name in ARRAY_VALUED_METADATA_ARGUMENTS:
             schema_val.update(type="array")
         elif isinstance(arg_type, tuple) and (np.ndarray in arg_type and hdmf.data_utils.DataIO not in arg_type):
             # extend type array without including type where DataIO in tuple
@@ -344,7 +466,7 @@ def get_schema_from_hdmf_class(hdmf_class):
     return schema
 
 
-def get_metadata_schema_for_icephys() -> dict:
+def get_metadata_schema_for_icephys() -> dict[str, Any]:
     """
     Returns the metadata schema for icephys data.
 
@@ -411,5 +533,6 @@ def validate_metadata(metadata: dict[str, dict], schema: dict[str, dict], verbos
     serialized_metadata = encoder.encode(metadata)
     decoded_metadata = json.loads(serialized_metadata)
     validate(instance=decoded_metadata, schema=schema)
+    _validate_device_registry_names(metadata)
     if verbose:
         print("Metadata is valid!")

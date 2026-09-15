@@ -9,7 +9,8 @@ experiments:
     sessions:
       - source_data:
           ap:
-            file_path: spikeglx/Noise4Sam_g0/Noise4Sam_g0_imec0/Noise4Sam_g0_t0.imec0.ap.bin
+            folder_path: spikeglx/Noise4Sam_g0/Noise4Sam_g0_imec0
+            stream_id: imec0.ap
         metadata:
           NWBFile:
             session_description: Testing assertions.

@@ -1,6 +1,6 @@
 """Base Pydantic models for the ZarrDatasetConfiguration."""
 
-from typing import ClassVar, Literal, Type
+from typing import ClassVar, Literal
 
 import psutil
 from hdmf_zarr import ZarrDataIO
@@ -15,7 +15,7 @@ class ZarrBackendConfiguration(BackendConfiguration):
 
     backend: ClassVar[Literal["zarr"]] = "zarr"
     pretty_backend_name: ClassVar[Literal["Zarr"]] = "Zarr"
-    data_io_class: ClassVar[Type[ZarrDataIO]] = ZarrDataIO
+    data_io_class: ClassVar[type[ZarrDataIO]] = ZarrDataIO
 
     dataset_configurations: dict[str, ZarrDatasetIOConfiguration] = Field(
         description=(
