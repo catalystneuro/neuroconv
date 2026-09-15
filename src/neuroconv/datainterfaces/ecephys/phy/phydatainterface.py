@@ -1,6 +1,6 @@
 import warnings
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Literal
 
 import numpy as np
 from pydantic import DirectoryPath, validate_call
@@ -36,22 +36,44 @@ class PhySortingInterface(BaseSortingExtractorInterface):
 
         return read_phy
 
-    def get_max_channel(self):
+    def get_max_channel(self) -> np.ndarray:
+        """
+        The channel on which each unit's template has the largest amplitude.
+
+        This follows what Phy itself does when it picks a unit's "best channel": templates are
+        un-whitened with ``whitening_mat_inv.npy`` when that file is present (Kilosort writes whitened
+        templates; spikeinterface's ``export_to_phy`` writes none), the amplitude on each channel is
+        peak-to-peak, and the largest one wins. A cluster that was merged in Phy is represented by the
+        template most of its spikes were assigned to.
+
+        Returns
+        -------
+        numpy.ndarray
+            One entry per unit, in the order of ``self.sorting_extractor.unit_ids``. Each value is an index
+            into the recording's channels (``channel_map.npy``), which is the electrode table row when the
+            electrodes were written from that recording in order.
+        """
         folder_path = Path(self.source_data["folder_path"])
 
-        templates = np.load(str(folder_path / "templates.npy"))
-        channel_map = np.load(str(folder_path / "channel_map.npy")).T
-        whitening_mat_inv = np.load(str(folder_path / "whitening_mat_inv.npy"))
-        templates_unwh = templates @ whitening_mat_inv
+        templates = np.load(folder_path / "templates.npy")  # (n_templates, n_samples, n_template_channels)
+        channel_map = np.load(folder_path / "channel_map.npy").ravel()
+        whitening_mat_inv_path = folder_path / "whitening_mat_inv.npy"
+        if whitening_mat_inv_path.exists():
+            templates = templates @ np.load(whitening_mat_inv_path)
 
+        spike_clusters = np.load(folder_path / "spike_clusters.npy").ravel()
+        spike_templates = np.load(folder_path / "spike_templates.npy").ravel()
         cluster_ids = self.sorting_extractor.get_property("original_cluster_id")
-        templates = templates_unwh[cluster_ids]
+        template_ids = np.empty(len(cluster_ids), dtype=int)
+        for i, cluster_id in enumerate(cluster_ids):
+            spike_mask = spike_clusters == cluster_id
+            if spike_mask.any():
+                template_ids[i] = np.bincount(spike_templates[spike_mask]).argmax()
+            else:  # a cluster with no spikes has no better answer than its own id
+                template_ids[i] = cluster_id
 
-        max_over_time = np.max(templates, axis=1)
-        idx_max_channel = np.argmax(max_over_time, axis=1)
-        max_channel = channel_map[idx_max_channel].ravel()
-
-        return max_channel
+        amplitude = np.ptp(templates[template_ids], axis=1)  # (n_units, n_template_channels)
+        return channel_map[np.argmax(amplitude, axis=1)]
 
     @validate_call
     def __init__(
@@ -104,19 +126,44 @@ class PhySortingInterface(BaseSortingExtractorInterface):
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
-        metadata: Optional[DeepDict] = None,
+        metadata: DeepDict | None = None,
         stub_test: bool = False,
         write_ecephys_metadata: bool = False,
-        write_as: Literal["units", "processing"] = "units",
+        write_as: Literal["units", "processing"] | None = None,
         units_name: str = "units",
         units_description: str = "Imported from Phy",
+        unit_electrode_indices: list[list[int]] | None = None,
+        *,
+        parent_container: Literal["units", "processing"] = "units",
+        waveform_data_dict: dict | None = None,
         include_max_channel: bool = True,
     ):
+        """
+        Add the Phy sorting to the NWBFile.
+
+        All parameters other than ``include_max_channel`` are those of
+        :meth:`BaseSortingExtractorInterface.add_to_nwbfile` and are passed through unchanged.
+
+        Parameters
+        ----------
+        include_max_channel : bool, default: True
+            Add a ``max_channel`` column giving, for each unit, the channel with the largest template
+            amplitude, computed by :meth:`get_max_channel`. When the file has an electrodes table the column
+            references its rows, so the electrodes must have been written from the same recording in the same
+            order; if they do not line up the column is skipped with a warning.
+        """
         if include_max_channel and "max_channel" not in self.sorting_extractor.get_property_keys():
             max_channels = self.get_max_channel()
-            self.sorting_extractor.set_property("max_channel", max_channels)
+            if nwbfile.electrodes is not None and max_channels.max() >= len(nwbfile.electrodes):
+                warnings.warn(
+                    f"Not adding 'max_channel': the largest channel index is {max_channels.max()} but the "
+                    f"electrodes table has {len(nwbfile.electrodes)} rows, so the two do not describe the same "
+                    "recording channels."
+                )
+            else:
+                self.sorting_extractor.set_property("max_channel", max_channels)
 
-        super().add_to_nwbfile(
+        return super().add_to_nwbfile(
             nwbfile=nwbfile,
             metadata=metadata,
             stub_test=stub_test,
@@ -124,9 +171,10 @@ class PhySortingInterface(BaseSortingExtractorInterface):
             write_as=write_as,
             units_name=units_name,
             units_description=units_description,
+            unit_electrode_indices=unit_electrode_indices,
+            parent_container=parent_container,
+            waveform_data_dict=waveform_data_dict,
         )
-
-        return nwbfile
 
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()

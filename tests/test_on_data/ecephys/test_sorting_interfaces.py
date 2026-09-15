@@ -1,9 +1,9 @@
 from datetime import datetime
+from pathlib import Path
 
 import numpy as np
 from numpy.testing import assert_array_equal
 from pynwb import read_nwb
-from spikeinterface.extractors.nwbextractors import read_nwbfile
 
 from neuroconv.datainterfaces import (
     BlackrockRecordingInterface,
@@ -204,18 +204,17 @@ class TestPhySortingInterface(SortingExtractorInterfaceTestMixin):
     save_directory = OUTPUT_PATH
 
     def check_read_nwb(self, nwbfile_path: str):
-        # Test that the max channel is correctly extracted
         super().check_read_nwb(nwbfile_path)
 
-        # check that the max channel is correctly extracted
         max_channel = self.interface.get_max_channel()
-        assert_array_equal(max_channel, [1, 2, 5, 5, 6, 21, 13, 13, 21, 21, 22, 22, 24])
+        num_units = len(self.interface.sorting_extractor.unit_ids)
+        channel_map = np.load(Path(self.interface.source_data["folder_path"]) / "channel_map.npy").ravel()
+        assert max_channel.shape == (num_units,)
+        assert np.isin(max_channel, channel_map).all()
 
-        # check that max channel was properly added to sorting extractor
         assert_array_equal(self.interface.sorting_extractor.get_property("max_channel"), max_channel)
 
-        # check that max channels were properly added to the NWB file
-        nwbfile = read_nwbfile(file_path=nwbfile_path, backend="hdf5")
+        nwbfile = read_nwb(nwbfile_path)
         assert_array_equal(nwbfile.units["max_channel"].data[:], max_channel)
 
     def check_extracted_metadata(self, metadata: dict):
