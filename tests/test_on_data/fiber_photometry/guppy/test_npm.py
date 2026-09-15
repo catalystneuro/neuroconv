@@ -32,11 +32,13 @@ from neuroconv.datainterfaces.fiber_photometry.csv.csvfiberphotometrydatainterfa
     CSVFiberPhotometryInterface,
 )
 from neuroconv.datainterfaces.fiber_photometry.guppy._legacy_store_names import (
+    decode_legacy_store_name,
     npm_source_files,
 )
 from neuroconv.datainterfaces.fiber_photometry.guppy.npm_utils import (
     build_npm_acquisition_interface,
     npm_run_parameters,
+    npm_store_provenance,
     npm_store_to_demux,
 )
 from neuroconv.tools.testing import generate_mock_guppy_output_folder
@@ -383,33 +385,106 @@ class TestNPMRunParameters:
             npm_run_parameters(guppy_output_folder)
 
 
-class TestNPMStoreDecoding:
-    """Resolving one store, on both paths: the record GuPPy writes, and the older names."""
+@pytest.fixture
+def session_folder(tmp_path):
+    folder_path = tmp_path / "session"
+    folder_path.mkdir()
+    return folder_path
+
+
+def write_npm_parameters(guppy_output_folder, **npm_parameters):
+    """Write the ``.npm_params.json`` a GuPPy NPM run leaves beside ``storesList.csv``."""
+    defaults = dict(npm_split_events=[False, False], npm_time_unit="milliseconds", npm_timestamp_column_name=None)
+    (guppy_output_folder / ".npm_params.json").write_text(json.dumps({**defaults, **npm_parameters}), encoding="utf-8")
+
+
+class TestNPMStoreProvenance:
+    """Reading what each store was demultiplexed from, on both paths."""
 
     @pytest.fixture
-    def session_folder(self, tmp_path):
-        folder_path = tmp_path / "session"
-        folder_path.mkdir()
-        return folder_path
+    def guppy_output_folder(self, tmp_path):
+        return generate_mock_guppy_output_folder(
+            tmp_path / "session_output_1",
+            recording_site_to_stores={"roi01": {"signal": "signals_470nm_G0", "control": "signals_415nm_G0"}},
+            event_store_to_name={"event0": "ttl"},
+            cross_correlation_pairs=(),
+        )
 
-    # -- the recorded path ---------------------------------------------------------------
+    def test_recorded_stores_are_read_as_given(self, session_folder, guppy_output_folder):
+        """A run that records its demultiplexing is believed, so nothing is derived."""
+        record = {
+            "file": "signals.csv",
+            "excitation_wavelength_in_nm": 470,
+            "data_column": "G0",
+            "timestamp_column": "ComputerTimestamp",
+        }
+        write_npm_parameters(guppy_output_folder, stores={"anything_at_all": record})
 
-    def test_a_recorded_store_is_read_as_given(self, session_folder):
-        """The record names the file, excitation, column and clock, so nothing is derived."""
+        provenance = npm_store_provenance(
+            folder_path=session_folder,
+            guppy_folder_path=guppy_output_folder,
+            store_ids=["anything_at_all"],
+        )
+
+        assert provenance == {"anything_at_all": record}
+
+    def test_a_store_missing_from_the_record_raises(self, session_folder, guppy_output_folder):
+        """A run folder that records its stores records all of them, so an absence is a mismatch.
+
+        The name would decode on the older path, which is what makes falling through to it wrong:
+        it resolves against arithmetic the run that wrote this folder no longer used.
+        """
         shutil.copy(NPM_FOLDER / "multi_timestamp" / "signals.csv", session_folder / "signals.csv")
-        store_provenance = {
-            "anything_at_all": {
+        write_npm_parameters(
+            guppy_output_folder,
+            stores={"some_other_store": {"file": "signals.csv", "excitation_wavelength_in_nm": 415}},
+        )
+
+        with pytest.raises(AssertionError, match=r"says nothing about \['file0_chev1'\]"):
+            npm_store_provenance(
+                folder_path=session_folder,
+                guppy_folder_path=guppy_output_folder,
+                store_ids=["file0_chev1"],
+            )
+
+    def test_a_run_recording_no_stores_falls_back_to_decoding_the_names(self, session_folder, guppy_output_folder):
+        """With no record to read, the positional names are decoded into the same shape."""
+        shutil.copy(NPM_FOLDER / "multi_timestamp" / "signals.csv", session_folder / "signals.csv")
+        write_npm_parameters(guppy_output_folder)
+
+        provenance = npm_store_provenance(
+            folder_path=session_folder,
+            guppy_folder_path=guppy_output_folder,
+            store_ids=["file0_chev1"],
+        )
+
+        assert provenance == {
+            "file0_chev1": {
                 "file": "signals.csv",
-                "excitation_wavelength_in_nm": 470,
+                "excitation_wavelength_in_nm": 415,
+                "interleave_position": None,
                 "data_column": "G0",
-                "timestamp_column": "ComputerTimestamp",
+                "timestamp_column": "SystemTimestamp",
             }
         }
 
-        demux = npm_store_to_demux(
-            session_folder, "anything_at_all", number_of_channels=2, store_provenance=store_provenance
-        )
 
+class TestNPMStoreResolution:
+    """Turning one store's record into the file, channel and column it is read from."""
+
+    def test_an_excitation_record_resolves_to_its_wavelength(self, session_folder):
+        """The record names the file, excitation, column and clock, so nothing is derived."""
+        shutil.copy(NPM_FOLDER / "multi_timestamp" / "signals.csv", session_folder / "signals.csv")
+        record = {
+            "file": "signals.csv",
+            "excitation_wavelength_in_nm": 470,
+            "data_column": "G0",
+            "timestamp_column": "ComputerTimestamp",
+        }
+
+        demux = npm_store_to_demux(session_folder, "anything_at_all", record, number_of_channels=2)
+
+        assert demux["demultiplex_by"] == "excitation"
         assert demux["file_path"].name == "signals.csv"
         assert demux["excitation_wavelength_in_nm"] == 470
         assert demux["data_column"] == "G0"
@@ -417,54 +492,55 @@ class TestNPMStoreDecoding:
         # the record is what GuPPy actually read.
         assert demux["timestamps_column"] == "ComputerTimestamp"
 
-    def test_the_recorded_clock_beats_the_session_wide_choice(self, session_folder):
-        """A file offering one clock is read on that one, whatever the session named."""
-        shutil.copy(
-            NPM_FOLDER / "multi_led_state_per_wavelength" / "digital_input_transition.csv",
-            session_folder / "signals.csv",
-        )
-        store_provenance = {
-            "signals_470nm_Region0G": {
-                "file": "signals.csv",
-                "excitation_wavelength_in_nm": 470,
-                "data_column": "Region0G",
-                "timestamp_column": "Timestamp",
-            }
-        }
-
-        demux = npm_store_to_demux(
-            session_folder,
-            "signals_470nm_Region0G",
-            number_of_channels=2,
-            store_provenance=store_provenance,
-            timestamp_column_name="ComputerTimestamp",
-        )
-
-        assert demux["timestamps_column"] == "Timestamp"
-
-    def test_a_recorded_store_that_cycles_by_position_carries_its_slot(self, session_folder):
+    def test_a_cycle_position_record_resolves_to_a_stride(self, session_folder):
         shutil.copy(
             NPM_FOLDER / "no_header_no_state_column" / "three_regions_milliseconds.csv",
             session_folder / "signals.csv",
         )
-        store_provenance = {
-            "signals_chod2": {
-                "file": "signals.csv",
-                "excitation_wavelength_in_nm": None,
-                "interleave_position": 1,
-                "data_column": 2,
-                "timestamp_column": 0,
-            }
+        record = {
+            "file": "signals.csv",
+            "excitation_wavelength_in_nm": None,
+            "interleave_position": 1,
+            "data_column": 2,
+            "timestamp_column": 0,
         }
 
-        demux = npm_store_to_demux(
-            session_folder, "signals_chod2", number_of_channels=2, store_provenance=store_provenance
-        )
+        demux = npm_store_to_demux(session_folder, "signals_chod2", record, number_of_channels=2)
 
+        assert demux["demultiplex_by"] == "stride"
         assert demux["slot_index"] == 1
-        assert demux["num_channels"] == 2
         assert demux["data_column"] == 2
         assert demux["timestamps_column"] == 0
+
+    def test_a_record_naming_an_absent_file_raises(self, session_folder):
+        """The raw folder and the GuPPy output folder have to be the pair they were written as."""
+        shutil.copy(NPM_FOLDER / "multi_timestamp" / "signals.csv", session_folder / "signals.csv")
+        record = {
+            "file": "elsewhere.csv",
+            "excitation_wavelength_in_nm": 470,
+            "data_column": "G0",
+            "timestamp_column": "SystemTimestamp",
+        }
+
+        with pytest.raises(AssertionError, match="which is not in"):
+            npm_store_to_demux(session_folder, "elsewhere_470nm_G0", record, number_of_channels=2)
+
+    def test_a_stride_record_without_a_channel_count_raises(self, session_folder):
+        """The header-less interleave has no on-disk signature, so it cannot be guessed."""
+        shutil.copy(
+            NPM_FOLDER / "no_header_no_state_column" / "three_regions_milliseconds.csv",
+            session_folder / "signals.csv",
+        )
+        record = {
+            "file": "signals.csv",
+            "excitation_wavelength_in_nm": None,
+            "interleave_position": 0,
+            "data_column": 1,
+            "timestamp_column": 0,
+        }
+
+        with pytest.raises(AssertionError, match="recorded no 'noChannels'"):
+            npm_store_to_demux(session_folder, "signals_chev1", record, number_of_channels=None)
 
     def test_a_cycle_position_the_interleave_has_no_room_for_is_refused(self, session_folder):
         """Position 2 of a two-channel cycle would otherwise be read as position 0's rows."""
@@ -472,32 +548,24 @@ class TestNPMStoreDecoding:
             NPM_FOLDER / "no_header_no_state_column" / "three_regions_milliseconds.csv",
             session_folder / "signals.csv",
         )
-        store_provenance = {
-            "signals_chpr2": {
-                "file": "signals.csv",
-                "excitation_wavelength_in_nm": None,
-                "interleave_position": 2,
-                "data_column": 2,
-                "timestamp_column": 0,
-            }
-        }
         guppy_output_folder = generate_mock_guppy_output_folder(
             session_folder.parent / "session_output_1",
             recording_site_to_stores={"roi01": {"signal": "signals_chpr2", "control": "signals_chpr2"}},
             event_store_to_name={"event0": "ttl"},
             cross_correlation_pairs=(),
         )
-        (guppy_output_folder / ".npm_params.json").write_text(
-            json.dumps(
-                {
-                    "npm_split_events": [False, False],
-                    "npm_time_unit": "milliseconds",
-                    "npm_timestamp_column_name": None,
-                    "noChannels": 2,
-                    "stores": store_provenance,
+        write_npm_parameters(
+            guppy_output_folder,
+            noChannels=2,
+            stores={
+                "signals_chpr2": {
+                    "file": "signals.csv",
+                    "excitation_wavelength_in_nm": None,
+                    "interleave_position": 2,
+                    "data_column": 2,
+                    "timestamp_column": 0,
                 }
-            ),
-            encoding="utf-8",
+            },
         )
 
         with pytest.raises(ValidationError, match="must be < channels"):
@@ -509,52 +577,50 @@ class TestNPMStoreDecoding:
                 verbose=False,
             )
 
-    def test_a_recorded_store_naming_an_absent_file_raises(self, session_folder):
-        """The raw folder and the GuPPy output folder have to be the pair they were written as."""
+
+class TestLegacyStoreNames:
+    """Decoding the positional names a run wrote before GuPPy recorded what it demultiplexed."""
+
+    def test_a_state_column_file_decodes_the_slot_to_a_wavelength(self, session_folder):
+        """`chev` is the lowest of the sorted LED states, whose excitation bits name the wavelength."""
         shutil.copy(NPM_FOLDER / "multi_timestamp" / "signals.csv", session_folder / "signals.csv")
-        store_provenance = {
-            "elsewhere_470nm_G0": {
-                "file": "elsewhere.csv",
-                "excitation_wavelength_in_nm": 470,
-                "data_column": "G0",
-                "timestamp_column": "SystemTimestamp",
-            }
+
+        record = decode_legacy_store_name(session_folder, "file0_chev1", None)
+
+        assert record == {
+            "file": "signals.csv",
+            "excitation_wavelength_in_nm": 415,
+            "interleave_position": None,
+            "data_column": "G0",
+            "timestamp_column": "SystemTimestamp",
         }
 
-        with pytest.raises(AssertionError, match="which is not in"):
-            npm_store_to_demux(
-                session_folder, "elsewhere_470nm_G0", number_of_channels=2, store_provenance=store_provenance
-            )
+    def test_a_headerless_file_decodes_the_slot_to_a_cycle_position(self, session_folder):
+        """With no LED named, the slot is the position itself and the timestamps are the first column."""
+        shutil.copy(
+            NPM_FOLDER / "no_header_no_state_column" / "three_regions_milliseconds.csv",
+            session_folder / "signals.csv",
+        )
 
-    def test_a_store_missing_from_the_record_raises(self, session_folder):
-        """A run folder that records its stores records all of them, so an absence is a mismatch.
+        record = decode_legacy_store_name(session_folder, "file0_chod2", None)
 
-        The name would decode on the older path, which is what makes falling through to it wrong:
-        it resolves against arithmetic the run that wrote this folder no longer used.
-        """
-        shutil.copy(NPM_FOLDER / "multi_timestamp" / "signals.csv", session_folder / "signals.csv")
+        assert record == {
+            "file": "signals.csv",
+            "excitation_wavelength_in_nm": None,
+            "interleave_position": 1,
+            "data_column": 2,
+            "timestamp_column": 0,
+        }
 
-        with pytest.raises(AssertionError, match="says nothing about 'file0_chev1'"):
-            npm_store_to_demux(
-                session_folder,
-                "file0_chev1",
-                number_of_channels=2,
-                store_provenance={"some_other_store": {"file": "signals.csv", "excitation_wavelength_in_nm": 415}},
-            )
-
-    # -- the legacy path -----------------------------------------------------------------
-
-    def test_a_legacy_store_takes_the_session_wide_clock(self, session_folder):
+    def test_the_session_wide_clock_beats_the_file_s_first(self, session_folder):
         """With no record to name one, the run's own choice stands, else the file's first."""
         shutil.copy(NPM_FOLDER / "multi_timestamp" / "signals.csv", session_folder / "signals.csv")
 
-        named = npm_store_to_demux(
-            session_folder, "file0_chev1", number_of_channels=2, timestamp_column_name="ComputerTimestamp"
-        )
-        unnamed = npm_store_to_demux(session_folder, "file0_chev1", number_of_channels=2)
+        named = decode_legacy_store_name(session_folder, "file0_chev1", "ComputerTimestamp")
+        unnamed = decode_legacy_store_name(session_folder, "file0_chev1", None)
 
-        assert named["timestamps_column"] == "ComputerTimestamp"
-        assert unnamed["timestamps_column"] == "SystemTimestamp"
+        assert named["timestamp_column"] == "ComputerTimestamp"
+        assert unnamed["timestamp_column"] == "SystemTimestamp"
 
     def test_event_file_occupies_a_file_index(self, session_folder):
         """A legacy name indexes every surviving CSV, so an event file sorting first shifts them."""
@@ -562,9 +628,9 @@ class TestNPMStoreDecoding:
         shutil.copy(NPM_FOLDER / "multi_timestamp" / "signals.csv", session_folder / "b_signals.csv")
 
         source_files = npm_source_files(session_folder)
+
         assert [path.name for path in source_files] == ["a_events.csv", "b_signals.csv"]
-        demux = npm_store_to_demux(session_folder, "file1_chev1", number_of_channels=2)
-        assert demux["file_path"].name == "b_signals.csv"
+        assert decode_legacy_store_name(session_folder, "file1_chev1", None)["file"] == "b_signals.csv"
 
     def test_derived_files_are_excluded(self, session_folder):
         """GuPPy globs out the per-channel files it wrote itself, so they never take an index."""
@@ -572,12 +638,13 @@ class TestNPMStoreDecoding:
         shutil.copy(NPM_FOLDER / "multi_timestamp" / "signals.csv", session_folder / "file0_chev1.csv")
 
         source_files = npm_source_files(session_folder)
+
         assert [path.name for path in source_files] == ["signals.csv"]
 
     def test_an_unrecognized_name_raises(self, session_folder):
         shutil.copy(NPM_FOLDER / "multi_timestamp" / "signals.csv", session_folder / "signals.csv")
         with pytest.raises(AssertionError, match="is not a GuPPy NPM store name"):
-            npm_store_to_demux(session_folder, "signals_470nm_G0", number_of_channels=2)
+            decode_legacy_store_name(session_folder, "signals_470nm_G0", None)
 
     def test_strobed_state_has_no_single_wavelength(self, session_folder):
         """`LedState 6` is 470+560 in one frame, which no single legacy slot can stand for."""
@@ -586,19 +653,10 @@ class TestNPMStoreDecoding:
             session_folder / "signals.csv",
         )
         with pytest.raises(AssertionError, match="not a single wavelength"):
-            npm_store_to_demux(session_folder, "file0_chod1", number_of_channels=2)
+            decode_legacy_store_name(session_folder, "file0_chod1", None)
 
     def test_slot_beyond_the_interleave_raises(self, session_folder):
         """A two-state file has no third channel, so `chpr` cannot be resolved."""
         shutil.copy(NPM_FOLDER / "multi_timestamp" / "signals.csv", session_folder / "signals.csv")
         with pytest.raises(AssertionError, match="interleaves only 2 channel"):
-            npm_store_to_demux(session_folder, "file0_chpr1", number_of_channels=2)
-
-    def test_headerless_without_channel_count_raises(self, session_folder):
-        """The header-less interleave has no on-disk signature, so it cannot be guessed."""
-        shutil.copy(
-            NPM_FOLDER / "no_header_no_state_column" / "three_regions_milliseconds.csv",
-            session_folder / "signals.csv",
-        )
-        with pytest.raises(AssertionError, match="recorded no 'noChannels'"):
-            npm_store_to_demux(session_folder, "file0_chev1", number_of_channels=None)
+            decode_legacy_store_name(session_folder, "file0_chpr1", None)
