@@ -31,10 +31,12 @@ from neuroconv.datainterfaces.events.csv_events.csveventsdatainterface import (
 from neuroconv.datainterfaces.fiber_photometry.csv.csvfiberphotometrydatainterface import (
     CSVFiberPhotometryInterface,
 )
+from neuroconv.datainterfaces.fiber_photometry.guppy._legacy_store_names import (
+    npm_source_files,
+)
 from neuroconv.datainterfaces.fiber_photometry.guppy.npm_utils import (
     build_npm_acquisition_interface,
     npm_run_parameters,
-    npm_source_files,
     npm_store_to_demux,
 )
 from neuroconv.tools.testing import generate_mock_guppy_output_folder
