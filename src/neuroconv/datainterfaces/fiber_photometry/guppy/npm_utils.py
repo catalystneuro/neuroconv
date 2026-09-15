@@ -3,8 +3,8 @@
 Covers both NPM layouts, the state-column and the header-less one. NPM store names are synthetic:
 GuPPy invents them while demultiplexing an interleaved recording, and no column of the raw file
 carries one. A run folder records what each store was demultiplexed from, which is read as given;
-one written before GuPPy recorded that leaves only the names, which have to be decoded by
-reproducing its arithmetic. See :func:`npm_store_to_demux`.
+one written before GuPPy recorded that leaves only the names, from which the same record is decoded
+by reproducing its arithmetic. See :func:`npm_store_provenance`.
 """
 
 import re
@@ -67,11 +67,11 @@ def _npm_event_file(folder_path: DirectoryPath):
 
 
 def npm_run_parameters(guppy_folder_path: DirectoryPath) -> dict:
-    """Read the NPM settings the GuPPy run used but ``storesList.csv`` does not record.
+    """Read the session-wide NPM settings the GuPPy run used but ``storesList.csv`` does not record.
 
-    Which clock a store was read on, what unit it was in, and -- for the header-less layout -- how
-    many channels were interleaved are all choices made when GuPPy ran, and none leave a mark on the
-    raw file. GuPPy records them in a ``.npm_params.json`` beside ``storesList.csv``; runs written
+    Which clock the stores were read on, what unit they were in, and -- for the header-less layout --
+    how many channels were interleaved are all choices made when GuPPy ran, and none leave a mark on
+    the raw file. GuPPy records them in a ``.npm_params.json`` beside ``storesList.csv``; runs written
     before it recorded the channel count there carry it in ``GuPPyParamtersUsed.json`` instead.
 
     The unit is session-wide: GuPPy applies one to every stream it decomposes. ``timestamp_column_name``
@@ -100,10 +100,6 @@ def npm_run_parameters(guppy_folder_path: DirectoryPath) -> dict:
         # Only the header-less layout needs this: a file carrying a state column derives its own
         # channel count, so a run that never read a header-less file need not have recorded one.
         number_of_channels=None if number_of_channels is None else int(number_of_channels),
-        # What each store was demultiplexed from, as GuPPy recorded it. Empty for a run written
-        # before GuPPy recorded it, whose store names are decoded instead -- see
-        # :func:`npm_store_to_demux`.
-        store_provenance=npm_parameters.get("stores") or dict(),
     )
 
 
@@ -132,33 +128,8 @@ def _npm_channel_label(demux: dict) -> str:
     return f"{demux['file_path'].name} {channel}"
 
 
-def _npm_store_from_provenance(folder_path: DirectoryPath, store_id: str, record: dict, number_of_channels) -> dict:
-    """Resolve a store from the record GuPPy wrote of what it demultiplexed."""
-    file_path = folder_path / record["file"]
-    assert file_path.is_file(), (
-        f"The run folder records store '{store_id}' as read from '{record['file']}', which is not in "
-        f"'{folder_path}'. The raw session folder and the GuPPy output folder have to belong together."
-    )
-    wavelength = record["excitation_wavelength_in_nm"]
-    if wavelength is None:
-        assert number_of_channels is not None, (
-            f"Store '{store_id}' was demultiplexed by row position, whose cycle length has no on-disk "
-            f"signature, but the GuPPy run recorded no 'noChannels'."
-        )
-    return dict(
-        file_path=file_path,
-        excitation_wavelength_in_nm=wavelength,
-        slot_index=record.get("interleave_position"),
-        num_channels=None if wavelength is not None else number_of_channels,
-        data_column=record["data_column"],
-        timestamps_column=record["timestamp_column"],
-    )
-
-
-def _npm_store_from_legacy_name(
-    folder_path: DirectoryPath, store_id: str, number_of_channels, timestamp_column_name
-) -> dict:
-    """Resolve a store written before GuPPy recorded what it demultiplexed.
+def _decode_legacy_store_name(folder_path: DirectoryPath, store_id: str, timestamp_column_name) -> dict:
+    """Decode what a store written before GuPPy recorded its demultiplexing was read from.
 
     Such a run names its stores ``file<N>_ch<ev|od|pr><column>``, where every part is positional:
     ``file<N>`` indexes :func:`npm_source_files`, ``ch<slot>`` is an ordinal into the LED states
@@ -167,6 +138,8 @@ def _npm_store_from_legacy_name(
     ``FrameCounter`` and the state column. The clock is positional too: the session-wide
     ``npm_timestamp_column_name`` where the run recorded one, and the file's first timestamp column
     otherwise.
+
+    Returns the record a run that recorded its stores would have written for this one.
     """
     import numpy
     import pandas
@@ -189,18 +162,13 @@ def _npm_store_from_legacy_name(
     dataframe = pandas.read_csv(file_path, index_col=False, nrows=12)
     headerless = any(_parses_as_float(column) for column in dataframe.columns)
     if headerless:
-        assert number_of_channels is not None, (
-            f"'{file_path}' is a header-less NPM file, whose interleave has no on-disk signature, but "
-            f"the GuPPy run recorded no 'noChannels'. Store '{store_id}' cannot be demultiplexed."
-        )
         return dict(
-            file_path=file_path,
+            file=file_path.name,
             excitation_wavelength_in_nm=None,
-            slot_index=slot_ordinal,
-            num_channels=number_of_channels,
+            interleave_position=slot_ordinal,
             data_column=column_position,
             # Nothing names these columns, so the timestamps are the leading one.
-            timestamps_column=0,
+            timestamp_column=0,
         )
 
     column_by_lowercase_name = {str(column).lower(): column for column in dataframe.columns}
@@ -238,46 +206,81 @@ def _npm_store_from_legacy_name(
         f"{len(remaining)} column(s) after GuPPy's trimming: {remaining}."
     )
     return dict(
-        file_path=file_path,
+        file=file_path.name,
         excitation_wavelength_in_nm=_NPM_EXCITATION_CODE_TO_WAVELENGTH[excitation_code],
-        slot_index=None,
-        num_channels=None,
+        interleave_position=None,
         data_column=remaining[column_position],
-        timestamps_column=timestamp_column_name or (timestamp_columns[0] if timestamp_columns else None),
+        timestamp_column=timestamp_column_name or (timestamp_columns[0] if timestamp_columns else None),
     )
 
 
-def npm_store_to_demux(
-    folder_path: DirectoryPath,
-    store_id: str,
+def npm_store_provenance(
     *,
-    number_of_channels: int,
-    store_provenance: dict | None = None,
+    folder_path: DirectoryPath,
+    guppy_folder_path: DirectoryPath,
+    store_ids: list[str],
     timestamp_column_name: str | None = None,
-) -> dict:
-    """Resolve a GuPPy NPM store to the file, channel and column it was demultiplexed from.
+) -> dict[str, dict]:
+    """Return what each of ``store_ids`` was demultiplexed from, one record per store.
 
-    An NPM store name is invented: GuPPy makes it up while splitting an interleaved recording, and
-    no column of the raw file carries it. A run folder written by a GuPPy that records what it
-    demultiplexed says so directly, under ``stores`` in ``.npm_params.json``, and that record is
-    read as given. One written before that records only the names, and they have to be decoded by
-    reproducing GuPPy's arithmetic -- see :func:`_npm_store_from_legacy_name`.
+    An NPM store name is invented: GuPPy makes it up while splitting an interleaved recording, and no
+    column of the raw file carries it. A run folder written by a GuPPy that records what it
+    demultiplexed says so directly, under ``stores`` in ``.npm_params.json``, and that record is read
+    as given. One written before that records only the names, and a record is decoded from each by
+    reproducing GuPPy's arithmetic -- see :func:`_decode_legacy_store_name`. Either way every
+    requested store comes back described the same way.
 
     Parameters
     ----------
     folder_path : DirectoryPath
-        Path to the raw session folder holding the acquisition CSVs.
+        Path to the raw session folder holding the acquisition CSVs, read only where the records have
+        to be decoded.
+    guppy_folder_path : DirectoryPath
+        Path to the GuPPy ``<session>_output_<N>`` folder holding ``.npm_params.json``.
+    store_ids : list of str
+        The ``storesList.csv`` ids of the acquisition stores to describe. Behavioral event stores are
+        not demultiplexed and are not recorded here.
+    timestamp_column_name : str, optional
+        The run's ``npm_timestamp_column_name`` from :func:`npm_run_parameters`, used only where the
+        records have to be decoded.
+
+    Returns
+    -------
+    dict
+        ``store_id -> {file, excitation_wavelength_in_nm, interleave_position, data_column,
+        timestamp_column}``, one entry per requested store.
+    """
+    import json
+
+    npm_parameters = json.loads((guppy_folder_path / ".npm_params.json").read_text(encoding="utf-8"))
+    recorded = npm_parameters.get("stores")
+    if not recorded:
+        return {
+            store_id: _decode_legacy_store_name(folder_path, store_id, timestamp_column_name) for store_id in store_ids
+        }
+    missing = [store_id for store_id in store_ids if store_id not in recorded]
+    assert not missing, (
+        f"The run folder records what its stores were demultiplexed from but says nothing about "
+        f"{missing}, naming {sorted(recorded)} instead. Its 'storesList.csv' and its "
+        f"'.npm_params.json' describe different stores, so they were not written by one run."
+    )
+    return {store_id: recorded[store_id] for store_id in store_ids}
+
+
+def npm_store_to_demux(folder_path: DirectoryPath, store_id: str, record: dict, *, number_of_channels: int) -> dict:
+    """Resolve a store's record to the file, channel and column it is read from.
+
+    Parameters
+    ----------
+    folder_path : DirectoryPath
+        Path to the raw session folder holding the acquisition CSVs, which ``record`` names by file
+        name.
     store_id : str
-        The ``storesList.csv`` id to resolve.
+        The ``storesList.csv`` id the record belongs to, named in the failure messages.
+    record : dict
+        What the store was demultiplexed from, from :func:`npm_store_provenance`.
     number_of_channels : int
         The run's ``noChannels``, needed only where the channels cycle by row position.
-    store_provenance : dict, optional
-        What the run folder records about its stores, from :func:`npm_run_parameters`. Empty or
-        ``None`` for a run predating that record, which takes the decoding path; where it is
-        present it has to name every store, since a run that recorded its stores recorded all of
-        them.
-    timestamp_column_name : str, optional
-        The run's ``npm_timestamp_column_name``, used only on the decoding path.
 
     Returns
     -------
@@ -286,15 +289,25 @@ def npm_store_to_demux(
         ``slot_index`` and ``num_channels`` instead), the data column, and the timestamps column,
         ready to read as they are.
     """
-    if not store_provenance:
-        return _npm_store_from_legacy_name(folder_path, store_id, number_of_channels, timestamp_column_name)
-    record = store_provenance.get(store_id)
-    assert record is not None, (
-        f"The run folder records what its stores were demultiplexed from but says nothing about "
-        f"'{store_id}', naming {sorted(store_provenance)} instead. Its 'storesList.csv' and its "
-        f"'.npm_params.json' describe different stores, so they were not written by one run."
+    file_path = folder_path / record["file"]
+    assert file_path.is_file(), (
+        f"Store '{store_id}' was demultiplexed from '{record['file']}', which is not in "
+        f"'{folder_path}'. The raw session folder and the GuPPy output folder have to belong together."
     )
-    return _npm_store_from_provenance(folder_path, store_id, record, number_of_channels)
+    wavelength = record["excitation_wavelength_in_nm"]
+    if wavelength is None:
+        assert number_of_channels is not None, (
+            f"Store '{store_id}' was demultiplexed by row position, whose cycle length has no on-disk "
+            f"signature, but the GuPPy run recorded no 'noChannels'."
+        )
+    return dict(
+        file_path=file_path,
+        excitation_wavelength_in_nm=wavelength,
+        slot_index=record.get("interleave_position"),
+        num_channels=None if wavelength is not None else number_of_channels,
+        data_column=record["data_column"],
+        timestamps_column=record["timestamp_column"],
+    )
 
 
 def build_npm_acquisition_interface(
@@ -308,7 +321,7 @@ def build_npm_acquisition_interface(
     """Build the interface writing one series from the ordered ``store_ids``.
 
     Each store is resolved to the file, channel and column GuPPy demultiplexed it from -- see
-    :func:`npm_store_to_demux`. Which interface reads them follows from what that resolves to: a
+    :func:`npm_store_provenance`. Which interface reads them follows from what that resolves to: a
     store lit by a named excitation wavelength is read by selecting that LED's frames, while one
     carrying a cycle position came from a file with no state column to select on, so GuPPy's blind
     stride is reproduced through the generic CSV interface instead.
@@ -341,13 +354,18 @@ def build_npm_acquisition_interface(
         If the stores do not all come from one file and one channel.
     """
     run_parameters = npm_run_parameters(guppy_folder_path)
+    provenance = npm_store_provenance(
+        folder_path=folder_path,
+        guppy_folder_path=guppy_folder_path,
+        store_ids=store_ids,
+        timestamp_column_name=run_parameters["timestamp_column_name"],
+    )
     demuxes = [
         npm_store_to_demux(
             folder_path,
             store_id,
+            provenance[store_id],
             number_of_channels=run_parameters["number_of_channels"],
-            store_provenance=run_parameters["store_provenance"],
-            timestamp_column_name=run_parameters["timestamp_column_name"],
         )
         for store_id in store_ids
     ]
