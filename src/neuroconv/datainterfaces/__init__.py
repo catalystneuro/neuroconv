@@ -2,6 +2,7 @@
 from .behavior.audio.audiointerface import AudioInterface
 from .behavior.boris.borisdatainterface import BORISInterface
 from .behavior.deeplabcut.deeplabcutdatainterface import DeepLabCutInterface
+from .behavior.facemap.facemapdatainterface import FacemapInterface
 from .behavior.fictrac.fictracdatainterface import FicTracDataInterface
 from .behavior.lightningpose.lightningposedatainterface import (
     LightningPoseDataInterface,
@@ -242,6 +243,7 @@ interface_list = [
     FicTracDataInterface,
     NeuralynxNvtInterface,
     LightningPoseDataInterface,
+    FacemapInterface,
     MedPCInterface,
     VameInterface,
     MoseqKeyPointsInterface,
@@ -314,6 +316,7 @@ interfaces_by_category = dict(
         Vame=VameInterface,
         BORIS=BORISInterface,
         MoseqKeyPoints=MoseqKeyPointsInterface,
+        Facemap=FacemapInterface,
         # Text
         CsvTimeIntervals=CsvTimeIntervalsInterface,
         ExcelTimeIntervals=ExcelTimeIntervalsInterface,

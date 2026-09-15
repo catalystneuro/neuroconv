@@ -130,6 +130,9 @@ vame = [
 boris = [
     "ndx-ethogram>=0.1.0",  # a BORIS project is a coding scheme plus its events, and the scheme is an Ethogram
 ]
+facemap = [
+    "ndx-facemap-motionsvd @ git+https://github.com/catalystneuro/ndx-facemap-motionsvd.git",
+]
 behavior = [
     "neuroconv[boris]",
     "neuroconv[sleap]",
@@ -143,6 +146,8 @@ behavior = [
     "neuroconv[medpc_legacy]",
     "neuroconv[moseq]",
     "neuroconv[vame]",
+    "neuroconv[medpc]",
+    "neuroconv[facemap]",
     "ndx-miniscope>=0.5.1",  # This is for the miniscope behavior data interface, not sure is needed
 ]
 
