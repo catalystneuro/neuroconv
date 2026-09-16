@@ -13,6 +13,21 @@ from ....tools.nwb_helpers import _add_device_to_nwbfile
 from ....utils import DeepDict, calculate_regular_series_rate
 
 
+def _loadmat(file_path: Path, **kwargs):
+    """``scipy.io.loadmat``, with MATLAB v7.3/HDF5 files (unsupported by ``scipy``) turned into a
+    clear, actionable error instead of a raw ``NotImplementedError``."""
+    from scipy.io import loadmat
+
+    try:
+        return loadmat(str(file_path), **kwargs)
+    except NotImplementedError as error:
+        raise ValueError(
+            f"'{file_path}' is a MATLAB v7.3 (HDF5-based) .mat file, which is not supported here. "
+            "Only MATLAB v5/v7 .mat files, as produced by DANNCE/sDANNCE prediction and calibration "
+            "output, are supported."
+        ) from error
+
+
 class DANNCEInterface(BaseTemporalAlignmentInterface):
     """
     Data interface for DANNCE and social DANNCE (sDANNCE) 3D pose estimation datasets.
@@ -84,7 +99,7 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
             raise FileNotFoundError(f"Calibration path '{calibration_path}' does not exist.")
 
         if calibration_path.is_dir():
-            return DANNCEInterface._load_calibrations_from_hires_params_directory(calibration_path)
+            return DANNCEInterface._load_calibrations_from_cam_params_directory(calibration_path)
         elif calibration_path.suffix == ".json":
             return DANNCEInterface._load_calibrations_from_json(calibration_path)
         elif calibration_path.suffix == ".mat":
@@ -92,14 +107,12 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
         else:
             raise ValueError(
                 f"Unrecognized calibration format for '{calibration_path}'. Expected a directory of "
-                "'hires_camN_params.mat' files, a '.json' file, or a Label3D-style '.mat' file."
+                "'<prefix>camN_params.mat' files, a '.json' file, or a Label3D-style '.mat' file."
             )
 
     @staticmethod
-    def _load_calibrations_from_hires_params_directory(directory: Path) -> tuple[list[str], dict[str, dict]]:
+    def _load_calibrations_from_cam_params_directory(directory: Path) -> tuple[list[str], dict[str, dict]]:
         """Parse a directory of '<prefix>camN_params.mat' files, one per camera."""
-        from scipy.io import loadmat
-
         pattern = re.compile(r".*cam(\d+)_params\.mat$")
         matches = []
         for file_path in directory.iterdir():
@@ -113,7 +126,7 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
         camera_names = [f"Camera{camera_number}" for camera_number, _ in matches]
         camera_calibrations = {}
         for camera_name, (_, file_path) in zip(camera_names, matches):
-            calibration = loadmat(str(file_path))
+            calibration = _loadmat(file_path)
             camera_calibrations[camera_name] = dict(
                 intrinsic_matrix=np.asarray(calibration["K"]),
                 rotation_matrix=np.asarray(calibration["r"]),
@@ -148,9 +161,7 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
     @staticmethod
     def _load_calibrations_from_label3d_mat(file_path: Path) -> tuple[list[str], dict[str, dict]]:
         """Parse a single Label3D-style '*_dannce.mat' file with 'camnames' and 'params'."""
-        from scipy.io import loadmat
-
-        data = loadmat(str(file_path), simplify_cells=True)
+        data = _loadmat(file_path, simplify_cells=True)
         camera_names = list(np.atleast_1d(data["camnames"]))
         params_list = data["params"]
         if isinstance(params_list, dict):
@@ -309,14 +320,12 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
         concatenated along the frames axis, in the order given, after checking they agree on
         ``pred``'s number of dimensions, number of landmarks, and (when 4D) number of animals.
         """
-        from scipy.io import loadmat
-
         pred_parts = []
         p_max_parts = []
         sample_id_parts = []
         reference_shape = None  # (pred.ndim, n_landmarks, n_animals or None), from the first file
         for file_path in file_paths:
-            mat_data = loadmat(str(file_path))
+            mat_data = _loadmat(file_path)
 
             pred = mat_data["pred"]
             p_max = mat_data["p_max"]

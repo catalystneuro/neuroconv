@@ -13,6 +13,17 @@ from neuroconv.datainterfaces import DANNCEInterface
 
 
 @pytest.fixture
+def matlab_v73_file(tmp_path):
+    """Write a minimal file with a MATLAB v7.3 (HDF5-based) header -- just enough for scipy's
+    'matfile_version' header check to classify it as v7.3 and raise, without needing a real HDF5
+    library or file contents (v7.3 files are never actually valid DANNCE/sDANNCE output)."""
+    file_path = tmp_path / "save_data_AVG.mat"
+    header = b"\x01" * 124 + bytes([2, 0, 0, 0])  # bytes 124:128 decode to major version 2 ("v7.3")
+    file_path.write_bytes(header)
+    return file_path
+
+
+@pytest.fixture
 def dannce_mat_file(tmp_path):
     """Create a synthetic DANNCE prediction .mat file."""
     n_samples = 100
@@ -497,6 +508,30 @@ class TestDANNCEInterfaceCalibration:
         # ...while Camera2 still falls back to the calibration loaded from calibration_path.
         expected_camera2 = _synthetic_calibration_values(1)
         assert_array_equal(nwbfile.devices["Camera2"].intrinsic_matrix, expected_camera2["intrinsic_matrix"])
+
+
+class TestDANNCEInterfaceMatlabV73:
+    """A MATLAB v7.3 (HDF5-based) .mat file is not supported for prediction or calibration loading
+    -- both should raise a clear, actionable ValueError instead of scipy's raw NotImplementedError."""
+
+    def test_prediction_file_raises_clear_error(self, matlab_v73_file):
+        with pytest.raises(ValueError, match="MATLAB v7.3"):
+            DANNCEInterface(file_paths=matlab_v73_file, sampling_rate=30.0)
+
+    def test_cam_params_calibration_raises_clear_error(self, tmp_path, matlab_v73_file):
+        calibration_dir = tmp_path / "calibration"
+        calibration_dir.mkdir()
+        matlab_v73_file.rename(calibration_dir / "cam1_params.mat")
+
+        with pytest.raises(ValueError, match="MATLAB v7.3"):
+            DANNCEInterface.get_camera_calibrations(calibration_dir)
+
+    def test_label3d_calibration_raises_clear_error(self, tmp_path, matlab_v73_file):
+        label3d_file = tmp_path / "test_dannce.mat"
+        matlab_v73_file.rename(label3d_file)
+
+        with pytest.raises(ValueError, match="MATLAB v7.3"):
+            DANNCEInterface.get_camera_calibrations(label3d_file)
 
 
 class TestDANNCEInterfaceConversion:
