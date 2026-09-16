@@ -19,14 +19,6 @@ from ._configuration_models._base_dataset_io import DatasetIOConfiguration
 from ..hdmf import _get_nwbfile_builder
 
 
-def _get_io_mode(io: NWBHDF5IO | NWBZarrIO) -> str:
-    """NWBHDF5IO and NWBZarrIO have different ways of storing the io mode (e.g. "r", "a", "w") they used on a path."""
-    if isinstance(io, NWBHDF5IO):
-        return io.mode
-    elif isinstance(io, NWBZarrIO):
-        return io._ZarrIO__mode
-
-
 def _get_zarr_store_path(zarr_array: zarr.Array) -> str | None:
     """
     The path of the Zarr 'file' a Zarr Array was read from, or None when its store keeps no path.
@@ -98,7 +90,7 @@ def get_default_dataset_io_configurations(
             "Keyword argument `backend` (either 'hdf5' or 'zarr') must be specified if the `nwbfile` was not "
             "read from an existing file!"
         )
-    if backend is None and nwbfile.read_io is not None and _get_io_mode(io=nwbfile.read_io) not in ("r+", "a"):
+    if backend is None and nwbfile.read_io is not None and nwbfile.read_io.mode not in ("r+", "a"):
         raise ValueError(
             "Keyword argument `backend` (either 'hdf5' or 'zarr') must be specified if the `nwbfile` was read "
             "from an existing file without opening it for appending (mode 'r+' or 'a')!"
@@ -106,10 +98,10 @@ def get_default_dataset_io_configurations(
 
     detected_backend = None
     existing_file_path = None
-    if isinstance(nwbfile.read_io, NWBHDF5IO) and _get_io_mode(io=nwbfile.read_io) in ("r+", "a"):
+    if isinstance(nwbfile.read_io, NWBHDF5IO) and nwbfile.read_io.mode in ("r+", "a"):
         detected_backend = "hdf5"
         existing_file_path = nwbfile.read_io.source
-    elif isinstance(nwbfile.read_io, NWBZarrIO) and _get_io_mode(io=nwbfile.read_io) in ("r+", "a"):
+    elif isinstance(nwbfile.read_io, NWBZarrIO) and nwbfile.read_io.mode in ("r+", "a"):
         detected_backend = "zarr"
         existing_file_path = nwbfile.read_io.source
     backend = backend or detected_backend
