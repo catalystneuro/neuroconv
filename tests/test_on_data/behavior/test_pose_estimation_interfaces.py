@@ -1325,7 +1325,14 @@ class _DANNCEMetadataPropagationMixin:
 class TestDANNCEInterface(_DANNCEMetadataPropagationMixin, PoseEstimationInterfaceTestMixin, TemporalAlignmentMixin):
     data_interface_cls = DANNCEInterface
     interface_kwargs = dict(
-        file_paths=str(BEHAVIOR_DATA_PATH / "dannce" / "avg_and_max_predictions" / "DANNCE" / "predict_results" / "save_data_MAX.mat"),
+        file_paths=str(
+            BEHAVIOR_DATA_PATH
+            / "dannce"
+            / "avg_and_max_predictions"
+            / "DANNCE"
+            / "predict_results"
+            / "save_data_MAX.mat"
+        ),
         sampling_rate=30.0,
     )
     save_directory = OUTPUT_PATH
@@ -1407,7 +1414,14 @@ class TestDANNCEInterfaceWithCalibration(
 
     data_interface_cls = DANNCEInterface
     interface_kwargs = dict(
-        file_paths=str(BEHAVIOR_DATA_PATH / "dannce" / "avg_and_max_predictions" / "DANNCE" / "predict_results" / "save_data_MAX.mat"),
+        file_paths=str(
+            BEHAVIOR_DATA_PATH
+            / "dannce"
+            / "avg_and_max_predictions"
+            / "DANNCE"
+            / "predict_results"
+            / "save_data_MAX.mat"
+        ),
         sampling_rate=30.0,
         calibration_path=str(BEHAVIOR_DATA_PATH / "dannce" / "avg_and_max_predictions" / "calibration"),
     )
