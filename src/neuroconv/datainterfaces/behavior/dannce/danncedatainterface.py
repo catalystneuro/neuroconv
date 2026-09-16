@@ -243,10 +243,11 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
         animal_index : int, optional
             Index of the animal to write, selecting along the animal axis of a 4D ``pred`` array
             (shape ``(n_frames, n_animals, 3, n_landmarks)``), as produced by multi-animal sDANNCE
-            output. Required when ``pred`` is 4D; construct one interface instance per animal, using
-            a distinct ``metadata_key`` per instance, to write each animal to the
-            same NWBFile. Must be omitted (left as ``None``) when ``pred`` is already 3D
-            (single-animal DANNCE output) -- passing it in that case raises an error.
+            output. Required when ``pred`` is 4D with more than one animal; construct one interface
+            instance per animal, using a distinct ``metadata_key`` per instance, to write each animal
+            to the same NWBFile. When ``pred`` is 4D with a singleton animal axis (``n_animals == 1``),
+            defaults to ``0`` if omitted. Must be omitted (left as ``None``) when ``pred`` is already
+            3D (single-animal DANNCE output) -- passing it in that case raises an error.
         verbose : bool, default: False
             Controls verbosity of the conversion process.
         """
@@ -356,12 +357,18 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
                     f"Expected 3D 'p_max' to pair with 4D 'pred' (multi-animal sDANNCE output), "
                     f"but 'p_max' has shape {p_max.shape}."
                 )
-            if self._animal_index is None:
-                raise ValueError(
-                    f"The prediction file has an explicit animal axis (pred shape {pred.shape}). "
-                    "Pass 'animal_index' to select which animal to write."
-                )
             n_animals = pred.shape[1]
+            if self._animal_index is None:
+                if n_animals == 1:
+                    # A singleton animal axis has only one possible selection, so there is nothing
+                    # for the caller to choose between -- default it instead of demanding a
+                    # redundant 'animal_index=0'.
+                    self._animal_index = 0
+                else:
+                    raise ValueError(
+                        f"The prediction file has an explicit animal axis with {n_animals} animals "
+                        f"(pred shape {pred.shape}). Pass 'animal_index' to select which animal to write."
+                    )
             if not 0 <= self._animal_index < n_animals:
                 raise IndexError(
                     f"animal_index {self._animal_index} is out of range for a file with {n_animals} animals."

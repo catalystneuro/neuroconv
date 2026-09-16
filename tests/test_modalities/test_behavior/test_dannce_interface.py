@@ -86,6 +86,23 @@ def multi_animal_dannce_mat_file(tmp_path):
     return file_path, n_samples, n_animals, n_landmarks, pred, p_max
 
 
+@pytest.fixture
+def singleton_animal_dannce_mat_file(tmp_path):
+    """Create a synthetic sDANNCE-style prediction .mat file with a singleton animal axis
+    (n_animals == 1) -- e.g. a run configured for multi-animal output that only ever predicted one."""
+    n_samples = 30
+    n_landmarks = 4
+
+    rng = np.random.default_rng(13)
+    pred = rng.standard_normal((n_samples, 1, 3, n_landmarks))
+    p_max = rng.random((n_samples, 1, n_landmarks))
+    sample_id = np.arange(n_samples, dtype="float64").reshape(1, -1)
+
+    file_path = tmp_path / "save_data_AVG0.mat"
+    savemat(str(file_path), dict(pred=pred, p_max=p_max, sampleID=sample_id))
+    return file_path, n_samples, n_landmarks, pred, p_max
+
+
 def _synthetic_calibration_values(camera_index: int) -> dict:
     """Deterministic per-camera calibration values, shared by the calibration fixtures below."""
     return dict(
@@ -296,6 +313,24 @@ class TestDANNCEInterfaceAnimalIndex:
         file_path = multi_animal_dannce_mat_file[0]
         with pytest.raises(ValueError, match="explicit animal axis"):
             DANNCEInterface(file_paths=file_path, sampling_rate=30.0)
+
+    def test_singleton_animal_axis_defaults_animal_index_to_0(self, singleton_animal_dannce_mat_file):
+        """A 4D 'pred' with a singleton animal axis (n_animals == 1) has only one possible
+        selection, so 'animal_index' should default to 0 instead of requiring it explicitly."""
+        file_path, n_samples, n_landmarks, pred, p_max = singleton_animal_dannce_mat_file
+        interface = DANNCEInterface(file_paths=file_path, sampling_rate=30.0)
+
+        assert interface._animal_index == 0
+        assert interface._pred.shape == (n_samples, 3, n_landmarks)
+        assert_array_equal(interface._pred, pred[:, 0, :, :])
+        assert_array_equal(interface._p_max, p_max[:, 0, :])
+
+    def test_singleton_animal_axis_explicit_animal_index_0_matches_default(self, singleton_animal_dannce_mat_file):
+        file_path = singleton_animal_dannce_mat_file[0]
+        interface_default = DANNCEInterface(file_paths=file_path, sampling_rate=30.0)
+        interface_explicit = DANNCEInterface(file_paths=file_path, animal_index=0, sampling_rate=30.0)
+
+        assert_array_equal(interface_default._pred, interface_explicit._pred)
 
     def test_3d_pred_with_animal_index_raises(self, dannce_mat_file):
         file_path = dannce_mat_file[0]
