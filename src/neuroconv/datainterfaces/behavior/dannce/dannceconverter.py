@@ -146,7 +146,7 @@ class DANNCEConverter(BaseDataInterface):
     @validate_call
     def __init__(
         self,
-        file_path: FilePath,
+        file_paths: FilePath | list[FilePath],
         videos_folder_path: DirectoryPath,
         *,
         calibration_path: Path | None = None,
@@ -160,8 +160,10 @@ class DANNCEConverter(BaseDataInterface):
         """
         Parameters
         ----------
-        file_path : FilePath
-            Path to the DANNCE prediction .mat file (e.g., save_data_AVG.mat or save_data_MAX.mat).
+        file_paths : FilePath or list of FilePath
+            See :class:`~neuroconv.datainterfaces.DANNCEInterface`. Path to the DANNCE prediction
+            .mat file (e.g., save_data_AVG.mat or save_data_MAX.mat), or a list of paths to
+            concatenate into one continuous session (e.g. sDANNCE jobs split by batch).
         videos_folder_path : DirectoryPath
             Path to the DANNCE/campy ``videos`` folder, containing one subdirectory per camera (e.g.
             ``Camera1``, ``Camera2``, ...). Each camera subdirectory must contain that camera's video
@@ -227,7 +229,7 @@ class DANNCEConverter(BaseDataInterface):
                 self._camera_capture_metadata[camera_name] = self._load_camera_capture_metadata(metadata_csv_file_path)
 
         self._dannce_interface = DANNCEInterface(
-            file_path=file_path,
+            file_paths=file_paths,
             sampling_rate=sampling_rate,
             landmark_names=landmark_names,
             subject_name=subject_name,

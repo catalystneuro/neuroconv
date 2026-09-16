@@ -79,7 +79,7 @@ def dannce_converter_dir(tmp_path):
 class TestDANNCEConverterDiscovery:
     def test_camera_names_and_timestamps(self, dannce_converter_dir):
         converter = DANNCEConverter(
-            file_path=dannce_converter_dir["file_path"],
+            file_paths=dannce_converter_dir["file_path"],
             videos_folder_path=dannce_converter_dir["videos_folder_path"],
         )
         assert converter._camera_names == dannce_converter_dir["camera_names"]
@@ -96,7 +96,7 @@ class TestDANNCEConverterDiscovery:
         (videos_folder_path / "Camera2").rename(videos_folder_path / "Camera10")
 
         converter = DANNCEConverter(
-            file_path=dannce_converter_dir["file_path"],
+            file_paths=dannce_converter_dir["file_path"],
             videos_folder_path=videos_folder_path,
         )
         assert converter._camera_names == ["Camera1", "Camera10"]
@@ -110,7 +110,7 @@ class TestDANNCEConverterDiscovery:
         camera1_frametimes.unlink()
 
         converter = DANNCEConverter(
-            file_path=dannce_converter_dir["file_path"],
+            file_paths=dannce_converter_dir["file_path"],
             videos_folder_path=dannce_converter_dir["videos_folder_path"],
             sampling_rate=40.0,
         )
@@ -132,7 +132,7 @@ class TestDANNCEConverterDiscovery:
         camera1_frametimes.unlink()
 
         converter = DANNCEConverter(
-            file_path=dannce_converter_dir["file_path"],
+            file_paths=dannce_converter_dir["file_path"],
             videos_folder_path=dannce_converter_dir["videos_folder_path"],
             sampling_rate=25.0,
         )
@@ -148,7 +148,7 @@ class TestDANNCEConverterDiscovery:
         camera1_frametimes.unlink()
 
         converter = DANNCEConverter(
-            file_path=dannce_converter_dir["file_path"],
+            file_paths=dannce_converter_dir["file_path"],
             videos_folder_path=dannce_converter_dir["videos_folder_path"],
         )
 
@@ -161,7 +161,7 @@ class TestDANNCEConverterDiscovery:
 
         with pytest.raises(FileNotFoundError, match="No camera subdirectories found"):
             DANNCEConverter(
-                file_path=dannce_converter_dir["file_path"],
+                file_paths=dannce_converter_dir["file_path"],
                 videos_folder_path=empty_videos_folder,
             )
 
@@ -172,7 +172,7 @@ class TestDANNCEConverterDiscovery:
 
         with pytest.raises(ValueError, match="video frames"):
             DANNCEConverter(
-                file_path=dannce_converter_dir["file_path"],
+                file_paths=dannce_converter_dir["file_path"],
                 videos_folder_path=dannce_converter_dir["videos_folder_path"],
             )
 
@@ -199,7 +199,7 @@ def dannce_converter_dir_with_camera_metadata(dannce_converter_dir):
 class TestDANNCEConverterCameraCaptureMetadata:
     def test_get_metadata(self, dannce_converter_dir_with_camera_metadata):
         converter = DANNCEConverter(
-            file_path=dannce_converter_dir_with_camera_metadata["file_path"],
+            file_paths=dannce_converter_dir_with_camera_metadata["file_path"],
             videos_folder_path=dannce_converter_dir_with_camera_metadata["videos_folder_path"],
         )
         metadata = converter.get_metadata()
@@ -220,7 +220,7 @@ class TestDANNCEConverterCameraCaptureMetadata:
     def test_no_metadata_csv_omits_capture_metadata(self, dannce_converter_dir):
         # dannce_converter_dir (without the _with_camera_metadata fixture) has no metadata.csv files.
         converter = DANNCEConverter(
-            file_path=dannce_converter_dir["file_path"],
+            file_paths=dannce_converter_dir["file_path"],
             videos_folder_path=dannce_converter_dir["videos_folder_path"],
         )
         metadata = converter.get_metadata()
@@ -233,7 +233,7 @@ class TestDANNCEConverterCameraCaptureMetadata:
 
     def test_run_conversion_roundtrip(self, tmp_path, dannce_converter_dir_with_camera_metadata):
         converter = DANNCEConverter(
-            file_path=dannce_converter_dir_with_camera_metadata["file_path"],
+            file_paths=dannce_converter_dir_with_camera_metadata["file_path"],
             videos_folder_path=dannce_converter_dir_with_camera_metadata["videos_folder_path"],
             metadata_key="PoseEstimationDANNCE",
         )
@@ -266,7 +266,7 @@ class TestDANNCEConverterCameraCaptureMetadata:
 class TestDANNCEConverterConversion:
     def test_run_conversion(self, tmp_path, dannce_converter_dir):
         converter = DANNCEConverter(
-            file_path=dannce_converter_dir["file_path"],
+            file_paths=dannce_converter_dir["file_path"],
             videos_folder_path=dannce_converter_dir["videos_folder_path"],
             metadata_key="PoseEstimationDANNCE",
         )

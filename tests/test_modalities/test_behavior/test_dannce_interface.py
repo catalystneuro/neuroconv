@@ -29,6 +29,36 @@ def dannce_mat_file(tmp_path):
 
 
 @pytest.fixture
+def split_dannce_mat_files(tmp_path):
+    """Create two synthetic DANNCE prediction .mat files with contiguous sampleID ranges, mimicking
+    an sDANNCE run split across two job files (e.g. 'save_data_AVG0.mat' + 'save_data_AVG25.mat')."""
+    n_samples_per_file = 25
+    n_landmarks = 4
+
+    rng = np.random.default_rng(99)
+    pred_0 = rng.standard_normal((n_samples_per_file, 3, n_landmarks))
+    p_max_0 = rng.random((n_samples_per_file, n_landmarks))
+    sample_id_0 = np.arange(0, n_samples_per_file, dtype="float64").reshape(1, -1)
+
+    pred_1 = rng.standard_normal((n_samples_per_file, 3, n_landmarks))
+    p_max_1 = rng.random((n_samples_per_file, n_landmarks))
+    sample_id_1 = np.arange(n_samples_per_file, 2 * n_samples_per_file, dtype="float64").reshape(1, -1)
+
+    file_path_0 = tmp_path / "save_data_AVG0.mat"
+    file_path_1 = tmp_path / "save_data_AVG25.mat"
+    savemat(str(file_path_0), dict(pred=pred_0, p_max=p_max_0, sampleID=sample_id_0))
+    savemat(str(file_path_1), dict(pred=pred_1, p_max=p_max_1, sampleID=sample_id_1))
+
+    return dict(
+        file_paths=[file_path_0, file_path_1],
+        n_landmarks=n_landmarks,
+        expected_pred=np.concatenate([pred_0, pred_1], axis=0),
+        expected_p_max=np.concatenate([p_max_0, p_max_1], axis=0),
+        expected_sample_id=np.concatenate([sample_id_0.squeeze(), sample_id_1.squeeze()]),
+    )
+
+
+@pytest.fixture
 def multi_animal_dannce_mat_file(tmp_path):
     """Create a synthetic multi-animal (sDANNCE-style) prediction .mat file (2 animals)."""
     n_samples = 80
@@ -134,7 +164,7 @@ def label3d_calibration_mat_file(tmp_path):
 class TestDANNCEInterfaceInit:
     def test_initialization_with_sampling_rate(self, dannce_mat_file):
         file_path, n_samples, n_landmarks, _, _ = dannce_mat_file
-        interface = DANNCEInterface(file_path=file_path, sampling_rate=30.0)
+        interface = DANNCEInterface(file_paths=file_path, sampling_rate=30.0)
 
         assert interface._pred.shape == (n_samples, 3, n_landmarks)
         assert interface._p_max.shape == (n_samples, n_landmarks)
@@ -142,7 +172,7 @@ class TestDANNCEInterfaceInit:
 
     def test_default_landmark_names(self, dannce_mat_file):
         file_path, _, n_landmarks, _, _ = dannce_mat_file
-        interface = DANNCEInterface(file_path=file_path, sampling_rate=30.0)
+        interface = DANNCEInterface(file_paths=file_path, sampling_rate=30.0)
 
         expected_names = [f"landmark_{i}" for i in range(n_landmarks)]
         assert interface._landmark_names == expected_names
@@ -150,20 +180,80 @@ class TestDANNCEInterfaceInit:
     def test_custom_landmark_names(self, dannce_mat_file):
         file_path, _, n_landmarks, _, _ = dannce_mat_file
         names = [f"joint_{i}" for i in range(n_landmarks)]
-        interface = DANNCEInterface(file_path=file_path, sampling_rate=30.0, landmark_names=names)
+        interface = DANNCEInterface(file_paths=file_path, sampling_rate=30.0, landmark_names=names)
 
         assert interface._landmark_names == names
 
     def test_wrong_landmark_count_raises(self, dannce_mat_file):
         file_path, _, _, _, _ = dannce_mat_file
         with pytest.raises(ValueError, match="does not match the number of landmarks"):
-            DANNCEInterface(file_path=file_path, sampling_rate=30.0, landmark_names=["a", "b"])
+            DANNCEInterface(file_paths=file_path, sampling_rate=30.0, landmark_names=["a", "b"])
 
     def test_invalid_file_suffix_raises(self, tmp_path):
         bad_file = tmp_path / "data.csv"
         bad_file.touch()
         with pytest.raises(IOError, match="Only .mat files are supported"):
-            DANNCEInterface(file_path=bad_file, sampling_rate=30.0)
+            DANNCEInterface(file_paths=bad_file, sampling_rate=30.0)
+
+
+class TestDANNCEInterfaceMultiFile:
+    """Coverage for 'file_paths' accepting a list, concatenating multiple prediction files into one
+    continuous session (e.g. sDANNCE jobs split across batches)."""
+
+    def test_concatenates_in_given_order(self, split_dannce_mat_files):
+        fixture = split_dannce_mat_files
+        interface = DANNCEInterface(file_paths=fixture["file_paths"], sampling_rate=30.0)
+
+        assert interface._pred.shape == fixture["expected_pred"].shape
+        assert_array_equal(interface._pred, fixture["expected_pred"])
+        assert_array_equal(interface._p_max, fixture["expected_p_max"])
+        assert_array_equal(interface._sample_id, fixture["expected_sample_id"])
+
+    def test_single_path_in_list_matches_bare_path(self, dannce_mat_file):
+        file_path, n_samples, n_landmarks, pred, p_max = dannce_mat_file
+        interface_from_list = DANNCEInterface(file_paths=[file_path], sampling_rate=30.0)
+        interface_from_path = DANNCEInterface(file_paths=file_path, sampling_rate=30.0)
+
+        assert_array_equal(interface_from_list._pred, interface_from_path._pred)
+        assert_array_equal(interface_from_list._p_max, interface_from_path._p_max)
+
+    def test_mismatched_landmark_count_raises(self, tmp_path):
+        n_samples = 10
+        rng = np.random.default_rng(1)
+
+        file_path_0 = tmp_path / "save_data_AVG0.mat"
+        savemat(
+            str(file_path_0),
+            dict(
+                pred=rng.standard_normal((n_samples, 3, 4)),
+                p_max=rng.random((n_samples, 4)),
+                sampleID=np.arange(0, n_samples, dtype="float64").reshape(1, -1),
+            ),
+        )
+        file_path_1 = tmp_path / "save_data_AVG10.mat"
+        savemat(
+            str(file_path_1),
+            dict(
+                pred=rng.standard_normal((n_samples, 3, 5)),  # different landmark count
+                p_max=rng.random((n_samples, 5)),
+                sampleID=np.arange(n_samples, 2 * n_samples, dtype="float64").reshape(1, -1),
+            ),
+        )
+
+        with pytest.raises(ValueError, match="does not match the first file"):
+            DANNCEInterface(file_paths=[file_path_0, file_path_1], sampling_rate=30.0)
+
+    def test_multi_file_writes_to_nwbfile(self, split_dannce_mat_files):
+        fixture = split_dannce_mat_files
+        interface = DANNCEInterface(file_paths=fixture["file_paths"], sampling_rate=30.0)
+
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile)
+
+        pe = nwbfile.processing["behavior"]["PoseEstimationDANNCE"]
+        assert len(pe.pose_estimation_series) == fixture["n_landmarks"]
+        for series in pe.pose_estimation_series.values():
+            assert series.data.shape[0] == fixture["expected_pred"].shape[0]
 
 
 class TestDANNCEInterfaceAnimalIndex:
@@ -171,7 +261,7 @@ class TestDANNCEInterfaceAnimalIndex:
 
     def test_animal_index_0_slices_correctly(self, multi_animal_dannce_mat_file):
         file_path, n_samples, _, n_landmarks, pred, p_max = multi_animal_dannce_mat_file
-        interface = DANNCEInterface(file_path=file_path, animal_index=0, sampling_rate=30.0)
+        interface = DANNCEInterface(file_paths=file_path, animal_index=0, sampling_rate=30.0)
 
         assert interface._pred.shape == (n_samples, 3, n_landmarks)
         assert interface._p_max.shape == (n_samples, n_landmarks)
@@ -180,7 +270,7 @@ class TestDANNCEInterfaceAnimalIndex:
 
     def test_animal_index_1_slices_correctly(self, multi_animal_dannce_mat_file):
         file_path, n_samples, _, n_landmarks, pred, p_max = multi_animal_dannce_mat_file
-        interface = DANNCEInterface(file_path=file_path, animal_index=1, sampling_rate=30.0)
+        interface = DANNCEInterface(file_paths=file_path, animal_index=1, sampling_rate=30.0)
 
         assert interface._pred.shape == (n_samples, 3, n_landmarks)
         assert_array_equal(interface._pred, pred[:, 1, :, :])
@@ -189,23 +279,23 @@ class TestDANNCEInterfaceAnimalIndex:
     def test_out_of_range_animal_index_raises(self, multi_animal_dannce_mat_file):
         file_path, _, n_animals, _, _, _ = multi_animal_dannce_mat_file
         with pytest.raises(IndexError, match="out of range"):
-            DANNCEInterface(file_path=file_path, animal_index=n_animals, sampling_rate=30.0)
+            DANNCEInterface(file_paths=file_path, animal_index=n_animals, sampling_rate=30.0)
 
     def test_4d_pred_without_animal_index_raises(self, multi_animal_dannce_mat_file):
         file_path = multi_animal_dannce_mat_file[0]
         with pytest.raises(ValueError, match="explicit animal axis"):
-            DANNCEInterface(file_path=file_path, sampling_rate=30.0)
+            DANNCEInterface(file_paths=file_path, sampling_rate=30.0)
 
     def test_3d_pred_with_animal_index_raises(self, dannce_mat_file):
         file_path = dannce_mat_file[0]
         with pytest.raises(ValueError, match="already single-animal"):
-            DANNCEInterface(file_path=file_path, animal_index=0, sampling_rate=30.0)
+            DANNCEInterface(file_paths=file_path, animal_index=0, sampling_rate=30.0)
 
 
 class TestDANNCEInterfaceTimestamps:
     def test_timestamps_from_sampling_rate(self, dannce_mat_file):
         file_path, n_samples, _, _, _ = dannce_mat_file
-        interface = DANNCEInterface(file_path=file_path, sampling_rate=30.0)
+        interface = DANNCEInterface(file_paths=file_path, sampling_rate=30.0)
 
         timestamps = interface.get_timestamps()
         expected = np.arange(n_samples, dtype="float64") / 30.0
@@ -213,7 +303,7 @@ class TestDANNCEInterfaceTimestamps:
 
     def test_get_original_timestamps(self, dannce_mat_file):
         file_path, n_samples, _, _, _ = dannce_mat_file
-        interface = DANNCEInterface(file_path=file_path, sampling_rate=30.0)
+        interface = DANNCEInterface(file_paths=file_path, sampling_rate=30.0)
 
         timestamps = interface.get_original_timestamps()
         expected = np.arange(n_samples, dtype="float64") / 30.0
@@ -221,14 +311,14 @@ class TestDANNCEInterfaceTimestamps:
 
     def test_no_timestamps_raises(self, dannce_mat_file):
         file_path, _, _, _, _ = dannce_mat_file
-        interface = DANNCEInterface(file_path=file_path)
+        interface = DANNCEInterface(file_paths=file_path)
 
         with pytest.raises(ValueError, match="Cannot compute original timestamps"):
             interface.get_timestamps()
 
     def test_set_aligned_timestamps(self, dannce_mat_file):
         file_path, n_samples, _, _, _ = dannce_mat_file
-        interface = DANNCEInterface(file_path=file_path)
+        interface = DANNCEInterface(file_paths=file_path)
 
         custom_timestamps = np.linspace(10.0, 20.0, n_samples)
         interface.set_aligned_timestamps(custom_timestamps)
@@ -237,7 +327,7 @@ class TestDANNCEInterfaceTimestamps:
 
     def test_set_aligned_timestamps_overrides_sampling_rate(self, dannce_mat_file):
         file_path, n_samples, _, _, _ = dannce_mat_file
-        interface = DANNCEInterface(file_path=file_path, sampling_rate=30.0)
+        interface = DANNCEInterface(file_paths=file_path, sampling_rate=30.0)
 
         custom_timestamps = np.linspace(10.0, 20.0, n_samples)
         interface.set_aligned_timestamps(custom_timestamps)
@@ -248,7 +338,7 @@ class TestDANNCEInterfaceTimestamps:
 class TestDANNCEInterfaceMetadata:
     def test_metadata_structure(self, dannce_mat_file):
         file_path, _, _, _, _ = dannce_mat_file
-        interface = DANNCEInterface(file_path=file_path, sampling_rate=30.0)
+        interface = DANNCEInterface(file_paths=file_path, sampling_rate=30.0)
         metadata = interface.get_metadata()
 
         assert "Devices" in metadata
@@ -259,7 +349,7 @@ class TestDANNCEInterfaceMetadata:
 
     def test_metadata_dannce_defaults(self, dannce_mat_file):
         file_path, _, n_landmarks, _, _ = dannce_mat_file
-        interface = DANNCEInterface(file_path=file_path, sampling_rate=30.0)
+        interface = DANNCEInterface(file_paths=file_path, sampling_rate=30.0)
         metadata = interface.get_metadata()
 
         container = metadata["Pose"]["MultiCameraPoseEstimations"]["PoseEstimationDANNCE"]
@@ -274,7 +364,7 @@ class TestDANNCEInterfaceMetadata:
 
     def test_metadata_custom_key(self, dannce_mat_file):
         file_path, _, _, _, _ = dannce_mat_file
-        interface = DANNCEInterface(file_path=file_path, sampling_rate=30.0, metadata_key="CustomDANNCE")
+        interface = DANNCEInterface(file_paths=file_path, sampling_rate=30.0, metadata_key="CustomDANNCE")
         metadata = interface.get_metadata()
 
         assert "CustomDANNCE" in metadata["Pose"]["MultiCameraPoseEstimations"]
@@ -329,7 +419,7 @@ class TestDANNCEInterfaceCalibration:
     def test_calibration_path_auto_populates_camera_names(self, dannce_mat_file, params_calibration_dir):
         file_path = dannce_mat_file[0]
         calibration_dir, camera_names = params_calibration_dir
-        interface = DANNCEInterface(file_path=file_path, sampling_rate=30.0, calibration_path=calibration_dir)
+        interface = DANNCEInterface(file_paths=file_path, sampling_rate=30.0, calibration_path=calibration_dir)
 
         assert interface._camera_names == camera_names
 
@@ -337,7 +427,7 @@ class TestDANNCEInterfaceCalibration:
         file_path = dannce_mat_file[0]
         calibration_dir, _ = params_calibration_dir
         interface = DANNCEInterface(
-            file_path=file_path,
+            file_paths=file_path,
             sampling_rate=30.0,
             calibration_path=calibration_dir,
             camera_names=["CustomCam"],
@@ -352,7 +442,7 @@ class TestDANNCEInterfaceCalibration:
         the calibration fields on each ``metadata["Devices"]`` entry, resolved at write time."""
         file_path = dannce_mat_file[0]
         calibration_dir, camera_names = params_calibration_dir
-        interface = DANNCEInterface(file_path=file_path, sampling_rate=30.0, calibration_path=calibration_dir)
+        interface = DANNCEInterface(file_paths=file_path, sampling_rate=30.0, calibration_path=calibration_dir)
 
         devices_metadata = interface.get_metadata()["Devices"]
         for i, camera_name in enumerate(camera_names):
@@ -366,7 +456,7 @@ class TestDANNCEInterfaceCalibration:
 
     def test_no_calibration_leaves_devices_metadata_generic(self, dannce_mat_file):
         file_path = dannce_mat_file[0]
-        interface = DANNCEInterface(file_path=file_path, sampling_rate=30.0, camera_names=["Camera1"])
+        interface = DANNCEInterface(file_paths=file_path, sampling_rate=30.0, camera_names=["Camera1"])
 
         entry = interface.get_metadata()["Devices"]["Camera1"]
         assert "type" not in entry
@@ -375,7 +465,7 @@ class TestDANNCEInterfaceCalibration:
     def test_calibration_path_auto_creates_calibrated_cameras(self, dannce_mat_file, params_calibration_dir):
         file_path = dannce_mat_file[0]
         calibration_dir, camera_names = params_calibration_dir
-        interface = DANNCEInterface(file_path=file_path, sampling_rate=30.0, calibration_path=calibration_dir)
+        interface = DANNCEInterface(file_paths=file_path, sampling_rate=30.0, calibration_path=calibration_dir)
 
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile)  # calibration comes from calibration_path via metadata["Devices"]
@@ -389,7 +479,7 @@ class TestDANNCEInterfaceCalibration:
     def test_metadata_devices_edit_overrides_calibration_path(self, dannce_mat_file, params_calibration_dir):
         file_path = dannce_mat_file[0]
         calibration_dir, camera_names = params_calibration_dir
-        interface = DANNCEInterface(file_path=file_path, sampling_rate=30.0, calibration_path=calibration_dir)
+        interface = DANNCEInterface(file_paths=file_path, sampling_rate=30.0, calibration_path=calibration_dir)
 
         # calibration_path pre-fills each camera's Devices entry as a CalibratedCamera; editing that
         # entry before the write is how a value is overridden.
@@ -412,7 +502,7 @@ class TestDANNCEInterfaceCalibration:
 class TestDANNCEInterfaceConversion:
     def test_add_to_nwbfile(self, dannce_mat_file, tmp_path):
         file_path, n_samples, n_landmarks, pred, p_max = dannce_mat_file
-        interface = DANNCEInterface(file_path=file_path, sampling_rate=30.0)
+        interface = DANNCEInterface(file_paths=file_path, sampling_rate=30.0)
 
         nwbfile = NWBFile(
             session_description="test",
@@ -458,7 +548,7 @@ class TestDANNCEInterfaceConversion:
 
     def test_add_to_nwbfile_with_custom_timestamps(self, dannce_mat_file, tmp_path):
         file_path, n_samples, _, _, _ = dannce_mat_file
-        interface = DANNCEInterface(file_path=file_path)
+        interface = DANNCEInterface(file_paths=file_path)
 
         # Irregular spacing so calculate_regular_series_rate returns None and
         # timestamps are stored explicitly rather than as rate+starting_time.
@@ -480,7 +570,7 @@ class TestDANNCEInterfaceConversion:
 
     def test_roundtrip_nwb(self, dannce_mat_file, tmp_path):
         file_path, n_samples, n_landmarks, pred, p_max = dannce_mat_file
-        interface = DANNCEInterface(file_path=file_path, sampling_rate=30.0)
+        interface = DANNCEInterface(file_paths=file_path, sampling_rate=30.0)
 
         nwbfile_path = tmp_path / "test_dannce.nwb"
 
@@ -505,7 +595,7 @@ class TestDANNCEInterfaceConversion:
 
     def test_skeleton_subject_linking(self, dannce_mat_file):
         file_path, _, _, _, _ = dannce_mat_file
-        interface = DANNCEInterface(file_path=file_path, sampling_rate=30.0, subject_name="mouse1")
+        interface = DANNCEInterface(file_paths=file_path, sampling_rate=30.0, subject_name="mouse1")
 
         nwbfile = mock_NWBFile()
         nwbfile.subject = mock_Subject(subject_id="mouse1")
@@ -517,7 +607,7 @@ class TestDANNCEInterfaceConversion:
 
     def test_skeleton_subject_not_linked(self, dannce_mat_file):
         file_path, _, _, _, _ = dannce_mat_file
-        interface = DANNCEInterface(file_path=file_path, sampling_rate=30.0, subject_name="mouse1")
+        interface = DANNCEInterface(file_paths=file_path, sampling_rate=30.0, subject_name="mouse1")
 
         nwbfile = mock_NWBFile()
         nwbfile.subject = mock_Subject(subject_id="different_mouse")
@@ -529,7 +619,7 @@ class TestDANNCEInterfaceConversion:
 
     def test_source_video_links(self, dannce_mat_file):
         file_path, _, _, _, _ = dannce_mat_file
-        interface = DANNCEInterface(file_path=file_path, sampling_rate=30.0)
+        interface = DANNCEInterface(file_paths=file_path, sampling_rate=30.0)
 
         nwbfile = NWBFile(
             session_description="test",
@@ -556,7 +646,7 @@ class TestDANNCEInterfaceConversion:
 
     def test_source_video_defaults_to_none(self, dannce_mat_file):
         file_path, _, _, _, _ = dannce_mat_file
-        interface = DANNCEInterface(file_path=file_path, sampling_rate=30.0)
+        interface = DANNCEInterface(file_paths=file_path, sampling_rate=30.0)
 
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile)
@@ -568,7 +658,7 @@ class TestDANNCEInterfaceConversion:
     def test_multiple_cameras_link_distinct_source_videos(self, dannce_mat_file):
         file_path, _, _, _, _ = dannce_mat_file
         camera_names = ["Camera1", "Camera2", "Camera3"]
-        interface = DANNCEInterface(file_path=file_path, sampling_rate=30.0, camera_names=camera_names)
+        interface = DANNCEInterface(file_paths=file_path, sampling_rate=30.0, camera_names=camera_names)
 
         nwbfile = NWBFile(
             session_description="test",
@@ -610,7 +700,7 @@ class TestDANNCEInterfaceConversion:
     def test_metadata_devices_type_creates_calibrated_camera(self, dannce_mat_file):
         file_path, _, _, _, _ = dannce_mat_file
         camera_names = ["Camera1", "Camera2"]
-        interface = DANNCEInterface(file_path=file_path, sampling_rate=30.0, camera_names=camera_names)
+        interface = DANNCEInterface(file_paths=file_path, sampling_rate=30.0, camera_names=camera_names)
 
         nwbfile = mock_NWBFile()
 
@@ -645,7 +735,7 @@ class TestDANNCEInterfaceConversion:
     def test_add_to_nwbfile_writes_selected_animal(self, multi_animal_dannce_mat_file):
         file_path, n_samples, _, n_landmarks, pred, p_max = multi_animal_dannce_mat_file
         interface = DANNCEInterface(
-            file_path=file_path,
+            file_paths=file_path,
             animal_index=1,
             sampling_rate=30.0,
             subject_name="rat2",
@@ -686,14 +776,14 @@ class TestDANNCEInterfaceConversion:
         )
 
         interface_animal0 = DANNCEInterface(
-            file_path=file_path,
+            file_paths=file_path,
             animal_index=0,
             sampling_rate=30.0,
             subject_name="rat1",
             metadata_key="PoseEstimationRat1",
         )
         interface_animal1 = DANNCEInterface(
-            file_path=file_path,
+            file_paths=file_path,
             animal_index=1,
             sampling_rate=30.0,
             subject_name="rat2",
@@ -719,7 +809,7 @@ class TestDANNCEInterfaceConversion:
         """DANNCEInterface defaults source_software/scorer to "DANNCE"; for sDANNCE-produced data,
         relabel via the standard metadata-merge mechanism rather than a dedicated subclass."""
         file_path = dannce_mat_file[0]
-        interface = DANNCEInterface(file_path=file_path, sampling_rate=30.0)
+        interface = DANNCEInterface(file_paths=file_path, sampling_rate=30.0)
 
         metadata = interface.get_metadata()
         container = metadata["Pose"]["MultiCameraPoseEstimations"]["PoseEstimationDANNCE"]
@@ -748,7 +838,7 @@ class TestDANNCEInterfaceConversion:
 
         _savemat(str(file_path), dict(pred=pred, p_max=p_max, sampleID=sample_id))
 
-        interface = DANNCEInterface(file_path=file_path, sampling_rate=30.0)
+        interface = DANNCEInterface(file_paths=file_path, sampling_rate=30.0)
 
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile, stub_test=True)

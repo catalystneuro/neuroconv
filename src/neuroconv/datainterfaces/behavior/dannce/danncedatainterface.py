@@ -41,9 +41,10 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
     @classmethod
     def get_source_schema(cls) -> dict:
         source_schema = super().get_source_schema()
-        source_schema["properties"]["file_path"][
-            "description"
-        ] = "Path to the DANNCE prediction .mat file (e.g., save_data_AVG.mat)."
+        source_schema["properties"]["file_paths"]["description"] = (
+            "Path to the DANNCE prediction .mat file (e.g., save_data_AVG.mat), or a list of paths "
+            "to concatenate into one continuous session (e.g. sDANNCE jobs split by batch)."
+        )
         return source_schema
 
     @staticmethod
@@ -170,7 +171,7 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
     @validate_call
     def __init__(
         self,
-        file_path: FilePath,
+        file_paths: FilePath | list[FilePath],
         *,
         sampling_rate: float | None = None,
         landmark_names: list[str] | None = None,
@@ -193,8 +194,10 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
 
         Parameters
         ----------
-        file_path : FilePath
-            Path to the DANNCE prediction .mat file (e.g., save_data_AVG.mat or save_data_MAX.mat).
+        file_paths : FilePath or list of FilePath
+            Path to the DANNCE prediction .mat file (e.g., save_data_AVG.mat or save_data_MAX.mat), or
+            a list of such paths -- e.g. sDANNCE jobs split by batch -- to concatenate, in the given
+            order, into one continuous session.
         sampling_rate : float, optional
             The sampling rate in Hz of the pose estimation data. Used to compute timestamps from
             the sampleID field. If not provided, timestamps must be set externally via
@@ -249,9 +252,12 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
                 "pip install 'ndx-pose>=0.4.0'"
             )
 
-        file_path = Path(file_path)
-        if ".mat" not in file_path.suffixes:
-            raise IOError(f"The file '{file_path}' is not a valid DANNCE output file. Only .mat files are supported.")
+        file_paths = [Path(file_paths)] if not isinstance(file_paths, list) else [Path(p) for p in file_paths]
+        for file_path in file_paths:
+            if ".mat" not in file_path.suffixes:
+                raise IOError(
+                    f"The file '{file_path}' is not a valid DANNCE output file. Only .mat files are supported."
+                )
 
         self.subject_name = subject_name
         self.verbose = verbose
@@ -273,8 +279,8 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
         self._sampling_rate = sampling_rate
         self._timestamps = None
 
-        # Load data from .mat file
-        self._load_dannce_data(file_path)
+        # Load data from .mat file(s)
+        self._load_dannce_data(file_paths)
 
         # Validate and set landmark names
         n_landmarks = self._pred.shape[2]
@@ -291,23 +297,49 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
         if sampling_rate is not None:
             self._timestamps = self._sample_id / sampling_rate
 
-        super().__init__(file_path=file_path, verbose=verbose)
+        super().__init__(file_paths=file_paths, verbose=verbose)
 
-    def _load_dannce_data(self, file_path: Path) -> None:
-        """Load and parse the DANNCE/sDANNCE .mat prediction file.
+    def _load_dannce_data(self, file_paths: list[Path]) -> None:
+        """Load and parse one or more DANNCE/sDANNCE .mat prediction files.
 
         Handles both single-animal DANNCE output (``pred`` shape ``(n_samples, 3, n_landmarks)``)
         and multi-animal sDANNCE output (``pred`` shape ``(n_samples, n_animals, 3, n_landmarks)``,
-        sliced down to one animal via ``self._animal_index``).
+        sliced down to one animal via ``self._animal_index``). When more than one file is given,
+        each is loaded independently and their ``pred``, ``p_max``, and ``sampleID`` arrays are
+        concatenated along the frames axis, in the order given, after checking they agree on
+        ``pred``'s number of dimensions, number of landmarks, and (when 4D) number of animals.
         """
         from scipy.io import loadmat
 
-        mat_data = loadmat(str(file_path))
+        pred_parts = []
+        p_max_parts = []
+        sample_id_parts = []
+        reference_shape = None  # (pred.ndim, n_landmarks, n_animals or None), from the first file
+        for file_path in file_paths:
+            mat_data = loadmat(str(file_path))
 
-        pred = mat_data["pred"]
-        p_max = mat_data["p_max"]
-        sample_id = mat_data["sampleID"]  # shape: (1, n_samples) or (n_samples,)
-        self._sample_id = np.squeeze(sample_id).astype("float64")
+            pred = mat_data["pred"]
+            p_max = mat_data["p_max"]
+            sample_id = np.squeeze(mat_data["sampleID"]).astype("float64")  # shape: (1, n_samples) or (n_samples,)
+
+            shape = (pred.ndim, pred.shape[-1], pred.shape[1] if pred.ndim == 4 else None)
+            if reference_shape is None:
+                reference_shape = shape
+            elif shape != reference_shape:
+                raise ValueError(
+                    f"'{file_path}' has pred.ndim={shape[0]}, {shape[1]} landmarks, "
+                    f"{shape[2]} animals, which does not match the first file's pred.ndim="
+                    f"{reference_shape[0]}, {reference_shape[1]} landmarks, {reference_shape[2]} animals. "
+                    "All 'file_paths' must describe the same session and be concatenable."
+                )
+
+            pred_parts.append(pred)
+            p_max_parts.append(p_max)
+            sample_id_parts.append(sample_id)
+
+        pred = np.concatenate(pred_parts, axis=0)
+        p_max = np.concatenate(p_max_parts, axis=0)
+        self._sample_id = np.concatenate(sample_id_parts, axis=0)
 
         if pred.ndim == 4:
             if p_max.ndim != 3:
