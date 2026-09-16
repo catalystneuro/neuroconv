@@ -76,6 +76,38 @@ def dannce_converter_dir(tmp_path):
     )
 
 
+@pytest.fixture
+def dannce_converter_dir_multi_segment_no_frametimes(tmp_path):
+    """Build a synthetic DANNCE videos folder with two cameras, each split across two video
+    segments, and no 'frametimes.npy' at all -- mirrors a classic (non-campy) DANNCE rig whose
+    videos happen to be chunked (e.g. 'dannce/chunked_videos' in the real DANNCE dataset)."""
+    n_frames_per_segment = 5
+    n_landmarks = 3
+    camera_names = ["Camera1", "Camera2"]
+
+    rng = np.random.default_rng(0)
+    n_samples = n_frames_per_segment * 2
+    pred = rng.standard_normal((n_samples, 3, n_landmarks))
+    p_max = rng.random((n_samples, n_landmarks))
+    sample_id = np.arange(n_samples, dtype="float64").reshape(1, -1)
+    file_path = tmp_path / "save_data_AVG.mat"
+    savemat(str(file_path), dict(pred=pred, p_max=p_max, sampleID=sample_id))
+
+    videos_folder_path = tmp_path / "videos"
+    for camera_name in camera_names:
+        camera_dir = videos_folder_path / camera_name
+        camera_dir.mkdir(parents=True)
+        _write_video(camera_dir / "0.avi", n_frames=n_frames_per_segment)
+        _write_video(camera_dir / f"{n_frames_per_segment}.avi", n_frames=n_frames_per_segment)
+
+    return dict(
+        file_path=file_path,
+        videos_folder_path=videos_folder_path,
+        camera_names=camera_names,
+        n_frames_per_segment=n_frames_per_segment,
+    )
+
+
 class TestDANNCEConverterDiscovery:
     def test_camera_names_and_timestamps(self, dannce_converter_dir):
         converter = DANNCEConverter(
@@ -154,6 +186,39 @@ class TestDANNCEConverterDiscovery:
 
         with pytest.raises(ValueError, match="Cannot compute original timestamps"):
             converter._dannce_interface.get_timestamps()
+
+    def test_multi_segment_no_frametimes_uses_sampling_rate_fallback(
+        self, dannce_converter_dir_multi_segment_no_frametimes
+    ):
+        """A camera split across multiple video files with no 'frametimes.npy' at all cannot rely on
+        ExternalVideoInterface's own single-file default (it doesn't know the gap between segments),
+        so 'sampling_rate' must be used to synthesize contiguous per-segment timestamps instead."""
+        fixture = dannce_converter_dir_multi_segment_no_frametimes
+        converter = DANNCEConverter(
+            file_paths=fixture["file_path"],
+            videos_folder_path=fixture["videos_folder_path"],
+            sampling_rate=10.0,
+        )
+
+        n_per_segment = fixture["n_frames_per_segment"]
+        expected_first_segment = np.arange(n_per_segment) / 10.0
+        expected_second_segment = np.arange(n_per_segment, 2 * n_per_segment) / 10.0
+
+        for camera_name in fixture["camera_names"]:
+            video_interface = converter._video_interfaces[camera_name]
+            timestamps = video_interface.get_timestamps()
+            np.testing.assert_allclose(timestamps[0], expected_first_segment)
+            np.testing.assert_allclose(timestamps[1], expected_second_segment)
+
+    def test_multi_segment_no_frametimes_and_no_sampling_rate_raises(
+        self, dannce_converter_dir_multi_segment_no_frametimes
+    ):
+        fixture = dannce_converter_dir_multi_segment_no_frametimes
+        with pytest.raises(ValueError, match="Pass 'sampling_rate'"):
+            DANNCEConverter(
+                file_paths=fixture["file_path"],
+                videos_folder_path=fixture["videos_folder_path"],
+            )
 
     def test_no_camera_subdirectories_raises(self, tmp_path, dannce_converter_dir):
         empty_videos_folder = tmp_path / "empty_videos"

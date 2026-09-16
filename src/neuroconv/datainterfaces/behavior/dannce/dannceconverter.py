@@ -201,7 +201,9 @@ class DANNCEConverter(BaseDataInterface):
         sampling_rate : float, optional
             See :class:`~neuroconv.datainterfaces.DANNCEInterface`. Forwarded to it directly, and used
             for the DANNCE pose estimation's timestamps only if the first camera under
-            ``videos_folder_path`` has no ``frametimes.npy``.
+            ``videos_folder_path`` has no ``frametimes.npy``. Also required, and used the same way, for
+            any camera with no ``frametimes.npy`` that is split across more than one video file (its
+            per-segment timestamps cannot otherwise be inferred).
         verbose : bool, default: False
             Controls verbosity of the conversion process.
         """
@@ -257,10 +259,29 @@ class DANNCEConverter(BaseDataInterface):
                 verbose=verbose,
             )
             # Only override this camera's video timestamps when it has frametimes; otherwise it keeps
-            # ExternalVideoInterface's own default (derived directly from the video file itself).
+            # ExternalVideoInterface's own default (derived directly from the video file itself) --
+            # except when split across more than one video file, where that default does not apply
+            # (ExternalVideoInterface cannot know the gap, if any, between segments on its own), so a
+            # 'sampling_rate' fallback is required to synthesize contiguous per-segment timestamps.
             if camera_name in camera_frametimes:
                 segment_timestamps = self._split_timestamps_by_segment(
                     timestamps=camera_frametimes[camera_name], video_paths=video_paths, camera_name=camera_name
+                )
+                video_interface.set_aligned_timestamps(segment_timestamps)
+            elif len(video_paths) > 1:
+                if sampling_rate is None:
+                    raise ValueError(
+                        f"Camera '{camera_name}' has {len(video_paths)} video files and no "
+                        "'frametimes.npy'. Pass 'sampling_rate' so each segment's timestamps can be "
+                        "synthesized contiguously."
+                    )
+                total_frames = 0
+                for video_path in video_paths:
+                    with VideoCaptureContext(file_path=str(video_path)) as video:
+                        total_frames += video.get_video_frame_count()
+                all_timestamps = np.arange(total_frames, dtype="float64") / sampling_rate
+                segment_timestamps = self._split_timestamps_by_segment(
+                    timestamps=all_timestamps, video_paths=video_paths, camera_name=camera_name
                 )
                 video_interface.set_aligned_timestamps(segment_timestamps)
             self._video_interfaces[camera_name] = video_interface
