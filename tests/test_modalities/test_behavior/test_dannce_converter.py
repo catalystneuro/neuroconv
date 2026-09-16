@@ -101,15 +101,59 @@ class TestDANNCEConverterDiscovery:
         )
         assert converter._camera_names == ["Camera1", "Camera10"]
 
-    def test_missing_frametimes_raises(self, dannce_converter_dir):
+    def test_missing_frametimes_falls_back_to_video_default_timestamps(self, dannce_converter_dir):
+        """'frametimes.npy' is optional per camera -- not every DANNCE rig records with campy/pCamPI.
+        A camera missing one should not raise: it should simply keep ExternalVideoInterface's own
+        default timestamps (derived directly from the video file), independent of the sibling
+        camera that does have a real 'frametimes.npy'."""
         camera1_frametimes = dannce_converter_dir["videos_folder_path"] / "Camera1" / "frametimes.npy"
         camera1_frametimes.unlink()
 
-        with pytest.raises(FileNotFoundError, match="No 'frametimes.npy' file found"):
-            DANNCEConverter(
-                file_path=dannce_converter_dir["file_path"],
-                videos_folder_path=dannce_converter_dir["videos_folder_path"],
-            )
+        converter = DANNCEConverter(
+            file_path=dannce_converter_dir["file_path"],
+            videos_folder_path=dannce_converter_dir["videos_folder_path"],
+            sampling_rate=40.0,
+        )
+
+        # Camera1 has no frametimes.npy, so it falls back to ExternalVideoInterface's own
+        # video-derived timestamps -- close to, but not necessarily bit-identical to, frame_index/fps.
+        camera1_interface = converter._video_interfaces["Camera1"]
+        expected_timestamps = np.arange(dannce_converter_dir["n_samples"]) / 40.0
+        np.testing.assert_allclose(camera1_interface.get_timestamps()[0], expected_timestamps, atol=0.05)
+
+        # Camera2 still has its own real frametimes.npy, unaffected by Camera1 missing one.
+        camera2_interface = converter._video_interfaces["Camera2"]
+        np.testing.assert_allclose(camera2_interface.get_timestamps()[0], expected_timestamps)
+
+    def test_primary_camera_missing_frametimes_uses_sampling_rate_for_pose(self, dannce_converter_dir):
+        """When the first camera has no 'frametimes.npy', the DANNCE pose estimation's timestamps
+        should come from 'sampling_rate' (forwarded to DANNCEInterface) instead."""
+        camera1_frametimes = dannce_converter_dir["videos_folder_path"] / "Camera1" / "frametimes.npy"
+        camera1_frametimes.unlink()
+
+        converter = DANNCEConverter(
+            file_path=dannce_converter_dir["file_path"],
+            videos_folder_path=dannce_converter_dir["videos_folder_path"],
+            sampling_rate=25.0,
+        )
+
+        expected_timestamps = np.arange(dannce_converter_dir["n_samples"]) / 25.0
+        np.testing.assert_allclose(converter._dannce_interface.get_timestamps(), expected_timestamps)
+
+    def test_primary_camera_missing_frametimes_and_no_sampling_rate_raises_on_write(self, dannce_converter_dir):
+        """Without 'frametimes.npy' for the first camera and no 'sampling_rate' fallback, building the
+        converter still succeeds (mirrors the bare DANNCEInterface), but asking for the DANNCE pose
+        estimation's timestamps raises DANNCEInterface's own pre-existing, clear error."""
+        camera1_frametimes = dannce_converter_dir["videos_folder_path"] / "Camera1" / "frametimes.npy"
+        camera1_frametimes.unlink()
+
+        converter = DANNCEConverter(
+            file_path=dannce_converter_dir["file_path"],
+            videos_folder_path=dannce_converter_dir["videos_folder_path"],
+        )
+
+        with pytest.raises(ValueError, match="Cannot compute original timestamps"):
+            converter._dannce_interface.get_timestamps()
 
     def test_no_camera_subdirectories_raises(self, tmp_path, dannce_converter_dir):
         empty_videos_folder = tmp_path / "empty_videos"

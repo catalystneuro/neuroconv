@@ -25,11 +25,16 @@ class DANNCEConverter(BaseDataInterface):
 
     DANNCE rigs typically record with `campy <https://github.com/ksseverson57/campy>`_ (or the
     compatible pCamPI), which writes one subdirectory per camera under a shared ``videos`` folder,
-    each containing that camera's video file(s) and a ``frametimes.npy`` file recording that
-    camera's own per-frame acquisition times. This converter takes the path to that ``videos``
-    folder, discovers each camera's video(s) and frametimes from it, and uses them to both write
-    each camera's video and temporally align it -- and the DANNCE pose estimation itself -- without
-    the caller needing to enumerate cameras or timestamps by hand.
+    each containing that camera's video file(s) and, per camera, an optional ``frametimes.npy`` file
+    recording that camera's own per-frame acquisition times (not every DANNCE rig records with
+    campy/pCamPI, so some or all cameras may lack one). This converter takes the path to that
+    ``videos`` folder, discovers each camera's video(s) and any frametimes from it, and uses them to
+    both write each camera's video and temporally align it -- and the DANNCE pose estimation itself,
+    via the first camera's frametimes -- without the caller needing to enumerate cameras or
+    timestamps by hand. A camera without frametimes keeps its video's own default timestamps (see
+    :class:`~neuroconv.datainterfaces.ExternalVideoInterface`); if the first camera has none, the
+    DANNCE pose estimation instead uses the ``sampling_rate`` argument (see
+    :class:`~neuroconv.datainterfaces.DANNCEInterface`).
 
     ``DANNCEInterface`` on its own can link each camera's source video via the ``source_videos``
     argument of its ``add_to_nwbfile``, but doing so safely requires the video ``ImageSeries`` to
@@ -59,7 +64,7 @@ class DANNCEConverter(BaseDataInterface):
             raise FileNotFoundError(
                 f"No camera subdirectories found in '{videos_folder_path}'. Expected one subdirectory "
                 "per camera (e.g. 'Camera1', 'Camera2', ...), each containing that camera's video "
-                "file(s) and a 'frametimes.npy' file."
+                "file(s) and, optionally, a 'frametimes.npy' file."
             )
 
         numbered = []
@@ -149,6 +154,7 @@ class DANNCEConverter(BaseDataInterface):
         subject_name: str = "ind1",
         metadata_key: str | None = None,
         animal_index: int | None = None,
+        sampling_rate: float | None = None,
         verbose: bool = False,
     ):
         """
@@ -159,21 +165,25 @@ class DANNCEConverter(BaseDataInterface):
         videos_folder_path : DirectoryPath
             Path to the DANNCE/campy ``videos`` folder, containing one subdirectory per camera (e.g.
             ``Camera1``, ``Camera2``, ...). Each camera subdirectory must contain that camera's video
-            file(s) (in sorted, consecutive segment order, if split into multiple parts) and a
-            ``frametimes.npy`` file (shape ``(2, n_video_frames)``; row 0 = 1-indexed frame number, row
-            1 = elapsed seconds since recording start) -- the campy/pCamPI capture standard used by
-            DANNCE rigs. Camera names are taken directly from the subdirectory names and used as
-            ``DANNCEInterface``'s ``camera_names``, so they must match the naming used by
-            ``calibration_path``, if provided (see :meth:`DANNCEInterface.get_camera_calibrations`).
+            file(s) (in sorted, consecutive segment order, if split into multiple parts). Camera names
+            are taken directly from the subdirectory names and used as ``DANNCEInterface``'s
+            ``camera_names``, so they must match the naming used by ``calibration_path``, if provided
+            (see :meth:`DANNCEInterface.get_camera_calibrations`).
 
-            Each camera's own frametimes are used to set that camera's video's timestamps (via
-            ``ExternalVideoInterface.set_aligned_timestamps``). The first camera's frametimes, indexed
-            by the DANNCE prediction file's ``sampleID`` field, are used to set the DANNCE pose
-            estimation's timestamps (via ``DANNCEInterface.set_aligned_timestamps``); the first camera
-            is used because DANNCE/sDANNCE triangulates from all cameras but stores only one shared
+            A camera subdirectory *may* also contain a campy/pCamPI-style ``frametimes.npy`` file
+            (shape ``(2, n_video_frames)``; row 0 = 1-indexed frame number, row 1 = elapsed seconds
+            since recording start) -- not every DANNCE rig records with campy/pCamPI, so this is
+            optional per camera. When present, it is used to set that camera's video's timestamps (via
+            ``ExternalVideoInterface.set_aligned_timestamps``); when absent, that video keeps
+            ``ExternalVideoInterface``'s own default timestamps (derived directly from the video
+            file). The first camera's frametimes, if present, are additionally indexed by the DANNCE
+            prediction file's ``sampleID`` field and used to set the DANNCE pose estimation's
+            timestamps (via ``DANNCEInterface.set_aligned_timestamps``); the first camera is used
+            because DANNCE/sDANNCE triangulates from all cameras but stores only one shared
             ``sampleID`` per predicted sample, referencing frame indices in a single reference camera's
             timeline (by campy/pCamPI convention, cameras are frame-synchronized, so any one camera's
-            frametimes would work equally well as that reference).
+            frametimes would work equally well as that reference). If the first camera has no
+            frametimes, ``sampling_rate`` (below) is used for the DANNCE pose estimation instead.
         calibration_path : str or Path, optional
             See :class:`~neuroconv.datainterfaces.DANNCEInterface`. Only used to load per-camera
             calibrations (intrinsics/extrinsics); the set of cameras itself is always taken from
@@ -186,6 +196,10 @@ class DANNCEConverter(BaseDataInterface):
             See :class:`~neuroconv.datainterfaces.DANNCEInterface`.
         animal_index : int, optional
             See :class:`~neuroconv.datainterfaces.DANNCEInterface`.
+        sampling_rate : float, optional
+            See :class:`~neuroconv.datainterfaces.DANNCEInterface`. Forwarded to it directly, and used
+            for the DANNCE pose estimation's timestamps only if the first camera under
+            ``videos_folder_path`` has no ``frametimes.npy``.
         verbose : bool, default: False
             Controls verbosity of the conversion process.
         """
@@ -202,14 +216,8 @@ class DANNCEConverter(BaseDataInterface):
             camera_video_paths[camera_name] = self._discover_video_file_paths(camera_directory)
 
             frametimes_file_path = camera_directory / "frametimes.npy"
-            if not frametimes_file_path.exists():
-                raise FileNotFoundError(
-                    f"No 'frametimes.npy' file found for camera '{camera_name}' at "
-                    f"'{frametimes_file_path}'. Each camera subdirectory of 'videos_folder_path' must "
-                    "contain a frametimes file, used to synchronize its video and the DANNCE pose "
-                    "estimation."
-                )
-            camera_frametimes[camera_name] = self._load_frametimes(frametimes_file_path)
+            if frametimes_file_path.exists():
+                camera_frametimes[camera_name] = self._load_frametimes(frametimes_file_path)
 
             # Optional: a campy/pCamPI-style 'metadata.csv' recording the capture software's
             # acquisition settings for this camera (model, serial number, nominal frame rate, ...).
@@ -220,6 +228,7 @@ class DANNCEConverter(BaseDataInterface):
 
         self._dannce_interface = DANNCEInterface(
             file_path=file_path,
+            sampling_rate=sampling_rate,
             landmark_names=landmark_names,
             subject_name=subject_name,
             metadata_key=metadata_key,
@@ -230,9 +239,11 @@ class DANNCEConverter(BaseDataInterface):
         )
 
         primary_camera_name = self._camera_names[0]
-        primary_camera_frametimes = camera_frametimes[primary_camera_name]
-        video_frame_indices = self._dannce_interface.video_frame_indices
-        self._dannce_interface.set_aligned_timestamps(primary_camera_frametimes[video_frame_indices.astype(int)])
+        if primary_camera_name in camera_frametimes:
+            video_frame_indices = self._dannce_interface.video_frame_indices
+            self._dannce_interface.set_aligned_timestamps(
+                camera_frametimes[primary_camera_name][video_frame_indices.astype(int)]
+            )
 
         self._video_interfaces: dict[str, ExternalVideoInterface] = {}
         for camera_name in self._camera_names:
@@ -243,10 +254,13 @@ class DANNCEConverter(BaseDataInterface):
                 video_name=f"Video{camera_name}",
                 verbose=verbose,
             )
-            segment_timestamps = self._split_timestamps_by_segment(
-                timestamps=camera_frametimes[camera_name], video_paths=video_paths, camera_name=camera_name
-            )
-            video_interface.set_aligned_timestamps(segment_timestamps)
+            # Only override this camera's video timestamps when it has frametimes; otherwise it keeps
+            # ExternalVideoInterface's own default (derived directly from the video file itself).
+            if camera_name in camera_frametimes:
+                segment_timestamps = self._split_timestamps_by_segment(
+                    timestamps=camera_frametimes[camera_name], video_paths=video_paths, camera_name=camera_name
+                )
+                video_interface.set_aligned_timestamps(segment_timestamps)
             self._video_interfaces[camera_name] = video_interface
 
         self.data_interface_objects: dict[str, BaseDataInterface] = {
