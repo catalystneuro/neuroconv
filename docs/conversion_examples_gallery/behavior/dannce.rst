@@ -16,8 +16,8 @@ Convert DANNCE (or social DANNCE / sDANNCE) 3D pose estimation data to NWB using
     >>> from zoneinfo import ZoneInfo
     >>> from neuroconv.datainterfaces import DANNCEInterface
 
-    >>> file_path = BEHAVIOR_DATA_PATH / "dannce" / "save_data_MAX.mat"
-    >>> interface = DANNCEInterface(file_path=file_path, sampling_rate=30.0, verbose=False)
+    >>> file_path = BEHAVIOR_DATA_PATH / "dannce" / "avg_and_max_predictions" / "DANNCE" / "predict_results" / "save_data_MAX.mat"
+    >>> interface = DANNCEInterface(file_paths=file_path, sampling_rate=30.0, verbose=False)
     >>> metadata = interface.get_metadata()
     >>> # DANNCE prediction files do not carry a session start time, so it must be set explicitly
     >>> session_start_time = datetime(2024, 6, 24, 13, 58, 40, tzinfo=ZoneInfo("US/Eastern"))
@@ -38,14 +38,14 @@ for the supported calibration file formats) and creates one calibrated camera ``
 
 .. code-block:: python
 
-    >>> calibration_path = BEHAVIOR_DATA_PATH / "dannce" / "calibration"
+    >>> calibration_path = BEHAVIOR_DATA_PATH / "dannce" / "avg_and_max_predictions" / "calibration"
     >>> interface = DANNCEInterface(
-    ...     file_path=file_path,
+    ...     file_paths=file_path,
     ...     sampling_rate=30.0,
     ...     calibration_path=calibration_path,
     ... )
     >>> interface._camera_names
-    ['Camera1', 'Camera2']
+    ['Camera1', 'Camera2', 'Camera3', 'Camera4', 'Camera5', 'Camera6']
 
 Multi-animal (sDANNCE) sessions
 ================================
@@ -56,9 +56,12 @@ animal to the same NWBFile:
 
 .. code-block:: python
 
-    >>> multi_animal_file_path = BEHAVIOR_DATA_PATH / "dannce" / "save_data_sdannce.mat"
+    >>> multi_animal_file_path = (
+    ...     BEHAVIOR_DATA_PATH / "sdannce" / "multiple_subjects_per_file" / "two_subjects"
+    ...     / "SDANNCE" / "predict00" / "save_data_AVG0.mat"
+    ... )
     >>> interface_animal2 = DANNCEInterface(
-    ...     file_path=multi_animal_file_path,
+    ...     file_paths=multi_animal_file_path,
     ...     sampling_rate=30.0,
     ...     animal_index=1,
     ...     subject_name="rat2",
@@ -79,19 +82,22 @@ and links each camera's video for you.
 
 Videos are discovered from a single ``videos_folder_path``: the DANNCE/campy ``videos`` folder,
 containing one subdirectory per camera (e.g. ``Camera1``, ``Camera2``, ...), each with that camera's
-video file(s) and a ``frametimes.npy`` file (the campy/pCamPI capture standard). Each camera's own
-frametimes align its video, and the first camera's frametimes (indexed by the DANNCE prediction
-file's ``sampleID`` field) align the DANNCE pose estimation -- no ``sampling_rate`` is needed.
+video file(s) and, optionally, a ``frametimes.npy`` file (the campy/pCamPI capture standard). When
+present, each camera's own frametimes align its video, and the first camera's frametimes (indexed by
+the DANNCE prediction file's ``sampleID`` field) align the DANNCE pose estimation -- no
+``sampling_rate`` is needed. A rig recorded without campy/pCamPI (no ``frametimes.npy`` at all) can
+still be converted by passing ``sampling_rate`` instead, which is then used for any camera missing
+its own frametimes.
 
 .. code-block:: python
 
     >>> from neuroconv.converters import DANNCEConverter
 
-    >>> videos_folder_path = BEHAVIOR_DATA_PATH / "dannce" / "videos"
+    >>> run_path = BEHAVIOR_DATA_PATH / "sdannce" / "single_subject"
     >>> converter = DANNCEConverter(
-    ...     file_path=file_path,
-    ...     videos_folder_path=videos_folder_path,
-    ...     calibration_path=calibration_path,
+    ...     file_paths=run_path / "SDANNCE" / "bsl0.5_FM" / "save_data_AVG0.mat",
+    ...     videos_folder_path=run_path / "videos",
+    ...     calibration_path=run_path / "calibration",
     ... )
     >>> metadata = converter.get_metadata()
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
