@@ -53,8 +53,9 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
 
         Three DANNCE/sDANNCE calibration layouts are supported:
 
-        - A directory of per-camera ``hires_camN_params.mat`` files (keys ``K``, ``r``, ``t``,
-          ``RDistort``, ``TDistort``); camera names are derived from the filenames (``Camera1``, ...).
+        - A directory of per-camera ``<prefix>camN_params.mat`` files (keys ``K``, ``r``, ``t``,
+          ``RDistort``, ``TDistort``); camera names are derived from the numeric index in the
+          filenames (``Camera1``, ...).
         - A single ``calibration.json`` file with top-level ``camera_names`` and ``camera_params``
           (keys ``camera_matrix``, ``rotation_matrix``, ``translation_vector``, ``r_distort``,
           ``t_distort``), index-aligned.
@@ -95,17 +96,17 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
 
     @staticmethod
     def _load_calibrations_from_hires_params_directory(directory: Path) -> tuple[list[str], dict[str, dict]]:
-        """Parse a directory of 'hires_camN_params.mat' files, one per camera."""
+        """Parse a directory of '<prefix>camN_params.mat' files, one per camera."""
         from scipy.io import loadmat
 
-        pattern = re.compile(r"hires_cam(\d+)_params\.mat$")
+        pattern = re.compile(r".*cam(\d+)_params\.mat$")
         matches = []
         for file_path in directory.iterdir():
             match = pattern.match(file_path.name)
             if match:
                 matches.append((int(match.group(1)), file_path))
         if not matches:
-            raise ValueError(f"No 'hires_camN_params.mat' files found in '{directory}'.")
+            raise ValueError(f"No '*cam<N>_params.mat' files found in '{directory}'.")
         matches.sort(key=lambda pair: pair[0])
 
         camera_names = [f"Camera{camera_number}" for camera_number, _ in matches]

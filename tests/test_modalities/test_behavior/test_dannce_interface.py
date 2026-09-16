@@ -55,9 +55,11 @@ def _synthetic_calibration_values(camera_index: int) -> dict:
     )
 
 
-@pytest.fixture
-def hires_params_calibration_dir(tmp_path):
-    """Create a directory of 'hires_camN_params.mat' files (one per camera), plus a decoy '.old' file."""
+@pytest.fixture(params=["hires_", "kyle_"])
+def params_calibration_dir(request, tmp_path):
+    """Create a directory of '<prefix>camN_params.mat' files (one per camera), plus a decoy '.old'
+    file."""
+    prefix = request.param
     calibration_dir = tmp_path / "calibration"
     calibration_dir.mkdir()
 
@@ -65,7 +67,7 @@ def hires_params_calibration_dir(tmp_path):
     for i, camera_name in enumerate(camera_names):
         values = _synthetic_calibration_values(i)
         savemat(
-            str(calibration_dir / f"hires_cam{i + 1}_params.mat"),
+            str(calibration_dir / f"{prefix}cam{i + 1}_params.mat"),
             dict(
                 K=values["intrinsic_matrix"],
                 r=values["rotation_matrix"],
@@ -74,8 +76,8 @@ def hires_params_calibration_dir(tmp_path):
                 TDistort=values["distortion_coefficients"][2:].reshape(1, 2),
             ),
         )
-    # Backup file that must NOT be picked up by the 'hires_camN_params.mat' glob.
-    (calibration_dir / "hires_cam1_params.mat.old").write_text("not a real calibration file")
+    # Backup file that must NOT be picked up by the 'camN_params.mat' glob.
+    (calibration_dir / f"{prefix}cam1_params.mat.old").write_text("not a real calibration file")
 
     return calibration_dir, camera_names
 
@@ -290,8 +292,11 @@ class TestDANNCEInterfaceCalibration:
             assert_array_equal(actual["translation_vector"], expected["translation_vector"])
             assert_array_equal(actual["distortion_coefficients"], expected["distortion_coefficients"])
 
-    def test_get_camera_calibrations_from_hires_params_directory(self, hires_params_calibration_dir):
-        calibration_dir, camera_names = hires_params_calibration_dir
+    def test_get_camera_calibrations_from_params_directory(self, params_calibration_dir):
+        """The '<prefix>camN_params.mat' directory format must not be hardcoded to a single prefix --
+        'params_calibration_dir' is parametrized over prefixes observed in real DANNCE data (e.g.
+        'hires_', 'kyle_') and must load identically regardless."""
+        calibration_dir, camera_names = params_calibration_dir
         names, camera_calibrations = DANNCEInterface.get_camera_calibrations(calibration_dir)
 
         assert names == camera_names
@@ -321,16 +326,16 @@ class TestDANNCEInterfaceCalibration:
         with pytest.raises(ValueError, match="Unrecognized calibration format"):
             DANNCEInterface.get_camera_calibrations(bad_file)
 
-    def test_calibration_path_auto_populates_camera_names(self, dannce_mat_file, hires_params_calibration_dir):
+    def test_calibration_path_auto_populates_camera_names(self, dannce_mat_file, params_calibration_dir):
         file_path = dannce_mat_file[0]
-        calibration_dir, camera_names = hires_params_calibration_dir
+        calibration_dir, camera_names = params_calibration_dir
         interface = DANNCEInterface(file_path=file_path, sampling_rate=30.0, calibration_path=calibration_dir)
 
         assert interface._camera_names == camera_names
 
-    def test_explicit_camera_names_override_calibration_path(self, dannce_mat_file, hires_params_calibration_dir):
+    def test_explicit_camera_names_override_calibration_path(self, dannce_mat_file, params_calibration_dir):
         file_path = dannce_mat_file[0]
-        calibration_dir, _ = hires_params_calibration_dir
+        calibration_dir, _ = params_calibration_dir
         interface = DANNCEInterface(
             file_path=file_path,
             sampling_rate=30.0,
@@ -341,12 +346,12 @@ class TestDANNCEInterfaceCalibration:
         assert interface._camera_names == ["CustomCam"]
 
     def test_calibration_path_marks_devices_metadata_as_calibrated_camera(
-        self, dannce_mat_file, hires_params_calibration_dir
+        self, dannce_mat_file, params_calibration_dir
     ):
         """calibration_path writes the non-generic device type the unified way: a ``type`` field plus
         the calibration fields on each ``metadata["Devices"]`` entry, resolved at write time."""
         file_path = dannce_mat_file[0]
-        calibration_dir, camera_names = hires_params_calibration_dir
+        calibration_dir, camera_names = params_calibration_dir
         interface = DANNCEInterface(file_path=file_path, sampling_rate=30.0, calibration_path=calibration_dir)
 
         devices_metadata = interface.get_metadata()["Devices"]
@@ -367,9 +372,9 @@ class TestDANNCEInterfaceCalibration:
         assert "type" not in entry
         assert "intrinsic_matrix" not in entry
 
-    def test_calibration_path_auto_creates_calibrated_cameras(self, dannce_mat_file, hires_params_calibration_dir):
+    def test_calibration_path_auto_creates_calibrated_cameras(self, dannce_mat_file, params_calibration_dir):
         file_path = dannce_mat_file[0]
-        calibration_dir, camera_names = hires_params_calibration_dir
+        calibration_dir, camera_names = params_calibration_dir
         interface = DANNCEInterface(file_path=file_path, sampling_rate=30.0, calibration_path=calibration_dir)
 
         nwbfile = mock_NWBFile()
@@ -381,9 +386,9 @@ class TestDANNCEInterfaceCalibration:
             expected = _synthetic_calibration_values(i)
             assert_array_equal(device.intrinsic_matrix, expected["intrinsic_matrix"])
 
-    def test_metadata_devices_edit_overrides_calibration_path(self, dannce_mat_file, hires_params_calibration_dir):
+    def test_metadata_devices_edit_overrides_calibration_path(self, dannce_mat_file, params_calibration_dir):
         file_path = dannce_mat_file[0]
-        calibration_dir, camera_names = hires_params_calibration_dir
+        calibration_dir, camera_names = params_calibration_dir
         interface = DANNCEInterface(file_path=file_path, sampling_rate=30.0, calibration_path=calibration_dir)
 
         # calibration_path pre-fills each camera's Devices entry as a CalibratedCamera; editing that
