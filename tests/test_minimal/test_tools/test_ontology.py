@@ -631,9 +631,7 @@ class TestBrainRegionExternalResources:
             "Ecephys": {
                 "ontology": {"brain_regions": {"CA1": {"id": "MBA:382", "uri": "https://example.org/MBA_382"}}}
             },
-            "Ophys": {
-                "ontology": {"brain_regions": {"CA1": {"id": "MBA:999", "uri": "https://example.org/MBA_999"}}}
-            },
+            "Ophys": {"ontology": {"brain_regions": {"CA1": {"id": "MBA:999", "uri": "https://example.org/MBA_999"}}}},
         }
 
         with pytest.warns(UserWarning, match="CA1.*different ontology terms"):
