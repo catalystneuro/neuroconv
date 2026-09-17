@@ -22,6 +22,8 @@ The reference is stored in-file under ``/general/external_resources``, which req
 ``pynwb >= 4.0.0`` (guaranteed by NeuroConv's dependency pin).
 """
 
+import warnings
+
 from pynwb import NWBFile, get_type_map
 
 __all__ = [
@@ -131,17 +133,19 @@ def add_species_external_resource(nwbfile: NWBFile, metadata: dict | None = None
 
 
 def _brain_region_mapping_from_metadata(metadata: dict | None) -> dict:
-    """Merge every ``metadata["<modality>"]["ontology"]["brain_regions"]` map into one dict.
+    """Merge every ``metadata["<modality>"]["ontology"]["brain_regions"]`` map into one dict.
 
     Returns ``{location string: [(entity_id, entity_uri), ...]}``. Each brain area maps to one or
     more ontology terms, each an explicit ``{"id": ..., "uri": ...}`` dict (a single dict or a list
     of them). The maps under :data:`_BRAIN_REGION_METADATA_BLOCKS` are merged; if the same location
-    string appears under more than one modality with different terms, the last block wins.
+    string appears under more than one modality with different terms, the last block wins and a
+    ``UserWarning`` is emitted (identical terms merge silently, since that is not a conflict).
     """
     if not isinstance(metadata, dict):
         return {}
 
-    mapping = {}
+    mapping: dict = {}
+    block_of: dict = {}  # location -> the block_name that last set it (for the conflict warning)
     for block_name in _BRAIN_REGION_METADATA_BLOCKS:
         block = metadata.get(block_name)
         if not isinstance(block, dict):
@@ -150,7 +154,17 @@ def _brain_region_mapping_from_metadata(metadata: dict | None) -> dict:
         if not isinstance(raw_mapping, dict):
             continue
         for location, value in raw_mapping.items():
-            mapping[location] = _ontology_term_entities(value, context=f"brain area {location!r}")
+            entities = _ontology_term_entities(value, context=f"brain area {location!r}")
+            if location in mapping and mapping[location] != entities:
+                warnings.warn(
+                    f"Brain area {location!r} maps to different ontology terms under "
+                    f"metadata[{block_of[location]!r}] and metadata[{block_name!r}]; using the "
+                    f"{block_name!r} terms.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+            mapping[location] = entities
+            block_of[location] = block_name
     return mapping
 
 

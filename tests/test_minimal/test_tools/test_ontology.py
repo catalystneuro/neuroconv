@@ -536,6 +536,61 @@ class TestBrainRegionExternalResources:
         assert nwbfile.external_resources is herd  # extended in place, not replaced
         assert len(herd.entities[:]) == 2
 
+    def test_conflicting_terms_across_modality_blocks_warn_and_use_the_last_block(self):
+        nwbfile = _make_nwbfile()
+        _add_electrodes(nwbfile, ["CA1"])
+        device = nwbfile.create_device(name="scope")
+        nwbfile.create_imaging_plane(
+            name="plane0",
+            optical_channel=_optical_channel(),
+            description="d",
+            device=device,
+            excitation_lambda=600.0,
+            indicator="GCaMP",
+            location="CA1",
+            imaging_rate=30.0,
+        )
+        metadata = {
+            "Ecephys": {
+                "ontology": {"brain_regions": {"CA1": {"id": "MBA:382", "uri": "https://example.org/MBA_382"}}}
+            },
+            "Ophys": {
+                "ontology": {"brain_regions": {"CA1": {"id": "MBA:999", "uri": "https://example.org/MBA_999"}}}
+            },
+        }
+
+        with pytest.warns(UserWarning, match="CA1.*different ontology terms"):
+            number_added = add_brain_region_external_resources(nwbfile, metadata=metadata)
+
+        # 'Ophys' is processed after 'Ecephys' (see _BRAIN_REGION_METADATA_BLOCKS), so its term wins
+        # for every site sharing the "CA1" location string, electrodes included.
+        assert number_added == 2
+        dataframe = nwbfile.external_resources.to_dataframe()
+        assert set(dataframe["entity_id"].tolist()) == {"MBA:999"}
+
+    def test_identical_terms_across_modality_blocks_do_not_warn(self, recwarn):
+        nwbfile = _make_nwbfile()
+        _add_electrodes(nwbfile, ["CA1"])
+        device = nwbfile.create_device(name="scope")
+        nwbfile.create_imaging_plane(
+            name="plane0",
+            optical_channel=_optical_channel(),
+            description="d",
+            device=device,
+            excitation_lambda=600.0,
+            indicator="GCaMP",
+            location="CA1",
+            imaging_rate=30.0,
+        )
+        same_term = {"id": "MBA:382", "uri": "https://example.org/MBA_382"}
+        metadata = {
+            "Ecephys": {"ontology": {"brain_regions": {"CA1": same_term}}},
+            "Ophys": {"ontology": {"brain_regions": {"CA1": same_term}}},
+        }
+
+        add_brain_region_external_resources(nwbfile, metadata=metadata)
+        assert len(recwarn) == 0
+
 
 # ---------------------------------------------------------------------------
 # Conversion pipeline: infer -> create_nwbfile writes the stated terms
