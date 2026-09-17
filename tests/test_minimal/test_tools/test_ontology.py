@@ -1,5 +1,6 @@
 """Tests for neuroconv.tools.ontology: term resolution, metadata inference, and HERD annotation."""
 
+import sys
 from datetime import datetime
 
 import pytest
@@ -53,6 +54,82 @@ def _optical_channel():
 def _ecephys_brain_regions(mapping: dict) -> dict:
     """A metadata dict carrying an ``Ecephys.ontology.brain_regions`` map."""
     return {"Ecephys": {"ontology": {"brain_regions": mapping}}}
+
+
+# ---------------------------------------------------------------------------
+# Optional upstream term sets (neuro-termsets)
+# ---------------------------------------------------------------------------
+
+
+class TestUpstreamTermSets:
+    """``neuro-termsets`` is not installed in this environment (and not yet on PyPI), so these tests
+    fake the package via ``sys.modules`` rather than requiring it."""
+
+    def setup_method(self):
+        from neuroconv.tools.ontology._term_sets import load_term_set, load_upstream_term_set
+
+        load_term_set.cache_clear()
+        load_upstream_term_set.cache_clear()
+
+    teardown_method = setup_method
+
+    def test_absent_package_is_a_noop(self):
+        from neuroconv.tools.ontology._term_sets import load_term_set, load_upstream_term_set
+
+        assert load_upstream_term_set("species.yaml") is None
+        assert load_term_set("species.yaml")["Mus musculus"].curie == "NCBITaxon:10090"
+
+    def test_unmapped_file_name_returns_none(self):
+        from neuroconv.tools.ontology._term_sets import load_upstream_term_set
+
+        assert load_upstream_term_set("not_a_bundled_file.yaml") is None
+
+    def test_upstream_terms_are_preferred_and_merged(self, monkeypatch, tmp_path):
+        upstream_yaml = tmp_path / "ncbitaxon.yaml"
+        upstream_yaml.write_text(
+            "prefixes:\n"
+            "  NCBITaxon: http://purl.obolibrary.org/obo/NCBITaxon_\n"
+            "enums:\n"
+            "  Species:\n"
+            "    permissible_values:\n"
+            "      Mus musculus:\n"
+            "        meaning: NCBITaxon:10090\n"
+            "        description: upstream mouse\n"
+            "      Rattus norvegicus:\n"
+            "        meaning: NCBITaxon:10116\n"
+            "        description: upstream rat\n"
+        )
+
+        class _FakeNeuroTermsets:
+            @staticmethod
+            def get_termset_path(name):
+                assert name == "ncbitaxon"
+                return str(upstream_yaml)
+
+        monkeypatch.setitem(sys.modules, "neuro_termsets", _FakeNeuroTermsets())
+
+        from neuroconv.tools.ontology._term_sets import load_term_set, load_upstream_term_set
+
+        upstream = load_upstream_term_set("species.yaml")
+        assert upstream["Mus musculus"].description == "upstream mouse"
+        assert "Rattus norvegicus" in upstream
+
+        merged = load_term_set("species.yaml")
+        assert merged["Mus musculus"].description == "upstream mouse"  # upstream wins on overlap
+        assert "Homo sapiens" in merged  # bundled-only values are kept
+
+    def test_upstream_failure_falls_back_to_bundled(self, monkeypatch):
+        class _BrokenNeuroTermsets:
+            @staticmethod
+            def get_termset_path(name):
+                raise FileNotFoundError("term set renamed upstream")
+
+        monkeypatch.setitem(sys.modules, "neuro_termsets", _BrokenNeuroTermsets())
+
+        from neuroconv.tools.ontology._term_sets import load_term_set, load_upstream_term_set
+
+        assert load_upstream_term_set("species.yaml") is None
+        assert load_term_set("species.yaml")["Mus musculus"].curie == "NCBITaxon:10090"
 
 
 # ---------------------------------------------------------------------------
