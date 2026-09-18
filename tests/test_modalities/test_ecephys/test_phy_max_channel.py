@@ -1,10 +1,21 @@
+from importlib.metadata import version
+
 import numpy as np
 import pytest
 from numpy.testing import assert_array_equal
+from packaging.version import Version
 from pynwb.core import DynamicTableRegion
 
 from neuroconv.datainterfaces import PhySortingInterface
 from neuroconv.tools.testing import MockRecordingInterface
+
+# Reading a folder written by `export_to_phy` raises `ValueError: assignment destination is read-only`
+# under pandas 3, where spikeinterface writes into the array pandas hands back. Fixed in
+# SpikeInterface/spikeinterface#4693 and unreleased as of 0.104.9; remove this once the floor is bumped.
+pytestmark = pytest.mark.skipif(
+    Version(version("pandas")).major >= 3 and Version(version("spikeinterface")) <= Version("0.104.9"),
+    reason="spikeinterface's phy reader does not support pandas 3 until the release carrying #4693",
+)
 
 
 @pytest.fixture(scope="module")
