@@ -18,7 +18,8 @@ def phy_export(tmp_path_factory):
     analyzer = si.create_sorting_analyzer(sorting, recording, sparse=False)
     analyzer.compute(["random_spikes", "waveforms", "templates", "noise_levels"])
     folder = tmp_path_factory.mktemp("phy")
-    export_to_phy(analyzer, folder, remove_if_exists=True, copy_binary=False, verbose=False)
+    # `compute_pc_features` is on by default and is the only step that needs scikit-learn
+    export_to_phy(analyzer, folder, remove_if_exists=True, copy_binary=False, compute_pc_features=False, verbose=False)
     expected = get_template_extremum_channel(analyzer, peak_sign="both", mode="peak_to_peak", outputs="index")
     return folder, recording, expected
 
