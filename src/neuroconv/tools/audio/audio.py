@@ -90,3 +90,5 @@ def add_acoustic_waveform_series(
         nwbfile.add_acquisition(acoustic_waveform_series)
     elif parent_container == "stimulus":
         nwbfile.add_stimulus(acoustic_waveform_series)
+
+    return nwbfile
