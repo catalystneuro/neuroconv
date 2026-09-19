@@ -130,8 +130,13 @@ vame = [
 boris = [
     "ndx-ethogram>=0.1.0",  # a BORIS project is a coding scheme plus its events, and the scheme is an Ethogram
 ]
+ethovision = [
+    "openpyxl",  # Excel is one of EthoVision's three Track-export containers
+    "ndx-ethogram>=0.1.0",  # manual-scoring rows also produce an Ethogram and EthogramBouts
+]
 behavior = [
     "neuroconv[boris]",
+    "neuroconv[ethovision]",
     "neuroconv[sleap]",
     "neuroconv[audio]",
     "neuroconv[deeplabcut]",

@@ -141,6 +141,7 @@ Behavior
 
     Audio <behavior/audio>
     BORIS <behavior/boris>
+    EthoVision <behavior/ethovision>
     FicTrac <behavior/fictrac>
     Neuralynx NVT <behavior/neuralynx_nvt>
     Videos <behavior/video>
