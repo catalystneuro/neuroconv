@@ -39,6 +39,7 @@ from .ecephys.edf.edfdatainterface import EDFRecordingInterface
 from .ecephys.edf.edfanaloginterface import EDFAnalogInterface
 from .ecephys.intan.intandatainterface import IntanRecordingInterface
 from .ecephys.intan.intananaloginterface import IntanAnalogInterface
+from .ecephys.intan.intananalogueventsinterface import IntanAnalogEventsInterface
 from .ecephys.intan.intandigitalinterface import IntanDigitalInterface
 from .ecephys.intan.intanstiminterface import IntanStimInterface
 from .ecephys.kilosort.kilosortdatainterface import KiloSortSortingInterface
@@ -164,6 +165,7 @@ interface_list = [
     SpikeGadgetsRecordingInterface,
     IntanRecordingInterface,
     IntanAnalogInterface,
+    IntanAnalogEventsInterface,
     IntanDigitalInterface,
     IntanStimInterface,
     CellExplorerSortingInterface,
@@ -327,6 +329,7 @@ interfaces_by_category = dict(
         CSVEvents=CSVEventsInterface,
         DoricCSVEvents=DoricCSVEventsInterface,
         DoricEvents=DoricEventsInterface,
+        IntanAnalogEvents=IntanAnalogEventsInterface,
         MedPCArrayEvents=MedPCArrayEventsInterface,
         MedPCPackedEvents=MedPCPackedEventsInterface,
         NPMEvents=NPMEventsInterface,
