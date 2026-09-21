@@ -360,7 +360,7 @@ NeuroConv (one per vocabulary, the same format used by
 `HDMF's TermSet <https://hdmf.readthedocs.io/en/stable/tutorials/plot_term_set.html>`_), so the
 mappings are transparent and editable.
 
-The informal names NeuroConv accepts (``"hippocampus"``, ``"V1"``, ``"mouse"``) are stored in the
+The informal names NeuroConv accepts (``"hippocampus"``, ``"V1"``, ``"mouse"``, ``"black 6"``) are stored in the
 same files as LinkML ``aliases`` on the term they resolve to, so adding one is a YAML edit and needs
 no code change:
 
