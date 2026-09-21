@@ -33,18 +33,25 @@ enums:
       Ins:
         description: insula
         meaning: HBA:4268
+        aliases:
+          - insular cortex
       DiE:
         description: diencephalon
         meaning: HBA:4391
       MES:
         description: mesencephalon
         meaning: HBA:9001
+        aliases:
+          - midbrain
       MET:
         description: metencephalon
         meaning: HBA:4833
       MY:
         description: myelencephalon
         meaning: HBA:9512
+        aliases:
+          - medulla
+          - medulla oblongata
       PrG:
         description: precentral gyrus
         meaning: HBA:4010
@@ -93,24 +100,34 @@ enums:
       CgG:
         description: cingulate gyrus
         meaning: HBA:4220
+        aliases:
+          - cingulate cortex
       PHG:
         description: parahippocampal gyrus
         meaning: HBA:4242
       HiF:
         description: hippocampal formation
         meaning: HBA:4249
+        aliases:
+          - hippocampus
       DG:
         description: dentate gyrus
         meaning: HBA:12891
       CA1:
         description: CA1 field
         meaning: HBA:12892
+        aliases:
+          - area ca1
       CA2:
         description: CA2 field
         meaning: HBA:12893
+        aliases:
+          - area ca2
       CA3:
         description: CA3 field
         meaning: HBA:12894
+        aliases:
+          - area ca3
       CA4:
         description: CA4 field
         meaning: HBA:12895
@@ -120,6 +137,8 @@ enums:
       Cd:
         description: caudate nucleus
         meaning: HBA:4278
+        aliases:
+          - caudate
       Pu:
         description: putamen
         meaning: HBA:4287
@@ -159,6 +178,8 @@ enums:
       MB:
         description: mammillary body
         meaning: HBA:12909
+        aliases:
+          - mammillary bodies
       PIN:
         description: pineal gland
         meaning: HBA:4532
@@ -177,6 +198,8 @@ enums:
       LC:
         description: locus ceruleus
         meaning: HBA:9148
+        aliases:
+          - locus coeruleus
       IO:
         description: inferior olivary complex
         meaning: HBA:9560

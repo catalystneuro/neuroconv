@@ -1,5 +1,6 @@
 """Tests for neuroconv.tools.ontology: term resolution, metadata inference, and HERD annotation."""
 
+import sys
 from datetime import datetime
 
 import pytest
@@ -61,6 +62,177 @@ def _optical_channel():
 def _ecephys_brain_regions(mapping: dict) -> dict:
     """A metadata dict carrying an ``Ecephys.ontology.brain_regions`` map."""
     return {"Ecephys": {"ontology": {"brain_regions": mapping}}}
+
+
+# ---------------------------------------------------------------------------
+# Optional upstream term sets (neuro-termsets)
+# ---------------------------------------------------------------------------
+
+
+class TestUpstreamTermSets:
+    """``neuro-termsets`` is not installed in this environment (and not yet on PyPI), so these tests
+    fake the package via ``sys.modules`` rather than requiring it."""
+
+    def setup_method(self):
+        from neuroconv.tools.ontology._term_sets import load_term_set, load_upstream_term_set
+
+        load_term_set.cache_clear()
+        load_upstream_term_set.cache_clear()
+
+    teardown_method = setup_method
+
+    def test_absent_package_is_a_noop(self):
+        from neuroconv.tools.ontology._term_sets import load_term_set, load_upstream_term_set
+
+        assert load_upstream_term_set("species.yaml") is None
+        assert load_term_set("species.yaml")["Mus musculus"].curie == "NCBITaxon:10090"
+
+    def test_unmapped_file_name_returns_none(self):
+        from neuroconv.tools.ontology._term_sets import load_upstream_term_set
+
+        assert load_upstream_term_set("not_a_bundled_file.yaml") is None
+
+    def test_upstream_terms_are_preferred_and_merged(self, monkeypatch, tmp_path):
+        upstream_yaml = tmp_path / "ncbitaxon.yaml"
+        upstream_yaml.write_text(
+            "prefixes:\n"
+            "  NCBITaxon: http://purl.obolibrary.org/obo/NCBITaxon_\n"
+            "enums:\n"
+            "  Species:\n"
+            "    permissible_values:\n"
+            "      Mus musculus:\n"
+            "        meaning: NCBITaxon:10090\n"
+            "        description: upstream mouse\n"
+            "      Rattus norvegicus:\n"
+            "        meaning: NCBITaxon:10116\n"
+            "        description: upstream rat\n"
+        )
+
+        class _FakeNeuroTermsets:
+            @staticmethod
+            def get_termset_path(name):
+                assert name == "ncbitaxon"
+                return str(upstream_yaml)
+
+        monkeypatch.setitem(sys.modules, "neuro_termsets", _FakeNeuroTermsets())
+
+        from neuroconv.tools.ontology._term_sets import load_term_set, load_upstream_term_set
+
+        upstream = load_upstream_term_set("species.yaml")
+        assert upstream["Mus musculus"].description == "upstream mouse"
+        assert "Rattus norvegicus" in upstream
+
+        merged = load_term_set("species.yaml")
+        assert merged["Mus musculus"].description == "upstream mouse"  # upstream wins on overlap
+        assert "Homo sapiens" in merged  # bundled-only values are kept
+        assert "mouse" in merged["Mus musculus"].aliases  # upstream has no aliases: ours are not dropped
+
+    def test_aliases_of_both_sources_are_combined(self, monkeypatch, tmp_path):
+        upstream_yaml = tmp_path / "ncbitaxon.yaml"
+        upstream_yaml.write_text(
+            "prefixes:\n"
+            "  NCBITaxon: http://purl.obolibrary.org/obo/NCBITaxon_\n"
+            "enums:\n"
+            "  Species:\n"
+            "    permissible_values:\n"
+            "      Mus musculus:\n"
+            "        meaning: NCBITaxon:10090\n"
+            "        aliases:\n"
+            "          - murine\n"
+            "          - mouse\n"
+        )
+
+        class _FakeNeuroTermsets:
+            @staticmethod
+            def get_termset_path(name):
+                return str(upstream_yaml)
+
+        monkeypatch.setitem(sys.modules, "neuro_termsets", _FakeNeuroTermsets())
+
+        from neuroconv.tools.ontology._term_sets import load_term_set
+
+        aliases = load_term_set("species.yaml")["Mus musculus"].aliases
+        assert "murine" in aliases and "house mouse" in aliases
+        assert aliases.count("mouse") == 1  # a name both sources list appears once
+
+    def test_upstream_failure_falls_back_to_bundled(self, monkeypatch):
+        class _BrokenNeuroTermsets:
+            @staticmethod
+            def get_termset_path(name):
+                raise FileNotFoundError("term set renamed upstream")
+
+        monkeypatch.setitem(sys.modules, "neuro_termsets", _BrokenNeuroTermsets())
+
+        from neuroconv.tools.ontology._term_sets import load_term_set, load_upstream_term_set
+
+        assert load_upstream_term_set("species.yaml") is None
+        assert load_term_set("species.yaml")["Mus musculus"].curie == "NCBITaxon:10090"
+
+
+# ---------------------------------------------------------------------------
+# Aliases live in the term set files
+# ---------------------------------------------------------------------------
+
+TERM_SET_FILES = ["species.yaml", "mouse_brain_atlas.yaml", "human_brain_atlas.yaml", "uberon_common_regions.yaml"]
+
+
+class TestTermSetAliases:
+    def test_aliases_are_parsed_into_term_info(self):
+        from neuroconv.tools.ontology._term_sets import load_term_set
+
+        assert "mouse" in load_term_set("species.yaml")["Mus musculus"].aliases
+        assert load_term_set("mouse_brain_atlas.yaml")["HIP"].aliases == ("hippocampus",)
+
+    def test_term_without_aliases_has_an_empty_tuple(self):
+        from neuroconv.tools.ontology._term_sets import load_term_set
+
+        assert load_term_set("mouse_brain_atlas.yaml")["TH"].aliases == ()
+
+    @pytest.mark.parametrize("file_name", TERM_SET_FILES)
+    def test_no_alias_is_shared_between_terms(self, file_name):
+        from neuroconv.tools.ontology._term_sets import load_term_set
+
+        owner = {}
+        for term in load_term_set(file_name).values():
+            for alias in term.aliases:
+                assert owner.setdefault(alias.lower(), term.value) == term.value, alias
+
+    @pytest.mark.parametrize(
+        "location, species, expected_curie",
+        [
+            ("brainstem", "Mus musculus", "MBA:343"),
+            ("lateral entorhinal cortex", "Mus musculus", "MBA:918"),
+            ("Area CA1", "Mus musculus", "MBA:382"),
+            ("insular cortex", "Homo sapiens", "HBA:4268"),
+            ("isocortex", "Rattus norvegicus", "UBERON:0001950"),
+        ],
+    )
+    def test_brain_region_aliases_resolve(self, location, species, expected_curie):
+        assert get_brain_region_term(location, species=species).curie == expected_curie
+
+    @pytest.mark.parametrize(
+        "name, expected_species",
+        [
+            ("mice", "Mus musculus"),
+            ("African clawed frog", "Xenopus laevis"),
+            ("domestic ferret", "Mustela putorius furo"),
+            ("swine", "Sus scrofa"),
+        ],
+    )
+    def test_species_aliases_resolve(self, name, expected_species):
+        assert get_species_term(name).canonical_name == expected_species
+
+    def test_atlas_rejects_an_alias_already_used_by_another_term(self, monkeypatch):
+        from neuroconv.tools.ontology import _brain_regions
+        from neuroconv.tools.ontology._term_sets import TermInfo
+
+        fake_term_set = {
+            "A": TermInfo("A", "X:1", "https://example.org/1", "first", ("shared",)),
+            "B": TermInfo("B", "X:2", "https://example.org/2", "second", ("shared",)),
+        }
+        monkeypatch.setattr(_brain_regions, "load_term_set", lambda file_name: fake_term_set)
+        with pytest.raises(ValueError, match="already used"):
+            _brain_regions._build_atlas("unused.yaml")
 
 
 # ---------------------------------------------------------------------------
@@ -722,6 +894,59 @@ class TestBrainRegionExternalResources:
         assert add_brain_region_external_resources(nwbfile, metadata=metadata) == 1
         assert nwbfile.external_resources is herd  # extended in place, not replaced
         assert len(herd.entities[:]) == 2
+
+    def test_conflicting_terms_across_modality_blocks_warn_and_use_the_last_block(self):
+        nwbfile = _make_nwbfile()
+        _add_electrodes(nwbfile, ["CA1"])
+        device = nwbfile.create_device(name="scope")
+        nwbfile.create_imaging_plane(
+            name="plane0",
+            optical_channel=_optical_channel(),
+            description="d",
+            device=device,
+            excitation_lambda=600.0,
+            indicator="GCaMP",
+            location="CA1",
+            imaging_rate=30.0,
+        )
+        metadata = {
+            "Ecephys": {
+                "ontology": {"brain_regions": {"CA1": {"id": "MBA:382", "uri": "https://example.org/MBA_382"}}}
+            },
+            "Ophys": {"ontology": {"brain_regions": {"CA1": {"id": "MBA:999", "uri": "https://example.org/MBA_999"}}}},
+        }
+
+        with pytest.warns(UserWarning, match="CA1.*different ontology terms"):
+            number_added = add_brain_region_external_resources(nwbfile, metadata=metadata)
+
+        # 'Ophys' is processed after 'Ecephys' (see _BRAIN_REGION_METADATA_BLOCKS), so its term wins
+        # for every site sharing the "CA1" location string, electrodes included.
+        assert number_added == 2
+        dataframe = nwbfile.external_resources.to_dataframe()
+        assert set(dataframe["entity_id"].tolist()) == {"MBA:999"}
+
+    def test_identical_terms_across_modality_blocks_do_not_warn(self, recwarn):
+        nwbfile = _make_nwbfile()
+        _add_electrodes(nwbfile, ["CA1"])
+        device = nwbfile.create_device(name="scope")
+        nwbfile.create_imaging_plane(
+            name="plane0",
+            optical_channel=_optical_channel(),
+            description="d",
+            device=device,
+            excitation_lambda=600.0,
+            indicator="GCaMP",
+            location="CA1",
+            imaging_rate=30.0,
+        )
+        same_term = {"id": "MBA:382", "uri": "https://example.org/MBA_382"}
+        metadata = {
+            "Ecephys": {"ontology": {"brain_regions": {"CA1": same_term}}},
+            "Ophys": {"ontology": {"brain_regions": {"CA1": same_term}}},
+        }
+
+        add_brain_region_external_resources(nwbfile, metadata=metadata)
+        assert len(recwarn) == 0
 
 
 # ---------------------------------------------------------------------------

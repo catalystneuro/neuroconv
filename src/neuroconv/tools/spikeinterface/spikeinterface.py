@@ -547,6 +547,7 @@ def add_sorting_to_nwbfile(
             - "sds": np.ndarray of shape (num_units, num_samples, num_channels), optional
             - "sampling_rate": float, the sampling rate of the waveforms in Hz
             - "unit": str, the unit of measurement (default: "volts")
+            - "time_before_peak_in_ms": float, the time from the start of each waveform to the spike peak, optional
     write_as : {'units', 'processing'}, optional
         Deprecated. Use ``parent_container`` instead. Will be removed on or after February 2027.
     """
@@ -565,6 +566,7 @@ def add_sorting_to_nwbfile(
         _waveform_sds = waveform_data_dict.get("sds")
         _waveform_rate = waveform_data_dict.get("sampling_rate")
         _waveform_unit = waveform_data_dict.get("unit", "volts")
+        _waveform_time_before_peak_in_ms = waveform_data_dict.get("time_before_peak_in_ms")
     elif waveform_means is not None:
         # Deprecated path - emit FutureWarning for gradual migration
         warnings.warn(
@@ -577,11 +579,13 @@ def add_sorting_to_nwbfile(
         _waveform_sds = waveform_sds
         _waveform_rate = None
         _waveform_unit = "volts"
+        _waveform_time_before_peak_in_ms = None
     else:
         _waveform_means = None
         _waveform_sds = None
         _waveform_rate = None
         _waveform_unit = "volts"
+        _waveform_time_before_peak_in_ms = None
 
     # Resolution from sorting's sampling frequency
     _resolution = 1.0 / sorting.get_sampling_frequency()
@@ -607,6 +611,7 @@ def add_sorting_to_nwbfile(
         null_values_for_properties=null_values_for_properties,
         waveform_rate=_waveform_rate,
         waveform_unit=_waveform_unit,
+        waveform_time_before_peak_in_ms=_waveform_time_before_peak_in_ms,
         resolution=_resolution,
     )
 
@@ -2529,6 +2534,7 @@ def _add_units_table_to_nwbfile(
     *,
     waveform_rate: float | None = None,
     waveform_unit: str = "volts",
+    waveform_time_before_peak_in_ms: float | None = None,
     resolution: float | None = None,
     null_values_for_properties: dict | None = None,
 ):
@@ -2650,6 +2656,9 @@ def _add_units_table_to_nwbfile(
         Sampling rate of the waveform data in Hz. Sets Units.waveform_rate attribute.
     waveform_unit : str, default: "volts"
         Unit of measurement for waveform data. Sets Units.waveform_unit attribute.
+    waveform_time_before_peak_in_ms : float, optional
+        Time from the start of each waveform to the spike peak in milliseconds, which is the alignment
+        point used during sorting. Sets Units.waveform_time_before_peak_in_ms attribute.
     resolution : float, optional
         The smallest possible difference between two spike times in seconds.
         Sets Units.resolution attribute.
@@ -2692,6 +2701,7 @@ def _add_units_table_to_nwbfile(
         description=unit_table_description,
         waveform_rate=waveform_rate,
         waveform_unit=waveform_unit,
+        waveform_time_before_peak_in_ms=waveform_time_before_peak_in_ms,
         resolution=resolution,
     )
     if unit_electrode_indices is not None:
@@ -3254,6 +3264,16 @@ def add_sorting_analyzer_to_nwbfile(
         raise ValueError("No templates found in the sorting analyzer.")
     template_means = template_extension.get_templates()
     template_stds = template_extension.get_templates(operator="std")
+
+    # The analyzer knows the rate the templates were sampled at and where the spike peak sits inside each
+    # of them. `ms_before` is backfilled from `nbefore` by the templates extension, so it is there even on
+    # an analyzer computed before it was a parameter.
+    waveform_rate = sorting_analyzer.sampling_frequency
+    waveform_time_before_peak_in_ms = template_extension.params["ms_before"]
+    # Scaled traces in spikeinterface are microvolts. An analyzer whose recording has no gains keeps the
+    # digital counts, which carry no physical unit.
+    waveform_unit = "microvolts" if sorting_analyzer.return_in_uV else "a.u."
+
     sorting = sorting_analyzer.sorting
     if unit_ids is not None:
         unit_indices = sorting.ids_to_indices(unit_ids)
@@ -3311,6 +3331,9 @@ def add_sorting_analyzer_to_nwbfile(
         unit_table_description=units_description,
         waveform_means=template_means,
         waveform_sds=template_stds,
+        waveform_rate=waveform_rate,
+        waveform_unit=waveform_unit,
+        waveform_time_before_peak_in_ms=waveform_time_before_peak_in_ms,
         unit_electrode_indices=unit_electrode_indices,
         null_values_for_properties=null_values_for_properties,
     )

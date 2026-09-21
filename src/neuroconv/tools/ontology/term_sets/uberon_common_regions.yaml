@@ -15,24 +15,37 @@ enums:
       NCX:
         description: neocortex
         meaning: UBERON:0001950
+        aliases:
+          - isocortex
       M1:
         description: primary motor cortex
         meaning: UBERON:0001384
+        aliases:
+          - m1
       M2:
         description: secondary motor cortex
         meaning: UBERON:0016634
+        aliases:
+          - m2
       S1:
         description: primary somatosensory cortex
         meaning: UBERON:0008933
+        aliases:
+          - s1
       S1BF:
         description: barrel cortex
         meaning: UBERON:0010415
       V1:
         description: primary visual cortex
         meaning: UBERON:0002436
+        aliases:
+          - v1
+          - striate cortex
       V2:
         description: secondary visual cortex
         meaning: UBERON:0022232
+        aliases:
+          - v2
       ENT:
         description: entorhinal cortex
         meaning: UBERON:0002728
