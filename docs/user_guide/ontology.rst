@@ -273,3 +273,18 @@ The recognized terms live in curated `LinkML <https://linkml.io/>`_ TermSet file
 NeuroConv (one per vocabulary, the same format used by
 `HDMF's TermSet <https://hdmf.readthedocs.io/en/stable/tutorials/plot_term_set.html>`_), so the
 mappings are transparent and editable.
+
+The informal names NeuroConv accepts (``"hippocampus"``, ``"V1"``, ``"mouse"``) are stored in the
+same files as LinkML ``aliases`` on the term they resolve to, so adding one is a YAML edit and needs
+no code change:
+
+.. code-block:: yaml
+
+    HIP:
+      description: Hippocampal region
+      meaning: MBA:1080
+      aliases:
+        - hippocampus
+
+An alias is matched case-insensitively. An alias may not be shared by two terms of the same file;
+NeuroConv raises an error when it loads a term set that does.

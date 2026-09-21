@@ -117,6 +117,35 @@ class TestUpstreamTermSets:
         merged = load_term_set("species.yaml")
         assert merged["Mus musculus"].description == "upstream mouse"  # upstream wins on overlap
         assert "Homo sapiens" in merged  # bundled-only values are kept
+        assert "mouse" in merged["Mus musculus"].aliases  # upstream has no aliases: ours are not dropped
+
+    def test_aliases_of_both_sources_are_combined(self, monkeypatch, tmp_path):
+        upstream_yaml = tmp_path / "ncbitaxon.yaml"
+        upstream_yaml.write_text(
+            "prefixes:\n"
+            "  NCBITaxon: http://purl.obolibrary.org/obo/NCBITaxon_\n"
+            "enums:\n"
+            "  Species:\n"
+            "    permissible_values:\n"
+            "      Mus musculus:\n"
+            "        meaning: NCBITaxon:10090\n"
+            "        aliases:\n"
+            "          - murine\n"
+            "          - mouse\n"
+        )
+
+        class _FakeNeuroTermsets:
+            @staticmethod
+            def get_termset_path(name):
+                return str(upstream_yaml)
+
+        monkeypatch.setitem(sys.modules, "neuro_termsets", _FakeNeuroTermsets())
+
+        from neuroconv.tools.ontology._term_sets import load_term_set
+
+        aliases = load_term_set("species.yaml")["Mus musculus"].aliases
+        assert "murine" in aliases and "house mouse" in aliases
+        assert aliases.count("mouse") == 1  # a name both sources list appears once
 
     def test_upstream_failure_falls_back_to_bundled(self, monkeypatch):
         class _BrokenNeuroTermsets:
@@ -130,6 +159,72 @@ class TestUpstreamTermSets:
 
         assert load_upstream_term_set("species.yaml") is None
         assert load_term_set("species.yaml")["Mus musculus"].curie == "NCBITaxon:10090"
+
+
+# ---------------------------------------------------------------------------
+# Aliases live in the term set files
+# ---------------------------------------------------------------------------
+
+TERM_SET_FILES = ["species.yaml", "mouse_brain_atlas.yaml", "human_brain_atlas.yaml", "uberon_common_regions.yaml"]
+
+
+class TestTermSetAliases:
+    def test_aliases_are_parsed_into_term_info(self):
+        from neuroconv.tools.ontology._term_sets import load_term_set
+
+        assert "mouse" in load_term_set("species.yaml")["Mus musculus"].aliases
+        assert load_term_set("mouse_brain_atlas.yaml")["HIP"].aliases == ("hippocampus",)
+
+    def test_term_without_aliases_has_an_empty_tuple(self):
+        from neuroconv.tools.ontology._term_sets import load_term_set
+
+        assert load_term_set("mouse_brain_atlas.yaml")["TH"].aliases == ()
+
+    @pytest.mark.parametrize("file_name", TERM_SET_FILES)
+    def test_no_alias_is_shared_between_terms(self, file_name):
+        from neuroconv.tools.ontology._term_sets import load_term_set
+
+        owner = {}
+        for term in load_term_set(file_name).values():
+            for alias in term.aliases:
+                assert owner.setdefault(alias.lower(), term.value) == term.value, alias
+
+    @pytest.mark.parametrize(
+        "location, species, expected_curie",
+        [
+            ("brainstem", "Mus musculus", "MBA:343"),
+            ("lateral entorhinal cortex", "Mus musculus", "MBA:918"),
+            ("Area CA1", "Mus musculus", "MBA:382"),
+            ("insular cortex", "Homo sapiens", "HBA:4268"),
+            ("isocortex", "Rattus norvegicus", "UBERON:0001950"),
+        ],
+    )
+    def test_brain_region_aliases_resolve(self, location, species, expected_curie):
+        assert get_brain_region_term(location, species=species).curie == expected_curie
+
+    @pytest.mark.parametrize(
+        "name, expected_species",
+        [
+            ("mice", "Mus musculus"),
+            ("African clawed frog", "Xenopus laevis"),
+            ("domestic ferret", "Mustela putorius furo"),
+            ("swine", "Sus scrofa"),
+        ],
+    )
+    def test_species_aliases_resolve(self, name, expected_species):
+        assert get_species_term(name).canonical_name == expected_species
+
+    def test_atlas_rejects_an_alias_already_used_by_another_term(self, monkeypatch):
+        from neuroconv.tools.ontology import _brain_regions
+        from neuroconv.tools.ontology._term_sets import TermInfo
+
+        fake_term_set = {
+            "A": TermInfo("A", "X:1", "https://example.org/1", "first", ("shared",)),
+            "B": TermInfo("B", "X:2", "https://example.org/2", "second", ("shared",)),
+        }
+        monkeypatch.setattr(_brain_regions, "load_term_set", lambda file_name: fake_term_set)
+        with pytest.raises(ValueError, match="already used"):
+            _brain_regions._build_atlas("unused.yaml")
 
 
 # ---------------------------------------------------------------------------

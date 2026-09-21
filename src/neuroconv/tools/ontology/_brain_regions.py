@@ -49,52 +49,13 @@ class BrainRegionTerm:
     entity_uri: str  # resolvable entity URI (usable as a HERD ``entity_uri``)
 
 
-# Common informal names and abbreviations -> Allen acronym, per atlas. Compared case-insensitively.
-_MBA_ALIAS_TO_ACRONYM: dict[str, str] = {
-    "hippocampus": "HIP",
-    "entorhinal cortex": "ENT",
-    "primary visual cortex": "VISp",
-    "v1": "VISp",
-    "primary motor cortex": "MOp",
-    "m1": "MOp",
-    "primary somatosensory cortex": "SSp",
-    "s1": "SSp",
-    "barrel cortex": "SSp-bfd",
-    "neocortex": "Isocortex",
-    "dorsal striatum": "CP",
-    "locus coeruleus": "LC",
-    "substantia nigra pars compacta": "SNc",
-    "substantia nigra pars reticulata": "SNr",
-    "periaqueductal grey": "PAG",
-}
-
-_HBA_ALIAS_TO_ACRONYM: dict[str, str] = {
-    "hippocampus": "HiF",
-    "caudate": "Cd",
-    "midbrain": "MES",
-    "medulla": "MY",
-    "medulla oblongata": "MY",
-    "cingulate cortex": "CgG",
-    "locus coeruleus": "LC",
-}
-
-# Species-agnostic fallback (any recognized species without a dedicated Allen atlas, e.g. rat).
-_UBERON_ALIAS_TO_ACRONYM: dict[str, str] = {
-    "v1": "V1",
-    "v2": "V2",
-    "m1": "M1",
-    "m2": "M2",
-    "s1": "S1",
-}
-
-
 @dataclass(frozen=True)
 class _BrainAtlas:
     """A curated, offline lookup of one species' brain-atlas terms."""
 
     terms: dict[str, BrainRegionTerm]  # acronym -> term
     name_to_acronym: dict[str, str]  # lower-cased canonical name -> acronym
-    alias_to_acronym: dict[str, str]  # lower-cased informal name -> acronym
+    alias_to_acronym: dict[str, str]  # lower-cased informal name -> acronym (from the term set's ``aliases``)
 
     def resolve(self, location: str) -> BrainRegionTerm | None:
         """Resolve a location string to a term via exact acronym, canonical name, or alias."""
@@ -109,20 +70,33 @@ class _BrainAtlas:
         return self.terms.get(acronym) if acronym is not None else None
 
 
-def _build_atlas(term_set_file: str, alias_to_acronym: dict) -> _BrainAtlas:
+def _build_atlas(term_set_file: str) -> _BrainAtlas:
+    term_infos = load_term_set(term_set_file)
     terms = {
         info.value: BrainRegionTerm(
             acronym=info.value, name=info.description, curie=info.curie, entity_uri=info.entity_uri
         )
-        for info in load_term_set(term_set_file).values()
+        for info in term_infos.values()
     }
     name_to_acronym = {term.name.lower(): term.acronym for term in terms.values()}
+
+    alias_to_acronym: dict[str, str] = {}
+    for info in term_infos.values():
+        for alias in info.aliases:
+            lowered = alias.lower()
+            claimed_by = alias_to_acronym.get(lowered) or name_to_acronym.get(lowered)
+            if claimed_by is not None and claimed_by != info.value:
+                raise ValueError(
+                    f"Alias {alias!r} of {info.value!r} in {term_set_file} is already used for {claimed_by!r}."
+                )
+            alias_to_acronym[lowered] = info.value
+
     return _BrainAtlas(terms=terms, name_to_acronym=name_to_acronym, alias_to_acronym=alias_to_acronym)
 
 
-_MBA_ATLAS = _build_atlas("mouse_brain_atlas.yaml", _MBA_ALIAS_TO_ACRONYM)
-_HBA_ATLAS = _build_atlas("human_brain_atlas.yaml", _HBA_ALIAS_TO_ACRONYM)
-_UBERON_ATLAS = _build_atlas("uberon_common_regions.yaml", _UBERON_ALIAS_TO_ACRONYM)
+_MBA_ATLAS = _build_atlas("mouse_brain_atlas.yaml")
+_HBA_ATLAS = _build_atlas("human_brain_atlas.yaml")
+_UBERON_ATLAS = _build_atlas("uberon_common_regions.yaml")
 
 # Canonical species binomial -> its dedicated Allen brain atlas. Any other recognized species
 # (e.g. rat) falls back to the species-agnostic _UBERON_ATLAS -- see _atlas_for_species.

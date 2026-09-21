@@ -15,7 +15,7 @@ installed -- see :func:`load_upstream_term_set`. This is a soft, optional upgrad
 dependency: NeuroConv works exactly as it does today when ``neuro-termsets`` is absent.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from functools import lru_cache
 from pathlib import Path
 
@@ -42,6 +42,7 @@ class TermInfo:
     curie: str  # the entity CURIE from the term's ``meaning`` (e.g. "NCBITaxon:10090")
     entity_uri: str  # the resolvable entity URI (the CURIE expanded via the schema ``prefixes``)
     description: str
+    aliases: tuple[str, ...] = ()  # informal names for this value (LinkML ``aliases``)
 
 
 def _parse_term_set_schema(schema: dict) -> dict[str, TermInfo]:
@@ -56,7 +57,11 @@ def _parse_term_set_schema(schema: dict) -> dict[str, TermInfo]:
         prefix, local_identifier = curie.split(":", 1)
         entity_uri = prefixes[prefix] + local_identifier
         term_set[value] = TermInfo(
-            value=value, curie=curie, entity_uri=entity_uri, description=term.get("description", "")
+            value=value,
+            curie=curie,
+            entity_uri=entity_uri,
+            description=term.get("description", ""),
+            aliases=tuple(term.get("aliases", ())),
         )
     return term_set
 
@@ -115,8 +120,9 @@ def load_term_set(file_name: str) -> dict[str, TermInfo]:
     Reads NeuroConv's own bundled copy under ``term_sets/`` first. When the optional
     `neuro-termsets <https://github.com/NeurodataWithoutBorders/neuro-termsets>`_ package is
     installed and has a term set for ``file_name``, its terms are merged in on top -- preferred
-    over the bundled ones for any value both define, and adding any value only it defines. Nothing
-    changes when that package is absent, which is the default today.
+    over the bundled ones for any value both define, and adding any value only it defines. For a
+    value both define, the aliases of the two are combined, so an upstream entry without aliases
+    never drops NeuroConv's. Nothing changes when that package is absent, which is the default today.
 
     Parameters
     ----------
@@ -132,6 +138,13 @@ def load_term_set(file_name: str) -> dict[str, TermInfo]:
 
     upstream_term_set = load_upstream_term_set(file_name)
     if upstream_term_set:
-        term_set = {**term_set, **upstream_term_set}
+        merged = dict(term_set)
+        for value, upstream_term in upstream_term_set.items():
+            bundled_term = term_set.get(value)
+            if bundled_term is not None:
+                aliases = tuple(dict.fromkeys(bundled_term.aliases + upstream_term.aliases))
+                upstream_term = replace(upstream_term, aliases=aliases)
+            merged[value] = upstream_term
+        term_set = merged
 
     return term_set
