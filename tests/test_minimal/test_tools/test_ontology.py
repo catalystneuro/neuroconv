@@ -73,11 +73,52 @@ class TestUpstreamTermSets:
 
     teardown_method = setup_method
 
-    def test_absent_package_is_a_noop(self):
+    def test_absent_package_is_a_noop(self, monkeypatch):
+        monkeypatch.setitem(sys.modules, "neuro_termsets", None)  # makes ``import neuro_termsets`` fail
+
         from neuroconv.tools.ontology._term_sets import load_term_set, load_upstream_term_set
 
         assert load_upstream_term_set("species.yaml") is None
         assert load_term_set("species.yaml")["Mus musculus"].curie == "NCBITaxon:10090"
+
+    def test_brain_region_term_sets_are_never_looked_up_upstream(self, monkeypatch):
+        # neuro-termsets keys its brain-region files by full name, not acronym, so merging them
+        # would corrupt the acronym-keyed atlases.
+        requested = []
+
+        class _RecordingNeuroTermsets:
+            @staticmethod
+            def get_termset_path(name):
+                requested.append(name)
+                raise FileNotFoundError(name)
+
+        monkeypatch.setitem(sys.modules, "neuro_termsets", _RecordingNeuroTermsets())
+
+        from neuroconv.tools.ontology._term_sets import load_upstream_term_set
+
+        for file_name in ["mouse_brain_atlas.yaml", "human_brain_atlas.yaml", "uberon_common_regions.yaml"]:
+            assert load_upstream_term_set(file_name) is None
+        assert requested == []
+
+    def test_mapped_names_exist_in_the_installed_neuro_termsets(self):
+        neuro_termsets = pytest.importorskip("neuro_termsets")
+
+        from neuroconv.tools.ontology._term_sets import _UPSTREAM_TERM_SET_NAMES
+
+        available = neuro_termsets.get_available_termsets()
+        for bundled_name, upstream_name in _UPSTREAM_TERM_SET_NAMES.items():
+            assert upstream_name in available, f"{bundled_name} maps to {upstream_name!r}, not in {available}"
+
+    def test_real_neuro_termsets_species_merge_keeps_bundled_terms_and_aliases(self):
+        pytest.importorskip("neuro_termsets")
+
+        from neuroconv.tools.ontology._term_sets import load_term_set, load_upstream_term_set
+
+        assert load_upstream_term_set("species.yaml") is not None  # the mapped name really resolves
+        merged = load_term_set("species.yaml")
+        assert merged["Mus musculus"].curie == "NCBITaxon:10090"
+        assert "mouse" in merged["Mus musculus"].aliases  # ours survive an upstream entry without aliases
+        assert "Xenopus laevis" in merged  # bundled-only values are kept
 
     def test_unmapped_file_name_returns_none(self):
         from neuroconv.tools.ontology._term_sets import load_upstream_term_set
@@ -85,7 +126,7 @@ class TestUpstreamTermSets:
         assert load_upstream_term_set("not_a_bundled_file.yaml") is None
 
     def test_upstream_terms_are_preferred_and_merged(self, monkeypatch, tmp_path):
-        upstream_yaml = tmp_path / "ncbitaxon.yaml"
+        upstream_yaml = tmp_path / "upstream_species.yaml"
         upstream_yaml.write_text(
             "prefixes:\n"
             "  NCBITaxon: http://purl.obolibrary.org/obo/NCBITaxon_\n"
@@ -103,7 +144,7 @@ class TestUpstreamTermSets:
         class _FakeNeuroTermsets:
             @staticmethod
             def get_termset_path(name):
-                assert name == "ncbitaxon"
+                assert name == "subject_species_ncbitaxon_termset.yaml"
                 return str(upstream_yaml)
 
         monkeypatch.setitem(sys.modules, "neuro_termsets", _FakeNeuroTermsets())

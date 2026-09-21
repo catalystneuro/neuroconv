@@ -23,14 +23,20 @@ import yaml
 
 _TERM_SET_DIRECTORY = Path(__file__).parent / "term_sets"
 
-# Bundled TermSet file name -> the equivalent term set name in the optional `neuro-termsets`
-# package (queried via `neuro_termsets.get_termset_path(name)`). `neuro-termsets` is pre-production
-# and these names are provisional; review this mapping as that project's layout stabilizes.
+# Bundled TermSet file name -> the equivalent term set file in the optional `neuro-termsets`
+# package (queried via `neuro_termsets.get_termset_path(name)`, which needs the exact file name
+# including ``.yaml``). `neuro-termsets` is pre-production, so review this mapping as its layout
+# changes.
+#
+# Only term sets with the same shape as ours are mapped: a canonical value as the key and its
+# ``meaning``. neuro-termsets' brain-region files (``brain_region_mba_termset.yaml``,
+# ``brain_region_hba_termset.yaml``, ``brain_region_uberon_termset.yaml``) are keyed by full names
+# such as "Abducens nucleus  ( mouse )", with the acronym only inside the free-text description,
+# while ours are keyed by acronym. Merging them would add over a thousand mis-keyed entries, so
+# ``mouse_brain_atlas.yaml``, ``human_brain_atlas.yaml`` and ``uberon_common_regions.yaml`` stay
+# unmapped until the two agree on a key convention.
 _UPSTREAM_TERM_SET_NAMES: dict[str, str] = {
-    "species.yaml": "ncbitaxon",
-    "uberon_common_regions.yaml": "uberon",
-    "mouse_brain_atlas.yaml": "mba",
-    "human_brain_atlas.yaml": "hba",
+    "species.yaml": "subject_species_ncbitaxon_termset.yaml",
 }
 
 
