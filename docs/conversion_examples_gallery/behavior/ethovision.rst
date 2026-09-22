@@ -8,8 +8,11 @@ Install NeuroConv with the dependencies needed for Noldus EthoVision XT exports.
     pip install "neuroconv[ethovision]"
 
 EthoVision exports the same Track model as Excel, CSV, or TXT. One Track is one subject's
-sampled data in one arena. :py:class:`~neuroconv.datainterfaces.behavior.ethovision.ethovisiondatainterface.EthoVisionDataInterface`
-reads exactly one Track from any of those containers.
+sampled data in one arena during one recording run (what EthoVision calls a trial).
+:py:class:`~neuroconv.datainterfaces.behavior.ethovision.ethovisiondatainterface.EthoVisionDataInterface`
+reads exactly one Track from any of those containers. Timestamps come from the ``Trial time``
+column, which is shared by every Track of the run and starts at the ``Start time`` the interface
+reports as ``session_start_time``.
 
 Convert one Track
 ~~~~~~~~~~~~~~~~~
@@ -41,7 +44,9 @@ Convert one Track
 than by an Excel worksheet name. They are optional when the source contains exactly one Track,
 because that identity is unambiguous, but required when an Excel workbook contains several Tracks.
 Use :meth:`~neuroconv.datainterfaces.behavior.ethovision.ethovisiondatainterface.EthoVisionDataInterface.get_available_tracks`
-to discover the valid pairs.
+to discover the valid pairs. An EthoVision subject name is a role label defined once per
+experiment and reused in every arena and run, so it names a Track rather than an animal; set
+``Subject`` metadata yourself, as in the example above.
 
 The selected Track is mapped to NWB as follows:
 

@@ -24,10 +24,16 @@ Y_COLUMN = "Y center"
 class EthoVisionDataInterface(BaseEventsInterface):
     """Interface for one Track in a Noldus EthoVision XT export.
 
-    Excel, CSV, and TXT are container variants of the same Track model. An Excel workbook
-    can contain several Tracks; ``arena_name`` and ``subject_name`` select one. A matching
-    Excel Manual Scoring sheet can contain several subjects, so only the selected subject's
-    events are retained.
+    A Track is one subject's sampled data in one arena during one EthoVision recording run
+    (what EthoVision calls a trial). Excel, CSV, and TXT are container variants of the same
+    Track model. An Excel workbook holds every Track of a run; ``arena_name`` and
+    ``subject_name`` select one. A matching Excel Manual Scoring sheet can contain several
+    subjects, so only the selected subject's events are retained.
+
+    Timestamps come from the ``Trial time`` column, which counts from the start of the run and
+    is shared by every Track of that run, so it matches the ``Start time`` written to
+    ``session_start_time``. ``Recording time``, which counts from each Track's own acquisition
+    start, is not used.
 
     The selected source content is mapped to NWB as follows:
 
@@ -69,7 +75,10 @@ class EthoVisionDataInterface(BaseEventsInterface):
         arena_name : str, optional
             Arena to select. Inferred when the source contains only one matching arena.
         subject_name : str, optional
-            Subject to select. Inferred when the source contains only one matching subject.
+            Subject to select, matching the export's ``Subject name``. Inferred when the source
+            contains only one matching subject. EthoVision subject names are role labels defined
+            once per experiment and reused in every arena and run, so they identify a Track and
+            not an animal.
         metadata_key : str, optional
             The key for this track's metadata and events blocks. By default it is derived from
             the Track sheet's arena and subject so several interfaces can share an NWB file.
