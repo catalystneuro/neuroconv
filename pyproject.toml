@@ -98,7 +98,8 @@ dannce = [
     # 0.4.0 is released.
     "ndx-pose @ git+https://github.com/rly/ndx-pose.git@main",
     "scipy",
-    # opencv (via neuroconv[video]) is only needed when video_file_path is provided for timestamp extraction
+    # DANNCEConverter links each camera's source video via ExternalVideoInterface, which needs cv2
+    "neuroconv[video]",
 ]
 sleap = [
     "av>=10.0.0",
