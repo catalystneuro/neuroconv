@@ -13,6 +13,7 @@ SUPPORTED_SUFFIXES = (".xlsx", ".csv", ".txt")
 
 TRIAL_TIME_COLUMN = "Trial time"
 RECORDING_TIME_COLUMN = "Recording time"
+NO_SAMPLES_SENTENCE = "No samples logged for this track!"
 
 
 @dataclass(frozen=True)
@@ -142,6 +143,12 @@ def _get_track_sources(file_path) -> list[EthoVisionTrackSource]:
 def _track_data_from_rows(rows: list[list], *, source_name: str) -> EthoVisionTrackData:
     header, column_names, units, data_rows = _split_header_and_table(rows=rows, source_name=source_name)
     _validate_track_columns(column_names=column_names, source_name=source_name)
+    if any(row and row[0] == NO_SAMPLES_SENTENCE for row in data_rows):
+        raise ValueError(
+            f"Track '{header.get('Arena name')}' / '{header.get('Subject name')}' in '{source_name}' logged no "
+            f"samples ('{NO_SAMPLES_SENTENCE}'). The trial was recorded but acquisition never started, so there is "
+            "nothing to convert."
+        )
     columns = {
         name: np.asarray(
             [_parse_track_value(row[index] if index < len(row) else None) for row in data_rows],
