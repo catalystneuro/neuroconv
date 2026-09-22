@@ -1,12 +1,7 @@
-"""Tests for EthoVisionDataInterface and same-session Track composition.
-
-These fixtures are on the unmerged ``behavior_testing_data`` branch, so their source paths remain
-local until that data branch is published and the test-data checkout can provide them.
-"""
+"""Tests for EthoVisionDataInterface and same-session Track composition."""
 
 import re
 from datetime import datetime, timezone
-from pathlib import Path
 
 import numpy as np
 import pytest
@@ -17,11 +12,11 @@ from neuroconv.datainterfaces.behavior.ethovision.ethovisiondatainterface import
 from neuroconv.tools.testing.data_interface_mixins import DataInterfaceTestMixin
 
 try:
-    from ..setup_paths import OUTPUT_PATH
+    from ..setup_paths import BEHAVIOR_DATA_PATH, OUTPUT_PATH
 except ImportError:
-    from setup_paths import OUTPUT_PATH
+    from setup_paths import BEHAVIOR_DATA_PATH, OUTPUT_PATH
 
-ETHOVISION_FOLDER_PATH = Path("/home/heberto/uploads/gin/behavior_testing_data/ethovision")
+ETHOVISION_FOLDER_PATH = BEHAVIOR_DATA_PATH / "ethovision"
 
 
 class TestEthoVisionTwoC57(DataInterfaceTestMixin):
