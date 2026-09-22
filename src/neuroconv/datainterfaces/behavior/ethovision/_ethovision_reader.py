@@ -13,6 +13,8 @@ SUPPORTED_SUFFIXES = (".xlsx", ".csv", ".txt")
 
 TRIAL_TIME_COLUMN = "Trial time"
 RECORDING_TIME_COLUMN = "Recording time"
+X_COLUMN = "X center"
+Y_COLUMN = "Y center"
 NO_SAMPLES_SENTENCE = "No samples logged for this track!"
 HEADER_COUNT_LABELS = ("number of header lines", "header lines")
 
@@ -282,9 +284,14 @@ def _split_header_and_table(rows: list[list], *, source_name: str):
 
 
 def _validate_track_columns(*, column_names: list[str], source_name: str) -> None:
-    missing_columns = {TRIAL_TIME_COLUMN, RECORDING_TIME_COLUMN}.difference(column_names)
+    """Reject tables that share the EthoVision time columns but carry no tracked positions."""
+    required_columns = {TRIAL_TIME_COLUMN, RECORDING_TIME_COLUMN, X_COLUMN, Y_COLUMN}
+    missing_columns = required_columns.difference(column_names)
     if missing_columns:
-        raise ValueError(f"'{source_name}' is not a Track export; missing columns: {sorted(missing_columns)}.")
+        raise ValueError(
+            f"'{source_name}' is not a Track export; missing columns: {sorted(missing_columns)}. "
+            "Hardware and Trial Control exports share the time columns but hold no tracked positions."
+        )
 
 
 def _parse_track_value(value) -> float:

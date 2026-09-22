@@ -8,6 +8,8 @@ from pynwb.behavior import SpatialSeries
 from pynwb.file import NWBFile
 
 from ._ethovision_reader import (
+    X_COLUMN,
+    Y_COLUMN,
     get_available_tracks,
     read_scoring_events,
     read_track,
@@ -16,9 +18,6 @@ from ._ethovision_reader import (
 from ...events.baseeventsinterface import BaseEventsInterface, _EventsData
 from ....tools import get_module
 from ....utils import DeepDict, calculate_regular_series_rate, to_camel_case, to_snake_case
-
-X_COLUMN = "X center"
-Y_COLUMN = "Y center"
 
 
 class EthoVisionDataInterface(BaseEventsInterface):

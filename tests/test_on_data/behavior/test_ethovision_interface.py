@@ -444,3 +444,14 @@ class TestEthoVisionMultipleArenasMultipleSubjects(DataInterfaceTestMixin):
             {"arena_name": "Arena 2", "subject_name": "Subject 4"},
         ]
         assert EthoVisionDataInterface.get_available_tracks(self.FILE_PATH) == expected_tracks
+
+
+def test_hardware_export_is_not_a_track():
+    """A Hardware export carries the time columns but no tracked positions."""
+    file_path = ETHOVISION_FOLDER_PATH / "txt/single_arena_single_subject/hardware_only/hardware_events.txt"
+    expected_error = (
+        "'hardware_events.txt' is not a Track export; missing columns: ['X center', 'Y center']. "
+        "Hardware and Trial Control exports share the time columns but hold no tracked positions."
+    )
+    with pytest.raises(ValueError, match=re.escape(expected_error)):
+        EthoVisionDataInterface.get_available_tracks(file_path)
