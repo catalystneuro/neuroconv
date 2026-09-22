@@ -128,6 +128,17 @@ class TestUpstreamTermSets:
         assert "mouse" in merged["Mus musculus"].aliases  # ours survive an upstream entry without aliases
         assert "Xenopus laevis" in merged  # bundled-only values are kept
 
+    def test_real_neuro_termsets_strain_merge_keeps_bundled_terms_and_aliases(self):
+        pytest.importorskip("neuro_termsets")
+
+        from neuroconv.tools.ontology._term_sets import load_term_set, load_upstream_term_set
+
+        assert load_upstream_term_set("strains.yaml") is not None  # the mapped name really resolves
+        merged = load_term_set("strains.yaml")
+        assert merged["C57BL/6J"].curie == "RRID:IMSR_JAX:000664"
+        assert "b6" in merged["C57BL/6J"].aliases  # ours survive an upstream entry without aliases
+        assert "N2" in merged  # upstream-only values (worm, zebrafish, fly, Cre lines) are kept
+
     def test_unmapped_file_name_returns_none(self):
         from neuroconv.tools.ontology._term_sets import load_upstream_term_set
 
