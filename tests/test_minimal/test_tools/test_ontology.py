@@ -255,6 +255,7 @@ TERM_SET_FILES = [
     "mouse_brain_atlas.yaml",
     "human_brain_atlas.yaml",
     "uberon_common_regions.yaml",
+    "general_anatomy.yaml",
 ]
 
 
@@ -265,6 +266,7 @@ class TestTermSetAliases:
         assert "mouse" in load_term_set("species.yaml")["Mus musculus"].aliases
         assert "black 6" in load_term_set("strains.yaml")["C57BL/6J"].aliases
         assert load_term_set("mouse_brain_atlas.yaml")["HIP"].aliases == ("hippocampus",)
+        assert "nose" in load_term_set("general_anatomy.yaml")["Snout"].aliases
 
     def test_term_without_aliases_has_an_empty_tuple(self):
         from neuroconv.tools.ontology._term_sets import load_term_set

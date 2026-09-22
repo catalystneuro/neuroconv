@@ -31,37 +31,20 @@ class AnatomyTerm:
     entity_uri: str  # resolvable entity URI (usable as a HERD ``entity_uri``)
 
 
+_GENERAL_ANATOMY_TERM_SET = load_term_set("general_anatomy.yaml")
+
 # Canonical structure name -> AnatomyTerm, from the curated general-anatomy TermSet.
 ANATOMY_TERMS: dict[str, AnatomyTerm] = {
     info.value: AnatomyTerm(name=info.value, curie=info.curie, entity_uri=info.entity_uri)
-    for info in load_term_set("general_anatomy.yaml").values()
+    for info in _GENERAL_ANATOMY_TERM_SET.values()
 }
 
 _LOWER_TO_CANONICAL: dict[str, str] = {name.lower(): name for name in ANATOMY_TERMS}
 
-# Common informal names and abbreviations -> canonical structure name. Compared case-insensitively.
+# Common informal names and abbreviations -> canonical structure name, from the term set's
+# ``aliases`` (compared case-insensitively).
 _ALIAS_TO_CANONICAL: dict[str, str] = {
-    "nose": "Snout",
-    "muzzle": "Snout",
-    "pinna": "Ear",
-    "external ear": "Ear",
-    "forepaw": "Hand",
-    "fore paw": "Hand",
-    "manus": "Hand",
-    "hindpaw": "Foot",
-    "hind paw": "Foot",
-    "pes": "Foot",
-    "carpus": "Wrist",
-    "tarsus": "Ankle",
-    "tarsal region": "Ankle",
-    "tailbase": "Tail",
-    "tail base": "Tail",
-    "arm": "Upper arm",
-    "vertebral column": "Spine",
-    "backbone": "Spine",
-    "trapezius": "Trapezius muscle",
-    "masseter": "Masseter muscle",
-    "scm": "Sternocleidomastoid",
+    alias.lower(): info.value for info in _GENERAL_ANATOMY_TERM_SET.values() for alias in info.aliases
 }
 
 

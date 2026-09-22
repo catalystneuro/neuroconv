@@ -15,9 +15,15 @@ enums:
       Snout:
         description: snout
         meaning: UBERON:0006333
+        aliases:
+          - nose
+          - muzzle
       Ear:
         description: external ear
         meaning: UBERON:0001691
+        aliases:
+          - pinna
+          - external ear
       Eye:
         description: eye
         meaning: UBERON:0000970
@@ -30,15 +36,23 @@ enums:
       Spine:
         description: vertebral column
         meaning: UBERON:0001130
+        aliases:
+          - vertebral column
+          - backbone
       Tail:
         description: tail
         meaning: UBERON:0002415
+        aliases:
+          - tailbase
+          - tail base
       Shoulder:
         description: shoulder
         meaning: UBERON:0001467
       Upper arm:
         description: forelimb stylopod (arm)
         meaning: UBERON:0003822
+        aliases:
+          - arm
       Elbow:
         description: elbow
         meaning: UBERON:0001461
@@ -48,9 +62,15 @@ enums:
       Wrist:
         description: carpus (wrist)
         meaning: UBERON:0004452
+        aliases:
+          - carpus
       Hand:
         description: manus (forepaw)
         meaning: UBERON:0002398
+        aliases:
+          - forepaw
+          - fore paw
+          - manus
       Hip:
         description: hip
         meaning: UBERON:0001464
@@ -66,15 +86,24 @@ enums:
       Ankle:
         description: tarsal region (ankle)
         meaning: UBERON:0004454
+        aliases:
+          - tarsus
+          - tarsal region
       Foot:
         description: pes (hindpaw)
         meaning: UBERON:0002387
+        aliases:
+          - hindpaw
+          - hind paw
+          - pes
       Digit:
         description: digit
         meaning: UBERON:0002544
       Trapezius muscle:
         description: trapezius muscle
         meaning: UBERON:0002380
+        aliases:
+          - trapezius
       Gastrocnemius:
         description: gastrocnemius muscle
         meaning: UBERON:0001388
@@ -87,9 +116,13 @@ enums:
       Masseter muscle:
         description: masseter muscle
         meaning: UBERON:0001597
+        aliases:
+          - masseter
       Sternocleidomastoid:
         description: sternocleidomastoid muscle
         meaning: UBERON:0001128
+        aliases:
+          - scm
       Skeletal muscle:
         description: skeletal muscle tissue (generic)
         meaning: UBERON:0001134
