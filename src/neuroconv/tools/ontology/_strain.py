@@ -43,23 +43,14 @@ STRAIN_TERMS: dict[str, StrainTerm] = {
 }
 
 
-# Common informal spellings -> canonical strain designation. Keys are compared case-insensitively.
-_COMMON_NAME_TO_CANONICAL: dict[str, str] = {
-    "c57bl/6": "C57BL/6J",
-    "c57bl6": "C57BL/6J",
-    "black 6": "C57BL/6J",
-    "b6": "C57BL/6J",
-    "c57bl/6n": "C57BL/6N",
-    "balb/c": "BALB/cJ",
-    "balbc": "BALB/cJ",
-    "129s1": "129S1/SvImJ",
-    "129 s1": "129S1/SvImJ",
-    "long evans": "Long-Evans",
-    "long-evans rat": "Long-Evans",
-    "sprague-dawley": "Sprague Dawley",
-    "sprague dawley rat": "Sprague Dawley",
-    "wistar rat": "Wistar",
-}
+# Common informal spellings -> canonical strain designation, from the strain TermSet's ``aliases``.
+# Keys are lower-cased and compared case-insensitively.
+_COMMON_NAME_TO_CANONICAL: dict[str, str] = {}
+for _info in load_term_set("strains.yaml").values():
+    for _alias in _info.aliases:
+        _claimed_by = _COMMON_NAME_TO_CANONICAL.setdefault(_alias.lower(), _info.value)
+        if _claimed_by != _info.value:
+            raise ValueError(f"Strain alias {_alias!r} of {_info.value!r} is already used for {_claimed_by!r}.")
 
 
 def get_strain_suggestion(strain: str) -> tuple[StrainTerm, str] | None:

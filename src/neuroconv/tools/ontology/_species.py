@@ -43,43 +43,14 @@ SPECIES_TERMS: dict[str, SpeciesTerm] = {
 }
 
 
-# Common (English) names -> canonical Latin binomial. Keys are compared case-insensitively.
-_COMMON_NAME_TO_CANONICAL: dict[str, str] = {
-    "mouse": "Mus musculus",
-    "house mouse": "Mus musculus",
-    "rat": "Rattus norvegicus",
-    "norway rat": "Rattus norvegicus",
-    "human": "Homo sapiens",
-    "macaque": "Macaca mulatta",
-    "rhesus macaque": "Macaca mulatta",
-    "rhesus monkey": "Macaca mulatta",
-    "cynomolgus macaque": "Macaca fascicularis",
-    "crab-eating macaque": "Macaca fascicularis",
-    "marmoset": "Callithrix jacchus",
-    "common marmoset": "Callithrix jacchus",
-    "ferret": "Mustela putorius furo",
-    "zebrafish": "Danio rerio",
-    "fruit fly": "Drosophila melanogaster",
-    "fly": "Drosophila melanogaster",
-    "worm": "Caenorhabditis elegans",
-    "c. elegans": "Caenorhabditis elegans",
-    "chicken": "Gallus gallus",
-    "pig": "Sus scrofa",
-    "rabbit": "Oryctolagus cuniculus",
-    "guinea pig": "Cavia porcellus",
-    "cat": "Felis catus",
-    "dog": "Canis lupus familiaris",
-    "sheep": "Ovis aries",
-    "hamster": "Mesocricetus auratus",
-    "golden hamster": "Mesocricetus auratus",
-    "syrian hamster": "Mesocricetus auratus",
-    "opossum": "Monodelphis domestica",
-    "zebra finch": "Taeniopygia guttata",
-    "axolotl": "Ambystoma mexicanum",
-    "goldfish": "Carassius auratus",
-    "honeybee": "Apis mellifera",
-    "honey bee": "Apis mellifera",
-}
+# Common (English) names -> canonical Latin binomial, from the species TermSet's ``aliases``.
+# Keys are lower-cased and compared case-insensitively.
+_COMMON_NAME_TO_CANONICAL: dict[str, str] = {}
+for _info in load_term_set("species.yaml").values():
+    for _alias in _info.aliases:
+        _claimed_by = _COMMON_NAME_TO_CANONICAL.setdefault(_alias.lower(), _info.value)
+        if _claimed_by != _info.value:
+            raise ValueError(f"Species alias {_alias!r} of {_info.value!r} is already used for {_claimed_by!r}.")
 
 
 def get_species_suggestion(species: str) -> tuple[SpeciesTerm, str] | None:

@@ -4,9 +4,10 @@ from pathlib import Path
 from typing import Literal
 
 from pynwb import NWBFile
-from pynwb.base import BaseImage, Images
+from pynwb.base import BaseImage, ImageReferences, Images
 
 from ...basedatainterface import BaseDataInterface
+from ...tools import get_package
 from ...utils import DeepDict, get_base_schema
 
 
@@ -91,6 +92,10 @@ class BaseImageInterface(BaseDataInterface):
 
             if not file_paths:
                 raise ValueError(f"No image files found in {folder}")
+
+            # The glob order depends on the filesystem, so sort it to give `order_of_images` a stable numbering
+            natsort = get_package(package_name="natsort", installation_instructions="pip install natsort")
+            file_paths = natsort.natsorted(file_paths)
 
         self.file_paths = [Path(p) for p in file_paths]
 
@@ -283,12 +288,17 @@ class BaseImageInterface(BaseDataInterface):
 
         # Process each image
         images_metadata_dict = container_metadata.get("images", {})
+        nwb_images = []
         for file_path in self.file_paths:
             image_metadata = images_metadata_dict.get(str(file_path), {})
             nwb_image = self._create_nwb_image(file_path=file_path, image_metadata=image_metadata)
 
             # Add to images container
             images_container.add_image(nwb_image)
+            nwb_images.append(nwb_image)
+
+        # Record the order of `file_paths` so an `IndexSeries` can index the container
+        images_container.order_of_images = ImageReferences(name="order_of_images", data=nwb_images)
 
         # Add images container to nwb file
         if parent_container == "acquisition":
