@@ -21,16 +21,13 @@ try:
 except ImportError:
     from setup_paths import OUTPUT_PATH
 
-ETHOVISION_FOLDER_PATH = Path("/home/heberto/data/ethovision")
+ETHOVISION_FOLDER_PATH = Path("/home/heberto/uploads/gin/behavior_testing_data/ethovision")
 
 
 class TestEthoVisionTwoC57(DataInterfaceTestMixin):
     """The `two_c57` stub: one subject, one arena, a Manual Scoring sheet with point and state events."""
 
-    FILE_PATH = (
-        ETHOVISION_FOLDER_PATH
-        / "stubs/ethovision/excel/single_arena_single_subject/track_and_manual_scoring/two_c57.xlsx"
-    )
+    FILE_PATH = ETHOVISION_FOLDER_PATH / "excel/single_arena_single_subject/track_and_manual_scoring/two_c57.xlsx"
     data_interface_cls = EthoVisionDataInterface
     interface_kwargs = dict(file_path=FILE_PATH)
     save_directory = OUTPUT_PATH
@@ -159,7 +156,7 @@ class TestEthoVisionMissingSamples(DataInterfaceTestMixin):
 
     FILE_PATH = (
         ETHOVISION_FOLDER_PATH
-        / "stubs/ethovision/excel/single_arena_multiple_subjects/hardware_and_trial_control/two_subjects_missing_samples.xlsx"
+        / "excel/single_arena_multiple_subjects/hardware_and_trial_control/two_subjects_missing_samples.xlsx"
     )
     data_interface_cls = EthoVisionDataInterface
     interface_kwargs = dict(
@@ -271,7 +268,7 @@ class TestEthoVisionMissingSamples(DataInterfaceTestMixin):
 class TestEthoVisionConverterPipeMultiSubject:
     FILE_PATH = (
         ETHOVISION_FOLDER_PATH
-        / "stubs/ethovision/excel/single_arena_multiple_subjects/hardware_and_trial_control/two_subjects_missing_samples.xlsx"
+        / "excel/single_arena_multiple_subjects/hardware_and_trial_control/two_subjects_missing_samples.xlsx"
     )
 
     def test_converter_pipe_combines_all_subject_tracks_in_one_arena(self):
@@ -326,9 +323,7 @@ class TestEthoVisionConverterPipeMultiSubject:
 
 
 class TestEthoVisionCsv(DataInterfaceTestMixin):
-    FILE_PATH = (
-        ETHOVISION_FOLDER_PATH / "stubs/ethovision/csv/single_arena_single_subject/track_only/morris_water_maze.csv"
-    )
+    FILE_PATH = ETHOVISION_FOLDER_PATH / "csv/single_arena_single_subject/track_only/morris_water_maze.csv"
     data_interface_cls = EthoVisionDataInterface
     interface_kwargs = dict(file_path=FILE_PATH)
     save_directory = OUTPUT_PATH
@@ -371,10 +366,7 @@ class TestEthoVisionCsv(DataInterfaceTestMixin):
 
 
 class TestEthoVisionTxt(DataInterfaceTestMixin):
-    FILE_PATH = (
-        ETHOVISION_FOLDER_PATH
-        / "stubs/ethovision/txt/single_arena_single_subject/truncated_last_row/termites_truncated.txt"
-    )
+    FILE_PATH = ETHOVISION_FOLDER_PATH / "txt/single_arena_single_subject/truncated_last_row/termites_truncated.txt"
     data_interface_cls = EthoVisionDataInterface
     interface_kwargs = dict(file_path=FILE_PATH)
     save_directory = OUTPUT_PATH
@@ -400,8 +392,7 @@ class TestEthoVisionTxt(DataInterfaceTestMixin):
 
 class TestEthoVisionMultipleArenasSingleSubject(DataInterfaceTestMixin):
     FILE_PATH = (
-        ETHOVISION_FOLDER_PATH
-        / "stubs/ethovision/excel/multiple_arenas_one_subject_each/track_only/two_arenas_one_subject_each.xlsx"
+        ETHOVISION_FOLDER_PATH / "excel/multiple_arenas_one_subject_each/track_only/two_arenas_one_subject_each.xlsx"
     )
     data_interface_cls = EthoVisionDataInterface
     interface_kwargs = dict(file_path=FILE_PATH, arena_name="Arena 2", subject_name="Subject 1")
@@ -426,8 +417,7 @@ class TestEthoVisionMultipleArenasSingleSubject(DataInterfaceTestMixin):
 
 class TestEthoVisionMultipleArenasMultipleSubjects(DataInterfaceTestMixin):
     FILE_PATH = (
-        ETHOVISION_FOLDER_PATH
-        / "stubs/ethovision/excel/multiple_arenas_multiple_subjects/track_only/two_arenas_four_subjects_each.xlsx"
+        ETHOVISION_FOLDER_PATH / "excel/multiple_arenas_multiple_subjects/track_only/two_arenas_four_subjects_each.xlsx"
     )
     data_interface_cls = EthoVisionDataInterface
     interface_kwargs = dict(file_path=FILE_PATH, arena_name="Arena 2", subject_name="Subject 4")
