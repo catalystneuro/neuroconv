@@ -16,7 +16,7 @@ Convert DANNCE (or social DANNCE / sDANNCE) 3D pose estimation data to NWB using
     >>> from zoneinfo import ZoneInfo
     >>> from neuroconv.datainterfaces import DANNCEInterface
 
-    >>> file_path = BEHAVIOR_DATA_PATH / "dannce" / "avg_and_max_predictions" / "DANNCE" / "predict_results" / "save_data_MAX.mat"
+    >>> file_path = BEHAVIOR_DATA_PATH / "dannce" / "dannce" / "avg_and_max_predictions" / "DANNCE" / "predict_results" / "save_data_MAX.mat"
     >>> interface = DANNCEInterface(file_paths=file_path, sampling_rate=30.0, verbose=False)
     >>> metadata = interface.get_metadata()
     >>> # DANNCE prediction files do not carry a session start time, so it must be set explicitly
@@ -38,7 +38,7 @@ for the supported calibration file formats) and creates one calibrated camera ``
 
 .. code-block:: python
 
-    >>> calibration_path = BEHAVIOR_DATA_PATH / "dannce" / "avg_and_max_predictions" / "calibration"
+    >>> calibration_path = BEHAVIOR_DATA_PATH / "dannce" / "dannce" / "avg_and_max_predictions" / "calibration"
     >>> interface = DANNCEInterface(
     ...     file_paths=file_path,
     ...     sampling_rate=30.0,
@@ -57,7 +57,7 @@ animal to the same NWBFile:
 .. code-block:: python
 
     >>> multi_animal_file_path = (
-    ...     BEHAVIOR_DATA_PATH / "sdannce" / "multiple_subjects_per_file" / "two_subjects"
+    ...     BEHAVIOR_DATA_PATH / "dannce" / "sdannce" / "multiple_subjects_per_file" / "two_subjects"
     ...     / "SDANNCE" / "predict00" / "save_data_AVG0.mat"
     ... )
     >>> interface_animal2 = DANNCEInterface(
@@ -93,7 +93,7 @@ its own frametimes.
 
     >>> from neuroconv.converters import DANNCEConverter
 
-    >>> run_path = BEHAVIOR_DATA_PATH / "sdannce" / "single_subject"
+    >>> run_path = BEHAVIOR_DATA_PATH / "dannce" / "sdannce" / "single_subject"
     >>> converter = DANNCEConverter(
     ...     file_paths=run_path / "SDANNCE" / "bsl0.5_FM" / "save_data_AVG0.mat",
     ...     videos_folder_path=run_path / "videos",
