@@ -132,18 +132,18 @@ class TestEthoVisionTwoC57(DataInterfaceTestMixin):
         interface.add_to_nwbfile(nwbfile=nwbfile)
 
         position = nwbfile.processing["behavior"]["EthoVisionPositionArena1Subject1"]
-        assert np.isclose(position.timestamps[0], 10.0)
-        assert np.isclose(position.timestamps[1] - position.timestamps[0], 0.068)
+        assert np.isclose(position.timestamps[0], 12.134)
+        assert np.isclose(position.timestamps[1] - position.timestamps[0], 0.066)
 
         events = nwbfile.events["EthoVisionManualScoringArena1"].to_dataframe()
         first_sniff = events[events["event_type"] == "Sniff"].iloc[0]
-        assert np.isclose(first_sniff["timestamp"], 110.466)
+        assert np.isclose(first_sniff["timestamp"], 112.6)
         assert np.isclose(first_sniff["duration"], 6.134)
 
         bouts = nwbfile.processing["behavior"]["EthoVisionEthogramBoutsArena1"].to_dataframe()
         first_sniff_bout = bouts[bouts["label"] == "Sniff"].iloc[0]
-        assert np.isclose(first_sniff_bout["start_time"], 110.466)
-        assert np.isclose(first_sniff_bout["stop_time"], 116.6)
+        assert np.isclose(first_sniff_bout["start_time"], 112.6)
+        assert np.isclose(first_sniff_bout["stop_time"], 118.734)
 
 
 class TestEthoVisionMissingSamples(DataInterfaceTestMixin):
@@ -372,7 +372,7 @@ class TestEthoVisionTxt(DataInterfaceTestMixin):
         position = behavior_module["EthoVisionPositionArena1Subject1"]
         assert position.data.shape == (1877, 2)
         assert position.unit == "mm"
-        assert position.timestamps[0] == 0.0
+        assert position.timestamps[0] == 1.501
 
         distance_moved = behavior_module["EthoVisionDistanceMovedArena1Subject1"]
         assert np.isnan(distance_moved.data[0])
@@ -384,7 +384,8 @@ class TestEthoVisionTxt(DataInterfaceTestMixin):
 
 class TestEthoVisionMultipleArenasSingleSubject(DataInterfaceTestMixin):
     FILE_PATH = (
-        ETHOVISION_FOLDER_PATH / "stubs/excel/multiple_arenas_single_subject/track_only/two_arenas_one_subject.xlsx"
+        ETHOVISION_FOLDER_PATH
+        / "stubs/excel/multiple_arenas_one_subject_each/track_only/two_arenas_one_subject_each.xlsx"
     )
     data_interface_cls = EthoVisionDataInterface
     interface_kwargs = dict(file_path=FILE_PATH, arena_name="Arena 2", subject_name="Subject 1")
@@ -410,7 +411,7 @@ class TestEthoVisionMultipleArenasSingleSubject(DataInterfaceTestMixin):
 class TestEthoVisionMultipleArenasMultipleSubjects(DataInterfaceTestMixin):
     FILE_PATH = (
         ETHOVISION_FOLDER_PATH
-        / "stubs/excel/multiple_arenas_multiple_subjects/track_only/two_arenas_four_subjects.xlsx"
+        / "stubs/excel/multiple_arenas_multiple_subjects/track_only/two_arenas_four_subjects_each.xlsx"
     )
     data_interface_cls = EthoVisionDataInterface
     interface_kwargs = dict(file_path=FILE_PATH, arena_name="Arena 2", subject_name="Subject 4")

@@ -106,7 +106,7 @@ class EthoVisionDataInterface(BaseEventsInterface):
                 "EthoVision channel names must remain distinct after conversion to metadata keys. "
                 f"Derived keys: {self._time_series_metadata_keys}."
             )
-        self.alignment._register_series(key=self.metadata_key, get_native_times=lambda: self._track.recording_time)
+        self.alignment._register_series(key=self.metadata_key, get_native_times=lambda: self._track.trial_time)
 
         scoring_events = read_scoring_events(file_path=self.file_path, arena_name=self.arena)
         self._scoring_occurrences = [(self.arena, event) for event in scoring_events if event.subject == self.subject]

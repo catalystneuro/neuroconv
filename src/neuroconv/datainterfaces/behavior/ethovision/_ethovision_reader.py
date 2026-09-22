@@ -169,7 +169,7 @@ def _track_data_from_rows(rows: list[list], *, source_name: str) -> EthoVisionTr
 
 def _scoring_events_from_rows(rows: list[list], *, source_name: str) -> list[EthoVisionScoringEvent]:
     _header, column_names, _units, data_rows = _split_header_and_table(rows=rows, source_name=source_name)
-    required_columns = {RECORDING_TIME_COLUMN, "Subject", "Behavior", "Event"}
+    required_columns = {TRIAL_TIME_COLUMN, "Subject", "Behavior", "Event"}
     missing_columns = required_columns.difference(column_names)
     if missing_columns:
         raise ValueError(f"'{source_name}' is missing Manual Scoring columns: {sorted(missing_columns)}.")
@@ -177,13 +177,13 @@ def _scoring_events_from_rows(rows: list[list], *, source_name: str) -> list[Eth
     subject_index = column_names.index("Subject")
     behavior_index = column_names.index("Behavior")
     event_index = column_names.index("Event")
-    recording_time_index = column_names.index(RECORDING_TIME_COLUMN)
+    trial_time_index = column_names.index(TRIAL_TIME_COLUMN)
 
     events: list[EthoVisionScoringEvent] = []
     open_bouts: dict[tuple[str, str], float] = {}
     for row in data_rows:
         subject, behavior, event = row[subject_index], row[behavior_index], row[event_index]
-        onset = float(row[recording_time_index])
+        onset = float(row[trial_time_index])
         key = (subject, behavior)
         if event == "point event":
             events.append(EthoVisionScoringEvent(subject=subject, behavior=behavior, onset=onset, duration=None))
@@ -193,7 +193,7 @@ def _scoring_events_from_rows(rows: list[list], *, source_name: str) -> list[Eth
             if key not in open_bouts:
                 raise ValueError(
                     f"'{source_name}' has a 'state stop' for subject '{subject}', behavior '{behavior}' "
-                    f"at {RECORDING_TIME_COLUMN}={onset} with no preceding 'state start' to close."
+                    f"at {TRIAL_TIME_COLUMN}={onset} with no preceding 'state start' to close."
                 )
             start = open_bouts.pop(key)
             events.append(
