@@ -38,6 +38,7 @@ _TERM_SET_DIRECTORY = Path(__file__).parent / "term_sets"
 _UPSTREAM_TERM_SET_NAMES: dict[str, str] = {
     "species.yaml": "subject_species_ncbitaxon_termset.yaml",
     "strains.yaml": "strain_termset.yaml",
+    "general_anatomy.yaml": "general_anatomy_termset.yaml",
 }
 
 
