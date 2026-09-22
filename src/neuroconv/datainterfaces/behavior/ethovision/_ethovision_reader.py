@@ -14,6 +14,7 @@ SUPPORTED_SUFFIXES = (".xlsx", ".csv", ".txt")
 TRIAL_TIME_COLUMN = "Trial time"
 RECORDING_TIME_COLUMN = "Recording time"
 NO_SAMPLES_SENTENCE = "No samples logged for this track!"
+HEADER_COUNT_LABELS = ("number of header lines", "header lines")
 
 
 @dataclass(frozen=True)
@@ -258,8 +259,12 @@ def _detect_delimiter(*, text: str, file_path: Path) -> str:
 
 def _split_header_and_table(rows: list[list], *, source_name: str):
     """Split self-declaring EthoVision rows into header, names, units, and data."""
-    if not rows or len(rows[0]) < 2 or rows[0][0] != "Number of header lines:":
-        raise ValueError(f"'{source_name}' does not begin with an EthoVision 'Number of header lines:' row.")
+    declared_label = str(rows[0][0]).strip().rstrip(":").lower() if rows and rows[0] and rows[0][0] else ""
+    if len(rows[0] if rows else []) < 2 or declared_label not in HEADER_COUNT_LABELS:
+        raise ValueError(
+            f"'{source_name}' does not begin with an EthoVision header-count row "
+            f"('Number of header lines:' or 'Header Lines:')."
+        )
     try:
         header_lines = int(rows[0][1])
     except (TypeError, ValueError) as exception:
