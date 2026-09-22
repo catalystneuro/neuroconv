@@ -27,7 +27,10 @@ ETHOVISION_FOLDER_PATH = Path("/home/heberto/data/ethovision")
 class TestEthoVisionTwoC57(DataInterfaceTestMixin):
     """The `two_c57` stub: one subject, one arena, a Manual Scoring sheet with point and state events."""
 
-    FILE_PATH = ETHOVISION_FOLDER_PATH / "stubs/excel/track_and_manual_scoring/two_c57.xlsx"
+    FILE_PATH = (
+        ETHOVISION_FOLDER_PATH
+        / "stubs/ethovision/excel/single_arena_single_subject/track_and_manual_scoring/two_c57.xlsx"
+    )
     data_interface_cls = EthoVisionDataInterface
     interface_kwargs = dict(file_path=FILE_PATH)
     save_directory = OUTPUT_PATH
@@ -154,7 +157,10 @@ class TestEthoVisionMissingSamples(DataInterfaceTestMixin):
     does not start with the word "Arena", which the sheet-name pattern has to accept.
     """
 
-    FILE_PATH = ETHOVISION_FOLDER_PATH / "stubs/excel/hardware_and_trial_control/two_subjects_missing_samples.xlsx"
+    FILE_PATH = (
+        ETHOVISION_FOLDER_PATH
+        / "stubs/ethovision/excel/single_arena_multiple_subjects/hardware_and_trial_control/two_subjects_missing_samples.xlsx"
+    )
     data_interface_cls = EthoVisionDataInterface
     interface_kwargs = dict(
         file_path=FILE_PATH,
@@ -263,7 +269,10 @@ class TestEthoVisionMissingSamples(DataInterfaceTestMixin):
 
 
 class TestEthoVisionConverterPipeMultiSubject:
-    FILE_PATH = ETHOVISION_FOLDER_PATH / "stubs/excel/hardware_and_trial_control/two_subjects_missing_samples.xlsx"
+    FILE_PATH = (
+        ETHOVISION_FOLDER_PATH
+        / "stubs/ethovision/excel/single_arena_multiple_subjects/hardware_and_trial_control/two_subjects_missing_samples.xlsx"
+    )
 
     def test_converter_pipe_combines_all_subject_tracks_in_one_arena(self):
         arena_name = "Rat Arena 1a"
@@ -317,22 +326,24 @@ class TestEthoVisionConverterPipeMultiSubject:
 
 
 class TestEthoVisionCsv(DataInterfaceTestMixin):
-    FILE_PATH = ETHOVISION_FOLDER_PATH / "stubs/csv/track_only/morris_water_maze.csv"
+    FILE_PATH = (
+        ETHOVISION_FOLDER_PATH / "stubs/ethovision/csv/single_arena_single_subject/track_only/morris_water_maze.csv"
+    )
     data_interface_cls = EthoVisionDataInterface
     interface_kwargs = dict(file_path=FILE_PATH)
     save_directory = OUTPUT_PATH
 
     def check_extracted_metadata(self, metadata: dict):
-        assert metadata["NWBFile"]["session_start_time"] == datetime(2020, 1, 1, 9, 0)
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2016, 2, 8, 11, 3, 52, 355000)
 
     def check_read_nwb(self, nwbfile_path: str):
         nwbfile = read_nwb(nwbfile_path)
         behavior_module = nwbfile.processing["behavior"]
 
         position = behavior_module["EthoVisionPositionArena1Subject1"]
-        assert position.data.shape == (1500, 2)
+        assert position.data.shape == (3001, 2)
         assert position.unit == "cm"
-        assert np.isnan(position.data[:, 0]).sum() == 33
+        assert np.isnan(position.data[:, 0]).sum() == 13
         expected_names = {
             "EthoVisionPositionArena1Subject1",
             "EthoVisionAreaArena1Subject1",
@@ -342,9 +353,11 @@ class TestEthoVisionCsv(DataInterfaceTestMixin):
             "EthoVisionVelocityArena1Subject1",
             "EthoVisionInZoneArenaCenterPointArena1Subject1",
             "EthoVisionInZonePeripheryCenterPointArena1Subject1",
-            "EthoVisionInZoneZone1CenterPointArena1Subject1",
-            "EthoVisionInZoneZone2CenterPointArena1Subject1",
-            "EthoVisionInZoneZone3CenterPointArena1Subject1",
+            "EthoVisionInZoneTarget1CenterPointArena1Subject1",
+            "EthoVisionInZoneTargetQCenterPointArena1Subject1",
+            "EthoVisionInZoneA1CenterPointArena1Subject1",
+            "EthoVisionInZoneOpqCenterPointArena1Subject1",
+            "EthoVisionInZoneA2CenterPointArena1Subject1",
             "EthoVisionMovementMovingCenterPointArena1Subject1",
             "EthoVisionMovementNotMovingCenterPointArena1Subject1",
             "EthoVisionDistanceToPointArena1Subject1",
@@ -358,13 +371,16 @@ class TestEthoVisionCsv(DataInterfaceTestMixin):
 
 
 class TestEthoVisionTxt(DataInterfaceTestMixin):
-    FILE_PATH = ETHOVISION_FOLDER_PATH / "stubs/txt/track_only/termites.txt"
+    FILE_PATH = (
+        ETHOVISION_FOLDER_PATH
+        / "stubs/ethovision/txt/single_arena_single_subject/truncated_last_row/termites_truncated.txt"
+    )
     data_interface_cls = EthoVisionDataInterface
     interface_kwargs = dict(file_path=FILE_PATH)
     save_directory = OUTPUT_PATH
 
     def check_extracted_metadata(self, metadata: dict):
-        assert metadata["NWBFile"]["session_start_time"] == datetime(2014, 2, 9, 18, 4, 58, 400000)
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2014, 9, 2, 18, 4, 58, 400000)
 
     def check_read_nwb(self, nwbfile_path: str):
         nwbfile = read_nwb(nwbfile_path)
@@ -385,7 +401,7 @@ class TestEthoVisionTxt(DataInterfaceTestMixin):
 class TestEthoVisionMultipleArenasSingleSubject(DataInterfaceTestMixin):
     FILE_PATH = (
         ETHOVISION_FOLDER_PATH
-        / "stubs/excel/multiple_arenas_one_subject_each/track_only/two_arenas_one_subject_each.xlsx"
+        / "stubs/ethovision/excel/multiple_arenas_one_subject_each/track_only/two_arenas_one_subject_each.xlsx"
     )
     data_interface_cls = EthoVisionDataInterface
     interface_kwargs = dict(file_path=FILE_PATH, arena_name="Arena 2", subject_name="Subject 1")
@@ -411,7 +427,7 @@ class TestEthoVisionMultipleArenasSingleSubject(DataInterfaceTestMixin):
 class TestEthoVisionMultipleArenasMultipleSubjects(DataInterfaceTestMixin):
     FILE_PATH = (
         ETHOVISION_FOLDER_PATH
-        / "stubs/excel/multiple_arenas_multiple_subjects/track_only/two_arenas_four_subjects_each.xlsx"
+        / "stubs/ethovision/excel/multiple_arenas_multiple_subjects/track_only/two_arenas_four_subjects_each.xlsx"
     )
     data_interface_cls = EthoVisionDataInterface
     interface_kwargs = dict(file_path=FILE_PATH, arena_name="Arena 2", subject_name="Subject 4")

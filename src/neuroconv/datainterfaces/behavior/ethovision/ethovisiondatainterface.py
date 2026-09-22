@@ -374,5 +374,21 @@ class EthoVisionDataInterface(BaseEventsInterface):
 
 
 def _parse_start_time(*, start_time: str) -> datetime:
-    """Parse EthoVision timestamps, whose fractional separator can be a period or comma."""
-    return datetime.strptime(start_time.replace(",", "."), "%m/%d/%Y %H:%M:%S.%f")
+    """Parse an EthoVision timestamp, whose date order and fractional separator follow the writer's locale.
+
+    The export declares no locale, so the two are read together: a file that writes the seconds
+    fraction with a comma also writes the date day first, and one that writes a period writes it
+    month first. A component above 12 settles the order on its own.
+    """
+    date_part, _, time_part = start_time.partition(" ")
+    first, second, year = date_part.split("/")
+    day_first = "," in time_part
+    if int(first) > 12:
+        day_first = True
+    elif int(second) > 12:
+        day_first = False
+    day, month = (first, second) if day_first else (second, first)
+    time_part = time_part.replace(",", ".")
+    if "." not in time_part:
+        time_part = f"{time_part}.0"
+    return datetime.strptime(f"{month}/{day}/{year} {time_part}", "%m/%d/%Y %H:%M:%S.%f")
