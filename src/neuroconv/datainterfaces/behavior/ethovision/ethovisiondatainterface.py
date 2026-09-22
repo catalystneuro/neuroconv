@@ -53,7 +53,12 @@ class EthoVisionDataInterface(BaseEventsInterface):
 
     @staticmethod
     def get_available_tracks(file_path: FilePath) -> list[dict[str, str]]:
-        """Return the complete selector arguments for every available Track."""
+        """Return the complete selector arguments for every available Track.
+
+        Tracks are listed as the export declares them, without reading their samples. A Track
+        whose acquisition never started is declared like any other, and EthoVision writes
+        ``No samples logged for this track!`` in place of its rows; selecting it raises.
+        """
         return get_available_tracks(file_path=file_path)
 
     @validate_call
