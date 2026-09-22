@@ -29,8 +29,8 @@ pytestmark = pytest.mark.skipif(
     reason="DANNCEInterface requires ndx-pose version >= 0.4.0",
 )
 
-DANNCE_DATA_PATH = BEHAVIOR_DATA_PATH / "dannce"
-SDANNCE_DATA_PATH = BEHAVIOR_DATA_PATH / "sdannce"
+DANNCE_DATA_PATH = BEHAVIOR_DATA_PATH / "dannce" / "dannce"
+SDANNCE_DATA_PATH = BEHAVIOR_DATA_PATH / "dannce" / "sdannce"
 
 
 class TestDANNCEConverterSingleSubject(TestCase):
