@@ -9,10 +9,14 @@ from pynwb import NWBHDF5IO
 from pynwb.event import EventsTable
 from pynwb.testing.mock.file import mock_NWBFile
 
+from neuroconv.tools.testing.data_interface_mixins import EventsInterfaceTestMixin
 from neuroconv.tools.testing.mock_interfaces import MockEventsInterface
 
 
-class TestMockEventsInterface:
+class TestMockEventsInterface(EventsInterfaceTestMixin):
+    data_interface_cls = MockEventsInterface
+    interface_kwargs = dict()
+
     def test_get_metadata(self):
         interface = MockEventsInterface()
         Draft7Validator.check_schema(interface.get_metadata_schema())

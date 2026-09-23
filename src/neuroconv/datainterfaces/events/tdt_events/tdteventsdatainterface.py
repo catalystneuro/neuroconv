@@ -60,6 +60,16 @@ class TDTEventsInterface(TDTLoadMixin, BaseEventsInterface):
         )
         self.metadata_key = metadata_key or "tdt_events"
 
+    def get_event_type_source_ids(self) -> list[str]:
+        """The epoc stores the tank holds, less the excluded ones and those with no events, from the epoc headers."""
+        epocs = self.load(evtype=["epocs"]).epocs
+        exclude_events = self.source_data["exclude_events"] or []
+        return [
+            epoc_name
+            for epoc_name in epocs.keys()
+            if epoc_name not in exclude_events and len(np.asarray(epocs[epoc_name].data)) > 0
+        ]
+
     def get_metadata(self) -> DeepDict:
         """
         Get metadata for the TDTEventsInterface.
@@ -76,12 +86,8 @@ class TDTEventsInterface(TDTLoadMixin, BaseEventsInterface):
         metadata["NWBFile"]["session_start_time"] = session_start_datetime.isoformat()
 
         epocs = self.load(evtype=["epocs"]).epocs
-        exclude_events = self.source_data["exclude_events"] or []
-        included_events = [epoc_name for epoc_name in epocs.keys() if epoc_name not in exclude_events]
-        for epoc_name in included_events:
+        for epoc_name in self.get_event_type_source_ids():
             data = np.asarray(epocs[epoc_name].data)
-            if len(data) == 0:
-                continue  # an epoc with no events is not a writable event type; skip it entirely
             is_strobe = not _data_is_counter(data)
 
             # One EventsTable per epoc store; event_name defaults to the store name. A counter store is

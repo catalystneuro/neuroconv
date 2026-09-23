@@ -145,7 +145,8 @@ def test_run_conversion_from_yaml_cli_without_output_folder_path(tmp_path):
                 '            session_start_time: "2020-10-09T21:19:09+00:00"',
                 "",
             ]
-        )
+        ),
+        encoding="utf-8",
     )
 
     output = deploy_process(command=f"neuroconv {yaml_file_path}", catch_output=True)

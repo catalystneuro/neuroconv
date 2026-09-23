@@ -155,5 +155,5 @@ def test_shuffle_is_correctly_propagated_as_filter_in_zarr(tmpdir: Path):
 
     filters, compressors = written_filters_and_compressors(written_data)
     assert filters == [numcodecs.Shuffle(elementsize=2)]
-    assert compressors == [numcodecs.GZip(level=1)]
+    assert compressors == [numcodecs.GZip(level=4)]
     written_nwbfile.read_io.close()
