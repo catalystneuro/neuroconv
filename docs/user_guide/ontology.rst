@@ -47,8 +47,10 @@ still have a conversion write them, and you always have a record of which terms 
 Where the terms live in metadata
 --------------------------------
 
-Each term is an explicit ``{"id": <CURIE>, "uri": <resolvable URI>}`` dict, placed in an
-``ontology`` sub-block of the metadata block that already holds the value:
+Each term is an explicit ``{"id": <CURIE>, "uri": <resolvable URI>}`` dict. The species term sits
+next to the value it describes, in an ``ontology`` sub-block of ``metadata["Subject"]``; brain-region
+terms live in one file-wide ``metadata["ontology"]["brain_regions"]`` map, since the same location
+string means the same place regardless of which modality wrote it:
 
 .. code-block:: python
 
@@ -60,21 +62,20 @@ Each term is an explicit ``{"id": <CURIE>, "uri": <resolvable URI>}`` dict, plac
         },
     }
 
-    metadata["Ecephys"]["ontology"] = {
+    metadata["ontology"] = {
         "brain_regions": {
             "CA1": {"id": "MBA:382", "uri": "https://purl.brain-bican.org/ontology/mbao/MBA_382"},
         },
     }
 
-Brain-region terms are keyed by the free-text ``location`` string and live under the modality block
-whose objects carry that location: ``metadata["Ecephys"]["ontology"]["brain_regions"]`` (electrodes
-table and electrode groups), ``metadata["Ophys"]["ontology"]["brain_regions"]`` (imaging planes),
-and ``metadata["FiberPhotometry"]["ontology"]["brain_regions"]`` (the ``FiberPhotometryTable``). To
-annotate one value with **several** ontologies, map it to a list of terms:
+Brain-region terms are keyed by the free-text ``location`` string and live in one file-wide map,
+``metadata["ontology"]["brain_regions"]``, regardless of whether that string labels an electrode, an
+imaging plane, or a fiber-photometry site -- the same string means the same place across modalities
+in a single file. To annotate one value with **several** ontologies, map it to a list of terms:
 
 .. code-block:: python
 
-    metadata["Ecephys"]["ontology"]["brain_regions"]["CA1"] = [
+    metadata["ontology"]["brain_regions"]["CA1"] = [
         {"id": "MBA:382", "uri": "https://purl.brain-bican.org/ontology/mbao/MBA_382"},
         {"id": "UBERON:0003881", "uri": "http://purl.obolibrary.org/obo/UBERON_0003881"},
     ]
@@ -179,7 +180,7 @@ channel labels (a custom EEG grid's own naming) you add to the map yourself.
 
     # nwbfile already populated: electrodes carry Allen acronyms as their ``location``
     infer_brain_region_ontology_metadata(nwbfile, metadata)
-    metadata["Ecephys"]["ontology"]["brain_regions"]
+    metadata["ontology"]["brain_regions"]
     #   {"CA1": {"id": "MBA:382", "uri": "https://purl.brain-bican.org/ontology/mbao/MBA_382"},
     #    "VISp": {"id": "MBA:385", "uri": "https://purl.brain-bican.org/ontology/mbao/MBA_385"}}
 
@@ -208,7 +209,7 @@ explicit ``id`` and ``uri``, the map generalizes to any ontology and any species
 
 .. code-block:: python
 
-    metadata["Ecephys"]["ontology"] = {
+    metadata["ontology"] = {
         "brain_regions": {
             "my recording site": {
                 "id": "MBA:382",
@@ -221,8 +222,9 @@ Writing the references into the file
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 :py:func:`~neuroconv.tools.ontology.add_brain_region_external_resources` reads the
-``ontology.brain_regions`` map of every modality block and, for each ``location`` value on the file
-that the map covers, attaches the term(s) as HERD references. A conversion calls it for you:
+``metadata["ontology"]["brain_regions"]`` map and, for each ``location`` value on the file that the
+map covers -- whichever modality it belongs to -- attaches the term(s) as HERD references. A
+conversion calls it for you:
 
 .. code-block:: python
 
@@ -252,7 +254,7 @@ blocks in, run inference on the assembled file first, inspect the result, then c
     staging_nwbfile = interface.create_nwbfile(metadata=metadata)
     infer_species_ontology_metadata(metadata)
     infer_brain_region_ontology_metadata(staging_nwbfile, metadata)
-    # ... optionally edit metadata["Ecephys"]["ontology"]["brain_regions"] here, ...
+    # ... optionally edit metadata["ontology"]["brain_regions"] here, ...
 
     # ... then convert: create_nwbfile / run_conversion write the stated terms as HERD references.
     interface.run_conversion(nwbfile_path="out.nwb", metadata=metadata)

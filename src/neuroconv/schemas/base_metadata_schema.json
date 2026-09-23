@@ -168,6 +168,10 @@
         }
       }
     },
+    "ontology": {
+      "type": "object",
+      "description": "Ontology terms that apply across the whole file, keyed by the value they annotate (e.g. 'brain_regions', mapping each free-text location string to an explicit {'id': <CURIE>, 'uri': <resolvable URI>} term, or a list of them). Populated by neuroconv.tools.ontology.infer_brain_region_ontology_metadata and written into the file as HERD references."
+    },
     "Devices": {
       "type": ["object", "array"],
       "additionalProperties": {"$ref": "#/definitions/DeviceRegistryEntry"},

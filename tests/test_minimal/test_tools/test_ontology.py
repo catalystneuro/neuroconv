@@ -51,9 +51,9 @@ def _optical_channel():
     return OpticalChannel(name="channel0", description="d", emission_lambda=500.0)
 
 
-def _ecephys_brain_regions(mapping: dict) -> dict:
-    """A metadata dict carrying an ``Ecephys.ontology.brain_regions`` map."""
-    return {"Ecephys": {"ontology": {"brain_regions": mapping}}}
+def _brain_regions_metadata(mapping: dict) -> dict:
+    """A metadata dict carrying a file-wide ``ontology.brain_regions`` map."""
+    return {"ontology": {"brain_regions": mapping}}
 
 
 # ---------------------------------------------------------------------------
@@ -437,13 +437,13 @@ class TestInferSpeciesOntologyMetadata:
 
 
 class TestInferBrainRegionOntologyMetadata:
-    def test_electrode_locations_are_resolved_under_ecephys(self):
+    def test_electrode_locations_are_resolved(self):
         nwbfile = _make_nwbfile(species="Mus musculus")
         _add_electrodes(nwbfile, ["CA1", "VISp", "unknown"])
         metadata = {}
 
         infer_brain_region_ontology_metadata(nwbfile, metadata)
-        brain_regions = metadata["Ecephys"]["ontology"]["brain_regions"]
+        brain_regions = metadata["ontology"]["brain_regions"]
         assert brain_regions["CA1"] == {"id": "MBA:382", "uri": MBA_TERMS["CA1"].entity_uri}
         assert brain_regions["VISp"]["id"] == "MBA:385"
         assert "unknown" not in brain_regions  # unresolved locations are skipped
@@ -454,9 +454,9 @@ class TestInferBrainRegionOntologyMetadata:
         metadata = {}
 
         infer_brain_region_ontology_metadata(nwbfile, metadata)
-        assert metadata["Ecephys"]["ontology"]["brain_regions"]["CA1"]["id"] == "HBA:12892"
+        assert metadata["ontology"]["brain_regions"]["CA1"]["id"] == "HBA:12892"
 
-    def test_imaging_plane_locations_are_resolved_under_ophys(self):
+    def test_imaging_plane_locations_are_resolved(self):
         nwbfile = _make_nwbfile(species="Mus musculus")
         device = nwbfile.create_device(name="scope")
         nwbfile.create_imaging_plane(
@@ -472,7 +472,27 @@ class TestInferBrainRegionOntologyMetadata:
         metadata = {}
 
         infer_brain_region_ontology_metadata(nwbfile, metadata)
-        assert metadata["Ophys"]["ontology"]["brain_regions"]["SSp"]["id"] == "MBA:322"
+        assert metadata["ontology"]["brain_regions"]["SSp"]["id"] == "MBA:322"
+
+    def test_locations_shared_across_modalities_resolve_once(self):
+        # The same location string across two modalities is one entry in the flat map.
+        nwbfile = _make_nwbfile(species="Mus musculus")
+        _add_electrodes(nwbfile, ["CA1"])
+        device = nwbfile.create_device(name="scope")
+        nwbfile.create_imaging_plane(
+            name="plane0",
+            optical_channel=_optical_channel(),
+            description="d",
+            device=device,
+            excitation_lambda=600.0,
+            indicator="GCaMP",
+            location="CA1",
+            imaging_rate=30.0,
+        )
+        metadata = {}
+
+        infer_brain_region_ontology_metadata(nwbfile, metadata)
+        assert metadata["ontology"]["brain_regions"].keys() == {"CA1"}
 
     def test_unrecognized_species_is_a_noop(self):
         nwbfile = _make_nwbfile(species="Octodon degus")
@@ -485,10 +505,10 @@ class TestInferBrainRegionOntologyMetadata:
         nwbfile = _make_nwbfile(species="Mus musculus")
         _add_electrodes(nwbfile, ["CA1"])
         curated = {"id": "MBA:999", "uri": "https://example.org/custom"}
-        metadata = _ecephys_brain_regions({"CA1": curated})
+        metadata = _brain_regions_metadata({"CA1": curated})
 
         infer_brain_region_ontology_metadata(nwbfile, metadata)
-        assert metadata["Ecephys"]["ontology"]["brain_regions"]["CA1"] == curated
+        assert metadata["ontology"]["brain_regions"]["CA1"] == curated
 
 
 # ---------------------------------------------------------------------------
@@ -566,7 +586,7 @@ class TestBrainRegionExternalResources:
     def test_noop_when_metadata_covers_no_present_location(self):
         nwbfile = _make_nwbfile()
         _add_electrodes(nwbfile, ["CA1", "VISp", "unknown"])
-        metadata = _ecephys_brain_regions({"some other area": {"id": "MBA:1", "uri": "https://example.org/1"}})
+        metadata = _brain_regions_metadata({"some other area": {"id": "MBA:1", "uri": "https://example.org/1"}})
         assert add_brain_region_external_resources(nwbfile, metadata=metadata) == 0
         assert nwbfile.external_resources is None
 
@@ -585,18 +605,14 @@ class TestBrainRegionExternalResources:
             location="SSp",
             imaging_rate=30.0,
         )
-        metadata = {
-            "Ecephys": {
-                "ontology": {
-                    "brain_regions": {
-                        "CA1": {"id": "MBA:382", "uri": "https://example.org/MBA_382"},
-                        "VISp": {"id": "MBA:385", "uri": "https://example.org/MBA_385"},
-                        "MOp": {"id": "MBA:985", "uri": "https://example.org/MBA_985"},
-                    }
-                }
-            },
-            "Ophys": {"ontology": {"brain_regions": {"SSp": {"id": "MBA:322", "uri": "https://example.org/MBA_322"}}}},
-        }
+        metadata = _brain_regions_metadata(
+            {
+                "CA1": {"id": "MBA:382", "uri": "https://example.org/MBA_382"},
+                "VISp": {"id": "MBA:385", "uri": "https://example.org/MBA_385"},
+                "MOp": {"id": "MBA:985", "uri": "https://example.org/MBA_985"},
+                "SSp": {"id": "MBA:322", "uri": "https://example.org/MBA_322"},
+            }
+        )
 
         assert add_brain_region_external_resources(nwbfile, metadata=metadata) == 4
         dataframe = nwbfile.external_resources.to_dataframe()
@@ -660,9 +676,7 @@ class TestBrainRegionExternalResources:
                 )
             ),
         )
-        fiber_photometry_metadata["ontology"] = dict(
-            brain_regions={"CA1": {"id": "MBA:382", "uri": "https://example.org/MBA_382"}}
-        )
+        metadata["ontology"] = dict(brain_regions={"CA1": {"id": "MBA:382", "uri": "https://example.org/MBA_382"}})
         series_metadata = fiber_photometry_metadata[interface.metadata_key]
         series_metadata["fiber_photometry_table_region"] = ["row0"]
         series_metadata["fiber_photometry_table_region_description"] = "d"
@@ -679,7 +693,7 @@ class TestBrainRegionExternalResources:
     def test_maps_one_area_to_multiple_ontology_terms(self):
         nwbfile = _make_nwbfile()
         _add_electrodes(nwbfile, ["CA1"])
-        metadata = _ecephys_brain_regions(
+        metadata = _brain_regions_metadata(
             {
                 "CA1": [
                     {"id": "MBA:382", "uri": "https://purl.brain-bican.org/ontology/mbao/MBA_382"},
@@ -696,7 +710,7 @@ class TestBrainRegionExternalResources:
         # The writer never looks at the subject; a rat file is annotated from metadata alone.
         nwbfile = _make_nwbfile(species="Rattus norvegicus")
         _add_electrodes(nwbfile, ["my region", "CA1"])
-        metadata = _ecephys_brain_regions(
+        metadata = _brain_regions_metadata(
             {"my region": {"id": "UBERON:0002436", "uri": "http://purl.obolibrary.org/obo/UBERON_0002436"}}
         )
 
@@ -711,14 +725,14 @@ class TestBrainRegionExternalResources:
     def test_malformed_metadata_term_raises(self, bad_value):
         nwbfile = _make_nwbfile()
         _add_electrodes(nwbfile, ["area"])
-        metadata = _ecephys_brain_regions({"area": bad_value})
+        metadata = _brain_regions_metadata({"area": bad_value})
         with pytest.raises((TypeError, ValueError)):
             add_brain_region_external_resources(nwbfile, metadata=metadata)
 
     def test_idempotent(self):
         nwbfile = _make_nwbfile()
         _add_electrodes(nwbfile, ["CA1", "VISp"])
-        metadata = _ecephys_brain_regions(
+        metadata = _brain_regions_metadata(
             {
                 "CA1": {"id": "MBA:382", "uri": "https://example.org/MBA_382"},
                 "VISp": {"id": "MBA:385", "uri": "https://example.org/MBA_385"},
@@ -744,12 +758,14 @@ class TestBrainRegionExternalResources:
         )
         nwbfile.external_resources = herd
 
-        metadata = _ecephys_brain_regions({"CA1": {"id": "MBA:382", "uri": "https://example.org/MBA_382"}})
+        metadata = _brain_regions_metadata({"CA1": {"id": "MBA:382", "uri": "https://example.org/MBA_382"}})
         assert add_brain_region_external_resources(nwbfile, metadata=metadata) == 1
         assert nwbfile.external_resources is herd  # extended in place, not replaced
         assert len(herd.entities[:]) == 2
 
-    def test_conflicting_terms_across_modality_blocks_warn_and_use_the_last_block(self):
+    def test_shared_location_term_applies_across_modalities(self, recwarn):
+        # One flat ontology.brain_regions map: a location string means the same place regardless
+        # of which modality's site carries it, so one term annotates both without any conflict.
         nwbfile = _make_nwbfile()
         _add_electrodes(nwbfile, ["CA1"])
         device = nwbfile.create_device(name="scope")
@@ -763,43 +779,13 @@ class TestBrainRegionExternalResources:
             location="CA1",
             imaging_rate=30.0,
         )
-        metadata = {
-            "Ecephys": {
-                "ontology": {"brain_regions": {"CA1": {"id": "MBA:382", "uri": "https://example.org/MBA_382"}}}
-            },
-            "Ophys": {"ontology": {"brain_regions": {"CA1": {"id": "MBA:999", "uri": "https://example.org/MBA_999"}}}},
-        }
+        metadata = _brain_regions_metadata({"CA1": {"id": "MBA:382", "uri": "https://example.org/MBA_382"}})
 
-        with pytest.warns(UserWarning, match="CA1.*different ontology terms"):
-            number_added = add_brain_region_external_resources(nwbfile, metadata=metadata)
+        number_added = add_brain_region_external_resources(nwbfile, metadata=metadata)
 
-        # 'Ophys' is processed after 'Ecephys' (see _BRAIN_REGION_METADATA_BLOCKS), so its term wins
-        # for every site sharing the "CA1" location string, electrodes included.
-        assert number_added == 2
+        assert number_added == 2  # the electrodes column and the imaging plane
         dataframe = nwbfile.external_resources.to_dataframe()
-        assert set(dataframe["entity_id"].tolist()) == {"MBA:999"}
-
-    def test_identical_terms_across_modality_blocks_do_not_warn(self, recwarn):
-        nwbfile = _make_nwbfile()
-        _add_electrodes(nwbfile, ["CA1"])
-        device = nwbfile.create_device(name="scope")
-        nwbfile.create_imaging_plane(
-            name="plane0",
-            optical_channel=_optical_channel(),
-            description="d",
-            device=device,
-            excitation_lambda=600.0,
-            indicator="GCaMP",
-            location="CA1",
-            imaging_rate=30.0,
-        )
-        same_term = {"id": "MBA:382", "uri": "https://example.org/MBA_382"}
-        metadata = {
-            "Ecephys": {"ontology": {"brain_regions": {"CA1": same_term}}},
-            "Ophys": {"ontology": {"brain_regions": {"CA1": same_term}}},
-        }
-
-        add_brain_region_external_resources(nwbfile, metadata=metadata)
+        assert set(dataframe["entity_id"].tolist()) == {"MBA:382"}
         assert len(recwarn) == 0
 
 
