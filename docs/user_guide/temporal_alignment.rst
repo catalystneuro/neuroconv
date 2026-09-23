@@ -108,7 +108,8 @@ to be rewritten. There are two ways to do it, and which you use depends on what 
 
 **Set the times directly.** When you already have the correct per-sample times, from a per-sample synchronization
 signal or any computation you trust, hand them to ``set_times`` on the object they belong to. Times are per-object, so
-this call always names one, even where the interface writes only that one; the next section covers how to find the key:
+this call names one; the next section covers how to find the key, and when the interface writes only one object the
+key can be left out:
 
 .. code-block:: python
 
@@ -244,7 +245,9 @@ object's times and the operations that rewrite them:
 What you call an operation on is what it applies to. ``shift_times`` moves the whole interface, so it moves every
 object and takes no key at all. ``remap_times`` is one clock's correction, so it is available at either scope: on the
 interface it applies the same map to every object. Times themselves belong to one object, and so does its position,
-so ``get_times``, ``set_times`` and ``start_at`` are only ever reached through the object.
+so ``get_times``, ``set_times`` and ``start_at`` act on one object. Called on the interface, they reach its only
+object when it names exactly one, and raise with the list of keys when it names more, so the key is needed only where
+there is a choice to make.
 
 There is no per-object shift. An interface reads one source from one acquisition system, so its objects share a
 clock rather than merely happening to agree, and a clock offset is corrected once, for all of them, with

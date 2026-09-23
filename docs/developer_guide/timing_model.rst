@@ -25,18 +25,19 @@ behavior camera has three such groups and nothing in the data distinguishes them
 question never arises. Two objects are co-timed because you gave them times that agree, which is a description of
 what you did rather than a claim the framework makes on your behalf.
 
-The alignment state is two scalar **offsets** and, optionally, one replacement array, applied at write:
+The alignment state is one scalar **offset** per object and, optionally, one replacement array, applied at write:
 
 .. code-block:: text
 
-    output = base + object_offset + interface_offset
+    output = base + offset
 
 ``base`` is the object's native times, or a replacement array once ``set_times`` or ``remap_times`` has provided one.
-``interface_offset`` is written by ``shift_times`` and is shared by every object the interface names. ``object_offset``
-is written by ``start_at`` and belongs to one object. Both default to ``0.0``, the identity, so an interface that is
-never aligned writes the times its source recorded. The offsets are stored rather than folded into the times, and the
-source times are never mutated, so the original timing stays recoverable and nothing is read from the source until
-someone asks for times.
+``offset`` belongs to one object: ``shift_times`` adds its delta to the offset of every object the interface names,
+and ``start_at`` writes the offset of the object it is called on. The interface holds no offset of its own, so every
+time it writes comes from one of its registered objects. The offset defaults to ``0.0``, the identity, so an
+interface that is never aligned writes the times its source recorded. The offsets are stored rather than folded into
+the times, and the source times are never mutated, so the original timing stays recoverable and nothing is read from
+the source until someone asks for times.
 
 Two axes, two operations
 ------------------------
@@ -74,9 +75,9 @@ than a rate.
 
 The empty cells are empty because nobody has a number to put in them. A per-object shift would need a delta for one
 file among its siblings on the same device, which no workflow produces, and it would accumulate on a re-run, which is
-the failure ``start_at`` exists to remove. An interface-wide absolute setter would write into the same offset
-``shift_times`` accumulates into and silently discard an earlier shift, since it has nothing to store itself against.
-The per-object form escapes that because its scalar is separate from the interface's.
+the failure ``start_at`` exists to remove. An interface-wide absolute setter has nothing to store itself against,
+since the interface holds no offset of its own and has no first sample of its own, only those of its objects. The
+per-object form escapes that because one object has one offset and one first sample.
 
 Composition, not inheritance
 ----------------------------
@@ -132,11 +133,10 @@ on ``T``, the times an object will be written on:
 Composition is function composition, so order matters exactly as it does for functions. ``start_at`` twice is a no-op.
 ``set_times`` or ``remap_times`` after ``start_at`` supersede it, since they define the times outright, and
 ``start_at`` after either moves the given times rigidly. A later ``shift_times`` moves everything. In storage,
-``start_at`` writes ``object_offset = t - base[0] - interface_offset``, the two array writers reset ``object_offset``
-to zero, and the start is read back as ``base[0] + object_offset + interface_offset`` rather than stored, so there is
-no second copy of it to fall out of step. ``start_at`` needs ``base[0]`` without materialising the array, which is
-what the optional native start an interface can register alongside its native times is for; absent it, the first
-native time is read.
+``start_at`` writes ``offset = t - base[0]``, the two array writers reset ``offset`` to zero, and the start is read
+back as ``base[0] + offset`` rather than stored, so there is no second copy of it to fall out of step. ``start_at``
+needs ``base[0]`` without materialising the array, which is what the optional native start an interface can register
+alongside its native times is for; absent it, the first native time is read.
 
 ``remap_times`` reads and writes in the same frame, which is what fixes where its arguments live: it interpolates the
 times as they currently stand, so ``local_sync_times`` is on the timeline ``get_times`` reports and carries a shift
