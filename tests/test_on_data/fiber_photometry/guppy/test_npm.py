@@ -154,13 +154,14 @@ class TestGuppyConverterNPMInterleaved(NPMConverterTestMixin):
     }
     EVENT_STORE_TO_NAME = {"eventTrue": "cue_on", "eventFalse": "cue_off"}
     NPM_PARAMETERS = {
-        "npm_split_events": [False, True],
+        "npm_split_events": {"ttls.csv": True},
         "npm_time_unit": "seconds",
         "npm_timestamp_column_name": None,
         "stores": {
             f"signals_{wavelength}nm_Region{index}G": {
                 "file": "signals.csv",
                 "excitation_wavelength_in_nm": wavelength,
+                "interleave_position": None,
                 "data_column": f"Region{index}G",
                 "timestamp_column": "Timestamp",
             }
@@ -198,13 +199,14 @@ class TestGuppyConverterNPMTwoClocks(NPMConverterTestMixin):
     }
     EVENT_STORE_TO_NAME = {"event1": "trial_start", "event3": "trial_end"}
     NPM_PARAMETERS = {
-        "npm_split_events": [False, True],
+        "npm_split_events": {"ttls.csv": True},
         "npm_time_unit": "milliseconds",
         "npm_timestamp_column_name": "ComputerTimestamp",
         "stores": {
             f"signals_{wavelength}nm_G{index}": {
                 "file": "signals.csv",
                 "excitation_wavelength_in_nm": wavelength,
+                "interleave_position": None,
                 "data_column": f"G{index}",
                 "timestamp_column": "ComputerTimestamp",
             }
@@ -250,7 +252,7 @@ class TestGuppyConverterNPMHeaderless(NPMConverterTestMixin):
     }
     EVENT_STORE_TO_NAME = {"event0": "ttl"}
     NPM_PARAMETERS = {
-        "npm_split_events": [False, False],
+        "npm_split_events": {"ttls.csv": False},
         "npm_time_unit": "milliseconds",
         "npm_timestamp_column_name": None,
         "stores": {
@@ -341,7 +343,7 @@ class TestNPMRunParameters:
         (guppy_output_folder / ".npm_params.json").write_text(
             json.dumps(
                 {
-                    "npm_split_events": [False, False],
+                    "npm_split_events": {"ttls.csv": False},
                     "npm_time_unit": "microseconds",
                     "npm_timestamp_column_name": "SystemTimestamp",
                 }
@@ -358,7 +360,7 @@ class TestNPMRunParameters:
         (guppy_output_folder / ".npm_params.json").write_text(
             json.dumps(
                 {
-                    "npm_split_events": [False, False],
+                    "npm_split_events": {"ttls.csv": False},
                     "npm_time_unit": "seconds",
                     "npm_timestamp_column_name": "SystemTimestamp",
                     "noChannels": 3,
@@ -394,7 +396,7 @@ def session_folder(tmp_path):
 
 def write_npm_parameters(guppy_output_folder, **npm_parameters):
     """Write the ``.npm_params.json`` a GuPPy NPM run leaves beside ``storesList.csv``."""
-    defaults = dict(npm_split_events=[False, False], npm_time_unit="milliseconds", npm_timestamp_column_name=None)
+    defaults = dict(npm_split_events={"ttls.csv": False}, npm_time_unit="milliseconds", npm_timestamp_column_name=None)
     (guppy_output_folder / ".npm_params.json").write_text(json.dumps({**defaults, **npm_parameters}), encoding="utf-8")
 
 
@@ -415,6 +417,7 @@ class TestNPMStoreProvenance:
         record = {
             "file": "signals.csv",
             "excitation_wavelength_in_nm": 470,
+            "interleave_position": None,
             "data_column": "G0",
             "timestamp_column": "ComputerTimestamp",
         }
@@ -450,7 +453,8 @@ class TestNPMStoreProvenance:
     def test_a_run_recording_no_stores_falls_back_to_decoding_the_names(self, session_folder, guppy_output_folder):
         """With no record to read, the positional names are decoded into the same shape."""
         shutil.copy(NPM_FOLDER / "multi_timestamp" / "signals.csv", session_folder / "signals.csv")
-        write_npm_parameters(guppy_output_folder)
+        # A run from before the stores were recorded also recorded split events by file position.
+        write_npm_parameters(guppy_output_folder, npm_split_events=[False, False])
 
         provenance = npm_store_provenance(
             folder_path=session_folder,
@@ -478,6 +482,7 @@ class TestNPMStoreResolution:
         record = {
             "file": "signals.csv",
             "excitation_wavelength_in_nm": 470,
+            "interleave_position": None,
             "data_column": "G0",
             "timestamp_column": "ComputerTimestamp",
         }
@@ -518,6 +523,7 @@ class TestNPMStoreResolution:
         record = {
             "file": "elsewhere.csv",
             "excitation_wavelength_in_nm": 470,
+            "interleave_position": None,
             "data_column": "G0",
             "timestamp_column": "SystemTimestamp",
         }
