@@ -266,6 +266,33 @@ To disable an annotation, simply do not populate its ``ontology`` block (or dele
 metadata before converting). To use a different atlas or an external ontology service, skip
 ``infer_*`` and write the ``id`` / ``uri`` terms into the ``ontology`` blocks yourself.
 
+Annotating an already-written file
+-----------------------------------
+
+The annotation functions only need an ``NWBFile`` object and ``metadata``, not a conversion in
+progress, so they also work on a file that already exists on disk, including one with no NeuroConv
+involvement in how it was originally written. Open it for read/write, run inference (or supply the
+``ontology`` metadata yourself) and the annotation functions, then write the changes back:
+
+.. code-block:: python
+
+    from pynwb import NWBHDF5IO
+    from neuroconv.tools.ontology import (
+        infer_species_ontology_metadata,
+        add_species_external_resource,
+    )
+
+    with NWBHDF5IO("published.nwb", mode="r+") as io:
+        nwbfile = io.read()
+        metadata = {"Subject": {"species": nwbfile.subject.species}}
+        infer_species_ontology_metadata(metadata)
+        add_species_external_resource(nwbfile, metadata=metadata)
+        io.write(nwbfile)
+
+This works the same way for :py:func:`~neuroconv.tools.ontology.add_brain_region_external_resources`.
+Both writers are idempotent, so re-running this on a file that already carries the reference does not
+duplicate it.
+
 TermSet files
 -------------
 
