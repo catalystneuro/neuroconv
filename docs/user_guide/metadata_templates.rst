@@ -8,8 +8,9 @@ what else the NWB file needs from you. ``get_metadata_template()`` answers that 
 returns the same source-derived values wrapped in the full structure the writer expects, with the
 cross-references between entries already resolved and every field only you can supply left blank.
 
-The fiber photometry, optical physiology and pose estimation interfaces are the ones that offer it
-today. Other modalities will follow, and this page grows a section for each.
+The extracellular electrophysiology, fiber photometry, optical physiology and pose estimation
+interfaces are the ones that offer it today. Other modalities will follow, and this page grows a
+section for each.
 
 Fill in the blanks and pass the result on:
 
@@ -34,6 +35,38 @@ and delete the entries that do not. The YAML is annotated and the JSON is not, s
 comments. Dictionary keys are handles rather than names in the file, so rename them freely. Where a
 structure repeats once per something in your recording, two entries are shown rather than one, so that
 what changes between them is visible.
+
+
+.. _ecephys_metadata_template:
+
+Extracellular Electrophysiology
+-------------------------------
+
+One probe and its model, the electrode groups pointing at the probe, the electrodes table stated row by
+row, and the ``ElectricalSeries`` whose ``channel_to_electrode`` says which row each channel recorded.
+Rename ``ecephys_recording`` to whatever ``metadata_key`` the interface was constructed with.
+
+The rows are the part that scales with the recording. ``get_metadata_template()`` returns one per
+channel, keyed ``{group}_{contact}`` where the format names its contacts and ``{group}_{channel}``
+otherwise, with what the recording carries already filled in; two rows are shown here so the shape of a
+row is visible. Any field you put on a row becomes a column, and ``columns`` is where a column is
+renamed, described or given a dtype. ``electrode_name`` is the contact's own identifier and belongs only
+on a row whose format supplies one.
+
+For the same structure filled in with real values, built one block at a time, see
+:ref:`annotate_ecephys_metadata`.
+
+.. tab-set::
+
+    .. tab-item:: YAML
+
+        .. literalinclude:: metadata_templates/ecephys_recording.yaml
+           :language: yaml
+
+    .. tab-item:: JSON
+
+        .. literalinclude:: metadata_templates/ecephys_recording.json
+           :language: json
 
 
 .. _fiber_photometry_metadata_template:

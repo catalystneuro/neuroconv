@@ -8,9 +8,9 @@ interface may report from its source format, where the values that NWB requires 
 not supply come from instead, and how the dictionary is allowed to flow through the write call stack. It is intended
 for developers contributing new interfaces or modifying existing ones.
 
-The modality-specific pages (:ref:`ophys_metadata_structure`, :ref:`events_metadata_structure`,
-:ref:`fiber_photometry_metadata_structure`) describe the *shape* of each modality's metadata. This
-page describes the rules all of those shapes obey.
+The modality-specific pages (:ref:`ecephys_metadata_structure`, :ref:`ophys_metadata_structure`,
+:ref:`events_metadata_structure`, :ref:`fiber_photometry_metadata_structure`) describe the *shape* of
+each modality's metadata. This page describes the rules all of those shapes obey.
 
 These rules constrain **interfaces and converters**, not users. A user building a file or a conversion
 script should know the experiment and supply every value they can; NeuroConv's job is only to convert

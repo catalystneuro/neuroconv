@@ -192,34 +192,17 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
             adc_sample_order = probe.contact_annotations["adc_sample_order"]
             self.recording_extractor.set_property(key="adc_sample_order", ids=channel_ids, values=adc_sample_order)
 
-        # Set channel_name property for multi-stream deduplication
-        # For SpikeGLX, multiple streams (AP, LF) can record from the same electrodes
-        # We set channel_name to show all streams for each electrode (e.g., "AP0,LF0")
+        # Each channel is named for its own band. The two bands of a probe reach one electrodes-table row
+        # through the contact they share, so nothing here has to make their names collide: this interface
+        # used to write "AP0,LF0" into both recordings so that a row identity carrying the channel name
+        # would match across them, which put a name in the file that was no channel's own and fired even
+        # for an AP-only conversion.
         current_stream_kind = self._signals_info_dict["stream_kind"]  # "ap" or "lf"
-
-        # Check if companion stream exists (AP has LF, LF has AP)
-        device = self._signals_info_dict["device"]  # e.g., "imec0"
-        companion_stream_kind = "lf" if current_stream_kind == "ap" else "ap"
-        companion_stream_id = f"{device}.{companion_stream_kind}"
-        companion_key = (0, companion_stream_id)
-
-        signals_info_dict = self.recording_extractor.neo_reader.signals_info_dict
-        has_companion_stream = companion_key in signals_info_dict
-
-        # Build channel names
-        channel_names = []
-        for channel_id in channel_ids:
-            # Extract channel number from channel_id (e.g., "imec0.ap#AP0" -> "0")
-            channel_number = channel_id.split("#")[-1][2:]
-
-            if has_companion_stream:
-                # Multi-stream: show both AP and LF (alphabetically sorted)
-                channel_name = f"AP{channel_number},LF{channel_number}"
-            else:
-                # Single stream: just use the current stream name
-                channel_name = f"{current_stream_kind.upper()}{channel_number}"
-
-            channel_names.append(channel_name)
+        channel_names = [
+            # e.g. "imec0.ap#AP0" -> "AP0"
+            f"{current_stream_kind.upper()}{channel_id.split('#')[-1][2:]}"
+            for channel_id in channel_ids
+        ]
 
         self.recording_extractor.set_property(key="channel_name", ids=channel_ids, values=channel_names)
 

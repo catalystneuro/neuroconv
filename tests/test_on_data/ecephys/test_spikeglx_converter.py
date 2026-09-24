@@ -403,9 +403,11 @@ def test_electrode_table_writing(tmp_path):
     region_indices = lf_electrodes_table_region.data
     recording_extractor = converter.data_interface_objects["imec0.lf"].recording_extractor
 
+    # The two bands recorded the same contacts, so they share rows rather than getting one row each, and
+    # the shared row carries the channel name of whichever band reached it first.
+    np.testing.assert_array_equal(region_indices, ap_electrodes_table_region.data)
     saved_channel_names = electrodes_table[region_indices]["channel_name"]
-    expected_channel_names_lf = recording_extractor.get_property("channel_name")
-    np.testing.assert_array_equal(saved_channel_names, expected_channel_names_lf)
+    np.testing.assert_array_equal(saved_channel_names, expected_channel_names_ap)
 
     # Write to file and read back in
     temporary_folder = tmp_path / "test_folder"
@@ -429,7 +431,7 @@ def test_electrode_table_writing(tmp_path):
     )
 
     channel_ids = recording_extractor_lf.get_channel_ids()
-    np.testing.assert_array_equal(channel_ids, expected_channel_names_lf)
+    np.testing.assert_array_equal(channel_ids, expected_channel_names_ap)
 
 
 class TestSortedSpikeGLXConverter:
@@ -505,15 +507,16 @@ class TestSortedSpikeGLXConverter:
             # Verify electrode mappings match expectations
             units_df = nwbfile.units.to_dataframe()
 
-            # Define expected channel patterns and group names for each unit
-            # Note: Since both AP and LF streams are present, channel names show both (e.g., "AP0,LF0")
-            unit_channel_patterns = {
-                "unit_a": ["AP0,LF0", "AP1,LF1"],
-                "unit_b": ["AP2,LF2"],
-                "unit_c": ["AP3,LF3", "AP4,LF4", "AP5,LF5"],  # imec0.ap units
-                "unit_x": ["AP0,LF0", "AP1,LF1"],
-                "unit_y": ["AP2,LF2"],
-                "unit_z": ["AP3,LF3", "AP4,LF4", "AP5,LF5"],  # imec1.ap units
+            # Rows are contacts, so a unit is checked against the contacts it was sorted from. The
+            # channel name would say which band reached the shared row first, which is not what the
+            # mapping is about; the group tells the two probes' identically-named contacts apart.
+            unit_contact_patterns = {
+                "unit_a": ["e0", "e1"],
+                "unit_b": ["e2"],
+                "unit_c": ["e3", "e4", "e5"],  # imec0.ap units
+                "unit_x": ["e0", "e1"],
+                "unit_y": ["e2"],
+                "unit_z": ["e3", "e4", "e5"],  # imec1.ap units
             }
 
             unit_group_patterns = {
@@ -532,20 +535,20 @@ class TestSortedSpikeGLXConverter:
                 # Get the electrode indices from the region
                 electrode_indices = list(unit_electrode_table_region.index)
 
-                # Get the actual channel names for these electrode indices
+                # Get the actual contacts for these electrode indices
                 unit_electrodes = nwbfile.electrodes[electrode_indices]
-                actual_channel_names = list(unit_electrodes["channel_name"])
+                actual_contacts = list(unit_electrodes["electrode_name"])
 
-                # Verify that the electrode table indices correspond to the correct channels
-                assert len(actual_channel_names) > 0, f"Unit {unit_name} has no channel mappings"
+                # Verify that the electrode table indices correspond to the correct contacts
+                assert len(actual_contacts) > 0, f"Unit {unit_name} has no channel mappings"
 
                 # This test has no conflicts (unique unit IDs across streams), so expect original unit names
-                expected_channel_names = unit_channel_patterns[unit_name]
+                expected_contacts = unit_contact_patterns[unit_name]
 
-                # Verify the channel names match the expected pattern
+                # Verify the contacts match the expected pattern
                 assert (
-                    actual_channel_names == expected_channel_names
-                ), f"Unit {unit_name} has channel names {actual_channel_names}, expected {expected_channel_names}"
+                    actual_contacts == expected_contacts
+                ), f"Unit {unit_name} has contacts {actual_contacts}, expected {expected_contacts}"
 
                 # Verify the group names (device mapping) match what we expect
                 actual_group_names = list(unit_electrodes["group_name"])
@@ -611,13 +614,13 @@ class TestSortedSpikeGLXConverter:
                     device_value == expected_device_name
                 ), f"Expected device {expected_device_name}, got {device_value}"
 
-            # Define expected channel names and group names for each unit (single probe)
-            # Note: Since both AP and LF streams are present, channel names show both (e.g., "AP0,LF0")
-            expected_unit_channel_names = {
-                "unit_a": ["AP0,LF0", "AP1,LF1", "AP2,LF2"],  # First 3 channels
-                "unit_b": ["AP10,LF10", "AP11,LF11"],  # Channels 10-11
-                "unit_c": ["AP20,LF20"],  # Channel 20
-                "unit_d": ["AP30,LF30", "AP31,LF31"],  # Channels 30-31
+            # Rows are contacts, so a unit is checked against the contacts it was sorted from rather
+            # than against the channel name of whichever band reached the shared row first.
+            expected_unit_contacts = {
+                "unit_a": ["e0", "e1", "e2"],  # First 3 channels
+                "unit_b": ["e10", "e11"],  # Channels 10-11
+                "unit_c": ["e20"],  # Channel 20
+                "unit_d": ["e30", "e31"],  # Channels 30-31
             }
 
             expected_unit_group_names = {
@@ -636,14 +639,14 @@ class TestSortedSpikeGLXConverter:
                 unit_electrode_table_region = unit_row.electrodes
                 electrode_indices = list(unit_electrode_table_region.index)
 
-                # Verify the channel names match what we specified
+                # Verify the contacts match what we specified
                 unit_electrodes = nwbfile.electrodes[electrode_indices]
-                actual_channel_names = list(unit_electrodes["channel_name"])
-                expected_channel_names = expected_unit_channel_names[unit_id]
+                actual_contacts = list(unit_electrodes["electrode_name"])
+                expected_contacts = expected_unit_contacts[unit_id]
 
                 assert (
-                    actual_channel_names == expected_channel_names
-                ), f"Unit {unit_id} has channel names {actual_channel_names}, expected {expected_channel_names}"
+                    actual_contacts == expected_contacts
+                ), f"Unit {unit_id} has contacts {actual_contacts}, expected {expected_contacts}"
 
                 # Verify the group names (device mapping) match what we expect
                 actual_group_names = list(unit_electrodes["group_name"])

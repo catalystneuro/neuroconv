@@ -17,6 +17,10 @@ from .dict import DeepDict
 
 # Column descriptions, which are list-shaped in both formats.
 _ECEPHYS_LIST_BLOCKS = ("Electrodes", "UnitProperties")
+# Blocks the new format adds beside the registries. They are mappings, so without naming them here the
+# translator would take one for an ``es_key``-addressed series and file it under ``ElectricalSeries``, or
+# drop it, whenever a converter mixes shapes and translation runs at all.
+_ECEPHYS_PASSTHROUGH_BLOCKS = ("ElectrodesTable",)
 # Keys the translator consumes or produces, so they are never mistaken for an ``es_key`` entry.
 _ECEPHYS_STRUCTURAL_KEYS = ("Device", "ElectrodeGroup", "ElectrodeGroups", "ElectricalSeries")
 # Ophys blocks whose names exist only in the old format, so their presence settles the shape.
@@ -102,7 +106,7 @@ def _ecephys_block_is_old(ecephys_metadata: dict) -> bool:
         return True
 
     for key, value in ecephys_metadata.items():
-        if key in _ECEPHYS_LIST_BLOCKS:
+        if key in _ECEPHYS_LIST_BLOCKS or key in _ECEPHYS_PASSTHROUGH_BLOCKS:
             continue
         if key == "ElectricalSeries" or key not in _ECEPHYS_STRUCTURAL_KEYS:
             # ``ElectricalSeries`` exists in both formats; any other key is an ``es_key``-addressed entry.
@@ -145,7 +149,7 @@ def _translate_ecephys_block(
             electrical_series.update({key: dict(entry) for key, entry in existing.items()})
 
     for key, value in ecephys_metadata.items():
-        if key in _ECEPHYS_STRUCTURAL_KEYS or key in _ECEPHYS_LIST_BLOCKS:
+        if key in _ECEPHYS_STRUCTURAL_KEYS or key in _ECEPHYS_LIST_BLOCKS or key in _ECEPHYS_PASSTHROUGH_BLOCKS:
             continue
         if _is_old_style_entry(value):
             # An ``es_key``-addressed entry. Its label is ``metadata_key`` when this call knows which
@@ -156,7 +160,7 @@ def _translate_ecephys_block(
     if electrical_series:
         translated["ElectricalSeries"] = electrical_series
 
-    for key in _ECEPHYS_LIST_BLOCKS:
+    for key in (*_ECEPHYS_LIST_BLOCKS, *_ECEPHYS_PASSTHROUGH_BLOCKS):
         if key in ecephys_metadata:
             translated[key] = ecephys_metadata[key]
 

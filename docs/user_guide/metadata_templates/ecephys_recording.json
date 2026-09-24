@@ -1,0 +1,81 @@
+{
+    "DeviceModels": {
+        "probe_model": {
+            "name": null,
+            "manufacturer": null,
+            "model_number": null,
+            "description": null
+        }
+    },
+    "Devices": {
+        "probe": {
+            "name": null,
+            "description": null,
+            "serial_number": null,
+            "device_model_metadata_key": "probe_model"
+        }
+    },
+    "Ecephys": {
+        "ElectrodeGroups": {
+            "shank_0": {
+                "name": null,
+                "description": null,
+                "location": null,
+                "device_metadata_key": "probe"
+            },
+            "shank_1": {
+                "name": null,
+                "description": null,
+                "location": null,
+                "device_metadata_key": "probe"
+            }
+        },
+        "ElectrodesTable": {
+            "rows": {
+                "shank_0_e0": {
+                    "electrode_group_metadata_key": "shank_0",
+                    "electrode_name": null,
+                    "location": null,
+                    "x": null,
+                    "y": null,
+                    "z": null,
+                    "rel_x": null,
+                    "rel_y": null,
+                    "rel_z": null,
+                    "imp": null,
+                    "filtering": null
+                },
+                "shank_1_e0": {
+                    "electrode_group_metadata_key": "shank_1",
+                    "electrode_name": null,
+                    "location": null,
+                    "x": null,
+                    "y": null,
+                    "z": null,
+                    "rel_x": null,
+                    "rel_y": null,
+                    "rel_z": null,
+                    "imp": null,
+                    "filtering": null
+                }
+            },
+            "columns": {
+                "imp": {
+                    "column_name": "impedance",
+                    "description": null,
+                    "dtype": "float64"
+                }
+            }
+        },
+        "ElectricalSeries": {
+            "ecephys_recording": {
+                "name": null,
+                "description": null,
+                "channel_to_electrode": {
+                    "0": "shank_0_e0",
+                    "1": "shank_1_e0"
+                }
+            }
+        }
+    }
+}
