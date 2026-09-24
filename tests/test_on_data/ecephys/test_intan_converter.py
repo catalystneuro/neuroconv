@@ -1,5 +1,7 @@
 """Tests for IntanConverter — auto-discovery and routing of Intan streams."""
 
+import re
+
 import pytest
 from pynwb.testing.mock.file import mock_NWBFile
 
@@ -102,6 +104,23 @@ class TestIntanConverter:
         assert "ElectricalSeries" in nwbfile.acquisition
         assert len(nwbfile.events["DIGITAL-IN-14"]) == 16
 
+    def test_detection_configuration_is_propagated(self):
+        converter = IntanConverter(
+            file_path=RHS_TRADITIONAL,
+            detection_configuration={
+                "DIGITAL-IN-14": [{"signal_conditioning": {"binarize": "midpoint"}, "detection": "rising"}],
+                "ANALOG-IN-1": [{"signal_conditioning": {"binarize": "midpoint"}, "detection": "rising"}],
+            },
+        )
+
+        assert "Digital" in converter.data_interface_objects
+        assert "AnalogEvents" in converter.data_interface_objects
+
+        nwbfile = mock_NWBFile()
+        converter.add_to_nwbfile(nwbfile)
+
+        assert set(nwbfile.events) == {"DIGITAL-IN-14", "ANALOG-IN-1"}
+
 
 class TestMetadataKeyRouting:
     """The routing table's key reaches the recording interface as ``metadata_key``, not only as ``es_key``."""
@@ -179,6 +198,19 @@ class TestStreamDiscoveryAndRouting:
         interface_names = set(converter.data_interface_objects.keys())
         assert "Stim" not in interface_names
         assert "Recording" in interface_names
+
+    def test_unknown_detection_configuration_signal_raises(self):
+        expected_error = (
+            "detection_configuration names signal(s) not found in the discovered digital or ADC streams: "
+            "['missing']. Available signals: ['ANALOG-IN-1', 'DIGITAL-IN-01']."
+        )
+        with pytest.raises(ValueError, match=re.escape(expected_error)):
+            IntanConverter(
+                file_path=RHD_FILE_PER_SIGNAL,
+                detection_configuration={
+                    "missing": [{"signal_conditioning": {"binarize": "midpoint"}, "detection": "rising"}]
+                },
+            )
 
     def test_exclude_unknown_stream_raises(self):
         expected_message = "Cannot exclude streams ['bogus stream']: not present in intanTestFile.rhs."
