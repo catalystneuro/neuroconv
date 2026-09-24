@@ -696,6 +696,18 @@ def test_custom_module(nwb_converter, nwbfile_path, metadata, aligned_segment_st
         assert "Video test3" in nwbfile.processing["behavior"].data_interfaces
 
 
+def test_set_aligned_starting_time_spaces_mixed_rate_files_at_the_first_rate():
+    """As on main: with no times set, every frame of every file is spaced at the first file's rate."""
+    interface = MockExternalVideoInterface(file_paths=["part_1.avi", "part_2.avi"], num_frames=3)
+    interface.get_header_frame_rates = lambda: [2.0, 4.0]
+
+    with pytest.warns(FutureWarning):
+        interface.set_aligned_starting_time(aligned_starting_time=10.0)
+
+    np.testing.assert_array_equal(interface.alignment["part_1"].get_times(), [10.0, 10.5, 11.0])
+    np.testing.assert_array_equal(interface.alignment["part_2"].get_times(), [11.5, 12.0, 12.5])
+
+
 def test_get_timestamps_with_nothing_set_returns_the_stored_timestamps(nwb_converter):
     """The deprecated getter still reads the timestamps stored in the video files when none were set."""
     interface = nwb_converter.data_interface_objects["Video1"]

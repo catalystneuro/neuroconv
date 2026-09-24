@@ -566,7 +566,19 @@ class ExternalVideoInterface(BaseDataInterface):
         if times_were_set:
             self.alignment.shift_times(aligned_starting_time)
             return
-        durations = np.array(self.get_header_frame_counts()) / np.array(self.get_header_frame_rates())
+        frame_counts = self.get_header_frame_counts()
+        frame_rates = self.get_header_frame_rates()
+        if len(set(frame_rates)) > 1:
+            # As before the alignment surface: one starting time and the first file's rate for every frame of
+            # every file. Wrong for the files at another rate, and kept until the method's removal.
+            first_frame_indices = np.concatenate([[0], np.cumsum(frame_counts)[:-1]])
+            for segment_key, first_frame_index, frame_count in zip(
+                self._segment_keys, first_frame_indices, frame_counts
+            ):
+                frame_indices = first_frame_index + np.arange(frame_count)
+                self.alignment[segment_key].set_times(aligned_starting_time + frame_indices / frame_rates[0])
+            return
+        durations = np.array(frame_counts) / np.array(frame_rates)
         starting_times = aligned_starting_time + np.concatenate([[0.0], np.cumsum(durations)[:-1]])
         for segment_key, starting_time in zip(self._segment_keys, starting_times):
             self.alignment[segment_key].move_start_to(starting_time)
