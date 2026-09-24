@@ -131,9 +131,9 @@ def _brain_regions_metadata(mapping: dict) -> dict:
     return {"ontology": {"brain_regions": mapping}}
 
 
-def _pose_estimation_anatomy(mapping: dict) -> dict:
-    """A metadata dict carrying a ``PoseEstimation.ontology.anatomy`` map."""
-    return {"PoseEstimation": {"ontology": {"anatomy": mapping}}}
+def _anatomy_metadata(mapping: dict) -> dict:
+    """A metadata dict carrying a file-wide ``ontology.anatomy`` map."""
+    return {"ontology": {"anatomy": mapping}}
 
 
 # ---------------------------------------------------------------------------
@@ -791,7 +791,7 @@ class TestInferAnatomyOntologyMetadata:
         metadata = {}
 
         infer_anatomy_ontology_metadata(nwbfile, metadata)
-        anatomy = metadata["PoseEstimation"]["ontology"]["anatomy"]
+        anatomy = metadata["ontology"]["anatomy"]
         assert anatomy["Snout"]["id"] == get_anatomy_term("Snout").curie
         assert anatomy["Shoulder"]["id"] == get_anatomy_term("Shoulder").curie
         assert "EarL" not in anatomy  # unresolved (lab-specific, laterality marker) is skipped
@@ -806,10 +806,10 @@ class TestInferAnatomyOntologyMetadata:
         nwbfile = _make_nwbfile()
         _add_skeleton(nwbfile, ["Snout"])
         curated = {"id": "UBERON:9999999", "uri": "https://example.org/custom"}
-        metadata = _pose_estimation_anatomy({"Snout": curated})
+        metadata = _anatomy_metadata({"Snout": curated})
 
         infer_anatomy_ontology_metadata(nwbfile, metadata)
-        assert metadata["PoseEstimation"]["ontology"]["anatomy"]["Snout"] == curated
+        assert metadata["ontology"]["anatomy"]["Snout"] == curated
 
 
 # ---------------------------------------------------------------------------
@@ -1222,14 +1222,14 @@ class TestAnatomyExternalResources:
     def test_noop_when_metadata_covers_no_present_node(self):
         nwbfile = _make_nwbfile()
         _add_skeleton(nwbfile, ["Snout", "EarL"])
-        metadata = _pose_estimation_anatomy({"some other node": {"id": "UBERON:1", "uri": "https://example.org/1"}})
+        metadata = _anatomy_metadata({"some other node": {"id": "UBERON:1", "uri": "https://example.org/1"}})
         assert add_anatomy_external_resources(nwbfile, metadata=metadata) == 0
         assert nwbfile.external_resources is None
 
     def test_skeleton_nodes_are_annotated(self):
         nwbfile = _make_nwbfile()
         skeleton = _add_skeleton(nwbfile, ["Snout", "Snout", "EarL", "Shoulder"])  # duplicates collapse
-        metadata = _pose_estimation_anatomy(
+        metadata = _anatomy_metadata(
             {
                 "Snout": {"id": "UBERON:0006333", "uri": "https://example.org/UBERON_0006333"},
                 "Shoulder": {"id": "UBERON:0001467", "uri": "https://example.org/UBERON_0001467"},
@@ -1251,7 +1251,7 @@ class TestAnatomyExternalResources:
         nwbfile = _make_nwbfile()
         _add_skeleton(nwbfile, ["Snout"], name="skeleton_rat1")
         _add_skeleton(nwbfile, ["Tail"], name="skeleton_rat2")
-        metadata = _pose_estimation_anatomy(
+        metadata = _anatomy_metadata(
             {
                 "Snout": {"id": "UBERON:0006333", "uri": "https://example.org/UBERON_0006333"},
                 "Tail": {"id": "UBERON:0002415", "uri": "https://example.org/UBERON_0002415"},
@@ -1265,7 +1265,7 @@ class TestAnatomyExternalResources:
     def test_maps_one_node_to_multiple_ontology_terms(self):
         nwbfile = _make_nwbfile()
         _add_skeleton(nwbfile, ["Snout"])
-        metadata = _pose_estimation_anatomy(
+        metadata = _anatomy_metadata(
             {
                 "Snout": [
                     {"id": "UBERON:0006333", "uri": "http://purl.obolibrary.org/obo/UBERON_0006333"},
@@ -1285,14 +1285,14 @@ class TestAnatomyExternalResources:
     def test_malformed_metadata_term_raises(self, bad_value):
         nwbfile = _make_nwbfile()
         _add_skeleton(nwbfile, ["Snout"])
-        metadata = _pose_estimation_anatomy({"Snout": bad_value})
+        metadata = _anatomy_metadata({"Snout": bad_value})
         with pytest.raises((TypeError, ValueError)):
             add_anatomy_external_resources(nwbfile, metadata=metadata)
 
     def test_idempotent(self):
         nwbfile = _make_nwbfile()
         _add_skeleton(nwbfile, ["Snout", "Tail"])
-        metadata = _pose_estimation_anatomy(
+        metadata = _anatomy_metadata(
             {
                 "Snout": {"id": "UBERON:0006333", "uri": "https://example.org/UBERON_0006333"},
                 "Tail": {"id": "UBERON:0002415", "uri": "https://example.org/UBERON_0002415"},
@@ -1318,9 +1318,7 @@ class TestAnatomyExternalResources:
         )
         nwbfile.external_resources = herd
 
-        metadata = _pose_estimation_anatomy(
-            {"Snout": {"id": "UBERON:0006333", "uri": "https://example.org/UBERON_0006333"}}
-        )
+        metadata = _anatomy_metadata({"Snout": {"id": "UBERON:0006333", "uri": "https://example.org/UBERON_0006333"}})
         assert add_anatomy_external_resources(nwbfile, metadata=metadata) == 1
         assert nwbfile.external_resources is herd  # extended in place, not replaced
         assert len(herd.entities[:]) == 2

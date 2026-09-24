@@ -46,7 +46,8 @@ Ontology support is deliberately split into two independent halves, both in
    :py:func:`~neuroconv.tools.ontology.infer_brain_region_ontology_metadata`, and
    :py:func:`~neuroconv.tools.ontology.infer_anatomy_ontology_metadata` take the free-text values a
    lab wrote (``"mouse"``, ``"black 6"``, ``"CA1"``, ``"Snout"``) and resolve them to ontology
-   terms, writing each term into ``metadata``. This step
+   terms, writing each term into ``metadata["ontology"]``, **keyed by the value it describes**. This
+   step
    guesses; run it when you want NeuroConv to propose terms, then inspect and edit the result.
 2. **Annotation** — :py:func:`~neuroconv.tools.ontology.add_species_external_resource`,
    :py:func:`~neuroconv.tools.ontology.add_strain_external_resource`,
@@ -83,9 +84,6 @@ takes effect where the file carries the same value:
         "brain_regions": {
             "CA1": {"id": "MBA:382", "uri": "https://purl.brain-bican.org/ontology/mbao/MBA_382"},
         },
-    }
-
-    metadata["PoseEstimation"]["ontology"] = {
         "anatomy": {
             "Snout": {"id": "UBERON:0002536", "uri": "http://purl.obolibrary.org/obo/UBERON_0002536"},
         },
@@ -94,8 +92,8 @@ takes effect where the file carries the same value:
 Brain-region terms are keyed by the free-text ``location`` string, regardless of whether that string
 labels an electrode, an imaging plane, or a fiber-photometry site -- the same string means the same
 place across modalities in a single file. Anatomy terms are keyed the same way by the free-text
-``Skeleton`` node name, and still sit under ``metadata["PoseEstimation"]["ontology"]["anatomy"]``.
-To annotate one value with **several** ontologies, map it to a list of terms:
+``Skeleton`` node name, whichever pose-estimation interface wrote the skeleton. To annotate one
+value with **several** ontologies, map it to a list of terms:
 
 .. code-block:: python
 
@@ -357,7 +355,7 @@ How node names are resolved
 
 :py:func:`~neuroconv.tools.ontology.infer_anatomy_ontology_metadata` walks a populated file's
 ``Skeleton.nodes`` entries and resolves each distinct name against the curated general-anatomy
-vocabulary, writing terms under ``metadata["PoseEstimation"]["ontology"]["anatomy"]``. A name
+vocabulary, writing terms under ``metadata["ontology"]["anatomy"]``. A name
 matches an exact canonical structure name (e.g. ``"Trapezius muscle"``) or a small set of common
 informal names and abbreviations (e.g. ``"nose"``, ``"forepaw"``, ``"trapezius"``). A lab-specific
 keypoint name with a laterality marker (e.g. ``"EarL"``) does not resolve and is left out of the
@@ -373,7 +371,7 @@ map.
 
     # skeleton.nodes == ["Snout", "Shoulder", "EarL"] on an nwbfile.processing["behavior"]["Skeletons"] entry
     infer_anatomy_ontology_metadata(nwbfile, metadata)
-    metadata["PoseEstimation"]["ontology"]["anatomy"]
+    metadata["ontology"]["anatomy"]
     #   {"Snout": {"id": "UBERON:0002536", "uri": "..."}, "Shoulder": {"id": "UBERON:...", "uri": "..."}}
     #   "EarL" is not recognized and does not appear.
 
@@ -385,18 +383,16 @@ same ``{"id": ..., "uri": ...}`` (or list-of-terms) shape:
 
 .. code-block:: python
 
-    metadata["PoseEstimation"]["ontology"] = {
-        "anatomy": {
-            "EarL": {"id": "UBERON:0001691", "uri": "http://purl.obolibrary.org/obo/UBERON_0001691"},
-        },
+    metadata.setdefault("ontology", {})["anatomy"] = {
+        "EarL": {"id": "UBERON:0001691", "uri": "http://purl.obolibrary.org/obo/UBERON_0001691"},
     }
 
 Writing the references into the file
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 :py:func:`~neuroconv.tools.ontology.add_anatomy_external_resources` reads
-``metadata["PoseEstimation"]["ontology"]["anatomy"]`` and, for each node name on the file that the
-map covers, attaches the term(s) as HERD references. A conversion calls it for you:
+``metadata["ontology"]["anatomy"]`` and, for each node name on the file that the map covers,
+attaches the term(s) as HERD references. A conversion calls it for you:
 
 .. code-block:: python
 

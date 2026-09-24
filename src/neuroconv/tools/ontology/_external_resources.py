@@ -17,7 +17,7 @@ string it annotates (HERD links a term to an object through that string):
   anatomical ``location`` field on the file (the electrodes table and electrode groups, imaging
   planes, intracellular electrodes, optogenetic stimulus sites, viral vector injections, and the
   ``FiberPhotometryTable``), regardless of which modality it belongs to;
-- ``metadata["PoseEstimation"]["ontology"]["anatomy"]`` -> ``{node name: term-or-list}`` for
+- ``metadata["ontology"]["anatomy"]`` -> ``{node name: term-or-list}`` for
   ``ndx-pose`` ``Skeleton.nodes`` entries (pose-estimation keypoints).
 
 Each term is an explicit ``{"id": <CURIE>, "uri": <resolvable URI>}`` dict; a list of them annotates
@@ -340,17 +340,14 @@ def add_brain_region_external_resources(nwbfile: NWBFile, metadata: dict | None 
 
 
 def _anatomy_mapping_from_metadata(metadata: dict | None) -> dict:
-    """Parse ``metadata["PoseEstimation"]["ontology"]["anatomy"]`` into a ``{node name: [(id, uri), ...]}`` dict.
+    """Parse ``metadata["ontology"]["anatomy"]`` into a ``{node name: [(id, uri), ...]}`` dict.
 
     Each skeleton node name maps to one or more ontology terms, each an explicit
     ``{"id": ..., "uri": ...}`` dict (a single dict or a list of them).
     """
     if not isinstance(metadata, dict):
         return {}
-    pose_estimation_metadata = metadata.get("PoseEstimation")
-    if not isinstance(pose_estimation_metadata, dict):
-        return {}
-    raw_mapping = pose_estimation_metadata.get("ontology", {}).get("anatomy")
+    raw_mapping = metadata.get("ontology", {}).get("anatomy")
     if not isinstance(raw_mapping, dict):
         return {}
 
@@ -377,7 +374,7 @@ def _anatomy_annotation_sites(nwbfile: NWBFile) -> list:
     if skeletons_container is None:
         return sites
     for skeleton in skeletons_container.skeletons.values():
-        for node_name in dict.fromkeys(skeleton.nodes):  # unique, order-preserving
+        for node_name in dict.fromkeys(_unwrapped(skeleton.nodes)):  # unique, order-preserving
             sites.append((skeleton, "nodes", "nodes", node_name))
     return sites
 
@@ -386,7 +383,7 @@ def add_anatomy_external_resources(nwbfile: NWBFile, metadata: dict | None = Non
     """
     Annotate ``ndx-pose`` ``Skeleton`` node names with the anatomy terms stated in ``metadata`` (HERD).
 
-    Reads ``metadata["PoseEstimation"]["ontology"]["anatomy"]`` -- a ``{node name: term-or-list}``
+    Reads ``metadata["ontology"]["anatomy"]`` -- a ``{node name: term-or-list}``
     mapping of explicit ``{"id": ..., "uri": ...}`` terms -- and, for every distinct node name in
     every ``Skeleton.nodes`` array (pose-estimation keypoints, e.g. ``"Snout"``, ``"Shoulder"``) that
     the map covers, attaches machine-readable references stored in-file under
@@ -402,8 +399,7 @@ def add_anatomy_external_resources(nwbfile: NWBFile, metadata: dict | None = Non
     nwbfile : NWBFile
         The file whose skeleton node names should be annotated. Modified in place.
     metadata : dict, optional
-        Conversion metadata. Anatomy terms are read from
-        ``metadata["PoseEstimation"]["ontology"]["anatomy"]``.
+        Conversion metadata. Anatomy terms are read from ``metadata["ontology"]["anatomy"]``.
 
     Returns
     -------

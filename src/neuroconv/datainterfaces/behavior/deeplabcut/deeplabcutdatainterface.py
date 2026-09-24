@@ -435,13 +435,6 @@ class DeepLabCutInterface(BasePoseEstimationInterface):
             "Skeletons": skeleton_schema,
             "Devices": devices_schema,
             "PoseEstimationContainers": containers_schema,
-            "ontology": {
-                "type": "object",
-                "description": (
-                    "Ontology terms for skeleton node names under 'anatomy'. Populated by "
-                    "neuroconv.tools.ontology and written into the file as HERD references."
-                ),
-            },
         }
 
         return metadata_schema

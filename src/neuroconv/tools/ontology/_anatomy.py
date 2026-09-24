@@ -17,6 +17,7 @@ from dataclasses import dataclass
 
 from pynwb import NWBFile
 
+from ._brain_regions import _unwrapped
 from ._term_sets import load_term_set
 
 __all__ = ["ANATOMY_TERMS", "AnatomyTerm", "get_anatomy_term", "infer_anatomy_ontology_metadata"]
@@ -91,19 +92,19 @@ def _skeleton_node_names(nwbfile: NWBFile) -> list:
         return []
     names: dict = {}
     for skeleton in skeletons_container.skeletons.values():
-        names.update(dict.fromkeys(str(node_name) for node_name in skeleton.nodes))
+        names.update(dict.fromkeys(str(node_name) for node_name in _unwrapped(skeleton.nodes)))
     return list(names)
 
 
 def infer_anatomy_ontology_metadata(nwbfile: NWBFile, metadata: dict) -> dict:
     """
-    Fill ``metadata["PoseEstimation"]["ontology"]["anatomy"]`` from the file's skeleton node names.
+    Fill ``metadata["ontology"]["anatomy"]`` from the file's skeleton node names.
 
     This is the **inference** half of anatomy annotation: it walks every ``ndx-pose``
     ``Skeleton.nodes`` entry on ``nwbfile`` (pose-estimation keypoints, e.g. ``"Snout"``,
     ``"Shoulder"``), resolves each distinct name to a UBERON term with :func:`get_anatomy_term`, and
-    writes explicit ``{"id": ..., "uri": ...}`` terms under
-    ``metadata["PoseEstimation"]["ontology"]["anatomy"]``. The deterministic
+    writes explicit ``{"id": ..., "uri": ...}`` terms under ``metadata["ontology"]["anatomy"]``,
+    keyed by the node name. The deterministic
     :func:`neuroconv.tools.ontology.add_anatomy_external_resources` then writes those terms into the
     file as HERD references.
 
@@ -116,8 +117,7 @@ def infer_anatomy_ontology_metadata(nwbfile: NWBFile, metadata: dict) -> dict:
     nwbfile : NWBFile
         A populated file (data already added) whose ``Skeleton`` node names are read.
     metadata : dict
-        Conversion metadata. Terms are written under
-        ``metadata["PoseEstimation"]["ontology"]["anatomy"]``.
+        Conversion metadata. Terms are written under ``metadata["ontology"]["anatomy"]``.
 
     Returns
     -------
@@ -127,7 +127,7 @@ def infer_anatomy_ontology_metadata(nwbfile: NWBFile, metadata: dict) -> dict:
     if not isinstance(metadata, dict):
         return metadata
 
-    existing = metadata.get("PoseEstimation", {}).get("ontology", {}).get("anatomy", {})
+    existing = metadata.get("ontology", {}).get("anatomy", {})
     resolved = {}
     for node_name in _skeleton_node_names(nwbfile):
         if node_name in existing:
@@ -137,7 +137,7 @@ def infer_anatomy_ontology_metadata(nwbfile: NWBFile, metadata: dict) -> dict:
             resolved[node_name] = {"id": term.curie, "uri": term.entity_uri}
 
     if resolved:
-        anatomy = metadata.setdefault("PoseEstimation", {}).setdefault("ontology", {}).setdefault("anatomy", {})
+        anatomy = metadata.setdefault("ontology", {}).setdefault("anatomy", {})
         anatomy.update(resolved)
 
     return metadata
