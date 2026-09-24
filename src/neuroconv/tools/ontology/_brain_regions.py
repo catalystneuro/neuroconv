@@ -164,23 +164,39 @@ def get_brain_region_term(location: str, species: str = "Mus musculus") -> Brain
     return atlas.resolve(location)
 
 
+def _location_containers(nwbfile: NWBFile) -> list:
+    """Every object on the file that carries a scalar ``location`` attribute naming a brain region.
+
+    Covers ``ElectrodeGroup`` (ecephys), ``ImagingPlane`` (ophys), ``IntracellularElectrode``
+    (icephys), ``OptogeneticStimulusSite`` (ogen), and every ``ndx-ophys-devices``
+    ``ViralVectorInjection``, whose ``location`` is the targeted region. Injections are found by type
+    wherever they sit (the fiber-photometry and optogenetics containers both hold them), so no
+    extension has to be installed for the rest to work. Objects whose ``location`` is unset are
+    skipped.
+    """
+    containers = [
+        *nwbfile.electrode_groups.values(),
+        *nwbfile.imaging_planes.values(),
+        *nwbfile.icephys_electrodes.values(),
+        *nwbfile.ogen_sites.values(),
+        *(obj for obj in nwbfile.objects.values() if getattr(obj, "neurodata_type", None) == "ViralVectorInjection"),
+    ]
+    return [container for container in containers if getattr(container, "location", None) is not None]
+
+
 def _all_locations(nwbfile: NWBFile) -> list:
     """Unique location strings across every anatomical site on the file.
 
-    Covers the electrodes table ``location`` column and every ``ElectrodeGroup.location``
-    (ecephys), every ``ImagingPlane.location`` (ophys), and the ``FiberPhotometryTable``
-    ``location`` column (fiber photometry).
+    Covers the electrodes table ``location`` column (ecephys), the ``FiberPhotometryTable``
+    ``location`` column (fiber photometry), and every object from :func:`_location_containers`.
     """
     locations: dict[str, None] = {}
 
     electrodes = nwbfile.electrodes
     if electrodes is not None and "location" in electrodes.colnames:
         locations.update(dict.fromkeys(str(value) for value in electrodes["location"].data))
-    for electrode_group in nwbfile.electrode_groups.values():
-        locations.setdefault(electrode_group.location)
-
-    for imaging_plane in nwbfile.imaging_planes.values():
-        locations.setdefault(imaging_plane.location)
+    for container in _location_containers(nwbfile):
+        locations.setdefault(container.location)
 
     # Lazy import: fiber_photometry.py imports (transitively) from tools.ontology.
     from ..fiber_photometry import get_fiber_photometry_table
@@ -197,7 +213,8 @@ def infer_brain_region_ontology_metadata(nwbfile: NWBFile, metadata: dict) -> di
     Fill ``metadata["ontology"]["brain_regions"]`` from the file's ``location`` fields.
 
     This is the **inference** half of brain-region annotation: it walks every anatomical
-    ``location`` on ``nwbfile`` (the electrodes table, electrode groups, imaging planes, and the
+    ``location`` on ``nwbfile`` (the electrodes table, electrode groups, imaging planes,
+    intracellular electrodes, optogenetic stimulus sites, viral vector injections, and the
     ``FiberPhotometryTable``), resolves each distinct string to a brain-atlas term with
     :func:`get_brain_region_term` -- choosing the atlas from the subject's species (Allen Mouse or
     Human Brain Atlas, or the species-agnostic UBERON fallback) -- and writes explicit

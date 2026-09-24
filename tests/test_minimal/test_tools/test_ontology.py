@@ -51,6 +51,54 @@ def _optical_channel():
     return OpticalChannel(name="channel0", description="d", emission_lambda=500.0)
 
 
+def _add_icephys_ogen_and_injection(nwbfile: NWBFile, icephys_location, ogen_location, injection_location) -> None:
+    """Add an intracellular electrode, an optogenetic stimulus site, and a viral vector injection.
+
+    The injection sits inside the ``FiberPhotometry`` lab metadata, where NeuroConv's fiber-photometry
+    tool puts it.
+    """
+    ndx_ophys_devices = pytest.importorskip("ndx_ophys_devices")
+    ndx_fiber_photometry = pytest.importorskip("ndx_fiber_photometry")
+    from pynwb.ogen import OptogeneticStimulusSite
+
+    device = nwbfile.create_device(name="rig")
+    nwbfile.create_icephys_electrode(name="electrode0", description="d", device=device, location=icephys_location)
+    nwbfile.add_ogen_site(
+        OptogeneticStimulusSite(
+            name="site0", device=device, description="d", excitation_lambda=473.0, location=ogen_location
+        )
+    )
+
+    viral_vector = ndx_ophys_devices.ViralVector(
+        name="virus0", construct_name="AAV", description="d", manufacturer="m", titer_in_vg_per_ml=1e12
+    )
+    injection = ndx_ophys_devices.ViralVectorInjection(
+        name="injection0",
+        location=injection_location,
+        hemisphere="left",
+        reference="Bregma",
+        ap_in_mm=1.0,
+        ml_in_mm=1.0,
+        dv_in_mm=1.0,
+        volume_in_uL=0.5,
+        viral_vector=viral_vector,
+    )
+    indicator = ndx_ophys_devices.Indicator(name="indicator0", label="GCaMP", description="d", manufacturer="m")
+    nwbfile.add_lab_meta_data(
+        ndx_fiber_photometry.FiberPhotometry(
+            name="fiber_photometry",
+            fiber_photometry_table=ndx_fiber_photometry.FiberPhotometryTable(
+                name="fiber_photometry_table", description="d"
+            ),
+            fiber_photometry_viruses=ndx_fiber_photometry.FiberPhotometryViruses(viral_vectors=[viral_vector]),
+            fiber_photometry_virus_injections=ndx_fiber_photometry.FiberPhotometryVirusInjections(
+                viral_vector_injections=[injection]
+            ),
+            fiber_photometry_indicators=ndx_fiber_photometry.FiberPhotometryIndicators(indicators=[indicator]),
+        )
+    )
+
+
 def _brain_regions_metadata(mapping: dict) -> dict:
     """A metadata dict carrying a file-wide ``ontology.brain_regions`` map."""
     return {"ontology": {"brain_regions": mapping}}
@@ -465,6 +513,19 @@ class TestInferBrainRegionOntologyMetadata:
         infer_brain_region_ontology_metadata(nwbfile, metadata)
         assert metadata["ontology"]["brain_regions"]["CA1"]["id"] == "HBA:12892"
 
+    def test_icephys_ogen_and_virus_injection_locations_are_resolved(self):
+        nwbfile = _make_nwbfile(species="Mus musculus")
+        _add_icephys_ogen_and_injection(nwbfile, icephys_location="CA1", ogen_location="VISp", injection_location="VTA")
+        metadata = {}
+
+        infer_brain_region_ontology_metadata(nwbfile, metadata)
+        brain_regions = metadata["ontology"]["brain_regions"]
+        assert {location: term["id"] for location, term in brain_regions.items()} == {
+            "CA1": "MBA:382",
+            "VISp": "MBA:385",
+            "VTA": "MBA:749",
+        }
+
     def test_imaging_plane_locations_are_resolved(self):
         nwbfile = _make_nwbfile(species="Mus musculus")
         device = nwbfile.create_device(name="scope")
@@ -632,6 +693,33 @@ class TestBrainRegionExternalResources:
         # HERD records the electrodes reference against the ``location`` column, not the table.
         objects = nwbfile.external_resources.objects.to_dataframe()
         assert nwbfile.electrodes["location"].object_id in objects["object_id"].tolist()
+
+    def test_icephys_ogen_and_virus_injection_locations_are_annotated(self, tmp_path):
+        from pynwb import NWBHDF5IO
+
+        nwbfile = _make_nwbfile()
+        _add_icephys_ogen_and_injection(nwbfile, icephys_location="CA1", ogen_location="VISp", injection_location="VTA")
+        metadata = _brain_regions_metadata(
+            {
+                "CA1": {"id": "MBA:382", "uri": "https://example.org/MBA_382"},
+                "VISp": {"id": "MBA:385", "uri": "https://example.org/MBA_385"},
+                "VTA": {"id": "MBA:749", "uri": "https://example.org/MBA_749"},
+            }
+        )
+
+        assert add_brain_region_external_resources(nwbfile, metadata=metadata) == 3
+
+        path = tmp_path / "locations.nwb"
+        with NWBHDF5IO(path, "w") as io:
+            io.write(nwbfile)
+        with NWBHDF5IO(path, "r") as io:
+            dataframe = io.read().external_resources.to_dataframe()
+        rows = set(zip(dataframe["object_type"], dataframe["relative_path"], dataframe["key"], dataframe["entity_id"]))
+        assert rows == {
+            ("IntracellularElectrode", "location", "CA1", "MBA:382"),
+            ("OptogeneticStimulusSite", "location", "VISp", "MBA:385"),
+            ("ViralVectorInjection", "location", "VTA", "MBA:749"),
+        }
 
     def test_fiber_photometry_table_location_is_annotated(self):
         from neuroconv.tools.fiber_photometry import get_fiber_photometry_table

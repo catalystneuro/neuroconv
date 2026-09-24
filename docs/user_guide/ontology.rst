@@ -18,9 +18,16 @@ Two kinds of value are annotated:
   names for every other recognized species (e.g. rat, which has no dedicated Allen atlas), or to
   any ontology you specify in metadata.
 
-Brain-region annotation covers every ``location`` field NeuroConv knows about: the electrodes table
-``location`` column and ``ElectrodeGroup.location`` (ecephys), ``ImagingPlane.location`` (ophys), and
-the ``FiberPhotometryTable`` ``location`` column (fiber photometry).
+Brain-region annotation covers every free-text ``location`` field in the NWB core schema and the
+extensions NeuroConv writes:
+
+- the electrodes table ``location`` column and ``ElectrodeGroup.location`` (ecephys);
+- ``ImagingPlane.location`` (ophys);
+- ``IntracellularElectrode.location`` (icephys);
+- ``OptogeneticStimulusSite.location`` (optogenetics);
+- the ``FiberPhotometryTable`` ``location`` column (fiber photometry);
+- ``ViralVectorInjection.location``, the targeted region of a virus injection (``ndx-ophys-devices``,
+  used by both fiber photometry and ``ndx-optogenetics``).
 
 Two steps: infer, then annotate
 -------------------------------

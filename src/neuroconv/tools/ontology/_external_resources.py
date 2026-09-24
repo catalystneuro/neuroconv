@@ -13,7 +13,8 @@ string it annotates (HERD links a term to an object through that string):
 - ``metadata["ontology"]["species"]`` -> ``{species string: term-or-list}`` for ``Subject.species``;
 - ``metadata["ontology"]["brain_regions"]`` -> ``{location string: term-or-list}`` for every
   anatomical ``location`` field on the file (the electrodes table and electrode groups, imaging
-  planes, and the ``FiberPhotometryTable``), regardless of which modality it belongs to.
+  planes, intracellular electrodes, optogenetic stimulus sites, viral vector injections, and the
+  ``FiberPhotometryTable``), regardless of which modality it belongs to.
 
 Each term is an explicit ``{"id": <CURIE>, "uri": <resolvable URI>}`` dict; a list of them annotates
 one value with several ontologies (e.g. both MBA and UBERON). This representation is
@@ -24,6 +25,8 @@ The reference is stored in-file under ``/general/external_resources``, which req
 """
 
 from pynwb import NWBFile, get_type_map
+
+from ._brain_regions import _location_containers
 
 __all__ = [
     "add_brain_region_external_resources",
@@ -151,16 +154,16 @@ def _brain_region_mapping_from_metadata(metadata: dict | None) -> dict:
 def _brain_region_annotation_sites(nwbfile: NWBFile) -> list:
     """Collect ``(container, attribute, relative_path, location string)`` tuples to annotate.
 
-    Covers the electrodes table ``location`` column (ecephys), each ``ElectrodeGroup.location``,
-    each ``ImagingPlane.location`` (ophys), and the ``FiberPhotometryTable`` ``location`` column
-    (fiber photometry), if present. Duplicate location strings within a table column are collapsed
-    to one reference per column.
+    Covers the electrodes table ``location`` column (ecephys) and the ``FiberPhotometryTable``
+    ``location`` column (fiber photometry), if present, plus every object with a scalar ``location``
+    attribute (electrode groups, imaging planes, intracellular electrodes, optogenetic stimulus
+    sites, and viral vector injections). Duplicate location strings within a table column are
+    collapsed to one reference per column.
 
     ``container`` is the object HERD records the reference against (the ``location`` column, a
-    ``VectorData``, for a table; the group / plane itself otherwise). ``attribute`` and
-    ``relative_path`` are how that value is addressed for :meth:`HERD.add_ref` / :meth:`HERD.get_key`
-    -- ``None`` / ``""`` for a standalone column, and ``"location"`` for the scalar attribute of a
-    group or plane.
+    ``VectorData``, for a table; the object itself otherwise). ``attribute`` and ``relative_path``
+    are how that value is addressed for :meth:`HERD.add_ref` / :meth:`HERD.get_key` -- ``None`` /
+    ``""`` for a standalone column, and ``"location"`` for a scalar attribute.
     """
     sites = []
 
@@ -170,11 +173,8 @@ def _brain_region_annotation_sites(nwbfile: NWBFile) -> list:
         for location in dict.fromkeys(location_column.data):  # unique, order-preserving
             sites.append((location_column, None, "", location))
 
-    for electrode_group in nwbfile.electrode_groups.values():
-        sites.append((electrode_group, "location", "location", electrode_group.location))
-
-    for imaging_plane in nwbfile.imaging_planes.values():
-        sites.append((imaging_plane, "location", "location", imaging_plane.location))
+    for container in _location_containers(nwbfile):
+        sites.append((container, "location", "location", container.location))
 
     # Lazy import: avoids a circular import at module load time (fiber_photometry.py imports from
     # tools.nwb_helpers, which imports from tools.ontology).
@@ -214,8 +214,8 @@ def add_brain_region_external_resources(nwbfile: NWBFile, metadata: dict | None 
 
     Reads ``metadata["ontology"]["brain_regions"]`` -- a ``{location string: term-or-list}`` mapping
     of explicit ``{"id": ..., "uri": ...}`` terms -- and, for every ``location`` value on the file
-    (the electrodes table, electrode groups, imaging planes, and the ``FiberPhotometryTable``) that
-    the map covers, attaches machine-readable references stored in-file under
+    (the electrodes table, electrode groups, imaging planes, intracellular electrodes, optogenetic
+    stimulus sites, viral vector injections, and the ``FiberPhotometryTable``) that the map covers, attaches machine-readable references stored in-file under
     ``/general/external_resources``.
 
     Nothing is inferred: locations the metadata does not name are left untouched. Use
