@@ -31,8 +31,8 @@ Ontology support is deliberately split into two independent halves, both in
 1. **Inference** — :py:func:`~neuroconv.tools.ontology.infer_species_ontology_metadata` and
    :py:func:`~neuroconv.tools.ontology.infer_brain_region_ontology_metadata` take the free-text
    values a lab wrote (``"mouse"``, ``"CA1"``) and resolve them to ontology terms, writing each
-   term into ``metadata`` **next to the value it describes**. This step guesses; run it when you
-   want NeuroConv to propose terms, then inspect and edit the result.
+   term into ``metadata["ontology"]``, **keyed by the value it describes**. This step guesses; run
+   it when you want NeuroConv to propose terms, then inspect and edit the result.
 2. **Annotation** — :py:func:`~neuroconv.tools.ontology.add_species_external_resource` and
    :py:func:`~neuroconv.tools.ontology.add_brain_region_external_resources` take the terms already
    stated in ``metadata`` and write them into the file as HERD references. This step is
@@ -47,31 +47,28 @@ still have a conversion write them, and you always have a record of which terms 
 Where the terms live in metadata
 --------------------------------
 
-Each term is an explicit ``{"id": <CURIE>, "uri": <resolvable URI>}`` dict. The species term sits
-next to the value it describes, in an ``ontology`` sub-block of ``metadata["Subject"]``; brain-region
-terms live in one file-wide ``metadata["ontology"]["brain_regions"]`` map, since the same location
-string means the same place regardless of which modality wrote it:
+Each term is an explicit ``{"id": <CURIE>, "uri": <resolvable URI>}`` dict. All terms live in one
+file-wide ``metadata["ontology"]`` block, with one map per kind of value, each keyed by the exact
+string written in the file. HERD links a term to an object through that string, so a key only
+takes effect where the file carries the same value:
 
 .. code-block:: python
 
-    metadata["Subject"] = {
-        "subject_id": "sub-01",
-        "species": "Mus musculus",
-        "ontology": {
-            "species": {"id": "NCBITaxon:10090", "uri": "http://purl.obolibrary.org/obo/NCBITaxon_10090"},
-        },
-    }
+    metadata["Subject"] = {"subject_id": "sub-01", "species": "Mus musculus"}
 
     metadata["ontology"] = {
+        "species": {
+            "Mus musculus": {"id": "NCBITaxon:10090", "uri": "http://purl.obolibrary.org/obo/NCBITaxon_10090"},
+        },
         "brain_regions": {
             "CA1": {"id": "MBA:382", "uri": "https://purl.brain-bican.org/ontology/mbao/MBA_382"},
         },
     }
 
-Brain-region terms are keyed by the free-text ``location`` string and live in one file-wide map,
-``metadata["ontology"]["brain_regions"]``, regardless of whether that string labels an electrode, an
-imaging plane, or a fiber-photometry site -- the same string means the same place across modalities
-in a single file. To annotate one value with **several** ontologies, map it to a list of terms:
+Brain-region terms are keyed by the free-text ``location`` string, regardless of whether that string
+labels an electrode, an imaging plane, or a fiber-photometry site -- the same string means the same
+place across modalities in a single file. To annotate one value with **several** ontologies, map it
+to a list of terms:
 
 .. code-block:: python
 
@@ -123,8 +120,9 @@ Inferring the species term into metadata
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 :py:func:`~neuroconv.tools.ontology.infer_species_ontology_metadata` resolves
-``metadata["Subject"]["species"]`` and writes the term under
-``metadata["Subject"]["ontology"]["species"]``. It never overwrites a term you put there yourself.
+``metadata["Subject"]["species"]`` and writes the term under ``metadata["ontology"]["species"]``,
+keyed by the species value exactly as written (a ``"mouse"`` subject gets a ``"mouse"`` key). It
+never overwrites a term you put there yourself.
 
 .. code-block:: python
 
@@ -132,15 +130,15 @@ Inferring the species term into metadata
 
     metadata["Subject"] = dict(subject_id="m1", species="Mus musculus", sex="M", age="P30D")
     infer_species_ontology_metadata(metadata)
-    metadata["Subject"]["ontology"]["species"]
-    # {'id': 'NCBITaxon:10090', 'uri': 'http://purl.obolibrary.org/obo/NCBITaxon_10090'}
+    metadata["ontology"]["species"]
+    # {'Mus musculus': {'id': 'NCBITaxon:10090', 'uri': 'http://purl.obolibrary.org/obo/NCBITaxon_10090'}}
 
 Writing the NCBITaxon reference into the file
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-:py:func:`~neuroconv.tools.ontology.add_species_external_resource` reads that term and attaches a
-reference mapping ``Subject.species`` to its NCBITaxon entity. A conversion calls it for you; call
-it directly to annotate an already-populated in-memory file:
+:py:func:`~neuroconv.tools.ontology.add_species_external_resource` looks up the subject's species
+value in that map and attaches a reference mapping ``Subject.species`` to its NCBITaxon entity. A
+conversion calls it for you; call it directly to annotate an already-populated in-memory file:
 
 .. code-block:: python
 
@@ -149,9 +147,9 @@ it directly to annotate an already-populated in-memory file:
     added = add_species_external_resource(nwbfile, metadata=metadata)  # returns True
     nwbfile.external_resources  # now carries a Mus musculus -> NCBITaxon:10090 reference
 
-The call is a no-op (returns ``False``) when there is no subject or ``metadata`` states no species
-term, and it is idempotent: an existing ``external_resources`` HERD is extended in place rather than
-replaced, and a species that is already annotated is not added twice.
+The call is a no-op (returns ``False``) when there is no subject or ``metadata`` states no term for
+the subject's species value, and it is idempotent: an existing ``external_resources`` HERD is
+extended in place rather than replaced, and a species that is already annotated is not added twice.
 
 Brain regions
 -------------
@@ -264,9 +262,9 @@ blocks in, run inference on the assembled file first, inspect the result, then c
     #   CA1          -> MBA:382
     #   VISp         -> MBA:385
 
-To disable an annotation, simply do not populate its ``ontology`` block (or delete it from the
-metadata before converting). To use a different atlas or an external ontology service, skip
-``infer_*`` and write the ``id`` / ``uri`` terms into the ``ontology`` blocks yourself.
+To disable an annotation, simply leave its entry out of ``metadata["ontology"]`` (or delete it
+before converting). To use a different atlas or an external ontology service, skip ``infer_*`` and
+write the ``id`` / ``uri`` terms into ``metadata["ontology"]`` yourself.
 
 Annotating an already-written file
 -----------------------------------

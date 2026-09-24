@@ -7,9 +7,10 @@ write the corresponding references into the file. Nothing is guessed -- resolvin
 value (a common species name, an atlas acronym) to a term is the job of the ``infer_*`` functions
 in this package, which populate the same ``metadata`` blocks these functions read.
 
-The terms sit next to the value they annotate:
+The terms live in one file-wide ``metadata["ontology"]`` block, each map keyed by the exact value
+string it annotates (HERD links a term to an object through that string):
 
-- ``metadata["Subject"]["ontology"]["species"]`` -> ``{"id": ..., "uri": ...}`` for ``Subject.species``;
+- ``metadata["ontology"]["species"]`` -> ``{species string: term-or-list}`` for ``Subject.species``;
 - ``metadata["ontology"]["brain_regions"]`` -> ``{location string: term-or-list}`` for every
   anatomical ``location`` field on the file (the electrodes table and electrode groups, imaging
   planes, and the ``FiberPhotometryTable``), regardless of which modality it belongs to.
@@ -66,14 +67,15 @@ def add_species_external_resource(nwbfile: NWBFile, metadata: dict | None = None
     """
     Annotate ``nwbfile.subject.species`` with the NCBITaxon term stated in ``metadata`` via HERD.
 
-    Reads ``metadata["Subject"]["ontology"]["species"]`` -- an explicit ``{"id": ..., "uri": ...}``
-    term -- and adds an external-resource reference mapping the subject's species value to it,
-    stored in-file under ``/general/external_resources``. Nothing is inferred: use
+    Looks up the subject's species value in ``metadata["ontology"]["species"]`` -- a
+    ``{species string: term-or-list}`` map of explicit ``{"id": ..., "uri": ...}`` terms -- and adds
+    an external-resource reference mapping that value to its term(s), stored in-file under
+    ``/general/external_resources``. Nothing is inferred: use
     :func:`neuroconv.tools.ontology.infer_species_ontology_metadata` to populate that term from a
     common name or Latin binomial.
 
-    This is a no-op (returns ``False``) when there is no subject or ``metadata`` states no species
-    term. It is idempotent: an existing ``external_resources`` HERD is extended in place rather than
+    This is a no-op (returns ``False``) when there is no subject or ``metadata`` states no term for
+    the subject's species value. It is idempotent: an existing ``external_resources`` HERD is extended in place rather than
     replaced, and a species already annotated is not added twice.
 
     Parameters
@@ -82,7 +84,7 @@ def add_species_external_resource(nwbfile: NWBFile, metadata: dict | None = None
         The file whose subject species should be annotated. Modified in place.
     metadata : dict, optional
         Conversion metadata. The species term is read from
-        ``metadata["Subject"]["ontology"]["species"]``.
+        ``metadata["ontology"]["species"][<Subject.species>]``.
 
     Returns
     -------
@@ -93,13 +95,14 @@ def add_species_external_resource(nwbfile: NWBFile, metadata: dict | None = None
     if subject is None:
         return False
 
-    subject_metadata = (metadata or {}).get("Subject")
-    if not isinstance(subject_metadata, dict):
+    species = subject.species
+    if not isinstance(species, str) or species.strip() == "":
         return False
-    term = subject_metadata.get("ontology", {}).get("species")
-    if term is None:
+
+    species_mapping = (metadata or {}).get("ontology", {}).get("species")
+    if not isinstance(species_mapping, dict) or species_mapping.get(species) is None:
         return False
-    entities = _ontology_term_entities(term, context="Subject species")
+    entities = _ontology_term_entities(species_mapping[species], context=f"Subject species {species!r}")
 
     from hdmf.common import HERD
 
@@ -110,7 +113,6 @@ def add_species_external_resource(nwbfile: NWBFile, metadata: dict | None = None
     elif _species_already_annotated(herd, subject):
         return False
 
-    species = subject.species
     for entity_id, entity_uri in entities:
         herd.add_ref(
             container=subject,

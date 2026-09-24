@@ -407,24 +407,33 @@ class TestInferSpeciesOntologyMetadata:
     def test_recognized_species_writes_term(self):
         metadata = {"Subject": {"species": "Mus musculus"}}
         infer_species_ontology_metadata(metadata)
-        assert metadata["Subject"]["ontology"]["species"] == MOUSE_SPECIES_TERM
+        assert metadata["ontology"]["species"] == {"Mus musculus": MOUSE_SPECIES_TERM}
+        assert "ontology" not in metadata["Subject"]
 
     def test_common_name_is_resolved_and_warns(self):
         metadata = {"Subject": {"species": "mouse"}}
         with pytest.warns(UserWarning, match="Mus musculus"):
             infer_species_ontology_metadata(metadata)
-        assert metadata["Subject"]["ontology"]["species"] == MOUSE_SPECIES_TERM
+        # Keyed by the value as written: HERD links the term to Subject.species through that string.
+        assert metadata["ontology"]["species"] == {"mouse": MOUSE_SPECIES_TERM}
 
     def test_unrecognized_species_leaves_metadata_untouched(self):
         metadata = {"Subject": {"species": "Octodon degus"}}
         infer_species_ontology_metadata(metadata)
-        assert metadata["Subject"].get("ontology", {}).get("species") is None
+        assert "ontology" not in metadata
 
     def test_existing_user_term_is_not_overwritten(self):
         curated = {"id": "NCBITaxon:99999", "uri": "https://example.org/custom"}
-        metadata = {"Subject": {"species": "Mus musculus", "ontology": {"species": curated}}}
+        metadata = {"Subject": {"species": "Mus musculus"}, "ontology": {"species": {"Mus musculus": curated}}}
         infer_species_ontology_metadata(metadata)
-        assert metadata["Subject"]["ontology"]["species"] == curated
+        assert metadata["ontology"]["species"] == {"Mus musculus": curated}
+
+    def test_other_ontology_entries_are_kept(self):
+        brain_regions = {"CA1": {"id": "MBA:382", "uri": "https://example.org/MBA_382"}}
+        metadata = {"Subject": {"species": "Mus musculus"}, "ontology": {"brain_regions": brain_regions}}
+        infer_species_ontology_metadata(metadata)
+        assert metadata["ontology"]["brain_regions"] == brain_regions
+        assert metadata["ontology"]["species"] == {"Mus musculus": MOUSE_SPECIES_TERM}
 
     def test_no_subject_block_is_a_noop(self):
         metadata = {"NWBFile": {}}
@@ -520,9 +529,10 @@ class TestSpeciesExternalResource:
     @pytest.mark.parametrize(
         "kwargs, metadata",
         [
-            (dict(with_subject=False), {"Subject": {"ontology": {"species": MOUSE_SPECIES_TERM}}}),
+            (dict(with_subject=False), {"ontology": {"species": {"Mus musculus": MOUSE_SPECIES_TERM}}}),
             (dict(), None),  # no metadata
             (dict(), {"Subject": {"species": "Mus musculus"}}),  # metadata but no ontology term
+            (dict(), {"ontology": {"species": {"mouse": MOUSE_SPECIES_TERM}}}),  # term for another value
         ],
     )
     def test_noop_cases(self, kwargs, metadata):
@@ -532,7 +542,7 @@ class TestSpeciesExternalResource:
 
     def test_species_term_from_metadata_is_annotated(self):
         nwbfile = _make_nwbfile(species="Mus musculus")
-        metadata = {"Subject": {"species": "Mus musculus", "ontology": {"species": MOUSE_SPECIES_TERM}}}
+        metadata = {"ontology": {"species": {"Mus musculus": MOUSE_SPECIES_TERM}}}
         assert add_species_external_resource(nwbfile, metadata=metadata) is True
 
         dataframe = nwbfile.external_resources.to_dataframe()
@@ -545,7 +555,7 @@ class TestSpeciesExternalResource:
 
     def test_idempotent(self):
         nwbfile = _make_nwbfile(species="Mus musculus")
-        metadata = {"Subject": {"ontology": {"species": MOUSE_SPECIES_TERM}}}
+        metadata = {"ontology": {"species": {"Mus musculus": MOUSE_SPECIES_TERM}}}
         assert add_species_external_resource(nwbfile, metadata=metadata) is True
         assert add_species_external_resource(nwbfile, metadata=metadata) is False
         assert len(nwbfile.external_resources.entities[:]) == 1
@@ -565,7 +575,7 @@ class TestSpeciesExternalResource:
         )
         nwbfile.external_resources = herd
 
-        metadata = {"Subject": {"ontology": {"species": MOUSE_SPECIES_TERM}}}
+        metadata = {"ontology": {"species": {"Mus musculus": MOUSE_SPECIES_TERM}}}
         assert add_species_external_resource(nwbfile, metadata=metadata) is True
         assert nwbfile.external_resources is herd  # extended in place, not replaced
         assert len(herd.entities[:]) == 2
