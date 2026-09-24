@@ -51,14 +51,8 @@ def _optical_channel():
     return OpticalChannel(name="channel0", description="d", emission_lambda=500.0)
 
 
-def _add_icephys_ogen_and_injection(nwbfile: NWBFile, icephys_location, ogen_location, injection_location) -> None:
-    """Add an intracellular electrode, an optogenetic stimulus site, and a viral vector injection.
-
-    The injection sits inside the ``FiberPhotometry`` lab metadata, where NeuroConv's fiber-photometry
-    tool puts it.
-    """
-    ndx_ophys_devices = pytest.importorskip("ndx_ophys_devices")
-    ndx_fiber_photometry = pytest.importorskip("ndx_fiber_photometry")
+def _add_icephys_and_ogen(nwbfile: NWBFile, icephys_location, ogen_location) -> None:
+    """Add an intracellular electrode and an optogenetic stimulus site (core NWB types)."""
     from pynwb.ogen import OptogeneticStimulusSite
 
     device = nwbfile.create_device(name="rig")
@@ -68,6 +62,15 @@ def _add_icephys_ogen_and_injection(nwbfile: NWBFile, icephys_location, ogen_loc
             name="site0", device=device, description="d", excitation_lambda=473.0, location=ogen_location
         )
     )
+
+
+def _add_virus_injection(nwbfile: NWBFile, injection_location) -> None:
+    """Add a viral vector injection inside ``FiberPhotometry`` lab metadata, where NeuroConv puts it.
+
+    Skips the calling test when ``ndx-ophys-devices`` / ``ndx-fiber-photometry`` are not installed.
+    """
+    ndx_ophys_devices = pytest.importorskip("ndx_ophys_devices")
+    ndx_fiber_photometry = pytest.importorskip("ndx_fiber_photometry")
 
     viral_vector = ndx_ophys_devices.ViralVector(
         name="virus0", construct_name="AAV", description="d", manufacturer="m", titer_in_vg_per_ml=1e12
@@ -186,7 +189,8 @@ class TestUpstreamTermSets:
             "        description: upstream mouse\n"
             "      Rattus norvegicus:\n"
             "        meaning: NCBITaxon:10116\n"
-            "        description: upstream rat\n"
+            "        description: upstream rat\n",
+            encoding="utf-8",
         )
 
         class _FakeNeuroTermsets:
@@ -220,7 +224,8 @@ class TestUpstreamTermSets:
             "        meaning: NCBITaxon:10090\n"
             "        aliases:\n"
             "          - murine\n"
-            "          - mouse\n"
+            "          - mouse\n",
+            encoding="utf-8",
         )
 
         class _FakeNeuroTermsets:
@@ -513,9 +518,9 @@ class TestInferBrainRegionOntologyMetadata:
         infer_brain_region_ontology_metadata(nwbfile, metadata)
         assert metadata["ontology"]["brain_regions"]["CA1"]["id"] == "HBA:12892"
 
-    def test_icephys_ogen_and_virus_injection_locations_are_resolved(self):
+    def test_icephys_and_ogen_locations_are_resolved(self):
         nwbfile = _make_nwbfile(species="Mus musculus")
-        _add_icephys_ogen_and_injection(nwbfile, icephys_location="CA1", ogen_location="VISp", injection_location="VTA")
+        _add_icephys_and_ogen(nwbfile, icephys_location="CA1", ogen_location="VISp")
         metadata = {}
 
         infer_brain_region_ontology_metadata(nwbfile, metadata)
@@ -523,8 +528,15 @@ class TestInferBrainRegionOntologyMetadata:
         assert {location: term["id"] for location, term in brain_regions.items()} == {
             "CA1": "MBA:382",
             "VISp": "MBA:385",
-            "VTA": "MBA:749",
         }
+
+    def test_virus_injection_location_is_resolved(self):
+        nwbfile = _make_nwbfile(species="Mus musculus")
+        _add_virus_injection(nwbfile, injection_location="VTA")
+        metadata = {}
+
+        infer_brain_region_ontology_metadata(nwbfile, metadata)
+        assert metadata["ontology"]["brain_regions"]["VTA"]["id"] == "MBA:749"
 
     def test_imaging_plane_locations_are_resolved(self):
         nwbfile = _make_nwbfile(species="Mus musculus")
@@ -694,34 +706,42 @@ class TestBrainRegionExternalResources:
         objects = nwbfile.external_resources.objects.to_dataframe()
         assert nwbfile.electrodes["location"].object_id in objects["object_id"].tolist()
 
-    def test_icephys_ogen_and_virus_injection_locations_are_annotated(self, tmp_path):
+    @staticmethod
+    def _annotate_and_read_back(nwbfile, mapping, path) -> set:
+        """Annotate ``nwbfile`` from ``mapping``, write it, and return the read-back HERD rows."""
         from pynwb import NWBHDF5IO
 
-        nwbfile = _make_nwbfile()
-        _add_icephys_ogen_and_injection(nwbfile, icephys_location="CA1", ogen_location="VISp", injection_location="VTA")
-        metadata = _brain_regions_metadata(
-            {
-                "CA1": {"id": "MBA:382", "uri": "https://example.org/MBA_382"},
-                "VISp": {"id": "MBA:385", "uri": "https://example.org/MBA_385"},
-                "VTA": {"id": "MBA:749", "uri": "https://example.org/MBA_749"},
-            }
-        )
-
-        assert add_brain_region_external_resources(nwbfile, metadata=metadata) == 3
-
-        path = tmp_path / "locations.nwb"
+        assert add_brain_region_external_resources(nwbfile, metadata=_brain_regions_metadata(mapping)) == len(mapping)
         with NWBHDF5IO(path, "w") as io:
             io.write(nwbfile)
         with NWBHDF5IO(path, "r") as io:
             dataframe = io.read().external_resources.to_dataframe()
-        rows = set(zip(dataframe["object_type"], dataframe["relative_path"], dataframe["key"], dataframe["entity_id"]))
-        assert rows == {
+        return set(zip(dataframe["object_type"], dataframe["relative_path"], dataframe["key"], dataframe["entity_id"]))
+
+    def test_icephys_and_ogen_locations_are_annotated(self, tmp_path):
+        nwbfile = _make_nwbfile()
+        _add_icephys_and_ogen(nwbfile, icephys_location="CA1", ogen_location="VISp")
+        mapping = {
+            "CA1": {"id": "MBA:382", "uri": "https://example.org/MBA_382"},
+            "VISp": {"id": "MBA:385", "uri": "https://example.org/MBA_385"},
+        }
+
+        assert self._annotate_and_read_back(nwbfile, mapping, tmp_path / "locations.nwb") == {
             ("IntracellularElectrode", "location", "CA1", "MBA:382"),
             ("OptogeneticStimulusSite", "location", "VISp", "MBA:385"),
+        }
+
+    def test_virus_injection_location_is_annotated(self, tmp_path):
+        nwbfile = _make_nwbfile()
+        _add_virus_injection(nwbfile, injection_location="VTA")
+        mapping = {"VTA": {"id": "MBA:749", "uri": "https://example.org/MBA_749"}}
+
+        assert self._annotate_and_read_back(nwbfile, mapping, tmp_path / "injection.nwb") == {
             ("ViralVectorInjection", "location", "VTA", "MBA:749"),
         }
 
     def test_fiber_photometry_table_location_is_annotated(self):
+        pytest.importorskip("ndx_fiber_photometry")
         from neuroconv.tools.fiber_photometry import get_fiber_photometry_table
         from neuroconv.tools.testing.mock_interfaces import MockFiberPhotometryInterface
 
@@ -893,42 +913,37 @@ class TestBrainRegionExternalResources:
 
 
 class TestConversionPipelineAnnotation:
-    def _mouse_recording_interface(self, brain_areas):
-        from neuroconv.tools.testing.mock_interfaces import MockRecordingInterface
+    # The icephys mock needs only core NWB, so these run in the minimal test environment.
+    def _mouse_icephys_interface(self, location="CA1"):
+        from neuroconv.tools.testing.mock_interfaces import MockIcephysInterface
 
-        interface = MockRecordingInterface(num_channels=len(brain_areas), durations=(0.1,))
-        interface.recording_extractor.set_property("brain_area", list(brain_areas))
-        return interface
-
-    def _mouse_metadata(self, interface):
+        interface = MockIcephysInterface(num_sweeps=1, sweep_duration=0.01)
         metadata = interface.get_metadata()
         metadata["Subject"] = dict(subject_id="m1", species="Mus musculus", sex="M", age="P30D")
-        return metadata
+        metadata["Icephys"]["IntracellularElectrodes"]["mock"]["location"] = location
+        return interface, metadata
 
     def test_plain_metadata_writes_no_external_resources(self):
-        interface = self._mouse_recording_interface(["CA1", "VISp"])
-        nwbfile = interface.create_nwbfile(metadata=self._mouse_metadata(interface))
+        interface, metadata = self._mouse_icephys_interface()
+        nwbfile = interface.create_nwbfile(metadata=metadata)
         assert nwbfile.external_resources is None
 
     def test_inferred_terms_are_written_through_create_nwbfile(self):
-        interface = self._mouse_recording_interface(["CA1", "VISp"])
-        metadata = self._mouse_metadata(interface)
+        interface, metadata = self._mouse_icephys_interface()
 
-        # Inference needs the populated file to see the electrode locations.
+        # Inference needs the populated file to see the electrode location.
         staging_nwbfile = interface.create_nwbfile(metadata=metadata)
         infer_species_ontology_metadata(metadata)
         infer_brain_region_ontology_metadata(staging_nwbfile, metadata)
 
         nwbfile = interface.create_nwbfile(metadata=metadata)
         entity_ids = set(nwbfile.external_resources.to_dataframe()["entity_id"].tolist())
-        assert "NCBITaxon:10090" in entity_ids
-        assert {"MBA:382", "MBA:385"}.issubset(entity_ids)
+        assert {"NCBITaxon:10090", "MBA:382"}.issubset(entity_ids)
 
     def test_references_round_trip_through_file(self, tmp_path):
         from pynwb import NWBHDF5IO
 
-        interface = self._mouse_recording_interface(["CA1", "VISp"])
-        metadata = self._mouse_metadata(interface)
+        interface, metadata = self._mouse_icephys_interface()
         staging_nwbfile = interface.create_nwbfile(metadata=metadata)
         infer_species_ontology_metadata(metadata)
         infer_brain_region_ontology_metadata(staging_nwbfile, metadata)
@@ -941,7 +956,7 @@ class TestConversionPipelineAnnotation:
             read_nwbfile = io.read()
             entity_ids = set(read_nwbfile.external_resources.to_dataframe()["entity_id"].tolist())
 
-        assert {"NCBITaxon:10090", "MBA:382", "MBA:385"}.issubset(entity_ids)
+        assert {"NCBITaxon:10090", "MBA:382"}.issubset(entity_ids)
 
 
 # ---------------------------------------------------------------------------
