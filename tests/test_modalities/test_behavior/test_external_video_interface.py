@@ -98,33 +98,57 @@ class TestExternalVideoAlignment:
 
         assert interface.alignment.keys() == ("trial_1", "trial_2", "trial_3")
 
-    def test_files_sharing_a_stem_raise(self):
-        """The stem is the address, so two files that share one cannot both be reached."""
-        with pytest.raises(ValueError, match="These are used more than once"):
-            MockExternalVideoInterface(file_paths=["day_1/video.avi", "day_2/video.avi"])
+    def test_files_sharing_a_stem_are_keyed_by_parent_folder(self):
+        """Two files whose stems collide are addressed by stem prefixed with their parent folder."""
+        interface = MockExternalVideoInterface(file_paths=["day_1/video.avi", "day_2/video.avi"])
 
-    def test_untouched_files_run_on_from_each_other(self):
-        """A recording split in place: each file starts where the one before it ended."""
+        assert list(interface.alignment.keys()) == ["day_1_video", "day_2_video"]
+
+    def test_files_sharing_a_stem_two_levels_deep(self):
+        """A single parent folder is not always enough, so lengthening keeps going until the keys differ."""
+        interface = MockExternalVideoInterface(file_paths=["a/cam/video.avi", "b/cam/video.avi"])
+
+        assert list(interface.alignment.keys()) == ["a_cam_video", "b_cam_video"]
+
+    def test_a_unique_stem_is_unaffected_by_a_collision_elsewhere(self):
+        """A file whose stem never collides keeps its plain stem, even while other files are lengthened."""
+        interface = MockExternalVideoInterface(
+            file_paths=["unique.avi", "day_1/video.avi", "day_2/video.avi"],
+        )
+
+        assert list(interface.alignment.keys()) == ["unique", "day_1_video", "day_2_video"]
+
+    def test_lengthened_key_avoids_colliding_with_an_existing_plain_stem(self):
+        """A lengthened key must also differ from every other file's key, not only the ones it collided with."""
+        interface = MockExternalVideoInterface(
+            file_paths=["other/day_1_video.avi", "day_1/video.avi", "day_2/video.avi"],
+        )
+
+        assert list(interface.alignment.keys()) == ["other_day_1_video", "day_1_video", "day_2_video"]
+
+    def test_the_same_path_twice_raises(self):
+        """Two entries for the same file cannot be told apart even by their full path, so this still raises."""
+        with pytest.raises(ValueError, match="still collide even using their full paths"):
+            MockExternalVideoInterface(file_paths=["day_1/video.avi", "day_1/video.avi"])
+
+    def test_untouched_files_each_start_at_zero(self):
+        """Several files say nothing about how they relate, so none is assumed to follow another."""
         interface = MockExternalVideoInterface(file_paths=["part_1.avi", "part_2.avi"], num_frames=4, frame_rate=2.0)
 
         np.testing.assert_array_equal(interface.alignment["part_1"].get_times(), [0.0, 0.5, 1.0, 1.5])
-        np.testing.assert_array_equal(interface.alignment["part_2"].get_times(), [2.0, 2.5, 3.0, 3.5])
+        np.testing.assert_array_equal(interface.alignment["part_2"].get_times(), [0.0, 0.5, 1.0, 1.5])
 
-    def test_several_files_with_no_times_warn_and_write_contiguously(self):
-        """The only reading several files support on their own, taken but not silently."""
+    def test_several_files_with_no_times_raise_on_write(self):
+        """Files nobody placed all start at zero, so they overlap and describe no single timeline."""
         interface = MockExternalVideoInterface(file_paths=["trial_1.avi", "trial_2.avi"], num_frames=2, frame_rate=2.0)
 
         nwbfile = mock_NWBFile()
-        with pytest.warns(UserWarning, match="as one recording split in place"):
+        with pytest.raises(ValueError, match="The video file 'trial_2' starts at 0.0 s"):
             interface.add_to_nwbfile(nwbfile=nwbfile)
 
-        image_series = nwbfile.acquisition[interface._default_name]
-        assert image_series.starting_time == 0.0
-        assert image_series.starting_frame == [0, 2]
-
     @pytest.mark.parametrize("gap", [0.0, 10.0])
-    def test_segments_with_times_of_their_own_do_not_warn(self, gap):
-        """Times of their own are what the warning asks for, abutting or with a gap between them."""
+    def test_segments_with_times_of_their_own_write(self, gap):
+        """Times of their own place the files, abutting or with a gap between them."""
         interface = MockExternalVideoInterface(file_paths=["trial_1.avi", "trial_2.avi"], num_frames=2, frame_rate=2.0)
         for file_index, segment_key in enumerate(interface.alignment.keys()):
             interface.alignment[segment_key].set_times(file_index * (1.0 + gap) + np.arange(2) / 2.0)
@@ -134,22 +158,31 @@ class TestExternalVideoAlignment:
             warnings.simplefilter("error", UserWarning)
             interface.add_to_nwbfile(nwbfile=nwbfile)
 
-    def test_a_shift_alone_does_not_count_as_setting_the_segments(self, video_files):
-        """A shift moves the whole interface at once, so it says nothing about any one segment."""
+    def test_a_shift_alone_does_not_place_the_segments(self, video_files):
+        """A shift moves every file by the same amount, so files that overlapped still overlap."""
         interface = ExternalVideoInterface(file_paths=video_files[0:2])
         interface.alignment.shift_times(123.0)
 
         nwbfile = mock_NWBFile()
-        with pytest.warns(UserWarning, match="as one recording split in place"):
+        with pytest.raises(ValueError, match="which is not after the file before it"):
             interface.add_to_nwbfile(nwbfile=nwbfile)
 
-    def test_the_warning_names_only_the_segments_without_times(self, video_files):
-        """Setting some of them narrows the warning rather than removing it."""
+    def test_the_error_names_the_file_that_overlaps(self, video_files):
+        """Placing some files leaves the others at zero, and the error names the first one that overlaps."""
         interface = ExternalVideoInterface(file_paths=video_files[0:2])
         _place(interface, Path(video_files[0]).stem, 0.0)
 
         nwbfile = mock_NWBFile()
-        with pytest.warns(UserWarning, match=Path(video_files[1]).stem):
+        with pytest.raises(ValueError, match=f"The video file '{Path(video_files[1]).stem}'"):
+            interface.add_to_nwbfile(nwbfile=nwbfile)
+
+    def test_files_sharing_an_instant_raise(self):
+        """Each file has to begin strictly after the previous one ends, so a shared boundary time overlaps."""
+        interface = MockExternalVideoInterface(file_paths=["trial_1.avi", "trial_2.avi"], num_frames=2, frame_rate=2.0)
+        interface.alignment["trial_2"].set_times([0.5, 1.0])
+
+        nwbfile = mock_NWBFile()
+        with pytest.raises(ValueError, match="The video file 'trial_2' starts at 0.5 s"):
             interface.add_to_nwbfile(nwbfile=nwbfile)
 
     def test_files_placed_contiguously_write_a_starting_time_and_a_rate(self, video_files):
@@ -217,7 +250,7 @@ class TestExternalVideoAlignment:
         """A placement states where the file is, so a shift before it is absorbed and one after it still moves it."""
         interface = MockExternalVideoInterface(file_paths=["trial_1.avi"], num_frames=2, frame_rate=2.0)
         interface.alignment.shift_times(5.0)
-        interface.alignment["trial_1"].start_at(10.0)
+        interface.alignment["trial_1"].move_start_to(10.0)
         np.testing.assert_array_equal(interface.alignment["trial_1"].get_times(), [10.0, 10.5])
 
         interface.alignment.shift_times(1.0)
@@ -226,21 +259,23 @@ class TestExternalVideoAlignment:
     def test_a_placement_is_remapped_with_the_file(self):
         """Remapping acts on the times as they currently stand, placement included."""
         interface = MockExternalVideoInterface(file_paths=["trial_1.avi"], num_frames=2, frame_rate=2.0)
-        interface.alignment["trial_1"].start_at(10.0)
+        interface.alignment["trial_1"].move_start_to(10.0)
 
         interface.alignment.remap_times(local_sync_times=[0.0, 20.0], reference_sync_times=[0.0, 40.0])
 
         np.testing.assert_array_equal(interface.alignment["trial_1"].get_times(), [20.0, 21.0])
 
-    def test_start_at_rejects_a_time_that_is_not_finite(self):
+    def test_move_start_to_rejects_a_time_that_is_not_finite(self):
         interface = MockExternalVideoInterface(file_paths=["trial_1.avi"], num_frames=2, frame_rate=2.0)
         with pytest.raises(ValueError, match="finite"):
-            interface.alignment["trial_1"].start_at(np.nan)
+            interface.alignment["trial_1"].move_start_to(np.nan)
+        with pytest.raises(ValueError, match="finite"):
+            interface.alignment.move_start_to(np.inf)
 
     def test_placing_a_file_reads_none_of_it(self):
         """One number is stored, so a file of a billion frames costs what one of two does and keeps its rate."""
         interface = MockExternalVideoInterface(file_paths=["session.avi"], num_frames=10**9, frame_rate=30.0)
-        interface.alignment["session"].start_at(12.5)
+        interface.alignment["session"].move_start_to(12.5)
         assert interface.alignment["session"]._get_start_time() == 12.5
 
         nwbfile = mock_NWBFile()
@@ -255,7 +290,7 @@ class TestExternalVideoAlignment:
         """One rate cannot carry a gap, so files placed apart go through the times array."""
         interface = MockExternalVideoInterface(file_paths=["trial_1.avi", "trial_2.avi"], num_frames=2, frame_rate=2.0)
         for segment_key, starting_time in zip(interface.alignment.keys(), [10.0, 100.0]):
-            interface.alignment[segment_key].start_at(starting_time)
+            interface.alignment[segment_key].move_start_to(starting_time)
 
         nwbfile = mock_NWBFile()
         with warnings.catch_warnings():
@@ -275,7 +310,7 @@ class TestExternalVideoAlignment:
             _place(interface, segment_key, starting_time)
 
         nwbfile = mock_NWBFile()
-        with pytest.raises(ValueError, match="do not merge into a single increasing timeline"):
+        with pytest.raises(ValueError, match="which is not after the file before it, 'trial_1'"):
             interface.add_to_nwbfile(nwbfile=nwbfile)
 
     def test_a_shifted_video_keeps_its_exact_frame_rate(self):
@@ -299,12 +334,49 @@ class TestExternalVideoAlignment:
         interface.alignment.remap_times(local_sync_times=[0.0, 2.0], reference_sync_times=[0.0, 4.0])
 
         np.testing.assert_array_equal(interface.alignment["trial_1"].get_times(), [0.0, 1.0])
-        np.testing.assert_array_equal(interface.alignment["trial_2"].get_times(), [2.0, 3.0])
+        np.testing.assert_array_equal(interface.alignment["trial_2"].get_times(), [0.0, 1.0])
+
+    def test_a_shift_on_one_file_leaves_its_siblings(self):
+        """A correction that belongs to one file, a trial a synchronization check finds 40 ms late."""
+        interface = MockExternalVideoInterface(file_paths=["trial_1.avi", "trial_2.avi"], num_frames=2, frame_rate=2.0)
+        for segment_key, starting_time in zip(interface.alignment.keys(), [10.0, 100.0]):
+            _place(interface, segment_key, starting_time)
+
+        interface.alignment["trial_2"].shift_times(-0.040)
+        interface.alignment["trial_2"].shift_times(-0.040)
+
+        np.testing.assert_array_equal(interface.alignment["trial_1"].get_times(), [10.0, 10.5])
+        np.testing.assert_allclose(interface.alignment["trial_2"].get_times(), [99.92, 100.42])
+
+    def test_moving_the_interface_keeps_the_gaps_between_files(self):
+        """The earliest start lands on the time given and every file moves by the same amount."""
+        interface = MockExternalVideoInterface(
+            file_paths=["trial_1.avi", "trial_2.avi", "trial_3.avi"], num_frames=2, frame_rate=2.0
+        )
+        for segment_key, starting_time in zip(interface.alignment.keys(), [0.0, 65.0, 130.0]):
+            _place(interface, segment_key, starting_time)
+
+        for _ in range(2):  # absolute, so repeating it changes nothing
+            interface.alignment.move_start_to(100.0)
+
+        starts = [interface.alignment[segment_key].get_times()[0] for segment_key in interface.alignment.keys()]
+        assert starts == [100.0, 165.0, 230.0]
+
+    def test_moving_the_interface_uses_the_current_starts(self):
+        """The starts are read as they stand, so a later per-file placement moves the anchor."""
+        interface = MockExternalVideoInterface(file_paths=["trial_1.avi", "trial_2.avi"], num_frames=2, frame_rate=2.0)
+        _place(interface, "trial_1", 10.0)
+        _place(interface, "trial_2", 15.0)
+
+        interface.alignment.move_start_to(100.0)
+
+        np.testing.assert_array_equal(interface.alignment["trial_1"].get_times(), [100.0, 100.5])
+        np.testing.assert_array_equal(interface.alignment["trial_2"].get_times(), [105.0, 105.5])
 
 
 def _place(interface, segment_key, starting_time):
     """Place one segment by its onset."""
-    interface.alignment[segment_key].start_at(starting_time)
+    interface.alignment[segment_key].move_start_to(starting_time)
 
 
 def _place_contiguously(interface):
@@ -393,9 +465,9 @@ def aligned_segment_starting_times():
     return [0.0, 50.0]
 
 
-def test_multiple_file_paths_warn(nwb_converter, nwbfile_path, metadata):
-    """Test that a warning is raised when multiple file paths are provided without timing information."""
-    with pytest.warns(UserWarning, match="as one recording split in place"):
+def test_multiple_file_paths_without_placement_raise(nwb_converter, nwbfile_path, metadata):
+    """Several files with no timing information all start at zero, so the conversion refuses to write them."""
+    with pytest.raises(ValueError, match="Every file starts at zero until it is placed"):
         nwb_converter.run_conversion(
             nwbfile_path=nwbfile_path,
             overwrite=True,
@@ -427,7 +499,7 @@ def test_external_mode_with_timestamps(
 
 
 def test_external_mode_with_starting_time(nwb_converter, nwbfile_path, metadata, video_files):
-    """Test that external mode works correctly with starting time."""
+    """The deprecated setter still places files with no times end to end from the time given, as it always did."""
     interface = nwb_converter.data_interface_objects["Video1"]
     interface.set_aligned_starting_time(aligned_starting_time=123.0)
 

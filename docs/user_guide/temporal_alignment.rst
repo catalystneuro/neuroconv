@@ -295,7 +295,8 @@ file began on the session clock, place each object with ``move_start_to``:
     video_interface.alignment["trial_02"].move_start_to(65.0)
     video_interface.alignment["trial_03"].move_start_to(130.0)
 
-Each call places one file and leaves its siblings where they are.
+Each call places one file and leaves its siblings where they are. For video, :ref:`align_external_video` covers
+placing the files of each camera setup, including one recording split into several files.
 
 You can also move an entire interface to a known position:
 

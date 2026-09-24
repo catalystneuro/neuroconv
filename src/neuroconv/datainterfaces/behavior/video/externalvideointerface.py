@@ -24,6 +24,59 @@ from ....utils import (
 )
 
 
+def _compute_segment_keys(file_paths: list[Path]) -> list[str]:
+    """
+    Return one alignment key per file, in the order given, built from the file's stem and, only where needed,
+    its parent folder names.
+
+    A file whose stem is unique among ``file_paths`` keeps that stem as its key. Where two or more files'
+    current keys collide, every one of those files has its key lengthened by one more parent folder name
+    (closest first, joined with ``"_"``), repeated until the keys differ or a file has used every parent
+    folder in its path (the filesystem root/anchor is never included). Raises :class:`ValueError` when a
+    collision remains even after every file involved has used its full path, which happens only when two
+    files are the same path, or when their full paths still cannot be told apart under this scheme.
+    """
+    ancestors = []
+    stems = []
+    for file_path in file_paths:
+        parts = file_path.parts
+        if file_path.anchor:
+            parts = parts[len(Path(file_path.anchor).parts) :]
+        ancestors.append(tuple(parts[:-1]))
+        stems.append(file_path.stem)
+    max_levels = [len(parent_parts) for parent_parts in ancestors]
+    levels = [0] * len(file_paths)
+
+    def _key_at(index: int) -> str:
+        level = levels[index]
+        parent_parts = ancestors[index]
+        prefix = parent_parts[len(parent_parts) - level :] if level else ()
+        return "_".join((*prefix, stems[index]))
+
+    keys = [_key_at(index) for index in range(len(file_paths))]
+    while True:
+        groups: dict[str, list[int]] = {}
+        for index, key in enumerate(keys):
+            groups.setdefault(key, []).append(index)
+        colliding_groups = [indices for indices in groups.values() if len(indices) > 1]
+        if not colliding_groups:
+            return keys
+        grew = False
+        for indices in colliding_groups:
+            for index in indices:
+                if levels[index] < max_levels[index]:
+                    levels[index] += 1
+                    keys[index] = _key_at(index)
+                    grew = True
+        if not grew:
+            conflicting_paths = sorted({str(file_paths[index]) for indices in colliding_groups for index in indices})
+            raise ValueError(
+                "Each video file is addressed for alignment by a key built from its stem and, where needed, "
+                "its parent folder names, but these files still collide even using their full paths: "
+                f"{conflicting_paths}. Pass each file once, or rename it so its full path differs from the others."
+            )
+
+
 class ExternalVideoInterface(BaseDataInterface):
     """Data interface for writing videos as external_file ImageSeries."""
 
@@ -54,11 +107,14 @@ class ExternalVideoInterface(BaseDataInterface):
             Many video storage formats segment a sequence of videos over the course of the experiment.
             Pass the file paths for this videos as a list in sorted, consecutive order.
 
-            Each file is separately addressable for alignment under the stem of its path, so
+            Each file is separately addressable for alignment under a key derived from its path, so
             ``file_paths=["trial_01.avi", "trial_02.avi"]`` gives ``alignment["trial_01"]`` and
-            ``alignment["trial_02"]``. The stems therefore have to be unique, and a repeated one raises
-            here rather than merging two files onto one handle: rename the files, or pass one interface
-            per name.
+            ``alignment["trial_02"]``. The key is the file's stem where that stem is unique among
+            ``file_paths``; where two or more files share a stem, e.g. ``file_paths=["day_1/video.avi",
+            "day_2/video.avi"]``, each of those files' keys is lengthened with its parent folder names,
+            closest first, until they differ, giving ``alignment["day_1_video"]`` and
+            ``alignment["day_2_video"]`` here. Only a collision that survives even the files' full paths
+            raises, which happens for the same path passed twice.
         verbose : bool, optional
             If True, display verbose output. Defaults to False.
         metadata_key : str, optional
@@ -92,24 +148,20 @@ class ExternalVideoInterface(BaseDataInterface):
         self._frame_rates = None
 
         # Alignment by composition, the component the fiber photometry and events interfaces hold. Each
-        # video file is triggered on its own, so each is separately addressable and the file stem is its
-        # key: `alignment[stem].start_at(t)` places one file, `alignment[stem].set_times(times)` re-times
-        # one file and `alignment.shift_times(delta)` moves them all. See neuroconv/_temporal_alignment.py.
-        self._segment_keys = [file_path.stem for file_path in file_paths]
-        duplicated_keys = sorted({key for key in self._segment_keys if self._segment_keys.count(key) > 1})
-        if duplicated_keys:
-            raise ValueError(
-                "Each video file is addressed for alignment by the stem of its path, so the stems have to "
-                f"differ. These are used more than once: {duplicated_keys}. Rename the files, or pass one "
-                "interface per name."
-            )
+        # video file is triggered on its own, so each is separately addressable, keyed by its stem and, where
+        # stems collide, by its parent folder names too: `alignment[key].move_start_to(t)` places one file,
+        # `alignment[key].set_times(times)` re-times one file and `alignment.shift_times(delta)` moves them
+        # all. See neuroconv/_temporal_alignment.py.
+        self._segment_keys = _compute_segment_keys(file_paths)
         self.alignment = _TemporalAlignment()
         for file_index, segment_key in enumerate(self._segment_keys):
             # Callables, so registering the files reads none of them.
+            # Every file starts at zero until it is placed: several files record nothing about how they
+            # relate, so none is assumed, and files left unplaced overlap and raise when written.
             self.alignment._register_series(
                 key=segment_key,
                 get_default_times=partial(self._get_default_times, file_index=file_index),
-                default_start_time=partial(self._get_default_start_time, file_index=file_index),
+                default_start_time=0.0,
             )
         # metadata_key is the snake_case registry key (for cross-component linking); the ImageSeries
         # name is kept distinct and is never derived from the key. Name precedence: explicit
@@ -277,48 +329,15 @@ class ExternalVideoInterface(BaseDataInterface):
         video, handed to ``alignment[key].set_times(...)``; these times are what gets written when nobody
         has done that.
 
-        Each file starts where the one before it ended, which is the only reading several files support on
-        their own; a file that was triggered independently is moved off that timeline by
-        ``alignment[key].start_at(...)``.
+        Every file starts at zero. Several files do not say among themselves how they relate: a recorder
+        that rotated its output and a camera triggered once per trial produce the same files, one segment
+        running on from the last and the other separated by gaps. So nothing is assumed, and each file is
+        placed with ``alignment[key].move_start_to(...)``; files left at zero overlap, which the write
+        refuses.
         """
         frame_counts = self.get_header_frame_counts()
         frame_rates = self.get_header_frame_rates()
-        starting_time = self._get_default_start_time(file_index=file_index)
-        return starting_time + np.arange(frame_counts[file_index]) / frame_rates[file_index]
-
-    def _get_default_start_time(self, *, file_index: int) -> float:
-        """Where one file starts on the files' own timeline: the summed duration of the files before it."""
-        frame_counts = self.get_header_frame_counts()
-        frame_rates = self.get_header_frame_rates()
-        return sum(frame_counts[preceding] / frame_rates[preceding] for preceding in range(file_index))
-
-    def _warn_if_multi_segment_timings_are_not_set(self) -> None:
-        """
-        Warn when several files are about to be written on an assumption rather than on measured times.
-
-        One ``ImageSeries`` carries one timeline across every ``external_file``, and several files do not
-        say among themselves how they relate: a recorder that rotated its output and a camera triggered
-        once per trial produce the same files, one segment running on from the last and the other separated
-        by gaps. Without times the first reading is taken, because it is the only one the files support on
-        their own, and the warning is there because it is a choice the caller did not make.
-
-        A single file is exempt: one file starting at the session start is a claim a reader can check.
-        """
-        segment_keys_without_times = [
-            segment_key for segment_key in self._segment_keys if not self.alignment[segment_key]._has_own_times
-        ]
-        if self._number_of_files == 1 or not segment_keys_without_times:
-            return
-        warnings.warn(
-            f"Writing {self._number_of_files} video files as one recording split in place, each segment "
-            f"starting where the one before it ended, because nothing says where these sit: "
-            f"{segment_keys_without_times}. If the camera was triggered per segment there are gaps between "
-            "them and this is wrong. Say where each begins with `alignment[key].start_at(starting_time)`, or "
-            "where a pulse timed every frame give it those times with `alignment[key].set_times(times)`. "
-            "Either also silences this warning.",
-            UserWarning,
-            stacklevel=3,
-        )
+        return np.arange(frame_counts[file_index]) / frame_rates[file_index]
 
     def _get_compact_timing(self) -> tuple[float, float] | None:
         """
@@ -350,19 +369,36 @@ class ExternalVideoInterface(BaseDataInterface):
         """
         Return one timeline for the whole ``ImageSeries``, the files concatenated in the order given.
 
-        The ``ImageSeries`` carries a single time coordinate across every ``external_file``, so the files
-        have to merge into one increasing series; a set of files that overlap describes no such thing.
+        The ``ImageSeries`` carries a single time coordinate across every ``external_file``, so in the order
+        the files were passed, each file's first frame has to come strictly after the previous file's last
+        frame. Files that overlap, or share an instant, describe no such timeline. The check is on the times
+        themselves rather than on which alignment calls were made, so it holds whoever placed the files and
+        at whatever scope: files nobody placed all start at zero and fail it, and so do files corrected as a
+        block but never placed one by one.
         """
         segment_times = [self.alignment[segment_key].get_times() for segment_key in self._segment_keys]
         # Before the overlap check, since times on the wrong file usually cause both and the count names it.
         self._check_timestamps_number_matches_frames(segment_timestamps=segment_times)
-        timestamps = np.concatenate(segment_times)
-        if np.any(np.diff(timestamps) < 0):
-            raise ValueError(
-                "The video files do not merge into a single increasing timeline, so at least one of them "
-                "runs into the next. Check the starting times against the length of each file."
-            )
-        return timestamps
+        self._check_files_do_not_overlap(segment_times=segment_times)
+        return np.concatenate(segment_times)
+
+    def _check_files_do_not_overlap(self, segment_times: list[np.ndarray]) -> None:
+        """Raise when a file does not start strictly after the one before it ends, in the order given."""
+        previous_segment_key, previous_end_time = None, None
+        for segment_key, times in zip(self._segment_keys, segment_times):
+            if len(times) == 0:
+                continue
+            if previous_end_time is not None and times[0] <= previous_end_time:
+                raise ValueError(
+                    f"The video file '{segment_key}' starts at {times[0]} s, which is not after the file before "
+                    f"it, '{previous_segment_key}', ends at {previous_end_time} s. One ImageSeries carries a "
+                    "single timeline, so each file has to begin after the previous one ends. Every file starts "
+                    "at zero until it is placed: say where each begins with "
+                    "`alignment[key].move_start_to(starting_time)`, or give it the times a pulse recorded for "
+                    "every frame with `alignment[key].set_times(times)`. For one recording split into several "
+                    "files, place each where the one before it ended."
+                )
+            previous_segment_key, previous_end_time = segment_key, times[-1]
 
     def get_original_timestamps(self, stub_test: bool = False) -> list[np.ndarray]:
         """
@@ -447,9 +483,12 @@ class ExternalVideoInterface(BaseDataInterface):
         """
         Set the aligned starting time for the ImageSeries in this interface.
 
+        With no times set on any file, the files are placed end to end with the first one starting at
+        ``aligned_starting_time``, as this method has always done; otherwise every file is shifted by it.
+
         .. deprecated::
-            Use ``interface.alignment.shift_times(delta)``, which is the same rigid shift under a name that
-            says so. Removed in v0.12.0.
+            Use ``interface.alignment[key].move_start_to(starting_time)`` to place each file, or
+            ``interface.alignment.shift_times(delta)`` to move files already placed. Removed in v0.12.0.
 
         Parameters
         ----------
@@ -457,19 +496,27 @@ class ExternalVideoInterface(BaseDataInterface):
             The common starting time for all segments of temporal data in this interface.
         """
         warnings.warn(
-            "`set_aligned_starting_time` is deprecated and will be removed in v0.12.0. "
-            "Use `interface.alignment.shift_times(delta)` instead.",
+            "`set_aligned_starting_time` is deprecated and will be removed in v0.12.0. Use "
+            "`interface.alignment[key].move_start_to(starting_time)` to place each file, or "
+            "`interface.alignment.shift_times(delta)` to move files already placed.",
             FutureWarning,
             stacklevel=2,
         )
-        self.alignment.shift_times(aligned_starting_time)
+        times_were_set = any(self.alignment[segment_key]._times is not None for segment_key in self._segment_keys)
+        if times_were_set:
+            self.alignment.shift_times(aligned_starting_time)
+            return
+        durations = np.array(self.get_header_frame_counts()) / np.array(self.get_header_frame_rates())
+        starting_times = aligned_starting_time + np.concatenate([[0.0], np.cumsum(durations)[:-1]])
+        for segment_key, starting_time in zip(self._segment_keys, starting_times):
+            self.alignment[segment_key].move_start_to(starting_time)
 
     def set_aligned_segment_starting_times(self, aligned_segment_starting_times: list[float], stub_test: bool = False):
         """
         Align the individual starting time for each video (segment) in this interface relative to the common session start time.
 
         .. deprecated::
-            Use ``interface.alignment[key].start_at(starting_time)`` per file, which states where the file
+            Use ``interface.alignment[key].move_start_to(starting_time)`` per file, which states where the file
             begins instead of adding an offset to whatever it currently carries, so calling it twice does not
             shift twice. Removed in v0.12.0.
 
@@ -482,7 +529,7 @@ class ExternalVideoInterface(BaseDataInterface):
         """
         warnings.warn(
             "`set_aligned_segment_starting_times` is deprecated and will be removed in v0.12.0. "
-            "Use `interface.alignment[key].start_at(starting_time)` instead, which is absolute rather than "
+            "Use `interface.alignment[key].move_start_to(starting_time)` instead, which is absolute rather than "
             "relative and so does not accumulate when called twice.",
             FutureWarning,
             stacklevel=2,
@@ -500,7 +547,7 @@ class ExternalVideoInterface(BaseDataInterface):
         times_were_set = any(self.alignment[segment_key]._times is not None for segment_key in self._segment_keys)
         if not times_were_set:
             for segment_key, segment_starting_time in zip(self._segment_keys, aligned_segment_starting_times):
-                self.alignment[segment_key].start_at(segment_starting_time)
+                self.alignment[segment_key].move_start_to(segment_starting_time)
             return
         for segment_key, segment_starting_time in zip(self._segment_keys, aligned_segment_starting_times):
             time_bearing_object = self.alignment[segment_key]
@@ -665,7 +712,6 @@ class ExternalVideoInterface(BaseDataInterface):
 
         # One timeline across every external file, whatever it was built from: the files' own frame rates,
         # a starting time per file, or times set on one of them.
-        self._warn_if_multi_segment_timings_are_not_set()
         compact_timing = None if always_write_timestamps else self._get_compact_timing()
         if compact_timing is not None:
             starting_time, rate = compact_timing
