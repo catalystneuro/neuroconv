@@ -487,9 +487,11 @@ class ExternalVideoInterface(BaseDataInterface):
         Returns
         -------
         timestamps : list of numpy.ndarray
-            The timestamps of each video file.
+            The timestamps of each video file: the times set on it or, where none were set, the timestamps
+            stored in the video file, as this method returned before the alignment surface.
         stub_test : bool, default: False
-            Unused, kept for signature compatibility.
+            Where no timestamps were set they are read with `get_original_timestamps`, which reads every
+            frame; `stub_test=True` reads only the first 10 frames of each file.
         """
         warnings.warn(
             "`get_timestamps` is deprecated and will be removed in v0.12.0. "
@@ -497,7 +499,13 @@ class ExternalVideoInterface(BaseDataInterface):
             FutureWarning,
             stacklevel=2,
         )
-        return [self.alignment[segment_key].get_times() for segment_key in self._segment_keys]
+        times_were_set = [self.alignment[segment_key]._times is not None for segment_key in self._segment_keys]
+        if not all(times_were_set):
+            original_timestamps = self.get_original_timestamps(stub_test=stub_test)
+        return [
+            self.alignment[segment_key].get_times() if times_were_set[file_index] else original_timestamps[file_index]
+            for file_index, segment_key in enumerate(self._segment_keys)
+        ]
 
     def set_aligned_timestamps(self, aligned_timestamps: list[np.ndarray]):
         """
@@ -577,7 +585,9 @@ class ExternalVideoInterface(BaseDataInterface):
         aligned_segment_starting_times : list of floats
             The relative starting times of each video.
         stub_test : bool, default: False
-            Unused, kept for signature compatibility.
+            If timestamps have not been set on this interface, they are read from the video files with
+            `get_original_timestamps`, which reads every frame; `stub_test=True` reads only the first 10 frames
+            of each file.
         """
         warnings.warn(
             "`set_aligned_segment_starting_times` is deprecated and will be removed in v0.12.0. "
@@ -586,24 +596,34 @@ class ExternalVideoInterface(BaseDataInterface):
             FutureWarning,
             stacklevel=2,
         )
-        self._set_aligned_segment_starting_times(aligned_segment_starting_times=aligned_segment_starting_times)
+        self._set_aligned_segment_starting_times(
+            aligned_segment_starting_times=aligned_segment_starting_times, stub_test=stub_test
+        )
 
-    def _set_aligned_segment_starting_times(self, aligned_segment_starting_times: list[float]):
-        """The body of the deprecated setter, which shifted times already set and placed files otherwise."""
+    def _set_aligned_segment_starting_times(self, aligned_segment_starting_times: list[float], stub_test: bool = False):
+        """
+        The body of the deprecated setter, kept as it behaved before the alignment surface.
+
+        Each file's times are its set times or, where none were set, the timestamps stored in the video file,
+        read frame by frame; the file's starting time is added to them and the result is set as its times.
+        """
         number_of_starting_times = len(aligned_segment_starting_times)
         if number_of_starting_times != self._number_of_files:
             raise ValueError(
                 f"The length of the 'aligned_segment_starting_times' list ({number_of_starting_times}) does not "
                 f"match the number of video files ({self._number_of_files})!"
             )
-        times_were_set = any(self.alignment[segment_key]._times is not None for segment_key in self._segment_keys)
-        if not times_were_set:
-            for segment_key, segment_starting_time in zip(self._segment_keys, aligned_segment_starting_times):
-                self.alignment[segment_key].move_start_to(segment_starting_time)
-            return
-        for segment_key, segment_starting_time in zip(self._segment_keys, aligned_segment_starting_times):
+        times_were_set = [self.alignment[segment_key]._times is not None for segment_key in self._segment_keys]
+        original_timestamps = None if all(times_were_set) else self.get_original_timestamps(stub_test=stub_test)
+        for file_index, (segment_key, segment_starting_time) in enumerate(
+            zip(self._segment_keys, aligned_segment_starting_times)
+        ):
             time_bearing_object = self.alignment[segment_key]
-            time_bearing_object.set_times(time_bearing_object.get_times() + segment_starting_time)
+            if times_were_set[file_index]:
+                times = time_bearing_object.get_times()
+            else:
+                times = original_timestamps[file_index]
+            time_bearing_object.set_times(times + segment_starting_time)
 
     def align_by_interpolation(self, unaligned_timestamps: np.ndarray, aligned_timestamps: np.ndarray):
         """

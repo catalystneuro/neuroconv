@@ -696,23 +696,38 @@ def test_custom_module(nwb_converter, nwbfile_path, metadata, aligned_segment_st
         assert "Video test3" in nwbfile.processing["behavior"].data_interfaces
 
 
-def test_set_aligned_segment_starting_times_alone(nwb_converter):
-    """Test that setting segment_starting_times without setting aligned timestamps automatically sets the timestamps."""
+def test_get_timestamps_with_nothing_set_returns_the_stored_timestamps(nwb_converter):
+    """The deprecated getter still reads the timestamps stored in the video files when none were set."""
     interface = nwb_converter.data_interface_objects["Video1"]
 
-    interface._timestamps = None
+    with pytest.warns(FutureWarning, match="`get_timestamps` is deprecated"):
+        timestamps = interface.get_timestamps()
+
+    for returned, original in zip(timestamps, interface.get_original_timestamps()):
+        np.testing.assert_array_equal(returned, original)
+
+
+def test_set_aligned_segment_starting_times_alone(nwb_converter):
+    """With no timestamps set, the stored timestamps of each file are read and its starting time added to them."""
+    interface = nwb_converter.data_interface_objects["Video1"]
+    original_timestamps = interface.get_original_timestamps()
+
     interface.set_aligned_segment_starting_times(aligned_segment_starting_times=[10.0, 20.0])
 
+    for segment_key, original, starting_time in zip(interface._segment_keys, original_timestamps, [10.0, 20.0]):
+        np.testing.assert_array_equal(interface.alignment[segment_key].get_times(), original + starting_time)
+
+
+def test_set_aligned_starting_time_after_segment_starting_times_shifts_them(nwb_converter):
+    """The segment setter sets times, so a later common starting time shifts every file and keeps their layout."""
+    interface = nwb_converter.data_interface_objects["Video1"]
     original_timestamps = interface.get_original_timestamps()
-    expected_timestamps = [
-        timestamps + starting_time for timestamps, starting_time in zip(original_timestamps, [10.0, 20.0])
-    ]
-    for (
-        original,
-        expected,
-        starting_time,
-    ) in zip(original_timestamps, expected_timestamps, [10.0, 20.0]):
-        np.testing.assert_array_equal(original + starting_time, expected)
+
+    interface.set_aligned_segment_starting_times(aligned_segment_starting_times=[10.0, 20.0])
+    interface.set_aligned_starting_time(aligned_starting_time=5.0)
+
+    for segment_key, original, starting_time in zip(interface._segment_keys, original_timestamps, [15.0, 25.0]):
+        np.testing.assert_array_equal(interface.alignment[segment_key].get_times(), original + starting_time)
 
 
 def test_get_original_timestamps_stub(nwb_converter):
