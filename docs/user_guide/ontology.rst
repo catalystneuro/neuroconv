@@ -300,6 +300,17 @@ This works the same way for :py:func:`~neuroconv.tools.ontology.add_brain_region
 Both writers are idempotent, so re-running this on a file that already carries the reference does not
 duplicate it.
 
+Working with an HDMF type configuration
+---------------------------------------
+
+NeuroConv never loads a type configuration itself, but it works when you load one, for example
+neuro-termsets' ``default_config.yaml`` through ``pynwb.load_type_config``. With a configuration
+loaded, HDMF wraps configured fields such as ``Subject.species`` and ``ElectrodeGroup.location`` in a
+``TermSetWrapper``; the annotation functions read the plain value behind the wrapper, so the HERD
+key is still the string written in the file. Note that the configuration itself validates each
+value when it is set and raises for values outside its term set (for example an atlas acronym such
+as ``"CA1"`` in a configured ``location`` field), before any NeuroConv code runs.
+
 TermSet files
 -------------
 

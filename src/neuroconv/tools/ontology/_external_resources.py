@@ -26,7 +26,7 @@ The reference is stored in-file under ``/general/external_resources``, which req
 
 from pynwb import NWBFile, get_type_map
 
-from ._brain_regions import _location_containers
+from ._brain_regions import _location_containers, _unwrapped
 
 __all__ = [
     "add_brain_region_external_resources",
@@ -98,7 +98,7 @@ def add_species_external_resource(nwbfile: NWBFile, metadata: dict | None = None
     if subject is None:
         return False
 
-    species = subject.species
+    species = _unwrapped(subject.species)
     if not isinstance(species, str) or species.strip() == "":
         return False
 
@@ -170,11 +170,11 @@ def _brain_region_annotation_sites(nwbfile: NWBFile) -> list:
     electrodes = nwbfile.electrodes
     if electrodes is not None and "location" in electrodes.colnames:
         location_column = electrodes["location"]
-        for location in dict.fromkeys(location_column.data):  # unique, order-preserving
+        for location in dict.fromkeys(_unwrapped(location_column.data)):  # unique, order-preserving
             sites.append((location_column, None, "", location))
 
     for container in _location_containers(nwbfile):
-        sites.append((container, "location", "location", container.location))
+        sites.append((container, "location", "location", _unwrapped(container.location)))
 
     # Lazy import: avoids a circular import at module load time (fiber_photometry.py imports from
     # tools.nwb_helpers, which imports from tools.ontology).
@@ -183,7 +183,7 @@ def _brain_region_annotation_sites(nwbfile: NWBFile) -> list:
     fiber_photometry_table = get_fiber_photometry_table(nwbfile)
     if fiber_photometry_table is not None and "location" in fiber_photometry_table.colnames:
         location_column = fiber_photometry_table["location"]
-        for location in dict.fromkeys(location_column.data):  # unique, order-preserving
+        for location in dict.fromkeys(_unwrapped(location_column.data)):  # unique, order-preserving
             sites.append((location_column, None, "", location))
 
     return sites

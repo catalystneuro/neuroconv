@@ -942,3 +942,88 @@ class TestConversionPipelineAnnotation:
             entity_ids = set(read_nwbfile.external_resources.to_dataframe()["entity_id"].tolist())
 
         assert {"NCBITaxon:10090", "MBA:382", "MBA:385"}.issubset(entity_ids)
+
+
+# ---------------------------------------------------------------------------
+# Compatibility with an HDMF type configuration (neuro-termsets' default config)
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def neuro_termsets_type_config():
+    """Load neuro-termsets' ``default_config.yaml`` into pynwb for one test, then unload it.
+
+    With the config loaded, HDMF wraps ``Subject.species`` and ``ElectrodeGroup.location`` in a
+    ``TermSetWrapper`` and validates them against neuro-termsets' term sets. Skipped when
+    ``linkml-runtime`` (needed by HDMF's ``TermSet``) or neuro-termsets is not installed.
+    """
+    pytest.importorskip("linkml_runtime")
+    neuro_termsets = pytest.importorskip("neuro_termsets")
+    import os
+
+    import pynwb
+
+    pynwb.load_type_config(config_path=os.path.join(os.path.dirname(neuro_termsets.__file__), "default_config.yaml"))
+    try:
+        yield
+    finally:
+        pynwb.unload_type_config()
+
+
+@pytest.mark.usefixtures("neuro_termsets_type_config")
+class TestTypeConfigCompatibility:
+    # With the config loaded, locations must be keys of neuro-termsets' UBERON term set.
+    UBERON_CA1 = "CA1 field of hippocampus"
+    UBERON_CA1_TERM = {"id": "UBERON:0003881", "uri": "http://purl.obolibrary.org/obo/UBERON_0003881"}
+
+    def _make_wrapped_nwbfile(self) -> NWBFile:
+        from hdmf.term_set import TermSetWrapper
+
+        nwbfile = _make_nwbfile(species="Mus musculus")
+        device = nwbfile.create_device(name="probe")
+        nwbfile.create_electrode_group(name="group0", description="d", location=self.UBERON_CA1, device=device)
+        assert isinstance(nwbfile.subject.species, TermSetWrapper)
+        assert isinstance(nwbfile.electrode_groups["group0"].location, TermSetWrapper)
+        return nwbfile
+
+    def test_wrapped_values_are_annotated_with_plain_keys(self, tmp_path):
+        from pynwb import NWBHDF5IO
+
+        nwbfile = self._make_wrapped_nwbfile()
+        metadata = {
+            "ontology": {
+                "species": {"Mus musculus": MOUSE_SPECIES_TERM},
+                "brain_regions": {self.UBERON_CA1: self.UBERON_CA1_TERM},
+            }
+        }
+
+        assert add_species_external_resource(nwbfile, metadata=metadata) is True
+        assert add_brain_region_external_resources(nwbfile, metadata=metadata) == 1
+        # Idempotent on wrapped values too.
+        assert add_species_external_resource(nwbfile, metadata=metadata) is False
+        assert add_brain_region_external_resources(nwbfile, metadata=metadata) == 0
+
+        # Before the fix, the wrapper object itself became the HERD key and the write failed.
+        path = tmp_path / "wrapped.nwb"
+        with NWBHDF5IO(path, "w") as io:
+            io.write(nwbfile)
+        with NWBHDF5IO(path, "r") as io:
+            dataframe = io.read().external_resources.to_dataframe()
+        rows = set(zip(dataframe["object_type"], dataframe["key"], dataframe["entity_id"]))
+        assert rows == {
+            ("Subject", "Mus musculus", "NCBITaxon:10090"),
+            ("ElectrodeGroup", self.UBERON_CA1, "UBERON:0003881"),
+        }
+
+    def test_inference_reads_wrapped_values(self):
+        nwbfile = self._make_wrapped_nwbfile()
+        # The electrodes table column is not in the config, so it can carry an atlas acronym; the
+        # atlas is still chosen from the wrapped Subject.species.
+        nwbfile.add_electrode(location="CA1", group=nwbfile.electrode_groups["group0"], id=0)
+        metadata = {"Subject": {"species": "Mus musculus"}}
+
+        infer_species_ontology_metadata(metadata)
+        infer_brain_region_ontology_metadata(nwbfile, metadata)
+
+        assert metadata["ontology"]["species"] == {"Mus musculus": MOUSE_SPECIES_TERM}
+        assert metadata["ontology"]["brain_regions"]["CA1"]["id"] == "MBA:382"

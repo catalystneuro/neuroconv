@@ -23,6 +23,7 @@ terms.
 
 from dataclasses import dataclass
 
+from hdmf.term_set import TermSetWrapper
 from pynwb import NWBFile
 
 from ._species import get_species_term
@@ -164,6 +165,17 @@ def get_brain_region_term(location: str, species: str = "Mus musculus") -> Brain
     return atlas.resolve(location)
 
 
+def _unwrapped(value):
+    """The plain value behind an HDMF ``TermSetWrapper``, or ``value`` itself.
+
+    With a type configuration loaded (``pynwb.load_type_config``, e.g. neuro-termsets'
+    ``default_config.yaml``), HDMF wraps configured fields such as ``Subject.species`` and
+    ``ElectrodeGroup.location`` in a ``TermSetWrapper``. The wrapper does not compare or convert like
+    the string it holds, so every value read here goes through this first.
+    """
+    return value.value if isinstance(value, TermSetWrapper) else value
+
+
 def _location_containers(nwbfile: NWBFile) -> list:
     """Every object on the file that carries a scalar ``location`` attribute naming a brain region.
 
@@ -181,7 +193,7 @@ def _location_containers(nwbfile: NWBFile) -> list:
         *nwbfile.ogen_sites.values(),
         *(obj for obj in nwbfile.objects.values() if getattr(obj, "neurodata_type", None) == "ViralVectorInjection"),
     ]
-    return [container for container in containers if getattr(container, "location", None) is not None]
+    return [container for container in containers if _unwrapped(getattr(container, "location", None)) is not None]
 
 
 def _all_locations(nwbfile: NWBFile) -> list:
@@ -194,16 +206,16 @@ def _all_locations(nwbfile: NWBFile) -> list:
 
     electrodes = nwbfile.electrodes
     if electrodes is not None and "location" in electrodes.colnames:
-        locations.update(dict.fromkeys(str(value) for value in electrodes["location"].data))
+        locations.update(dict.fromkeys(str(value) for value in _unwrapped(electrodes["location"].data)))
     for container in _location_containers(nwbfile):
-        locations.setdefault(container.location)
+        locations.setdefault(_unwrapped(container.location))
 
     # Lazy import: fiber_photometry.py imports (transitively) from tools.ontology.
     from ..fiber_photometry import get_fiber_photometry_table
 
     fiber_photometry_table = get_fiber_photometry_table(nwbfile)
     if fiber_photometry_table is not None and "location" in fiber_photometry_table.colnames:
-        locations.update(dict.fromkeys(str(value) for value in fiber_photometry_table["location"].data))
+        locations.update(dict.fromkeys(str(value) for value in _unwrapped(fiber_photometry_table["location"].data)))
 
     return list(locations)
 
@@ -242,7 +254,7 @@ def infer_brain_region_ontology_metadata(nwbfile: NWBFile, metadata: dict) -> di
         return metadata
 
     subject = getattr(nwbfile, "subject", None)
-    species = getattr(subject, "species", None)
+    species = _unwrapped(getattr(subject, "species", None))
     if species is None:
         subject_metadata = metadata.get("Subject")
         species = subject_metadata.get("species") if isinstance(subject_metadata, dict) else None
