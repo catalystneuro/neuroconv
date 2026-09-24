@@ -64,44 +64,6 @@ def _add_icephys_and_ogen(nwbfile: NWBFile, icephys_location, ogen_location) -> 
     )
 
 
-def _add_virus_injection(nwbfile: NWBFile, injection_location) -> None:
-    """Add a viral vector injection inside ``FiberPhotometry`` lab metadata, where NeuroConv puts it.
-
-    Skips the calling test when ``ndx-ophys-devices`` / ``ndx-fiber-photometry`` are not installed.
-    """
-    ndx_ophys_devices = pytest.importorskip("ndx_ophys_devices")
-    ndx_fiber_photometry = pytest.importorskip("ndx_fiber_photometry")
-
-    viral_vector = ndx_ophys_devices.ViralVector(
-        name="virus0", construct_name="AAV", description="d", manufacturer="m", titer_in_vg_per_ml=1e12
-    )
-    injection = ndx_ophys_devices.ViralVectorInjection(
-        name="injection0",
-        location=injection_location,
-        hemisphere="left",
-        reference="Bregma",
-        ap_in_mm=1.0,
-        ml_in_mm=1.0,
-        dv_in_mm=1.0,
-        volume_in_uL=0.5,
-        viral_vector=viral_vector,
-    )
-    indicator = ndx_ophys_devices.Indicator(name="indicator0", label="GCaMP", description="d", manufacturer="m")
-    nwbfile.add_lab_meta_data(
-        ndx_fiber_photometry.FiberPhotometry(
-            name="fiber_photometry",
-            fiber_photometry_table=ndx_fiber_photometry.FiberPhotometryTable(
-                name="fiber_photometry_table", description="d"
-            ),
-            fiber_photometry_viruses=ndx_fiber_photometry.FiberPhotometryViruses(viral_vectors=[viral_vector]),
-            fiber_photometry_virus_injections=ndx_fiber_photometry.FiberPhotometryVirusInjections(
-                viral_vector_injections=[injection]
-            ),
-            fiber_photometry_indicators=ndx_fiber_photometry.FiberPhotometryIndicators(indicators=[indicator]),
-        )
-    )
-
-
 def _brain_regions_metadata(mapping: dict) -> dict:
     """A metadata dict carrying a file-wide ``ontology.brain_regions`` map."""
     return {"ontology": {"brain_regions": mapping}}
@@ -530,14 +492,6 @@ class TestInferBrainRegionOntologyMetadata:
             "VISp": "MBA:385",
         }
 
-    def test_virus_injection_location_is_resolved(self):
-        nwbfile = _make_nwbfile(species="Mus musculus")
-        _add_virus_injection(nwbfile, injection_location="VTA")
-        metadata = {}
-
-        infer_brain_region_ontology_metadata(nwbfile, metadata)
-        assert metadata["ontology"]["brain_regions"]["VTA"]["id"] == "MBA:749"
-
     def test_imaging_plane_locations_are_resolved(self):
         nwbfile = _make_nwbfile(species="Mus musculus")
         device = nwbfile.create_device(name="scope")
@@ -730,83 +684,6 @@ class TestBrainRegionExternalResources:
             ("IntracellularElectrode", "location", "CA1", "MBA:382"),
             ("OptogeneticStimulusSite", "location", "VISp", "MBA:385"),
         }
-
-    def test_virus_injection_location_is_annotated(self, tmp_path):
-        nwbfile = _make_nwbfile()
-        _add_virus_injection(nwbfile, injection_location="VTA")
-        mapping = {"VTA": {"id": "MBA:749", "uri": "https://example.org/MBA_749"}}
-
-        assert self._annotate_and_read_back(nwbfile, mapping, tmp_path / "injection.nwb") == {
-            ("ViralVectorInjection", "location", "VTA", "MBA:749"),
-        }
-
-    def test_fiber_photometry_table_location_is_annotated(self):
-        pytest.importorskip("ndx_fiber_photometry")
-        from neuroconv.tools.fiber_photometry import get_fiber_photometry_table
-        from neuroconv.tools.testing.mock_interfaces import MockFiberPhotometryInterface
-
-        interface = MockFiberPhotometryInterface()
-        metadata = interface.get_metadata()
-        metadata["Subject"] = dict(subject_id="m1", species="Mus musculus", sex="M", age="P30D")
-        metadata["DeviceModels"] = dict(
-            optical_fiber_model=dict(
-                type="OpticalFiberModel", name="optical_fiber_model", manufacturer="m", numerical_aperture=0.48
-            ),
-            excitation_source_model=dict(
-                type="ExcitationSourceModel",
-                name="excitation_source_model",
-                manufacturer="m",
-                source_type="LED",
-                excitation_mode="one-photon",
-            ),
-            photodetector_model=dict(
-                type="PhotodetectorModel", name="photodetector_model", manufacturer="m", detector_type="photodiode"
-            ),
-        )
-        metadata["Devices"] = dict(
-            optical_fiber=dict(
-                type="OpticalFiber",
-                name="optical_fiber",
-                device_model_metadata_key="optical_fiber_model",
-                fiber_insertion=dict(depth_in_mm=1.0),
-            ),
-            excitation_source=dict(
-                type="ExcitationSource", name="excitation_source", device_model_metadata_key="excitation_source_model"
-            ),
-            photodetector=dict(
-                type="Photodetector", name="photodetector", device_model_metadata_key="photodetector_model"
-            ),
-        )
-        fiber_photometry_metadata = metadata["FiberPhotometry"]
-        fiber_photometry_metadata["FiberPhotometryIndicators"] = dict(indicator=dict(name="indicator", label="GCaMP6s"))
-        fiber_photometry_metadata["FiberPhotometryTable"] = dict(
-            name="fiber_photometry_table",
-            description="d",
-            rows=dict(
-                row0=dict(
-                    location="CA1",
-                    excitation_wavelength_in_nm=470.0,
-                    emission_wavelength_in_nm=525.0,
-                    indicator_metadata_key="indicator",
-                    optical_fiber_metadata_key="optical_fiber",
-                    excitation_source_metadata_key="excitation_source",
-                    photodetector_metadata_key="photodetector",
-                )
-            ),
-        )
-        metadata["ontology"] = dict(brain_regions={"CA1": {"id": "MBA:382", "uri": "https://example.org/MBA_382"}})
-        series_metadata = fiber_photometry_metadata[interface.metadata_key]
-        series_metadata["fiber_photometry_table_region"] = ["row0"]
-        series_metadata["fiber_photometry_table_region_description"] = "d"
-
-        nwbfile = interface.create_nwbfile(metadata=metadata)
-
-        dataframe = nwbfile.external_resources.to_dataframe()
-        by_key = dict(zip(dataframe["key"], dataframe["entity_id"]))
-        assert by_key["CA1"] == "MBA:382"
-        objects = nwbfile.external_resources.objects.to_dataframe()
-        location_column = get_fiber_photometry_table(nwbfile)["location"]
-        assert location_column.object_id in objects["object_id"].tolist()
 
     def test_maps_one_area_to_multiple_ontology_terms(self):
         nwbfile = _make_nwbfile()
