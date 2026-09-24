@@ -201,6 +201,11 @@ def _add_pose_estimation_to_nwbfile(
                 series_kwargs[field] = series_entry[field]
 
         pose_estimation_series.append(PoseEstimationSeries(**series_kwargs))
+        # Every series in a container is a keypoint of the same animal on the same frames, so the times
+        # are identical by construction. Handing the first series as the ``timestamps`` of the rest is
+        # pynwb's idiom for that and writes a link instead of another copy of the vector.
+        if rate is None:
+            timing_kwargs = dict(timestamps=pose_estimation_series[0])
 
     container_kwargs = dict(
         name=container_name,

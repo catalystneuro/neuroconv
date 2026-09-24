@@ -34,6 +34,9 @@ from neuroconv.utils.str_utils import human_readable_size
 from ._pydantic_pure_json_schema_generator import PureJSONSchemaGenerator
 from ...hdmf import SliceableDataChunkIterator
 
+# Match HDF5's existing default on both backends, independently of codec library defaults.
+_DEFAULT_GZIP_LEVEL = 4
+
 
 def _recursively_find_location_in_memory_nwbfile(current_location: str, neurodata_object: Container) -> str:
     """

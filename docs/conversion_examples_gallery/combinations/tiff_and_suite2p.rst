@@ -31,7 +31,7 @@ workflow in neuroconv for Tiff imaging files segmented using suite2p. This conve
     >>> # Extract what metadata we can from the source files
     >>> metadata = converter.get_metadata()
     >>> # For data provenance we add the time zone information to the conversion
-    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
+    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>> # Add subject information (required for DANDI upload)
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")

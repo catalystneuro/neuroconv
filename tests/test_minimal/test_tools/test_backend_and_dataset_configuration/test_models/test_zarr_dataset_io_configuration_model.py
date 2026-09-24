@@ -56,7 +56,7 @@ def test_get_data_io_kwargs():
     zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration()
 
     assert zarr_dataset_configuration.get_data_io_kwargs() == dict(
-        chunks=(78125, 64), compressor=GZip(level=1), filters=None
+        chunks=(78125, 64), compressor=GZip(level=4), filters=None
     )
 
 
@@ -71,7 +71,7 @@ def test_get_data_io_kwargs_with_shuffle():
     zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration(compressors=["shuffle", "gzip"])
 
     assert zarr_dataset_configuration.get_data_io_kwargs() == dict(
-        chunks=(78125, 64), compressor=GZip(level=1), filters=[Shuffle(elementsize=2)]
+        chunks=(78125, 64), compressor=GZip(level=4), filters=[Shuffle(elementsize=2)]
     )
 
 
@@ -82,7 +82,7 @@ def test_get_data_io_kwargs_with_shuffle_and_a_filter_method():
     )
 
     assert zarr_dataset_configuration.get_data_io_kwargs() == dict(
-        chunks=(78125, 64), compressor=GZip(level=1), filters=[Delta(dtype="int16"), Shuffle(elementsize=2)]
+        chunks=(78125, 64), compressor=GZip(level=4), filters=[Delta(dtype="int16"), Shuffle(elementsize=2)]
     )
 
 

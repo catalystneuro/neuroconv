@@ -45,7 +45,7 @@ Use :py:class:`~neuroconv.datainterfaces.events.doric_events.doriccsveventsdatai
 
     >>> metadata = interface.get_metadata()
     >>> # The DoricStudio CSV export carries no session start time, so it must be set explicitly.
-    >>> metadata["NWBFile"]["session_start_time"] = datetime(2024, 1, 1, tzinfo=ZoneInfo("US/Pacific"))
+    >>> metadata["NWBFile"]["session_start_time"] = datetime(2024, 1, 1, tzinfo=ZoneInfo("Asia/Tokyo"))
     >>> # Add subject information (required for DANDI upload)
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
 
