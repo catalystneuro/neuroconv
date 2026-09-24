@@ -216,9 +216,6 @@ def add_subject_to_nwbfile(nwbfile: NWBFile, metadata: dict | None = None) -> No
     # Copied because the ISO 8601 conversion below writes into the entry, and the metadata belongs to
     # the caller.
     subject_metadata = deepcopy(metadata["Subject"])
-    # ``ontology`` carries the strain term (written into the file by neuroconv.tools.ontology), not an
-    # argument the Subject constructor takes.
-    subject_metadata.pop("ontology", None)
     date_of_birth = subject_metadata.get("date_of_birth")
     if isinstance(date_of_birth, str):
         subject_metadata["date_of_birth"] = datetime.fromisoformat(date_of_birth)

@@ -41,8 +41,8 @@ Ontology support is deliberately split into two independent halves, both in
    :py:func:`~neuroconv.tools.ontology.infer_strain_ontology_metadata`, and
    :py:func:`~neuroconv.tools.ontology.infer_brain_region_ontology_metadata` take the free-text
    values a lab wrote (``"mouse"``, ``"black 6"``, ``"CA1"``) and resolve them to ontology terms,
-   writing each term into ``metadata``. This step guesses; run it when you want NeuroConv to propose
-   terms, then inspect and edit the result.
+   writing each term into ``metadata["ontology"]``, **keyed by the value it describes**. This step
+   guesses; run it when you want NeuroConv to propose terms, then inspect and edit the result.
 2. **Annotation** — :py:func:`~neuroconv.tools.ontology.add_species_external_resource`,
    :py:func:`~neuroconv.tools.ontology.add_strain_external_resource`, and
    :py:func:`~neuroconv.tools.ontology.add_brain_region_external_resources` take the terms already
@@ -61,23 +61,18 @@ Where the terms live in metadata
 Each term is an explicit ``{"id": <CURIE>, "uri": <resolvable URI>}`` dict. All terms live in one
 file-wide ``metadata["ontology"]`` block, with one map per kind of value, each keyed by the exact
 string written in the file. HERD links a term to an object through that string, so a key only
-takes effect where the file carries the same value. The strain term still sits next to the value, in
-``metadata["Subject"]["ontology"]["strain"]``:
+takes effect where the file carries the same value:
 
 .. code-block:: python
 
-    metadata["Subject"] = {
-        "subject_id": "sub-01",
-        "species": "Mus musculus",
-        "strain": "C57BL/6J",
-        "ontology": {
-            "strain": {"id": "RRID:IMSR_JAX:000664", "uri": "https://scicrunch.org/resolver/RRID:IMSR_JAX:000664"},
-        },
-    }
+    metadata["Subject"] = {"subject_id": "sub-01", "species": "Mus musculus", "strain": "C57BL/6J"}
 
     metadata["ontology"] = {
         "species": {
             "Mus musculus": {"id": "NCBITaxon:10090", "uri": "http://purl.obolibrary.org/obo/NCBITaxon_10090"},
+        },
+        "strain": {
+            "C57BL/6J": {"id": "RRID:IMSR_JAX:000664", "uri": "https://scicrunch.org/resolver/RRID:IMSR_JAX:000664"},
         },
         "brain_regions": {
             "CA1": {"id": "MBA:382", "uri": "https://purl.brain-bican.org/ontology/mbao/MBA_382"},
@@ -208,12 +203,12 @@ Inferring the strain term into metadata
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 :py:func:`~neuroconv.tools.ontology.infer_strain_ontology_metadata` resolves
-``metadata["Subject"]["strain"]`` and writes the term under
-``metadata["Subject"]["ontology"]["strain"]``, the same way species inference does. Only a small
+``metadata["Subject"]["strain"]`` and writes the term under ``metadata["ontology"]["strain"]``,
+keyed by the strain value exactly as written, the same way species inference does. Only a small
 curated set of common lab lines is included in
 :py:data:`~neuroconv.tools.ontology.STRAIN_TERMS`; for a strain outside that table (an in-house
-line, a less common vendor strain), or to override a curated result, set
-``metadata["Subject"]["ontology"]["strain"]`` yourself before converting — it is never overwritten:
+line, a less common vendor strain), or to override a curated result, add its term to
+``metadata["ontology"]["strain"]`` yourself before converting — it is never overwritten:
 
 .. code-block:: python
 
@@ -221,20 +216,23 @@ line, a less common vendor strain), or to override a curated result, set
 
     metadata["Subject"] = dict(subject_id="m1", species="Mus musculus", strain="black 6")
     infer_strain_ontology_metadata(metadata)
-    metadata["Subject"]["ontology"]["strain"]
-    # {'id': 'RRID:IMSR_JAX:000664', 'uri': 'https://scicrunch.org/resolver/RRID:IMSR_JAX:000664'}
+    metadata["ontology"]["strain"]
+    # {'black 6': {'id': 'RRID:IMSR_JAX:000664', 'uri': 'https://scicrunch.org/resolver/RRID:IMSR_JAX:000664'}}
 
     # An in-house line the curated table does not recognize:
     metadata["Subject"] = dict(subject_id="m2", species="Mus musculus", strain="my in-house line")
-    metadata["Subject"]["ontology"] = {
-        "strain": {"id": "RRID:IMSR_JAX:000664", "uri": "https://scicrunch.org/resolver/RRID:IMSR_JAX:000664"},
+    metadata["ontology"] = {
+        "strain": {
+            "my in-house line": {"id": "RRID:IMSR_JAX:000664", "uri": "https://scicrunch.org/resolver/RRID:IMSR_JAX:000664"},
+        },
     }
 
 Writing the RRID reference into the file
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-:py:func:`~neuroconv.tools.ontology.add_strain_external_resource` reads that term and attaches a
-reference mapping ``Subject.strain`` to its RRID entity, the same way species annotation does. A
+:py:func:`~neuroconv.tools.ontology.add_strain_external_resource` looks up the subject's strain
+value in that map and attaches a reference mapping ``Subject.strain`` to its RRID entity, the same
+way species annotation does. A
 conversion calls it for you:
 
 .. code-block:: python
@@ -245,7 +243,8 @@ conversion calls it for you:
     nwbfile.external_resources  # now carries a C57BL/6J -> RRID:IMSR_JAX:000664 reference
 
 The call is a no-op (returns ``False``) when there is no subject, the subject has no strain set, or
-``metadata`` states no strain term, and it is idempotent in the same way species annotation is.
+``metadata`` states no term for the subject's strain value, and it is idempotent in the same way
+species annotation is.
 
 Brain regions
 -------------

@@ -581,24 +581,26 @@ class TestInferStrainOntologyMetadata:
     def test_recognized_strain_writes_term(self):
         metadata = {"Subject": {"strain": "Long-Evans"}}
         infer_strain_ontology_metadata(metadata)
-        assert metadata["Subject"]["ontology"]["strain"] == LONG_EVANS_STRAIN_TERM
+        assert metadata["ontology"]["strain"] == {"Long-Evans": LONG_EVANS_STRAIN_TERM}
+        assert "ontology" not in metadata["Subject"]
 
     def test_informal_spelling_is_resolved_and_warns(self):
         metadata = {"Subject": {"strain": "black 6"}}
         with pytest.warns(UserWarning, match="C57BL/6J"):
             infer_strain_ontology_metadata(metadata)
-        assert metadata["Subject"]["ontology"]["strain"]["id"] == "RRID:IMSR_JAX:000664"
+        # Keyed by the value as written: HERD links the term to Subject.strain through that string.
+        assert metadata["ontology"]["strain"]["black 6"]["id"] == "RRID:IMSR_JAX:000664"
 
     def test_unrecognized_strain_leaves_metadata_untouched(self):
         metadata = {"Subject": {"strain": "my in-house line"}}
         infer_strain_ontology_metadata(metadata)
-        assert metadata["Subject"].get("ontology", {}).get("strain") is None
+        assert "ontology" not in metadata
 
     def test_existing_user_term_is_not_overwritten(self):
         curated = {"id": "RRID:EXAMPLE:1", "uri": "https://example.org/1"}
-        metadata = {"Subject": {"strain": "Long-Evans", "ontology": {"strain": curated}}}
+        metadata = {"Subject": {"strain": "Long-Evans"}, "ontology": {"strain": {"Long-Evans": curated}}}
         infer_strain_ontology_metadata(metadata)
-        assert metadata["Subject"]["ontology"]["strain"] == curated
+        assert metadata["ontology"]["strain"] == {"Long-Evans": curated}
 
     def test_no_subject_block_is_a_noop(self):
         metadata = {"NWBFile": {}}
@@ -768,10 +770,11 @@ class TestStrainExternalResource:
     @pytest.mark.parametrize(
         "kwargs, metadata",
         [
-            (dict(with_subject=False), {"Subject": {"ontology": {"strain": LONG_EVANS_STRAIN_TERM}}}),
+            (dict(with_subject=False), {"ontology": {"strain": {"Long-Evans": LONG_EVANS_STRAIN_TERM}}}),
             (dict(strain="Long-Evans"), None),  # no metadata
             (dict(strain="Long-Evans"), {"Subject": {"strain": "Long-Evans"}}),  # metadata but no ontology term
-            (dict(strain=None), {"Subject": {"strain": None, "ontology": {"strain": LONG_EVANS_STRAIN_TERM}}}),
+            (dict(strain=None), {"ontology": {"strain": {"Long-Evans": LONG_EVANS_STRAIN_TERM}}}),
+            (dict(strain="Long-Evans"), {"ontology": {"strain": {"long evans": LONG_EVANS_STRAIN_TERM}}}),
         ],
     )
     def test_noop_cases(self, kwargs, metadata):
@@ -781,7 +784,7 @@ class TestStrainExternalResource:
 
     def test_strain_term_from_metadata_is_annotated(self):
         nwbfile = _make_nwbfile(strain="Long-Evans")
-        metadata = {"Subject": {"strain": "Long-Evans", "ontology": {"strain": LONG_EVANS_STRAIN_TERM}}}
+        metadata = {"ontology": {"strain": {"Long-Evans": LONG_EVANS_STRAIN_TERM}}}
         assert add_strain_external_resource(nwbfile, metadata=metadata) is True
 
         dataframe = nwbfile.external_resources.to_dataframe()
@@ -794,7 +797,7 @@ class TestStrainExternalResource:
 
     def test_idempotent(self):
         nwbfile = _make_nwbfile(strain="Long-Evans")
-        metadata = {"Subject": {"ontology": {"strain": LONG_EVANS_STRAIN_TERM}}}
+        metadata = {"ontology": {"strain": {"Long-Evans": LONG_EVANS_STRAIN_TERM}}}
         assert add_strain_external_resource(nwbfile, metadata=metadata) is True
         assert add_strain_external_resource(nwbfile, metadata=metadata) is False
         assert len(nwbfile.external_resources.entities[:]) == 1
@@ -814,7 +817,7 @@ class TestStrainExternalResource:
         )
         nwbfile.external_resources = herd
 
-        metadata = {"Subject": {"ontology": {"strain": LONG_EVANS_STRAIN_TERM}}}
+        metadata = {"ontology": {"strain": {"Long-Evans": LONG_EVANS_STRAIN_TERM}}}
         assert add_strain_external_resource(nwbfile, metadata=metadata) is True
         assert nwbfile.external_resources is herd  # extended in place, not replaced
         assert len(herd.entities[:]) == 2
@@ -822,9 +825,9 @@ class TestStrainExternalResource:
     def test_maps_strain_to_multiple_ontology_terms(self):
         nwbfile = _make_nwbfile(strain="Long-Evans")
         metadata = {
-            "Subject": {
-                "ontology": {
-                    "strain": [
+            "ontology": {
+                "strain": {
+                    "Long-Evans": [
                         LONG_EVANS_STRAIN_TERM,
                         {"id": "RRID:EXAMPLE:3", "uri": "https://example.org/3"},
                     ]
@@ -842,7 +845,7 @@ class TestStrainExternalResource:
     )
     def test_malformed_metadata_term_raises(self, bad_value):
         nwbfile = _make_nwbfile(strain="a strain")
-        metadata = {"Subject": {"ontology": {"strain": bad_value}}}
+        metadata = {"ontology": {"strain": {"a strain": bad_value}}}
         with pytest.raises((TypeError, ValueError)):
             add_strain_external_resource(nwbfile, metadata=metadata)
 

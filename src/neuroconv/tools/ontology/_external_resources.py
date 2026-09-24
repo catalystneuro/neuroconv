@@ -11,7 +11,7 @@ The terms live in one file-wide ``metadata["ontology"]`` block, each map keyed b
 string it annotates (HERD links a term to an object through that string):
 
 - ``metadata["ontology"]["species"]`` -> ``{species string: term-or-list}`` for ``Subject.species``;
-- ``metadata["Subject"]["ontology"]["strain"]`` -> ``{"id": ..., "uri": ...}`` for ``Subject.strain``;
+- ``metadata["ontology"]["strain"]`` -> ``{strain string: term-or-list}`` for ``Subject.strain``;
 - ``metadata["ontology"]["brain_regions"]`` -> ``{location string: term-or-list}`` for every
   anatomical ``location`` field on the file (the electrodes table and electrode groups, imaging
   planes, intracellular electrodes, optogenetic stimulus sites, viral vector injections, and the
@@ -71,9 +71,9 @@ def _ontology_term_entities(value, *, context: str) -> list:
 def _add_subject_attribute_external_resource(nwbfile: NWBFile, metadata: dict | None, *, attribute: str) -> bool:
     """Shared write path for ``add_species_external_resource`` / ``add_strain_external_resource``.
 
-    Looks up the term for ``getattr(subject, attribute)`` -- in ``metadata["ontology"]["species"]``,
-    keyed by the species value, for species, and in ``metadata["Subject"]["ontology"]["strain"]`` for
-    strain -- and, when present, adds an external-resource reference mapping the value to it. No-op (``False``)
+    Looks up ``getattr(subject, attribute)`` in ``metadata["ontology"][attribute]`` -- a
+    ``{value string: term-or-list}`` map -- and, when the value has a term, adds an external-resource
+    reference mapping the value to it. No-op (``False``)
     when there is no subject, the subject has no value for ``attribute``, or the metadata states no
     term for it. Idempotent: an existing ``external_resources`` HERD is extended in place, and a
     value already annotated for this attribute is not added twice.
@@ -86,12 +86,8 @@ def _add_subject_attribute_external_resource(nwbfile: NWBFile, metadata: dict | 
     if not isinstance(value, str) or value.strip() == "":
         return False
 
-    if attribute == "species":
-        species_mapping = (metadata or {}).get("ontology", {}).get("species")
-        term = species_mapping.get(value) if isinstance(species_mapping, dict) else None
-    else:
-        subject_metadata = (metadata or {}).get("Subject")
-        term = subject_metadata.get("ontology", {}).get(attribute) if isinstance(subject_metadata, dict) else None
+    value_mapping = (metadata or {}).get("ontology", {}).get(attribute)
+    term = value_mapping.get(value) if isinstance(value_mapping, dict) else None
     if term is None:
         return False
     entities = _ontology_term_entities(term, context=f"Subject {attribute} {value!r}")
@@ -137,8 +133,8 @@ def add_species_external_resource(nwbfile: NWBFile, metadata: dict | None = None
     common name or Latin binomial.
 
     This is a no-op (returns ``False``) when there is no subject or ``metadata`` states no term for
-    the subject's species value. It is idempotent: an existing ``external_resources`` HERD is extended in place rather than
-    replaced, and a species already annotated is not added twice.
+    the subject's species value. It is idempotent: an existing ``external_resources`` HERD is
+    extended in place rather than replaced, and a species already annotated is not added twice.
 
     Parameters
     ----------
@@ -160,14 +156,15 @@ def add_strain_external_resource(nwbfile: NWBFile, metadata: dict | None = None)
     """
     Annotate ``nwbfile.subject.strain`` with the RRID term stated in ``metadata`` via HERD.
 
-    Reads ``metadata["Subject"]["ontology"]["strain"]`` -- an explicit ``{"id": ..., "uri": ...}``
-    term -- and adds an external-resource reference mapping the subject's strain value to it,
-    stored in-file under ``/general/external_resources``. Nothing is inferred: use
+    Looks up the subject's strain value in ``metadata["ontology"]["strain"]`` -- a
+    ``{strain string: term-or-list}`` map of explicit ``{"id": ..., "uri": ...}`` terms -- and adds
+    an external-resource reference mapping that value to its term(s), stored in-file under
+    ``/general/external_resources``. Nothing is inferred: use
     :func:`neuroconv.tools.ontology.infer_strain_ontology_metadata` to populate that term from an
     informal spelling or canonical designation.
 
     This is a no-op (returns ``False``) when there is no subject, the subject has no strain set, or
-    ``metadata`` states no strain term. It is idempotent: an existing ``external_resources`` HERD is
+    ``metadata`` states no term for the subject's strain value. It is idempotent: an existing ``external_resources`` HERD is
     extended in place rather than replaced, and a strain already annotated is not added twice.
 
     Parameters
@@ -176,7 +173,7 @@ def add_strain_external_resource(nwbfile: NWBFile, metadata: dict | None = None)
         The file whose subject strain should be annotated. Modified in place.
     metadata : dict, optional
         Conversion metadata. The strain term is read from
-        ``metadata["Subject"]["ontology"]["strain"]``.
+        ``metadata["ontology"]["strain"][<Subject.strain>]``.
 
     Returns
     -------

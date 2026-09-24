@@ -4,8 +4,8 @@ Two layers, deliberately separate:
 
 - **inference** -- ``infer_species_ontology_metadata`` / ``infer_strain_ontology_metadata`` /
   ``infer_brain_region_ontology_metadata`` (and the ``get_*_term`` primitives they use) resolve
-  free-text values to ontology terms and write those terms into ``metadata``. This step guesses;
-  run it when you want NeuroConv to propose terms.
+  free-text values to ontology terms and write those terms into ``metadata["ontology"]``, keyed by
+  the value they describe. This step guesses; run it when you want NeuroConv to propose terms.
 - **annotation** -- ``add_species_external_resource`` / ``add_strain_external_resource`` /
   ``add_brain_region_external_resources`` take the terms already stated in ``metadata`` and write
   them into the file as HERD references. This step is deterministic and is what a conversion runs
