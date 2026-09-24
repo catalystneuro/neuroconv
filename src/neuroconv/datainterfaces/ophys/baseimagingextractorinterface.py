@@ -82,7 +82,9 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         self.imaging_extractor: ImagingExtractor = self._extractor_instance
         self.verbose = verbose
         self.photon_series_type = photon_series_type
-        self.metadata_key = metadata_key
+        # The same default ``add_imaging_to_nwbfile`` falls back to, resolved here so that
+        # ``get_metadata``, ``get_metadata_template`` and the writer all address one entry.
+        self.metadata_key = metadata_key or "default_metadata_key"
 
     def get_metadata_schema(self) -> dict:
         """
@@ -185,10 +187,7 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
             # Mirrors ``BaseRecordingExtractorInterface``: the base states the conventional default name
             # for the series it writes, and interfaces that know better overwrite it. ``MicroscopySeries``
             # is the forward-looking generic, used wherever the source does not say what was imaged.
-            # Keyed the way the writer will look it up: ``add_imaging_to_nwbfile`` falls back to the default
-            # key for an interface constructed without one, so the entry has to sit under that key too.
-            metadata_key = self.metadata_key or "default_metadata_key"
-            metadata["Ophys"] = {"MicroscopySeries": {metadata_key: dict(name="MicroscopySeries")}}
+            metadata["Ophys"] = {"MicroscopySeries": {self.metadata_key: dict(name="MicroscopySeries")}}
             return metadata
 
         # Old list-based path (unchanged)
@@ -224,8 +223,7 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
 
         Rename the keys to suit the recording; they are handles, not names in the file.
         """
-        # What ``add_imaging_to_nwbfile`` falls back to for an interface constructed without a key.
-        metadata_key = self.metadata_key or "default_metadata_key"
+        metadata_key = self.metadata_key
         # Prefilled through the same transitional shim the writers use, so an interface whose
         # ``get_metadata`` still answers in the old list format does not leak that shape into the
         # template. When the old format goes the shim goes with it, and this becomes

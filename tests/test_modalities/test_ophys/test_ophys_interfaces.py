@@ -252,7 +252,7 @@ class TestImagingInterfaceWithoutMetadataKey:
 
     def test_metadata_is_keyed_the_way_the_writer_looks_it_up(self):
         interface = self._make_interface()
-        assert interface.metadata_key is None
+        assert interface.metadata_key == "default_metadata_key"
         metadata = interface.get_metadata()
         assert list(metadata["Ophys"]["MicroscopySeries"]) == ["default_metadata_key"]
 
