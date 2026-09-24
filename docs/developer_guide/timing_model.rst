@@ -33,8 +33,8 @@ The alignment state is one scalar **offset** per object and, optionally, one rep
 
 ``base`` is the object's native times, or a replacement array once ``set_times`` or ``remap_times`` has provided one.
 ``offset`` belongs to one object: ``shift_times`` adds its delta to the offset of every object the interface names,
-and ``start_at`` writes the offset of the object it is called on. The interface holds no offset of its own, so every
-time it writes comes from one of its registered objects. The offset defaults to ``0.0``, the identity, so an
+and ``move_start_to`` writes the offset of the object it is called on. The interface holds no offset of its own, so
+every time it writes comes from one of its registered objects. The offset defaults to ``0.0``, the identity, so an
 interface that is never aligned writes the times its source recorded. The offsets are stored rather than folded into
 the times, and the source times are never mutated, so the original timing stays recoverable and nothing is read from
 the source until someone asks for times.
@@ -59,15 +59,15 @@ sample time follows from those two.
      - empty
    * - one object
      - empty
-     - ``start_at(t)``, and ``set_times(times)`` when the times themselves are known
+     - ``move_start_to(t)``, and ``set_times(times)`` when the times themselves are known
 
 ``shift_times`` is interface-wide and relative because the number it takes is a fact about a device's clock: this
 rig's clock reads 3.2 seconds behind the reference, so everything it wrote moves by 3.2 seconds, including objects
 that were placed individually, which keep their relative positions. An interface reads one source from one
 acquisition system, so one clock offset is the right granularity.
 
-``start_at`` is per-object and absolute because the number it takes is a fact about one object: this file began 12.5
-seconds into the session. It arises where the source records nothing about where its pieces sit, a camera or a
+``move_start_to`` is per-object and absolute because the number it takes is a fact about one object: this file began
+12.5 seconds into the session. It arises where the source records nothing about where its pieces sit, a camera or a
 microphone triggered once per trial, and there the user knows a position per file and never a delta. It stores one
 scalar, so placing an hour of audio costs nothing, where expressing the same fact through ``set_times`` would build
 158 million sample times to carry one number and would force the series to be written as a timestamps array rather
@@ -75,7 +75,7 @@ than a rate.
 
 The empty cells are empty because nobody has a number to put in them. A per-object shift would need a delta for one
 file among its siblings on the same device, which no workflow produces, and it would accumulate on a re-run, which is
-the failure ``start_at`` exists to remove. An interface-wide absolute setter has nothing to store itself against,
+the failure ``move_start_to`` exists to remove. An interface-wide absolute setter has nothing to store itself against,
 since the interface holds no offset of its own and has no first sample of its own, only those of its objects. The
 per-object form escapes that because one object has one offset and one first sample.
 
@@ -120,23 +120,23 @@ A consequence worth stating plainly, because it looks like a bug and is not: a s
 ``shift_times(2.0)`` writes ``v + 2.0``. This is assignment against increment, the same asymmetry as ``x = 10``
 against ``x += 2``, and it follows from ``set_times`` being absolute and ``shift_times`` being relative.
 
-``start_at`` is absolute in the same way, and the cleanest statement of how the four operations compose is as functions
-on ``T``, the times an object will be written on:
+``move_start_to`` is absolute in the same way, and the cleanest statement of how the four operations compose is as
+functions on ``T``, the times an object will be written on:
 
 .. code-block:: text
 
     shift_times(d):      T' = T + d
-    start_at(t):         T' = T + (t - T[0])
+    move_start_to(t):    T' = T + (t - T[0])
     set_times(A):        T' = A
     remap_times(L, R):   T' = interp(T, L, R)
 
-Composition is function composition, so order matters exactly as it does for functions. ``start_at`` twice is a no-op.
-``set_times`` or ``remap_times`` after ``start_at`` supersede it, since they define the times outright, and
-``start_at`` after either moves the given times rigidly. A later ``shift_times`` moves everything. In storage,
-``start_at`` writes ``offset = t - base[0]``, the two array writers reset ``offset`` to zero, and the start is read
-back as ``base[0] + offset`` rather than stored, so there is no second copy of it to fall out of step. ``start_at``
-needs ``base[0]`` without materialising the array, which is what the optional native start an interface can register
-alongside its native times is for; absent it, the first native time is read.
+Composition is function composition, so order matters exactly as it does for functions. ``move_start_to`` twice is a
+no-op. ``set_times`` or ``remap_times`` after ``move_start_to`` supersede it, since they define the times outright, and
+``move_start_to`` after either moves the given times rigidly. A later ``shift_times`` moves everything. In storage,
+``move_start_to`` writes ``offset = t - base[0]``, the two array writers reset ``offset`` to zero, and the start is
+read back as ``base[0] + offset`` rather than stored, so there is no second copy of it to fall out of step.
+``move_start_to`` needs ``base[0]`` without materialising the array, which is what the optional native start an
+interface can register alongside its native times is for; absent it, the first native time is read.
 
 ``remap_times`` reads and writes in the same frame, which is what fixes where its arguments live: it interpolates the
 times as they currently stand, so ``local_sync_times`` is on the timeline ``get_times`` reports and carries a shift
@@ -152,5 +152,9 @@ multi-segment electrophysiology recording is the case: each segment's start is i
 exposes it, and the segment count is a reader setting, a gap tolerance, rather than a fact about the session, so it
 cannot carry a public address. Where only the user can say where a piece sits, the interface names one object per
 piece. Trialised external video and per-trial audio files are the cases: the files record nothing about their
-position, so each is placed with ``start_at``. Files an acquisition system split at a size limit are neither. They are
-one continuous recording, and the extractor concatenates them before the interface sees them.
+position, so each is placed with ``move_start_to``. Files an acquisition system split at a size limit are neither. They
+are one continuous recording, and the extractor concatenates them before the interface sees them.
+
+Registration happens in ``__init__``, before any alignment call. It hands the component a callable rather than times,
+so nothing is read from the source. It has to come first because every operation acts on the objects that exist when
+it is called: an object registered after a ``shift_times`` or an interface-wide ``remap_times`` would miss it.

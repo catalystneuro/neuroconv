@@ -54,7 +54,7 @@ Gross alignment
 Gross alignment is the case where your data is already on one clock and only its placement is wrong. Every interface
 exposes its alignment methods under ``interface.alignment``, and there are two tools for it, depending on what you
 know: an offset for the whole interface, given to ``shift_times``, or a position for one object, given to
-``start_at``.
+``move_start_to``.
 
 ``alignment.shift_times(delta)`` moves **every time-bearing object in the interface**, every object it writes that
 carries a time, by ``delta`` seconds. It
@@ -86,15 +86,15 @@ one amount, as long as each of them exposes an ``alignment``.
 
 **Placing one object.** The other gross case is a session recorded as separate trial files, each file's clock starting
 near zero. Here the number you know is not an offset but a position, the time each file began on the session clock,
-and it belongs to one file rather than to the interface. So it is given to the object itself, with ``start_at``:
+and it belongs to one file rather than to the interface. So it is given to the object itself, with ``move_start_to``:
 
 .. code-block:: python
 
-    video_interface.alignment["trial_01"].start_at(0.0)
-    video_interface.alignment["trial_02"].start_at(65.0)
-    video_interface.alignment["trial_03"].start_at(130.0)
+    video_interface.alignment["trial_01"].move_start_to(0.0)
+    video_interface.alignment["trial_02"].move_start_to(65.0)
+    video_interface.alignment["trial_03"].move_start_to(130.0)
 
-``alignment[key].start_at(t)`` moves that one object rigidly so that its first sample sits at ``t`` seconds on the
+``alignment[key].move_start_to(t)`` moves that one object rigidly so that its first sample sits at ``t`` seconds on the
 session clock. It is absolute: it states where the object is rather than how far to move it, so calling it twice with
 the same value changes nothing, and a ``shift_times`` applied to the interface afterwards still carries the object
 along with everything else. Nothing inside the file is read or rewritten; the samples stay regularly spaced and only
@@ -245,7 +245,7 @@ object's times and the operations that rewrite them:
 What you call an operation on is what it applies to. ``shift_times`` moves the whole interface, so it moves every
 object and takes no key at all. ``remap_times`` is one clock's correction, so it is available at either scope: on the
 interface it applies the same map to every object. Times themselves belong to one object, and so does its position,
-so ``get_times``, ``set_times`` and ``start_at`` act on one object. Called on the interface, they reach its only
+so ``get_times``, ``set_times`` and ``move_start_to`` act on one object. Called on the interface, they reach its only
 object when it names exactly one, and raise with the list of keys when it names more, so the key is needed only where
 there is a choice to make.
 
@@ -254,8 +254,8 @@ clock rather than merely happening to agree, and a clock offset is corrected onc
 ``shift_times``. All of a pose interface's keypoints come off the same video, and all of an events interface's tables
 off the same board. What can differ between siblings is position, and only where the source does not record it: a
 camera or a microphone triggered once per trial writes one file per trial, and nothing in those files says where each
-sits, so the interface names one object per file and ``start_at`` places each. Where the source does record how its
-segments sit, as an electrophysiology recording does, the interface names a single object and nothing has to be
+sits, so the interface names one object per file and ``move_start_to`` places each. Where the source does record how
+its segments sit, as an electrophysiology recording does, the interface names a single object and nothing has to be
 placed. An object whose samples themselves are wrong against its siblings has a wrong array, which ``set_times``
 replaces, and one that runs on a second clock wants a second interface.
 
@@ -281,9 +281,9 @@ A converter is where alignment usually happens, since that is where several inte
             behavior.alignment.shift_times(behavior_offset)
 
 Inside this method each interface exposes its full alignment surface under ``alignment``, so you apply whatever each
-stream needs: ``alignment.shift_times`` to reposition one, ``alignment[key].start_at`` to place one of its files,
+stream needs: ``alignment.shift_times`` to reposition one, ``alignment[key].move_start_to`` to place one of its files,
 ``alignment.remap_times`` to re-time a drifting one against the reference. Each interface has its own clock and its
 own correction, so this is a loop over interfaces, never one global remap. One caveat: the calls mutate the live
 interface, so a step that runs twice compounds unless it states a result. A ``shift_times`` shifts twice and a
-``remap_times`` remaps times that were already remapped, while ``start_at`` and ``set_times`` can be repeated. Build
-the converter fresh per conversion.
+``remap_times`` remaps times that were already remapped, while ``move_start_to`` and ``set_times`` can be repeated.
+Build the converter fresh per conversion.
