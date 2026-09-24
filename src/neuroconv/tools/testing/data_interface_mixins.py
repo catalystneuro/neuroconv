@@ -160,6 +160,7 @@ class DataInterfaceTestMixin:
 
         nwbfile_path = str(tmp_path / f"{self.__class__.__name__}_{self.test_name}_{backend}.nwb")
         self.nwbfile_path = nwbfile_path
+        self.backend = backend
 
         self.interface.run_conversion(
             nwbfile_path=nwbfile_path,
@@ -172,9 +173,7 @@ class DataInterfaceTestMixin:
         if backend in self.check_read_nwb_backends:
             self.check_read_nwb(nwbfile_path=nwbfile_path)
 
-        # Custom checks tend to write more files of their own, so they run against one backend only
-        if backend == "hdf5":
-            self.run_custom_checks()
+        self.run_custom_checks()
 
     def edit_metadata(self, metadata: dict) -> dict:
         """Override this to edit the interface's metadata before it is written, the way a user would."""
@@ -186,7 +185,7 @@ class DataInterfaceTestMixin:
         pass
 
     def run_custom_checks(self):
-        """Override this in child classes to inject additional custom checks."""
+        """Check each conversion using ``self.nwbfile_path`` and ``self.backend`` for any additional writes."""
         pass
 
 
@@ -297,9 +296,6 @@ class TemporalAlignmentMixin:
 class ImagingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
     data_interface_cls: type[BaseImagingExtractorInterface]
     optical_series_name: str = "TwoPhotonSeries"
-
-    # `check_read_nwb` goes through roiextractors' NwbImagingExtractor, which opens the file with NWBHDF5IO
-    check_read_nwb_backends = ("hdf5",)
 
     # TODO: remove test_metadata_old_list_format and check_extracted_metadata_old_list_format
     # when old list-based metadata format is removed
@@ -1041,9 +1037,6 @@ class MiniscopeImagingInterfaceMixin(ImagingExtractorInterfaceTestMixin):
     """
 
     optical_series_name = "OnePhotonSeries"
-
-    # This mixin reads the file itself instead of going through NwbImagingExtractor, so zarr is checkable
-    check_read_nwb_backends = ("hdf5", "zarr")
 
     def check_read_nwb(self, nwbfile_path: str):
         from ndx_miniscope import Miniscope

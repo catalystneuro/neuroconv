@@ -1043,7 +1043,9 @@ class TestDeepLabCutInterfaceSetTimestamps(PoseEstimationInterfaceTestMixin):
         self.interface.set_aligned_timestamps(custom_timestamps)
         assert len(self.interface._timestamps) == 2330
 
-        self.interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
+        self.interface.run_conversion(
+            nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True, backend=self.backend
+        )
 
         nwbfile = read_nwb(nwbfile_path)
         assert "behavior" in nwbfile.processing
