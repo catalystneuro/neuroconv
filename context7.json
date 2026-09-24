@@ -1,0 +1,54 @@
+{
+    "$schema": "https://context7.com/schema/context7.json",
+
+    "projectTitle": "NeuroConv",
+    "description": "Convert 40+ neurophysiology data formats to NWB with automatic metadata extraction.",
+
+    "folders": [
+      "docs/"
+    ],
+
+    "excludeFolders": [
+      "src/",
+      "tests/",
+      "dockerfiles/",
+      ".github/",
+      ".venv/",
+      "build/",
+      "dist/",
+      "docs/_build/",
+      "docs/_static/"
+    ],
+
+    "excludeFiles": [
+      "CHANGELOG.md",
+      "license.txt",
+      "MANIFEST.in",
+      "pyproject.toml",
+      "CITATION.cff",
+      "codecov.yml"
+    ],
+
+    "rules": [
+      "Always use the data‑specific interface that matches your file format (e.g., SpikeGLXRecordingInterface for SpikeGLX).",
+      "Install optional extras with pip install \"neuroconv[format_name]\" when working with proprietary formats.",
+      "Combine multiple streams with NWBConverter to preserve temporal alignment.",
+      "Call get_metadata() and enrich the returned dict before running conversion.",
+      "Use run_conversion() with backend compression settings for large recordings.",
+      "Leverage chunking options to keep NWB files manageable.",
+      "Run check_read() on every interface before conversion to catch I/O issues early.",
+      "Prefer YAML conversion specifications for repeatable batch jobs.",
+      "Align timestamps from separate devices using set_aligned_timestamps().",
+      "Validate final NWB files with pynwb.validate() and the NWB NeurodataValidator."
+    ],
+
+    "previousVersions": [
+      { "tag": "v0.7.5", "title": "version 0.7.5" },
+      { "tag": "v0.7.4", "title": "version 0.7.4" },
+      { "tag": "v0.7.3", "title": "version 0.7.3" },
+      { "tag": "v0.7.2", "title": "version 0.7.2" },
+      { "tag": "v0.7.1", "title": "version 0.7.1" },
+      { "tag": "v0.7.0", "title": "version 0.7.0" },
+      { "tag": "v0.6.7", "title": "version 0.6.7" }
+    ]
+  }
