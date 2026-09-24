@@ -54,6 +54,7 @@ dependencies = [
     "packaging",  # Issue 903
     "referencing", # for the json schema references
     "numcodecs<0.16.0", # 0.16.0 is incompatible with zarr < 3: https://github.com/zarr-developers/numcodecs/issues/721
+    "zarr<3",  # the Zarr backend uses the zarr 2 API (zarr.codec_registry); hdmf_zarr>=0.14 requires zarr>=3
 ]
 
 
