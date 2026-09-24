@@ -23,6 +23,7 @@ terms.
 
 from dataclasses import dataclass
 
+from hdmf.term_set import TermSetWrapper
 from pynwb import NWBFile
 
 from ._species import get_species_term
@@ -164,49 +165,74 @@ def get_brain_region_term(location: str, species: str = "Mus musculus") -> Brain
     return atlas.resolve(location)
 
 
-def _modality_locations(nwbfile: NWBFile) -> dict:
-    """``{metadata block name: [unique location strings]}`` for every anatomical site on the file.
+def _unwrapped(value):
+    """The plain value behind an HDMF ``TermSetWrapper``, or ``value`` itself.
 
-    The electrodes table ``location`` column and every ``ElectrodeGroup.location`` fall under
-    ``"Ecephys"``; every ``ImagingPlane.location`` under ``"Ophys"``; the ``FiberPhotometryTable``
-    ``location`` column under ``"FiberPhotometry"``.
+    With a type configuration loaded (``pynwb.load_type_config``, e.g. neuro-termsets'
+    ``default_config.yaml``), HDMF wraps configured fields such as ``Subject.species`` and
+    ``ElectrodeGroup.location`` in a ``TermSetWrapper``. The wrapper does not compare or convert like
+    the string it holds, so every value read here goes through this first.
     """
-    locations: dict[str, dict] = {"Ecephys": {}, "Ophys": {}, "FiberPhotometry": {}}
+    return value.value if isinstance(value, TermSetWrapper) else value
+
+
+def _location_containers(nwbfile: NWBFile) -> list:
+    """Every object on the file that carries a scalar ``location`` attribute naming a brain region.
+
+    Covers ``ElectrodeGroup`` (ecephys), ``ImagingPlane`` (ophys), ``IntracellularElectrode``
+    (icephys), ``OptogeneticStimulusSite`` (ogen), and every ``ndx-ophys-devices``
+    ``ViralVectorInjection``, whose ``location`` is the targeted region. Injections are found by type
+    wherever they sit (the fiber-photometry and optogenetics containers both hold them), so no
+    extension has to be installed for the rest to work. Objects whose ``location`` is unset are
+    skipped.
+    """
+    containers = [
+        *nwbfile.electrode_groups.values(),
+        *nwbfile.imaging_planes.values(),
+        *nwbfile.icephys_electrodes.values(),
+        *nwbfile.ogen_sites.values(),
+        *(obj for obj in nwbfile.objects.values() if getattr(obj, "neurodata_type", None) == "ViralVectorInjection"),
+    ]
+    return [container for container in containers if _unwrapped(getattr(container, "location", None)) is not None]
+
+
+def _all_locations(nwbfile: NWBFile) -> list:
+    """Unique location strings across every anatomical site on the file.
+
+    Covers the electrodes table ``location`` column (ecephys), the ``FiberPhotometryTable``
+    ``location`` column (fiber photometry), and every object from :func:`_location_containers`.
+    """
+    locations: dict[str, None] = {}
 
     electrodes = nwbfile.electrodes
     if electrodes is not None and "location" in electrodes.colnames:
-        locations["Ecephys"].update(dict.fromkeys(str(value) for value in electrodes["location"].data))
-    for electrode_group in nwbfile.electrode_groups.values():
-        locations["Ecephys"].setdefault(electrode_group.location)
-
-    for imaging_plane in nwbfile.imaging_planes.values():
-        locations["Ophys"].setdefault(imaging_plane.location)
+        locations.update(dict.fromkeys(str(value) for value in _unwrapped(electrodes["location"].data)))
+    for container in _location_containers(nwbfile):
+        locations.setdefault(_unwrapped(container.location))
 
     # Lazy import: fiber_photometry.py imports (transitively) from tools.ontology.
     from ..fiber_photometry import get_fiber_photometry_table
 
     fiber_photometry_table = get_fiber_photometry_table(nwbfile)
     if fiber_photometry_table is not None and "location" in fiber_photometry_table.colnames:
-        locations["FiberPhotometry"].update(
-            dict.fromkeys(str(value) for value in fiber_photometry_table["location"].data)
-        )
+        locations.update(dict.fromkeys(str(value) for value in _unwrapped(fiber_photometry_table["location"].data)))
 
-    return {block: list(values) for block, values in locations.items() if values}
+    return list(locations)
 
 
 def infer_brain_region_ontology_metadata(nwbfile: NWBFile, metadata: dict) -> dict:
     """
-    Fill ``metadata["<modality>"]["ontology"]["brain_regions"]`` from the file's ``location`` fields.
+    Fill ``metadata["ontology"]["brain_regions"]`` from the file's ``location`` fields.
 
     This is the **inference** half of brain-region annotation: it walks every anatomical
-    ``location`` on ``nwbfile`` (the electrodes table, electrode groups, imaging planes, and the
+    ``location`` on ``nwbfile`` (the electrodes table, electrode groups, imaging planes,
+    intracellular electrodes, optogenetic stimulus sites, viral vector injections, and the
     ``FiberPhotometryTable``), resolves each distinct string to a brain-atlas term with
     :func:`get_brain_region_term` -- choosing the atlas from the subject's species (Allen Mouse or
     Human Brain Atlas, or the species-agnostic UBERON fallback) -- and writes explicit
-    ``{"id": ..., "uri": ...}`` terms under the ``ontology.brain_regions`` map of the modality block
-    the location belongs to. The deterministic
-    :func:`neuroconv.tools.ontology.add_brain_region_external_resources` then writes those terms
-    into the file as HERD references.
+    ``{"id": ..., "uri": ...}`` terms under ``metadata["ontology"]["brain_regions"]``. The
+    deterministic :func:`neuroconv.tools.ontology.add_brain_region_external_resources` then writes
+    those terms into the file as HERD references.
 
     The metadata is modified in place (and also returned). A location that does not resolve, or one
     already present in the map (a user-curated term is never overwritten), is left as is. This is a
@@ -217,8 +243,7 @@ def infer_brain_region_ontology_metadata(nwbfile: NWBFile, metadata: dict) -> di
     nwbfile : NWBFile
         A populated file (data already added) whose ``location`` fields are read.
     metadata : dict
-        Conversion metadata. Terms are written under
-        ``metadata["<modality>"]["ontology"]["brain_regions"]``.
+        Conversion metadata. Terms are written under ``metadata["ontology"]["brain_regions"]``.
 
     Returns
     -------
@@ -229,24 +254,21 @@ def infer_brain_region_ontology_metadata(nwbfile: NWBFile, metadata: dict) -> di
         return metadata
 
     subject = getattr(nwbfile, "subject", None)
-    species = getattr(subject, "species", None)
+    species = _unwrapped(getattr(subject, "species", None))
     if species is None:
         subject_metadata = metadata.get("Subject")
         species = subject_metadata.get("species") if isinstance(subject_metadata, dict) else None
 
-    for block_name, block_locations in _modality_locations(nwbfile).items():
-        existing = metadata.get(block_name, {}).get("ontology", {}).get("brain_regions", {})
-        resolved = {}
-        for location in block_locations:
-            if not isinstance(location, str) or location.strip() == "" or location in existing:
-                continue
-            term = get_brain_region_term(location, species=species)
-            if term is not None:
-                resolved[location] = {"id": term.curie, "uri": term.entity_uri}
-        if resolved:
-            brain_regions = (
-                metadata.setdefault(block_name, {}).setdefault("ontology", {}).setdefault("brain_regions", {})
-            )
-            brain_regions.update(resolved)
+    existing = metadata.get("ontology", {}).get("brain_regions", {})
+    resolved = {}
+    for location in _all_locations(nwbfile):
+        if not isinstance(location, str) or location.strip() == "" or location in existing:
+            continue
+        term = get_brain_region_term(location, species=species)
+        if term is not None:
+            resolved[location] = {"id": term.curie, "uri": term.entity_uri}
+    if resolved:
+        brain_regions = metadata.setdefault("ontology", {}).setdefault("brain_regions", {})
+        brain_regions.update(resolved)
 
     return metadata

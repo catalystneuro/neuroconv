@@ -288,7 +288,7 @@ class DeepLabCutInterface(BasePoseEstimationInterface):
         return super().get_metadata_schema()
 
     def _get_metadata_schema_old_format(self) -> dict:
-        from ....utils import ONTOLOGY_METADATA_SCHEMA, get_base_schema
+        from ....utils import get_base_schema
 
         metadata_schema = super().get_metadata_schema()
 
@@ -435,7 +435,13 @@ class DeepLabCutInterface(BasePoseEstimationInterface):
             "Skeletons": skeleton_schema,
             "Devices": devices_schema,
             "PoseEstimationContainers": containers_schema,
-            "ontology": ONTOLOGY_METADATA_SCHEMA,
+            "ontology": {
+                "type": "object",
+                "description": (
+                    "Ontology terms for skeleton node names under 'anatomy'. Populated by "
+                    "neuroconv.tools.ontology and written into the file as HERD references."
+                ),
+            },
         }
 
         return metadata_schema

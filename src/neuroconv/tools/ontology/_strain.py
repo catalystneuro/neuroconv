@@ -172,25 +172,26 @@ def validate_strain(strain: str | None) -> StrainTerm | None:
 
 def infer_strain_ontology_metadata(metadata: dict) -> dict:
     """
-    Fill ``metadata["Subject"]["ontology"]["strain"]`` from the subject's strain value.
+    Fill ``metadata["ontology"]["strain"]`` from the subject's strain value.
 
     This is the **inference** half of strain annotation: it resolves
     ``metadata["Subject"]["strain"]`` (an informal spelling, a likely typo, or a canonical
     designation) to its RRID term via :func:`get_strain_term` and writes an explicit
-    ``{"id": ..., "uri": ...}`` term next to the value it describes. The deterministic
+    ``{"id": ..., "uri": ...}`` term keyed by that value exactly as written (``"black 6"`` stays the
+    key, because HERD links the term to ``Subject.strain`` through that string). The deterministic
     :func:`neuroconv.tools.ontology.add_strain_external_resource` then writes that term into the
     file as a HERD reference.
 
     The metadata is modified in place (and also returned). This is a no-op when there is no
-    ``Subject`` block, no strain is set, the strain is not recognized, or an ``ontology.strain``
-    term is already present (a user-curated term is never overwritten). A recognized informal
+    ``Subject`` block, no strain is set, the strain is not recognized, or a term for that value is
+    already present (a user-curated term is never overwritten). A recognized informal
     spelling or typo also emits the :func:`validate_strain` ``UserWarning``.
 
     Parameters
     ----------
     metadata : dict
         Conversion metadata. ``metadata["Subject"]["strain"]`` is read; the term is written under
-        ``metadata["Subject"]["ontology"]["strain"]``.
+        ``metadata["ontology"]["strain"][<strain value>]``.
 
     Returns
     -------
@@ -204,11 +205,13 @@ def infer_strain_ontology_metadata(metadata: dict) -> dict:
     strain = subject_metadata.get("strain")
     validate_strain(strain)  # non-blocking suggestion for informal spellings / typos
 
-    ontology_metadata = subject_metadata.setdefault("ontology", {})
-    if ontology_metadata.get("strain") is not None:
+    if not isinstance(strain, str):
+        return metadata
+    if metadata.get("ontology", {}).get("strain", {}).get(strain) is not None:
         return metadata
 
     term = get_strain_term(strain)
     if term is not None:
-        ontology_metadata["strain"] = {"id": term.rrid, "uri": term.entity_uri}
+        strain_mapping = metadata.setdefault("ontology", {}).setdefault("strain", {})
+        strain_mapping[strain] = {"id": term.rrid, "uri": term.entity_uri}
     return metadata
