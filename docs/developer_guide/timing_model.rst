@@ -187,9 +187,10 @@ nonfinite target or a nonfinite start in any selected nonempty object. The targe
 before offsets change, so a failed placement does not leave only part of the collection shifted.
 
 Successful alignment operations still leave the writer responsible for constraints on how its objects fit together.
-For multi-file video and audio, each file defaults to start at zero, and those defaults overlap when several nonempty
-files are supplied. In the supplied file order, each file's first sample must be strictly later than the previous
+For multi-file video and audio, each file defaults to its source's own start, zero for audio and, for video, the time
+the container stores for the first frame, usually zero. Those defaults overlap when several nonempty files are
+supplied. In the supplied file order, each file's first sample must be strictly later than the previous
 file's last sample. The writer rejects overlapping or reversed placements, including a shared boundary timestamp.
 Checking the resulting times makes the outcome independent of which alignment methods were called or at which
 scope. A common shift preserves an overlap, so it does not make unplaced files valid. This establishes ordering only:
-a first file left at zero can pass when later files start after it ends.
+a first file left unplaced can pass when later files start after it ends.

@@ -146,6 +146,7 @@ class ExternalVideoInterface(BaseDataInterface):
         self._number_of_files = len(file_paths)
         self._frame_counts = None
         self._frame_rates = None
+        self._first_frame_times = None
 
         # Alignment by composition, the component the fiber photometry and events interfaces hold. Each
         # video file is triggered on its own, so each is separately addressable, keyed by its stem and, where
@@ -156,12 +157,13 @@ class ExternalVideoInterface(BaseDataInterface):
         self.alignment = _TemporalAlignment()
         for file_index, segment_key in enumerate(self._segment_keys):
             # Callables, so registering the files reads none of them.
-            # Every file starts at zero until it is placed: several files record nothing about how they
-            # relate, so none is assumed, and files left unplaced overlap and raise when written.
+            # Every file starts where its container puts its first frame, usually zero, until it is placed:
+            # several files record nothing about how they relate, so none is assumed, and files left unplaced
+            # overlap and raise when written.
             self.alignment._register_series(
                 key=segment_key,
                 get_default_times=partial(self._get_default_times, file_index=file_index),
-                default_start_time=0.0,
+                default_start_time=partial(self._get_first_frame_time, file_index=file_index),
             )
         # metadata_key is the snake_case registry key (for cross-component linking); the ImageSeries
         # name is kept distinct and is never derived from the key. Name precedence: explicit
@@ -329,15 +331,49 @@ class ExternalVideoInterface(BaseDataInterface):
         video, handed to ``alignment[key].set_times(...)``; these times are what gets written when nobody
         has done that.
 
-        Every file starts at zero. Several files do not say among themselves how they relate: a recorder
-        that rotated its output and a camera triggered once per trial produce the same files, one segment
-        running on from the last and the other separated by gaps. So nothing is assumed, and each file is
-        placed with ``alignment[key].move_start_to(...)``; files left at zero overlap, which the write
-        refuses.
+        Every file starts at the time its container stores for its first frame, which is zero for most
+        files, and the header rate spaces the rest. Several files do not say among themselves how they
+        relate: a recorder that rotated its output and a camera triggered once per trial produce the same
+        files, one segment running on from the last and the other separated by gaps. So nothing is assumed,
+        and each file is placed with ``alignment[key].move_start_to(...)``; files left unplaced overlap,
+        which the write refuses.
         """
         frame_counts = self.get_header_frame_counts()
         frame_rates = self.get_header_frame_rates()
-        return np.arange(frame_counts[file_index]) / frame_rates[file_index]
+        first_frame_time = self._get_first_frame_time(file_index=file_index)
+        return first_frame_time + np.arange(frame_counts[file_index]) / frame_rates[file_index]
+
+    def _get_first_frame_time(self, *, file_index: int) -> float:
+        """
+        Return the time one video file's container stores for its first frame, reading only that frame.
+
+        This is the file's native start. The header gives a count and a rate but no start, so the start is
+        taken from the container, which keeps it wherever the source put it: zero for most files. It is also
+        the first value of :meth:`_get_container_times`, so a placement computed against it holds whether a
+        file is written with header-rate times or with the container's own.
+        """
+        if self._first_frame_times is None:
+            first_frame_times = []
+            for file_path in self.source_data["file_paths"]:
+                with VideoCaptureContext(file_path=str(file_path)) as video:
+                    timestamps = video.get_video_timestamps(max_frames=1, display_progress=False)
+                first_frame_times.append(float(timestamps[0]) if timestamps.size else 0.0)
+            self._first_frame_times = first_frame_times
+        return self._first_frame_times[file_index]
+
+    def _get_container_times(self, *, file_index: int) -> np.ndarray:
+        """
+        Return the timestamps one video file's container stores for its frames, reading every frame.
+
+        These are the timestamps ``get_original_timestamps`` returns, not the header-rate default
+        :meth:`_get_default_times` builds. Used only by :meth:`_get_aligned_timestamps` when
+        ``always_write_timestamps=True`` and the file has no times set, in place of that default. Slow: it
+        opens the file and reads every frame. They start at :meth:`_get_first_frame_time`, the start the
+        default times share, so an offset stored by ``move_start_to`` places them the same way.
+        """
+        file_path = self.source_data["file_paths"][file_index]
+        with VideoCaptureContext(file_path=str(file_path)) as video:
+            return video.get_video_timestamps()
 
     def _get_compact_timing(self) -> tuple[float, float] | None:
         """
@@ -365,7 +401,7 @@ class ExternalVideoInterface(BaseDataInterface):
             return None
         return float(starting_times[0]), frame_rates[0]
 
-    def _get_aligned_timestamps(self) -> np.ndarray:
+    def _get_aligned_timestamps(self, *, always_write_timestamps: bool = False) -> np.ndarray:
         """
         Return one timeline for the whole ``ImageSeries``, the files concatenated in the order given.
 
@@ -373,10 +409,25 @@ class ExternalVideoInterface(BaseDataInterface):
         the files were passed, each file's first frame has to come strictly after the previous file's last
         frame. Files that overlap, or share an instant, describe no such timeline. The check is on the times
         themselves rather than on which alignment calls were made, so it holds whoever placed the files and
-        at whatever scope: files nobody placed all start at zero and fail it, and so do files corrected as a
+        at whatever scope: files nobody placed all start at their container's first frame time, usually
+        zero, and fail it, and so do files corrected as a
         block but never placed one by one.
+
+        With ``always_write_timestamps=True``, a file that has no times set (``set_times``, ``remap_times``,
+        or a deprecated setter) is based on its container's own per-frame timestamps
+        (:meth:`_get_container_times`) instead of the header-rate default, decoding every frame of
+        that file; a file with times set is unaffected and keeps them. Either way the object's own offset and
+        the interface's offset are added exactly as :meth:`_TimeBearingSeries.get_times` would.
         """
-        segment_times = [self.alignment[segment_key].get_times() for segment_key in self._segment_keys]
+        segment_times = []
+        for file_index, segment_key in enumerate(self._segment_keys):
+            time_bearing_object = self.alignment[segment_key]
+            if always_write_timestamps and time_bearing_object._times is None:
+                base_times = self._get_container_times(file_index=file_index)
+                times = base_times + time_bearing_object._object_offset + self.alignment.offset
+            else:
+                times = time_bearing_object.get_times()
+            segment_times.append(times)
         # Before the overlap check, since times on the wrong file usually cause both and the count names it.
         self._check_timestamps_number_matches_frames(segment_timestamps=segment_times)
         self._check_files_do_not_overlap(segment_times=segment_times)
@@ -392,8 +443,9 @@ class ExternalVideoInterface(BaseDataInterface):
                 raise ValueError(
                     f"The video file '{segment_key}' starts at {times[0]} s, which is not after the file before "
                     f"it, '{previous_segment_key}', ends at {previous_end_time} s. One ImageSeries carries a "
-                    "single timeline, so each file has to begin after the previous one ends. Every file starts "
-                    "at zero until it is placed: say where each begins with "
+                    "single timeline, so each file has to begin after the previous one ends. Until it is "
+                    "placed, every file starts where its container puts its first frame, usually zero: say "
+                    "where each begins with "
                     "`alignment[key].move_start_to(starting_time)`, or give it the times a pulse recorded for "
                     "every frame with `alignment[key].set_times(times)`. For one recording split into several "
                     "files, place each where the one before it ended."
@@ -634,7 +686,10 @@ class ExternalVideoInterface(BaseDataInterface):
             Set to True to always write timestamps.
             By default (False), the function checks if timestamps are available, and if not, uses starting_time and rate.
             If set to True, timestamps will be written explicitly, regardless of whether they were set directly or need
-            to be retrieved from the video file.
+            to be retrieved from the video file. A file with no times set (via ``alignment[key].set_times(...)``,
+            ``remap_times``, or a deprecated setter) is then written with the timestamps stored in its video
+            container, read frame by frame (slow on long videos), with any placement (``move_start_to``) or
+            shift (``shift_times``) applied; a file with times set is written with those times, unchanged.
         """
         # Handle deprecated positional arguments
         if args:
@@ -717,7 +772,7 @@ class ExternalVideoInterface(BaseDataInterface):
             starting_time, rate = compact_timing
             image_series_kwargs.update(starting_time=starting_time, rate=rate)
         else:
-            timestamps = self._get_aligned_timestamps()
+            timestamps = self._get_aligned_timestamps(always_write_timestamps=always_write_timestamps)
             rate = None if always_write_timestamps else calculate_regular_series_rate(series=timestamps)
             if rate is not None:
                 image_series_kwargs.update(starting_time=timestamps[0], rate=rate)

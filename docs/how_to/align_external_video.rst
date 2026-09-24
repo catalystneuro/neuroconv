@@ -215,7 +215,8 @@ single number can fix it.
 opened a new file every few minutes, so it arrives as several. If the recorder dropped no frames between
 closing one file and opening the next, the files run back to back and each starts where the previous one
 ended. The frame counts and rates give you those starts. The interface does not assume this: several files
-record nothing about how they relate, so every file starts at zero until you place it, and writing files that
+record nothing about how they relate, so every file starts where its container puts its first frame, usually
+zero, until you place it, and writing files that
 overlap raises an error. Place each file where the previous one ends:
 
 .. code-block:: python
@@ -303,9 +304,10 @@ A triggered camera, one file per trial
 
 One camera again, but a pulse triggers it at the start of each trial, so the session produces one file per
 trial with real gaps between them. Each file has to be placed on its own, with ``alignment[key].move_start_to``.
-A file left unplaced stays at zero, and the write raises an error when it overlaps the file before it: in the
+A file left unplaced stays at its own start, usually zero, and the write raises an error when it overlaps the
+file before it: in the
 order given, each file has to begin after the previous one ends. The check is on the times, so a first file
-left at zero passes when every later file starts after it ends. Place the first file as well.
+left unplaced passes when every later file starts after it ends. Place the first file as well.
 
 ``ExternalVideoInterface(file_paths=[...])`` writes a **single** ``ImageSeries`` with one ``external_file``
 entry per input file. A session of forty trials is one container with forty entries. The container carries

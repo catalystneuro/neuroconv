@@ -467,7 +467,7 @@ def aligned_segment_starting_times():
 
 def test_multiple_file_paths_without_placement_raise(nwb_converter, nwbfile_path, metadata):
     """Several files with no timing information all start at zero, so the conversion refuses to write them."""
-    with pytest.raises(ValueError, match="Every file starts at zero until it is placed"):
+    with pytest.raises(ValueError, match="Until it is placed, every file starts where its container puts"):
         nwb_converter.run_conversion(
             nwbfile_path=nwbfile_path,
             overwrite=True,
@@ -604,6 +604,62 @@ def test_always_write_timestamps(nwb_converter, nwbfile_path, metadata, aligned_
         assert nwbfile.acquisition["Video test1"].timestamps is not None
         # Verify timestamps are not None and have the expected length
         assert len(nwbfile.acquisition["Video test1"].timestamps[:]) > 0
+
+
+def test_a_file_starts_at_its_containers_first_frame_time(video_files):
+    """The native start is the one the container stores, and the header rate spaces the frames from it."""
+    interface = ExternalVideoInterface(file_paths=[video_files[0]])
+    segment_key = interface._segment_keys[0]
+    first_frame_time = interface.get_original_timestamps(stub_test=True)[0][0]
+
+    times = interface.alignment[segment_key].get_times()
+
+    assert times[0] == first_frame_time
+    np.testing.assert_allclose(np.diff(times), 1.0 / interface.get_header_frame_rates()[0])
+
+
+def test_always_write_timestamps_with_nothing_set_uses_container_timestamps(video_files):
+    """With no times set on the file, the flag falls back to the container's own per-frame timestamps."""
+    interface = ExternalVideoInterface(file_paths=[video_files[0]])
+    expected_timestamps = interface.get_original_timestamps()[0]
+
+    nwbfile = mock_NWBFile()
+    interface.add_to_nwbfile(nwbfile=nwbfile, always_write_timestamps=True)
+
+    image_series = nwbfile.acquisition[interface._default_name]
+    np.testing.assert_array_equal(image_series.timestamps[:], expected_timestamps)
+
+
+def test_always_write_timestamps_with_a_placement_offsets_container_timestamps(video_files):
+    """A `move_start_to` (or a `shift_times`) applied to an unset file still has to move it under the flag."""
+    interface = ExternalVideoInterface(file_paths=[video_files[0]])
+    original_timestamps = interface.get_original_timestamps()[0]
+    segment_key = interface._segment_keys[0]
+
+    interface.alignment[segment_key].move_start_to(100.0)
+    interface.alignment.shift_times(5.0)
+
+    nwbfile = mock_NWBFile()
+    interface.add_to_nwbfile(nwbfile=nwbfile, always_write_timestamps=True)
+
+    image_series = nwbfile.acquisition[interface._default_name]
+    expected_timestamps = original_timestamps - original_timestamps[0] + 100.0 + 5.0
+    np.testing.assert_allclose(image_series.timestamps[:], expected_timestamps)
+
+
+def test_always_write_timestamps_with_times_set_uses_the_set_times(video_files):
+    """A file whose times were set through `set_times` keeps them under the flag, not the container times."""
+    interface = ExternalVideoInterface(file_paths=[video_files[0]])
+    segment_key = interface._segment_keys[0]
+    frame_count = interface.get_header_frame_counts()[0]
+    set_times = np.arange(frame_count) * 0.1 + 1000.0
+    interface.alignment[segment_key].set_times(set_times)
+
+    nwbfile = mock_NWBFile()
+    interface.add_to_nwbfile(nwbfile=nwbfile, always_write_timestamps=True)
+
+    image_series = nwbfile.acquisition[interface._default_name]
+    np.testing.assert_array_equal(image_series.timestamps[:], set_times)
 
 
 def test_custom_module(nwb_converter, nwbfile_path, metadata, aligned_segment_starting_times):
