@@ -166,7 +166,7 @@
     },
     "ontology": {
       "type": "object",
-      "description": "Ontology terms for the whole file, one map per kind of value ('species' for Subject.species, 'brain_regions' for location fields), each keyed by the exact value string it annotates. Each term is an explicit {'id': <CURIE>, 'uri': <resolvable URI>} dict, or a list of them. Populated by the neuroconv.tools.ontology infer_* functions and written into the file as HERD references."
+      "description": "Ontology terms for the whole file, one map per kind of value ('species' for Subject.species, 'strain' for Subject.strain, 'brain_regions' for location fields), each keyed by the exact value string it annotates. Each term is an explicit {'id': <CURIE>, 'uri': <resolvable URI>} dict, or a list of them. Populated by the neuroconv.tools.ontology infer_* functions and written into the file as HERD references."
     },
     "Devices": {
       "type": ["object", "array"],

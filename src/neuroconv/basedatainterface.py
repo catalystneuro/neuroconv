@@ -23,6 +23,7 @@ from .tools.nwb_helpers._metadata_and_file_helpers import (
 from .tools.ontology import (
     add_brain_region_external_resources,
     add_species_external_resource,
+    add_strain_external_resource,
 )
 from .utils import (
     get_json_schema_from_method_signature,
@@ -192,6 +193,7 @@ class BaseDataInterface(ABC):
         # no-op unless metadata carries an "ontology" block (see neuroconv.tools.ontology); run
         # the infer_*_ontology_metadata functions first to have NeuroConv propose those terms.
         add_species_external_resource(nwbfile, metadata=metadata)
+        add_strain_external_resource(nwbfile, metadata=metadata)
         add_brain_region_external_resources(nwbfile, metadata=metadata)
 
         return nwbfile
@@ -330,6 +332,7 @@ class BaseDataInterface(ABC):
         if nwbfile is not None:
             self.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **conversion_options)
             add_species_external_resource(nwbfile, metadata=metadata)
+            add_strain_external_resource(nwbfile, metadata=metadata)
             add_brain_region_external_resources(nwbfile, metadata=metadata)
         else:
             nwbfile = self.create_nwbfile(metadata=metadata, **conversion_options)
