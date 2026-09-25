@@ -93,6 +93,15 @@ audio = [
     "ndx-sound>=0.2.3",  # 0.2.3 fixes the starting_time dtype so the spec resolves under hdmf>=6
     "scipy", # for scipy.io.wavfile
 ]
+dannce = [
+    # TODO: ndx-pose 0.4.0 (with CalibratedCamera/MultiCameraPoseEstimation) is not released to PyPI
+    # yet, so this is pinned to the main branch on GitHub. Switch back to "ndx-pose>=0.4.0" once
+    # 0.4.0 is released.
+    "ndx-pose @ git+https://github.com/rly/ndx-pose.git@main",
+    "scipy",
+    # DANNCEConverter links each camera's source video via ExternalVideoInterface, which needs cv2
+    "neuroconv[video]",
+]
 sleap = [
     "av>=10.0.0",
     "sleap-io>=0.5.2",
@@ -135,6 +144,7 @@ behavior = [
     "neuroconv[boris]",
     "neuroconv[sleap]",
     "neuroconv[audio]",
+    "neuroconv[dannce]",
     "neuroconv[deeplabcut]",
     "neuroconv[fictrac]",
     "neuroconv[video]",
