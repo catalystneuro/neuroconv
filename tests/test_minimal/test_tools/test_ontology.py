@@ -9,16 +9,19 @@ from pynwb import NWBFile
 from pynwb.file import Subject
 
 from neuroconv.tools.ontology import (
+    ANATOMY_TERMS,
     HBA_TERMS,
     MBA_TERMS,
     SPECIES_TERMS,
     STRAIN_TERMS,
+    AnatomyTerm,
     BrainRegionTerm,
     SpeciesTerm,
     StrainTerm,
     add_brain_region_external_resources,
     add_species_external_resource,
     add_strain_external_resource,
+    get_anatomy_term,
     get_brain_region_term,
     get_species_suggestion,
     get_species_term,
@@ -152,6 +155,17 @@ class TestUpstreamTermSets:
         assert "b6" in merged["C57BL/6J"].aliases  # ours survive an upstream entry without aliases
         assert "N2" in merged  # upstream-only values (worm, zebrafish, fly, Cre lines) are kept
 
+    def test_real_neuro_termsets_general_anatomy_merge_keeps_bundled_terms_and_aliases(self):
+        pytest.importorskip("neuro_termsets")
+
+        from neuroconv.tools.ontology._term_sets import load_term_set, load_upstream_term_set
+
+        assert load_upstream_term_set("general_anatomy.yaml") is not None  # the mapped name really resolves
+        merged = load_term_set("general_anatomy.yaml")
+        assert merged["Snout"].curie == "UBERON:0006333"
+        assert "nose" in merged["Snout"].aliases  # ours survive an upstream entry without aliases
+        assert "Brain" in merged  # upstream-only values (organs, not just skeleton parts) are kept
+
     def test_unmapped_file_name_returns_none(self):
         from neuroconv.tools.ontology._term_sets import load_upstream_term_set
 
@@ -246,6 +260,7 @@ TERM_SET_FILES = [
     "mouse_brain_atlas.yaml",
     "human_brain_atlas.yaml",
     "uberon_common_regions.yaml",
+    "general_anatomy.yaml",
 ]
 
 
@@ -256,6 +271,7 @@ class TestTermSetAliases:
         assert "mouse" in load_term_set("species.yaml")["Mus musculus"].aliases
         assert "black 6" in load_term_set("strains.yaml")["C57BL/6J"].aliases
         assert load_term_set("mouse_brain_atlas.yaml")["HIP"].aliases == ("hippocampus",)
+        assert "nose" in load_term_set("general_anatomy.yaml")["Snout"].aliases
 
     def test_term_without_aliases_has_an_empty_tuple(self):
         from neuroconv.tools.ontology._term_sets import load_term_set
@@ -495,6 +511,48 @@ class TestBrainRegionTerms:
     def test_unrecognized_species_returns_none(self):
         assert get_brain_region_term("CA1", species=None) is None
         assert get_brain_region_term("CA1", species="not a species") is None
+
+
+# ---------------------------------------------------------------------------
+# General-anatomy term resolution
+# ---------------------------------------------------------------------------
+
+
+class TestAnatomyTerms:
+    def test_table_entries_are_self_consistent(self):
+        for canonical_name, term in ANATOMY_TERMS.items():
+            assert isinstance(term, AnatomyTerm)
+            assert term.name == canonical_name
+            assert term.curie.startswith("UBERON:")
+
+    def test_exact_canonical_name_resolves(self):
+        term = get_anatomy_term("Trapezius muscle")
+        assert term.name == "Trapezius muscle"
+        assert term.curie == "UBERON:0002380"
+        assert term.entity_uri == "http://purl.obolibrary.org/obo/UBERON_0002380"
+
+    def test_case_insensitive_match(self):
+        assert get_anatomy_term("snout").name == "Snout"
+        assert get_anatomy_term("SNOUT").name == "Snout"
+
+    @pytest.mark.parametrize(
+        "alias, expected_canonical",
+        [
+            ("nose", "Snout"),
+            ("forepaw", "Hand"),
+            ("hindpaw", "Foot"),
+            ("carpus", "Wrist"),
+            ("trapezius", "Trapezius muscle"),
+        ],
+    )
+    def test_informal_alias_resolves(self, alias, expected_canonical):
+        assert get_anatomy_term(alias).name == expected_canonical
+
+    @pytest.mark.parametrize("name", ["EarL", "ear_l", "not a structure", "", None, 42])
+    def test_unrecognized_returns_none(self, name):
+        # Lab-specific keypoint names with laterality markers are not recognized -- high precision
+        # over guessing.
+        assert get_anatomy_term(name) is None
 
 
 # ---------------------------------------------------------------------------
