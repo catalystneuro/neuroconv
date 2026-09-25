@@ -21,6 +21,7 @@ The most common contribution is for a user/developer to help us integrate a new 
     Provenance Record <provenance>
     Project Structure <project_structure>
     Testing Suite <testing_suite>
+    CI/CD Workflows <ci_workflows>
     Coding Style <style_guide>
     Deprecations <deprecations>
     Building the Documentation <building_documentation>
