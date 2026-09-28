@@ -68,3 +68,18 @@ A ``point event`` or ``state start`` without a matching stop remains in the even
 The Manual Scoring export holds behavior names and times but not what each behavior means, so the
 ``Ethogram`` entries are written without definitions or categories. To fully annotate the events see
  :ref:`the events how-to <annotate_events_metadata>`.
+
+Not supported yet
+~~~~~~~~~~~~~~~~~
+The following workflows are not supported yet:
+
+- Exports from EthoVision releases before XT (EthoVision 3.1 and earlier), which use a different text format.
+- EthoVision's native files, such as ``.trk`` track files and the ``.evxt`` experiment; export the raw data first.
+- Statistics and other analysis-output exports; only raw data exports are read.
+- The ``Hardware`` and ``Trial Control`` sheets.
+- Manual Scoring logs exported as text; only the Manual Scoring sheet of an Excel workbook is read.
+- Several recording runs of one subject combined into one NWB file.
+
+Please reach out if you have any of those or any other workflow that we are not covering yet. You can
+`open an issue <https://github.com/catalystneuro/neuroconv/issues>`_ with a sample file and a description
+of your use case and we will be happy to help you convert your data and/or add support for your workflow.
