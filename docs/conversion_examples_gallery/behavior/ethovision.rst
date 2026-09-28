@@ -7,12 +7,15 @@ Install NeuroConv with the dependencies needed for Noldus EthoVision XT exports.
 
     pip install "neuroconv[ethovision]"
 
-EthoVision exports the same Track model as Excel, CSV, or TXT. One Track is one subject's
-sampled data in one arena during one recording run (what EthoVision calls a trial).
+EthoVision exports raw data as an Excel workbook or as a ``.txt`` text file with a delimiter chosen
+at export time, and NeuroConv reads both. The delimiter of a text export is detected automatically
+or can be passed as ``delimiter``. As a convenience, text exports renamed to ``.csv`` or ``.tsv``
+are read the same way and no delimiter is necessary. The EthoVision data is organized by Track: one subject
+in one arena during one recording run (what EthoVision calls a trial).
 :py:class:`~neuroconv.datainterfaces.behavior.ethovision.ethovisiondatainterface.EthoVisionDataInterface`
-reads exactly one Track from any of those containers. Timestamps come from the ``Trial time``
-column, which is shared by every Track of the run and starts at the ``Start time`` the interface
-reports as ``session_start_time``.
+converts one Track at a time, selected with ``arena_name`` and ``subject_name``. Use
+:meth:`~neuroconv.datainterfaces.behavior.ethovision.ethovisiondatainterface.EthoVisionDataInterface.get_available_tracks`
+to list the valid pairs in a file.
 
 Convert one Track
 ~~~~~~~~~~~~~~~~~
@@ -40,15 +43,8 @@ Convert one Track
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> interface.run_conversion(nwbfile_path=path_to_save_nwbfile, metadata=metadata, overwrite=True)
 
-``arena_name`` and ``subject_name`` identify the Track by its semantic arena-subject pair rather
-than by an Excel worksheet name. They are optional when the source contains exactly one Track,
-because that identity is unambiguous, but required when an Excel workbook contains several Tracks.
-Use :meth:`~neuroconv.datainterfaces.behavior.ethovision.ethovisiondatainterface.EthoVisionDataInterface.get_available_tracks`
-to discover the valid pairs. An EthoVision subject name is a role label defined once per
-experiment and reused in every arena and run, so it names a Track rather than an animal; set
-``Subject`` metadata yourself, as in the example above.
-
-The selected Track is mapped to NWB as follows:
+The selected Track, and the selected subject's rows of the arena's Manual Scoring sheet (Excel
+only), are written to the ``behavior`` processing module as follows:
 
 .. list-table::
     :header-rows: 1
@@ -58,26 +54,30 @@ The selected Track is mapped to NWB as follows:
       - NWB representation
     * - ``X center`` and ``Y center``
       - One :py:class:`~pynwb.behavior.SpatialSeries`
-    * - Every other Track channel
-      - One :py:class:`~pynwb.base.TimeSeries` per channel
-    * - Manual Scoring behavior labels
+    * - Every other Track column except ``Trial time`` and ``Recording time``
+      - One :py:class:`~pynwb.base.TimeSeries` per column
+    * - Manual Scoring ``Behavior`` labels
       - One `Ethogram <https://github.com/catalystneuro/ndx-ethogram#ethogram>`_
-    * - Manual Scoring occurrences
+    * - Manual Scoring rows
       - One :py:class:`~pynwb.event.EventsTable`
-    * - Matching ``state start`` and ``state stop`` rows
+    * - A Manual Scoring ``state start`` and the next ``state stop`` for the same subject and behavior
       - One row in `EthogramBouts <https://github.com/catalystneuro/ndx-ethogram#ethogrambouts>`_
+
+Tracks written to the same file share one ``Ethogram``, ``EventsTable``, and ``EthogramBouts``; see
+:ref:`Combine same-session Tracks <ethovision_combine_tracks>`.
 
 A ``point event`` or ``state start`` without a matching stop remains in the events table only.
 
-NeuroConv preserves the behavior labels and occurrences present in the Manual Scoring export.
-Descriptions, categories, and the experimental meaning of those behaviors may not be present in the
-source. Follow :ref:`the events how-to <annotate_events_metadata>` to add that context to the event
-and ethogram metadata before conversion.
+The Manual Scoring export holds behavior names and times but not what each behavior means, so the
+``Ethogram`` entries are written without definitions or categories. To fully annotate the events see
+ :ref:`the events how-to <annotate_events_metadata>`.
+
+.. _ethovision_combine_tracks:
 
 Combine same-session Tracks
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-An Excel workbook can contain several arenas and subjects from one acquisition trial. NeuroConv
+An Excel workbook can contain several arenas and subjects from one recording run. NeuroConv
 does not automatically decide which Tracks belong in the same NWB file. Discover the complete
 Track identities, select one arena, and compose its Tracks explicitly:
 
@@ -107,9 +107,8 @@ Track identities, select one arena, and compose its Tracks explicitly:
     ...     overwrite=True,
     ... )
 
-When same-arena subject interfaces are composed, their subject-filtered Manual Scoring rows
-contribute to one arena-level ``Ethogram``, ``EventsTable``, and ``EthogramBouts`` table. The
-occurrence tables distinguish subjects with their ``subject`` columns.
+Each interface adds only its own subject's Manual Scoring rows, and the ``subject`` and ``arena``
+columns identify the Track each row came from.
 
 Subjects recorded together in one arena normally belong in the same NWB file. Separate arenas
 should remain separate unless the experiment establishes that they are one session.
