@@ -63,56 +63,8 @@ only), are written to the ``behavior`` processing module as follows:
     * - A Manual Scoring ``state start`` and the next ``state stop`` for the same subject and behavior
       - One row in `EthogramBouts <https://github.com/catalystneuro/ndx-ethogram#ethogrambouts>`_
 
-Tracks written to the same file share one ``Ethogram``, ``EventsTable``, and ``EthogramBouts``; see
-:ref:`Combine same-session Tracks <ethovision_combine_tracks>`.
-
 A ``point event`` or ``state start`` without a matching stop remains in the events table only.
 
 The Manual Scoring export holds behavior names and times but not what each behavior means, so the
 ``Ethogram`` entries are written without definitions or categories. To fully annotate the events see
  :ref:`the events how-to <annotate_events_metadata>`.
-
-.. _ethovision_combine_tracks:
-
-Combine same-session Tracks
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-An Excel workbook can contain several arenas and subjects from one recording run. NeuroConv
-does not automatically decide which Tracks belong in the same NWB file. Discover the complete
-Track identities, select one arena, and compose its Tracks explicitly:
-
-.. code-block:: python
-
-    >>> from zoneinfo import ZoneInfo
-
-    >>> from neuroconv import ConverterPipe
-    >>> from neuroconv.datainterfaces import EthoVisionDataInterface
-
-    >>> file_path = BEHAVIOR_DATA_PATH / "ethovision" / "excel" / "single_arena_multiple_subjects" / "hardware_and_trial_control" / "two_subjects_missing_samples.xlsx"
-    >>> available_tracks = EthoVisionDataInterface.get_available_tracks(file_path=file_path)
-    >>> available_tracks
-    [{'arena_name': 'Rat Arena 1a', 'subject_name': 'Subject 1'}, {'arena_name': 'Rat Arena 1a', 'subject_name': 'Subject 2'}]
-    >>> arena_name = "Rat Arena 1a"
-    >>> subject_1_interface = EthoVisionDataInterface(file_path=file_path, arena_name=arena_name, subject_name="Subject 1")
-    >>> subject_2_interface = EthoVisionDataInterface(file_path=file_path, arena_name=arena_name, subject_name="Subject 2")
-    >>> converter = ConverterPipe(data_interfaces=[subject_1_interface, subject_2_interface])
-
-    >>> metadata = converter.get_metadata()
-    >>> session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("Asia/Tokyo"))
-    >>> metadata["NWBFile"].update(session_start_time=session_start_time)
-
-    >>> converter.run_conversion(
-    ...     nwbfile_path=path_to_save_nwbfile,
-    ...     metadata=metadata,
-    ...     overwrite=True,
-    ... )
-
-Each interface adds only its own subject's Manual Scoring rows, and the ``subject`` and ``arena``
-columns identify the Track each row came from.
-
-Subjects recorded together in one arena normally belong in the same NWB file. Separate arenas
-should remain separate unless the experiment establishes that they are one session.
-
-CSV and TXT contain one Track per file rather than several worksheets. Construct one interface per
-file and pass those interfaces through the same ``ConverterPipe`` pattern. The explicit file list
-records that the separate exports belong to the same session.
