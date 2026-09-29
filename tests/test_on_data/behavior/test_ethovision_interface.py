@@ -327,6 +327,32 @@ class TestEthoVisionTxt(DataInterfaceTestMixin):
         assert EthoVisionDataInterface.get_available_tracks(self.FILE_PATH) == expected_tracks
 
 
+class TestEthoVisionUtf16Txt(DataInterfaceTestMixin):
+    """A text export in UTF-16LE with a byte order mark, EthoVision's default "Unicode text" export."""
+
+    FILE_PATH = ETHOVISION_FOLDER_PATH / "txt/single_arena_single_subject/utf16_encoded/track.txt"
+    data_interface_cls = EthoVisionDataInterface
+    interface_kwargs = dict(file_path=FILE_PATH)
+    save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2017, 4, 11, 16, 22, 36, 333000)
+
+    def check_read_nwb(self, nwbfile_path: str):
+        nwbfile = read_nwb(nwbfile_path)
+        behavior_module = nwbfile.processing["behavior"]
+        position = behavior_module["EthoVisionPositionArena1Subject1"]
+        assert position.data.shape == (2000, 2)
+        assert position.unit == "cm"
+        assert position.timestamps[0] == 1.599
+        assert np.isnan(position.data[:, 0]).sum() == 63
+        assert behavior_module["EthoVisionVelocityArena1Subject1"].unit == "cm/s"
+
+    def test_available_tracks(self):
+        expected_tracks = [{"arena_name": "Arena 1", "subject_name": "Subject 1"}]
+        assert EthoVisionDataInterface.get_available_tracks(self.FILE_PATH) == expected_tracks
+
+
 class TestEthoVisionDecimalCommaHeaderTxt(DataInterfaceTestMixin):
     """A complete CP1252 text export whose header follows a decimal-comma locale while its data uses periods.
 
