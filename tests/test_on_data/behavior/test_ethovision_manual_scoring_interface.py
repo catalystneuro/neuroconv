@@ -31,7 +31,7 @@ class TestEthoVisionManualScoring(EventsInterfaceTestMixin):
     save_directory = OUTPUT_PATH
 
     expected_session_start_time = datetime(2022, 1, 25, 19, 38, 10)
-    expected_number_of_events = 35
+    expected_number_of_point_events = 4
     expected_number_of_bouts = 31
     expected_behavior_types = {
         "start": "point",
@@ -54,8 +54,11 @@ class TestEthoVisionManualScoring(EventsInterfaceTestMixin):
         behavior_module = nwbfile.processing["behavior"]
         assert set(behavior_module.data_interfaces) == {"EthoVisionEthogramArena1", "EthoVisionEthogramBoutsArena1"}
 
+        # Point events carry no duration and every state bout in this file closes, so the rows without a duration
+        # are the point events and the rows with one are the bouts.
         events = nwbfile.events["EthoVisionManualScoringArena1"].to_dataframe()
-        assert len(events) == self.expected_number_of_events
+        assert events["duration"].isna().sum() == self.expected_number_of_point_events
+        assert events["duration"].notna().sum() == self.expected_number_of_bouts
 
         ethogram = behavior_module["EthoVisionEthogramArena1"].to_dataframe()
         assert dict(zip(ethogram["behavior"], ethogram["behavior_type"])) == self.expected_behavior_types
@@ -64,12 +67,6 @@ class TestEthoVisionManualScoring(EventsInterfaceTestMixin):
         assert len(bouts) == self.expected_number_of_bouts
         assert set(bouts["subject"]) == {"Subject 1"}
         assert set(bouts["arena"]) == {"Arena 1"}
-
-        # Point events carry no duration, and every state bout in this stub closes, so the point events are the
-        # only rows without one and the bouts table holds every state row.
-        point_events = events[events["event_type"].isin(["start", "tail rattle"])]
-        assert point_events["duration"].isna().all()
-        assert events["duration"].notna().sum() == self.expected_number_of_bouts
 
     def test_available_scorings(self):
         assert (
@@ -86,7 +83,7 @@ class TestEthoVisionManualScoringOnly(EventsInterfaceTestMixin):
     save_directory = OUTPUT_PATH
 
     expected_session_start_time = datetime(2023, 12, 13, 12, 58, 24, 71000)
-    expected_number_of_events = 30
+    expected_number_of_point_events = 0
     expected_number_of_bouts = 30
     expected_behavior_types = {
         "Rearing": "state",
@@ -105,8 +102,11 @@ class TestEthoVisionManualScoringOnly(EventsInterfaceTestMixin):
         nwbfile = read_nwb(nwbfile_path)
         behavior_module = nwbfile.processing["behavior"]
 
+        # Point events carry no duration and every state bout in this file closes, so the rows without a duration
+        # are the point events and the rows with one are the bouts.
         events = nwbfile.events["EthoVisionManualScoringArena1"].to_dataframe()
-        assert len(events) == self.expected_number_of_events
+        assert events["duration"].isna().sum() == self.expected_number_of_point_events
+        assert events["duration"].notna().sum() == self.expected_number_of_bouts
 
         ethogram = behavior_module["EthoVisionEthogramArena1"].to_dataframe()
         assert dict(zip(ethogram["behavior"], ethogram["behavior_type"])) == self.expected_behavior_types
