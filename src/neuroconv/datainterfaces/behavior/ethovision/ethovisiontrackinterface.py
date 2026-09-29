@@ -1,5 +1,4 @@
 import warnings
-from datetime import datetime
 
 import numpy as np
 from pydantic import FilePath, validate_call
@@ -11,6 +10,7 @@ from ._ethovision_reader import (
     X_COLUMN,
     Y_COLUMN,
     get_available_tracks,
+    parse_start_time,
     read_track,
     select_track_source,
 )
@@ -26,7 +26,8 @@ class EthoVisionTrackInterface(BaseDataInterface):
     A Track is one subject's sampled data in one arena during one EthoVision recording run
     (what EthoVision calls a trial). Excel workbooks and text exports are container variants of
     the same Track model. An Excel workbook holds every Track of a run; ``arena_name`` and
-    ``subject_name`` select one. Manual Scoring sheets are not converted.
+    ``subject_name`` select one. Manual Scoring sheets are converted by
+    :class:`~neuroconv.datainterfaces.behavior.ethovision.ethovisionmanualscoringinterface.EthoVisionManualScoringInterface`.
 
     Timestamps come from the ``Trial time`` column, which counts from the start of the run and
     is shared by every Track of that run, so it matches the ``Start time`` written to
@@ -166,7 +167,7 @@ class EthoVisionTrackInterface(BaseDataInterface):
         metadata = super().get_metadata()
         start_time = self._track.header.get("Start time")
         if start_time:
-            metadata["NWBFile"]["session_start_time"] = _parse_start_time(start_time=start_time)
+            metadata["NWBFile"]["session_start_time"] = parse_start_time(start_time=start_time)
 
         object_suffix = to_camel_case(to_snake_case(f"{self._arena} {self._subject}"))
         position_description = f"Center position for {self._subject} in {self._arena}, from EthoVision."
@@ -255,24 +256,3 @@ def _number_clashing_snake_names(*, channel_names: list[str]) -> dict[str, str]:
                 stacklevel=3,
             )
     return snake_names
-
-
-def _parse_start_time(*, start_time: str) -> datetime:
-    """Parse an EthoVision timestamp, whose date order and fractional separator follow the writer's locale.
-
-    The export declares no locale, so the two are read together: a file that writes the seconds
-    fraction with a comma also writes the date day first, and one that writes a period writes it
-    month first. A component above 12 settles the order on its own.
-    """
-    date_part, _, time_part = start_time.partition(" ")
-    first, second, year = date_part.split("/")
-    day_first = "," in time_part
-    if int(first) > 12:
-        day_first = True
-    elif int(second) > 12:
-        day_first = False
-    day, month = (first, second) if day_first else (second, first)
-    time_part = time_part.replace(",", ".")
-    if "." not in time_part:
-        time_part = f"{time_part}.0"
-    return datetime.strptime(f"{month}/{day}/{year} {time_part}", "%m/%d/%Y %H:%M:%S.%f")
