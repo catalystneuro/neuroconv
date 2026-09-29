@@ -529,17 +529,6 @@ def test_hardware_export_is_not_a_track():
         EthoVisionDataInterface.get_available_tracks(file_path)
 
 
-def _write_behavior_series(interface) -> dict[str, np.ndarray]:
-    """Write one interface to an in-memory NWB file and return its behavior series data by name."""
-    nwbfile = NWBFile(
-        session_description="ethovision test",
-        identifier="ethovision test",
-        session_start_time=datetime.now(timezone.utc),
-    )
-    interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
-    return {name: np.asarray(series.data) for name, series in nwbfile.processing["behavior"].data_interfaces.items()}
-
-
 def test_missing_value_representation_names_an_unparsed_marker():
     """A marker other than the one passed raises an error that names the argument to set."""
     file_path = TestEthoVisionCustomMissingValueMarker.FILE_PATH
@@ -567,8 +556,20 @@ def test_delimiter_reads_an_undetected_delimiter(tmp_path):
     assert EthoVisionDataInterface.get_available_tracks(file_path, delimiter="|") == (
         EthoVisionDataInterface.get_available_tracks(source_path)
     )
-    comma_series = _write_behavior_series(EthoVisionDataInterface(file_path=source_path))
-    pipe_series = _write_behavior_series(EthoVisionDataInterface(file_path=file_path, delimiter="|"))
+
+    def write_behavior_series(interface):
+        nwbfile = NWBFile(
+            session_description="ethovision test",
+            identifier="ethovision test",
+            session_start_time=datetime.now(timezone.utc),
+        )
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
+        return {
+            name: np.asarray(series.data) for name, series in nwbfile.processing["behavior"].data_interfaces.items()
+        }
+
+    comma_series = write_behavior_series(EthoVisionDataInterface(file_path=source_path))
+    pipe_series = write_behavior_series(EthoVisionDataInterface(file_path=file_path, delimiter="|"))
     assert set(pipe_series) == set(comma_series)
     for name, data in comma_series.items():
         np.testing.assert_array_equal(pipe_series[name], data)
