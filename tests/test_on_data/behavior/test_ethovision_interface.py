@@ -447,6 +447,46 @@ class TestEthoVisionCustomMissingValueMarker(DataInterfaceTestMixin):
             EthoVisionDataInterface(**self.interface_kwargs)
 
 
+class TestEthoVisionUndetectedSubject(DataInterfaceTestMixin):
+    """A subject EthoVision never located: its Track is `-` in every row of every measured channel.
+
+    The header still reports `Subject not found: 96.1 %`, which the description keeps as written.
+    """
+
+    FILE_PATH = (
+        ETHOVISION_FOLDER_PATH
+        / "excel/single_arena_multiple_subjects/undetected_subject/one_subject_never_detected.xlsx"
+    )
+    data_interface_cls = EthoVisionDataInterface
+    interface_kwargs = dict(file_path=FILE_PATH, arena_name="Arena 1", subject_name="Subject 2")
+    save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2020, 2, 18, 13, 58, 19, 640000)
+
+    def check_read_nwb(self, nwbfile_path: str):
+        nwbfile = read_nwb(nwbfile_path)
+        behavior_module = nwbfile.processing["behavior"]
+        position = behavior_module["EthoVisionPositionArena1Subject2"]
+        assert position.data.shape == (2138, 2)
+        assert np.isnan(position.data[:]).all()
+        assert position.description == (
+            "Center position for Subject 2 in Arena 1, from EthoVision. EthoVision header: Missed samples 0.0 %, "
+            "Subject not found 96.1 %, Interpolated samples 0.0 %."
+        )
+        for name, series in behavior_module.data_interfaces.items():
+            if name != "EthoVisionResult1Arena1Subject2":
+                assert np.isnan(series.data[:]).all(), name
+        assert not np.isnan(behavior_module["EthoVisionResult1Arena1Subject2"].data[:]).any()
+
+    def test_available_tracks(self):
+        expected_tracks = [
+            {"arena_name": "Arena 1", "subject_name": "Subject 1"},
+            {"arena_name": "Arena 1", "subject_name": "Subject 2"},
+        ]
+        assert EthoVisionDataInterface.get_available_tracks(self.FILE_PATH) == expected_tracks
+
+
 class TestEthoVisionMultipleArenasSingleSubject(DataInterfaceTestMixin):
     FILE_PATH = (
         ETHOVISION_FOLDER_PATH / "excel/multiple_arenas_one_subject_each/track_only/two_arenas_one_subject_each.xlsx"
