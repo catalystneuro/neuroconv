@@ -327,6 +327,48 @@ class TestEthoVisionTxt(DataInterfaceTestMixin):
         assert EthoVisionDataInterface.get_available_tracks(self.FILE_PATH) == expected_tracks
 
 
+class TestEthoVisionDecimalCommaHeaderTxt(DataInterfaceTestMixin):
+    """A complete CP1252 text export whose header follows a decimal-comma locale while its data uses periods.
+
+    The header writes `17/03/2015 18:52:43,2` (day first) and `Subject not found: 16,5 %`, and every line ends
+    with a trailing `;`.
+    """
+
+    FILE_PATH = ETHOVISION_FOLDER_PATH / "txt/single_arena_single_subject/track_only/termites.txt"
+    data_interface_cls = EthoVisionDataInterface
+    interface_kwargs = dict(file_path=FILE_PATH)
+    save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2015, 3, 17, 18, 52, 43, 200000)
+
+    def check_read_nwb(self, nwbfile_path: str):
+        nwbfile = read_nwb(nwbfile_path)
+        behavior_module = nwbfile.processing["behavior"]
+        position = behavior_module["EthoVisionPositionArena2Subject1"]
+        assert position.data.shape == (2000, 2)
+        assert position.unit == "mm"
+        assert position.timestamps[0] == 1.501
+        assert np.isnan(position.data[:, 0]).sum() == 1
+        assert position.description == (
+            "Center position for Subject 1 in Arena 2, from EthoVision. EthoVision header: Missed samples 0,0 %, "
+            "Subject not found 16,5 %."
+        )
+        assert set(behavior_module.data_interfaces) == {
+            "EthoVisionPositionArena2Subject1",
+            "EthoVisionAreaArena2Subject1",
+            "EthoVisionAreachangeArena2Subject1",
+            "EthoVisionElongationArena2Subject1",
+            "EthoVisionDistanceMovedArena2Subject1",
+            "EthoVisionVelocityArena2Subject1",
+            "EthoVisionResult1Arena2Subject1",
+        }
+
+    def test_available_tracks(self):
+        expected_tracks = [{"arena_name": "Arena 2", "subject_name": "Subject 1"}]
+        assert EthoVisionDataInterface.get_available_tracks(self.FILE_PATH) == expected_tracks
+
+
 class TestEthoVisionCustomMissingValueMarker(DataInterfaceTestMixin):
     """A public CC0 export written with `NA` as its missing-value marker, whose zone labels clash.
 
