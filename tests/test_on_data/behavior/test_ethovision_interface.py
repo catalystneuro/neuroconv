@@ -147,7 +147,7 @@ class TestEthoVisionMissingSamples(DataInterfaceTestMixin):
         ]
         assert EthoVisionTrackInterface.get_available_tracks(self.FILE_PATH) == expected_tracks
 
-    def test_metadata_keys_control_written_names(self):
+    def test_metadata_propagation(self):
         interface = EthoVisionTrackInterface(
             file_path=self.FILE_PATH,
             arena_name="Rat Arena 1a",
@@ -207,6 +207,8 @@ class TestEthoVisionCommaDelimitedTxt(DataInterfaceTestMixin):
         position = behavior_module["EthoVisionPositionArena1Subject1"]
         assert position.data.shape == (3001, 2)
         assert position.unit == "cm"
+        # The export writes `-` where EthoVision lost the subject: 13 of 3001 samples, in three short gaps
+        # (the header's "Subject not found 0.4 %"), which become NaN.
         assert np.isnan(position.data[:, 0]).sum() == 13
         expected_names = {
             "EthoVisionPositionArena1Subject1",
@@ -461,7 +463,7 @@ def test_hardware_export_is_not_a_track():
         EthoVisionTrackInterface.get_available_tracks(file_path)
 
 
-def test_missing_value_representation_names_an_unparsed_marker():
+def test_incorrect_missing_value_representation():
     """A marker other than the one passed raises an error that names the argument to set."""
     file_path = TestEthoVisionCustomMissingValueMarker.FILE_PATH
     expected_error = (
@@ -472,14 +474,14 @@ def test_missing_value_representation_names_an_unparsed_marker():
         EthoVisionTrackInterface(file_path=file_path)
 
 
-def test_delimiter_reads_an_undetected_delimiter(tmp_path):
+def test_uncommon_delimiter_must_be_passed(tmp_path):
     """A delimiter outside the detected candidates raises without ``delimiter`` and reads with it."""
     source_path = ETHOVISION_FOLDER_PATH / "txt/single_arena_single_subject/comma_delimited/morris_water_maze.txt"
     file_path = tmp_path / "morris_water_maze_pipe_delimited.txt"
     file_path.write_text(source_path.read_text(encoding="utf-8-sig").replace(",", "|"), encoding="utf-8-sig")
 
     expected_error = (
-        f"Could not determine the delimiter used by '{file_path}'. Pass the character the export "
+        f"Could  the delimiter used by '{file_path}'. Pass the character the export "
         "separates columns with as delimiter."
     )
     with pytest.raises(ValueError, match=re.escape(expected_error)):
@@ -489,15 +491,13 @@ def test_delimiter_reads_an_undetected_delimiter(tmp_path):
         EthoVisionTrackInterface.get_available_tracks(source_path)
     )
 
-    def write_behavior_series(interface):
-        behavior_module = interface.create_nwbfile().processing["behavior"]
-        return {name: np.asarray(series.data) for name, series in behavior_module.data_interfaces.items()}
-
-    comma_series = write_behavior_series(EthoVisionTrackInterface(file_path=source_path))
-    pipe_series = write_behavior_series(EthoVisionTrackInterface(file_path=file_path, delimiter="|"))
+    comma_nwbfile = EthoVisionTrackInterface(file_path=source_path).create_nwbfile()
+    pipe_nwbfile = EthoVisionTrackInterface(file_path=file_path, delimiter="|").create_nwbfile()
+    comma_series = comma_nwbfile.processing["behavior"].data_interfaces
+    pipe_series = pipe_nwbfile.processing["behavior"].data_interfaces
     assert set(pipe_series) == set(comma_series)
-    for name, data in comma_series.items():
-        np.testing.assert_array_equal(pipe_series[name], data)
+    for name, series in comma_series.items():
+        np.testing.assert_array_equal(pipe_series[name].data, series.data)
 
 
 def test_track_without_samples_is_listed_but_raises():
