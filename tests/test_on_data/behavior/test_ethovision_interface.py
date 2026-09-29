@@ -18,7 +18,7 @@ except ImportError:
 ETHOVISION_FOLDER_PATH = BEHAVIOR_DATA_PATH / "ethovision"
 
 
-class TestEthoVisionTwoC57(DataInterfaceTestMixin):
+class TestEthoVisionTrackAndManualScoring(DataInterfaceTestMixin):
     """The `two_c57` stub: one subject, one arena, a Manual Scoring sheet with point and state events."""
 
     FILE_PATH = ETHOVISION_FOLDER_PATH / "excel/single_arena_single_subject/track_and_manual_scoring/two_c57.xlsx"
@@ -462,7 +462,7 @@ class TestEthoVisionUndetectedSubject(DataInterfaceTestMixin):
         assert EthoVisionDataInterface.get_available_tracks(self.FILE_PATH) == expected_tracks
 
 
-class TestEthoVisionMultipleArenasSingleSubject(DataInterfaceTestMixin):
+class TestEthoVisionMultipleArenasOneSubjectEach(DataInterfaceTestMixin):
     FILE_PATH = (
         ETHOVISION_FOLDER_PATH / "excel/multiple_arenas_one_subject_each/track_only/two_arenas_one_subject_each.xlsx"
     )
