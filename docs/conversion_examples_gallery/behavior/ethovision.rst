@@ -9,8 +9,7 @@ Install NeuroConv with the dependencies needed for Noldus EthoVision XT exports.
 
 EthoVision exports raw data as an Excel workbook or as a ``.txt`` text file with a delimiter chosen
 at export time, and NeuroConv reads both. The delimiter of a text export is detected automatically
-or can be passed as ``delimiter``. As a convenience, text exports renamed to ``.csv`` or ``.tsv``
-are read the same way and no delimiter is necessary. The EthoVision data is organized by Track: one subject
+or can be passed as ``delimiter``. The EthoVision data is organized by Track: one subject
 in one arena during one recording run (what EthoVision calls a trial).
 :py:class:`~neuroconv.datainterfaces.behavior.ethovision.ethovisiondatainterface.EthoVisionDataInterface`
 converts one Track at a time, selected with ``arena_name`` and ``subject_name``. Use
@@ -76,6 +75,7 @@ The following workflows are not supported yet:
 - Exports from EthoVision releases before XT (EthoVision 3.1 and earlier), which use a different text format.
 - EthoVision's native files, such as ``.trk`` track files and the ``.evxt`` experiment; export the raw data first.
 - Statistics and other analysis-output exports; only raw data exports are read.
+- Exports that were opened and re-saved in a spreadsheet program; convert the file EthoVision wrote.
 - The ``Hardware`` and ``Trial Control`` sheets.
 - Manual Scoring logs exported as text; only the Manual Scoring sheet of an Excel workbook is read.
 - Several recording runs of one subject combined into one NWB file.

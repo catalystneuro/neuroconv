@@ -1,4 +1,4 @@
-"""Read Noldus EthoVision XT Track exports across Excel, CSV, and TXT containers."""
+"""Read Noldus EthoVision XT Track exports from Excel and text containers."""
 
 import csv
 import io
@@ -9,7 +9,6 @@ from pathlib import Path
 import numpy as np
 
 TRACK_SHEET_PATTERN = re.compile(r"^Track-(?P<arena>.+)-Subject (?P<subject>.+)$")
-SUPPORTED_SUFFIXES = (".xlsx", ".csv", ".txt")
 
 TRIAL_TIME_COLUMN = "Trial time"
 RECORDING_TIME_COLUMN = "Recording time"
@@ -49,11 +48,11 @@ class EthoVisionScoringEvent:
     duration: float | None
 
 
-def get_available_tracks(file_path) -> list[dict[str, str]]:
+def get_available_tracks(file_path, *, delimiter: str | None = None) -> list[dict[str, str]]:
     """Return the complete selector arguments for every available Track."""
     return [
         {"arena_name": source.arena, "subject_name": source.subject}
-        for source in _get_track_sources(file_path=file_path)
+        for source in _get_track_sources(file_path=file_path, delimiter=delimiter)
     ]
 
 
@@ -62,9 +61,10 @@ def select_track_source(
     *,
     arena_name: str | None = None,
     subject_name: str | None = None,
+    delimiter: str | None = None,
 ) -> EthoVisionTrackSource:
     """Resolve exactly one Track, inferring selectors only when the result is unambiguous."""
-    available = _get_track_sources(file_path=file_path)
+    available = _get_track_sources(file_path=file_path, delimiter=delimiter)
     selected = [
         source
         for source in available
@@ -86,13 +86,19 @@ def select_track_source(
     )
 
 
-def read_track(file_path, *, source: EthoVisionTrackSource, missing_value_representation: str) -> EthoVisionTrackData:
+def read_track(
+    file_path,
+    *,
+    source: EthoVisionTrackSource,
+    missing_value_representation: str,
+    delimiter: str | None = None,
+) -> EthoVisionTrackData:
     """Read one selected Track using the loader for its source container."""
-    path = _validate_file_path(file_path=file_path)
+    path = _validate_file_path(file_path=file_path, delimiter=delimiter)
     if path.suffix.lower() == ".xlsx":
         rows = _read_excel_rows(file_path=path, sheet_name=source.source_name)
     else:
-        rows = _read_delimited_rows(file_path=path)
+        rows = _read_delimited_rows(file_path=path, delimiter=delimiter)
     return _track_data_from_rows(
         rows=rows, source_name=source.source_name, missing_value_representation=missing_value_representation
     )
@@ -115,8 +121,8 @@ def read_scoring_events(file_path, *, arena_name: str) -> list[EthoVisionScoring
     return _scoring_events_from_rows(rows=rows, source_name=sheet_name)
 
 
-def _get_track_sources(file_path) -> list[EthoVisionTrackSource]:
-    path = _validate_file_path(file_path=file_path)
+def _get_track_sources(file_path, *, delimiter: str | None = None) -> list[EthoVisionTrackSource]:
+    path = _validate_file_path(file_path=file_path, delimiter=delimiter)
     if path.suffix.lower() == ".xlsx":
         workbook = _load_workbook(file_path=path)
         try:
@@ -135,7 +141,7 @@ def _get_track_sources(file_path) -> list[EthoVisionTrackSource]:
         finally:
             workbook.close()
 
-    rows = _read_delimited_rows(file_path=path)
+    rows = _read_delimited_rows(file_path=path, delimiter=delimiter)
     header, column_names, _units, _data_rows = _split_header_and_table(rows=rows, source_name=path.name)
     _validate_track_columns(column_names=column_names, source_name=path.name)
     arena = header.get("Arena name")
@@ -220,11 +226,11 @@ def _scoring_events_from_rows(rows: list[list], *, source_name: str) -> list[Eth
     return events
 
 
-def _validate_file_path(file_path) -> Path:
+def _validate_file_path(file_path, *, delimiter: str | None = None) -> Path:
+    """Return the path, rejecting a delimiter for an Excel workbook; any other suffix is read as text."""
     path = Path(file_path)
-    suffix = path.suffix.lower()
-    if suffix not in SUPPORTED_SUFFIXES:
-        raise ValueError(f"Unsupported EthoVision suffix '{path.suffix}'. Expected one of {SUPPORTED_SUFFIXES}.")
+    if path.suffix.lower() == ".xlsx" and delimiter is not None:
+        raise ValueError(f"delimiter={delimiter!r} applies to text exports, but '{path.name}' is an Excel workbook.")
     return path
 
 
@@ -244,7 +250,7 @@ def _read_excel_rows(file_path: Path, *, sheet_name: str) -> list[list]:
         workbook.close()
 
 
-def _read_delimited_rows(file_path: Path) -> list[list[str | None]]:
+def _read_delimited_rows(file_path: Path, *, delimiter: str | None = None) -> list[list[str | None]]:
     raw = file_path.read_bytes()
     if raw.startswith((b"\xff\xfe", b"\xfe\xff")):
         text = raw.decode("utf-16")
@@ -254,7 +260,8 @@ def _read_delimited_rows(file_path: Path) -> list[list[str | None]]:
         except UnicodeDecodeError:
             text = raw.decode("cp1252")
 
-    delimiter = "," if file_path.suffix.lower() == ".csv" else _detect_delimiter(text=text, file_path=file_path)
+    if delimiter is None:
+        delimiter = _detect_delimiter(text=text, file_path=file_path)
     rows = []
     for row in csv.reader(io.StringIO(text), delimiter=delimiter):
         rows.append([value if value != "" else None for value in row])
@@ -266,7 +273,10 @@ def _detect_delimiter(*, text: str, file_path: Path) -> str:
     try:
         return csv.Sniffer().sniff(sample, delimiters=";\t,").delimiter
     except csv.Error as exception:
-        raise ValueError(f"Could not determine the delimiter used by '{file_path}'.") from exception
+        raise ValueError(
+            f"Could not determine the delimiter used by '{file_path}'. Pass the character the export "
+            "separates columns with as delimiter."
+        ) from exception
 
 
 def _split_header_and_table(rows: list[list], *, source_name: str):

@@ -24,8 +24,8 @@ class EthoVisionDataInterface(BaseEventsInterface):
     """Interface for one Track in a Noldus EthoVision XT export.
 
     A Track is one subject's sampled data in one arena during one EthoVision recording run
-    (what EthoVision calls a trial). Excel, CSV, and TXT are container variants of the same
-    Track model. An Excel workbook holds every Track of a run; ``arena_name`` and
+    (what EthoVision calls a trial). Excel workbooks and text exports are container variants of
+    the same Track model. An Excel workbook holds every Track of a run; ``arena_name`` and
     ``subject_name`` select one. A matching Excel Manual Scoring sheet can contain several
     subjects, so only the selected subject's events are retained.
 
@@ -47,18 +47,20 @@ class EthoVisionDataInterface(BaseEventsInterface):
 
     display_name = "EthoVision"
     keywords = ("EthoVision", "Noldus", "tracking", "behavior", "events", "ethogram")
-    associated_suffixes = (".xlsx", ".csv", ".txt")
+    associated_suffixes = (".xlsx", ".txt")
     info = "Interface for Noldus EthoVision XT Track exports."
 
     @staticmethod
-    def get_available_tracks(file_path: FilePath) -> list[dict[str, str]]:
+    def get_available_tracks(file_path: FilePath, delimiter: str | None = None) -> list[dict[str, str]]:
         """Return the complete selector arguments for every available Track.
 
         Tracks are listed as the export declares them, without reading their samples. A Track
         whose acquisition never started is declared like any other, and EthoVision writes
         ``No samples logged for this track!`` in place of its rows; selecting it raises.
+        ``delimiter`` is passed for a text export whose delimiter is not detected, as in
+        ``__init__``.
         """
-        return get_available_tracks(file_path=file_path)
+        return get_available_tracks(file_path=file_path, delimiter=delimiter)
 
     @validate_call
     def __init__(
@@ -68,6 +70,7 @@ class EthoVisionDataInterface(BaseEventsInterface):
         arena_name: str | None = None,
         subject_name: str | None = None,
         missing_value_representation: str = "-",
+        delimiter: str | None = None,
         metadata_key: str | None = None,
         verbose: bool = False,
     ):
@@ -76,7 +79,7 @@ class EthoVisionDataInterface(BaseEventsInterface):
         Parameters
         ----------
         file_path : FilePath
-            Path to an EthoVision ``.xlsx``, ``.csv``, or ``.txt`` Track export.
+            Path to an EthoVision ``.xlsx`` workbook or text (``.txt``) Track export.
         arena_name : str, optional
             Arena to select. Inferred when the source contains only one matching arena.
         subject_name : str, optional
@@ -87,6 +90,9 @@ class EthoVisionDataInterface(BaseEventsInterface):
         missing_value_representation : str, default: "-"
             The marker the export uses for a missing sample, set by EthoVision's "Missing Value
             Representation" export option. Cells holding it become ``NaN``.
+        delimiter : str, optional
+            The character a text export separates columns with, set by EthoVision's "Delimiter"
+            export option. Detected when not passed; raises for an Excel workbook.
         metadata_key : str, optional
             The key for this track's metadata and events blocks. By default it is derived from
             the Track sheet's arena and subject so several interfaces can share an NWB file.
@@ -98,6 +104,7 @@ class EthoVisionDataInterface(BaseEventsInterface):
             file_path=file_path,
             arena_name=arena_name,
             subject_name=subject_name,
+            delimiter=delimiter,
         )
         self.arena = self.track_source.arena
         self.subject = self.track_source.subject
@@ -109,6 +116,7 @@ class EthoVisionDataInterface(BaseEventsInterface):
             arena_name=self.arena,
             subject_name=self.subject,
             missing_value_representation=missing_value_representation,
+            delimiter=delimiter,
             metadata_key=self.metadata_key,
             verbose=verbose,
         )
@@ -117,6 +125,7 @@ class EthoVisionDataInterface(BaseEventsInterface):
             file_path=self.file_path,
             source=self.track_source,
             missing_value_representation=missing_value_representation,
+            delimiter=delimiter,
         )
         self._time_series_metadata_keys = {
             channel_name: f"{self.metadata_key}_{to_snake_case(channel_name)}"

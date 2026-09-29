@@ -452,6 +452,17 @@ def test_hardware_export_is_not_a_track():
         EthoVisionDataInterface.get_available_tracks(file_path)
 
 
+def _write_behavior_series(interface) -> dict[str, np.ndarray]:
+    """Write one interface to an in-memory NWB file and return its behavior series data by name."""
+    nwbfile = NWBFile(
+        session_description="ethovision test",
+        identifier="ethovision test",
+        session_start_time=datetime.now(timezone.utc),
+    )
+    interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
+    return {name: np.asarray(series.data) for name, series in nwbfile.processing["behavior"].data_interfaces.items()}
+
+
 def _write_with_missing_value_marker(*, directory, marker: str):
     """Copy the comma-delimited Morris water maze export, writing its ``-`` data cells as ``marker``."""
     source_path = ETHOVISION_FOLDER_PATH / "txt/single_arena_single_subject/comma_delimited/morris_water_maze.txt"
@@ -471,19 +482,8 @@ def test_missing_value_representation_reads_a_custom_marker(tmp_path):
     """An export whose missing values were written as ``NA`` converts to the same data as the ``-`` original."""
     source_path, file_path = _write_with_missing_value_marker(directory=tmp_path, marker="NA")
 
-    def write_behavior_series(interface):
-        nwbfile = NWBFile(
-            session_description="missing value test",
-            identifier="missing value test",
-            session_start_time=datetime.now(timezone.utc),
-        )
-        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
-        return {
-            name: np.asarray(series.data) for name, series in nwbfile.processing["behavior"].data_interfaces.items()
-        }
-
-    default_marker_series = write_behavior_series(EthoVisionDataInterface(file_path=source_path))
-    custom_marker_series = write_behavior_series(
+    default_marker_series = _write_behavior_series(EthoVisionDataInterface(file_path=source_path))
+    custom_marker_series = _write_behavior_series(
         EthoVisionDataInterface(file_path=file_path, missing_value_representation="NA")
     )
 
@@ -502,3 +502,26 @@ def test_missing_value_representation_names_an_unparsed_marker(tmp_path):
     )
     with pytest.raises(ValueError, match=re.escape(expected_error)):
         EthoVisionDataInterface(file_path=file_path)
+
+
+def test_delimiter_reads_an_undetected_delimiter(tmp_path):
+    """A delimiter outside the detected candidates raises without ``delimiter`` and reads with it."""
+    source_path = ETHOVISION_FOLDER_PATH / "txt/single_arena_single_subject/comma_delimited/morris_water_maze.txt"
+    file_path = tmp_path / "morris_water_maze_pipe_delimited.txt"
+    file_path.write_text(source_path.read_text(encoding="utf-8-sig").replace(",", "|"), encoding="utf-8-sig")
+
+    expected_error = (
+        f"Could not determine the delimiter used by '{file_path}'. Pass the character the export "
+        "separates columns with as delimiter."
+    )
+    with pytest.raises(ValueError, match=re.escape(expected_error)):
+        EthoVisionDataInterface(file_path=file_path)
+
+    assert EthoVisionDataInterface.get_available_tracks(file_path, delimiter="|") == (
+        EthoVisionDataInterface.get_available_tracks(source_path)
+    )
+    comma_series = _write_behavior_series(EthoVisionDataInterface(file_path=source_path))
+    pipe_series = _write_behavior_series(EthoVisionDataInterface(file_path=file_path, delimiter="|"))
+    assert set(pipe_series) == set(comma_series)
+    for name, data in comma_series.items():
+        np.testing.assert_array_equal(pipe_series[name], data)
