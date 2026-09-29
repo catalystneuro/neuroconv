@@ -42,18 +42,9 @@ Convert one Track
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> interface.run_conversion(nwbfile_path=path_to_save_nwbfile, metadata=metadata, overwrite=True)
 
-The selected Track is written to the ``behavior`` processing module as follows:
-
-.. list-table::
-    :header-rows: 1
-    :widths: 45 55
-
-    * - EthoVision source
-      - NWB representation
-    * - ``X center`` and ``Y center``
-      - One :py:class:`~pynwb.behavior.SpatialSeries`
-    * - Every other Track column except ``Trial time`` and ``Recording time``
-      - One :py:class:`~pynwb.base.TimeSeries` per column
+The selected Track is written to the ``behavior`` processing module: ``X center`` and ``Y center`` as one
+:py:class:`~pynwb.behavior.SpatialSeries`, and every other column except ``Trial time`` and ``Recording time``
+as one :py:class:`~pynwb.base.TimeSeries` each.
 
 Not supported yet
 ~~~~~~~~~~~~~~~~~
