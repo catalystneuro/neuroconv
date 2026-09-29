@@ -1,6 +1,5 @@
 import warnings
 from datetime import datetime
-from pathlib import Path
 
 import numpy as np
 from pydantic import FilePath, validate_call
@@ -96,21 +95,19 @@ class EthoVisionTrackInterface(BaseDataInterface):
         verbose : bool, default: False
             Whether to print progress.
         """
-        self.file_path = Path(file_path)
-        self.track_source = select_track_source(
+        self._track_source = select_track_source(
             file_path=file_path,
             arena_name=arena_name,
             subject_name=subject_name,
             delimiter=delimiter,
         )
-        self.arena = self.track_source.arena
-        self.subject = self.track_source.subject
-        self.metadata_key = metadata_key or f"ethovision_{to_snake_case(f'{self.arena}_{self.subject}')}"
-        self.verbose = verbose
+        self._arena = self._track_source.arena
+        self._subject = self._track_source.subject
+        self.metadata_key = metadata_key or f"ethovision_{to_snake_case(f'{self._arena}_{self._subject}')}"
         super().__init__(
             file_path=file_path,
-            arena_name=self.arena,
-            subject_name=self.subject,
+            arena_name=self._arena,
+            subject_name=self._subject,
             missing_value_representation=missing_value_representation,
             delimiter=delimiter,
             metadata_key=self.metadata_key,
@@ -118,8 +115,8 @@ class EthoVisionTrackInterface(BaseDataInterface):
         )
 
         self._track = read_track(
-            file_path=self.file_path,
-            source=self.track_source,
+            file_path=file_path,
+            source=self._track_source,
             missing_value_representation=missing_value_representation,
             delimiter=delimiter,
         )
@@ -171,8 +168,8 @@ class EthoVisionTrackInterface(BaseDataInterface):
         if start_time:
             metadata["NWBFile"]["session_start_time"] = _parse_start_time(start_time=start_time)
 
-        object_suffix = to_camel_case(to_snake_case(f"{self.arena} {self.subject}"))
-        position_description = f"Center position for {self.subject} in {self.arena}, from EthoVision."
+        object_suffix = to_camel_case(to_snake_case(f"{self._arena} {self._subject}"))
+        position_description = f"Center position for {self._subject} in {self._arena}, from EthoVision."
         # The export does not mark which samples were missed, not found or interpolated, so these
         # header percentages are the only record of the Track's quality; they are kept as written.
         quality_fields = [
