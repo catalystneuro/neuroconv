@@ -1,3 +1,3 @@
-from .ethovisiondatainterface import EthoVisionDataInterface
+from .ethovisiontrackinterface import EthoVisionTrackInterface
 
-__all__ = ["EthoVisionDataInterface"]
+__all__ = ["EthoVisionTrackInterface"]

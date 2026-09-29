@@ -13,6 +13,10 @@ DeepLabCut
 ----------
 .. automodule:: neuroconv.datainterfaces.behavior.deeplabcut.deeplabcutdatainterface
 
+EthoVision
+----------
+.. autoclass:: neuroconv.datainterfaces.behavior.ethovision.ethovisiontrackinterface.EthoVisionTrackInterface
+
 FicTrac
 -------
 .. automodule:: neuroconv.datainterfaces.behavior.fictrac.fictracdatainterface

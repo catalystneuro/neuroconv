@@ -12,23 +12,22 @@ from ._ethovision_reader import (
     X_COLUMN,
     Y_COLUMN,
     get_available_tracks,
-    read_scoring_events,
     read_track,
     select_track_source,
 )
-from ...events.baseeventsinterface import BaseEventsInterface, _EventsData
+from ...._temporal_alignment import _TemporalAlignment
+from ....basedatainterface import BaseDataInterface
 from ....tools import get_module
 from ....utils import DeepDict, calculate_regular_series_rate, to_camel_case, to_snake_case
 
 
-class EthoVisionDataInterface(BaseEventsInterface):
+class EthoVisionTrackInterface(BaseDataInterface):
     """Interface for one Track in a Noldus EthoVision XT export.
 
     A Track is one subject's sampled data in one arena during one EthoVision recording run
     (what EthoVision calls a trial). Excel workbooks and text exports are container variants of
     the same Track model. An Excel workbook holds every Track of a run; ``arena_name`` and
-    ``subject_name`` select one. A matching Excel Manual Scoring sheet can contain several
-    subjects, so only the selected subject's events are retained.
+    ``subject_name`` select one. Manual Scoring sheets are not converted.
 
     Timestamps come from the ``Trial time`` column, which counts from the start of the run and
     is shared by every Track of that run, so it matches the ``Start time`` written to
@@ -39,15 +38,12 @@ class EthoVisionDataInterface(BaseEventsInterface):
 
     * ``X center`` and ``Y center`` -> one :class:`~pynwb.behavior.SpatialSeries`.
     * Every other Track channel -> one :class:`~pynwb.base.TimeSeries`.
-    * Manual Scoring rows for the selected subject -> one :class:`~pynwb.event.EventsTable`.
-    * Manual Scoring behavior labels -> one ``ndx-ethogram`` ``Ethogram``.
-    * Matching ``state start`` and ``state stop`` rows -> one ``EthogramBouts`` table.
 
     These objects are written directly to the ``behavior`` processing module.
     """
 
     display_name = "EthoVision"
-    keywords = ("EthoVision", "Noldus", "tracking", "behavior", "events", "ethogram")
+    keywords = ("EthoVision", "Noldus", "tracking", "behavior")
     associated_suffixes = (".xlsx", ".txt")
     info = "Interface for Noldus EthoVision XT Track exports."
 
@@ -95,8 +91,8 @@ class EthoVisionDataInterface(BaseEventsInterface):
             The character a text export separates columns with, set by EthoVision's "Delimiter"
             export option. Detected when not passed; raises for an Excel workbook.
         metadata_key : str, optional
-            The key for this track's metadata and events blocks. By default it is derived from
-            the Track sheet's arena and subject so several interfaces can share an NWB file.
+            The key for this track's metadata blocks. By default it is derived from the Track
+            sheet's arena and subject so several interfaces can share an NWB file.
         verbose : bool, default: False
             Whether to print progress.
         """
@@ -110,7 +106,6 @@ class EthoVisionDataInterface(BaseEventsInterface):
         self.arena = self.track_source.arena
         self.subject = self.track_source.subject
         self.metadata_key = metadata_key or f"ethovision_{to_snake_case(f'{self.arena}_{self.subject}')}"
-        self._manual_scoring_metadata_key = f"ethovision_{to_snake_case(self.arena)}_manual_scoring"
         self.verbose = verbose
         super().__init__(
             file_path=file_path,
@@ -135,32 +130,9 @@ class EthoVisionDataInterface(BaseEventsInterface):
             channel_name: f"{self.metadata_key}_{snake_name}"
             for channel_name, snake_name in self._channel_snake_names.items()
         }
+        # Alignment by composition, the component the events interfaces hold; see neuroconv/_temporal_alignment.py.
+        self.alignment = _TemporalAlignment()
         self.alignment._register_series(key=self.metadata_key, get_native_times=lambda: self._track.trial_time)
-
-        scoring_events = read_scoring_events(file_path=self.file_path, arena_name=self.arena)
-        self._scoring_occurrences = [(self.arena, event) for event in scoring_events if event.subject == self.subject]
-        self._event_onsets_alignment_key = f"{self.metadata_key}_manual_scoring_onsets"
-        self._event_offsets_alignment_key = f"{self.metadata_key}_manual_scoring_offsets"
-        if self._scoring_occurrences:
-            self.alignment._register_series(
-                key=self._event_onsets_alignment_key,
-                get_native_times=lambda: np.asarray(
-                    [event.onset for _, event in self._scoring_occurrences], dtype=float
-                ),
-            )
-            self.alignment._register_series(
-                key=self._event_offsets_alignment_key,
-                get_native_times=self._get_native_event_offsets,
-            )
-
-    def _get_native_event_offsets(self) -> np.ndarray:
-        return np.asarray(
-            [
-                event.onset + event.duration if event.duration is not None and not np.isnan(event.duration) else np.nan
-                for _, event in self._scoring_occurrences
-            ],
-            dtype=float,
-        )
 
     def get_metadata_schema(self) -> dict:
         metadata_schema = super().get_metadata_schema()
@@ -190,13 +162,6 @@ class EthoVisionDataInterface(BaseEventsInterface):
         metadata_schema["properties"]["TimeSeries"] = {
             "type": "object",
             "additionalProperties": named_series_schema,
-        }
-        metadata_schema["properties"]["Behavior"] = {
-            "type": "object",
-            "properties": {
-                "Ethograms": {"type": "object", "additionalProperties": {"type": "object"}},
-            },
-            "additionalProperties": True,
         }
         return metadata_schema
 
@@ -232,71 +197,10 @@ class EthoVisionDataInterface(BaseEventsInterface):
             for channel_name in self._track.channels
             if channel_name not in (X_COLUMN, Y_COLUMN)
         }
-
-        if self._scoring_occurrences:
-            arena_suffix = to_camel_case(to_snake_case(self.arena))
-            metadata["Behavior"]["Ethograms"][self._manual_scoring_metadata_key] = {
-                "Ethogram": {
-                    "name": f"EthoVisionEthogram{arena_suffix}",
-                    "description": "Behavior catalogue inferred from EthoVision manual-scoring rows.",
-                },
-                "EthogramBouts": {
-                    "name": f"EthoVisionEthogramBouts{arena_suffix}",
-                    "description": "Closed state bouts from EthoVision manual scoring.",
-                },
-            }
-            metadata["Events"]["EventTables"][self._manual_scoring_metadata_key] = {
-                "table_name": f"EthoVisionManualScoring{arena_suffix}",
-                "description": "Manual-scoring events from an EthoVision export.",
-            }
-            event_types = metadata["Events"][self.metadata_key]["event_types"]
-            for source_id, events_data in self._get_events_data_dict().items():
-                event_types[source_id] = {
-                    "event_name": source_id.split(":", maxsplit=1)[1],
-                    "table_metadata_key": self._manual_scoring_metadata_key,
-                    "columns": {
-                        "subject": {
-                            "column_name": "subject",
-                            "description": "The subject the event was scored on.",
-                        },
-                        "arena": {
-                            "column_name": "arena",
-                            "description": "The EthoVision arena in which the event was scored.",
-                        },
-                    },
-                }
         return metadata
 
-    def _get_events_data_dict(self) -> dict[str, _EventsData]:
-        if not self._scoring_occurrences:
-            return {}
-
-        current_onsets = self.alignment[self._event_onsets_alignment_key].get_times() - self.alignment.offset
-        current_offsets = self.alignment[self._event_offsets_alignment_key].get_times() - self.alignment.offset
-        grouped_indices: dict[str, list[int]] = {}
-        for index, (_, event) in enumerate(self._scoring_occurrences):
-            event_kind = "point" if event.duration is None else "state"
-            grouped_indices.setdefault(f"{event_kind}:{event.behavior}", []).append(index)
-
-        events_data_dict = {}
-        for source_id, indices in grouped_indices.items():
-            is_point = source_id.startswith("point:")
-            durations = None if is_point else current_offsets[indices] - current_onsets[indices]
-            events_data_dict[source_id] = _EventsData(
-                event_type_source_id=source_id,
-                timestamps=current_onsets[indices],
-                durations=durations,
-                payload={
-                    "subject": np.asarray(
-                        [self._scoring_occurrences[index][1].subject for index in indices], dtype=object
-                    ),
-                    "arena": np.asarray([self._scoring_occurrences[index][0] for index in indices], dtype=object),
-                },
-            )
-        return events_data_dict
-
     def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict | None = None) -> None:
-        """Write one track and its subject-specific manual-scoring events."""
+        """Write one Track's position and channels to the ``behavior`` processing module."""
         resolved_metadata = DeepDict(self.get_metadata())
         if metadata is not None:
             resolved_metadata.deep_update(metadata)
@@ -326,76 +230,6 @@ class EthoVisionDataInterface(BaseEventsInterface):
                 **time_kwargs,
             )
             processing_module.add(time_series)
-
-        if self._scoring_occurrences:
-            super().add_to_nwbfile(nwbfile=nwbfile, metadata=resolved_metadata)
-            self._add_ethogram_to_nwbfile(nwbfile=nwbfile, metadata=resolved_metadata)
-
-    def _add_ethogram_to_nwbfile(self, *, nwbfile: NWBFile, metadata: dict) -> None:
-        # TODO: Unify Ethogram/EthogramBouts construction with BORIS and the VAME/MoSeq label-based
-        # helper once the shared API accepts already formed intervals, catalogue rows, and extra columns.
-        from ndx_ethogram import Ethogram, EthogramBouts
-
-        ethogram_metadata = metadata["Behavior"]["Ethograms"][self._manual_scoring_metadata_key]
-        processing_module = get_module(nwbfile=nwbfile, name="behavior", description="Processed behavioral data.")
-        catalogue_name = ethogram_metadata["Ethogram"]["name"]
-        catalogue = processing_module.data_interfaces.get(catalogue_name)
-        if catalogue is None:
-            catalogue = Ethogram(**ethogram_metadata["Ethogram"], exclusive=False)
-            processing_module.add(catalogue)
-        elif not isinstance(catalogue, Ethogram):
-            raise TypeError(f"Behavior object '{catalogue_name}' exists but is not an Ethogram.")
-
-        behavior_types = {}
-        for _, event in self._scoring_occurrences:
-            behavior_type = "point" if event.duration is None else "state"
-            previous = behavior_types.setdefault(event.behavior, behavior_type)
-            if previous != behavior_type:
-                raise ValueError(f"EthoVision behavior '{event.behavior}' appears as both a point and state behavior.")
-        existing_behaviors = {row["behavior"]: row["behavior_type"] for _, row in catalogue.to_dataframe().iterrows()}
-        for behavior, behavior_type in behavior_types.items():
-            if behavior in existing_behaviors:
-                if existing_behaviors[behavior] != behavior_type:
-                    raise ValueError(
-                        f"EthoVision behavior '{behavior}' is already catalogued as "
-                        f"'{existing_behaviors[behavior]}', not '{behavior_type}'."
-                    )
-                continue
-            catalogue.add_row(behavior=behavior, definition="", behavior_type=behavior_type, category="")
-
-        current_onsets = self.alignment[self._event_onsets_alignment_key].get_times()
-        current_offsets = self.alignment[self._event_offsets_alignment_key].get_times()
-        closed_indices = [
-            index
-            for index, (_, event) in enumerate(self._scoring_occurrences)
-            if event.duration is not None and not np.isnan(event.duration)
-        ]
-        if not closed_indices:
-            return
-
-        bouts_name = ethogram_metadata["EthogramBouts"]["name"]
-        bouts = processing_module.data_interfaces.get(bouts_name)
-        if bouts is None:
-            bouts = EthogramBouts(
-                **ethogram_metadata["EthogramBouts"],
-                labeling_method="manual",
-                source_software="Noldus EthoVision XT",
-                ethogram=catalogue,
-            )
-            bouts.add_column(name="subject", description="The subject the bout was scored on.")
-            bouts.add_column(name="arena", description="The EthoVision arena in which the bout was scored.")
-            processing_module.add(bouts)
-        elif not isinstance(bouts, EthogramBouts):
-            raise TypeError(f"Behavior object '{bouts_name}' exists but is not an EthogramBouts table.")
-        for index in closed_indices:
-            arena, event = self._scoring_occurrences[index]
-            bouts.add_interval(
-                start_time=current_onsets[index],
-                stop_time=current_offsets[index],
-                label=event.behavior,
-                subject=event.subject,
-                arena=arena,
-            )
 
 
 def _number_clashing_snake_names(*, channel_names: list[str]) -> dict[str, str]:

@@ -38,16 +38,6 @@ class EthoVisionTrackData:
     channels: dict[str, np.ndarray] = field(default_factory=dict)
 
 
-@dataclass
-class EthoVisionScoringEvent:
-    """One manual-scoring point event or paired state bout."""
-
-    subject: str
-    behavior: str
-    onset: float
-    duration: float | None
-
-
 def get_available_tracks(file_path, *, delimiter: str | None = None) -> list[dict[str, str]]:
     """Return the complete selector arguments for every available Track."""
     return [
@@ -102,30 +92,6 @@ def read_track(
     return _track_data_from_rows(
         rows=rows, source_name=source.source_name, missing_value_representation=missing_value_representation
     )
-
-
-def read_scoring_events(file_path, *, arena_name: str) -> list[EthoVisionScoringEvent]:
-    """Read an arena's Manual Scoring sheet when the source is an Excel workbook."""
-    path = _validate_file_path(file_path=file_path)
-    if path.suffix.lower() != ".xlsx":
-        return []
-
-    # The files write `Manual Scoring-<arena>`; Noldus documents `Manual scoring - <arena>`, so match either.
-    expected_name = _normalize_scoring_sheet_name(f"Manual Scoring-{arena_name}")
-    workbook = _load_workbook(file_path=path)
-    try:
-        matching_sheets = [name for name in workbook.sheetnames if _normalize_scoring_sheet_name(name) == expected_name]
-        if not matching_sheets:
-            return []
-        sheet_name = matching_sheets[0]
-        rows = [list(row) for row in workbook[sheet_name].iter_rows(values_only=True)]
-    finally:
-        workbook.close()
-    return _scoring_events_from_rows(rows=rows, source_name=sheet_name)
-
-
-def _normalize_scoring_sheet_name(name: str) -> str:
-    return re.sub(r"\s*-\s*", "-", name.strip().lower())
 
 
 def _get_track_sources(file_path, *, delimiter: str | None = None) -> list[EthoVisionTrackSource]:
@@ -191,46 +157,6 @@ def _track_data_from_rows(
         recording_time=recording_time,
         channels=columns,
     )
-
-
-def _scoring_events_from_rows(rows: list[list], *, source_name: str) -> list[EthoVisionScoringEvent]:
-    _header, column_names, _units, data_rows = _split_header_and_table(rows=rows, source_name=source_name)
-    required_columns = {TRIAL_TIME_COLUMN, "Subject", "Behavior", "Event"}
-    missing_columns = required_columns.difference(column_names)
-    if missing_columns:
-        raise ValueError(f"'{source_name}' is missing Manual Scoring columns: {sorted(missing_columns)}.")
-
-    subject_index = column_names.index("Subject")
-    behavior_index = column_names.index("Behavior")
-    event_index = column_names.index("Event")
-    trial_time_index = column_names.index(TRIAL_TIME_COLUMN)
-
-    events: list[EthoVisionScoringEvent] = []
-    open_bouts: dict[tuple[str, str], float] = {}
-    for row in data_rows:
-        subject, behavior, event = row[subject_index], row[behavior_index], str(row[event_index]).lower()
-        onset = float(row[trial_time_index])
-        key = (subject, behavior)
-        if event == "point event":
-            events.append(EthoVisionScoringEvent(subject=subject, behavior=behavior, onset=onset, duration=None))
-        elif event == "state start":
-            open_bouts[key] = onset
-        elif event == "state stop":
-            if key not in open_bouts:
-                raise ValueError(
-                    f"'{source_name}' has a 'state stop' for subject '{subject}', behavior '{behavior}' "
-                    f"at {TRIAL_TIME_COLUMN}={onset} with no preceding 'state start' to close."
-                )
-            start = open_bouts.pop(key)
-            events.append(
-                EthoVisionScoringEvent(subject=subject, behavior=behavior, onset=start, duration=onset - start)
-            )
-        else:
-            raise ValueError(f"'{source_name}' has an unrecognized Event value '{row[event_index]}'.")
-
-    for (subject, behavior), onset in open_bouts.items():
-        events.append(EthoVisionScoringEvent(subject=subject, behavior=behavior, onset=onset, duration=np.nan))
-    return events
 
 
 def _validate_file_path(file_path, *, delimiter: str | None = None) -> Path:

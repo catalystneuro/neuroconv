@@ -133,7 +133,6 @@ boris = [
 ]
 ethovision = [
     "openpyxl",  # Excel is one of EthoVision's three Track-export containers
-    "ndx-ethogram>=0.1.0",  # manual-scoring rows also produce an Ethogram and EthogramBouts
 ]
 behavior = [
     "neuroconv[boris]",

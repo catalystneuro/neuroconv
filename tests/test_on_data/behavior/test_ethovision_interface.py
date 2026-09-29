@@ -1,4 +1,4 @@
-"""Tests for EthoVisionDataInterface."""
+"""Tests for EthoVisionTrackInterface."""
 
 import re
 from datetime import datetime
@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 from pynwb import read_nwb
 
-from neuroconv.datainterfaces.behavior.ethovision.ethovisiondatainterface import EthoVisionDataInterface
+from neuroconv.datainterfaces.behavior.ethovision.ethovisiontrackinterface import EthoVisionTrackInterface
 from neuroconv.tools.testing.data_interface_mixins import DataInterfaceTestMixin
 
 try:
@@ -19,10 +19,10 @@ ETHOVISION_FOLDER_PATH = BEHAVIOR_DATA_PATH / "ethovision"
 
 
 class TestEthoVisionTrackAndManualScoring(DataInterfaceTestMixin):
-    """The `two_c57` stub: one subject, one arena, a Manual Scoring sheet with point and state events."""
+    """The `two_c57` stub: one subject, one arena, and a Manual Scoring sheet the Track interface does not read."""
 
     FILE_PATH = ETHOVISION_FOLDER_PATH / "excel/single_arena_single_subject/track_and_manual_scoring/two_c57.xlsx"
-    data_interface_cls = EthoVisionDataInterface
+    data_interface_cls = EthoVisionTrackInterface
     interface_kwargs = dict(file_path=FILE_PATH)
     save_directory = OUTPUT_PATH
 
@@ -59,60 +59,16 @@ class TestEthoVisionTrackAndManualScoring(DataInterfaceTestMixin):
         }
         assert set(behavior_module.data_interfaces) == {
             "EthoVisionPositionArena1Subject1",
-            "EthoVisionEthogramArena1",
-            "EthoVisionEthogramBoutsArena1",
             *expected_channel_names,
         }
-
-        events = nwbfile.events["EthoVisionManualScoringArena1"].to_dataframe()
-        assert len(events) == 35
-
-        # Two behaviors the sheet scores as bouts never close within this stub's episode boundary,
-        # so a reader relying only on the Track sheet's per-frame indicator columns for these two
-        # names would find nothing: 'attacking' has no matching Track column at all ('Attack' does,
-        # but under a different string), and 'tail rattle' is scored only as a point event with no
-        # Track column whatsoever.
-        expected_event_types = {
-            "Sniff",
-            "aggressive groom",
-            "attacking",
-            "carry",
-            "digging",
-            "groom",
-            "start",
-            "tail rattle",
-        }
-        assert set(events["event_type"]) == expected_event_types
-        assert "EthoVisionAttackingArena1Subject1" not in behavior_module.data_interfaces
-        assert "EthoVisionTailRattleArena1Subject1" not in behavior_module.data_interfaces
-
-        # The two 'start' point events bracket the stub's retained episode and carry no duration.
-        start_rows = events[events["event_type"] == "start"]
-        assert len(start_rows) == 2
-        assert start_rows["duration"].isna().all()
-
-        # Every state bout in this stub closes: nothing here exercises the NaN-duration,
-        # never-closed-bout path that a messier file would. 'start' and 'tail rattle' are point
-        # events (no extent to record), so they are excluded rather than expected to close.
-        state_rows = events[~events["event_type"].isin(["start", "tail rattle"])]
-        assert not state_rows["duration"].isna().any()
-
-        ethogram = behavior_module["EthoVisionEthogramArena1"].to_dataframe()
-        assert set(ethogram["behavior"]) == set(events["event_type"])
-        assert set(ethogram["behavior_type"]) == {"point", "state"}
-
-        bouts = behavior_module["EthoVisionEthogramBoutsArena1"].to_dataframe()
-        assert len(bouts) == 31
-        assert set(bouts["subject"]) == {"Subject 1"}
-        assert set(bouts["arena"]) == {"Arena 1"}
-        assert set(bouts["label"]).isdisjoint({"start", "tail rattle"})
+        assert not nwbfile.events
 
     def test_available_tracks(self):
         expected_tracks = [{"arena_name": "Arena 1", "subject_name": "Subject 1"}]
-        assert EthoVisionDataInterface.get_available_tracks(self.FILE_PATH) == expected_tracks
+        assert EthoVisionTrackInterface.get_available_tracks(self.FILE_PATH) == expected_tracks
 
-    def test_nonlinear_alignment_remaps_tracks_events_and_bouts(self):
-        interface = EthoVisionDataInterface(file_path=self.FILE_PATH)
+    def test_remap_times_moves_the_track(self):
+        interface = EthoVisionTrackInterface(file_path=self.FILE_PATH)
         interface.alignment.remap_times(
             local_sync_times=np.array([0.0, 200.0]),
             reference_sync_times=np.array([10.0, 410.0]),
@@ -123,16 +79,6 @@ class TestEthoVisionTrackAndManualScoring(DataInterfaceTestMixin):
         position = nwbfile.processing["behavior"]["EthoVisionPositionArena1Subject1"]
         assert np.isclose(position.timestamps[0], 12.134)
         assert np.isclose(position.timestamps[1] - position.timestamps[0], 0.066)
-
-        events = nwbfile.events["EthoVisionManualScoringArena1"].to_dataframe()
-        first_sniff = events[events["event_type"] == "Sniff"].iloc[0]
-        assert np.isclose(first_sniff["timestamp"], 112.6)
-        assert np.isclose(first_sniff["duration"], 6.134)
-
-        bouts = nwbfile.processing["behavior"]["EthoVisionEthogramBoutsArena1"].to_dataframe()
-        first_sniff_bout = bouts[bouts["label"] == "Sniff"].iloc[0]
-        assert np.isclose(first_sniff_bout["start_time"], 112.6)
-        assert np.isclose(first_sniff_bout["stop_time"], 118.734)
 
 
 class TestEthoVisionMissingSamples(DataInterfaceTestMixin):
@@ -147,7 +93,7 @@ class TestEthoVisionMissingSamples(DataInterfaceTestMixin):
         ETHOVISION_FOLDER_PATH
         / "excel/single_arena_multiple_subjects/hardware_and_trial_control/two_subjects_missing_samples.xlsx"
     )
-    data_interface_cls = EthoVisionDataInterface
+    data_interface_cls = EthoVisionTrackInterface
     interface_kwargs = dict(
         file_path=FILE_PATH,
         arena_name="Rat Arena 1a",
@@ -161,10 +107,6 @@ class TestEthoVisionMissingSamples(DataInterfaceTestMixin):
     def check_read_nwb(self, nwbfile_path: str):
         nwbfile = read_nwb(nwbfile_path)
         behavior_module = nwbfile.processing["behavior"]
-
-        # No Manual Scoring sheet in this file: the more common real-world shape, per the format
-        # survey, and unexercised by the two_c57 stub.
-        assert not nwbfile.events
 
         expected_channel_stems = {
             "XNose",
@@ -203,10 +145,10 @@ class TestEthoVisionMissingSamples(DataInterfaceTestMixin):
             {"arena_name": "Rat Arena 1a", "subject_name": "Subject 1"},
             {"arena_name": "Rat Arena 1a", "subject_name": "Subject 2"},
         ]
-        assert EthoVisionDataInterface.get_available_tracks(self.FILE_PATH) == expected_tracks
+        assert EthoVisionTrackInterface.get_available_tracks(self.FILE_PATH) == expected_tracks
 
     def test_metadata_keys_control_written_names(self):
-        interface = EthoVisionDataInterface(
+        interface = EthoVisionTrackInterface(
             file_path=self.FILE_PATH,
             arena_name="Rat Arena 1a",
             subject_name="Subject 1",
@@ -233,7 +175,7 @@ class TestEthoVisionMissingSamples(DataInterfaceTestMixin):
             "Matching tracks: [('Rat Arena 1a', 'Subject 1'), ('Rat Arena 1a', 'Subject 2')]."
         )
         with pytest.raises(ValueError, match=re.escape(expected_error)):
-            EthoVisionDataInterface(file_path=self.FILE_PATH)
+            EthoVisionTrackInterface(file_path=self.FILE_PATH)
 
     def test_interface_rejects_a_nonexistent_track_identity(self):
         expected_error = (
@@ -242,7 +184,7 @@ class TestEthoVisionMissingSamples(DataInterfaceTestMixin):
             "[('Rat Arena 1a', 'Subject 1'), ('Rat Arena 1a', 'Subject 2')]."
         )
         with pytest.raises(ValueError, match=re.escape(expected_error)):
-            EthoVisionDataInterface(
+            EthoVisionTrackInterface(
                 file_path=self.FILE_PATH,
                 arena_name="Rat Arena 1a",
                 subject_name="Subject 3",
@@ -251,7 +193,7 @@ class TestEthoVisionMissingSamples(DataInterfaceTestMixin):
 
 class TestEthoVisionCommaDelimitedTxt(DataInterfaceTestMixin):
     FILE_PATH = ETHOVISION_FOLDER_PATH / "txt/single_arena_single_subject/comma_delimited/morris_water_maze.txt"
-    data_interface_cls = EthoVisionDataInterface
+    data_interface_cls = EthoVisionTrackInterface
     interface_kwargs = dict(file_path=FILE_PATH)
     save_directory = OUTPUT_PATH
 
@@ -289,14 +231,14 @@ class TestEthoVisionCommaDelimitedTxt(DataInterfaceTestMixin):
 
     def test_available_tracks(self):
         expected_tracks = [{"arena_name": "Arena 1", "subject_name": "Subject 1"}]
-        assert EthoVisionDataInterface.get_available_tracks(self.FILE_PATH) == expected_tracks
+        assert EthoVisionTrackInterface.get_available_tracks(self.FILE_PATH) == expected_tracks
 
 
 class TestEthoVisionUtf16Txt(DataInterfaceTestMixin):
     """A text export in UTF-16LE with a byte order mark, EthoVision's default "Unicode text" export."""
 
     FILE_PATH = ETHOVISION_FOLDER_PATH / "txt/single_arena_single_subject/utf16_encoded/track.txt"
-    data_interface_cls = EthoVisionDataInterface
+    data_interface_cls = EthoVisionTrackInterface
     interface_kwargs = dict(file_path=FILE_PATH)
     save_directory = OUTPUT_PATH
 
@@ -315,7 +257,7 @@ class TestEthoVisionUtf16Txt(DataInterfaceTestMixin):
 
     def test_available_tracks(self):
         expected_tracks = [{"arena_name": "Arena 1", "subject_name": "Subject 1"}]
-        assert EthoVisionDataInterface.get_available_tracks(self.FILE_PATH) == expected_tracks
+        assert EthoVisionTrackInterface.get_available_tracks(self.FILE_PATH) == expected_tracks
 
 
 class TestEthoVisionDecimalCommaHeaderTxt(DataInterfaceTestMixin):
@@ -326,7 +268,7 @@ class TestEthoVisionDecimalCommaHeaderTxt(DataInterfaceTestMixin):
     """
 
     FILE_PATH = ETHOVISION_FOLDER_PATH / "txt/single_arena_single_subject/track_only/termites.txt"
-    data_interface_cls = EthoVisionDataInterface
+    data_interface_cls = EthoVisionTrackInterface
     interface_kwargs = dict(file_path=FILE_PATH)
     save_directory = OUTPUT_PATH
 
@@ -357,7 +299,7 @@ class TestEthoVisionDecimalCommaHeaderTxt(DataInterfaceTestMixin):
 
     def test_available_tracks(self):
         expected_tracks = [{"arena_name": "Arena 2", "subject_name": "Subject 1"}]
-        assert EthoVisionDataInterface.get_available_tracks(self.FILE_PATH) == expected_tracks
+        assert EthoVisionTrackInterface.get_available_tracks(self.FILE_PATH) == expected_tracks
 
 
 class TestEthoVisionCustomMissingValueMarker(DataInterfaceTestMixin):
@@ -371,7 +313,7 @@ class TestEthoVisionCustomMissingValueMarker(DataInterfaceTestMixin):
         ETHOVISION_FOLDER_PATH
         / "excel/single_arena_single_subject/custom_missing_value_marker/missing_values_as_na.xlsx"
     )
-    data_interface_cls = EthoVisionDataInterface
+    data_interface_cls = EthoVisionTrackInterface
     interface_kwargs = dict(file_path=FILE_PATH, missing_value_representation="NA")
     save_directory = OUTPUT_PATH
 
@@ -409,7 +351,7 @@ class TestEthoVisionCustomMissingValueMarker(DataInterfaceTestMixin):
             "'Zone1(Zone-1 / Center-point)' -> 'zone1_zone_1_center_point_2'."
         )
         with pytest.warns(UserWarning, match=re.escape(expected_warning)):
-            EthoVisionDataInterface(**self.interface_kwargs)
+            EthoVisionTrackInterface(**self.interface_kwargs)
 
 
 class TestEthoVisionUndetectedSubject(DataInterfaceTestMixin):
@@ -422,7 +364,7 @@ class TestEthoVisionUndetectedSubject(DataInterfaceTestMixin):
         ETHOVISION_FOLDER_PATH
         / "excel/single_arena_multiple_subjects/undetected_subject/one_subject_never_detected.xlsx"
     )
-    data_interface_cls = EthoVisionDataInterface
+    data_interface_cls = EthoVisionTrackInterface
     interface_kwargs = dict(file_path=FILE_PATH, arena_name="Arena 1", subject_name="Subject 2")
     save_directory = OUTPUT_PATH
 
@@ -449,14 +391,14 @@ class TestEthoVisionUndetectedSubject(DataInterfaceTestMixin):
             {"arena_name": "Arena 1", "subject_name": "Subject 1"},
             {"arena_name": "Arena 1", "subject_name": "Subject 2"},
         ]
-        assert EthoVisionDataInterface.get_available_tracks(self.FILE_PATH) == expected_tracks
+        assert EthoVisionTrackInterface.get_available_tracks(self.FILE_PATH) == expected_tracks
 
 
 class TestEthoVisionMultipleArenasOneSubjectEach(DataInterfaceTestMixin):
     FILE_PATH = (
         ETHOVISION_FOLDER_PATH / "excel/multiple_arenas_one_subject_each/track_only/two_arenas_one_subject_each.xlsx"
     )
-    data_interface_cls = EthoVisionDataInterface
+    data_interface_cls = EthoVisionTrackInterface
     interface_kwargs = dict(file_path=FILE_PATH, arena_name="Arena 2", subject_name="Subject 1")
     save_directory = OUTPUT_PATH
 
@@ -474,14 +416,14 @@ class TestEthoVisionMultipleArenasOneSubjectEach(DataInterfaceTestMixin):
             {"arena_name": "Arena 1", "subject_name": "Subject 1"},
             {"arena_name": "Arena 2", "subject_name": "Subject 1"},
         ]
-        assert EthoVisionDataInterface.get_available_tracks(self.FILE_PATH) == expected_tracks
+        assert EthoVisionTrackInterface.get_available_tracks(self.FILE_PATH) == expected_tracks
 
 
 class TestEthoVisionMultipleArenasMultipleSubjects(DataInterfaceTestMixin):
     FILE_PATH = (
         ETHOVISION_FOLDER_PATH / "excel/multiple_arenas_multiple_subjects/track_only/two_arenas_four_subjects_each.xlsx"
     )
-    data_interface_cls = EthoVisionDataInterface
+    data_interface_cls = EthoVisionTrackInterface
     interface_kwargs = dict(file_path=FILE_PATH, arena_name="Arena 2", subject_name="Subject 4")
     save_directory = OUTPUT_PATH
 
@@ -505,7 +447,7 @@ class TestEthoVisionMultipleArenasMultipleSubjects(DataInterfaceTestMixin):
             {"arena_name": "Arena 2", "subject_name": "Subject 3"},
             {"arena_name": "Arena 2", "subject_name": "Subject 4"},
         ]
-        assert EthoVisionDataInterface.get_available_tracks(self.FILE_PATH) == expected_tracks
+        assert EthoVisionTrackInterface.get_available_tracks(self.FILE_PATH) == expected_tracks
 
 
 def test_hardware_export_is_not_a_track():
@@ -516,7 +458,7 @@ def test_hardware_export_is_not_a_track():
         "Hardware and Trial Control exports share the time columns but hold no tracked positions."
     )
     with pytest.raises(ValueError, match=re.escape(expected_error)):
-        EthoVisionDataInterface.get_available_tracks(file_path)
+        EthoVisionTrackInterface.get_available_tracks(file_path)
 
 
 def test_missing_value_representation_names_an_unparsed_marker():
@@ -527,7 +469,7 @@ def test_missing_value_representation_names_an_unparsed_marker():
         "pass missing_value_representation='NA' (currently '-')."
     )
     with pytest.raises(ValueError, match=re.escape(expected_error)):
-        EthoVisionDataInterface(file_path=file_path)
+        EthoVisionTrackInterface(file_path=file_path)
 
 
 def test_delimiter_reads_an_undetected_delimiter(tmp_path):
@@ -541,18 +483,18 @@ def test_delimiter_reads_an_undetected_delimiter(tmp_path):
         "separates columns with as delimiter."
     )
     with pytest.raises(ValueError, match=re.escape(expected_error)):
-        EthoVisionDataInterface(file_path=file_path)
+        EthoVisionTrackInterface(file_path=file_path)
 
-    assert EthoVisionDataInterface.get_available_tracks(file_path, delimiter="|") == (
-        EthoVisionDataInterface.get_available_tracks(source_path)
+    assert EthoVisionTrackInterface.get_available_tracks(file_path, delimiter="|") == (
+        EthoVisionTrackInterface.get_available_tracks(source_path)
     )
 
     def write_behavior_series(interface):
         behavior_module = interface.create_nwbfile().processing["behavior"]
         return {name: np.asarray(series.data) for name, series in behavior_module.data_interfaces.items()}
 
-    comma_series = write_behavior_series(EthoVisionDataInterface(file_path=source_path))
-    pipe_series = write_behavior_series(EthoVisionDataInterface(file_path=file_path, delimiter="|"))
+    comma_series = write_behavior_series(EthoVisionTrackInterface(file_path=source_path))
+    pipe_series = write_behavior_series(EthoVisionTrackInterface(file_path=file_path, delimiter="|"))
     assert set(pipe_series) == set(comma_series)
     for name, data in comma_series.items():
         np.testing.assert_array_equal(pipe_series[name], data)
@@ -565,7 +507,7 @@ def test_track_without_samples_is_listed_but_raises():
         {"arena_name": "Rat Arena 1a", "subject_name": "Subject 1"},
         {"arena_name": "Rat Arena 1a", "subject_name": "Subject 2"},
     ]
-    assert EthoVisionDataInterface.get_available_tracks(file_path) == expected_tracks
+    assert EthoVisionTrackInterface.get_available_tracks(file_path) == expected_tracks
 
     expected_error = (
         "Track 'Rat Arena 1a' / 'Subject 1' in 'Track-Rat Arena 1a-Subject 1' logged no samples "
@@ -573,27 +515,4 @@ def test_track_without_samples_is_listed_but_raises():
         "nothing to convert."
     )
     with pytest.raises(ValueError, match=re.escape(expected_error)):
-        EthoVisionDataInterface(file_path=file_path, arena_name="Rat Arena 1a", subject_name="Subject 1")
-
-
-def test_manual_scoring_reads_the_documented_spellings(tmp_path):
-    """The Noldus manuals spell the sheet `Manual scoring - <arena>` and capitalize `State start`; both read the same."""
-    import openpyxl
-
-    source_path = ETHOVISION_FOLDER_PATH / "excel/single_arena_single_subject/track_and_manual_scoring/two_c57.xlsx"
-    workbook = openpyxl.load_workbook(source_path)
-    scoring_sheet = workbook["Manual Scoring-Arena 1"]
-    scoring_sheet.title = "Manual scoring - Arena 1"
-    for (cell,) in scoring_sheet.iter_rows(min_col=5, max_col=5):
-        if cell.value in ("state start", "state stop", "point event"):
-            cell.value = cell.value.capitalize()
-    file_path = tmp_path / "two_c57_documented_spellings.xlsx"
-    workbook.save(file_path)
-
-    def write_events(interface):
-        return interface.create_nwbfile().events["EthoVisionManualScoringArena1"].to_dataframe()
-
-    source_events = write_events(EthoVisionDataInterface(file_path=source_path))
-    documented_events = write_events(EthoVisionDataInterface(file_path=file_path))
-    assert len(source_events) == 35
-    assert documented_events.equals(source_events)
+        EthoVisionTrackInterface(file_path=file_path, arena_name="Rat Arena 1a", subject_name="Subject 1")
