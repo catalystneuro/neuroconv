@@ -29,6 +29,24 @@ the shared value. Keeping one offset per object makes its state sufficient to de
 of the collections around it. Writers obtain those times through alignment, including the aligned start when writing
 a regular series with a rate.
 
+Composition
+-----------
+
+To make this object-level model available across modalities, interfaces expose timing operations through
+``interface.alignment``. The component manages alignment state and operations, while each interface identifies its
+objects and supplies access to their native times. This division lets the same implementation handle an interface
+with one series or several independent sets of times, without knowing how either source format stores them.
+Modality-specific code defines what can be aligned, and the shared component defines how alignment behaves.
+
+The distinction between an interface and its objects matters when considering inheritance. An inherited contract
+such as ``get_timestamps() -> np.ndarray`` and ``set_aligned_timestamps(np.ndarray)`` assumes one array per interface.
+An events interface has separate times for each event type, so returning a dictionary violates that contract and
+combining the arrays loses their separate identities. Inheritance could support object registration too, but it would
+still tie alignment to the interface hierarchy and place timing methods beside ``get_metadata`` and
+``add_to_nwbfile``. A held component keeps those methods together under ``alignment`` without requiring a particular
+interface base class. That same attribute gives converters a common surface through which to check alignment support
+and apply collection operations.
+
 Object registration
 -------------------
 
@@ -112,6 +130,13 @@ For ``remap_times``, using the current output times also determines where the sy
 while ``reference_sync_times`` describe the target timeline. Each local time is paired with the reference time at the
 same array position, and both must identify the same event.
 
+At the moment, the only time-bearing object that does not implement ``set_times`` is the spikes exposed by a sorting
+interface. Replacement would take a dictionary mapping units to timestamp arrays instead of a single array, and we
+have not identified a reasonable use case for implementing this.
+
+In the same vein, sorting does not implement object-level ``move_start_to`` because its first spike reflects neural
+activity, not the start of the recording.
+
 Collection operations
 ---------------------
 
@@ -130,8 +155,10 @@ holds through nested converters, where one earliest descendant start determines 
 
 The collection model extends to operations that have a meaningful result for every member. ``remap_times`` can apply
 one map to every object in an interface or converter, provided that map is valid for all their current timestamps.
-``get_times`` and ``set_times`` address one object's times, so they require selecting that object. Automatically
-forwarding those calls through a collection with one object remains deferred.
+
+``get_times`` and ``set_times`` address one object's times. An interface with exactly one registered object forwards
+these calls as a convenience because the target is unambiguous. With several objects, callers must select one
+explicitly: collection membership alone does not define how to combine their timestamps or distribute replacements.
 
 Nested addressing
 -----------------
@@ -153,24 +180,6 @@ parent collections distinguish them.
 The hierarchy follows public composition boundaries. A composite interface exposes its own registered object keys
 and keeps its internal interfaces private, even if those interfaces help it read or write the data. Its users see
 the timing units the composite presents, without needing to follow its internal implementation.
-
-Composition
------------
-
-To make this object-level model available across modalities, interfaces expose timing operations through
-``interface.alignment``. The component manages alignment state and operations, while each interface identifies its
-objects and supplies access to their native times. This division lets the same implementation handle an interface
-with one series or several independent sets of times, without knowing how either source format stores them.
-Modality-specific code defines what can be aligned, and the shared component defines how alignment behaves.
-
-The distinction between an interface and its objects matters when considering inheritance. An inherited contract
-such as ``get_timestamps() -> np.ndarray`` and ``set_aligned_timestamps(np.ndarray)`` assumes one array per interface.
-An events interface has separate times for each event type, so returning a dictionary violates that contract and
-combining the arrays loses their separate identities. Inheritance could support object registration too, but it would
-still tie alignment to the interface hierarchy and place timing methods beside ``get_metadata`` and
-``add_to_nwbfile``. A held component keeps those methods together under ``alignment`` without requiring a particular
-interface base class. That same attribute gives converters a common surface through which to check alignment support
-and apply collection operations.
 
 Edge cases
 ----------
