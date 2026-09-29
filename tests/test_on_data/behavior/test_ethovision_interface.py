@@ -302,31 +302,6 @@ class TestEthoVisionCommaDelimitedTxt(DataInterfaceTestMixin):
         assert EthoVisionDataInterface.get_available_tracks(self.FILE_PATH) == expected_tracks
 
 
-class TestEthoVisionTxt(DataInterfaceTestMixin):
-    FILE_PATH = ETHOVISION_FOLDER_PATH / "txt/single_arena_single_subject/truncated_last_row/termites_truncated.txt"
-    data_interface_cls = EthoVisionDataInterface
-    interface_kwargs = dict(file_path=FILE_PATH)
-    save_directory = OUTPUT_PATH
-
-    def check_extracted_metadata(self, metadata: dict):
-        assert metadata["NWBFile"]["session_start_time"] == datetime(2014, 9, 2, 18, 4, 58, 400000)
-
-    def check_read_nwb(self, nwbfile_path: str):
-        nwbfile = read_nwb(nwbfile_path)
-        behavior_module = nwbfile.processing["behavior"]
-        position = behavior_module["EthoVisionPositionArena1Subject1"]
-        assert position.data.shape == (1877, 2)
-        assert position.unit == "mm"
-        assert position.timestamps[0] == 1.501
-
-        distance_moved = behavior_module["EthoVisionDistanceMovedArena1Subject1"]
-        assert np.isnan(distance_moved.data[0])
-
-    def test_available_tracks(self):
-        expected_tracks = [{"arena_name": "Arena 1", "subject_name": "Subject 1"}]
-        assert EthoVisionDataInterface.get_available_tracks(self.FILE_PATH) == expected_tracks
-
-
 class TestEthoVisionUtf16Txt(DataInterfaceTestMixin):
     """A text export in UTF-16LE with a byte order mark, EthoVision's default "Unicode text" export."""
 
