@@ -86,14 +86,16 @@ def select_track_source(
     )
 
 
-def read_track(file_path, *, source: EthoVisionTrackSource) -> EthoVisionTrackData:
+def read_track(file_path, *, source: EthoVisionTrackSource, missing_value_representation: str) -> EthoVisionTrackData:
     """Read one selected Track using the loader for its source container."""
     path = _validate_file_path(file_path=file_path)
     if path.suffix.lower() == ".xlsx":
         rows = _read_excel_rows(file_path=path, sheet_name=source.source_name)
     else:
         rows = _read_delimited_rows(file_path=path)
-    return _track_data_from_rows(rows=rows, source_name=source.source_name)
+    return _track_data_from_rows(
+        rows=rows, source_name=source.source_name, missing_value_representation=missing_value_representation
+    )
 
 
 def read_scoring_events(file_path, *, arena_name: str) -> list[EthoVisionScoringEvent]:
@@ -143,7 +145,9 @@ def _get_track_sources(file_path) -> list[EthoVisionTrackSource]:
     return [EthoVisionTrackSource(arena=str(arena), subject=str(subject), source_name=path.name)]
 
 
-def _track_data_from_rows(rows: list[list], *, source_name: str) -> EthoVisionTrackData:
+def _track_data_from_rows(
+    rows: list[list], *, source_name: str, missing_value_representation: str
+) -> EthoVisionTrackData:
     header, column_names, units, data_rows = _split_header_and_table(rows=rows, source_name=source_name)
     _validate_track_columns(column_names=column_names, source_name=source_name)
     if any(row and row[0] == NO_SAMPLES_SENTENCE for row in data_rows):
@@ -154,7 +158,13 @@ def _track_data_from_rows(rows: list[list], *, source_name: str) -> EthoVisionTr
         )
     columns = {
         name: np.asarray(
-            [_parse_track_value(row[index] if index < len(row) else None) for row in data_rows],
+            [
+                _parse_track_value(
+                    row[index] if index < len(row) else None,
+                    missing_value_representation=missing_value_representation,
+                )
+                for row in data_rows
+            ],
             dtype=float,
         )
         for index, name in enumerate(column_names)
@@ -294,11 +304,17 @@ def _validate_track_columns(*, column_names: list[str], source_name: str) -> Non
         )
 
 
-def _parse_track_value(value) -> float:
+def _parse_track_value(value, *, missing_value_representation: str) -> float:
     """Parse a numeric Track value, preserving missing samples as ``numpy.nan``."""
-    if value is None or value in {"-", "NA"}:
+    if value is None or value == missing_value_representation:
         return np.nan
-    return float(value)
+    try:
+        return float(value)
+    except ValueError as exception:
+        raise ValueError(
+            f"Could not parse the Track value {value!r} as a number. If the export marks missing values with "
+            f"{value!r}, pass missing_value_representation={value!r} (currently {missing_value_representation!r})."
+        ) from exception
 
 
 def _normalize_unit(unit: str | None) -> str | None:

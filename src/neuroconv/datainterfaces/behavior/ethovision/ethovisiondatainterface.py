@@ -67,6 +67,7 @@ class EthoVisionDataInterface(BaseEventsInterface):
         *,
         arena_name: str | None = None,
         subject_name: str | None = None,
+        missing_value_representation: str = "-",
         metadata_key: str | None = None,
         verbose: bool = False,
     ):
@@ -83,6 +84,9 @@ class EthoVisionDataInterface(BaseEventsInterface):
             contains only one matching subject. EthoVision subject names are role labels defined
             once per experiment and reused in every arena and run, so they identify a Track and
             not an animal.
+        missing_value_representation : str, default: "-"
+            The marker the export uses for a missing sample, set by EthoVision's "Missing Value
+            Representation" export option. Cells holding it become ``NaN``.
         metadata_key : str, optional
             The key for this track's metadata and events blocks. By default it is derived from
             the Track sheet's arena and subject so several interfaces can share an NWB file.
@@ -104,11 +108,16 @@ class EthoVisionDataInterface(BaseEventsInterface):
             file_path=file_path,
             arena_name=self.arena,
             subject_name=self.subject,
+            missing_value_representation=missing_value_representation,
             metadata_key=self.metadata_key,
             verbose=verbose,
         )
 
-        self._track = read_track(file_path=self.file_path, source=self.track_source)
+        self._track = read_track(
+            file_path=self.file_path,
+            source=self.track_source,
+            missing_value_representation=missing_value_representation,
+        )
         self._time_series_metadata_keys = {
             channel_name: f"{self.metadata_key}_{to_snake_case(channel_name)}"
             for channel_name in self._track.channels

@@ -450,3 +450,55 @@ def test_hardware_export_is_not_a_track():
     )
     with pytest.raises(ValueError, match=re.escape(expected_error)):
         EthoVisionDataInterface.get_available_tracks(file_path)
+
+
+def _write_with_missing_value_marker(*, directory, marker: str):
+    """Copy the comma-delimited Morris water maze export, writing its ``-`` data cells as ``marker``."""
+    source_path = ETHOVISION_FOLDER_PATH / "txt/single_arena_single_subject/comma_delimited/morris_water_maze.txt"
+    lines = source_path.read_text(encoding="utf-8-sig").splitlines(keepends=True)
+    header_line_count = 38  # declared in the file's first row, and includes the column-name and unit rows
+    rewritten_lines = lines[:header_line_count]
+    for line in lines[header_line_count:]:
+        content = line.rstrip("\r\n")
+        cells = [marker if cell == "-" else cell for cell in content.split(",")]
+        rewritten_lines.append(",".join(cells) + line[len(content) :])
+    file_path = directory / f"morris_water_maze_{marker}.txt"
+    file_path.write_text("".join(rewritten_lines), encoding="utf-8-sig")
+    return source_path, file_path
+
+
+def test_missing_value_representation_reads_a_custom_marker(tmp_path):
+    """An export whose missing values were written as ``NA`` converts to the same data as the ``-`` original."""
+    source_path, file_path = _write_with_missing_value_marker(directory=tmp_path, marker="NA")
+
+    def write_behavior_series(interface):
+        nwbfile = NWBFile(
+            session_description="missing value test",
+            identifier="missing value test",
+            session_start_time=datetime.now(timezone.utc),
+        )
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
+        return {
+            name: np.asarray(series.data) for name, series in nwbfile.processing["behavior"].data_interfaces.items()
+        }
+
+    default_marker_series = write_behavior_series(EthoVisionDataInterface(file_path=source_path))
+    custom_marker_series = write_behavior_series(
+        EthoVisionDataInterface(file_path=file_path, missing_value_representation="NA")
+    )
+
+    assert set(custom_marker_series) == set(default_marker_series)
+    for name, data in default_marker_series.items():
+        np.testing.assert_array_equal(custom_marker_series[name], data)
+    assert sum(int(np.isnan(data).sum()) for data in custom_marker_series.values()) == 159
+
+
+def test_missing_value_representation_names_an_unparsed_marker(tmp_path):
+    """A marker other than the one passed raises an error that names the argument to set."""
+    _, file_path = _write_with_missing_value_marker(directory=tmp_path, marker="NA")
+    expected_error = (
+        "Could not parse the Track value 'NA' as a number. If the export marks missing values with 'NA', "
+        "pass missing_value_representation='NA' (currently '-')."
+    )
+    with pytest.raises(ValueError, match=re.escape(expected_error)):
+        EthoVisionDataInterface(file_path=file_path)
