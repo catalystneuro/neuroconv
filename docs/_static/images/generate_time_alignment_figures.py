@@ -4,15 +4,16 @@ Run from the repository root::
 
     python docs/_static/images/generate_time_alignment_figures.py
 
-Produces five figures:
+Produces six figures:
 
 - ``time_alignment_gross_vs_fine.png``   - the concept figure: a constant offset (gross) beside a growing drift (fine).
 - ``time_alignment_concatenate.png``     - gross alignment: separate trial files tiled onto one session clock.
-- ``time_alignment_interpolation.png``   - fine alignment: frames interpolated onto the reference clock via shared pulses.
+- ``time_alignment_interpolation.png``   - fine alignment: sample timestamps remapped onto the reference clock via shared pulses.
 - ``time_alignment_coarse.png``          - one time-bearing object moved by ``shift_times`` and by
   ``move_start_to``.
 - ``time_alignment_moves_together.png`` - an interface's time-bearing objects moved together by ``shift_times``
   and by ``move_start_to``, with the gaps between them preserved.
+- ``time_alignment_remap_together.png`` - one pulse mapping applied to every video file in an interface.
 """
 
 from pathlib import Path
@@ -149,84 +150,132 @@ def build_concatenate():
 
 
 def build_interpolation():
-    """Fine alignment: re-time a stream by interpolating its samples onto the reference clock through shared pulses.
+    """Show paired pulse times and their mapping of sample timestamps onto the reference clock."""
+    with plt.rc_context({"font.family": "DejaVu Sans", "font.size": 12, "text.color": "#243444"}):
+        RED = "#b63c35"
+        BLUE = "#246ca6"
+        PALE = "#a8c4da"
+        INK = "#243444"
+        GRAY = "#c4cdd5"
 
-    The same synchronization pulses are recorded on both clocks (red), so each pulse pins a camera-clock time to a
-    reference-clock time. Those pairs are the anchors. The camera's frames (blue) are denser than the pulses, so a
-    frame that falls between two pulses is placed on the reference clock by interpolating between the surrounding
-    anchors.
-    """
-    y_ref, y_cam = 1.0, 0.0
-    pulse_h = 0.34  # pulses drawn taller than frames so the shared markers stand out
-    frame_h = TICK_H
+        local = np.array([2.0, 4.0, 6.0])
+        reference = np.array([3.0, 6.0, 7.0])
+        samples = np.arange(2.2, 5.71, 0.5)
+        mapped = np.interp(samples, local, reference)
+        fig = plt.figure(figsize=(9.6, 7.5))
+        fig.text(0.065, 0.965, "Use shared pulses to remap sample times", fontsize=21, weight="bold", va="top")
+        upper = fig.add_axes([0.075, 0.54, 0.85, 0.34])
+        lower = fig.add_axes([0.075, 0.105, 0.85, 0.34])
 
-    cam_pulses = np.array([1.0, 4.0, 7.0, 10.0])  # sync pulses on the camera's own clock: evenly spaced
-    ref_pulses = 1.0 + (cam_pulses - 1.0) * 0.88  # the same pulses on the reference clock: drifted, so they compress
-    frames = np.arange(1.0, 10.01, 0.5)  # the camera's frames, denser than the pulses
+        for ax in [upper, lower]:
+            ax.set(xlim=(1.6, 7.45), ylim=(-0.8, 1.9))
+            ax.axis("off")
 
-    fig, ax = plt.subplots(figsize=(9, 3.9))
+        def baseline(ax, y):
+            ax.hlines(y, 1.82, 7.25, color=GRAY, lw=1.1, zorder=1)
 
-    # reference clock (top): the trusted axis, only the shared pulses live here as anchors
-    ax.hlines(y_ref, ref_pulses[0], ref_pulses[-1] + 0.4, color=BLACK, lw=3)
-    ax.vlines(ref_pulses, y_ref, y_ref + pulse_h, color=RED, lw=2.4)
-    ax.text(0.7, y_ref + pulse_h / 2, "reference clock", ha="right", va="center", fontsize=12, color=BLACK)
-    ax.text(
-        ref_pulses[-1] + 0.7,
-        y_ref + pulse_h / 2,
-        "reference_sync_times",
-        ha="left",
-        va="center",
-        fontsize=9,
-        color=RED,
-    )
+        def anchors(ax, pulses, y, numbers=True):
+            ax.vlines(pulses, y, y + 0.24, color=RED, lw=2.4, zorder=4)
+            if numbers:
+                for value in pulses:
+                    ax.text(value, y + 0.33, f"{value:g} s", ha="center", color=RED, fontsize=11)
 
-    # camera clock (bottom): dense frames plus the same shared pulses
-    ax.hlines(y_cam, frames[0], frames[-1] + 0.4, color=REF, lw=3)
-    ax.vlines(frames, y_cam, y_cam + frame_h, color=REF, lw=1.2)
-    ax.vlines(cam_pulses, y_cam, y_cam + pulse_h, color=RED, lw=2.4)
-    ax.text(0.7, y_cam + frame_h / 2, "camera clock", ha="right", va="center", fontsize=12, color=REF)
-    ax.text(
-        cam_pulses[-1] + 0.7, y_cam + pulse_h / 2, "local_sync_times", ha="left", va="center", fontsize=9, color=RED
-    )
+        for y, pulses in [(1.2, local), (0, reference)]:
+            baseline(upper, y)
+            anchors(upper, pulses, y, numbers=y > 0)
+        for value in reference:
+            upper.text(value, -0.17, f"{value:g} s", ha="center", color=RED, fontsize=11)
+        upper.scatter(samples, np.full(len(samples), 1.2), s=38, color=BLUE, zorder=5)
+        for a, b in zip(local, reference):
+            upper.annotate(
+                "",
+                xy=(b, 0.25),
+                xytext=(a, 1.16),
+                arrowprops={"arrowstyle": "->", "color": RED, "lw": 1.3, "linestyle": (0, (3, 3)), "alpha": 0.7},
+            )
+        upper.text(0, 1.0, "Local format clock", transform=upper.transAxes, fontsize=13, weight="bold")
+        upper.text(
+            1,
+            1.0,
+            "local_sync_times",
+            transform=upper.transAxes,
+            ha="right",
+            fontsize=12,
+            color=RED,
+            fontfamily="DejaVu Sans Mono",
+        )
+        upper.text(0, 0.16, "Reference clock", transform=upper.transAxes, fontsize=13, weight="bold")
+        upper.text(
+            1,
+            0.16,
+            "reference_sync_times",
+            transform=upper.transAxes,
+            ha="right",
+            fontsize=12,
+            color=RED,
+            fontfamily="DejaVu Sans Mono",
+        )
 
-    # each shared pulse anchors a camera-clock time to a reference-clock time
-    for cx, rx in zip(cam_pulses, ref_pulses):
-        ax.plot([cx, rx], [y_cam + pulse_h, y_ref], color=RED, lw=1.0, alpha=0.55, linestyle=(0, (4, 3)))
-    ax.annotate(
-        "same pulse,\ntwo clocks",
-        xy=((cam_pulses[2] + ref_pulses[2]) / 2, (y_cam + pulse_h + y_ref) / 2),
-        xytext=(cam_pulses[2] + 1.4, y_cam + 0.62),
-        fontsize=9,
-        color=RED,
-        ha="center",
-        arrowprops=dict(arrowstyle="->", color=RED, lw=1.0),
-    )
+        upper.annotate(
+            "",
+            xy=(0.47, 0.48),
+            xytext=(0.47, 0.56),
+            xycoords=fig.transFigure,
+            arrowprops={"arrowstyle": "->", "lw": 2, "color": INK},
+            annotation_clip=False,
+        )
+        fig.text(0.51, 0.52, "remap_times(...)", va="center", fontsize=13, fontfamily="DejaVu Sans Mono")
 
-    # one frame that falls between two pulses, placed on the reference clock by interpolation
-    frame = 5.5
-    landing = np.interp(frame, cam_pulses, ref_pulses)
-    ax.vlines(frame, y_cam, y_cam + pulse_h, color=REF, lw=2.4)  # highlight the frame
-    ax.plot([frame, landing], [y_cam + pulse_h, y_ref], color=REF, lw=1.6)
-    ax.plot(landing, y_ref, marker="o", color=REF, markersize=6, zorder=5)  # where it lands on the reference clock
-    ax.annotate(
-        "a frame between pulses\nlands here by interpolation",
-        xy=(landing, y_ref),
-        xytext=(landing - 2.9, y_ref + 0.5),
-        fontsize=9,
-        color=REF,
-        ha="center",
-        arrowprops=dict(arrowstyle="->", color=REF, lw=1.0),
-    )
+        for y, times, pulses in [
+            (1.2, samples, local),
+            (0, mapped, reference),
+        ]:
+            baseline(lower, y)
+            lower.scatter(times, np.full(len(times), y), s=37, color=PALE, zorder=3)
+            anchors(lower, pulses, y, numbers=False)
+        for a, b in zip(samples, mapped):
+            selected = np.isclose(a, 3.2)
+            color = BLUE if selected else PALE
+            lower.annotate(
+                "",
+                xy=(b, 0.055),
+                xytext=(a, 1.15),
+                arrowprops={
+                    "arrowstyle": "->",
+                    "color": color,
+                    "lw": 2.3 if selected else 1,
+                },
+                zorder=1,
+            )
+            if selected:
+                lower.scatter([a, b], [1.2, 0], s=76, color=BLUE, zorder=5)
+                lower.text(a, 1.48, f"{a:g} s", ha="center", color=BLUE, fontsize=12)
+                lower.text(b, -0.24, f"{b:g} s", ha="center", color=BLUE, fontsize=12)
+        for times, y, direction in [(samples, 1.38, 1), (mapped, -0.18, -1)]:
+            start, end = times[-2:]
+            lower.plot([start, start, end, end], [y - direction * 0.07, y, y, y - direction * 0.07], color=BLUE, lw=1.1)
+            lower.text(
+                (start + end) / 2,
+                y + direction * 0.08,
+                f"Δt = {end - start:g} s",
+                ha="center",
+                va="bottom" if direction > 0 else "top",
+                color=BLUE,
+                fontsize=11,
+            )
+        lower.text(1, 1.0, "Before remapping", transform=lower.transAxes, ha="right", fontsize=12, color=BLUE)
+        lower.text(1, 0.0, "After remapping", transform=lower.transAxes, ha="right", fontsize=12, color=BLUE)
+        fig.text(0.075, 0.064, "Same samples, new timestamp values.", fontsize=12, color=BLUE)
+        fig.text(
+            0.075,
+            0.028,
+            "Red marks: synchronization pulses. Blue dots: sample timestamps before and after.",
+            fontsize=11,
+            color="#586675",
+        )
 
-    clean(
-        ax,
-        xlim=(-2.6, 12.6),
-        ylim=(-0.5, 1.85),
-        title="alignment[key].remap_times(...): the shared pulses anchor the two clocks, frames between them are "
-        "interpolated",
-    )
-    fig.tight_layout()
-    fig.savefig(OUTDIR / "time_alignment_interpolation.png", dpi=200, bbox_inches="tight")
+        fig.savefig(OUTDIR / "time_alignment_interpolation.png", dpi=190, facecolor="white")
+        plt.close(fig)
 
 
 def build_coarse():
@@ -349,6 +398,122 @@ def build_moves_together():
     fig.savefig(OUTDIR / "time_alignment_moves_together.png", dpi=200, bbox_inches="tight")
 
 
+def build_remap_together():
+    """Show one pulse mapping applied to every video file in an interface."""
+    with plt.rc_context({"font.family": "DejaVu Sans", "font.size": 12, "text.color": "#243444"}):
+        red = "#b63c35"
+        blue = "#246ca6"
+        pale = "#a8c4da"
+        gray = "#c4cdd5"
+        local = np.array([2.0, 4.0, 6.0])
+        reference = np.array([3.0, 6.0, 7.0])
+        objects = {
+            "trial_01": np.array([2.2, 2.5, 2.8]),
+            "trial_02": np.array([3.3, 3.6, 3.9]),
+            "trial_03": np.array([4.8, 5.1, 5.4, 5.7]),
+        }
+        fig = plt.figure(figsize=(9.6, 8.0))
+        fig.text(0.065, 0.965, "One pulse mapping for all video files", fontsize=21, weight="bold", va="top")
+        upper = fig.add_axes([0.075, 0.59, 0.85, 0.28])
+        lower = fig.add_axes([0.075, 0.11, 0.85, 0.30])
+        for ax in (upper, lower):
+            ax.set(xlim=(1.6, 7.45), ylim=(-0.8, 1.9))
+            ax.axis("off")
+            for y, pulses in [(1.2, local), (0, reference)]:
+                ax.hlines(y, 1.82, 7.25, color=gray, lw=1.1, zorder=1)
+                ax.vlines(pulses, y, y + 0.24, color=red, lw=2.4, zorder=4)
+        for a, b in zip(local, reference):
+            upper.text(a, 1.53, f"{a:g} s", ha="center", color=red, fontsize=11)
+            upper.text(b, -0.17, f"{b:g} s", ha="center", color=red, fontsize=11)
+            upper.annotate(
+                "",
+                xy=(b, 0.25),
+                xytext=(a, 1.16),
+                arrowprops={
+                    "arrowstyle": "->",
+                    "color": red,
+                    "lw": 1.3,
+                    "linestyle": (0, (3, 3)),
+                    "alpha": 0.7,
+                },
+            )
+        upper.text(0, 1, "Camera clock", transform=upper.transAxes, fontsize=13, weight="bold")
+        upper.text(
+            1,
+            1,
+            "local_sync_times",
+            transform=upper.transAxes,
+            ha="right",
+            fontsize=12,
+            color=red,
+            fontfamily="DejaVu Sans Mono",
+        )
+        upper.text(0, 0.16, "Electrophysiology clock", transform=upper.transAxes, fontsize=13, weight="bold")
+        upper.text(
+            1,
+            0.16,
+            "reference_sync_times",
+            transform=upper.transAxes,
+            ha="right",
+            fontsize=12,
+            color=red,
+            fontfamily="DejaVu Sans Mono",
+        )
+        fig.text(
+            0.5,
+            0.53,
+            "video_interface.alignment.remap_times(...)",
+            ha="center",
+            fontsize=13,
+            fontfamily="DejaVu Sans Mono",
+        )
+        upper.annotate(
+            "",
+            xy=(0.5, 0.445),
+            xytext=(0.5, 0.505),
+            xycoords=fig.transFigure,
+            arrowprops={"arrowstyle": "->", "lw": 2, "color": "#243444"},
+            annotation_clip=False,
+        )
+        lower.text(
+            0, 1.05, "Before remapping: continuous camera clock", transform=lower.transAxes, fontsize=13, color=blue
+        )
+        for key, times in objects.items():
+            mapped = np.interp(times, local, reference)
+            for y, values, label_y in [(1.2, times, 1.48), (0, mapped, -0.35)]:
+                lower.add_patch(
+                    mpatches.Rectangle(
+                        (values[0] - 0.06, y - 0.13),
+                        values[-1] - values[0] + 0.12,
+                        0.26,
+                        facecolor="#edf4f9",
+                        edgecolor=pale,
+                        lw=1,
+                        zorder=2,
+                    )
+                )
+                lower.scatter(values, np.full(len(values), y), s=38, color=blue, zorder=5)
+                lower.text(
+                    (values[0] + values[-1]) / 2,
+                    label_y,
+                    key,
+                    ha="center",
+                    color=blue,
+                    fontsize=11,
+                    fontfamily="DejaVu Sans Mono",
+                )
+            for a, b in zip(times, mapped):
+                lower.annotate(
+                    "", xy=(b, 0.15), xytext=(a, 1.05), arrowprops={"arrowstyle": "->", "color": pale, "lw": 1}
+                )
+        lower.text(
+            0, -0.05, "After remapping: electrophysiology clock", transform=lower.transAxes, fontsize=13, color=blue
+        )
+        fig.text(0.075, 0.035, "Same files and samples. One mapping applied to every object.", fontsize=12, color=blue)
+        fig.savefig(OUTDIR / "time_alignment_remap_together.png", dpi=190, facecolor="white")
+        plt.close(fig)
+
+
 def main():
     """Generate all temporal-alignment figures into this directory."""
     build_gross_vs_fine()
@@ -356,9 +521,10 @@ def main():
     build_interpolation()
     build_coarse()
     build_moves_together()
+    build_remap_together()
     print(
         "wrote time_alignment_gross_vs_fine.png, time_alignment_interpolation.png, "
-        "time_alignment_coarse.png and time_alignment_moves_together.png"
+        "time_alignment_coarse.png, time_alignment_moves_together.png and time_alignment_remap_together.png"
     )
 
 

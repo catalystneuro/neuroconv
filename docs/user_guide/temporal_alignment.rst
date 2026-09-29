@@ -157,13 +157,15 @@ samples that fall between pulses:
         reference_sync_times=pulses_reference,
     )
 
-.. image:: ../_static/images/time_alignment_interpolation.png
+.. figure:: ../_static/images/time_alignment_interpolation.png
    :width: 600px
    :align: center
-   :alt: The same synchronization pulses, recorded on both a camera clock (local_sync_times) and the reference
-         clock (reference_sync_times), pin one clock's times to the other's. Because the pulses are sparser than the
-         camera's frames, a frame that falls between two pulses is placed on the reference clock by interpolating
-         between the surrounding anchors.
+   :alt: Paired local_sync_times and reference_sync_times define a mapping between clocks. Arrows connect each
+         sample's timestamp before and after remapping, including 3.2 seconds becoming 4.8 seconds. Brackets show
+         the duration between the same two samples decreasing from 0.5 seconds to 0.25 seconds.
+
+   Same samples, new timestamp values. Remapping can change the duration between two samples: the brackets show
+   Δt decreasing from 0.5 s to 0.25 s for the same pair of samples.
 
 ``local_sync_times`` is on the timeline the object currently reports, so if you have already shifted it these have to
 carry that shift too, while ``reference_sync_times`` is on the clock you are aligning to and cannot vary that way. The
@@ -239,50 +241,16 @@ interface. A few examples:
    * - Trials or epochs
      - the ``TimeIntervals`` table
 
-``alignment`` exposes those objects as a mapping: its keys enumerate them, and indexing one reaches it, giving you that
-object's times and the operations that rewrite them:
+``alignment`` works as a dictionary whose keys (which as a general rule are derived from a ``metadata_key`` plus
+qualifiers) allow access to the specific time-bearing objects:
 
 .. code-block:: python
 
-    pose_interface.alignment.keys()                    # e.g. ("nose", "left_ear", "tail_base")
+    video_interface.alignment.keys()                    # e.g. ("trial_01", "trial_02", "trial_03")
 
-    pose_interface.alignment["nose"].get_times()
-    pose_interface.alignment["nose"].set_times(times)
-    pose_interface.alignment["nose"].remap_times(local_sync_times=pulses_local, reference_sync_times=pulses_reference)
-
-``shift_times``, ``move_start_to`` and ``remap_times`` work at two scopes. Called on ``alignment[key]``, they act on
-that one object. Called on ``alignment``, they act on every object of the interface: ``remap_times`` applies the same
-map to all of them, and the other two move all of them by one common amount. For those two, what you want to move picks
-the scope and the number you know picks the operation:
-
-.. list-table::
-   :header-rows: 1
-   :widths: 20 40 40
-
-   * - Scope
-     - Shift by a correction
-     - Move the start to a destination
-   * - One object
-     - ``alignment[key].shift_times(delta)``
-     - ``alignment[key].move_start_to(t)``
-   * - Whole interface
-     - ``alignment.shift_times(delta)``
-     - ``alignment.move_start_to(t)``
-
-.. image:: ../_static/images/time_alignment_moves_together.png
-   :width: 600px
-   :align: center
-   :alt: Three panels of one interface's three time-bearing objects. As loaded; after alignment.shift_times(3.0),
-         every object 3.0 seconds from where it was; after alignment.move_start_to(5.0), the earliest start at
-         5.0 seconds from session start. In both moved panels the gaps between the objects are unchanged.
-
-``alignment.shift_times(delta)`` moves every object of the interface by ``delta``, so their relationships stay intact:
-they slide together by the same amount. Use it when their relative timing is already correct and the whole group needs
-the same correction:
-
-.. code-block:: python
-
-    events_interface.alignment.shift_times(3.0)   # every event now sits 3.0 seconds later on the session clock
+    video_interface.alignment["trial_01"].get_times()
+    video_interface.alignment["trial_01"].set_times(times)
+    video_interface.alignment["trial_01"].remap_times(local_sync_times=pulses_local, reference_sync_times=pulses_reference)
 
 A session recorded as separate trial files may have each file's clock starting near zero. When you know the time each
 file began on the session clock, place each object with ``move_start_to``:
@@ -295,16 +263,6 @@ file began on the session clock, place each object with ``move_start_to``:
 
 Each call places one file and leaves its siblings where they are.
 
-You can also move an entire interface to a known position:
-
-.. code-block:: python
-
-    video_interface.alignment.move_start_to(100.0)
-
-The interface uses the earliest start among its objects and moves every object by the same amount. The three trials
-placed above at 0, 65 and 130 seconds now start at 100, 165 and 230 seconds. Their relative timing stays intact.
-Calling ``move_start_to(100.0)`` separately on each trial would instead put all three starts at 100 seconds.
-
 A correction can also belong to one object. If a synchronization check finds one already-positioned trial video
 40 milliseconds late, shift that video without moving its siblings:
 
@@ -312,15 +270,54 @@ A correction can also belong to one object. If a synchronization check finds one
 
     video_interface.alignment["trial_02"].shift_times(-0.040)
 
-An interface reads one source from one acquisition system, so its objects share a clock rather than merely happening to
-agree, and a clock offset is corrected once, for all of them, with ``alignment.shift_times``. All of a pose interface's
-keypoints come off the same video, and all of an events interface's tables off the same board. What can differ between
-siblings is position, and only where the source does not record it: a camera or a microphone triggered once per trial
-writes one file per trial, and nothing in those files says where each sits, so the interface names one object per file
-and ``move_start_to`` places each. Where the source does record how its segments sit, as an electrophysiology recording
-does, the interface names a single object and nothing has to be placed. An object whose samples themselves are wrong
-against its siblings has a wrong array, which ``set_times`` replaces, and one that runs on a second clock wants a
-second interface.
+As a convenience, we allow some of the methods to work on all the items of the ``alignment``. Calling
+``shift_times``, ``move_start_to`` and ``remap_times`` without a key will operate on all the time-bearing objects.
+
+``alignment.shift_times(delta)`` moves every object of the interface by ``delta``, so their relationships stay intact:
+they slide together by the same amount. Use it when their relative timing is already correct and the whole group needs
+the same correction:
+
+.. code-block:: python
+
+    video_interface.alignment.shift_times(3.0)   # every video now sits 3.0 seconds later on the session clock
+
+You can also move an entire interface to a known position:
+
+.. code-block:: python
+
+    video_interface.alignment.move_start_to(100.0)
+
+The interface uses the earliest start among its objects and moves every object by the same amount. The three trials
+above now start at 100, 164.96 and 230 seconds, preserving the correction to the second trial. Their relative timing
+stays intact.
+Calling ``move_start_to(100.0)`` separately on each trial would instead put all three starts at 100 seconds.
+
+.. image:: ../_static/images/time_alignment_moves_together.png
+   :width: 600px
+   :align: center
+   :alt: Three panels of one interface's three time-bearing objects. As loaded; after alignment.shift_times(3.0),
+         every object 3.0 seconds from where it was; after alignment.move_start_to(5.0), the earliest start at
+         5.0 seconds from session start. In both moved panels the gaps between the objects are unchanged.
+
+Calling ``alignment.remap_times`` uses one set of synchronization-pulse pairs to transform every object's
+timestamps. As an example, consider a recording setup with a camera and an electrophysiology system that both
+timestamp the same synchronization pulses. The camera saves several video files while keeping its clock running
+between files. Use the camera's pulse times as ``local_sync_times`` and the electrophysiology system's pulse times
+as ``reference_sync_times``. Calling ``video_interface.alignment.remap_times`` then maps every file's frame times
+onto the electrophysiology clock.
+
+.. figure:: ../_static/images/time_alignment_remap_together.png
+   :width: 600px
+   :align: center
+   :alt: One set of local_sync_times and reference_sync_times defines a mapping from the continuous camera clock
+         to the electrophysiology clock. A single video_interface.alignment.remap_times call applies this mapping
+         to sample timestamps in trial_01, trial_02 and trial_03. Each file remains a separate object.
+
+   Each video file is a separate time-bearing object. Because their timestamps share one continuous camera clock,
+   one set of pulse pairs maps all three files onto the electrophysiology clock.
+
+If each trial restarts the camera clock at zero and needs different pulse pairs, remap each video separately
+through its key.
 
 Alignment in a converter
 ------------------------
