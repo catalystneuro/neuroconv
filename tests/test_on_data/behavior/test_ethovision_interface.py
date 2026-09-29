@@ -67,19 +67,6 @@ class TestEthoVisionTrackAndManualScoring(DataInterfaceTestMixin):
         expected_tracks = [{"arena_name": "Arena 1", "subject_name": "Subject 1"}]
         assert EthoVisionTrackInterface.get_available_tracks(self.FILE_PATH) == expected_tracks
 
-    def test_remap_times_moves_the_track(self):
-        interface = EthoVisionTrackInterface(file_path=self.FILE_PATH)
-        interface.alignment.remap_times(
-            local_sync_times=np.array([0.0, 200.0]),
-            reference_sync_times=np.array([10.0, 410.0]),
-        )
-
-        nwbfile = interface.create_nwbfile()
-
-        position = nwbfile.processing["behavior"]["EthoVisionPositionArena1Subject1"]
-        assert np.isclose(position.timestamps[0], 12.134)
-        assert np.isclose(position.timestamps[1] - position.timestamps[0], 0.066)
-
 
 class TestEthoVisionMissingSamples(DataInterfaceTestMixin):
     """A public CC0 file with the real 'subject not found' `-` sentinel and no Manual Scoring sheet.
@@ -146,49 +133,6 @@ class TestEthoVisionMissingSamples(DataInterfaceTestMixin):
             {"arena_name": "Rat Arena 1a", "subject_name": "Subject 2"},
         ]
         assert EthoVisionTrackInterface.get_available_tracks(self.FILE_PATH) == expected_tracks
-
-    def test_metadata_propagation(self):
-        interface = EthoVisionTrackInterface(
-            file_path=self.FILE_PATH,
-            arena_name="Rat Arena 1a",
-            subject_name="Subject 1",
-        )
-        metadata = interface.get_metadata()
-        metadata_key = "ethovision_rat_arena_1a_subject_1"
-        control_metadata_key = f"{metadata_key}_control"
-        assert "EthoVision" not in metadata.get("Behavior", {})
-        assert set(metadata["SpatialSeries"]) == {metadata_key}
-        assert control_metadata_key in metadata["TimeSeries"]
-
-        metadata["SpatialSeries"][metadata_key]["name"] = "MouseOneCenter"
-        metadata["TimeSeries"][control_metadata_key]["name"] = "MouseOneControl"
-
-        nwbfile = interface.create_nwbfile(metadata=metadata)
-
-        behavior_module = nwbfile.processing["behavior"]
-        assert "MouseOneCenter" in behavior_module.data_interfaces
-        assert "MouseOneControl" in behavior_module.data_interfaces
-
-    def test_interface_requires_one_track(self):
-        expected_error = (
-            f"arena_name=None, subject_name=None does not identify one Track in '{self.FILE_PATH}'. "
-            "Matching tracks: [('Rat Arena 1a', 'Subject 1'), ('Rat Arena 1a', 'Subject 2')]."
-        )
-        with pytest.raises(ValueError, match=re.escape(expected_error)):
-            EthoVisionTrackInterface(file_path=self.FILE_PATH)
-
-    def test_interface_rejects_a_nonexistent_track_identity(self):
-        expected_error = (
-            "No EthoVision Track matches arena_name='Rat Arena 1a', subject_name='Subject 3' "
-            f"in '{self.FILE_PATH}'. Available tracks: "
-            "[('Rat Arena 1a', 'Subject 1'), ('Rat Arena 1a', 'Subject 2')]."
-        )
-        with pytest.raises(ValueError, match=re.escape(expected_error)):
-            EthoVisionTrackInterface(
-                file_path=self.FILE_PATH,
-                arena_name="Rat Arena 1a",
-                subject_name="Subject 3",
-            )
 
 
 class TestEthoVisionCommaDelimitedTxt(DataInterfaceTestMixin):
@@ -345,16 +289,6 @@ class TestEthoVisionCustomMissingValueMarker(DataInterfaceTestMixin):
         assert np.nansum(zone_1_hyphenated.data[:]) == 0
         assert "EthoVisionZone2Zone2CenterPoint2Arena1Subject1" in behavior_module.data_interfaces
 
-    def test_clashing_channel_names_warn(self):
-        expected_warning = (
-            "EthoVision channels ['Zone1(Zone 1 / Center-point)', 'Zone1(Zone-1 / Center-point)'] all convert to the "
-            "name 'zone1_zone_1_center_point', so they are numbered in column order: "
-            "'Zone1(Zone 1 / Center-point)' -> 'zone1_zone_1_center_point', "
-            "'Zone1(Zone-1 / Center-point)' -> 'zone1_zone_1_center_point_2'."
-        )
-        with pytest.warns(UserWarning, match=re.escape(expected_warning)):
-            EthoVisionTrackInterface(**self.interface_kwargs)
-
 
 class TestEthoVisionUndetectedSubject(DataInterfaceTestMixin):
     """A subject EthoVision never located: its Track is `-` in every row of every measured channel.
@@ -452,67 +386,140 @@ class TestEthoVisionMultipleArenasMultipleSubjects(DataInterfaceTestMixin):
         assert EthoVisionTrackInterface.get_available_tracks(self.FILE_PATH) == expected_tracks
 
 
-def test_hardware_export_is_not_a_track():
-    """A Hardware export carries the time columns but no tracked positions."""
-    file_path = ETHOVISION_FOLDER_PATH / "txt/single_arena_single_subject/hardware_only/hardware_events.txt"
-    expected_error = (
-        "'hardware_events.txt' is not a Track export; missing columns: ['X center', 'Y center']. "
-        "Hardware and Trial Control exports share the time columns but hold no tracked positions."
-    )
-    with pytest.raises(ValueError, match=re.escape(expected_error)):
-        EthoVisionTrackInterface.get_available_tracks(file_path)
+class TestEthoVisionEdgeCases:
+    """Errors, warnings and options that the round trips above do not exercise.
 
+    A plain grouping class: each case reads a published fixture, or a copy rewritten here, to reach one error
+    path, warning or argument rather than to convert a new layout.
+    """
 
-def test_incorrect_missing_value_representation():
-    """A marker other than the one passed raises an error that names the argument to set."""
-    file_path = TestEthoVisionCustomMissingValueMarker.FILE_PATH
-    expected_error = (
-        "Could not parse the Track value 'NA' as a number. If the export marks missing values with 'NA', "
-        "pass missing_value_representation='NA' (currently '-')."
-    )
-    with pytest.raises(ValueError, match=re.escape(expected_error)):
-        EthoVisionTrackInterface(file_path=file_path)
+    def test_remap_times_moves_the_track(self):
+        interface = EthoVisionTrackInterface(file_path=TestEthoVisionTrackAndManualScoring.FILE_PATH)
+        interface.alignment.remap_times(
+            local_sync_times=np.array([0.0, 200.0]),
+            reference_sync_times=np.array([10.0, 410.0]),
+        )
 
+        nwbfile = interface.create_nwbfile()
 
-def test_uncommon_delimiter_must_be_passed(tmp_path):
-    """A delimiter outside the detected candidates raises without ``delimiter`` and reads with it."""
-    source_path = ETHOVISION_FOLDER_PATH / "txt/single_arena_single_subject/comma_delimited/morris_water_maze.txt"
-    file_path = tmp_path / "morris_water_maze_pipe_delimited.txt"
-    file_path.write_text(source_path.read_text(encoding="utf-8-sig").replace(",", "|"), encoding="utf-8-sig")
+        position = nwbfile.processing["behavior"]["EthoVisionPositionArena1Subject1"]
+        assert np.isclose(position.timestamps[0], 12.134)
+        assert np.isclose(position.timestamps[1] - position.timestamps[0], 0.066)
 
-    expected_error = (
-        f"Could  the delimiter used by '{file_path}'. Pass the character the export "
-        "separates columns with as delimiter."
-    )
-    with pytest.raises(ValueError, match=re.escape(expected_error)):
-        EthoVisionTrackInterface(file_path=file_path)
+    def test_metadata_propagation(self):
+        file_path = TestEthoVisionMissingSamples.FILE_PATH
+        interface = EthoVisionTrackInterface(
+            file_path=file_path,
+            arena_name="Rat Arena 1a",
+            subject_name="Subject 1",
+        )
+        metadata = interface.get_metadata()
+        metadata_key = "ethovision_rat_arena_1a_subject_1"
+        control_metadata_key = f"{metadata_key}_control"
+        assert "EthoVision" not in metadata.get("Behavior", {})
+        assert set(metadata["SpatialSeries"]) == {metadata_key}
+        assert control_metadata_key in metadata["TimeSeries"]
 
-    assert EthoVisionTrackInterface.get_available_tracks(file_path, delimiter="|") == (
-        EthoVisionTrackInterface.get_available_tracks(source_path)
-    )
+        metadata["SpatialSeries"][metadata_key]["name"] = "MouseOneCenter"
+        metadata["TimeSeries"][control_metadata_key]["name"] = "MouseOneControl"
 
-    comma_nwbfile = EthoVisionTrackInterface(file_path=source_path).create_nwbfile()
-    pipe_nwbfile = EthoVisionTrackInterface(file_path=file_path, delimiter="|").create_nwbfile()
-    comma_series = comma_nwbfile.processing["behavior"].data_interfaces
-    pipe_series = pipe_nwbfile.processing["behavior"].data_interfaces
-    assert set(pipe_series) == set(comma_series)
-    for name, series in comma_series.items():
-        np.testing.assert_array_equal(pipe_series[name].data, series.data)
+        nwbfile = interface.create_nwbfile(metadata=metadata)
 
+        behavior_module = nwbfile.processing["behavior"]
+        assert "MouseOneCenter" in behavior_module.data_interfaces
+        assert "MouseOneControl" in behavior_module.data_interfaces
 
-def test_track_without_samples_is_listed_but_raises():
-    """A Track whose acquisition never started is declared in the export, so it is listed but cannot be converted."""
-    file_path = ETHOVISION_FOLDER_PATH / "excel/single_arena_multiple_subjects/no_data/two_subjects_no_data.xlsx"
-    expected_tracks = [
-        {"arena_name": "Rat Arena 1a", "subject_name": "Subject 1"},
-        {"arena_name": "Rat Arena 1a", "subject_name": "Subject 2"},
-    ]
-    assert EthoVisionTrackInterface.get_available_tracks(file_path) == expected_tracks
+    def test_interface_requires_one_track(self):
+        file_path = TestEthoVisionMissingSamples.FILE_PATH
+        expected_error = (
+            f"arena_name=None, subject_name=None does not identify one Track in '{file_path}'. "
+            "Matching tracks: [('Rat Arena 1a', 'Subject 1'), ('Rat Arena 1a', 'Subject 2')]."
+        )
+        with pytest.raises(ValueError, match=re.escape(expected_error)):
+            EthoVisionTrackInterface(file_path=file_path)
 
-    expected_error = (
-        "Track 'Rat Arena 1a' / 'Subject 1' in 'Track-Rat Arena 1a-Subject 1' logged no samples "
-        "('No samples logged for this track!'). The trial was recorded but acquisition never started, so there is "
-        "nothing to convert."
-    )
-    with pytest.raises(ValueError, match=re.escape(expected_error)):
-        EthoVisionTrackInterface(file_path=file_path, arena_name="Rat Arena 1a", subject_name="Subject 1")
+    def test_interface_rejects_a_nonexistent_track_identity(self):
+        file_path = TestEthoVisionMissingSamples.FILE_PATH
+        expected_error = (
+            "No EthoVision Track matches arena_name='Rat Arena 1a', subject_name='Subject 3' "
+            f"in '{file_path}'. Available tracks: "
+            "[('Rat Arena 1a', 'Subject 1'), ('Rat Arena 1a', 'Subject 2')]."
+        )
+        with pytest.raises(ValueError, match=re.escape(expected_error)):
+            EthoVisionTrackInterface(
+                file_path=file_path,
+                arena_name="Rat Arena 1a",
+                subject_name="Subject 3",
+            )
+
+    def test_clashing_channel_names_warn(self):
+        expected_warning = (
+            "EthoVision channels ['Zone1(Zone 1 / Center-point)', 'Zone1(Zone-1 / Center-point)'] all convert to the "
+            "name 'zone1_zone_1_center_point', so they are numbered in column order: "
+            "'Zone1(Zone 1 / Center-point)' -> 'zone1_zone_1_center_point', "
+            "'Zone1(Zone-1 / Center-point)' -> 'zone1_zone_1_center_point_2'."
+        )
+        with pytest.warns(UserWarning, match=re.escape(expected_warning)):
+            EthoVisionTrackInterface(**TestEthoVisionCustomMissingValueMarker.interface_kwargs)
+
+    def test_hardware_export_is_not_a_track(self):
+        """A Hardware export carries the time columns but no tracked positions."""
+        file_path = ETHOVISION_FOLDER_PATH / "txt/single_arena_single_subject/hardware_only/hardware_events.txt"
+        expected_error = (
+            "'hardware_events.txt' is not a Track export; missing columns: ['X center', 'Y center']. "
+            "Hardware and Trial Control exports share the time columns but hold no tracked positions."
+        )
+        with pytest.raises(ValueError, match=re.escape(expected_error)):
+            EthoVisionTrackInterface.get_available_tracks(file_path)
+
+    def test_incorrect_missing_value_representation(self):
+        """A marker other than the one passed raises an error that names the argument to set."""
+        file_path = TestEthoVisionCustomMissingValueMarker.FILE_PATH
+        expected_error = (
+            "Could not parse the Track value 'NA' as a number. If the export marks missing values with 'NA', "
+            "pass missing_value_representation='NA' (currently '-')."
+        )
+        with pytest.raises(ValueError, match=re.escape(expected_error)):
+            EthoVisionTrackInterface(file_path=file_path)
+
+    def test_uncommon_delimiter_must_be_passed(self, tmp_path):
+        """A delimiter outside the detected candidates raises without ``delimiter`` and reads with it."""
+        source_path = ETHOVISION_FOLDER_PATH / "txt/single_arena_single_subject/comma_delimited/morris_water_maze.txt"
+        file_path = tmp_path / "morris_water_maze_pipe_delimited.txt"
+        file_path.write_text(source_path.read_text(encoding="utf-8-sig").replace(",", "|"), encoding="utf-8-sig")
+
+        expected_error = (
+            f"Could not determine the delimiter used by '{file_path}'. Pass the character the export "
+            "separates columns with as delimiter."
+        )
+        with pytest.raises(ValueError, match=re.escape(expected_error)):
+            EthoVisionTrackInterface(file_path=file_path)
+
+        assert EthoVisionTrackInterface.get_available_tracks(file_path, delimiter="|") == (
+            EthoVisionTrackInterface.get_available_tracks(source_path)
+        )
+
+        comma_nwbfile = EthoVisionTrackInterface(file_path=source_path).create_nwbfile()
+        pipe_nwbfile = EthoVisionTrackInterface(file_path=file_path, delimiter="|").create_nwbfile()
+        comma_series = comma_nwbfile.processing["behavior"].data_interfaces
+        pipe_series = pipe_nwbfile.processing["behavior"].data_interfaces
+        assert set(pipe_series) == set(comma_series)
+        for name, series in comma_series.items():
+            np.testing.assert_array_equal(pipe_series[name].data, series.data)
+
+    def test_track_without_samples_is_listed_but_raises(self):
+        """A Track whose acquisition never started is declared in the export, so it is listed but cannot be converted."""
+        file_path = ETHOVISION_FOLDER_PATH / "excel/single_arena_multiple_subjects/no_data/two_subjects_no_data.xlsx"
+        expected_tracks = [
+            {"arena_name": "Rat Arena 1a", "subject_name": "Subject 1"},
+            {"arena_name": "Rat Arena 1a", "subject_name": "Subject 2"},
+        ]
+        assert EthoVisionTrackInterface.get_available_tracks(file_path) == expected_tracks
+
+        expected_error = (
+            "Track 'Rat Arena 1a' / 'Subject 1' in 'Track-Rat Arena 1a-Subject 1' logged no samples "
+            "('No samples logged for this track!'). The trial was recorded but acquisition never started, so there is "
+            "nothing to convert."
+        )
+        with pytest.raises(ValueError, match=re.escape(expected_error)):
+            EthoVisionTrackInterface(file_path=file_path, arena_name="Rat Arena 1a", subject_name="Subject 1")
