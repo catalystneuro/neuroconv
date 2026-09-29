@@ -407,6 +407,12 @@ class TestEthoVisionCustomMissingValueMarker(DataInterfaceTestMixin):
         nwbfile = read_nwb(nwbfile_path)
         behavior_module = nwbfile.processing["behavior"]
 
+        position = behavior_module["EthoVisionPositionArena1Subject1"]
+        assert position.description == (
+            "Center position for Subject 1 in Arena 1, from EthoVision. EthoVision header: Missed samples 0.0 %, "
+            "Subject not found 87.9 %, Interpolated samples 0.0 %."
+        )
+
         missing_value_count = sum(
             int(np.isnan(series.data[:]).sum()) for series in behavior_module.data_interfaces.values()
         )

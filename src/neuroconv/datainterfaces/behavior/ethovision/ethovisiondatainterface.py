@@ -207,9 +207,19 @@ class EthoVisionDataInterface(BaseEventsInterface):
             metadata["NWBFile"]["session_start_time"] = _parse_start_time(start_time=start_time)
 
         object_suffix = to_camel_case(to_snake_case(f"{self.arena} {self.subject}"))
+        position_description = f"Center position for {self.subject} in {self.arena}, from EthoVision."
+        # The export does not mark which samples were missed, not found or interpolated, so these
+        # header percentages are the only record of the Track's quality; they are kept as written.
+        quality_fields = [
+            f"{field} {self._track.header[field]}"
+            for field in ("Missed samples", "Subject not found", "Interpolated samples")
+            if self._track.header.get(field)
+        ]
+        if quality_fields:
+            position_description += f" EthoVision header: {', '.join(quality_fields)}."
         metadata["SpatialSeries"][self.metadata_key] = dict(
             name=f"EthoVisionPosition{object_suffix}",
-            description=f"Center position for {self.subject} in {self.arena}, from EthoVision.",
+            description=position_description,
             unit=self._track.units.get(X_COLUMN) or "n/a",
             reference_frame="Arena, as EthoVision's own calibration defines it.",
         )
