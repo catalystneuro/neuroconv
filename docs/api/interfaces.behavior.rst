@@ -17,6 +17,8 @@ EthoVision
 ----------
 .. autoclass:: neuroconv.datainterfaces.behavior.ethovision.ethovisiontrackinterface.EthoVisionTrackInterface
 
+.. autoclass:: neuroconv.datainterfaces.behavior.ethovision.ethovisionmanualscoringinterface.EthoVisionManualScoringInterface
+
 FicTrac
 -------
 .. automodule:: neuroconv.datainterfaces.behavior.fictrac.fictracdatainterface

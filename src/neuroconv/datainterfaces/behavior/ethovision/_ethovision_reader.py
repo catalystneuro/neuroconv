@@ -1,14 +1,17 @@
-"""Read Noldus EthoVision XT Track exports from Excel and text containers."""
+"""Read Noldus EthoVision XT Track exports from Excel and text containers, and Manual Scoring from Excel."""
 
 import csv
 import io
 import re
 from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
 
 import numpy as np
 
 TRACK_SHEET_PATTERN = re.compile(r"^Track-(?P<arena>.+)-Subject (?P<subject>.+)$")
+# The files write `Manual Scoring-<arena>`; Noldus documents `Manual scoring - <arena>`, so match either.
+SCORING_SHEET_PREFIX = "manual scoring-"
 
 TRIAL_TIME_COLUMN = "Trial time"
 RECORDING_TIME_COLUMN = "Recording time"
@@ -36,6 +39,31 @@ class EthoVisionTrackData:
     trial_time: np.ndarray
     recording_time: np.ndarray
     channels: dict[str, np.ndarray] = field(default_factory=dict)
+
+
+@dataclass
+class EthoVisionScoringEvent:
+    """One manual-scoring point event or paired state bout."""
+
+    subject: str
+    behavior: str
+    onset: float
+    duration: float | None
+
+
+@dataclass
+class EthoVisionScoringSheet:
+    """One arena's Manual Scoring sheet: its header fields and its events for every subject."""
+
+    arena: str
+    source_name: str
+    header: dict[str, str | None]
+    events: list[EthoVisionScoringEvent]
+
+    @property
+    def subjects(self) -> list[str]:
+        """The subjects with at least one scoring row, in order of first appearance."""
+        return list(dict.fromkeys(event.subject for event in self.events))
 
 
 def get_available_tracks(file_path, *, delimiter: str | None = None) -> list[dict[str, str]]:
@@ -92,6 +120,102 @@ def read_track(
     return _track_data_from_rows(
         rows=rows, source_name=source.source_name, missing_value_representation=missing_value_representation
     )
+
+
+def get_available_scorings(file_path) -> list[dict[str, str]]:
+    """Return the complete selector arguments for every arena and subject with Manual Scoring rows."""
+    return [
+        {"arena_name": sheet.arena, "subject_name": subject}
+        for sheet in read_scoring_sheets(file_path=file_path)
+        for subject in sheet.subjects
+    ]
+
+
+def select_scoring(
+    file_path,
+    *,
+    arena_name: str | None = None,
+    subject_name: str | None = None,
+) -> tuple[EthoVisionScoringSheet, str]:
+    """Resolve exactly one arena and subject with Manual Scoring rows, inferring selectors only when unambiguous."""
+    sheets = read_scoring_sheets(file_path=file_path)
+    available = [(sheet, subject) for sheet in sheets for subject in sheet.subjects]
+    selected = [
+        (sheet, subject)
+        for sheet, subject in available
+        if (arena_name is None or sheet.arena == arena_name) and (subject_name is None or subject == subject_name)
+    ]
+    if len(selected) == 1:
+        return selected[0]
+
+    available_identities = [(sheet.arena, subject) for sheet, subject in available]
+    if not selected:
+        raise ValueError(
+            f"No EthoVision Manual Scoring matches arena_name={arena_name!r}, subject_name={subject_name!r} "
+            f"in '{file_path}'. Available scorings: {available_identities}."
+        )
+    raise ValueError(
+        f"arena_name={arena_name!r}, subject_name={subject_name!r} does not identify one Manual Scoring in "
+        f"'{file_path}'. Matching scorings: {[(sheet.arena, subject) for sheet, subject in selected]}."
+    )
+
+
+def read_scoring_sheets(file_path) -> list[EthoVisionScoringSheet]:
+    """Read every Manual Scoring sheet of an Excel workbook; text exports raise."""
+    path = Path(file_path)
+    if path.suffix.lower() != ".xlsx":
+        raise ValueError(
+            f"'{path.name}' is a text export. EthoVisionManualScoringInterface reads Manual Scoring only from the "
+            "Manual Scoring sheet of an Excel workbook; text Manual Scoring logs are not supported yet because none "
+            "was available to build or test a reader against. If you have one, please open an issue at "
+            "https://github.com/catalystneuro/neuroconv/issues with a sample file."
+        )
+
+    workbook = _load_workbook(file_path=path)
+    try:
+        sheet_rows = {
+            sheet_name: [list(row) for row in workbook[sheet_name].iter_rows(values_only=True)]
+            for sheet_name in workbook.sheetnames
+            if _normalize_scoring_sheet_name(sheet_name).startswith(SCORING_SHEET_PREFIX)
+        }
+    finally:
+        workbook.close()
+
+    sheets = []
+    for sheet_name, rows in sheet_rows.items():
+        header, column_names, _units, data_rows = _split_header_and_table(rows=rows, source_name=sheet_name)
+        # Excel truncates sheet names to 31 characters, so the arena comes from the header rather than the name.
+        arena = header.get("Arena name")
+        if not arena:
+            raise ValueError(f"'{sheet_name}' does not declare 'Arena name' in its header.")
+        events = _scoring_events_from_rows(column_names=column_names, data_rows=data_rows, source_name=sheet_name)
+        sheets.append(EthoVisionScoringSheet(arena=str(arena), source_name=sheet_name, header=header, events=events))
+    return sheets
+
+
+def _normalize_scoring_sheet_name(name: str) -> str:
+    return re.sub(r"\s*-\s*", "-", name.strip().lower())
+
+
+def parse_start_time(*, start_time: str) -> datetime:
+    """Parse an EthoVision timestamp, whose date order and fractional separator follow the writer's locale.
+
+    The export declares no locale, so the two are read together: a file that writes the seconds
+    fraction with a comma also writes the date day first, and one that writes a period writes it
+    month first. A component above 12 settles the order on its own.
+    """
+    date_part, _, time_part = start_time.partition(" ")
+    first, second, year = date_part.split("/")
+    day_first = "," in time_part
+    if int(first) > 12:
+        day_first = True
+    elif int(second) > 12:
+        day_first = False
+    day, month = (first, second) if day_first else (second, first)
+    time_part = time_part.replace(",", ".")
+    if "." not in time_part:
+        time_part = f"{time_part}.0"
+    return datetime.strptime(f"{month}/{day}/{year} {time_part}", "%m/%d/%Y %H:%M:%S.%f")
 
 
 def _get_track_sources(file_path, *, delimiter: str | None = None) -> list[EthoVisionTrackSource]:
@@ -157,6 +281,47 @@ def _track_data_from_rows(
         recording_time=recording_time,
         channels=columns,
     )
+
+
+def _scoring_events_from_rows(
+    *, column_names: list[str], data_rows: list[list], source_name: str
+) -> list[EthoVisionScoringEvent]:
+    required_columns = {TRIAL_TIME_COLUMN, "Subject", "Behavior", "Event"}
+    missing_columns = required_columns.difference(column_names)
+    if missing_columns:
+        raise ValueError(f"'{source_name}' is missing Manual Scoring columns: {sorted(missing_columns)}.")
+
+    subject_index = column_names.index("Subject")
+    behavior_index = column_names.index("Behavior")
+    event_index = column_names.index("Event")
+    trial_time_index = column_names.index(TRIAL_TIME_COLUMN)
+
+    events: list[EthoVisionScoringEvent] = []
+    open_bouts: dict[tuple[str, str], float] = {}
+    for row in data_rows:
+        subject, behavior, event = row[subject_index], row[behavior_index], str(row[event_index]).lower()
+        onset = float(row[trial_time_index])
+        key = (subject, behavior)
+        if event == "point event":
+            events.append(EthoVisionScoringEvent(subject=subject, behavior=behavior, onset=onset, duration=None))
+        elif event == "state start":
+            open_bouts[key] = onset
+        elif event == "state stop":
+            if key not in open_bouts:
+                raise ValueError(
+                    f"'{source_name}' has a 'state stop' for subject '{subject}', behavior '{behavior}' "
+                    f"at {TRIAL_TIME_COLUMN}={onset} with no preceding 'state start' to close."
+                )
+            start = open_bouts.pop(key)
+            events.append(
+                EthoVisionScoringEvent(subject=subject, behavior=behavior, onset=start, duration=onset - start)
+            )
+        else:
+            raise ValueError(f"'{source_name}' has an unrecognized Event value '{row[event_index]}'.")
+
+    for (subject, behavior), onset in open_bouts.items():
+        events.append(EthoVisionScoringEvent(subject=subject, behavior=behavior, onset=onset, duration=np.nan))
+    return events
 
 
 def _validate_file_path(file_path, *, delimiter: str | None = None) -> Path:
