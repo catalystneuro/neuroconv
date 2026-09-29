@@ -1,11 +1,11 @@
 """Tests for EthoVisionDataInterface."""
 
 import re
-from datetime import datetime, timezone
+from datetime import datetime
 
 import numpy as np
 import pytest
-from pynwb import NWBFile, read_nwb
+from pynwb import read_nwb
 
 from neuroconv.datainterfaces.behavior.ethovision.ethovisiondatainterface import EthoVisionDataInterface
 from neuroconv.tools.testing.data_interface_mixins import DataInterfaceTestMixin
@@ -118,12 +118,7 @@ class TestEthoVisionTrackAndManualScoring(DataInterfaceTestMixin):
             reference_sync_times=np.array([10.0, 410.0]),
         )
 
-        nwbfile = NWBFile(
-            session_description="alignment test",
-            identifier="alignment test",
-            session_start_time=datetime.now(timezone.utc),
-        )
-        interface.add_to_nwbfile(nwbfile=nwbfile)
+        nwbfile = interface.create_nwbfile()
 
         position = nwbfile.processing["behavior"]["EthoVisionPositionArena1Subject1"]
         assert np.isclose(position.timestamps[0], 12.134)
@@ -226,12 +221,7 @@ class TestEthoVisionMissingSamples(DataInterfaceTestMixin):
         metadata["SpatialSeries"][metadata_key]["name"] = "MouseOneCenter"
         metadata["TimeSeries"][control_metadata_key]["name"] = "MouseOneControl"
 
-        nwbfile = NWBFile(
-            session_description="metadata naming test",
-            identifier="metadata naming test",
-            session_start_time=datetime.now(timezone.utc),
-        )
-        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+        nwbfile = interface.create_nwbfile(metadata=metadata)
 
         behavior_module = nwbfile.processing["behavior"]
         assert "MouseOneCenter" in behavior_module.data_interfaces
@@ -558,15 +548,8 @@ def test_delimiter_reads_an_undetected_delimiter(tmp_path):
     )
 
     def write_behavior_series(interface):
-        nwbfile = NWBFile(
-            session_description="ethovision test",
-            identifier="ethovision test",
-            session_start_time=datetime.now(timezone.utc),
-        )
-        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
-        return {
-            name: np.asarray(series.data) for name, series in nwbfile.processing["behavior"].data_interfaces.items()
-        }
+        behavior_module = interface.create_nwbfile().processing["behavior"]
+        return {name: np.asarray(series.data) for name, series in behavior_module.data_interfaces.items()}
 
     comma_series = write_behavior_series(EthoVisionDataInterface(file_path=source_path))
     pipe_series = write_behavior_series(EthoVisionDataInterface(file_path=file_path, delimiter="|"))
@@ -608,13 +591,7 @@ def test_manual_scoring_reads_the_documented_spellings(tmp_path):
     workbook.save(file_path)
 
     def write_events(interface):
-        nwbfile = NWBFile(
-            session_description="ethovision test",
-            identifier="ethovision test",
-            session_start_time=datetime.now(timezone.utc),
-        )
-        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
-        return nwbfile.events["EthoVisionManualScoringArena1"].to_dataframe()
+        return interface.create_nwbfile().events["EthoVisionManualScoringArena1"].to_dataframe()
 
     source_events = write_events(EthoVisionDataInterface(file_path=source_path))
     documented_events = write_events(EthoVisionDataInterface(file_path=file_path))
