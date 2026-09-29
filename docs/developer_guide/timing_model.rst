@@ -181,23 +181,15 @@ The hierarchy follows public composition boundaries. A composite interface expos
 and keeps its internal interfaces private, even if those interfaces help it read or write the data. Its users see
 the timing units the composite presents, without needing to follow its internal implementation.
 
-Edge cases
+Validation
 ----------
 
-Placement depends on finding a meaningful start, and some objects have none. An **empty object** has no samples or
-events, so collection-level ``move_start_to`` excludes it when finding the earliest start. Other members can still
-determine the placement, but the operation fails if every object is empty. Object-level ``move_start_to`` rejects an
-empty object for the same reason: there is no start to move.
+Alignment validates requirements of the timing operation itself: the selected object exists, supports the requested
+operation, and receives compatible inputs, such as matching synchronization-array shapes.
 
-Having samples is not sufficient if their start is invalid. A **nonfinite time** is ``NaN`` (not a number), positive
-infinity, or negative infinity, none of which defines a meaningful placement. ``move_start_to`` therefore rejects a
-nonfinite target or a nonfinite start in any selected nonempty object. The target and all relevant starts are checked
-before offsets change, so a failed placement does not leave only part of the collection shifted.
-
-Successful alignment operations still leave the writer responsible for constraints on how its objects fit together.
-For multi-file video and audio, each file defaults to start at zero, and those defaults overlap when several nonempty
-files are supplied. In the supplied file order, each file's first sample must be strictly later than the previous
-file's last sample. The writer rejects overlapping or reversed placements, including a shared boundary timestamp.
-Checking the resulting times makes the outcome independent of which alignment methods were called or at which
-scope. A common shift preserves an overlap, so it does not make unplaced files valid. This establishes ordering only:
-a first file left at zero can pass when later files start after it ends.
+These checks establish that an operation can be performed, not that it is meaningful for the data. Alignment
+cannot know whether paired pulses represent the same events or whether objects must share timestamps.
+Constraints that depend on what the timestamps represent belong to the interface. For example, video files
+combined into one series must have ordered, nonoverlapping timestamps, and pose keypoints representing the same
+samples should have matching timestamps. The interface has the context to reject invalid file ordering or warn
+about inconsistent pose timestamps.
