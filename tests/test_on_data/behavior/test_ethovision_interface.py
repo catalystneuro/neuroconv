@@ -317,8 +317,8 @@ class TestEthoVisionConverterPipeMultiSubject:
         assert set(behavior_module.data_interfaces) == expected_names
 
 
-class TestEthoVisionCsv(DataInterfaceTestMixin):
-    FILE_PATH = ETHOVISION_FOLDER_PATH / "csv/single_arena_single_subject/track_only/morris_water_maze.csv"
+class TestEthoVisionCommaDelimitedTxt(DataInterfaceTestMixin):
+    FILE_PATH = ETHOVISION_FOLDER_PATH / "txt/single_arena_single_subject/comma_delimited/morris_water_maze.txt"
     data_interface_cls = EthoVisionDataInterface
     interface_kwargs = dict(file_path=FILE_PATH)
     save_directory = OUTPUT_PATH
