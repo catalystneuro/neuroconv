@@ -45,7 +45,7 @@ class TestEthoVisionTrackAndManualScoring(DataInterfaceTestMixin):
         assert position.data.shape == (self.expected_number_of_samples, 2)
         assert np.isnan(position.data[:]).any(axis=1).sum() == self.expected_number_of_missing_positions
         assert position.unit == self.expected_position_unit
-        assert position.get_timestamps()[0] == self.expected_first_timestamp
+        assert position.get_starting_time() == self.expected_first_timestamp
 
         expected_channel_names = {
             "EthoVisionAreaArena1Subject1",
@@ -117,7 +117,7 @@ class TestEthoVisionMissingSamples(DataInterfaceTestMixin):
         assert position.data.shape == (self.expected_number_of_samples, 2)
         assert np.isnan(position.data[:]).any(axis=1).sum() == self.expected_number_of_missing_positions
         assert position.unit == self.expected_position_unit
-        assert position.get_timestamps()[0] == self.expected_first_timestamp
+        assert position.get_starting_time() == self.expected_first_timestamp
 
         expected_channel_stems = {
             "XNose",
@@ -170,7 +170,7 @@ class TestEthoVisionCommaDelimitedTxt(DataInterfaceTestMixin):
         assert position.data.shape == (self.expected_number_of_samples, 2)
         assert np.isnan(position.data[:]).any(axis=1).sum() == self.expected_number_of_missing_positions
         assert position.unit == self.expected_position_unit
-        assert position.get_timestamps()[0] == self.expected_first_timestamp
+        assert position.get_starting_time() == self.expected_first_timestamp
 
         expected_names = {
             "EthoVisionPositionArena1Subject1",
@@ -222,7 +222,7 @@ class TestEthoVisionUtf16Txt(DataInterfaceTestMixin):
         assert position.data.shape == (self.expected_number_of_samples, 2)
         assert np.isnan(position.data[:]).any(axis=1).sum() == self.expected_number_of_missing_positions
         assert position.unit == self.expected_position_unit
-        assert position.get_timestamps()[0] == self.expected_first_timestamp
+        assert position.get_starting_time() == self.expected_first_timestamp
         assert behavior_module["EthoVisionVelocityArena1Subject1"].unit == "cm/s"
 
     def test_available_tracks(self):
@@ -258,7 +258,7 @@ class TestEthoVisionDecimalCommaHeaderTxt(DataInterfaceTestMixin):
         assert position.data.shape == (self.expected_number_of_samples, 2)
         assert np.isnan(position.data[:]).any(axis=1).sum() == self.expected_number_of_missing_positions
         assert position.unit == self.expected_position_unit
-        assert position.get_timestamps()[0] == self.expected_first_timestamp
+        assert position.get_starting_time() == self.expected_first_timestamp
         assert position.description == (
             "Center position for Subject 1 in Arena 2, from EthoVision. EthoVision header: Missed samples 0,0 %, "
             "Subject not found 16,5 %."
@@ -310,7 +310,7 @@ class TestEthoVisionCustomMissingValueMarker(DataInterfaceTestMixin):
         assert position.data.shape == (self.expected_number_of_samples, 2)
         assert np.isnan(position.data[:]).any(axis=1).sum() == self.expected_number_of_missing_positions
         assert position.unit == self.expected_position_unit
-        assert position.get_timestamps()[0] == self.expected_first_timestamp
+        assert position.get_starting_time() == self.expected_first_timestamp
         assert position.description == (
             "Center position for Subject 1 in Arena 1, from EthoVision. EthoVision header: Missed samples 0.0 %, "
             "Subject not found 87.9 %, Interpolated samples 0.0 %."
@@ -372,7 +372,7 @@ class TestEthoVisionUndetectedSubject(DataInterfaceTestMixin):
         assert position.data.shape == (self.expected_number_of_samples, 2)
         assert np.isnan(position.data[:]).any(axis=1).sum() == self.expected_number_of_missing_positions
         assert position.unit == self.expected_position_unit
-        assert position.get_timestamps()[0] == self.expected_first_timestamp
+        assert position.get_starting_time() == self.expected_first_timestamp
         assert position.description == (
             "Center position for Subject 2 in Arena 1, from EthoVision. EthoVision header: Missed samples 0.0 %, "
             "Subject not found 96.1 %, Interpolated samples 0.0 %."
@@ -413,7 +413,7 @@ class TestEthoVisionMultipleArenasOneSubjectEach(DataInterfaceTestMixin):
         assert position.data.shape == (self.expected_number_of_samples, 2)
         assert np.isnan(position.data[:]).any(axis=1).sum() == self.expected_number_of_missing_positions
         assert position.unit == self.expected_position_unit
-        assert position.get_timestamps()[0] == self.expected_first_timestamp
+        assert position.get_starting_time() == self.expected_first_timestamp
 
     def test_available_tracks(self):
         assert EthoVisionTrackInterface.get_available_tracks(self.file_path) == self.expected_available_tracks
@@ -452,7 +452,7 @@ class TestEthoVisionMultipleArenasMultipleSubjects(DataInterfaceTestMixin):
         assert position.data.shape == (self.expected_number_of_samples, 2)
         assert np.isnan(position.data[:]).any(axis=1).sum() == self.expected_number_of_missing_positions
         assert position.unit == self.expected_position_unit
-        assert position.get_timestamps()[0] == self.expected_first_timestamp
+        assert position.get_starting_time() == self.expected_first_timestamp
 
     def test_available_tracks(self):
         assert EthoVisionTrackInterface.get_available_tracks(self.file_path) == self.expected_available_tracks
