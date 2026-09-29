@@ -304,13 +304,18 @@ def _split_header_and_table(rows: list[list], *, source_name: str):
 
 
 def _validate_track_columns(*, column_names: list[str], source_name: str) -> None:
-    """Reject tables that share the EthoVision time columns but carry no tracked positions."""
+    """Reject tables without tracked positions, and tables whose column labels repeat."""
     required_columns = {TRIAL_TIME_COLUMN, RECORDING_TIME_COLUMN, X_COLUMN, Y_COLUMN}
     missing_columns = required_columns.difference(column_names)
     if missing_columns:
         raise ValueError(
             f"'{source_name}' is not a Track export; missing columns: {sorted(missing_columns)}. "
             "Hardware and Trial Control exports share the time columns but hold no tracked positions."
+        )
+    duplicated_columns = sorted({name for name in column_names if column_names.count(name) > 1})
+    if duplicated_columns:
+        raise ValueError(
+            f"'{source_name}' repeats the column labels {duplicated_columns}, so they cannot be told apart."
         )
 
 

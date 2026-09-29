@@ -1,3 +1,4 @@
+import warnings
 from datetime import datetime
 from pathlib import Path
 
@@ -127,16 +128,13 @@ class EthoVisionDataInterface(BaseEventsInterface):
             missing_value_representation=missing_value_representation,
             delimiter=delimiter,
         )
+        self._channel_snake_names = _number_clashing_snake_names(
+            channel_names=[name for name in self._track.channels if name not in (X_COLUMN, Y_COLUMN)]
+        )
         self._time_series_metadata_keys = {
-            channel_name: f"{self.metadata_key}_{to_snake_case(channel_name)}"
-            for channel_name in self._track.channels
-            if channel_name not in (X_COLUMN, Y_COLUMN)
+            channel_name: f"{self.metadata_key}_{snake_name}"
+            for channel_name, snake_name in self._channel_snake_names.items()
         }
-        if len(set(self._time_series_metadata_keys.values())) != len(self._time_series_metadata_keys):
-            raise ValueError(
-                "EthoVision channel names must remain distinct after conversion to metadata keys. "
-                f"Derived keys: {self._time_series_metadata_keys}."
-            )
         self.alignment._register_series(key=self.metadata_key, get_native_times=lambda: self._track.trial_time)
 
         scoring_events = read_scoring_events(file_path=self.file_path, arena_name=self.arena)
@@ -217,7 +215,7 @@ class EthoVisionDataInterface(BaseEventsInterface):
         )
         metadata["TimeSeries"] = {
             self._time_series_metadata_keys[channel_name]: dict(
-                name=(f"EthoVision{to_camel_case(to_snake_case(channel_name))}{object_suffix}"),
+                name=(f"EthoVision{to_camel_case(self._channel_snake_names[channel_name])}{object_suffix}"),
                 description=f"'{channel_name}' channel from an EthoVision Track sheet.",
                 unit=self._track.units.get(channel_name) or "n/a",
             )
@@ -388,6 +386,34 @@ class EthoVisionDataInterface(BaseEventsInterface):
                 subject=event.subject,
                 arena=arena,
             )
+
+
+def _number_clashing_snake_names(*, channel_names: list[str]) -> dict[str, str]:
+    """Map channel names to snake-case names, numbering later ones that clash with an earlier one.
+
+    EthoVision labels can differ only by punctuation, such as ``Zone1(Zone 1 / Center-point)`` and
+    ``Zone1(Zone-1 / Center-point)``, which snake-case to the same name. The first keeps the name and
+    later ones get ``_2``, ``_3`` in column order, with a warning naming the source columns.
+    """
+    snake_names = {}
+    channels_by_base_name = {}
+    for channel_name in channel_names:
+        base_name = to_snake_case(channel_name)
+        clashing_channels = channels_by_base_name.setdefault(base_name, [])
+        clashing_channels.append(channel_name)
+        number = len(clashing_channels)
+        snake_names[channel_name] = base_name if number == 1 else f"{base_name}_{number}"
+
+    for base_name, clashing_channels in channels_by_base_name.items():
+        if len(clashing_channels) > 1:
+            numbered = ", ".join(f"'{name}' -> '{snake_names[name]}'" for name in clashing_channels)
+            warnings.warn(
+                f"EthoVision channels {clashing_channels} all convert to the name '{base_name}', so they are "
+                f"numbered in column order: {numbered}.",
+                UserWarning,
+                stacklevel=3,
+            )
+    return snake_names
 
 
 def _parse_start_time(*, start_time: str) -> datetime:

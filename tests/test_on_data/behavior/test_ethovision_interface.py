@@ -385,6 +385,52 @@ class TestEthoVisionTxt(DataInterfaceTestMixin):
         assert EthoVisionDataInterface.get_available_tracks(self.FILE_PATH) == expected_tracks
 
 
+class TestEthoVisionCustomMissingValueMarker(DataInterfaceTestMixin):
+    """A public CC0 export written with `NA` as its missing-value marker, whose zone labels clash.
+
+    `Zone1(Zone 1 / Center-point)` and `Zone1(Zone-1 / Center-point)` are two zones whose labels differ only by
+    punctuation, so they convert to the same name; the second is numbered, and likewise for `Zone2`.
+    """
+
+    FILE_PATH = (
+        ETHOVISION_FOLDER_PATH
+        / "excel/single_arena_single_subject/custom_missing_value_marker/missing_values_as_na.xlsx"
+    )
+    data_interface_cls = EthoVisionDataInterface
+    interface_kwargs = dict(file_path=FILE_PATH, missing_value_representation="NA")
+    save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2022, 9, 3, 16, 30, 44, 40000)
+
+    def check_read_nwb(self, nwbfile_path: str):
+        nwbfile = read_nwb(nwbfile_path)
+        behavior_module = nwbfile.processing["behavior"]
+
+        missing_value_count = sum(
+            int(np.isnan(series.data[:]).sum()) for series in behavior_module.data_interfaces.values()
+        )
+        assert missing_value_count == 9279
+
+        zone_1 = behavior_module["EthoVisionZone1Zone1CenterPointArena1Subject1"]
+        zone_1_hyphenated = behavior_module["EthoVisionZone1Zone1CenterPoint2Arena1Subject1"]
+        assert zone_1.description == "'Zone1(Zone 1 / Center-point)' channel from an EthoVision Track sheet."
+        assert zone_1_hyphenated.description == "'Zone1(Zone-1 / Center-point)' channel from an EthoVision Track sheet."
+        assert np.nansum(zone_1.data[:]) == 36
+        assert np.nansum(zone_1_hyphenated.data[:]) == 0
+        assert "EthoVisionZone2Zone2CenterPoint2Arena1Subject1" in behavior_module.data_interfaces
+
+    def test_clashing_channel_names_warn(self):
+        expected_warning = (
+            "EthoVision channels ['Zone1(Zone 1 / Center-point)', 'Zone1(Zone-1 / Center-point)'] all convert to the "
+            "name 'zone1_zone_1_center_point', so they are numbered in column order: "
+            "'Zone1(Zone 1 / Center-point)' -> 'zone1_zone_1_center_point', "
+            "'Zone1(Zone-1 / Center-point)' -> 'zone1_zone_1_center_point_2'."
+        )
+        with pytest.warns(UserWarning, match=re.escape(expected_warning)):
+            EthoVisionDataInterface(**self.interface_kwargs)
+
+
 class TestEthoVisionMultipleArenasSingleSubject(DataInterfaceTestMixin):
     FILE_PATH = (
         ETHOVISION_FOLDER_PATH / "excel/multiple_arenas_one_subject_each/track_only/two_arenas_one_subject_each.xlsx"
