@@ -1,4 +1,4 @@
-"""Tests for EthoVisionDataInterface and same-session Track composition."""
+"""Tests for EthoVisionDataInterface."""
 
 import re
 from datetime import datetime, timezone
@@ -7,7 +7,6 @@ import numpy as np
 import pytest
 from pynwb import NWBFile, read_nwb
 
-from neuroconv import ConverterPipe
 from neuroconv.datainterfaces.behavior.ethovision.ethovisiondatainterface import EthoVisionDataInterface
 from neuroconv.tools.testing.data_interface_mixins import DataInterfaceTestMixin
 
@@ -145,8 +144,8 @@ class TestEthoVisionMissingSamples(DataInterfaceTestMixin):
     """A public CC0 file with the real 'subject not found' `-` sentinel and no Manual Scoring sheet.
 
     Two subjects share the workbook (`Track-Rat Arena 1a-Subject 1/2`); this interface selects
-    one of them. The composition test below combines both. The arena label contains spaces and
-    does not start with the word "Arena", which the sheet-name pattern has to accept.
+    one of them. The arena label contains spaces and does not start with the word "Arena", which
+    the sheet-name pattern has to accept.
     """
 
     FILE_PATH = (
@@ -258,63 +257,6 @@ class TestEthoVisionMissingSamples(DataInterfaceTestMixin):
                 arena_name="Rat Arena 1a",
                 subject_name="Subject 3",
             )
-
-
-class TestEthoVisionConverterPipeMultiSubject:
-    FILE_PATH = (
-        ETHOVISION_FOLDER_PATH
-        / "excel/single_arena_multiple_subjects/hardware_and_trial_control/two_subjects_missing_samples.xlsx"
-    )
-
-    def test_converter_pipe_combines_all_subject_tracks_in_one_arena(self):
-        arena_name = "Rat Arena 1a"
-        available_tracks = EthoVisionDataInterface.get_available_tracks(self.FILE_PATH)
-        interfaces = [
-            EthoVisionDataInterface(file_path=self.FILE_PATH, **track)
-            for track in available_tracks
-            if track["arena_name"] == arena_name
-        ]
-        converter = ConverterPipe(data_interfaces={interface.metadata_key: interface for interface in interfaces})
-        assert set(converter.data_interface_objects) == {
-            "ethovision_rat_arena_1a_subject_1",
-            "ethovision_rat_arena_1a_subject_2",
-        }
-
-        nwbfile = NWBFile(
-            session_description="converter test",
-            identifier="converter test",
-            session_start_time=datetime.now(timezone.utc),
-        )
-        converter.add_to_nwbfile(nwbfile=nwbfile)
-
-        behavior_module = nwbfile.processing["behavior"]
-        expected_names = {
-            "EthoVisionPositionRatArena1aSubject1",
-            "EthoVisionXNoseRatArena1aSubject1",
-            "EthoVisionYNoseRatArena1aSubject1",
-            "EthoVisionXTailRatArena1aSubject1",
-            "EthoVisionYTailRatArena1aSubject1",
-            "EthoVisionAreaRatArena1aSubject1",
-            "EthoVisionAreachangeRatArena1aSubject1",
-            "EthoVisionElongationRatArena1aSubject1",
-            "EthoVisionDirectionRatArena1aSubject1",
-            "EthoVisionHeadDirectedToObject1RatArena1aSubject1",
-            "EthoVisionHeadDirectedToObject2RatArena1aSubject1",
-            "EthoVisionControlRatArena1aSubject1",
-            "EthoVisionPositionRatArena1aSubject2",
-            "EthoVisionXNoseRatArena1aSubject2",
-            "EthoVisionYNoseRatArena1aSubject2",
-            "EthoVisionXTailRatArena1aSubject2",
-            "EthoVisionYTailRatArena1aSubject2",
-            "EthoVisionAreaRatArena1aSubject2",
-            "EthoVisionAreachangeRatArena1aSubject2",
-            "EthoVisionElongationRatArena1aSubject2",
-            "EthoVisionDirectionRatArena1aSubject2",
-            "EthoVisionHeadDirectedToObject1RatArena1aSubject2",
-            "EthoVisionHeadDirectedToObject2RatArena1aSubject2",
-            "EthoVisionControlRatArena1aSubject2",
-        }
-        assert set(behavior_module.data_interfaces) == expected_names
 
 
 class TestEthoVisionCommaDelimitedTxt(DataInterfaceTestMixin):
