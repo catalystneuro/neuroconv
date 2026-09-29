@@ -537,3 +537,32 @@ def test_track_without_samples_is_listed_but_raises():
     )
     with pytest.raises(ValueError, match=re.escape(expected_error)):
         EthoVisionDataInterface(file_path=file_path, arena_name="Rat Arena 1a", subject_name="Subject 1")
+
+
+def test_manual_scoring_reads_the_documented_spellings(tmp_path):
+    """The Noldus manuals spell the sheet `Manual scoring - <arena>` and capitalize `State start`; both read the same."""
+    import openpyxl
+
+    source_path = ETHOVISION_FOLDER_PATH / "excel/single_arena_single_subject/track_and_manual_scoring/two_c57.xlsx"
+    workbook = openpyxl.load_workbook(source_path)
+    scoring_sheet = workbook["Manual Scoring-Arena 1"]
+    scoring_sheet.title = "Manual scoring - Arena 1"
+    for (cell,) in scoring_sheet.iter_rows(min_col=5, max_col=5):
+        if cell.value in ("state start", "state stop", "point event"):
+            cell.value = cell.value.capitalize()
+    file_path = tmp_path / "two_c57_documented_spellings.xlsx"
+    workbook.save(file_path)
+
+    def write_events(interface):
+        nwbfile = NWBFile(
+            session_description="ethovision test",
+            identifier="ethovision test",
+            session_start_time=datetime.now(timezone.utc),
+        )
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
+        return nwbfile.events["EthoVisionManualScoringArena1"].to_dataframe()
+
+    source_events = write_events(EthoVisionDataInterface(file_path=source_path))
+    documented_events = write_events(EthoVisionDataInterface(file_path=file_path))
+    assert len(source_events) == 35
+    assert documented_events.equals(source_events)

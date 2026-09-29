@@ -110,15 +110,22 @@ def read_scoring_events(file_path, *, arena_name: str) -> list[EthoVisionScoring
     if path.suffix.lower() != ".xlsx":
         return []
 
-    sheet_name = f"Manual Scoring-{arena_name}"
+    # The files write `Manual Scoring-<arena>`; Noldus documents `Manual scoring - <arena>`, so match either.
+    expected_name = _normalize_scoring_sheet_name(f"Manual Scoring-{arena_name}")
     workbook = _load_workbook(file_path=path)
     try:
-        if sheet_name not in workbook.sheetnames:
+        matching_sheets = [name for name in workbook.sheetnames if _normalize_scoring_sheet_name(name) == expected_name]
+        if not matching_sheets:
             return []
+        sheet_name = matching_sheets[0]
         rows = [list(row) for row in workbook[sheet_name].iter_rows(values_only=True)]
     finally:
         workbook.close()
     return _scoring_events_from_rows(rows=rows, source_name=sheet_name)
+
+
+def _normalize_scoring_sheet_name(name: str) -> str:
+    return re.sub(r"\s*-\s*", "-", name.strip().lower())
 
 
 def _get_track_sources(file_path, *, delimiter: str | None = None) -> list[EthoVisionTrackSource]:
@@ -201,7 +208,7 @@ def _scoring_events_from_rows(rows: list[list], *, source_name: str) -> list[Eth
     events: list[EthoVisionScoringEvent] = []
     open_bouts: dict[tuple[str, str], float] = {}
     for row in data_rows:
-        subject, behavior, event = row[subject_index], row[behavior_index], row[event_index]
+        subject, behavior, event = row[subject_index], row[behavior_index], str(row[event_index]).lower()
         onset = float(row[trial_time_index])
         key = (subject, behavior)
         if event == "point event":
@@ -219,7 +226,7 @@ def _scoring_events_from_rows(rows: list[list], *, source_name: str) -> list[Eth
                 EthoVisionScoringEvent(subject=subject, behavior=behavior, onset=start, duration=onset - start)
             )
         else:
-            raise ValueError(f"'{source_name}' has an unrecognized Event value '{event}'.")
+            raise ValueError(f"'{source_name}' has an unrecognized Event value '{row[event_index]}'.")
 
     for (subject, behavior), onset in open_bouts.items():
         events.append(EthoVisionScoringEvent(subject=subject, behavior=behavior, onset=onset, duration=np.nan))
