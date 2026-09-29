@@ -525,3 +525,21 @@ def test_delimiter_reads_an_undetected_delimiter(tmp_path):
     assert set(pipe_series) == set(comma_series)
     for name, data in comma_series.items():
         np.testing.assert_array_equal(pipe_series[name], data)
+
+
+def test_track_without_samples_is_listed_but_raises():
+    """A Track whose acquisition never started is declared in the export, so it is listed but cannot be converted."""
+    file_path = ETHOVISION_FOLDER_PATH / "excel/single_arena_multiple_subjects/no_data/two_subjects_no_data.xlsx"
+    expected_tracks = [
+        {"arena_name": "Rat Arena 1a", "subject_name": "Subject 1"},
+        {"arena_name": "Rat Arena 1a", "subject_name": "Subject 2"},
+    ]
+    assert EthoVisionDataInterface.get_available_tracks(file_path) == expected_tracks
+
+    expected_error = (
+        "Track 'Rat Arena 1a' / 'Subject 1' in 'Track-Rat Arena 1a-Subject 1' logged no samples "
+        "('No samples logged for this track!'). The trial was recorded but acquisition never started, so there is "
+        "nothing to convert."
+    )
+    with pytest.raises(ValueError, match=re.escape(expected_error)):
+        EthoVisionDataInterface(file_path=file_path, arena_name="Rat Arena 1a", subject_name="Subject 1")
