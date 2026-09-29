@@ -185,7 +185,7 @@ events = [
 
 ## Ecephys
 ecephys_minimal = [  # Keeps the minimal versions of ecephys dependencies in the repo
-    "spikeinterface>=0.104.7",
+    "spikeinterface>=0.105.0",
     "neo>=0.14.5",
     "natsort>=7.1.1",
 ]
@@ -649,7 +649,7 @@ docs = [
     "sphinx-design==0.7.0; python_version>='3.11'",  # Used by metadata_templates.rst to show the YAML and JSON forms of each template in tabs.
     "pydata_sphinx_theme==0.16.1",  # Latest as of April 2025.
     "roiextractors",  # Needed for the API documentation
-    "spikeinterface>=0.104.7",  # Needed for the API documentation
+    "spikeinterface>=0.105.0",  # Needed for the API documentation
     "natsort>=7.1.1",  # Needed for the API documentation
     "pytest" # used to build the documentation for tools.testing
 ]
