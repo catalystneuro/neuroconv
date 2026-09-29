@@ -1424,12 +1424,19 @@ def _add_electrodes_to_nwbfile(
     # Location in spikeinterface is equivalent to rel_x, rel_y, rel_z in the nwb standard
     # The "location" property is removed in SpikeInterface v0.105.0. Use the get_channel_locations
     # function instead
+    locations_data = None
     if recording.has_probe():
-        data = recording.get_channel_locations()
+        locations_data = recording.get_channel_locations()
+    elif "location" in data_to_add:
+        # Some Interfaces set the 'location' property instead of the probe to
+        # prevent modifying groups (e.g. CellExplorer)
+        locations_data = data_to_add["location"]["data"]
+        data_to_add.pop("location")
+    if locations_data is not None:
         column_number_to_property = {0: "rel_x", 1: "rel_y", 2: "rel_z"}
-        for column_number in range(data.shape[1]):
+        for column_number in range(locations_data.shape[1]):
             property = column_number_to_property[column_number]
-            data_to_add[property] = dict(description=property, data=data[:, column_number], index=False)
+            data_to_add[property] = dict(description=property, data=locations_data[:, column_number], index=False)
 
     # In the electrode table location is the brain area of spikeinterface
     if "brain_area" in data_to_add:
