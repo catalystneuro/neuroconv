@@ -111,6 +111,10 @@ class InscopixGpioEventsInterface(BaseEventsInterface):
         _validate_detection_configuration(detection_configuration, self._available_signals)
         self._detection_configuration = detection_configuration
 
+    def get_event_type_source_ids(self) -> list[str]:
+        """The event types the configuration resolves to, read from nothing."""
+        return _get_event_type_source_ids(self._detection_configuration)
+
     @staticmethod
     def _get_available_signals(file_path) -> dict[str, dict]:
         """Return ``signal_source_id -> {kind, channel_index}`` for every channel in the file.
@@ -149,7 +153,7 @@ class InscopixGpioEventsInterface(BaseEventsInterface):
         gpio = _read_gpio(self.source_data["file_path"])
         metadata["NWBFile"]["session_start_time"] = gpio.timing.start.to_datetime().replace(tzinfo=timezone.utc)
 
-        for event_type_source_id in _get_event_type_source_ids(self._detection_configuration):
+        for event_type_source_id in self.get_event_type_source_ids():
             metadata["Events"][self.metadata_key]["event_types"][event_type_source_id] = {
                 "event_name": _to_snake_case(event_type_source_id),
                 "event_description": f"Events derived from Inscopix GPIO channel '{event_type_source_id}'.",
