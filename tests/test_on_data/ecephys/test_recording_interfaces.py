@@ -12,6 +12,7 @@ from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.datainterfaces import (
     AlphaOmegaRecordingInterface,
+    AxonaLFPDataInterface,
     AxonaRecordingInterface,
     AxonRecordingInterface,
     BiocamRecordingInterface,
@@ -24,6 +25,7 @@ from neuroconv.datainterfaces import (
     MCSRawRecordingInterface,
     MEArecRecordingInterface,
     NeuralynxRecordingInterface,
+    NeuroScopeLFPInterface,
     NeuroScopeRecordingInterface,
     OpenEphysBinaryRecordingInterface,
     OpenEphysLegacyRecordingInterface,
@@ -151,6 +153,26 @@ class TestAxonaRecordingInterface(RecordingExtractorInterfaceTestMixin):
         assert metadata["Ecephys"]["Device"] == [dict(name="Axona", description="Axona DacqUSB, sw_version=1.2.2.16")]
         for electrode_group in metadata["Ecephys"]["ElectrodeGroup"]:
             assert electrode_group["device"] == "Axona"
+
+
+class TestAxonaLFPDataInterface(RecordingExtractorInterfaceTestMixin):
+    data_interface_cls = AxonaLFPDataInterface
+    interface_kwargs = dict(file_path=str(ECEPHY_DATA_PATH / "axona" / "dataset_unit_spikes" / "20140815-180secs.eeg"))
+    save_directory = OUTPUT_PATH
+    is_lfp_interface = True
+
+    def check_extracted_metadata(self, metadata: dict):
+        expected_electrical_series = {"ElectricalSeriesLFP": dict(name="ElectricalSeriesLFP")}
+
+        assert metadata["Ecephys"]["ElectricalSeries"] == expected_electrical_series
+
+    def check_read_nwb(self, nwbfile_path: str):
+        super().check_read_nwb(nwbfile_path=nwbfile_path)
+
+        # The mixin skips the trace comparison for a single channel, which is what this file has.
+        nwbfile = read_nwb(nwbfile_path)
+        written_traces = nwbfile.processing["ecephys"]["LFP"]["ElectricalSeriesLFP"].data[:]
+        assert_array_equal(written_traces, self.interface.recording_extractor.get_traces(return_in_uV=False))
 
 
 class TestBiocamRecordingInterface(RecordingExtractorInterfaceTestMixin):
@@ -804,6 +826,23 @@ class TestNeuroScopeRecordingInterface(RecordingExtractorInterfaceTestMixin):
         assert [column["name"] for column in metadata["Ecephys"]["Electrodes"]] == expected_electrode_column_names
 
 
+class TestNeuroScopeLFPInterface(RecordingExtractorInterfaceTestMixin):
+    data_interface_cls = NeuroScopeLFPInterface
+    interface_kwargs = dict(
+        file_path=str(ECEPHY_DATA_PATH / "neuroscope" / "dataset_1" / "YutaMouse42-151117.eeg"),
+        xml_file_path=str(ECEPHY_DATA_PATH / "neuroscope" / "dataset_1" / "YutaMouse42-151117.xml"),
+    )
+    save_directory = OUTPUT_PATH
+    is_lfp_interface = True
+
+    def check_extracted_metadata(self, metadata: dict):
+        expected_metadata_key = "neuroscope_lfp"
+        expected_electrical_series = {"neuroscope_lfp": dict(name="ElectricalSeriesLFP")}
+
+        assert self.interface.metadata_key == expected_metadata_key
+        assert metadata["Ecephys"]["ElectricalSeries"] == expected_electrical_series
+
+
 class TestOpenEphysBinaryRecordingInterfaceClassMethodsAndAssertions:
 
     data_interface_cls = OpenEphysBinaryRecordingInterface
@@ -1256,6 +1295,22 @@ class TestSpikeGLXRecordingInterface(RecordingExtractorInterfaceTestMixin):
             description='Neuropixels 1.0 probe. Additional metadata: {"part_number": "PRB_1_4_0480_1", "port": "2", "slot": "2", "model_name": "PRB_1_4_0480_1", "manufacturer": "imec"}',
             serial_number="18194809281",
         )
+
+
+class TestSpikeGLXRecordingInterfaceLF(RecordingExtractorInterfaceTestMixin):
+    data_interface_cls = SpikeGLXRecordingInterface
+    interface_kwargs = dict(
+        folder_path=ECEPHY_DATA_PATH / "spikeglx" / "Noise4Sam_g0" / "Noise4Sam_g0_imec0", stream_id="imec0.lf"
+    )
+    save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        # The LF stream is written to acquisition like the AP stream, not to processing/ecephys/LFP.
+        expected_metadata_key = "spikeglx_imec0_lf"
+        expected_electrical_series = {"spikeglx_imec0_lf": dict(name="ElectricalSeriesLF")}
+
+        assert self.interface.metadata_key == expected_metadata_key
+        assert metadata["Ecephys"]["ElectricalSeries"] == expected_electrical_series
 
 
 class TestSpikeGLXRecordingInterfaceLongNHP(RecordingExtractorInterfaceTestMixin):
