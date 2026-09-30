@@ -17,10 +17,10 @@ Time-bearing objects and the alignment API
 
 Alignment acts on an interface's **time-bearing objects**: the units of timed data it exposes for independent
 alignment. In most cases, these correspond to neurodata types that carry timestamps.
-Examples are the ``TwoPhotonSeries`` of an imaging interface, the ``ElectricalSeries`` of a
-recording interface, each ``PoseEstimationSeries`` of a pose estimation interface, each ``EventsTable`` of an events
-interface, with its times in the ``timestamp`` column, and a trials table, with its times in ``start_time``,
-``stop_time`` and any other column whose name ends in ``_time``. By contrast, neurodata types such as a ``Device``, an
+Examples are the ``TwoPhotonSeries`` of an imaging interface, the ``ElectricalSeries`` of a recording interface,
+each ``EventsTable`` of an events interface, with its times in the ``timestamp`` column, and a trials table, with its
+times in ``start_time``, ``stop_time`` and any other column whose name ends in ``_time``. By contrast, neurodata types
+such as a ``Device``, an
 ``ImagingPlane`` or the electrodes table are written by interfaces but carry no times, so they are not time-bearing
 objects.
 
@@ -219,9 +219,8 @@ means you like and hand them to ``set_times``, which writes exactly what you giv
 Interfaces with several objects
 -------------------------------
 
-Many interfaces write more than one time-bearing object: a pose interface has one per keypoint, an events interface one
-per event type, and a video or an audio interface one per file. Which objects an interface writes depends on the
-interface. A few examples:
+Many interfaces write more than one time-bearing object: an events interface has one per event type, and a video or
+an audio interface one per file. Which objects an interface writes depends on the interface. A few examples:
 
 .. list-table::
    :header-rows: 1
@@ -233,8 +232,6 @@ interface. A few examples:
      - the ``ElectricalSeries``
    * - Events
      - each ``EventsTable``
-   * - Pose estimation
-     - each ``PoseEstimationSeries``
    * - External video
      - one object per video file, named after the file
    * - Audio
