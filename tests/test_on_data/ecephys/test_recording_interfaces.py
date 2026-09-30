@@ -1380,6 +1380,22 @@ class TestPlexonRecordingInterface(RecordingExtractorInterfaceTestMixin):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2013, 11, 19, 13, 48, 13)
 
 
+class TestCellExplorerLFPInterface(RecordingExtractorInterfaceTestMixin):
+    data_interface_cls = CellExplorerLFPInterface
+    interface_kwargs = dict(
+        folder_path=str(ECEPHY_DATA_PATH / "cellexplorer" / "dataset_4" / "Peter_MS22_180629_110319_concat_stubbed"),
+    )
+    save_directory = OUTPUT_PATH
+    is_lfp_interface = True
+
+    def check_extracted_metadata(self, metadata: dict):
+        expected_metadata_key = "cell_explorer_lfp"
+        expected_electrical_series = {"cell_explorer_lfp": dict(name="ElectricalSeriesLFP")}
+
+        assert self.interface.metadata_key == expected_metadata_key
+        assert metadata["Ecephys"]["ElectricalSeries"] == expected_electrical_series
+
+
 class TestPlexonLFPInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = PlexonLFPInterface
     interface_kwargs = dict(
@@ -1574,7 +1590,7 @@ def test_lfp_interfaces_name_their_own_series(
     interface_class, interface_kwargs, default_metadata_key, expected_series_name
 ):
     # The base emits the plain "ElectricalSeries" name, which is wrong for data written to processing/LFP,
-    # so each LFP interface states its own name. CellExplorerLFPInterface has no test class of its own.
+    # so each LFP interface states its own name.
     interface = interface_class(**interface_kwargs)
     assert interface.metadata_key == default_metadata_key
 
