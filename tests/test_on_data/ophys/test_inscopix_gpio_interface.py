@@ -1,5 +1,7 @@
 import platform
+import shutil
 import sys
+import uuid
 from datetime import datetime, timezone
 
 import pytest
@@ -51,6 +53,36 @@ class TestInscopixGpioOdorConcentrationStimulus:
         "DI-LED": "mW/mm^2",
         "e-focus": "micrometers",
     }
+
+    @pytest.fixture(autouse=True)
+    def _read_a_uniquely_named_copy(self, tmp_path):
+        """Point each test at its own, uniquely named copy of the ``.gpio`` fixture.
+
+        ``isx`` does not read a ``.gpio`` file directly. ``isx.GpioSet.read`` first converts it into an
+        intermediate ``.isxd`` file in the system temporary directory, and every later call, including
+        ``get_channel_data``, reads that intermediate file rather than the original. The intermediate file
+        is named after the input's stem alone (``odor_concentration_stimulus.gpio`` becomes
+        ``odor_concentration_stimulus_gpio.isxd``, in ``/tmp`` on Linux) and is truncated when it is
+        written, so every process reading a file of that stem shares it.
+
+        The suite runs on xdist workers under ``--dist=loadscope``, which keeps a test class on one worker
+        but places different classes on different ones. This class and the one in
+        ``tests/test_on_data/events/test_inscopix_gpio_events_interface.py``
+        both read this fixture, so two workers can read it at the same moment: one truncates and rewrites
+        the intermediate file while the other is still reading it, and the reader fails with
+        ``Error reading file`` or ``Error parsing header``, depending on where the rewrite caught it. Run
+        one after the other, the same tests pass, which is why the failure depends on timing.
+
+        A copy under a random name gets an intermediate file of its own, so no two tests share one. The
+        copy is 76 KB. ``isx`` never deletes its intermediate files, so each test leaves one small
+        ``<random>_gpio.isxd`` behind in the temporary directory.
+
+        Assigning ``self.FILE_PATH`` here shadows the class attribute for the current test only, because
+        pytest builds a new instance of the class for every test.
+        """
+        copy_path = tmp_path / f"{uuid.uuid4().hex}.gpio"
+        shutil.copy(self.FILE_PATH, copy_path)
+        self.FILE_PATH = str(copy_path)
 
     def test_get_metadata(self):
         interface = InscopixGpioInterface(file_path=self.FILE_PATH)
