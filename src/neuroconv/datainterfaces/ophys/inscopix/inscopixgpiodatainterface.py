@@ -4,8 +4,8 @@ from datetime import timezone
 import numpy as np
 from pydantic import FilePath, validate_call
 
+from ._inscopix_gpio_reader import get_gpio_channel_inventory, read_gpio
 from ....basedatainterface import BaseDataInterface
-from ....tools import get_package
 from ....utils import DeepDict
 
 # Monitor channels carry known physical units; every other channel (the general-purpose GPIO inputs,
@@ -17,47 +17,6 @@ _DEFAULT_CHANNEL_UNITS = {
     "OG-LED": "mW/mm^2",
     "DI-LED": "mW/mm^2",
 }
-
-
-def _read_gpio(file_path):
-    """Open an Inscopix ``.gpio`` file with pyisx (lazily imported so isx is only needed at call time)."""
-    isx = get_package(package_name="isx")
-    return isx.GpioSet.read(str(file_path))
-
-
-def _get_gpio_channel_inventory(file_path) -> list[dict]:
-    """List every channel in a ``.gpio`` file, to help decide what to convert and how.
-
-    The Inscopix file records no analog-vs-digital flag (see the format notes), so which channels are
-    continuous signals versus discrete events is a human call. This returns, per channel, its name,
-    sample count, and value set/range, so a user can eyeball which lines are 0/1 (digital), which are
-    multi-level codes, and which are continuous, and pick ``exclude_channels`` /
-    ``detection_configuration`` / ``binarize`` accordingly.
-
-    Returns
-    -------
-    list of dict
-        One dict per channel: ``name``, ``num_samples``, ``num_unique``, ``unique_values`` (up to 8),
-        ``min``, ``max``.
-    """
-    gpio = _read_gpio(file_path)
-    inventory = []
-    for index in range(gpio.num_channels):
-        name = gpio.get_channel_name(index)
-        timestamps, amplitudes = gpio.get_channel_data(index)
-        amplitudes = np.asarray(amplitudes)
-        unique = np.unique(amplitudes)
-        inventory.append(
-            {
-                "name": name,
-                "num_samples": int(len(timestamps)),
-                "num_unique": int(len(unique)),
-                "unique_values": unique[:8].tolist(),
-                "min": float(amplitudes.min()) if len(amplitudes) else None,
-                "max": float(amplitudes.max()) if len(amplitudes) else None,
-            }
-        )
-    return inventory
 
 
 class InscopixGpioInterface(BaseDataInterface):
@@ -76,6 +35,10 @@ class InscopixGpioInterface(BaseDataInterface):
 
     Discrete events (edges, coded levels) are a separate, additive product handled by
     :class:`.InscopixGpioEventsInterface`; the two interfaces read the same file independently.
+
+    Do not read two ``.gpio`` files with the same name at the same time, even from different folders:
+    pyisx converts each into a temporary file named after the file name alone, so parallel reads
+    overwrite each other's copy and fail.
     """
 
     display_name = "Inscopix GPIO"
@@ -116,7 +79,7 @@ class InscopixGpioInterface(BaseDataInterface):
         (up to eight), ``min`` and ``max``. The file records no analog-versus-digital flag, so this is
         what tells you which channels are worth writing and which to pass to ``exclude_channels``.
         """
-        return _get_gpio_channel_inventory(file_path)
+        return get_gpio_channel_inventory(file_path)
 
     def _get_channel_metadata_key(self, channel_name: str) -> str:
         """The ``metadata["TimeSeries"]`` key this interface addresses one channel by."""
@@ -132,7 +95,7 @@ class InscopixGpioInterface(BaseDataInterface):
         interfaces are edited.
         """
         metadata = super().get_metadata()
-        gpio = _read_gpio(self.source_data["file_path"])
+        gpio = read_gpio(self.source_data["file_path"])
         # ``timing.start.to_datetime()`` is a naive UTC datetime (isx.Time uses utcfromtimestamp).
         metadata["NWBFile"]["session_start_time"] = gpio.timing.start.to_datetime().replace(tzinfo=timezone.utc)
 
@@ -179,7 +142,7 @@ class InscopixGpioInterface(BaseDataInterface):
         time_series_metadata = metadata.get("TimeSeries", {})
         exclude = set(self.source_data.get("exclude_channels") or [])
 
-        gpio = _read_gpio(self.source_data["file_path"])
+        gpio = read_gpio(self.source_data["file_path"])
         for index in range(gpio.num_channels):
             channel_name = gpio.get_channel_name(index)
             if channel_name in exclude:

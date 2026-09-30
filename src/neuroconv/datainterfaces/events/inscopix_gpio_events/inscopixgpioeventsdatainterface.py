@@ -4,11 +4,8 @@ import numpy as np
 from pydantic import FilePath, validate_call
 
 from ..baseeventsinterface import BaseEventsInterface, _EventsData
-from ...ophys.inscopix.inscopixgpiodatainterface import (
-    _get_gpio_channel_inventory,
-    _read_gpio,
-    _to_snake_case,
-)
+from ...ophys.inscopix._inscopix_gpio_reader import get_gpio_channel_inventory, read_gpio
+from ...ophys.inscopix.inscopixgpiodatainterface import _to_snake_case
 from ....tools.events import (
     _get_event_type_source_ids,
     _resolve_detection_plan,
@@ -40,6 +37,10 @@ class InscopixGpioEventsInterface(BaseEventsInterface):
     admits every cut and the caller carries the assertion that a named channel really is readable as
     discrete events. :meth:`get_available_channels` is what makes that assertion informed: it reports
     each channel's value set, so a coded channel is visible as one before a cut is chosen for it.
+
+    Do not read two ``.gpio`` files with the same name at the same time, even from different folders:
+    pyisx converts each into a temporary file named after the file name alone, so parallel reads
+    overwrite each other's copy and fail.
     """
 
     keywords = ("events", "inscopix", "gpio")
@@ -122,7 +123,7 @@ class InscopixGpioEventsInterface(BaseEventsInterface):
         Names and positions only, so construction stays cheap: the amplitudes are never touched here.
         Every kind is None because the format records nothing that would settle it.
         """
-        gpio = _read_gpio(file_path)
+        gpio = read_gpio(file_path)
         return {
             gpio.get_channel_name(index): {"kind": None, "channel_index": index} for index in range(gpio.num_channels)
         }
@@ -137,7 +138,7 @@ class InscopixGpioEventsInterface(BaseEventsInterface):
         continuous signal (not events at all). It reads every channel's amplitudes, which is why the
         interface does not call it.
         """
-        return _get_gpio_channel_inventory(file_path)
+        return get_gpio_channel_inventory(file_path)
 
     def get_metadata(self) -> DeepDict:
         """Seed one ``event_types`` entry per event type the configuration resolves to.
@@ -150,7 +151,7 @@ class InscopixGpioEventsInterface(BaseEventsInterface):
         ``GPIO-2``) that do not survive as an NWB object name.
         """
         metadata = super().get_metadata()
-        gpio = _read_gpio(self.source_data["file_path"])
+        gpio = read_gpio(self.source_data["file_path"])
         metadata["NWBFile"]["session_start_time"] = gpio.timing.start.to_datetime().replace(tzinfo=timezone.utc)
 
         for event_type_source_id in self.get_event_type_source_ids():
@@ -172,7 +173,7 @@ class InscopixGpioEventsInterface(BaseEventsInterface):
         if self._events_data_dict is not None:
             return self._events_data_dict
 
-        gpio = _read_gpio(self.source_data["file_path"])
+        gpio = read_gpio(self.source_data["file_path"])
         # Grouped by signal, so a channel is read once however many event types it yields.
         detection_plan = _resolve_detection_plan(self._detection_configuration)
 
