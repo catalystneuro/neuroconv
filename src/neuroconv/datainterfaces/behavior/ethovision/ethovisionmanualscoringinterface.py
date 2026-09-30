@@ -4,6 +4,7 @@ from pynwb.file import NWBFile
 
 from ._ethovision_reader import get_available_scorings, parse_start_time, select_scoring
 from ...events.baseeventsinterface import BaseEventsInterface, _EventsData
+from ...._temporal_alignment import _TemporalAlignment
 from ....tools import get_module
 from ....utils import DeepDict, to_camel_case, to_snake_case
 
@@ -91,6 +92,7 @@ class EthoVisionManualScoringInterface(BaseEventsInterface):
         self._scoring_events = [event for event in self._scoring_sheet.events if event.subject == self._subject]
         self._event_onsets_alignment_key = f"{self.metadata_key}_manual_scoring_onsets"
         self._event_offsets_alignment_key = f"{self.metadata_key}_manual_scoring_offsets"
+        self._alignment = _TemporalAlignment()
         self.alignment._register_series(
             key=self._event_onsets_alignment_key,
             get_native_times=lambda: np.asarray([event.onset for event in self._scoring_events], dtype=float),
@@ -160,8 +162,8 @@ class EthoVisionManualScoringInterface(BaseEventsInterface):
         return metadata
 
     def _get_events_data_dict(self) -> dict[str, _EventsData]:
-        current_onsets = self.alignment[self._event_onsets_alignment_key].get_times() - self.alignment.offset
-        current_offsets = self.alignment[self._event_offsets_alignment_key].get_times() - self.alignment.offset
+        current_onsets = self.alignment[self._event_onsets_alignment_key].get_times()
+        current_offsets = self.alignment[self._event_offsets_alignment_key].get_times()
         grouped_indices: dict[str, list[int]] = {}
         for index, event in enumerate(self._scoring_events):
             event_kind = "point" if event.duration is None else "state"
@@ -181,6 +183,9 @@ class EthoVisionManualScoringInterface(BaseEventsInterface):
                 },
             )
         return events_data_dict
+
+    def get_event_times(self, event_type_source_id: str) -> np.ndarray:
+        return self._get_events_data_dict()[event_type_source_id].timestamps
 
     def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict | None = None) -> None:
         """Write one subject's Manual Scoring events, Ethogram and closed state bouts."""
