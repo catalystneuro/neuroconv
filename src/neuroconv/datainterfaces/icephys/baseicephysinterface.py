@@ -24,7 +24,11 @@ class BaseIcephysInterface(BaseDataInterface):
 
     def __init__(self, *, verbose: bool = False, **source_data):
         super().__init__(verbose=verbose, **source_data)
-        self.alignment = _TemporalAlignment()
+        self._alignment = _TemporalAlignment()
+
+    @property
+    def alignment(self):
+        return self._alignment
 
     def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict | None = None) -> None:
         """Write this interface's response, optional stimulus, and sweep rows to an NWB file."""
@@ -39,9 +43,14 @@ class BaseIcephysInterface(BaseDataInterface):
             electrode_metadata_key=response_metadata["electrode_metadata_key"],
         )
         response_data, stimulus_data, sweep_sample_ranges = self._get_icephys_series_data()
-        response_data.timestamps = response_data.timestamps + self.alignment.offset
+        timestamps = self.alignment[self._alignment_key].get_times()
+        if timestamps.ndim != 1 or len(timestamps) != len(response_data.data):
+            raise ValueError("Intracellular timestamps must be one-dimensional with one time per response sample.")
+        response_data.timestamps = timestamps
         if stimulus_data is not None:
-            stimulus_data.timestamps = stimulus_data.timestamps + self.alignment.offset
+            if len(stimulus_data.data) != len(timestamps):
+                raise ValueError("The paired stimulus must have one sample per response timestamp.")
+            stimulus_data.timestamps = timestamps
         response_series = _add_patch_clamp_series_to_nwbfile(
             nwbfile=nwbfile,
             metadata=metadata,

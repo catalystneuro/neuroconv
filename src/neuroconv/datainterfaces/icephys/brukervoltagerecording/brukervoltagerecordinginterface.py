@@ -139,6 +139,12 @@ class BrukerVoltageRecordingInterface(BaseIcephysInterface):
         # combining electrodes overrides it with a disambiguated label, since that stem collides across
         # session folders. It is a label, not a claim about which cell this is.
         self._run_identity = self._cycle_headers[0].stem
+        self._alignment_key = self._series_metadata_key
+        self.alignment._register_series(
+            key=self._alignment_key,
+            get_native_times=self._get_native_times,
+            default_start_time=0.0,
+        )
 
     # Registry keys derive from the run identity so a converter that overrides `_run_identity` propagates to
     # all of them. The electrode is per run rather than per signal, because `Primary` and `Secondary` are two
@@ -341,6 +347,16 @@ class BrukerVoltageRecordingInterface(BaseIcephysInterface):
         return [signal.name for signal in _read_cycle_header(Path(file_path)).recorded_signals]
 
     # ------------------------------------------------------------------ writing helpers
+
+    def _get_native_times(self):
+        import pandas as pd
+
+        times = []
+        for header in self._cycle_headers:
+            count = len(pd.read_csv(header.file_path, usecols=[0]))
+            start = (header.start_datetime - self._recording_start_datetime).total_seconds()
+            times.append(start + np.arange(count) / header.rate)
+        return np.concatenate(times)
 
     def _concatenate_cycles(self):
         """Read the response signal across every cycle and lay them end to end on one timeline; return
