@@ -54,6 +54,9 @@
   "events/doric_events.rst": {
     "extra": "doric_events"
   },
+  "events/inscopix_gpio.rst": {
+    "extra": "inscopix"
+  },
   "events/medpc_events.rst": {
     "extra": "medpc"
   },

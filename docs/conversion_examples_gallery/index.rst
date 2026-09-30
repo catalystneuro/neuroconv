@@ -156,6 +156,7 @@ Events
 
     CSV <events/csv_events>
     Doric <events/doric_events>
+    Inscopix GPIO <events/inscopix_gpio>
     MedPC <events/medpc_events>
     NPM <events/npm_events>
     pyPhotometry <events/pyphotometry_events>
