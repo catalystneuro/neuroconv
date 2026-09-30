@@ -7,8 +7,8 @@ time stored in the file is measured from it.
 
 NeuroConv does not try to infer the correct timestamps on its own: how your systems were wired and synchronized is
 rarely recorded in the files, so in general only you know it. When the source carries timing information the interface
-pre-loads it, so you start from the times the acquisition system actually recorded. Those times are on that system's
-clock, which need not coincide with the session clock. By default the interface writes them unchanged, which amounts to
+uses the source's native times, so you start from the times the acquisition system actually recorded. Those times are
+on that system's clock, which need not coincide with the session clock. By default the interface writes them unchanged, which amounts to
 assuming the two clocks coincide; when they do not, aligning is how you place the system's data on the session clock.
 Aligning changes only when each sample occurred, never the samples themselves.
 
@@ -26,8 +26,8 @@ objects.
 
 Every interface exposes its alignment methods under ``interface.alignment``, and each time-bearing object is reached
 there by its name: ``imaging_interface.alignment["two_photon_series"]`` is the ``TwoPhotonSeries`` of an imaging
-interface. ``get_times`` returns the times an object will write. Before you align anything, those are the times the
-interface pre-loaded from the source:
+interface. ``get_times`` returns the times an object will write. Before you align anything, those are the source's
+native times:
 
 .. code-block:: python
 
@@ -229,7 +229,7 @@ an audio interface one per file. Which objects an interface writes depends on th
    * - Interface
      - Time-bearing objects
    * - Recording
-     - the ``ElectricalSeries``
+     - one ``ElectricalSeries`` per recording segment
    * - Events
      - each ``EventsTable``
    * - External video
