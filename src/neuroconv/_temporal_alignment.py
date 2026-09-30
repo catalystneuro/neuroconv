@@ -45,11 +45,11 @@ class _TimeBearingSeries:
     source recorded, or the ones its header gives where the source records none.
     """
 
-    def __init__(self, *, get_default_times, alignment: "_TemporalAlignment", default_start_time=None):
+    def __init__(self, *, get_native_times, alignment: "_TemporalAlignment", default_start_time=None):
         # A callable rather than an array, so an interface registers its objects without reading its source.
         # The start is separate so that placing an object needs one number, not every sample time; a number
         # where the interface knows it outright, a callable where it has to be read from a header.
-        self._get_default_times = get_default_times
+        self._get_native_times = get_native_times
         self._default_start_time = default_start_time
         self._alignment = alignment
         self._times: np.ndarray | None = None
@@ -57,7 +57,7 @@ class _TimeBearingSeries:
 
     def get_times(self) -> np.ndarray:
         """Return the times this object will be written on, its own and the interface's offsets included."""
-        times = self._times if self._times is not None else self._get_default_times()
+        times = self._times if self._times is not None else self._get_native_times()
         return times + self._object_offset + self._alignment.offset
 
     def _get_start_time(self) -> float:
@@ -73,7 +73,7 @@ class _TimeBearingSeries:
         elif self._default_start_time is not None:
             base_start_time = self._default_start_time
         else:
-            default_times = np.asarray(self._get_default_times())
+            default_times = np.asarray(self._get_native_times())
             base_start_time = default_times[0] if default_times.size else np.nan
         return float(base_start_time)
 
@@ -81,7 +81,7 @@ class _TimeBearingSeries:
         """Whether this object has no samples, which leaves it no start to place or to be placed by."""
         if self._times is not None:
             return self._times.size == 0
-        return np.asarray(self._get_default_times()).size == 0
+        return np.asarray(self._get_native_times()).size == 0
 
     def shift_times(self, delta: float) -> None:
         """Shift this object alone by ``delta`` seconds, leaving the interface's other objects where they are.
@@ -218,15 +218,15 @@ class _TemporalAlignment:
         self._offset = 0.0
         self._name_to_time_bearing_object: dict[str, _TimeBearingSeries] = {}
 
-    def _register_series(self, *, key: str, get_default_times, default_start_time=None) -> _TimeBearingSeries:
+    def _register_series(self, *, key: str, get_native_times, default_start_time=None) -> _TimeBearingSeries:
         """Name one series-shaped time-bearing object. Called by the interface, not by a user.
 
-        ``get_default_times`` returns the times the object has when nothing has been said. ``default_start_time``
+        ``get_native_times`` returns the times the object has when nothing has been said. ``default_start_time``
         is their first value, a number or a callable, given so that ``move_start_to`` and the compact write build
         no array to learn it. Without it the first default time is read from the array.
         """
         time_bearing_object = _TimeBearingSeries(
-            get_default_times=get_default_times, default_start_time=default_start_time, alignment=self
+            get_native_times=get_native_times, default_start_time=default_start_time, alignment=self
         )
         self._name_to_time_bearing_object[key] = time_bearing_object
         return time_bearing_object

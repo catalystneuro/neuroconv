@@ -162,7 +162,7 @@ class ExternalVideoInterface(BaseDataInterface):
             # overlap and raise when written.
             self.alignment._register_series(
                 key=segment_key,
-                get_default_times=partial(self._get_default_times, file_index=file_index),
+                get_native_times=partial(self._get_default_times, file_index=file_index),
                 default_start_time=partial(self._get_first_frame_time, file_index=file_index),
             )
         # metadata_key is the snake_case registry key (for cross-component linking); the ImageSeries
