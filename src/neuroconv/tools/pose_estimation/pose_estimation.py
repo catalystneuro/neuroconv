@@ -176,6 +176,14 @@ def _add_pose_estimation_to_nwbfile(
             )
 
     timestamps = np.asarray(timestamps).astype("float64", copy=False)
+    if timestamps.ndim != 1:
+        raise ValueError("Pose timestamps must be a one-dimensional array with one time per sample.")
+    for keypoint_name, (positions, _) in keypoint_data.items():
+        if len(positions) != len(timestamps):
+            raise ValueError(
+                f"Keypoint '{keypoint_name}' has {len(positions)} samples but {len(timestamps)} timestamps. "
+                "Every keypoint in a pose container must have one sample per timestamp."
+            )
     rate = calculate_regular_series_rate(timestamps)
     if rate is None:
         timing_kwargs = dict(timestamps=timestamps)

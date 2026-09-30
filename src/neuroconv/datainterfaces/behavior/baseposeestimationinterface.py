@@ -1,3 +1,4 @@
+import warnings
 from abc import abstractmethod
 
 import numpy as np
@@ -7,7 +8,8 @@ from ._pose_metadata_template import (
     _get_pose_estimation_template_entry,
     _get_skeleton_template_entry,
 )
-from ...basetemporalalignmentinterface import BaseTemporalAlignmentInterface
+from ..._temporal_alignment import _TemporalAlignment
+from ...basedatainterface import BaseDataInterface
 from ...tools.nwb_helpers._metadata_and_file_helpers import (
     _get_device_model_template_entry,
     _get_device_template_entry,
@@ -18,10 +20,60 @@ from ...utils import DeepDict
 __all__ = ["BasePoseEstimationInterface"]
 
 
-class BasePoseEstimationInterface(BaseTemporalAlignmentInterface):
+class BasePoseEstimationInterface(BaseDataInterface):
     """Base class for interfaces writing a single ``ndx-pose`` ``PoseEstimation`` container."""
 
     keywords = ("behavior", "pose estimation")
+
+    def __init__(self, verbose: bool = False, **source_data):
+        super().__init__(verbose=verbose, **source_data)
+        self._alignment = _TemporalAlignment()
+        self._alignment._register_series(key=self.metadata_key, get_native_times=self.get_original_timestamps)
+
+    @property
+    def alignment(self):
+        return self._alignment
+
+    def _get_timestamps(self) -> np.ndarray:
+        return self.alignment[self.metadata_key].get_times()
+
+    def get_timestamps(self) -> np.ndarray:
+        warnings.warn(
+            "`get_timestamps` is deprecated and will be removed in v0.12.0. "
+            "Use `interface.alignment[key].get_times()` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        return self._get_timestamps()
+
+    def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
+        warnings.warn(
+            "`set_aligned_timestamps` is deprecated and will be removed in v0.12.0. "
+            "Use `interface.alignment[key].set_times(times)` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        self.alignment[self.metadata_key].set_times(aligned_timestamps)
+
+    def set_aligned_starting_time(self, aligned_starting_time: float) -> None:
+        warnings.warn(
+            "`set_aligned_starting_time` is deprecated and will be removed in v0.12.0. "
+            "Use `interface.alignment.shift_times(delta)` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        self.alignment.shift_times(aligned_starting_time)
+
+    def align_by_interpolation(self, unaligned_timestamps: np.ndarray, aligned_timestamps: np.ndarray) -> None:
+        warnings.warn(
+            "`align_by_interpolation` is deprecated and will be removed in v0.12.0. "
+            "Use `interface.alignment[key].remap_times(local_sync_times=..., reference_sync_times=...)` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        self.alignment[self.metadata_key].remap_times(
+            local_sync_times=unaligned_timestamps, reference_sync_times=aligned_timestamps
+        )
 
     @abstractmethod
     def _get_keypoint_names(self) -> list[str]:
@@ -127,7 +179,7 @@ class BasePoseEstimationInterface(BaseTemporalAlignmentInterface):
         _add_pose_estimation_to_nwbfile(
             nwbfile=nwbfile,
             keypoint_data=self._get_keypoint_data(),
-            timestamps=self.get_timestamps(),
+            timestamps=self._get_timestamps(),
             metadata=metadata if metadata is not None else self.get_metadata(),
             metadata_key=self.metadata_key,
         )
