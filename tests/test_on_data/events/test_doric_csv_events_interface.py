@@ -3,6 +3,7 @@ import pytest
 from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.datainterfaces import DoricCSVEventsInterface
+from neuroconv.tools.testing.data_interface_mixins import EventsInterfaceTestMixin
 
 try:
     from ..setup_paths import OPHYS_DATA_PATH
@@ -12,12 +13,15 @@ except ImportError:
 FILE_PATH = OPHYS_DATA_PATH / "events_datasets" / "doric" / "csv_export" / "interval_events.csv"
 
 
-class TestDoricCSVEvents:
+class TestDoricCSVEvents(EventsInterfaceTestMixin):
     """DoricCSVEventsInterface edge-detects each Digital I/O column of a DoricStudio CSV export.
 
     The fixture (``interval_events.csv``) has a grouped two-row header and a single digital column
     ``DI/O-1`` on a ``Time(s)`` clock, carrying three pulses (durations 0.96, 2.0, 2.0 s).
     """
+
+    data_interface_cls = DoricCSVEventsInterface
+    interface_kwargs = dict(file_path=FILE_PATH)
 
     @pytest.fixture
     def interface(self):

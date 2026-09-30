@@ -69,7 +69,9 @@ def configure_backend(
             # we wrap each neurodata_object in a DataChunkIterator in order to support changes to the I/O settings.
             # For more detail, see https://github.com/hdmf-dev/hdmf/issues/1170.
             data_chunk_iterator_class = DataChunkIterator
-            data_chunk_iterator_kwargs = dict(buffer_size=math.prod(dataset_configuration.buffer_shape))
+            data_chunk_iterator_kwargs = dict(
+                buffer_size=math.prod(dataset_configuration.buffer_shape), dtype=dataset_configuration.dtype
+            )
 
         # Table columns
         if isinstance(neurodata_object, Data):
@@ -84,8 +86,9 @@ def configure_backend(
                 # own `__data` attribute and a `data` property reading `_NWBData__data`, which shadows the parent.
                 # Without re-syncing the child attribute the DataIO wrapping is silently dropped for every NWBData
                 # subclass, the pixel-data Image types among them.
-                # TODO: remove once https://github.com/NeurodataWithoutBorders/pynwb/pull/2233 ships, which lets
-                # the parent own the storage, and the minimum pynwb version is bumped past it.
+                # TODO: https://github.com/NeurodataWithoutBorders/pynwb/pull/2233 lets the parent own the
+                # storage and is merged on pynwb's dev branch, so remove this once the minimum pynwb version
+                # is bumped past the release that carries it.
                 neurodata_object._NWBData__data = neurodata_object._Data__data
         # TimeSeries data or timestamps
         elif isinstance(neurodata_object, TimeSeries) and not is_dataset_linked:

@@ -5,9 +5,19 @@ Audio
 -----
 .. automodule:: neuroconv.datainterfaces.behavior.audio.audiointerface
 
+BORIS
+-----
+.. autoclass:: neuroconv.datainterfaces.behavior.boris.borisdatainterface.BORISInterface
+
 DeepLabCut
 ----------
 .. automodule:: neuroconv.datainterfaces.behavior.deeplabcut.deeplabcutdatainterface
+
+EthoVision
+----------
+.. autoclass:: neuroconv.datainterfaces.behavior.ethovision.ethovisiontrackinterface.EthoVisionTrackInterface
+
+.. autoclass:: neuroconv.datainterfaces.behavior.ethovision.ethovisionmanualscoringinterface.EthoVisionManualScoringInterface
 
 FicTrac
 -------
@@ -32,3 +42,11 @@ Video
 MedPC
 -----
 .. automodule:: neuroconv.datainterfaces.behavior.medpc.medpcdatainterface
+
+VAME
+----
+.. automodule:: neuroconv.datainterfaces.behavior.vame.vamedatainterface
+
+keypoint-MoSeq
+--------------
+.. automodule:: neuroconv.datainterfaces.behavior.moseq.moseqkeypointsinterface

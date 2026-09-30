@@ -21,7 +21,9 @@ from .tools.nwb_helpers import (
     get_default_nwbfile_metadata,
     make_nwbfile_from_metadata,
 )
-from .tools.nwb_helpers._metadata_and_file_helpers import _resolve_backend
+from .tools.nwb_helpers._metadata_and_file_helpers import (
+    _fetch_backend_from_nwbfile_on_disk,
+)
 from .utils import (
     dict_deep_update,
     fill_defaults,
@@ -290,10 +292,14 @@ class NWBConverter:
         metadata = metadata or self._get_metadata_for_writing()
 
         conversion_options = conversion_options or dict()
-        for interface_name, data_interface in self.data_interface_objects.items():
-            data_interface.add_to_nwbfile(
-                nwbfile=nwbfile, metadata=metadata, **conversion_options.get(interface_name, dict())
-            )
+        for child_name, child in self.data_interface_objects.items():
+            child_options = conversion_options.get(child_name, dict())
+            if isinstance(child, NWBConverter):
+                # A nested converter takes its options as one mapping keyed by its own children's names,
+                # not unpacked into keyword arguments the way a data interface does.
+                child.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, conversion_options=child_options)
+            else:
+                child.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **child_options)
 
     def run_conversion(
         self,
@@ -315,7 +321,8 @@ class NWBConverter:
             Path for where to write or load (if overwrite=False) the NWBFile.
             If specified, the context will always write to this location.
         nwbfile : NWBFile, optional
-            An in-memory NWBFile object to write to the location.
+            An in-memory NWBFile object. If provided, this conversion's interfaces add their data to
+            it rather than a new file being created; the file still needs `nwbfile_path` to be written.
         metadata : dict, optional
             Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
         overwrite : bool, default: False
@@ -440,7 +447,9 @@ class NWBConverter:
         Private helper method for run_conversion in append mode.
         Reads existing file, adds interface data, and writes back.
         """
-        backend = _resolve_backend(backend, backend_configuration)
+        backend = _fetch_backend_from_nwbfile_on_disk(
+            nwbfile_path=nwbfile_path, backend=backend, backend_configuration=backend_configuration
+        )
         IO = BACKEND_NWB_IO[backend]
 
         with IO(path=str(nwbfile_path), mode="r+", load_namespaces=True) as io:
@@ -495,7 +504,7 @@ class ConverterPipe(NWBConverter):
 
     def __init__(self, data_interfaces: list[BaseDataInterface] | dict[str, BaseDataInterface], verbose=False):
         self.verbose = verbose
-        if isinstance(data_interfaces, list):
+        if isinstance(data_interfaces, (list, tuple)):
             # Create unique names for each interface
             counter = {interface.__class__.__name__: 0 for interface in data_interfaces}
             total_counts = Counter([interface.__class__.__name__ for interface in data_interfaces])
@@ -508,35 +517,12 @@ class ConverterPipe(NWBConverter):
                 self.data_interface_objects[interface_name] = interface
         elif isinstance(data_interfaces, dict):
             self.data_interface_objects = data_interfaces
+        else:
+            raise TypeError(
+                "`data_interfaces` must be a list of interfaces, or a dict mapping names to interfaces, "
+                f"not {type(data_interfaces).__name__}."
+            )
 
         self.data_interface_classes = {
             name: interface.__class__ for name, interface in self.data_interface_objects.items()
         }
-
-    def get_conversion_options_schema(self) -> dict:
-        """
-        Compile conversion option schemas from each of the data interface classes.
-
-        Returns
-        -------
-        dict
-            The compiled conversion options schema containing:
-            - root: True
-            - id: "conversion_options.schema.json"
-            - title: "Conversion options schema"
-            - description: "Schema for the conversion options"
-            - version: "0.1.0"
-            - properties: Dictionary mapping interface names to their unrooted schemas
-        """
-        conversion_options_schema = get_base_schema(
-            root=True,
-            id_="conversion_options.schema.json",
-            title="Conversion options schema",
-            description="Schema for the conversion options",
-            version="0.1.0",
-        )
-        for interface_name, data_interface in self.data_interface_objects.items():
-
-            schema = data_interface.get_conversion_options_schema()
-            conversion_options_schema["properties"].update({interface_name: unroot_schema(schema)})
-        return conversion_options_schema

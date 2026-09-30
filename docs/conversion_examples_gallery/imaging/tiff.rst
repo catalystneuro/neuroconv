@@ -26,7 +26,7 @@ Single File, Planar and Single-Channel TIFF conversion
     >>>
     >>> metadata = interface.get_metadata()
     >>> # For data provenance we add the time zone information to the conversion
-    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
+    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>> # Add subject information (required for DANDI upload)
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
@@ -35,14 +35,13 @@ Single File, Planar and Single-Channel TIFF conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
-NeuroConv writes as much metadata as is available in the source format, but most of the time the
-experimenter has metadata that the records do not carry. Adding the rest improves the provenance of
-the file and makes it more useful for future users and for the community as a whole. To add it, follow
-:ref:`the ophys how-to <annotate_ophys_metadata>`, which walks through common experimental
-configurations, and in particular
-:ref:`its section on templates <how_to_annotate_ophys_from_a_template>`, which starts from scratch.
-For a general reference of every element the metadata accepts, see the
-:ref:`reference template <ophys_imaging_metadata_template>`.
+NeuroConv aims to automatically add all the metadata annotations that are present in the source format.
+It is often the case that crucial information is not available there, such as the anatomical location,
+the meaning of the values, or a semantically meaningful description of the data. Follow
+:ref:`the ophys how-to <annotate_ophys_metadata>` for a modality-relevant guide to adding
+this extra metadata, which makes the data more useful for future users and for the community as a whole.
+Its :ref:`section on templates <how_to_annotate_ophys_from_a_template>` starts from scratch, and the
+:ref:`reference template <ophys_imaging_metadata_template>` lists every element the metadata accepts.
 
 By default, the :py:class:`~neuroconv.datainterfaces.ophys.tiff.tiffdatainterface.TiffImagingInterface`
 assumes that the data is single-channel and planar (i.e., non-volumetric). In terms of data layout,
@@ -79,7 +78,7 @@ number of channels, which channel to extract, and number of planes:
     ... )
     >>>
     >>> metadata = interface.get_metadata()
-    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
+    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>> # Add subject information (required for DANDI upload)
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")

@@ -35,6 +35,19 @@ class AxonIntracellularConverter(ConverterPipe):
     associated_suffixes = AxonIntracellularInterface.associated_suffixes
     info = "Combines several AxonIntracellularInterface instances (dual patch, multi-file) into one icephys hierarchy."
 
+    def __init__(
+        self,
+        data_interfaces: list[AxonIntracellularInterface] | dict[str, AxonIntracellularInterface],
+        verbose: bool = False,
+    ):
+        super().__init__(data_interfaces=data_interfaces, verbose=verbose)
+        # Include each interface's current start in its target to preserve adjustments made before construction.
+        interfaces = list(self.data_interface_objects.values())
+        if interfaces:
+            _, starting_times = self._compute_alignment(interfaces)
+            for interface, starting_time in starting_times.items():
+                interface.alignment.move_start_to(starting_time)
+
     def get_metadata(self) -> dict:
         interfaces = list(self.data_interface_objects.values())
         self._assign_run_identities(interfaces)  # before super(), which builds each interface's metadata
@@ -57,11 +70,6 @@ class AxonIntracellularConverter(ConverterPipe):
             repetitions=[interface._repetition for interface in interfaces],
             conditions=[interface._condition for interface in interfaces],
         )
-
-        # Align the files onto one timeline before the interfaces write their series.
-        _, starting_time_shifts = self._compute_alignment(interfaces)
-        for interface, shift in starting_time_shifts.items():
-            interface._starting_time_shift = shift
 
         super().add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, conversion_options=conversion_options)
 
@@ -87,15 +95,17 @@ class AxonIntracellularConverter(ConverterPipe):
     @staticmethod
     def _compute_alignment(interfaces: list[AxonIntracellularInterface]):
         """
-        Return ``(session_start_datetime, {interface: starting_time_shift_seconds})`` from header start times.
+        Return ``(session_start_datetime, {interface: starting_time_seconds})`` including current alignment.
 
-        A single file (one or more electrodes) already shares one clock, so every shift is 0. Several files are
+        A single file (one or more electrodes) already shares one clock, so its current starts are kept. Several files are
         placed by their ``rec_datetime``, the earliest being the origin; that needs real (ABF version 2) start
         times, so a multi-file set with any version-1 file raises rather than trusting a placeholder time.
         """
         file_paths = {str(interface._file_path) for interface in interfaces}
         if len(file_paths) == 1:
-            return interfaces[0]._recording_start_datetime, {interface: 0.0 for interface in interfaces}
+            return interfaces[0]._recording_start_datetime, {
+                interface: interface.alignment[interface._alignment_key]._get_start_time() for interface in interfaces
+            }
 
         # Aligning files by rec_datetime needs real header start times (ABF version 2); a version-1 file
         # carries only a placeholder time.
@@ -113,8 +123,9 @@ class AxonIntracellularConverter(ConverterPipe):
 
         start_datetimes = {interface: interface._recording_start_datetime for interface in interfaces}
         session_start_datetime = min(start_datetimes.values())
-        starting_time_shifts = {
-            interface: (start_datetime - session_start_datetime).total_seconds()
+        starting_times = {
+            interface: interface.alignment[interface._alignment_key]._get_start_time()
+            + (start_datetime - session_start_datetime).total_seconds()
             for interface, start_datetime in start_datetimes.items()
         }
-        return session_start_datetime, starting_time_shifts
+        return session_start_datetime, starting_times

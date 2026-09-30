@@ -34,6 +34,25 @@ def test_convert_df_to_time_intervals_no_start_time():
     assert time_intervals.colnames == ("start_time", "stop_time", "condition")
 
 
+def test_convert_df_to_time_intervals_leaves_the_dataframe_alone():
+    df = pd.DataFrame({"start": [0.0, 1.0], "condition": [1, 2]})
+    time_intervals = convert_df_to_time_intervals(df, column_name_mapping=dict(start="start_time"))
+    assert time_intervals.colnames == ("start_time", "stop_time", "condition")
+    assert list(df.columns) == ["start", "condition"]
+
+
+def test_csv_add_to_nwbfile_twice_with_column_name_mapping():
+    # The interface hands its own frame to the converter, so a first write must not change what the second sees.
+    interface = CsvTimeIntervalsInterface(trials_csv_path)
+    metadata = interface.get_metadata()
+    metadata["NWBFile"] = dict(session_start_time=datetime.now().astimezone())
+    for _ in range(2):
+        nwbfile = make_nwbfile_from_metadata(metadata)
+        interface.add_to_nwbfile(nwbfile, metadata=metadata, column_name_mapping=dict(condition="cond"))
+        assert nwbfile.intervals["trials"].colnames == ("start_time", "stop_time", "cond")
+    assert "condition" in interface.dataframe.columns
+
+
 def test_convert_df_to_time_intervals_():
     df = pd.read_excel(trials_xls_path)
     time_intervals = convert_df_to_time_intervals(

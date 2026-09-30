@@ -69,7 +69,7 @@ returns:
       chunk shape : (3,)
       disk space usage per chunk : 24 B
 
-      compression method : gzip
+      compressors : ['gzip']
 
     acquisition/MyTimeSeries/timestamps
     -----------------------------------
@@ -83,7 +83,7 @@ returns:
       chunk shape : (3,)
       disk space usage per chunk : 24 B
 
-      compression method : gzip
+      compressors : ['gzip']
 
 
 
@@ -102,8 +102,8 @@ Let's demonstrate this by modifying everything we can for the ``data`` field of 
 
     dataset_configuration.chunk_shape = (1,)
     dataset_configuration.buffer_shape = (2,)
-    dataset_configuration.compression_method = "Zstd"
-    dataset_configuration.compression_options = dict(clevel=3)
+    dataset_configuration.compressors = ["Zstd"]
+    dataset_configuration.compressor_options = [dict(clevel=3)]
 
 We can confirm these values are saved by re-printing that particular dataset configuration:
 
@@ -125,8 +125,8 @@ We can confirm these values are saved by re-printing that particular dataset con
       chunk shape : (1,)
       disk space usage per chunk : 8 B
 
-      compression method : Zstd
-      compression options : {'clevel': 3}
+      compressors : ['Zstd']
+      compressor options : [{'clevel': 3}]
 
 Then we can use this configuration to write the NWB file:
 
@@ -159,7 +159,7 @@ the compression level but leave all the other settings the same.
 
 .. code-block:: python
 
-    backend_configuration.dataset_configurations["acquisition/MyTimeSeries/data"].compression_options["compression_opts"] = 9
+    backend_configuration.dataset_configurations["acquisition/MyTimeSeries/data"].compressor_options = [dict(compression_opts=9)]
 
     nwbfile = read_nwb("output.nwb")
     configure_and_write_nwbfile(nwbfile=nwbfile, backend_configuration=backend_configuration, nwbfile_path="output2.nwb")
@@ -208,7 +208,7 @@ The following example uses the :ref:`example data <example_data>` available from
     # Make any modifications to the configuration in this step, for example...
     dataset_configurations = backend_configuration.dataset_configurations
     dataset_configuration = dataset_configurations["acquisition/ElectricalSeriesAP/data"]
-    dataset_configuration.compression_method = "Blosc"
+    dataset_configuration.compressors = ["Blosc"]
 
     # Configure and write the NWB file
     nwbfile_path = "./my_nwbfile_name.nwb"
@@ -263,11 +263,13 @@ You can use the :py:meth:`~neuroconv.tools.nwb_helpers._configuration_models._ba
 
     # Apply Blosc compression with zstd compressor to all datasets
     backend_configuration.apply_global_compression(
-        compression_method="Blosc",
-        compression_options={
-            "cname": "zstd",
-            "clevel": 5,
-        }
+        compressors=["Blosc"],
+        compressor_options=[
+            {
+                "cname": "zstd",
+                "clevel": 5,
+            }
+        ],
     )
 
     # Write the file with the modified configuration
@@ -370,7 +372,7 @@ This was found to give significant performance increases compared to previous da
 
 **How do I disable chunking and compression completely?**
 
-To completely disable chunking for HDF5 backends (i.e., 'contiguous' layout), set both ``chunk_shape=None`` and ``compression_method=None``. Zarr requires all datasets to be chunked.
+To completely disable chunking for HDF5 backends (i.e., 'contiguous' layout), set both ``chunk_shape=None`` and ``compressors=None``. Zarr requires all datasets to be chunked.
 
 You could also delete the entry from the NeuroConv backend configuration, which would cause the neurodata object to fallback to whatever default method wrapped the dataset field when it was added to the in-memory ``pynwb.NWBFile``.
 

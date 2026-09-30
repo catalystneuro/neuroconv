@@ -9,13 +9,44 @@ inputs:
 runs:
   using: "composite"
   steps:
-    - name: Install wine on Linux
+    - name: Configure Wine packages on Linux
       if: runner.os == 'Linux'
       run: |
+        export DEBIAN_FRONTEND=noninteractive
         sudo rm -f /etc/apt/sources.list.d/microsoft-prod.list
         sudo dpkg --add-architecture i386
-        sudo apt-get update -qq
-        sudo apt-get install -yqq --allow-downgrades libc6:i386 libgcc-s1:i386 libstdc++6:i386 wine
+      shell: bash
+
+    # Wine is here for the Plexon2 tests alone, and the Ubuntu mirrors the runner points at go down
+    # often enough that failing the job over one costs an unrelated pull request its whole run. Both
+    # steps below report and carry on instead. The Plexon2 tests check for the `wine` binary and skip
+    # themselves when it is absent, so the coverage is lost for that run and nothing else breaks.
+    - name: Refresh APT package index for Wine
+      if: runner.os == 'Linux'
+      run: |
+        export DEBIAN_FRONTEND=noninteractive
+        for attempt in 1 2; do
+          if timeout 10m sudo apt-get -o Acquire::Retries=3 -o DPkg::Lock::Timeout=60 update; then
+            exit 0
+          fi
+          [ "$attempt" -eq 2 ] || sleep 10
+        done
+        echo "::warning title=Wine unavailable::apt-get update failed, so Wine was not installed and the Plexon2 tests will skip."
+        exit 0
+      shell: bash
+
+    - name: Install Wine on Linux
+      if: runner.os == 'Linux'
+      run: |
+        export DEBIAN_FRONTEND=noninteractive
+        for attempt in 1 2; do
+          if timeout 15m sudo apt-get -y --allow-downgrades -o Acquire::Retries=3 -o DPkg::Lock::Timeout=60 install libc6:i386 libgcc-s1:i386 libstdc++6:i386 wine; then
+            exit 0
+          fi
+          [ "$attempt" -eq 2 ] || sleep 10
+        done
+        echo "::warning title=Wine unavailable::Installing Wine failed, so the Plexon2 tests will skip."
+        exit 0
       shell: bash
 
     - name: Skip Wine install on macOS

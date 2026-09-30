@@ -1,3 +1,4 @@
+import pytest
 from pynwb import read_nwb
 
 from neuroconv.converters import ThorConverter
@@ -5,6 +6,13 @@ from neuroconv.datainterfaces import ThorImagingInterface
 from tests.test_on_data.setup_paths import OPHYS_DATA_PATH
 
 THORLABS_FOLDER_PATH = OPHYS_DATA_PATH / "imaging_datasets" / "ThorlabsTiff"
+
+# The fixture has DeltaT values for only one of its three timepoints. ROIExtractors correctly
+# falls back to the declared sampling rate; these converter tests cover metadata and writing,
+# not timestamp parsing.
+pytestmark = pytest.mark.filterwarnings(
+    "ignore:OME-XML contains Plane elements with DeltaT but only .* of .* timepoints have timestamps:UserWarning"
+)
 
 
 class TestThorConverterSingleChannel:

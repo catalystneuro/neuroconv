@@ -144,6 +144,17 @@ class CSVEventsInterface(BaseEventsInterface):
                 f"Each column may fill only one role, but the same column was assigned more than once: {specifiers}."
             )
 
+    def get_event_type_source_ids(self) -> list[str]:
+        """One type per distinct label, in first-appearance order, or the file stem when the file is one type.
+
+        A CSV has no header that lists its types, so this is a pass over the label column, cached with the
+        rest of the read. An empty single-type file yields no type, so no phantom table is seeded.
+        """
+        timestamps, labels, _, _ = self._read_source()
+        if labels is None:
+            return [Path(self.source_data["file_path"]).stem] if len(timestamps) > 0 else []
+        return [str(value) for value in pd.unique(labels)]
+
     def _read_source(
         self,
     ) -> tuple[np.ndarray, np.ndarray | None, dict[str, np.ndarray], np.ndarray | None]:
@@ -249,29 +260,16 @@ class CSVEventsInterface(BaseEventsInterface):
         """
         metadata = super().get_metadata()
 
-        timestamps, labels, _, _ = self._read_source()
         columns = self._value_columns_metadata()
         event_types = metadata["Events"][self.metadata_key]["event_types"]
 
         # Declare the structure the CSV carries: which event types exist, their source-derived names,
-        # and any value columns' names.
-        if labels is None:
-            # A single event type named after the file stem; skip an empty file so no phantom type is seeded.
-            if len(timestamps) > 0:
-                file_stem = Path(self.source_data["file_path"]).stem
-                entry = {"event_name": file_stem}
-                if columns:
-                    entry["columns"] = deepcopy(columns)
-                event_types[file_stem] = entry
-        else:
-            # One event type per distinct label value (first-appearance order); the value seeds the
-            # editable event_name and, by default, its own table.
-            for value in pd.unique(labels):
-                event_type_source_id = str(value)
-                entry = {"event_name": event_type_source_id}
-                if columns:
-                    entry["columns"] = deepcopy(columns)
-                event_types[event_type_source_id] = entry
+        # and any value columns' names. The type seeds the editable event_name and, by default, its own table.
+        for event_type_source_id in self.get_event_type_source_ids():
+            entry = {"event_name": event_type_source_id}
+            if columns:
+                entry["columns"] = deepcopy(columns)
+            event_types[event_type_source_id] = entry
         return metadata
 
     def _get_events_data_dict(self) -> dict[str, _EventsData]:

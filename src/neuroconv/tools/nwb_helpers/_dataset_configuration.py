@@ -19,12 +19,19 @@ from ._configuration_models._base_dataset_io import DatasetIOConfiguration
 from ..hdmf import _get_nwbfile_builder
 
 
-def _get_io_mode(io: NWBHDF5IO | NWBZarrIO) -> str:
-    """NWBHDF5IO and NWBZarrIO have different ways of storing the io mode (e.g. "r", "a", "w") they used on a path."""
-    if isinstance(io, NWBHDF5IO):
-        return io.mode
-    elif isinstance(io, NWBZarrIO):
-        return io._ZarrIO__mode
+def _get_zarr_store_path(zarr_array: zarr.Array) -> str | None:
+    """
+    The path of the Zarr 'file' a Zarr Array was read from, or None when its store keeps no path.
+
+    A `ConsolidatedMetadataStore` holds the path on the store it wraps rather than on itself, and
+    hdmf-zarr hands one back for every dataset reached through a link, `DynamicTable` columns among
+    them, whatever mode the file itself was opened in.
+    """
+    store = zarr_array.store
+    store_path = getattr(store, "path", None)
+    if store_path is None:
+        store_path = getattr(getattr(store, "store", None), "path", None)
+    return store_path
 
 
 def _is_dataset_written_to_file(
@@ -42,17 +49,16 @@ def _is_dataset_written_to_file(
 
     normalized_existing = Path(existing_file_path).resolve()
 
-    return (
-        isinstance(candidate_dataset, h5py.Dataset)  # If the source data is an HDF5 Dataset
-        and backend == "hdf5"
-        and Path(candidate_dataset.file.filename).resolve()
-        == normalized_existing  # If the source HDF5 Dataset is the appending NWBFile
-    ) or (
-        isinstance(candidate_dataset, zarr.Array)  # If the source data is a Zarr Array
-        and backend == "zarr"
-        and Path(candidate_dataset.store.path).resolve()
-        == normalized_existing  # If the source Zarr 'file' is the appending NWBFile
-    )
+    if isinstance(candidate_dataset, h5py.Dataset) and backend == "hdf5":
+        # If the source HDF5 Dataset is the appending NWBFile
+        return Path(candidate_dataset.file.filename).resolve() == normalized_existing
+
+    if isinstance(candidate_dataset, zarr.Array) and backend == "zarr":
+        # If the source Zarr 'file' is the appending NWBFile
+        store_path = _get_zarr_store_path(zarr_array=candidate_dataset)
+        return store_path is not None and Path(store_path).resolve() == normalized_existing
+
+    return False
 
 
 def get_default_dataset_io_configurations(
@@ -79,8 +85,6 @@ def get_default_dataset_io_configurations(
         A summary of each detected object that can be wrapped in a hdmf.DataIO.
     """
 
-    DatasetIOConfigurationClass = DATASET_IO_CONFIGURATIONS[backend]
-
     if backend is None and nwbfile.read_io is None:
         raise ValueError(
             "Keyword argument `backend` (either 'hdf5' or 'zarr') must be specified if the `nwbfile` was not "
@@ -88,15 +92,16 @@ def get_default_dataset_io_configurations(
         )
     if backend is None and nwbfile.read_io is not None and nwbfile.read_io.mode not in ("r+", "a"):
         raise ValueError(
-            "Keyword argument `backend` (either 'hdf5' or 'zarr') must be specified if the `nwbfile` is being appended."
+            "Keyword argument `backend` (either 'hdf5' or 'zarr') must be specified if the `nwbfile` was read "
+            "from an existing file without opening it for appending (mode 'r+' or 'a')!"
         )
 
     detected_backend = None
     existing_file_path = None
-    if isinstance(nwbfile.read_io, NWBHDF5IO) and _get_io_mode(io=nwbfile.read_io) in ("r+", "a"):
+    if isinstance(nwbfile.read_io, NWBHDF5IO) and nwbfile.read_io.mode in ("r+", "a"):
         detected_backend = "hdf5"
         existing_file_path = nwbfile.read_io.source
-    elif isinstance(nwbfile.read_io, NWBZarrIO) and _get_io_mode(io=nwbfile.read_io) in ("r+", "a"):
+    elif isinstance(nwbfile.read_io, NWBZarrIO) and nwbfile.read_io.mode in ("r+", "a"):
         detected_backend = "zarr"
         existing_file_path = nwbfile.read_io.source
     backend = backend or detected_backend
@@ -106,6 +111,9 @@ def get_default_dataset_io_configurations(
             f"Detected backend '{detected_backend}' for appending file, but specified `backend` "
             f"({backend}) does not match! Set `backend=None` or remove the keyword argument to allow it to auto-detect."
         )
+
+    # Looked up only now: ``backend`` may have been None on the way in and resolved by the detection above.
+    DatasetIOConfigurationClass = DATASET_IO_CONFIGURATIONS[backend]
 
     known_dataset_fields = ("data", "timestamps")
     builder = _get_nwbfile_builder(nwbfile=nwbfile)

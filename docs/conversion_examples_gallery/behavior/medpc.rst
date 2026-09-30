@@ -1,12 +1,19 @@
 MedPC data conversion
 ---------------------
 
+.. deprecated:: 0.10.1
+
+    ``MedPCInterface`` is deprecated and will be removed in v0.12.0. Use
+    :doc:`../events/medpc_events`, which reads the same files and writes their events as native
+    ``pynwb.event.EventsTable`` objects into ``nwbfile.events`` rather than as ``ndx-events`` objects and
+    ``IntervalSeries`` into the behavior processing module.
+
 MedPC output files contain information about operant behavior such as nose pokes and rewards.
 Install NeuroConv with the additional dependencies necessary for writing medpc behavioral data.
 
 .. code-block:: bash
 
-    pip install neuroconv[medpc]
+    pip install "neuroconv[medpc_legacy]"
 
 Convert MedPC output data to NWB using
 :py:class:`~.neuroconv.datainterfaces.behavior.medpc.medpcdatainterface.MedPCInterface`.
@@ -39,7 +46,7 @@ Convert MedPC output data to NWB using
     >>> # Extract what metadata we can from the source file
     >>> metadata = interface.get_metadata()
     >>> # We add the time zone information, which is required by NWB
-    >>> session_start_time = datetime(2019, 4, 9, 10, 34, 30).replace(tzinfo=ZoneInfo("US/Pacific"))
+    >>> session_start_time = datetime(2019, 4, 9, 10, 34, 30).replace(tzinfo=ZoneInfo("Asia/Tokyo"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>> metadata["MedPC"]["medpc_name_to_info_dict"] = {
     ...         "A": {"name": "left_nose_poke_times", "is_array": True},

@@ -7,6 +7,7 @@ import psutil
 import pynwb
 from hdmf.common.table import VectorIndex
 from hdmf.data_utils import AbstractDataChunkIterator
+from natsort import natsorted
 from pydantic import FilePath
 from spikeinterface import BaseRecording, BaseSorting, SortingAnalyzer
 from spikeinterface.core.segmentutils import AppendSegmentRecording
@@ -26,7 +27,7 @@ from ..nwb_helpers import (
 )
 from ..nwb_helpers._metadata_and_file_helpers import (
     _add_device_to_nwbfile,
-    _resolve_backend,
+    _fetch_backend_from_nwbfile_on_disk,
     configure_and_write_nwbfile,
 )
 from ...utils import (
@@ -546,6 +547,7 @@ def add_sorting_to_nwbfile(
             - "sds": np.ndarray of shape (num_units, num_samples, num_channels), optional
             - "sampling_rate": float, the sampling rate of the waveforms in Hz
             - "unit": str, the unit of measurement (default: "volts")
+            - "time_before_peak_in_ms": float, the time from the start of each waveform to the spike peak, optional
     write_as : {'units', 'processing'}, optional
         Deprecated. Use ``parent_container`` instead. Will be removed on or after February 2027.
     """
@@ -564,6 +566,7 @@ def add_sorting_to_nwbfile(
         _waveform_sds = waveform_data_dict.get("sds")
         _waveform_rate = waveform_data_dict.get("sampling_rate")
         _waveform_unit = waveform_data_dict.get("unit", "volts")
+        _waveform_time_before_peak_in_ms = waveform_data_dict.get("time_before_peak_in_ms")
     elif waveform_means is not None:
         # Deprecated path - emit FutureWarning for gradual migration
         warnings.warn(
@@ -576,11 +579,13 @@ def add_sorting_to_nwbfile(
         _waveform_sds = waveform_sds
         _waveform_rate = None
         _waveform_unit = "volts"
+        _waveform_time_before_peak_in_ms = None
     else:
         _waveform_means = None
         _waveform_sds = None
         _waveform_rate = None
         _waveform_unit = "volts"
+        _waveform_time_before_peak_in_ms = None
 
     # Resolution from sorting's sampling frequency
     _resolution = 1.0 / sorting.get_sampling_frequency()
@@ -606,6 +611,7 @@ def add_sorting_to_nwbfile(
         null_values_for_properties=null_values_for_properties,
         waveform_rate=_waveform_rate,
         waveform_unit=_waveform_unit,
+        waveform_time_before_peak_in_ms=_waveform_time_before_peak_in_ms,
         resolution=_resolution,
     )
 
@@ -1416,13 +1422,21 @@ def _add_electrodes_to_nwbfile(
     data_to_add["group_name"] = dict(description="group_name", data=group_names, index=False)
 
     # Location in spikeinterface is equivalent to rel_x, rel_y, rel_z in the nwb standard
-    if "location" in data_to_add:
-        data = data_to_add["location"]["data"]
-        column_number_to_property = {0: "rel_x", 1: "rel_y", 2: "rel_z"}
-        for column_number in range(data.shape[1]):
-            property = column_number_to_property[column_number]
-            data_to_add[property] = dict(description=property, data=data[:, column_number], index=False)
+    # The "location" property is removed in SpikeInterface v0.105.0. Use the get_channel_locations
+    # function instead
+    locations_data = None
+    if recording.has_probe():
+        locations_data = recording.get_channel_locations()
+    elif "location" in data_to_add:
+        # Some Interfaces set the 'location' property instead of the probe to
+        # prevent modifying groups (e.g. CellExplorer)
+        locations_data = data_to_add["location"]["data"]
         data_to_add.pop("location")
+    if locations_data is not None:
+        column_number_to_property = {0: "rel_x", 1: "rel_y", 2: "rel_z"}
+        for column_number in range(locations_data.shape[1]):
+            property = column_number_to_property[column_number]
+            data_to_add[property] = dict(description=property, data=locations_data[:, column_number], index=False)
 
     # In the electrode table location is the brain area of spikeinterface
     if "brain_area" in data_to_add:
@@ -1527,8 +1541,11 @@ def _add_electrodes_to_nwbfile(
     indices_for_null_values = [index for index in range(electrode_table_size) if index not in new_indices_set]
     extending_column = len(indices_for_null_values) > 0
 
-    # Add properties as columns (exclude channel_name and electrode_name as they were handled above)
-    for property in properties_to_add_by_columns - {"channel_name", "electrode_name"}:
+    # Add properties as columns (exclude channel_name and electrode_name as they were handled above).
+    # Sorted as iterating the set makes the column order depend on string hashing, which python
+    # randomizes per process, so the same recording produced a different column order on every run.
+    # See https://github.com/catalystneuro/neuroconv/issues/792
+    for property in natsorted(properties_to_add_by_columns - {"channel_name", "electrode_name"}):
         cols_args = data_to_add[property]
         data = cols_args["data"]
 
@@ -1896,18 +1913,40 @@ def _add_time_series_segment_to_nwbfile(
 
         save_scaling_info = channels_have_same_unit and channels_have_same_gain and channels_have_same_offest
 
+        remedies = (
+            "To fix this issue, either: "
+            "1) Set the unit in the metadata['TimeSeries'][metadata_key]['unit'] field, or "
+            "2) Set the `physical_unit`, `gain_to_physical_unit`, and `offset_to_physical_unit` properties "
+            "on the recording object with consistent units across all channels, or "
+            "3) Group the channels by unit and write each group as its own TimeSeries, selecting each "
+            "group with recording.select_channels(channel_ids=[...]). "
+            "See https://neuroconv.readthedocs.io/en/main/how_to/handle_heterogeneous_offsets.html"
+        )
+
+        # A ``TimeSeries`` states one unit for all of its channels, so channels that state different
+        # units cannot be written as one. Falling back to 'n.a.' here would not be a lossy write but a
+        # false one: it would assert that a percentage and a heart rate share a unit, and nothing
+        # downstream could detect it. Missing scaling information is the opposite case and stays a
+        # warning below, since 'n.a.' is then a true statement that the source named no unit.
+        if units is not None and len(set(units)) > 1:
+            units_to_channel_ids = defaultdict(list)
+            for channel_id, unit in zip(recording.get_channel_ids(), units):
+                units_to_channel_ids[unit].append(str(channel_id))
+            unit_map = "\n".join(
+                f"  Unit {unit!r}: {channel_ids}" for unit, channel_ids in units_to_channel_ids.items()
+            )
+            raise ValueError(
+                "The channels of this recording state different units, which a single NWB TimeSeries "
+                f"cannot represent.\nMultiple units were found per channel IDs:\n{unit_map}\n{remedies}"
+            )
+
         if save_scaling_info:
             tseries_kwargs.update(unit=units[0], conversion=gain_to_unit[0], offset=offset_to_unit[0])
         else:
             warning_msg = (
-                "The recording extractor has heterogeneous units or is lacking scaling factors. "
+                "The recording extractor is lacking scaling factors. "
                 "The time series will be saved with unit 'n.a.' and the conversion factors will not be set, "
-                "so the physical values will not be recoverable from the file. "
-                "To fix this issue, either: "
-                "1) Set the unit in the metadata['TimeSeries'][metadata_key]['unit'] field, or "
-                "2) Set the `physical_unit`, `gain_to_physical_unit`, and `offset_to_physical_unit` properties "
-                "on the recording object with consistent units across all channels, or "
-                "3) Group the channels by unit and write each group as its own TimeSeries. "
+                f"so the physical values will not be recoverable from the file. {remedies} "
                 f"Channel units: {units if units is not None else 'None'}, "
                 f"gain available: {gain_to_unit is not None}, "
                 f"offset available: {offset_to_unit is not None}"
@@ -2391,8 +2430,11 @@ def write_recording_to_nwbfile(
             "Either set overwrite=True to replace the existing file, or remove the nwbfile parameter to append to the existing file on disk."
         )
 
-    # Resolve backend
-    backend = _resolve_backend(backend=backend, backend_configuration=backend_configuration)
+    # An append is bound to the backend of the file on disk; a new file gets its backend from the caller
+    if append_on_disk_nwbfile:
+        backend = _fetch_backend_from_nwbfile_on_disk(
+            nwbfile_path=nwbfile_path, backend=backend, backend_configuration=backend_configuration
+        )
 
     # Determine if we're writing a new file or appending
     writing_new_file = not append_on_disk_nwbfile
@@ -2429,9 +2471,6 @@ def write_recording_to_nwbfile(
             iterator_options=iterator_options,
             null_values_for_properties=null_values_for_properties,
         )
-
-        if backend_configuration is None:
-            backend_configuration = get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
 
         configure_and_write_nwbfile(
             nwbfile=nwbfile,
@@ -2503,6 +2542,7 @@ def _add_units_table_to_nwbfile(
     *,
     waveform_rate: float | None = None,
     waveform_unit: str = "volts",
+    waveform_time_before_peak_in_ms: float | None = None,
     resolution: float | None = None,
     null_values_for_properties: dict | None = None,
 ):
@@ -2624,6 +2664,9 @@ def _add_units_table_to_nwbfile(
         Sampling rate of the waveform data in Hz. Sets Units.waveform_rate attribute.
     waveform_unit : str, default: "volts"
         Unit of measurement for waveform data. Sets Units.waveform_unit attribute.
+    waveform_time_before_peak_in_ms : float, optional
+        Time from the start of each waveform to the spike peak in milliseconds, which is the alignment
+        point used during sorting. Sets Units.waveform_time_before_peak_in_ms attribute.
     resolution : float, optional
         The smallest possible difference between two spike times in seconds.
         Sets Units.resolution attribute.
@@ -2636,6 +2679,18 @@ def _add_units_table_to_nwbfile(
     assert isinstance(
         nwbfile, pynwb.NWBFile
     ), f"'nwbfile' should be of type pynwb.NWBFile but is of type {type(nwbfile)}"
+
+    # A sorting holding no unit at all has nothing to put in a units table. A unit that holds no spike in
+    # this session is a different thing and is written, since the unit itself is the result being recorded.
+    # See https://github.com/catalystneuro/neuroconv/issues/422.
+    if sorting.get_num_units() == 0:
+        raise ValueError(
+            f"{type(sorting).__name__} contains no units, so a units table built from it would have no "
+            "rows. This is usually a source file that carries no spike events, or a file whose data is "
+            "not where the format expected it. Writing it would produce an NWB file whose only spike "
+            "content is an empty units table, indistinguishable from a successful conversion, and NWB "
+            "Inspector reports such a table as a best practice violation."
+        )
 
     if unit_electrode_indices is not None:
         electrodes_table = nwbfile.electrodes
@@ -2654,8 +2709,13 @@ def _add_units_table_to_nwbfile(
         description=unit_table_description,
         waveform_rate=waveform_rate,
         waveform_unit=waveform_unit,
+        waveform_time_before_peak_in_ms=waveform_time_before_peak_in_ms,
         resolution=resolution,
     )
+    if unit_electrode_indices is not None:
+        # `electrodes` is a predefined Units column. Binding its target table here
+        # preserves its schema instead of redefining it through `add_column` below.
+        units_table_kwargs["target_tables"] = {"electrodes": nwbfile.electrodes}
 
     if write_in_processing_module:
         ecephys_mod = get_module(
@@ -2785,14 +2845,14 @@ def _add_units_table_to_nwbfile(
             table=nwbfile.electrodes,
         )
 
-    # For a new table, establish all rows in bulk via id.extend().
-    # All data (spike_times, waveforms, electrodes, properties) is then added as columns below.
-    if write_table_first_time:
+    # A table constructed with `target_tables` already has the predefined
+    # `electrodes` column, whose values must be added one row at a time.
+    units_table_previous_columns = set(units_table.colnames)
+    if write_table_first_time and not units_table_previous_columns:
         units_table.id.extend(list(range(num_units)))
 
     # Determine which properties already exist as columns and which are new.
     # Pre-existing columns must be provided per row via add_unit(); new properties are added as columns.
-    units_table_previous_columns = set(units_table.colnames)
     properties_to_add = set(data_to_add)
 
     # Determine which units need per-row insertion via add_unit().
@@ -2884,8 +2944,10 @@ def _add_units_table_to_nwbfile(
     indices_for_null_values = [index for index in range(unit_table_size) if index not in new_indices_set]
     extending_column = len(indices_for_null_values) > 0
 
-    # Add properties as columns
-    for property in properties_to_add_by_columns - {"unit_name"}:
+    # Add properties as columns.
+    # Sorted for the same reason as the electrodes table above, see
+    # https://github.com/catalystneuro/neuroconv/issues/792
+    for property in natsorted(properties_to_add_by_columns - {"unit_name"}):
         cols_args = data_to_add[property]
         data = cols_args["data"]
 
@@ -3043,8 +3105,11 @@ def write_sorting_to_nwbfile(
             "Either set overwrite=True to replace the existing file, or remove the nwbfile parameter to append to the existing file on disk."
         )
 
-    # Resolve backend
-    backend = _resolve_backend(backend=backend, backend_configuration=backend_configuration)
+    # An append is bound to the backend of the file on disk; a new file gets its backend from the caller
+    if append_on_disk_nwbfile:
+        backend = _fetch_backend_from_nwbfile_on_disk(
+            nwbfile_path=nwbfile_path, backend=backend, backend_configuration=backend_configuration
+        )
 
     # Determine if we're writing a new file or appending
     writing_new_file = not append_on_disk_nwbfile
@@ -3074,9 +3139,6 @@ def write_sorting_to_nwbfile(
             unit_electrode_indices=unit_electrode_indices,
             null_values_for_properties=null_values_for_properties,
         )
-
-        if backend_configuration is None:
-            backend_configuration = get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
 
         configure_and_write_nwbfile(
             nwbfile=nwbfile,
@@ -3210,6 +3272,16 @@ def add_sorting_analyzer_to_nwbfile(
         raise ValueError("No templates found in the sorting analyzer.")
     template_means = template_extension.get_templates()
     template_stds = template_extension.get_templates(operator="std")
+
+    # The analyzer knows the rate the templates were sampled at and where the spike peak sits inside each
+    # of them. `ms_before` is backfilled from `nbefore` by the templates extension, so it is there even on
+    # an analyzer computed before it was a parameter.
+    waveform_rate = sorting_analyzer.sampling_frequency
+    waveform_time_before_peak_in_ms = template_extension.params["ms_before"]
+    # Scaled traces in spikeinterface are microvolts. An analyzer whose recording has no gains keeps the
+    # digital counts, which carry no physical unit.
+    waveform_unit = "microvolts" if sorting_analyzer.return_in_uV else "a.u."
+
     sorting = sorting_analyzer.sorting
     if unit_ids is not None:
         unit_indices = sorting.ids_to_indices(unit_ids)
@@ -3267,6 +3339,9 @@ def add_sorting_analyzer_to_nwbfile(
         unit_table_description=units_description,
         waveform_means=template_means,
         waveform_sds=template_stds,
+        waveform_rate=waveform_rate,
+        waveform_unit=waveform_unit,
+        waveform_time_before_peak_in_ms=waveform_time_before_peak_in_ms,
         unit_electrode_indices=unit_electrode_indices,
         null_values_for_properties=null_values_for_properties,
     )
@@ -3391,8 +3466,11 @@ def write_sorting_analyzer_to_nwbfile(
         "needs to have a recording attached or the 'recording' argument needs to be used."
     )
 
-    # Resolve backend
-    backend = _resolve_backend(backend=backend, backend_configuration=backend_configuration)
+    # An append is bound to the backend of the file on disk; a new file gets its backend from the caller
+    if append_on_disk_nwbfile:
+        backend = _fetch_backend_from_nwbfile_on_disk(
+            nwbfile_path=nwbfile_path, backend=backend, backend_configuration=backend_configuration
+        )
 
     appending_to_in_memory_nwbfile = nwbfile is not None
     file_initially_exists = nwbfile_path.exists()
@@ -3447,9 +3525,6 @@ def write_sorting_analyzer_to_nwbfile(
             units_description=units_description,
             null_values_for_properties=null_values_for_properties,
         )
-
-        if backend_configuration is None:
-            backend_configuration = get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
 
         configure_and_write_nwbfile(
             nwbfile=nwbfile,

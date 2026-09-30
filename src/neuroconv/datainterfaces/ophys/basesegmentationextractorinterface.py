@@ -1,3 +1,4 @@
+import math
 import warnings
 from typing import Literal
 
@@ -8,12 +9,14 @@ from pynwb.ophys import Fluorescence, ImageSegmentation, ImagingPlane, TwoPhoton
 
 from ._metadata_schema import _get_ophys_registry_entry_definitions, _keyed_registry
 from ._metadata_template import (
-    _get_device_model_template_entry,
-    _get_device_template_entry,
     _get_imaging_plane_template_entry,
     _resolve_device_metadata_key,
 )
 from ...baseextractorinterface import BaseExtractorInterface
+from ...tools.nwb_helpers._metadata_and_file_helpers import (
+    _get_device_model_template_entry,
+    _get_device_template_entry,
+)
 from ...utils import (
     DeepDict,
     fill_defaults,
@@ -215,7 +218,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         # extractor does not hold is a blank nobody can fill, since the object is never written.
         traces_dict = self.segmentation_extractor.get_traces_dict()
         available_traces = [
-            trace_name for trace_name, trace in traces_dict.items() if trace is not None and trace.size != 0
+            trace_name for trace_name, trace in traces_dict.items() if trace is not None and math.prod(trace.shape) != 0
         ]
         if available_traces:
             ophys["RoiResponses"] = {
@@ -246,6 +249,12 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         # template, so a field the interface was able to read is never handed back as one to fill in.
         template.deep_update(source_metadata)
         return template
+
+    def _has_segmentation_data(self) -> bool:
+        """Whether the source holds anything to write: ROIs, traces or summary images."""
+        from ...tools.roiextractors.roiextractors import _segmentation_extractor_has_data
+
+        return _segmentation_extractor_has_data(segmentation_extractor=self.segmentation_extractor)
 
     def get_original_timestamps(self) -> np.ndarray:
         reinitialized_extractor = self._initialize_extractor(self.source_data)

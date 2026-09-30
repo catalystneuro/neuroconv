@@ -5,6 +5,7 @@ import pytest
 from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.tools.nwb_helpers import DatasetIOConfiguration
+from neuroconv.tools.testing import mock_HDF5DatasetIOConfiguration
 
 
 def test_get_data_io_kwargs_abstract_error():
@@ -17,7 +18,7 @@ def test_get_data_io_kwargs_abstract_error():
             dtype=np.dtype("int16"),
             chunk_shape=(78_125, 64),
             buffer_shape=(1_250_000, 384),
-            compression_method="gzip",
+            compressors=["gzip"],
         )
     assert "Can't instantiate abstract class DatasetIOConfiguration" in str(error_info.value)
 
@@ -38,7 +39,7 @@ def test_get_data_io_kwargs_not_implemented():
         dtype=np.dtype("int16"),
         chunk_shape=(78_125, 64),
         buffer_shape=(1_250_000, 384),
-        compression_method="gzip",
+        compressors=["gzip"],
     )
 
     with pytest.raises(NotImplementedError):
@@ -102,4 +103,29 @@ def test_from_neurodata_object_dtype_object_all_strings():
 
     assert dataset_io_configuration.chunk_shape == (3,)
     assert dataset_io_configuration.buffer_shape == (3,)
-    assert dataset_io_configuration.compression_method == "gzip"
+    assert dataset_io_configuration.compressors == ["gzip"]
+
+
+def test_derived_size_properties():
+    """The three sizes the printout reports are computed from the shapes and the dtype."""
+    dataset_configuration = mock_HDF5DatasetIOConfiguration()
+
+    assert dataset_configuration.full_size_in_bytes == 1_800_000 * 384 * 2
+    assert dataset_configuration.maximum_ram_usage_per_iteration_in_bytes == 1_250_000 * 384 * 2
+    assert dataset_configuration.disk_space_usage_per_chunk_in_bytes == 78_125 * 64 * 2
+
+
+def test_disk_space_usage_per_chunk_is_none_when_unchunked():
+    """An unchunked dataset has no per-chunk size to report."""
+    dataset_configuration = mock_HDF5DatasetIOConfiguration(chunk_shape=None, buffer_shape=None)
+
+    assert dataset_configuration.disk_space_usage_per_chunk_in_bytes is None
+    assert dataset_configuration.full_size_in_bytes == 1_800_000 * 384 * 2
+
+
+def test_derived_size_properties_follow_the_dtype():
+    """The sizes scale with the itemsize of the dtype, not just the shape."""
+    dataset_configuration = mock_HDF5DatasetIOConfiguration(dtype=np.dtype("float64"))
+
+    assert dataset_configuration.full_size_in_bytes == 1_800_000 * 384 * 8
+    assert dataset_configuration.disk_space_usage_per_chunk_in_bytes == 78_125 * 64 * 8

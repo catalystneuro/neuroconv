@@ -6,6 +6,7 @@ from pynwb import read_nwb
 from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.datainterfaces import IntanDigitalInterface
+from neuroconv.tools.testing.data_interface_mixins import EventsInterfaceTestMixin
 
 try:
     from ..setup_paths import ECEPHY_DATA_PATH
@@ -13,7 +14,7 @@ except ImportError:
     from setup_paths import ECEPHY_DATA_PATH
 
 
-class TestIntanDigitalInterface:
+class TestIntanDigitalInterface(EventsInterfaceTestMixin):
     """
     This test a simple Intan digital file with a single enabled line
     """
@@ -22,6 +23,8 @@ class TestIntanDigitalInterface:
     # (bit 0 of the word: this Intan software version names its lines from one while the bit positions
     # count from zero, which is why the name is the handle and the bit is not).
     FILE_PATH = ECEPHY_DATA_PATH / "intan" / "intan_fps_test_231117_052500" / "info.rhd"
+    data_interface_cls = IntanDigitalInterface
+    interface_kwargs = dict(file_path=FILE_PATH)
 
     def test_get_metadata(self):
         """get_metadata (default configuration) seeds one event_type per derived line, under the given
@@ -80,7 +83,7 @@ class TestIntanDigitalInterface:
         np.testing.assert_allclose(table["duration"][:], expected_durations)
 
 
-class TestIntanDigitalBothWords:
+class TestIntanDigitalBothWords(EventsInterfaceTestMixin):
     """This is a test for an Intan file carrying both digital words.
 
     One interface covers both, because the header names every line individually and the name alone does
@@ -94,6 +97,8 @@ class TestIntanDigitalBothWords:
     # DIGITAL-IN-13/14/15 and DIGITAL-OUT-13/14/15 toggle. This is the shape the single-line fixture
     # cannot exercise.
     FILE_PATH = ECEPHY_DATA_PATH / "intan" / "rhs_stim_data_single_file_format" / "intanTestFile.rhs"
+    data_interface_cls = IntanDigitalInterface
+    interface_kwargs = dict(file_path=FILE_PATH)
     DIGITAL_IN = "USB board digital input channel"
     DIGITAL_OUT = "USB board digital output channel"
 
@@ -191,5 +196,6 @@ class TestIntanDigitalFileWithoutDigitalChannels:
         refused by the shared validator's empty-configuration guard, whose message tells the caller to
         pass the ``None`` they just passed.
         """
-        with pytest.raises(ValueError, match="carries no digital channels"):
-            IntanDigitalInterface(file_path=self.FILE_PATH)
+        with pytest.warns(UserWarning, match="saved_files_are_split=True"):
+            with pytest.raises(ValueError, match="carries no digital channels"):
+                IntanDigitalInterface(file_path=self.FILE_PATH)

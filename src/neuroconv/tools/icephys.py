@@ -1,3 +1,6 @@
+from dataclasses import dataclass
+
+import numpy as np
 from pynwb import NWBFile, TimeSeries
 from pynwb.epoch import TimeIntervals
 from pynwb.icephys import (
@@ -9,7 +12,7 @@ from pynwb.icephys import (
 )
 
 from .nwb_helpers import _add_device_to_nwbfile
-from ..utils import DeepDict
+from ..utils import DeepDict, calculate_regular_series_rate
 
 # The key under which the default (placeholder) entries are registered. An interface re-keys these to its own
 # file-derived keys; mirrors the ophys ``default_metadata_key``.
@@ -26,6 +29,53 @@ _STIMULUS_CLASS = {
     "voltage_clamp": VoltageClampStimulusSeries,
     "current_clamp": CurrentClampStimulusSeries,
 }
+
+
+@dataclass
+class _IcephysSeriesData:
+    """One patch-clamp series before it is materialized as an NWB object."""
+
+    data: np.ndarray
+    timestamps: np.ndarray
+    conversion: float
+    offset: float = 0.0
+
+
+def _add_patch_clamp_series_to_nwbfile(
+    nwbfile: NWBFile,
+    metadata: dict,
+    series_metadata_key: str,
+    series_data: _IcephysSeriesData,
+    electrode,
+    mode: str,
+    is_stimulus: bool,
+):
+    """Construct and add one response or stimulus series from an icephys data record."""
+    metadata_registry = "PatchClampStimulusSeries" if is_stimulus else "PatchClampSeries"
+    series_metadata = metadata["Icephys"][metadata_registry][series_metadata_key]
+    series_class = _STIMULUS_CLASS[mode] if is_stimulus else _RESPONSE_CLASS[mode]
+    series_kwargs = dict(
+        name=series_metadata["name"],
+        data=series_data.data,
+        electrode=electrode,
+        conversion=series_data.conversion,
+        offset=series_data.offset,
+        gain=np.nan,
+        description=series_metadata["description"],
+    )
+    rate = calculate_regular_series_rate(series=series_data.timestamps)
+    if rate is not None:
+        series_kwargs.update(starting_time=float(series_data.timestamps[0]), rate=rate)
+    else:
+        series_kwargs.update(timestamps=series_data.timestamps)
+
+    series = series_class(**series_kwargs)
+    if is_stimulus:
+        nwbfile.add_stimulus(series)
+    else:
+        nwbfile.add_acquisition(series)
+    return series
+
 
 # NWB requires a `stimulus_type` on every SequentialRecordings entry, so a source that describes none still has
 # to put a string there. It is written only at that level: an interface with nothing to say omits the column from
@@ -475,8 +525,6 @@ def _add_sweep_time_intervals_to_nwbfile(nwbfile: NWBFile, name: str = "sweeps")
         row = dict(start_time=start_time, stop_time=stop_time)
         if has_sequence_column:
             row["sequence"] = sequence_by_interval[(start_time, stop_time)]
-        # check_ragged=False: hdmf rescans the whole column on every add_row, making this quadratic in the
-        # number of sweeps. Every cell here is a scalar, so the check can only ever return False.
-        sweeps.add_row(**row, check_ragged=False)
+        sweeps.add_row(**row)
 
     nwbfile.add_time_intervals(sweeps)

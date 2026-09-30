@@ -31,6 +31,17 @@ interface read out of the source format and nothing else: no defaults, no placeh
 scaffold for the user to fill in. Whatever a conversion cannot answer from the source is the user's to
 supply, and an interface that answers on their behalf has removed their chance to notice.
 
+**The source is the format, not only the file.** A value the format fixes for every file it produces
+is source-derived even where no byte of a particular file states it. ``source_software`` is the plain
+case: ``SLEAPInterface`` reports ``"SLEAP"`` because of what it is reading, not because the file names
+itself. A pose series' ``reference_frame`` is the same kind of thing, since SLEAP, DeepLabCut and
+Lightning Pose all express keypoints in image coordinates with the origin at the top-left pixel and y
+increasing downward, so an interface can state it without asking the experimenter. The test is whether
+the value would be identical for every file that format produces. If it would, it is a fact about the
+format and belongs in ``get_metadata()``. If it varies from experiment to experiment and this file does
+not record it, it is missing, and the rules below apply. The writer keeps a placeholder for the second
+case regardless, so an interface that does not know still writes a valid file.
+
 Concretely, if the source carries no value for a field:
 
 - **Omit the key.** Do not emit ``"description": ""``, ``"location": "unknown"``, or an empty
@@ -197,6 +208,22 @@ earlier ``add_*`` call.
 See `issue #1511 <https://github.com/catalystneuro/neuroconv/issues/1511>`_ for the discussion.
 
 
+.. _metadata_plural_naming:
+
+Fields that hold keyed entries are plural
+------------------------------------------
+
+**A field whose entries are addressed by** ``metadata_key`` **is named in the plural, because it can
+hold more than one of them.** The top-level ``Devices`` and ``DeviceModels``, ``ElectrodeGroups`` and
+``ElectricalSeries`` under ``Ecephys``, ``ImagingPlanes``, ``PlaneSegmentations``, ``RoiResponses`` and
+``SegmentationImages`` under ``Ophys``, ``Skeletons`` and ``PoseEstimations`` under ``Pose``, and
+``EventTables`` under ``Events`` all follow it. The rule is a naming convention, but a key is a contract
+with the users who write their metadata edits against it, so one that has to gain the plural later
+breaks every script addressing the old spelling.
+
+See `issue #1280 <https://github.com/catalystneuro/neuroconv/issues/1280>`_ for the original discussion.
+
+
 .. _metadata_key_naming:
 
 The ``metadata_key`` parameter
@@ -249,3 +276,4 @@ When writing or reviewing an interface:
 - The ``metadata_key`` default is a snake_case constant, unless the format inherently produces several
   instances at once (then it is derived from a stable source handle).
 - The ``metadata_key`` is typed ``str | None``, and its default is resolved in ``__init__``.
+- Every metadata field holding entries addressed by ``metadata_key`` is named in the plural.
