@@ -161,7 +161,7 @@ def get_electrical_series_chunk_shape(
     total_chunk_space_bytes = chunk_mb * 1e6
 
     # We allocate as many frames as possible with the remaining space of the chunk
-    chunk_frames = total_chunk_space_bytes // size_of_chunk_channels_bytes
+    chunk_frames = int(total_chunk_space_bytes // size_of_chunk_channels_bytes)
 
     # We clip by the number of frames if the samples are too small
     chunk_frames = min(chunk_frames, number_of_frames)
