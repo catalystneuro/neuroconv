@@ -136,7 +136,7 @@ Legacy AbfInterface
 
 .. note::
 
-    ``AbfInterface`` is deprecated and will be removed on or after August 2027. Use
+    ``AbfInterface`` is deprecated and will be removed in release 0.12.0. Use
     ``AxonIntracellularInterface`` above instead; it writes one continuous series per electrode and records
     each sweep through the NWB intracellular recordings table. Where ``AbfInterface`` takes several files at
     once, use one ``AxonIntracellularInterface`` per electrode per file and combine them with

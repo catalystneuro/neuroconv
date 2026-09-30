@@ -31,6 +31,17 @@ interface read out of the source format and nothing else: no defaults, no placeh
 scaffold for the user to fill in. Whatever a conversion cannot answer from the source is the user's to
 supply, and an interface that answers on their behalf has removed their chance to notice.
 
+**The source is the format, not only the file.** A value the format fixes for every file it produces
+is source-derived even where no byte of a particular file states it. ``source_software`` is the plain
+case: ``SLEAPInterface`` reports ``"SLEAP"`` because of what it is reading, not because the file names
+itself. A pose series' ``reference_frame`` is the same kind of thing, since SLEAP, DeepLabCut and
+Lightning Pose all express keypoints in image coordinates with the origin at the top-left pixel and y
+increasing downward, so an interface can state it without asking the experimenter. The test is whether
+the value would be identical for every file that format produces. If it would, it is a fact about the
+format and belongs in ``get_metadata()``. If it varies from experiment to experiment and this file does
+not record it, it is missing, and the rules below apply. The writer keeps a placeholder for the second
+case regardless, so an interface that does not know still writes a valid file.
+
 Concretely, if the source carries no value for a field:
 
 - **Omit the key.** Do not emit ``"description": ""``, ``"location": "unknown"``, or an empty

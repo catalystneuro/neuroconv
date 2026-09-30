@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 from numpy.testing import assert_array_equal
-from pynwb import NWBHDF5IO
+from pynwb import NWBHDF5IO, read_nwb
 from pynwb.testing.mock.base import mock_TimeSeries
 from pynwb.testing.mock.file import mock_NWBFile
 
@@ -45,12 +45,33 @@ def test_appended_time_series(nwbfile_path: str):
 
         io.write(nwbfile)
 
+    written_nwbfile = read_nwb(nwbfile_path)
+
+    written_data = written_nwbfile.acquisition["AppendedTimeSeries"].data
+    assert written_data.compression == "gzip"
+    assert written_data.chunks == APPENDED_ARRAY.shape
+    assert_array_equal(written_data[:], APPENDED_ARRAY)
+
+    assert_array_equal(written_nwbfile.acquisition["ExistingTimeSeries"].data[:], EXISTING_ARRAY)
+    written_nwbfile.read_io.close()
+
+
+@pytest.mark.parametrize("backend", ["hdf5", "zarr"])
+def test_configuring_existing_data_does_not_read_iterator_buffer(nwbfile_path, backend, monkeypatch):
+    """The source dtype is already known, so constructing its iterator should not read data."""
+    from hdmf.data_utils import DataChunkIterator
+
+    def unexpected_read(self):
+        raise AssertionError("Iterator construction should use the configured dtype without reading a buffer")
+
     with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
-        written_nwbfile = io.read()
+        nwbfile = io.read()
+        configuration = get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
+        with monkeypatch.context() as patch:
+            patch.setattr(DataChunkIterator, "_read_next_chunk", unexpected_read)
+            configure_backend(nwbfile=nwbfile, backend_configuration=configuration)
 
-        written_data = written_nwbfile.acquisition["AppendedTimeSeries"].data
-        assert written_data.compression == "gzip"
-        assert written_data.chunks == APPENDED_ARRAY.shape
-        assert_array_equal(written_data[:], APPENDED_ARRAY)
-
-        assert_array_equal(written_nwbfile.acquisition["ExistingTimeSeries"].data[:], EXISTING_ARRAY)
+        iterator = nwbfile.acquisition["ExistingTimeSeries"].data.data
+        assert isinstance(iterator, DataChunkIterator)
+        assert iterator.dtype == EXISTING_ARRAY.dtype
+        assert_array_equal(next(iterator).data, EXISTING_ARRAY)

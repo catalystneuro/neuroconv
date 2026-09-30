@@ -5,6 +5,7 @@ compatibility during the migration to the new dict-based format. They will be
 removed once the migration is complete.
 """
 
+import math
 import warnings
 from collections import defaultdict
 from typing import Literal
@@ -1183,7 +1184,9 @@ def _add_segmentation_to_nwbfile_old_list_format(
     traces_to_add = segmentation_extractor.get_traces_dict()
     # Filter empty data and background traces
     traces_to_add = {
-        trace_name: trace for trace_name, trace in traces_to_add.items() if trace is not None and trace.size != 0
+        trace_name: trace
+        for trace_name, trace in traces_to_add.items()
+        if trace is not None and math.prod(trace.shape) != 0
     }
     if include_background_segmentation:
         traces_to_add.pop("neuropil", None)
@@ -1207,7 +1210,7 @@ def _add_segmentation_to_nwbfile_old_list_format(
         traces_to_add = {
             trace_name: trace
             for trace_name, trace in traces_to_add.items()
-            if trace is not None and trace.size != 0 and trace_name == "neuropil"
+            if trace is not None and math.prod(trace.shape) != 0 and trace_name == "neuropil"
         }
         if traces_to_add:
             background_ids = segmentation_extractor.get_background_ids()
@@ -1260,7 +1263,9 @@ def add_fluorescence_traces_to_nwbfile(
     traces_to_add = segmentation_extractor.get_traces_dict()
     # Filter empty data and background traces
     traces_to_add = {
-        trace_name: trace for trace_name, trace in traces_to_add.items() if trace is not None and trace.size != 0
+        trace_name: trace
+        for trace_name, trace in traces_to_add.items()
+        if trace is not None and math.prod(trace.shape) != 0
     }
     if include_background_segmentation:
         traces_to_add.pop("neuropil", None)

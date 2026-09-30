@@ -446,6 +446,7 @@ class DeepLabCutInterface(BasePoseEstimationInterface):
 
         from ._dlc_utils import (
             _ensure_individuals_in_header,
+            _get_edges_from_config,
             _get_graph_edges,
             _get_video_info_from_config_file,
         )
@@ -462,8 +463,12 @@ class DeepLabCutInterface(BasePoseEstimationInterface):
         # Ensure individuals in header if needed
         df = _ensure_individuals_in_header(df, self.subject_name)
 
-        # Extract bodyparts and individuals
-        bodyparts = df.columns.get_level_values("bodyparts").unique().tolist()
+        # This individual's bodyparts, not the file's. A multi-animal project can also declare unique
+        # bodyparts, landmarks of the scene rather than of any subject, and those arrive under an
+        # ``individuals`` group named ``single``. The file's set is then a superset of the subject's, so
+        # reading it here while the series come from ``_read_animal_dataframe`` wrote a skeleton whose
+        # nodes were not the keypoints the container held.
+        bodyparts = self._read_animal_dataframe().columns.get_level_values("bodyparts").unique().tolist()
 
         # Get video dimensions from config if available
         dimensions = None
@@ -472,38 +477,44 @@ class DeepLabCutInterface(BasePoseEstimationInterface):
             _, image_shape = _get_video_info_from_config_file(
                 config_file_path=self.source_data["config_file_path"], vidname=video_name
             )
-            try:
-                shape_parts = [int(x.strip()) for x in image_shape.split(",")]
-                if len(shape_parts) == 4:
-                    dimensions = [[shape_parts[3], shape_parts[1]]]  # [[height, width]]
-            except (ValueError, IndexError):
-                pass
+            if image_shape is not None:
+                try:
+                    shape_parts = [int(x.strip()) for x in image_shape.split(",")]
+                    if len(shape_parts) == 4:
+                        dimensions = [[shape_parts[3], shape_parts[1]]]  # [[height, width]]
+                except (ValueError, IndexError):
+                    pass
 
         # Get edges from metadata pickle file if available
-        edges = []
-        try:
-            filename = str(Path(file_path).parent / Path(file_path).stem)
-            for i, c in enumerate(filename[::-1]):
-                if c.isnumeric():
-                    break
-            if i > 0:
-                filename = filename[:-i]
-            metadata_file_path = Path(filename + "_meta.pickle")
-            edges = _get_graph_edges(metadata_file_path=metadata_file_path)
-        except Exception:
-            pass
+        # The project config states the skeleton as pairs of bodypart names, which is the source that is
+        # actually there: the part affinity field graph below lives in a ``_meta.pickle`` beside the output
+        # file that DeepLabCut does not always write, and when it is missing the skeleton is written with
+        # nodes and no connections.
+        edges = _get_edges_from_config(config_dict=self.config_dict, bodyparts=bodyparts)
+        if not edges:
+            try:
+                filename = str(Path(file_path).parent / Path(file_path).stem)
+                for i, c in enumerate(filename[::-1]):
+                    if c.isnumeric():
+                        break
+                if i > 0:
+                    filename = filename[:-i]
+                metadata_file_path = Path(filename + "_meta.pickle")
+                edges = _get_graph_edges(metadata_file_path=metadata_file_path)
+            except Exception:
+                pass
 
-        # Extract video name and scorer
-        # If filename contains "DLC", split on it to get video name
-        # Otherwise, use the full stem as video name
+        # The scorer is written into the file by DeepLabCut, so read it from there rather than off the
+        # filename. A multi-animal run appends a tracker suffix to the name (``_el`` for ellipse, ``_bx``
+        # for box, ``_sk`` for skeleton, plus ``_filtered``), and any local rename adds more, all of which
+        # the split swept into the scorer. It also raised ``ValueError`` on a stem holding "DLC" twice,
+        # which a video named after a DeepLabCut project produces.
+        scorer = df.columns.get_level_values("scorer")[0]
+
+        # The filename stays the only source for the video name, which is what looks the recording up in
+        # the project config.
         file_stem = Path(file_path).stem
-        if "DLC" in file_stem:
-            video_name, scorer = Path(file_path).stem.split("DLC")
-            scorer = "DLC" + scorer
-        else:
-            video_name = file_stem
-            # Extract scorer from DataFrame header
-            scorer = df.columns.get_level_values("scorer")[0]
+        video_name = file_stem.split("DLC")[0] if "DLC" in file_stem else file_stem
 
         # Get video info from config file if available
         video_file_path = None
@@ -555,7 +566,13 @@ class DeepLabCutInterface(BasePoseEstimationInterface):
             dimensions=source_metadata["dimensions"],
             original_videos=[video_file_path] if video_file_path else None,
             PoseEstimationSeries={
-                bodypart: {"name": f"PoseEstimationSeries{bodypart.capitalize()}"}
+                bodypart: {
+                    "name": f"PoseEstimationSeries{bodypart.capitalize()}",
+                    "reference_frame": (
+                        "(0,0) is the top-left pixel of the video frame, with x increasing to the right "
+                        "and y increasing downward."
+                    ),
+                }
                 for bodypart in source_metadata["bodyparts"]
             },
         )

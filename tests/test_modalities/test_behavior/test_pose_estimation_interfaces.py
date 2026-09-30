@@ -1,9 +1,18 @@
+from datetime import datetime, timezone
+
+import numpy as np
+import pytest
+from pynwb import read_nwb
 from pynwb.testing.mock.file import mock_NWBFile
 
+from neuroconv import NWBConverter
 from neuroconv.tools.testing.data_interface_mixins import (
     PoseEstimationInterfaceTestMixin,
 )
-from neuroconv.tools.testing.mock_interfaces import MockPoseEstimationInterface
+from neuroconv.tools.testing.mock_interfaces import (
+    MockExternalVideoInterface,
+    MockPoseEstimationInterface,
+)
 
 
 class TestMockPoseEstimationInterface(PoseEstimationInterfaceTestMixin):
@@ -344,3 +353,143 @@ class TestPoseEstimationMetadata:
         container = behavior_module["PoseNoDeviceNoSkeleton"]
         assert container.skeleton is None
         assert not container.devices
+
+
+class TestPoseEstimationVideoLink:
+    """A container naming the video its keypoints were tracked from, via ``source_video_metadata_key``.
+
+    The link addresses an entry in ``metadata["Behavior"]["ExternalVideos"]`` and is resolved against the
+    ``ImageSeries`` already in the file rather than created, so it is the converter, and the order the
+    interfaces are declared in, that decides whether it can be followed.
+    """
+
+    def test_link_resolves_to_the_written_image_series(self):
+        """The container holds the very ``ImageSeries`` object the video interface added."""
+
+        class VideoThenPoseConverter(NWBConverter):
+            data_interface_classes = dict(Video=MockExternalVideoInterface, Pose=MockPoseEstimationInterface)
+
+        converter = VideoThenPoseConverter(
+            source_data=dict(
+                Video=dict(file_paths=["top_camera.mp4"], metadata_key="top_video"),
+                Pose=dict(num_samples=50, num_nodes=3, metadata_key="top_pose"),
+            )
+        )
+        metadata = converter.get_metadata()
+        metadata["Pose"]["PoseEstimations"]["top_pose"]["source_video_metadata_key"] = "top_video"
+
+        nwbfile = mock_NWBFile()
+        converter.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+        image_series_name = metadata["Behavior"]["ExternalVideos"]["top_video"]["name"]
+        container = nwbfile.processing["behavior"]["top_pose"]
+        assert container.source_video is nwbfile.acquisition[image_series_name]
+        # The camera reaches the file through the ImageSeries, so the container names no device of its own.
+        assert not container.devices
+
+    def test_link_resolves_when_the_video_is_in_the_behavior_module(self):
+        """Both containers are searched, since it is the video interface that chooses which one it writes to."""
+
+        class VideoThenPoseConverter(NWBConverter):
+            data_interface_classes = dict(Video=MockExternalVideoInterface, Pose=MockPoseEstimationInterface)
+
+        converter = VideoThenPoseConverter(
+            source_data=dict(
+                Video=dict(file_paths=["top_camera.mp4"], metadata_key="top_video"),
+                Pose=dict(num_samples=50, num_nodes=3, metadata_key="top_pose"),
+            )
+        )
+        metadata = converter.get_metadata()
+        metadata["Pose"]["PoseEstimations"]["top_pose"]["source_video_metadata_key"] = "top_video"
+
+        nwbfile = mock_NWBFile()
+        converter.add_to_nwbfile(
+            nwbfile=nwbfile,
+            metadata=metadata,
+            conversion_options=dict(Video=dict(parent_container="processing/behavior")),
+        )
+
+        image_series_name = metadata["Behavior"]["ExternalVideos"]["top_video"]["name"]
+        behavior_module = nwbfile.processing["behavior"]
+        assert image_series_name not in nwbfile.acquisition
+        assert behavior_module["top_pose"].source_video is behavior_module[image_series_name]
+
+    def test_pose_written_before_the_video_raises(self):
+        """Declaring the pose interface first leaves nothing for the link to resolve against."""
+
+        class PoseThenVideoConverter(NWBConverter):
+            data_interface_classes = dict(Pose=MockPoseEstimationInterface, Video=MockExternalVideoInterface)
+
+        converter = PoseThenVideoConverter(
+            source_data=dict(
+                Video=dict(file_paths=["top_camera.mp4"], metadata_key="top_video"),
+                Pose=dict(num_samples=50, num_nodes=3, metadata_key="top_pose"),
+            )
+        )
+        metadata = converter.get_metadata()
+        metadata["Pose"]["PoseEstimations"]["top_pose"]["source_video_metadata_key"] = "top_video"
+
+        nwbfile = mock_NWBFile()
+        with pytest.raises(ValueError, match="The video has to be written before the pose that links it"):
+            converter.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+    def test_key_naming_no_video_entry_raises(self):
+        """A key that is in no ``ExternalVideos`` registry is a metadata error rather than an ordering one."""
+        interface = MockPoseEstimationInterface(num_samples=50, num_nodes=3, metadata_key="top_pose")
+        metadata = interface.get_metadata()
+        metadata["Pose"]["PoseEstimations"]["top_pose"]["source_video_metadata_key"] = "absent_video"
+
+        nwbfile = mock_NWBFile()
+        with pytest.raises(ValueError, match=r"was not found in metadata\['Behavior'\]\['ExternalVideos'\]"):
+            interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+
+class TestPoseEstimationTimestamps:
+    """How the series inside one container carry their times.
+
+    Every series in a container is a keypoint of the same animal on the same frames, so the times are
+    identical by construction. A regular series is stored as a rate and carries no timestamps dataset at
+    all, and an irregular one is stored once and linked, which is the case a SLEAP file produces.
+    """
+
+    def test_regular_timestamps_are_written_as_a_rate(self):
+        """Nothing is duplicated on the regular path, since no series holds a timestamps dataset."""
+        interface = MockPoseEstimationInterface(num_samples=50, num_nodes=3, metadata_key="regular_pose")
+
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile)
+
+        container = nwbfile.processing["behavior"]["regular_pose"]
+        for series in container.pose_estimation_series.values():
+            assert series.timestamps is None
+            assert series.rate is not None
+
+    def test_equal_timestamps_are_linked_in_pose_series(self, tmp_path):
+        """Every series after the first takes the first one as its ``timestamps``, in memory and on disk."""
+        interface = MockPoseEstimationInterface(
+            num_samples=50, num_nodes=3, sampling="irregular", metadata_key="irregular_pose"
+        )
+
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile)
+
+        container = nwbfile.processing["behavior"]["irregular_pose"]
+        series = list(container.pose_estimation_series.values())
+        assert len(series) == 3
+        # ``TimeSeries.timestamps`` resolves a link back to the values, so the link itself reads off the
+        # series that owns the dataset and every series still reports the same times.
+        assert series[0].timestamp_link == set(series[1:])
+        for linked_series in series:
+            assert np.array_equal(linked_series.timestamps, interface.get_timestamps())
+
+        nwbfile_path = tmp_path / "irregular_pose.nwb"
+        metadata = interface.get_metadata()
+        metadata["NWBFile"]["session_start_time"] = datetime(2026, 9, 9, tzinfo=timezone.utc)
+        interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
+
+        read_nwbfile = read_nwb(nwbfile_path)
+        read_series = read_nwbfile.processing["behavior"]["irregular_pose"].pose_estimation_series
+        assert read_series[series[0].name].timestamp_link == {read_series[other.name] for other in series[1:]}
+        for read_one in read_series.values():
+            assert np.array_equal(read_one.timestamps[:], interface.get_timestamps())
+        read_nwbfile.read_io.close()

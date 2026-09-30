@@ -10,31 +10,6 @@ template used as it is fails rather than writing a blank.
 """
 
 
-def _get_device_template_entry(*, device_model_metadata_key: str) -> dict:
-    """A blank microscope, the device an imaging plane links to.
-
-    The make and catalog specification belong to the model rather than to the microscope: pynwb
-    deprecated ``Device.manufacturer``, ``model_number`` and ``model_name`` in favor of a linked
-    ``DeviceModel``, so those are offered there and only the serial number of this one instrument
-    stays here.
-    """
-    return dict(
-        name=None,
-        description=None,
-        serial_number=None,
-        device_model_metadata_key=device_model_metadata_key,
-    )
-
-
-def _get_device_model_template_entry() -> dict:
-    """A blank microscope model: the make and catalog specification, shared by every recording on it.
-
-    Optional as a whole. To drop it, delete the entry and the ``device_model_metadata_key`` pointing
-    at it.
-    """
-    return dict(name=None, manufacturer=None, model_number=None, description=None)
-
-
 def _get_imaging_plane_template_entry(*, device_metadata_key: str) -> dict:
     """
     A blank imaging plane, already linked to the device this interface's objects hang off.

@@ -178,6 +178,37 @@ def _ensure_individuals_in_header(df, individual_name: str):
     return df
 
 
+def _get_edges_from_config(config_dict: dict, bodyparts: list) -> list:
+    """Return the project config's skeleton as pairs of bodypart indices.
+
+    DeepLabCut states the skeleton in the config as pairs of bodypart *names*, while ``ndx-pose`` wants
+    indices into the node list, so the names are looked up. A pair naming a bodypart this file does not
+    track is skipped rather than guessed at: a project config can outlive the bodyparts of any one run.
+
+    Parameters
+    ----------
+    config_dict : dict
+        The parsed project config. An empty one, which is what an interface built without a config file
+        carries, yields no edges.
+    bodyparts : list
+        The node names, in the order they are written, which is what the indices address.
+
+    Returns
+    -------
+    list
+        Pairs of indices into ``bodyparts``, empty when the config states no skeleton.
+    """
+    skeleton = config_dict.get("skeleton") or []
+    index_of = {bodypart: index for index, bodypart in enumerate(bodyparts)}
+
+    edges = []
+    for edge in skeleton:
+        if len(edge) == 2 and edge[0] in index_of and edge[1] in index_of:
+            edges.append([index_of[edge[0]], index_of[edge[1]]])
+
+    return edges
+
+
 def _get_graph_edges(metadata_file_path: Path):
     """
     Extracts the part affinity field graph from the metadata pickle file.
@@ -203,8 +234,8 @@ def _get_graph_edges(metadata_file_path: Path):
             paf_inds = test_cfg.get("paf_best")
             if paf_inds is not None:
                 paf_graph = [paf_graph[i] for i in paf_inds]
-    else:
-        warnings.warn("Metadata not found...")
+    # An absent pickle is not an error and not worth a warning: DeepLabCut does not always write one, and
+    # the project config is the first place the edges are looked for.
 
     return paf_graph
 
@@ -235,8 +266,11 @@ def _get_video_info_from_config_file(config_file_path: Path, vidname: str):
             break
 
     if video is None:
-        warnings.warn(f"The corresponding video file could not be found in the config file")
-        video = None, "0, 0, 0, 0"
+        # Nothing is invented here. The stem is matched against the config's ``video_sets`` keys, which are
+        # absolute paths from the machine that did the training, so a miss is the common case rather than
+        # the exception, and the frame size this used to return ("0, 0, 0, 0", which parses to [[0, 0]])
+        # was a fabricated one written into the file. See https://github.com/catalystneuro/neuroconv/issues/1046.
+        video = None, None
 
     # The video in the config_file looks like this:
     # video_sets:

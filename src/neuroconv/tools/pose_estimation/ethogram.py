@@ -111,8 +111,6 @@ def _build_ethogram_from_labels(
         ethogram=catalogue,
     )
     for start_time, stop_time, label in _run_length_encode_labels(labels, timestamps, frame_period):
-        # check_ragged=False: hdmf rescans the whole column on every add_row, making this quadratic in the
-        # number of bouts. Every cell here is a scalar, so the check can only ever return False.
-        bouts.add_row(start_time=start_time, stop_time=stop_time, label=str(label), check_ragged=False)
+        bouts.add_row(start_time=start_time, stop_time=stop_time, label=str(label))
 
     return bouts, catalogue

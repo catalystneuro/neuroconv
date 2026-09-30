@@ -113,6 +113,16 @@ def test_get_json_schema_from_method_signature_exclude():
     assert test_json_schema == expected_json_schema
 
 
+def test_get_json_schema_from_method_signature_leaves_exclude_alone():
+    def basic_method(integer_to_keep: int, floating_to_ignore: float):
+        pass
+
+    test_exclude = ["floating_to_ignore"]
+    get_json_schema_from_method_signature(method=basic_method, exclude=test_exclude)
+
+    assert test_exclude == ["floating_to_ignore"]
+
+
 def test_get_json_schema_from_method_signature_init():
     """Test that 'self' is automatically skipped."""
 
@@ -339,13 +349,13 @@ def test_get_json_schema_from_method_signature_docstring_warning():
     with pytest.warns(expected_warning=UserWarning) as warning_info:
         test_json_schema = get_json_schema_from_method_signature(method=method_with_typo_in_docstring)
 
-    assert len(warning_info) == 1
-
     expected_warning_message = (
         "The argument_name 'integ' from the docstring of method 'method_with_typo_in_docstring' does not occur in "
         "the signature, possibly due to a typo."
     )
-    assert warning_info[0].message.args[0] == expected_warning_message
+    # pytest.warns records every warning raised in the block, including unrelated ones from other tests
+    warning_messages = [str(record.message) for record in warning_info]
+    assert warning_messages.count(expected_warning_message) == 1
 
     expected_json_schema = {
         "properties": {"integer": {"type": "integer"}},

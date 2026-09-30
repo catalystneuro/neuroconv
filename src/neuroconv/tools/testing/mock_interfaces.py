@@ -1,5 +1,6 @@
 import warnings
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Literal
 
 import numpy as np
@@ -12,6 +13,9 @@ from ...basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from ...datainterfaces import SpikeGLXNIDQInterface
 from ...datainterfaces.behavior.baseposeestimationinterface import (
     BasePoseEstimationInterface,
+)
+from ...datainterfaces.behavior.video.externalvideointerface import (
+    ExternalVideoInterface,
 )
 from ...datainterfaces.ecephys.baserecordingextractorinterface import (
     BaseRecordingExtractorInterface,
@@ -67,9 +71,16 @@ class MockInterface(BaseDataInterface):
         metadata["NWBFile"]["session_start_time"] = session_start_time
         return metadata
 
-    def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict | None, **conversion_options):
+    def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict | None, add_subject: bool = False):
+        """Add a mock subject to the NWBFile when asked to, and nothing otherwise.
 
-        return None
+        The one conversion option this interface takes, so that a test can assert an option reached it by
+        reading the file it wrote rather than by reading state off the interface.
+        """
+        if add_subject:
+            from pynwb.testing.mock.file import mock_Subject
+
+            nwbfile.subject = mock_Subject()
 
 
 class MockTimeSeriesInterface(BaseDataInterface):
@@ -289,7 +300,9 @@ class MockEventsInterface(BaseEventsInterface):
         num_event_types: int = 1,
         num_events: int = 4,
         event_extent: Literal["point event", "event with duration"] = "point event",
-        event_payload: Literal["timestamps only", "single value", "multi value"] = "timestamps only",
+        event_payload: Literal[
+            "timestamps only", "single value", "single value variable length", "multi value"
+        ] = "timestamps only",
         verbose: bool = False,
     ):
         """Initialize a mock events interface.
@@ -309,14 +322,17 @@ class MockEventsInterface(BaseEventsInterface):
             The temporal extent of the generated events (the taxonomy's Extent axis). ``"point event"``
             (default) generates timestamp-only events; ``"event with duration"`` gives each event a
             duration, so the writer adds a ``duration`` column. Applies to every event type.
-        event_payload : {"timestamps only", "single value", "multi value"}, optional
+        event_payload : {"timestamps only", "single value", "single value variable length", "multi value"}, optional
             The payload carried per event (the taxonomy's Payload axis). ``"timestamps only"``
             (default) is a timestamp-only event with no value column; ``"single value"`` carries one
-            categorical field (a labeled column with a ``MeaningsTable``); ``"multi value"`` carries a
-            three-field struct that fans into three columns on the same rows, one per way the writer
-            treats a value column: ``outcome`` (labels and meanings, so a ``MeaningsTable``), ``cue``
-            (labels but nothing to explain, so no ``MeaningsTable``), and ``amplitude`` (raw numeric
-            values). Applies to every event type.
+            categorical field (a labeled column with a ``MeaningsTable``); ``"single value variable length"``
+            carries that same one field, but each of its cells holds *several* values rather than one, which
+            the writer turns into a ragged column: an event tagged with two conditions at once, or a behavior
+            scored with two qualifiers. The cells vary in length, including the empty one, so it exercises the
+            fill a row with nothing to say gets. ``"multi value"`` carries a three-field struct that fans into
+            three columns on the same rows, one per way the writer treats a value column: ``outcome`` (labels
+            and meanings, so a ``MeaningsTable``), ``cue`` (labels but nothing to explain, so no
+            ``MeaningsTable``), and ``amplitude`` (raw numeric values). Applies to every event type.
         verbose : bool, optional
             Whether to print status messages, by default False.
         """
@@ -327,7 +343,7 @@ class MockEventsInterface(BaseEventsInterface):
         super().__init__(verbose=verbose)
         self.metadata_key = metadata_key or "mock_events"
 
-    def _event_type_source_ids(self) -> list[str]:
+    def get_event_type_source_ids(self) -> list[str]:
         # A single type keeps the plain "events" id; several are indexed so their ids (and, by default,
         # their tables and column names) stay unique.
         if self._num_event_types == 1:
@@ -338,7 +354,7 @@ class MockEventsInterface(BaseEventsInterface):
         metadata = super().get_metadata()
         metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
 
-        for index, event_type_source_id in enumerate(self._event_type_source_ids()):
+        for index, event_type_source_id in enumerate(self.get_event_type_source_ids()):
             suffix = "" if self._num_event_types == 1 else f"_{index}"
             # One branch per payload mode, spelled out in full rather than composed from shared pieces:
             # between them the modes cover the three ways the writer treats a value column, and stating
@@ -355,6 +371,20 @@ class MockEventsInterface(BaseEventsInterface):
                         "column_categories": {
                             "labels": {0: "go", 1: "no_go"},
                             "meanings": {0: "A go outcome.", 1: "A no-go outcome."},
+                        },
+                    },
+                }
+            elif self._event_payload == "single value variable length":
+                # One field holding several values per event, which the writer turns into a ragged
+                # column. Declared exactly like a scalar column: the shape is read off the data, so
+                # nothing in the metadata says "ragged" and there is no second place for it to disagree.
+                columns = {
+                    "conditions": {
+                        "column_name": f"conditions{suffix}",
+                        "description": "The conditions each event was tagged with.",
+                        "column_categories": {
+                            "labels": {0: "go", 1: "no_go", 2: "catch"},
+                            "meanings": {0: "A go condition.", 1: "A no-go condition.", 2: "A catch trial."},
                         },
                     },
                 }
@@ -397,7 +427,7 @@ class MockEventsInterface(BaseEventsInterface):
 
         duration = 0.05 if self._event_extent == "event with duration" else None
         events_data_dict = {}
-        for index, event_type_source_id in enumerate(self._event_type_source_ids()):
+        for index, event_type_source_id in enumerate(self.get_event_type_source_ids()):
             # Stagger timestamps across types so pooling several into one table interleaves in time.
             timestamps = 0.1 * (np.arange(self._num_events) * self._num_event_types + index + 1)
             durations = np.full(self._num_events, duration) if duration is not None else None
@@ -406,6 +436,12 @@ class MockEventsInterface(BaseEventsInterface):
                 payload = {}
             elif self._event_payload == "single value":
                 payload = {"outcome": np.arange(self._num_events) % 2}  # alternating go / no_go
+            elif self._event_payload == "single value variable length":
+                # Lengths cycle 0, 1, 2, 3 so a single generated type covers the empty cell, the
+                # one-value cell that a scalar column could have held, and the genuinely several.
+                payload = {
+                    "conditions": np.array([list(range(count % 4)) for count in range(self._num_events)], dtype=object)
+                }
             elif self._event_payload == "multi value":
                 payload = {
                     "outcome": np.arange(self._num_events) % 2,  # alternating go / no_go
@@ -587,6 +623,10 @@ class MockSignalEncodedEventsInterface(BaseEventsInterface):
         _validate_detection_configuration(detection_configuration, self._available_signals)
         self._detection_configuration = detection_configuration
 
+    def get_event_type_source_ids(self) -> list[str]:
+        """The event types the configuration resolves to, read from nothing."""
+        return _get_event_type_source_ids(self._detection_configuration)
+
     SIGNAL_SOURCE_ID = "word"
 
     def _default_detection_configuration(self) -> dict:
@@ -676,7 +716,7 @@ class MockSignalEncodedEventsInterface(BaseEventsInterface):
         metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
         # Derived from the configuration, so metadata costs no signal generation, does not depend on a
         # plan existing, and lists exactly what will be written, including a line that never fired.
-        for event_type_source_id in _get_event_type_source_ids(self._detection_configuration):
+        for event_type_source_id in self.get_event_type_source_ids():
             metadata["Events"][self.metadata_key]["event_types"][event_type_source_id] = {
                 "event_name": event_type_source_id
             }
@@ -1374,6 +1414,7 @@ class MockPoseEstimationInterface(BasePoseEstimationInterface):
         num_samples: int = 1000,
         num_nodes: int = 3,
         seed: int = 0,
+        sampling: Literal["regular", "irregular"] = "regular",
         verbose: bool = False,
         metadata_key: str = "MockPoseEstimation",
         pose_estimation_metadata_key: str | None = None,
@@ -1389,6 +1430,11 @@ class MockPoseEstimationInterface(BasePoseEstimationInterface):
             Number of nodes/body parts to track, by default 3.
         seed : int, optional
             Random seed for reproducible data generation, by default 0.
+        sampling : {"regular", "irregular"}, optional
+            The clock. ``"regular"`` (default) steps at 30 Hz. ``"irregular"`` draws the samples out of
+            a denser 30 Hz grid, which is the shape a SLEAP ``.slp`` has, since it labels a sparse
+            selection of the video's frames, and it is what makes the writer store a timestamps
+            dataset rather than a rate.
         verbose : bool, optional
             Control verbosity, by default False.
         metadata_key : str, default: "MockPoseEstimation"
@@ -1444,7 +1490,12 @@ class MockPoseEstimationInterface(BasePoseEstimationInterface):
         self.edges = np.array([possible_edges[i] for i in selected_edges], dtype="uint8")
 
         # Generate timestamps (private attributes)
-        self._original_timestamps = np.linspace(0.0, float(num_samples) / 30.0, num_samples)
+        if sampling == "irregular":
+            frame_times = np.arange(2 * num_samples) / 30.0
+            labeled_frames = np.random.default_rng(seed).choice(frame_times.size, size=num_samples, replace=False)
+            self._original_timestamps = frame_times[np.sort(labeled_frames)]
+        else:
+            self._original_timestamps = np.linspace(0.0, float(num_samples) / 30.0, num_samples)
         self._timestamps = np.copy(self._original_timestamps)
 
         # Generate pose estimation data
@@ -1510,10 +1561,15 @@ class MockPoseEstimationInterface(BasePoseEstimationInterface):
             description=f"Mock pose estimation data from {self.source_software}.",
             source_software=self.source_software,
             scorer=self.scorer,
-            dimensions=[[640, 480]],
-            original_videos=["mock_video.mp4"],
             PoseEstimationSeries={
-                node: {"name": f"PoseEstimationSeries{self._pascal_case(node)}"} for node in self.nodes
+                node: {
+                    "name": f"PoseEstimationSeries{self._pascal_case(node)}",
+                    "reference_frame": (
+                        "(0,0) is the top-left pixel of the video frame, with x increasing to the right "
+                        "and y increasing downward."
+                    ),
+                }
+                for node in self.nodes
             },
         )
         return metadata
@@ -1530,6 +1586,84 @@ class MockPoseEstimationInterface(BasePoseEstimationInterface):
             node_name: (self.pose_data[:, index, :], np.ones(self.num_samples))
             for index, node_name in enumerate(self.nodes)
         }
+
+
+class MockExternalVideoInterface(ExternalVideoInterface):
+    """
+    A mock external video interface for testing purposes.
+
+    Overrides exactly one thing: what the container header says. The frame count and the frame rate are
+    constructor arguments rather than reads, so a test can compose a video of any length into a conversion
+    at no cost, and everything else runs the real interface's course. In particular the timing is left
+    unset, as it is on a freshly constructed real interface, so a single file writes a starting time and a
+    rate while several files raise until the test says where they sit.
+
+    Nothing that reads the video itself is stubbed, only the header, so a method that decodes frames
+    (``get_original_timestamps``, and ``set_aligned_segment_starting_times`` which goes through it) will
+    fail here as it would on any missing file. Give the times directly with ``set_aligned_timestamps``.
+
+    The paths land in ``external_file`` as they were passed and deliberately do not resolve, which is what
+    keeps the file a mock produces from being mistaken for a publishable one; ``nwbinspector`` flags the
+    dangling path, and that is the intent.
+    """
+
+    display_name = "Mock Video"
+    keywords = ("video", "behavior", "mock")
+    associated_suffixes = ()
+    info = "Mock interface for external video data testing."
+
+    def __init__(
+        self,
+        file_paths: list[str] | None = None,
+        num_frames: int = 100,
+        frame_rate: float = 30.0,
+        verbose: bool = False,
+        *,
+        metadata_key: str | None = None,
+    ):
+        """
+        Initialize a mock external video interface.
+
+        Parameters
+        ----------
+        file_paths : list of str, optional
+            The paths written to ``external_file``; they do not have to exist. Defaults to a single
+            ``"mock_video.mp4"``.
+        num_frames : int, default: 100
+            The frame count each file's header reports, which backs ``num_samples`` and ``starting_frame``.
+        frame_rate : float, default: 30.0
+            The frame rate each file's header reports.
+        verbose : bool, default: False
+            If True, display verbose output.
+        metadata_key : str, optional
+            Snake_case key identifying this video's entry under ``metadata["Behavior"]["ExternalVideos"]``.
+            Defaults to the stem-based key of the parent interface.
+        """
+        file_paths = [Path(file_path) for file_path in file_paths or ["mock_video.mp4"]]
+        # ExternalVideoInterface.__init__ is wrapped by pydantic's validate_call, whose FilePath refuses a
+        # path that does not exist; the undecorated function kept at __wrapped__ is what lets this interface
+        # stand up with nothing behind its paths.
+        ExternalVideoInterface.__init__.__wrapped__(
+            self,
+            file_paths=file_paths,
+            verbose=verbose,
+            metadata_key=metadata_key,
+        )
+        self.num_frames = num_frames
+        self.frame_rate = frame_rate
+
+    def get_metadata(self) -> DeepDict:
+        metadata = super().get_metadata()
+        metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
+        return metadata
+
+    def _get_header_frame_counts(self) -> list[int]:
+        """Return the frame count the mock was built with, so the write path opens no files."""
+        return [self.num_frames] * self._number_of_files
+
+    def _get_header_frame_rates(self) -> list[float]:
+        """Return the frame rate the mock was built with, so the write path opens no files."""
+        return [self.frame_rate] * self._number_of_files
 
 
 class MockIcephysInterface(BaseDataInterface):

@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "neuroconv"
-version = "0.10.1"
+version = "0.10.3.dev0"
 description = "Convert data from proprietary formats to NWB format."
 readme = "README.md"
 authors = [
@@ -39,9 +39,9 @@ dependencies = [
     "numpy>=1.26.0; python_version >= '3.12'",
     "PyYAML>=5.4",
     "h5py>=3.9.0",
-    "hdmf>=6.1.0",
+    "hdmf>=6.2.0",
     "hdmf_zarr>=0.11",
-    "pynwb>=4.0.0",
+    "pynwb>=4.2.0",
     "pydantic>=2.0",
     "typing_extensions>=4.1.0",
     "psutil>=5.8.0",
@@ -54,6 +54,7 @@ dependencies = [
     "packaging",  # Issue 903
     "referencing", # for the json schema references
     "numcodecs<0.16.0", # 0.16.0 is incompatible with zarr < 3: https://github.com/zarr-developers/numcodecs/issues/721
+    "zarr<3",  # the Zarr backend uses the zarr 2 API (zarr.codec_registry); hdmf_zarr>=0.14 requires zarr>=3
 ]
 
 
@@ -114,20 +115,39 @@ lightningpose = [
     "neuroconv[video]",
 ]
 medpc = [
-    "ndx-events==0.2.2",
+    # MedPC events are parsed from a raw text file and written as native pynwb 4.0 EventsTable objects, so this
+    # needs nothing beyond core; kept as a stable install alias so `neuroconv[medpc]` remains valid.
+]
+medpc_legacy = [
+    "ndx-events==0.2.2",  # only the deprecated MedPCInterface writes ndx-events; both go in v0.12.0
+]
+moseq = [
+    "ndx-ethogram>=0.1.0",  # For the curated EthogramBouts/Ethogram derived from the syllable sequence
 ]
 vame = [
     "ndx-vame>=0.3.2",
     "ndx-ethogram>=0.1.0",  # For the curated EthogramBouts/Ethogram derived from MotifSeries
 ]
+boris = [
+    "ndx-ethogram>=0.1.0",  # a BORIS project is a coding scheme plus its events, and the scheme is an Ethogram
+]
+ethovision = [
+    "openpyxl",  # Excel is one of EthoVision's three Track-export containers
+    "ndx-ethogram>=0.1.0",  # manual-scoring rows also produce an Ethogram and EthogramBouts
+]
 behavior = [
+    "neuroconv[boris]",
+    "neuroconv[ethovision]",
     "neuroconv[sleap]",
     "neuroconv[audio]",
     "neuroconv[deeplabcut]",
     "neuroconv[fictrac]",
     "neuroconv[video]",
     "neuroconv[lightningpose]",
-    "neuroconv[medpc]",
+    # TODO: drop this when MedPCInterface is removed in v0.12.0; the events interfaces are in
+    # neuroconv[events] and the legacy extra exists only for that interface's ndx-events pin.
+    "neuroconv[medpc_legacy]",
+    "neuroconv[moseq]",
     "neuroconv[vame]",
     "ndx-miniscope>=0.5.1",  # This is for the miniscope behavior data interface, not sure is needed
 ]
@@ -148,18 +168,26 @@ tdt_events = [
 doric_events = [
     "h5py>=3",  # Doric events live in the .doric HDF5 file; the CSV export variant needs only pandas.
 ]
+pyphotometry_events = [
+    # A .ppd is read by neuroconv's own binary reader and written as native pynwb 4.0 EventsTable objects,
+    # so this needs only core numpy + pynwb>=4.0; kept as a stable install alias so
+    # `neuroconv[pyphotometry_events]` and `neuroconv[events]` remain valid.
+]
 events = [
     "neuroconv[csv_events]",
     "neuroconv[doric_events]",
+    "neuroconv[medpc]",
     "neuroconv[npm_events]",
+    "neuroconv[pyphotometry_events]",
     "neuroconv[tdt_events]",
 ]
 
 
 ## Ecephys
 ecephys_minimal = [  # Keeps the minimal versions of ecephys dependencies in the repo
-    "spikeinterface>=0.104.7",
+    "spikeinterface>=0.105.0",
     "neo>=0.14.5",
+    "natsort>=7.1.1",
 ]
 alphaomega = [
     "neuroconv[ecephys_minimal]",
@@ -289,6 +317,7 @@ icephys = [
 ## Image
 image = [
     "pillow>=10.0.0",
+    "natsort>=7.1.1",
 ]
 
 ## Fiber Photometry
@@ -305,13 +334,23 @@ doric_fp = [
 npm_fp = [
     "neuroconv[fiber_photometry_minimal]",
 ]
+pyphotometry_fp = [
+    "neuroconv[fiber_photometry_minimal]",
+]
+# One .ppd holds both modalities and PyPhotometryConverter writes both, so this is the install for a
+# whole recording. It resolves to the same packages as pyphotometry_fp while pyphotometry_events is
+# empty, and states what the converter needs rather than what it happens to cost today.
+pyphotometry = [
+    "neuroconv[pyphotometry_fp]",
+    "neuroconv[pyphotometry_events]",
+]
 tdt_fp = [
     "neuroconv[fiber_photometry_minimal]",
     "tdt",
 ]
 guppy = [
     "neuroconv[fiber_photometry_minimal]",
-    "ndx-guppy>=0.1.0",
+    "ndx-guppy>=0.2.1",
     "tables",
     # Every acquisition format GuppyConverter can read, so one install covers a GuPPy session
     # whatever it was recorded on.
@@ -329,13 +368,14 @@ fiber_photometry = [
     "neuroconv[doric_fp]",
     "neuroconv[guppy]",
     "neuroconv[npm_fp]",
+    "neuroconv[pyphotometry_fp]",
     "neuroconv[tdt_fp]",
 ]
 
 
 ## Ophys
 ophys_minimal = [  # Keeps the minimal version of ophys dependencies in the repo
-    "roiextractors>=0.9.0",
+    "roiextractors>=0.10.0",
 ]
 # What it takes to read a tiff, stated once for the formats that are stored as one. Membership is by
 # what the format reads and not by modality, so Inscopix (.isxd) and Miniscope (video) are not here.
@@ -473,7 +513,9 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 minversion = "6.0"
-addopts = "-ra --doctest-glob='*.rst'"
+# The `--numprocesses` is not only for speed: `PYTHONWARNDEFAULTENCODING` (set below) reaches the interpreter only through
+# the xdist workers, which start after `pytest-env` has written it, so a serial run cannot see `EncodingWarning`.
+addopts = "-ra --doctest-glob='*.rst' --numprocesses=logical --dist=loadscope"
 testpaths = ["docs/conversion_examples_gallery/", "tests"]
 doctest_optionflags = "ELLIPSIS"
 filterwarnings = [
@@ -550,6 +592,37 @@ relative-imports-order = "closest-to-furthest"
 known-first-party = ["neuroconv"]
 
 
+[tool.towncrier]
+# Each entry is a file under changelog_entries/ named "<PR number>.<type>.md", so two pull requests never
+# touch the same lines and the release notes are assembled at release time. See making_a_release.rst.
+directory = "changelog_entries"
+filename = "CHANGELOG.md"
+template = "changelog_entries/template.md"
+title_format = "# v{version} ({project_date})"
+issue_format = "[PR #{issue}](https://github.com/catalystneuro/neuroconv/pull/{issue})"
+ignore = ["template.md"]
+
+[[tool.towncrier.type]]
+directory = "deprecation"
+name = "Removals, Deprecations and Changes"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "bugfix"
+name = "Bug Fixes"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "feature"
+name = "Features"
+showcontent = true
+
+[[tool.towncrier.type]]
+directory = "improvement"
+name = "Improvements"
+showcontent = true
+
+
 [tool.codespell]
 skip = '.git*,*.pdf,*.css,*.svg'
 check-hidden = true
@@ -576,11 +649,13 @@ docs = [
     "sphinx-design==0.7.0; python_version>='3.11'",  # Used by metadata_templates.rst to show the YAML and JSON forms of each template in tabs.
     "pydata_sphinx_theme==0.16.1",  # Latest as of April 2025.
     "roiextractors",  # Needed for the API documentation
-    "spikeinterface>=0.104.7",  # Needed for the API documentation
+    "spikeinterface>=0.105.0",  # Needed for the API documentation
+    "natsort>=7.1.1",  # Needed for the API documentation
     "pytest" # used to build the documentation for tools.testing
 ]
 
 dev = [
     "pre-commit",
+    "towncrier",
     {include-group = "test"},
 ]

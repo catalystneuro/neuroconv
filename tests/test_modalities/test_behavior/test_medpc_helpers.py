@@ -2,9 +2,9 @@ import numpy as np
 import pytest
 
 from neuroconv.datainterfaces.behavior.medpc.medpc_helpers import (
+    _get_medpc_variables,
     _get_session_lines,
-    get_medpc_variables,
-    read_medpc_file,
+    _read_medpc_file,
 )
 
 
@@ -88,7 +88,7 @@ C:
 
 
 def test_get_medpc_variables(medpc_file_path):
-    variables = get_medpc_variables(medpc_file_path, ["Start Date", "End Date", "Subject"])
+    variables = _get_medpc_variables(medpc_file_path, ["Start Date", "End Date", "Subject"])
     assert variables == {
         "Start Date": ["04/09/19", "04/11/19", "04/12/19"],
         "End Date": ["04/09/19", "04/11/19", "04/12/19"],
@@ -162,7 +162,7 @@ def test_read_medpc_file(medpc_file_path):
     }
     session_conditions = {"Start Date": "04/09/19", "Start Time": "10:34:30"}
     start_variable = "Start Date"
-    session_dict = read_medpc_file(medpc_file_path, medpc_name_to_info_dict, session_conditions, start_variable)
+    session_dict = _read_medpc_file(medpc_file_path, medpc_name_to_info_dict, session_conditions, start_variable)
     expected_session_dict = {
         "start_date": "04/09/19",
         "end_date": "04/09/19",
@@ -251,5 +251,5 @@ def test_read_medpc_file_invalid_multiline_variable(medpc_file_path):
     session_conditions = {"Start Date": "04/09/19", "Start Time": "10:34:30"}
     start_variable = "Start Date"
     with pytest.raises(ValueError) as exc_info:
-        session_dict = read_medpc_file(medpc_file_path, medpc_name_to_info_dict, session_conditions, start_variable)
+        session_dict = _read_medpc_file(medpc_file_path, medpc_name_to_info_dict, session_conditions, start_variable)
     assert str(exc_info.value) == "Expected start_date to be a multiline variable, but found a single line variable."

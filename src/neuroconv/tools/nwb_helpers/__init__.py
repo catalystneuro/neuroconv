@@ -28,6 +28,7 @@ from ._metadata_and_file_helpers import (
     _add_device_model_to_nwbfile,
     _add_device_to_nwbfile,
     add_device_from_metadata,
+    _get_container_by_name,
     add_subject_to_nwbfile,
     configure_and_write_nwbfile,
     get_default_nwbfile_metadata,

@@ -6,6 +6,7 @@ from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.datainterfaces import DoricEventsInterface
 from neuroconv.tools.events import _get_event_type_source_ids
+from neuroconv.tools.testing.data_interface_mixins import EventsInterfaceTestMixin
 
 try:
     from ..setup_paths import OPHYS_DATA_PATH
@@ -13,7 +14,7 @@ except ImportError:
     from setup_paths import OPHYS_DATA_PATH
 
 
-class TestDoricEventsSingleLine:
+class TestDoricEventsSingleLine(EventsInterfaceTestMixin):
     """DoricEventsInterface edge-detects each DigitalIO line of a modern ``.doric`` file.
 
     ``single_line.doric`` (modern DataAcquisition layout, ~1000 Hz) has one toggling line ``Camera1``
@@ -22,6 +23,8 @@ class TestDoricEventsSingleLine:
     """
 
     FILE_PATH = OPHYS_DATA_PATH / "events_datasets" / "doric" / "root_is_data_acquisition" / "single_line.doric"
+    data_interface_cls = DoricEventsInterface
+    interface_kwargs = dict(file_path=FILE_PATH)
 
     @pytest.fixture
     def interface(self):
@@ -110,7 +113,7 @@ class TestDoricEventsSingleLine:
         assert np.allclose(falling_events["timestamp"][:], [0.003, 0.019, 0.036, 0.052, 0.069, 0.086])
 
 
-class TestDoricEventsMultiLine:
+class TestDoricEventsMultiLine(EventsInterfaceTestMixin):
     """``multi_line.doric`` carries three toggling lines and no embedded session timestamp.
 
     Lines: ``CAM1`` (three short pulses), ``EXC1`` (one ~23 ms pulse), and ``EXC2`` (two pulses, the
@@ -119,6 +122,8 @@ class TestDoricEventsMultiLine:
     """
 
     FILE_PATH = OPHYS_DATA_PATH / "events_datasets" / "doric" / "root_is_data_acquisition" / "multi_line.doric"
+    data_interface_cls = DoricEventsInterface
+    interface_kwargs = dict(file_path=FILE_PATH)
 
     @pytest.fixture
     def interface(self):
@@ -233,7 +238,7 @@ class TestDoricEventsMultiLine:
         assert set(nwbfile.events.keys()) == {"CAM1"}
 
 
-class TestDoricEventsLegacyTraces:
+class TestDoricEventsLegacyTraces(EventsInterfaceTestMixin):
     """The legacy "EPConsole" ``.doric`` layout (root group ``Traces``) is read by the same interface.
 
     Here digital lines are the ``DI--O-*`` streams nested as ``Traces/<console>/<stream>/<stream>`` on a
@@ -243,6 +248,8 @@ class TestDoricEventsLegacyTraces:
     """
 
     FILE_PATH = OPHYS_DATA_PATH / "events_datasets" / "doric" / "root_is_traces" / "varied_intervals.doric"
+    data_interface_cls = DoricEventsInterface
+    interface_kwargs = dict(file_path=FILE_PATH)
 
     @pytest.fixture
     def interface(self):

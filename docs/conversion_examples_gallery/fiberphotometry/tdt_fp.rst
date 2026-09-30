@@ -135,7 +135,7 @@ Convert TDT Fiber Photometry data to NWB using
     >>> # converter to share one FiberPhotometryTable.
     >>> interface = TDTFiberPhotometryInterface(folder_path=folder_path, stream_names="Dv1A", metadata_key="GCaMP", verbose=False)
     >>> metadata = interface.get_metadata()
-    >>> metadata["NWBFile"]["session_start_time"] = datetime.now(tz=ZoneInfo("US/Pacific"))
+    >>> metadata["NWBFile"]["session_start_time"] = datetime.now(tz=ZoneInfo("Asia/Tokyo"))
     >>> # Add subject information (required for DANDI upload)
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
 
@@ -539,7 +539,7 @@ This metadata can then be easily incorporated into the conversion by updating th
 
     >>> interface = TDTFiberPhotometryInterface(folder_path=folder_path, verbose=False)
     >>> metadata = interface.get_metadata()
-    >>> metadata["NWBFile"]["session_start_time"] = datetime.now(tz=ZoneInfo("US/Pacific"))
+    >>> metadata["NWBFile"]["session_start_time"] = datetime.now(tz=ZoneInfo("Asia/Tokyo"))
     >>> # Add subject information (required for DANDI upload)
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
     >>> metadata = dict_deep_update(metadata, fiber_photometry_metadata)
@@ -548,6 +548,14 @@ This metadata can then be easily incorporated into the conversion by updating th
     >>> nwbfile_path =  f"{path_to_save_nwbfile}"
     >>> # t1 and t2 are optional arguments to specify the start and end times for the conversion
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, t1=0.0, t2=1.0, overwrite=True)
+
+NeuroConv aims to automatically add all the metadata annotations that are present in the source format.
+It is often the case that crucial information is not available there, such as the anatomical location,
+the meaning of the values, or a semantically meaningful description of the data. Follow
+:ref:`the fiber photometry how-to <annotate_fiber_photometry_metadata>` for a modality-relevant guide to adding
+this extra metadata, which makes the data more useful for future users and for the community as a whole.
+Its :ref:`section on templates <how_to_annotate_from_a_template>` starts from scratch, and the
+:ref:`reference template <fiber_photometry_metadata_template>` lists every element the metadata accepts.
 
 .. seealso::
 

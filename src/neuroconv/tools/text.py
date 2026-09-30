@@ -81,8 +81,11 @@ def convert_df_to_time_intervals(
     - Column names ending with '_time' are treated as timing columns
 
     """
+    # A copy, so the renaming and the generated ``stop_time`` below stay out of the caller's frame; the
+    # interface passes its own frame here and writes more than once.
+    df = df.copy()
     if column_name_mapping is not None:
-        df.rename(columns=column_name_mapping, inplace=True)
+        df = df.rename(columns=column_name_mapping)
 
     default_column_descriptions = dict(
         start_time="Start time of epoch, in seconds.",

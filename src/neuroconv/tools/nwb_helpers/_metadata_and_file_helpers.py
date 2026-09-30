@@ -1,6 +1,5 @@
 """Collection of helper functions related to NWB."""
 
-import importlib
 import uuid
 import warnings
 from contextlib import contextmanager
@@ -26,6 +25,7 @@ from ._device_types import (
     _build_inline_containers,
     _resolve_type,
 )
+from ._provenance import describe_source_script
 from ...utils.dict import DeepDict, load_dict_from_file
 from ...utils.json_schema import _validate_device_registry_names, validate_metadata
 
@@ -66,6 +66,45 @@ def get_module(nwbfile: NWBFile, name: str, description: str = None):
         return nwbfile.create_processing_module(name=name, description=description)
 
 
+def _get_container_by_name(nwbfile: NWBFile, name: str, neurodata_type: str):
+    """
+    Return the container of the given neurodata type carrying the given name.
+
+    Used where an interface must link to an object another interface already wrote, since metadata
+    addresses it by name while the link needs the object itself.
+
+    Parameters
+    ----------
+    nwbfile : NWBFile
+        The NWB file to search, including its processing modules.
+    name : str
+        The name of the container to return.
+    neurodata_type : str
+        The class name of the container, such as ``"PoseEstimation"`` or ``"ImageSeries"``.
+
+    Returns
+    -------
+    The container carrying that name.
+
+    Raises
+    ------
+    ValueError
+        If no container of that type carries that name, naming the ones that do exist.
+    """
+    containers = {obj.name: obj for obj in nwbfile.all_children() if type(obj).__name__ == neurodata_type}
+    if name in containers:
+        return containers[name]
+    if containers:
+        raise ValueError(
+            f"No {neurodata_type} named '{name}' was found in the NWB file. "
+            f"Available {neurodata_type} containers: {list(containers)}."
+        )
+    raise ValueError(
+        f"No {neurodata_type} named '{name}' was found in the NWB file. No {neurodata_type} containers exist "
+        "in the file, so ensure the interface that writes it runs first."
+    )
+
+
 def get_default_nwbfile_metadata() -> DeepDict:
     """
     Return structure with defaulted metadata values required for a NWBFile.
@@ -83,15 +122,15 @@ def get_default_nwbfile_metadata() -> DeepDict:
         A dictionary containing default metadata values for an NWBFile, including
         session description, identifier, and NeuroConv version information.
     """
-    neuroconv_version = importlib.metadata.version("neuroconv")
+    source_script, source_script_file_name = describe_source_script()
 
     metadata = DeepDict()
     metadata["NWBFile"].deep_update(
         session_description="no description",
         identifier=str(uuid.uuid4()),
-        # Add NeuroConv watermark (overridden if going through the GUIDE)
-        source_script=f"Created using NeuroConv v{neuroconv_version}",
-        source_script_file_name=__file__,  # Required for validation
+        # Add NeuroConv provenance record (overridden if going through the GUIDE)
+        source_script=source_script,
+        source_script_file_name=source_script_file_name,  # Required for validation
     )
 
     return metadata
@@ -118,18 +157,11 @@ def make_nwbfile_from_metadata(metadata: dict) -> NWBFile:
     assert metadata is not None, "Metadata is required to create an NWBFile but metadata=None was passed."
     validate_metadata(metadata=metadata, schema=base_metadata_schema)
 
-    nwbfile_kwargs = deepcopy(metadata["NWBFile"])
+    # Anything the caller did not provide falls back to the same defaults an interface would have given
+    nwbfile_kwargs = {**get_default_nwbfile_metadata()["NWBFile"], **deepcopy(metadata["NWBFile"])}
     # convert ISO 8601 string to datetime
     if isinstance(nwbfile_kwargs.get("session_start_time"), str):
         nwbfile_kwargs["session_start_time"] = datetime.fromisoformat(nwbfile_kwargs["session_start_time"])
-    if "session_description" not in nwbfile_kwargs:
-        nwbfile_kwargs["session_description"] = "No description."
-    if "identifier" not in nwbfile_kwargs:
-        nwbfile_kwargs["identifier"] = str(uuid.uuid4())
-    if "source_script" not in nwbfile_kwargs:
-        neuroconv_version = importlib.metadata.version("neuroconv")
-        nwbfile_kwargs["source_script"] = f"Created using NeuroConv v{neuroconv_version}"
-        nwbfile_kwargs["source_script_file_name"] = __file__  # Required for validation
 
     nwbfile = NWBFile(**nwbfile_kwargs)
     add_subject_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
@@ -286,6 +318,31 @@ def _add_device_model_to_nwbfile(
     device_model = model_class(**model_kwargs)
     nwbfile.add_device_model(device_model)
     return device_model
+
+
+def _get_device_template_entry(*, device_model_metadata_key: str) -> dict:
+    """A blank device, ready to be linked to by whatever hangs off it.
+
+    The make and catalog specification belong to the model rather than to the instrument: pynwb
+    deprecated ``Device.manufacturer``, ``model_number`` and ``model_name`` in favor of a linked
+    ``DeviceModel``, so those are offered there and only the serial number of this one instrument
+    stays here.
+    """
+    return dict(
+        name=None,
+        description=None,
+        serial_number=None,
+        device_model_metadata_key=device_model_metadata_key,
+    )
+
+
+def _get_device_model_template_entry() -> dict:
+    """A blank device model: the make and catalog specification, shared by every recording on that instrument.
+
+    Optional as a whole. To drop it, delete the entry and the ``device_model_metadata_key`` pointing
+    at it.
+    """
+    return dict(name=None, manufacturer=None, model_number=None, description=None)
 
 
 def _add_device_to_nwbfile(
