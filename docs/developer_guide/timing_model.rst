@@ -140,25 +140,22 @@ activity, not the start of the recording.
 Collection operations
 ---------------------
 
-Once an interface has registered its objects, its alignment component can also address them as a collection.
-A converter extends this grouping to interfaces or other converters. At either level, the collection selects which
-objects an operation reaches without adding timing state.
-``shift_times`` and ``move_start_to`` are available on both objects and collections because knowing a correction or a
-destination is independent of how many objects need it.
+Converters let users align their component interfaces individually through nested addressing or together through
+collection operations. For example, if a session converter contains a SpikeGLX converter under ``"SpikeGLX"``,
+calling ``converter.alignment["SpikeGLX"].shift_times(delta)`` shifts its streams together, including both the
+action-potential and low-frequency bands of a Neuropixels 1.0 recording. This lets users correct the acquisition's
+timing without separately adjusting each stream.
 
-Moving a collection means preserving the relative timing of its members. For ``shift_times(delta)``, this follows
-directly from adding the same delta to every descendant object's offset. For ``move_start_to(t)``, the collection
-first needs a common anchor: its earliest current start. It computes ``delta = t - min(current_starts)`` across all
-descendant objects and applies that one shift. Starts at 10 and 15 seconds therefore become 100 and 105 after
-placement at 100. Placing each child independently at 100 would erase their relative timing. The same reasoning
-holds through nested converters, where one earliest descendant start determines the shift for the entire selection.
+When using ``move_start_to``, the earliest timestamp across the selected objects determines one shared shift. We
+choose this behavior because the correction should preserve the timing relationships within the acquisition.
+Calling ``move_start_to`` independently on each child would instead force every stream to begin at the same time,
+erasing any existing differences between their starts.
 
-The collection model extends to operations that have a meaningful result for every member. ``remap_times`` can apply
-one map to every object in an interface or converter, provided that map is valid for all their current timestamps.
-
-``get_times`` and ``set_times`` address one object's times. An interface with exactly one registered object forwards
-these calls as a convenience because the target is unambiguous. With several objects, callers must select one
-explicitly: collection membership alone does not define how to combine their timestamps or distribute replacements.
+``set_times`` requires an explicit key because an object's components may need different timestamps. For example,
+the ``start_time`` and ``stop_time`` columns of a ``TimeIntervals`` table cannot generally accept the same replacement
+array. Specific classes can define shared replacement when their semantics justify it, such as a pose container
+whose keypoints are expected to share timestamps. The caller still selects the container explicitly; its class
+determines how the replacement applies to its components. ``get_times`` also requires an explicit object key.
 
 Nested addressing
 -----------------
