@@ -15,8 +15,9 @@ Aligning changes only when each sample occurred, never the samples themselves.
 Time-bearing objects and the alignment API
 ------------------------------------------
 
-Alignment acts on an interface's **time-bearing objects**: the neurodata types it writes that carry times relative to
-``session_start_time``. Examples are the ``TwoPhotonSeries`` of an imaging interface, the ``ElectricalSeries`` of a
+Alignment acts on an interface's **time-bearing objects**: the units of timed data it exposes for independent
+alignment. In most cases, these correspond to neurodata types that carry timestamps.
+Examples are the ``TwoPhotonSeries`` of an imaging interface, the ``ElectricalSeries`` of a
 recording interface, each ``PoseEstimationSeries`` of a pose estimation interface, each ``EventsTable`` of an events
 interface, with its times in the ``timestamp`` column, and a trials table, with its times in ``start_time``,
 ``stop_time`` and any other column whose name ends in ``_time``. By contrast, neurodata types such as a ``Device``, an
