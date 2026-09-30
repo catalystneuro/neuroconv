@@ -44,6 +44,13 @@ DataInterface conventions
    When deprecating existing positional usage, use the :code:`*args` pattern with a :code:`FutureWarning` to maintain
    backward compatibility during the transition period. At the version the warning names, replace
    :code:`*args` with :code:`*` to enforce keyword-only arguments. See :ref:`deprecations`.
+#. Keep the public surface of a data interface minimal: the class, its public methods, and the
+   :code:`metadata_key` and :code:`alignment` attributes where the interface uses them. Other instance attributes
+   are private and prefixed with an underscore (:code:`self._subject`, not :code:`self.subject`), because users
+   come to rely on any public attribute, and one holding a reader object makes the reader's type public too.
+   Do not reassign :code:`self.verbose`, which :code:`BaseDataInterface` already sets. Put the code that reads the
+   source format in a private module, such as :code:`_myformat_reader.py`, whose leading underscore makes
+   everything inside it private.
 
 Other conventions
 -----------------
