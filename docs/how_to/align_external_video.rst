@@ -13,8 +13,7 @@ recipes below apply to all of them. What changes from rig to rig is how the came
 files and what the cable between the two systems carried.
 
 This guide covers :py:class:`~neuroconv.datainterfaces.behavior.video.externalvideointerface.ExternalVideoInterface`.
-It leaves the video on disk and writes an ``ImageSeries`` that points at it. The general alignment methods
-are described in the :doc:`temporal alignment user guide <../user_guide/temporal_alignment>`.
+It leaves the video on disk and writes an ``ImageSeries`` that points at it.
 
 Common recording configurations
 -------------------------------
@@ -290,9 +289,7 @@ A shift will not do it because the two clocks drift.
 Set the times from the log first. That puts the video on the camera's clock. Then remap that clock onto the
 session clock. The two pulse arrays are paired by position, so they have to be the same length and in the
 same order, and a pulse that only one system recorded has to be dropped from both. Frames between two
-pulses are interpolated. No data is resampled, only the times move. How the pulse pairs map one clock onto the
-other, and where a frame between two pulses lands, is drawn in the
-:ref:`fine alignment section of the user guide <temporal_alignment_fine>`.
+pulses are interpolated. No data is resampled, only the times move.
 
 ``remap_times`` can also be called on ``alignment`` with no key, and then it re-times every file of the
 interface at once. The drift belongs to the camera's clock, not to one file, so that is the form for a
