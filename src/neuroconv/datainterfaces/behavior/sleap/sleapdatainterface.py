@@ -324,7 +324,14 @@ class SLEAPInterface(BasePoseEstimationInterface):
         """
         frame_indices = self._get_frame_indices()
         if self.video_file_path is not None:
-            return np.asarray(extract_timestamps(self.video_file_path))[frame_indices]
+            video_timestamps = np.asarray(extract_timestamps(self.video_file_path))
+            if frame_indices.max() >= len(video_timestamps):
+                raise ValueError(
+                    f"The video '{self.video_file_path}' has {len(video_timestamps)} frames, but this track is "
+                    f"labeled up to frame index {frame_indices.max()}. Check that 'video_file_path' is the video "
+                    "the .slp file was labeled on."
+                )
+            return video_timestamps[frame_indices]
         if self.video_sample_rate is not None:
             return frame_indices / self.video_sample_rate
         raise ValueError(
