@@ -1496,7 +1496,6 @@ class MockPoseEstimationInterface(BasePoseEstimationInterface):
             self._original_timestamps = frame_times[np.sort(labeled_frames)]
         else:
             self._original_timestamps = np.linspace(0.0, float(num_samples) / 30.0, num_samples)
-        self._timestamps = np.copy(self._original_timestamps)
 
         # Generate pose estimation data
         self.pose_data = self._generate_pose_data()
@@ -1537,14 +1536,6 @@ class MockPoseEstimationInterface(BasePoseEstimationInterface):
     def get_original_timestamps(self) -> np.ndarray:
         """Get the original timestamps before any alignment."""
         return self._original_timestamps
-
-    def get_timestamps(self) -> np.ndarray:
-        """Get the current (possibly aligned) timestamps."""
-        return self._timestamps
-
-    def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
-        """Set aligned timestamps."""
-        self._timestamps = aligned_timestamps
 
     def get_metadata(self) -> DeepDict:
         """Name the objects after this interface's key and add what the mock pretends its source records."""
