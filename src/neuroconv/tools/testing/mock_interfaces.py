@@ -1592,13 +1592,14 @@ class MockExternalVideoInterface(ExternalVideoInterface):
     """
     A mock external video interface for testing purposes.
 
-    Overrides exactly one thing: what the container header says. The frame count and the frame rate are
-    constructor arguments rather than reads, so a test can compose a video of any length into a conversion
+    Overrides what the container header says, and the one frame time the interface reads at the start of
+    each file. The frame count and the frame rate are constructor arguments rather than reads, and every file's
+    first frame sits at zero, so a test can compose a video of any length into a conversion
     at no cost, and everything else runs the real interface's course. In particular the timing is left
     unset, as it is on a freshly constructed real interface, so a single file writes a starting time and a
     rate while several files raise until the test says where they sit.
 
-    Nothing that reads the video itself is stubbed, only the header, so a method that decodes frames
+    Nothing else that reads the video is stubbed, so a method that decodes frames
     (``get_original_timestamps``, and ``set_aligned_segment_starting_times`` which goes through it) will
     fail here as it would on any missing file. Give the times directly with ``set_aligned_timestamps``.
 
@@ -1657,13 +1658,17 @@ class MockExternalVideoInterface(ExternalVideoInterface):
         metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
         return metadata
 
-    def _get_header_frame_counts(self) -> list[int]:
+    def get_header_frame_counts(self) -> list[int]:
         """Return the frame count the mock was built with, so the write path opens no files."""
         return [self.num_frames] * self._number_of_files
 
-    def _get_header_frame_rates(self) -> list[float]:
+    def get_header_frame_rates(self) -> list[float]:
         """Return the frame rate the mock was built with, so the write path opens no files."""
         return [self.frame_rate] * self._number_of_files
+
+    def _get_first_frame_time(self, *, file_index: int) -> float:
+        """Return zero, the first frame time of most containers, so placing a file opens nothing."""
+        return 0.0
 
 
 class MockIcephysInterface(BaseDataInterface):
