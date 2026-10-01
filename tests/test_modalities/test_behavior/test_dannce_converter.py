@@ -34,6 +34,18 @@ def _write_frametimes(file_path, n_frames: int, fps: float = 40.0):
     np.save(str(file_path), np.stack([frame_numbers, seconds], axis=0))
 
 
+def _write_label3d_sync(file_path, camera_names: list[str], sample_ids, frames):
+    """Write a Label3D-style '*_dannce.mat' holding only 'camnames' and 'sync', laid out as Label3D does: a
+    cell array with one struct per camera, whose 'data_sampleID' row maps to the 'data_frame' video frame."""
+    sync = np.empty((len(camera_names), 1), dtype=object)
+    for index in range(len(camera_names)):
+        sync[index, 0] = dict(
+            data_sampleID=np.asarray(sample_ids, dtype="float64"), data_frame=np.asarray(frames, dtype="float64")
+        )
+    camnames = np.array(camera_names, dtype=object).reshape(1, -1)
+    savemat(str(file_path), dict(camnames=camnames, sync=sync))
+
+
 def _write_metadata_csv(file_path, *, camera_make: str, camera_model: str, serial_number: str, frame_rate: str):
     """Write a campy-style headerless two-column 'metadata.csv' (a small subset of the real fields)."""
     import csv
@@ -48,8 +60,11 @@ def _write_metadata_csv(file_path, *, camera_make: str, camera_model: str, seria
 
 @pytest.fixture
 def dannce_converter_dir(tmp_path):
-    """Build a synthetic DANNCE + campy-style videos folder: one prediction .mat file and two
-    camera subdirectories (Camera1, Camera2), each with one video and a matching frametimes.npy."""
+    """Build a synthetic DANNCE + campy-style videos folder: one prediction .mat file, a Label3D-style sync
+    file, and two camera subdirectories (Camera1, Camera2), each with one video and a matching frametimes.npy.
+
+    The sampleIDs are classic-DANNCE-style labels (1, 11, 21, ...) that the sync table maps to frames
+    0, 1, 2, ..., so reading a sampleID as a frame index gives wrong times."""
     n_samples = 20
     n_landmarks = 3
     camera_names = ["Camera1", "Camera2"]
@@ -57,9 +72,11 @@ def dannce_converter_dir(tmp_path):
     rng = np.random.default_rng(0)
     pred = rng.standard_normal((n_samples, 3, n_landmarks))
     p_max = rng.random((n_samples, n_landmarks))
-    sample_id = np.arange(n_samples, dtype="float64").reshape(1, -1)
+    sample_ids = 1 + 10 * np.arange(n_samples, dtype="float64")
     file_path = tmp_path / "save_data_AVG.mat"
-    savemat(str(file_path), dict(pred=pred, p_max=p_max, sampleID=sample_id))
+    savemat(str(file_path), dict(pred=pred, p_max=p_max, sampleID=sample_ids.reshape(1, -1)))
+    sync_path = tmp_path / "label3d_dannce.mat"
+    _write_label3d_sync(sync_path, camera_names, sample_ids=sample_ids, frames=np.arange(n_samples))
 
     videos_folder_path = tmp_path / "videos"
     for camera_name in camera_names:
@@ -70,6 +87,7 @@ def dannce_converter_dir(tmp_path):
 
     return dict(
         file_path=file_path,
+        sync_path=sync_path,
         videos_folder_path=videos_folder_path,
         camera_names=camera_names,
         n_samples=n_samples,
@@ -113,6 +131,7 @@ class TestDANNCEConverterDiscovery:
         converter = DANNCEConverter(
             file_paths=dannce_converter_dir["file_path"],
             videos_folder_path=dannce_converter_dir["videos_folder_path"],
+            sync_path=dannce_converter_dir["sync_path"],
         )
         assert converter._camera_names == dannce_converter_dir["camera_names"]
 
@@ -149,6 +168,7 @@ class TestDANNCEConverterDiscovery:
         converter = DANNCEConverter(
             file_paths=dannce_converter_dir["file_path"],
             videos_folder_path=dannce_converter_dir["videos_folder_path"],
+            sync_path=dannce_converter_dir["sync_path"],
             sampling_rate=40.0,
         )
 
@@ -177,6 +197,7 @@ class TestDANNCEConverterDiscovery:
         converter = DANNCEConverter(
             file_paths=dannce_converter_dir["file_path"],
             videos_folder_path=dannce_converter_dir["videos_folder_path"],
+            sync_path=dannce_converter_dir["sync_path"],
             sampling_rate=25.0,
         )
 
@@ -196,6 +217,7 @@ class TestDANNCEConverterDiscovery:
         converter = DANNCEConverter(
             file_paths=dannce_converter_dir["file_path"],
             videos_folder_path=dannce_converter_dir["videos_folder_path"],
+            sync_path=dannce_converter_dir["sync_path"],
         )
 
         with pytest.raises(ValueError, match="No timing information is available"):
@@ -255,6 +277,7 @@ class TestDANNCEConverterDiscovery:
             DANNCEConverter(
                 file_paths=dannce_converter_dir["file_path"],
                 videos_folder_path=dannce_converter_dir["videos_folder_path"],
+                sync_path=dannce_converter_dir["sync_path"],
             )
 
 
@@ -282,6 +305,7 @@ class TestDANNCEConverterCameraCaptureMetadata:
         converter = DANNCEConverter(
             file_paths=dannce_converter_dir_with_camera_metadata["file_path"],
             videos_folder_path=dannce_converter_dir_with_camera_metadata["videos_folder_path"],
+            sync_path=dannce_converter_dir_with_camera_metadata["sync_path"],
         )
         metadata = converter.get_metadata()
 
@@ -303,6 +327,7 @@ class TestDANNCEConverterCameraCaptureMetadata:
         converter = DANNCEConverter(
             file_paths=dannce_converter_dir["file_path"],
             videos_folder_path=dannce_converter_dir["videos_folder_path"],
+            sync_path=dannce_converter_dir["sync_path"],
         )
         metadata = converter.get_metadata()
 
@@ -316,6 +341,7 @@ class TestDANNCEConverterCameraCaptureMetadata:
         converter = DANNCEConverter(
             file_paths=dannce_converter_dir_with_camera_metadata["file_path"],
             videos_folder_path=dannce_converter_dir_with_camera_metadata["videos_folder_path"],
+            sync_path=dannce_converter_dir_with_camera_metadata["sync_path"],
             metadata_key="PoseEstimationDANNCE",
         )
         metadata = converter.get_metadata()
@@ -349,6 +375,7 @@ class TestDANNCEConverterConversion:
         converter = DANNCEConverter(
             file_paths=dannce_converter_dir["file_path"],
             videos_folder_path=dannce_converter_dir["videos_folder_path"],
+            sync_path=dannce_converter_dir["sync_path"],
             metadata_key="PoseEstimationDANNCE",
         )
         metadata = converter.get_metadata()
@@ -373,3 +400,96 @@ class TestDANNCEConverterConversion:
                 # rather than an explicit timestamps array (see calculate_regular_series_rate).
                 assert series.rate == pytest.approx(40.0)
                 assert series.starting_time == pytest.approx(0.0)
+
+
+class TestDANNCEConverterSync:
+    """The pose times go sampleID -> sync table -> video frame -> frametimes, and never guess the frame."""
+
+    def test_sync_from_calibration_path(self, tmp_path, dannce_converter_dir):
+        """A Label3D '.mat' passed only as calibration_path also supplies the sync table."""
+        camera_names = dannce_converter_dir["camera_names"]
+        n_samples = dannce_converter_dir["n_samples"]
+        params = np.empty((len(camera_names), 1), dtype=object)
+        for index in range(len(camera_names)):
+            params[index, 0] = dict(
+                K=np.eye(3), r=np.eye(3), t=np.zeros((1, 3)), RDistort=np.zeros((1, 3)), TDistort=np.zeros((1, 2))
+            )
+        sync = np.empty((len(camera_names), 1), dtype=object)
+        for index in range(len(camera_names)):
+            sync[index, 0] = dict(
+                data_sampleID=1 + 10 * np.arange(n_samples, dtype="float64"),
+                data_frame=np.arange(n_samples, dtype="float64"),
+            )
+        label3d_path = tmp_path / "session_Label3D_dannce.mat"
+        camnames = np.array(camera_names, dtype=object).reshape(1, -1)
+        savemat(str(label3d_path), dict(camnames=camnames, params=params, sync=sync))
+
+        converter = DANNCEConverter(
+            file_paths=dannce_converter_dir["file_path"],
+            videos_folder_path=dannce_converter_dir["videos_folder_path"],
+            calibration_path=label3d_path,
+        )
+
+        dannce_interface = converter._dannce_interface
+        np.testing.assert_array_equal(dannce_interface.video_frame_indices, np.arange(n_samples))
+        np.testing.assert_allclose(
+            dannce_interface.alignment[dannce_interface.metadata_key].get_times(), np.arange(n_samples) / 40.0
+        )
+        assert converter.get_metadata()["Devices"]["Camera1"]["type"] == "CalibratedCamera"
+
+    def test_frametimes_without_sync_are_not_used_for_pose(self, dannce_converter_dir):
+        with pytest.warns(UserWarning, match="no sync table to map"):
+            converter = DANNCEConverter(
+                file_paths=dannce_converter_dir["file_path"],
+                videos_folder_path=dannce_converter_dir["videos_folder_path"],
+                sampling_rate=40.0,
+            )
+
+        # Without sync the samples are taken as consecutive frames from the start.
+        dannce_interface = converter._dannce_interface
+        assert dannce_interface.video_frame_indices is None
+        np.testing.assert_allclose(
+            dannce_interface.alignment[dannce_interface.metadata_key].get_times(),
+            np.arange(dannce_converter_dir["n_samples"]) / 40.0,
+        )
+
+    def test_frametimes_without_sync_or_sampling_rate_warns_and_raises_on_write(self, dannce_converter_dir):
+        with pytest.warns(UserWarning) as records:
+            converter = DANNCEConverter(
+                file_paths=dannce_converter_dir["file_path"],
+                videos_folder_path=dannce_converter_dir["videos_folder_path"],
+            )
+        messages = [str(record.message) for record in records]
+        assert any("no sync table to map" in message for message in messages)
+        assert any("No timing information is available for the DANNCE pose" in message for message in messages)
+        # The interface's own construction-time warning is held back in favor of the converter's.
+        assert not any("no 'sampling_rate' was given" in message for message in messages)
+
+        dannce_interface = converter._dannce_interface
+        with pytest.raises(ValueError, match="No timing information is available"):
+            dannce_interface.alignment[dannce_interface.metadata_key].get_times()
+
+    def test_no_timing_warning_when_frametimes_set_the_pose_times(self, dannce_converter_dir, recwarn):
+        DANNCEConverter(
+            file_paths=dannce_converter_dir["file_path"],
+            videos_folder_path=dannce_converter_dir["videos_folder_path"],
+            sync_path=dannce_converter_dir["sync_path"],
+        )
+        assert not [record for record in recwarn if "No timing information" in str(record.message)]
+
+    def test_sync_frame_past_the_frametimes_raises(self, tmp_path, dannce_converter_dir):
+        n_samples = dannce_converter_dir["n_samples"]
+        sync_path = tmp_path / "too_far_dannce.mat"
+        _write_label3d_sync(
+            sync_path,
+            dannce_converter_dir["camera_names"],
+            sample_ids=1 + 10 * np.arange(n_samples),
+            frames=np.arange(n_samples) + 5,
+        )
+
+        with pytest.raises(ValueError, match="has frametimes for only"):
+            DANNCEConverter(
+                file_paths=dannce_converter_dir["file_path"],
+                videos_folder_path=dannce_converter_dir["videos_folder_path"],
+                sync_path=sync_path,
+            )

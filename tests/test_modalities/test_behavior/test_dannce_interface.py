@@ -658,27 +658,144 @@ class TestDANNCEInterfaceCalibration:
 
 
 class TestDANNCEInterfaceMatlabV73:
-    """A MATLAB v7.3 (HDF5-based) .mat file is not supported for prediction or calibration loading
-    -- both should raise a clear, actionable ValueError instead of scipy's raw NotImplementedError."""
+    """Prediction files are written by DANNCE/sDANNCE through scipy and are never MATLAB v7.3, so a v7.3
+    file passed as one raises a clear error. Label3D, sync and calibration files are read with pymatreader,
+    which handles v7.3; that is covered on real data (``com_dannce.mat``) in the on-data tests."""
 
     def test_prediction_file_raises_clear_error(self, matlab_v73_file):
         with pytest.raises(ValueError, match="MATLAB v7.3"):
             DANNCEInterface(file_paths=matlab_v73_file, sampling_rate=30.0)
 
-    def test_cam_params_calibration_raises_clear_error(self, tmp_path, matlab_v73_file):
-        calibration_dir = tmp_path / "calibration"
-        calibration_dir.mkdir()
-        matlab_v73_file.rename(calibration_dir / "cam1_params.mat")
 
-        with pytest.raises(ValueError, match="MATLAB v7.3"):
-            DANNCEInterface.get_camera_calibrations(calibration_dir)
+def _write_sync_entry_cells(camera_names, sample_ids, frames_per_camera):
+    sync = np.empty((len(camera_names), 1), dtype=object)
+    for index, frames in enumerate(frames_per_camera):
+        sync[index, 0] = dict(
+            data_sampleID=np.asarray(sample_ids, dtype="float64"), data_frame=np.asarray(frames, dtype="float64")
+        )
+    return sync
 
-    def test_label3d_calibration_raises_clear_error(self, tmp_path, matlab_v73_file):
-        label3d_file = tmp_path / "test_dannce.mat"
-        matlab_v73_file.rename(label3d_file)
 
-        with pytest.raises(ValueError, match="MATLAB v7.3"):
-            DANNCEInterface.get_camera_calibrations(label3d_file)
+@pytest.fixture
+def classic_dannce_mat_file(tmp_path):
+    """Predictions with classic-DANNCE sampleIDs (1, 11, 21, ...), which are not frame indices."""
+    n_samples, n_landmarks = 10, 4
+    rng = np.random.default_rng(0)
+    sample_ids = 1 + 10 * np.arange(n_samples, dtype="float64")
+    file_path = tmp_path / "save_data_AVG.mat"
+    savemat(
+        str(file_path),
+        dict(
+            pred=rng.standard_normal((n_samples, 3, n_landmarks)),
+            p_max=rng.random((n_samples, n_landmarks)),
+            sampleID=sample_ids.reshape(1, -1),
+        ),
+    )
+    return file_path, sample_ids
+
+
+class TestDANNCEInterfaceSync:
+    """A sampleID is a row label of the sync table; its video frame comes from the 'data_frame' column."""
+
+    def test_label3d_sync_maps_sample_ids_to_frames(self, tmp_path, classic_dannce_mat_file):
+        file_path, sample_ids = classic_dannce_mat_file
+        sync_path = tmp_path / "label3d_dannce.mat"
+        camera_names = ["Camera1", "Camera2"]
+        frames = np.arange(len(sample_ids))
+        savemat(
+            str(sync_path),
+            dict(
+                camnames=np.array(camera_names, dtype=object).reshape(1, -1),
+                sync=_write_sync_entry_cells(camera_names, sample_ids, [frames, frames]),
+            ),
+        )
+
+        interface = DANNCEInterface(
+            file_paths=file_path, sampling_rate=100.0, sync_path=sync_path, camera_names=camera_names
+        )
+
+        assert_array_equal(interface.video_frame_indices, frames)
+        np.testing.assert_allclose(interface.alignment[interface.metadata_key].get_times(), frames / 100.0)
+
+    def test_sync_directory_layout(self, tmp_path, classic_dannce_mat_file):
+        file_path, sample_ids = classic_dannce_mat_file
+        sync_dir = tmp_path / "sync"
+        sync_dir.mkdir()
+        frames = np.arange(len(sample_ids)) + 3  # predictions start a few frames into the video
+        for camera_name in ("Camera1", "Camera2", "Camera10"):
+            savemat(
+                str(sync_dir / f"{camera_name}_sync.mat"),
+                dict(data_sampleID=sample_ids, data_frame=frames.astype("float64")),
+            )
+
+        interface = DANNCEInterface(file_paths=file_path, sampling_rate=100.0, sync_path=sync_dir)
+
+        assert_array_equal(interface.video_frame_indices, frames)
+        np.testing.assert_allclose(interface.alignment[interface.metadata_key].get_times(), frames / 100.0)
+
+    def test_struct_array_layout(self, tmp_path, classic_dannce_mat_file):
+        """A MATLAB struct array (rather than Label3D's cell array) is read the same way."""
+        file_path, sample_ids = classic_dannce_mat_file
+        sync = np.empty((1, 2), dtype=[("data_sampleID", "O"), ("data_frame", "O")])
+        frames = np.arange(len(sample_ids)).astype("float64")
+        for index in range(2):
+            sync[0, index] = (sample_ids, frames)
+        sync_path = tmp_path / "struct_dannce.mat"
+        savemat(str(sync_path), dict(sync=sync))
+
+        interface = DANNCEInterface(file_paths=file_path, sampling_rate=100.0, sync_path=sync_path)
+
+        assert_array_equal(interface.video_frame_indices, frames)
+
+    def test_without_sync_samples_are_consecutive_frames(self, classic_dannce_mat_file):
+        file_path, sample_ids = classic_dannce_mat_file
+        interface = DANNCEInterface(file_paths=file_path, sampling_rate=100.0)
+
+        assert interface.video_frame_indices is None
+        np.testing.assert_allclose(
+            interface.alignment[interface.metadata_key].get_times(), np.arange(len(sample_ids)) / 100.0
+        )
+
+    def test_sample_id_missing_from_sync_raises(self, tmp_path, classic_dannce_mat_file):
+        file_path, sample_ids = classic_dannce_mat_file
+        sync_path = tmp_path / "label3d_dannce.mat"
+        savemat(
+            str(sync_path),
+            dict(sync=_write_sync_entry_cells(["Camera1"], sample_ids[:-2], [np.arange(len(sample_ids) - 2)])),
+        )
+
+        with pytest.raises(ValueError, match="2 of the 10 predicted sampleIDs are not in the sync table"):
+            DANNCEInterface(file_paths=file_path, sampling_rate=100.0, sync_path=sync_path)
+
+    def test_cameras_that_disagree_warn(self, tmp_path, classic_dannce_mat_file):
+        file_path, sample_ids = classic_dannce_mat_file
+        frames = np.arange(len(sample_ids))
+        sync_path = tmp_path / "label3d_dannce.mat"
+        savemat(
+            str(sync_path),
+            dict(
+                camnames=np.array(["Camera1", "Camera2"], dtype=object).reshape(1, -1),
+                sync=_write_sync_entry_cells(["Camera1", "Camera2"], sample_ids, [frames, frames + 1]),
+            ),
+        )
+
+        with pytest.warns(UserWarning, match="camera 'Camera2' maps some sampleIDs to different frames"):
+            interface = DANNCEInterface(
+                file_paths=file_path, sampling_rate=100.0, sync_path=sync_path, camera_names=["Camera1", "Camera2"]
+            )
+        assert_array_equal(interface.video_frame_indices, frames)
+
+    def test_mat_file_without_sync_raises(self, tmp_path, classic_dannce_mat_file):
+        file_path, _ = classic_dannce_mat_file
+        not_sync_path = tmp_path / "params_only.mat"
+        savemat(str(not_sync_path), dict(K=np.eye(3)))
+
+        with pytest.raises(ValueError, match="has no 'sync' table"):
+            DANNCEInterface(file_paths=file_path, sampling_rate=100.0, sync_path=not_sync_path)
+
+    def test_no_sampling_rate_warns_at_init(self, classic_dannce_mat_file):
+        with pytest.warns(UserWarning, match="no 'sampling_rate' was given"):
+            DANNCEInterface(file_paths=classic_dannce_mat_file[0])
 
 
 class TestDANNCEInterfaceConversion:

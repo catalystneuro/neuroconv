@@ -28,6 +28,32 @@ Convert DANNCE (or social DANNCE / sDANNCE) 3D pose estimation data to NWB using
     >>> # Choose a path for saving the nwb file and run the conversion
     >>> interface.run_conversion(nwbfile_path=path_to_save_nwbfile, metadata=metadata)
 
+Timestamps and the sync table
+=============================
+
+A prediction's ``sampleID`` is not a video frame index: it is a row label of the synchronization
+(``sync``) table that Label3D writes, whose ``data_frame`` column gives the video frame. In classic
+DANNCE output, for example, ``sampleID`` 1, 11, 21, ... are frames 0, 1, 2, .... Pass the table as
+``sync_path``, either a Label3D ``*_dannce.mat`` file (MATLAB v5 or v7.3) or a ``sync/`` folder of
+``CameraN_sync.mat`` files, and each sample's time becomes its frame divided by ``sampling_rate``.
+When ``calibration_path`` is a Label3D ``.mat`` file, the table is read from there and
+``sync_path`` can be left out.
+
+.. code-block:: python
+
+    >>> run_path = BEHAVIOR_DATA_PATH / "dannce" / "dannce" / "avg_and_max_predictions"
+    >>> interface = DANNCEInterface(
+    ...     file_paths=run_path / "DANNCE" / "predict_results" / "save_data_AVG.mat",
+    ...     sync_path=run_path / "label3d_dannce.mat",
+    ...     sampling_rate=100.0,
+    ... )
+    >>> interface.video_frame_indices[:3]
+    array([0, 1, 2])
+
+Without a sync table the samples are taken to be consecutive frames from the start of the recording,
+which only holds when no frame was skipped. With neither ``sampling_rate`` nor a sync table, set the
+times yourself with ``interface.alignment[interface.metadata_key].set_times(times)``.
+
 Camera calibration and multiple cameras
 ========================================
 
@@ -87,21 +113,23 @@ and links each camera's video for you.
 Videos are discovered from a single ``videos_folder_path``: the DANNCE/campy ``videos`` folder,
 containing one subdirectory per camera (e.g. ``Camera1``, ``Camera2``, ...), each with that camera's
 video file(s) and, optionally, a ``frametimes.npy`` file (the campy/pCamPI capture standard). When
-present, each camera's own frametimes align its video, and the first camera's frametimes (indexed by
-the DANNCE prediction file's ``sampleID`` field) align the DANNCE pose estimation -- no
-``sampling_rate`` is needed. A rig recorded without campy/pCamPI (no ``frametimes.npy`` at all) can
-still be converted by passing ``sampling_rate`` instead, which is then used for any camera missing
-its own frametimes.
+present, each camera's own frametimes align its video. The first camera's frametimes also align the
+DANNCE pose estimation, read at the frame the sync table gives for each ``sampleID``, so no
+``sampling_rate`` is needed. Without a sync table the frametimes are not used for the pose, since
+the frames of the predictions are unknown, and the converter warns. A rig recorded without
+campy/pCamPI (no ``frametimes.npy`` at all) can still be converted by passing ``sampling_rate``
+instead, which is then used for any camera missing its own frametimes.
 
 .. code-block:: python
 
     >>> from neuroconv.converters import DANNCEConverter
 
-    >>> run_path = BEHAVIOR_DATA_PATH / "dannce" / "sdannce" / "single_subject"
+    >>> run_path = BEHAVIOR_DATA_PATH / "dannce" / "sdannce" / "one_file_per_subject" / "two_subjects"
     >>> converter = DANNCEConverter(
-    ...     file_paths=run_path / "SDANNCE" / "bsl0.5_FM" / "save_data_AVG0.mat",
+    ...     file_paths=run_path / "SDANNCE" / "bsl0.5_FM_rat1" / "save_data_AVG0.mat",
     ...     videos_folder_path=run_path / "videos",
     ...     calibration_path=run_path / "calibration",
+    ...     sync_path=run_path / "sampleCAL_BG_dannce.mat",
     ... )
     >>> metadata = converter.get_metadata()
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)

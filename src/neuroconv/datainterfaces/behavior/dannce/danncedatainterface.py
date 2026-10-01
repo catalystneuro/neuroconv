@@ -1,4 +1,5 @@
 import re
+import warnings
 from pathlib import Path
 
 import numpy as np
@@ -16,18 +17,30 @@ from ....utils import DeepDict, to_camel_case, to_snake_case
 
 
 def _loadmat(file_path: Path, **kwargs):
-    """``scipy.io.loadmat``, with MATLAB v7.3/HDF5 files (unsupported by ``scipy``) turned into a
-    clear, actionable error instead of a raw ``NotImplementedError``."""
+    """``scipy.io.loadmat`` for the prediction files, with MATLAB v7.3/HDF5 files turned into a clear,
+    actionable error instead of a raw ``NotImplementedError``.
+
+    Prediction files are written by DANNCE/sDANNCE through ``scipy``, so they are never v7.3. They are
+    read with ``scipy`` rather than ``pymatreader`` because ``pymatreader`` squeezes singleton
+    dimensions: a one-animal ``pred`` of shape ``(n, 1, 3, k)`` would lose its animal axis, and a file
+    with a single frame or a single landmark would become ambiguous.
+    """
     from scipy.io import loadmat
 
     try:
         return loadmat(str(file_path), **kwargs)
     except NotImplementedError as error:
         raise ValueError(
-            f"'{file_path}' is a MATLAB v7.3 (HDF5-based) .mat file, which is not supported here. "
-            "Only MATLAB v5/v7 .mat files, as produced by DANNCE/sDANNCE prediction and calibration "
-            "output, are supported."
+            f"'{file_path}' is a MATLAB v7.3 (HDF5-based) .mat file. DANNCE/sDANNCE write their prediction "
+            "files as MATLAB v5/v7 through scipy, so this is not a prediction file."
         ) from error
+
+
+def _read_mat(file_path: Path) -> dict:
+    """Read a MATLAB file written by MATLAB itself (Label3D, sync, calibration), v5 or v7.3."""
+    from pymatreader import read_mat
+
+    return read_mat(str(file_path))
 
 
 class DANNCEInterface(BasePoseEstimationInterface):
@@ -131,7 +144,7 @@ class DANNCEInterface(BasePoseEstimationInterface):
         camera_names = [f"Camera{camera_number}" for camera_number, _ in matches]
         camera_calibrations = {}
         for camera_name, (_, file_path) in zip(camera_names, matches):
-            calibration = _loadmat(file_path)
+            calibration = _read_mat(file_path)
             camera_calibrations[camera_name] = dict(
                 intrinsic_matrix=np.asarray(calibration["K"]),
                 rotation_matrix=np.asarray(calibration["r"]),
@@ -166,7 +179,7 @@ class DANNCEInterface(BasePoseEstimationInterface):
     @staticmethod
     def _load_calibrations_from_label3d_mat(file_path: Path) -> tuple[list[str], dict[str, dict]]:
         """Parse a single Label3D-style '*_dannce.mat' file with 'camnames' and 'params'."""
-        data = _loadmat(file_path, simplify_cells=True)
+        data = _read_mat(file_path)
         camera_names = list(np.atleast_1d(data["camnames"]))
         params_list = data["params"]
         if isinstance(params_list, dict):
@@ -184,6 +197,123 @@ class DANNCEInterface(BasePoseEstimationInterface):
             )
         return camera_names, camera_calibrations
 
+    @staticmethod
+    def _load_sync_tables(sync_path: Path) -> list[tuple[str | None, np.ndarray, np.ndarray]]:
+        """
+        Load the per-camera synchronization tables that map each ``sampleID`` to a video frame.
+
+        Two layouts are supported:
+
+        - A Label3D-style ``*_dannce.mat`` file (MATLAB v5 or v7.3) with a top-level ``sync`` struct
+          array, one entry per camera, index-aligned with ``camnames`` when the file has them.
+        - A directory of per-camera ``<CameraName>_sync.mat`` files, the layout that predates Label3D.
+
+        Returns
+        -------
+        list of (camera name or None, sample IDs, frames)
+            One entry per camera, in camera order. The camera name is ``None`` when the file does not
+            record it. ``sample IDs`` and ``frames`` are the ``data_sampleID`` and ``data_frame``
+            columns of that camera's table, as integers.
+        """
+        sync_path = Path(sync_path)
+        if not sync_path.exists():
+            raise FileNotFoundError(f"Sync path '{sync_path}' does not exist.")
+
+        if sync_path.is_dir():
+            pattern = re.compile(r"^(.*)_sync\.mat$")
+            matches = [(pattern.match(path.name), path) for path in sync_path.iterdir()]
+            matches = [(match.group(1), path) for match, path in matches if match]
+            if not matches:
+                raise ValueError(f"No '<CameraName>_sync.mat' files found in '{sync_path}'.")
+
+            def natural_key(pair):
+                return [int(part) if part.isdigit() else part for part in re.split(r"(\d+)", pair[0])]
+
+            matches.sort(key=natural_key)
+            return [
+                (camera_name, *DANNCEInterface._get_sync_columns(_read_mat(path), source=path))
+                for camera_name, path in matches
+            ]
+
+        tables = DANNCEInterface._load_sync_tables_from_label3d_mat(sync_path)
+        if tables is None:
+            raise ValueError(
+                f"'{sync_path}' has no 'sync' table. Pass a Label3D '*_dannce.mat' file or a directory of "
+                "'<CameraName>_sync.mat' files as 'sync_path'."
+            )
+        return tables
+
+    @staticmethod
+    def _load_sync_tables_from_label3d_mat(file_path: Path) -> list[tuple[str | None, np.ndarray, np.ndarray]] | None:
+        """The ``sync`` tables of a Label3D-style ``.mat`` file, or ``None`` when it has none."""
+        data = _read_mat(file_path)
+        if "sync" not in data:
+            return None
+        sync_entries = data["sync"]
+        if isinstance(sync_entries, dict):
+            # Label3D writes a cell array, one struct per camera, which reads as a list of dicts. A single
+            # camera reads as one dict, and a struct array as one dict whose fields are per-camera lists.
+            if isinstance(sync_entries.get("data_frame"), list):
+                sync_entries = [dict(zip(sync_entries, values)) for values in zip(*sync_entries.values())]
+            else:
+                sync_entries = [sync_entries]
+        camera_names = [str(name) for name in np.atleast_1d(data["camnames"])] if "camnames" in data else []
+        if len(camera_names) != len(sync_entries):
+            camera_names = [None] * len(sync_entries)
+        return [
+            (camera_name, *DANNCEInterface._get_sync_columns(entry, source=file_path))
+            for camera_name, entry in zip(camera_names, sync_entries)
+        ]
+
+    @staticmethod
+    def _get_sync_columns(sync_entry: dict, source: Path) -> tuple[np.ndarray, np.ndarray]:
+        if "data_sampleID" not in sync_entry or "data_frame" not in sync_entry:
+            raise ValueError(f"The sync table in '{source}' has no 'data_sampleID' and 'data_frame' columns.")
+        sample_ids = np.rint(np.ravel(sync_entry["data_sampleID"])).astype("int64")
+        frames = np.rint(np.ravel(sync_entry["data_frame"])).astype("int64")
+        return sample_ids, frames
+
+    def _resolve_video_frame_indices(self, sync_tables: list[tuple[str | None, np.ndarray, np.ndarray]]) -> np.ndarray:
+        """Map each predicted ``sampleID`` to its video frame through the reference camera's sync table.
+
+        The reference camera is the first entry of ``camera_names`` when the sync tables name it, and
+        the first table otherwise. Cameras are frame-synchronized by construction, so the other tables
+        are only checked against it.
+        """
+        sample_ids = np.rint(self._sample_id).astype("int64")
+        table_by_name = {name: (ids, frames) for name, ids, frames in sync_tables if name is not None}
+        reference_name = self._camera_names[0]
+        if reference_name in table_by_name:
+            reference_ids, reference_frames = table_by_name[reference_name]
+        else:
+            reference_name, reference_ids, reference_frames = sync_tables[0]
+
+        frame_by_sample_id = dict(zip(reference_ids.tolist(), reference_frames.tolist()))
+        missing = [sample_id for sample_id in sample_ids.tolist() if sample_id not in frame_by_sample_id]
+        if missing:
+            raise ValueError(
+                f"{len(missing)} of the {len(sample_ids)} predicted sampleIDs are not in the sync table "
+                f"(e.g. {missing[:5]}), so their video frames are unknown. Check that the sync table comes "
+                "from the same recording as the predictions."
+            )
+        video_frame_indices = np.array([frame_by_sample_id[sample_id] for sample_id in sample_ids.tolist()])
+
+        for camera_name, ids, frames in sync_tables:
+            other = dict(zip(ids.tolist(), frames.tolist()))
+            other_frames = [other.get(sample_id) for sample_id in sample_ids.tolist()]
+            if any(
+                frame is not None and frame != reference for frame, reference in zip(other_frames, video_frame_indices)
+            ):
+                warnings.warn(
+                    f"The sync table of camera '{camera_name}' maps some sampleIDs to different frames than "
+                    f"the reference camera '{reference_name}'. The reference camera's frames are used.",
+                    UserWarning,
+                    stacklevel=3,
+                )
+                break
+
+        return video_frame_indices
+
     @validate_call
     def __init__(
         self,
@@ -195,6 +325,7 @@ class DANNCEInterface(BasePoseEstimationInterface):
         metadata_key: str | None = None,
         camera_names: list[str] | None = None,
         calibration_path: Path | None = None,
+        sync_path: Path | None = None,
         animal_index: int | None = None,
         verbose: bool = False,
     ):
@@ -215,9 +346,13 @@ class DANNCEInterface(BasePoseEstimationInterface):
             a list of such paths -- e.g. sDANNCE jobs split by batch -- to concatenate, in the given
             order, into one continuous session.
         sampling_rate : float, optional
-            The sampling rate in Hz of the pose estimation data. Used to compute timestamps from
-            the sampleID field. If not provided, timestamps must be set with
-            ``interface.alignment[interface.metadata_key].set_times(times)`` before conversion.
+            The frame rate in Hz of the video the predictions were made on. With a sync table (see
+            ``sync_path``) each sample's time is its video frame divided by this rate. Without one,
+            the times are ``arange(n_samples) / sampling_rate``, which is only correct when the
+            predicted samples are consecutive video frames from the start of the recording, with
+            none skipped. When it is not given, set the times with
+            ``interface.alignment[interface.metadata_key].set_times(times)`` before conversion; a
+            warning at construction says so.
         landmark_names : list of str, optional
             Names for each tracked landmark/body part. Must match the number of landmarks in the
             data. If not provided, defaults to ``["landmark_0", "landmark_1", ...]``.
@@ -252,13 +387,22 @@ class DANNCEInterface(BasePoseEstimationInterface):
             its calibration fields, so :meth:`add_to_nwbfile` writes ``ndx_pose.CalibratedCamera``
             devices. To override or supply calibration without this argument, edit
             ``metadata["Devices"]`` before the write.
+        sync_path : str or Path, optional
+            Path to the synchronization tables that map each prediction's ``sampleID`` to a video
+            frame: a Label3D-style ``*_dannce.mat`` file (MATLAB v5 or v7.3) with a ``sync`` field, or
+            a directory of per-camera ``<CameraName>_sync.mat`` files. A ``sampleID`` is a row label of
+            this table, not a frame index, so without it the frames of the predictions are unknown.
+            When not given and ``calibration_path`` is a Label3D ``.mat`` file with a ``sync`` field,
+            the table is read from there. The first camera's table is used, and a warning is raised
+            if the cameras disagree.
         animal_index : int, optional
             Index of the animal to write, selecting along the animal axis of a 4D ``pred`` array
             (shape ``(n_frames, n_animals, 3, n_landmarks)``), as produced by multi-animal sDANNCE
             output. Required when ``pred`` is 4D with more than one animal; construct one interface
             instance per animal to write each animal to the same NWBFile. When ``pred`` is 4D with a
-            singleton animal axis (``n_animals == 1``), defaults to ``0`` if omitted. Must be omitted (left as ``None``) when ``pred`` is already
-            3D (single-animal DANNCE output) -- passing it in that case raises an error.
+            singleton animal axis (``n_animals == 1``), defaults to ``0`` if omitted. Must be omitted
+            (left as ``None``) when ``pred`` is already 3D (single-animal DANNCE output) -- passing it
+            in that case raises an error.
         verbose : bool, default: False
             Controls verbosity of the conversion process.
         """
@@ -303,6 +447,23 @@ class DANNCEInterface(BasePoseEstimationInterface):
 
         # Load data from .mat file(s)
         self._load_dannce_data(file_paths)
+
+        # A sampleID is a row label of the sync table, not a frame index, so the frames come from there.
+        sync_tables = None
+        if sync_path is not None:
+            sync_tables = self._load_sync_tables(sync_path)
+        elif calibration_path is not None and Path(calibration_path).suffix == ".mat":
+            sync_tables = self._load_sync_tables_from_label3d_mat(Path(calibration_path))
+        self._video_frame_indices = self._resolve_video_frame_indices(sync_tables) if sync_tables else None
+
+        if sampling_rate is None:
+            warnings.warn(
+                "No timing information is available for this DANNCE output: no 'sampling_rate' was given. "
+                "Pass 'sampling_rate', or call 'interface.alignment[interface.metadata_key].set_times(times)' "
+                "with one time per sample before writing.",
+                UserWarning,
+                stacklevel=2,
+            )
 
         # Named after the individual, as SLEAP names a container after its track, so that animals from
         # separate prediction files do not collide in one NWBFile. Without a subject name, animals are
@@ -414,24 +575,29 @@ class DANNCEInterface(BasePoseEstimationInterface):
         self._p_max = p_max  # shape: (n_samples, n_landmarks)
 
     @property
-    def video_frame_indices(self) -> np.ndarray:
-        """For each predicted sample, the (0-indexed) index of the corresponding video frame within
-        the session, shape ``(n_samples,)`` -- loaded from the prediction file's ``sampleID`` field.
-        Used by :class:`~neuroconv.datainterfaces.behavior.dannce.dannceconverter.DANNCEConverter` to
-        index into a camera's per-frame timestamps (e.g. from a frametimes file) to build this
-        interface's aligned timestamps."""
-        return self._sample_id
+    def video_frame_indices(self) -> np.ndarray | None:
+        """For each predicted sample, the (0-indexed) video frame it was predicted on, shape
+        ``(n_samples,)``, resolved from the ``sampleID`` through the sync table (see ``sync_path``).
+        ``None`` when there is no sync table, since a ``sampleID`` is not itself a frame index. Used by
+        :class:`~neuroconv.datainterfaces.behavior.dannce.dannceconverter.DANNCEConverter` to index a
+        camera's per-frame timestamps (``frametimes.npy``)."""
+        return self._video_frame_indices
 
     def get_original_timestamps(self, stub_test: bool = False) -> np.ndarray:
         if self._sampling_rate is None:
             raise ValueError(
                 "No timing information is available for this DANNCE output. The prediction file records "
-                "sample indices but no frame rate, so the times cannot be derived from the source. Pass "
+                "sample labels but no frame rate, so the times cannot be derived from the source. Pass "
                 "'sampling_rate' to DANNCEInterface, or call "
                 "'interface.alignment[interface.metadata_key].set_times(times)' with one time per sample."
             )
-        sample_id = self._sample_id[:100] if stub_test else self._sample_id
-        return sample_id / self._sampling_rate
+        if self._video_frame_indices is not None:
+            frames = self._video_frame_indices
+        else:
+            # No sync table: assume the samples are consecutive frames from the start of the recording.
+            frames = np.arange(len(self._sample_id))
+        frames = frames[:100] if stub_test else frames
+        return frames / self._sampling_rate
 
     def _get_timestamps(self, stub_test: bool = False) -> np.ndarray:
         time_bearing_object = self.alignment[self.metadata_key]

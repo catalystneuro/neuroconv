@@ -1,10 +1,12 @@
 import shutil
 import tempfile
+import warnings
 from datetime import datetime, timezone
 from importlib.metadata import version as importlib_version
 from pathlib import Path
 from warnings import warn
 
+import numpy as np
 import pytest
 from hdmf.testing import TestCase
 from packaging import version
@@ -37,7 +39,11 @@ class TestDANNCEConverterSingleSubject(TestCase):
     """Full happy-path coverage: 'sdannce/single_subject' has six campy-recorded cameras (video +
     frametimes.npy + metadata.csv), 'hires_camN_params.mat' calibration, and a single-subject (no
     animal axis) prediction file -- the direct replacement for this file's previous 2-camera,
-    flat-layout coverage."""
+    flat-layout coverage.
+
+    The session has no Label3D/sync file, so the predictions' sampleIDs cannot be mapped to video frames and
+    the frametimes are not used for the pose: the converter warns, and the times are set by hand here, the
+    way a user would after checking that their sampleIDs are frame indices."""
 
     camera_names = [f"Camera{i}" for i in range(1, 7)]
     expected_serial_numbers = {"Camera1": "40054255", "Camera2": "40068500"}
@@ -46,12 +52,18 @@ class TestDANNCEConverterSingleSubject(TestCase):
     def setUpClass(cls) -> None:
         run_path = SDANNCE_DATA_PATH / "single_subject"
 
-        cls.converter = DANNCEConverter(
-            file_paths=str(run_path / "SDANNCE" / "bsl0.5_FM" / "save_data_AVG0.mat"),
-            videos_folder_path=str(run_path / "videos"),
-            calibration_path=str(run_path / "calibration"),
-            metadata_key="PoseEstimationDANNCE",
-        )
+        with warnings.catch_warnings(record=True) as construction_warnings:
+            warnings.simplefilter("always")
+            cls.converter = DANNCEConverter(
+                file_paths=str(run_path / "SDANNCE" / "bsl0.5_FM" / "save_data_AVG0.mat"),
+                videos_folder_path=str(run_path / "videos"),
+                calibration_path=str(run_path / "calibration"),
+                metadata_key="PoseEstimationDANNCE",
+            )
+        cls.construction_warnings = [str(record.message) for record in construction_warnings]
+        cls.frametimes = np.load(run_path / "videos" / "Camera1" / "frametimes.npy")[1]
+        dannce_interface = cls.converter.data_interface_objects["DANNCE"]
+        dannce_interface.alignment[dannce_interface.metadata_key].set_times(cls.frametimes)
         cls.test_dir = Path(tempfile.mkdtemp())
 
     @classmethod
@@ -60,6 +72,10 @@ class TestDANNCEConverterSingleSubject(TestCase):
             shutil.rmtree(cls.test_dir)
         except PermissionError:
             warn(f"Unable to cleanup testing data at {cls.test_dir}! Please remove it manually.")
+
+    def test_frametimes_without_sync_warn(self):
+        assert any("no sync table to map" in message for message in self.construction_warnings)
+        assert self.converter.data_interface_objects["DANNCE"].video_frame_indices is None
 
     def test_expected_metadata(self):
         metadata = self.converter.get_metadata()
@@ -155,6 +171,7 @@ class TestDANNCEConverterClassicDannceNoFrametimes(TestCase):
             file_paths=str(run_path / "DANNCE" / "predict_results" / "save_data_AVG.mat"),
             videos_folder_path=str(run_path / "videos"),
             calibration_path=str(run_path / "calibration"),
+            sync_path=str(run_path / "label3d_dannce.mat"),
             sampling_rate=100.0,
             metadata_key="PoseEstimationDANNCE",
         )
@@ -166,6 +183,12 @@ class TestDANNCEConverterClassicDannceNoFrametimes(TestCase):
             shutil.rmtree(cls.test_dir)
         except PermissionError:
             warn(f"Unable to cleanup testing data at {cls.test_dir}! Please remove it manually.")
+
+    def test_pose_times_through_sync(self):
+        """sampleIDs 1 and 11 are sync rows for frames 0 and 1, so at 100 Hz the times are 0.00 and 0.01 s."""
+        dannce_interface = self.converter.data_interface_objects["DANNCE"]
+        np.testing.assert_array_equal(dannce_interface._sample_id, [1, 11])
+        np.testing.assert_allclose(dannce_interface.alignment[dannce_interface.metadata_key].get_times(), [0.0, 0.01])
 
     def test_expected_metadata(self):
         metadata = self.converter.get_metadata()
@@ -209,9 +232,11 @@ class TestDANNCEConverterPredictionsSplitAcrossJobs(TestCase):
             file_paths=[str(predict_path / "save_data_AVG0.mat"), str(predict_path / "save_data_AVG25.mat")],
             videos_folder_path=str(run_path / "videos"),
             calibration_path=str(run_path / "calibration"),
+            sync_path=str(run_path / "sampleCAL_BG_dannce.mat"),
             animal_index=0,
             metadata_key="PoseEstimationDANNCE",
         )
+        cls.frametimes = np.load(run_path / "videos" / "Camera1" / "frametimes.npy")[1]
         cls.test_dir = Path(tempfile.mkdtemp())
 
     @classmethod
@@ -226,6 +251,14 @@ class TestDANNCEConverterPredictionsSplitAcrossJobs(TestCase):
         sample_id = self.converter._dannce_interface._sample_id
         assert sample_id[0] == 0
         assert sample_id[-1] == 49
+
+    def test_pose_times_are_the_frametimes_at_the_synced_frames(self):
+        dannce_interface = self.converter.data_interface_objects["DANNCE"]
+        frames = dannce_interface.video_frame_indices
+        np.testing.assert_array_equal(frames, np.arange(50))
+        np.testing.assert_allclose(
+            dannce_interface.alignment[dannce_interface.metadata_key].get_times(), self.frametimes[frames]
+        )
 
     def test_run_conversion(self):
         nwbfile_path = str(self.test_dir / "test_dannce_converter_split_jobs.nwb")
@@ -262,6 +295,7 @@ class TestDANNCEConverterMultipleSubjectsSharedDevices(TestCase):
         cls.converter_rat1 = DANNCEConverter(
             file_paths=file_path,
             videos_folder_path=str(run_path / "videos"),
+            sync_path=str(run_path / "20240525_165300_COMS_Label3D_dannce.mat"),
             calibration_path=calibration_path,
             animal_index=0,
             subject_name="rat1",
@@ -322,6 +356,24 @@ class TestDANNCEInterfaceAvgAndMaxPredictions(TestCase):
 
     run_path = DANNCE_DATA_PATH / "avg_and_max_predictions"
 
+    def test_times_through_label3d_sync(self):
+        """sampleIDs 1, 11, ..., 991 are sync rows for frames 0..99: at 100 Hz, 0.00 to 0.99 s."""
+        interface = DANNCEInterface(
+            file_paths=str(self.run_path / "DANNCE" / "predict_results" / "save_data_AVG.mat"),
+            sync_path=str(self.run_path / "label3d_dannce.mat"),
+            sampling_rate=100.0,
+        )
+        np.testing.assert_allclose(interface.alignment[interface.metadata_key].get_times(), np.arange(100) / 100.0)
+
+    def test_times_through_matlab_v73_sync(self):
+        """'com_dannce.mat' is a MATLAB v7.3 (HDF5) file carrying the same sync table."""
+        interface = DANNCEInterface(
+            file_paths=str(self.run_path / "DANNCE" / "predict_results" / "save_data_AVG.mat"),
+            sync_path=str(self.run_path / "com_dannce.mat"),
+            sampling_rate=100.0,
+        )
+        np.testing.assert_allclose(interface.alignment[interface.metadata_key].get_times(), np.arange(100) / 100.0)
+
     def test_avg_predictions_load_and_write(self):
         interface = DANNCEInterface(
             file_paths=str(self.run_path / "DANNCE" / "predict_results" / "save_data_AVG.mat"),
@@ -355,19 +407,20 @@ class TestDANNCEInterfaceAvgAndMaxPredictions(TestCase):
 
 
 class TestDANNCEInterfacePreLabel3dLayout(TestCase):
-    """'dannce/pre_label3d_layout' predates Label3D bundling synchronization/labels into one file
-    (irrelevant to this interface, which never reads sync/labeling files) -- covers the bare
-    DANNCEInterface against its prediction + 'kyle_camN_params.mat' calibration only."""
+    """'dannce/pre_label3d_layout' predates Label3D bundling synchronization/labels into one file: its sync
+    tables are per-camera 'sync/CameraN_sync.mat' files, next to 'kyle_camN_params.mat' calibration."""
 
     def test_load_and_write(self):
         run_path = DANNCE_DATA_PATH / "pre_label3d_layout"
         interface = DANNCEInterface(
             file_paths=str(run_path / "DANNCE" / "predict_results" / "save_data_AVG.mat"),
             calibration_path=str(run_path / "calibration"),
+            sync_path=str(run_path / "sync"),
             sampling_rate=100.0,
         )
         assert interface._pred.shape == (100, 3, 22)
         assert interface._camera_names == [f"Camera{i}" for i in range(1, 7)]
+        np.testing.assert_allclose(interface.alignment[interface.metadata_key].get_times(), np.arange(100) / 100.0)
 
         from pynwb.testing.mock.file import mock_NWBFile
 
@@ -427,6 +480,7 @@ class TestDANNCEConverterOneFilePerSubject(TestCase):
         cls.converter_rat1 = DANNCEConverter(
             file_paths=str(run_path / "SDANNCE" / "bsl0.5_FM_rat1" / "save_data_AVG0.mat"),
             videos_folder_path=str(run_path / "videos"),
+            sync_path=str(run_path / "sampleCAL_BG_dannce.mat"),
             calibration_path=calibration_path,
             subject_name="rat1",
         )
@@ -493,6 +547,7 @@ class TestDANNCEConverterThreeSubjectsSharedDevices(TestCase):
         cls.converter_animal0 = DANNCEConverter(
             file_paths=file_path,
             videos_folder_path=str(run_path / "videos"),
+            sync_path=str(run_path / "20240405_124202_COM3_Label3D_dannce.mat"),
             calibration_path=calibration_path,
             animal_index=0,
             subject_name="animal1",
@@ -554,7 +609,8 @@ class TestDANNCEConverterThreeSubjectsSharedDevices(TestCase):
 
 class TestDANNCEConverterSyncLongerThanVideo(TestCase):
     """'sdannce/sync_longer_than_video' has a Label3D synchronization table longer than the actual
-    video/predictions (irrelevant here -- this interface never reads sync tables). Its prediction
+    video/predictions: 'ANNOT_COM_BR_dannce.mat' has 67 sync rows for 50 video frames, and only the rows the
+    predictions use are looked up, so the extra rows are harmless. Its prediction
     file has a singleton animal axis with no explicit 'animal_index' passed, exercising the
     auto-default-to-0 behavior end-to-end on real data."""
 
@@ -567,6 +623,7 @@ class TestDANNCEConverterSyncLongerThanVideo(TestCase):
         cls.converter = DANNCEConverter(
             file_paths=str(run_path / "SDANNCE" / "predict00" / "save_data_AVG0.mat"),
             videos_folder_path=str(run_path / "videos"),
+            sync_path=str(run_path / "ANNOT_COM_BR_dannce.mat"),
             calibration_path=str(run_path / "calibration"),
             metadata_key="PoseEstimationDANNCE",
         )
@@ -613,6 +670,7 @@ class TestDANNCEConverterTwoRunsForOneSubject(TestCase):
         cls.converter_dannce_run = DANNCEConverter(
             file_paths=str(run_path / "DANNCE" / "predict00" / "save_data_AVG0.mat"),
             videos_folder_path=str(run_path / "videos"),
+            sync_path=str(run_path / "sampleCAL_BG_dannce.mat"),
             calibration_path=calibration_path,
             metadata_key="PoseEstimationDANNCERun",
         )
@@ -684,6 +742,7 @@ class TestDANNCEConverterSdannceChunkedVideosWithFrametimes(TestCase):
         cls.converter = DANNCEConverter(
             file_paths=str(run_path / "SDANNCE" / "predict00" / "save_data_AVG0.mat"),
             videos_folder_path=str(run_path / "videos"),
+            sync_path=str(run_path / "sampleCAL_BG_dannce.mat"),
             calibration_path=str(run_path / "calibration"),
             metadata_key="PoseEstimationDANNCE",
         )

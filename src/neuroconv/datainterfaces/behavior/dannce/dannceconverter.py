@@ -1,5 +1,6 @@
 import csv
 import re
+import warnings
 from copy import deepcopy
 from pathlib import Path
 
@@ -156,6 +157,7 @@ class DANNCEConverter(BaseDataInterface):
         videos_folder_path: DirectoryPath,
         *,
         calibration_path: Path | None = None,
+        sync_path: Path | None = None,
         landmark_names: list[str] | None = None,
         subject_name: str | None = None,
         metadata_key: str | None = None,
@@ -184,18 +186,19 @@ class DANNCEConverter(BaseDataInterface):
             optional per camera. When present, it is used to set the times of each of that camera's
             video files (via ``alignment[segment_key].set_times``); when absent, that video keeps
             ``ExternalVideoInterface``'s own default timestamps (derived directly from the video
-            file). The first camera's frametimes, if present, are additionally indexed by the DANNCE
-            prediction file's ``sampleID`` field and used to set the DANNCE pose estimation's
-            times (via ``DANNCEInterface.alignment[metadata_key].set_times``); the first camera is used
-            because DANNCE/sDANNCE triangulates from all cameras but stores only one shared
-            ``sampleID`` per predicted sample, referencing frame indices in a single reference camera's
-            timeline (by campy/pCamPI convention, cameras are frame-synchronized, so any one camera's
-            frametimes would work equally well as that reference). If the first camera has no
-            frametimes, ``sampling_rate`` (below) is used for the DANNCE pose estimation instead.
+            file). The first camera's frametimes, if present, also give the DANNCE pose estimation's
+            times (via ``DANNCEInterface.alignment[metadata_key].set_times``): each prediction's
+            ``sampleID`` is mapped to its video frame through the sync table (``sync_path``), and the
+            frametimes are read at those frames. Without a sync table the frametimes are not used for
+            the pose, since a ``sampleID`` is not itself a frame index; a warning says so, and
+            ``sampling_rate`` (below) is used instead, if given.
         calibration_path : str or Path, optional
             See :class:`~neuroconv.datainterfaces.DANNCEInterface`. Only used to load per-camera
-            calibrations (intrinsics/extrinsics); the set of cameras itself is always taken from
+            calibrations (intrinsics/extrinsics), and the sync table when it is a Label3D ``.mat`` file
+            and no ``sync_path`` is given; the set of cameras itself is always taken from
             ``videos_folder_path``.
+        sync_path : str or Path, optional
+            See :class:`~neuroconv.datainterfaces.DANNCEInterface`.
         landmark_names : list of str, optional
             See :class:`~neuroconv.datainterfaces.DANNCEInterface`.
         subject_name : str, optional
@@ -236,23 +239,55 @@ class DANNCEConverter(BaseDataInterface):
             if metadata_csv_file_path.exists():
                 self._camera_capture_metadata[camera_name] = self._load_camera_capture_metadata(metadata_csv_file_path)
 
-        self._dannce_interface = DANNCEInterface(
-            file_paths=file_paths,
-            sampling_rate=sampling_rate,
-            landmark_names=landmark_names,
-            subject_name=subject_name,
-            metadata_key=metadata_key,
-            camera_names=self._camera_names,
-            calibration_path=calibration_path,
-            animal_index=animal_index,
-            verbose=verbose,
-        )
+        # The interface warns at construction when it has no times of its own, but here the frametimes
+        # may still supply them, so that warning is held back and given below only if they do not.
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", message="No timing information is available", category=UserWarning)
+            self._dannce_interface = DANNCEInterface(
+                file_paths=file_paths,
+                sampling_rate=sampling_rate,
+                landmark_names=landmark_names,
+                subject_name=subject_name,
+                metadata_key=metadata_key,
+                camera_names=self._camera_names,
+                calibration_path=calibration_path,
+                sync_path=sync_path,
+                animal_index=animal_index,
+                verbose=verbose,
+            )
 
         primary_camera_name = self._camera_names[0]
+        video_frame_indices = self._dannce_interface.video_frame_indices
+        pose_times_set = False
         if primary_camera_name in camera_frametimes:
-            video_frame_indices = self._dannce_interface.video_frame_indices
-            self._dannce_interface.alignment[self._dannce_interface.metadata_key].set_times(
-                camera_frametimes[primary_camera_name][video_frame_indices.astype(int)]
+            frametimes = camera_frametimes[primary_camera_name]
+            if video_frame_indices is None:
+                warnings.warn(
+                    f"Camera '{primary_camera_name}' has a 'frametimes.npy', but there is no sync table to map "
+                    "the predictions' sampleIDs to its frames, so the frametimes are not used for the pose "
+                    "estimation. Pass 'sync_path' (a Label3D '*_dannce.mat' file or a 'sync/' folder) to use "
+                    "them.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+            else:
+                if video_frame_indices.max() >= len(frametimes):
+                    raise ValueError(
+                        f"The sync table maps some predictions to frame {video_frame_indices.max()}, but camera "
+                        f"'{primary_camera_name}' has frametimes for only {len(frametimes)} frames. Check that the "
+                        "sync table, predictions and videos come from the same recording."
+                    )
+                self._dannce_interface.alignment[self._dannce_interface.metadata_key].set_times(
+                    frametimes[video_frame_indices]
+                )
+                pose_times_set = True
+        if not pose_times_set and sampling_rate is None:
+            warnings.warn(
+                "No timing information is available for the DANNCE pose estimation: no usable frametimes and "
+                "no 'sampling_rate'. Pass 'sampling_rate', or call "
+                "'converter.data_interface_objects[\"DANNCE\"].alignment[key].set_times(times)' before writing.",
+                UserWarning,
+                stacklevel=2,
             )
 
         self._video_interfaces: dict[str, ExternalVideoInterface] = {}
