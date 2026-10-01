@@ -117,10 +117,15 @@ class TestDANNCEConverterDiscovery:
         assert converter._camera_names == dannce_converter_dir["camera_names"]
 
         expected_timestamps = np.arange(dannce_converter_dir["n_samples"]) / 40.0
-        np.testing.assert_allclose(converter._dannce_interface.get_timestamps(), expected_timestamps)
+        np.testing.assert_allclose(
+            converter._dannce_interface.alignment[converter._dannce_interface.metadata_key].get_times(),
+            expected_timestamps,
+        )
         for camera_name in dannce_converter_dir["camera_names"]:
             video_interface = converter._video_interfaces[camera_name]
-            np.testing.assert_allclose(video_interface.get_timestamps()[0], expected_timestamps)
+            np.testing.assert_allclose(
+                video_interface.alignment[video_interface.alignment.keys()[0]].get_times(), expected_timestamps
+            )
 
     def test_numeric_camera_ordering(self, tmp_path, dannce_converter_dir):
         # Camera10 should sort after Camera2 (numeric order), not before it (lexicographic order).
@@ -151,11 +156,17 @@ class TestDANNCEConverterDiscovery:
         # video-derived timestamps -- close to, but not necessarily bit-identical to, frame_index/fps.
         camera1_interface = converter._video_interfaces["Camera1"]
         expected_timestamps = np.arange(dannce_converter_dir["n_samples"]) / 40.0
-        np.testing.assert_allclose(camera1_interface.get_timestamps()[0], expected_timestamps, atol=0.05)
+        np.testing.assert_allclose(
+            camera1_interface.alignment[camera1_interface.alignment.keys()[0]].get_times(),
+            expected_timestamps,
+            atol=0.05,
+        )
 
         # Camera2 still has its own real frametimes.npy, unaffected by Camera1 missing one.
         camera2_interface = converter._video_interfaces["Camera2"]
-        np.testing.assert_allclose(camera2_interface.get_timestamps()[0], expected_timestamps)
+        np.testing.assert_allclose(
+            camera2_interface.alignment[camera2_interface.alignment.keys()[0]].get_times(), expected_timestamps
+        )
 
     def test_primary_camera_missing_frametimes_uses_sampling_rate_for_pose(self, dannce_converter_dir):
         """When the first camera has no 'frametimes.npy', the DANNCE pose estimation's timestamps
@@ -170,7 +181,10 @@ class TestDANNCEConverterDiscovery:
         )
 
         expected_timestamps = np.arange(dannce_converter_dir["n_samples"]) / 25.0
-        np.testing.assert_allclose(converter._dannce_interface.get_timestamps(), expected_timestamps)
+        np.testing.assert_allclose(
+            converter._dannce_interface.alignment[converter._dannce_interface.metadata_key].get_times(),
+            expected_timestamps,
+        )
 
     def test_primary_camera_missing_frametimes_and_no_sampling_rate_raises_on_write(self, dannce_converter_dir):
         """Without 'frametimes.npy' for the first camera and no 'sampling_rate' fallback, building the
@@ -206,9 +220,11 @@ class TestDANNCEConverterDiscovery:
 
         for camera_name in fixture["camera_names"]:
             video_interface = converter._video_interfaces[camera_name]
-            timestamps = video_interface.get_timestamps()
-            np.testing.assert_allclose(timestamps[0], expected_first_segment)
-            np.testing.assert_allclose(timestamps[1], expected_second_segment)
+            first_segment_key, second_segment_key = video_interface.alignment.keys()
+            np.testing.assert_allclose(video_interface.alignment[first_segment_key].get_times(), expected_first_segment)
+            np.testing.assert_allclose(
+                video_interface.alignment[second_segment_key].get_times(), expected_second_segment
+            )
 
     def test_multi_segment_no_frametimes_and_no_sampling_rate_raises(
         self, dannce_converter_dir_multi_segment_no_frametimes

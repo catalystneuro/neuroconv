@@ -143,6 +143,12 @@ class DANNCEConverter(BaseDataInterface):
             )
         return segment_timestamps
 
+    @staticmethod
+    def _set_segment_times(video_interface: ExternalVideoInterface, segment_timestamps: list[np.ndarray]) -> None:
+        """Give each of a camera's video files its own times, through that file's alignment key."""
+        for segment_key, timestamps in zip(video_interface.alignment.keys(), segment_timestamps, strict=True):
+            video_interface.alignment[segment_key].set_times(timestamps)
+
     @validate_call
     def __init__(
         self,
@@ -175,12 +181,12 @@ class DANNCEConverter(BaseDataInterface):
             A camera subdirectory *may* also contain a campy/pCamPI-style ``frametimes.npy`` file
             (shape ``(2, n_video_frames)``; row 0 = 1-indexed frame number, row 1 = elapsed seconds
             since recording start) -- not every DANNCE rig records with campy/pCamPI, so this is
-            optional per camera. When present, it is used to set that camera's video's timestamps (via
-            ``ExternalVideoInterface.set_aligned_timestamps``); when absent, that video keeps
+            optional per camera. When present, it is used to set the times of each of that camera's
+            video files (via ``alignment[segment_key].set_times``); when absent, that video keeps
             ``ExternalVideoInterface``'s own default timestamps (derived directly from the video
             file). The first camera's frametimes, if present, are additionally indexed by the DANNCE
             prediction file's ``sampleID`` field and used to set the DANNCE pose estimation's
-            timestamps (via ``DANNCEInterface.set_aligned_timestamps``); the first camera is used
+            times (via ``DANNCEInterface.alignment[metadata_key].set_times``); the first camera is used
             because DANNCE/sDANNCE triangulates from all cameras but stores only one shared
             ``sampleID`` per predicted sample, referencing frame indices in a single reference camera's
             timeline (by campy/pCamPI convention, cameras are frame-synchronized, so any one camera's
@@ -245,7 +251,7 @@ class DANNCEConverter(BaseDataInterface):
         primary_camera_name = self._camera_names[0]
         if primary_camera_name in camera_frametimes:
             video_frame_indices = self._dannce_interface.video_frame_indices
-            self._dannce_interface.set_aligned_timestamps(
+            self._dannce_interface.alignment[self._dannce_interface.metadata_key].set_times(
                 camera_frametimes[primary_camera_name][video_frame_indices.astype(int)]
             )
 
@@ -263,11 +269,12 @@ class DANNCEConverter(BaseDataInterface):
             # except when split across more than one video file, where that default does not apply
             # (ExternalVideoInterface cannot know the gap, if any, between segments on its own), so a
             # 'sampling_rate' fallback is required to synthesize contiguous per-segment timestamps.
+            # Each video file is its own alignment key, in the order of `video_paths`.
             if camera_name in camera_frametimes:
                 segment_timestamps = self._split_timestamps_by_segment(
                     timestamps=camera_frametimes[camera_name], video_paths=video_paths, camera_name=camera_name
                 )
-                video_interface.set_aligned_timestamps(segment_timestamps)
+                self._set_segment_times(video_interface=video_interface, segment_timestamps=segment_timestamps)
             elif len(video_paths) > 1:
                 if sampling_rate is None:
                     raise ValueError(
@@ -283,7 +290,7 @@ class DANNCEConverter(BaseDataInterface):
                 segment_timestamps = self._split_timestamps_by_segment(
                     timestamps=all_timestamps, video_paths=video_paths, camera_name=camera_name
                 )
-                video_interface.set_aligned_timestamps(segment_timestamps)
+                self._set_segment_times(video_interface=video_interface, segment_timestamps=segment_timestamps)
             self._video_interfaces[camera_name] = video_interface
 
         self.data_interface_objects: dict[str, BaseDataInterface] = {
