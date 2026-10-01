@@ -748,8 +748,7 @@ class TestOtherWritersFindTheRows:
         probed.set_property("channel_name", np.array(["a", "b", "c", "d"]))
         assert list(probed.get_probe().contact_ids) == ["0", "1", "2", "3"]
 
-        plain = generate_recording(num_channels=4, durations=[0.1])
-        plain.delete_property("contact_vector")
+        plain = generate_recording(num_channels=4, durations=[0.1], set_probe=False)
         assert not plain.has_probe()
 
         nwbfile = mock_NWBFile()
