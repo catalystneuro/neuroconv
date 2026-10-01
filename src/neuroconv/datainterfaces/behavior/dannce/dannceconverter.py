@@ -151,7 +151,7 @@ class DANNCEConverter(BaseDataInterface):
         *,
         calibration_path: Path | None = None,
         landmark_names: list[str] | None = None,
-        subject_name: str = "ind1",
+        subject_name: str | None = None,
         metadata_key: str | None = None,
         animal_index: int | None = None,
         sampling_rate: float | None = None,
@@ -192,7 +192,7 @@ class DANNCEConverter(BaseDataInterface):
             ``videos_folder_path``.
         landmark_names : list of str, optional
             See :class:`~neuroconv.datainterfaces.DANNCEInterface`.
-        subject_name : str, default: "ind1"
+        subject_name : str, optional
             See :class:`~neuroconv.datainterfaces.DANNCEInterface`.
         metadata_key : str, optional
             See :class:`~neuroconv.datainterfaces.DANNCEInterface`.
@@ -296,11 +296,11 @@ class DANNCEConverter(BaseDataInterface):
         for camera_name in self._camera_names:
             video_interface = self._video_interfaces[camera_name]
             video_metadata = video_interface.get_metadata()
-            # Point the video at the same camera Device DANNCE already registered (under `camera_name`
-            # in `metadata["Devices"]`), dropping the video interface's own default device entry (see
+            # Point the video at the same camera Device DANNCE registers (under `camera_name` in
+            # `metadata["Devices"]`), dropping the video interface's own default device entry (see
             # ExternalVideoInterface.__init__: `f"{metadata_key}_camera"`), so the two interfaces share
-            # one Device (e.g. a calibrated one) instead of each creating their own -- see the matching
-            # `create_camera_devices` call in `add_to_nwbfile`.
+            # one Device (e.g. a calibrated one) instead of each creating their own. The video is written
+            # first and creates it; DANNCE then finds it by name.
             video_metadata["Devices"].pop(f"{video_interface.metadata_key}_camera", None)
 
             video_description = f"Source video recorded by camera '{camera_name}'."
@@ -313,6 +313,14 @@ class DANNCEConverter(BaseDataInterface):
                 device_metadata_key=camera_name,
             )
             metadata = dict_deep_update(metadata, video_metadata)
+
+            # Link this camera's per-camera PoseEstimation child to the video, by key.
+            camera_pose_estimation_metadata_key = self._dannce_interface._get_camera_pose_estimation_metadata_key(
+                camera_name
+            )
+            metadata["Pose"]["PoseEstimations"][camera_pose_estimation_metadata_key][
+                "source_video_metadata_key"
+            ] = video_interface.metadata_key
 
         # Enrich each camera's Device entry with capture-software metadata (from that camera's
         # 'metadata.csv', if present): serial number directly on the Device, and make/model via a
@@ -370,26 +378,14 @@ class DANNCEConverter(BaseDataInterface):
         """
         metadata_copy = deepcopy(metadata)
 
-        # Pre-create each camera's Device (a CalibratedCamera when its metadata["Devices"] entry names
-        # that type) before writing the videos, so that when each ExternalVideoInterface resolves its
-        # device_metadata_key (pointed at the same camera_name entry by get_metadata, above), it reuses
-        # this Device instead of creating its own -- Device creation is idempotent on name.
-        self._dannce_interface.create_camera_devices(nwbfile=nwbfile, metadata=metadata_copy)
-
-        source_videos = {}
+        # Videos first: each one creates its camera's Device (a CalibratedCamera when that
+        # metadata["Devices"] entry names the type), and the pose container links each video by
+        # `source_video_metadata_key`, which needs the ImageSeries already in the file.
         for camera_name in self._camera_names:
-            video_interface = self._video_interfaces[camera_name]
-            video_interface.add_to_nwbfile(
+            self._video_interfaces[camera_name].add_to_nwbfile(
                 nwbfile=nwbfile,
                 metadata=metadata_copy,
                 starting_frames=(starting_frames or {}).get(camera_name),
             )
-            image_series_name = metadata_copy["Behavior"]["ExternalVideos"][video_interface.metadata_key]["name"]
-            source_videos[camera_name] = nwbfile.acquisition[image_series_name]
 
-        self._dannce_interface.add_to_nwbfile(
-            nwbfile=nwbfile,
-            metadata=metadata_copy,
-            stub_test=stub_test,
-            source_videos=source_videos,
-        )
+        self._dannce_interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata_copy, stub_test=stub_test)

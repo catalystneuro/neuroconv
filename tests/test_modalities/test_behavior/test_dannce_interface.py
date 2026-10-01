@@ -343,7 +343,7 @@ class TestDANNCEInterfaceTimestamps:
         file_path, n_samples, _, _, _ = dannce_mat_file
         interface = DANNCEInterface(file_paths=file_path, sampling_rate=30.0)
 
-        timestamps = interface.get_timestamps()
+        timestamps = interface.alignment[interface.metadata_key].get_times()
         expected = np.arange(n_samples, dtype="float64") / 30.0
         np.testing.assert_allclose(timestamps, expected)
 
@@ -359,26 +359,48 @@ class TestDANNCEInterfaceTimestamps:
         file_path, _, _, _, _ = dannce_mat_file
         interface = DANNCEInterface(file_paths=file_path)
 
-        with pytest.raises(ValueError, match="Cannot compute original timestamps"):
-            interface.get_timestamps()
+        with pytest.raises(ValueError, match="No timing information is available"):
+            interface.alignment[interface.metadata_key].get_times()
 
-    def test_set_aligned_timestamps(self, dannce_mat_file):
+    def test_no_timestamps_raises_on_write(self, dannce_mat_file):
+        file_path, _, _, _, _ = dannce_mat_file
+        interface = DANNCEInterface(file_paths=file_path)
+
+        with pytest.raises(ValueError, match="No timing information is available"):
+            interface.add_to_nwbfile(nwbfile=mock_NWBFile())
+
+    def test_alignment_has_one_key(self, dannce_mat_file):
+        file_path = dannce_mat_file[0]
+        interface = DANNCEInterface(file_paths=file_path, sampling_rate=30.0)
+
+        assert interface.alignment.keys() == (interface.metadata_key,)
+
+    def test_set_times(self, dannce_mat_file):
         file_path, n_samples, _, _, _ = dannce_mat_file
         interface = DANNCEInterface(file_paths=file_path)
 
         custom_timestamps = np.linspace(10.0, 20.0, n_samples)
-        interface.set_aligned_timestamps(custom_timestamps)
+        interface.alignment[interface.metadata_key].set_times(custom_timestamps)
 
-        np.testing.assert_array_equal(interface.get_timestamps(), custom_timestamps)
+        np.testing.assert_array_equal(interface.alignment[interface.metadata_key].get_times(), custom_timestamps)
 
-    def test_set_aligned_timestamps_overrides_sampling_rate(self, dannce_mat_file):
+    def test_set_times_overrides_sampling_rate(self, dannce_mat_file):
         file_path, n_samples, _, _, _ = dannce_mat_file
         interface = DANNCEInterface(file_paths=file_path, sampling_rate=30.0)
 
         custom_timestamps = np.linspace(10.0, 20.0, n_samples)
-        interface.set_aligned_timestamps(custom_timestamps)
+        interface.alignment[interface.metadata_key].set_times(custom_timestamps)
 
-        np.testing.assert_array_equal(interface.get_timestamps(), custom_timestamps)
+        np.testing.assert_array_equal(interface.alignment[interface.metadata_key].get_times(), custom_timestamps)
+
+    def test_shift_times(self, dannce_mat_file):
+        file_path, n_samples, _, _, _ = dannce_mat_file
+        interface = DANNCEInterface(file_paths=file_path, sampling_rate=30.0)
+
+        interface.alignment.shift_times(5.0)
+
+        expected = np.arange(n_samples, dtype="float64") / 30.0 + 5.0
+        np.testing.assert_allclose(interface.alignment[interface.metadata_key].get_times(), expected)
 
 
 class TestDANNCEInterfaceMetadata:
@@ -398,15 +420,105 @@ class TestDANNCEInterfaceMetadata:
         interface = DANNCEInterface(file_paths=file_path, sampling_rate=30.0)
         metadata = interface.get_metadata()
 
-        container = metadata["Pose"]["MultiCameraPoseEstimations"]["PoseEstimationDANNCE"]
+        assert interface.metadata_key == "dannce"
+        container = metadata["Pose"]["MultiCameraPoseEstimations"]["dannce"]
         assert container["source_software"] == "DANNCE"
         assert container["name"] == "PoseEstimationDANNCE"
 
-        # Check series metadata has millimeters units
+        # Only what the format defines: units and confidence, no invented free text
         series = container["PoseEstimationSeries"]
         assert len(series) == n_landmarks
         for landmark_meta in series.values():
             assert landmark_meta["unit"] == "millimeters"
+            assert "description" not in landmark_meta
+            assert "reference_frame" not in landmark_meta
+        assert "description" not in container
+
+    def test_multi_animal_default_keys_and_names(self, multi_animal_dannce_mat_file):
+        file_path = multi_animal_dannce_mat_file[0]
+        interface = DANNCEInterface(file_paths=file_path, animal_index=1, sampling_rate=30.0)
+        metadata = interface.get_metadata()
+
+        assert interface.metadata_key == "dannce_animal_1"
+        container = metadata["Pose"]["MultiCameraPoseEstimations"]["dannce_animal_1"]
+        assert container["name"] == "PoseEstimationDANNCEAnimal1"
+        assert metadata["Pose"]["Skeletons"]["dannce_animal_1"]["name"] == "SkeletonPoseEstimationDANNCEAnimal1"
+
+    def test_singleton_animal_axis_uses_single_animal_names(self, singleton_animal_dannce_mat_file):
+        interface = DANNCEInterface(file_paths=singleton_animal_dannce_mat_file[0], sampling_rate=30.0)
+
+        assert interface.metadata_key == "dannce"
+        assert interface.get_metadata()["Pose"]["MultiCameraPoseEstimations"]["dannce"]["name"] == (
+            "PoseEstimationDANNCE"
+        )
+
+    def test_subject_name_names_key_container_and_skeleton(self, dannce_mat_file):
+        interface = DANNCEInterface(file_paths=dannce_mat_file[0], sampling_rate=30.0, subject_name="Rat 1")
+        metadata = interface.get_metadata()
+
+        assert interface.metadata_key == "dannce_rat_1"
+        assert metadata["Pose"]["MultiCameraPoseEstimations"]["dannce_rat_1"]["name"] == "PoseEstimationDANNCERat1"
+        skeleton = metadata["Pose"]["Skeletons"]["dannce_rat_1"]
+        assert skeleton["name"] == "SkeletonPoseEstimationDANNCERat1"
+        assert skeleton["subject"] == "Rat 1"
+
+    def test_subject_name_wins_over_animal_index(self, multi_animal_dannce_mat_file):
+        interface = DANNCEInterface(
+            file_paths=multi_animal_dannce_mat_file[0], animal_index=1, sampling_rate=30.0, subject_name="rat2"
+        )
+
+        assert interface.metadata_key == "dannce_rat2"
+        assert interface.get_metadata()["Pose"]["MultiCameraPoseEstimations"]["dannce_rat2"]["name"] == (
+            "PoseEstimationDANNCERat2"
+        )
+
+    def test_explicit_metadata_key_keeps_subject_based_names(self, dannce_mat_file):
+        interface = DANNCEInterface(
+            file_paths=dannce_mat_file[0], sampling_rate=30.0, subject_name="rat1", metadata_key="my_key"
+        )
+
+        assert interface.metadata_key == "my_key"
+        assert interface.get_metadata()["Pose"]["MultiCameraPoseEstimations"]["my_key"]["name"] == (
+            "PoseEstimationDANNCERat1"
+        )
+
+    def test_metadata_template(self, dannce_mat_file):
+        file_path, _, n_landmarks, _, _ = dannce_mat_file
+        interface = DANNCEInterface(file_paths=file_path, sampling_rate=30.0, camera_names=["Camera1", "Camera2"])
+        template = interface.get_metadata_template()
+
+        container = template["Pose"]["MultiCameraPoseEstimations"]["dannce"]
+        assert container["name"] == "PoseEstimationDANNCE"
+        assert container["description"] is None
+        assert len(container["pose_estimation_metadata_keys"]) == 2
+        for series in container["PoseEstimationSeries"].values():
+            assert series["unit"] == "millimeters"
+            assert series["reference_frame"] is None
+        for camera_metadata_key in container["pose_estimation_metadata_keys"]:
+            camera_entry = template["Pose"]["PoseEstimations"][camera_metadata_key]
+            assert camera_entry["source_video_metadata_key"] is None
+            assert camera_entry["device_metadata_key"] in template["Devices"]
+
+    def test_metadata_template_writes(self, dannce_mat_file):
+        """The template, with its series blanks filled, writes a file."""
+        file_path = dannce_mat_file[0]
+        interface = DANNCEInterface(file_paths=file_path, sampling_rate=30.0)
+        template = interface.get_metadata_template()
+        for landmark, series in template["Pose"]["MultiCameraPoseEstimations"]["dannce"][
+            "PoseEstimationSeries"
+        ].items():
+            series.update(description=f"3D position of {landmark}.", reference_frame="Origin at the arena center.")
+        # No camera model recorded: delete it, and the cross-reference pointing at it.
+        del template["DeviceModels"]["camera_model"]
+        for device_entry in template["Devices"].values():
+            del device_entry["device_model_metadata_key"]
+
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=template)
+
+        pe = nwbfile.processing["behavior"]["PoseEstimationDANNCE"]
+        for series in pe.pose_estimation_series.values():
+            assert series.reference_frame == "Origin at the arena center."
 
     def test_metadata_custom_key(self, dannce_mat_file):
         file_path, _, _, _, _ = dannce_mat_file
@@ -624,7 +736,7 @@ class TestDANNCEInterfaceConversion:
         # timestamps are stored explicitly rather than as rate+starting_time.
         rng = np.random.default_rng(0)
         custom_timestamps = np.sort(rng.uniform(0.0, 10.0, n_samples))
-        interface.set_aligned_timestamps(custom_timestamps)
+        interface.alignment[interface.metadata_key].set_times(custom_timestamps)
 
         nwbfile = NWBFile(
             session_description="test",
@@ -672,7 +784,7 @@ class TestDANNCEInterfaceConversion:
 
         interface.add_to_nwbfile(nwbfile=nwbfile)
 
-        skeleton = nwbfile.processing["behavior"]["Skeletons"]["SkeletonPoseEstimationDANNCE_Mouse1"]
+        skeleton = nwbfile.processing["behavior"]["Skeletons"]["SkeletonPoseEstimationDANNCEMouse1"]
         assert skeleton.subject is nwbfile.subject
 
     def test_skeleton_subject_not_linked(self, dannce_mat_file):
@@ -684,8 +796,61 @@ class TestDANNCEInterfaceConversion:
 
         interface.add_to_nwbfile(nwbfile=nwbfile)
 
-        skeleton = nwbfile.processing["behavior"]["Skeletons"]["SkeletonPoseEstimationDANNCE_Mouse1"]
+        skeleton = nwbfile.processing["behavior"]["Skeletons"]["SkeletonPoseEstimationDANNCEMouse1"]
         assert skeleton.subject is None
+
+    def test_no_subject_name_links_the_file_subject(self, dannce_mat_file):
+        interface = DANNCEInterface(file_paths=dannce_mat_file[0], sampling_rate=30.0)
+
+        nwbfile = mock_NWBFile()
+        nwbfile.subject = mock_Subject(subject_id="any_mouse")
+        interface.add_to_nwbfile(nwbfile=nwbfile)
+
+        skeleton = nwbfile.processing["behavior"]["Skeletons"]["SkeletonPoseEstimationDANNCE"]
+        assert skeleton.subject is nwbfile.subject
+
+    def test_separate_files_with_subject_names_write_together(self, dannce_mat_file, tmp_path):
+        """Animals predicted in separate files get distinct names from subject_name alone."""
+        file_path, n_samples, n_landmarks, _, _ = dannce_mat_file
+        rng = np.random.default_rng(1)
+        other_file_path = tmp_path / "save_data_AVG_rat2.mat"
+        savemat(
+            str(other_file_path),
+            dict(
+                pred=rng.standard_normal((n_samples, 3, n_landmarks)),
+                p_max=rng.random((n_samples, n_landmarks)),
+                sampleID=np.arange(n_samples, dtype="float64").reshape(1, -1),
+            ),
+        )
+        interface_rat1 = DANNCEInterface(file_paths=file_path, sampling_rate=30.0, subject_name="rat1")
+        interface_rat2 = DANNCEInterface(file_paths=other_file_path, sampling_rate=30.0, subject_name="rat2")
+
+        nwbfile = mock_NWBFile()
+        interface_rat1.add_to_nwbfile(nwbfile=nwbfile)
+        interface_rat2.add_to_nwbfile(nwbfile=nwbfile)
+
+        behavior = nwbfile.processing["behavior"]
+        pe_rat1 = behavior["PoseEstimationDANNCERat1"]
+        pe_rat2 = behavior["PoseEstimationDANNCERat2"]
+        assert pe_rat1.skeleton.name == "SkeletonPoseEstimationDANNCERat1"
+        assert pe_rat2.skeleton.name == "SkeletonPoseEstimationDANNCERat2"
+        assert list(nwbfile.devices) == ["Camera1"]
+
+    def test_reusing_a_skeleton_name_with_other_nodes_raises(self, dannce_mat_file):
+        """A skeleton is shared by name only when it is the same skeleton."""
+        file_path, _, n_landmarks, _, _ = dannce_mat_file
+        interface_a = DANNCEInterface(file_paths=file_path, sampling_rate=30.0)
+        interface_b = DANNCEInterface(
+            file_paths=file_path, sampling_rate=30.0, landmark_names=[f"node_{i}" for i in range(n_landmarks)]
+        )
+
+        nwbfile = mock_NWBFile()
+        interface_a.add_to_nwbfile(nwbfile=nwbfile)
+        metadata_b = interface_b.get_metadata()
+        metadata_b["Pose"]["MultiCameraPoseEstimations"]["dannce"]["name"] = "PoseEstimationDANNCERunB"
+
+        with pytest.raises(ValueError, match="already has a skeleton named"):
+            interface_b.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata_b)
 
     def test_source_video_links(self, dannce_mat_file):
         file_path, _, _, _, _ = dannce_mat_file
@@ -708,11 +873,29 @@ class TestDANNCEInterfaceConversion:
         )
         nwbfile.add_acquisition(source_video)
 
-        interface.add_to_nwbfile(nwbfile=nwbfile, source_videos={"Camera1": source_video})
+        metadata = interface.get_metadata()
+        metadata["Behavior"]["ExternalVideos"]["video_camera1"] = dict(name="SourceVideo")
+        metadata["Pose"]["PoseEstimations"]["dannce_Camera1_pose_estimation"][
+            "source_video_metadata_key"
+        ] = "video_camera1"
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
 
         pe = nwbfile.processing["behavior"]["PoseEstimationDANNCE"]
         camera_pose_estimation = next(iter(pe.pose_estimations.values()))
         assert camera_pose_estimation.source_video is source_video
+
+    def test_source_video_written_after_pose_raises(self, dannce_mat_file):
+        file_path = dannce_mat_file[0]
+        interface = DANNCEInterface(file_paths=file_path, sampling_rate=30.0)
+
+        metadata = interface.get_metadata()
+        metadata["Behavior"]["ExternalVideos"]["video_camera1"] = dict(name="SourceVideo")
+        metadata["Pose"]["PoseEstimations"]["dannce_Camera1_pose_estimation"][
+            "source_video_metadata_key"
+        ] = "video_camera1"
+
+        with pytest.raises(ValueError, match="has to be written before the pose"):
+            interface.add_to_nwbfile(nwbfile=mock_NWBFile(), metadata=metadata)
 
     def test_source_video_defaults_to_none(self, dannce_mat_file):
         file_path, _, _, _, _ = dannce_mat_file
@@ -736,6 +919,7 @@ class TestDANNCEInterfaceConversion:
             session_start_time=datetime.now().astimezone(),
         )
 
+        metadata = interface.get_metadata()
         source_videos = {}
         for camera_name in camera_names:
             video = ImageSeries(
@@ -749,12 +933,15 @@ class TestDANNCEInterfaceConversion:
             )
             nwbfile.add_acquisition(video)
             source_videos[camera_name] = video
+            metadata["Behavior"]["ExternalVideos"][f"video_{camera_name}"] = dict(name=video.name)
 
-        # Omit the source video for the last camera to verify unmatched cameras stay linkless.
-        source_videos_missing_last = dict(source_videos)
-        del source_videos_missing_last[camera_names[-1]]
+        # Link every camera but the last, to verify unlinked cameras stay without a source video.
+        for camera_name in camera_names[:-1]:
+            metadata["Pose"]["PoseEstimations"][f"dannce_{camera_name}_pose_estimation"][
+                "source_video_metadata_key"
+            ] = f"video_{camera_name}"
 
-        interface.add_to_nwbfile(nwbfile=nwbfile, source_videos=source_videos_missing_last)
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
 
         pe = nwbfile.processing["behavior"]["PoseEstimationDANNCE"]
         assert len(pe.pose_estimations) == len(camera_names)
@@ -809,7 +996,6 @@ class TestDANNCEInterfaceConversion:
             animal_index=1,
             sampling_rate=30.0,
             subject_name="rat2",
-            metadata_key="PoseEstimationRat2",
         )
 
         nwbfile = NWBFile(
@@ -819,7 +1005,7 @@ class TestDANNCEInterfaceConversion:
         )
         interface.add_to_nwbfile(nwbfile=nwbfile)
 
-        pe = nwbfile.processing["behavior"][interface.metadata_key]
+        pe = nwbfile.processing["behavior"]["PoseEstimationDANNCERat2"]
         assert len(pe.pose_estimation_series) == n_landmarks
 
         landmark_names = [f"landmark_{i}" for i in range(n_landmarks)]
@@ -850,14 +1036,12 @@ class TestDANNCEInterfaceConversion:
             animal_index=0,
             sampling_rate=30.0,
             subject_name="rat1",
-            metadata_key="PoseEstimationRat1",
         )
         interface_animal1 = DANNCEInterface(
             file_paths=file_path,
             animal_index=1,
             sampling_rate=30.0,
             subject_name="rat2",
-            metadata_key="PoseEstimationRat2",
         )
 
         interface_animal0.add_to_nwbfile(nwbfile=nwbfile)
@@ -867,8 +1051,8 @@ class TestDANNCEInterfaceConversion:
         assert list(nwbfile.devices.keys()) == ["Camera1"]
 
         behavior = nwbfile.processing["behavior"]
-        pe_animal0 = behavior.data_interfaces["PoseEstimationRat1"]
-        pe_animal1 = behavior.data_interfaces["PoseEstimationRat2"]
+        pe_animal0 = behavior.data_interfaces["PoseEstimationDANNCERat1"]
+        pe_animal1 = behavior.data_interfaces["PoseEstimationDANNCERat2"]
 
         camera0 = next(iter(pe_animal0.pose_estimations.values())).device
         camera1 = next(iter(pe_animal1.pose_estimations.values())).device
@@ -876,13 +1060,13 @@ class TestDANNCEInterfaceConversion:
         assert camera0 is nwbfile.devices["Camera1"]
 
     def test_source_software_relabeled_via_metadata_override(self, dannce_mat_file):
-        """DANNCEInterface defaults source_software/scorer to "DANNCE"; for sDANNCE-produced data,
+        """DANNCEInterface defaults source_software to "DANNCE"; for sDANNCE-produced data,
         relabel via the standard metadata-merge mechanism rather than a dedicated subclass."""
         file_path = dannce_mat_file[0]
         interface = DANNCEInterface(file_paths=file_path, sampling_rate=30.0)
 
         metadata = interface.get_metadata()
-        container = metadata["Pose"]["MultiCameraPoseEstimations"]["PoseEstimationDANNCE"]
+        container = metadata["Pose"]["MultiCameraPoseEstimations"]["dannce"]
         container["description"] = "3D keypoint coordinates estimated using sDANNCE (social DANNCE)."
         container["source_software"] = "sDANNCE"
         container["scorer"] = "sDANNCE"

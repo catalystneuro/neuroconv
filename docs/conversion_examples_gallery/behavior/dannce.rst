@@ -51,8 +51,11 @@ Multi-animal (sDANNCE) sessions
 ================================
 
 Social DANNCE output stores multiple animals in a single file, selected via ``animal_index``.
-Construct one interface instance per animal, each with a distinct ``metadata_key``, to write every
-animal to the same NWBFile:
+Construct one interface instance per animal to write every animal to the same NWBFile. Each one
+is named after its ``subject_name`` (``"rat2"`` gives the ``metadata_key`` ``"dannce_rat2"`` and the
+container ``PoseEstimationDANNCERat2``), or, without one, after its ``animal_index``
+(``PoseEstimationDANNCEAnimal1``). The same holds for animals predicted in separate files: give
+each interface its ``subject_name`` and they write to one NWBFile side by side.
 
 .. code-block:: python
 
@@ -65,18 +68,19 @@ animal to the same NWBFile:
     ...     sampling_rate=30.0,
     ...     animal_index=1,
     ...     subject_name="rat2",
-    ...     metadata_key="PoseEstimationRat2",
     ... )
+    >>> interface_animal2.metadata_key
+    'dannce_rat2'
 
 Combining with source videos
 =============================
 
 Each camera's original video can be linked to DANNCE's 3D pose estimation as its
-``source_video`` -- the calibrated camera ``Device`` created for it then also points to the
-:py:class:`~pynwb.image.ImageSeries` written for that camera. Wiring this up by hand with
-``DANNCEInterface`` and :py:class:`~neuroconv.datainterfaces.ExternalVideoInterface` directly
-requires writing the videos before DANNCE and passing NWB objects between the two interfaces, which
-is easy to get wrong. :py:class:`~neuroconv.datainterfaces.behavior.dannce.dannceconverter.DANNCEConverter`
+``source_video``, and the video and the pose share that camera's calibrated ``Device``. Wiring this
+up by hand with ``DANNCEInterface`` and :py:class:`~neuroconv.datainterfaces.ExternalVideoInterface`
+means pointing each video's ``device_metadata_key`` at the camera's ``Devices`` entry, setting
+``source_video_metadata_key`` on each camera's entry in ``metadata["Pose"]["PoseEstimations"]``, and
+writing the videos before DANNCE. :py:class:`~neuroconv.datainterfaces.behavior.dannce.dannceconverter.DANNCEConverter`
 does this internally: it combines a ``DANNCEInterface`` with one ``ExternalVideoInterface`` per camera
 and links each camera's video for you.
 

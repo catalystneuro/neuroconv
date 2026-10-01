@@ -4,13 +4,15 @@ from pathlib import Path
 import numpy as np
 from pydantic import FilePath, validate_call
 from pynwb import NWBFile
-from pynwb.device import Device
-from pynwb.image import ImageSeries
 
-from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
-from ....tools import get_module
-from ....tools.nwb_helpers import _add_device_to_nwbfile
-from ....utils import DeepDict, calculate_regular_series_rate
+from .._pose_metadata_template import _get_skeleton_template_entry
+from ..baseposeestimationinterface import BasePoseEstimationInterface
+from ....tools.nwb_helpers._metadata_and_file_helpers import (
+    _get_device_model_template_entry,
+    _get_device_template_entry,
+)
+from ....tools.pose_estimation import _add_multi_camera_pose_estimation_to_nwbfile
+from ....utils import DeepDict, to_camel_case, to_snake_case
 
 
 def _loadmat(file_path: Path, **kwargs):
@@ -28,24 +30,27 @@ def _loadmat(file_path: Path, **kwargs):
         ) from error
 
 
-class DANNCEInterface(BaseTemporalAlignmentInterface):
+class DANNCEInterface(BasePoseEstimationInterface):
     """
     Data interface for DANNCE and social DANNCE (sDANNCE) 3D pose estimation datasets.
 
     DANNCE (3-Dimensional Aligned Neural Network for Computational Ethology) triangulates
     anatomical landmarks from a calibrated multi-camera rig into 3D world-space coordinates. A
     single interface instance handles either single-animal DANNCE output or one animal's slice of
-    multi-animal sDANNCE output (selected via ``animal_index``); writing multiple sDANNCE animals
-    to the same NWBFile requires one interface instance per animal, each with a distinct
-    ``metadata_key``.
+    multi-animal sDANNCE output (selected via ``animal_index``); writing several sDANNCE animals
+    to the same NWBFile takes one interface instance per animal.
 
     Because DANNCE/sDANNCE landmarks are triangulated 3D points rather than raw per-camera 2D
     detections, the data is written as an ``ndx_pose.MultiCameraPoseEstimation`` container: one set
     of 3D ``PoseEstimationSeries`` (one per landmark), plus one empty per-camera ``PoseEstimation``
     child per entry in ``camera_names``, each linking that camera's ``Device`` and, optionally, its
-    source video (``source_videos``). When calibration is available (``calibration_path`` at
-    construction, or by editing ``metadata["Devices"]`` before the write), each camera ``Device`` is
-    written as an ``ndx_pose.CalibratedCamera`` via the unified ``metadata["Devices"]`` ``type`` field.
+    source video (``source_video_metadata_key``). When calibration is available (``calibration_path``
+    at construction, or by editing ``metadata["Devices"]`` before the write), each camera ``Device``
+    is written as an ``ndx_pose.CalibratedCamera`` via the unified ``metadata["Devices"]`` ``type``
+    field.
+
+    All landmarks share one ``sampleID`` vector, so the interface holds one alignment key,
+    ``interface.alignment[interface.metadata_key]``.
     """
 
     display_name = "DANNCE"
@@ -186,7 +191,7 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
         *,
         sampling_rate: float | None = None,
         landmark_names: list[str] | None = None,
-        subject_name: str = "ind1",
+        subject_name: str | None = None,
         metadata_key: str | None = None,
         camera_names: list[str] | None = None,
         calibration_path: Path | None = None,
@@ -211,25 +216,32 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
             order, into one continuous session.
         sampling_rate : float, optional
             The sampling rate in Hz of the pose estimation data. Used to compute timestamps from
-            the sampleID field. If not provided, timestamps must be set externally via
-            ``set_aligned_timestamps()`` before conversion.
+            the sampleID field. If not provided, timestamps must be set with
+            ``interface.alignment[interface.metadata_key].set_times(times)`` before conversion.
         landmark_names : list of str, optional
             Names for each tracked landmark/body part. Must match the number of landmarks in the
             data. If not provided, defaults to ``["landmark_0", "landmark_1", ...]``.
-        subject_name : str, default: "ind1"
-            The subject name used for linking the skeleton to the NWB subject.
+        subject_name : str, optional
+            The individual these landmarks belong to. It names the container and skeleton (e.g.
+            ``"rat1"`` gives ``PoseEstimationDANNCERat1``), so animals predicted in separate files can be
+            written to the same NWBFile without renaming, and it is recorded as the skeleton's
+            ``subject``: the skeleton links to the NWBFile's subject only when this matches its
+            ``subject_id``. When ``None``, the container is named after ``animal_index`` for a file with
+            more than one animal, and plain ``PoseEstimationDANNCE`` otherwise, and the skeleton links
+            to the NWBFile's subject.
         metadata_key : str, optional
-            Registry key used to store this instance's pose estimation data under
-            ``metadata["Pose"]["Skeletons"|"MultiCameraPoseEstimations"]``, and the name of the
-            ``MultiCameraPoseEstimation`` container written to the NWB file. When ``None``, defaults
-            to ``"PoseEstimationDANNCE"``. Writing multiple sDANNCE animals to the same NWBFile
-            requires a distinct ``metadata_key`` per interface instance.
+            The registry key under which this instance's entries are stored in
+            ``metadata["Pose"]["Skeletons"|"MultiCameraPoseEstimations"]``, and its alignment key. The
+            key is an internal handle and does not appear in the NWB file; rename NWB objects via their
+            ``name`` fields in the metadata dict instead. When ``None`` it resolves to
+            ``"dannce_<subject_name>"``, else ``"dannce_animal_<animal_index>"`` for a file with more
+            than one animal, else ``"dannce"``.
         camera_names : list of str, optional
             Names of the cameras in the multi-camera rig used to produce the 3D predictions (e.g.,
             ``["Camera1", "Camera2", ..., "Camera6"]``). One camera Device and one empty per-camera
             ``PoseEstimation`` child of the ``MultiCameraPoseEstimation`` container is created per
-            name; pass the corresponding videos as ``source_videos`` to ``add_to_nwbfile`` to link
-            each camera's source video. If not provided, defaults to a single camera, ``["Camera1"]``,
+            name; set that child's ``source_video_metadata_key`` in the metadata to link each
+            camera's source video. If not provided, defaults to a single camera, ``["Camera1"]``,
             unless ``calibration_path`` is given, in which case it defaults to the camera names
             detected there.
         calibration_path : str or Path, optional
@@ -244,9 +256,8 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
             Index of the animal to write, selecting along the animal axis of a 4D ``pred`` array
             (shape ``(n_frames, n_animals, 3, n_landmarks)``), as produced by multi-animal sDANNCE
             output. Required when ``pred`` is 4D with more than one animal; construct one interface
-            instance per animal, using a distinct ``metadata_key`` per instance, to write each animal
-            to the same NWBFile. When ``pred`` is 4D with a singleton animal axis (``n_animals == 1``),
-            defaults to ``0`` if omitted. Must be omitted (left as ``None``) when ``pred`` is already
+            instance per animal to write each animal to the same NWBFile. When ``pred`` is 4D with a
+            singleton animal axis (``n_animals == 1``), defaults to ``0`` if omitted. Must be omitted (left as ``None``) when ``pred`` is already
             3D (single-animal DANNCE output) -- passing it in that case raises an error.
         verbose : bool, default: False
             Controls verbosity of the conversion process.
@@ -273,7 +284,6 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
 
         self.subject_name = subject_name
         self.verbose = verbose
-        self.metadata_key = metadata_key
 
         detected_camera_names = None
         self._camera_calibrations = None
@@ -288,11 +298,26 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
             self._camera_names = ["Camera1"]
 
         self._animal_index = animal_index
+        self._n_animals = None
         self._sampling_rate = sampling_rate
-        self._timestamps = None
 
         # Load data from .mat file(s)
         self._load_dannce_data(file_paths)
+
+        # Named after the individual, as SLEAP names a container after its track, so that animals from
+        # separate prediction files do not collide in one NWBFile. Without a subject name, animals are
+        # told apart by index only where the file itself holds more than one.
+        is_multi_animal = self._n_animals is not None and self._n_animals > 1
+        if subject_name is not None:
+            snake_case_suffix = to_snake_case(subject_name)
+            camel_case_suffix = to_camel_case(snake_case_suffix)
+        elif is_multi_animal:
+            snake_case_suffix = f"animal_{self._animal_index}"
+            camel_case_suffix = f"Animal{self._animal_index}"
+        else:
+            snake_case_suffix = camel_case_suffix = ""
+        self.metadata_key = metadata_key or "_".join(part for part in ("dannce", snake_case_suffix) if part)
+        self._container_name = f"PoseEstimationDANNCE{camel_case_suffix}"
 
         # Validate and set landmark names
         n_landmarks = self._pred.shape[2]
@@ -305,9 +330,6 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
             self._landmark_names = list(landmark_names)
         else:
             self._landmark_names = [f"landmark_{i}" for i in range(n_landmarks)]
-
-        if sampling_rate is not None:
-            self._timestamps = self._sample_id / sampling_rate
 
         super().__init__(file_paths=file_paths, verbose=verbose)
 
@@ -358,6 +380,7 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
                     f"but 'p_max' has shape {p_max.shape}."
                 )
             n_animals = pred.shape[1]
+            self._n_animals = n_animals
             if self._animal_index is None:
                 if n_animals == 1:
                     # A singleton animal axis has only one possible selection, so there is nothing
@@ -400,162 +423,52 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
         return self._sample_id
 
     def get_original_timestamps(self, stub_test: bool = False) -> np.ndarray:
-        if self._sampling_rate is not None:
-            sample_id = self._sample_id[:100] if stub_test else self._sample_id
-            return sample_id / self._sampling_rate
-        raise ValueError(
-            "Cannot compute original timestamps without a sampling rate. "
-            "Provide 'sampling_rate' when initializing the interface, or use 'set_aligned_timestamps()' "
-            "to set timestamps directly."
-        )
+        if self._sampling_rate is None:
+            raise ValueError(
+                "No timing information is available for this DANNCE output. The prediction file records "
+                "sample indices but no frame rate, so the times cannot be derived from the source. Pass "
+                "'sampling_rate' to DANNCEInterface, or call "
+                "'interface.alignment[interface.metadata_key].set_times(times)' with one time per sample."
+            )
+        sample_id = self._sample_id[:100] if stub_test else self._sample_id
+        return sample_id / self._sampling_rate
 
-    def get_timestamps(self, stub_test: bool = False) -> np.ndarray:
-        if self._timestamps is not None:
-            return self._timestamps[:100] if stub_test else self._timestamps
-        return self.get_original_timestamps(stub_test=stub_test)
+    def _get_timestamps(self, stub_test: bool = False) -> np.ndarray:
+        time_bearing_object = self.alignment[self.metadata_key]
+        if stub_test:
+            base_times = (
+                self.get_original_timestamps(stub_test=True)
+                if time_bearing_object._times is None
+                else time_bearing_object._times[:100]
+            )
+            return base_times + time_bearing_object._object_offset + self.alignment.offset
+        return time_bearing_object.get_times()
 
-    def set_aligned_timestamps(self, aligned_timestamps: np.ndarray) -> None:
-        self._timestamps = np.asarray(aligned_timestamps, dtype="float64")
+    def _get_keypoint_names(self) -> list[str]:
+        return list(self._landmark_names)
 
-    def get_metadata_schema(self) -> dict:
-        metadata_schema = super().get_metadata_schema()
-
-        skeleton_schema = {
-            "type": "object",
-            "additionalProperties": {
-                "type": "object",
-                "properties": {
-                    "name": {"type": "string", "description": "Name of the skeleton"},
-                    "nodes": {
-                        "type": "array",
-                        "items": {"type": "string"},
-                        "description": "List of node names (landmarks)",
-                    },
-                    "edges": {
-                        "type": ["array", "null"],
-                        "items": {
-                            "type": "array",
-                            "items": {"type": "integer"},
-                            "minItems": 2,
-                            "maxItems": 2,
-                        },
-                        "description": "List of edges connecting nodes, each edge is a pair of node indices",
-                    },
-                    "subject": {
-                        "type": ["string", "null"],
-                        "description": "Subject ID associated with this skeleton",
-                    },
-                },
-                "required": ["name", "nodes"],
-            },
+    def _get_keypoint_data(self) -> dict[str, tuple[np.ndarray, np.ndarray | None]]:
+        return {
+            landmark: (self._pred[:, :, landmark_index], self._p_max[:, landmark_index])
+            for landmark_index, landmark in enumerate(self._landmark_names)
         }
 
-        series_schema = {
-            "type": ["object", "null"],
-            "description": "Dictionary of PoseEstimationSeries, one per landmark",
-            "additionalProperties": {
-                "type": "object",
-                "properties": {
-                    "name": {"type": ["string", "null"], "description": "Name for this series"},
-                    "description": {
-                        "type": ["string", "null"],
-                        "description": "Description for this series",
-                    },
-                    "unit": {
-                        "type": ["string", "null"],
-                        "description": "Unit of measurement",
-                        "default": "millimeters",
-                    },
-                    "reference_frame": {
-                        "type": ["string", "null"],
-                        "description": "Description of the reference frame",
-                    },
-                    "confidence_definition": {
-                        "type": ["string", "null"],
-                        "description": "How the confidence was computed",
-                    },
-                },
-                "required": ["name"],
-            },
-        }
-
-        # Per-camera `PoseEstimation` children of a `MultiCameraPoseEstimation` group -- one per camera,
-        # linked back to that camera's `Devices` entry via `device_metadata_key`. Shares the same shape
-        # as any other `Pose.PoseEstimations` entry (e.g. `skeleton_metadata_key`, `PoseEstimationSeries`)
-        # so tools recording their own per-camera 2D series (e.g. Anipose) can populate those fields too;
-        # DANNCE/sDANNCE only ever need the camera link.
-        pose_estimations_schema = {
-            "type": "object",
-            "additionalProperties": {
-                "type": "object",
-                "description": "Metadata for a per-camera PoseEstimation child of a MultiCameraPoseEstimation group",
-                "properties": {
-                    "name": {"type": "string", "description": "Name of the PoseEstimation"},
-                    "device_metadata_key": {
-                        "type": ["string", "null"],
-                        "description": "Key of the associated camera Device entry in Devices",
-                    },
-                    "skeleton_metadata_key": {
-                        "type": ["string", "null"],
-                        "description": "Key of the associated skeleton in Pose.Skeletons",
-                    },
-                    "PoseEstimationSeries": series_schema,
-                },
-                "required": ["name"],
-            },
-        }
-
-        multi_camera_pose_estimations_schema = {
-            "type": "object",
-            "additionalProperties": {
-                "type": "object",
-                "description": "Metadata for a MultiCameraPoseEstimation group",
-                "properties": {
-                    "name": {"type": "string", "description": "Name of the MultiCameraPoseEstimation group"},
-                    "description": {"type": ["string", "null"], "description": "Description of the pose estimation"},
-                    "source_software": {"type": ["string", "null"], "description": "Name of the software tool used"},
-                    "source_software_version": {"type": ["string", "null"], "description": "Version of the software"},
-                    "scorer": {"type": ["string", "null"], "description": "Name of the scorer or algorithm"},
-                    "skeleton_metadata_key": {
-                        "type": ["string", "null"],
-                        "description": "Key of the associated skeleton in Pose.Skeletons",
-                    },
-                    "pose_estimation_metadata_keys": {
-                        "type": ["array", "null"],
-                        "description": (
-                            "Keys of the per-camera PoseEstimation entries in Pose.PoseEstimations, one per camera."
-                        ),
-                        "items": {"type": "string"},
-                    },
-                    "PoseEstimationSeries": series_schema,
-                },
-                "required": ["name"],
-            },
-        }
-
-        metadata_schema["properties"]["Pose"] = {
-            "type": "object",
-            "properties": {
-                "Skeletons": skeleton_schema,
-                "PoseEstimations": pose_estimations_schema,
-                "MultiCameraPoseEstimations": multi_camera_pose_estimations_schema,
-            },
-        }
-
-        return metadata_schema
+    def _get_camera_pose_estimation_metadata_key(self, camera_name: str) -> str:
+        return f"{self.metadata_key}_{camera_name}_pose_estimation"
 
     def get_metadata(self) -> DeepDict:
-        metadata = super().get_metadata()
+        """Build the camera devices and the pose registries, with no free text.
 
-        metadata_key = self.metadata_key or "PoseEstimationDANNCE"
-        skeleton_name = f"Skeleton{metadata_key}_{self.subject_name.capitalize()}"
+        The per-camera ``PoseEstimation`` entries carry no series of their own (DANNCE/sDANNCE only
+        produce triangulated 3D landmarks, not raw per-camera 2D data) and exist to link each camera's
+        ``Device``, and its source video once ``source_video_metadata_key`` is set, under the
+        ``MultiCameraPoseEstimation`` container.
+        """
+        metadata = self._get_base_metadata()
+        metadata_key = self.metadata_key
 
-        devices_metadata = {}
         for camera_name in self._camera_names:
-            device_entry = {
-                "name": camera_name,
-                "description": f"Camera '{camera_name}' of the multi-camera system used for 3D pose estimation.",
-            }
+            device_entry = {"name": camera_name}
             calibration = (self._camera_calibrations or {}).get(camera_name)
             if calibration is not None:
                 # Non-generic device type written the unified way: ``type`` names the concrete class
@@ -567,138 +480,115 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
                 for field in ("intrinsic_matrix", "rotation_matrix", "translation_vector", "distortion_coefficients"):
                     if calibration.get(field) is not None:
                         device_entry[field] = calibration[field]
-            devices_metadata[camera_name] = device_entry
-        metadata["Devices"].update(devices_metadata)
-
-        pose_estimation_series_metadata = {}
-        for landmark in self._landmark_names:
-            landmark_capitalized = landmark.replace("_", " ").title().replace(" ", "")
-            pose_estimation_series_metadata[landmark] = {
-                "name": f"PoseEstimationSeries{landmark_capitalized}",
-                "description": f"3D position of {landmark}.",
-                "unit": "millimeters",
-                "reference_frame": "3D coordinate system defined by the DANNCE calibration.",
-                "confidence_definition": "Maximum probability from the 3D probability volume.",
-            }
+            metadata["Devices"][camera_name] = device_entry
 
         metadata["Pose"]["Skeletons"][metadata_key] = {
-            "name": skeleton_name,
+            "name": f"Skeleton{self._container_name}",
             "nodes": list(self._landmark_names),
-            "edges": [],
-            "subject": self.subject_name,
         }
+        if self.subject_name is not None:
+            metadata["Pose"]["Skeletons"][metadata_key]["subject"] = self.subject_name
 
-        # One PoseEstimation entry per camera -- each carries no series of its own (DANNCE/sDANNCE only
-        # produce triangulated 3D landmarks, not raw per-camera 2D data) and exists solely to link that
-        # camera's Device under the MultiCameraPoseEstimation container built below.
         pose_estimation_metadata_keys = []
         for camera_name in self._camera_names:
-            camera_pose_estimation_metadata_key = f"{metadata_key}_{camera_name}_pose_estimation"
-            metadata["Pose"]["PoseEstimations"][camera_pose_estimation_metadata_key] = {
+            camera_metadata_key = self._get_camera_pose_estimation_metadata_key(camera_name)
+            metadata["Pose"]["PoseEstimations"][camera_metadata_key] = {
                 "name": f"{camera_name}PoseEstimation",
                 "device_metadata_key": camera_name,
             }
-            pose_estimation_metadata_keys.append(camera_pose_estimation_metadata_key)
+            pose_estimation_metadata_keys.append(camera_metadata_key)
+
+        # DANNCE triangulates in the units of its calibration, which DANNCE/Label3D rigs calibrate in
+        # millimeters, and its confidence is the peak of the 3D probability map.
+        series_metadata = {}
+        for landmark in self._landmark_names:
+            landmark_capitalized = landmark.replace("_", " ").title().replace(" ", "")
+            series_metadata[landmark] = {
+                "name": f"PoseEstimationSeries{landmark_capitalized}",
+                "unit": "millimeters",
+                "confidence_definition": "Maximum probability from the 3D probability volume.",
+            }
 
         metadata["Pose"]["MultiCameraPoseEstimations"][metadata_key] = {
-            "name": metadata_key,
-            "description": "3D keypoint coordinates estimated using DANNCE.",
+            "name": self._container_name,
             "source_software": "DANNCE",
-            "scorer": "DANNCE",
             "skeleton_metadata_key": metadata_key,
             "pose_estimation_metadata_keys": pose_estimation_metadata_keys,
-            "PoseEstimationSeries": pose_estimation_series_metadata,
+            "PoseEstimationSeries": series_metadata,
         }
 
         return metadata
 
-    def create_camera_devices(
-        self,
-        nwbfile: NWBFile,
-        metadata: dict | None = None,
-    ) -> dict[str, Device]:
+    def get_metadata_template(self) -> DeepDict:
+        """Return the container, skeleton, per-camera children and cameras this interface can write, with
+        the blanks marked.
+
+        The multi-camera counterpart of :meth:`BasePoseEstimationInterface.get_metadata_template`: one
+        ``MultiCameraPoseEstimation`` container and one skeleton under this interface's
+        ``metadata_key``, one per-camera ``PoseEstimation`` child per camera, and one camera ``Device``
+        per child, all already cross-referenced. Fill in the blanks and pass the result to
+        ``add_to_nwbfile`` or ``run_conversion``; an optional field left blank is skipped rather than
+        written. ``reference_frame`` is the field to fill above all others, since ndx-pose requires it.
         """
-        Create (or reuse, if already present by name) one Device per camera in ``self._camera_names``.
+        metadata_key = self.metadata_key
+        device_model_metadata_key = "camera_model"
 
-        Exposed as a standalone step -- also used internally by ``add_to_nwbfile`` -- for callers that
-        need the camera Device to already exist in the ``NWBFile`` before ``add_to_nwbfile`` runs. For
-        example, an interface that writes each camera's source video with its own default camera Device
-        can instead be pointed at the (identically named) Device created here first: since Device
-        creation is idempotent on name, both interfaces end up sharing one Device -- e.g. a calibrated
-        one, if ``calibration_path`` was passed at construction (or ``metadata["Devices"]`` was edited
-        to add the calibration) -- instead of each creating their own.
-
-        Each camera is built from its ``metadata["Devices"]`` entry through the shared
-        :func:`~neuroconv.tools.nwb_helpers._add_device_to_nwbfile` helper: an entry that carries
-        ``type="CalibratedCamera"`` (plus its calibration fields) becomes an
-        ``ndx_pose.CalibratedCamera``, otherwise a plain ``pynwb.device.Device``.
-
-        Parameters
-        ----------
-        nwbfile : NWBFile
-            The NWB file to add the camera Device(s) to.
-        metadata : dict, optional
-            Metadata dictionary. If provided, overrides default metadata from ``get_metadata()``.
-
-        Returns
-        -------
-        dict of str to Device
-            The Device (a ``CalibratedCamera`` when the entry names that ``type``, otherwise a plain
-            ``Device``) for each camera, keyed by camera name.
-        """
-        default_metadata = DeepDict(self.get_metadata())
-        if metadata:
-            default_metadata.deep_update(metadata)
-
-        cameras = {}
-        for camera_name in self._camera_names:
-            # Registry keys in "Devices" are the camera names themselves, so the camera name doubles
-            # as the metadata_key. Idempotent on the device name, so cameras shared across interface
-            # instances (e.g. one per animal_index) are created once and reused.
-            cameras[camera_name] = _add_device_to_nwbfile(
-                nwbfile=nwbfile, metadata=default_metadata, metadata_key=camera_name
+        camera_entries = {
+            self._get_camera_pose_estimation_metadata_key(camera_name): dict(
+                name=None, device_metadata_key=camera_name, source_video_metadata_key=None
             )
-
-        return cameras
-
-    def get_conversion_options_schema(self) -> dict:
-        # `source_videos` carries live `pynwb.ImageSeries` objects, not JSON-serializable values, so it
-        # cannot be represented in a JSON schema and must be excluded (unlike `nwbfile`/`metadata`,
-        # which the base implementation already excludes).
-        from ....utils import get_json_schema_from_method_signature
-
-        return get_json_schema_from_method_signature(
-            self.add_to_nwbfile, exclude=["nwbfile", "metadata", "source_videos"]
+            for camera_name in self._camera_names
+        }
+        series_template = {
+            landmark: dict(name=None, description=None, unit=None, reference_frame=None, confidence_definition=None)
+            for landmark in self._landmark_names
+        }
+        template = DeepDict(
+            dict(
+                DeviceModels={device_model_metadata_key: _get_device_model_template_entry()},
+                Devices={
+                    camera_name: _get_device_template_entry(device_model_metadata_key=device_model_metadata_key)
+                    for camera_name in self._camera_names
+                },
+                Pose=dict(
+                    Skeletons={metadata_key: _get_skeleton_template_entry(keypoint_names=self._landmark_names)},
+                    PoseEstimations=camera_entries,
+                    MultiCameraPoseEstimations={
+                        metadata_key: dict(
+                            name=None,
+                            description=None,
+                            source_software=None,
+                            source_software_version=None,
+                            scorer=None,
+                            skeleton_metadata_key=metadata_key,
+                            pose_estimation_metadata_keys=list(camera_entries),
+                            PoseEstimationSeries=series_template,
+                        )
+                    },
+                ),
+            )
         )
 
-    def add_to_nwbfile(
-        self,
-        nwbfile: NWBFile,
-        metadata: dict | None = None,
-        *,
-        stub_test: bool = False,
-        source_videos: dict[str, ImageSeries] | None = None,
-    ) -> None:
+        # Whatever the source recorded wins over the template, as in the base class.
+        template.deep_update(self.get_metadata())
+        return template
+
+    def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict | None = None, *, stub_test: bool = False) -> None:
         """
         Add DANNCE pose estimation data to an NWB file.
+
+        The metadata given reaches the writer as written rather than merged over this interface's
+        defaults, as in :meth:`BasePoseEstimationInterface.add_to_nwbfile`.
 
         Parameters
         ----------
         nwbfile : NWBFile
             The NWB file to add the pose estimation data to.
         metadata : dict, optional
-            Metadata dictionary. If provided, overrides default metadata from ``get_metadata()``.
+            Metadata dictionary. When ``None``, ``get_metadata()`` is used.
         stub_test : bool, default: False
             If True, write only the first 100 frames to the NWB file for quick smoke testing.
             The interface's internal data arrays are not mutated.
-        source_videos : dict of str to ImageSeries, optional
-            Formal NWB links to ``ImageSeries`` containing the source video for each camera,
-            keyed by camera name (matching the ``camera_names`` passed at construction, e.g.
-            ``{"Camera1": image_series_1, "Camera2": image_series_2}``). Each ``ImageSeries`` must
-            already be added to the ``NWBFile`` (e.g. in ``nwbfile.acquisition``) before calling
-            this method. Cameras without a corresponding entry are linked with no source video.
-            Each is linked from its corresponding per-camera ``PoseEstimation`` child of the
-            ``MultiCameraPoseEstimation`` container.
 
         Notes
         -----
@@ -706,132 +596,23 @@ class DANNCEInterface(BaseTemporalAlignmentInterface):
         ``type="CalibratedCamera"`` plus its calibration fields (``intrinsic_matrix``,
         ``rotation_matrix``, ``translation_vector``, ``distortion_coefficients``); that entry is then
         built as an ``ndx_pose.CalibratedCamera`` instead of a plain ``Device``. Passing
-        ``calibration_path`` at construction fills these in automatically; to override or supply them
-        otherwise, edit ``metadata["Devices"]`` before calling this method. A camera whose Device was
-        already added to the ``NWBFile`` by a previous call (e.g. a shared camera created by another
-        animal's interface instance) is reused unchanged.
+        ``calibration_path`` at construction fills these in automatically. A camera whose Device is
+        already in the ``NWBFile`` (e.g. one written by a video interface, or by another animal's
+        interface instance) is reused unchanged. Each camera's source video is linked by setting
+        ``source_video_metadata_key`` on its entry in ``metadata["Pose"]["PoseEstimations"]``, which
+        names the video's entry in ``metadata["Behavior"]["ExternalVideos"]``; the video has to be
+        written first.
         """
-        from ndx_pose import (
-            MultiCameraPoseEstimation,
-            PoseEstimation,
-            PoseEstimationSeries,
-            Skeleton,
-            Skeletons,
+        keypoint_data = self._get_keypoint_data()
+        if stub_test:
+            keypoint_data = {
+                landmark: (positions[:100], confidence[:100])
+                for landmark, (positions, confidence) in keypoint_data.items()
+            }
+        _add_multi_camera_pose_estimation_to_nwbfile(
+            nwbfile=nwbfile,
+            keypoint_data=keypoint_data,
+            timestamps=self._get_timestamps(stub_test=stub_test),
+            metadata=metadata if metadata is not None else self.get_metadata(),
+            metadata_key=self.metadata_key,
         )
-
-        # Build metadata
-        default_metadata = DeepDict(self.get_metadata())
-        if metadata:
-            default_metadata.deep_update(metadata)
-
-        metadata_key = self.metadata_key or "PoseEstimationDANNCE"
-        skeletons_registry = default_metadata["Pose"]["Skeletons"]
-        pose_estimations_registry = default_metadata["Pose"]["PoseEstimations"]
-        container_metadata = default_metadata["Pose"]["MultiCameraPoseEstimations"][metadata_key]
-
-        # Get timestamps (sliced when stub_test=True)
-        timestamps = self.get_timestamps(stub_test=stub_test)
-        timestamps = np.asarray(timestamps, dtype="float64")
-        n_samples = timestamps.shape[0]
-
-        rate = calculate_regular_series_rate(timestamps)
-        if rate is not None:
-            timing_kwargs = dict(rate=rate, starting_time=timestamps[0])
-        else:
-            timing_kwargs = dict(timestamps=timestamps)
-
-        # Create skeleton
-        skeleton_metadata_key = container_metadata["skeleton_metadata_key"]
-        skeleton_metadata = skeletons_registry[skeleton_metadata_key]
-
-        skeleton_subject = skeleton_metadata.get("subject")
-        if nwbfile.subject is not None and skeleton_subject == nwbfile.subject.subject_id:
-            subject = nwbfile.subject
-        else:
-            subject = None
-
-        edges = skeleton_metadata.get("edges")
-        skeleton = Skeleton(
-            name=skeleton_metadata["name"],
-            nodes=skeleton_metadata["nodes"],
-            edges=np.array(edges) if edges else None,
-            subject=subject,
-        )
-
-        # Add skeleton to behavior module
-        behavior_module = get_module(nwbfile=nwbfile, name="behavior", description="processed behavioral data")
-        if "Skeletons" not in behavior_module.data_interfaces:
-            skeletons = Skeletons(skeletons=[skeleton])
-            behavior_module.add(skeletons)
-        else:
-            skeletons = behavior_module["Skeletons"]
-            skeletons.add_skeletons(skeleton)
-
-        # Create PoseEstimationSeries for each landmark
-        pose_estimation_series = []
-        series_metadata = container_metadata.get("PoseEstimationSeries", {})
-
-        for i, landmark in enumerate(self._landmark_names):
-            data = self._pred[:n_samples, :, i]  # shape: (n_samples, 3)
-            confidence = self._p_max[:n_samples, i]  # shape: (n_samples,)
-
-            # Default series kwargs
-            landmark_capitalized = landmark.replace("_", " ").title().replace(" ", "")
-            series_kwargs = dict(
-                name=f"PoseEstimationSeries{landmark_capitalized}",
-                description=f"3D position of {landmark}.",
-                data=data,
-                unit="millimeters",
-                reference_frame="3D coordinate system defined by the DANNCE calibration.",
-                confidence=confidence,
-                confidence_definition="Maximum probability from the 3D probability volume.",
-                **timing_kwargs,
-            )
-
-            # Override with user-provided series metadata
-            if landmark in series_metadata:
-                series_kwargs.update(series_metadata[landmark])
-                # Restore data fields that shouldn't be overridden by metadata
-                series_kwargs["data"] = data
-                series_kwargs["confidence"] = confidence
-                series_kwargs.update(timing_kwargs)
-
-            series = PoseEstimationSeries(**series_kwargs)
-            pose_estimation_series.append(series)
-
-        # Create or get one Device per camera, named directly after the camera (registry keys in
-        # "Devices" are the camera names themselves), so multiple interface instances writing to the
-        # same NWBFile with matching camera_names (e.g., one interface instance per animal_index)
-        # share and reuse the same camera Devices.
-        source_videos = source_videos or {}
-        cameras = self.create_camera_devices(nwbfile=nwbfile, metadata=default_metadata)
-        camera_pose_estimations = []
-        for camera_pose_estimation_metadata_key in container_metadata["pose_estimation_metadata_keys"]:
-            camera_pose_entry = pose_estimations_registry[camera_pose_estimation_metadata_key]
-            camera_name = camera_pose_entry["device_metadata_key"]
-            camera = cameras[camera_name]
-
-            # Per-camera PoseEstimation child: DANNCE/sDANNCE only produce triangulated 3D world-space
-            # landmarks (no raw per-camera 2D data), so this child carries no pose_estimation_series of
-            # its own -- it exists solely to formally link the camera Device (and, when available, that
-            # camera's source video) under the MultiCameraPoseEstimation container.
-            camera_pose_estimation = PoseEstimation(
-                name=camera_pose_entry.get("name", f"{camera.name}PoseEstimation"),
-                device=camera,
-                source_video=source_videos.get(camera_name),
-            )
-            camera_pose_estimations.append(camera_pose_estimation)
-
-        # Create MultiCameraPoseEstimation container holding the 3D world-space landmark series
-        pose_estimation = MultiCameraPoseEstimation(
-            name=container_metadata["name"],
-            pose_estimation_series=pose_estimation_series,
-            pose_estimations=camera_pose_estimations,
-            description=container_metadata.get("description", "3D keypoint coordinates estimated using DANNCE."),
-            scorer=container_metadata.get("scorer"),
-            source_software=container_metadata.get("source_software", "DANNCE"),
-            source_software_version=container_metadata.get("source_software_version"),
-            skeleton=skeleton,
-        )
-
-        behavior_module.add(pose_estimation)

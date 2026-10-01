@@ -265,17 +265,19 @@ class TestDANNCEConverterMultipleSubjectsSharedDevices(TestCase):
             calibration_path=calibration_path,
             animal_index=0,
             subject_name="rat1",
-            metadata_key="PoseEstimationRat1",
         )
         cls.interface_rat2 = DANNCEInterface(
             file_paths=file_path,
             calibration_path=calibration_path,
             animal_index=1,
             subject_name="rat2",
-            metadata_key="PoseEstimationRat2",
             camera_names=cls.converter_rat1._camera_names,
         )
-        cls.interface_rat2.set_aligned_timestamps(cls.converter_rat1._dannce_interface.get_timestamps())
+        cls.interface_rat2.alignment[cls.interface_rat2.metadata_key].set_times(
+            cls.converter_rat1._dannce_interface.alignment[
+                cls.converter_rat1._dannce_interface.metadata_key
+            ].get_times()
+        )
         cls.test_dir = Path(tempfile.mkdtemp())
 
     @classmethod
@@ -309,8 +311,8 @@ class TestDANNCEConverterMultipleSubjectsSharedDevices(TestCase):
             assert set(nwbfile_read.devices.keys()) == set(self.camera_names)
 
             behavior = get_module(nwbfile=nwbfile_read, name="behavior")
-            assert "PoseEstimationRat1" in behavior.data_interfaces
-            assert "PoseEstimationRat2" in behavior.data_interfaces
+            assert "PoseEstimationDANNCERat1" in behavior.data_interfaces
+            assert "PoseEstimationDANNCERat2" in behavior.data_interfaces
 
 
 class TestDANNCEInterfaceAvgAndMaxPredictions(TestCase):
@@ -427,16 +429,18 @@ class TestDANNCEConverterOneFilePerSubject(TestCase):
             videos_folder_path=str(run_path / "videos"),
             calibration_path=calibration_path,
             subject_name="rat1",
-            metadata_key="PoseEstimationRat1",
         )
         cls.interface_rat2 = DANNCEInterface(
             file_paths=str(run_path / "SDANNCE" / "bsl0.5_FM_rat2" / "save_data_AVG0.mat"),
             calibration_path=calibration_path,
             subject_name="rat2",
-            metadata_key="PoseEstimationRat2",
             camera_names=cls.converter_rat1._camera_names,
         )
-        cls.interface_rat2.set_aligned_timestamps(cls.converter_rat1._dannce_interface.get_timestamps())
+        cls.interface_rat2.alignment[cls.interface_rat2.metadata_key].set_times(
+            cls.converter_rat1._dannce_interface.alignment[
+                cls.converter_rat1._dannce_interface.metadata_key
+            ].get_times()
+        )
         cls.test_dir = Path(tempfile.mkdtemp())
 
     @classmethod
@@ -470,8 +474,8 @@ class TestDANNCEConverterOneFilePerSubject(TestCase):
             assert set(nwbfile_read.devices.keys()) == set(self.camera_names)
 
             behavior = get_module(nwbfile=nwbfile_read, name="behavior")
-            assert "PoseEstimationRat1" in behavior.data_interfaces
-            assert "PoseEstimationRat2" in behavior.data_interfaces
+            assert "PoseEstimationDANNCERat1" in behavior.data_interfaces
+            assert "PoseEstimationDANNCERat2" in behavior.data_interfaces
 
 
 class TestDANNCEConverterThreeSubjectsSharedDevices(TestCase):
@@ -492,7 +496,6 @@ class TestDANNCEConverterThreeSubjectsSharedDevices(TestCase):
             calibration_path=calibration_path,
             animal_index=0,
             subject_name="animal1",
-            metadata_key="PoseEstimationAnimal1",
         )
         cls.interfaces = []
         for animal_index, subject_name in ((1, "animal2"), (2, "animal3")):
@@ -501,10 +504,13 @@ class TestDANNCEConverterThreeSubjectsSharedDevices(TestCase):
                 calibration_path=calibration_path,
                 animal_index=animal_index,
                 subject_name=subject_name,
-                metadata_key=f"PoseEstimation{subject_name.capitalize()}",
                 camera_names=cls.converter_animal0._camera_names,
             )
-            interface.set_aligned_timestamps(cls.converter_animal0._dannce_interface.get_timestamps())
+            interface.alignment[interface.metadata_key].set_times(
+                cls.converter_animal0._dannce_interface.alignment[
+                    cls.converter_animal0._dannce_interface.metadata_key
+                ].get_times()
+            )
             cls.interfaces.append(interface)
         cls.test_dir = Path(tempfile.mkdtemp())
 
@@ -541,9 +547,9 @@ class TestDANNCEConverterThreeSubjectsSharedDevices(TestCase):
             assert set(nwbfile_read.devices.keys()) == set(self.camera_names)
 
             behavior = get_module(nwbfile=nwbfile_read, name="behavior")
-            assert "PoseEstimationAnimal1" in behavior.data_interfaces
-            assert "PoseEstimationAnimal2" in behavior.data_interfaces
-            assert "PoseEstimationAnimal3" in behavior.data_interfaces
+            assert "PoseEstimationDANNCEAnimal1" in behavior.data_interfaces
+            assert "PoseEstimationDANNCEAnimal2" in behavior.data_interfaces
+            assert "PoseEstimationDANNCEAnimal3" in behavior.data_interfaces
 
 
 class TestDANNCEConverterSyncLongerThanVideo(TestCase):
@@ -616,7 +622,11 @@ class TestDANNCEConverterTwoRunsForOneSubject(TestCase):
             metadata_key="PoseEstimationSDANNCERun",
             camera_names=cls.converter_dannce_run._camera_names,
         )
-        cls.interface_sdannce_run.set_aligned_timestamps(cls.converter_dannce_run._dannce_interface.get_timestamps())
+        cls.interface_sdannce_run.alignment[cls.interface_sdannce_run.metadata_key].set_times(
+            cls.converter_dannce_run._dannce_interface.alignment[
+                cls.converter_dannce_run._dannce_interface.metadata_key
+            ].get_times()
+        )
         cls.test_dir = Path(tempfile.mkdtemp())
 
     @classmethod
@@ -629,6 +639,11 @@ class TestDANNCEConverterTwoRunsForOneSubject(TestCase):
     def test_run_conversion_shares_camera_devices(self):
         metadata = self.converter_dannce_run.get_metadata()
         metadata = dict_deep_update(metadata, self.interface_sdannce_run.get_metadata())
+        # Two runs of the same subject share every default name, so they are named apart here.
+        metadata["Pose"]["MultiCameraPoseEstimations"]["PoseEstimationDANNCERun"]["name"] = "PoseEstimationDANNCERun"
+        metadata["Pose"]["Skeletons"]["PoseEstimationDANNCERun"]["name"] = "SkeletonPoseEstimationDANNCERun"
+        metadata["Pose"]["MultiCameraPoseEstimations"]["PoseEstimationSDANNCERun"]["name"] = "PoseEstimationSDANNCERun"
+        metadata["Pose"]["Skeletons"]["PoseEstimationSDANNCERun"]["name"] = "SkeletonPoseEstimationSDANNCERun"
         metadata["NWBFile"] = dict(
             session_description="test",
             identifier="test_dannce_two_runs",

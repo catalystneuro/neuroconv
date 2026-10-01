@@ -184,8 +184,8 @@ class TestDANNCEConverterDiscovery:
             videos_folder_path=dannce_converter_dir["videos_folder_path"],
         )
 
-        with pytest.raises(ValueError, match="Cannot compute original timestamps"):
-            converter._dannce_interface.get_timestamps()
+        with pytest.raises(ValueError, match="No timing information is available"):
+            converter._dannce_interface.alignment[converter._dannce_interface.metadata_key].get_times()
 
     def test_multi_segment_no_frametimes_uses_sampling_rate_fallback(
         self, dannce_converter_dir_multi_segment_no_frametimes

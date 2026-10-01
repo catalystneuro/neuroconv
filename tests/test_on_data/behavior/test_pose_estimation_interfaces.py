@@ -17,7 +17,6 @@ from neuroconv.datainterfaces import (
 )
 from neuroconv.tools.testing.data_interface_mixins import (
     PoseEstimationInterfaceTestMixin,
-    TemporalAlignmentMixin,
 )
 from neuroconv.utils import DeepDict
 
@@ -1322,7 +1321,7 @@ class _DANNCEMetadataPropagationMixin:
     ndx_pose_version < version.parse("0.3.0"),
     reason="Interface requires ndx-pose version >= 0.3.0",
 )
-class TestDANNCEInterface(_DANNCEMetadataPropagationMixin, PoseEstimationInterfaceTestMixin, TemporalAlignmentMixin):
+class TestDANNCEInterface(_DANNCEMetadataPropagationMixin, PoseEstimationInterfaceTestMixin):
     data_interface_cls = DANNCEInterface
     interface_kwargs = dict(
         file_paths=str(
@@ -1339,8 +1338,8 @@ class TestDANNCEInterface(_DANNCEMetadataPropagationMixin, PoseEstimationInterfa
     save_directory = OUTPUT_PATH
 
     def check_extracted_metadata(self, metadata: dict):
-        metadata_key = "PoseEstimationDANNCE"
-        skeleton_name = f"Skeleton{metadata_key}_Ind1"
+        metadata_key = "dannce"
+        skeleton_name = "SkeletonPoseEstimationDANNCE"
         device_name = "Camera1"
 
         assert device_name in metadata["Devices"]
@@ -1356,7 +1355,7 @@ class TestDANNCEInterface(_DANNCEMetadataPropagationMixin, PoseEstimationInterfa
         # Check MultiCameraPoseEstimations
         assert metadata_key in pose_metadata["MultiCameraPoseEstimations"]
         container = pose_metadata["MultiCameraPoseEstimations"][metadata_key]
-        assert container["name"] == metadata_key
+        assert container["name"] == "PoseEstimationDANNCE"
         assert container["source_software"] == "DANNCE"
         assert container["skeleton_metadata_key"] == metadata_key
 
@@ -1405,9 +1404,7 @@ class TestDANNCEInterface(_DANNCEMetadataPropagationMixin, PoseEstimationInterfa
     ndx_pose_version < version.parse("0.3.0"),
     reason="Interface requires ndx-pose version >= 0.3.0",
 )
-class TestDANNCEInterfaceWithCalibration(
-    _DANNCEMetadataPropagationMixin, PoseEstimationInterfaceTestMixin, TemporalAlignmentMixin
-):
+class TestDANNCEInterfaceWithCalibration(_DANNCEMetadataPropagationMixin, PoseEstimationInterfaceTestMixin):
     """Real-data coverage for the DANNCE-specific multi-camera + calibration-parsing path, which
     the plain `TestDANNCEInterface` above (single camera, no calibration) does not exercise."""
 
@@ -1433,7 +1430,7 @@ class TestDANNCEInterfaceWithCalibration(
         for camera_name in self.camera_names:
             assert camera_name in metadata["Devices"]
 
-        container = metadata["Pose"]["MultiCameraPoseEstimations"]["PoseEstimationDANNCE"]
+        container = metadata["Pose"]["MultiCameraPoseEstimations"]["dannce"]
         camera_names = [
             metadata["Pose"]["PoseEstimations"][key]["device_metadata_key"]
             for key in container["pose_estimation_metadata_keys"]
@@ -1459,9 +1456,7 @@ class TestDANNCEInterfaceWithCalibration(
     ndx_pose_version < version.parse("0.3.0"),
     reason="Interface requires ndx-pose version >= 0.3.0",
 )
-class TestDANNCEInterfaceMultiAnimal(
-    _DANNCEMetadataPropagationMixin, PoseEstimationInterfaceTestMixin, TemporalAlignmentMixin
-):
+class TestDANNCEInterfaceMultiAnimal(_DANNCEMetadataPropagationMixin, PoseEstimationInterfaceTestMixin):
     """Real-data coverage for the multi-animal sDANNCE path (4D 'pred', selected via
     animal_index), which the plain `TestDANNCEInterface` above (3D 'pred') does not exercise."""
 
@@ -1480,21 +1475,20 @@ class TestDANNCEInterfaceMultiAnimal(
         sampling_rate=30.0,
         animal_index=1,
         subject_name="rat2",
-        metadata_key="PoseEstimationRat2",
     )
     save_directory = OUTPUT_PATH
 
     def check_extracted_metadata(self, metadata: dict):
-        container = metadata["Pose"]["MultiCameraPoseEstimations"]["PoseEstimationRat2"]
-        assert container["name"] == "PoseEstimationRat2"
-        skeleton = metadata["Pose"]["Skeletons"]["PoseEstimationRat2"]
+        container = metadata["Pose"]["MultiCameraPoseEstimations"]["dannce_rat2"]
+        assert container["name"] == "PoseEstimationDANNCERat2"
+        skeleton = metadata["Pose"]["Skeletons"]["dannce_rat2"]
         assert skeleton["subject"] == "rat2"
 
     def check_read_nwb(self, nwbfile_path: str):
         from ndx_pose import MultiCameraPoseEstimation
 
         nwbfile = read_nwb(nwbfile_path)
-        pe = nwbfile.processing["behavior"].data_interfaces["PoseEstimationRat2"]
+        pe = nwbfile.processing["behavior"].data_interfaces["PoseEstimationDANNCERat2"]
         assert isinstance(pe, MultiCameraPoseEstimation)
         assert len(pe.pose_estimation_series) == 23
         for series in pe.pose_estimation_series.values():
