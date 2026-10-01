@@ -44,10 +44,13 @@ with this mock interface or load your own data from any of our
 How to Annotate a Recording Session
 -----------------------------------
 
-We build one session in five steps, following the chain of references outward from the traces: the
-series, the electrodes it points at, the columns you add of your own, the group those electrodes belong
-to, and the device that group is part of. Each block shows the **whole script so far** with the new
-lines highlighted, so the last one is the complete, runnable script.
+Suppose you implanted a silicon probe in the dorsal hippocampus and recorded four channels, two from
+electrodes in CA1 and two from electrodes in CA3. The bare conversion above wrote the traces, but the
+file cannot tell a reader what the signal is, where each electrode sat, or which probe recorded it. In
+this section we annotate that session until it can.
+
+Each code block repeats the script from the top with the new lines highlighted, so you can copy any
+block and run it as it is, and the last block is the complete script.
 
 **Name the series.** The ``ElectricalSeries`` is the object that holds the traces. Its name is how
 someone opening the file tells one series from another, and its description is where you say what the
@@ -85,23 +88,68 @@ interface's ``metadata_key``:
         2   ElectrodeGroup   2
         3   ElectrodeGroup   3
 
-**Describe the electrodes.** Add an ``ElectrodesTable`` block to hold the annotations. Its ``rows``
-dictionary has one entry per electrode, each pointing at its group with
-``electrode_group_metadata_key``. We choose ``electrode_0`` through ``electrode_3`` as row keys;
-they are handles for these annotations, not electrode group names. Since this example has one electrode
-per recorded channel, we generate the rows in channel order and save the channel-to-row association
-alongside them. Keep that mapping with the annotations: adding probe information later enriches the
-same rows rather than changing which electrodes the annotations describe.
+**Describe the electrodes.** The electrodes table is where the file records what each electrode was:
+where it sat in the brain, its impedance, and anything else you measured about it. So far it holds
+little more than the group and channel names the recording provides. To describe the electrodes, add
+an ``ElectrodesTable`` block with one entry per electrode under ``rows``, and tell the series which
+electrode each of its channels recorded:
 
-Create the rows, then add the values you know. Fields you omit keep the values the recording supplies.
-The following properties are useful for downstream users, so fill them in if they are not available
-in the source format:
+.. code-block:: python
+   :emphasize-lines: 12-30
+
+    from neuroconv.tools.testing.mock_interfaces import MockRecordingInterface
+
+    metadata_key = "probe0"
+    interface = MockRecordingInterface(num_channels=4, durations=[0.1], metadata_key=metadata_key)
+
+    metadata = interface.get_metadata()
+    ecephys = metadata["Ecephys"]
+
+    ecephys["ElectricalSeries"][metadata_key]["name"] = "ElectricalSeriesProbe0"
+    ecephys["ElectricalSeries"][metadata_key]["description"] = "Raw broadband traces, 30 kHz."
+
+    rows = {
+        "electrode_0": {"electrode_group_metadata_key": "ElectrodeGroup"},
+        "electrode_1": {"electrode_group_metadata_key": "ElectrodeGroup"},
+        "electrode_2": {"electrode_group_metadata_key": "ElectrodeGroup"},
+        "electrode_3": {"electrode_group_metadata_key": "ElectrodeGroup"},
+    }
+    ecephys["ElectrodesTable"] = {"rows": rows}
+    ecephys["ElectricalSeries"][metadata_key]["channel_to_electrode"] = {
+        "0": "electrode_0",
+        "1": "electrode_1",
+        "2": "electrode_2",
+        "3": "electrode_3",
+    }
+
+    # Microns from bregma, on the schema's axes: +x posterior, +y inferior, +z right.
+    rows["electrode_0"].update(location="CA1", x=2000.0, y=2100.0, z=1500.0, imp=1.0e6)
+    rows["electrode_1"].update(location="CA1", x=2000.0, y=2100.0, z=1500.0, imp=1.0e6)
+    rows["electrode_2"].update(location="CA3", x=2000.0, y=2600.0, z=1500.0, imp=1.0e6)
+    rows["electrode_3"].update(location="CA3", x=2000.0, y=2600.0, z=1500.0, imp=1.0e6)
+
+The row keys, ``electrode_0`` to ``electrode_3``, are what you use to reference each electrode's
+annotations. You choose them, so pick whatever is memorable to you. The metadata itself is the
+dictionary each key points to; the key does not appear in the file. The series references rows by
+these keys in ``channel_to_electrode``, a dictionary from each channel id to the row of the electrode
+that channel recorded. Here each channel recorded its own
+electrode, so the pairing is one to one. The section on :ref:`mapping channels to electrodes
+<ecephys_channel_to_electrode>` covers electrodes that no channel recorded, and channels from two
+streams that share an electrode.
+
+Every row also names its electrode group through ``electrode_group_metadata_key``. For now that is
+``ElectrodeGroup``, the group the recording put every channel in; we give the electrodes a group of our
+own further down.
+
+A row only needs the fields you know, and a field you leave out keeps the value the recording supplied.
+The fields below are the ones the NWB schema defines for the table. Fill them in where the source format
+does not, since anyone reading the file knows what they mean:
 
 ``location``
     The brain region, as a name. Use a standard atlas region where there is one, following the
     `best practices for the electrode table
-    <https://nwbinspector.readthedocs.io/en/dev/best_practices/ecephys.html#location>`_. If you omit it,
-    the writer uses the recording's brain region, or ``"unknown"`` when the source provides none.
+    <https://nwbinspector.readthedocs.io/en/dev/best_practices/ecephys.html#location>`_. If you leave it
+    out, the file gets the recording's brain region, or ``"unknown"`` when the source has none.
 
 ``x``, ``y``, ``z``
     Where the electrode sat **in the brain**, on the axes the NWB schema fixes: **+x is posterior, +y
@@ -116,43 +164,13 @@ in the source format:
 
 ``rel_x``, ``rel_y``, ``rel_z``
     Where the electrode sits **on the probe**, as a coordinate in the electrode group, also in
-    microns. This is the probe's own geometry and does not change between sessions, which is why the
-    next scenario gets it from the probe rather than by hand.
+    microns. This is the probe's own geometry and does not change between sessions, which is why
+    :ref:`attaching a probe <ecephys_probe_geometry>` fills them in for you.
 
 ``imp`` and ``filtering`` are the other two columns the NWB schema defines, for the electrode's
 impedance in ohms and a description of the hardware filtering. Add these fields where you have values
 to supply. Optional columns absent from both the recording and your annotations are left out of the
 file. Any other field you put on a row becomes a column of its own.
-
-.. code-block:: python
-   :emphasize-lines: 11-26
-
-    from neuroconv.tools.testing.mock_interfaces import MockRecordingInterface
-
-    metadata_key = "probe0"
-    interface = MockRecordingInterface(num_channels=4, durations=[0.1], metadata_key=metadata_key)
-
-    metadata = interface.get_metadata()
-    ecephys = metadata["Ecephys"]
-
-    ecephys["ElectricalSeries"][metadata_key]["name"] = "ElectricalSeriesProbe0"
-    ecephys["ElectricalSeries"][metadata_key]["description"] = "Raw broadband traces, 30 kHz."
-    # Microns from bregma, on the schema's axes: +x posterior, +y inferior, +z right.
-    ecephys["ElectrodesTable"] = {
-        "rows": {
-            f"electrode_{channel_id}": {"electrode_group_metadata_key": "ElectrodeGroup"}
-            for channel_id in interface.channel_ids
-        },
-        "columns": {},
-    }
-    rows = ecephys["ElectrodesTable"]["rows"]
-    ecephys["ElectricalSeries"][interface.metadata_key]["channel_to_electrode"] = dict(
-        zip(interface.channel_ids, rows)
-    )
-    rows["electrode_0"].update(location="CA1", x=2000.0, y=2100.0, z=1500.0, imp=1.0e6)
-    rows["electrode_1"].update(location="CA1", x=2000.0, y=2100.0, z=1500.0, imp=1.0e6)
-    rows["electrode_2"].update(location="CA3", x=2000.0, y=2600.0, z=1500.0, imp=1.0e6)
-    rows["electrode_3"].update(location="CA3", x=2000.0, y=2600.0, z=1500.0, imp=1.0e6)
 
 .. admonition:: The file so far
    :class: note
@@ -174,7 +192,7 @@ know about the electrodes is worth recording too, and a reader can only use it i
 means. Put the value on the rows and describe it under ``ElectrodesTable["columns"]``:
 
 .. code-block:: python
-   :emphasize-lines: 27-42
+   :emphasize-lines: 31-48
 
     from neuroconv.tools.testing.mock_interfaces import MockRecordingInterface
 
@@ -186,18 +204,22 @@ means. Put the value on the rows and describe it under ``ElectrodesTable["column
 
     ecephys["ElectricalSeries"][metadata_key]["name"] = "ElectricalSeriesProbe0"
     ecephys["ElectricalSeries"][metadata_key]["description"] = "Raw broadband traces, 30 kHz."
-    # Microns from bregma, on the schema's axes: +x posterior, +y inferior, +z right.
-    ecephys["ElectrodesTable"] = {
-        "rows": {
-            f"electrode_{channel_id}": {"electrode_group_metadata_key": "ElectrodeGroup"}
-            for channel_id in interface.channel_ids
-        },
-        "columns": {},
+
+    rows = {
+        "electrode_0": {"electrode_group_metadata_key": "ElectrodeGroup"},
+        "electrode_1": {"electrode_group_metadata_key": "ElectrodeGroup"},
+        "electrode_2": {"electrode_group_metadata_key": "ElectrodeGroup"},
+        "electrode_3": {"electrode_group_metadata_key": "ElectrodeGroup"},
     }
-    rows = ecephys["ElectrodesTable"]["rows"]
-    ecephys["ElectricalSeries"][interface.metadata_key]["channel_to_electrode"] = dict(
-        zip(interface.channel_ids, rows)
-    )
+    ecephys["ElectrodesTable"] = {"rows": rows}
+    ecephys["ElectricalSeries"][metadata_key]["channel_to_electrode"] = {
+        "0": "electrode_0",
+        "1": "electrode_1",
+        "2": "electrode_2",
+        "3": "electrode_3",
+    }
+
+    # Microns from bregma, on the schema's axes: +x posterior, +y inferior, +z right.
     rows["electrode_0"].update(location="CA1", x=2000.0, y=2100.0, z=1500.0, imp=1.0e6)
     rows["electrode_1"].update(location="CA1", x=2000.0, y=2100.0, z=1500.0, imp=1.0e6)
     rows["electrode_2"].update(location="CA3", x=2000.0, y=2600.0, z=1500.0, imp=1.0e6)
@@ -207,14 +229,16 @@ means. Put the value on the rows and describe it under ``ElectrodesTable["column
     rows["electrode_2"]["side"] = 0
     rows["electrode_3"]["side"] = 1
 
-    ecephys["ElectrodesTable"]["columns"]["side"] = {
-        "column_name": "shank_side",
-        "description": "Which face of the shank the contact sits on.",
-        "column_categories": {
-            "labels": {0: "front", 1: "back"},
-            "meanings": {
-                0: "contact on the front face",
-                1: "contact on the back face",
+    ecephys["ElectrodesTable"]["columns"] = {
+        "side": {
+            "column_name": "shank_side",
+            "description": "Which face of the shank the contact sits on.",
+            "column_categories": {
+                "labels": {0: "front", 1: "back"},
+                "meanings": {
+                    0: "contact on the front face",
+                    1: "contact on the back face",
+                },
             },
         },
     }
@@ -270,7 +294,7 @@ electrodes were sorted as a unit and which sat on the same shank. Declare the gr
 at it with ``electrode_group_metadata_key``:
 
 .. code-block:: python
-   :emphasize-lines: 43-56
+   :emphasize-lines: 49-62
 
     from neuroconv.tools.testing.mock_interfaces import MockRecordingInterface
 
@@ -282,18 +306,22 @@ at it with ``electrode_group_metadata_key``:
 
     ecephys["ElectricalSeries"][metadata_key]["name"] = "ElectricalSeriesProbe0"
     ecephys["ElectricalSeries"][metadata_key]["description"] = "Raw broadband traces, 30 kHz."
-    # Microns from bregma, on the schema's axes: +x posterior, +y inferior, +z right.
-    ecephys["ElectrodesTable"] = {
-        "rows": {
-            f"electrode_{channel_id}": {"electrode_group_metadata_key": "ElectrodeGroup"}
-            for channel_id in interface.channel_ids
-        },
-        "columns": {},
+
+    rows = {
+        "electrode_0": {"electrode_group_metadata_key": "ElectrodeGroup"},
+        "electrode_1": {"electrode_group_metadata_key": "ElectrodeGroup"},
+        "electrode_2": {"electrode_group_metadata_key": "ElectrodeGroup"},
+        "electrode_3": {"electrode_group_metadata_key": "ElectrodeGroup"},
     }
-    rows = ecephys["ElectrodesTable"]["rows"]
-    ecephys["ElectricalSeries"][interface.metadata_key]["channel_to_electrode"] = dict(
-        zip(interface.channel_ids, rows)
-    )
+    ecephys["ElectrodesTable"] = {"rows": rows}
+    ecephys["ElectricalSeries"][metadata_key]["channel_to_electrode"] = {
+        "0": "electrode_0",
+        "1": "electrode_1",
+        "2": "electrode_2",
+        "3": "electrode_3",
+    }
+
+    # Microns from bregma, on the schema's axes: +x posterior, +y inferior, +z right.
     rows["electrode_0"].update(location="CA1", x=2000.0, y=2100.0, z=1500.0, imp=1.0e6)
     rows["electrode_1"].update(location="CA1", x=2000.0, y=2100.0, z=1500.0, imp=1.0e6)
     rows["electrode_2"].update(location="CA3", x=2000.0, y=2600.0, z=1500.0, imp=1.0e6)
@@ -303,14 +331,16 @@ at it with ``electrode_group_metadata_key``:
     rows["electrode_2"]["side"] = 0
     rows["electrode_3"]["side"] = 1
 
-    ecephys["ElectrodesTable"]["columns"]["side"] = {
-        "column_name": "shank_side",
-        "description": "Which face of the shank the contact sits on.",
-        "column_categories": {
-            "labels": {0: "front", 1: "back"},
-            "meanings": {
-                0: "contact on the front face",
-                1: "contact on the back face",
+    ecephys["ElectrodesTable"]["columns"] = {
+        "side": {
+            "column_name": "shank_side",
+            "description": "Which face of the shank the contact sits on.",
+            "column_categories": {
+                "labels": {0: "front", 1: "back"},
+                "meanings": {
+                    0: "contact on the front face",
+                    1: "contact on the back face",
+                },
             },
         },
     }
@@ -363,7 +393,7 @@ group at a ``Devices`` entry, and that entry at a ``DeviceModels`` entry with
 deprecated in pynwb:
 
 .. code-block:: python
-   :emphasize-lines: 57-74
+   :emphasize-lines: 63-80
 
     from neuroconv.tools.testing.mock_interfaces import MockRecordingInterface
 
@@ -375,18 +405,22 @@ deprecated in pynwb:
 
     ecephys["ElectricalSeries"][metadata_key]["name"] = "ElectricalSeriesProbe0"
     ecephys["ElectricalSeries"][metadata_key]["description"] = "Raw broadband traces, 30 kHz."
-    # Microns from bregma, on the schema's axes: +x posterior, +y inferior, +z right.
-    ecephys["ElectrodesTable"] = {
-        "rows": {
-            f"electrode_{channel_id}": {"electrode_group_metadata_key": "ElectrodeGroup"}
-            for channel_id in interface.channel_ids
-        },
-        "columns": {},
+
+    rows = {
+        "electrode_0": {"electrode_group_metadata_key": "ElectrodeGroup"},
+        "electrode_1": {"electrode_group_metadata_key": "ElectrodeGroup"},
+        "electrode_2": {"electrode_group_metadata_key": "ElectrodeGroup"},
+        "electrode_3": {"electrode_group_metadata_key": "ElectrodeGroup"},
     }
-    rows = ecephys["ElectrodesTable"]["rows"]
-    ecephys["ElectricalSeries"][interface.metadata_key]["channel_to_electrode"] = dict(
-        zip(interface.channel_ids, rows)
-    )
+    ecephys["ElectrodesTable"] = {"rows": rows}
+    ecephys["ElectricalSeries"][metadata_key]["channel_to_electrode"] = {
+        "0": "electrode_0",
+        "1": "electrode_1",
+        "2": "electrode_2",
+        "3": "electrode_3",
+    }
+
+    # Microns from bregma, on the schema's axes: +x posterior, +y inferior, +z right.
     rows["electrode_0"].update(location="CA1", x=2000.0, y=2100.0, z=1500.0, imp=1.0e6)
     rows["electrode_1"].update(location="CA1", x=2000.0, y=2100.0, z=1500.0, imp=1.0e6)
     rows["electrode_2"].update(location="CA3", x=2000.0, y=2600.0, z=1500.0, imp=1.0e6)
@@ -396,14 +430,16 @@ deprecated in pynwb:
     rows["electrode_2"]["side"] = 0
     rows["electrode_3"]["side"] = 1
 
-    ecephys["ElectrodesTable"]["columns"]["side"] = {
-        "column_name": "shank_side",
-        "description": "Which face of the shank the contact sits on.",
-        "column_categories": {
-            "labels": {0: "front", 1: "back"},
-            "meanings": {
-                0: "contact on the front face",
-                1: "contact on the back face",
+    ecephys["ElectrodesTable"]["columns"] = {
+        "side": {
+            "column_name": "shank_side",
+            "description": "Which face of the shank the contact sits on.",
+            "column_categories": {
+                "labels": {0: "front", 1: "back"},
+                "meanings": {
+                    0: "contact on the front face",
+                    1: "contact on the back face",
+                },
             },
         },
     }
@@ -519,6 +555,10 @@ Attaching the probe supplies three things when the file is written:
 What the probe cannot supply is where it was implanted. ``location``, and the ``x``, ``y`` and ``z``
 stereotaxic coordinates, stay yours to state exactly as in the previous scenario.
 
+If you annotated the electrodes before attaching the probe, keep the ``channel_to_electrode`` mapping
+you saved with them. The probe then adds its contact names and positions to those same rows, and your
+locations and coordinates stay as you wrote them.
+
 .. _ecephys_electrode_grouping:
 
 How to Assign Electrodes to Shanks or Tetrodes
@@ -569,7 +609,7 @@ Assigning groups in electrode-row metadata
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The mock recording below starts with one default group. We assign its four recorded electrodes to
-two shanks on the same probe by changing each row's ``electrode_group_metadata_key``. For a tetrode,
+two shanks on the same probe by setting each row's ``electrode_group_metadata_key``. For a tetrode,
 the same field would assign its four electrodes to one group.
 
 This approach does not require a ProbeInterface probe. Group membership and its annotations are
@@ -608,19 +648,18 @@ visible together in the electrode-row metadata.
 
     ecephys["ElectrodesTable"] = {
         "rows": {
-            f"electrode_{channel_id}": {"electrode_group_metadata_key": "ElectrodeGroup"}
-            for channel_id in interface.channel_ids
+            "electrode_0": {"electrode_group_metadata_key": "shank_1", "location": "CA1"},
+            "electrode_1": {"electrode_group_metadata_key": "shank_1", "location": "CA1"},
+            "electrode_2": {"electrode_group_metadata_key": "shank_2", "location": "CA1"},
+            "electrode_3": {"electrode_group_metadata_key": "shank_2", "location": "CA1"},
         },
-        "columns": {},
     }
-    rows = ecephys["ElectrodesTable"]["rows"]
-    ecephys["ElectricalSeries"][interface.metadata_key]["channel_to_electrode"] = dict(
-        zip(interface.channel_ids, rows)
-    )
-    rows["electrode_0"].update(electrode_group_metadata_key="shank_1", location="CA1")
-    rows["electrode_1"].update(electrode_group_metadata_key="shank_1", location="CA1")
-    rows["electrode_2"].update(electrode_group_metadata_key="shank_2", location="CA1")
-    rows["electrode_3"].update(electrode_group_metadata_key="shank_2", location="CA1")
+    ecephys["ElectricalSeries"]["two_shanks"]["channel_to_electrode"] = {
+        "0": "electrode_0",
+        "1": "electrode_1",
+        "2": "electrode_2",
+        "3": "electrode_3",
+    }
 
     nwbfile = interface.create_nwbfile(metadata=metadata)
     sorted(nwbfile.electrode_groups)  # -> ['Shank1', 'Shank2']
@@ -675,19 +714,18 @@ within one probe: the groups now point to distinct devices.
 
     ecephys["ElectrodesTable"] = {
         "rows": {
-            f"electrode_{channel_id}": {"electrode_group_metadata_key": "ElectrodeGroup"}
-            for channel_id in interface.channel_ids
+            "electrode_0": {"electrode_group_metadata_key": "left", "location": "CA1"},
+            "electrode_1": {"electrode_group_metadata_key": "left", "location": "CA1"},
+            "electrode_2": {"electrode_group_metadata_key": "right", "location": "CA3"},
+            "electrode_3": {"electrode_group_metadata_key": "right", "location": "CA3"},
         },
-        "columns": {},
     }
-    rows = ecephys["ElectrodesTable"]["rows"]
-    ecephys["ElectricalSeries"][interface.metadata_key]["channel_to_electrode"] = dict(
-        zip(interface.channel_ids, rows)
-    )
-    rows["electrode_0"].update(electrode_group_metadata_key="left", location="CA1")
-    rows["electrode_1"].update(electrode_group_metadata_key="left", location="CA1")
-    rows["electrode_2"].update(electrode_group_metadata_key="right", location="CA3")
-    rows["electrode_3"].update(electrode_group_metadata_key="right", location="CA3")
+    ecephys["ElectricalSeries"]["two_probes"]["channel_to_electrode"] = {
+        "0": "electrode_0",
+        "1": "electrode_1",
+        "2": "electrode_2",
+        "3": "electrode_3",
+    }
 
     nwbfile = interface.create_nwbfile(metadata=metadata)
     sorted(nwbfile.devices)  # -> ['ProbeLeft', 'ProbeRight']
