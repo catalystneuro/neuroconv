@@ -111,7 +111,7 @@ def _add_pose_estimation_to_nwbfile(
         The key of the container entry to write, within ``metadata["Pose"]["PoseEstimations"]``. A key
         naming no entry raises, since it is a caller mistake rather than absent metadata.
     """
-    from ndx_pose import PoseEstimation, PoseEstimationSeries, Skeleton, Skeletons
+    from ndx_pose import PoseEstimation
 
     placeholders = _get_pose_metadata_placeholders(keypoint_names=keypoint_data)
     placeholder_container = placeholders["Pose"]["PoseEstimations"][DEFAULT_METADATA_KEY]
@@ -140,80 +140,19 @@ def _add_pose_estimation_to_nwbfile(
     if device_metadata_key is not None:
         device = _add_device_to_nwbfile(nwbfile=nwbfile, metadata=metadata, metadata_key=device_metadata_key)
 
-    skeleton = None
-    skeleton_metadata_key = container_entry.get("skeleton_metadata_key")
-    if skeleton_metadata_key is not None:
-        skeletons_metadata = pose_metadata.get("Skeletons", {})
-        if skeleton_metadata_key not in skeletons_metadata:
-            raise ValueError(
-                f"skeleton_metadata_key '{skeleton_metadata_key}' was not found in "
-                f"metadata['Pose']['Skeletons'] (available keys: {list(skeletons_metadata)})."
-            )
-        skeleton_entry = skeletons_metadata[skeleton_metadata_key]
-        skeleton_name = skeleton_entry["name"]
-        existing_skeletons = (
-            behavior_module["Skeletons"].skeletons if "Skeletons" in behavior_module.data_interfaces else {}
-        )
-        if skeleton_name in existing_skeletons:
-            skeleton = existing_skeletons[skeleton_name]
-        else:
-            # ndx-pose stores one subject per file, so the file's subject is the pose subject. The entry's
-            # optional "subject" names an individual within the source, and a mismatch means these keypoints
-            # belong to someone other than the file's subject, so no link is made.
-            subject = None
-            if nwbfile.subject is not None:
-                skeleton_subject = skeleton_entry.get("subject")
-                if skeleton_subject is None or skeleton_subject == nwbfile.subject.subject_id:
-                    subject = nwbfile.subject
-            edges = skeleton_entry.get("edges")
-            skeleton = Skeleton(
-                name=skeleton_name,
-                nodes=skeleton_entry["nodes"],
-                # Node indices and video dimensions are small and non-negative, and ndx-pose specifies
-                # both as uint8. Writing them as an unsigned type avoids an hdmf conversion warning.
-                edges=np.asarray(edges, dtype="uint16") if edges is not None and len(edges) else None,
-                subject=subject,
-            )
+    skeleton = _get_or_build_skeleton(
+        nwbfile=nwbfile,
+        behavior_module=behavior_module,
+        pose_metadata=pose_metadata,
+        skeleton_metadata_key=container_entry.get("skeleton_metadata_key"),
+    )
 
-    timestamps = np.asarray(timestamps).astype("float64", copy=False)
-    if timestamps.ndim != 1:
-        raise ValueError("Pose timestamps must be a one-dimensional array with one time per sample.")
-    for keypoint_name, (positions, _) in keypoint_data.items():
-        if len(positions) != len(timestamps):
-            raise ValueError(
-                f"Keypoint '{keypoint_name}' has {len(positions)} samples but {len(timestamps)} timestamps. "
-                "Every keypoint in a pose container must have one sample per timestamp."
-            )
-    rate = calculate_regular_series_rate(timestamps)
-    if rate is None:
-        timing_kwargs = dict(timestamps=timestamps)
-    else:
-        timing_kwargs = dict(rate=rate, starting_time=timestamps[0])
-
-    series_entries = container_entry.get("PoseEstimationSeries", {})
-    placeholder_series = placeholder_container["PoseEstimationSeries"]
-    pose_estimation_series = []
-    for keypoint_name, (positions, confidence) in keypoint_data.items():
-        series_entry = series_entries.get(keypoint_name, {})
-        series_kwargs = dict(
-            timing_kwargs,
-            name=series_entry.get("name", placeholder_series[keypoint_name]["name"]),
-            description=series_entry.get("description", f"Pose estimation series for {keypoint_name}."),
-            data=positions,
-            reference_frame=series_entry.get("reference_frame", "unknown"),
-        )
-        if confidence is not None:
-            series_kwargs["confidence"] = confidence
-        for field in ("unit", "confidence_definition"):
-            if series_entry.get(field) is not None:
-                series_kwargs[field] = series_entry[field]
-
-        pose_estimation_series.append(PoseEstimationSeries(**series_kwargs))
-        # Every series in a container is a keypoint of the same animal on the same frames, so the times
-        # are identical by construction. Handing the first series as the ``timestamps`` of the rest is
-        # pynwb's idiom for that and writes a link instead of another copy of the vector.
-        if rate is None:
-            timing_kwargs = dict(timestamps=pose_estimation_series[0])
+    pose_estimation_series = _build_pose_estimation_series(
+        keypoint_data=keypoint_data,
+        timestamps=timestamps,
+        series_entries=container_entry.get("PoseEstimationSeries", {}),
+        placeholder_series=placeholder_container["PoseEstimationSeries"],
+    )
 
     container_kwargs = dict(
         name=container_name,
@@ -260,8 +199,221 @@ def _add_pose_estimation_to_nwbfile(
         pose_estimation = PoseEstimation(**container_kwargs)
     behavior_module.add(pose_estimation)
 
-    if skeleton is not None:
-        if "Skeletons" not in behavior_module.data_interfaces:
-            behavior_module.add(Skeletons(skeletons=[skeleton]))
-        elif skeleton.name not in behavior_module["Skeletons"].skeletons:
-            behavior_module["Skeletons"].add_skeletons(skeleton)
+    _add_skeleton_to_behavior_module(behavior_module=behavior_module, skeleton=skeleton)
+
+
+def _add_multi_camera_pose_estimation_to_nwbfile(
+    nwbfile: NWBFile,
+    *,
+    keypoint_data: dict[str, tuple[np.ndarray, np.ndarray | None]],
+    timestamps: np.ndarray,
+    metadata: dict,
+    metadata_key: str,
+) -> None:
+    """Add one ``MultiCameraPoseEstimation`` container to an NWBFile from the dict-based metadata shape.
+
+    The multi-camera counterpart of :func:`_add_pose_estimation_to_nwbfile`, for keypoints triangulated
+    from several calibrated cameras into one 3D coordinate system. The container entry is read from
+    ``metadata["Pose"]["MultiCameraPoseEstimations"][metadata_key]`` and carries the triangulated series
+    the same way a ``PoseEstimations`` entry does. Its ``pose_estimation_metadata_keys`` list the
+    per-camera ``PoseEstimation`` children in ``metadata["Pose"]["PoseEstimations"]``; each child is
+    written with its camera (``device_metadata_key``, into ``metadata["Devices"]``) and its source video
+    (``source_video_metadata_key``, into ``metadata["Behavior"]["ExternalVideos"]``) and no series of its
+    own, since the keypoints belong to the container rather than to any one camera. A camera ``Device``
+    whose name is already in the file is reused, so several animals filmed by the same rig share one.
+
+    Parameters
+    ----------
+    nwbfile : pynwb.NWBFile
+        The file to add the container to. It is written to its "behavior" processing module.
+    keypoint_data : dict
+        Maps keypoint name to ``(positions, confidence)``, as for :func:`_add_pose_estimation_to_nwbfile`.
+    timestamps : numpy.ndarray
+        One time in seconds per frame, shared by every series.
+    metadata : dict
+        Metadata in the dict-based shape, carrying the top-level ``"Pose"`` and ``"Devices"`` registries.
+    metadata_key : str
+        The key of the container entry to write, within ``metadata["Pose"]["MultiCameraPoseEstimations"]``.
+    """
+    from ndx_pose import MultiCameraPoseEstimation, PoseEstimation
+
+    pose_metadata = metadata.get("Pose", {})
+    containers_metadata = pose_metadata.get("MultiCameraPoseEstimations", {})
+    if metadata_key not in containers_metadata:
+        raise ValueError(
+            f"metadata_key '{metadata_key}' was not found in metadata['Pose']['MultiCameraPoseEstimations'] "
+            f"(available keys: {list(containers_metadata)})."
+        )
+    container_entry = containers_metadata[metadata_key]
+    container_name = container_entry.get("name", "MultiCameraPoseEstimation")
+
+    behavior_module = get_module(nwbfile=nwbfile, name="behavior", description="processed behavioral data")
+    if container_name in behavior_module.data_interfaces:
+        raise ValueError(f"The nwbfile already contains a data interface with the name '{container_name}'.")
+
+    skeleton = _get_or_build_skeleton(
+        nwbfile=nwbfile,
+        behavior_module=behavior_module,
+        pose_metadata=pose_metadata,
+        skeleton_metadata_key=container_entry.get("skeleton_metadata_key"),
+    )
+
+    placeholders = _get_pose_metadata_placeholders(keypoint_names=keypoint_data)
+    pose_estimation_series = _build_pose_estimation_series(
+        keypoint_data=keypoint_data,
+        timestamps=timestamps,
+        series_entries=container_entry.get("PoseEstimationSeries", {}),
+        placeholder_series=placeholders["Pose"]["PoseEstimations"][DEFAULT_METADATA_KEY]["PoseEstimationSeries"],
+    )
+
+    camera_entries = pose_metadata.get("PoseEstimations", {})
+    camera_pose_estimations = []
+    for camera_metadata_key in container_entry.get("pose_estimation_metadata_keys") or []:
+        if camera_metadata_key not in camera_entries:
+            raise ValueError(
+                f"pose_estimation_metadata_keys entry '{camera_metadata_key}' was not found in "
+                f"metadata['Pose']['PoseEstimations'] (available keys: {list(camera_entries)})."
+            )
+        camera_entry = camera_entries[camera_metadata_key]
+        camera_kwargs = dict(name=camera_entry.get("name", "PoseEstimation"))
+        device_metadata_key = camera_entry.get("device_metadata_key")
+        if device_metadata_key is not None:
+            camera_kwargs["device"] = _add_device_to_nwbfile(
+                nwbfile=nwbfile, metadata=metadata, metadata_key=device_metadata_key
+            )
+        source_video_metadata_key = camera_entry.get("source_video_metadata_key")
+        if source_video_metadata_key is not None:
+            camera_kwargs["source_video"] = _resolve_image_series(
+                nwbfile=nwbfile,
+                metadata=metadata,
+                metadata_key=source_video_metadata_key,
+                field="source_video_metadata_key",
+            )
+        camera_pose_estimations.append(PoseEstimation(**camera_kwargs))
+
+    container_kwargs = dict(
+        name=container_name,
+        pose_estimation_series=pose_estimation_series,
+        pose_estimations=camera_pose_estimations,
+        skeleton=skeleton,
+    )
+    for field in ("description", "source_software", "source_software_version", "scorer"):
+        if container_entry.get(field) is not None:
+            container_kwargs[field] = container_entry[field]
+    behavior_module.add(MultiCameraPoseEstimation(**container_kwargs))
+
+    _add_skeleton_to_behavior_module(behavior_module=behavior_module, skeleton=skeleton)
+
+
+def _get_or_build_skeleton(*, nwbfile: NWBFile, behavior_module, pose_metadata: dict, skeleton_metadata_key):
+    """Return the ``Skeleton`` a container entry points at, reusing one already in the file by name.
+
+    ``None`` when the entry names no skeleton. A newly built skeleton is not added to the file here; that
+    happens after the container, through :func:`_add_skeleton_to_behavior_module`.
+    """
+    from ndx_pose import Skeleton
+
+    if skeleton_metadata_key is None:
+        return None
+
+    skeletons_metadata = pose_metadata.get("Skeletons", {})
+    if skeleton_metadata_key not in skeletons_metadata:
+        raise ValueError(
+            f"skeleton_metadata_key '{skeleton_metadata_key}' was not found in "
+            f"metadata['Pose']['Skeletons'] (available keys: {list(skeletons_metadata)})."
+        )
+    skeleton_entry = skeletons_metadata[skeleton_metadata_key]
+    skeleton_name = skeleton_entry["name"]
+    existing_skeletons = (
+        behavior_module["Skeletons"].skeletons if "Skeletons" in behavior_module.data_interfaces else {}
+    )
+    if skeleton_name in existing_skeletons:
+        existing_skeleton = existing_skeletons[skeleton_name]
+        # Reuse by name is how containers share a skeleton, which only holds if it is the same skeleton.
+        if list(existing_skeleton.nodes[:]) != list(skeleton_entry["nodes"]):
+            raise ValueError(
+                f"The file already has a skeleton named '{skeleton_name}' with different nodes. Give the "
+                f"skeleton at metadata['Pose']['Skeletons']['{skeleton_metadata_key}'] a distinct 'name'."
+            )
+        return existing_skeleton
+
+    # ndx-pose stores one subject per file, so the file's subject is the pose subject. The entry's
+    # optional "subject" names an individual within the source, and a mismatch means these keypoints
+    # belong to someone other than the file's subject, so no link is made.
+    subject = None
+    if nwbfile.subject is not None:
+        skeleton_subject = skeleton_entry.get("subject")
+        if skeleton_subject is None or skeleton_subject == nwbfile.subject.subject_id:
+            subject = nwbfile.subject
+    edges = skeleton_entry.get("edges")
+    return Skeleton(
+        name=skeleton_name,
+        nodes=skeleton_entry["nodes"],
+        # Node indices and video dimensions are small and non-negative, and ndx-pose specifies
+        # both as uint8. Writing them as an unsigned type avoids an hdmf conversion warning.
+        edges=np.asarray(edges, dtype="uint16") if edges is not None and len(edges) else None,
+        subject=subject,
+    )
+
+
+def _build_pose_estimation_series(
+    *,
+    keypoint_data: dict[str, tuple[np.ndarray, np.ndarray | None]],
+    timestamps: np.ndarray,
+    series_entries: dict,
+    placeholder_series: dict,
+) -> list:
+    """Build one ``PoseEstimationSeries`` per keypoint, all sharing ``timestamps``."""
+    from ndx_pose import PoseEstimationSeries
+
+    timestamps = np.asarray(timestamps).astype("float64", copy=False)
+    if timestamps.ndim != 1:
+        raise ValueError("Pose timestamps must be a one-dimensional array with one time per sample.")
+    for keypoint_name, (positions, _) in keypoint_data.items():
+        if len(positions) != len(timestamps):
+            raise ValueError(
+                f"Keypoint '{keypoint_name}' has {len(positions)} samples but {len(timestamps)} timestamps. "
+                "Every keypoint in a pose container must have one sample per timestamp."
+            )
+    rate = calculate_regular_series_rate(timestamps)
+    if rate is None:
+        timing_kwargs = dict(timestamps=timestamps)
+    else:
+        timing_kwargs = dict(rate=rate, starting_time=timestamps[0])
+
+    pose_estimation_series = []
+    for keypoint_name, (positions, confidence) in keypoint_data.items():
+        series_entry = series_entries.get(keypoint_name, {})
+        series_kwargs = dict(
+            timing_kwargs,
+            name=series_entry.get("name", placeholder_series[keypoint_name]["name"]),
+            description=series_entry.get("description", f"Pose estimation series for {keypoint_name}."),
+            data=positions,
+            reference_frame=series_entry.get("reference_frame", "unknown"),
+        )
+        if confidence is not None:
+            series_kwargs["confidence"] = confidence
+        for field in ("unit", "confidence_definition"):
+            if series_entry.get(field) is not None:
+                series_kwargs[field] = series_entry[field]
+
+        pose_estimation_series.append(PoseEstimationSeries(**series_kwargs))
+        # Every series in a container is a keypoint of the same animal on the same frames, so the times
+        # are identical by construction. Handing the first series as the ``timestamps`` of the rest is
+        # pynwb's idiom for that and writes a link instead of another copy of the vector.
+        if rate is None:
+            timing_kwargs = dict(timestamps=pose_estimation_series[0])
+
+    return pose_estimation_series
+
+
+def _add_skeleton_to_behavior_module(*, behavior_module, skeleton) -> None:
+    """File ``skeleton`` under the behavior module's ``Skeletons``, unless it is ``None`` or already there."""
+    from ndx_pose import Skeletons
+
+    if skeleton is None:
+        return
+    if "Skeletons" not in behavior_module.data_interfaces:
+        behavior_module.add(Skeletons(skeletons=[skeleton]))
+    elif skeleton.name not in behavior_module["Skeletons"].skeletons:
+        behavior_module["Skeletons"].add_skeletons(skeleton)
