@@ -98,7 +98,7 @@ dannce = [
     # yet, so this is pinned to the main branch on GitHub. Switch back to "ndx-pose>=0.4.0" once
     # 0.4.0 is released.
     "ndx-pose @ git+https://github.com/rly/ndx-pose.git@main",
-    "scipy",  
+    "scipy",
     "pymatreader>=0.0.32",
     "neuroconv[video]",
 ]
