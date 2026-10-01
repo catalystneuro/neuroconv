@@ -179,6 +179,24 @@ class TestAudioInterface(AudioInterfaceTestMixin):
         ]
         assert_array_equal(fresh_interface._segment_starting_times, expecting_starting_times)
 
+    def test_set_aligned_starting_time_accumulates_for_a_single_file(self):
+        # A shift, so a second call moves the one file again rather than raising.
+        fresh_interface = AudioInterface(file_paths=self.file_paths[:1])
+        fresh_interface.set_aligned_starting_time(aligned_starting_time=1.0)
+        fresh_interface.set_aligned_starting_time(aligned_starting_time=0.5)
+        assert_array_equal(fresh_interface._segment_starting_times, [1.5])
+
+    def test_set_aligned_starting_time_after_segment_starting_times_for_a_single_file(self):
+        fresh_interface = AudioInterface(file_paths=self.file_paths[:1])
+        fresh_interface.set_aligned_segment_starting_times(aligned_segment_starting_times=[2.0])
+        fresh_interface.set_aligned_starting_time(aligned_starting_time=0.5)
+        assert_array_equal(fresh_interface._segment_starting_times, [2.5])
+
+    def test_set_aligned_starting_time_requires_segment_starting_times_for_several_files(self):
+        fresh_interface = AudioInterface(file_paths=self.file_paths[:2])
+        with pytest.raises(ValueError, match="There are no segment starting times to shift"):
+            fresh_interface.set_aligned_starting_time(aligned_starting_time=1.0)
+
     def test_run_conversion(self):
         file_paths = self.nwb_converter.data_interface_objects["Audio"].source_data["file_paths"]
         audio_test_data = [read(filename=file_path, mmap=True)[1] for file_path in file_paths]

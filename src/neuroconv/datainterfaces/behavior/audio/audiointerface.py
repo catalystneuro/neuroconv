@@ -155,12 +155,15 @@ class AudioInterface(BaseTemporalAlignmentInterface):
             The common starting time for all temporal data in this interface.
             Applies to all segments if there are multiple file paths used by the interface.
         """
-        if self._segment_starting_times is None and self._number_of_audio_files == 1:
-            self._segment_starting_times = [aligned_starting_time]
-        elif self._segment_starting_times is not None and self._number_of_audio_files > 1:
+        # A shift, so it accumulates: whatever starting times are already set move together. Only a
+        # single file can start from nothing, since the shift then places that one file; several files
+        # need their relative starting times first.
+        if self._segment_starting_times is not None:
             self._segment_starting_times = [
                 segment_starting_time + aligned_starting_time for segment_starting_time in self._segment_starting_times
             ]
+        elif self._number_of_audio_files == 1:
+            self._segment_starting_times = [aligned_starting_time]
         else:
             raise ValueError(
                 "There are no segment starting times to shift by a common value! "
