@@ -93,7 +93,9 @@ class TestTemplate:
         interface = _interface(num_channels=4)
         metadata = _without_blanks(interface.get_metadata_template())
 
-        mapping = metadata["Ecephys"]["ElectricalSeries"][interface.metadata_key]["channel_to_electrode"]
+        mapping = metadata["Ecephys"]["ElectricalSeries"][interface.metadata_key][
+            "channel_id_to_electrode_metadata_key"
+        ]
         assert set(mapping) == {str(channel_id) for channel_id in interface.channel_ids}
         assert set(mapping.values()) == set(metadata["Ecephys"]["ElectrodesTable"]["rows"])
 
@@ -329,7 +331,9 @@ class TestRegistryWrites:
         interface = _interface(num_channels=4, properties={"imp": [1.0, 2.0, 3.0, 4.0]})
         metadata = interface.get_metadata()
         mapping = {str(channel): f"electrode_{channel}" for channel in interface.channel_ids}
-        metadata["Ecephys"]["ElectricalSeries"][interface.metadata_key]["channel_to_electrode"] = mapping
+        metadata["Ecephys"]["ElectricalSeries"][interface.metadata_key][
+            "channel_id_to_electrode_metadata_key"
+        ] = mapping
         metadata["Ecephys"]["ElectrodesTable"] = {"rows": {key: {} for key in mapping.values()}}
         metadata["Ecephys"]["ElectrodesTable"]["rows"]["electrode_2"]["brain_area"] = "CA1"
 
@@ -364,10 +368,10 @@ class TestRegistryWrites:
         keys = list(metadata["Ecephys"]["ElectrodesTable"]["rows"])
         for index, key in enumerate(keys):
             metadata["Ecephys"]["ElectrodesTable"]["rows"][key]["location"] = f"region_{index}"
-        metadata["Ecephys"]["ElectricalSeries"][interface.metadata_key]["channel_to_electrode"] = {
+        metadata["Ecephys"]["ElectricalSeries"][interface.metadata_key]["channel_id_to_electrode_metadata_key"] = {
             channel_id: keys[3 - index]
             for index, channel_id in enumerate(
-                metadata["Ecephys"]["ElectricalSeries"][interface.metadata_key]["channel_to_electrode"]
+                metadata["Ecephys"]["ElectricalSeries"][interface.metadata_key]["channel_id_to_electrode_metadata_key"]
             )
         }
 
@@ -466,7 +470,10 @@ class TestPersistentAssociations:
         interface = _interface(num_channels=2, properties={"imp": [10.0, 20.0]})
         metadata = interface.get_metadata()
         metadata["Ecephys"]["ElectrodesTable"] = {"rows": {"a": {"location": "CA1"}, "b": {"location": "CA3"}}}
-        metadata["Ecephys"]["ElectricalSeries"][interface.metadata_key]["channel_to_electrode"] = {"0": "b", "1": "a"}
+        metadata["Ecephys"]["ElectricalSeries"][interface.metadata_key]["channel_id_to_electrode_metadata_key"] = {
+            "0": "b",
+            "1": "a",
+        }
         self.attach_probe(interface)
 
         nwbfile = interface.create_nwbfile(metadata=metadata)
@@ -480,10 +487,10 @@ class TestPersistentAssociations:
     def test_declared_rows_without_a_saved_mapping_are_refused(self, attach_first):
         interface = _interface(num_channels=2)
         metadata = _without_blanks(interface.get_metadata_template())
-        del metadata["Ecephys"]["ElectricalSeries"][interface.metadata_key]["channel_to_electrode"]
+        del metadata["Ecephys"]["ElectricalSeries"][interface.metadata_key]["channel_id_to_electrode_metadata_key"]
         if attach_first:
             self.attach_probe(interface)
-        with pytest.raises(ValueError, match="must supply 'channel_to_electrode'"):
+        with pytest.raises(ValueError, match="must supply 'channel_id_to_electrode_metadata_key'"):
             interface.create_nwbfile(metadata=metadata)
 
     def test_conflicting_contact_identity_is_not_silently_replaced(self):
@@ -500,7 +507,10 @@ class TestPersistentAssociations:
         self.attach_probe(interface)
         metadata = interface.get_metadata()
         metadata["Ecephys"]["ElectrodesTable"] = {"rows": {"a": {"location": "CA1"}}}
-        metadata["Ecephys"]["ElectricalSeries"][interface.metadata_key]["channel_to_electrode"] = {"0": "a", "1": "a"}
+        metadata["Ecephys"]["ElectricalSeries"][interface.metadata_key]["channel_id_to_electrode_metadata_key"] = {
+            "0": "a",
+            "1": "a",
+        }
 
         with pytest.raises(ValueError, match="conflicting source contact or group identities"):
             interface.create_nwbfile(metadata=metadata)
@@ -681,7 +691,7 @@ class TestSharedRows:
                 "ElectricalSeries": {
                     band: {
                         "name": f"ElectricalSeries{band.upper()}",
-                        "channel_to_electrode": {
+                        "channel_id_to_electrode_metadata_key": {
                             str(channel_id): f"probe_{contact}"
                             for channel_id, contact in zip(recordings[band].get_channel_ids(), contact_ids)
                         },
@@ -799,7 +809,9 @@ class TestRegistryValidation:
     def test_an_electrode_the_channels_resolve_to_but_nobody_declared(self):
         interface = _interface(num_channels=4)
         metadata = _without_blanks(interface.get_metadata_template())
-        mapping = metadata["Ecephys"]["ElectricalSeries"][interface.metadata_key]["channel_to_electrode"]
+        mapping = metadata["Ecephys"]["ElectricalSeries"][interface.metadata_key][
+            "channel_id_to_electrode_metadata_key"
+        ]
         mapping[next(iter(mapping))] = "nobody_declared_this"
 
         with pytest.raises(ValueError, match="does not declare"):
@@ -808,7 +820,9 @@ class TestRegistryValidation:
     def test_a_channel_to_electrode_map_that_misses_a_channel(self):
         interface = _interface(num_channels=4)
         metadata = _without_blanks(interface.get_metadata_template())
-        mapping = metadata["Ecephys"]["ElectricalSeries"][interface.metadata_key]["channel_to_electrode"]
+        mapping = metadata["Ecephys"]["ElectricalSeries"][interface.metadata_key][
+            "channel_id_to_electrode_metadata_key"
+        ]
         del mapping[next(iter(mapping))]
 
         with pytest.raises(ValueError, match="does not cover every channel"):

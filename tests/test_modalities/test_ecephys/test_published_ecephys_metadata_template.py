@@ -62,13 +62,13 @@ def test_published_ecephys_template_matches_the_method():
         table["rows"] = {"row": next(iter(table["rows"].values()))}
         table["columns"] = {"column": {"column_name": None, "description": None, "dtype": None}}
         metadata["Ecephys"]["ElectrodeGroups"] = {"group": next(iter(metadata["Ecephys"]["ElectrodeGroups"].values()))}
-        metadata["Ecephys"]["ElectricalSeries"]["ecephys_recording"]["channel_to_electrode"] = {}
+        metadata["Ecephys"]["ElectricalSeries"]["ecephys_recording"]["channel_id_to_electrode_metadata_key"] = {}
         return metadata
 
     assert _key_paths(structure(published_yaml)) == _key_paths(structure(template))
-    assert set(published_yaml["Ecephys"]["ElectricalSeries"]["ecephys_recording"]["channel_to_electrode"]) == {
-        str(channel_id) for channel_id in interface.channel_ids
-    }
+    assert set(
+        published_yaml["Ecephys"]["ElectricalSeries"]["ecephys_recording"]["channel_id_to_electrode_metadata_key"]
+    ) == {str(channel_id) for channel_id in interface.channel_ids}
 
 
 def test_published_ecephys_template_converts_once_filled(tmp_path):

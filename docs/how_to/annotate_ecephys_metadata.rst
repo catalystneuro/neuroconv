@@ -115,7 +115,7 @@ electrode each of its channels recorded:
         "electrode_3": {"electrode_group_metadata_key": "ElectrodeGroup"},
     }
     ecephys["ElectrodesTable"] = {"rows": rows}
-    ecephys["ElectricalSeries"][metadata_key]["channel_to_electrode"] = {
+    ecephys["ElectricalSeries"][metadata_key]["channel_id_to_electrode_metadata_key"] = {
         "0": "electrode_0",
         "1": "electrode_1",
         "2": "electrode_2",
@@ -129,13 +129,14 @@ electrode each of its channels recorded:
     rows["electrode_3"].update(location="CA3", x=2000.0, y=2600.0, z=1500.0, imp=1.0e6)
 
 The row keys, ``electrode_0`` to ``electrode_3``, are what you use to reference each electrode's
-annotations. You choose them, so pick whatever is memorable to you. The metadata itself is the
-dictionary each key points to; the key does not appear in the file. The series references rows by
-these keys in ``channel_to_electrode``, a dictionary from each channel id to the row of the electrode
-that channel recorded. Here each channel recorded its own
-electrode, so the pairing is one to one. The section on :ref:`mapping channels to electrodes
-<ecephys_channel_to_electrode>` covers electrodes that no channel recorded, and channels from two
-streams that share an electrode.
+annotations. You choose them, so pick whatever is memorable to you. The metadata itself is the dictionary
+each key points to; the key does not appear in the file. The series references rows by these keys in
+``channel_id_to_electrode_metadata_key``, a dictionary from each channel id to the row of the electrode
+that channel recorded. The channel ids are the recording's own, which ``interface.channel_ids`` lists:
+the mock numbers its channels ``"0"`` to ``"3"``, while a SpikeGLX recording's look like
+``"imec0.ap#AP0"``. Here each channel recorded its own electrode, so the pairing is one to one. The
+section on :ref:`mapping channels to electrodes <ecephys_channel_to_electrode>` covers electrodes that no
+channel recorded, and channels from two streams that share an electrode.
 
 Every row also names its electrode group through ``electrode_group_metadata_key``. For now that is
 ``ElectrodeGroup``, the group the recording put every channel in; we give the electrodes a group of our
@@ -212,7 +213,7 @@ means. Put the value on the rows and describe it under ``ElectrodesTable["column
         "electrode_3": {"electrode_group_metadata_key": "ElectrodeGroup"},
     }
     ecephys["ElectrodesTable"] = {"rows": rows}
-    ecephys["ElectricalSeries"][metadata_key]["channel_to_electrode"] = {
+    ecephys["ElectricalSeries"][metadata_key]["channel_id_to_electrode_metadata_key"] = {
         "0": "electrode_0",
         "1": "electrode_1",
         "2": "electrode_2",
@@ -314,7 +315,7 @@ at it with ``electrode_group_metadata_key``:
         "electrode_3": {"electrode_group_metadata_key": "ElectrodeGroup"},
     }
     ecephys["ElectrodesTable"] = {"rows": rows}
-    ecephys["ElectricalSeries"][metadata_key]["channel_to_electrode"] = {
+    ecephys["ElectricalSeries"][metadata_key]["channel_id_to_electrode_metadata_key"] = {
         "0": "electrode_0",
         "1": "electrode_1",
         "2": "electrode_2",
@@ -413,7 +414,7 @@ deprecated in pynwb:
         "electrode_3": {"electrode_group_metadata_key": "ElectrodeGroup"},
     }
     ecephys["ElectrodesTable"] = {"rows": rows}
-    ecephys["ElectricalSeries"][metadata_key]["channel_to_electrode"] = {
+    ecephys["ElectricalSeries"][metadata_key]["channel_id_to_electrode_metadata_key"] = {
         "0": "electrode_0",
         "1": "electrode_1",
         "2": "electrode_2",
@@ -537,7 +538,7 @@ placement in the brain:
 
 ``channel_id_to_contact_id`` takes **channel ids as keys** and **probe contact ids as values**.
 Contacts absent from the values are not recorded by this interface. This differs from
-``channel_to_electrode``, whose values are electrode-row metadata keys (see
+``channel_id_to_electrode_metadata_key``, whose values are electrode-row metadata keys (see
 :ref:`ecephys_channel_to_electrode`). If you already wired the probe with
 ``probe.set_device_channel_indices``, omit ``channel_id_to_contact_id``.
 
@@ -555,9 +556,9 @@ Attaching the probe supplies three things when the file is written:
 What the probe cannot supply is where it was implanted. ``location``, and the ``x``, ``y`` and ``z``
 stereotaxic coordinates, stay yours to state exactly as in the previous scenario.
 
-If you annotated the electrodes before attaching the probe, keep the ``channel_to_electrode`` mapping
-you saved with them. The probe then adds its contact names and positions to those same rows, and your
-locations and coordinates stay as you wrote them.
+If you annotated the electrodes before attaching the probe, keep the
+``channel_id_to_electrode_metadata_key`` mapping you saved with them. The probe then adds its contact
+names and positions to those same rows, and your locations and coordinates stay as you wrote them.
 
 .. _ecephys_electrode_grouping:
 
@@ -654,7 +655,7 @@ visible together in the electrode-row metadata.
             "electrode_3": {"electrode_group_metadata_key": "shank_2", "location": "CA1"},
         },
     }
-    ecephys["ElectricalSeries"]["two_shanks"]["channel_to_electrode"] = {
+    ecephys["ElectricalSeries"]["two_shanks"]["channel_id_to_electrode_metadata_key"] = {
         "0": "electrode_0",
         "1": "electrode_1",
         "2": "electrode_2",
@@ -720,7 +721,7 @@ within one probe: the groups now point to distinct devices.
             "electrode_3": {"electrode_group_metadata_key": "right", "location": "CA3"},
         },
     }
-    ecephys["ElectricalSeries"]["two_probes"]["channel_to_electrode"] = {
+    ecephys["ElectricalSeries"]["two_probes"]["channel_id_to_electrode_metadata_key"] = {
         "0": "electrode_0",
         "1": "electrode_1",
         "2": "electrode_2",
@@ -754,11 +755,10 @@ described separately.
 Electrodes without recorded channels
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-A probe can have electrodes that are not connected to any
-of the channels in this recording. You can still describe those electrodes in
-``ElectrodesTable["rows"]``. The series' ``channel_to_electrode`` mapping then identifies which
-electrode supplied each recorded channel: its keys are **channel ids**, and its values are
-**electrode row keys**.
+A probe can have electrodes that are not connected to any of the channels in this recording. You can
+still describe those electrodes in ``ElectrodesTable["rows"]``. The series'
+``channel_id_to_electrode_metadata_key`` mapping then identifies which electrode supplied each recorded
+channel: its keys are **channel ids**, and its values are **electrode row keys**.
 
 For example, suppose a probe has four electrodes, listed in your metadata as ``electrode_0`` through
 ``electrode_3``, but only two recording channels. If channel 0 is connected to electrode 0 and channel 1
@@ -766,13 +766,14 @@ to electrode 2, the mapping is:
 
 .. code-block:: python
 
-    channel_to_electrode = {
+    channel_id_to_electrode_metadata_key = {
         "0": "electrode_0",
         "1": "electrode_2",
     }
 
 Supply this dictionary under
-``metadata["Ecephys"]["ElectricalSeries"][metadata_key]["channel_to_electrode"]``. The resulting file has:
+``metadata["Ecephys"]["ElectricalSeries"][metadata_key]["channel_id_to_electrode_metadata_key"]``. The
+resulting file has:
 
 - Two columns of traces in the ``ElectricalSeries``, one per recorded channel.
 - Four rows in the electrodes table: the two recorded electrodes first, followed by the unrecorded ones.
@@ -781,10 +782,11 @@ Supply this dictionary under
 
 The electrode table describes the electrodes; the mapping describes their connections to the recorded
 channels. Each recorded channel must map to an electrode, but not every electrode needs a recorded
-channel. Each series saves its own ``channel_to_electrode`` mapping, connecting channel ids to keys
-in the shared ``ElectrodesTable["rows"]`` dictionary. The writer translates these handles into numeric
-row indices for ``ElectricalSeries.electrodes``. Channel ids are not channel names: a SpikeGLX channel
-has id ``imec0.ap#AP0`` and name ``AP0``, while an Intan channel can have id ``A-000`` and name ``F1-01``.
+channel. Each series saves its own ``channel_id_to_electrode_metadata_key`` mapping, connecting channel
+ids to keys in the shared ``ElectrodesTable["rows"]`` dictionary. The writer translates these handles
+into numeric row indices for ``ElectricalSeries.electrodes``. Channel ids are not channel names: a
+SpikeGLX channel has id ``imec0.ap#AP0`` and name ``AP0``, while an Intan channel can have id ``A-000``
+and name ``F1-01``.
 
 The first walkthrough generated the mapping alongside its one-row-per-channel annotations. Here we
 supply the connections explicitly because only two of the four electrodes were recorded:
@@ -808,7 +810,7 @@ supply the connections explicitly because only two of the four electrodes were r
             "CA1_e3": {"electrode_group_metadata_key": "shank", "location": "CA1"},
         },
     }
-    metadata["Ecephys"]["ElectricalSeries"]["probe0"]["channel_to_electrode"] = {
+    metadata["Ecephys"]["ElectricalSeries"]["probe0"]["channel_id_to_electrode_metadata_key"] = {
         channel_ids[0]: "CA1_e0",
         channel_ids[1]: "CA1_e2",
     }
@@ -879,12 +881,12 @@ relationships, not Plexon or Neuralynx reader behavior.
     ecephys["ElectricalSeries"][raw_key].update(
         name="ElectricalSeriesRaw",
         description="Synthetic example of a wideband recording stream.",
-        channel_to_electrode={"0": "electrode_a", "1": "electrode_b"},
+        channel_id_to_electrode_metadata_key={"0": "electrode_a", "1": "electrode_b"},
     )
     ecephys["ElectricalSeries"][field_key].update(
         name="ElectricalSeriesField",
         description="Synthetic example of a field-potential recording stream.",
-        channel_to_electrode={"0": "electrode_b", "1": "electrode_a"},
+        channel_id_to_electrode_metadata_key={"0": "electrode_b", "1": "electrode_a"},
     )
 
     nwbfile = converter.create_nwbfile(metadata=metadata)
@@ -958,9 +960,8 @@ Deleting a row field lets the writer use the recording's value; for ``location``
 ``"unknown"`` if the source provides none. A custom column's blank description must be filled in or
 deleted to use the description supplied by the recording.
 
-Attaching the probe first lets the template prefill its geometry and contact identities. If you attach
-it later, keep the saved mapping and remove blank row fields that should inherit the newly available
-values. You can add rows for electrodes that are not
-connected to this recording's channels; those rows do not need an entry in ``channel_to_electrode``.
-The same structure is available as YAML and JSON at
-:ref:`ecephys_metadata_template`.
+Attaching the probe first lets the template prefill its geometry and contact identities. If you attach it
+later, keep the saved mapping and remove blank row fields that should inherit the newly available values.
+You can add rows for electrodes that are not connected to this recording's channels; those rows do not
+need an entry in ``channel_id_to_electrode_metadata_key``. The same structure is available as YAML and
+JSON at :ref:`ecephys_metadata_template`.

@@ -823,12 +823,12 @@ def _add_recording_segment_to_nwbfile(
                 f"metadata['Ecephys']['ElectricalSeries'] does not contain key '{metadata_key}'. "
                 f"Available keys: {sorted(electrical_series_metadata_dict)}"
             )
-        # ``channel_to_electrode`` addresses rows of the electrodes table, which the region above was
+        # ``channel_id_to_electrode_metadata_key`` addresses rows of the electrodes table, which the region above was
         # already built from. It is not a field of the series, so it never reaches the constructor.
         series_metadata = {
             field: value
             for field, value in electrical_series_metadata_dict[metadata_key].items()
-            if field != "channel_to_electrode"
+            if field != "channel_id_to_electrode_metadata_key"
         }
         # A blank the template offered and nobody filled. pynwb would quietly take ``None`` for its
         # default, which is the guess a blank exists to prevent.
@@ -1448,7 +1448,7 @@ def _add_electrodes_to_nwbfile(
         for the column's type is used for anything not named here.
     metadata_key : str, optional
         Key of this recording's entry under ``metadata["Ecephys"]["ElectricalSeries"]``, which is where a
-        ``channel_to_electrode`` mapping is read from. Only needed when the channels were remapped.
+        ``channel_id_to_electrode_metadata_key`` mapping is read from. Only needed when the channels were remapped.
 
     Returns
     -------
@@ -2261,8 +2261,8 @@ def add_recording_metadata_to_nwbfile(
         dictionary, a sensible default value based on the type of `sample_data` will be used.
     metadata_key : str, optional
         Key of this recording's entry under ``metadata["Ecephys"]["ElectricalSeries"]``. Only the
-        ``channel_to_electrode`` mapping is read from it, so it is needed when the electrodes registry is
-        used and the channels were remapped, and ignored otherwise. It is read whether or not the series
+        ``channel_id_to_electrode_metadata_key`` mapping is read from it, so it is needed when the electrodes
+        registry is used and the channels were remapped, and ignored otherwise. It is read whether or not the series
         itself is written, since an interface is one recording and the key already identifies it.
     """
     # Old-shaped metadata is converted here as well, since this is public and reachable without going

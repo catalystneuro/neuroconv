@@ -169,7 +169,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
                 properties=dict(
                     name=dict(type="string", pattern="^[^/]*$"),
                     description=dict(type="string"),
-                    channel_to_electrode=dict(
+                    channel_id_to_electrode_metadata_key=dict(
                         type="object",
                         additionalProperties=dict(type="string"),
                         description=(
@@ -453,9 +453,9 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
                 specification["description"] = None
 
         metadata["Ecephys"]["ElectrodesTable"] = electrodes_table
-        metadata["Ecephys"]["ElectricalSeries"][self.metadata_key]["channel_to_electrode"] = electrodes_metadata[
-            "channel_to_electrode"
-        ]
+        metadata["Ecephys"]["ElectricalSeries"][self.metadata_key]["channel_id_to_electrode_metadata_key"] = (
+            electrodes_metadata["channel_id_to_electrode_metadata_key"]
+        )
         # The column-description list said the same thing in the weaker form and its descriptions have
         # been carried across, so leaving it would describe the table twice.
         metadata["Ecephys"].pop("Electrodes", None)

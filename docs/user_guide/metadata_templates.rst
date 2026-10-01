@@ -43,8 +43,9 @@ Extracellular Electrophysiology
 -------------------------------
 
 One probe and its model, the electrode groups pointing at the probe, the electrodes table stated row by
-row, and the ``ElectricalSeries`` whose ``channel_to_electrode`` says which row each channel recorded.
-Rename ``ecephys_recording`` to whatever ``metadata_key`` the interface was constructed with.
+row, and the ``ElectricalSeries`` whose ``channel_id_to_electrode_metadata_key`` says which row each
+channel recorded. Rename ``ecephys_recording`` to whatever ``metadata_key`` the interface was constructed
+with.
 
 The rows are the part that scales with the recording. ``get_metadata_template()`` returns one per
 channel, keyed ``{group}_{contact}`` where the format names its contacts and ``{group}_{channel}``

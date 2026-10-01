@@ -76,7 +76,7 @@ the registries that own them, shared with the other modalities:
             "imec0.ap": {                                     # keyed by the interface's metadata_key
                 "name": "ElectricalSeriesAP",
                 "description": "Raw action-potential band, 30 kHz.",
-                "channel_to_electrode": {"imec0.ap#AP0": "shank_0_e0"},  # channel id -> a key in rows
+                "channel_id_to_electrode_metadata_key": {"imec0.ap#AP0": "shank_0_e0"},  # -> rows
             },
         },
     }
@@ -85,8 +85,8 @@ the registries that own them, shared with the other modalities:
     metadata["Ecephys"]["Electrodes"] = [{"name": "imp", "description": "Electrode impedance in ohms."}]
 
 A series entry is passed to the ``ElectricalSeries`` constructor, so every field in it is a pynwb
-argument except ``channel_to_electrode``, which the writer pops by name. A ``metadata_key`` naming no
-entry raises: that is a caller mistake and not absent metadata.
+argument except ``channel_id_to_electrode_metadata_key``, which the writer pops by name. A
+``metadata_key`` naming no entry raises: that is a caller mistake and not absent metadata.
 
 A group entry that omits ``description`` or ``location`` has them filled from the modality's placeholder
 factory. A group naming no ``device_metadata_key`` falls to the attached probe's identity when the
@@ -95,9 +95,9 @@ recording carries one probe, and to ``PlaceholderElectrodeDevice`` otherwise. Tw
 to agree, and regrouping the channels after an interface set ``group_name`` at construction raises.
 
 ``ElectrodesTable`` is optional. Absent, the table is derived from the recording's channels and
-properties. Present, each writing series must supply ``channel_to_electrode``, covering every current
-channel and pointing to declared row keys. Source properties follow that saved association before
-annotations are overlaid: a row wins for the fields it states, including explicit ``None`` values,
+properties. Present, each writing series must supply ``channel_id_to_electrode_metadata_key``, covering
+every current channel and pointing to declared row keys. Source properties follow that saved association
+before annotations are overlaid: a row wins for the fields it states, including explicit ``None`` values,
 and inherits the rest. Row keys are handles, not a formula the writer recomputes to locate annotations.
 The template generates rows and their mapping together; manual registries must save both as well.
 
@@ -121,9 +121,9 @@ path, since a row that omits it inherits the recording's value.
 The cross-references resolve as follows. ``device_metadata_key`` goes into the shared top-level
 ``metadata["Devices"]`` and ``device_model_metadata_key`` into ``metadata["DeviceModels"]``.
 ``electrode_group_metadata_key`` goes into ``metadata["Ecephys"]["ElectrodeGroups"]``, and each value of
-``channel_to_electrode`` is a key of ``metadata["Ecephys"]["ElectrodesTable"]["rows"]``. A key naming no
-entry raises in all four cases. The ``ElectricalSeries`` to ``ElectrodeGroup`` relationship has no key,
-for the reason given below.
+``channel_id_to_electrode_metadata_key`` is a key of ``metadata["Ecephys"]["ElectrodesTable"]["rows"]``.
+A key naming no entry raises in all four cases. The ``ElectricalSeries`` to ``ElectrodeGroup``
+relationship has no key, for the reason given below.
 
 A recording interface's ``metadata_key`` addresses its ``ElectricalSeries`` entry and nothing else. The
 migrated interfaces resolve a fixed snake_case constant in ``__init__``: ``"intan_recording"``,
@@ -200,9 +200,9 @@ The stated table is an overlay on the recording, not a replacement for it
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The table is derived from the recording on every path. When a registry is supplied, the saved
-``channel_to_electrode`` mapping addresses each source row to its annotation row before applying
-user-stated fields. Source geometry and contact identity therefore reach custom row keys too, rather
-than being discarded because the generated key differs. Explicit nulls still mean null; deleting a
+``channel_id_to_electrode_metadata_key`` mapping addresses each source row to its annotation row before
+applying user-stated fields. Source geometry and contact identity therefore reach custom row keys too,
+rather than being discarded because the generated key differs. Explicit nulls still mean null; deleting a
 field requests inheritance from the source.
 
 This separates three things: a metadata row handle, the channel's association to it, and the physical

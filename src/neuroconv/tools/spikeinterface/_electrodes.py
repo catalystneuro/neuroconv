@@ -4,7 +4,7 @@
 one entry per physical contact, keyed by a handle, each stating its column values in full and pointing at
 its group with ``electrode_group_metadata_key``. ``columns`` describes those columns, keyed by the field a
 row states, in the shape the events tables already use. A channel reaches a declared row through
-``channel_to_electrode`` on the series entry. Rows and their mapping are generated together; the saved
+``channel_id_to_electrode_metadata_key`` on the series entry. Rows and their mapping are generated together; the saved
 mapping remains authoritative if probe attachment later changes the recording's derived identities.
 
 The block is an override layer over the recording. The table is derived from the recording's channels and
@@ -115,7 +115,7 @@ def _build_electrodes_metadata(
     property_descriptions: dict | None = None,
     exclude: tuple = (),
 ) -> dict:
-    """The ``ElectrodesTable`` block and the ``channel_to_electrode`` map for a recording.
+    """The ``ElectrodesTable`` block and the ``channel_id_to_electrode_metadata_key`` map for a recording.
 
     Every row is stated in full, so a user edits rather than authors. The rows are in the recording's
     channel order, which becomes the table's row order.
@@ -135,7 +135,7 @@ def _build_electrodes_metadata(
     Returns
     -------
     dict
-        ``{"ElectrodesTable": {"rows": ..., "columns": ...}, "channel_to_electrode": ...}``.
+        ``{"ElectrodesTable": {"rows": ..., "columns": ...}, "channel_id_to_electrode_metadata_key": ...}``.
     """
     from .spikeinterface import _build_electrode_column_data, _get_group_name
 
@@ -193,7 +193,7 @@ def _build_electrodes_metadata(
 
     return {
         "ElectrodesTable": {"rows": electrodes, "columns": electrode_columns},
-        "channel_to_electrode": channel_to_electrode,
+        "channel_id_to_electrode_metadata_key": channel_to_electrode,
     }
 
 
@@ -232,7 +232,9 @@ def _generate_electrodes_table(
         if metadata_key is not None and isinstance(electrical_series_metadata, dict)
         else {}
     )
-    channel_to_electrode = series_entry.get("channel_to_electrode") if isinstance(series_entry, dict) else None
+    channel_to_electrode = (
+        series_entry.get("channel_id_to_electrode_metadata_key") if isinstance(series_entry, dict) else None
+    )
 
     # The column-description list is the older, weaker way of saying the same thing and interfaces still
     # emit it, so it seeds the descriptions rather than being dropped.
@@ -267,14 +269,14 @@ def _generate_electrodes_table(
         if channel_to_electrode is None:
             raise ValueError(
                 f"metadata['Ecephys']['ElectricalSeries']['{metadata_key}'] must supply "
-                "'channel_to_electrode' when 'ElectrodesTable' is declared. Generate and keep the mapping "
-                "with the electrode rows, or use get_metadata_template(). The writer will not infer "
+                "'channel_id_to_electrode_metadata_key' when 'ElectrodesTable' is declared. Generate and keep "
+                "the mapping with the electrode rows, or use get_metadata_template(). The writer will not infer "
                 "an association from row names that may have changed after probe attachment."
             )
         electrode_key_by_channel = _resolve_channel_to_electrode_key(recording, metadata, metadata_key)
         mapped_rows = {}
         for channel_id, electrode_key in electrode_key_by_channel.items():
-            derived_key = generated["channel_to_electrode"][str(channel_id)]
+            derived_key = generated["channel_id_to_electrode_metadata_key"][str(channel_id)]
             entry = generated["ElectrodesTable"]["rows"][derived_key]
             contact_id = entry.get("electrode_name")
             stated_contact = stated_table["rows"][electrode_key].get("electrode_name")
@@ -333,7 +335,7 @@ def _overlay_stated_electrodes_table(*, derived: dict, stated) -> dict:
 def _resolve_channel_to_electrode_key(recording, metadata: dict, metadata_key: str | None) -> dict:
     """Map each of the recording's channel ids to the electrode key it is recorded by.
 
-    ``channel_to_electrode`` is required for a caller-declared registry. The default derivation is
+    ``channel_id_to_electrode_metadata_key`` is required for a caller-declared registry. The default derivation is
     used only for an entirely generated table. The map may name channels the recording no longer has,
     which is the ``stub_test`` and ``remove_channels`` case where the registry describes the full set,
     but it may never miss one the recording does have.
@@ -344,7 +346,7 @@ def _resolve_channel_to_electrode_key(recording, metadata: dict, metadata_key: s
     channel_to_electrode = None
     if metadata_key is not None:
         series_entry = ecephys_metadata.get("ElectricalSeries", {}).get(metadata_key, {})
-        channel_to_electrode = series_entry.get("channel_to_electrode")
+        channel_to_electrode = series_entry.get("channel_id_to_electrode_metadata_key")
 
     channel_ids = recording.get_channel_ids()
     if channel_to_electrode is None:
@@ -356,8 +358,8 @@ def _resolve_channel_to_electrode_key(recording, metadata: dict, metadata_key: s
         unmapped = [channel_id for channel_id in channel_ids if str(channel_id) not in stated]
         if unmapped:
             raise ValueError(
-                f"metadata['Ecephys']['ElectricalSeries']['{metadata_key}']['channel_to_electrode'] does not "
-                f"cover every channel of the recording. Missing: {unmapped[:10]}"
+                f"metadata['Ecephys']['ElectricalSeries']['{metadata_key}']['channel_id_to_electrode_metadata_key'] "
+                f"does not cover every channel of the recording. Missing: {unmapped[:10]}"
                 f"{' and more' if len(unmapped) > 10 else ''}. A partial mapping is not filled in, since a "
                 "channel with no electrode has nowhere to be written."
             )
@@ -394,7 +396,8 @@ def _validate_electrodes_registry(registry: dict, group_name_by_key: dict[str, s
             raise ValueError(
                 f"metadata['Ecephys']['ElectrodesTable']['rows'] keys '{key_by_identity[identity]}' and '{electrode_key}' "
                 f"both describe the electrode named '{identity[1]}' in group '{identity[0]}'. Use 1 key per "
-                "electrode; two channels reach one row through 'channel_to_electrode', not through two rows."
+                "electrode; two channels reach one row through 'channel_id_to_electrode_metadata_key', not "
+                "through two rows."
             )
         key_by_identity[identity] = electrode_key
 
