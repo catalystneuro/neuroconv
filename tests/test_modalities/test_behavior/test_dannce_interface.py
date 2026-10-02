@@ -10,6 +10,7 @@ from pynwb.testing.mock.file import mock_NWBFile, mock_Subject
 from scipy.io import savemat
 
 from neuroconv.datainterfaces import DANNCEInterface
+from neuroconv.datainterfaces.behavior.dannce.danncedatainterface import _NoTimingInformationWarning
 
 
 @pytest.fixture
@@ -794,7 +795,7 @@ class TestDANNCEInterfaceSync:
             DANNCEInterface(file_paths=file_path, sampling_rate=100.0, sync_path=not_sync_path)
 
     def test_no_sampling_rate_warns_at_init(self, classic_dannce_mat_file):
-        with pytest.warns(UserWarning, match="no 'sampling_rate' was given"):
+        with pytest.warns(_NoTimingInformationWarning, match="no 'sampling_rate' was given"):
             DANNCEInterface(file_paths=classic_dannce_mat_file[0])
 
 

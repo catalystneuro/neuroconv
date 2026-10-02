@@ -8,7 +8,7 @@ import numpy as np
 from pydantic import DirectoryPath, FilePath, validate_call
 from pynwb import NWBFile
 
-from .danncedatainterface import DANNCEInterface
+from .danncedatainterface import DANNCEInterface, _NoTimingInformationWarning
 from ..video.externalvideointerface import ExternalVideoInterface
 from ..video.video_utils import VideoCaptureContext
 from ....basedatainterface import BaseDataInterface
@@ -241,7 +241,7 @@ class DANNCEConverter(BaseDataInterface):
         # The interface warns at construction when it has no times of its own, but here the frametimes
         # may still supply them, so that warning is held back and given below only if they do not.
         with warnings.catch_warnings():
-            warnings.filterwarnings("ignore", message="No timing information is available", category=UserWarning)
+            warnings.simplefilter("ignore", category=_NoTimingInformationWarning)
             self._dannce_interface = DANNCEInterface(
                 file_paths=file_paths,
                 sampling_rate=sampling_rate,
@@ -314,7 +314,7 @@ class DANNCEConverter(BaseDataInterface):
                 "No timing information is available for the DANNCE pose estimation: no usable frametimes and "
                 "no 'sampling_rate'. Pass 'sampling_rate', or call "
                 "'converter.data_interface_objects[\"DANNCE\"].alignment[key].set_times(times)' before writing.",
-                UserWarning,
+                _NoTimingInformationWarning,
                 stacklevel=2,
             )
 

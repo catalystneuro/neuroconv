@@ -36,6 +36,14 @@ def _loadmat(file_path: Path, **kwargs):
         ) from error
 
 
+class _NoTimingInformationWarning(UserWarning):
+    """Raised when nothing gives the pose estimation its times yet: no ``sampling_rate`` and no times set.
+
+    A class of its own so that a caller about to supply the times, ``DANNCEConverter`` from the frametimes,
+    can hold this warning back without matching its text.
+    """
+
+
 def _read_mat(file_path: Path) -> dict:
     """Read a MATLAB file written by MATLAB itself (Label3D, sync, calibration), v5 or v7.3."""
     from pymatreader import read_mat
@@ -461,7 +469,7 @@ class DANNCEInterface(BasePoseEstimationInterface):
                 "No timing information is available for this DANNCE output: no 'sampling_rate' was given. "
                 "Pass 'sampling_rate', or call 'interface.alignment[interface.metadata_key].set_times(times)' "
                 "with one time per sample before writing.",
-                UserWarning,
+                _NoTimingInformationWarning,
                 stacklevel=2,
             )
 
