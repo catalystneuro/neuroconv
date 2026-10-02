@@ -1332,3 +1332,15 @@ def test_lookup_frames():
 
     frames, found = _lookup_frames(np.array([1, 2]), np.array([], dtype="int64"), np.array([], dtype="int64"))
     assert not found.any()
+
+
+def test_series_on_a_per_camera_entry_raise(dannce_mat_file):
+    """The keypoints belong to the MultiCameraPoseEstimation, so series given on a per-camera child are refused."""
+    interface = DANNCEInterface(file_paths=dannce_mat_file[0], sampling_rate=30.0)
+    metadata = interface.get_metadata()
+    metadata["Pose"]["PoseEstimations"]["dannce_Camera1_pose_estimation"]["PoseEstimationSeries"] = {
+        "landmark_0": {"name": "PoseEstimationSeriesLandmark0"}
+    }
+
+    with pytest.raises(ValueError, match="written without series of its own"):
+        interface.add_to_nwbfile(nwbfile=mock_NWBFile(), metadata=metadata)

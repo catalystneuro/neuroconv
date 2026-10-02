@@ -118,22 +118,14 @@ def _add_pose_estimation_to_nwbfile(
     if metadata is None:
         metadata = placeholders
 
-    # Checked rather than indexed: ``metadata`` is often a ``DeepDict``, where a missing key auto-vivifies
-    # into an empty entry instead of raising, and the write then succeeds against the placeholders with
-    # names nobody asked for.
     pose_metadata = metadata.get("Pose", {})
-    containers_metadata = pose_metadata.get("PoseEstimations", {})
-    if metadata_key not in containers_metadata:
-        raise ValueError(
-            f"metadata_key '{metadata_key}' was not found in metadata['Pose']['PoseEstimations'] "
-            f"(available keys: {list(containers_metadata)})."
-        )
-    container_entry = containers_metadata[metadata_key]
-    container_name = container_entry.get("name", placeholder_container["name"])
-
-    behavior_module = get_module(nwbfile=nwbfile, name="behavior", description="processed behavioral data")
-    if container_name in behavior_module.data_interfaces:
-        raise ValueError(f"The nwbfile already contains a data interface with the name '{container_name}'.")
+    container_entry, container_name, behavior_module = _get_container_entry(
+        nwbfile=nwbfile,
+        pose_metadata=pose_metadata,
+        registry="PoseEstimations",
+        metadata_key=metadata_key,
+        default_name=placeholder_container["name"],
+    )
 
     device = None
     device_metadata_key = container_entry.get("device_metadata_key")
@@ -238,18 +230,13 @@ def _add_multi_camera_pose_estimation_to_nwbfile(
     from ndx_pose import MultiCameraPoseEstimation, PoseEstimation
 
     pose_metadata = metadata.get("Pose", {})
-    containers_metadata = pose_metadata.get("MultiCameraPoseEstimations", {})
-    if metadata_key not in containers_metadata:
-        raise ValueError(
-            f"metadata_key '{metadata_key}' was not found in metadata['Pose']['MultiCameraPoseEstimations'] "
-            f"(available keys: {list(containers_metadata)})."
-        )
-    container_entry = containers_metadata[metadata_key]
-    container_name = container_entry.get("name", "MultiCameraPoseEstimation")
-
-    behavior_module = get_module(nwbfile=nwbfile, name="behavior", description="processed behavioral data")
-    if container_name in behavior_module.data_interfaces:
-        raise ValueError(f"The nwbfile already contains a data interface with the name '{container_name}'.")
+    container_entry, container_name, behavior_module = _get_container_entry(
+        nwbfile=nwbfile,
+        pose_metadata=pose_metadata,
+        registry="MultiCameraPoseEstimations",
+        metadata_key=metadata_key,
+        default_name="MultiCameraPoseEstimation",
+    )
 
     skeleton = _get_or_build_skeleton(
         nwbfile=nwbfile,
@@ -275,6 +262,12 @@ def _add_multi_camera_pose_estimation_to_nwbfile(
                 f"metadata['Pose']['PoseEstimations'] (available keys: {list(camera_entries)})."
             )
         camera_entry = camera_entries[camera_metadata_key]
+        if camera_entry.get("PoseEstimationSeries"):
+            raise ValueError(
+                f"The per-camera entry '{camera_metadata_key}' has 'PoseEstimationSeries', but a per-camera child "
+                "of a MultiCameraPoseEstimation is written without series of its own: the keypoints belong to "
+                f"the container. Put them in metadata['Pose']['MultiCameraPoseEstimations']['{metadata_key}']."
+            )
         camera_kwargs = dict(name=camera_entry.get("name", "PoseEstimation"))
         device_metadata_key = camera_entry.get("device_metadata_key")
         if device_metadata_key is not None:
@@ -303,6 +296,31 @@ def _add_multi_camera_pose_estimation_to_nwbfile(
     behavior_module.add(MultiCameraPoseEstimation(**container_kwargs))
 
     _add_skeleton_to_behavior_module(behavior_module=behavior_module, skeleton=skeleton)
+
+
+def _get_container_entry(
+    *, nwbfile: NWBFile, pose_metadata: dict, registry: str, metadata_key: str, default_name: str
+) -> tuple[dict, str, object]:
+    """Find a container's entry in ``metadata["Pose"][registry]``, and refuse a name the file already has.
+
+    Returns the entry, the container's name, and the behavior module it goes in.
+    """
+    # Checked rather than indexed: ``metadata`` is often a ``DeepDict``, where a missing key auto-vivifies
+    # into an empty entry instead of raising, and the write then succeeds against the placeholders with
+    # names nobody asked for.
+    containers_metadata = pose_metadata.get(registry, {})
+    if metadata_key not in containers_metadata:
+        raise ValueError(
+            f"metadata_key '{metadata_key}' was not found in metadata['Pose']['{registry}'] "
+            f"(available keys: {list(containers_metadata)})."
+        )
+    container_entry = containers_metadata[metadata_key]
+    container_name = container_entry.get("name", default_name)
+
+    behavior_module = get_module(nwbfile=nwbfile, name="behavior", description="processed behavioral data")
+    if container_name in behavior_module.data_interfaces:
+        raise ValueError(f"The nwbfile already contains a data interface with the name '{container_name}'.")
+    return container_entry, container_name, behavior_module
 
 
 def _get_or_build_skeleton(*, nwbfile: NWBFile, behavior_module, pose_metadata: dict, skeleton_metadata_key):
