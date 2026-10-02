@@ -830,12 +830,8 @@ class TestDANNCEInterfaceConversion:
         assert camera_pose_estimation.device.name == "Camera1"
         assert len(camera_pose_estimation.pose_estimation_series) == 0
 
-        # Build name-to-index mapping (NWB may return series in alphabetical order)
-        landmark_names = [f"landmark_{i}" for i in range(n_landmarks)]
-        name_to_idx = {}
-        for i, landmark in enumerate(landmark_names):
-            landmark_capitalized = landmark.replace("_", " ").title().replace(" ", "")
-            name_to_idx[f"PoseEstimationSeries{landmark_capitalized}"] = i
+        # Name-to-index mapping (NWB may return series in alphabetical order); "landmark_0" -> "Landmark0".
+        name_to_idx = {f"PoseEstimationSeriesLandmark{i}": i for i in range(n_landmarks)}
 
         # Verify data shapes and content
         for series_name, series in pe.pose_estimation_series.items():
@@ -1126,11 +1122,7 @@ class TestDANNCEInterfaceConversion:
         pe = nwbfile.processing["behavior"]["PoseEstimationDANNCERat2"]
         assert len(pe.pose_estimation_series) == n_landmarks
 
-        landmark_names = [f"landmark_{i}" for i in range(n_landmarks)]
-        name_to_idx = {}
-        for i, landmark in enumerate(landmark_names):
-            landmark_cap = landmark.replace("_", " ").title().replace(" ", "")
-            name_to_idx[f"PoseEstimationSeries{landmark_cap}"] = i
+        name_to_idx = {f"PoseEstimationSeriesLandmark{i}": i for i in range(n_landmarks)}
 
         for series_name, series in pe.pose_estimation_series.items():
             i = name_to_idx[series_name]
@@ -1315,3 +1307,15 @@ def test_natural_sort_key():
 
     assert sorted(["Camera10", "Camera2", "camera1"], key=_natural_sort_key) == ["camera1", "Camera2", "Camera10"]
     assert sorted(["100", "25", "0"], key=_natural_sort_key) == ["0", "25", "100"]
+
+
+def test_series_names_keep_the_landmark_capitals(dannce_mat_file):
+    """DANNCE landmarks are named like "SpineF" and "EarL"; their capitals survive in the series names."""
+    file_path, _, n_landmarks, _, _ = dannce_mat_file
+    landmark_names = ["SpineF", "EarL", "left_ear_tip"] + [f"landmark_{i}" for i in range(3, n_landmarks)]
+    interface = DANNCEInterface(file_paths=file_path, sampling_rate=30.0, landmark_names=landmark_names)
+
+    series = interface.get_metadata()["Pose"]["MultiCameraPoseEstimations"]["dannce"]["PoseEstimationSeries"]
+    assert series["SpineF"]["name"] == "PoseEstimationSeriesSpineF"
+    assert series["EarL"]["name"] == "PoseEstimationSeriesEarL"
+    assert series["left_ear_tip"]["name"] == "PoseEstimationSeriesLeftEarTip"

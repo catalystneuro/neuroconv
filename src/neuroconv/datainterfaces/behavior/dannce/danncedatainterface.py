@@ -692,9 +692,8 @@ class DANNCEInterface(BasePoseEstimationInterface):
         # millimeters, and its confidence is the peak of the 3D probability map.
         series_metadata = {}
         for landmark in self._landmark_names:
-            landmark_capitalized = landmark.replace("_", " ").title().replace(" ", "")
             series_metadata[landmark] = {
-                "name": f"PoseEstimationSeries{landmark_capitalized}",
+                "name": f"PoseEstimationSeries{to_camel_case(to_snake_case(landmark))}",
                 "unit": "millimeters",
                 "confidence_definition": "Maximum probability from the 3D probability volume.",
             }
