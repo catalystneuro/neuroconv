@@ -144,7 +144,10 @@ class DataInterfaceTestMixin:
         metadata_before_add_method = deepcopy(metadata)
 
         self.interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **self.conversion_options)
-        assert metadata == metadata_before_add_method
+        # Compared with `np.testing.assert_equal` rather than `==`: metadata may nest numpy arrays (e.g.
+        # DANNCE's calibration matrices), and `dict.__eq__` recurses into `==` on every value, which raises
+        # rather than returning a bool for an array with more than one element.
+        np.testing.assert_equal(metadata, metadata_before_add_method)
 
     @pytest.mark.parametrize("backend", ["hdf5", "zarr"])
     def test_all_conversion_checks(self, setup_interface, tmp_path, backend):
