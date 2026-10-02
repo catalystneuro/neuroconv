@@ -1,4 +1,5 @@
 import csv
+import re
 import warnings
 from copy import deepcopy
 from pathlib import Path
@@ -359,12 +360,12 @@ class DANNCEConverter(BaseDataInterface):
             # is written first and creates it; DANNCE then finds it by name.
             video_metadata["Devices"].pop(video_entry["device_metadata_key"], None)
 
-            video_description = f"Source video recorded by camera '{camera_name}'."
+            video_entry["device_metadata_key"] = camera_name
+            # Only what campy recorded goes into the description; without it the video keeps its own default.
             nominal_frame_rate = self._camera_capture_metadata.get(camera_name, {}).get("frameRate")
             if nominal_frame_rate:
-                video_description += f" Recorded at a nominal {nominal_frame_rate} fps."
+                video_entry["description"] = f"Recorded at a nominal {nominal_frame_rate} fps."
 
-            video_entry.update(description=video_description, device_metadata_key=camera_name)
             metadata = dict_deep_update(metadata, video_metadata)
 
             # Link this camera's per-camera PoseEstimation child to the video, by key.
@@ -387,11 +388,9 @@ class DANNCEConverter(BaseDataInterface):
             model_name = capture_metadata.get("cameraModel")
             manufacturer = capture_metadata.get("cameraMake")
             if model_name and manufacturer:
-                device_model_metadata_key = f"CameraModel_{model_name}"
-                metadata["DeviceModels"][device_model_metadata_key] = dict(
-                    name=model_name,
-                    manufacturer=manufacturer.title(),
-                )
+                # A snake_case registry key, like every other key; the name keeps the model as campy wrote it.
+                device_model_metadata_key = f"camera_model_{re.sub(r'[^0-9a-zA-Z]+', '_', model_name).lower()}"
+                metadata["DeviceModels"][device_model_metadata_key] = dict(name=model_name, manufacturer=manufacturer)
                 device_metadata["device_model_metadata_key"] = device_model_metadata_key
 
         return metadata

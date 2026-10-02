@@ -303,7 +303,7 @@ class TestDANNCEConverterCameraCaptureMetadata:
         assert len(metadata["DeviceModels"]) == 1
         ((device_model_metadata_key, device_model_metadata),) = metadata["DeviceModels"].items()
         assert device_model_metadata["name"] == "a2A1920-160ucBAS"
-        assert device_model_metadata["manufacturer"] == "Basler"
+        assert device_model_metadata["manufacturer"] == "basler"  # as campy writes it
 
         for camera_name, serial_number in dannce_converter_dir_with_camera_metadata["serial_numbers"].items():
             device_metadata = metadata["Devices"][camera_name]
@@ -328,6 +328,12 @@ class TestDANNCEConverterCameraCaptureMetadata:
             assert "serial_number" not in device_metadata
             assert "device_model_metadata_key" not in device_metadata
 
+            # Nothing recorded, nothing added: the video keeps the description its own interface gives it.
+            video_interface = converter._video_interfaces[camera_name]
+            own_metadata = video_interface.get_metadata()["Behavior"]["ExternalVideos"][video_interface.metadata_key]
+            video_entry = metadata["Behavior"]["ExternalVideos"][video_interface.metadata_key]
+            assert video_entry["description"] == own_metadata["description"]
+
     def test_run_conversion_roundtrip(self, tmp_path, dannce_converter_dir_with_camera_metadata):
         converter = DANNCEConverter(
             file_paths=dannce_converter_dir_with_camera_metadata["file_path"],
@@ -350,7 +356,7 @@ class TestDANNCEConverterCameraCaptureMetadata:
             assert len(nwbfile.device_models) == 1
             (device_model,) = nwbfile.device_models.values()
             assert device_model.name == "a2A1920-160ucBAS"
-            assert device_model.manufacturer == "Basler"
+            assert device_model.manufacturer == "basler"  # as campy writes it
 
             for camera_name, serial_number in dannce_converter_dir_with_camera_metadata["serial_numbers"].items():
                 camera = nwbfile.devices[camera_name]

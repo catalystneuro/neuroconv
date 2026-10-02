@@ -98,10 +98,10 @@ class TestDANNCEConverterSingleSubject(TestCase):
         and a shared DeviceModel (make/model), and its video description with the nominal frame rate."""
         metadata = self.converter.get_metadata()
 
-        device_model_metadata_key = "CameraModel_a2A1920-160ucBAS"
+        device_model_metadata_key = "camera_model_a2a1920_160ucbas"
         assert metadata["DeviceModels"][device_model_metadata_key] == dict(
             name="a2A1920-160ucBAS",
-            manufacturer="Basler",
+            manufacturer="basler",  # as campy writes it
         )
 
         for camera_name, serial_number in self.expected_serial_numbers.items():
