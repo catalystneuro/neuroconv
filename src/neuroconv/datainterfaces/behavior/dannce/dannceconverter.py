@@ -8,7 +8,13 @@ import numpy as np
 from pydantic import DirectoryPath, FilePath, validate_call
 from pynwb import NWBFile
 
-from .danncedatainterface import DANNCEInterface, _natural_sort_key, _NoTimingInformationWarning
+from .danncedatainterface import (
+    DANNCEInterface,
+    _natural_sort_key,
+    _NoTimingInformationWarning,
+    _SamplingRateFallbackWarning,
+    _TimingWarning,
+)
 from ..video.externalvideointerface import ExternalVideoInterface
 from ..video.video_utils import VideoCaptureContext
 from ....basedatainterface import BaseDataInterface
@@ -228,7 +234,7 @@ class DANNCEConverter(BaseDataInterface):
         # The interface warns at construction when it has no times of its own, but here the frametimes
         # may still supply them, so that warning is held back and given below only if they do not.
         with warnings.catch_warnings():
-            warnings.simplefilter("ignore", category=_NoTimingInformationWarning)
+            warnings.simplefilter("ignore", category=_TimingWarning)
             self._dannce_interface = DANNCEInterface(
                 file_paths=file_paths,
                 sampling_rate=sampling_rate,
@@ -273,8 +279,11 @@ class DANNCEConverter(BaseDataInterface):
 
     def _set_pose_times(self, *, camera_name: str, frametimes: np.ndarray | None, sampling_rate: float | None) -> None:
         """Time the pose estimation from the reference camera's frametimes, read at the frames the sync table
-        gives for each prediction. Without frametimes or without a sync table the interface keeps its own
-        times (``sampling_rate``), and a warning says when neither gives any."""
+        gives for each prediction.
+
+        Without frametimes or without a sync table the interface keeps its own times, computed from
+        ``sampling_rate``, and one warning says what is missing and how the times were computed instead.
+        """
         video_frame_indices = self._dannce_interface.video_frame_indices
         if frametimes is not None and video_frame_indices is not None:
             if video_frame_indices.max() >= len(frametimes):
@@ -288,22 +297,38 @@ class DANNCEConverter(BaseDataInterface):
             )
             return
 
-        if frametimes is not None:
-            warnings.warn(
-                f"Camera '{camera_name}' has a 'frametimes.npy', but there is no sync table to map the "
-                "predictions' sampleIDs to its frames, so the frametimes are not used for the pose estimation. "
-                "Pass 'sync_path' (a Label3D '*_dannce.mat' file or a 'sync/' folder) to use them.",
-                UserWarning,
-                stacklevel=5,  # _set_pose_times, __init__, two validate_call frames, caller
+        missing = []
+        if video_frame_indices is None:
+            missing.append(
+                "there is no sync table to map the predictions' sampleIDs to video frames (pass 'sync_path', a "
+                "Label3D '*_dannce.mat' file or a 'sync/' folder)"
             )
+        if frametimes is None:
+            missing.append(f"camera '{camera_name}' has no 'frametimes.npy'")
+        what_is_missing = "; ".join(missing)
+
         if sampling_rate is None:
             warnings.warn(
-                "No timing information is available for the DANNCE pose estimation: no usable frametimes and "
-                "no 'sampling_rate'. Pass 'sampling_rate', or call "
+                f"No timing information is available for the DANNCE pose estimation: {what_is_missing}, and no "
+                "'sampling_rate' was given. Pass 'sampling_rate', or call "
                 "'converter.data_interface_objects[\"DANNCE\"].alignment[key].set_times(times)' before writing.",
                 _NoTimingInformationWarning,
                 stacklevel=5,  # _set_pose_times, __init__, two validate_call frames, caller
             )
+            return
+
+        if video_frame_indices is None:
+            how = (
+                "arange(n_samples) / sampling_rate, taking the predictions to be consecutive frames from the start "
+                "of the recording"
+            )
+        else:
+            how = "the synced video frames divided by sampling_rate"
+        warnings.warn(
+            f"The DANNCE pose times are not measured: {what_is_missing}. They are {how}.",
+            _SamplingRateFallbackWarning,
+            stacklevel=5,  # _set_pose_times, __init__, two validate_call frames, caller
+        )
 
     def _set_video_times(
         self,

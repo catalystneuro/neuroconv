@@ -5,6 +5,10 @@ import pytest
 from scipy.io import savemat
 
 from neuroconv.converters import DANNCEConverter
+from neuroconv.datainterfaces.behavior.dannce.danncedatainterface import (
+    _SamplingRateFallbackWarning,
+    _TimingWarning,
+)
 
 from ._dannce_helpers import write_label3d_file
 
@@ -445,11 +449,10 @@ class TestDANNCEConverterSync:
                 file_paths=dannce_converter_dir["file_path"],
                 videos_folder_path=dannce_converter_dir["videos_folder_path"],
             )
-        messages = [str(record.message) for record in records]
-        assert any("no sync table to map" in message for message in messages)
-        assert any("No timing information is available for the DANNCE pose" in message for message in messages)
-        # The interface's own construction-time warning is held back in favor of the converter's.
-        assert not any("no 'sampling_rate' was given" in message for message in messages)
+        # One warning, the converter's, naming what is missing; the interface's own is held back.
+        (message,) = [str(record.message) for record in records]
+        assert message.startswith("No timing information is available for the DANNCE pose")
+        assert "no sync table to map" in message
 
         dannce_interface = converter._dannce_interface
         with pytest.raises(ValueError, match="No timing information is available"):
@@ -461,7 +464,38 @@ class TestDANNCEConverterSync:
             videos_folder_path=dannce_converter_dir["videos_folder_path"],
             sync_path=dannce_converter_dir["sync_path"],
         )
-        assert not [record for record in recwarn if "No timing information" in str(record.message)]
+        assert not [record for record in recwarn if issubclass(record.category, _TimingWarning)]
+
+    def test_sync_without_frametimes_warns_that_the_rate_is_used(self, dannce_converter_dir):
+        (dannce_converter_dir["videos_folder_path"] / "Camera1" / "frametimes.npy").unlink()
+
+        with pytest.warns(_SamplingRateFallbackWarning) as records:
+            converter = DANNCEConverter(
+                file_paths=dannce_converter_dir["file_path"],
+                videos_folder_path=dannce_converter_dir["videos_folder_path"],
+                sync_path=dannce_converter_dir["sync_path"],
+                sampling_rate=40.0,
+            )
+        (message,) = [str(record.message) for record in records if issubclass(record.category, _TimingWarning)]
+        assert "camera 'Camera1' has no 'frametimes.npy'" in message
+        assert "synced video frames divided by sampling_rate" in message
+
+        dannce_interface = converter._dannce_interface
+        np.testing.assert_allclose(
+            dannce_interface.alignment[dannce_interface.metadata_key].get_times(),
+            np.arange(dannce_converter_dir["n_samples"]) / 40.0,
+        )
+
+    def test_frametimes_without_sync_with_rate_warns_once(self, dannce_converter_dir):
+        with pytest.warns(_SamplingRateFallbackWarning) as records:
+            DANNCEConverter(
+                file_paths=dannce_converter_dir["file_path"],
+                videos_folder_path=dannce_converter_dir["videos_folder_path"],
+                sampling_rate=40.0,
+            )
+        (message,) = [str(record.message) for record in records if issubclass(record.category, _TimingWarning)]
+        assert "no sync table to map" in message
+        assert "consecutive frames from the start" in message
 
     def test_sync_frame_past_the_frametimes_raises(self, tmp_path, dannce_converter_dir):
         n_samples = dannce_converter_dir["n_samples"]
@@ -491,6 +525,5 @@ class TestDANNCEConverterWarningLocation:
                 file_paths=dannce_converter_dir["file_path"],
                 videos_folder_path=dannce_converter_dir["videos_folder_path"],
             )
-        messages = {str(record.message)[:40]: record.filename for record in records}
-        assert len(messages) == 2  # frametimes without sync, and no timing at all
-        assert set(messages.values()) == {__file__}
+        assert len(records) == 1  # what is missing, in one warning
+        assert records[0].filename == __file__

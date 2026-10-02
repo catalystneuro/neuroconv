@@ -40,12 +40,20 @@ def _loadmat(file_path: Path, **kwargs):
 _STUB_SAMPLES = 100
 
 
-class _NoTimingInformationWarning(UserWarning):
-    """Raised when nothing gives the pose estimation its times yet: no ``sampling_rate`` and no times set.
+class _TimingWarning(UserWarning):
+    """Raised when the pose times are not the measured ones: the sync table, the frametimes or both are missing.
 
-    A class of its own so that a caller about to supply the times, ``DANNCEConverter`` from the frametimes,
-    can hold this warning back without matching its text.
+    A class of its own so that a caller that knows more, ``DANNCEConverter`` with the frametimes, can hold these
+    warnings back without matching their text and say what is missing itself.
     """
+
+
+class _NoTimingInformationWarning(_TimingWarning):
+    """Raised when nothing gives the pose estimation its times yet: no ``sampling_rate`` and no times set."""
+
+
+class _SamplingRateFallbackWarning(_TimingWarning):
+    """Raised when the pose times are computed from ``sampling_rate`` rather than measured."""
 
 
 def _natural_sort_key(name: str) -> list:
@@ -395,9 +403,9 @@ class DANNCEInterface(BasePoseEstimationInterface):
             ``sync_path``) each sample's time is its video frame divided by this rate. Without one,
             the times are ``arange(n_samples) / sampling_rate``, which is only correct when the
             predicted samples are consecutive video frames from the start of the recording, with
-            none skipped. When it is not given, set the times with
+            none skipped; a warning at construction says so. When it is not given, set the times with
             ``interface.alignment[interface.metadata_key].set_times(times)`` before conversion; a
-            warning at construction says so.
+            warning at construction says that too.
         landmark_names : list of str, optional
             Names for each tracked landmark/body part. Must match the number of landmarks in the
             data. If not provided, defaults to ``["landmark_0", "landmark_1", ...]``.
@@ -515,6 +523,15 @@ class DANNCEInterface(BasePoseEstimationInterface):
                 "Pass 'sampling_rate', or call 'interface.alignment[interface.metadata_key].set_times(times)' "
                 "with one time per sample before writing.",
                 _NoTimingInformationWarning,
+                stacklevel=4,  # __init__, two validate_call frames, caller
+            )
+        elif self._video_frame_indices is None:
+            warnings.warn(
+                "There is no sync table to map the predictions' sampleIDs to video frames, so they are taken to be "
+                "consecutive frames from the start of the recording, timed as arange(n_samples) / sampling_rate. "
+                "Pass 'sync_path' (a Label3D '*_dannce.mat' file or a 'sync/' folder) if frames were skipped or the "
+                "predictions start later in the recording.",
+                _SamplingRateFallbackWarning,
                 stacklevel=4,  # __init__, two validate_call frames, caller
             )
 

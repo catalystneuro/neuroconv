@@ -10,7 +10,10 @@ from pynwb.testing.mock.file import mock_NWBFile, mock_Subject
 from scipy.io import savemat
 
 from neuroconv.datainterfaces import DANNCEInterface
-from neuroconv.datainterfaces.behavior.dannce.danncedatainterface import _NoTimingInformationWarning
+from neuroconv.datainterfaces.behavior.dannce.danncedatainterface import (
+    _NoTimingInformationWarning,
+    _SamplingRateFallbackWarning,
+)
 
 from ._dannce_helpers import write_label3d_file
 
@@ -739,7 +742,8 @@ class TestDANNCEInterfaceSync:
 
     def test_without_sync_samples_are_consecutive_frames(self, classic_dannce_mat_file):
         file_path, sample_ids = classic_dannce_mat_file
-        interface = DANNCEInterface(file_paths=file_path, sampling_rate=100.0)
+        with pytest.warns(_SamplingRateFallbackWarning, match="consecutive frames from the start"):
+            interface = DANNCEInterface(file_paths=file_path, sampling_rate=100.0)
 
         assert interface.video_frame_indices is None
         np.testing.assert_allclose(
