@@ -29,20 +29,22 @@ class DANNCEConverter(BaseDataInterface):
     each containing that camera's video file(s) and, per camera, an optional ``frametimes.npy`` file
     recording that camera's own per-frame acquisition times (not every DANNCE rig records with
     campy/pCamPI, so some or all cameras may lack one). This converter takes the path to that
-    ``videos`` folder, discovers each camera's video(s) and any frametimes from it, and uses them to
-    both write each camera's video and temporally align it -- and the DANNCE pose estimation itself,
-    via the first camera's frametimes -- without the caller needing to enumerate cameras or
-    timestamps by hand. A camera without frametimes keeps its video's own default timestamps (see
-    :class:`~neuroconv.datainterfaces.ExternalVideoInterface`); if the first camera has none, the
-    DANNCE pose estimation instead uses the ``sampling_rate`` argument (see
-    :class:`~neuroconv.datainterfaces.DANNCEInterface`).
+    ``videos`` folder, discovers each camera's video(s) and any frametimes from it, and writes each
+    camera's video timed by its frametimes, without the caller needing to enumerate cameras or
+    timestamps by hand. A camera without frametimes is timed from its video headers, its files placed
+    one after another when there are several (see
+    :class:`~neuroconv.datainterfaces.ExternalVideoInterface`).
 
-    ``DANNCEInterface`` on its own can link each camera's source video via the ``source_videos``
-    argument of its ``add_to_nwbfile``, but doing so safely requires the video ``ImageSeries`` to
-    already be written to the ``NWBFile`` first, and then looked up by name to pass the live
-    objects through -- easy to get wrong (write order, name matching) when wiring up interfaces
-    by hand in an ``NWBConverter``. This converter does that wiring internally, so a user combining
-    DANNCE with source videos does not need to reimplement it.
+    The DANNCE pose estimation is timed by the first camera's frametimes, read at the video frame the
+    sync table (``sync_path``) gives for each prediction's ``sampleID``. Without frametimes or without
+    a sync table it uses ``sampling_rate`` instead (see :class:`~neuroconv.datainterfaces.DANNCEInterface`).
+
+    The videos and the pose share one ``Device`` per camera, a ``CalibratedCamera`` when calibration is
+    available, and each camera's per-camera ``PoseEstimation`` links its video as ``source_video``.
+    Wiring this up by hand means pointing each video's ``device_metadata_key`` at the camera's
+    ``Devices`` entry, setting ``source_video_metadata_key`` on each camera's entry in
+    ``metadata["Pose"]["PoseEstimations"]``, and writing the videos before the pose; this converter
+    does it internally.
     """
 
     display_name = "DANNCE with source videos"
