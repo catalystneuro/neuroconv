@@ -354,31 +354,35 @@ class DANNCEConverter(BaseDataInterface):
 
     def get_metadata(self) -> DeepDict:
         metadata = self._dannce_interface.get_metadata()
+
+        # Each camera's per-camera PoseEstimation entry is found through the metadata itself: it is the child
+        # of this interface's container whose device is that camera.
+        container_metadata = metadata["Pose"]["MultiCameraPoseEstimations"][self._dannce_interface.metadata_key]
+        camera_pose_estimation_metadata_keys = {
+            metadata["Pose"]["PoseEstimations"][key]["device_metadata_key"]: key
+            for key in container_metadata["pose_estimation_metadata_keys"]
+        }
+
         for camera_name in self._camera_names:
             video_interface = self._video_interfaces[camera_name]
             video_metadata = video_interface.get_metadata()
+            video_entry = video_metadata["Behavior"]["ExternalVideos"][video_interface.metadata_key]
             # Point the video at the same camera Device DANNCE registers (under `camera_name` in
-            # `metadata["Devices"]`), dropping the video interface's own default device entry (see
-            # ExternalVideoInterface.__init__: `f"{metadata_key}_camera"`), so the two interfaces share
-            # one Device (e.g. a calibrated one) instead of each creating their own. The video is written
-            # first and creates it; DANNCE then finds it by name.
-            video_metadata["Devices"].pop(f"{video_interface.metadata_key}_camera", None)
+            # `metadata["Devices"]`), dropping the device entry the video interface made for itself, so the two
+            # interfaces share one Device (e.g. a calibrated one) instead of each creating their own. The video
+            # is written first and creates it; DANNCE then finds it by name.
+            video_metadata["Devices"].pop(video_entry["device_metadata_key"], None)
 
             video_description = f"Source video recorded by camera '{camera_name}'."
             nominal_frame_rate = self._camera_capture_metadata.get(camera_name, {}).get("frameRate")
             if nominal_frame_rate:
                 video_description += f" Recorded at a nominal {nominal_frame_rate} fps."
 
-            video_metadata["Behavior"]["ExternalVideos"][video_interface.metadata_key].update(
-                description=video_description,
-                device_metadata_key=camera_name,
-            )
+            video_entry.update(description=video_description, device_metadata_key=camera_name)
             metadata = dict_deep_update(metadata, video_metadata)
 
             # Link this camera's per-camera PoseEstimation child to the video, by key.
-            camera_pose_estimation_metadata_key = self._dannce_interface._get_camera_pose_estimation_metadata_key(
-                camera_name
-            )
+            camera_pose_estimation_metadata_key = camera_pose_estimation_metadata_keys[camera_name]
             metadata["Pose"]["PoseEstimations"][camera_pose_estimation_metadata_key][
                 "source_video_metadata_key"
             ] = video_interface.metadata_key
