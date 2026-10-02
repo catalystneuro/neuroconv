@@ -223,22 +223,21 @@ class TestDANNCEConverterDiscovery:
         with pytest.raises(ValueError, match="No timing information is available"):
             converter._dannce_interface.alignment[converter._dannce_interface.metadata_key].get_times()
 
-    def test_multi_segment_no_frametimes_uses_sampling_rate_fallback(
+    def test_multi_segment_no_frametimes_placed_one_after_another(
         self, dannce_converter_dir_multi_segment_no_frametimes
     ):
-        """A camera split across multiple video files with no 'frametimes.npy' at all cannot rely on
-        ExternalVideoInterface's own single-file default (it doesn't know the gap between segments),
-        so 'sampling_rate' must be used to synthesize contiguous per-segment timestamps instead."""
+        """A camera split across several video files with no 'frametimes.npy' has its files placed one after
+        another from their headers (40 fps here), so no 'sampling_rate' is needed for the videos."""
         fixture = dannce_converter_dir_multi_segment_no_frametimes
         converter = DANNCEConverter(
             file_paths=fixture["file_path"],
             videos_folder_path=fixture["videos_folder_path"],
-            sampling_rate=10.0,
+            sampling_rate=10.0,  # for the pose only
         )
 
         n_per_segment = fixture["n_frames_per_segment"]
-        expected_first_segment = np.arange(n_per_segment) / 10.0
-        expected_second_segment = np.arange(n_per_segment, 2 * n_per_segment) / 10.0
+        expected_first_segment = np.arange(n_per_segment) / 40.0
+        expected_second_segment = np.arange(n_per_segment, 2 * n_per_segment) / 40.0
 
         for camera_name in fixture["camera_names"]:
             video_interface = converter._video_interfaces[camera_name]
@@ -247,16 +246,8 @@ class TestDANNCEConverterDiscovery:
             np.testing.assert_allclose(
                 video_interface.alignment[second_segment_key].get_times(), expected_second_segment
             )
-
-    def test_multi_segment_no_frametimes_and_no_sampling_rate_raises(
-        self, dannce_converter_dir_multi_segment_no_frametimes
-    ):
-        fixture = dannce_converter_dir_multi_segment_no_frametimes
-        with pytest.raises(ValueError, match="Pass 'sampling_rate'"):
-            DANNCEConverter(
-                file_paths=fixture["file_path"],
-                videos_folder_path=fixture["videos_folder_path"],
-            )
+            # Only the starts were stored, so the video is still written as a starting time and a rate.
+            assert video_interface._get_compact_timing() == pytest.approx((0.0, 40.0))
 
     def test_no_camera_subdirectories_raises(self, tmp_path, dannce_converter_dir):
         empty_videos_folder = tmp_path / "empty_videos"

@@ -209,10 +209,9 @@ class DANNCEConverter(BaseDataInterface):
             See :class:`~neuroconv.datainterfaces.DANNCEInterface`.
         sampling_rate : float, optional
             See :class:`~neuroconv.datainterfaces.DANNCEInterface`. Forwarded to it directly, and used
-            for the DANNCE pose estimation's timestamps only if the first camera under
-            ``videos_folder_path`` has no ``frametimes.npy``. Also required, and used the same way, for
-            any camera with no ``frametimes.npy`` that is split across more than one video file (its
-            per-segment timestamps cannot otherwise be inferred).
+            for the DANNCE pose estimation's timestamps only when the first camera's frametimes cannot be
+            used. The videos are timed from their own headers, not from this rate: a camera without
+            ``frametimes.npy`` that is split across several files has the files placed one after another.
         verbose : bool, default: False
             Controls verbosity of the conversion process.
         """
@@ -277,7 +276,6 @@ class DANNCEConverter(BaseDataInterface):
                 video_paths=video_paths,
                 camera_name=camera_name,
                 frametimes=camera_frametimes.get(camera_name),
-                sampling_rate=sampling_rate,
             )
             self._video_interfaces[camera_name] = video_interface
 
@@ -327,14 +325,14 @@ class DANNCEConverter(BaseDataInterface):
         video_paths: list[Path],
         camera_name: str,
         frametimes: np.ndarray | None,
-        sampling_rate: float | None,
     ) -> None:
         """Time one camera's video files, each through its own alignment key, in the order of ``video_paths``.
 
         A camera with frametimes gets them, split across its files by frame count. A camera without them keeps
-        ExternalVideoInterface's own default (derived from the video file itself), except when it is split
-        across more than one file: that default cannot know the gap, if any, between files, so
-        ``sampling_rate`` is required to make them contiguous.
+        ExternalVideoInterface's own default, each file spaced at its header frame rate. Those files do not
+        say how they relate, so a camera split across several files has them placed one after another: the
+        first at zero and each next one where the previous ends, by its header frame count and rate. Only
+        their starts are stored, so the video is still written as a starting time and a rate.
         """
         if frametimes is not None:
             segment_timestamps = self._split_timestamps_by_segment(
@@ -345,20 +343,14 @@ class DANNCEConverter(BaseDataInterface):
         if len(video_paths) == 1:
             return
 
-        if sampling_rate is None:
-            raise ValueError(
-                f"Camera '{camera_name}' has {len(video_paths)} video files and no 'frametimes.npy'. Pass "
-                "'sampling_rate' so each segment's timestamps can be synthesized contiguously."
-            )
-        total_frames = 0
-        for video_path in video_paths:
-            with VideoCaptureContext(file_path=str(video_path)) as video:
-                total_frames += video.get_video_frame_count()
-        all_timestamps = np.arange(total_frames, dtype="float64") / sampling_rate
-        segment_timestamps = self._split_timestamps_by_segment(
-            timestamps=all_timestamps, video_paths=video_paths, camera_name=camera_name
-        )
-        self._set_segment_times(video_interface=video_interface, segment_timestamps=segment_timestamps)
+        frame_counts = video_interface.get_header_frame_counts()
+        frame_rates = video_interface.get_header_frame_rates()
+        starting_time = 0.0
+        for segment_key, frame_count, frame_rate in zip(
+            video_interface.alignment.keys(), frame_counts, frame_rates, strict=True
+        ):
+            video_interface.alignment[segment_key].move_start_to(starting_time)
+            starting_time += frame_count / frame_rate
 
     def get_metadata(self) -> DeepDict:
         metadata = self._dannce_interface.get_metadata()

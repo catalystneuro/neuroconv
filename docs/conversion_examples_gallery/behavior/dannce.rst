@@ -117,8 +117,9 @@ present, each camera's own frametimes align its video. The first camera's framet
 DANNCE pose estimation, read at the frame the sync table gives for each ``sampleID``, so no
 ``sampling_rate`` is needed. Without a sync table the frametimes are not used for the pose, since
 the frames of the predictions are unknown, and the converter warns. A rig recorded without
-campy/pCamPI (no ``frametimes.npy`` at all) can still be converted by passing ``sampling_rate``
-instead, which is then used for any camera missing its own frametimes.
+campy/pCamPI (no ``frametimes.npy`` at all) can still be converted: each video is timed from its own
+header, a camera split across several files has them placed one after another, and the pose uses
+``sampling_rate``.
 
 .. code-block:: python
 

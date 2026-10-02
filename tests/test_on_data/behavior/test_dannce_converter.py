@@ -159,7 +159,8 @@ class TestDANNCEConverterSingleSubject(TestCase):
 class TestDANNCEConverterClassicDannceNoFrametimes(TestCase):
     """'dannce/chunked_videos' is a classic (non-campy) DANNCE layout: 'kyle_camN_params.mat'
     calibration (exercises the generalized calibration filename pattern) and camera video folders
-    with no 'frametimes.npy'/'metadata.csv' at all (exercises the 'sampling_rate' fallback)."""
+    with no 'frametimes.npy'/'metadata.csv' at all: the video files are placed one after another from their
+    headers, and the pose is timed through the sync table and 'sampling_rate'."""
 
     camera_names = [f"Camera{i}" for i in range(1, 7)]
 
@@ -730,8 +731,8 @@ class TestDANNCEConverterTwoRunsForOneSubject(TestCase):
 class TestDANNCEConverterSdannceChunkedVideosWithFrametimes(TestCase):
     """'sdannce/chunked_videos' pairs multi-segment videos (two chunks per camera) with real
     'frametimes.npy' files -- unlike 'dannce/chunked_videos' (no frametimes at all), this exercises
-    the original per-segment timestamp-splitting path (frametimes present) rather than the
-    'sampling_rate' fallback."""
+    the per-segment timestamp-splitting path (frametimes present) rather than placing the files from
+    their headers."""
 
     camera_names = [f"Camera{i}" for i in range(1, 7)]
 
