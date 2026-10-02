@@ -55,6 +55,31 @@ def _read_mat(file_path: Path) -> dict:
     return read_mat(str(file_path))
 
 
+def _get_calibration(
+    *, intrinsic_matrix, rotation_matrix, translation_vector, radial_distortion, tangential_distortion
+):
+    """The ``CalibratedCamera`` fields of one camera, from the arrays every DANNCE calibration format stores."""
+    return dict(
+        intrinsic_matrix=np.asarray(intrinsic_matrix),
+        rotation_matrix=np.asarray(rotation_matrix),
+        translation_vector=np.asarray(translation_vector).squeeze(),
+        distortion_coefficients=np.concatenate(
+            [np.asarray(radial_distortion).squeeze(), np.asarray(tangential_distortion).squeeze()]
+        ),
+    )
+
+
+def _get_calibration_from_dannce_params(params: dict) -> dict:
+    """The ``CalibratedCamera`` fields from DANNCE's own ``K``, ``r``, ``t``, ``RDistort``, ``TDistort`` keys."""
+    return _get_calibration(
+        intrinsic_matrix=params["K"],
+        rotation_matrix=params["r"],
+        translation_vector=params["t"],
+        radial_distortion=params["RDistort"],
+        tangential_distortion=params["TDistort"],
+    )
+
+
 class DANNCEInterface(BasePoseEstimationInterface):
     """
     Data interface for DANNCE and social DANNCE (sDANNCE) 3D pose estimation datasets.
@@ -156,15 +181,7 @@ class DANNCEInterface(BasePoseEstimationInterface):
         camera_names = [f"Camera{camera_number}" for camera_number, _ in matches]
         camera_calibrations = {}
         for camera_name, (_, file_path) in zip(camera_names, matches):
-            calibration = _read_mat(file_path)
-            camera_calibrations[camera_name] = dict(
-                intrinsic_matrix=np.asarray(calibration["K"]),
-                rotation_matrix=np.asarray(calibration["r"]),
-                translation_vector=np.asarray(calibration["t"]).squeeze(),
-                distortion_coefficients=np.concatenate(
-                    [np.asarray(calibration["RDistort"]).squeeze(), np.asarray(calibration["TDistort"]).squeeze()]
-                ),
-            )
+            camera_calibrations[camera_name] = _get_calibration_from_dannce_params(_read_mat(file_path))
         return camera_names, camera_calibrations
 
     @staticmethod
@@ -178,13 +195,12 @@ class DANNCEInterface(BasePoseEstimationInterface):
         camera_names = list(data["camera_names"])
         camera_calibrations = {}
         for camera_name, params in zip(camera_names, data["camera_params"]):
-            camera_calibrations[camera_name] = dict(
-                intrinsic_matrix=np.asarray(params["camera_matrix"]),
-                rotation_matrix=np.asarray(params["rotation_matrix"]),
-                translation_vector=np.asarray(params["translation_vector"]).squeeze(),
-                distortion_coefficients=np.concatenate(
-                    [np.asarray(params["r_distort"]).squeeze(), np.asarray(params["t_distort"]).squeeze()]
-                ),
+            camera_calibrations[camera_name] = _get_calibration(
+                intrinsic_matrix=params["camera_matrix"],
+                rotation_matrix=params["rotation_matrix"],
+                translation_vector=params["translation_vector"],
+                radial_distortion=params["r_distort"],
+                tangential_distortion=params["t_distort"],
             )
         return camera_names, camera_calibrations
 
@@ -197,16 +213,10 @@ class DANNCEInterface(BasePoseEstimationInterface):
         if isinstance(params_list, dict):
             params_list = [params_list]
 
-        camera_calibrations = {}
-        for camera_name, params in zip(camera_names, params_list):
-            camera_calibrations[camera_name] = dict(
-                intrinsic_matrix=np.asarray(params["K"]),
-                rotation_matrix=np.asarray(params["r"]),
-                translation_vector=np.asarray(params["t"]).squeeze(),
-                distortion_coefficients=np.concatenate(
-                    [np.asarray(params["RDistort"]).squeeze(), np.asarray(params["TDistort"]).squeeze()]
-                ),
-            )
+        camera_calibrations = {
+            camera_name: _get_calibration_from_dannce_params(params)
+            for camera_name, params in zip(camera_names, params_list)
+        }
         return camera_names, camera_calibrations
 
     @staticmethod
