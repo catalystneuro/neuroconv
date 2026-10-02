@@ -1236,7 +1236,9 @@ class TestDANNCEInterfaceWarningLocation:
     def test_no_sampling_rate_warning_points_at_caller(self, classic_dannce_mat_file):
         with pytest.warns(_NoTimingInformationWarning) as records:
             DANNCEInterface(file_paths=classic_dannce_mat_file[0])
-        assert records[0].filename == __file__
+        # pytest.warns records every warning in the block, including unrelated ones from dependencies
+        timing_records = [record for record in records if issubclass(record.category, _NoTimingInformationWarning)]
+        assert timing_records and all(record.filename == __file__ for record in timing_records)
 
     def test_cameras_disagree_warning_points_at_caller(self, tmp_path, classic_dannce_mat_file):
         file_path, sample_ids = classic_dannce_mat_file
@@ -1253,7 +1255,8 @@ class TestDANNCEInterfaceWarningLocation:
             DANNCEInterface(
                 file_paths=file_path, sampling_rate=100.0, sync_path=sync_path, camera_names=["Camera1", "Camera2"]
             )
-        assert all(record.filename == __file__ for record in records)
+        disagree_records = [record for record in records if "maps some sampleIDs" in str(record.message)]
+        assert disagree_records and all(record.filename == __file__ for record in disagree_records)
 
 
 def test_label3d_calibration_file_is_read_once(tmp_path, classic_dannce_mat_file, monkeypatch):
