@@ -36,6 +36,10 @@ def _loadmat(file_path: Path, **kwargs):
         ) from error
 
 
+# How many samples ``add_to_nwbfile(stub_test=True)`` writes.
+_STUB_SAMPLES = 100
+
+
 class _NoTimingInformationWarning(UserWarning):
     """Raised when nothing gives the pose estimation its times yet: no ``sampling_rate`` and no times set.
 
@@ -591,7 +595,7 @@ class DANNCEInterface(BasePoseEstimationInterface):
         camera's per-frame timestamps (``frametimes.npy``)."""
         return self._video_frame_indices
 
-    def get_original_timestamps(self, stub_test: bool = False) -> np.ndarray:
+    def get_original_timestamps(self) -> np.ndarray:
         if self._sampling_rate is None:
             raise ValueError(
                 "No timing information is available for this DANNCE output. The prediction file records "
@@ -604,19 +608,7 @@ class DANNCEInterface(BasePoseEstimationInterface):
         else:
             # No sync table: assume the samples are consecutive frames from the start of the recording.
             frames = np.arange(len(self._sample_id))
-        frames = frames[:100] if stub_test else frames
         return frames / self._sampling_rate
-
-    def _get_timestamps(self, stub_test: bool = False) -> np.ndarray:
-        time_bearing_object = self.alignment[self.metadata_key]
-        if stub_test:
-            base_times = (
-                self.get_original_timestamps(stub_test=True)
-                if time_bearing_object._times is None
-                else time_bearing_object._times[:100]
-            )
-            return base_times + time_bearing_object._object_offset + self.alignment.offset
-        return time_bearing_object.get_times()
 
     def _get_keypoint_names(self) -> list[str]:
         return list(self._landmark_names)
@@ -766,7 +758,7 @@ class DANNCEInterface(BasePoseEstimationInterface):
         metadata : dict, optional
             Metadata dictionary. When ``None``, ``get_metadata()`` is used.
         stub_test : bool, default: False
-            If True, write only the first 100 frames to the NWB file for quick smoke testing.
+            If True, write only the first ``_STUB_SAMPLES`` (100) samples to the NWB file for quick smoke testing.
             The interface's internal data arrays are not mutated.
 
         Notes
@@ -783,15 +775,18 @@ class DANNCEInterface(BasePoseEstimationInterface):
         written first.
         """
         keypoint_data = self._get_keypoint_data()
+        timestamps = self._get_timestamps()
         if stub_test:
+            # The pose times are already in memory, so the stub is a slice of the aligned times.
             keypoint_data = {
-                landmark: (positions[:100], confidence[:100])
+                landmark: (positions[:_STUB_SAMPLES], confidence[:_STUB_SAMPLES])
                 for landmark, (positions, confidence) in keypoint_data.items()
             }
+            timestamps = timestamps[:_STUB_SAMPLES]
         _add_multi_camera_pose_estimation_to_nwbfile(
             nwbfile=nwbfile,
             keypoint_data=keypoint_data,
-            timestamps=self._get_timestamps(stub_test=stub_test),
+            timestamps=timestamps,
             metadata=metadata if metadata is not None else self.get_metadata(),
             metadata_key=self.metadata_key,
         )

@@ -1224,6 +1224,30 @@ class TestDANNCEInterfaceConversion:
         assert interface._pred.shape[0] == n_samples
         assert interface._p_max.shape[0] == n_samples
 
+    def test_stub_test_writes_the_aligned_times(self, tmp_path):
+        """The stub writes the first samples of the times as aligned, set times and shifts included."""
+        n_samples, n_landmarks = 500, 2
+        rng = np.random.default_rng(0)
+        file_path = tmp_path / "save_data_AVG_big.mat"
+        savemat(
+            str(file_path),
+            dict(
+                pred=rng.standard_normal((n_samples, 3, n_landmarks)),
+                p_max=rng.random((n_samples, n_landmarks)),
+                sampleID=np.arange(n_samples, dtype="float64").reshape(1, -1),
+            ),
+        )
+        interface = DANNCEInterface(file_paths=file_path, sampling_rate=30.0)
+        irregular_times = np.cumsum(rng.uniform(0.01, 0.05, n_samples))
+        interface.alignment[interface.metadata_key].set_times(irregular_times)
+        interface.alignment.shift_times(2.0)
+
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile, stub_test=True)
+
+        series = next(iter(nwbfile.processing["behavior"]["PoseEstimationDANNCE"].pose_estimation_series.values()))
+        np.testing.assert_allclose(series.timestamps[:], irregular_times[:100] + 2.0)
+
 
 class TestDANNCEInterfaceWarningLocation:
     """Warnings point at the caller's line, past pydantic's ``validate_call`` wrapper."""
