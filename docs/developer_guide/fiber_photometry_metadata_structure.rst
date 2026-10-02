@@ -126,7 +126,7 @@ The complete fiber photometry metadata structure (one interface with ``metadata_
 
             # Optional commanded-voltage drive signals (data-bearing; read from a stream)
             "CommandedVoltageSeries": {
-                "cv_dms": {"name": "commanded_voltage_dms", "stream_name": "Fi1r", "index": 0,
+                "cv_dms": {"name": "commanded_voltage_dms",
                            "unit": "volts", "frequency": 211.0},
             },
 
@@ -255,11 +255,30 @@ table:
    keyed by ``metadata_key``, every interface references the same entry by key — there is no per-interface
    copy of a shared object that could diverge.
 
-Commanded voltage is a special case among the shared containers: it is data-bearing (it reads samples
-from a stream, not just static metadata). Each ``CommandedVoltageSeries`` entry names the input
-``stream_name`` (and optional channel ``index``) to read; a table row then references the resulting
-series through its ``commanded_voltage_series_metadata_key``. This is how frequency-multiplexed setups
-associate each demodulated signal with the sinusoidal drive that produced it.
+Commanded voltage is data-bearing, so each drive belongs to the interface that declares its source
+stream. Declare drives at construction through ``commanded_voltage_streams``, keyed by their metadata
+and alignment keys:
+
+.. code-block:: python
+
+    interface = TDTFiberPhotometryInterface(
+        folder_path=...,
+        stream_names="Dv1A",
+        metadata_key="gcamp_dms",
+        commanded_voltage_streams={"cv_dms": {"stream_name": "Fi1d", "index": 0}},
+    )
+    interface.alignment["cv_dms"].shift_times(0.2)
+
+The constructor selects the input ``stream_name`` and optional channel ``index``; the corresponding
+``CommandedVoltageSeries`` metadata entry describes the output. Registering the drive at construction
+makes it available for alignment before writing. It has its own timestamps because drives and responses
+can have different sampling rates and sample counts.
+
+Each interface writes only its declared drives. A converter first writes the drives from all its
+interfaces, including nested converters, before writing response series and building the shared table.
+This lets the table resolve every ``commanded_voltage_series_metadata_key`` without making the first
+interface read or align another interface's drive. A standalone interface writes its own drives before
+building the table.
 
 
 Default Metadata

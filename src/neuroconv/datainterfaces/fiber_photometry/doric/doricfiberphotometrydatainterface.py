@@ -51,6 +51,7 @@ class DoricFiberPhotometryInterface(BaseFiberPhotometryInterface):
         stream_names: str | list[str],
         metadata_key: str | None = None,
         stream_indices: list[int] | None = None,
+        commanded_voltage_streams: dict[str, dict] | None = None,
         verbose: bool = False,
     ):
         """Initialize the DoricFiberPhotometryInterface.
@@ -67,6 +68,9 @@ class DoricFiberPhotometryInterface(BaseFiberPhotometryInterface):
             metadata. When ``None`` (default), it is generated from ``stream_names``.
         stream_indices : list of int, optional
             Column indices selecting which channels of the (column-stacked) stream data to keep.
+        commanded_voltage_streams : dict, optional
+            Drive streams keyed by their metadata and alignment keys. Each entry contains a
+            ``stream_name`` and an optional column ``index``.
         verbose : bool, default: False
             Whether to print status messages.
         """
@@ -75,6 +79,7 @@ class DoricFiberPhotometryInterface(BaseFiberPhotometryInterface):
             stream_names=stream_names,
             metadata_key=metadata_key,
             stream_indices=stream_indices,
+            commanded_voltage_streams=commanded_voltage_streams,
             verbose=verbose,
         )
         self._streams: dict[str, dict] = self._discover_streams(self.source_data["file_path"])

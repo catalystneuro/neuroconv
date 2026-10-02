@@ -675,22 +675,20 @@ class TestFiberPhotometryTemporalAlignment:
         assert_array_equal(legacy_times, interface.alignment[interface.metadata_key].get_times())
 
     def test_shift_moves_the_commanded_voltage_series_with_the_response_series(self, full_metadata):
-        # The second time-bearing object the writer produces, and the one place a shift has to be applied
-        # by hand, since it reads its stream directly instead of going through get_timestamps. A shift is
-        # interface-wide, so a commanded voltage left behind would misreport which samples it drove.
         # The mock has no dedicated commanded-voltage stream, so this points at a response stream: the
         # data is beside the point here, the timing is the subject.
         full_metadata["FiberPhotometry"]["CommandedVoltageSeries"] = dict(
             commanded_voltage=dict(
                 name="CommandedVoltageSeries470",
                 description="The voltage commanding the 470 nm excitation.",
-                stream_name="470nm",
-                index=0,
                 unit="volts",
                 frequency=211.0,
             )
         )
-        interface = MockFiberPhotometryInterface(num_fibers=2)
+        interface = MockFiberPhotometryInterface(
+            num_fibers=2,
+            commanded_voltage_streams=dict(commanded_voltage=dict(stream_name="470nm", index=0)),
+        )
         interface.alignment.shift_times(4.0)
 
         nwbfile = interface.create_nwbfile(metadata=full_metadata)

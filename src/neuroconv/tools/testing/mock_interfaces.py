@@ -767,6 +767,7 @@ class MockFiberPhotometryInterface(BaseFiberPhotometryInterface):
         sampling_frequency: float = 100.0,
         seed: int = 0,
         metadata_key: str | None = None,
+        commanded_voltage_streams: dict[str, dict] | None = None,
         verbose: bool = False,
     ):
         """Initialize a mock fiber photometry interface.
@@ -794,6 +795,9 @@ class MockFiberPhotometryInterface(BaseFiberPhotometryInterface):
             Seed for the synthetic data.
         metadata_key : str, optional
             Override the response-series metadata key (default derived from the wavelengths).
+        commanded_voltage_streams : dict, optional
+            Drive streams keyed by their metadata and alignment keys, each with a ``stream_name``
+            and an optional column ``index``.
         verbose : bool, default: False
             Whether to print status messages.
         """
@@ -810,7 +814,12 @@ class MockFiberPhotometryInterface(BaseFiberPhotometryInterface):
         self._seed = int(seed)
         # One source stream per wavelength, named after it so the derived metadata_key is readable.
         stream_names = [f"{wavelength:g}nm" for wavelength in self._excitation_wavelengths_in_nm]
-        super().__init__(stream_names=stream_names, metadata_key=metadata_key, verbose=verbose)
+        super().__init__(
+            stream_names=stream_names,
+            metadata_key=metadata_key,
+            commanded_voltage_streams=commanded_voltage_streams,
+            verbose=verbose,
+        )
 
     def _get_stream_data(self, *, stream_name: str) -> np.ndarray:
         # Deterministic per-wavelength synthetic trace (a distinct seed each, so the traces differ).

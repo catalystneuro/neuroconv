@@ -569,6 +569,7 @@ class _TDTFiberPhotometryInterfaceSingleSeries(TDTLoadMixin, BaseFiberPhotometry
         stream_names: str | list[str],
         metadata_key: str | None = None,
         stream_indices: list[int] | None = None,
+        commanded_voltage_streams: dict[str, dict] | None = None,
         verbose: bool = False,
     ):
         super().__init__(
@@ -576,6 +577,7 @@ class _TDTFiberPhotometryInterfaceSingleSeries(TDTLoadMixin, BaseFiberPhotometry
             stream_names=stream_names,
             metadata_key=metadata_key,
             stream_indices=stream_indices,
+            commanded_voltage_streams=commanded_voltage_streams,
             verbose=verbose,
         )
 
@@ -652,6 +654,7 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         stream_names: str | list[str] | None = None,
         metadata_key: str | None = None,
         stream_indices: list[int] | None = None,
+        commanded_voltage_streams: dict[str, dict] | None = None,
         verbose: bool = False,
     ):
         """Initialize the TDTFiberPhotometryInterface.
@@ -669,10 +672,15 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             metadata. When ``None`` (default), it is generated from ``stream_names``.
         stream_indices : list of int, optional
             Column indices selecting which channels of the (column-stacked) stream data to keep.
+        commanded_voltage_streams : dict, optional
+            Drive streams keyed by their metadata and alignment keys. Each entry contains a
+            ``stream_name`` and, for a multichannel stream, an optional column ``index``.
         verbose : bool, default: False
             Whether to print status messages.
         """
         if stream_names is None:
+            if commanded_voltage_streams:
+                raise ValueError("commanded_voltage_streams requires the single-series interface: pass stream_names.")
             warnings.warn(
                 "Constructing TDTFiberPhotometryInterface without `stream_names` uses the deprecated "
                 "multi-series behavior, which will be removed on or after February 2027. Pass "
@@ -688,6 +696,7 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
                 stream_names=stream_names,
                 metadata_key=metadata_key,
                 stream_indices=stream_indices,
+                commanded_voltage_streams=commanded_voltage_streams,
                 verbose=verbose,
             )
         self.verbose = verbose
