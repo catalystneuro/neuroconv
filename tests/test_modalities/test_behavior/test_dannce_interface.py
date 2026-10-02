@@ -12,6 +12,8 @@ from scipy.io import savemat
 from neuroconv.datainterfaces import DANNCEInterface
 from neuroconv.datainterfaces.behavior.dannce.danncedatainterface import _NoTimingInformationWarning
 
+from ._dannce_helpers import write_label3d_file
+
 
 @pytest.fixture
 def matlab_v73_file(tmp_path):
@@ -668,15 +670,6 @@ class TestDANNCEInterfaceMatlabV73:
             DANNCEInterface(file_paths=matlab_v73_file, sampling_rate=30.0)
 
 
-def _write_sync_entry_cells(camera_names, sample_ids, frames_per_camera):
-    sync = np.empty((len(camera_names), 1), dtype=object)
-    for index, frames in enumerate(frames_per_camera):
-        sync[index, 0] = dict(
-            data_sampleID=np.asarray(sample_ids, dtype="float64"), data_frame=np.asarray(frames, dtype="float64")
-        )
-    return sync
-
-
 @pytest.fixture
 def classic_dannce_mat_file(tmp_path):
     """Predictions with classic-DANNCE sampleIDs (1, 11, 21, ...), which are not frame indices."""
@@ -703,12 +696,8 @@ class TestDANNCEInterfaceSync:
         sync_path = tmp_path / "label3d_dannce.mat"
         camera_names = ["Camera1", "Camera2"]
         frames = np.arange(len(sample_ids))
-        savemat(
-            str(sync_path),
-            dict(
-                camnames=np.array(camera_names, dtype=object).reshape(1, -1),
-                sync=_write_sync_entry_cells(camera_names, sample_ids, [frames, frames]),
-            ),
+        write_label3d_file(
+            sync_path, camera_names=camera_names, sample_ids=sample_ids, frames_per_camera=[frames, frames]
         )
 
         interface = DANNCEInterface(
@@ -760,10 +749,7 @@ class TestDANNCEInterfaceSync:
     def test_sample_id_missing_from_sync_raises(self, tmp_path, classic_dannce_mat_file):
         file_path, sample_ids = classic_dannce_mat_file
         sync_path = tmp_path / "label3d_dannce.mat"
-        savemat(
-            str(sync_path),
-            dict(sync=_write_sync_entry_cells(["Camera1"], sample_ids[:-2], [np.arange(len(sample_ids) - 2)])),
-        )
+        write_label3d_file(sync_path, sample_ids=sample_ids[:-2], frames_per_camera=[np.arange(len(sample_ids) - 2)])
 
         with pytest.raises(ValueError, match="2 of the 10 predicted sampleIDs are not in the sync table"):
             DANNCEInterface(file_paths=file_path, sampling_rate=100.0, sync_path=sync_path)
@@ -772,12 +758,11 @@ class TestDANNCEInterfaceSync:
         file_path, sample_ids = classic_dannce_mat_file
         frames = np.arange(len(sample_ids))
         sync_path = tmp_path / "label3d_dannce.mat"
-        savemat(
-            str(sync_path),
-            dict(
-                camnames=np.array(["Camera1", "Camera2"], dtype=object).reshape(1, -1),
-                sync=_write_sync_entry_cells(["Camera1", "Camera2"], sample_ids, [frames, frames + 1]),
-            ),
+        write_label3d_file(
+            sync_path,
+            camera_names=["Camera1", "Camera2"],
+            sample_ids=sample_ids,
+            frames_per_camera=[frames, frames + 1],
         )
 
         with pytest.warns(UserWarning, match="camera 'Camera2' maps some sampleIDs to different frames"):
@@ -1253,12 +1238,11 @@ class TestDANNCEInterfaceWarningLocation:
         file_path, sample_ids = classic_dannce_mat_file
         frames = np.arange(len(sample_ids))
         sync_path = tmp_path / "label3d_dannce.mat"
-        savemat(
-            str(sync_path),
-            dict(
-                camnames=np.array(["Camera1", "Camera2"], dtype=object).reshape(1, -1),
-                sync=_write_sync_entry_cells(["Camera1", "Camera2"], sample_ids, [frames, frames + 1]),
-            ),
+        write_label3d_file(
+            sync_path,
+            camera_names=["Camera1", "Camera2"],
+            sample_ids=sample_ids,
+            frames_per_camera=[frames, frames + 1],
         )
 
         with pytest.warns(UserWarning, match="maps some sampleIDs to different frames") as records:
@@ -1273,18 +1257,13 @@ def test_label3d_calibration_file_is_read_once(tmp_path, classic_dannce_mat_file
     from neuroconv.datainterfaces.behavior.dannce import danncedatainterface
 
     file_path, sample_ids = classic_dannce_mat_file
-    params = np.empty((1, 1), dtype=object)
-    params[0, 0] = dict(
-        K=np.eye(3), r=np.eye(3), t=np.zeros((1, 3)), RDistort=np.zeros((1, 3)), TDistort=np.zeros((1, 2))
-    )
     label3d_path = tmp_path / "session_Label3D_dannce.mat"
-    savemat(
-        str(label3d_path),
-        dict(
-            camnames=np.array(["Camera1"], dtype=object).reshape(1, -1),
-            params=params,
-            sync=_write_sync_entry_cells(["Camera1"], sample_ids, [np.arange(len(sample_ids))]),
-        ),
+    write_label3d_file(
+        label3d_path,
+        camera_names=["Camera1"],
+        sample_ids=sample_ids,
+        frames_per_camera=[np.arange(len(sample_ids))],
+        with_calibration=True,
     )
 
     read_paths = []

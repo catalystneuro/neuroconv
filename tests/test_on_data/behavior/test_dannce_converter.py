@@ -35,7 +35,22 @@ DANNCE_DATA_PATH = BEHAVIOR_DATA_PATH / "dannce" / "dannce"
 SDANNCE_DATA_PATH = BEHAVIOR_DATA_PATH / "dannce" / "sdannce"
 
 
-class TestDANNCEConverterSingleSubject(TestCase):
+class _TestCaseWithTemporaryDirectory(TestCase):
+    """Gives each test class a temporary folder, ``cls.test_dir``, for the NWB files it writes."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.test_dir = Path(tempfile.mkdtemp())
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        try:
+            shutil.rmtree(cls.test_dir)
+        except PermissionError:
+            warn(f"Unable to cleanup testing data at {cls.test_dir}! Please remove it manually.")
+
+
+class TestDANNCEConverterSingleSubject(_TestCaseWithTemporaryDirectory):
     """Full happy-path coverage: 'sdannce/single_subject' has six campy-recorded cameras (video +
     frametimes.npy + metadata.csv), 'hires_camN_params.mat' calibration, and a single-subject (no
     animal axis) prediction file -- the direct replacement for this file's previous 2-camera,
@@ -50,6 +65,7 @@ class TestDANNCEConverterSingleSubject(TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
+        super().setUpClass()
         run_path = SDANNCE_DATA_PATH / "single_subject"
 
         with warnings.catch_warnings(record=True) as construction_warnings:
@@ -64,14 +80,6 @@ class TestDANNCEConverterSingleSubject(TestCase):
         cls.frametimes = np.load(run_path / "videos" / "Camera1" / "frametimes.npy")[1]
         dannce_interface = cls.converter.data_interface_objects["DANNCE"]
         dannce_interface.alignment[dannce_interface.metadata_key].set_times(cls.frametimes)
-        cls.test_dir = Path(tempfile.mkdtemp())
-
-    @classmethod
-    def tearDownClass(cls) -> None:
-        try:
-            shutil.rmtree(cls.test_dir)
-        except PermissionError:
-            warn(f"Unable to cleanup testing data at {cls.test_dir}! Please remove it manually.")
 
     def test_frametimes_without_sync_warn(self):
         assert any("no sync table to map" in message for message in self.construction_warnings)
@@ -156,7 +164,7 @@ class TestDANNCEConverterSingleSubject(TestCase):
                 assert pose_estimation_series.data.shape[0] == 50  # full session, shorter than the stub limit
 
 
-class TestDANNCEConverterClassicDannceNoFrametimes(TestCase):
+class TestDANNCEConverterClassicDannceNoFrametimes(_TestCaseWithTemporaryDirectory):
     """'dannce/chunked_videos' is a classic (non-campy) DANNCE layout: 'kyle_camN_params.mat'
     calibration (exercises the generalized calibration filename pattern) and camera video folders
     with no 'frametimes.npy'/'metadata.csv' at all: the video files are placed one after another from their
@@ -166,6 +174,7 @@ class TestDANNCEConverterClassicDannceNoFrametimes(TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
+        super().setUpClass()
         run_path = DANNCE_DATA_PATH / "chunked_videos"
 
         cls.converter = DANNCEConverter(
@@ -176,14 +185,6 @@ class TestDANNCEConverterClassicDannceNoFrametimes(TestCase):
             sampling_rate=100.0,
             metadata_key="PoseEstimationDANNCE",
         )
-        cls.test_dir = Path(tempfile.mkdtemp())
-
-    @classmethod
-    def tearDownClass(cls) -> None:
-        try:
-            shutil.rmtree(cls.test_dir)
-        except PermissionError:
-            warn(f"Unable to cleanup testing data at {cls.test_dir}! Please remove it manually.")
 
     def test_pose_times_through_sync(self):
         """sampleIDs 1 and 11 are sync rows for frames 0 and 1, so at 100 Hz the times are 0.00 and 0.01 s."""
@@ -218,7 +219,7 @@ class TestDANNCEConverterClassicDannceNoFrametimes(TestCase):
                 assert series.data.shape[0] == 2  # this stub prediction file covers 2 frames
 
 
-class TestDANNCEConverterPredictionsSplitAcrossJobs(TestCase):
+class TestDANNCEConverterPredictionsSplitAcrossJobs(_TestCaseWithTemporaryDirectory):
     """'sdannce/predictions_split_across_jobs' partitions one subject's 50-frame session between two
     files in the same run folder (frames 0-24 and 25-49) -- exercises 'file_paths' concatenation."""
 
@@ -226,6 +227,7 @@ class TestDANNCEConverterPredictionsSplitAcrossJobs(TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
+        super().setUpClass()
         run_path = SDANNCE_DATA_PATH / "predictions_split_across_jobs"
         predict_path = run_path / "SDANNCE" / "predict00"
 
@@ -238,14 +240,6 @@ class TestDANNCEConverterPredictionsSplitAcrossJobs(TestCase):
             metadata_key="PoseEstimationDANNCE",
         )
         cls.frametimes = np.load(run_path / "videos" / "Camera1" / "frametimes.npy")[1]
-        cls.test_dir = Path(tempfile.mkdtemp())
-
-    @classmethod
-    def tearDownClass(cls) -> None:
-        try:
-            shutil.rmtree(cls.test_dir)
-        except PermissionError:
-            warn(f"Unable to cleanup testing data at {cls.test_dir}! Please remove it manually.")
 
     def test_concatenated_into_one_continuous_session(self):
         assert self.converter._dannce_interface._pred.shape[0] == 50
@@ -280,7 +274,7 @@ class TestDANNCEConverterPredictionsSplitAcrossJobs(TestCase):
                 assert series.data.shape[0] == 50
 
 
-class TestDANNCEConverterMultipleSubjectsSharedDevices(TestCase):
+class TestDANNCEConverterMultipleSubjectsSharedDevices(_TestCaseWithTemporaryDirectory):
     """'sdannce/multiple_subjects_per_file/two_subjects' stores both rats' predictions in one file
     along a subject axis -- verifies the documented workflow of one DANNCEConverter (writing the
     shared videos) plus one bare DANNCEInterface per additional animal, sharing camera Devices."""
@@ -289,6 +283,7 @@ class TestDANNCEConverterMultipleSubjectsSharedDevices(TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
+        super().setUpClass()
         run_path = SDANNCE_DATA_PATH / "multiple_subjects_per_file" / "two_subjects"
         file_path = str(run_path / "SDANNCE" / "predict00" / "save_data_AVG0.mat")
         calibration_path = str(run_path / "calibration")
@@ -313,14 +308,6 @@ class TestDANNCEConverterMultipleSubjectsSharedDevices(TestCase):
                 cls.converter_rat1._dannce_interface.metadata_key
             ].get_times()
         )
-        cls.test_dir = Path(tempfile.mkdtemp())
-
-    @classmethod
-    def tearDownClass(cls) -> None:
-        try:
-            shutil.rmtree(cls.test_dir)
-        except PermissionError:
-            warn(f"Unable to cleanup testing data at {cls.test_dir}! Please remove it manually.")
 
     def test_run_conversion_shares_camera_devices(self):
         metadata = self.converter_rat1.get_metadata()
@@ -465,7 +452,7 @@ class TestDANNCEInterfaceTwentyKeypoints(TestCase):
         assert len(pe.pose_estimation_series) == 20
 
 
-class TestDANNCEConverterOneFilePerSubject(TestCase):
+class TestDANNCEConverterOneFilePerSubject(_TestCaseWithTemporaryDirectory):
     """'sdannce/one_file_per_subject/two_subjects' stores each rat's predictions in its own file
     (no subject axis), sharing one 'videos_folder_path' -- verifies the shared-camera-devices
     workflow for the file-per-subject variant of multi-animal data (as opposed to the
@@ -475,6 +462,7 @@ class TestDANNCEConverterOneFilePerSubject(TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
+        super().setUpClass()
         run_path = SDANNCE_DATA_PATH / "one_file_per_subject" / "two_subjects"
         calibration_path = str(run_path / "calibration")
 
@@ -496,14 +484,6 @@ class TestDANNCEConverterOneFilePerSubject(TestCase):
                 cls.converter_rat1._dannce_interface.metadata_key
             ].get_times()
         )
-        cls.test_dir = Path(tempfile.mkdtemp())
-
-    @classmethod
-    def tearDownClass(cls) -> None:
-        try:
-            shutil.rmtree(cls.test_dir)
-        except PermissionError:
-            warn(f"Unable to cleanup testing data at {cls.test_dir}! Please remove it manually.")
 
     def test_run_conversion_shares_camera_devices(self):
         metadata = self.converter_rat1.get_metadata()
@@ -533,7 +513,7 @@ class TestDANNCEConverterOneFilePerSubject(TestCase):
             assert "PoseEstimationDANNCERat2" in behavior.data_interfaces
 
 
-class TestDANNCEConverterThreeSubjectsSharedDevices(TestCase):
+class TestDANNCEConverterThreeSubjectsSharedDevices(_TestCaseWithTemporaryDirectory):
     """'sdannce/multiple_subjects_per_file/three_subjects' extends the two-subject, subject-axis
     case to three animals in one prediction file, sharing camera Devices across all three."""
 
@@ -541,6 +521,7 @@ class TestDANNCEConverterThreeSubjectsSharedDevices(TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
+        super().setUpClass()
         run_path = SDANNCE_DATA_PATH / "multiple_subjects_per_file" / "three_subjects"
         file_path = str(run_path / "SDANNCE" / "predict00" / "save_data_AVG0.mat")
         calibration_path = str(run_path / "calibration")
@@ -568,14 +549,6 @@ class TestDANNCEConverterThreeSubjectsSharedDevices(TestCase):
                 ].get_times()
             )
             cls.interfaces.append(interface)
-        cls.test_dir = Path(tempfile.mkdtemp())
-
-    @classmethod
-    def tearDownClass(cls) -> None:
-        try:
-            shutil.rmtree(cls.test_dir)
-        except PermissionError:
-            warn(f"Unable to cleanup testing data at {cls.test_dir}! Please remove it manually.")
 
     def test_run_conversion_shares_camera_devices(self):
         metadata = self.converter_animal0.get_metadata()
@@ -608,7 +581,7 @@ class TestDANNCEConverterThreeSubjectsSharedDevices(TestCase):
             assert "PoseEstimationDANNCEAnimal3" in behavior.data_interfaces
 
 
-class TestDANNCEConverterSyncLongerThanVideo(TestCase):
+class TestDANNCEConverterSyncLongerThanVideo(_TestCaseWithTemporaryDirectory):
     """'sdannce/sync_longer_than_video' has a Label3D synchronization table longer than the actual
     video/predictions: 'ANNOT_COM_BR_dannce.mat' has 67 sync rows for 50 video frames, and only the rows the
     predictions use are looked up, so the extra rows are harmless. Its prediction
@@ -619,6 +592,7 @@ class TestDANNCEConverterSyncLongerThanVideo(TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
+        super().setUpClass()
         run_path = SDANNCE_DATA_PATH / "sync_longer_than_video"
 
         cls.converter = DANNCEConverter(
@@ -628,14 +602,6 @@ class TestDANNCEConverterSyncLongerThanVideo(TestCase):
             calibration_path=str(run_path / "calibration"),
             metadata_key="PoseEstimationDANNCE",
         )
-        cls.test_dir = Path(tempfile.mkdtemp())
-
-    @classmethod
-    def tearDownClass(cls) -> None:
-        try:
-            shutil.rmtree(cls.test_dir)
-        except PermissionError:
-            warn(f"Unable to cleanup testing data at {cls.test_dir}! Please remove it manually.")
 
     def test_animal_index_auto_defaulted(self):
         assert self.converter._dannce_interface._animal_index == 0
@@ -656,7 +622,7 @@ class TestDANNCEConverterSyncLongerThanVideo(TestCase):
             assert isinstance(pe, MultiCameraPoseEstimation)
 
 
-class TestDANNCEConverterTwoRunsForOneSubject(TestCase):
+class TestDANNCEConverterTwoRunsForOneSubject(_TestCaseWithTemporaryDirectory):
     """'sdannce/two_runs_for_one_subject' has two alternative pose-estimation runs (DANNCE and
     sDANNCE) of the same subject and videos -- verifies both can be written to one NWBFile, sharing
     camera Devices, distinguished only by 'metadata_key'."""
@@ -665,6 +631,7 @@ class TestDANNCEConverterTwoRunsForOneSubject(TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
+        super().setUpClass()
         run_path = SDANNCE_DATA_PATH / "two_runs_for_one_subject"
         calibration_path = str(run_path / "calibration")
 
@@ -686,14 +653,6 @@ class TestDANNCEConverterTwoRunsForOneSubject(TestCase):
                 cls.converter_dannce_run._dannce_interface.metadata_key
             ].get_times()
         )
-        cls.test_dir = Path(tempfile.mkdtemp())
-
-    @classmethod
-    def tearDownClass(cls) -> None:
-        try:
-            shutil.rmtree(cls.test_dir)
-        except PermissionError:
-            warn(f"Unable to cleanup testing data at {cls.test_dir}! Please remove it manually.")
 
     def test_run_conversion_shares_camera_devices(self):
         metadata = self.converter_dannce_run.get_metadata()
@@ -728,7 +687,7 @@ class TestDANNCEConverterTwoRunsForOneSubject(TestCase):
             assert "PoseEstimationSDANNCERun" in behavior.data_interfaces
 
 
-class TestDANNCEConverterSdannceChunkedVideosWithFrametimes(TestCase):
+class TestDANNCEConverterSdannceChunkedVideosWithFrametimes(_TestCaseWithTemporaryDirectory):
     """'sdannce/chunked_videos' pairs multi-segment videos (two chunks per camera) with real
     'frametimes.npy' files -- unlike 'dannce/chunked_videos' (no frametimes at all), this exercises
     the per-segment timestamp-splitting path (frametimes present) rather than placing the files from
@@ -738,6 +697,7 @@ class TestDANNCEConverterSdannceChunkedVideosWithFrametimes(TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
+        super().setUpClass()
         run_path = SDANNCE_DATA_PATH / "chunked_videos"
 
         cls.converter = DANNCEConverter(
@@ -747,14 +707,6 @@ class TestDANNCEConverterSdannceChunkedVideosWithFrametimes(TestCase):
             calibration_path=str(run_path / "calibration"),
             metadata_key="PoseEstimationDANNCE",
         )
-        cls.test_dir = Path(tempfile.mkdtemp())
-
-    @classmethod
-    def tearDownClass(cls) -> None:
-        try:
-            shutil.rmtree(cls.test_dir)
-        except PermissionError:
-            warn(f"Unable to cleanup testing data at {cls.test_dir}! Please remove it manually.")
 
     def test_run_conversion(self):
         nwbfile_path = str(self.test_dir / "test_dannce_converter_sdannce_chunked_videos.nwb")

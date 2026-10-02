@@ -6,6 +6,8 @@ from scipy.io import savemat
 
 from neuroconv.converters import DANNCEConverter
 
+from ._dannce_helpers import write_label3d_file
+
 try:
     from importlib.metadata import version as importlib_version
 
@@ -32,18 +34,6 @@ def _write_frametimes(file_path, n_frames: int, fps: float = 40.0):
     frame_numbers = np.arange(1, n_frames + 1, dtype="float64")
     seconds = np.arange(n_frames, dtype="float64") / fps
     np.save(str(file_path), np.stack([frame_numbers, seconds], axis=0))
-
-
-def _write_label3d_sync(file_path, camera_names: list[str], sample_ids, frames):
-    """Write a Label3D-style '*_dannce.mat' holding only 'camnames' and 'sync', laid out as Label3D does: a
-    cell array with one struct per camera, whose 'data_sampleID' row maps to the 'data_frame' video frame."""
-    sync = np.empty((len(camera_names), 1), dtype=object)
-    for index in range(len(camera_names)):
-        sync[index, 0] = dict(
-            data_sampleID=np.asarray(sample_ids, dtype="float64"), data_frame=np.asarray(frames, dtype="float64")
-        )
-    camnames = np.array(camera_names, dtype=object).reshape(1, -1)
-    savemat(str(file_path), dict(camnames=camnames, sync=sync))
 
 
 def _write_metadata_csv(file_path, *, camera_make: str, camera_model: str, serial_number: str, frame_rate: str):
@@ -76,7 +66,12 @@ def dannce_converter_dir(tmp_path):
     file_path = tmp_path / "save_data_AVG.mat"
     savemat(str(file_path), dict(pred=pred, p_max=p_max, sampleID=sample_ids.reshape(1, -1)))
     sync_path = tmp_path / "label3d_dannce.mat"
-    _write_label3d_sync(sync_path, camera_names, sample_ids=sample_ids, frames=np.arange(n_samples))
+    write_label3d_file(
+        sync_path,
+        camera_names=camera_names,
+        sample_ids=sample_ids,
+        frames_per_camera=[np.arange(n_samples)] * len(camera_names),
+    )
 
     videos_folder_path = tmp_path / "videos"
     for camera_name in camera_names:
@@ -406,20 +401,14 @@ class TestDANNCEConverterSync:
         """A Label3D '.mat' passed only as calibration_path also supplies the sync table."""
         camera_names = dannce_converter_dir["camera_names"]
         n_samples = dannce_converter_dir["n_samples"]
-        params = np.empty((len(camera_names), 1), dtype=object)
-        for index in range(len(camera_names)):
-            params[index, 0] = dict(
-                K=np.eye(3), r=np.eye(3), t=np.zeros((1, 3)), RDistort=np.zeros((1, 3)), TDistort=np.zeros((1, 2))
-            )
-        sync = np.empty((len(camera_names), 1), dtype=object)
-        for index in range(len(camera_names)):
-            sync[index, 0] = dict(
-                data_sampleID=1 + 10 * np.arange(n_samples, dtype="float64"),
-                data_frame=np.arange(n_samples, dtype="float64"),
-            )
         label3d_path = tmp_path / "session_Label3D_dannce.mat"
-        camnames = np.array(camera_names, dtype=object).reshape(1, -1)
-        savemat(str(label3d_path), dict(camnames=camnames, params=params, sync=sync))
+        write_label3d_file(
+            label3d_path,
+            camera_names=camera_names,
+            sample_ids=1 + 10 * np.arange(n_samples),
+            frames_per_camera=[np.arange(n_samples)] * len(camera_names),
+            with_calibration=True,
+        )
 
         converter = DANNCEConverter(
             file_paths=dannce_converter_dir["file_path"],
@@ -477,11 +466,12 @@ class TestDANNCEConverterSync:
     def test_sync_frame_past_the_frametimes_raises(self, tmp_path, dannce_converter_dir):
         n_samples = dannce_converter_dir["n_samples"]
         sync_path = tmp_path / "too_far_dannce.mat"
-        _write_label3d_sync(
+        camera_names = dannce_converter_dir["camera_names"]
+        write_label3d_file(
             sync_path,
-            dannce_converter_dir["camera_names"],
+            camera_names=camera_names,
             sample_ids=1 + 10 * np.arange(n_samples),
-            frames=np.arange(n_samples) + 5,
+            frames_per_camera=[np.arange(n_samples) + 5] * len(camera_names),
         )
 
         with pytest.raises(ValueError, match="has frametimes for only"):
