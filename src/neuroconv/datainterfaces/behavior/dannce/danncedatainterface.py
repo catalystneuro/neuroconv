@@ -158,7 +158,7 @@ class DANNCEInterface(BasePoseEstimationInterface):
         elif calibration_path.suffix == ".json":
             return DANNCEInterface._load_calibrations_from_json(calibration_path)
         elif calibration_path.suffix == ".mat":
-            return DANNCEInterface._load_calibrations_from_label3d_mat(calibration_path)
+            return DANNCEInterface._get_calibrations_from_label3d_data(_read_mat(calibration_path))
         else:
             raise ValueError(
                 f"Unrecognized calibration format for '{calibration_path}'. Expected a directory of "
@@ -205,9 +205,8 @@ class DANNCEInterface(BasePoseEstimationInterface):
         return camera_names, camera_calibrations
 
     @staticmethod
-    def _load_calibrations_from_label3d_mat(file_path: Path) -> tuple[list[str], dict[str, dict]]:
-        """Parse a single Label3D-style '*_dannce.mat' file with 'camnames' and 'params'."""
-        data = _read_mat(file_path)
+    def _get_calibrations_from_label3d_data(data: dict) -> tuple[list[str], dict[str, dict]]:
+        """Parse the contents of a Label3D-style '*_dannce.mat' file, with 'camnames' and 'params'."""
         camera_names = list(np.atleast_1d(data["camnames"]))
         params_list = data["params"]
         if isinstance(params_list, dict):
@@ -257,7 +256,7 @@ class DANNCEInterface(BasePoseEstimationInterface):
                 for camera_name, path in matches
             ]
 
-        tables = DANNCEInterface._load_sync_tables_from_label3d_mat(sync_path)
+        tables = DANNCEInterface._get_sync_tables_from_label3d_data(_read_mat(sync_path), source=sync_path)
         if tables is None:
             raise ValueError(
                 f"'{sync_path}' has no 'sync' table. Pass a Label3D '*_dannce.mat' file or a directory of "
@@ -266,9 +265,10 @@ class DANNCEInterface(BasePoseEstimationInterface):
         return tables
 
     @staticmethod
-    def _load_sync_tables_from_label3d_mat(file_path: Path) -> list[tuple[str | None, np.ndarray, np.ndarray]] | None:
-        """The ``sync`` tables of a Label3D-style ``.mat`` file, or ``None`` when it has none."""
-        data = _read_mat(file_path)
+    def _get_sync_tables_from_label3d_data(
+        data: dict, source: Path
+    ) -> list[tuple[str | None, np.ndarray, np.ndarray]] | None:
+        """The ``sync`` tables in the contents of a Label3D-style ``.mat`` file, or ``None`` when it has none."""
         if "sync" not in data:
             return None
         sync_entries = data["sync"]
@@ -283,7 +283,7 @@ class DANNCEInterface(BasePoseEstimationInterface):
         if len(camera_names) != len(sync_entries):
             camera_names = [None] * len(sync_entries)
         return [
-            (camera_name, *DANNCEInterface._get_sync_columns(entry, source=file_path))
+            (camera_name, *DANNCEInterface._get_sync_columns(entry, source=source))
             for camera_name, entry in zip(camera_names, sync_entries)
         ]
 
@@ -453,7 +453,15 @@ class DANNCEInterface(BasePoseEstimationInterface):
 
         detected_camera_names = None
         self._camera_calibrations = None
-        if calibration_path is not None:
+        # A Label3D '.mat' calibration file also carries the sync table, and can be large, so it is read once
+        # for both.
+        label3d_data = None
+        if calibration_path is not None and Path(calibration_path).suffix == ".mat":
+            if not Path(calibration_path).exists():
+                raise FileNotFoundError(f"Calibration path '{calibration_path}' does not exist.")
+            label3d_data = _read_mat(calibration_path)
+            detected_camera_names, self._camera_calibrations = self._get_calibrations_from_label3d_data(label3d_data)
+        elif calibration_path is not None:
             detected_camera_names, self._camera_calibrations = self.get_camera_calibrations(calibration_path)
 
         if camera_names:
@@ -474,8 +482,8 @@ class DANNCEInterface(BasePoseEstimationInterface):
         sync_tables = None
         if sync_path is not None:
             sync_tables = self._load_sync_tables(sync_path)
-        elif calibration_path is not None and Path(calibration_path).suffix == ".mat":
-            sync_tables = self._load_sync_tables_from_label3d_mat(Path(calibration_path))
+        elif label3d_data is not None:
+            sync_tables = self._get_sync_tables_from_label3d_data(label3d_data, source=calibration_path)
         self._video_frame_indices = self._resolve_video_frame_indices(sync_tables) if sync_tables else None
 
         if sampling_rate is None:

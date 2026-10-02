@@ -1274,3 +1274,37 @@ class TestDANNCEInterfaceWarningLocation:
                 file_paths=file_path, sampling_rate=100.0, sync_path=sync_path, camera_names=["Camera1", "Camera2"]
             )
         assert all(record.filename == __file__ for record in records)
+
+
+def test_label3d_calibration_file_is_read_once(tmp_path, classic_dannce_mat_file, monkeypatch):
+    """A Label3D '.mat' passed as calibration_path gives both calibration and sync from one read."""
+    from neuroconv.datainterfaces.behavior.dannce import danncedatainterface
+
+    file_path, sample_ids = classic_dannce_mat_file
+    params = np.empty((1, 1), dtype=object)
+    params[0, 0] = dict(
+        K=np.eye(3), r=np.eye(3), t=np.zeros((1, 3)), RDistort=np.zeros((1, 3)), TDistort=np.zeros((1, 2))
+    )
+    label3d_path = tmp_path / "session_Label3D_dannce.mat"
+    savemat(
+        str(label3d_path),
+        dict(
+            camnames=np.array(["Camera1"], dtype=object).reshape(1, -1),
+            params=params,
+            sync=_write_sync_entry_cells(["Camera1"], sample_ids, [np.arange(len(sample_ids))]),
+        ),
+    )
+
+    read_paths = []
+    original_read_mat = danncedatainterface._read_mat
+
+    def counting_read_mat(path):
+        read_paths.append(str(path))
+        return original_read_mat(path)
+
+    monkeypatch.setattr(danncedatainterface, "_read_mat", counting_read_mat)
+    interface = DANNCEInterface(file_paths=file_path, sampling_rate=100.0, calibration_path=label3d_path)
+
+    assert read_paths == [str(label3d_path)]
+    assert_array_equal(interface.video_frame_indices, np.arange(len(sample_ids)))
+    assert interface.get_metadata()["Devices"]["Camera1"]["type"] == "CalibratedCamera"
