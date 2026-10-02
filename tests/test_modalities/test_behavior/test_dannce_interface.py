@@ -1308,3 +1308,10 @@ def test_label3d_calibration_file_is_read_once(tmp_path, classic_dannce_mat_file
     assert read_paths == [str(label3d_path)]
     assert_array_equal(interface.video_frame_indices, np.arange(len(sample_ids)))
     assert interface.get_metadata()["Devices"]["Camera1"]["type"] == "CalibratedCamera"
+
+
+def test_natural_sort_key():
+    from neuroconv.datainterfaces.behavior.dannce.danncedatainterface import _natural_sort_key
+
+    assert sorted(["Camera10", "Camera2", "camera1"], key=_natural_sort_key) == ["camera1", "Camera2", "Camera10"]
+    assert sorted(["100", "25", "0"], key=_natural_sort_key) == ["0", "25", "100"]

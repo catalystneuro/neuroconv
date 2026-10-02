@@ -1,5 +1,4 @@
 import csv
-import re
 import warnings
 from copy import deepcopy
 from pathlib import Path
@@ -8,14 +7,13 @@ import numpy as np
 from pydantic import DirectoryPath, FilePath, validate_call
 from pynwb import NWBFile
 
-from .danncedatainterface import DANNCEInterface, _NoTimingInformationWarning
+from .danncedatainterface import DANNCEInterface, _natural_sort_key, _NoTimingInformationWarning
 from ..video.externalvideointerface import ExternalVideoInterface
 from ..video.video_utils import VideoCaptureContext
 from ....basedatainterface import BaseDataInterface
 from ....utils import DeepDict, dict_deep_update
 
 _VIDEO_SUFFIXES = (".mp4", ".avi", ".wmv", ".mov", ".flv", ".mkv")
-_CAMERA_DIRECTORY_PATTERN = re.compile(r"camera(\d+)$", re.IGNORECASE)
 
 
 class DANNCEConverter(BaseDataInterface):
@@ -59,8 +57,8 @@ class DANNCEConverter(BaseDataInterface):
     def _discover_camera_directories(videos_folder_path: Path) -> dict[str, Path]:
         """Find one subdirectory per camera under ``videos_folder_path``.
 
-        Subdirectories named after the DANNCE/campy convention (``Camera1``, ``Camera2``, ...) are
-        sorted numerically; any others are sorted alphabetically and placed after the numbered ones.
+        Subdirectories are sorted by name, numbers by value (``Camera2`` before ``Camera10``), ignoring case.
+        The first one is the reference camera whose frametimes time the pose estimation.
         """
         subdirectories = [path for path in videos_folder_path.iterdir() if path.is_dir()]
         if not subdirectories:
@@ -70,24 +68,13 @@ class DANNCEConverter(BaseDataInterface):
                 "file(s) and, optionally, a 'frametimes.npy' file."
             )
 
-        numbered = []
-        unnumbered = []
-        for directory in subdirectories:
-            match = _CAMERA_DIRECTORY_PATTERN.match(directory.name)
-            if match:
-                numbered.append((int(match.group(1)), directory))
-            else:
-                unnumbered.append(directory)
-        numbered.sort(key=lambda pair: pair[0])
-        ordered_directories = [directory for _, directory in numbered] + sorted(
-            unnumbered, key=lambda directory: directory.name
-        )
-
-        return {directory.name: directory for directory in ordered_directories}
+        subdirectories.sort(key=lambda directory: _natural_sort_key(directory.name))
+        return {directory.name: directory for directory in subdirectories}
 
     @staticmethod
     def _discover_video_file_paths(camera_directory: Path) -> list[Path]:
-        """Find a camera's video file(s) in its directory, in sorted (consecutive segment) order."""
+        """Find a camera's video file(s) in its directory, in segment order: sorted by name, numbers by value
+        (``0.mp4``, ``25.mp4``, ``100.mp4``)."""
         video_paths = [
             file_path for file_path in camera_directory.iterdir() if file_path.suffix.lower() in _VIDEO_SUFFIXES
         ]
@@ -96,10 +83,7 @@ class DANNCEConverter(BaseDataInterface):
                 f"No video files found in '{camera_directory}' (expected one of {_VIDEO_SUFFIXES})."
             )
 
-        def sort_key(file_path: Path):
-            return (0, int(file_path.stem)) if file_path.stem.isdigit() else (1, file_path.stem)
-
-        video_paths.sort(key=sort_key)
+        video_paths.sort(key=lambda file_path: _natural_sort_key(file_path.stem))
         return video_paths
 
     @staticmethod

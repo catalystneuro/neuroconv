@@ -48,6 +48,15 @@ class _NoTimingInformationWarning(UserWarning):
     """
 
 
+def _natural_sort_key(name: str) -> list:
+    """Sort key that orders the numbers inside a name by value, so ``Camera2`` comes before ``Camera10``.
+
+    Used for camera folders, video files and sync files alike. Case is ignored. The text and number parts
+    alternate in the same positions for every name, so two keys never compare a number with text.
+    """
+    return [int(part) if part.isdigit() else part for part in re.split(r"(\d+)", name.lower())]
+
+
 def _read_mat(file_path: Path) -> dict:
     """Read a MATLAB file written by MATLAB itself (Label3D, sync, calibration), v5 or v7.3."""
     from pymatreader import read_mat
@@ -247,10 +256,7 @@ class DANNCEInterface(BasePoseEstimationInterface):
             if not matches:
                 raise ValueError(f"No '<CameraName>_sync.mat' files found in '{sync_path}'.")
 
-            def natural_key(pair):
-                return [int(part) if part.isdigit() else part for part in re.split(r"(\d+)", pair[0])]
-
-            matches.sort(key=natural_key)
+            matches.sort(key=lambda pair: _natural_sort_key(pair[0]))
             return [
                 (camera_name, *DANNCEInterface._get_sync_columns(_read_mat(path), source=path))
                 for camera_name, path in matches
