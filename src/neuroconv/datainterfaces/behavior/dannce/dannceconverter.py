@@ -257,38 +257,11 @@ class DANNCEConverter(BaseDataInterface):
             )
 
         primary_camera_name = self._camera_names[0]
-        video_frame_indices = self._dannce_interface.video_frame_indices
-        pose_times_set = False
-        if primary_camera_name in camera_frametimes:
-            frametimes = camera_frametimes[primary_camera_name]
-            if video_frame_indices is None:
-                warnings.warn(
-                    f"Camera '{primary_camera_name}' has a 'frametimes.npy', but there is no sync table to map "
-                    "the predictions' sampleIDs to its frames, so the frametimes are not used for the pose "
-                    "estimation. Pass 'sync_path' (a Label3D '*_dannce.mat' file or a 'sync/' folder) to use "
-                    "them.",
-                    UserWarning,
-                    stacklevel=2,
-                )
-            else:
-                if video_frame_indices.max() >= len(frametimes):
-                    raise ValueError(
-                        f"The sync table maps some predictions to frame {video_frame_indices.max()}, but camera "
-                        f"'{primary_camera_name}' has frametimes for only {len(frametimes)} frames. Check that the "
-                        "sync table, predictions and videos come from the same recording."
-                    )
-                self._dannce_interface.alignment[self._dannce_interface.metadata_key].set_times(
-                    frametimes[video_frame_indices]
-                )
-                pose_times_set = True
-        if not pose_times_set and sampling_rate is None:
-            warnings.warn(
-                "No timing information is available for the DANNCE pose estimation: no usable frametimes and "
-                "no 'sampling_rate'. Pass 'sampling_rate', or call "
-                "'converter.data_interface_objects[\"DANNCE\"].alignment[key].set_times(times)' before writing.",
-                UserWarning,
-                stacklevel=2,
-            )
+        self._set_pose_times(
+            camera_name=primary_camera_name,
+            frametimes=camera_frametimes.get(primary_camera_name),
+            sampling_rate=sampling_rate,
+        )
 
         self._video_interfaces: dict[str, ExternalVideoInterface] = {}
         for camera_name in self._camera_names:
@@ -299,39 +272,93 @@ class DANNCEConverter(BaseDataInterface):
                 video_name=f"Video{camera_name}",
                 verbose=verbose,
             )
-            # Only override this camera's video timestamps when it has frametimes; otherwise it keeps
-            # ExternalVideoInterface's own default (derived directly from the video file itself) --
-            # except when split across more than one video file, where that default does not apply
-            # (ExternalVideoInterface cannot know the gap, if any, between segments on its own), so a
-            # 'sampling_rate' fallback is required to synthesize contiguous per-segment timestamps.
-            # Each video file is its own alignment key, in the order of `video_paths`.
-            if camera_name in camera_frametimes:
-                segment_timestamps = self._split_timestamps_by_segment(
-                    timestamps=camera_frametimes[camera_name], video_paths=video_paths, camera_name=camera_name
-                )
-                self._set_segment_times(video_interface=video_interface, segment_timestamps=segment_timestamps)
-            elif len(video_paths) > 1:
-                if sampling_rate is None:
-                    raise ValueError(
-                        f"Camera '{camera_name}' has {len(video_paths)} video files and no "
-                        "'frametimes.npy'. Pass 'sampling_rate' so each segment's timestamps can be "
-                        "synthesized contiguously."
-                    )
-                total_frames = 0
-                for video_path in video_paths:
-                    with VideoCaptureContext(file_path=str(video_path)) as video:
-                        total_frames += video.get_video_frame_count()
-                all_timestamps = np.arange(total_frames, dtype="float64") / sampling_rate
-                segment_timestamps = self._split_timestamps_by_segment(
-                    timestamps=all_timestamps, video_paths=video_paths, camera_name=camera_name
-                )
-                self._set_segment_times(video_interface=video_interface, segment_timestamps=segment_timestamps)
+            self._set_video_times(
+                video_interface=video_interface,
+                video_paths=video_paths,
+                camera_name=camera_name,
+                frametimes=camera_frametimes.get(camera_name),
+                sampling_rate=sampling_rate,
+            )
             self._video_interfaces[camera_name] = video_interface
 
         self.data_interface_objects: dict[str, BaseDataInterface] = {
             "DANNCE": self._dannce_interface,
             **{f"Video{camera_name}": interface for camera_name, interface in self._video_interfaces.items()},
         }
+
+    def _set_pose_times(self, *, camera_name: str, frametimes: np.ndarray | None, sampling_rate: float | None) -> None:
+        """Time the pose estimation from the reference camera's frametimes, read at the frames the sync table
+        gives for each prediction. Without frametimes or without a sync table the interface keeps its own
+        times (``sampling_rate``), and a warning says when neither gives any."""
+        video_frame_indices = self._dannce_interface.video_frame_indices
+        if frametimes is not None and video_frame_indices is not None:
+            if video_frame_indices.max() >= len(frametimes):
+                raise ValueError(
+                    f"The sync table maps some predictions to frame {video_frame_indices.max()}, but camera "
+                    f"'{camera_name}' has frametimes for only {len(frametimes)} frames. Check that the sync table, "
+                    "predictions and videos come from the same recording."
+                )
+            self._dannce_interface.alignment[self._dannce_interface.metadata_key].set_times(
+                frametimes[video_frame_indices]
+            )
+            return
+
+        if frametimes is not None:
+            warnings.warn(
+                f"Camera '{camera_name}' has a 'frametimes.npy', but there is no sync table to map the "
+                "predictions' sampleIDs to its frames, so the frametimes are not used for the pose estimation. "
+                "Pass 'sync_path' (a Label3D '*_dannce.mat' file or a 'sync/' folder) to use them.",
+                UserWarning,
+                stacklevel=2,
+            )
+        if sampling_rate is None:
+            warnings.warn(
+                "No timing information is available for the DANNCE pose estimation: no usable frametimes and "
+                "no 'sampling_rate'. Pass 'sampling_rate', or call "
+                "'converter.data_interface_objects[\"DANNCE\"].alignment[key].set_times(times)' before writing.",
+                UserWarning,
+                stacklevel=2,
+            )
+
+    def _set_video_times(
+        self,
+        *,
+        video_interface: ExternalVideoInterface,
+        video_paths: list[Path],
+        camera_name: str,
+        frametimes: np.ndarray | None,
+        sampling_rate: float | None,
+    ) -> None:
+        """Time one camera's video files, each through its own alignment key, in the order of ``video_paths``.
+
+        A camera with frametimes gets them, split across its files by frame count. A camera without them keeps
+        ExternalVideoInterface's own default (derived from the video file itself), except when it is split
+        across more than one file: that default cannot know the gap, if any, between files, so
+        ``sampling_rate`` is required to make them contiguous.
+        """
+        if frametimes is not None:
+            segment_timestamps = self._split_timestamps_by_segment(
+                timestamps=frametimes, video_paths=video_paths, camera_name=camera_name
+            )
+            self._set_segment_times(video_interface=video_interface, segment_timestamps=segment_timestamps)
+            return
+        if len(video_paths) == 1:
+            return
+
+        if sampling_rate is None:
+            raise ValueError(
+                f"Camera '{camera_name}' has {len(video_paths)} video files and no 'frametimes.npy'. Pass "
+                "'sampling_rate' so each segment's timestamps can be synthesized contiguously."
+            )
+        total_frames = 0
+        for video_path in video_paths:
+            with VideoCaptureContext(file_path=str(video_path)) as video:
+                total_frames += video.get_video_frame_count()
+        all_timestamps = np.arange(total_frames, dtype="float64") / sampling_rate
+        segment_timestamps = self._split_timestamps_by_segment(
+            timestamps=all_timestamps, video_paths=video_paths, camera_name=camera_name
+        )
+        self._set_segment_times(video_interface=video_interface, segment_timestamps=segment_timestamps)
 
     def get_metadata(self) -> DeepDict:
         metadata = self._dannce_interface.get_metadata()
