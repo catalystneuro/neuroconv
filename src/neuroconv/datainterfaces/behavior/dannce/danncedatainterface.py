@@ -701,8 +701,13 @@ class DANNCEInterface(BasePoseEstimationInterface):
         ``MultiCameraPoseEstimation`` container and one skeleton under this interface's
         ``metadata_key``, one per-camera ``PoseEstimation`` child per camera, and one camera ``Device``
         per child, all already cross-referenced. Fill in the blanks and pass the result to
-        ``add_to_nwbfile`` or ``run_conversion``; an optional field left blank is skipped rather than
-        written. ``reference_frame`` is the field to fill above all others, since ndx-pose requires it.
+        ``add_to_nwbfile`` or ``run_conversion``.
+
+        Not every blank can stay blank. Each series' ``description`` and ``reference_frame`` have to be
+        filled, since ndx-pose requires both, and the ``camera_model`` entry needs a ``name`` and a
+        ``manufacturer``; to go without a camera model, delete that entry and the
+        ``device_model_metadata_key`` pointing at it. Any other field left blank is skipped rather than
+        written.
         """
         metadata_key = self.metadata_key
         device_model_metadata_key = "camera_model"
