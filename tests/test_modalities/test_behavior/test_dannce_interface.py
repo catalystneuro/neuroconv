@@ -1319,3 +1319,16 @@ def test_series_names_keep_the_landmark_capitals(dannce_mat_file):
     assert series["SpineF"]["name"] == "PoseEstimationSeriesSpineF"
     assert series["EarL"]["name"] == "PoseEstimationSeriesEarL"
     assert series["left_ear_tip"]["name"] == "PoseEstimationSeriesLeftEarTip"
+
+
+def test_lookup_frames():
+    from neuroconv.datainterfaces.behavior.dannce.danncedatainterface import _lookup_frames
+
+    table_sample_ids = np.array([21, 1, 11])  # not sorted
+    table_frames = np.array([2, 0, 1])
+    frames, found = _lookup_frames(np.array([1, 11, 21, 31]), table_sample_ids, table_frames)
+    assert_array_equal(found, [True, True, True, False])
+    assert_array_equal(frames[found], [0, 1, 2])
+
+    frames, found = _lookup_frames(np.array([1, 2]), np.array([], dtype="int64"), np.array([], dtype="int64"))
+    assert not found.any()

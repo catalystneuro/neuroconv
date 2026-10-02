@@ -57,6 +57,23 @@ def _natural_sort_key(name: str) -> list:
     return [int(part) if part.isdigit() else part for part in re.split(r"(\d+)", name.lower())]
 
 
+def _lookup_frames(
+    sample_ids: np.ndarray, table_sample_ids: np.ndarray, table_frames: np.ndarray
+) -> tuple[np.ndarray, np.ndarray]:
+    """Look up each ``sample_id`` in one sync table, vectorized.
+
+    Returns the frame of each sample, and whether the table has that sample at all; where it does not, the
+    frame returned is meaningless and has to be masked out by the caller.
+    """
+    if table_sample_ids.size == 0:
+        return np.zeros(sample_ids.shape, dtype="int64"), np.zeros(sample_ids.shape, dtype=bool)
+    order = np.argsort(table_sample_ids, kind="stable")
+    sorted_sample_ids = table_sample_ids[order]
+    positions = np.minimum(np.searchsorted(sorted_sample_ids, sample_ids), sorted_sample_ids.size - 1)
+    found = sorted_sample_ids[positions] == sample_ids
+    return table_frames[order][positions], found
+
+
 def _read_mat(file_path: Path) -> dict:
     """Read a MATLAB file written by MATLAB itself (Label3D, sync, calibration), v5 or v7.3."""
     from pymatreader import read_mat
@@ -282,7 +299,11 @@ class DANNCEInterface(BasePoseEstimationInterface):
             # Label3D writes a cell array, one struct per camera, which reads as a list of dicts. A single
             # camera reads as one dict, and a struct array as one dict whose fields are per-camera lists.
             if isinstance(sync_entries.get("data_frame"), list):
-                sync_entries = [dict(zip(sync_entries, values)) for values in zip(*sync_entries.values())]
+                n_cameras = len(sync_entries["data_frame"])
+                sync_entries = [
+                    {field: values[camera_index] for field, values in sync_entries.items()}
+                    for camera_index in range(n_cameras)
+                ]
             else:
                 sync_entries = [sync_entries]
         camera_names = [str(name) for name in np.atleast_1d(data["camnames"])] if "camnames" in data else []
@@ -316,22 +337,18 @@ class DANNCEInterface(BasePoseEstimationInterface):
         else:
             reference_name, reference_ids, reference_frames = sync_tables[0]
 
-        frame_by_sample_id = dict(zip(reference_ids.tolist(), reference_frames.tolist()))
-        missing = [sample_id for sample_id in sample_ids.tolist() if sample_id not in frame_by_sample_id]
-        if missing:
+        video_frame_indices, found = _lookup_frames(sample_ids, reference_ids, reference_frames)
+        if not found.all():
+            missing = sample_ids[~found]
             raise ValueError(
-                f"{len(missing)} of the {len(sample_ids)} predicted sampleIDs are not in the sync table "
-                f"(e.g. {missing[:5]}), so their video frames are unknown. Check that the sync table comes "
-                "from the same recording as the predictions."
+                f"{missing.size} of the {sample_ids.size} predicted sampleIDs are not in the sync table "
+                f"(e.g. {missing[:5].tolist()}), so their video frames are unknown. Check that the sync table "
+                "comes from the same recording as the predictions."
             )
-        video_frame_indices = np.array([frame_by_sample_id[sample_id] for sample_id in sample_ids.tolist()])
 
         for camera_name, ids, frames in sync_tables:
-            other = dict(zip(ids.tolist(), frames.tolist()))
-            other_frames = [other.get(sample_id) for sample_id in sample_ids.tolist()]
-            if any(
-                frame is not None and frame != reference for frame, reference in zip(other_frames, video_frame_indices)
-            ):
+            other_frames, other_found = _lookup_frames(sample_ids, ids, frames)
+            if np.any(other_found & (other_frames != video_frame_indices)):
                 warnings.warn(
                     f"The sync table of camera '{camera_name}' maps some sampleIDs to different frames than "
                     f"the reference camera '{reference_name}'. The reference camera's frames are used.",
