@@ -428,13 +428,15 @@ class DANNCEConverter(BaseDataInterface):
         nwbfile : NWBFile
             The NWB file to add the data to.
         metadata : dict
-            Metadata dictionary. If provided, overrides default metadata from ``get_metadata()``.
+            The full metadata, as returned by ``get_metadata()`` and edited by the caller. It is used as
+            given, not merged over the defaults, and is copied so the caller's dict is left unchanged.
         stub_test : bool, default: False
             If True, write only the first 100 frames of the DANNCE pose estimation data for quick smoke testing.
             Video data is always written in full.
         starting_frames : dict of str to list of int, optional
             Per-camera list of start frames for videos written using external mode, keyed by camera name.
-            Required for a given camera only if more than one video path was given for it.
+            When a camera is not listed, its start frames are computed from each of its files' frame count
+            (see ``ExternalVideoInterface.add_to_nwbfile``).
 
         Notes
         -----
