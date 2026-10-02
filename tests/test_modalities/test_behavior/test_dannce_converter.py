@@ -484,3 +484,17 @@ class TestDANNCEConverterSync:
                 videos_folder_path=dannce_converter_dir["videos_folder_path"],
                 sync_path=sync_path,
             )
+
+
+class TestDANNCEConverterWarningLocation:
+    """Warnings point at the caller's line, past pydantic's ``validate_call`` wrapper."""
+
+    def test_warnings_point_at_caller(self, dannce_converter_dir):
+        with pytest.warns(UserWarning) as records:
+            DANNCEConverter(
+                file_paths=dannce_converter_dir["file_path"],
+                videos_folder_path=dannce_converter_dir["videos_folder_path"],
+            )
+        messages = {str(record.message)[:40]: record.filename for record in records}
+        assert len(messages) == 2  # frametimes without sync, and no timing at all
+        assert set(messages.values()) == {__file__}

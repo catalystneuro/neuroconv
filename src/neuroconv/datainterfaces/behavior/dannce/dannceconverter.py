@@ -309,7 +309,7 @@ class DANNCEConverter(BaseDataInterface):
                 "predictions' sampleIDs to its frames, so the frametimes are not used for the pose estimation. "
                 "Pass 'sync_path' (a Label3D '*_dannce.mat' file or a 'sync/' folder) to use them.",
                 UserWarning,
-                stacklevel=2,
+                stacklevel=5,  # _set_pose_times, __init__, two validate_call frames, caller
             )
         if sampling_rate is None:
             warnings.warn(
@@ -317,7 +317,7 @@ class DANNCEConverter(BaseDataInterface):
                 "no 'sampling_rate'. Pass 'sampling_rate', or call "
                 "'converter.data_interface_objects[\"DANNCE\"].alignment[key].set_times(times)' before writing.",
                 _NoTimingInformationWarning,
-                stacklevel=2,
+                stacklevel=5,  # _set_pose_times, __init__, two validate_call frames, caller
             )
 
     def _set_video_times(

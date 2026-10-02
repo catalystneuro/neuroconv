@@ -1223,3 +1223,30 @@ class TestDANNCEInterfaceConversion:
         # Internal arrays must remain untouched.
         assert interface._pred.shape[0] == n_samples
         assert interface._p_max.shape[0] == n_samples
+
+
+class TestDANNCEInterfaceWarningLocation:
+    """Warnings point at the caller's line, past pydantic's ``validate_call`` wrapper."""
+
+    def test_no_sampling_rate_warning_points_at_caller(self, classic_dannce_mat_file):
+        with pytest.warns(_NoTimingInformationWarning) as records:
+            DANNCEInterface(file_paths=classic_dannce_mat_file[0])
+        assert records[0].filename == __file__
+
+    def test_cameras_disagree_warning_points_at_caller(self, tmp_path, classic_dannce_mat_file):
+        file_path, sample_ids = classic_dannce_mat_file
+        frames = np.arange(len(sample_ids))
+        sync_path = tmp_path / "label3d_dannce.mat"
+        savemat(
+            str(sync_path),
+            dict(
+                camnames=np.array(["Camera1", "Camera2"], dtype=object).reshape(1, -1),
+                sync=_write_sync_entry_cells(["Camera1", "Camera2"], sample_ids, [frames, frames + 1]),
+            ),
+        )
+
+        with pytest.warns(UserWarning, match="maps some sampleIDs to different frames") as records:
+            DANNCEInterface(
+                file_paths=file_path, sampling_rate=100.0, sync_path=sync_path, camera_names=["Camera1", "Camera2"]
+            )
+        assert all(record.filename == __file__ for record in records)

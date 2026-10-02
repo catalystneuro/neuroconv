@@ -316,7 +316,7 @@ class DANNCEInterface(BasePoseEstimationInterface):
                     f"The sync table of camera '{camera_name}' maps some sampleIDs to different frames than "
                     f"the reference camera '{reference_name}'. The reference camera's frames are used.",
                     UserWarning,
-                    stacklevel=3,
+                    stacklevel=5,  # _resolve_video_frame_indices, __init__, two validate_call frames, caller
                 )
                 break
 
@@ -470,7 +470,7 @@ class DANNCEInterface(BasePoseEstimationInterface):
                 "Pass 'sampling_rate', or call 'interface.alignment[interface.metadata_key].set_times(times)' "
                 "with one time per sample before writing.",
                 _NoTimingInformationWarning,
-                stacklevel=2,
+                stacklevel=4,  # __init__, two validate_call frames, caller
             )
 
         # Named after the individual, as SLEAP names a container after its track, so that animals from
