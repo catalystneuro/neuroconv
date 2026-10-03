@@ -419,7 +419,15 @@ class TestMiniscopeConverterLegacyTyeLabFormat:
         assert self.photon_series_name in nwbfile.acquisition
         assert isinstance(nwbfile.acquisition[self.photon_series_name], OnePhotonSeries)
         assert self.image_series_name in nwbfile.acquisition
-        assert isinstance(nwbfile.acquisition[self.image_series_name], ImageSeries)
+        image_series = nwbfile.acquisition[self.image_series_name]
+        assert isinstance(image_series, ImageSeries)
+        # Written relative to the NWB file, except on Windows CI where the data sits on another drive
+        output_directory = Path(nwbfile_path).resolve().parent
+        for file_path in image_series.external_file:
+            if self.folder_path.resolve().anchor == output_directory.anchor:
+                assert not Path(file_path).is_absolute()
+            else:
+                assert Path(file_path).is_absolute() and "\\" not in file_path
 
     def test_converter_metadata(self):
         """Test that metadata is correctly extracted from legacy format."""
