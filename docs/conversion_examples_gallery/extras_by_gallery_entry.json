@@ -5,6 +5,12 @@
   "behavior/boris.rst": {
     "extra": "boris"
   },
+  "behavior/ethovision.rst": {
+    "extra": "ethovision"
+  },
+  "behavior/dannce.rst": {
+    "extra": "dannce"
+  },
   "behavior/deeplabcut.rst": {
     "extra": "deeplabcut"
   },
