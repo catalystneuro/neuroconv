@@ -133,7 +133,7 @@ def load_term_set(file_name: str) -> dict[str, TermInfo]:
     Parameters
     ----------
     file_name : str
-        The TermSet file name under ``neuroconv/tools/ontology/term_sets`` (e.g. ``"species.yaml"``).
+        The TermSet file name under ``neuroconv/tools/herd/term_sets`` (e.g. ``"species.yaml"``).
 
     Returns
     -------

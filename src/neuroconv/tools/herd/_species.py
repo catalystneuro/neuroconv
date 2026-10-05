@@ -22,7 +22,7 @@ __all__ = [
     "SpeciesTerm",
     "get_species_suggestion",
     "get_species_term",
-    "infer_species_ontology_metadata",
+    "infer_species_herd_metadata",
     "validate_species",
 ]
 
@@ -172,16 +172,16 @@ def validate_species(species: str | None) -> SpeciesTerm | None:
     return term
 
 
-def infer_species_ontology_metadata(metadata: dict) -> dict:
+def infer_species_herd_metadata(metadata: dict) -> dict:
     """
-    Fill ``metadata["ontology"]["species"]`` from the subject's species value.
+    Fill ``metadata["HERD"]["species"]`` from the subject's species value.
 
     This is the **inference** half of species annotation: it resolves
     ``metadata["Subject"]["species"]`` (a common name, a likely typo, or a Latin binomial) to its
     NCBITaxon term via :func:`get_species_term` and writes an explicit
     ``{"id": ..., "uri": ...}`` term keyed by that value exactly as written (``"mouse"`` stays the
     key, because HERD links the term to ``Subject.species`` through that string). The deterministic
-    :func:`neuroconv.tools.ontology.add_species_external_resource` then writes that term into the
+    :func:`neuroconv.tools.herd.add_species_external_resource` then writes that term into the
     file as a HERD reference.
 
     The metadata is modified in place (and also returned). This is a no-op when there is no
@@ -193,7 +193,7 @@ def infer_species_ontology_metadata(metadata: dict) -> dict:
     ----------
     metadata : dict
         Conversion metadata. ``metadata["Subject"]["species"]`` is read; the term is written under
-        ``metadata["ontology"]["species"][<species value>]``.
+        ``metadata["HERD"]["species"][<species value>]``.
 
     Returns
     -------
@@ -209,11 +209,11 @@ def infer_species_ontology_metadata(metadata: dict) -> dict:
 
     if not isinstance(species, str):
         return metadata
-    if metadata.get("ontology", {}).get("species", {}).get(species) is not None:
+    if metadata.get("HERD", {}).get("species", {}).get(species) is not None:
         return metadata
 
     term = get_species_term(species)
     if term is not None:
-        species_mapping = metadata.setdefault("ontology", {}).setdefault("species", {})
+        species_mapping = metadata.setdefault("HERD", {}).setdefault("species", {})
         species_mapping[species] = {"id": term.ncbitaxon_id, "uri": term.entity_uri}
     return metadata

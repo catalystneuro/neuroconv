@@ -7,11 +7,11 @@ write the corresponding references into the file. Nothing is guessed -- resolvin
 value (a common species name, an atlas acronym) to a term is the job of the ``infer_*`` functions
 in this package, which populate the same ``metadata`` blocks these functions read.
 
-The terms live in one file-wide ``metadata["ontology"]`` block, each map keyed by the exact value
+The terms live in one file-wide ``metadata["HERD"]`` block, each map keyed by the exact value
 string it annotates (HERD links a term to an object through that string):
 
-- ``metadata["ontology"]["species"]`` -> ``{species string: term-or-list}`` for ``Subject.species``;
-- ``metadata["ontology"]["brain_regions"]`` -> ``{location string: term-or-list}`` for every
+- ``metadata["HERD"]["species"]`` -> ``{species string: term-or-list}`` for ``Subject.species``;
+- ``metadata["HERD"]["brain_regions"]`` -> ``{location string: term-or-list}`` for every
   anatomical ``location`` field on the file (the electrodes table and electrode groups, imaging
   planes, intracellular electrodes, optogenetic stimulus sites, viral vector injections, and the
   ``FiberPhotometryTable``), regardless of which modality it belongs to.
@@ -45,7 +45,7 @@ def _species_already_annotated(herd, subject) -> bool:
 
 
 def _ontology_term_entities(value, *, context: str) -> list:
-    """Normalize an ``ontology`` metadata term (a dict, or a list of dicts) to ``[(id, uri), ...]``.
+    """Normalize an ``HERD`` metadata term (a dict, or a list of dicts) to ``[(id, uri), ...]``.
 
     ``context`` names the annotated value in error messages (e.g. ``"Subject species"`` or a brain
     area string).
@@ -70,11 +70,11 @@ def add_species_external_resource(nwbfile: NWBFile, metadata: dict | None = None
     """
     Annotate ``nwbfile.subject.species`` with the NCBITaxon term stated in ``metadata`` via HERD.
 
-    Looks up the subject's species value in ``metadata["ontology"]["species"]`` -- a
+    Looks up the subject's species value in ``metadata["HERD"]["species"]`` -- a
     ``{species string: term-or-list}`` map of explicit ``{"id": ..., "uri": ...}`` terms -- and adds
     an external-resource reference mapping that value to its term(s), stored in-file under
     ``/general/external_resources``. Nothing is inferred: use
-    :func:`neuroconv.tools.ontology.infer_species_ontology_metadata` to populate that term from a
+    :func:`neuroconv.tools.herd.infer_species_herd_metadata` to populate that term from a
     common name or Latin binomial.
 
     This is a no-op (returns ``False``) when there is no subject or ``metadata`` states no term for
@@ -87,7 +87,7 @@ def add_species_external_resource(nwbfile: NWBFile, metadata: dict | None = None
         The file whose subject species should be annotated. Modified in place.
     metadata : dict, optional
         Conversion metadata. The species term is read from
-        ``metadata["ontology"]["species"][<Subject.species>]``.
+        ``metadata["HERD"]["species"][<Subject.species>]``.
 
     Returns
     -------
@@ -102,7 +102,7 @@ def add_species_external_resource(nwbfile: NWBFile, metadata: dict | None = None
     if not isinstance(species, str) or species.strip() == "":
         return False
 
-    species_mapping = (metadata or {}).get("ontology", {}).get("species")
+    species_mapping = (metadata or {}).get("HERD", {}).get("species")
     if not isinstance(species_mapping, dict) or species_mapping.get(species) is None:
         return False
     entities = _ontology_term_entities(species_mapping[species], context=f"Subject species {species!r}")
@@ -133,7 +133,7 @@ def add_species_external_resource(nwbfile: NWBFile, metadata: dict | None = None
 
 
 def _brain_region_mapping_from_metadata(metadata: dict | None) -> dict:
-    """Normalize ``metadata["ontology"]["brain_regions"]`` to ``{location: [(id, uri), ...]}``.
+    """Normalize ``metadata["HERD"]["brain_regions"]`` to ``{location: [(id, uri), ...]}``.
 
     Each brain area maps to one or more ontology terms, each an explicit ``{"id": ..., "uri": ...}``
     dict (a single dict or a list of them).
@@ -141,7 +141,7 @@ def _brain_region_mapping_from_metadata(metadata: dict | None) -> dict:
     if not isinstance(metadata, dict):
         return {}
 
-    raw_mapping = metadata.get("ontology", {}).get("brain_regions")
+    raw_mapping = metadata.get("HERD", {}).get("brain_regions")
     if not isinstance(raw_mapping, dict):
         return {}
 
@@ -177,7 +177,7 @@ def _brain_region_annotation_sites(nwbfile: NWBFile) -> list:
         sites.append((container, "location", "location", _unwrapped(container.location)))
 
     # Lazy import: avoids a circular import at module load time (fiber_photometry.py imports from
-    # tools.nwb_helpers, which imports from tools.ontology).
+    # tools.nwb_helpers, which imports from tools.herd).
     from ..fiber_photometry import get_fiber_photometry_table
 
     fiber_photometry_table = get_fiber_photometry_table(nwbfile)
@@ -212,14 +212,14 @@ def add_brain_region_external_resources(nwbfile: NWBFile, metadata: dict | None 
     """
     Annotate anatomical ``location`` fields with the brain-region terms stated in ``metadata`` (HERD).
 
-    Reads ``metadata["ontology"]["brain_regions"]`` -- a ``{location string: term-or-list}`` mapping
+    Reads ``metadata["HERD"]["brain_regions"]`` -- a ``{location string: term-or-list}`` mapping
     of explicit ``{"id": ..., "uri": ...}`` terms -- and, for every ``location`` value on the file
     (the electrodes table, electrode groups, imaging planes, intracellular electrodes, optogenetic
     stimulus sites, viral vector injections, and the ``FiberPhotometryTable``) that the map covers, attaches machine-readable references stored in-file under
     ``/general/external_resources``.
 
     Nothing is inferred: locations the metadata does not name are left untouched. Use
-    :func:`neuroconv.tools.ontology.infer_brain_region_ontology_metadata` to populate the map from a
+    :func:`neuroconv.tools.herd.infer_brain_region_herd_metadata` to populate the map from a
     brain atlas first. This is a no-op (returns ``0``) when ``metadata`` states no term.
 
     Parameters
@@ -228,7 +228,7 @@ def add_brain_region_external_resources(nwbfile: NWBFile, metadata: dict | None 
         The file whose anatomical locations should be annotated. Modified in place.
     metadata : dict, optional
         Conversion metadata. Brain-region terms are read from
-        ``metadata["ontology"]["brain_regions"]``.
+        ``metadata["HERD"]["brain_regions"]``.
 
     Returns
     -------

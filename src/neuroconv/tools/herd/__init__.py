@@ -2,9 +2,9 @@
 
 Two layers, deliberately separate:
 
-- **inference** -- ``infer_species_ontology_metadata`` / ``infer_brain_region_ontology_metadata``
+- **inference** -- ``infer_species_herd_metadata`` / ``infer_brain_region_herd_metadata``
   (and the ``get_*_term`` primitives they use) resolve free-text values to ontology terms and write
-  those terms into ``metadata["ontology"]``, keyed by the value they describe. This step guesses;
+  those terms into ``metadata["HERD"]``, keyed by the value they describe. This step guesses;
   run it when you want NeuroConv to propose terms.
 - **annotation** -- ``add_species_external_resource`` / ``add_brain_region_external_resources`` take
   the terms already stated in ``metadata`` and write them into the file as HERD references. This
@@ -17,7 +17,7 @@ from ._brain_regions import (
     UBERON_TERMS,
     BrainRegionTerm,
     get_brain_region_term,
-    infer_brain_region_ontology_metadata,
+    infer_brain_region_herd_metadata,
 )
 from ._external_resources import (
     add_brain_region_external_resources,
@@ -28,7 +28,7 @@ from ._species import (
     SpeciesTerm,
     get_species_suggestion,
     get_species_term,
-    infer_species_ontology_metadata,
+    infer_species_herd_metadata,
     validate_species,
 )
 
@@ -44,7 +44,7 @@ __all__ = [
     "get_brain_region_term",
     "get_species_suggestion",
     "get_species_term",
-    "infer_brain_region_ontology_metadata",
-    "infer_species_ontology_metadata",
+    "infer_brain_region_herd_metadata",
+    "infer_species_herd_metadata",
     "validate_species",
 ]

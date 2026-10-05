@@ -36,7 +36,7 @@ __all__ = [
     "SUPPORTED_ATLAS_SPECIES",
     "BrainRegionTerm",
     "get_brain_region_term",
-    "infer_brain_region_ontology_metadata",
+    "infer_brain_region_herd_metadata",
 ]
 
 
@@ -210,7 +210,7 @@ def _all_locations(nwbfile: NWBFile) -> list:
     for container in _location_containers(nwbfile):
         locations.setdefault(_unwrapped(container.location))
 
-    # Lazy import: fiber_photometry.py imports (transitively) from tools.ontology.
+    # Lazy import: fiber_photometry.py imports (transitively) from tools.herd.
     from ..fiber_photometry import get_fiber_photometry_table
 
     fiber_photometry_table = get_fiber_photometry_table(nwbfile)
@@ -220,9 +220,9 @@ def _all_locations(nwbfile: NWBFile) -> list:
     return list(locations)
 
 
-def infer_brain_region_ontology_metadata(nwbfile: NWBFile, metadata: dict) -> dict:
+def infer_brain_region_herd_metadata(nwbfile: NWBFile, metadata: dict) -> dict:
     """
-    Fill ``metadata["ontology"]["brain_regions"]`` from the file's ``location`` fields.
+    Fill ``metadata["HERD"]["brain_regions"]`` from the file's ``location`` fields.
 
     This is the **inference** half of brain-region annotation: it walks every anatomical
     ``location`` on ``nwbfile`` (the electrodes table, electrode groups, imaging planes,
@@ -230,8 +230,8 @@ def infer_brain_region_ontology_metadata(nwbfile: NWBFile, metadata: dict) -> di
     ``FiberPhotometryTable``), resolves each distinct string to a brain-atlas term with
     :func:`get_brain_region_term` -- choosing the atlas from the subject's species (Allen Mouse or
     Human Brain Atlas, or the species-agnostic UBERON fallback) -- and writes explicit
-    ``{"id": ..., "uri": ...}`` terms under ``metadata["ontology"]["brain_regions"]``. The
-    deterministic :func:`neuroconv.tools.ontology.add_brain_region_external_resources` then writes
+    ``{"id": ..., "uri": ...}`` terms under ``metadata["HERD"]["brain_regions"]``. The
+    deterministic :func:`neuroconv.tools.herd.add_brain_region_external_resources` then writes
     those terms into the file as HERD references.
 
     The metadata is modified in place (and also returned). A location that does not resolve, or one
@@ -243,7 +243,7 @@ def infer_brain_region_ontology_metadata(nwbfile: NWBFile, metadata: dict) -> di
     nwbfile : NWBFile
         A populated file (data already added) whose ``location`` fields are read.
     metadata : dict
-        Conversion metadata. Terms are written under ``metadata["ontology"]["brain_regions"]``.
+        Conversion metadata. Terms are written under ``metadata["HERD"]["brain_regions"]``.
 
     Returns
     -------
@@ -259,7 +259,7 @@ def infer_brain_region_ontology_metadata(nwbfile: NWBFile, metadata: dict) -> di
         subject_metadata = metadata.get("Subject")
         species = subject_metadata.get("species") if isinstance(subject_metadata, dict) else None
 
-    existing = metadata.get("ontology", {}).get("brain_regions", {})
+    existing = metadata.get("HERD", {}).get("brain_regions", {})
     resolved = {}
     for location in _all_locations(nwbfile):
         if not isinstance(location, str) or location.strip() == "" or location in existing:
@@ -268,7 +268,7 @@ def infer_brain_region_ontology_metadata(nwbfile: NWBFile, metadata: dict) -> di
         if term is not None:
             resolved[location] = {"id": term.curie, "uri": term.entity_uri}
     if resolved:
-        brain_regions = metadata.setdefault("ontology", {}).setdefault("brain_regions", {})
+        brain_regions = metadata.setdefault("HERD", {}).setdefault("brain_regions", {})
         brain_regions.update(resolved)
 
     return metadata

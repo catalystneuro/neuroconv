@@ -18,7 +18,7 @@ from ndx_ophys_devices import Indicator, ViralVector, ViralVectorInjection
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.file import Subject
 
-from neuroconv.tools.ontology import add_brain_region_external_resources, infer_brain_region_ontology_metadata
+from neuroconv.tools.herd import add_brain_region_external_resources, infer_brain_region_herd_metadata
 
 
 def _make_nwbfile(species="Mus musculus") -> NWBFile:
@@ -56,21 +56,21 @@ def _add_virus_injection(nwbfile: NWBFile, injection_location) -> None:
     )
 
 
-class TestFiberPhotometryOntology:
+class TestFiberPhotometryHERD:
     def test_virus_injection_location_is_resolved(self):
         nwbfile = _make_nwbfile(species="Mus musculus")
         _add_virus_injection(nwbfile, injection_location="VTA")
         metadata = {}
 
-        infer_brain_region_ontology_metadata(nwbfile, metadata)
-        assert metadata["ontology"]["brain_regions"]["VTA"]["id"] == "MBA:749"
+        infer_brain_region_herd_metadata(nwbfile, metadata)
+        assert metadata["HERD"]["brain_regions"]["VTA"]["id"] == "MBA:749"
 
     def test_virus_injection_location_is_annotated(self, tmp_path):
         nwbfile = _make_nwbfile()
         _add_virus_injection(nwbfile, injection_location="VTA")
         mapping = {"VTA": {"id": "MBA:749", "uri": "https://example.org/MBA_749"}}
 
-        assert add_brain_region_external_resources(nwbfile, metadata={"ontology": {"brain_regions": mapping}}) == 1
+        assert add_brain_region_external_resources(nwbfile, metadata={"HERD": {"brain_regions": mapping}}) == 1
 
         path = tmp_path / "injection.nwb"
         with NWBHDF5IO(path, "w") as io:
@@ -133,7 +133,7 @@ class TestFiberPhotometryOntology:
                 )
             ),
         )
-        metadata["ontology"] = dict(brain_regions={"CA1": {"id": "MBA:382", "uri": "https://example.org/MBA_382"}})
+        metadata["HERD"] = dict(brain_regions={"CA1": {"id": "MBA:382", "uri": "https://example.org/MBA_382"}})
         series_metadata = fiber_photometry_metadata[interface.metadata_key]
         series_metadata["fiber_photometry_table_region"] = ["row0"]
         series_metadata["fiber_photometry_table_region_description"] = "d"

@@ -33,19 +33,19 @@ Two steps: infer, then annotate
 -------------------------------
 
 Ontology support is deliberately split into two independent halves, both in
-:py:mod:`neuroconv.tools.ontology`:
+:py:mod:`neuroconv.tools.herd`:
 
-1. **Inference** — :py:func:`~neuroconv.tools.ontology.infer_species_ontology_metadata` and
-   :py:func:`~neuroconv.tools.ontology.infer_brain_region_ontology_metadata` take the free-text
+1. **Inference** — :py:func:`~neuroconv.tools.herd.infer_species_herd_metadata` and
+   :py:func:`~neuroconv.tools.herd.infer_brain_region_herd_metadata` take the free-text
    values a lab wrote (``"mouse"``, ``"CA1"``) and resolve them to ontology terms, writing each
-   term into ``metadata["ontology"]``, **keyed by the value it describes**. This step guesses; run
+   term into ``metadata["HERD"]``, **keyed by the value it describes**. This step guesses; run
    it when you want NeuroConv to propose terms, then inspect and edit the result.
-2. **Annotation** — :py:func:`~neuroconv.tools.ontology.add_species_external_resource` and
-   :py:func:`~neuroconv.tools.ontology.add_brain_region_external_resources` take the terms already
+2. **Annotation** — :py:func:`~neuroconv.tools.herd.add_species_external_resource` and
+   :py:func:`~neuroconv.tools.herd.add_brain_region_external_resources` take the terms already
    stated in ``metadata`` and write them into the file as HERD references. This step is
    deterministic — nothing is inferred, so what lands in the file is exactly what the metadata
    says — and **a conversion runs it automatically**. It is a no-op unless the metadata carries an
-   ``ontology`` block.
+   ``HERD`` block.
 
 Because the two are separate, the annotation you write does not have to come from NeuroConv's
 inference: you can bring terms from an ontology service or a file you curate once per dataset and
@@ -55,7 +55,7 @@ Where the terms live in metadata
 --------------------------------
 
 Each term is an explicit ``{"id": <CURIE>, "uri": <resolvable URI>}`` dict. All terms live in one
-file-wide ``metadata["ontology"]`` block, with one map per kind of value, each keyed by the exact
+file-wide ``metadata["HERD"]`` block, with one map per kind of value, each keyed by the exact
 string written in the file. HERD links a term to an object through that string, so a key only
 takes effect where the file carries the same value:
 
@@ -63,7 +63,7 @@ takes effect where the file carries the same value:
 
     metadata["Subject"] = {"subject_id": "sub-01", "species": "Mus musculus"}
 
-    metadata["ontology"] = {
+    metadata["HERD"] = {
         "species": {
             "Mus musculus": {"id": "NCBITaxon:10090", "uri": "http://purl.obolibrary.org/obo/NCBITaxon_10090"},
         },
@@ -79,7 +79,7 @@ to a list of terms:
 
 .. code-block:: python
 
-    metadata["ontology"]["brain_regions"]["CA1"] = [
+    metadata["HERD"]["brain_regions"]["CA1"] = [
         {"id": "MBA:382", "uri": "https://purl.brain-bican.org/ontology/mbao/MBA_382"},
         {"id": "UBERON:0003881", "uri": "http://purl.obolibrary.org/obo/UBERON_0003881"},
     ]
@@ -90,7 +90,7 @@ Species
 NWB stores a subject's species in :py:attr:`Subject.species <pynwb.file.Subject.species>` as a
 binomial Latin name (e.g. ``"Mus musculus"``) or a taxonomy URL. NeuroConv recognizes a small,
 curated, offline table of common neuroscience species
-(:py:data:`~neuroconv.tools.ontology.SPECIES_TERMS`) — no network access, no extra dependencies,
+(:py:data:`~neuroconv.tools.herd.SPECIES_TERMS`) — no network access, no extra dependencies,
 high-precision (it only speaks up when confident; valid-but-uncommon binomials pass silently).
 
 Suggesting a standardized term
@@ -104,19 +104,19 @@ blocks a conversion.
 
 .. code-block:: python
 
-    from neuroconv.tools.ontology import validate_species
+    from neuroconv.tools.herd import validate_species
 
     validate_species("mouse")
     # UserWarning: Subject species 'mouse' is a common name. Consider using the Latin binomial
     # 'Mus musculus' (NCBITaxon:10090) for interoperability. See https://bioregistry.io/NCBITaxon:10090
 
 To resolve a value to its canonical term without emitting a warning, use
-:py:func:`~neuroconv.tools.ontology.get_species_term`, which also succeeds on exact canonical
+:py:func:`~neuroconv.tools.herd.get_species_term`, which also succeeds on exact canonical
 matches:
 
 .. code-block:: python
 
-    from neuroconv.tools.ontology import get_species_term
+    from neuroconv.tools.herd import get_species_term
 
     term = get_species_term("rhesus macaque")
     term.canonical_name  # 'Macaca mulatta'
@@ -126,30 +126,30 @@ matches:
 Inferring the species term into metadata
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-:py:func:`~neuroconv.tools.ontology.infer_species_ontology_metadata` resolves
-``metadata["Subject"]["species"]`` and writes the term under ``metadata["ontology"]["species"]``,
+:py:func:`~neuroconv.tools.herd.infer_species_herd_metadata` resolves
+``metadata["Subject"]["species"]`` and writes the term under ``metadata["HERD"]["species"]``,
 keyed by the species value exactly as written (a ``"mouse"`` subject gets a ``"mouse"`` key). It
 never overwrites a term you put there yourself.
 
 .. code-block:: python
 
-    from neuroconv.tools.ontology import infer_species_ontology_metadata
+    from neuroconv.tools.herd import infer_species_herd_metadata
 
     metadata["Subject"] = dict(subject_id="m1", species="Mus musculus", sex="M", age="P30D")
-    infer_species_ontology_metadata(metadata)
-    metadata["ontology"]["species"]
+    infer_species_herd_metadata(metadata)
+    metadata["HERD"]["species"]
     # {'Mus musculus': {'id': 'NCBITaxon:10090', 'uri': 'http://purl.obolibrary.org/obo/NCBITaxon_10090'}}
 
 Writing the NCBITaxon reference into the file
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-:py:func:`~neuroconv.tools.ontology.add_species_external_resource` looks up the subject's species
+:py:func:`~neuroconv.tools.herd.add_species_external_resource` looks up the subject's species
 value in that map and attaches a reference mapping ``Subject.species`` to its NCBITaxon entity. A
 conversion calls it for you; call it directly to annotate an already-populated in-memory file:
 
 .. code-block:: python
 
-    from neuroconv.tools.ontology import add_species_external_resource
+    from neuroconv.tools.herd import add_species_external_resource
 
     added = add_species_external_resource(nwbfile, metadata=metadata)  # returns True
     nwbfile.external_resources  # now carries a Mus musculus -> NCBITaxon:10090 reference
@@ -164,11 +164,11 @@ Brain regions
 How locations are resolved
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-:py:func:`~neuroconv.tools.ontology.infer_brain_region_ontology_metadata` walks a populated file's
+:py:func:`~neuroconv.tools.herd.infer_brain_region_herd_metadata` walks a populated file's
 ``location`` fields and resolves each distinct string against the curated atlas for the subject's
 species — the Allen Mouse Brain Atlas for *Mus musculus*, the Allen Human Brain Atlas for
 *Homo sapiens*, and a small species-agnostic UBERON vocabulary of common region names
-(:py:data:`~neuroconv.tools.ontology.UBERON_TERMS`) for every other recognized species. A string
+(:py:data:`~neuroconv.tools.herd.UBERON_TERMS`) for every other recognized species. A string
 matches an exact atlas acronym (case-sensitive, e.g. ``"CA1"``, ``"VISp"``), a canonical structure
 name (case-insensitive, e.g. ``"caudoputamen"``), or a common informal name or abbreviation (e.g.
 ``"hippocampus"``, ``"V1"``).
@@ -181,20 +181,20 @@ channel labels (a custom EEG grid's own naming) you add to the map yourself.
 
 .. code-block:: python
 
-    from neuroconv.tools.ontology import infer_brain_region_ontology_metadata
+    from neuroconv.tools.herd import infer_brain_region_herd_metadata
 
     # nwbfile already populated: electrodes carry Allen acronyms as their ``location``
-    infer_brain_region_ontology_metadata(nwbfile, metadata)
-    metadata["ontology"]["brain_regions"]
+    infer_brain_region_herd_metadata(nwbfile, metadata)
+    metadata["HERD"]["brain_regions"]
     #   {"CA1": {"id": "MBA:382", "uri": "https://purl.brain-bican.org/ontology/mbao/MBA_382"},
     #    "VISp": {"id": "MBA:385", "uri": "https://purl.brain-bican.org/ontology/mbao/MBA_385"}}
 
 To resolve a single string yourself, use
-:py:func:`~neuroconv.tools.ontology.get_brain_region_term`:
+:py:func:`~neuroconv.tools.herd.get_brain_region_term`:
 
 .. code-block:: python
 
-    from neuroconv.tools.ontology import get_brain_region_term
+    from neuroconv.tools.herd import get_brain_region_term
 
     term = get_brain_region_term("caudoputamen")  # species defaults to "Mus musculus"
     term.acronym       # 'CP'
@@ -207,14 +207,14 @@ To resolve a single string yourself, use
 Curating the map by hand
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The ``ontology.brain_regions`` map is ordinary metadata. Add an entry for a string the offline
+The ``HERD.brain_regions`` map is ordinary metadata. Add an entry for a string the offline
 lookup does not recognize (a lab-specific label, a subregion outside the curated table, a
 non-standard spelling, a non-mouse species), or overwrite one it produced. Because each term is an
 explicit ``id`` and ``uri``, the map generalizes to any ontology and any species:
 
 .. code-block:: python
 
-    metadata["ontology"] = {
+    metadata["HERD"] = {
         "brain_regions": {
             "my recording site": {
                 "id": "MBA:382",
@@ -226,14 +226,14 @@ explicit ``id`` and ``uri``, the map generalizes to any ontology and any species
 Writing the references into the file
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-:py:func:`~neuroconv.tools.ontology.add_brain_region_external_resources` reads the
-``metadata["ontology"]["brain_regions"]`` map and, for each ``location`` value on the file that the
+:py:func:`~neuroconv.tools.herd.add_brain_region_external_resources` reads the
+``metadata["HERD"]["brain_regions"]`` map and, for each ``location`` value on the file that the
 map covers -- whichever modality it belongs to -- attaches the term(s) as HERD references. A
 conversion calls it for you:
 
 .. code-block:: python
 
-    from neuroconv.tools.ontology import add_brain_region_external_resources
+    from neuroconv.tools.herd import add_brain_region_external_resources
 
     number_added = add_brain_region_external_resources(nwbfile, metadata=metadata)
 
@@ -243,23 +243,23 @@ Locations the map does not name are left untouched. The call is idempotent and e
 Putting it together
 -------------------
 
-A conversion writes whatever the metadata's ``ontology`` blocks state. To have NeuroConv fill those
+A conversion writes whatever the metadata's ``HERD`` blocks state. To have NeuroConv fill those
 blocks in, run inference on the assembled file first, inspect the result, then convert:
 
 .. code-block:: python
 
-    from neuroconv.tools.ontology import (
-        infer_species_ontology_metadata,
-        infer_brain_region_ontology_metadata,
+    from neuroconv.tools.herd import (
+        infer_species_herd_metadata,
+        infer_brain_region_herd_metadata,
     )
 
     metadata["Subject"] = dict(subject_id="m1", species="Mus musculus", sex="M", age="P30D")
 
     # Assemble the file once so inference can see the electrode locations, ...
     staging_nwbfile = interface.create_nwbfile(metadata=metadata)
-    infer_species_ontology_metadata(metadata)
-    infer_brain_region_ontology_metadata(staging_nwbfile, metadata)
-    # ... optionally edit metadata["ontology"]["brain_regions"] here, ...
+    infer_species_herd_metadata(metadata)
+    infer_brain_region_herd_metadata(staging_nwbfile, metadata)
+    # ... optionally edit metadata["HERD"]["brain_regions"] here, ...
 
     # ... then convert: create_nwbfile / run_conversion write the stated terms as HERD references.
     interface.run_conversion(nwbfile_path="out.nwb", metadata=metadata)
@@ -269,9 +269,9 @@ blocks in, run inference on the assembled file first, inspect the result, then c
     #   CA1          -> MBA:382
     #   VISp         -> MBA:385
 
-To disable an annotation, simply leave its entry out of ``metadata["ontology"]`` (or delete it
+To disable an annotation, simply leave its entry out of ``metadata["HERD"]`` (or delete it
 before converting). To use a different atlas or an external ontology service, skip ``infer_*`` and
-write the ``id`` / ``uri`` terms into ``metadata["ontology"]`` yourself.
+write the ``id`` / ``uri`` terms into ``metadata["HERD"]`` yourself.
 
 Annotating an already-written file
 -----------------------------------
@@ -279,24 +279,24 @@ Annotating an already-written file
 The annotation functions only need an ``NWBFile`` object and ``metadata``, not a conversion in
 progress, so they also work on a file that already exists on disk, including one with no NeuroConv
 involvement in how it was originally written. Open it for read/write, run inference (or supply the
-``ontology`` metadata yourself) and the annotation functions, then write the changes back:
+``HERD`` metadata yourself) and the annotation functions, then write the changes back:
 
 .. code-block:: python
 
     from pynwb import NWBHDF5IO
-    from neuroconv.tools.ontology import (
-        infer_species_ontology_metadata,
+    from neuroconv.tools.herd import (
+        infer_species_herd_metadata,
         add_species_external_resource,
     )
 
     with NWBHDF5IO("published.nwb", mode="r+") as io:
         nwbfile = io.read()
         metadata = {"Subject": {"species": nwbfile.subject.species}}
-        infer_species_ontology_metadata(metadata)
+        infer_species_herd_metadata(metadata)
         add_species_external_resource(nwbfile, metadata=metadata)
         io.write(nwbfile)
 
-This works the same way for :py:func:`~neuroconv.tools.ontology.add_brain_region_external_resources`.
+This works the same way for :py:func:`~neuroconv.tools.herd.add_brain_region_external_resources`.
 Both writers are idempotent, so re-running this on a file that already carries the reference does not
 duplicate it.
 

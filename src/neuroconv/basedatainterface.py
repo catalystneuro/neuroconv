@@ -20,7 +20,7 @@ from .tools.nwb_helpers._metadata_and_file_helpers import (
     _fetch_backend_from_nwbfile_on_disk,
     configure_and_write_nwbfile,
 )
-from .tools.ontology import (
+from .tools.herd import (
     add_brain_region_external_resources,
     add_species_external_resource,
 )
@@ -189,8 +189,8 @@ class BaseDataInterface(ABC):
         self.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **conversion_options)
 
         # Write any ontology terms stated in the metadata into the file as HERD references. A
-        # no-op unless metadata carries an "ontology" block (see neuroconv.tools.ontology); run
-        # the infer_*_ontology_metadata functions first to have NeuroConv propose those terms.
+        # no-op unless metadata carries an "HERD" block (see neuroconv.tools.herd); run
+        # the infer_*_herd_metadata functions first to have NeuroConv propose those terms.
         add_species_external_resource(nwbfile, metadata=metadata)
         add_brain_region_external_resources(nwbfile, metadata=metadata)
 
