@@ -3,9 +3,10 @@
 Two layers, deliberately separate:
 
 - **inference** -- ``infer_species_herd_metadata`` / ``infer_brain_region_herd_metadata``
-  (and the ``get_*_term`` primitives they use) resolve free-text values to ontology terms and write
-  those terms into ``metadata["HERD"]``, keyed by the value they describe. This step guesses;
-  run it when you want NeuroConv to propose terms.
+  (and the ``get_*_term`` primitives they use) read a populated ``NWBFile``, resolve its free-text
+  values to ontology terms and return them as a ``{"HERD": {...}}`` metadata block, keyed by the
+  value they describe. This step guesses; run it when you want NeuroConv to propose terms, and merge
+  the result under your metadata with ``dict_deep_update(inferred, metadata, append_list=False)``.
 - **annotation** -- ``add_species_external_resource`` / ``add_brain_region_external_resources`` take
   the terms already stated in ``metadata`` and write them into the file as HERD references. This
   step is deterministic and is what a conversion runs automatically.

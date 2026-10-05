@@ -15,7 +15,9 @@ import difflib
 import warnings
 from dataclasses import dataclass
 
-from ._term_sets import load_term_set
+from pynwb import NWBFile
+
+from ._term_sets import _unwrapped, load_term_set
 
 __all__ = [
     "SPECIES_TERMS",
@@ -172,48 +174,40 @@ def validate_species(species: str | None) -> SpeciesTerm | None:
     return term
 
 
-def infer_species_herd_metadata(metadata: dict) -> dict:
+def infer_species_herd_metadata(nwbfile: NWBFile) -> dict:
     """
-    Fill ``metadata["HERD"]["species"]`` from the subject's species value.
+    Infer the species term for the file's subject, as ``{"HERD": {"species": ...}}``.
 
-    This is the **inference** half of species annotation: it resolves
-    ``metadata["Subject"]["species"]`` (a common name, a likely typo, or a Latin binomial) to its
-    NCBITaxon term via :func:`get_species_term` and writes an explicit
-    ``{"id": ..., "uri": ...}`` term keyed by that value exactly as written (``"mouse"`` stays the
-    key, because HERD links the term to ``Subject.species`` through that string). The deterministic
-    :func:`neuroconv.tools.herd.add_species_external_resource` then writes that term into the
-    file as a HERD reference.
+    This is the **inference** half of species annotation: it resolves ``nwbfile.subject.species`` (a
+    common name, a likely typo, or a Latin binomial) to its NCBITaxon term via
+    :func:`get_species_term` and returns an explicit ``{"id": ..., "uri": ...}`` term keyed by that
+    value exactly as written (``"mouse"`` stays the key, because HERD links the term to
+    ``Subject.species`` through that string). The deterministic
+    :func:`neuroconv.tools.herd.add_species_external_resource` then writes that term into the file
+    as a HERD reference.
 
-    The metadata is modified in place (and also returned). This is a no-op when there is no
-    ``Subject`` block, the species is not recognized, or a term for that value is already present
-    (a user-curated term is never overwritten). A recognized common name or typo also
-    emits the :func:`validate_species` ``UserWarning``.
+    Nothing is modified. Merge the result under your metadata so that terms you wrote yourself win::
+
+        metadata = dict_deep_update(infer_species_herd_metadata(nwbfile), metadata, append_list=False)
+
+    A recognized common name or typo also emits the :func:`validate_species` ``UserWarning``.
 
     Parameters
     ----------
-    metadata : dict
-        Conversion metadata. ``metadata["Subject"]["species"]`` is read; the term is written under
-        ``metadata["HERD"]["species"][<species value>]``.
+    nwbfile : NWBFile
+        The file whose ``subject.species`` is read.
 
     Returns
     -------
     dict
-        The same ``metadata`` object, for chaining.
+        ``{"HERD": {"species": {species: term}}}``, or ``{}`` when the file has no subject or the
+        species is not recognized.
     """
-    subject_metadata = metadata.get("Subject") if isinstance(metadata, dict) else None
-    if not isinstance(subject_metadata, dict):
-        return metadata
-
-    species = subject_metadata.get("species")
+    subject = getattr(nwbfile, "subject", None)
+    species = _unwrapped(getattr(subject, "species", None))
     validate_species(species)  # non-blocking suggestion for common names / typos
 
-    if not isinstance(species, str):
-        return metadata
-    if metadata.get("HERD", {}).get("species", {}).get(species) is not None:
-        return metadata
-
     term = get_species_term(species)
-    if term is not None:
-        species_mapping = metadata.setdefault("HERD", {}).setdefault("species", {})
-        species_mapping[species] = {"id": term.ncbitaxon_id, "uri": term.entity_uri}
-    return metadata
+    if term is None:
+        return {}
+    return {"HERD": {"species": {species: {"id": term.ncbitaxon_id, "uri": term.entity_uri}}}}

@@ -60,10 +60,8 @@ class TestFiberPhotometryHERD:
     def test_virus_injection_location_is_resolved(self):
         nwbfile = _make_nwbfile(species="Mus musculus")
         _add_virus_injection(nwbfile, injection_location="VTA")
-        metadata = {}
 
-        infer_brain_region_herd_metadata(nwbfile, metadata)
-        assert metadata["HERD"]["brain_regions"]["VTA"]["id"] == "MBA:749"
+        assert infer_brain_region_herd_metadata(nwbfile)["HERD"]["brain_regions"]["VTA"]["id"] == "MBA:749"
 
     def test_virus_injection_location_is_annotated(self, tmp_path):
         nwbfile = _make_nwbfile()

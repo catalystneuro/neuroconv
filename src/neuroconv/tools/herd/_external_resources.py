@@ -26,7 +26,8 @@ The reference is stored in-file under ``/general/external_resources``, which req
 
 from pynwb import NWBFile, get_type_map
 
-from ._brain_regions import _location_containers, _unwrapped
+from ._brain_regions import _location_containers
+from ._term_sets import _unwrapped
 
 __all__ = [
     "add_brain_region_external_resources",
@@ -74,7 +75,7 @@ def add_species_external_resource(nwbfile: NWBFile, metadata: dict | None = None
     ``{species string: term-or-list}`` map of explicit ``{"id": ..., "uri": ...}`` terms -- and adds
     an external-resource reference mapping that value to its term(s), stored in-file under
     ``/general/external_resources``. Nothing is inferred: use
-    :func:`neuroconv.tools.herd.infer_species_herd_metadata` to populate that term from a
+    :func:`neuroconv.tools.herd.infer_species_herd_metadata` to propose that term from a
     common name or Latin binomial.
 
     This is a no-op (returns ``False``) when there is no subject or ``metadata`` states no term for
@@ -219,7 +220,7 @@ def add_brain_region_external_resources(nwbfile: NWBFile, metadata: dict | None 
     ``/general/external_resources``.
 
     Nothing is inferred: locations the metadata does not name are left untouched. Use
-    :func:`neuroconv.tools.herd.infer_brain_region_herd_metadata` to populate the map from a
+    :func:`neuroconv.tools.herd.infer_brain_region_herd_metadata` to propose the map from a
     brain atlas first. This is a no-op (returns ``0``) when ``metadata`` states no term.
 
     Parameters

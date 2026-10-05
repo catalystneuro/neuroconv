@@ -20,6 +20,7 @@ from functools import lru_cache
 from pathlib import Path
 
 import yaml
+from hdmf.term_set import TermSetWrapper
 
 _TERM_SET_DIRECTORY = Path(__file__).parent / "term_sets"
 
@@ -154,3 +155,14 @@ def load_term_set(file_name: str) -> dict[str, TermInfo]:
         term_set = merged
 
     return term_set
+
+
+def _unwrapped(value):
+    """The plain value behind an HDMF ``TermSetWrapper``, or ``value`` itself.
+
+    With a type configuration loaded (``pynwb.load_type_config``, e.g. neuro-termsets'
+    ``default_config.yaml``), HDMF wraps configured fields such as ``Subject.species`` and
+    ``ElectrodeGroup.location`` in a ``TermSetWrapper``. The wrapper does not compare or convert like
+    the string it holds, so every value read from a file goes through this first.
+    """
+    return value.value if isinstance(value, TermSetWrapper) else value

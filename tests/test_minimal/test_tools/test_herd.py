@@ -23,6 +23,7 @@ from neuroconv.tools.herd import (
     infer_species_herd_metadata,
     validate_species,
 )
+from neuroconv.utils import dict_deep_update
 
 MOUSE_SPECIES_TERM = {"id": "NCBITaxon:10090", "uri": "http://purl.obolibrary.org/obo/NCBITaxon_10090"}
 
@@ -67,6 +68,11 @@ def _add_icephys_and_ogen(nwbfile: NWBFile, icephys_location, ogen_location) -> 
 def _brain_regions_metadata(mapping: dict) -> dict:
     """A metadata dict carrying a file-wide ``HERD.brain_regions`` map."""
     return {"HERD": {"brain_regions": mapping}}
+
+
+def _infer_herd_metadata(nwbfile: NWBFile) -> dict:
+    """Both inferences for ``nwbfile``, combined into one ``{"HERD": {...}}`` block."""
+    return dict_deep_update(infer_species_herd_metadata(nwbfile), infer_brain_region_herd_metadata(nwbfile))
 
 
 # ---------------------------------------------------------------------------
@@ -414,49 +420,31 @@ class TestBrainRegionTerms:
 
 
 # ---------------------------------------------------------------------------
-# Species ontology inference (metadata -> metadata)
+# Species inference (file -> HERD metadata)
 # ---------------------------------------------------------------------------
 
 
 class TestInferSpeciesHERDMetadata:
-    def test_recognized_species_writes_term(self):
-        metadata = {"Subject": {"species": "Mus musculus"}}
-        infer_species_herd_metadata(metadata)
-        assert metadata["HERD"]["species"] == {"Mus musculus": MOUSE_SPECIES_TERM}
-        assert "HERD" not in metadata["Subject"]
+    def test_recognized_species_returns_term(self):
+        nwbfile = _make_nwbfile(species="Mus musculus")
+        assert infer_species_herd_metadata(nwbfile) == {"HERD": {"species": {"Mus musculus": MOUSE_SPECIES_TERM}}}
 
     def test_common_name_is_resolved_and_warns(self):
-        metadata = {"Subject": {"species": "mouse"}}
+        nwbfile = _make_nwbfile(species="mouse")
         with pytest.warns(UserWarning, match="Mus musculus"):
-            infer_species_herd_metadata(metadata)
+            inferred = infer_species_herd_metadata(nwbfile)
         # Keyed by the value as written: HERD links the term to Subject.species through that string.
-        assert metadata["HERD"]["species"] == {"mouse": MOUSE_SPECIES_TERM}
+        assert inferred == {"HERD": {"species": {"mouse": MOUSE_SPECIES_TERM}}}
 
-    def test_unrecognized_species_leaves_metadata_untouched(self):
-        metadata = {"Subject": {"species": "Octodon degus"}}
-        infer_species_herd_metadata(metadata)
-        assert "HERD" not in metadata
+    def test_unrecognized_species_returns_empty(self):
+        assert infer_species_herd_metadata(_make_nwbfile(species="Octodon degus")) == {}
 
-    def test_existing_user_term_is_not_overwritten(self):
-        curated = {"id": "NCBITaxon:99999", "uri": "https://example.org/custom"}
-        metadata = {"Subject": {"species": "Mus musculus"}, "HERD": {"species": {"Mus musculus": curated}}}
-        infer_species_herd_metadata(metadata)
-        assert metadata["HERD"]["species"] == {"Mus musculus": curated}
-
-    def test_other_herd_entries_are_kept(self):
-        brain_regions = {"CA1": {"id": "MBA:382", "uri": "https://example.org/MBA_382"}}
-        metadata = {"Subject": {"species": "Mus musculus"}, "HERD": {"brain_regions": brain_regions}}
-        infer_species_herd_metadata(metadata)
-        assert metadata["HERD"]["brain_regions"] == brain_regions
-        assert metadata["HERD"]["species"] == {"Mus musculus": MOUSE_SPECIES_TERM}
-
-    def test_no_subject_block_is_a_noop(self):
-        metadata = {"NWBFile": {}}
-        assert infer_species_herd_metadata(metadata) is metadata
+    def test_no_subject_returns_empty(self):
+        assert infer_species_herd_metadata(_make_nwbfile(with_subject=False)) == {}
 
 
 # ---------------------------------------------------------------------------
-# Brain-region ontology inference (file + metadata -> metadata)
+# Brain-region inference (file -> HERD metadata)
 # ---------------------------------------------------------------------------
 
 
@@ -464,10 +452,8 @@ class TestInferBrainRegionHERDMetadata:
     def test_electrode_locations_are_resolved(self):
         nwbfile = _make_nwbfile(species="Mus musculus")
         _add_electrodes(nwbfile, ["CA1", "VISp", "unknown"])
-        metadata = {}
 
-        infer_brain_region_herd_metadata(nwbfile, metadata)
-        brain_regions = metadata["HERD"]["brain_regions"]
+        brain_regions = infer_brain_region_herd_metadata(nwbfile)["HERD"]["brain_regions"]
         assert brain_regions["CA1"] == {"id": "MBA:382", "uri": MBA_TERMS["CA1"].entity_uri}
         assert brain_regions["VISp"]["id"] == "MBA:385"
         assert "unknown" not in brain_regions  # unresolved locations are skipped
@@ -475,18 +461,14 @@ class TestInferBrainRegionHERDMetadata:
     def test_species_selects_the_atlas(self):
         nwbfile = _make_nwbfile(species="Homo sapiens")
         _add_electrodes(nwbfile, ["CA1"])
-        metadata = {}
 
-        infer_brain_region_herd_metadata(nwbfile, metadata)
-        assert metadata["HERD"]["brain_regions"]["CA1"]["id"] == "HBA:12892"
+        assert infer_brain_region_herd_metadata(nwbfile)["HERD"]["brain_regions"]["CA1"]["id"] == "HBA:12892"
 
     def test_icephys_and_ogen_locations_are_resolved(self):
         nwbfile = _make_nwbfile(species="Mus musculus")
         _add_icephys_and_ogen(nwbfile, icephys_location="CA1", ogen_location="VISp")
-        metadata = {}
 
-        infer_brain_region_herd_metadata(nwbfile, metadata)
-        brain_regions = metadata["HERD"]["brain_regions"]
+        brain_regions = infer_brain_region_herd_metadata(nwbfile)["HERD"]["brain_regions"]
         assert {location: term["id"] for location, term in brain_regions.items()} == {
             "CA1": "MBA:382",
             "VISp": "MBA:385",
@@ -505,10 +487,8 @@ class TestInferBrainRegionHERDMetadata:
             location="SSp",
             imaging_rate=30.0,
         )
-        metadata = {}
 
-        infer_brain_region_herd_metadata(nwbfile, metadata)
-        assert metadata["HERD"]["brain_regions"]["SSp"]["id"] == "MBA:322"
+        assert infer_brain_region_herd_metadata(nwbfile)["HERD"]["brain_regions"]["SSp"]["id"] == "MBA:322"
 
     def test_locations_shared_across_modalities_resolve_once(self):
         # The same location string across two modalities is one entry in the flat map.
@@ -525,26 +505,45 @@ class TestInferBrainRegionHERDMetadata:
             location="CA1",
             imaging_rate=30.0,
         )
-        metadata = {}
 
-        infer_brain_region_herd_metadata(nwbfile, metadata)
-        assert metadata["HERD"]["brain_regions"].keys() == {"CA1"}
+        assert infer_brain_region_herd_metadata(nwbfile)["HERD"]["brain_regions"].keys() == {"CA1"}
 
-    def test_unrecognized_species_is_a_noop(self):
+    def test_unrecognized_species_returns_empty(self):
         nwbfile = _make_nwbfile(species="Octodon degus")
         _add_electrodes(nwbfile, ["CA1"])
-        metadata = {}
-        infer_brain_region_herd_metadata(nwbfile, metadata)
-        assert metadata == {}
+        assert infer_brain_region_herd_metadata(nwbfile) == {}
 
-    def test_existing_user_term_is_not_overwritten(self):
-        nwbfile = _make_nwbfile(species="Mus musculus")
+    def test_no_subject_returns_empty(self):
+        nwbfile = _make_nwbfile(with_subject=False)
         _add_electrodes(nwbfile, ["CA1"])
+        assert infer_brain_region_herd_metadata(nwbfile) == {}
+
+
+class TestMergeInferredHERDMetadata:
+    """The documented merge, ``dict_deep_update(inferred, metadata, append_list=False)``."""
+
+    def test_user_terms_win_and_inferred_terms_fill_the_rest(self):
+        nwbfile = _make_nwbfile(species="Mus musculus")
+        _add_electrodes(nwbfile, ["CA1", "VISp"])
         curated = {"id": "MBA:999", "uri": "https://example.org/custom"}
         metadata = _brain_regions_metadata({"CA1": curated})
 
-        infer_brain_region_herd_metadata(nwbfile, metadata)
-        assert metadata["HERD"]["brain_regions"]["CA1"] == curated
+        merged = dict_deep_update(_infer_herd_metadata(nwbfile), metadata, append_list=False)
+        assert merged["HERD"]["brain_regions"]["CA1"] == curated
+        assert merged["HERD"]["brain_regions"]["VISp"]["id"] == "MBA:385"
+        assert merged["HERD"]["species"] == {"Mus musculus": MOUSE_SPECIES_TERM}
+
+    def test_user_list_of_terms_is_kept_whole(self):
+        nwbfile = _make_nwbfile(species="Mus musculus")
+        _add_electrodes(nwbfile, ["CA1"])
+        terms = [
+            {"id": "MBA:382", "uri": MBA_TERMS["CA1"].entity_uri},
+            {"id": "UBERON:0003881", "uri": "http://purl.obolibrary.org/obo/UBERON_0003881"},
+        ]
+        metadata = _brain_regions_metadata({"CA1": terms})
+
+        merged = dict_deep_update(_infer_herd_metadata(nwbfile), metadata, append_list=False)
+        assert merged["HERD"]["brain_regions"]["CA1"] == terms
 
 
 # ---------------------------------------------------------------------------
@@ -810,8 +809,7 @@ class TestConversionPipelineAnnotation:
 
         # Inference needs the populated file to see the electrode location.
         staging_nwbfile = interface.create_nwbfile(metadata=metadata)
-        infer_species_herd_metadata(metadata)
-        infer_brain_region_herd_metadata(staging_nwbfile, metadata)
+        metadata = dict_deep_update(_infer_herd_metadata(staging_nwbfile), metadata, append_list=False)
 
         nwbfile = interface.create_nwbfile(metadata=metadata)
         entity_ids = set(nwbfile.external_resources.to_dataframe()["entity_id"].tolist())
@@ -822,8 +820,7 @@ class TestConversionPipelineAnnotation:
 
         interface, metadata = self._mouse_icephys_interface()
         staging_nwbfile = interface.create_nwbfile(metadata=metadata)
-        infer_species_herd_metadata(metadata)
-        infer_brain_region_herd_metadata(staging_nwbfile, metadata)
+        metadata = dict_deep_update(_infer_herd_metadata(staging_nwbfile), metadata, append_list=False)
         nwbfile = interface.create_nwbfile(metadata=metadata)
 
         path = tmp_path / "ontology_herd.nwb"
@@ -912,10 +909,8 @@ class TestTypeConfigCompatibility:
         # The electrodes table column is not in the config, so it can carry an atlas acronym; the
         # atlas is still chosen from the wrapped Subject.species.
         nwbfile.add_electrode(location="CA1", group=nwbfile.electrode_groups["group0"], id=0)
-        metadata = {"Subject": {"species": "Mus musculus"}}
 
-        infer_species_herd_metadata(metadata)
-        infer_brain_region_herd_metadata(nwbfile, metadata)
+        inferred = _infer_herd_metadata(nwbfile)
 
-        assert metadata["HERD"]["species"] == {"Mus musculus": MOUSE_SPECIES_TERM}
-        assert metadata["HERD"]["brain_regions"]["CA1"]["id"] == "MBA:382"
+        assert inferred["HERD"]["species"] == {"Mus musculus": MOUSE_SPECIES_TERM}
+        assert inferred["HERD"]["brain_regions"]["CA1"]["id"] == "MBA:382"
