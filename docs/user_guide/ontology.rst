@@ -85,6 +85,11 @@ to a list of terms:
         {"id": "UBERON:0003881", "uri": "http://purl.obolibrary.org/obo/UBERON_0003881"},
     ]
 
+The ``HERD`` block is part of the metadata schema: only the ``species`` and ``brain_regions`` maps
+are accepted, and every term needs a non-empty ``id`` and ``uri``. A misspelled map name such as
+``metadata["HERD"]["brain_region"]`` therefore fails metadata validation instead of silently
+annotating nothing.
+
 Species
 -------
 

@@ -2,9 +2,11 @@
 
 import sys
 from datetime import datetime
+from pathlib import Path
 
 import pytest
 from dateutil.tz import tzutc
+from jsonschema import ValidationError
 from pynwb import NWBFile
 from pynwb.file import Subject
 
@@ -23,7 +25,8 @@ from neuroconv.tools.herd import (
     infer_species_herd_metadata,
     validate_species,
 )
-from neuroconv.utils import dict_deep_update
+from neuroconv.utils import dict_deep_update, load_dict_from_file
+from neuroconv.utils.json_schema import validate_metadata
 
 MOUSE_SPECIES_TERM = {"id": "NCBITaxon:10090", "uri": "http://purl.obolibrary.org/obo/NCBITaxon_10090"}
 
@@ -781,6 +784,66 @@ class TestBrainRegionExternalResources:
         dataframe = nwbfile.external_resources.to_dataframe()
         assert set(dataframe["entity_id"].tolist()) == {"MBA:382"}
         assert len(recwarn) == 0
+
+
+# ---------------------------------------------------------------------------
+# The HERD block of the base metadata schema
+# ---------------------------------------------------------------------------
+
+
+class TestHERDMetadataSchema:
+    BRAIN_REGION_TERM = {"id": "MBA:382", "uri": "https://example.org/MBA_382"}
+
+    @pytest.fixture(scope="class")
+    def base_metadata_schema(self):
+        import neuroconv
+
+        return load_dict_from_file(Path(neuroconv.__file__).parent / "schemas" / "base_metadata_schema.json")
+
+    def _validate(self, herd_block, schema):
+        nwbfile_metadata = {"session_start_time": datetime(2020, 1, 1, tzinfo=tzutc())}
+        validate_metadata(metadata={"NWBFile": nwbfile_metadata, "HERD": herd_block}, schema=schema)
+
+    @pytest.mark.parametrize(
+        "herd_block",
+        [
+            {},
+            {"species": {"Mus musculus": MOUSE_SPECIES_TERM}},
+            {"brain_regions": {"CA1": BRAIN_REGION_TERM}},
+            {"brain_regions": {"CA1": [BRAIN_REGION_TERM, {"id": "UBERON:0003881", "uri": "https://example.org/U"}]}},
+            {"brain_regions": {"CA1": {**BRAIN_REGION_TERM, "label": "Field CA1"}}},  # extra keys are allowed
+        ],
+        ids=["empty", "species", "brain_region", "list_of_terms", "term_with_label"],
+    )
+    def test_valid_blocks_pass(self, herd_block, base_metadata_schema):
+        self._validate(herd_block, base_metadata_schema)
+
+    @pytest.mark.parametrize(
+        "herd_block",
+        [
+            {"brain_region": {"CA1": BRAIN_REGION_TERM}},  # typo in the map name
+            {"brain_regions": {"CA1": {"id": "MBA:382"}}},  # no uri
+            {"brain_regions": {"CA1": {"id": "MBA:382", "url": "https://example.org/MBA_382"}}},  # misspelled uri
+            {"brain_regions": {"CA1": {"id": "", "uri": "https://example.org/MBA_382"}}},  # empty id
+            {"brain_regions": {"CA1": "MBA:382"}},  # a bare CURIE, not a term
+            {"brain_regions": {"CA1": []}},  # empty list
+        ],
+        ids=["unknown_map", "missing_uri", "misspelled_uri", "empty_id", "bare_string", "empty_list"],
+    )
+    def test_invalid_blocks_raise(self, herd_block, base_metadata_schema):
+        with pytest.raises(ValidationError) as error:
+            self._validate(herd_block, base_metadata_schema)
+        assert error.value.absolute_path[0] == "HERD"
+
+    def test_interface_schema_rejects_unknown_map(self):
+        # Interfaces build their schema on the base one, so the typo is caught before any data is written.
+        from neuroconv.tools.testing.mock_interfaces import MockIcephysInterface
+
+        interface = MockIcephysInterface(num_sweeps=1, sweep_duration=0.01)
+        metadata = interface.get_metadata()
+        metadata["HERD"] = {"brain_region": {"CA1": self.BRAIN_REGION_TERM}}
+        with pytest.raises(ValidationError, match="brain_region"):
+            interface.validate_metadata(metadata=metadata)
 
 
 # ---------------------------------------------------------------------------
