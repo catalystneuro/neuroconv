@@ -24,6 +24,8 @@ The reference is stored in-file under ``/general/external_resources``, which req
 ``pynwb >= 4.0.0`` (guaranteed by NeuroConv's dependency pin).
 """
 
+import warnings
+
 from pynwb import NWBFile, get_type_map
 
 from ._brain_regions import _location_containers
@@ -31,8 +33,44 @@ from ._term_sets import _unwrapped
 
 __all__ = [
     "add_brain_region_external_resources",
+    "add_herd_annotations_to_nwbfile",
     "add_species_external_resource",
 ]
+
+
+def _get_or_create_herd(nwbfile: NWBFile) -> tuple:
+    """Return ``(herd, is_new)``: the file's HERD, or a new one when it has none.
+
+    HERD resolves each annotated object through its type map. A file read from disk needs the reading
+    IO's type map (it knows the namespaces loaded with the file, extensions included), and a HERD read
+    back from a file otherwise only has hdmf-common's, which cannot resolve any NWB type. A file built in
+    memory uses pynwb's.
+    """
+    from hdmf.common import HERD
+
+    read_io = nwbfile.get_read_io()
+    type_map = read_io.manager.type_map if read_io is not None else get_type_map()
+
+    herd = nwbfile.external_resources
+    if herd is None:
+        return HERD(type_map=type_map), True
+    herd.type_map = type_map
+    return herd, False
+
+
+def _herd_is_read_only(herd) -> bool:
+    """Whether ``herd`` was read from disk, where its tables are fixed-size datasets that cannot grow."""
+    return not isinstance(herd.keys.data, list)
+
+
+def _warn_read_only_herd(number_of_references: int) -> None:
+    warnings.warn(
+        f"The file already stores external resources (HERD) on disk, which cannot be extended, so "
+        f"{number_of_references} new reference(s) from metadata['HERD'] were not added. Annotate the file "
+        "when it is first written instead.",
+        UserWarning,
+        stacklevel=3,
+    )
 
 
 def _species_already_annotated(herd, subject) -> bool:
@@ -108,13 +146,11 @@ def add_species_external_resource(nwbfile: NWBFile, metadata: dict | None = None
         return False
     entities = _ontology_term_entities(species_mapping[species], context=f"Subject species {species!r}")
 
-    from hdmf.common import HERD
-
-    herd = nwbfile.external_resources
-    is_new_herd = herd is None
-    if is_new_herd:
-        herd = HERD(type_map=get_type_map())
-    elif _species_already_annotated(herd, subject):
+    herd, is_new_herd = _get_or_create_herd(nwbfile)
+    if not is_new_herd and _species_already_annotated(herd, subject):
+        return False
+    if not is_new_herd and _herd_is_read_only(herd):
+        _warn_read_only_herd(len(entities))
         return False
 
     for entity_id, entity_uri in entities:
@@ -240,23 +276,27 @@ def add_brain_region_external_resources(nwbfile: NWBFile, metadata: dict | None 
     if not mapping:
         return 0
 
-    from hdmf.common import HERD
-
-    herd = nwbfile.external_resources
-    is_new_herd = herd is None
-    if is_new_herd:
-        herd = HERD(type_map=get_type_map())
+    herd, is_new_herd = _get_or_create_herd(nwbfile)
 
     already_annotated = _existing_external_resource_refs(herd)
-    number_added = 0
+    pending = []  # (container, attribute, relative_path, location, [(entity_id, entity_uri), ...])
     for container, attribute, relative_path, location in _brain_region_annotation_sites(nwbfile):
         if not isinstance(location, str) or location.strip() == "":
             continue
+        new_entities = [
+            (entity_id, entity_uri)
+            for entity_id, entity_uri in mapping.get(location, [])
+            if (container.object_id, location, entity_id) not in already_annotated
+        ]
+        if new_entities:
+            pending.append((container, attribute, relative_path, location, new_entities))
 
-        entities = mapping.get(location)
-        if not entities:
-            continue
+    if pending and not is_new_herd and _herd_is_read_only(herd):
+        _warn_read_only_herd(sum(len(entities) for *_, entities in pending))
+        return 0
 
+    number_added = 0
+    for container, attribute, relative_path, location, entities in pending:
         # All terms for a given location share one HERD key; reuse the key object across the
         # location's entities so a single object<->key link carries every ontology reference.
         key = None
@@ -279,4 +319,34 @@ def add_brain_region_external_resources(nwbfile: NWBFile, metadata: dict | None 
 
     if number_added > 0 and is_new_herd:
         nwbfile.external_resources = herd
+    return number_added
+
+
+def add_herd_annotations_to_nwbfile(nwbfile: NWBFile, metadata: dict | None = None) -> int:
+    """
+    Write every term stated in ``metadata["HERD"]`` into the file as HERD references.
+
+    This is the single entry point for the **annotation** half: it runs each per-domain writer
+    (:func:`add_species_external_resource`, :func:`add_brain_region_external_resources`) on the file
+    as it is now. ``run_conversion`` calls it just before writing, so objects added to an in-memory
+    file after it was created are annotated too. Call it yourself right before writing when you build
+    the file with ``create_nwbfile`` and write it with ``configure_and_write_nwbfile``.
+
+    Nothing is inferred, and it is a no-op (returns ``0``) when ``metadata`` carries no ``HERD`` block.
+    It is idempotent: references already in the file are not added again.
+
+    Parameters
+    ----------
+    nwbfile : NWBFile
+        The file to annotate. Modified in place.
+    metadata : dict, optional
+        Conversion metadata. Terms are read from ``metadata["HERD"]``.
+
+    Returns
+    -------
+    int
+        The number of external-resource references added.
+    """
+    number_added = int(add_species_external_resource(nwbfile, metadata=metadata))
+    number_added += add_brain_region_external_resources(nwbfile, metadata=metadata)
     return number_added

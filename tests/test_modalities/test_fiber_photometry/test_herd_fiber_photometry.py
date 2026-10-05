@@ -18,7 +18,11 @@ from ndx_ophys_devices import Indicator, ViralVector, ViralVectorInjection
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.file import Subject
 
-from neuroconv.tools.herd import add_brain_region_external_resources, infer_brain_region_herd_metadata
+from neuroconv.tools.herd import (
+    add_brain_region_external_resources,
+    add_herd_annotations_to_nwbfile,
+    infer_brain_region_herd_metadata,
+)
 
 
 def _make_nwbfile(species="Mus musculus") -> NWBFile:
@@ -137,6 +141,7 @@ class TestFiberPhotometryHERD:
         series_metadata["fiber_photometry_table_region_description"] = "d"
 
         nwbfile = interface.create_nwbfile(metadata=metadata)
+        add_herd_annotations_to_nwbfile(nwbfile, metadata=metadata)
 
         dataframe = nwbfile.external_resources.to_dataframe()
         by_key = dict(zip(dataframe["key"], dataframe["entity_id"]))

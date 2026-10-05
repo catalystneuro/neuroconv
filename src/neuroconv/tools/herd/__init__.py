@@ -7,9 +7,10 @@ Two layers, deliberately separate:
   values to ontology terms and return them as a ``{"HERD": {...}}`` metadata block, keyed by the
   value they describe. This step guesses; run it when you want NeuroConv to propose terms, and merge
   the result under your metadata with ``dict_deep_update(inferred, metadata, append_list=False)``.
-- **annotation** -- ``add_species_external_resource`` / ``add_brain_region_external_resources`` take
-  the terms already stated in ``metadata`` and write them into the file as HERD references. This
-  step is deterministic and is what a conversion runs automatically.
+- **annotation** -- ``add_herd_annotations_to_nwbfile`` (which runs the per-domain
+  ``add_species_external_resource`` / ``add_brain_region_external_resources``) takes the terms
+  already stated in ``metadata`` and writes them into the file as HERD references. This step is
+  deterministic, and ``run_conversion`` runs it automatically just before writing.
 """
 
 from ._brain_regions import (
@@ -22,6 +23,7 @@ from ._brain_regions import (
 )
 from ._external_resources import (
     add_brain_region_external_resources,
+    add_herd_annotations_to_nwbfile,
     add_species_external_resource,
 )
 from ._species import (
@@ -41,6 +43,7 @@ __all__ = [
     "BrainRegionTerm",
     "SpeciesTerm",
     "add_brain_region_external_resources",
+    "add_herd_annotations_to_nwbfile",
     "add_species_external_resource",
     "get_brain_region_term",
     "get_species_suggestion",

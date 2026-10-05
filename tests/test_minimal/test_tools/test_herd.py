@@ -17,6 +17,7 @@ from neuroconv.tools.herd import (
     BrainRegionTerm,
     SpeciesTerm,
     add_brain_region_external_resources,
+    add_herd_annotations_to_nwbfile,
     add_species_external_resource,
     get_brain_region_term,
     get_species_suggestion,
@@ -29,6 +30,7 @@ from neuroconv.utils import dict_deep_update, load_dict_from_file
 from neuroconv.utils.json_schema import validate_metadata
 
 MOUSE_SPECIES_TERM = {"id": "NCBITaxon:10090", "uri": "http://purl.obolibrary.org/obo/NCBITaxon_10090"}
+CA1_TERM = {"id": "MBA:382", "uri": "https://purl.brain-bican.org/ontology/mbao/MBA_382"}
 
 
 def _make_nwbfile(species="Mus musculus", with_subject=True) -> NWBFile:
@@ -847,53 +849,165 @@ class TestHERDMetadataSchema:
 
 
 # ---------------------------------------------------------------------------
-# Conversion pipeline: infer -> create_nwbfile writes the stated terms
+# Annotation at write time: add_herd_annotations_to_nwbfile and run_conversion
 # ---------------------------------------------------------------------------
+
+
+class TestAddHERDAnnotationsToNWBFile:
+    def test_runs_every_domain_and_counts_references(self):
+        nwbfile = _make_nwbfile(species="Mus musculus")
+        _add_electrodes(nwbfile, ["CA1"])
+        metadata = {"HERD": {"species": {"Mus musculus": MOUSE_SPECIES_TERM}, "brain_regions": {"CA1": CA1_TERM}}}
+
+        assert add_herd_annotations_to_nwbfile(nwbfile, metadata=metadata) == 2
+        entity_ids = set(nwbfile.external_resources.to_dataframe()["entity_id"])
+        assert entity_ids == {"NCBITaxon:10090", "MBA:382"}
+        # Idempotent.
+        assert add_herd_annotations_to_nwbfile(nwbfile, metadata=metadata) == 0
+
+    @pytest.mark.parametrize("metadata", [None, {}, {"Subject": {"species": "Mus musculus"}}])
+    def test_no_herd_block_is_a_noop(self, metadata):
+        nwbfile = _make_nwbfile(species="Mus musculus")
+        assert add_herd_annotations_to_nwbfile(nwbfile, metadata=metadata) == 0
+        assert nwbfile.external_resources is None
+
+
+def _written_references(path) -> set:
+    """``(object_type, key, entity_id)`` for every HERD reference in the file at ``path``."""
+    from pynwb import NWBHDF5IO
+
+    with NWBHDF5IO(path, "r") as io:
+        herd = io.read().external_resources
+        if herd is None:
+            return set()
+        dataframe = herd.to_dataframe()
+    return set(zip(dataframe["object_type"], dataframe["key"], dataframe["entity_id"]))
+
+
+MOUSE_REFERENCE = ("Subject", "Mus musculus", "NCBITaxon:10090")
+CA1_ELECTRODE_REFERENCE = ("IntracellularElectrode", "CA1", "MBA:382")
 
 
 class TestConversionPipelineAnnotation:
     # The icephys mock needs only core NWB, so these run in the minimal test environment.
-    def _mouse_icephys_interface(self, location="CA1"):
+    def _mouse_icephys_interface(self, location="CA1", herd=None):
         from neuroconv.tools.testing.mock_interfaces import MockIcephysInterface
 
         interface = MockIcephysInterface(num_sweeps=1, sweep_duration=0.01)
         metadata = interface.get_metadata()
         metadata["Subject"] = dict(subject_id="m1", species="Mus musculus", sex="M", age="P30D")
         metadata["Icephys"]["IntracellularElectrodes"]["mock"]["location"] = location
+        if herd is not None:
+            metadata["HERD"] = herd
         return interface, metadata
 
-    def test_plain_metadata_writes_no_external_resources(self):
+    def test_create_nwbfile_does_not_annotate(self):
+        # Annotation happens at write time, so create_nwbfile leaves the file as the interfaces built it.
+        interface, metadata = self._mouse_icephys_interface(herd={"species": {"Mus musculus": MOUSE_SPECIES_TERM}})
+        assert interface.create_nwbfile(metadata=metadata).external_resources is None
+
+    def test_single_build_workflow(self, tmp_path):
+        # The documented workflow: build once, infer, merge, annotate, write.
+        from neuroconv.tools.nwb_helpers import configure_and_write_nwbfile
+
         interface, metadata = self._mouse_icephys_interface()
         nwbfile = interface.create_nwbfile(metadata=metadata)
-        assert nwbfile.external_resources is None
+        metadata = dict_deep_update(_infer_herd_metadata(nwbfile), metadata, append_list=False)
+        add_herd_annotations_to_nwbfile(nwbfile, metadata=metadata)
 
-    def test_inferred_terms_are_written_through_create_nwbfile(self):
-        interface, metadata = self._mouse_icephys_interface()
+        path = tmp_path / "single_build.nwb"
+        configure_and_write_nwbfile(nwbfile=nwbfile, nwbfile_path=path, backend="hdf5")
+        assert _written_references(path) == {MOUSE_REFERENCE, CA1_ELECTRODE_REFERENCE}
 
-        # Inference needs the populated file to see the electrode location.
-        staging_nwbfile = interface.create_nwbfile(metadata=metadata)
-        metadata = dict_deep_update(_infer_herd_metadata(staging_nwbfile), metadata, append_list=False)
+    def test_run_conversion_writes_references(self, tmp_path):
+        interface, metadata = self._mouse_icephys_interface(
+            herd={"species": {"Mus musculus": MOUSE_SPECIES_TERM}, "brain_regions": {"CA1": CA1_TERM}}
+        )
+        path = tmp_path / "run_conversion.nwb"
+        interface.run_conversion(nwbfile_path=path, metadata=metadata)
+        assert _written_references(path) == {MOUSE_REFERENCE, CA1_ELECTRODE_REFERENCE}
 
-        nwbfile = interface.create_nwbfile(metadata=metadata)
-        entity_ids = set(nwbfile.external_resources.to_dataframe()["entity_id"].tolist())
-        assert {"NCBITaxon:10090", "MBA:382"}.issubset(entity_ids)
+    def test_run_conversion_annotates_objects_added_to_an_in_memory_file(self, tmp_path):
+        # Objects added to the in-memory file before run_conversion are annotated too.
+        from pynwb.ogen import OptogeneticStimulusSite
 
-    def test_references_round_trip_through_file(self, tmp_path):
+        from neuroconv.tools.nwb_helpers import make_nwbfile_from_metadata
+
+        interface, metadata = self._mouse_icephys_interface(
+            herd={"brain_regions": {"CA1": CA1_TERM, "VISp": {"id": "MBA:385", "uri": "https://example.org/MBA_385"}}}
+        )
+        nwbfile = make_nwbfile_from_metadata(metadata=metadata)
+        device = nwbfile.create_device(name="laser")
+        nwbfile.add_ogen_site(
+            OptogeneticStimulusSite(
+                name="site0", device=device, description="d", excitation_lambda=473.0, location="VISp"
+            )
+        )
+
+        path = tmp_path / "in_memory.nwb"
+        interface.run_conversion(nwbfile_path=path, nwbfile=nwbfile, metadata=metadata)
+        assert _written_references(path) == {CA1_ELECTRODE_REFERENCE, ("OptogeneticStimulusSite", "VISp", "MBA:385")}
+
+    def test_run_conversion_flag_turns_annotation_off(self, tmp_path):
+        interface, metadata = self._mouse_icephys_interface(herd={"species": {"Mus musculus": MOUSE_SPECIES_TERM}})
+        path = tmp_path / "no_herd.nwb"
+        interface.run_conversion(nwbfile_path=path, metadata=metadata, add_herd_annotations=False)
+        assert _written_references(path) == set()
+
+    @pytest.mark.parametrize("add_herd_annotations", [True, False])
+    def test_converter_run_conversion(self, tmp_path, add_herd_annotations):
+        from neuroconv import ConverterPipe
+
+        interface, metadata = self._mouse_icephys_interface(herd={"species": {"Mus musculus": MOUSE_SPECIES_TERM}})
+        converter = ConverterPipe(data_interfaces={"icephys": interface})
+        path = tmp_path / "converter.nwb"
+        converter.run_conversion(nwbfile_path=path, metadata=metadata, add_herd_annotations=add_herd_annotations)
+        assert _written_references(path) == ({MOUSE_REFERENCE} if add_herd_annotations else set())
+
+
+class TestAppendModeAnnotation:
+    """``run_conversion(append_on_disk_nwbfile=True)`` annotates the file read back from disk."""
+
+    FULL_HERD = {"species": {"Mus musculus": MOUSE_SPECIES_TERM}, "brain_regions": {"CA1": CA1_TERM}}
+
+    def _write_icephys_file(self, path, herd=None):
+        interface, metadata = TestConversionPipelineAnnotation()._mouse_icephys_interface(herd=herd)
+        interface.run_conversion(nwbfile_path=path, metadata=metadata)
+
+    def _append_time_series(self, path, herd, converter=False):
+        from neuroconv import ConverterPipe
+        from neuroconv.tools.testing.mock_interfaces import MockTimeSeriesInterface
+
+        interface = MockTimeSeriesInterface()
+        metadata = interface.get_metadata()
+        metadata["HERD"] = herd
+        runner = ConverterPipe(data_interfaces={"time_series": interface}) if converter else interface
+        runner.run_conversion(nwbfile_path=path, metadata=metadata, append_on_disk_nwbfile=True)
+
+    @pytest.mark.parametrize("converter", [False, True], ids=["interface", "converter"])
+    def test_file_without_herd_is_annotated(self, tmp_path, converter):
+        path = tmp_path / "append.nwb"
+        self._write_icephys_file(path)
+        self._append_time_series(path, herd=self.FULL_HERD, converter=converter)
+        assert _written_references(path) == {MOUSE_REFERENCE, CA1_ELECTRODE_REFERENCE}
+
+    def test_already_annotated_file_is_left_as_is(self, tmp_path):
+        path = tmp_path / "append.nwb"
+        self._write_icephys_file(path, herd=self.FULL_HERD)
+        self._append_time_series(path, herd=self.FULL_HERD)
+        assert _written_references(path) == {MOUSE_REFERENCE, CA1_ELECTRODE_REFERENCE}
+
+    def test_new_references_on_a_stored_herd_warn_and_the_append_still_writes(self, tmp_path):
         from pynwb import NWBHDF5IO
 
-        interface, metadata = self._mouse_icephys_interface()
-        staging_nwbfile = interface.create_nwbfile(metadata=metadata)
-        metadata = dict_deep_update(_infer_herd_metadata(staging_nwbfile), metadata, append_list=False)
-        nwbfile = interface.create_nwbfile(metadata=metadata)
+        path = tmp_path / "append.nwb"
+        self._write_icephys_file(path, herd={"species": {"Mus musculus": MOUSE_SPECIES_TERM}})
+        with pytest.warns(UserWarning, match="cannot be extended"):
+            self._append_time_series(path, herd=self.FULL_HERD)
 
-        path = tmp_path / "ontology_herd.nwb"
-        with NWBHDF5IO(path, "w") as io:
-            io.write(nwbfile)
+        assert _written_references(path) == {MOUSE_REFERENCE}
         with NWBHDF5IO(path, "r") as io:
-            read_nwbfile = io.read()
-            entity_ids = set(read_nwbfile.external_resources.to_dataframe()["entity_id"].tolist())
-
-        assert {"NCBITaxon:10090", "MBA:382"}.issubset(entity_ids)
+            assert "TimeSeries" in io.read().acquisition
 
 
 # ---------------------------------------------------------------------------

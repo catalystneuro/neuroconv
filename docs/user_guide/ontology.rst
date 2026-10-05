@@ -41,12 +41,13 @@ Ontology support is deliberately split into two independent halves, both in
    and return them as a ``{"HERD": {...}}`` metadata block, **keyed by the value each term
    describes**. They do not modify anything. This step guesses; run it when you want NeuroConv to
    propose terms, then inspect the result and merge it into your metadata.
-2. **Annotation** — :py:func:`~neuroconv.tools.herd.add_species_external_resource` and
-   :py:func:`~neuroconv.tools.herd.add_brain_region_external_resources` take the terms already
-   stated in ``metadata`` and write them into the file as HERD references. This step is
+2. **Annotation** — :py:func:`~neuroconv.tools.herd.add_herd_annotations_to_nwbfile` takes the
+   terms already stated in ``metadata`` and writes them into the file as HERD references, running
+   the per-domain :py:func:`~neuroconv.tools.herd.add_species_external_resource` and
+   :py:func:`~neuroconv.tools.herd.add_brain_region_external_resources`. This step is
    deterministic — nothing is inferred, so what lands in the file is exactly what the metadata
-   says — and **a conversion runs it automatically**. It is a no-op unless the metadata carries a
-   ``HERD`` block.
+   says — and **run_conversion runs it automatically, just before writing**. It is a no-op unless
+   the metadata carries a ``HERD`` block.
 
 Because the two are separate, the annotation you write does not have to come from NeuroConv's
 inference: you can bring terms from an ontology service or a file you curate once per dataset and
@@ -149,8 +150,9 @@ Writing the NCBITaxon reference into the file
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 :py:func:`~neuroconv.tools.herd.add_species_external_resource` looks up the subject's species
-value in that map and attaches a reference mapping ``Subject.species`` to its NCBITaxon entity. A
-conversion calls it for you; call it directly to annotate an already-populated in-memory file:
+value in that map and attaches a reference mapping ``Subject.species`` to its NCBITaxon entity.
+:py:func:`~neuroconv.tools.herd.add_herd_annotations_to_nwbfile` calls it for you; call it directly
+to annotate species only:
 
 .. code-block:: python
 
@@ -160,7 +162,7 @@ conversion calls it for you; call it directly to annotate an already-populated i
     nwbfile.external_resources  # now carries a Mus musculus -> NCBITaxon:10090 reference
 
 The call is a no-op (returns ``False``) when there is no subject or ``metadata`` states no term for
-the subject's species value, and it is idempotent: an existing ``external_resources`` HERD is
+the subject's species value, and it is idempotent: an in-memory ``external_resources`` HERD is
 extended in place rather than replaced, and a species that is already annotated is not added twice.
 
 Brain regions
@@ -234,8 +236,9 @@ Writing the references into the file
 
 :py:func:`~neuroconv.tools.herd.add_brain_region_external_resources` reads the
 ``metadata["HERD"]["brain_regions"]`` map and, for each ``location`` value on the file that the
-map covers -- whichever modality it belongs to -- attaches the term(s) as HERD references. A
-conversion calls it for you:
+map covers -- whichever modality it belongs to -- attaches the term(s) as HERD references.
+:py:func:`~neuroconv.tools.herd.add_herd_annotations_to_nwbfile` calls it for you; call it directly
+to annotate brain regions only:
 
 .. code-block:: python
 
@@ -243,38 +246,39 @@ conversion calls it for you:
 
     number_added = add_brain_region_external_resources(nwbfile, metadata=metadata)
 
-Locations the map does not name are left untouched. The call is idempotent and extends an existing
-``external_resources`` HERD in place.
+Locations the map does not name are left untouched. The call is idempotent and extends an
+in-memory ``external_resources`` HERD in place.
 
 Putting it together
 -------------------
 
-A conversion writes whatever the metadata's ``HERD`` block states. To have NeuroConv fill that
-block in, run inference on the assembled file first, merge the result under your metadata, inspect
-it, then convert:
+Annotation happens at write time, on the file as it is then, so anything added to the in-memory
+file after it was created is annotated too. To have NeuroConv propose the terms, build the file once,
+run inference on it, merge the result under your metadata, annotate, and write:
 
 .. code-block:: python
 
     from neuroconv.tools.herd import (
-        infer_species_herd_metadata,
+        add_herd_annotations_to_nwbfile,
         infer_brain_region_herd_metadata,
+        infer_species_herd_metadata,
     )
+    from neuroconv.tools.nwb_helpers import configure_and_write_nwbfile
     from neuroconv.utils import dict_deep_update
 
     metadata["Subject"] = dict(subject_id="m1", species="Mus musculus", sex="M", age="P30D")
 
-    # Assemble the file once so inference can see the subject and the electrode locations, ...
-    staging_nwbfile = interface.create_nwbfile(metadata=metadata)
+    nwbfile = interface.create_nwbfile(metadata=metadata)
     inferred = dict_deep_update(
-        infer_species_herd_metadata(staging_nwbfile),
-        infer_brain_region_herd_metadata(staging_nwbfile),
+        infer_species_herd_metadata(nwbfile),
+        infer_brain_region_herd_metadata(nwbfile),
     )
-    # ... merge it under your metadata, so any term you wrote yourself wins, ...
+    # Merge under your metadata, so any term you wrote yourself wins.
     metadata = dict_deep_update(inferred, metadata, append_list=False)
-    # ... optionally edit metadata["HERD"]["brain_regions"] here, ...
+    # ... optionally inspect or edit metadata["HERD"] here ...
 
-    # ... then convert: create_nwbfile / run_conversion write the stated terms as HERD references.
-    interface.run_conversion(nwbfile_path="out.nwb", metadata=metadata)
+    add_herd_annotations_to_nwbfile(nwbfile, metadata=metadata)
+    configure_and_write_nwbfile(nwbfile=nwbfile, nwbfile_path="out.nwb", backend="hdf5")
 
     # out.nwb now carries, under /general/external_resources:
     #   Mus musculus -> NCBITaxon:10090
@@ -284,9 +288,17 @@ it, then convert:
 Pass ``append_list=False`` to the merge: by default ``dict_deep_update`` merges lists item by
 item, so a value you mapped to several terms would not stay as you wrote it.
 
-To disable an annotation, simply leave its entry out of ``metadata["HERD"]`` (or delete it
-before converting). To use a different atlas or an external ontology service, skip ``infer_*`` and
-write the ``id`` / ``uri`` terms into ``metadata["HERD"]`` yourself.
+``run_conversion`` calls :py:func:`~neuroconv.tools.herd.add_herd_annotations_to_nwbfile` on its
+own just before writing, in both write and append mode, for an interface or a converter. So when the
+``HERD`` block is already in the metadata you pass, a plain conversion is enough:
+
+.. code-block:: python
+
+    interface.run_conversion(nwbfile_path="out.nwb", metadata=metadata)
+
+To skip it, pass ``add_herd_annotations=False`` to ``run_conversion``. To leave out a single term,
+remove its entry from ``metadata["HERD"]``. To use a different atlas or an external ontology
+service, skip ``infer_*`` and write the ``id`` / ``uri`` terms into ``metadata["HERD"]`` yourself.
 
 Annotating an already-written file
 -----------------------------------
@@ -300,19 +312,27 @@ involvement in how it was originally written. Open it for read/write, run infere
 
     from pynwb import NWBHDF5IO
     from neuroconv.tools.herd import (
+        add_herd_annotations_to_nwbfile,
+        infer_brain_region_herd_metadata,
         infer_species_herd_metadata,
-        add_species_external_resource,
     )
+    from neuroconv.utils import dict_deep_update
 
     with NWBHDF5IO("published.nwb", mode="r+") as io:
         nwbfile = io.read()
-        metadata = infer_species_herd_metadata(nwbfile)
-        add_species_external_resource(nwbfile, metadata=metadata)
+        metadata = dict_deep_update(
+            infer_species_herd_metadata(nwbfile),
+            infer_brain_region_herd_metadata(nwbfile),
+        )
+        add_herd_annotations_to_nwbfile(nwbfile, metadata=metadata)
         io.write(nwbfile)
 
-This works the same way for :py:func:`~neuroconv.tools.herd.add_brain_region_external_resources`.
-Both writers are idempotent, so re-running this on a file that already carries the reference does not
-duplicate it.
+``run_conversion(..., append_on_disk_nwbfile=True)`` does the same for the file it appends to.
+
+A file that already stores HERD references on disk cannot take new ones: those tables are read back
+as fixed-size datasets. Re-running the annotation on such a file adds nothing and does not fail; if the
+metadata names a reference the file does not have yet, NeuroConv emits a ``UserWarning`` and leaves
+the stored references as they are. Annotate the file when it is first written instead.
 
 Working with an HDMF type configuration
 ---------------------------------------
