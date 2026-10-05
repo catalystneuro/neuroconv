@@ -82,6 +82,47 @@ class TestFiberPhotometryHERD:
         rows = set(zip(dataframe["object_type"], dataframe["relative_path"], dataframe["key"], dataframe["entity_id"]))
         assert rows == {("ViralVectorInjection", "location", "VTA", "MBA:749")}
 
+    def test_file_on_disk_is_annotated_without_importing_the_extensions(self, tmp_path):
+        # A file read back with load_namespaces=True knows the extension types even when the extension
+        # packages are never imported. The HERD must resolve them through the reading IO's type map:
+        # pynwb's global type map does not have them and HDMF failed with "'NoneType' object has no
+        # attribute 'parent'". The test process has imported the extensions, so annotate in a fresh one.
+        import subprocess
+        import sys
+
+        nwbfile = _make_nwbfile(species="Mus musculus")
+        _add_virus_injection(nwbfile, injection_location="VTA")
+        path = tmp_path / "written_without_herd.nwb"
+        with NWBHDF5IO(path, "w") as io:
+            io.write(nwbfile)
+
+        annotate_in_fresh_process = f"""
+import sys
+from pynwb import NWBHDF5IO
+from neuroconv.tools.herd import (
+    add_herd_annotations_to_nwbfile,
+    infer_brain_region_herd_metadata,
+    infer_species_herd_metadata,
+)
+from neuroconv.utils import dict_deep_update
+
+with NWBHDF5IO({str(path)!r}, "r+", load_namespaces=True) as io:
+    nwbfile = io.read()
+    metadata = dict_deep_update(infer_species_herd_metadata(nwbfile), infer_brain_region_herd_metadata(nwbfile))
+    add_herd_annotations_to_nwbfile(nwbfile, metadata=metadata)
+    io.write(nwbfile)
+assert not any(module.startswith("ndx_") for module in sys.modules), "an extension was imported"
+"""
+        result = subprocess.run(
+            [sys.executable, "-c", annotate_in_fresh_process], capture_output=True, encoding="utf-8"
+        )
+        assert result.returncode == 0, result.stderr
+
+        with NWBHDF5IO(path, "r") as io:
+            dataframe = io.read().external_resources.to_dataframe()
+        rows = set(zip(dataframe["object_type"], dataframe["key"], dataframe["entity_id"]))
+        assert rows == {("Subject", "Mus musculus", "NCBITaxon:10090"), ("ViralVectorInjection", "VTA", "MBA:749")}
+
     def test_fiber_photometry_table_location_is_annotated(self):
         from neuroconv.tools.fiber_photometry import get_fiber_photometry_table
         from neuroconv.tools.testing.mock_interfaces import MockFiberPhotometryInterface
