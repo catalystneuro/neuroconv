@@ -23,11 +23,10 @@ terms.
 
 from dataclasses import dataclass
 
-from hdmf.term_set import TermSetWrapper
 from pynwb import NWBFile
 
 from ._species import get_species_term
-from ._term_sets import load_term_set
+from ._term_sets import _unwrapped, load_term_set
 
 __all__ = [
     "HBA_TERMS",
@@ -36,7 +35,7 @@ __all__ = [
     "SUPPORTED_ATLAS_SPECIES",
     "BrainRegionTerm",
     "get_brain_region_term",
-    "infer_brain_region_ontology_metadata",
+    "infer_brain_region_external_resources",
 ]
 
 
@@ -165,17 +164,6 @@ def get_brain_region_term(location: str, species: str = "Mus musculus") -> Brain
     return atlas.resolve(location)
 
 
-def _unwrapped(value):
-    """The plain value behind an HDMF ``TermSetWrapper``, or ``value`` itself.
-
-    With a type configuration loaded (``pynwb.load_type_config``, e.g. neuro-termsets'
-    ``default_config.yaml``), HDMF wraps configured fields such as ``Subject.species`` and
-    ``ElectrodeGroup.location`` in a ``TermSetWrapper``. The wrapper does not compare or convert like
-    the string it holds, so every value read here goes through this first.
-    """
-    return value.value if isinstance(value, TermSetWrapper) else value
-
-
 def _location_containers(nwbfile: NWBFile) -> list:
     """Every object on the file that carries a scalar ``location`` attribute naming a brain region.
 
@@ -210,7 +198,7 @@ def _all_locations(nwbfile: NWBFile) -> list:
     for container in _location_containers(nwbfile):
         locations.setdefault(_unwrapped(container.location))
 
-    # Lazy import: fiber_photometry.py imports (transitively) from tools.ontology.
+    # Lazy import: fiber_photometry.py imports (transitively) from tools.external_resources.
     from ..fiber_photometry import get_fiber_photometry_table
 
     fiber_photometry_table = get_fiber_photometry_table(nwbfile)
@@ -220,55 +208,46 @@ def _all_locations(nwbfile: NWBFile) -> list:
     return list(locations)
 
 
-def infer_brain_region_ontology_metadata(nwbfile: NWBFile, metadata: dict) -> dict:
+def infer_brain_region_external_resources(nwbfile: NWBFile) -> dict:
     """
-    Fill ``metadata["ontology"]["brain_regions"]`` from the file's ``location`` fields.
+    Infer brain-region terms for the file's ``location`` fields, as ``{"ExternalResources": {"brain_regions": ...}}``.
 
     This is the **inference** half of brain-region annotation: it walks every anatomical
     ``location`` on ``nwbfile`` (the electrodes table, electrode groups, imaging planes,
     intracellular electrodes, optogenetic stimulus sites, viral vector injections, and the
     ``FiberPhotometryTable``), resolves each distinct string to a brain-atlas term with
-    :func:`get_brain_region_term` -- choosing the atlas from the subject's species (Allen Mouse or
-    Human Brain Atlas, or the species-agnostic UBERON fallback) -- and writes explicit
-    ``{"id": ..., "uri": ...}`` terms under ``metadata["ontology"]["brain_regions"]``. The
-    deterministic :func:`neuroconv.tools.ontology.add_brain_region_external_resources` then writes
-    those terms into the file as HERD references.
+    :func:`get_brain_region_term` -- choosing the atlas from ``nwbfile.subject.species`` (Allen Mouse
+    or Human Brain Atlas, or the species-agnostic UBERON fallback) -- and returns explicit
+    ``{"id": ..., "uri": ...}`` terms keyed by the location string. The deterministic
+    :func:`neuroconv.tools.external_resources.add_brain_region_external_resources` then writes those terms into the
+    file as HERD references.
 
-    The metadata is modified in place (and also returned). A location that does not resolve, or one
-    already present in the map (a user-curated term is never overwritten), is left as is. This is a
-    no-op when the subject's species is not recognized or nothing resolves.
+    Nothing is modified. Merge the result under your metadata so that terms you wrote yourself win::
+
+        metadata = dict_deep_update(infer_brain_region_external_resources(nwbfile), metadata, append_list=False)
+
+    ``append_list=False`` keeps a location you mapped to a list of terms as written.
 
     Parameters
     ----------
     nwbfile : NWBFile
-        A populated file (data already added) whose ``location`` fields are read.
-    metadata : dict
-        Conversion metadata. Terms are written under ``metadata["ontology"]["brain_regions"]``.
+        A populated file (data already added) whose subject species and ``location`` fields are read.
 
     Returns
     -------
     dict
-        The same ``metadata`` object, for chaining.
+        ``{"ExternalResources": {"brain_regions": {location: term}}}``, or ``{}`` when the subject's species is
+        not recognized or no location resolves.
     """
-    if not isinstance(metadata, dict):
-        return metadata
-
     subject = getattr(nwbfile, "subject", None)
     species = _unwrapped(getattr(subject, "species", None))
-    if species is None:
-        subject_metadata = metadata.get("Subject")
-        species = subject_metadata.get("species") if isinstance(subject_metadata, dict) else None
 
-    existing = metadata.get("ontology", {}).get("brain_regions", {})
-    resolved = {}
+    brain_regions = {}
     for location in _all_locations(nwbfile):
-        if not isinstance(location, str) or location.strip() == "" or location in existing:
+        if not isinstance(location, str) or location.strip() == "":
             continue
         term = get_brain_region_term(location, species=species)
         if term is not None:
-            resolved[location] = {"id": term.curie, "uri": term.entity_uri}
-    if resolved:
-        brain_regions = metadata.setdefault("ontology", {}).setdefault("brain_regions", {})
-        brain_regions.update(resolved)
+            brain_regions[location] = {"id": term.curie, "uri": term.entity_uri}
 
-    return metadata
+    return {"ExternalResources": {"brain_regions": brain_regions}} if brain_regions else {}

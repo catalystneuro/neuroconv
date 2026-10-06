@@ -11,6 +11,7 @@ from pydantic import FilePath, validate_call
 from pynwb import NWBFile
 
 from .basedatainterface import BaseDataInterface
+from .tools.external_resources import add_external_resources_to_nwbfile
 from .tools.nwb_helpers import (
     BACKEND_NWB_IO,
     HDF5BackendConfiguration,
@@ -23,11 +24,6 @@ from .tools.nwb_helpers import (
 )
 from .tools.nwb_helpers._metadata_and_file_helpers import (
     _fetch_backend_from_nwbfile_on_disk,
-)
-from .tools.ontology import (
-    add_brain_region_external_resources,
-    add_species_external_resource,
-    add_strain_external_resource,
 )
 from .utils import (
     dict_deep_update,
@@ -276,14 +272,6 @@ class NWBConverter:
 
         nwbfile = make_nwbfile_from_metadata(metadata=metadata)
         self.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, conversion_options=conversion_options)
-
-        # Write any ontology terms stated in the metadata into the file as HERD references. A
-        # no-op unless metadata carries an "ontology" block (see neuroconv.tools.ontology); run
-        # the infer_*_ontology_metadata functions first to have NeuroConv propose those terms.
-        add_species_external_resource(nwbfile, metadata=metadata)
-        add_strain_external_resource(nwbfile, metadata=metadata)
-        add_brain_region_external_resources(nwbfile, metadata=metadata)
-
         return nwbfile
 
     def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict | None = None, conversion_options: dict | None = None):
@@ -324,6 +312,7 @@ class NWBConverter:
         backend_configuration: HDF5BackendConfiguration | ZarrBackendConfiguration | None = None,
         conversion_options: dict | None = None,
         append_on_disk_nwbfile: bool = False,
+        add_external_resources: bool = True,
     ) -> None:
         """
         Run the NWB conversion over all the instantiated data interfaces.
@@ -357,6 +346,10 @@ class NWBConverter:
         append_on_disk_nwbfile : bool, default: False
             Whether to append to an existing NWBFile on disk. If True, the `nwbfile` parameter must be None.
             This is useful for appending data to an existing file without overwriting it.
+        add_external_resources : bool, default: True
+            Whether to write the terms stated in ``metadata["ExternalResources"]`` into the file as HERD references
+            (see :func:`neuroconv.tools.external_resources.add_external_resources_to_nwbfile`) just before it is written.
+            A no-op when the metadata carries no ``ExternalResources`` block.
         """
 
         appending_to_in_memory_nwbfile = nwbfile is not None
@@ -409,6 +402,7 @@ class NWBConverter:
                 backend=backend,
                 backend_configuration=backend_configuration,
                 conversion_options=conversion_options,
+                add_external_resources=add_external_resources,
             )
         else:
             self._append_nwbfile(
@@ -417,6 +411,7 @@ class NWBConverter:
                 backend=backend,
                 backend_configuration=backend_configuration,
                 conversion_options=conversion_options,
+                add_external_resources=add_external_resources,
             )
 
     def _write_nwbfile(
@@ -427,20 +422,22 @@ class NWBConverter:
         backend: Literal["hdf5", "zarr"],
         backend_configuration: dict,
         conversion_options: dict,
+        add_external_resources: bool = True,
     ) -> None:
         """
         Write NWBFile to a file path on disk.
 
         Private helper method for run_conversion in write mode.
-        Creates a new NWBFile or uses provided one, then writes to disk.
+        Creates a new NWBFile or uses provided one, annotates it with the HERD terms in the metadata,
+        then writes to disk.
         """
         if nwbfile is not None:
             self.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, conversion_options=conversion_options)
-            add_species_external_resource(nwbfile, metadata=metadata)
-            add_strain_external_resource(nwbfile, metadata=metadata)
-            add_brain_region_external_resources(nwbfile, metadata=metadata)
         else:
             nwbfile = self.create_nwbfile(metadata=metadata, conversion_options=conversion_options)
+
+        if add_external_resources:
+            add_external_resources_to_nwbfile(nwbfile, metadata=metadata)
 
         configure_and_write_nwbfile(
             nwbfile=nwbfile,
@@ -456,12 +453,14 @@ class NWBConverter:
         backend: Literal["hdf5", "zarr"],
         backend_configuration: dict,
         conversion_options: dict,
+        add_external_resources: bool = True,
     ) -> None:
         """
         Append data to an existing NWB file.
 
         Private helper method for run_conversion in append mode.
-        Reads existing file, adds interface data, and writes back.
+        Reads existing file, adds interface data, annotates it with the HERD terms in the metadata,
+        and writes back.
         """
         backend = _fetch_backend_from_nwbfile_on_disk(
             nwbfile_path=nwbfile_path, backend=backend, backend_configuration=backend_configuration
@@ -472,6 +471,10 @@ class NWBConverter:
             nwbfile = io.read()
 
             self.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, conversion_options=conversion_options)
+
+            # Before the backend configuration, so the HERD tables are configured like everything else.
+            if add_external_resources:
+                add_external_resources_to_nwbfile(nwbfile, metadata=metadata)
 
             if backend_configuration is None:
                 backend_configuration = self.get_default_backend_configuration(nwbfile=nwbfile, backend=backend)

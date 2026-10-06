@@ -653,15 +653,15 @@ def test_time_offset_is_read_and_applied():
     forward = BORISInterface(
         file_path=TestBORISTimeOffsetAndUndeclaredCodes.file_path, observation_name="positive offset"
     )
-    assert forward.alignment.offset == pytest.approx(12.5)
+    assert forward.get_event_times("Foraging")[0] == pytest.approx(1.0 + 12.5)
     backward = BORISInterface(
         file_path=TestBORISTimeOffsetAndUndeclaredCodes.file_path, observation_name="negative offset"
     )
-    assert backward.alignment.offset == pytest.approx(-4.0)
+    assert backward.get_event_times("Burrowing")[0] == pytest.approx(6.0 - 4.0)
     media_offsets_only = BORISInterface(file_path=TestBORISMultiSubject.file_path, observation_name="offset positif")
-    assert media_offsets_only.alignment.offset == 0.0
+    assert media_offsets_only._observation.time_offset == 0.0
 
-    # The reader keeps the file's own times; the offset is added at write.
+    # The observation's source offset is included in the native event times.
     nwbfile = mock_NWBFile()
     forward.add_to_nwbfile(nwbfile=nwbfile)
     table = nwbfile.get_events_table("PositiveOffset").to_dataframe()

@@ -19,7 +19,6 @@ class DeepLabCutInterface(BasePoseEstimationInterface):
     associated_suffixes = (".h5", ".csv")
     info = "Interface for handling data from DeepLabCut."
 
-    _timestamps = None
     _source_metadata = None
     _animal_dataframe = None
 
@@ -119,8 +118,8 @@ class DeepLabCutInterface(BasePoseEstimationInterface):
         sampling_frequency : float, optional
             The frame rate of the video the pose was estimated from, in Hz. A DeepLabCut output file's rows
             are video frames and carry no times, and neither the file nor the project config records the
-            rate, so one of ``sampling_frequency`` or ``set_aligned_timestamps`` is required before writing.
-            Pass this for a constant frame rate; call ``set_aligned_timestamps`` when the frames have times
+            rate, so one of ``sampling_frequency`` or ``alignment[key].set_times`` is required before writing.
+            Pass this for a constant frame rate; call ``alignment[key].set_times`` when the frames have times
             of their own, from a hardware clock or an alignment against another stream.
 
 
@@ -646,26 +645,18 @@ class DeepLabCutInterface(BasePoseEstimationInterface):
         return metadata
 
     def get_original_timestamps(self) -> np.ndarray:
-        raise NotImplementedError(
-            "Unable to retrieve the original unaltered timestamps for this interface! "
-            "Define the `get_original_timestamps` method for this interface."
-        )
-
-    def get_timestamps(self) -> np.ndarray:
-        raise NotImplementedError(
-            "Unable to retrieve timestamps for this interface! Define the `get_timestamps` method for this interface."
-        )
-
-    def set_aligned_timestamps(self, aligned_timestamps: list | np.ndarray):
-        """
-        Set aligned timestamps vector for DLC data with user defined timestamps
-
-        Parameters
-        ----------
-        aligned_timestamps : list, np.ndarray
-            A timestamps vector.
-        """
-        self._timestamps = np.asarray(aligned_timestamps)
+        # A DeepLabCut file's index is the video frame number, so it becomes a time only
+        # once a frame rate is known. Neither the .h5/.csv nor the project config records one,
+        # so it has to come from the caller.
+        if self.sampling_frequency is None:
+            raise ValueError(
+                "No timing information is available for this DeepLabCut output. Its rows are video "
+                "frames, and neither the file nor the project config records the frame rate, so the "
+                "times cannot be derived from the source. Pass 'sampling_frequency' to "
+                "DeepLabCutInterface for a constant frame rate, or call "
+                "'interface.alignment[key].set_times(times)' with one time per sample."
+            )
+        return np.asarray(self._read_animal_dataframe().index) / self.sampling_frequency
 
     def _read_animal_dataframe(self):
         """Read the output file and select this interface's individual, once."""
@@ -710,22 +701,7 @@ class DeepLabCutInterface(BasePoseEstimationInterface):
         # and all, and a caller who wrote none gets this interface's own rather than an error.
         resolved_metadata = metadata if describes_pose else self.get_metadata()
 
-        df_animal = self._read_animal_dataframe()
-
-        # Get timestamps. A DeepLabCut file's index is the video frame number, so it becomes a time only
-        # once a frame rate is known. Neither the .h5/.csv nor the project config records one, so it has
-        # to come from the caller.
-        timestamps = self._timestamps
-        if timestamps is None:
-            if self.sampling_frequency is None:
-                raise ValueError(
-                    "No timing information is available for this DeepLabCut output. Its rows are video "
-                    "frames, and neither the file nor the project config records the frame rate, so the "
-                    "times cannot be derived from the source. Pass 'sampling_frequency' to "
-                    "DeepLabCutInterface for a constant frame rate, or call 'set_aligned_timestamps' with "
-                    "one time per frame."
-                )
-            timestamps = np.asarray(df_animal.index) / self.sampling_frequency
+        timestamps = self._get_timestamps()
 
         metadata_key = (
             (self._user_metadata_key or "PoseEstimationDeepLabCut")

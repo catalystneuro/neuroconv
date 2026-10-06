@@ -93,6 +93,15 @@ audio = [
     "ndx-sound>=0.2.3",  # 0.2.3 fixes the starting_time dtype so the spec resolves under hdmf>=6
     "scipy", # for scipy.io.wavfile
 ]
+dannce = [
+    # TODO: ndx-pose 0.4.0 (with CalibratedCamera/MultiCameraPoseEstimation) is not released to PyPI
+    # yet, so this is pinned to the main branch on GitHub. Switch back to "ndx-pose>=0.4.0" once
+    # 0.4.0 is released.
+    "ndx-pose @ git+https://github.com/rly/ndx-pose.git@main",
+    "scipy",
+    "pymatreader>=0.0.32",
+    "neuroconv[video]",
+]
 sleap = [
     "av>=10.0.0",
     "sleap-io>=0.5.2",
@@ -131,10 +140,16 @@ vame = [
 boris = [
     "ndx-ethogram>=0.1.0",  # a BORIS project is a coding scheme plus its events, and the scheme is an Ethogram
 ]
+ethovision = [
+    "openpyxl",  # Excel is one of EthoVision's three Track-export containers
+    "ndx-ethogram>=0.1.0",  # manual-scoring rows also produce an Ethogram and EthogramBouts
+]
 behavior = [
     "neuroconv[boris]",
+    "neuroconv[ethovision]",
     "neuroconv[sleap]",
     "neuroconv[audio]",
+    "neuroconv[dannce]",
     "neuroconv[deeplabcut]",
     "neuroconv[fictrac]",
     "neuroconv[video]",
@@ -180,7 +195,7 @@ events = [
 
 ## Ecephys
 ecephys_minimal = [  # Keeps the minimal versions of ecephys dependencies in the repo
-    "spikeinterface>=0.104.7",
+    "spikeinterface>=0.105.0",
     "neo>=0.14.5",
     "natsort>=7.1.1",
 ]
@@ -644,7 +659,7 @@ docs = [
     "sphinx-design==0.7.0; python_version>='3.11'",  # Used by metadata_templates.rst to show the YAML and JSON forms of each template in tabs.
     "pydata_sphinx_theme==0.16.1",  # Latest as of April 2025.
     "roiextractors",  # Needed for the API documentation
-    "spikeinterface>=0.104.7",  # Needed for the API documentation
+    "spikeinterface>=0.105.0",  # Needed for the API documentation
     "natsort>=7.1.1",  # Needed for the API documentation
     "pytest" # used to build the documentation for tools.testing
 ]

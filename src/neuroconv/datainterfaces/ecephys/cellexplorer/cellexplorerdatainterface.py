@@ -503,12 +503,9 @@ class CellExplorerLFPInterface(CellExplorerRecordingInterface):
         metadata: dict | None = None,
         *args,  # TODO: change to * (keyword only) on or after August 2026
         stub_test: bool = False,
-        starting_time: float | None = None,
         parent_container: Literal["acquisition", "processing/LFP", "processing/FilteredEphys"] = "processing/LFP",
         write_as: Literal["raw", "lfp", "processed"] | None = None,
         write_electrical_series: bool = True,
-        compression: str | None = "gzip",
-        compression_opts: int | None = None,
         iterator_type: str = "v2",
         iterator_options: dict | None = None,
     ):
@@ -516,11 +513,8 @@ class CellExplorerLFPInterface(CellExplorerRecordingInterface):
         if args:
             parameter_names = [
                 "stub_test",
-                "starting_time",
                 "write_as",
                 "write_electrical_series",
-                "compression",
-                "compression_opts",
                 "iterator_type",
                 "iterator_options",
             ]
@@ -543,11 +537,8 @@ class CellExplorerLFPInterface(CellExplorerRecordingInterface):
                 stacklevel=2,
             )
             stub_test = positional_values.get("stub_test", stub_test)
-            starting_time = positional_values.get("starting_time", starting_time)
             write_as = positional_values.get("write_as", write_as)
             write_electrical_series = positional_values.get("write_electrical_series", write_electrical_series)
-            compression = positional_values.get("compression", compression)
-            compression_opts = positional_values.get("compression_opts", compression_opts)
             iterator_type = positional_values.get("iterator_type", iterator_type)
             iterator_options = positional_values.get("iterator_options", iterator_options)
 
@@ -567,11 +558,8 @@ class CellExplorerLFPInterface(CellExplorerRecordingInterface):
             nwbfile=nwbfile,
             metadata=metadata,
             stub_test=stub_test,
-            starting_time=starting_time,
             parent_container=parent_container,
             write_electrical_series=write_electrical_series,
-            compression=compression,
-            compression_opts=compression_opts,
             iterator_type=iterator_type,
             iterator_options=iterator_options,
         )

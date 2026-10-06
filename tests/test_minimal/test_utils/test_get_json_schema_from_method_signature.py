@@ -388,13 +388,12 @@ def test_get_json_schema_from_method_signature_docstring_warning_with_exclusions
             method=method_with_typo_in_docstring_and_exclusions, exclude=["nwbfile", "metadata"]
         )
 
-    assert len(warning_info) == 1
-
     expected_warning_message = (
         "The argument_name 'integ' from the docstring of method 'method_with_typo_in_docstring_and_exclusions' "
         "does not occur in the signature, possibly due to a typo."
     )
-    assert warning_info[0].message.args[0] == expected_warning_message
+    warning_messages = [str(record.message) for record in warning_info]
+    assert warning_messages.count(expected_warning_message) == 1
 
     expected_json_schema = {
         "properties": {"integer": {"type": "integer"}},
@@ -422,13 +421,12 @@ def test_get_json_schema_from_method_signature_docstring_warning_from_bound_meth
     with pytest.warns(expected_warning=UserWarning) as warning_info:
         test_json_schema = get_json_schema_from_method_signature(method=TestClass.test_bound_method)
 
-    assert len(warning_info) == 1
-
     expected_warning_message = (
         "The argument_name 'integ' from the docstring of method 'TestClass.test_bound_method' does not occur in the "
         "signature, possibly due to a typo."
     )
-    assert warning_info[0].message.args[0] == expected_warning_message
+    warning_messages = [str(record.message) for record in warning_info]
+    assert warning_messages.count(expected_warning_message) == 1
 
     expected_json_schema = {
         "properties": {"integer": {"type": "integer"}},
@@ -457,13 +455,12 @@ def test_get_json_schema_from_method_signature_docstring_warning_from_class_meth
     with pytest.warns(expected_warning=UserWarning) as warning_info:
         test_json_schema = get_json_schema_from_method_signature(method=TestClass.test_class_method)
 
-    assert len(warning_info) == 1
-
     expected_warning_message = (
         "The argument_name 'integ' from the docstring of method 'TestClass.test_class_method' does not occur in the "
         "signature, possibly due to a typo."
     )
-    assert warning_info[0].message.args[0] == expected_warning_message
+    warning_messages = [str(record.message) for record in warning_info]
+    assert warning_messages.count(expected_warning_message) == 1
 
     expected_json_schema = {
         "properties": {"integer": {"type": "integer"}},

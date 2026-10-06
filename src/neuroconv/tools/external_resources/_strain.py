@@ -15,14 +15,16 @@ import difflib
 import warnings
 from dataclasses import dataclass
 
-from ._term_sets import load_term_set
+from pynwb import NWBFile
+
+from ._term_sets import _unwrapped, load_term_set
 
 __all__ = [
     "STRAIN_TERMS",
     "StrainTerm",
     "get_strain_suggestion",
     "get_strain_term",
-    "infer_strain_ontology_metadata",
+    "infer_strain_external_resources",
     "validate_strain",
 ]
 
@@ -170,48 +172,40 @@ def validate_strain(strain: str | None) -> StrainTerm | None:
     return term
 
 
-def infer_strain_ontology_metadata(metadata: dict) -> dict:
+def infer_strain_external_resources(nwbfile: NWBFile) -> dict:
     """
-    Fill ``metadata["ontology"]["strain"]`` from the subject's strain value.
+    Infer the strain term for the file's subject, as ``{"ExternalResources": {"strain": ...}}``.
 
-    This is the **inference** half of strain annotation: it resolves
-    ``metadata["Subject"]["strain"]`` (an informal spelling, a likely typo, or a canonical
-    designation) to its RRID term via :func:`get_strain_term` and writes an explicit
-    ``{"id": ..., "uri": ...}`` term keyed by that value exactly as written (``"black 6"`` stays the
-    key, because HERD links the term to ``Subject.strain`` through that string). The deterministic
-    :func:`neuroconv.tools.ontology.add_strain_external_resource` then writes that term into the
-    file as a HERD reference.
+    This is the **inference** half of strain annotation: it resolves ``nwbfile.subject.strain`` (an
+    informal spelling, a likely typo, or a canonical designation) to its RRID term via
+    :func:`get_strain_term` and returns an explicit ``{"id": ..., "uri": ...}`` term keyed by that
+    value exactly as written (``"black 6"`` stays the key, because HERD links the term to
+    ``Subject.strain`` through that string). The deterministic
+    :func:`neuroconv.tools.external_resources.add_strain_external_resource` then writes that term into
+    the file as a HERD reference.
 
-    The metadata is modified in place (and also returned). This is a no-op when there is no
-    ``Subject`` block, no strain is set, the strain is not recognized, or a term for that value is
-    already present (a user-curated term is never overwritten). A recognized informal
-    spelling or typo also emits the :func:`validate_strain` ``UserWarning``.
+    Nothing is modified. Merge the result under your metadata so that terms you wrote yourself win::
+
+        metadata = dict_deep_update(infer_strain_external_resources(nwbfile), metadata, append_list=False)
+
+    A recognized informal spelling or typo also emits the :func:`validate_strain` ``UserWarning``.
 
     Parameters
     ----------
-    metadata : dict
-        Conversion metadata. ``metadata["Subject"]["strain"]`` is read; the term is written under
-        ``metadata["ontology"]["strain"][<strain value>]``.
+    nwbfile : NWBFile
+        The file whose ``subject.strain`` is read.
 
     Returns
     -------
     dict
-        The same ``metadata`` object, for chaining.
+        ``{"ExternalResources": {"strain": {strain: term}}}``, or ``{}`` when the file has no subject,
+        no strain is set, or the strain is not recognized.
     """
-    subject_metadata = metadata.get("Subject") if isinstance(metadata, dict) else None
-    if not isinstance(subject_metadata, dict):
-        return metadata
-
-    strain = subject_metadata.get("strain")
+    subject = getattr(nwbfile, "subject", None)
+    strain = _unwrapped(getattr(subject, "strain", None))
     validate_strain(strain)  # non-blocking suggestion for informal spellings / typos
 
-    if not isinstance(strain, str):
-        return metadata
-    if metadata.get("ontology", {}).get("strain", {}).get(strain) is not None:
-        return metadata
-
     term = get_strain_term(strain)
-    if term is not None:
-        strain_mapping = metadata.setdefault("ontology", {}).setdefault("strain", {})
-        strain_mapping[strain] = {"id": term.rrid, "uri": term.entity_uri}
-    return metadata
+    if term is None:
+        return {}
+    return {"ExternalResources": {"strain": {strain: {"id": term.rrid, "uri": term.entity_uri}}}}

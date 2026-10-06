@@ -7,12 +7,12 @@ write the corresponding references into the file. Nothing is guessed -- resolvin
 value (a common species name, an atlas acronym) to a term is the job of the ``infer_*`` functions
 in this package, which populate the same ``metadata`` blocks these functions read.
 
-The terms live in one file-wide ``metadata["ontology"]`` block, each map keyed by the exact value
+The terms live in one file-wide ``metadata["ExternalResources"]`` block, each map keyed by the exact value
 string it annotates (HERD links a term to an object through that string):
 
-- ``metadata["ontology"]["species"]`` -> ``{species string: term-or-list}`` for ``Subject.species``;
-- ``metadata["ontology"]["strain"]`` -> ``{strain string: term-or-list}`` for ``Subject.strain``;
-- ``metadata["ontology"]["brain_regions"]`` -> ``{location string: term-or-list}`` for every
+- ``metadata["ExternalResources"]["species"]`` -> ``{species string: term-or-list}`` for ``Subject.species``;
+- ``metadata["ExternalResources"]["strain"]`` -> ``{strain string: term-or-list}`` for ``Subject.strain``;
+- ``metadata["ExternalResources"]["brain_regions"]`` -> ``{location string: term-or-list}`` for every
   anatomical ``location`` field on the file (the electrodes table and electrode groups, imaging
   planes, intracellular electrodes, optogenetic stimulus sites, viral vector injections, and the
   ``FiberPhotometryTable``), regardless of which modality it belongs to.
@@ -25,15 +25,54 @@ The reference is stored in-file under ``/general/external_resources``, which req
 ``pynwb >= 4.0.0`` (guaranteed by NeuroConv's dependency pin).
 """
 
+import warnings
+
 from pynwb import NWBFile, get_type_map
 
-from ._brain_regions import _location_containers, _unwrapped
+from ._brain_regions import _location_containers
+from ._term_sets import _unwrapped
 
 __all__ = [
     "add_brain_region_external_resources",
+    "add_external_resources_to_nwbfile",
     "add_species_external_resource",
     "add_strain_external_resource",
 ]
+
+
+def _get_or_create_herd(nwbfile: NWBFile) -> tuple:
+    """Return ``(herd, is_new)``: the file's HERD, or a new one when it has none.
+
+    HERD resolves each annotated object through its type map. A file read from disk needs the reading
+    IO's type map (it knows the namespaces loaded with the file, extensions included), and a HERD read
+    back from a file otherwise only has hdmf-common's, which cannot resolve any NWB type. A file built in
+    memory uses pynwb's.
+    """
+    from hdmf.common import HERD
+
+    read_io = nwbfile.get_read_io()
+    type_map = read_io.manager.type_map if read_io is not None else get_type_map()
+
+    herd = nwbfile.external_resources
+    if herd is None:
+        return HERD(type_map=type_map), True
+    herd.type_map = type_map
+    return herd, False
+
+
+def _herd_is_read_only(herd) -> bool:
+    """Whether ``herd`` was read from disk, where its tables are fixed-size datasets that cannot grow."""
+    return not isinstance(herd.keys.data, list)
+
+
+def _warn_read_only_herd(number_of_references: int) -> None:
+    warnings.warn(
+        f"The file already stores external resources (HERD) on disk, which cannot be extended, so "
+        f"{number_of_references} new reference(s) from metadata['ExternalResources'] were not added. Annotate the file "
+        "when it is first written instead.",
+        UserWarning,
+        stacklevel=3,
+    )
 
 
 def _attribute_already_annotated(herd, container, attribute: str) -> bool:
@@ -47,7 +86,7 @@ def _attribute_already_annotated(herd, container, attribute: str) -> bool:
 
 
 def _ontology_term_entities(value, *, context: str) -> list:
-    """Normalize an ``ontology`` metadata term (a dict, or a list of dicts) to ``[(id, uri), ...]``.
+    """Normalize an ``ExternalResources`` metadata term (a dict, or a list of dicts) to ``[(id, uri), ...]``.
 
     ``context`` names the annotated value in error messages (e.g. ``"Subject species"`` or a brain
     area string).
@@ -68,15 +107,78 @@ def _ontology_term_entities(value, *, context: str) -> list:
     return entities
 
 
+def add_species_external_resource(nwbfile: NWBFile, metadata: dict | None = None) -> bool:
+    """
+    Annotate ``nwbfile.subject.species`` with the NCBITaxon term stated in ``metadata`` via HERD.
+
+    Looks up the subject's species value in ``metadata["ExternalResources"]["species"]`` -- a
+    ``{species string: term-or-list}`` map of explicit ``{"id": ..., "uri": ...}`` terms -- and adds
+    an external-resource reference mapping that value to its term(s), stored in-file under
+    ``/general/external_resources``. Nothing is inferred: use
+    :func:`neuroconv.tools.external_resources.infer_species_external_resources` to propose that term from a
+    common name or Latin binomial.
+
+    This is a no-op (returns ``False``) when there is no subject or ``metadata`` states no term for
+    the subject's species value. It is idempotent: an existing ``external_resources`` HERD is
+    extended in place rather than replaced, and a species already annotated is not added twice.
+
+    Parameters
+    ----------
+    nwbfile : NWBFile
+        The file whose subject species should be annotated. Modified in place.
+    metadata : dict, optional
+        Conversion metadata. The species term is read from
+        ``metadata["ExternalResources"]["species"][<Subject.species>]``.
+
+    Returns
+    -------
+    bool
+        ``True`` if a reference was added, ``False`` otherwise.
+    """
+    return _add_subject_attribute_external_resource(nwbfile, metadata, attribute="species")
+
+
+def add_strain_external_resource(nwbfile: NWBFile, metadata: dict | None = None) -> bool:
+    """
+    Annotate ``nwbfile.subject.strain`` with the RRID term stated in ``metadata`` via HERD.
+
+    Looks up the subject's strain value in ``metadata["ExternalResources"]["strain"]`` -- a
+    ``{strain string: term-or-list}`` map of explicit ``{"id": ..., "uri": ...}`` terms -- and adds
+    an external-resource reference mapping that value to its term(s), stored in-file under
+    ``/general/external_resources``. Nothing is inferred: use
+    :func:`neuroconv.tools.external_resources.infer_strain_external_resources` to propose that term
+    from an informal spelling or canonical designation.
+
+    This is a no-op (returns ``False``) when there is no subject, the subject has no strain set, or
+    ``metadata`` states no term for the subject's strain value. It is idempotent: an existing
+    ``external_resources`` HERD is extended in place rather than replaced, and a strain already
+    annotated is not added twice.
+
+    Parameters
+    ----------
+    nwbfile : NWBFile
+        The file whose subject strain should be annotated. Modified in place.
+    metadata : dict, optional
+        Conversion metadata. The strain term is read from
+        ``metadata["ExternalResources"]["strain"][<Subject.strain>]``.
+
+    Returns
+    -------
+    bool
+        ``True`` if a reference was added, ``False`` otherwise.
+    """
+    return _add_subject_attribute_external_resource(nwbfile, metadata, attribute="strain")
+
+
 def _add_subject_attribute_external_resource(nwbfile: NWBFile, metadata: dict | None, *, attribute: str) -> bool:
     """Shared write path for ``add_species_external_resource`` / ``add_strain_external_resource``.
 
-    Looks up ``getattr(subject, attribute)`` in ``metadata["ontology"][attribute]`` -- a
+    Looks up ``getattr(subject, attribute)`` in ``metadata["ExternalResources"][attribute]`` -- a
     ``{value string: term-or-list}`` map -- and, when the value has a term, adds an external-resource
-    reference mapping the value to it. No-op (``False``)
-    when there is no subject, the subject has no value for ``attribute``, or the metadata states no
-    term for it. Idempotent: an existing ``external_resources`` HERD is extended in place, and a
-    value already annotated for this attribute is not added twice.
+    reference mapping the value to it. No-op (``False``) when there is no subject, the subject has no
+    value for ``attribute``, or the metadata states no term for it. Idempotent: an existing
+    ``external_resources`` HERD is extended in place, and a value already annotated for this
+    attribute is not added twice.
     """
     subject = getattr(nwbfile, "subject", None)
     if subject is None:
@@ -86,19 +188,17 @@ def _add_subject_attribute_external_resource(nwbfile: NWBFile, metadata: dict | 
     if not isinstance(value, str) or value.strip() == "":
         return False
 
-    value_mapping = (metadata or {}).get("ontology", {}).get(attribute)
+    value_mapping = (metadata or {}).get("ExternalResources", {}).get(attribute)
     term = value_mapping.get(value) if isinstance(value_mapping, dict) else None
     if term is None:
         return False
     entities = _ontology_term_entities(term, context=f"Subject {attribute} {value!r}")
 
-    from hdmf.common import HERD
-
-    herd = nwbfile.external_resources
-    is_new_herd = herd is None
-    if is_new_herd:
-        herd = HERD(type_map=get_type_map())
-    elif _attribute_already_annotated(herd, subject, attribute=attribute):
+    herd, is_new_herd = _get_or_create_herd(nwbfile)
+    if not is_new_herd and _attribute_already_annotated(herd, subject, attribute=attribute):
+        return False
+    if not is_new_herd and _herd_is_read_only(herd):
+        _warn_read_only_herd(len(entities))
         return False
 
     # All terms for this value share one HERD key; reuse the key object across entities so a
@@ -121,70 +221,8 @@ def _add_subject_attribute_external_resource(nwbfile: NWBFile, metadata: dict | 
     return True
 
 
-def add_species_external_resource(nwbfile: NWBFile, metadata: dict | None = None) -> bool:
-    """
-    Annotate ``nwbfile.subject.species`` with the NCBITaxon term stated in ``metadata`` via HERD.
-
-    Looks up the subject's species value in ``metadata["ontology"]["species"]`` -- a
-    ``{species string: term-or-list}`` map of explicit ``{"id": ..., "uri": ...}`` terms -- and adds
-    an external-resource reference mapping that value to its term(s), stored in-file under
-    ``/general/external_resources``. Nothing is inferred: use
-    :func:`neuroconv.tools.ontology.infer_species_ontology_metadata` to populate that term from a
-    common name or Latin binomial.
-
-    This is a no-op (returns ``False``) when there is no subject or ``metadata`` states no term for
-    the subject's species value. It is idempotent: an existing ``external_resources`` HERD is
-    extended in place rather than replaced, and a species already annotated is not added twice.
-
-    Parameters
-    ----------
-    nwbfile : NWBFile
-        The file whose subject species should be annotated. Modified in place.
-    metadata : dict, optional
-        Conversion metadata. The species term is read from
-        ``metadata["ontology"]["species"][<Subject.species>]``.
-
-    Returns
-    -------
-    bool
-        ``True`` if a reference was added, ``False`` otherwise.
-    """
-    return _add_subject_attribute_external_resource(nwbfile, metadata, attribute="species")
-
-
-def add_strain_external_resource(nwbfile: NWBFile, metadata: dict | None = None) -> bool:
-    """
-    Annotate ``nwbfile.subject.strain`` with the RRID term stated in ``metadata`` via HERD.
-
-    Looks up the subject's strain value in ``metadata["ontology"]["strain"]`` -- a
-    ``{strain string: term-or-list}`` map of explicit ``{"id": ..., "uri": ...}`` terms -- and adds
-    an external-resource reference mapping that value to its term(s), stored in-file under
-    ``/general/external_resources``. Nothing is inferred: use
-    :func:`neuroconv.tools.ontology.infer_strain_ontology_metadata` to populate that term from an
-    informal spelling or canonical designation.
-
-    This is a no-op (returns ``False``) when there is no subject, the subject has no strain set, or
-    ``metadata`` states no term for the subject's strain value. It is idempotent: an existing ``external_resources`` HERD is
-    extended in place rather than replaced, and a strain already annotated is not added twice.
-
-    Parameters
-    ----------
-    nwbfile : NWBFile
-        The file whose subject strain should be annotated. Modified in place.
-    metadata : dict, optional
-        Conversion metadata. The strain term is read from
-        ``metadata["ontology"]["strain"][<Subject.strain>]``.
-
-    Returns
-    -------
-    bool
-        ``True`` if a reference was added, ``False`` otherwise.
-    """
-    return _add_subject_attribute_external_resource(nwbfile, metadata, attribute="strain")
-
-
 def _brain_region_mapping_from_metadata(metadata: dict | None) -> dict:
-    """Normalize ``metadata["ontology"]["brain_regions"]`` to ``{location: [(id, uri), ...]}``.
+    """Normalize ``metadata["ExternalResources"]["brain_regions"]`` to ``{location: [(id, uri), ...]}``.
 
     Each brain area maps to one or more ontology terms, each an explicit ``{"id": ..., "uri": ...}``
     dict (a single dict or a list of them).
@@ -192,7 +230,7 @@ def _brain_region_mapping_from_metadata(metadata: dict | None) -> dict:
     if not isinstance(metadata, dict):
         return {}
 
-    raw_mapping = metadata.get("ontology", {}).get("brain_regions")
+    raw_mapping = metadata.get("ExternalResources", {}).get("brain_regions")
     if not isinstance(raw_mapping, dict):
         return {}
 
@@ -228,7 +266,7 @@ def _brain_region_annotation_sites(nwbfile: NWBFile) -> list:
         sites.append((container, "location", "location", _unwrapped(container.location)))
 
     # Lazy import: avoids a circular import at module load time (fiber_photometry.py imports from
-    # tools.nwb_helpers, which imports from tools.ontology).
+    # tools.nwb_helpers, which imports from tools.external_resources).
     from ..fiber_photometry import get_fiber_photometry_table
 
     fiber_photometry_table = get_fiber_photometry_table(nwbfile)
@@ -263,14 +301,14 @@ def add_brain_region_external_resources(nwbfile: NWBFile, metadata: dict | None 
     """
     Annotate anatomical ``location`` fields with the brain-region terms stated in ``metadata`` (HERD).
 
-    Reads ``metadata["ontology"]["brain_regions"]`` -- a ``{location string: term-or-list}`` mapping
+    Reads ``metadata["ExternalResources"]["brain_regions"]`` -- a ``{location string: term-or-list}`` mapping
     of explicit ``{"id": ..., "uri": ...}`` terms -- and, for every ``location`` value on the file
     (the electrodes table, electrode groups, imaging planes, intracellular electrodes, optogenetic
     stimulus sites, viral vector injections, and the ``FiberPhotometryTable``) that the map covers, attaches machine-readable references stored in-file under
     ``/general/external_resources``.
 
     Nothing is inferred: locations the metadata does not name are left untouched. Use
-    :func:`neuroconv.tools.ontology.infer_brain_region_ontology_metadata` to populate the map from a
+    :func:`neuroconv.tools.external_resources.infer_brain_region_external_resources` to propose the map from a
     brain atlas first. This is a no-op (returns ``0``) when ``metadata`` states no term.
 
     Parameters
@@ -279,7 +317,7 @@ def add_brain_region_external_resources(nwbfile: NWBFile, metadata: dict | None 
         The file whose anatomical locations should be annotated. Modified in place.
     metadata : dict, optional
         Conversion metadata. Brain-region terms are read from
-        ``metadata["ontology"]["brain_regions"]``.
+        ``metadata["ExternalResources"]["brain_regions"]``.
 
     Returns
     -------
@@ -290,23 +328,27 @@ def add_brain_region_external_resources(nwbfile: NWBFile, metadata: dict | None 
     if not mapping:
         return 0
 
-    from hdmf.common import HERD
-
-    herd = nwbfile.external_resources
-    is_new_herd = herd is None
-    if is_new_herd:
-        herd = HERD(type_map=get_type_map())
+    herd, is_new_herd = _get_or_create_herd(nwbfile)
 
     already_annotated = _existing_external_resource_refs(herd)
-    number_added = 0
+    pending = []  # (container, attribute, relative_path, location, [(entity_id, entity_uri), ...])
     for container, attribute, relative_path, location in _brain_region_annotation_sites(nwbfile):
         if not isinstance(location, str) or location.strip() == "":
             continue
+        new_entities = [
+            (entity_id, entity_uri)
+            for entity_id, entity_uri in mapping.get(location, [])
+            if (container.object_id, location, entity_id) not in already_annotated
+        ]
+        if new_entities:
+            pending.append((container, attribute, relative_path, location, new_entities))
 
-        entities = mapping.get(location)
-        if not entities:
-            continue
+    if pending and not is_new_herd and _herd_is_read_only(herd):
+        _warn_read_only_herd(sum(len(entities) for *_, entities in pending))
+        return 0
 
+    number_added = 0
+    for container, attribute, relative_path, location, entities in pending:
         # All terms for a given location share one HERD key; reuse the key object across the
         # location's entities so a single object<->key link carries every ontology reference.
         key = None
@@ -329,4 +371,36 @@ def add_brain_region_external_resources(nwbfile: NWBFile, metadata: dict | None 
 
     if number_added > 0 and is_new_herd:
         nwbfile.external_resources = herd
+    return number_added
+
+
+def add_external_resources_to_nwbfile(nwbfile: NWBFile, metadata: dict | None = None) -> int:
+    """
+    Write every term stated in ``metadata["ExternalResources"]`` into the file as HERD references.
+
+    This is the single entry point for the **annotation** half: it runs each per-domain writer
+    (:func:`add_species_external_resource`, :func:`add_strain_external_resource`,
+    :func:`add_brain_region_external_resources`) on the file
+    as it is now. ``run_conversion`` calls it just before writing, so objects added to an in-memory
+    file after it was created are annotated too. Call it yourself right before writing when you build
+    the file with ``create_nwbfile`` and write it with ``configure_and_write_nwbfile``.
+
+    Nothing is inferred, and it is a no-op (returns ``0``) when ``metadata`` carries no ``ExternalResources`` block.
+    It is idempotent: references already in the file are not added again.
+
+    Parameters
+    ----------
+    nwbfile : NWBFile
+        The file to annotate. Modified in place.
+    metadata : dict, optional
+        Conversion metadata. Terms are read from ``metadata["ExternalResources"]``.
+
+    Returns
+    -------
+    int
+        The number of external-resource references added.
+    """
+    number_added = int(add_species_external_resource(nwbfile, metadata=metadata))
+    number_added += int(add_strain_external_resource(nwbfile, metadata=metadata))
+    number_added += add_brain_region_external_resources(nwbfile, metadata=metadata)
     return number_added
