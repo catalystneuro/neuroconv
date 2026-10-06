@@ -4,7 +4,6 @@ import warnings
 from typing import Any, ClassVar, Literal
 
 import numcodecs
-import zarr
 from hdmf import Container
 from numcodecs import Shuffle
 from pydantic import Field, InstanceOf, model_validator
@@ -12,35 +11,21 @@ from typing_extensions import Self
 
 from ._base_dataset_io import _DEFAULT_GZIP_LEVEL, DatasetIOConfiguration
 
-_base_zarr_codecs = set(zarr.codec_registry.keys())
-_lossy_zarr_codecs = set(("astype", "bitround", "quantize"))
-
-# These filters do nothing for us, or are things that ought to be implemented at lower HDMF levels
-# or indirectly using HDMF data structures
-_excluded_zarr_codecs = set(
-    (
-        "json2",  # no data savings
-        "pickle",  # no data savings
-        "vlen-utf8",  # enforced by HDMF
-        "vlen-array",  # enforced by HDMF
-        "vlen-bytes",  # enforced by HDMF
-        "msgpack2",  # think more on if we want to include this for variable length string datasets
-        "adler32",  # checksum
-        "crc32",  # checksum
-        "fixedscaleoffset",  # enforced indirectly by HDMF/PyNWB data types
-        "shuffle",  # not a compression method; reachable as an entry of `compressors`
-        "base64",  # unsure what this would ever be used for
-        "n5_wrapper",  # different data format
-        "pcodec",  # is erroneously imported before numcodecs 0.15, see https://numcodecs.readthedocs.io/en/stable/release.html?utm_source=chatgpt.com#id9
-    )
-)
-
-# Forbidding lossy codecs for now, but they could be allowed in the future with warnings?
-# (Users can always initialize and pass explicitly via code)
-_available_zarr_codecs = set(_base_zarr_codecs - _lossy_zarr_codecs - _excluded_zarr_codecs)
-
+# Listed explicitly rather than harvested from `zarr.codec_registry`, which zarr v3 removed, so that importing
+# this module does not depend on the zarr version installed.
 AVAILABLE_ZARR_COMPRESSION_METHODS = {
-    codec_name: zarr.codec_registry[codec_name] for codec_name in _available_zarr_codecs
+    "blosc": numcodecs.Blosc,
+    "bz2": numcodecs.BZ2,
+    "categorize": numcodecs.Categorize,
+    "delta": numcodecs.Delta,
+    "fletcher32": numcodecs.Fletcher32,
+    "gzip": numcodecs.GZip,
+    "jenkins_lookup3": numcodecs.JenkinsLookup3,
+    "lz4": numcodecs.LZ4,
+    "lzma": numcodecs.LZMA,
+    "packbits": numcodecs.PackBits,
+    "zlib": numcodecs.Zlib,
+    "zstd": numcodecs.Zstd,
 }
 
 
@@ -227,7 +212,8 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
         if codec == "shuffle" and "elementsize" not in codec_options:
             codec_options["elementsize"] = self.dtype.itemsize
 
-        return zarr.codec_registry[codec](**codec_options)
+        codec_class = Shuffle if codec == "shuffle" else AVAILABLE_ZARR_COMPRESSION_METHODS[codec]
+        return codec_class(**codec_options)
 
     def get_data_io_kwargs(self) -> dict[str, Any]:
         filters = None
