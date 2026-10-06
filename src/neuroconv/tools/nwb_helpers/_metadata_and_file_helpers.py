@@ -712,3 +712,5 @@ def repack_nwbfile(
         backend_configuration=backend_configuration,
         nwbfile_path=export_nwbfile_path,
     )
+
+    nwbfile.read_io.close()

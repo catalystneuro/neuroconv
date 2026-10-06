@@ -427,7 +427,7 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
             else:
                 electrical_series_path = f"acquisition/{electrical_series_name}"
 
-            self.nwb_recording = NwbRecordingExtractor(
+            nwb_recording = NwbRecordingExtractor(
                 file_path=nwbfile_path,
                 electrical_series_path=electrical_series_path,
                 use_pynwb=True,
@@ -449,20 +449,20 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
             # Edge case that only occurs in testing, but should eventually be fixed nonetheless
             # The NwbRecordingExtractor on spikeinterface experiences an issue when duplicated channel_ids
             # are specified, which occurs during check_recordings_equal when there is only one channel
-            if self.nwb_recording.get_channel_ids()[0] != self.nwb_recording.get_channel_ids()[-1]:
-                check_recordings_equal(RX1=recording, RX2=self.nwb_recording, return_in_uV=False)
+            if nwb_recording.get_channel_ids()[0] != nwb_recording.get_channel_ids()[-1]:
+                check_recordings_equal(RX1=recording, RX2=nwb_recording, return_in_uV=False)
 
                 # This was added to test probe, we should just compare the probes
                 for property_name in ["rel_x", "rel_y", "rel_z"]:
                     if (
                         property_name in properties_in_the_recording
-                        or property_name in self.nwb_recording.get_property_keys()
+                        or property_name in nwb_recording.get_property_keys()
                     ):
                         assert_array_equal(
-                            recording.get_property(property_name), self.nwb_recording.get_property(property_name)
+                            recording.get_property(property_name), nwb_recording.get_property(property_name)
                         )
-                if recording.has_scaleable_traces() and self.nwb_recording.has_scaleable_traces():
-                    check_recordings_equal(RX1=recording, RX2=self.nwb_recording, return_in_uV=True)
+                if recording.has_scaleable_traces() and nwb_recording.has_scaleable_traces():
+                    check_recordings_equal(RX1=recording, RX2=nwb_recording, return_in_uV=True)
 
             # Compare channel groups
             # Neuroconv ALWAYS writes a string property `group_name` to the electrode table.
@@ -475,7 +475,7 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
                 default_group_name = "ElectrodeGroup"
                 group_name_array = np.full(channel_name.size, fill_value=default_group_name)
 
-            group_names_in_nwb = self.nwb_recording.get_property("group")
+            group_names_in_nwb = nwb_recording.get_property("group")
             np.testing.assert_array_equal(group_name_array, group_names_in_nwb)
 
     def check_interface_set_aligned_timestamps(self):
@@ -1517,3 +1517,5 @@ class EventsInterfaceTestMixin(DataInterfaceTestMixin):
             written_timestamps = np.asarray(table["timestamp"][:])[rows]
 
             assert_allclose(written_timestamps, self.interface.get_event_times(event_type_source_id))
+
+        nwbfile.read_io.close()
