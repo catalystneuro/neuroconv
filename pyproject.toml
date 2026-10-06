@@ -372,6 +372,7 @@ guppy = [
     "neuroconv[doric_events]",
     "neuroconv[npm_fp]",
     "neuroconv[npm_events]",
+    "neuroconv[pyphotometry]",
 ]
 fiber_photometry = [
     "neuroconv[csv_fp]",
