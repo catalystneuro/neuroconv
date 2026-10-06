@@ -63,7 +63,7 @@ class TestImportStructure(TestCase):
             "path_expansion",
             "processes",
             "iterative_write",
-            "herd",  # Attached to namespace by nwb_helpers import of validate_species
+            "external_resources",  # Attached to namespace by nwb_helpers import of validate_species
             # Functions and classes imported on the __init__
             "get_format_summaries",
             "get_package",

@@ -164,9 +164,9 @@
         }
       }
     },
-    "HERD": {
+    "ExternalResources": {
       "type": "object",
-      "description": "External resource terms for the whole file, one map per kind of value, each keyed by the exact value string it annotates. Proposed by the neuroconv.tools.herd infer_* functions and written into the file as HERD references.",
+      "description": "External resource terms for the whole file, one map per kind of value, each keyed by the exact value string it annotates. Proposed by the neuroconv.tools.external_resources infer_* functions and written into the file as HERD references.",
       "additionalProperties": false,
       "properties": {
         "species": {

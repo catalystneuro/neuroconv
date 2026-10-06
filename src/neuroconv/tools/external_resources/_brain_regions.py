@@ -35,7 +35,7 @@ __all__ = [
     "SUPPORTED_ATLAS_SPECIES",
     "BrainRegionTerm",
     "get_brain_region_term",
-    "infer_brain_region_herd_metadata",
+    "infer_brain_region_external_resources",
 ]
 
 
@@ -198,7 +198,7 @@ def _all_locations(nwbfile: NWBFile) -> list:
     for container in _location_containers(nwbfile):
         locations.setdefault(_unwrapped(container.location))
 
-    # Lazy import: fiber_photometry.py imports (transitively) from tools.herd.
+    # Lazy import: fiber_photometry.py imports (transitively) from tools.external_resources.
     from ..fiber_photometry import get_fiber_photometry_table
 
     fiber_photometry_table = get_fiber_photometry_table(nwbfile)
@@ -208,9 +208,9 @@ def _all_locations(nwbfile: NWBFile) -> list:
     return list(locations)
 
 
-def infer_brain_region_herd_metadata(nwbfile: NWBFile) -> dict:
+def infer_brain_region_external_resources(nwbfile: NWBFile) -> dict:
     """
-    Infer brain-region terms for the file's ``location`` fields, as ``{"HERD": {"brain_regions": ...}}``.
+    Infer brain-region terms for the file's ``location`` fields, as ``{"ExternalResources": {"brain_regions": ...}}``.
 
     This is the **inference** half of brain-region annotation: it walks every anatomical
     ``location`` on ``nwbfile`` (the electrodes table, electrode groups, imaging planes,
@@ -219,12 +219,12 @@ def infer_brain_region_herd_metadata(nwbfile: NWBFile) -> dict:
     :func:`get_brain_region_term` -- choosing the atlas from ``nwbfile.subject.species`` (Allen Mouse
     or Human Brain Atlas, or the species-agnostic UBERON fallback) -- and returns explicit
     ``{"id": ..., "uri": ...}`` terms keyed by the location string. The deterministic
-    :func:`neuroconv.tools.herd.add_brain_region_external_resources` then writes those terms into the
+    :func:`neuroconv.tools.external_resources.add_brain_region_external_resources` then writes those terms into the
     file as HERD references.
 
     Nothing is modified. Merge the result under your metadata so that terms you wrote yourself win::
 
-        metadata = dict_deep_update(infer_brain_region_herd_metadata(nwbfile), metadata, append_list=False)
+        metadata = dict_deep_update(infer_brain_region_external_resources(nwbfile), metadata, append_list=False)
 
     ``append_list=False`` keeps a location you mapped to a list of terms as written.
 
@@ -236,7 +236,7 @@ def infer_brain_region_herd_metadata(nwbfile: NWBFile) -> dict:
     Returns
     -------
     dict
-        ``{"HERD": {"brain_regions": {location: term}}}``, or ``{}`` when the subject's species is
+        ``{"ExternalResources": {"brain_regions": {location: term}}}``, or ``{}`` when the subject's species is
         not recognized or no location resolves.
     """
     subject = getattr(nwbfile, "subject", None)
@@ -250,4 +250,4 @@ def infer_brain_region_herd_metadata(nwbfile: NWBFile) -> dict:
         if term is not None:
             brain_regions[location] = {"id": term.curie, "uri": term.entity_uri}
 
-    return {"HERD": {"brain_regions": brain_regions}} if brain_regions else {}
+    return {"ExternalResources": {"brain_regions": brain_regions}} if brain_regions else {}

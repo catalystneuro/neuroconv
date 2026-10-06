@@ -11,7 +11,7 @@ Tools
     tools.testing
     tools.iterative_write
     tools.path_expansion
-    tools.herd
+    tools.external_resources
     tools.signal_processing
     tools.data_transfers
     tools.nwb_helpers

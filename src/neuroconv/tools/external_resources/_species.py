@@ -24,7 +24,7 @@ __all__ = [
     "SpeciesTerm",
     "get_species_suggestion",
     "get_species_term",
-    "infer_species_herd_metadata",
+    "infer_species_external_resources",
     "validate_species",
 ]
 
@@ -174,21 +174,21 @@ def validate_species(species: str | None) -> SpeciesTerm | None:
     return term
 
 
-def infer_species_herd_metadata(nwbfile: NWBFile) -> dict:
+def infer_species_external_resources(nwbfile: NWBFile) -> dict:
     """
-    Infer the species term for the file's subject, as ``{"HERD": {"species": ...}}``.
+    Infer the species term for the file's subject, as ``{"ExternalResources": {"species": ...}}``.
 
     This is the **inference** half of species annotation: it resolves ``nwbfile.subject.species`` (a
     common name, a likely typo, or a Latin binomial) to its NCBITaxon term via
     :func:`get_species_term` and returns an explicit ``{"id": ..., "uri": ...}`` term keyed by that
     value exactly as written (``"mouse"`` stays the key, because HERD links the term to
     ``Subject.species`` through that string). The deterministic
-    :func:`neuroconv.tools.herd.add_species_external_resource` then writes that term into the file
+    :func:`neuroconv.tools.external_resources.add_species_external_resource` then writes that term into the file
     as a HERD reference.
 
     Nothing is modified. Merge the result under your metadata so that terms you wrote yourself win::
 
-        metadata = dict_deep_update(infer_species_herd_metadata(nwbfile), metadata, append_list=False)
+        metadata = dict_deep_update(infer_species_external_resources(nwbfile), metadata, append_list=False)
 
     A recognized common name or typo also emits the :func:`validate_species` ``UserWarning``.
 
@@ -200,7 +200,7 @@ def infer_species_herd_metadata(nwbfile: NWBFile) -> dict:
     Returns
     -------
     dict
-        ``{"HERD": {"species": {species: term}}}``, or ``{}`` when the file has no subject or the
+        ``{"ExternalResources": {"species": {species: term}}}``, or ``{}`` when the file has no subject or the
         species is not recognized.
     """
     subject = getattr(nwbfile, "subject", None)
@@ -210,4 +210,4 @@ def infer_species_herd_metadata(nwbfile: NWBFile) -> dict:
     term = get_species_term(species)
     if term is None:
         return {}
-    return {"HERD": {"species": {species: {"id": term.ncbitaxon_id, "uri": term.entity_uri}}}}
+    return {"ExternalResources": {"species": {species: {"id": term.ncbitaxon_id, "uri": term.entity_uri}}}}

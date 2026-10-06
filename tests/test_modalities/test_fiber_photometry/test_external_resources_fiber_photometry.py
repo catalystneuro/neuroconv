@@ -18,10 +18,10 @@ from ndx_ophys_devices import Indicator, ViralVector, ViralVectorInjection
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.file import Subject
 
-from neuroconv.tools.herd import (
+from neuroconv.tools.external_resources import (
     add_brain_region_external_resources,
-    add_herd_annotations_to_nwbfile,
-    infer_brain_region_herd_metadata,
+    add_external_resources_to_nwbfile,
+    infer_brain_region_external_resources,
 )
 
 
@@ -60,19 +60,25 @@ def _add_virus_injection(nwbfile: NWBFile, injection_location) -> None:
     )
 
 
-class TestFiberPhotometryHERD:
+class TestFiberPhotometryExternalResources:
     def test_virus_injection_location_is_resolved(self):
         nwbfile = _make_nwbfile(species="Mus musculus")
         _add_virus_injection(nwbfile, injection_location="VTA")
 
-        assert infer_brain_region_herd_metadata(nwbfile)["HERD"]["brain_regions"]["VTA"]["id"] == "MBA:749"
+        assert (
+            infer_brain_region_external_resources(nwbfile)["ExternalResources"]["brain_regions"]["VTA"]["id"]
+            == "MBA:749"
+        )
 
     def test_virus_injection_location_is_annotated(self, tmp_path):
         nwbfile = _make_nwbfile()
         _add_virus_injection(nwbfile, injection_location="VTA")
         mapping = {"VTA": {"id": "MBA:749", "uri": "https://example.org/MBA_749"}}
 
-        assert add_brain_region_external_resources(nwbfile, metadata={"HERD": {"brain_regions": mapping}}) == 1
+        assert (
+            add_brain_region_external_resources(nwbfile, metadata={"ExternalResources": {"brain_regions": mapping}})
+            == 1
+        )
 
         path = tmp_path / "injection.nwb"
         with NWBHDF5IO(path, "w") as io:
@@ -99,17 +105,17 @@ class TestFiberPhotometryHERD:
         annotate_in_fresh_process = f"""
 import sys
 from pynwb import NWBHDF5IO
-from neuroconv.tools.herd import (
-    add_herd_annotations_to_nwbfile,
-    infer_brain_region_herd_metadata,
-    infer_species_herd_metadata,
+from neuroconv.tools.external_resources import (
+    add_external_resources_to_nwbfile,
+    infer_brain_region_external_resources,
+    infer_species_external_resources,
 )
 from neuroconv.utils import dict_deep_update
 
 with NWBHDF5IO({str(path)!r}, "r+", load_namespaces=True) as io:
     nwbfile = io.read()
-    metadata = dict_deep_update(infer_species_herd_metadata(nwbfile), infer_brain_region_herd_metadata(nwbfile))
-    add_herd_annotations_to_nwbfile(nwbfile, metadata=metadata)
+    metadata = dict_deep_update(infer_species_external_resources(nwbfile), infer_brain_region_external_resources(nwbfile))
+    add_external_resources_to_nwbfile(nwbfile, metadata=metadata)
     io.write(nwbfile)
 assert not any(module.startswith("ndx_") for module in sys.modules), "an extension was imported"
 """
@@ -176,13 +182,15 @@ assert not any(module.startswith("ndx_") for module in sys.modules), "an extensi
                 )
             ),
         )
-        metadata["HERD"] = dict(brain_regions={"CA1": {"id": "MBA:382", "uri": "https://example.org/MBA_382"}})
+        metadata["ExternalResources"] = dict(
+            brain_regions={"CA1": {"id": "MBA:382", "uri": "https://example.org/MBA_382"}}
+        )
         series_metadata = fiber_photometry_metadata[interface.metadata_key]
         series_metadata["fiber_photometry_table_region"] = ["row0"]
         series_metadata["fiber_photometry_table_region_description"] = "d"
 
         nwbfile = interface.create_nwbfile(metadata=metadata)
-        add_herd_annotations_to_nwbfile(nwbfile, metadata=metadata)
+        add_external_resources_to_nwbfile(nwbfile, metadata=metadata)
 
         dataframe = nwbfile.external_resources.to_dataframe()
         by_key = dict(zip(dataframe["key"], dataframe["entity_id"]))
