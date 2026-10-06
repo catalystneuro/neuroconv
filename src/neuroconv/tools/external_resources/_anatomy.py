@@ -17,10 +17,9 @@ from dataclasses import dataclass
 
 from pynwb import NWBFile
 
-from ._brain_regions import _unwrapped
-from ._term_sets import load_term_set
+from ._term_sets import _unwrapped, load_term_set
 
-__all__ = ["ANATOMY_TERMS", "AnatomyTerm", "get_anatomy_term", "infer_anatomy_ontology_metadata"]
+__all__ = ["ANATOMY_TERMS", "AnatomyTerm", "get_anatomy_term", "infer_anatomy_external_resources"]
 
 
 @dataclass(frozen=True)
@@ -96,48 +95,36 @@ def _skeleton_node_names(nwbfile: NWBFile) -> list:
     return list(names)
 
 
-def infer_anatomy_ontology_metadata(nwbfile: NWBFile, metadata: dict) -> dict:
+def infer_anatomy_external_resources(nwbfile: NWBFile) -> dict:
     """
-    Fill ``metadata["ontology"]["anatomy"]`` from the file's skeleton node names.
+    Infer anatomy terms for the file's skeleton node names, as ``{"ExternalResources": {"anatomy": ...}}``.
 
     This is the **inference** half of anatomy annotation: it walks every ``ndx-pose``
     ``Skeleton.nodes`` entry on ``nwbfile`` (pose-estimation keypoints, e.g. ``"Snout"``,
     ``"Shoulder"``), resolves each distinct name to a UBERON term with :func:`get_anatomy_term`, and
-    writes explicit ``{"id": ..., "uri": ...}`` terms under ``metadata["ontology"]["anatomy"]``,
-    keyed by the node name. The deterministic
-    :func:`neuroconv.tools.ontology.add_anatomy_external_resources` then writes those terms into the
-    file as HERD references.
+    returns explicit ``{"id": ..., "uri": ...}`` terms keyed by the node name. The deterministic
+    :func:`neuroconv.tools.external_resources.add_anatomy_external_resources` then writes those terms
+    into the file as HERD references.
 
-    The metadata is modified in place (and also returned). A name that does not resolve, or one
-    already present in the map (a user-curated term is never overwritten), is left as is. This is a
-    no-op when the file has no ``Skeleton`` or nothing resolves.
+    Nothing is modified. Merge the result under your metadata so that terms you wrote yourself win::
+
+        metadata = dict_deep_update(infer_anatomy_external_resources(nwbfile), metadata, append_list=False)
 
     Parameters
     ----------
     nwbfile : NWBFile
         A populated file (data already added) whose ``Skeleton`` node names are read.
-    metadata : dict
-        Conversion metadata. Terms are written under ``metadata["ontology"]["anatomy"]``.
 
     Returns
     -------
     dict
-        The same ``metadata`` object, for chaining.
+        ``{"ExternalResources": {"anatomy": {node name: term}}}``, or ``{}`` when the file has no
+        ``Skeleton`` or no node name resolves.
     """
-    if not isinstance(metadata, dict):
-        return metadata
-
-    existing = metadata.get("ontology", {}).get("anatomy", {})
-    resolved = {}
+    anatomy = {}
     for node_name in _skeleton_node_names(nwbfile):
-        if node_name in existing:
-            continue
         term = get_anatomy_term(node_name)
         if term is not None:
-            resolved[node_name] = {"id": term.curie, "uri": term.entity_uri}
+            anatomy[node_name] = {"id": term.curie, "uri": term.entity_uri}
 
-    if resolved:
-        anatomy = metadata.setdefault("ontology", {}).setdefault("anatomy", {})
-        anatomy.update(resolved)
-
-    return metadata
+    return {"ExternalResources": {"anatomy": anatomy}} if anatomy else {}

@@ -95,9 +95,6 @@ class AxonIntracellularInterface(BaseIcephysInterface):
         self._mode = mode
         self._repetition = repetition
         self._condition = condition
-        # Seconds added to this interface's series timestamps; a converter sets it for multi-file alignment.
-        # Default 0 leaves single-file output unchanged.
-        self._starting_time_shift = 0.0
         self.source_data = dict(
             file_path=file_path,
             response_channel_name=response_channel_name,
@@ -166,6 +163,12 @@ class AxonIntracellularInterface(BaseIcephysInterface):
         self._recording_start_datetime = reader._axon_info.get("rec_datetime")
         self._num_sweeps = int(reader.header["nb_segment"][0])
         self._sampling_rate = float(reader.get_signal_sampling_rate())
+        self._alignment_key = self._series_metadata_key
+        self.alignment._register_series(
+            key=self._alignment_key,
+            get_native_times=self._get_native_times,
+            default_start_time=self._get_native_start_time,
+        )
 
     # Registry keys derive from the run identity so a converter that overrides `_run_identity` propagates to all
     # of them. The electrode is per response channel and the series key is the user's `metadata_key` if given,
@@ -280,7 +283,6 @@ class AxonIntracellularInterface(BaseIcephysInterface):
         data, timestamps, sweep_sample_ranges = self._concatenate_channel_sweeps(
             self._reader, self._response_channel_index, self._num_sweeps, self._sampling_rate
         )
-        timestamps = timestamps + self._starting_time_shift
         channel = self._signal_channels[self._response_channel_index]
         response_data = _IcephysSeriesData(
             data=data,
@@ -341,6 +343,23 @@ class AxonIntracellularInterface(BaseIcephysInterface):
         return cls._dac_channel_names(reader)
 
     # ------------------------------------------------------------------ writing helpers
+
+    def _get_native_start_time(self):
+        return float(
+            self._reader.get_signal_t_start(block_index=self._BLOCK_INDEX, seg_index=0, stream_index=self._STREAM_INDEX)
+        )
+
+    def _get_native_times(self):
+        times = []
+        for segment_index in range(self._num_sweeps):
+            count = self._reader.get_signal_size(
+                block_index=self._BLOCK_INDEX, seg_index=segment_index, stream_index=self._STREAM_INDEX
+            )
+            start = self._reader.get_signal_t_start(
+                block_index=self._BLOCK_INDEX, seg_index=segment_index, stream_index=self._STREAM_INDEX
+            )
+            times.append(start + np.arange(count) / self._sampling_rate)
+        return np.concatenate(times)
 
     def _concatenate_channel_sweeps(self, reader, channel_index, num_sweeps, sampling_rate):
         """Read one ADC channel across all sweeps into preallocated arrays; return

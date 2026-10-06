@@ -15,14 +15,16 @@ import difflib
 import warnings
 from dataclasses import dataclass
 
-from ._term_sets import load_term_set
+from pynwb import NWBFile
+
+from ._term_sets import _unwrapped, load_term_set
 
 __all__ = [
     "SPECIES_TERMS",
     "SpeciesTerm",
     "get_species_suggestion",
     "get_species_term",
-    "infer_species_ontology_metadata",
+    "infer_species_external_resources",
     "validate_species",
 ]
 
@@ -172,48 +174,40 @@ def validate_species(species: str | None) -> SpeciesTerm | None:
     return term
 
 
-def infer_species_ontology_metadata(metadata: dict) -> dict:
+def infer_species_external_resources(nwbfile: NWBFile) -> dict:
     """
-    Fill ``metadata["ontology"]["species"]`` from the subject's species value.
+    Infer the species term for the file's subject, as ``{"ExternalResources": {"species": ...}}``.
 
-    This is the **inference** half of species annotation: it resolves
-    ``metadata["Subject"]["species"]`` (a common name, a likely typo, or a Latin binomial) to its
-    NCBITaxon term via :func:`get_species_term` and writes an explicit
-    ``{"id": ..., "uri": ...}`` term keyed by that value exactly as written (``"mouse"`` stays the
-    key, because HERD links the term to ``Subject.species`` through that string). The deterministic
-    :func:`neuroconv.tools.ontology.add_species_external_resource` then writes that term into the
-    file as a HERD reference.
+    This is the **inference** half of species annotation: it resolves ``nwbfile.subject.species`` (a
+    common name, a likely typo, or a Latin binomial) to its NCBITaxon term via
+    :func:`get_species_term` and returns an explicit ``{"id": ..., "uri": ...}`` term keyed by that
+    value exactly as written (``"mouse"`` stays the key, because HERD links the term to
+    ``Subject.species`` through that string). The deterministic
+    :func:`neuroconv.tools.external_resources.add_species_external_resource` then writes that term into the file
+    as a HERD reference.
 
-    The metadata is modified in place (and also returned). This is a no-op when there is no
-    ``Subject`` block, the species is not recognized, or a term for that value is already present
-    (a user-curated term is never overwritten). A recognized common name or typo also
-    emits the :func:`validate_species` ``UserWarning``.
+    Nothing is modified. Merge the result under your metadata so that terms you wrote yourself win::
+
+        metadata = dict_deep_update(infer_species_external_resources(nwbfile), metadata, append_list=False)
+
+    A recognized common name or typo also emits the :func:`validate_species` ``UserWarning``.
 
     Parameters
     ----------
-    metadata : dict
-        Conversion metadata. ``metadata["Subject"]["species"]`` is read; the term is written under
-        ``metadata["ontology"]["species"][<species value>]``.
+    nwbfile : NWBFile
+        The file whose ``subject.species`` is read.
 
     Returns
     -------
     dict
-        The same ``metadata`` object, for chaining.
+        ``{"ExternalResources": {"species": {species: term}}}``, or ``{}`` when the file has no subject or the
+        species is not recognized.
     """
-    subject_metadata = metadata.get("Subject") if isinstance(metadata, dict) else None
-    if not isinstance(subject_metadata, dict):
-        return metadata
-
-    species = subject_metadata.get("species")
+    subject = getattr(nwbfile, "subject", None)
+    species = _unwrapped(getattr(subject, "species", None))
     validate_species(species)  # non-blocking suggestion for common names / typos
 
-    if not isinstance(species, str):
-        return metadata
-    if metadata.get("ontology", {}).get("species", {}).get(species) is not None:
-        return metadata
-
     term = get_species_term(species)
-    if term is not None:
-        species_mapping = metadata.setdefault("ontology", {}).setdefault("species", {})
-        species_mapping[species] = {"id": term.ncbitaxon_id, "uri": term.entity_uri}
-    return metadata
+    if term is None:
+        return {}
+    return {"ExternalResources": {"species": {species: {"id": term.ncbitaxon_id, "uri": term.entity_uri}}}}

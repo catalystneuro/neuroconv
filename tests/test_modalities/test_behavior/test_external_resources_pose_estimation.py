@@ -1,4 +1,4 @@
-"""Ontology annotation of ``ndx-pose`` skeleton node names (general anatomy, UBERON).
+"""External-resource annotation of ``ndx-pose`` skeleton node names (general anatomy, UBERON).
 
 These live here rather than in ``tests/test_minimal`` because they need ``ndx-pose``, which the behavior
 test job installs.
@@ -12,13 +12,15 @@ from ndx_pose import Skeleton, Skeletons
 from pynwb import NWBFile
 from pynwb.file import Subject
 
-from neuroconv.tools.ontology import (
+from neuroconv.tools.external_resources import (
     add_anatomy_external_resources,
+    add_external_resources_to_nwbfile,
     get_anatomy_term,
-    infer_anatomy_ontology_metadata,
-    infer_species_ontology_metadata,
+    infer_anatomy_external_resources,
+    infer_species_external_resources,
 )
 from neuroconv.tools.testing.mock_interfaces import MockPoseEstimationInterface
+from neuroconv.utils import dict_deep_update
 
 
 def _make_nwbfile(species="Mus musculus") -> NWBFile:
@@ -40,41 +42,36 @@ def _add_skeleton(nwbfile: NWBFile, node_names, name="skeleton0"):
 
 
 def _anatomy_metadata(mapping: dict) -> dict:
-    """A metadata dict carrying a file-wide ``ontology.anatomy`` map."""
-    return {"ontology": {"anatomy": mapping}}
+    """A metadata dict carrying a file-wide ``ExternalResources.anatomy`` map."""
+    return {"ExternalResources": {"anatomy": mapping}}
 
 
 # ---------------------------------------------------------------------------
-# Anatomy ontology inference (file + metadata -> metadata)
+# Anatomy inference (file -> ExternalResources metadata)
 # ---------------------------------------------------------------------------
 
 
-class TestInferAnatomyOntologyMetadata:
+class TestInferAnatomyExternalResources:
     def test_skeleton_node_names_are_resolved(self):
         nwbfile = _make_nwbfile()
         _add_skeleton(nwbfile, ["Snout", "Shoulder", "EarL"])
-        metadata = {}
 
-        infer_anatomy_ontology_metadata(nwbfile, metadata)
-        anatomy = metadata["ontology"]["anatomy"]
+        anatomy = infer_anatomy_external_resources(nwbfile)["ExternalResources"]["anatomy"]
         assert anatomy["Snout"]["id"] == get_anatomy_term("Snout").curie
         assert anatomy["Shoulder"]["id"] == get_anatomy_term("Shoulder").curie
         assert "EarL" not in anatomy  # unresolved (lab-specific, laterality marker) is skipped
 
-    def test_no_skeleton_is_a_noop(self):
-        nwbfile = _make_nwbfile()
-        metadata = {}
-        infer_anatomy_ontology_metadata(nwbfile, metadata)
-        assert metadata == {}
+    def test_no_skeleton_returns_empty(self):
+        assert infer_anatomy_external_resources(_make_nwbfile()) == {}
 
-    def test_existing_user_term_is_not_overwritten(self):
+    def test_user_term_wins_in_the_merge(self):
         nwbfile = _make_nwbfile()
         _add_skeleton(nwbfile, ["Snout"])
         curated = {"id": "UBERON:9999999", "uri": "https://example.org/custom"}
         metadata = _anatomy_metadata({"Snout": curated})
 
-        infer_anatomy_ontology_metadata(nwbfile, metadata)
-        assert metadata["ontology"]["anatomy"]["Snout"] == curated
+        merged = dict_deep_update(infer_anatomy_external_resources(nwbfile), metadata, append_list=False)
+        assert merged["ExternalResources"]["anatomy"]["Snout"] == curated
 
 
 # ---------------------------------------------------------------------------
@@ -195,22 +192,48 @@ class TestAnatomyExternalResources:
 
 
 # ---------------------------------------------------------------------------
-# Conversion pipeline: infer -> create_nwbfile writes the stated anatomy terms
+# Conversion pipeline: annotation at write time
 # ---------------------------------------------------------------------------
 
 
 class TestAnatomyConversionPipeline:
-    def test_inferred_anatomy_terms_are_written_through_create_nwbfile(self):
+    HEAD_AND_NECK = {"UBERON:0000033", "UBERON:0000974"}
+
+    def _pose_interface(self):
         interface = MockPoseEstimationInterface(num_nodes=3)  # nodes: head, neck, left_shoulder
         metadata = interface.get_metadata()
         metadata["Subject"] = dict(subject_id="m1", species="Mus musculus", sex="M", age="P30D")
+        return interface, metadata
 
-        # Inference needs the populated file to see the skeleton node names.
-        staging_nwbfile = interface.create_nwbfile(metadata=metadata)
-        infer_species_ontology_metadata(metadata)
-        infer_anatomy_ontology_metadata(staging_nwbfile, metadata)
-
+    def test_single_build_workflow(self):
+        interface, metadata = self._pose_interface()
         nwbfile = interface.create_nwbfile(metadata=metadata)
+        inferred = dict_deep_update(
+            infer_species_external_resources(nwbfile), infer_anatomy_external_resources(nwbfile)
+        )
+        metadata = dict_deep_update(inferred, metadata, append_list=False)
+
+        add_external_resources_to_nwbfile(nwbfile, metadata=metadata)
         entity_ids = set(nwbfile.external_resources.to_dataframe()["entity_id"].tolist())
         assert "NCBITaxon:10090" in entity_ids
-        assert {"UBERON:0000033", "UBERON:0000974"}.issubset(entity_ids)  # head, neck
+        assert self.HEAD_AND_NECK.issubset(entity_ids)
+
+    def test_run_conversion_writes_anatomy_references(self, tmp_path):
+        from pynwb import NWBHDF5IO
+
+        interface, metadata = self._pose_interface()
+        metadata["ExternalResources"] = {
+            "anatomy": {
+                "head": {"id": "UBERON:0000033", "uri": "http://purl.obolibrary.org/obo/UBERON_0000033"},
+                "neck": {"id": "UBERON:0000974", "uri": "http://purl.obolibrary.org/obo/UBERON_0000974"},
+            }
+        }
+        path = tmp_path / "pose.nwb"
+        interface.run_conversion(nwbfile_path=path, metadata=metadata)
+
+        with NWBHDF5IO(path, "r") as io:
+            dataframe = io.read().external_resources.to_dataframe()
+        assert set(zip(dataframe["object_type"], dataframe["key"], dataframe["entity_id"])) == {
+            ("Skeleton", "head", "UBERON:0000033"),
+            ("Skeleton", "neck", "UBERON:0000974"),
+        }

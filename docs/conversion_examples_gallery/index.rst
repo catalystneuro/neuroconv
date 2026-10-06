@@ -140,7 +140,9 @@ Behavior
     :maxdepth: 1
 
     Audio <behavior/audio>
+    DANNCE <behavior/dannce>
     BORIS <behavior/boris>
+    EthoVision <behavior/ethovision>
     FicTrac <behavior/fictrac>
     Neuralynx NVT <behavior/neuralynx_nvt>
     Videos <behavior/video>

@@ -26,7 +26,7 @@ from ._device_types import (
     _resolve_type,
 )
 from ._provenance import describe_source_script
-from ..ontology import validate_species, validate_strain
+from ..external_resources import validate_species, validate_strain
 from ...utils.dict import DeepDict, load_dict_from_file
 from ...utils.json_schema import _validate_device_registry_names, validate_metadata
 
@@ -713,3 +713,5 @@ def repack_nwbfile(
         backend_configuration=backend_configuration,
         nwbfile_path=export_nwbfile_path,
     )
+
+    nwbfile.read_io.close()
