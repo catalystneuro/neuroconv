@@ -23,7 +23,6 @@ license = { file = "license.txt" }
 keywords = ["nwb", "NeurodataWithoutBorders"]
 classifiers = [
     "Intended Audience :: Science/Research",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -33,7 +32,7 @@ classifiers = [
     "License :: OSI Approved :: BSD License",
 
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
     "numpy>=1.22.0; python_version <= '3.11'",
     "numpy>=1.26.0; python_version >= '3.12'",
@@ -553,7 +552,7 @@ PYTHONWARNDEFAULTENCODING = "1"  # Emit EncodingWarning when open() lacks explic
 
 [tool.black]
 line-length = 120
-target-version = ['py39', 'py310']
+target-version = ['py311']
 include = '\.pyi?$'
 extend-exclude = '''
 /(
@@ -578,7 +577,7 @@ extend-exclude = '''
 # formatted. Ruff's default line length is 88, and its default exclusions already cover the ones black
 # lists, so the width is the only setting that has to be restated.
 line-length = 120
-target-version = "py310"
+target-version = "py311"
 
 [tool.ruff.lint]
 select = [
