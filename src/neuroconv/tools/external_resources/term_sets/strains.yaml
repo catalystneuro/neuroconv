@@ -1,0 +1,56 @@
+id: https://neuroconv.readthedocs.io/termset/strains
+name: Strains
+version: 0.0.1
+prefixes:
+  RRID: "https://scicrunch.org/resolver/RRID:"
+imports:
+- linkml:types
+default_range: string
+enums:
+  Strain:
+    permissible_values:
+      C57BL/6J:
+        description: C57BL/6J (Mus musculus, The Jackson Laboratory)
+        meaning: RRID:IMSR_JAX:000664
+        aliases:
+          - c57bl/6
+          - c57bl6
+          - black 6
+          - b6
+      C57BL/6N:
+        description: C57BL/6N (Mus musculus, Charles River)
+        meaning: RRID:IMSR_CRL:027
+        aliases:
+          - c57bl/6n
+      BALB/cJ:
+        description: BALB/cJ (Mus musculus, The Jackson Laboratory)
+        meaning: RRID:IMSR_JAX:000651
+        aliases:
+          - balb/c
+          - balbc
+      129S1/SvImJ:
+        description: 129S1/SvImJ (Mus musculus, The Jackson Laboratory)
+        meaning: RRID:IMSR_JAX:002448
+        aliases:
+          - 129s1
+          - 129 s1
+      A/J:
+        description: A/J (Mus musculus, The Jackson Laboratory)
+        meaning: RRID:IMSR_JAX:000646
+      Long-Evans:
+        description: Long-Evans (Rattus norvegicus, Charles River)
+        meaning: RRID:RGD_2308852
+        aliases:
+          - long evans
+          - long-evans rat
+      Sprague Dawley:
+        description: Sprague Dawley (Rattus norvegicus, Charles River)
+        meaning: RRID:RGD_734476
+        aliases:
+          - sprague-dawley
+          - sprague dawley rat
+      Wistar:
+        description: Wistar (Rattus norvegicus, Rat Genome Database)
+        meaning: RRID:RGD_13508588
+        aliases:
+          - wistar rat

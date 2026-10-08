@@ -16,28 +16,34 @@ from neuroconv.tools.external_resources import (
     add_brain_region_external_resources,
     add_external_resources_to_nwbfile,
     add_species_external_resource,
+    add_strain_external_resource,
     get_brain_region_term,
     get_species_suggestion,
     get_species_term,
+    get_strain_suggestion,
+    get_strain_term,
     infer_brain_region_external_resources,
     infer_species_external_resources,
+    infer_strain_external_resources,
     validate_species,
+    validate_strain,
 )
 from neuroconv.utils import dict_deep_update, load_dict_from_file
 from neuroconv.utils.json_schema import validate_metadata
 
 MOUSE_SPECIES_TERM = {"id": "NCBITaxon:10090", "uri": "http://purl.obolibrary.org/obo/NCBITaxon_10090"}
 CA1_TERM = {"id": "MBA:382", "uri": "https://purl.brain-bican.org/ontology/mbao/MBA_382"}
+LONG_EVANS_STRAIN_TERM = {"id": "RRID:RGD_2308852", "uri": "https://scicrunch.org/resolver/RRID:RGD_2308852"}
 
 
-def _make_nwbfile(species="Mus musculus", with_subject=True) -> NWBFile:
+def _make_nwbfile(species="Mus musculus", strain=None, with_subject=True) -> NWBFile:
     nwbfile = NWBFile(
         session_description="d",
         identifier="id",
         session_start_time=datetime(2020, 1, 1, tzinfo=tzutc()),
     )
     if with_subject:
-        nwbfile.subject = Subject(subject_id="s1", species=species)
+        nwbfile.subject = Subject(subject_id="s1", species=species, strain=strain)
     return nwbfile
 
 
@@ -83,8 +89,9 @@ def _brain_regions_metadata(mapping: dict) -> dict:
 
 
 def _infer_external_resources(nwbfile: NWBFile) -> dict:
-    """Both inferences for ``nwbfile``, combined into one ``{"ExternalResources": {...}}`` block."""
-    return dict_deep_update(infer_species_external_resources(nwbfile), infer_brain_region_external_resources(nwbfile))
+    """Every inference for ``nwbfile``, combined into one ``{"ExternalResources": {...}}`` block."""
+    inferred = dict_deep_update(infer_species_external_resources(nwbfile), infer_strain_external_resources(nwbfile))
+    return dict_deep_update(inferred, infer_brain_region_external_resources(nwbfile))
 
 
 # ---------------------------------------------------------------------------
@@ -153,6 +160,11 @@ class TestUpstreamTermSets:
         assert merged["Mus musculus"].curie == "NCBITaxon:10090"
         assert "mouse" in merged["Mus musculus"].aliases  # ours survive an upstream entry without aliases
         assert "Xenopus laevis" in merged  # bundled-only values are kept
+
+        merged = load_term_set("strains.yaml")
+        assert merged["C57BL/6J"].curie == "RRID:IMSR_JAX:000664"
+        assert "b6" in merged["C57BL/6J"].aliases  # ours survive an upstream entry without aliases
+        assert "N2" in merged  # upstream-only values (worm, zebrafish, fly, Cre lines) are kept
 
     def test_upstream_terms_are_preferred_and_merged(self, monkeypatch, tmp_path):
         upstream_yaml = tmp_path / "upstream_species.yaml"
@@ -231,6 +243,40 @@ class TestSpeciesTerms:
         with pytest.warns(UserWarning, match="'Mus musculus'.*bioregistry.io/NCBITaxon:10090"):
             term = validate_species("mouse")
         assert term.canonical_name == "Mus musculus"
+
+
+# ---------------------------------------------------------------------------
+# Strain term resolution
+# ---------------------------------------------------------------------------
+
+
+class TestStrainTerms:
+    def test_canonical_name_resolves_without_a_suggestion(self):
+        assert get_strain_term("Long-Evans").rrid == "RRID:RGD_2308852"
+        assert get_strain_suggestion("Long-Evans") is None
+
+    @pytest.mark.parametrize(
+        "strain, expected_strain, reason",
+        [
+            ("  Long Evans  ", "Long-Evans", "informal spelling"),  # case-insensitive and stripped
+            ("Sprague Dawly", "Sprague Dawley", "closely matches"),
+        ],
+    )
+    def test_informal_spellings_and_typos_are_suggested(self, strain, expected_strain, reason):
+        term, suggestion_reason = get_strain_suggestion(strain)
+        assert term.canonical_name == expected_strain
+        assert reason in suggestion_reason
+        assert get_strain_term(strain) == term
+
+    @pytest.mark.parametrize("strain", ["Octodon degus strain X", "", None, 42])
+    def test_unrecognized_returns_none(self, strain):
+        assert get_strain_suggestion(strain) is None
+        assert get_strain_term(strain) is None
+
+    def test_validate_strain_warns_for_informal_spelling(self):
+        with pytest.warns(UserWarning, match="'C57BL/6J'.*bioregistry.io/RRID:IMSR_JAX:000664"):
+            term = validate_strain("black 6")
+        assert term.canonical_name == "C57BL/6J"
 
 
 # ---------------------------------------------------------------------------
@@ -329,6 +375,30 @@ class TestInferSpeciesExternalResources:
 
 
 # ---------------------------------------------------------------------------
+# Strain inference (file -> ExternalResources metadata)
+# ---------------------------------------------------------------------------
+
+
+class TestInferStrainExternalResources:
+    def test_recognized_strain_returns_term(self):
+        nwbfile = _make_nwbfile(strain="Long-Evans")
+        assert infer_strain_external_resources(nwbfile) == {
+            "ExternalResources": {"strain": {"Long-Evans": LONG_EVANS_STRAIN_TERM}}
+        }
+
+    def test_informal_spelling_is_the_key(self):
+        nwbfile = _make_nwbfile(strain="black 6")
+        with pytest.warns(UserWarning):
+            inferred = infer_strain_external_resources(nwbfile)
+        # Keyed by the value as written: HERD links the term to Subject.strain through that string.
+        assert inferred["ExternalResources"]["strain"]["black 6"]["id"] == "RRID:IMSR_JAX:000664"
+
+    @pytest.mark.parametrize("kwargs", [dict(strain="my in-house line"), dict(strain=None), dict(with_subject=False)])
+    def test_unrecognized_or_missing_strain_returns_empty(self, kwargs):
+        assert infer_strain_external_resources(_make_nwbfile(**kwargs)) == {}
+
+
+# ---------------------------------------------------------------------------
 # Brain-region inference (file -> ExternalResources metadata)
 # ---------------------------------------------------------------------------
 
@@ -417,6 +487,45 @@ class TestSpeciesExternalResource:
         objects = nwbfile.external_resources.objects.to_dataframe()
         assert objects["object_id"].tolist() == [nwbfile.subject.object_id]
         assert objects["relative_path"].tolist() == ["species"]
+
+
+# ---------------------------------------------------------------------------
+# Strain HERD annotation (metadata -> file)
+# ---------------------------------------------------------------------------
+
+
+def _strain_metadata(mapping: dict) -> dict:
+    return {"ExternalResources": {"strain": mapping}}
+
+
+class TestStrainExternalResource:
+    @pytest.mark.parametrize(
+        "kwargs, metadata",
+        [
+            (dict(with_subject=False), _strain_metadata({"Long-Evans": LONG_EVANS_STRAIN_TERM})),
+            (dict(strain="Long-Evans"), None),  # no metadata
+            (dict(strain="Long-Evans"), {"Subject": {"strain": "Long-Evans"}}),  # metadata but no term
+            (dict(strain=None), _strain_metadata({"Long-Evans": LONG_EVANS_STRAIN_TERM})),
+            (dict(strain="Long-Evans"), _strain_metadata({"long evans": LONG_EVANS_STRAIN_TERM})),
+        ],
+    )
+    def test_noop_cases(self, kwargs, metadata):
+        nwbfile = _make_nwbfile(**kwargs)
+        assert add_strain_external_resource(nwbfile, metadata=metadata) is False
+        assert nwbfile.external_resources is None
+
+    def test_strain_term_from_metadata_is_annotated(self):
+        nwbfile = _make_nwbfile(strain="Long-Evans")
+        metadata = _strain_metadata({"Long-Evans": LONG_EVANS_STRAIN_TERM})
+        assert add_strain_external_resource(nwbfile, metadata=metadata) is True
+
+        dataframe = nwbfile.external_resources.to_dataframe()
+        assert dataframe["key"].tolist() == ["Long-Evans"]
+        assert dataframe["entity_id"].tolist() == ["RRID:RGD_2308852"]
+
+        objects = nwbfile.external_resources.objects.to_dataframe()
+        assert objects["object_id"].tolist() == [nwbfile.subject.object_id]
+        assert objects["relative_path"].tolist() == ["strain"]
 
 
 # ---------------------------------------------------------------------------
@@ -534,10 +643,11 @@ class TestExternalResourcesMetadataSchema:
         [
             {},
             {"species": {"Mus musculus": MOUSE_SPECIES_TERM}},
+            {"strain": {"Long-Evans": LONG_EVANS_STRAIN_TERM}},
             {"brain_regions": {"CA1": [BRAIN_REGION_TERM, {"id": "UBERON:0003881", "uri": "https://example.org/U"}]}},
             {"brain_regions": {"CA1": {**BRAIN_REGION_TERM, "label": "Field CA1"}}},  # extra keys are allowed
         ],
-        ids=["empty", "species", "list_of_terms", "term_with_label"],
+        ids=["empty", "species", "strain", "list_of_terms", "term_with_label"],
     )
     def test_valid_blocks_pass(self, block, base_metadata_schema):
         self._validate(block, base_metadata_schema)
@@ -576,15 +686,19 @@ class TestExternalResourcesMetadataSchema:
 
 class TestAddExternalResourcesToNWBFile:
     def test_runs_every_domain_and_counts_references(self):
-        nwbfile = _make_nwbfile(species="Mus musculus")
+        nwbfile = _make_nwbfile(species="Mus musculus", strain="Long-Evans")
         _add_electrodes(nwbfile, ["CA1"])
         metadata = {
-            "ExternalResources": {"species": {"Mus musculus": MOUSE_SPECIES_TERM}, "brain_regions": {"CA1": CA1_TERM}}
+            "ExternalResources": {
+                "species": {"Mus musculus": MOUSE_SPECIES_TERM},
+                "strain": {"Long-Evans": LONG_EVANS_STRAIN_TERM},
+                "brain_regions": {"CA1": CA1_TERM},
+            }
         }
 
-        assert add_external_resources_to_nwbfile(nwbfile, metadata=metadata) == 2
+        assert add_external_resources_to_nwbfile(nwbfile, metadata=metadata) == 3
         entity_ids = set(nwbfile.external_resources.to_dataframe()["entity_id"])
-        assert entity_ids == {"NCBITaxon:10090", "MBA:382"}
+        assert entity_ids == {"NCBITaxon:10090", "RRID:RGD_2308852", "MBA:382"}
         # Idempotent.
         assert add_external_resources_to_nwbfile(nwbfile, metadata=metadata) == 0
 

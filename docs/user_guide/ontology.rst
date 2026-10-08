@@ -8,9 +8,11 @@ means instead of guessing from free text. References are stored **in-file** unde
 file. In-file HERD storage requires ``pynwb >= 4.0.0``, which is NeuroConv's minimum supported
 version.
 
-Two kinds of value are annotated:
+Three kinds of value are annotated:
 
 - the subject's **species**, mapped to `NCBITaxon <https://bioregistry.io/registry/ncbitaxon>`_;
+- the subject's **strain**, mapped to `RRID <https://bioregistry.io/registry/rrid>`_ (Research
+  Resource Identifiers) for common laboratory rodent strains;
 - anatomical **brain regions** (``location`` fields), mapped to the
   `Allen Mouse Brain Atlas <https://bioregistry.io/registry/mba>`_ (MBA) for mouse subjects, the
   `Allen Human Brain Atlas <https://bioregistry.io/registry/hba>`_ (HBA) for human subjects, a
@@ -35,19 +37,21 @@ Two steps: infer, then annotate
 Ontology support is deliberately split into two independent halves, both in
 :py:mod:`neuroconv.tools.external_resources`:
 
-1. **Inference** — :py:func:`~neuroconv.tools.external_resources.infer_species_external_resources` and
+1. **Inference** — :py:func:`~neuroconv.tools.external_resources.infer_species_external_resources`,
+   :py:func:`~neuroconv.tools.external_resources.infer_strain_external_resources` and
    :py:func:`~neuroconv.tools.external_resources.infer_brain_region_external_resources` read a populated
-   ``NWBFile``, resolve the free-text values a lab wrote (``"mouse"``, ``"CA1"``) to ontology terms
+   ``NWBFile``, resolve the free-text values a lab wrote (``"mouse"``, ``"black 6"``, ``"CA1"``) to ontology terms
    and return them as a ``{"ExternalResources": {...}}`` metadata block, **keyed by the value each term
    describes**. They do not modify anything. This step guesses; run it when you want NeuroConv to
    propose terms, then inspect the result and merge it into your metadata.
 2. **Annotation** — :py:func:`~neuroconv.tools.external_resources.add_external_resources_to_nwbfile` takes the
    terms already stated in ``metadata`` and writes them into the file as HERD references, running
-   the per-domain :py:func:`~neuroconv.tools.external_resources.add_species_external_resource` and
+   the per-domain :py:func:`~neuroconv.tools.external_resources.add_species_external_resource`,
+   :py:func:`~neuroconv.tools.external_resources.add_strain_external_resource` and
    :py:func:`~neuroconv.tools.external_resources.add_brain_region_external_resources`. This step is
    deterministic — nothing is inferred, so what lands in the file is exactly what the metadata
    says — and **run_conversion runs it automatically, just before writing**. It is a no-op unless
-   the metadata carries a ``ExternalResources`` block.
+   the metadata carries an ``ExternalResources`` block.
 
 Because the two are separate, the annotation you write does not have to come from NeuroConv's
 inference: you can bring terms from an ontology service or a file you curate once per dataset and
@@ -63,11 +67,14 @@ takes effect where the file carries the same value:
 
 .. code-block:: python
 
-    metadata["Subject"] = {"subject_id": "sub-01", "species": "Mus musculus"}
+    metadata["Subject"] = {"subject_id": "sub-01", "species": "Mus musculus", "strain": "C57BL/6J"}
 
     metadata["ExternalResources"] = {
         "species": {
             "Mus musculus": {"id": "NCBITaxon:10090", "uri": "http://purl.obolibrary.org/obo/NCBITaxon_10090"},
+        },
+        "strain": {
+            "C57BL/6J": {"id": "RRID:IMSR_JAX:000664", "uri": "https://scicrunch.org/resolver/RRID:IMSR_JAX:000664"},
         },
         "brain_regions": {
             "CA1": {"id": "MBA:382", "uri": "https://purl.brain-bican.org/ontology/mbao/MBA_382"},
@@ -164,6 +171,86 @@ to annotate species only:
 The call is a no-op (returns ``False``) when there is no subject or ``metadata`` states no term for
 the subject's species value, and it is idempotent: an in-memory ``external_resources`` HERD is
 extended in place rather than replaced, and a species that is already annotated is not added twice.
+
+Strain
+------
+
+NWB stores a subject's laboratory strain in :py:attr:`Subject.strain <pynwb.file.Subject.strain>`
+as free text (e.g. ``"C57BL/6J"``, ``"Long-Evans"``). NeuroConv standardizes it the same way it
+standardizes species, backed by a small, curated, offline table of common laboratory rodent strains
+(:py:data:`~neuroconv.tools.external_resources.STRAIN_TERMS`).
+
+Suggesting a standardized term
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When ``Subject.strain`` is a recognized informal spelling (e.g. ``"black 6"``) or a likely typo of a
+known designation, NeuroConv emits a ``UserWarning`` the same way it does for species, while the
+metadata is processed in :py:func:`~neuroconv.tools.nwb_helpers.make_nwbfile_from_metadata`:
+
+.. code-block:: python
+
+    from neuroconv.tools.external_resources import validate_strain
+
+    validate_strain("black 6")
+    # UserWarning: Subject strain 'black 6' is an informal spelling. Consider using 'C57BL/6J'
+    # (RRID:IMSR_JAX:000664) for interoperability. See https://bioregistry.io/RRID:IMSR_JAX:000664
+
+:py:func:`~neuroconv.tools.external_resources.get_strain_term` resolves a value to its canonical term
+(including exact canonical matches) without emitting a warning:
+
+.. code-block:: python
+
+    from neuroconv.tools.external_resources import get_strain_term
+
+    term = get_strain_term("long evans")
+    term.canonical_name  # 'Long-Evans'
+    term.rrid             # 'RRID:RGD_2308852'
+
+Inferring the strain term
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+:py:func:`~neuroconv.tools.external_resources.infer_strain_external_resources` resolves ``nwbfile.subject.strain``
+and returns the term under ``{"ExternalResources": {"strain": ...}}``, keyed by the strain value
+exactly as written, the same way species inference does. Only a small curated set of common lab
+lines is included in :py:data:`~neuroconv.tools.external_resources.STRAIN_TERMS`; for a strain
+outside that table (an in-house line, a less common vendor strain), or to override a curated result,
+add its term to ``metadata["ExternalResources"]["strain"]`` yourself. It wins over the inferred one
+in the merge:
+
+.. code-block:: python
+
+    from neuroconv.tools.external_resources import infer_strain_external_resources
+
+    infer_strain_external_resources(nwbfile)  # nwbfile.subject.strain == "black 6"
+    # {'ExternalResources': {'strain': {'black 6': {
+    #     'id': 'RRID:IMSR_JAX:000664', 'uri': 'https://scicrunch.org/resolver/RRID:IMSR_JAX:000664'}}}}
+
+    # An in-house line the curated table does not recognize:
+    metadata["ExternalResources"] = {
+        "strain": {
+            "my in-house line": {"id": "RRID:IMSR_JAX:000664", "uri": "https://scicrunch.org/resolver/RRID:IMSR_JAX:000664"},
+        },
+    }
+
+Writing the RRID reference into the file
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+:py:func:`~neuroconv.tools.external_resources.add_strain_external_resource` looks up the subject's strain
+value in that map and attaches a reference mapping ``Subject.strain`` to its RRID entity, the same
+way species annotation does.
+:py:func:`~neuroconv.tools.external_resources.add_external_resources_to_nwbfile` calls it for you; call it directly
+to annotate strain only:
+
+.. code-block:: python
+
+    from neuroconv.tools.external_resources import add_strain_external_resource
+
+    added = add_strain_external_resource(nwbfile, metadata=metadata)  # returns True
+    nwbfile.external_resources  # now carries a C57BL/6J -> RRID:IMSR_JAX:000664 reference
+
+The call is a no-op (returns ``False``) when there is no subject, the subject has no strain set, or
+``metadata`` states no term for the subject's strain value, and it is idempotent in the same way
+species annotation is.
 
 Brain regions
 -------------
@@ -262,17 +349,21 @@ run inference on it, merge the result under your metadata, annotate, and write:
         add_external_resources_to_nwbfile,
         infer_brain_region_external_resources,
         infer_species_external_resources,
+        infer_strain_external_resources,
     )
     from neuroconv.tools.nwb_helpers import configure_and_write_nwbfile
     from neuroconv.utils import dict_deep_update
 
-    metadata["Subject"] = dict(subject_id="m1", species="Mus musculus", sex="M", age="P30D")
+    metadata["Subject"] = dict(subject_id="m1", species="Mus musculus", strain="C57BL/6J", sex="M", age="P30D")
 
     nwbfile = interface.create_nwbfile(metadata=metadata)
-    inferred = dict_deep_update(
-        infer_species_external_resources(nwbfile),
-        infer_brain_region_external_resources(nwbfile),
-    )
+    inferred = {}
+    for infer in (
+        infer_species_external_resources,
+        infer_strain_external_resources,
+        infer_brain_region_external_resources,
+    ):
+        inferred = dict_deep_update(inferred, infer(nwbfile))
     # Merge under your metadata, so any term you wrote yourself wins.
     metadata = dict_deep_update(inferred, metadata, append_list=False)
     # ... optionally inspect or edit metadata["ExternalResources"] here ...
@@ -282,6 +373,7 @@ run inference on it, merge the result under your metadata, annotate, and write:
 
     # out.nwb now carries, under /general/external_resources:
     #   Mus musculus -> NCBITaxon:10090
+    #   C57BL/6J     -> RRID:IMSR_JAX:000664
     #   CA1          -> MBA:382
     #   VISp         -> MBA:385
 
@@ -353,7 +445,7 @@ NeuroConv (one per vocabulary, the same format used by
 `HDMF's TermSet <https://hdmf.readthedocs.io/en/stable/tutorials/plot_term_set.html>`_), so the
 mappings are transparent and editable.
 
-The informal names NeuroConv accepts (``"hippocampus"``, ``"V1"``, ``"mouse"``) are stored in the
+The informal names NeuroConv accepts (``"hippocampus"``, ``"V1"``, ``"mouse"``, ``"black 6"``) are stored in the
 same files as LinkML ``aliases`` on the term they resolve to, so adding one is a YAML edit and needs
 no code change:
 
