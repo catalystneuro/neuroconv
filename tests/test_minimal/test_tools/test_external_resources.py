@@ -683,7 +683,6 @@ class TestConversionPipelineAnnotation:
         assert _written_references(path) == {CA1_ELECTRODE_REFERENCE, ("OptogeneticStimulusSite", "VISp", "MBA:385")}
 
 
-
 class TestAppendModeAnnotation:
     """``run_conversion(append_on_disk_nwbfile=True)`` annotates the file read back from disk."""
 
