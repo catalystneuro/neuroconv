@@ -422,9 +422,10 @@ class ExternalVideoInterface(BaseDataInterface):
         segment_times = []
         for file_index, segment_key in enumerate(self._segment_keys):
             time_bearing_object = self.alignment[segment_key]
-            if always_write_timestamps and time_bearing_object._times is None:
-                base_times = self._get_container_times(file_index=file_index)
-                times = base_times + time_bearing_object._object_offset + self.alignment.offset
+            if always_write_timestamps:
+                times = time_bearing_object._get_times(
+                    get_default_times=partial(self._get_container_times, file_index=file_index)
+                )
             else:
                 times = time_bearing_object.get_times()
             segment_times.append(times)

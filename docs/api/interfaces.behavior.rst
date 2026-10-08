@@ -35,10 +35,6 @@ SLEAP
 -----
 .. automodule:: neuroconv.datainterfaces.behavior.sleap.sleapdatainterface
 
-Video
------
-.. automodule:: neuroconv.datainterfaces.behavior.video.videodatainterface
-
 MedPC
 -----
 .. automodule:: neuroconv.datainterfaces.behavior.medpc.medpcdatainterface

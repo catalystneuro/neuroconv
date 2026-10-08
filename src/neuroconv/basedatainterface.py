@@ -213,7 +213,6 @@ class BaseDataInterface(ABC):
         backend: Literal["hdf5", "zarr"] | None = None,
         backend_configuration: HDF5BackendConfiguration | ZarrBackendConfiguration | None = None,
         append_on_disk_nwbfile: bool = False,
-        add_external_resources: bool = True,
         **conversion_options,
     ):
         """
@@ -244,10 +243,6 @@ class BaseDataInterface(ABC):
         append_on_disk_nwbfile : bool, default: False
             Whether to append to an existing NWBFile on disk. If True, the `nwbfile` parameter must be None.
             This is useful for appending data to an existing file without overwriting it.
-        add_external_resources : bool, default: True
-            Whether to write the terms stated in ``metadata["ExternalResources"]`` into the file as HERD references
-            (see :func:`neuroconv.tools.external_resources.add_external_resources_to_nwbfile`) just before it is written.
-            A no-op when the metadata carries no ``ExternalResources`` block.
         """
 
         appending_to_in_memory_nwbfile = nwbfile is not None
@@ -297,7 +292,6 @@ class BaseDataInterface(ABC):
                 backend=backend,
                 backend_configuration=backend_configuration,
                 conversion_options=conversion_options,
-                add_external_resources=add_external_resources,
             )
         else:
             self._append_nwbfile(
@@ -306,7 +300,6 @@ class BaseDataInterface(ABC):
                 backend=backend,
                 backend_configuration=backend_configuration,
                 conversion_options=conversion_options,
-                add_external_resources=add_external_resources,
             )
 
     def _write_nwbfile(
@@ -317,7 +310,6 @@ class BaseDataInterface(ABC):
         backend: Literal["hdf5", "zarr"],
         backend_configuration: dict,
         conversion_options: dict,
-        add_external_resources: bool = True,
     ) -> None:
         """
         Write NWBFile to a file path on disk.
@@ -331,8 +323,7 @@ class BaseDataInterface(ABC):
         else:
             nwbfile = self.create_nwbfile(metadata=metadata, **conversion_options)
 
-        if add_external_resources:
-            add_external_resources_to_nwbfile(nwbfile, metadata=metadata)
+        add_external_resources_to_nwbfile(nwbfile, metadata=metadata)
 
         configure_and_write_nwbfile(
             nwbfile=nwbfile,
@@ -348,7 +339,6 @@ class BaseDataInterface(ABC):
         backend: Literal["hdf5", "zarr"],
         backend_configuration: dict,
         conversion_options: dict,
-        add_external_resources: bool = True,
     ) -> None:
         """
         Append data to an existing NWB file.
@@ -368,8 +358,7 @@ class BaseDataInterface(ABC):
             self.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **conversion_options)
 
             # Before the backend configuration, so the HERD tables are configured like everything else.
-            if add_external_resources:
-                add_external_resources_to_nwbfile(nwbfile, metadata=metadata)
+            add_external_resources_to_nwbfile(nwbfile, metadata=metadata)
 
             if backend_configuration is None:
                 backend_configuration = self.get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
