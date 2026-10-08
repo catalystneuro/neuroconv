@@ -138,7 +138,7 @@ class _MedPCEventsInterface(BaseEventsInterface):
         recorded on one clock needs. This is for the other case: times recovered from another device, such as the
         TTL pulses a photometry rig recorded for each MedPC event, which are not the source's times shifted but
         different times altogether. The substituted values are what the writer writes and what
-        ``get_event_times`` reports, with ``alignment.offset`` still applied on top.
+        ``get_event_times`` reports, with any shift applied through ``alignment`` still on top.
 
         Parameters
         ----------

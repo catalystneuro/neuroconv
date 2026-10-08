@@ -2,6 +2,7 @@
 
 import warnings
 from datetime import datetime
+from functools import partial
 from pathlib import Path
 
 import numpy as np
@@ -51,7 +52,7 @@ class DoricFiberPhotometryInterface(BaseFiberPhotometryInterface):
         stream_names: str | list[str],
         metadata_key: str | None = None,
         stream_indices: list[int] | None = None,
-        commanded_voltage_streams: dict[str, dict] | None = None,
+        commanded_voltage_streams: dict[str, str] | None = None,
         verbose: bool = False,
     ):
         """Initialize the DoricFiberPhotometryInterface.
@@ -69,8 +70,9 @@ class DoricFiberPhotometryInterface(BaseFiberPhotometryInterface):
         stream_indices : list of int, optional
             Column indices selecting which channels of the (column-stacked) stream data to keep.
         commanded_voltage_streams : dict, optional
-            Drive streams keyed by their metadata and alignment keys. Each entry contains a
-            ``stream_name`` and an optional column ``index``.
+            Drive signals keyed by their metadata and alignment keys, each mapped to the stream that recorded
+            the drive, such as an ``AnalogOut`` channel. Doric records each drive as its own stream, so the
+            stream name alone selects it.
         verbose : bool, default: False
             Whether to print status messages.
         """
@@ -83,6 +85,12 @@ class DoricFiberPhotometryInterface(BaseFiberPhotometryInterface):
             verbose=verbose,
         )
         self._streams: dict[str, dict] = self._discover_streams(self.source_data["file_path"])
+        for key, stream_name in (commanded_voltage_streams or {}).items():
+            self._register_commanded_voltage(
+                key=key,
+                get_data=partial(self._get_stream_data, stream_name=stream_name),
+                get_native_times=partial(self._get_stream_timestamps, stream_name=stream_name),
+            )
 
     # ------------------------------------------------------------------
     # Stream discovery

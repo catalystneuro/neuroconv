@@ -21,7 +21,6 @@ Child interfaces implement only the format-reading seam:
 
 import warnings
 from abc import abstractmethod
-from functools import partial
 from typing import Literal
 
 import numpy as np
@@ -53,7 +52,6 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         stream_names: str | list[str],
         metadata_key: str | None = None,
         stream_indices: list[int] | None = None,
-        commanded_voltage_streams: dict[str, dict] | None = None,
         verbose: bool = False,
         **source_data,
     ):
@@ -72,9 +70,6 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         stream_indices : list of int, optional
             Column indices selecting which columns of the (column-stacked) stream data to keep.
             ``None`` (default) keeps all columns.
-        commanded_voltage_streams : dict, optional
-            Drive streams keyed by their metadata and alignment keys. Each entry contains a
-            ``stream_name`` and, for a multichannel stream, an optional column ``index``.
         verbose : bool, default: False
             Whether to print status messages.
         **source_data
@@ -82,9 +77,7 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         """
         self.stream_names = [stream_names] if isinstance(stream_names, str) else list(stream_names)
         self.stream_indices = stream_indices
-        self._commanded_voltage_streams = {
-            key: dict(stream) for key, stream in (commanded_voltage_streams or {}).items()
-        }
+        self._commanded_voltage_key_to_get_data = {}
         if metadata_key is None:
             stream_parts = [str(name).replace(" ", "_").strip("_").lower() for name in self.stream_names]
             metadata_key = "_".join(["fiber_photometry", *stream_parts])
@@ -95,18 +88,7 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         # See neuroconv/_temporal_alignment.py.
         self.alignment = _TemporalAlignment()
         self.alignment._register_series(key=self.metadata_key, get_native_times=self.get_original_timestamps)
-        for key, stream in self._commanded_voltage_streams.items():
-            if key == self.metadata_key:
-                raise ValueError(f"Commanded-voltage key '{key}' is also the response-series key.")
-            self.alignment._register_series(
-                key=key, get_native_times=partial(self._get_stream_timestamps, stream_name=stream["stream_name"])
-            )
-        super().__init__(
-            verbose=verbose,
-            stream_names=stream_names,
-            commanded_voltage_streams=commanded_voltage_streams,
-            **source_data,
-        )
+        super().__init__(verbose=verbose, stream_names=stream_names, **source_data)
         # Keep the ndx extensions registered so pynwb IO works correctly.
         import ndx_fiber_photometry  # noqa: F401
         import ndx_ophys_devices  # noqa: F401
@@ -313,9 +295,9 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             ),
         )
         fiber_photometry[self.metadata_key] = dict(fiber_photometry_table_region=row_keys, description=None)
-        if self._commanded_voltage_streams:
+        if self._commanded_voltage_key_to_get_data:
             fiber_photometry["CommandedVoltageSeries"] = {
-                key: dict(name=None, unit=None, frequency=None) for key in self._commanded_voltage_streams
+                key: dict(name=None, unit=None, frequency=None) for key in self._commanded_voltage_key_to_get_data
             }
 
         template = DeepDict(dict(DeviceModels=device_models, Devices=devices, FiberPhotometry=fiber_photometry))
@@ -398,6 +380,18 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
                 "'fiber_photometry_table_region' to the series metadata."
             )
 
+    def _register_commanded_voltage(self, *, key: str, get_data, get_native_times) -> None:
+        """Name one commanded-voltage drive as a time-bearing object. Called by the formats that record drives.
+
+        ``get_data`` and ``get_native_times`` are callables, so registering reads nothing. The key is the one
+        the drive's ``CommandedVoltageSeries`` metadata entry and the table rows'
+        ``commanded_voltage_series_metadata_key`` use.
+        """
+        if key == self.metadata_key:
+            raise ValueError(f"Commanded-voltage key '{key}' is also the response-series key.")
+        self._commanded_voltage_key_to_get_data[key] = get_data
+        self.alignment._register_series(key=key, get_native_times=get_native_times)
+
     def _add_commanded_voltage_series(
         self,
         *,
@@ -414,14 +408,11 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
                     f"Move 'stream_name' and 'index' for commanded voltage '{key}' from metadata to "
                     "the owning interface's 'commanded_voltage_streams' constructor argument."
                 )
-        for key, stream in self._commanded_voltage_streams.items():
+        for key, get_data in self._commanded_voltage_key_to_get_data.items():
             commanded_voltage_metadata = commanded_voltage_metadata_by_key[key]
             if commanded_voltage_metadata["name"] in nwbfile.acquisition:
                 continue
-            data = np.asarray(self._get_stream_data(stream_name=stream["stream_name"]))
-            index = stream.get("index")
-            if index is not None and data.ndim == 2:
-                data = data[:, index]
+            data = np.asarray(get_data())
             timestamps = self.alignment[key].get_times()
             if stub_test:
                 data = data[:stub_samples]

@@ -687,7 +687,7 @@ class TestFiberPhotometryTemporalAlignment:
         )
         interface = MockFiberPhotometryInterface(
             num_fibers=2,
-            commanded_voltage_streams=dict(commanded_voltage=dict(stream_name="470nm", index=0)),
+            commanded_voltage_streams=dict(commanded_voltage="470nm"),
         )
         interface.alignment.shift_times(4.0)
 

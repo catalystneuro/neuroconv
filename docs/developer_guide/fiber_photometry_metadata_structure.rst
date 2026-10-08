@@ -256,8 +256,8 @@ table:
    copy of a shared object that could diverge.
 
 Commanded voltage is data-bearing, so each drive belongs to the interface that declares its source
-stream. Declare drives at construction through ``commanded_voltage_streams``, keyed by their metadata
-and alignment keys:
+stream. The formats that record drives, TDT and Doric, take them at construction through
+``commanded_voltage_streams``, keyed by their metadata and alignment keys:
 
 .. code-block:: python
 
@@ -269,10 +269,19 @@ and alignment keys:
     )
     interface.alignment["cv_dms"].shift_times(0.2)
 
-The constructor selects the input ``stream_name`` and optional channel ``index``; the corresponding
-``CommandedVoltageSeries`` metadata entry describes the output. Registering the drive at construction
-makes it available for alignment before writing. It has its own timestamps because drives and responses
-can have different sampling rates and sample counts.
+    interface = DoricFiberPhotometryInterface(
+        file_path=...,
+        stream_names="..._ROI01",
+        commanded_voltage_streams={"drive_465": "..._AnalogOut_AnalogCh1"},
+    )
+
+A TDT store such as ``Fi1d`` holds one drive per channel, so a TDT drive is a ``stream_name`` and a
+0-based column ``index``, the same convention as ``stream_indices``. Doric records each drive as its own
+stream, so the stream name alone selects it. Each format reads its own selection, and the base interface
+registers the drive as a time-bearing object through a private method, so the shared interface carries
+no selection syntax of its own. The corresponding ``CommandedVoltageSeries`` metadata entry describes the
+output. Registering the drive at construction makes it available for alignment before writing. It has its
+own timestamps because drives and responses can have different sampling rates and sample counts.
 
 Each interface writes only its declared drives. A converter first writes the drives from all its
 interfaces, including nested converters, before writing response series and building the shared table.

@@ -3,6 +3,7 @@ import warnings
 from contextlib import redirect_stdout
 from copy import deepcopy
 from datetime import datetime, timezone
+from functools import partial
 from typing import Literal
 
 import numpy as np
@@ -580,6 +581,17 @@ class _TDTFiberPhotometryInterfaceSingleSeries(TDTLoadMixin, BaseFiberPhotometry
             commanded_voltage_streams=commanded_voltage_streams,
             verbose=verbose,
         )
+        for key, commanded_voltage_stream in (commanded_voltage_streams or {}).items():
+            stream_name = commanded_voltage_stream["stream_name"]
+            self._register_commanded_voltage(
+                key=key,
+                get_data=partial(
+                    self._get_commanded_voltage_data,
+                    stream_name=stream_name,
+                    index=commanded_voltage_stream.get("index"),
+                ),
+                get_native_times=partial(self._get_stream_timestamps, stream_name=stream_name),
+            )
 
     @classmethod
     def get_available_streams(cls, folder_path: DirectoryPath) -> list[str]:
@@ -617,6 +629,13 @@ class _TDTFiberPhotometryInterfaceSingleSeries(TDTLoadMixin, BaseFiberPhotometry
         starting_time = float(stream.start_time)
         num_samples = np.asarray(stream.data).shape[-1]
         return starting_time + np.arange(num_samples) / rate
+
+    def _get_commanded_voltage_data(self, *, stream_name: str, index: int | None) -> np.ndarray:
+        # A store such as Fi1d holds one drive per channel, so a drive is a store and a column of it.
+        data = self._get_stream_data(stream_name=stream_name)
+        if index is not None and data.ndim == 2:
+            data = data[:, index]
+        return data
 
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
@@ -673,8 +692,9 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         stream_indices : list of int, optional
             Column indices selecting which channels of the (column-stacked) stream data to keep.
         commanded_voltage_streams : dict, optional
-            Drive streams keyed by their metadata and alignment keys. Each entry contains a
-            ``stream_name`` and, for a multichannel stream, an optional column ``index``.
+            Drive signals keyed by their metadata and alignment keys. Each entry names the ``stream_name``
+            of the store holding the drive and, for a store with one drive per channel such as ``Fi1d``,
+            the 0-based column ``index``, the same convention as ``stream_indices``.
         verbose : bool, default: False
             Whether to print status messages.
         """
