@@ -8,7 +8,7 @@ means instead of guessing from free text. References are stored **in-file** unde
 file. In-file HERD storage requires ``pynwb >= 4.0.0``, which is NeuroConv's minimum supported
 version.
 
-Three kinds of value are annotated:
+Four kinds of value are annotated:
 
 - the subject's **species**, mapped to `NCBITaxon <https://bioregistry.io/registry/ncbitaxon>`_;
 - the subject's **strain**, mapped to `RRID <https://bioregistry.io/registry/rrid>`_ (Research
@@ -18,7 +18,11 @@ Three kinds of value are annotated:
   `Allen Human Brain Atlas <https://bioregistry.io/registry/hba>`_ (HBA) for human subjects, a
   species-agnostic `UBERON <https://bioregistry.io/registry/uberon>`_ vocabulary of common region
   names for every other recognized species (e.g. rat, which has no dedicated Allen atlas), or to
-  any ontology you specify in metadata.
+  any ontology you specify in metadata;
+- **general anatomy** -- skeleton parts and muscles named as ``ndx-pose`` ``Skeleton`` nodes
+  (pose-estimation keypoints, e.g. ``"Snout"``, ``"Shoulder"``) -- mapped to a species-agnostic
+  UBERON vocabulary. This is independent of brain-region annotation: it targets pose-estimation
+  keypoints, not ``location`` fields, and does not vary per species or atlas.
 
 Brain-region annotation covers every free-text ``location`` field in the NWB core schema and the
 extensions NeuroConv writes:
@@ -38,17 +42,19 @@ Ontology support is deliberately split into two independent halves, both in
 :py:mod:`neuroconv.tools.external_resources`:
 
 1. **Inference** — :py:func:`~neuroconv.tools.external_resources.infer_species_external_resources`,
-   :py:func:`~neuroconv.tools.external_resources.infer_strain_external_resources` and
-   :py:func:`~neuroconv.tools.external_resources.infer_brain_region_external_resources` read a populated
-   ``NWBFile``, resolve the free-text values a lab wrote (``"mouse"``, ``"black 6"``, ``"CA1"``) to ontology terms
+   :py:func:`~neuroconv.tools.external_resources.infer_strain_external_resources`,
+   :py:func:`~neuroconv.tools.external_resources.infer_brain_region_external_resources` and
+   :py:func:`~neuroconv.tools.external_resources.infer_anatomy_external_resources` read a populated
+   ``NWBFile``, resolve the free-text values a lab wrote (``"mouse"``, ``"black 6"``, ``"CA1"``, ``"Snout"``) to ontology terms
    and return them as a ``{"ExternalResources": {...}}`` metadata block, **keyed by the value each term
    describes**. They do not modify anything. This step guesses; run it when you want NeuroConv to
    propose terms, then inspect the result and merge it into your metadata.
 2. **Annotation** — :py:func:`~neuroconv.tools.external_resources.add_external_resources_to_nwbfile` takes the
    terms already stated in ``metadata`` and writes them into the file as HERD references, running
    the per-domain :py:func:`~neuroconv.tools.external_resources.add_species_external_resource`,
-   :py:func:`~neuroconv.tools.external_resources.add_strain_external_resource` and
-   :py:func:`~neuroconv.tools.external_resources.add_brain_region_external_resources`. This step is
+   :py:func:`~neuroconv.tools.external_resources.add_strain_external_resource`,
+   :py:func:`~neuroconv.tools.external_resources.add_brain_region_external_resources` and
+   :py:func:`~neuroconv.tools.external_resources.add_anatomy_external_resources`. This step is
    deterministic — nothing is inferred, so what lands in the file is exactly what the metadata
    says — and **run_conversion runs it automatically, just before writing**. It is a no-op unless
    the metadata carries an ``ExternalResources`` block.
@@ -79,12 +85,16 @@ takes effect where the file carries the same value:
         "brain_regions": {
             "CA1": {"id": "MBA:382", "uri": "https://purl.brain-bican.org/ontology/mbao/MBA_382"},
         },
+        "anatomy": {
+            "Snout": {"id": "UBERON:0006333", "uri": "http://purl.obolibrary.org/obo/UBERON_0006333"},
+        },
     }
 
 Brain-region terms are keyed by the free-text ``location`` string, regardless of whether that string
 labels an electrode, an imaging plane, or a fiber-photometry site -- the same string means the same
-place across modalities in a single file. To annotate one value with **several** ontologies, map it
-to a list of terms:
+place across modalities in a single file. Anatomy terms are keyed the same way by the free-text
+``Skeleton`` node name, whichever pose-estimation interface wrote the skeleton. To annotate one
+value with **several** ontologies, map it to a list of terms:
 
 .. code-block:: python
 
@@ -336,6 +346,70 @@ to annotate brain regions only:
 Locations the map does not name are left untouched. The call is idempotent and extends an
 in-memory ``external_resources`` HERD in place.
 
+General anatomy
+---------------
+
+``ndx-pose`` stores a pose-estimation skeleton's body-part names as free text in
+``Skeleton.nodes`` (e.g. ``"Snout"``, ``"Shoulder"``, ``"Tail"``). NeuroConv can attach a UBERON
+reference to each recognized node name, so downstream tools can resolve the exact anatomical
+structure a keypoint tracks. This is independent of brain-region annotation above: it never looks
+at ``location`` fields, and the vocabulary (:py:data:`~neuroconv.tools.external_resources.ANATOMY_TERMS`,
+~28 curated skeleton parts and muscles) is species-agnostic -- there is no per-species atlas
+selection.
+
+How node names are resolved
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+:py:func:`~neuroconv.tools.external_resources.infer_anatomy_external_resources` walks a populated file's
+``Skeleton.nodes`` entries, resolves each distinct name against the curated general-anatomy
+vocabulary, and returns the terms under ``{"ExternalResources": {"anatomy": ...}}``. A name matches
+an exact canonical structure name (e.g. ``"Trapezius muscle"``) or a small set of common informal
+names and abbreviations (e.g. ``"nose"``, ``"forepaw"``, ``"trapezius"``). A lab-specific keypoint
+name with a laterality marker (e.g. ``"EarL"``) does not resolve and is left out of the map.
+
+.. code-block:: python
+
+    from neuroconv.tools.external_resources import get_anatomy_term, infer_anatomy_external_resources
+
+    term = get_anatomy_term("trapezius muscle")
+    term.curie        # 'UBERON:0002380'
+    term.entity_uri   # 'http://purl.obolibrary.org/obo/UBERON_0002380'
+
+    # skeleton.nodes == ["Snout", "Shoulder", "EarL"] on an nwbfile.processing["behavior"]["Skeletons"] entry
+    infer_anatomy_external_resources(nwbfile)["ExternalResources"]["anatomy"]
+    #   {"Snout": {"id": "UBERON:0006333", "uri": "..."}, "Shoulder": {"id": "UBERON:0001467", "uri": "..."}}
+    #   "EarL" is not recognized and does not appear.
+
+Curating the map by hand
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Like brain regions, an unrecognized node name (e.g. ``"EarL"``) can be mapped explicitly, using the
+same ``{"id": ..., "uri": ...}`` (or list-of-terms) shape:
+
+.. code-block:: python
+
+    metadata.setdefault("ExternalResources", {})["anatomy"] = {
+        "EarL": {"id": "UBERON:0001691", "uri": "http://purl.obolibrary.org/obo/UBERON_0001691"},
+    }
+
+Writing the references into the file
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+:py:func:`~neuroconv.tools.external_resources.add_anatomy_external_resources` reads
+``metadata["ExternalResources"]["anatomy"]`` and, for each node name on the file that the map covers,
+attaches the term(s) as HERD references.
+:py:func:`~neuroconv.tools.external_resources.add_external_resources_to_nwbfile` calls it for you; call it directly
+to annotate anatomy only:
+
+.. code-block:: python
+
+    from neuroconv.tools.external_resources import add_anatomy_external_resources
+
+    number_added = add_anatomy_external_resources(nwbfile, metadata=metadata)
+
+Node names the map does not name are left untouched. The call is idempotent and extends an
+in-memory ``external_resources`` HERD in place.
+
 Putting it together
 -------------------
 
@@ -347,6 +421,7 @@ run inference on it, merge the result under your metadata, annotate, and write:
 
     from neuroconv.tools.external_resources import (
         add_external_resources_to_nwbfile,
+        infer_anatomy_external_resources,
         infer_brain_region_external_resources,
         infer_species_external_resources,
         infer_strain_external_resources,
@@ -362,6 +437,7 @@ run inference on it, merge the result under your metadata, annotate, and write:
         infer_species_external_resources,
         infer_strain_external_resources,
         infer_brain_region_external_resources,
+        infer_anatomy_external_resources,
     ):
         inferred = dict_deep_update(inferred, infer(nwbfile))
     # Merge under your metadata, so any term you wrote yourself wins.
@@ -376,6 +452,7 @@ run inference on it, merge the result under your metadata, annotate, and write:
     #   C57BL/6J     -> RRID:IMSR_JAX:000664
     #   CA1          -> MBA:382
     #   VISp         -> MBA:385
+    #   Snout        -> UBERON:0006333  (when the file has a pose-estimation skeleton)
 
 Pass ``append_list=False`` to the merge: by default ``dict_deep_update`` merges lists item by
 item, so a value you mapped to several terms would not stay as you wrote it.

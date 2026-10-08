@@ -17,6 +17,7 @@ from neuroconv.tools.external_resources import (
     add_external_resources_to_nwbfile,
     add_species_external_resource,
     add_strain_external_resource,
+    get_anatomy_term,
     get_brain_region_term,
     get_species_suggestion,
     get_species_term,
@@ -165,6 +166,11 @@ class TestUpstreamTermSets:
         assert merged["C57BL/6J"].curie == "RRID:IMSR_JAX:000664"
         assert "b6" in merged["C57BL/6J"].aliases  # ours survive an upstream entry without aliases
         assert "N2" in merged  # upstream-only values (worm, zebrafish, fly, Cre lines) are kept
+
+        merged = load_term_set("general_anatomy.yaml")
+        assert merged["Snout"].curie == "UBERON:0006333"
+        assert "nose" in merged["Snout"].aliases  # ours survive an upstream entry without aliases
+        assert "Brain" in merged  # upstream-only values (organs, not just skeleton parts) are kept
 
     def test_upstream_terms_are_preferred_and_merged(self, monkeypatch, tmp_path):
         upstream_yaml = tmp_path / "upstream_species.yaml"
@@ -348,6 +354,32 @@ class TestBrainRegionTerms:
     def test_unrecognized_species_returns_none(self):
         assert get_brain_region_term("CA1", species=None) is None
         assert get_brain_region_term("CA1", species="not a species") is None
+
+
+# ---------------------------------------------------------------------------
+# General-anatomy term resolution
+# ---------------------------------------------------------------------------
+
+
+class TestAnatomyTerms:
+    @pytest.mark.parametrize(
+        "name, expected_name",
+        [
+            ("Trapezius muscle", "Trapezius muscle"),  # canonical name
+            ("SNOUT", "Snout"),  # case-insensitive
+            ("nose", "Snout"),  # informal alias
+            ("forepaw", "Hand"),
+        ],
+    )
+    def test_lookup(self, name, expected_name):
+        term = get_anatomy_term(name)
+        assert term.name == expected_name
+        assert term.curie.startswith("UBERON:")
+
+    @pytest.mark.parametrize("name", ["EarL", "ear_l", "not a structure", "", None, 42])
+    def test_unrecognized_returns_none(self, name):
+        # Lab-specific keypoint names with laterality markers are not recognized: high precision over guessing.
+        assert get_anatomy_term(name) is None
 
 
 # ---------------------------------------------------------------------------
@@ -644,10 +676,11 @@ class TestExternalResourcesMetadataSchema:
             {},
             {"species": {"Mus musculus": MOUSE_SPECIES_TERM}},
             {"strain": {"Long-Evans": LONG_EVANS_STRAIN_TERM}},
+            {"anatomy": {"Snout": {"id": "UBERON:0006333", "uri": "https://example.org/UBERON_0006333"}}},
             {"brain_regions": {"CA1": [BRAIN_REGION_TERM, {"id": "UBERON:0003881", "uri": "https://example.org/U"}]}},
             {"brain_regions": {"CA1": {**BRAIN_REGION_TERM, "label": "Field CA1"}}},  # extra keys are allowed
         ],
-        ids=["empty", "species", "strain", "list_of_terms", "term_with_label"],
+        ids=["empty", "species", "strain", "anatomy", "list_of_terms", "term_with_label"],
     )
     def test_valid_blocks_pass(self, block, base_metadata_schema):
         self._validate(block, base_metadata_schema)
