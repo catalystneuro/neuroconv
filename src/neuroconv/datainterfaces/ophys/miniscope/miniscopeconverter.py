@@ -509,7 +509,7 @@ class MiniscopeConverter(ConverterPipe):
         for interface_name, session_start_time in session_start_times.items():
             interface = self.data_interface_objects[interface_name]
             time_offset = (session_start_time - min_session_start_time).total_seconds()
-            interface.set_aligned_starting_time(aligned_starting_time=time_offset)
+            interface.alignment.shift_times(time_offset)
 
         # Align the behavior cameras with the session they were recorded in
         for video_interface_name in self._get_behavior_video_interface_names():
