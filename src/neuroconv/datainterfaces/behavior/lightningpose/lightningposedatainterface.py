@@ -2,6 +2,7 @@ import re
 import warnings
 from copy import deepcopy
 from datetime import datetime
+from functools import partial
 from pathlib import Path
 
 import numpy as np
@@ -86,7 +87,7 @@ class LightningPoseDataInterface(BasePoseEstimationInterface):
         original_video_file_path: FilePath,
         labeled_video_file_path: FilePath | None = None,
         verbose: bool = False,
-        metadata_key: str = "lightning_pose",
+        metadata_key: str | None = None,
     ):
         """
         Interface for writing pose estimation data from the Lightning Pose algorithm.
@@ -101,7 +102,8 @@ class LightningPoseDataInterface(BasePoseEstimationInterface):
             Path to the labeled video file (.mp4).
         verbose : bool, default: False
             controls verbosity. ``True`` by default.
-        metadata_key : str, default: "lightning_pose"
+        metadata_key : str, optional
+            When ``None``, resolves to ``"lightning_pose"``.
             Key addressing this interface's entries in the dict-based metadata: the container under
             ``metadata["Pose"]["PoseEstimations"]``, the skeleton under ``metadata["Pose"]["Skeletons"]``
             and the camera under ``metadata["Devices"]``. It is an internal handle and never appears in
@@ -165,6 +167,8 @@ class LightningPoseDataInterface(BasePoseEstimationInterface):
             self.original_video_file_path.exists()
         ), f"The original video file '{self.original_video_file_path}' does not exist."
 
+        self.metadata_key = metadata_key or "lightning_pose"
+
         super().__init__(
             verbose,
             file_path=file_path,
@@ -172,17 +176,18 @@ class LightningPoseDataInterface(BasePoseEstimationInterface):
             labeled_video_file_path=labeled_video_file_path,
         )
 
-        self.metadata_key = metadata_key
-
         # dimension is width by height
         self.dimension = self._get_original_video_shape()
 
         pose_estimation_data = self._load_source_data()
+        if not np.array_equal(pose_estimation_data.iloc[:, 0].to_numpy(), np.arange(len(pose_estimation_data))):
+            raise ValueError(
+                "Lightning Pose rows must correspond to consecutive video frames starting at zero. "
+                "Subset exports require an explicit sample-to-frame mapping and are not supported."
+            )
         _, self.scorer_name = pose_estimation_data.columns.get_level_values(0).drop_duplicates()
         self.pose_estimation_data = pose_estimation_data[self.scorer_name]
         self.keypoint_names = self.pose_estimation_data.columns.get_level_values(0).drop_duplicates().tolist()
-
-        self._times = None
 
     def _load_source_data(self):
         import pandas as pd
@@ -204,15 +209,21 @@ class LightningPoseDataInterface(BasePoseEstimationInterface):
         return timestamps
 
     def get_timestamps(self, stub_test: bool = False) -> np.ndarray:
-        max_frames = 10 if stub_test else None
-        if self._times is None:
-            return self.get_original_timestamps(stub_test=stub_test)
+        warnings.warn(
+            "`get_timestamps` is deprecated and will be removed in v0.12.0. "
+            "Use `interface.alignment[key].get_times()` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        return self._get_timestamps(stub_test=stub_test)
 
-        timestamps = self._times if not stub_test else self._times[:max_frames]
-        return timestamps
-
-    def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
-        self._times = aligned_timestamps
+    def _get_timestamps(self, stub_test: bool = False) -> np.ndarray:
+        time_bearing_object = self.alignment[self.metadata_key]
+        if stub_test:
+            return time_bearing_object._get_times(
+                get_default_times=partial(self.get_original_timestamps, stub_test=True)
+            )[:10]
+        return time_bearing_object.get_times()
 
     def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         # TODO: remove the branch and _get_legacy_metadata with the legacy shape.
@@ -419,7 +430,7 @@ class LightningPoseDataInterface(BasePoseEstimationInterface):
         _add_pose_estimation_to_nwbfile(
             nwbfile=nwbfile,
             keypoint_data=keypoint_data,
-            timestamps=self.get_timestamps(stub_test=stub_test),
+            timestamps=self._get_timestamps(stub_test=stub_test),
             metadata=metadata_copy,
             metadata_key=self.metadata_key,
         )

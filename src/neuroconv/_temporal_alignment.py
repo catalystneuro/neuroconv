@@ -16,10 +16,9 @@ can be reached and re-timed on its own::
 What an operation is called on is what it applies to. ``shift_times`` and ``move_start_to`` work at both
 scopes: on one object they move that object, on the interface they move every object by one common amount.
 Literal times belong to one object and so cannot be given without one. An interface that names nothing
-still shifts: registration is what every other operation needs, and the events interfaces register nothing
-because enumerating their event types means reading the source. The objects are typed by shape, since a series
-is a single sample axis and takes ``set_times`` while a table is timestamps plus durations and cannot, there
-being no one array to hand it. Only the series-shaped one exists here so far.
+still shifts: registration is what every other operation needs. Events interfaces register their event
+types on first access to alignment. Event objects support rigid shifts and placement; timestamp replacement
+and remapping remain unsupported.
 
 The offset is **held and applied when times are asked for**, rather than added into the times when it is
 given. The obvious alternative, walking every object on each shift and rewriting its times in place, reads
@@ -57,7 +56,11 @@ class _TimeBearingSeries:
 
     def get_times(self) -> np.ndarray:
         """Return the times this object will be written on, its own and the interface's offsets included."""
-        times = self._times if self._times is not None else self._get_native_times()
+        return self._get_times(get_default_times=self._get_native_times)
+
+    def _get_times(self, *, get_default_times) -> np.ndarray:
+        """``get_times`` with ``get_default_times`` standing in for the default, for a writer that needs another one."""
+        times = self._times if self._times is not None else get_default_times()
         return times + self._object_offset + self._alignment.offset
 
     def _get_start_time(self) -> float:
@@ -203,6 +206,14 @@ class _TimeBearingSeries:
         self._object_offset = 0.0
 
 
+class _TimeBearingEventsTable(_TimeBearingSeries):
+    def set_times(self, times) -> None:
+        raise NotImplementedError("Event timestamp replacement is not supported yet.")
+
+    def remap_times(self, *, local_sync_times, reference_sync_times, interpolation_function=None) -> None:
+        raise NotImplementedError("Event timestamp remapping is not supported yet.")
+
+
 class _TemporalAlignment:
     """The alignment surface for an interface's time-bearing objects, exposed as ``interface.alignment``.
 
@@ -228,6 +239,11 @@ class _TemporalAlignment:
         time_bearing_object = _TimeBearingSeries(
             get_native_times=get_native_times, default_start_time=default_start_time, alignment=self
         )
+        self._name_to_time_bearing_object[key] = time_bearing_object
+        return time_bearing_object
+
+    def _register_events(self, *, key: str, get_native_times):
+        time_bearing_object = _TimeBearingEventsTable(get_native_times=get_native_times, alignment=self)
         self._name_to_time_bearing_object[key] = time_bearing_object
         return time_bearing_object
 

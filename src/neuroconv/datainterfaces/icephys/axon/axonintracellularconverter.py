@@ -41,15 +41,12 @@ class AxonIntracellularConverter(ConverterPipe):
         verbose: bool = False,
     ):
         super().__init__(data_interfaces=data_interfaces, verbose=verbose)
-        # Place the files on one timeline here, where every interface is finally in view. It happens once, at
-        # construction, because ``shift_times`` accumulates and a per-write placement would stack up over
-        # repeated writes. Nothing is lost by doing it early: the placement comes from header start times that
-        # do not change. A user shifting afterwards moves the placed set as a block.
+        # Include each interface's current start in its target to preserve adjustments made before construction.
         interfaces = list(self.data_interface_objects.values())
         if interfaces:
-            _, starting_time_shifts = self._compute_alignment(interfaces)
-            for interface, starting_time_shift in starting_time_shifts.items():
-                interface.alignment.shift_times(starting_time_shift)
+            _, starting_times = self._compute_alignment(interfaces)
+            for interface, starting_time in starting_times.items():
+                interface.alignment.move_start_to(starting_time)
 
     def get_metadata(self) -> dict:
         interfaces = list(self.data_interface_objects.values())
@@ -98,15 +95,17 @@ class AxonIntracellularConverter(ConverterPipe):
     @staticmethod
     def _compute_alignment(interfaces: list[AxonIntracellularInterface]):
         """
-        Return ``(session_start_datetime, {interface: starting_time_shift_seconds})`` from header start times.
+        Return ``(session_start_datetime, {interface: starting_time_seconds})`` including current alignment.
 
-        A single file (one or more electrodes) already shares one clock, so every shift is 0. Several files are
+        A single file (one or more electrodes) already shares one clock, so its current starts are kept. Several files are
         placed by their ``rec_datetime``, the earliest being the origin; that needs real (ABF version 2) start
         times, so a multi-file set with any version-1 file raises rather than trusting a placeholder time.
         """
         file_paths = {str(interface._file_path) for interface in interfaces}
         if len(file_paths) == 1:
-            return interfaces[0]._recording_start_datetime, {interface: 0.0 for interface in interfaces}
+            return interfaces[0]._recording_start_datetime, {
+                interface: interface.alignment[interface._alignment_key]._get_start_time() for interface in interfaces
+            }
 
         # Aligning files by rec_datetime needs real header start times (ABF version 2); a version-1 file
         # carries only a placeholder time.
@@ -124,8 +123,9 @@ class AxonIntracellularConverter(ConverterPipe):
 
         start_datetimes = {interface: interface._recording_start_datetime for interface in interfaces}
         session_start_datetime = min(start_datetimes.values())
-        starting_time_shifts = {
-            interface: (start_datetime - session_start_datetime).total_seconds()
+        starting_times = {
+            interface: interface.alignment[interface._alignment_key]._get_start_time()
+            + (start_datetime - session_start_datetime).total_seconds()
             for interface, start_datetime in start_datetimes.items()
         }
-        return session_start_datetime, starting_time_shifts
+        return session_start_datetime, starting_times
