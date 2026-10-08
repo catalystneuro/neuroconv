@@ -780,7 +780,7 @@ class TestBrukerTiffImagingInterfaceDisjointPlane(ImagingExtractorInterfaceTestM
 
 
 # ---------------------------------------------------------------------------
-# Deprecated interfaces. Will be removed on or after December 2026.
+# Deprecated interfaces. Will be removed in v0.12.0.
 # These tests exercise the deprecated wrappers and assert the FutureWarning is emitted.
 # ---------------------------------------------------------------------------
 

@@ -458,7 +458,7 @@ def make_or_load_nwbfile(
         If 'nwbfile_path' is specified, informs user after a successful write operation.
     """
     warnings.warn(
-        "`make_or_load_nwbfile` is deprecated and will be removed on or after February 2027. "
+        "`make_or_load_nwbfile` is deprecated and will be removed in v0.12.0. "
         "Use the `run_conversion` method of an interface or converter, or `configure_and_write_nwbfile` "
         "for an NWBFile that has already been assembled.",
         FutureWarning,

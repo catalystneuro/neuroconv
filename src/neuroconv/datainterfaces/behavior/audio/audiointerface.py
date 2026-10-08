@@ -217,7 +217,7 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         iterator_options : dict, optional
             Dictionary of options for the SliceableDataChunkIterator.
         write_as : {'stimulus', 'acquisition'}, optional
-            Deprecated. Use ``parent_container`` instead. Will be removed on or after February 2027.
+            Deprecated. Use ``parent_container`` instead. Will be removed in v0.12.0.
 
         Returns
         -------
@@ -226,7 +226,7 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         if write_as is not None:
             warnings.warn(
                 "The 'write_as' parameter of AudioInterface.add_to_nwbfile() is deprecated and will be removed "
-                "on or after February 2027. Use 'parent_container' instead.",
+                "in v0.12.0. Use 'parent_container' instead.",
                 FutureWarning,
                 stacklevel=2,
             )

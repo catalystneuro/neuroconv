@@ -86,7 +86,7 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
 
             Channels are named as the board names them (``"XA0"``), which is what ``get_channel_names``
             returns. neo's stream-qualified ids (``"nidq#XA0"``) are also accepted, deprecated and
-            removed on or after August 2027.
+            removed in v0.13.0.
 
             Structure:
                 {
@@ -230,7 +230,7 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         self._uses_legacy_digital_path = digital_channel_groups is not None
         if self._uses_legacy_digital_path:
             warnings.warn(
-                "digital_channel_groups is deprecated and will be removed on or after August 2027. "
+                "digital_channel_groups is deprecated and will be removed in v0.13.0. "
                 "Use detection_configuration instead, which reaches the same lines through the shared "
                 "signal-encoded grammar. Note that the events are now written as a pynwb EventsTable "
                 "into nwbfile.events rather than as an ndx-events LabeledEvents into acquisition; the "

@@ -106,7 +106,7 @@ class DeepLabCutInterface(BasePoseEstimationInterface):
             used to link the skeleton to the subject in the NWB file.
         pose_estimation_metadata_key : str, optional
             Deprecated. Renamed to ``metadata_key``; passing it forwards the value to ``metadata_key``
-            and will be removed on or after February 2027. Passing both raises ``ValueError``.
+            and will be removed in v0.12.0. Passing both raises ``ValueError``.
         verbose : bool, default: False
             Controls verbosity of the conversion process.
         metadata_key : str, optional
@@ -250,7 +250,7 @@ class DeepLabCutInterface(BasePoseEstimationInterface):
         if pose_estimation_metadata_key is not None:
             warnings.warn(
                 "The 'pose_estimation_metadata_key' argument has been renamed to 'metadata_key' and "
-                "will be removed on or after February 2027. Please use 'metadata_key' instead.",
+                "will be removed in v0.12.0. Please use 'metadata_key' instead.",
                 DeprecationWarning,
                 stacklevel=2,
             )

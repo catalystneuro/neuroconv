@@ -403,8 +403,8 @@ class LightningPoseDataInterface(BasePoseEstimationInterface):
         if deprecated_options:
             warnings.warn(
                 f"The {list(deprecated_options)} conversion option(s) of "
-                "LightningPoseDataInterface.add_to_nwbfile() are deprecated and will be removed on or after "
-                "August 2027. Set them per series in "
+                "LightningPoseDataInterface.add_to_nwbfile() are deprecated and will be removed in "
+                "v0.13.0. Set them per series in "
                 "metadata['Pose']['PoseEstimations'][metadata_key]['PoseEstimationSeries'] instead.",
                 FutureWarning,
                 stacklevel=2,
