@@ -268,7 +268,7 @@ the series type at conversion time:
     interface.add_to_nwbfile(nwbfile, metadata)  # Uses extracted type (TwoPhotonSeries)
 
     # Generic interface - series type must be specified
-    interface = TiffImagingInterface(file_path="data.tif", metadata_key="visual_cortex")
+    interface = TiffImagingInterface(file_paths=["data.tif"], metadata_key="visual_cortex")
     interface.add_to_nwbfile(nwbfile, metadata, photon_series_type="TwoPhotonSeries")
 
     # Override is always possible
