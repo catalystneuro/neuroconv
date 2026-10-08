@@ -56,7 +56,11 @@ class _TimeBearingSeries:
 
     def get_times(self) -> np.ndarray:
         """Return the times this object will be written on, its own and the interface's offsets included."""
-        times = self._times if self._times is not None else self._get_native_times()
+        return self._get_times(get_default_times=self._get_native_times)
+
+    def _get_times(self, *, get_default_times) -> np.ndarray:
+        """``get_times`` with ``get_default_times`` standing in for the default, for a writer that needs another one."""
+        times = self._times if self._times is not None else get_default_times()
         return times + self._object_offset + self._alignment.offset
 
     def _get_start_time(self) -> float:

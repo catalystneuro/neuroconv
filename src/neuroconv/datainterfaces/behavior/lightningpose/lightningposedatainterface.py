@@ -2,6 +2,7 @@ import re
 import warnings
 from copy import deepcopy
 from datetime import datetime
+from functools import partial
 from pathlib import Path
 
 import numpy as np
@@ -219,12 +220,9 @@ class LightningPoseDataInterface(BasePoseEstimationInterface):
     def _get_timestamps(self, stub_test: bool = False) -> np.ndarray:
         time_bearing_object = self.alignment[self.metadata_key]
         if stub_test:
-            base_times = (
-                self.get_original_timestamps(stub_test=True)
-                if time_bearing_object._times is None
-                else time_bearing_object._times[:10]
-            )
-            return base_times + time_bearing_object._object_offset + self.alignment.offset
+            return time_bearing_object._get_times(
+                get_default_times=partial(self.get_original_timestamps, stub_test=True)
+            )[:10]
         return time_bearing_object.get_times()
 
     def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
