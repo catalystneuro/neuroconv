@@ -42,7 +42,7 @@ except ImportError:
 class TestTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = TiffImagingInterface
     interface_kwargs = dict(
-        file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Tif" / "demoMovie.tif"),
+        file_paths=[str(OPHYS_DATA_PATH / "imaging_datasets" / "Tif" / "demoMovie.tif")],
         sampling_frequency=15.0,  # typically provided by user
     )
     save_directory = OUTPUT_PATH
