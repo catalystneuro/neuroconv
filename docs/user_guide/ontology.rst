@@ -296,7 +296,7 @@ own just before writing, in both write and append mode, for an interface or a co
 
     interface.run_conversion(nwbfile_path="out.nwb", metadata=metadata)
 
-To skip it, pass ``add_external_resources=False`` to ``run_conversion``. To leave out a single term,
+To skip it, leave the ``ExternalResources`` block out of the metadata. To leave out a single term,
 remove its entry from ``metadata["ExternalResources"]``. To use a different atlas or an external ontology
 service, skip ``infer_*`` and write the ``id`` / ``uri`` terms into ``metadata["ExternalResources"]`` yourself.
 
