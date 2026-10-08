@@ -146,6 +146,13 @@ class _MiniscopeMultiRecordingInterface(BaseImagingExtractorInterface):
         metadata_schema["properties"]["Ophys"]["definitions"]["Device"]["additionalProperties"] = True
         return metadata_schema
 
+    def _get_native_times(self) -> np.ndarray:
+        return self.get_original_timestamps()
+
+    def _get_native_start_time(self) -> float:
+        times = self._get_native_times()
+        return float(times[0]) if times.size else np.nan
+
     def get_original_timestamps(self) -> np.ndarray:
         from ndx_miniscope.utils import get_timestamps
 
@@ -185,14 +192,15 @@ class _MiniscopeMultiRecordingInterface(BaseImagingExtractorInterface):
             _add_photon_series_to_nwbfile_old_list_format,
         )
 
-        miniscope_timestamps = self.get_original_timestamps()
+        miniscope_timestamps = self.alignment[self._alignment_key].get_times()
+        num_samples = self.imaging_extractor.get_num_samples()
+        if miniscope_timestamps.ndim != 1 or miniscope_timestamps.size != num_samples:
+            raise ValueError(f"Imaging timestamps must be one-dimensional with one time per sample ({num_samples}).")
         imaging_extractor = self.imaging_extractor
         if stub_test:
             stub_samples = min([stub_samples, self.imaging_extractor.get_num_samples()])
             imaging_extractor = self.imaging_extractor.slice_samples(start_sample=0, end_sample=stub_samples)
             miniscope_timestamps = miniscope_timestamps[:stub_samples]
-
-        imaging_extractor.set_times(times=miniscope_timestamps)
 
         device_metadata = metadata["Ophys"]["Device"][0]
         add_miniscope_device(nwbfile=nwbfile, device_metadata=device_metadata)
@@ -202,6 +210,7 @@ class _MiniscopeMultiRecordingInterface(BaseImagingExtractorInterface):
             nwbfile=nwbfile,
             metadata=metadata,
             photon_series_type=photon_series_type,
+            timestamps=miniscope_timestamps,
         )
 
 
