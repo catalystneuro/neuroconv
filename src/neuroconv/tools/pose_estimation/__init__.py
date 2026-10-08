@@ -1,2 +1,2 @@
 from .ethogram import _build_ethogram_from_labels
-from .pose_estimation import _add_pose_estimation_to_nwbfile
+from .pose_estimation import _add_multi_camera_pose_estimation_to_nwbfile, _add_pose_estimation_to_nwbfile
