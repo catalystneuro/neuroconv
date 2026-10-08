@@ -210,7 +210,7 @@ class LightningPoseDataInterface(BasePoseEstimationInterface):
 
     def get_timestamps(self, stub_test: bool = False) -> np.ndarray:
         warnings.warn(
-            "`get_timestamps` is deprecated and will be removed in v0.12.0. "
+            "`get_timestamps` is deprecated and will be removed in v0.13.0. "
             "Use `interface.alignment[key].get_times()` instead.",
             FutureWarning,
             stacklevel=2,

@@ -483,7 +483,7 @@ class ExternalVideoInterface(BaseDataInterface):
 
         .. deprecated::
             Use ``interface.alignment[key].get_times()``, which reads the file it names rather than
-            handing back a list whose order the caller has to know. Removed in v0.12.0.
+            handing back a list whose order the caller has to know. Removed in v0.13.0.
 
         Returns
         -------
@@ -495,7 +495,7 @@ class ExternalVideoInterface(BaseDataInterface):
             frame; `stub_test=True` reads only the first 10 frames of each file.
         """
         warnings.warn(
-            "`get_timestamps` is deprecated and will be removed in v0.12.0. "
+            "`get_timestamps` is deprecated and will be removed in v0.13.0. "
             "Use `interface.alignment[key].get_times()` instead.",
             FutureWarning,
             stacklevel=2,
@@ -514,7 +514,7 @@ class ExternalVideoInterface(BaseDataInterface):
 
         .. deprecated::
             Use ``interface.alignment[key].set_times(times)``, which names the file the times land on.
-            Removed in v0.12.0.
+            Removed in v0.13.0.
 
         Parameters
         ----------
@@ -522,7 +522,7 @@ class ExternalVideoInterface(BaseDataInterface):
             The synchronized timestamps for data in this interface, one array per video file.
         """
         warnings.warn(
-            "`set_aligned_timestamps` is deprecated and will be removed in v0.12.0. "
+            "`set_aligned_timestamps` is deprecated and will be removed in v0.13.0. "
             "Use `interface.alignment[key].set_times(times)` instead.",
             FutureWarning,
             stacklevel=2,
@@ -549,7 +549,7 @@ class ExternalVideoInterface(BaseDataInterface):
 
         .. deprecated::
             Use ``interface.alignment[key].move_start_to(starting_time)`` to place each file, or
-            ``interface.alignment.shift_times(delta)`` to move files already placed. Removed in v0.12.0.
+            ``interface.alignment.shift_times(delta)`` to move files already placed. Removed in v0.13.0.
 
         Parameters
         ----------
@@ -557,7 +557,7 @@ class ExternalVideoInterface(BaseDataInterface):
             The common starting time for all segments of temporal data in this interface.
         """
         warnings.warn(
-            "`set_aligned_starting_time` is deprecated and will be removed in v0.12.0. Use "
+            "`set_aligned_starting_time` is deprecated and will be removed in v0.13.0. Use "
             "`interface.alignment[key].move_start_to(starting_time)` to place each file, or "
             "`interface.alignment.shift_times(delta)` to move files already placed.",
             FutureWarning,
@@ -591,7 +591,7 @@ class ExternalVideoInterface(BaseDataInterface):
         .. deprecated::
             Use ``interface.alignment[key].move_start_to(starting_time)`` per file, which states where the file
             begins instead of adding an offset to whatever it currently carries, so calling it twice does not
-            shift twice. Removed in v0.12.0.
+            shift twice. Removed in v0.13.0.
 
         Parameters
         ----------
@@ -603,7 +603,7 @@ class ExternalVideoInterface(BaseDataInterface):
             of each file.
         """
         warnings.warn(
-            "`set_aligned_segment_starting_times` is deprecated and will be removed in v0.12.0. "
+            "`set_aligned_segment_starting_times` is deprecated and will be removed in v0.13.0. "
             "Use `interface.alignment[key].move_start_to(starting_time)` instead, which is absolute rather than "
             "relative and so does not accumulate when called twice.",
             FutureWarning,
@@ -644,10 +644,10 @@ class ExternalVideoInterface(BaseDataInterface):
 
         .. deprecated::
             Use ``interface.alignment.remap_times(local_sync_times=..., reference_sync_times=...)``, whose
-            argument names say which clock each set of pulses came off. Removed in v0.12.0.
+            argument names say which clock each set of pulses came off. Removed in v0.13.0.
         """
         warnings.warn(
-            "`align_by_interpolation` is deprecated and will be removed in v0.12.0. Use "
+            "`align_by_interpolation` is deprecated and will be removed in v0.13.0. Use "
             "`interface.alignment.remap_times(local_sync_times=..., reference_sync_times=...)` instead.",
             FutureWarning,
             stacklevel=2,
