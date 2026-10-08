@@ -1,6 +1,5 @@
 """DataInterfaces for SpikeGLX."""
 
-import warnings
 from datetime import datetime
 from pathlib import Path
 
@@ -56,7 +55,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
     def __init__(
         self,
         folder_path: DirectoryPath,
-        *args,  # TODO: change to * (keyword only) on or after August 2026
+        *,
         stream_id: str,
         verbose: bool = False,
         es_key: str | None = None,
@@ -78,34 +77,6 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
             Key that indexes this interface's entries in the dict-based metadata. Defaults to
             ``"spikeglx_{probe}_{band}"`` (e.g. ``"spikeglx_imec0_ap"``).
         """
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "stream_id",
-                "verbose",
-                "es_key",
-            ]
-            num_positional_args_before_args = 1  # folder_path
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args + 1} were given. "
-                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
-                    "Please use keyword arguments."
-                )
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to SpikeGLXRecordingInterface.__init__() is deprecated "
-                f"and will be removed on or after August 2026. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            stream_id = positional_values.get("stream_id", stream_id)
-            verbose = positional_values.get("verbose", verbose)
-            es_key = positional_values.get("es_key", es_key)
 
         if stream_id == "nidq":
             raise ValueError(

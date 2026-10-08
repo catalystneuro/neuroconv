@@ -1,5 +1,3 @@
-import warnings
-
 from dateutil.parser import parse
 from pydantic import DirectoryPath, validate_call
 
@@ -38,7 +36,7 @@ class MicroManagerTiffImagingInterface(BaseImagingExtractorInterface):
 
     @validate_call
     def __init__(
-        self, folder_path: DirectoryPath, *args, verbose: bool = False, metadata_key: str | None = None
+        self, folder_path: DirectoryPath, *, verbose: bool = False, metadata_key: str | None = None
     ):  # TODO: change to * (keyword only) on or after August 2026
         """
         Data Interface for MicroManagerTiffImagingExtractor.
@@ -52,30 +50,6 @@ class MicroManagerTiffImagingInterface(BaseImagingExtractorInterface):
         metadata_key : str, optional
             Metadata key for this interface. When None, defaults to "micromanager_imaging".
         """
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "verbose",
-            ]
-            num_positional_args_before_args = 1  # folder_path
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args + 1} were given. "
-                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
-                    "Please use keyword arguments."
-                )
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to MicroManagerTiffImagingInterface.__init__() is deprecated "
-                f"and will be removed on or after August 2026. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            verbose = positional_values.get("verbose", verbose)
 
         if metadata_key is None:
             metadata_key = "micromanager_imaging"

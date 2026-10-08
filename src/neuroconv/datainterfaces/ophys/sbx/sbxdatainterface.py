@@ -1,4 +1,3 @@
-import warnings
 from typing import Literal
 
 from pydantic import FilePath, validate_call
@@ -24,7 +23,7 @@ class SbxImagingInterface(BaseImagingExtractorInterface):
     def __init__(
         self,
         file_path: FilePath,
-        *args,  # TODO: change to * (keyword only) on or after August 2026
+        *,
         sampling_frequency: float | None = None,
         verbose: bool = False,
         photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "TwoPhotonSeries",
@@ -41,34 +40,6 @@ class SbxImagingInterface(BaseImagingExtractorInterface):
             # TODO: improve docstring once #1653 (ophys metadata documentation) is merged
             Metadata key for this interface. When None, defaults to "sbx_imaging".
         """
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "sampling_frequency",
-                "verbose",
-                "photon_series_type",
-            ]
-            num_positional_args_before_args = 1  # file_path
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args + 1} were given. "
-                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
-                    "Please use keyword arguments."
-                )
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to SbxImagingInterface.__init__() is deprecated "
-                f"and will be removed on or after August 2026. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            sampling_frequency = positional_values.get("sampling_frequency", sampling_frequency)
-            verbose = positional_values.get("verbose", verbose)
-            photon_series_type = positional_values.get("photon_series_type", photon_series_type)
 
         if metadata_key is None:
             metadata_key = "sbx_imaging"

@@ -1049,7 +1049,7 @@ def add_imaging_to_nwbfile(
     imaging: ImagingExtractor,
     nwbfile: NWBFile,
     metadata: dict | None = None,
-    *args,  # TODO: change to * (keyword only) on or after February 2027
+    *,
     photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "TwoPhotonSeries",
     photon_series_index: int = 0,
     iterator_type: str | None = "v2",
@@ -1100,39 +1100,6 @@ def add_imaging_to_nwbfile(
         The NWB file with the imaging data added
 
     """
-    # TODO: Remove this block in September 2026 or after when positional arguments are no longer supported.
-    if args:
-        parameter_names = [
-            "photon_series_type",
-            "photon_series_index",
-            "iterator_type",
-            "iterator_options",
-            "parent_container",
-            "always_write_timestamps",
-        ]
-        num_positional_args_before_args = 3  # imaging, nwbfile, metadata
-        if len(args) > len(parameter_names):
-            raise TypeError(
-                f"add_imaging_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
-                f"{len(args) + num_positional_args_before_args} were given. "
-                "Note: Positional arguments are deprecated and will be removed in September 2026 or after. Please use keyword arguments."
-            )
-        positional_values = dict(zip(parameter_names, args))
-        passed_as_positional = list(positional_values.keys())
-        warnings.warn(
-            f"Passing arguments positionally to add_imaging_to_nwbfile is deprecated "
-            f"and will be removed in September 2026 or after. "
-            f"The following arguments were passed positionally: {passed_as_positional}. "
-            "Please use keyword arguments instead.",
-            FutureWarning,
-            stacklevel=2,
-        )
-        photon_series_type = positional_values.get("photon_series_type", photon_series_type)
-        photon_series_index = positional_values.get("photon_series_index", photon_series_index)
-        iterator_type = positional_values.get("iterator_type", iterator_type)
-        iterator_options = positional_values.get("iterator_options", iterator_options)
-        parent_container = positional_values.get("parent_container", parent_container)
-        always_write_timestamps = positional_values.get("always_write_timestamps", always_write_timestamps)
 
     if metadata is None:
         metadata = _get_ophys_metadata_placeholders()
@@ -1395,7 +1362,7 @@ def add_segmentation_to_nwbfile(
     segmentation_extractor: SegmentationExtractor,
     nwbfile: NWBFile,
     metadata: dict | None = None,
-    *args,  # TODO: change to * (keyword only) on or after February 2027
+    *,
     plane_segmentation_name: str | None = None,
     background_plane_segmentation_name: str | None = None,
     include_background_segmentation: bool = False,
@@ -1451,45 +1418,6 @@ def add_segmentation_to_nwbfile(
     NWBFile
         The NWBFile with the added segmentation data.
     """
-    # TODO: Remove this block in September 2026 or after when positional arguments are no longer supported.
-    if args:
-        parameter_names = [
-            "plane_segmentation_name",
-            "background_plane_segmentation_name",
-            "include_background_segmentation",
-            "include_roi_centroids",
-            "include_roi_acceptance",
-            "mask_type",
-            "iterator_options",
-        ]
-        num_positional_args_before_args = 3  # segmentation_extractor, nwbfile, metadata
-        if len(args) > len(parameter_names):
-            raise TypeError(
-                f"add_segmentation_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
-                f"{len(args) + num_positional_args_before_args} were given. "
-                "Note: Positional arguments are deprecated and will be removed in September 2026 or after. Please use keyword arguments."
-            )
-        positional_values = dict(zip(parameter_names, args))
-        passed_as_positional = list(positional_values.keys())
-        warnings.warn(
-            f"Passing arguments positionally to add_segmentation_to_nwbfile is deprecated "
-            f"and will be removed in September 2026 or after. "
-            f"The following arguments were passed positionally: {passed_as_positional}. "
-            "Please use keyword arguments instead.",
-            FutureWarning,
-            stacklevel=2,
-        )
-        plane_segmentation_name = positional_values.get("plane_segmentation_name", plane_segmentation_name)
-        background_plane_segmentation_name = positional_values.get(
-            "background_plane_segmentation_name", background_plane_segmentation_name
-        )
-        include_background_segmentation = positional_values.get(
-            "include_background_segmentation", include_background_segmentation
-        )
-        include_roi_centroids = positional_values.get("include_roi_centroids", include_roi_centroids)
-        include_roi_acceptance = positional_values.get("include_roi_acceptance", include_roi_acceptance)
-        mask_type = positional_values.get("mask_type", mask_type)
-        iterator_options = positional_values.get("iterator_options", iterator_options)
 
     if include_roi_acceptance is not None:
         warnings.warn(
