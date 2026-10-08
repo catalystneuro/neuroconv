@@ -409,14 +409,14 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
                 - "unit": str, the unit of measurement (default: "volts")
                 - "time_before_peak_in_ms": float, the time from the start of each waveform to the spike peak, optional
         write_as : {'units', 'processing'}, optional
-            Deprecated. Use ``parent_container`` instead. Will be removed on or after February 2027.
+            Deprecated. Use ``parent_container`` instead. Will be removed in v0.12.0.
         """
         from ...tools.spikeinterface import add_sorting_to_nwbfile
 
         if write_as is not None:
             warnings.warn(
                 "The 'write_as' parameter of BaseSortingExtractorInterface.add_to_nwbfile() is deprecated and will "
-                "be removed on or after February 2027. Use 'parent_container' instead.",
+                "be removed in v0.12.0. Use 'parent_container' instead.",
                 FutureWarning,
                 stacklevel=2,
             )

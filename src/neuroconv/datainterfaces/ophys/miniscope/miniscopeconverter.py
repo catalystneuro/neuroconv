@@ -395,7 +395,7 @@ class MiniscopeConverter(ConverterPipe):
             # Legacy mode: use _MiniscopeMultiRecordingInterface for backwards compatibility
             warnings.warn(
                 "Not passing 'user_configuration_file_path' to MiniscopeConverter is deprecated "
-                "and will be removed on or after February 2027. "
+                "and will be removed in v0.12.0. "
                 "The legacy folder discovery mode assumes all recordings are back-to-back, "
                 "which does not hold in general and can produce silently incorrect results. "
                 "Please pass the 'user_configuration_file_path' argument, which points to the "

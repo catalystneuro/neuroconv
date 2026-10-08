@@ -278,7 +278,7 @@ class InternalVideoInterface(BaseDataInterface):
             the video entry by ``device_metadata_key``; it is created and linked to the ImageSeries,
             establishing a connection between the video data and the camera that captured it. Passing the
             camera nested under the video entry as ``device=dict(...)`` is still accepted but deprecated
-            (removal on or after February 2027).
+            (removal in v0.12.0).
         stub_test : bool, default: False
             If ``True``, truncates the write operation for fast testing.
         buffer_data : bool, default: True
@@ -391,7 +391,7 @@ class InternalVideoInterface(BaseDataInterface):
         elif legacy_device_kwargs is not None:
             warnings.warn(
                 "Passing the camera device nested under the video metadata entry is deprecated and will be "
-                "removed on or after February 2027. Use a top-level metadata['Devices'][key] entry referenced "
+                "removed in v0.12.0. Use a top-level metadata['Devices'][key] entry referenced "
                 "by 'device_metadata_key' instead.",
                 FutureWarning,
                 stacklevel=2,

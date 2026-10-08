@@ -80,7 +80,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         # construction. Without the sentinel the deprecation warning would fire for everyone.
         if es_key is not None:
             warnings.warn(
-                "The 'es_key' argument is deprecated and will be removed on or after February 2027. "
+                "The 'es_key' argument is deprecated and will be removed in v0.12.0. "
                 "Use 'metadata_key' instead: it is the same concept, the key addressing this interface's "
                 "entry in the metadata, and it is the one the dict-based format uses. The name written to "
                 "the file comes from that entry's 'name' field, not from the key.",
@@ -475,7 +475,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             - 'processing/FilteredEphys': a ``FilteredEphys`` container in the ecephys processing module.
         write_as : {'raw', 'processed', 'lfp'}, optional
             Deprecated. Use ``parent_container`` instead ('raw' -> 'acquisition', 'lfp' -> 'processing/LFP',
-            'processed' -> 'processing/FilteredEphys'). Will be removed on or after February 2027.
+            'processed' -> 'processing/FilteredEphys'). Will be removed in v0.12.0.
         data_representation : {'digital_counts', 'physical_units'}, default='digital_counts'
             How the trace values are materialized in the stored data array.
             - 'digital_counts': store the raw integer samples and carry the per-channel gain in
@@ -524,7 +524,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         if write_as is not None:
             warnings.warn(
                 "The 'write_as' parameter of BaseRecordingExtractorInterface.add_to_nwbfile() is deprecated and "
-                "will be removed on or after February 2027. Use 'parent_container' instead "
+                "will be removed in v0.12.0. Use 'parent_container' instead "
                 "('raw' -> 'acquisition', 'lfp' -> 'processing/LFP', 'processed' -> 'processing/FilteredEphys').",
                 FutureWarning,
                 stacklevel=2,
