@@ -83,7 +83,7 @@ class AbfInterface(LegacyBaseIcephysInterface):
     def __init__(
         self,
         file_paths: list[FilePath],
-        *args,  # TODO: change to * (keyword only) on or after August 2026
+        *,
         icephys_metadata: dict | None = None,
         icephys_metadata_file_path: FilePath | None = None,
     ):
@@ -112,33 +112,6 @@ class AbfInterface(LegacyBaseIcephysInterface):
             FutureWarning,
             stacklevel=2,
         )
-
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "icephys_metadata",
-                "icephys_metadata_file_path",
-            ]
-            num_positional_args_before_args = 1  # file_paths
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args + 1} were given. "
-                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
-                    "Please use keyword arguments."
-                )
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to AbfInterface.__init__() is deprecated "
-                f"and will be removed on or after August 2026. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            icephys_metadata = positional_values.get("icephys_metadata", icephys_metadata)
-            icephys_metadata_file_path = positional_values.get("icephys_metadata_file_path", icephys_metadata_file_path)
 
         super().__init__(file_paths=file_paths)
         self.source_data.update(

@@ -83,7 +83,7 @@ class LightningPoseDataInterface(BasePoseEstimationInterface):
     def __init__(
         self,
         file_path: FilePath,
-        *args,  # TODO: change to * (keyword only) on or after August 2026
+        *,
         original_video_file_path: FilePath,
         labeled_video_file_path: FilePath | None = None,
         verbose: bool = False,
@@ -110,34 +110,6 @@ class LightningPoseDataInterface(BasePoseEstimationInterface):
             the written file. Only used by the dict-based shape, reachable through
             ``get_metadata(use_new_metadata_format=True)``.
         """
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "original_video_file_path",
-                "labeled_video_file_path",
-                "verbose",
-            ]
-            num_positional_args_before_args = 1  # file_path
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args + 1} were given. "
-                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
-                    "Please use keyword arguments."
-                )
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to LightningPoseDataInterface.__init__() is deprecated "
-                f"and will be removed on or after August 2026. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            original_video_file_path = positional_values.get("original_video_file_path", original_video_file_path)
-            labeled_video_file_path = positional_values.get("labeled_video_file_path", labeled_video_file_path)
-            verbose = positional_values.get("verbose", verbose)
 
         # This import is to assure that the ndx_pose is in the global namespace when an pynwb.io object is created
         # For more detail, see https://github.com/rly/ndx-pose/issues/36
@@ -316,7 +288,7 @@ class LightningPoseDataInterface(BasePoseEstimationInterface):
         self,
         nwbfile: NWBFile,
         metadata: dict | None = None,
-        *args,  # TODO: change to * (keyword only) on or after August 2026
+        *,
         reference_frame: str | None = None,
         confidence_definition: str | None = None,
         stub_test: bool | None = False,
@@ -342,34 +314,6 @@ class LightningPoseDataInterface(BasePoseEstimationInterface):
             ``metadata["Pose"]["PoseEstimations"][metadata_key]["PoseEstimationSeries"]`` instead.
         stub_test : bool, default: False
         """
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "reference_frame",
-                "confidence_definition",
-                "stub_test",
-            ]
-            num_positional_args_before_args = 2  # nwbfile, metadata
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"add_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args} were given. "
-                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
-                    "Please use keyword arguments."
-                )
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to LightningPoseDataInterface.add_to_nwbfile() is deprecated "
-                f"and will be removed on or after August 2026. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            reference_frame = positional_values.get("reference_frame", reference_frame)
-            confidence_definition = positional_values.get("confidence_definition", confidence_definition)
-            stub_test = positional_values.get("stub_test", stub_test)
 
         # Dispatch on the legacy block being there rather than on the dict-based one being absent, since
         # metadata that mentions neither is not legacy, it is a caller who said nothing about pose. The
