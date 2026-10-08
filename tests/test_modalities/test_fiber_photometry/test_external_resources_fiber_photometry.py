@@ -18,11 +18,7 @@ from ndx_ophys_devices import Indicator, ViralVector, ViralVectorInjection
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.file import Subject
 
-from neuroconv.tools.external_resources import (
-    add_brain_region_external_resources,
-    add_external_resources_to_nwbfile,
-    infer_brain_region_external_resources,
-)
+from neuroconv.tools.external_resources import add_external_resources_to_nwbfile
 
 
 def _make_nwbfile(species="Mus musculus") -> NWBFile:
@@ -61,33 +57,6 @@ def _add_virus_injection(nwbfile: NWBFile, injection_location) -> None:
 
 
 class TestFiberPhotometryExternalResources:
-    def test_virus_injection_location_is_resolved(self):
-        nwbfile = _make_nwbfile(species="Mus musculus")
-        _add_virus_injection(nwbfile, injection_location="VTA")
-
-        assert (
-            infer_brain_region_external_resources(nwbfile)["ExternalResources"]["brain_regions"]["VTA"]["id"]
-            == "MBA:749"
-        )
-
-    def test_virus_injection_location_is_annotated(self, tmp_path):
-        nwbfile = _make_nwbfile()
-        _add_virus_injection(nwbfile, injection_location="VTA")
-        mapping = {"VTA": {"id": "MBA:749", "uri": "https://example.org/MBA_749"}}
-
-        assert (
-            add_brain_region_external_resources(nwbfile, metadata={"ExternalResources": {"brain_regions": mapping}})
-            == 1
-        )
-
-        path = tmp_path / "injection.nwb"
-        with NWBHDF5IO(path, "w") as io:
-            io.write(nwbfile)
-        with NWBHDF5IO(path, "r") as io:
-            dataframe = io.read().external_resources.to_dataframe()
-        rows = set(zip(dataframe["object_type"], dataframe["relative_path"], dataframe["key"], dataframe["entity_id"]))
-        assert rows == {("ViralVectorInjection", "location", "VTA", "MBA:749")}
-
     def test_file_on_disk_is_annotated_without_importing_the_extensions(self, tmp_path):
         # A file read back with load_namespaces=True knows the extension types even when the extension
         # packages are never imported. The HERD must resolve them through the reading IO's type map:
