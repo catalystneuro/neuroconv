@@ -3,11 +3,12 @@
 A ``BaseFiberPhotometryInterface`` writes exactly **one** ``FiberPhotometryResponseSeries`` to an
 NWBFile, assembled from one or more input *streams* (atomic source signals, e.g. TDT stores or Doric
 datasets). All the shared containers (device models, devices, optical fibers, indicators, viral
-vectors/injections, the ``FiberPhotometryTable``, and any ``CommandedVoltageSeries``) live under
+vectors/injections, and the ``FiberPhotometryTable``) live under
 ``metadata["FiberPhotometry"]`` as name-keyed lists and are built **once** per file — the
 first interface to run assembles them from the (converter-merged) metadata and subsequent interfaces
 reuse them. Multiple response series therefore means multiple interfaces sharing one table, exactly
-like several ecephys recording interfaces sharing one electrodes table.
+like several ecephys recording interfaces sharing one electrodes table. Each interface writes its
+declared commanded-voltage streams before the shared table is built.
 
 Child interfaces implement only the format-reading seam:
 
@@ -76,12 +77,13 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         """
         self.stream_names = [stream_names] if isinstance(stream_names, str) else list(stream_names)
         self.stream_indices = stream_indices
+        self._commanded_voltage_key_to_get_data = {}
         if metadata_key is None:
             stream_parts = [str(name).replace(" ", "_").strip("_").lower() for name in self.stream_names]
             metadata_key = "_".join(["fiber_photometry", *stream_parts])
         self.metadata_key = metadata_key
         # Alignment by composition, the same component the events interfaces hold. This interface writes one
-        # response series, so it names one time-bearing object, under the same key its metadata uses. The
+        # response series and any declared drives, under the same keys their metadata uses. The
         # native times are registered as a callable, so naming the object reads nothing.
         # See neuroconv/_temporal_alignment.py.
         self.alignment = _TemporalAlignment()
@@ -293,6 +295,10 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             ),
         )
         fiber_photometry[self.metadata_key] = dict(fiber_photometry_table_region=row_keys, description=None)
+        if self._commanded_voltage_key_to_get_data:
+            fiber_photometry["CommandedVoltageSeries"] = {
+                key: dict(name=None, unit=None, frequency=None) for key in self._commanded_voltage_key_to_get_data
+            }
 
         template = DeepDict(dict(DeviceModels=device_models, Devices=devices, FiberPhotometry=fiber_photometry))
 
@@ -374,6 +380,53 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
                 "'fiber_photometry_table_region' to the series metadata."
             )
 
+    def _register_commanded_voltage(self, *, key: str, get_data, get_native_times) -> None:
+        """Name one commanded-voltage drive as a time-bearing object. Called by the formats that record drives.
+
+        ``get_data`` and ``get_native_times`` are callables, so registering reads nothing. The key is the one
+        the drive's ``CommandedVoltageSeries`` metadata entry and the table rows'
+        ``commanded_voltage_series_metadata_key`` use.
+        """
+        if key == self.metadata_key:
+            raise ValueError(f"Commanded-voltage key '{key}' is also the response-series key.")
+        self._commanded_voltage_key_to_get_data[key] = get_data
+        self.alignment._register_series(key=key, get_native_times=get_native_times)
+
+    def _add_commanded_voltage_series(
+        self,
+        *,
+        nwbfile: NWBFile,
+        metadata: dict,
+        stub_test: bool = False,
+        stub_samples: int = 100,
+        always_write_timestamps: bool = False,
+    ) -> None:
+        commanded_voltage_metadata_by_key = metadata.get("FiberPhotometry", {}).get("CommandedVoltageSeries", {})
+        for key, entry in commanded_voltage_metadata_by_key.items():
+            if "stream_name" in entry or "index" in entry:
+                raise ValueError(
+                    f"Move 'stream_name' and 'index' for commanded voltage '{key}' from metadata to "
+                    "the owning interface's 'commanded_voltage_streams' constructor argument."
+                )
+        for key, get_data in self._commanded_voltage_key_to_get_data.items():
+            commanded_voltage_metadata = commanded_voltage_metadata_by_key[key]
+            if commanded_voltage_metadata["name"] in nwbfile.acquisition:
+                continue
+            data = np.asarray(get_data())
+            timestamps = self.alignment[key].get_times()
+            if stub_test:
+                data = data[:stub_samples]
+                timestamps = timestamps[:stub_samples]
+            add_commanded_voltage_series(
+                nwbfile=nwbfile,
+                name=commanded_voltage_metadata["name"],
+                description=commanded_voltage_metadata.get("description", ""),
+                data=data,
+                unit=commanded_voltage_metadata["unit"],
+                frequency=commanded_voltage_metadata["frequency"],
+                timing_kwargs=self._timing_kwargs_from_timestamps(timestamps, always_write_timestamps),
+            )
+
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
@@ -416,40 +469,23 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         fiber_photometry_metadata = metadata["FiberPhotometry"]
         self._validate_metadata(fiber_photometry_metadata)
         series_metadata = fiber_photometry_metadata[self.metadata_key]
+        self._add_commanded_voltage_series(
+            nwbfile=nwbfile,
+            metadata=metadata,
+            stub_test=stub_test,
+            stub_samples=stub_samples,
+            always_write_timestamps=always_write_timestamps,
+        )
 
         def stub(array: np.ndarray) -> np.ndarray:
             return array[: min(stub_samples, len(array))] if stub_test else array
 
-        # The shared provenance chain (devices, indicators, table, commanded voltage) is written only when
+        # The shared provenance chain (devices, indicators, table) is written only when
         # the user supplies it; ``_validate_metadata`` guarantees the table and this series' table region are
         # provided together, so ``table_region`` stays None exactly when no ``FiberPhotometryTable`` is given.
         table_region = None
         if "FiberPhotometryTable" in fiber_photometry_metadata:
             add_fiber_photometry_devices(nwbfile=nwbfile, metadata=metadata)
-
-            for commanded_voltage_metadata in fiber_photometry_metadata.get("CommandedVoltageSeries", {}).values():
-                commanded_voltage_stream_name = commanded_voltage_metadata["stream_name"]
-                commanded_voltage_data = np.asarray(self._get_stream_data(stream_name=commanded_voltage_stream_name))
-                index = commanded_voltage_metadata.get("index")
-                if index is not None and commanded_voltage_data.ndim == 2:
-                    commanded_voltage_data = commanded_voltage_data[:, index]
-                # This series reads its own stream rather than going through get_timestamps, so the
-                # alignment offset has to be applied here: a shift is interface-wide, and a commanded
-                # voltage left on its native times would drift from the response series it drove.
-                commanded_voltage_timestamps = (
-                    self._get_stream_timestamps(stream_name=commanded_voltage_stream_name) + self.alignment.offset
-                )
-                add_commanded_voltage_series(
-                    nwbfile=nwbfile,
-                    name=commanded_voltage_metadata["name"],
-                    description=commanded_voltage_metadata.get("description", ""),
-                    data=stub(commanded_voltage_data),
-                    unit=commanded_voltage_metadata["unit"],
-                    frequency=commanded_voltage_metadata["frequency"],
-                    timing_kwargs=self._timing_kwargs_from_timestamps(
-                        stub(commanded_voltage_timestamps), always_write_timestamps
-                    ),
-                )
 
             fiber_photometry_table = add_fiber_photometry_lab_metadata(
                 nwbfile=nwbfile,
