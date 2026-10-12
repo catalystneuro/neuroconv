@@ -1,0 +1,193 @@
+.visualizer-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  font-family: inherit;
+}
+.dimension-selector {
+  margin-bottom: 1.5rem;
+}
+.dimension-selector label {
+  display: block;
+  font-size: 1.1rem;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+}
+.button-group {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.order-button {
+  padding: 0.5rem 1rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #f8f9fa;
+  cursor: pointer;
+  font-size: 0.95rem;
+  transition: all 0.2s;
+}
+.order-button:hover {
+  background: #e9ecef;
+}
+.order-button.active {
+  background: #007bff;
+  color: white;
+  border-color: #007bff;
+  font-weight: 600;
+}
+.info-box {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 4px;
+  border-left: 4px solid #007bff;
+}
+.info-box h3 {
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+  font-size: 1.2rem;
+}
+.info-box p {
+  margin: 0.5rem 0;
+}
+.channel-legend {
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+.channel-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.channel-color {
+  width: 20px;
+  height: 20px;
+  border-radius: 3px;
+}
+.viz-section {
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 1.5rem;
+  background: white;
+  margin-bottom: 1.5rem;
+}
+.viz-section h3 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  font-size: 1.2rem;
+}
+.description {
+  margin-bottom: 1.5rem;
+  line-height: 1.6;
+}
+.frame-display {
+  display: flex;
+  margin-bottom: 2rem;
+}
+.depth-label-container {
+  width: 100px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  position: relative;
+  padding-top: 8rem;
+}
+.depth-label-text {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-weight: 600;
+  font-size: 1.1rem;
+  color: #495057;
+}
+.frame-grid-container {
+  flex: 1;
+}
+.frame-grid-header {
+  text-align: center;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  font-size: 1.1rem;
+  color: #6c757d;
+}
+.frame-grid {
+  overflow-x: auto;
+  position: relative;
+  min-height: 400px;
+  padding-top: 3rem;
+  padding-left: 6rem;
+  padding-right: 2rem;
+  padding-bottom: 2rem;
+}
+.z-label {
+  position: absolute;
+  font-weight: 700;
+  text-align: center;
+  font-size: 1.1rem;
+  color: #000000;
+  background: #f8f9fa;
+  border: 2px solid #495057;
+  padding: 8px 12px;
+  border-radius: 4px;
+  min-width: 2.5rem;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.frame-cell {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  font-weight: 600;
+}
+.timepoint-label {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  font-size: 0.7rem;
+  opacity: 0.8;
+}
+.sequence-table-container {
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+.sequence-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.sequence-table thead {
+  position: sticky;
+  top: 0;
+  background: #f8f9fa;
+  z-index: 10;
+}
+.sequence-table th {
+  text-align: left;
+  padding: 0.5rem;
+  border-bottom: 2px solid #dee2e6;
+  font-weight: 600;
+}
+.sequence-table td {
+  padding: 0.4rem 0.5rem;
+  border-bottom: 1px solid #f0f0f0;
+}
+.sequence-table tbody tr:nth-child(even) {
+  background: #f8f9fa;
+}
+.sequence-table tbody tr:hover {
+  background: #e9ecef;
+}
+.frame-indicator {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 0.25rem;
+}

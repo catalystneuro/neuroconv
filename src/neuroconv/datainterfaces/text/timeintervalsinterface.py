@@ -19,6 +19,7 @@ class TimeIntervalsInterface(BaseDataInterface):
     def __init__(
         self,
         file_path: FilePath,
+        *,
         read_kwargs: dict | None = None,
         verbose: bool = False,
     ):
@@ -28,11 +29,17 @@ class TimeIntervalsInterface(BaseDataInterface):
         Parameters
         ----------
         file_path : FilePath
-            The path to the file containing time intervals data.
+            The path to the file containing time intervals data (CSV, Excel, etc.).
         read_kwargs : dict, optional
-            Additional arguments for reading the file, by default None.
+            Additional keyword arguments passed to the file reading function.
+            For CSV files, these are passed to pandas.read_csv().
+            For Excel files, these are passed to pandas.read_excel().
+            Examples: {"sep": ";", "encoding": "utf-8", "skiprows": 1}
+            Default is None.
         verbose : bool, default: False
+            Controls verbosity of the interface output.
         """
+
         read_kwargs = read_kwargs or dict()
         super().__init__(file_path=file_path)
         self.verbose = verbose
@@ -85,7 +92,9 @@ class TimeIntervalsInterface(BaseDataInterface):
         if not column.endswith("_time"):
             raise ValueError("Timing columns on a TimeIntervals table need to end with '_time'!")
 
-        return self._read_file(**self.source_data, **self._read_kwargs)[column].values
+        # Explicitly convert to numpy for HDMF compatibility with pandas 3.0+
+        # See https://github.com/hdmf-dev/hdmf/issues/1384
+        return self._read_file(**self.source_data, **self._read_kwargs)[column].to_numpy(dtype="float64")
 
     def get_timestamps(self, column: str) -> np.ndarray:
         """
@@ -109,7 +118,9 @@ class TimeIntervalsInterface(BaseDataInterface):
         if not column.endswith("_time"):
             raise ValueError("Timing columns on a TimeIntervals table need to end with '_time'!")
 
-        return self.dataframe[column].values
+        # Explicitly convert to numpy for HDMF compatibility with pandas 3.0+
+        # See https://github.com/hdmf-dev/hdmf/issues/1384
+        return self.dataframe[column].to_numpy(dtype="float64")
 
     def set_aligned_starting_time(self, aligned_starting_time: float):
         """
@@ -203,25 +214,69 @@ class TimeIntervalsInterface(BaseDataInterface):
         self,
         nwbfile: NWBFile,
         metadata: dict | None = None,
+        *,
         tag: str = "trials",
         column_name_mapping: dict[str, str] = None,
         column_descriptions: dict[str, str] = None,
     ) -> NWBFile:
         """
-        Run the NWB conversion for the instantiated data interface.
+        Add time intervals data from the CSV/Excel file to an NWBFile object.
 
         Parameters
         ----------
-        nwbfile : NWBFile, optional
-            An in-memory NWBFile object to write to the location.
+        nwbfile : NWBFile
+            An in-memory NWBFile object to add the time intervals data to.
         metadata : dict, optional
-            Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
+            Metadata dictionary containing time intervals configuration.
+            If not provided, uses default metadata from get_metadata().
+
+            Expected structure under metadata["TimeIntervals"][tag]:
+
+            - table_name : str
+                Name of the time intervals table. Determines storage location in NWB:
+                * "trials" → nwbfile.trials
+                * "epochs" → nwbfile.epochs
+                * Other names → nwbfile.intervals[table_name]
+            - table_description : str
+                Description of the time intervals data.
+
+            Example:
+                metadata = {
+                    "TimeIntervals": {
+                        "tag": {
+                            "table_name": "trials",
+                            "table_description": "Experimental trials"
+                        }
+                    }
+                }
+
+            To add as epochs instead:
+                metadata["TimeIntervals"]["tag"]["table_name"] = "epochs"
+
         tag : str, default: "trials"
-        column_name_mapping: dict, optional
-            If passed, rename subset of columns from key to value.
-        column_descriptions: dict, optional
-            Keys are the names of the columns (after renaming) and values are the descriptions. If not passed,
-            the names of the columns are used as descriptions.
+            Key to use when looking up time intervals metadata in metadata["TimeIntervals"][tag].
+            By default, looks for metadata["TimeIntervals"]["trials"].
+        column_name_mapping : dict of str to str, optional
+            Dictionary to rename columns from the source file.
+            Keys are original column names, values are new names.
+            Example: {"condition": "trial_type", "start": "start_time"}
+        column_descriptions : dict of str to str, optional
+            Dictionary providing descriptions for columns (after any renaming).
+            Keys are column names (after mapping), values are descriptions.
+            If not provided, column names are used as descriptions.
+            Example: {"trial_type": "Type of trial", "correct": "Response accuracy"}
+
+        Returns
+        -------
+        NWBFile
+            The NWBFile object with time intervals data added.
+
+        Notes
+        -----
+        - The time intervals are added to nwbfile.intervals and also set as direct properties
+          for "trials" and "epochs" to enable in-memory access (e.g., nwbfile.trials).
+        - All timing columns must be in seconds.
+        - The 'start_time' column is required; 'stop_time' is auto-generated if missing.
 
         """
         metadata = metadata or self.get_metadata()
@@ -232,6 +287,14 @@ class TimeIntervalsInterface(BaseDataInterface):
             **metadata["TimeIntervals"][tag],
         )
         nwbfile.add_time_intervals(self.time_intervals)
+
+        # For trials and epochs, also set them as direct properties for in-memory access
+        # This makes nwbfile.trials and nwbfile.epochs work before save/load
+        table_name = self.time_intervals.name
+        if table_name == "trials":
+            nwbfile.trials = self.time_intervals
+        elif table_name == "epochs":
+            nwbfile.epochs = self.time_intervals
 
         return nwbfile
 

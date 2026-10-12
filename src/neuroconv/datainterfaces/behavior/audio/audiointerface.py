@@ -1,5 +1,6 @@
 import json
 import struct
+import warnings
 from pathlib import Path
 from typing import Literal
 
@@ -30,7 +31,9 @@ class AudioInterface(BaseTemporalAlignmentInterface):
     info = "Interface for writing audio recordings to an NWB file."
 
     @validate_call
-    def __init__(self, file_paths: list[FilePath], verbose: bool = False):
+    def __init__(
+        self, file_paths: list[FilePath], *, verbose: bool = False
+    ):  # TODO: change to * (keyword only) on or after August 2026
         """
         Data interface for writing acoustic recordings to an NWB file.
 
@@ -47,6 +50,7 @@ class AudioInterface(BaseTemporalAlignmentInterface):
 
         verbose : bool, default: False
         """
+
         # This import is to assure that ndx_sound is in the global namespace when an pynwb.io object is created.
         # For more detail, see https://github.com/rly/ndx-pose/issues/36
         import ndx_sound  # noqa: F401
@@ -73,7 +77,7 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         time_series_metadata_schema_path = (
             Path(__file__).parent.parent.parent.parent / "schemas" / "time_series_schema.json"
         )
-        with open(file=time_series_metadata_schema_path) as fp:
+        with open(file=time_series_metadata_schema_path, encoding="utf-8") as fp:
             time_series_metadata_schema = json.load(fp=fp)
         time_series_metadata_schema.update(required=["name"])
 
@@ -168,10 +172,12 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         self,
         nwbfile: NWBFile,
         metadata: dict | None = None,
+        *,
         stub_test: bool = False,
         stub_frames: int = 1000,
-        write_as: Literal["stimulus", "acquisition"] = "stimulus",
+        parent_container: Literal["stimulus", "acquisition"] = "stimulus",
         iterator_options: dict | None = None,
+        write_as: Literal["stimulus", "acquisition"] | None = None,
     ):
         """
         Parameters
@@ -181,16 +187,27 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         metadata : dict, optional
         stub_test : bool, default: False
         stub_frames : int, default: 1000
-        write_as : {'stimulus', 'acquisition'}
+        parent_container : {'stimulus', 'acquisition'}
             The acoustic waveform series can be added to the NWB file either as
             "stimulus" or as "acquisition".
         iterator_options : dict, optional
             Dictionary of options for the SliceableDataChunkIterator.
+        write_as : {'stimulus', 'acquisition'}, optional
+            Deprecated. Use ``parent_container`` instead. Will be removed on or after February 2027.
 
         Returns
         -------
         NWBFile
         """
+        if write_as is not None:
+            warnings.warn(
+                "The 'write_as' parameter of AudioInterface.add_to_nwbfile() is deprecated and will be removed "
+                "on or after February 2027. Use 'parent_container' instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            parent_container = write_as
+
         import scipy
 
         metadata = metadata or self.get_metadata()
@@ -232,7 +249,7 @@ class AudioInterface(BaseTemporalAlignmentInterface):
                 nwbfile=nwbfile,
                 rate=sampling_rate,
                 metadata=acoustic_waveform_series_metadata,
-                write_as=write_as,
+                parent_container=parent_container,
                 starting_time=starting_times[file_index],
                 iterator_options=iterator_options,
             )

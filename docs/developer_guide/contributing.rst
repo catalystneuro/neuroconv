@@ -70,15 +70,26 @@ If you have not already, you will need to clone the repo:
 
 2) Make your changes.
 
-3) We will automatically run tests to ensure that your contributions didn't break anything and that they follow our style guide. You can speed up the testing cycle by running these tests locally on your own computer by calling ``pytest`` from the top-level directory.
+3) Add a changelog entry for your change.
 
-4) Push your feature branch to origin (*i.e.* GitHub)
+The release notes are assembled at release time from one file per entry under ``changelog_entries/``, named ``<PR number>.<type>.md``, so two pull requests never edit the same lines of ``CHANGELOG.md``. The types are ``deprecation`` (for removals, deprecations and changes), ``bugfix``, ``feature`` and ``improvement``. Write a single sentence of Markdown saying what changed and what to use instead:
+
+.. code-block:: none
+
+    $ cat changelog_entries/1999.improvement.md
+    `EDFRecordingInterface` now reports the patient field's birthdate as `Subject.date_of_birth`.
+
+The ``[PR #1999](...)`` link is generated from the file name, so do not write it into the text.
+
+4) We will automatically run tests to ensure that your contributions didn't break anything and that they follow our style guide. You can speed up the testing cycle by running these tests locally on your own computer by calling ``pytest`` from the top-level directory.
+
+5) Push your feature branch to origin (*i.e.* GitHub)
 
 .. code-block:: bash
 
     $ git push origin <new_branch>
 
-5) Once you have tested and finalized your changes, create a pull request (PR) targeting ``dev`` as the base branch:
+6) Once you have tested and finalized your changes, create a pull request (PR) targeting ``main`` as the base branch:
 
     * Ensure the PR description clearly describes the problem and solution.
     * Include the relevant issue number if applicable. TIP: Writing e.g. "fix #613" will automatically close issue #613 when this PR is merged.

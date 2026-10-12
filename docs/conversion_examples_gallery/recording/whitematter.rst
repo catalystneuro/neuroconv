@@ -31,8 +31,10 @@ Convert WhiteMatter data to NWB using :py:class:`~neuroconv.datainterfaces.eceph
     >>> metadata = interface.get_metadata()
     >>> # session_start_time is required for conversion. If it cannot be inferred
     >>> # automatically from the source files you must supply one.
-    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
+    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
+    >>> # Add subject information (required for DANDI upload)
+    >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
     >>>
     >>>  # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"  # This should be something like: "./saved_file.nwb"
@@ -49,26 +51,28 @@ using the format described below.
 .. code-block:: python
 
     >>> ecephys_metadata = {
-    ...     "Ecephys": {
-    ...         "ElectricalSeries": { # This should match the es_key used in the interface
-    ...             "name" : "ElectricalSeries",
-    ...             "description": "My description of the electrical series data",
+    ...     "Devices": {
+    ...         "my_device": {
+    ...             "name": "MyDevice",
+    ...             "description": "My description of the device",
     ...         },
-    ...         "Device": [
-    ...             {
-    ...                 "name": "MyDevice",
-    ...                 "description": "My description of the device",
+    ...     },
+    ...     "Ecephys": {
+    ...         "ElectricalSeries": {
+    ...             "white_matter_recording": { # This should match the metadata_key used in the interface
+    ...                 "name" : "ElectricalSeries",
+    ...                 "description": "My description of the electrical series data",
     ...             },
-    ...         ],
-    ...         "ElectrodeGroup": [
-    ...             {
+    ...         },
+    ...         "ElectrodeGroups": {
+    ...             "my_electrode_group": {
     ...                 "name": "MyElectrodeGroup",
     ...                 "description": "My description of the electrode group",
     ...                 "location": "location of the electrode group ex. hippocampus",
-    ...                 "device": "MyDevice",
+    ...                 "device_metadata_key": "my_device",
     ...             }
-    ...         ],
-    ...     }
+    ...         },
+    ...     },
     ... }
 
 This metadata can then be easily incorporated into the conversion by updating the metadata dictionary.
@@ -97,8 +101,10 @@ This metadata can then be easily incorporated into the conversion by updating th
     >>> metadata = interface.get_metadata()
     >>> # session_start_time is required for conversion. If it cannot be inferred
     >>> # automatically from the source files you must supply one.
-    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
+    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
+    >>> # Add subject information (required for DANDI upload)
+    >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
     >>> metadata = dict_deep_update(metadata, ecephys_metadata)
     >>>
     >>>  # Choose a path for saving the nwb file and run the conversion

@@ -111,7 +111,7 @@ epochs/start_time/data
   chunk shape : (5,)
   disk space usage per chunk : 40 B
 
-  compression method : gzip
+  compressors : ['gzip']
 
 
 epochs/stop_time/data
@@ -126,7 +126,7 @@ epochs/stop_time/data
   chunk shape : (5,)
   disk space usage per chunk : 40 B
 
-  compression method : gzip
+  compressors : ['gzip']
 
 
 acquisition/NewRawTimeSeries/data
@@ -141,7 +141,7 @@ acquisition/NewRawTimeSeries/data
   chunk shape : (2, 3)
   disk space usage per chunk : 24 B
 
-  compression method : gzip
+  compressors : ['gzip']
 
 
 processing/ecephys/NewProcessedTimeSeries/data
@@ -156,7 +156,7 @@ processing/ecephys/NewProcessedTimeSeries/data
   chunk shape : (4, 2)
   disk space usage per chunk : 64 B
 
-  compression method : gzip
+  compressors : ['gzip']
 
 """
     assert stdout.getvalue() == expected_print
@@ -213,7 +213,7 @@ epochs/start_time/data
   chunk shape : (5,)
   disk space usage per chunk : 40 B
 
-  compression method : gzip
+  compressors : ['gzip']
 
 
 epochs/stop_time/data
@@ -228,7 +228,7 @@ epochs/stop_time/data
   chunk shape : (5,)
   disk space usage per chunk : 40 B
 
-  compression method : gzip
+  compressors : ['gzip']
 
 
 acquisition/NewRawTimeSeries/data
@@ -243,7 +243,7 @@ acquisition/NewRawTimeSeries/data
   chunk shape : (2, 3)
   disk space usage per chunk : 24 B
 
-  compression method : gzip
+  compressors : ['gzip']
 
 
 processing/ecephys/NewProcessedTimeSeries/data
@@ -258,7 +258,7 @@ processing/ecephys/NewProcessedTimeSeries/data
   chunk shape : (4, 2)
   disk space usage per chunk : 64 B
 
-  compression method : gzip
+  compressors : ['gzip']
 
 """
     assert stdout.getvalue() == expected_print

@@ -42,10 +42,12 @@ class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
     def __init__(
         self,
         file_path: FilePath,
+        *,
         stream_id: str = "trodes",
         gains: ArrayType | None = None,
         verbose: bool = False,
-        es_key: str = "ElectricalSeries",
+        es_key: str | None = None,
+        metadata_key: str | None = None,
     ):
         """
         Recording Interface for the SpikeGadgets Format.
@@ -59,8 +61,17 @@ class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
             acquisition system. Thus, it must be specified either as a single value (if all channels have the same gain)
             or an array of values for each channel.
         es_key : str, default: "ElectricalSeries"
+        metadata_key : str, optional
+            Key that indexes this interface's entries in the dict-based metadata. Defaults to
+            ``"spikegadgets_recording"``.
         """
-        super().__init__(file_path=file_path, stream_id=stream_id, verbose=verbose, es_key=es_key)
+
+        super().__init__(
+            file_path=file_path, stream_id=stream_id, verbose=verbose, es_key=es_key, metadata_key=metadata_key
+        )
+
+        if metadata_key is None:
+            self.metadata_key = "spikegadgets_recording"
 
         if gains is not None:
             if len(gains) == 1:

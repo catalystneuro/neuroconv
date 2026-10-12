@@ -63,6 +63,7 @@ class TestImportStructure(TestCase):
             "path_expansion",
             "processes",
             "iterative_write",
+            "external_resources",  # Attached to namespace by nwb_helpers import of validate_species
             # Functions and classes imported on the __init__
             "get_format_summaries",
             "get_package",
@@ -90,8 +91,10 @@ class TestImportStructure(TestCase):
             "ecephys",
             "icephys",
             "ophys",
+            "fiber_photometry",
             "text",
             "image",
+            "events",
             # Exposed attributes
             "interface_list",
             "interfaces_by_category",
@@ -103,6 +106,6 @@ class TestImportStructure(TestCase):
 def test_datainterfaces_import():
     """Minimal installation should be able to import interfaces from the .datainterfaces submodule."""
     # Nothing special about SpikeGLX; just need to pick something to import to ensure a minimal install doesn't fail
-    from neuroconv.datainterfaces import SpikeGLXRecodingInterface
+    from neuroconv.datainterfaces import SpikeGLXRecordingInterface
 
-    assert isinstance(SpikeGLXRecodingInterface, BaseDataInterface)
+    assert issubclass(SpikeGLXRecordingInterface, BaseDataInterface)

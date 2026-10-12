@@ -1,0 +1,87 @@
+# Every `null` is yours to fill. Delete any entry your recording did not use.
+# Every key here is a handle you may rename, not a name in the file; `name` is the name in the file.
+# The one exception is the trace and image names under RoiResponses and SegmentationImages, which are
+# roiextractors' own vocabulary and are noted where they appear.
+
+# The make and catalog specification of the microscope, shared by every recording on that rig.
+# Optional. To drop it, delete it here and the `device_model_metadata_key` pointing at it below.
+DeviceModels:
+  microscope_model:
+    name: null
+    manufacturer: null
+    model_number: null
+    description: null
+
+# The microscope everything below hangs off. An interface that read one out of the source names it
+# already, and then the key to fill in is the one it chose rather than `microscope`.
+Devices:
+  microscope:
+    name: null
+    description: null
+    serial_number: null                            # of this instrument, not of the model
+    device_model_metadata_key: microscope_model    # a key in DeviceModels above
+
+Ophys:
+  # The plane the ROIs were segmented on. A segmentation file usually says nothing about the optics,
+  # so this whole block is yours; it describes the imaging the pipeline ran on, not the pipeline.
+  ImagingPlanes:
+    calcium_segmentation:
+      name: null
+      description: null
+      device_metadata_key: microscope   # a key in Devices above
+      excitation_lambda: null           # in nm
+      indicator: null                   # GCaMP6s, jRGECO1a
+      location: null                    # the brain region imaged
+      imaging_rate: null                # in Hz
+      optical_channel:                  # one entry like this per channel the plane was imaged in
+        - name: null
+          description: null
+          emission_lambda: null         # in nm
+        - name: null
+          description: null
+          emission_lambda: null
+      # Where the plane sat in the sample, and what those coordinates are measured from. Optional;
+      # delete what you cannot answer. The units are stated because NWB stores both in meters.
+      origin_coords: null               # (x, y) or (x, y, z) of the first pixel
+      origin_coords_unit: meters
+      grid_spacing: null                # (x, y) or (x, y, z) distance between pixel centers
+      grid_spacing_unit: meters
+      reference_frame: null
+  # The ROIs. Rename this key to the `metadata_key` the interface was constructed with, and rename it
+  # in the three blocks below too: the writer resolves all four through the one key.
+  PlaneSegmentations:
+    calcium_segmentation:
+      name: null
+      description: null
+      imaging_plane_metadata_key: calcium_segmentation   # a key in ImagingPlanes above
+  # One entry per trace the pipeline produced. `raw`, `dff`, `neuropil`, `deconvolved`, `denoised` and
+  # `baseline` are the names roiextractors reads traces under, so these inner keys are the one set here
+  # you cannot rename. Delete the ones your pipeline did not produce: a trace the file does not hold
+  # writes nothing and warns.
+  RoiResponses:
+    calcium_segmentation:
+      raw:
+        name: null
+        description: null
+        unit: null            # n.a. unless the traces carry physical units
+      dff:
+        name: null
+        description: null
+        unit: null
+      neuropil:
+        name: null
+        description: null
+        unit: null
+      deconvolved:
+        name: null
+        description: null
+        unit: null
+  # The summary images, keyed the same way: `mean` and `correlation` are roiextractors' names for them.
+  SegmentationImages:
+    calcium_segmentation:
+      mean:
+        name: null
+        description: null
+      correlation:
+        name: null
+        description: null

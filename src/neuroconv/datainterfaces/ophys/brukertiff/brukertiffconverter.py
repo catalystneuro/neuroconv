@@ -1,21 +1,105 @@
 import warnings
 from typing import Literal
 
-from pydantic import DirectoryPath, FilePath
+from pydantic import DirectoryPath, validate_call
 from pynwb import NWBFile
 
 from ... import (
+    BrukerTiffImagingInterface,
     BrukerTiffMultiPlaneImagingInterface,
     BrukerTiffSinglePlaneImagingInterface,
 )
-from ....nwbconverter import NWBConverter
-from ....tools.nwb_helpers import make_or_load_nwbfile
-from ....utils import get_json_schema_from_method_signature
+from ....basedatainterface import BaseDataInterface
+from ....nwbconverter import ConverterPipe
+from ....utils import DeepDict, dict_deep_update, get_json_schema_from_method_signature
 
 
-class BrukerTiffMultiPlaneConverter(NWBConverter):
+class BrukerTiffConverter(ConverterPipe):
+    """Convert a Bruker Prairie View session.
+
+    Point this at the session folder (the OME-TIFF files and the ``.xml`` that describes them) and
+    every channel in it is written: one ``ImagingPlane`` and one ``TwoPhotonSeries`` per channel,
+    all referring to a single ``Device`` named ``BrukerFluorescenceMicroscope``. Planar and
+    volumetric, single-channel and multi-channel sessions are all handled; a single-channel session
+    needs no extra arguments.
+
+    ``plane_separation_type`` chooses how a volumetric session is written. ``"contiguous"``
+    (default) writes the volume as one 4D ``TwoPhotonSeries`` per channel; ``"disjoint"`` writes
+    each depth plane as its own 2D ``TwoPhotonSeries`` and ``ImagingPlane``, carrying that plane's
+    own focal depth. It has no effect on planar sessions. This replaces the deprecated
+    ``BrukerTiffMultiPlaneConverter``.
     """
-    Converter class for Bruker imaging data with multiple channels and multiple planes.
+
+    display_name = "Bruker TIFF Imaging"
+    keywords = BrukerTiffImagingInterface.keywords
+    associated_suffixes = BrukerTiffImagingInterface.associated_suffixes
+    info = "Auto-channel-enumerated converter for Bruker TIFF imaging data."
+
+    @classmethod
+    def get_source_schema(cls) -> dict:
+        source_schema = get_json_schema_from_method_signature(method=cls.__init__)
+        source_schema["properties"]["folder_path"][
+            "description"
+        ] = "Folder containing Bruker .ome.tif files and the matching configuration .xml."
+        return source_schema
+
+    @validate_call
+    def __init__(
+        self,
+        folder_path: DirectoryPath,
+        plane_separation_type: Literal["contiguous", "disjoint"] = "contiguous",
+        verbose: bool = False,
+    ):
+        """
+        Parameters
+        ----------
+        folder_path : DirectoryPath
+            Folder containing Bruker .ome.tif files and the matching configuration .xml.
+        plane_separation_type : {"contiguous", "disjoint"}, default: "contiguous"
+            How to write volumetric data. ``"contiguous"`` writes one 4D ``TwoPhotonSeries`` per
+            channel; ``"disjoint"`` writes one 2D ``TwoPhotonSeries`` per depth plane per channel.
+            Has no effect on single-plane (planar) acquisitions.
+        verbose : bool, default: False
+        """
+        channel_names = BrukerTiffImagingInterface.get_available_channels(folder_path=folder_path)
+        single_channel = len(channel_names) == 1
+
+        # Plane count is folder-level; probe once with the full (unsliced) extractor.
+        probe_channel = None if single_channel else channel_names[0]
+        probe = BrukerTiffImagingInterface(folder_path=folder_path, channel_name=probe_channel, verbose=verbose)
+        num_planes = probe._bruker_extractor.get_num_planes() if probe.imaging_extractor.is_volumetric else 1
+        disjoint = plane_separation_type == "disjoint" and num_planes > 1
+
+        data_interfaces: dict[str, BrukerTiffImagingInterface] = {}
+        for channel_name in channel_names:
+            interface_name = "BrukerImaging" if single_channel else f"BrukerImaging_{channel_name}"
+            channel_argument = None if single_channel else channel_name
+            if disjoint:
+                for plane_index in range(num_planes):
+                    data_interfaces[f"{interface_name}_plane{plane_index}"] = BrukerTiffImagingInterface(
+                        folder_path=folder_path,
+                        channel_name=channel_argument,
+                        plane_index=plane_index,
+                        verbose=verbose,
+                    )
+            else:
+                data_interfaces[interface_name] = BrukerTiffImagingInterface(
+                    folder_path=folder_path,
+                    channel_name=channel_argument,
+                    verbose=verbose,
+                )
+
+        super().__init__(data_interfaces=data_interfaces, verbose=verbose)
+
+
+class BrukerTiffMultiPlaneConverter(BaseDataInterface):
+    """
+    Deprecated. Use :class:`~neuroconv.converters.BrukerTiffConverter` instead.
+
+    Both ``plane_separation_type`` modes are now covered by ``BrukerTiffConverter``:
+    ``"contiguous"`` (one 4D ``TwoPhotonSeries`` per channel) and ``"disjoint"`` (one 2D
+    ``TwoPhotonSeries`` per depth plane), the latter via per-plane selection on the unified
+    :class:`~neuroconv.datainterfaces.BrukerTiffImagingInterface`.
     """
 
     display_name = "Bruker TIFF Imaging (multiple channels, multiple planes)"
@@ -31,22 +115,11 @@ class BrukerTiffMultiPlaneConverter(NWBConverter):
         ] = "The folder that contains the Bruker TIF image files (.ome.tif) and configuration files (.xml, .env)."
         return source_schema
 
-    def get_conversion_options_schema(self) -> dict:
-        """
-        Get the schema for the conversion options.
-
-        Returns
-        -------
-        dict
-            The schema dictionary containing conversion options for the Bruker TIFF interface.
-        """
-        interface_name = list(self.data_interface_objects.keys())[0]
-        return self.data_interface_objects[interface_name].get_conversion_options_schema()
-
+    @validate_call
     def __init__(
         self,
         folder_path: DirectoryPath,
-        plane_separation_type: Literal["disjoint", "contiguous"] = None,
+        plane_separation_type: Literal["disjoint", "contiguous"],
         verbose: bool = False,
     ):
         """
@@ -62,13 +135,15 @@ class BrukerTiffMultiPlaneConverter(NWBConverter):
         verbose : bool, default: False
             Controls verbosity.
         """
+        warnings.warn(
+            "BrukerTiffMultiPlaneConverter is deprecated and will be removed on or after February 2027. "
+            "Use BrukerTiffConverter with plane_separation_type instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+
         self.verbose = verbose
         self.data_interface_objects = dict()
-
-        if plane_separation_type is None or plane_separation_type not in ["disjoint", "contiguous"]:
-            raise ValueError(
-                "For volumetric imaging data the plane separation method must be one of 'disjoint' or 'contiguous'."
-            )
 
         streams = BrukerTiffMultiPlaneImagingInterface.get_streams(
             folder_path=folder_path,
@@ -77,28 +152,36 @@ class BrukerTiffMultiPlaneConverter(NWBConverter):
 
         channel_streams = streams["channel_streams"]
         interface_name = "BrukerImaging"
-        for channel_stream_name in channel_streams:
-            plane_streams = streams["plane_streams"][channel_stream_name]
-            for plane_stream in plane_streams:
-                if len(plane_streams) > 1:
-                    interface_name += plane_stream.replace("_", "")
-                if plane_separation_type == "contiguous":
-                    self.data_interface_objects[interface_name] = BrukerTiffMultiPlaneImagingInterface(
-                        folder_path=folder_path,
-                        stream_name=plane_stream,
-                    )
-                elif plane_separation_type == "disjoint":
-                    self.data_interface_objects[interface_name] = BrukerTiffSinglePlaneImagingInterface(
-                        folder_path=folder_path,
-                        stream_name=plane_stream,
-                    )
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", FutureWarning)
+            for channel_stream_name in channel_streams:
+                plane_streams = streams["plane_streams"][channel_stream_name]
+                for plane_stream in plane_streams:
+                    if len(plane_streams) > 1:
+                        interface_name += plane_stream.replace("_", "")
+                    if plane_separation_type == "contiguous":
+                        self.data_interface_objects[interface_name] = BrukerTiffMultiPlaneImagingInterface(
+                            folder_path=folder_path,
+                            stream_name=plane_stream,
+                        )
+                    elif plane_separation_type == "disjoint":
+                        self.data_interface_objects[interface_name] = BrukerTiffSinglePlaneImagingInterface(
+                            folder_path=folder_path,
+                            stream_name=plane_stream,
+                        )
+
+    def get_metadata(self) -> DeepDict:
+        metadata = DeepDict()
+        for interface in self.data_interface_objects.values():
+            interface_metadata = interface.get_metadata()
+            metadata = dict_deep_update(metadata, interface_metadata)
+        return metadata
 
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
         metadata,
         stub_test: bool = False,
-        stub_frames: int | None = None,
         stub_samples: int = 100,
     ):
         """
@@ -112,102 +195,20 @@ class BrukerTiffMultiPlaneConverter(NWBConverter):
             Metadata dictionary containing information to describe the data being added to the NWB file.
         stub_test : bool, optional
             If True, only a subset of the data (up to `stub_samples`) will be added for testing purposes. Default is False.
-        stub_frames : int, optional
-            .. deprecated:: February 2026
-                Use `stub_samples` instead.
         stub_samples : int, default: 100
-            The number of samples (frames) to use for testing. When provided, takes precedence over `stub_frames`.
+            The number of samples (frames) to use for testing.
         """
-        # Handle deprecation of stub_frames in favor of stub_samples
-        if stub_frames is not None and stub_samples != 100:
-            raise ValueError("Cannot specify both 'stub_frames' and 'stub_samples'. Use 'stub_samples' only.")
-
-        if stub_frames is not None:
-            warnings.warn(
-                "The 'stub_frames' parameter is deprecated and will be removed on or after February 2026. "
-                "Use 'stub_samples' instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            effective_stub_samples = stub_frames
-        else:
-            effective_stub_samples = stub_samples
-
         for photon_series_index, (interface_name, data_interface) in enumerate(self.data_interface_objects.items()):
             data_interface.add_to_nwbfile(
                 nwbfile=nwbfile,
                 metadata=metadata,
                 photon_series_index=photon_series_index,
                 stub_test=stub_test,
-                stub_samples=effective_stub_samples,
-            )
-
-    def run_conversion(
-        self,
-        nwbfile_path: FilePath | None = None,
-        nwbfile: NWBFile | None = None,
-        metadata: dict | None = None,
-        overwrite: bool = False,
-        stub_test: bool = False,
-        stub_frames: int | None = None,
-        stub_samples: int = 100,
-    ) -> None:
-        """
-        Run the conversion process for the instantiated data interfaces and add data to the NWB file.
-
-        Parameters
-        ----------
-        nwbfile_path : FilePath, optional
-            Path where the NWB file will be written. If None, the file will be handled in-memory.
-        nwbfile : NWBFile, optional
-            An in-memory NWBFile object. If None, a new NWBFile object will be created.
-        metadata : dict, optional
-            Metadata dictionary for describing the NWB file. If None, it will be auto-generated using the `get_metadata()` method.
-        overwrite : bool, optional
-            If True, overwrites the existing NWB file at `nwbfile_path`. If False, appends to the file (default is False).
-        stub_test : bool, optional
-            If True, only a subset of the data (up to `stub_samples`) will be added for testing purposes, by default False.
-        stub_frames : int, optional
-            .. deprecated:: February 2026
-                Use `stub_samples` instead.
-        stub_samples : int, default: 100
-            The number of samples (frames) to use for testing. When provided, takes precedence over `stub_frames`.
-        """
-        # Handle deprecation of stub_frames in favor of stub_samples
-        if stub_frames is not None and stub_samples != 100:
-            raise ValueError("Cannot specify both 'stub_frames' and 'stub_samples'. Use 'stub_samples' only.")
-
-        if stub_frames is not None:
-            warnings.warn(
-                "The 'stub_frames' parameter is deprecated and will be removed on or after February 2026. "
-                "Use 'stub_samples' instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            effective_stub_samples = stub_frames
-        else:
-            effective_stub_samples = stub_samples
-
-        if metadata is None:
-            metadata = self.get_metadata()
-
-        self.validate_metadata(metadata=metadata)
-
-        self.temporally_align_data_interfaces()
-
-        with make_or_load_nwbfile(
-            nwbfile_path=nwbfile_path,
-            nwbfile=nwbfile,
-            metadata=metadata,
-            overwrite=overwrite,
-            verbose=self.verbose,
-        ) as nwbfile_out:
-            self.add_to_nwbfile(
-                nwbfile=nwbfile_out, metadata=metadata, stub_test=stub_test, stub_samples=effective_stub_samples
+                stub_samples=stub_samples,
             )
 
 
-class BrukerTiffSinglePlaneConverter(NWBConverter):
+class BrukerTiffSinglePlaneConverter(BaseDataInterface):
     """
     Primary data interface class for converting Bruker imaging data with multiple channels and a single plane.
     """
@@ -221,18 +222,7 @@ class BrukerTiffSinglePlaneConverter(NWBConverter):
     def get_source_schema(cls):
         return get_json_schema_from_method_signature(cls)
 
-    def get_conversion_options_schema(self) -> dict:
-        """
-        Get the schema for the conversion options.
-
-        Returns
-        -------
-        dict
-            The schema dictionary containing conversion options for the Bruker TIFF interface.
-        """
-        interface_name = list(self.data_interface_objects.keys())[0]
-        return self.data_interface_objects[interface_name].get_conversion_options_schema()
-
+    @validate_call
     def __init__(
         self,
         folder_path: DirectoryPath,
@@ -248,6 +238,13 @@ class BrukerTiffSinglePlaneConverter(NWBConverter):
         verbose : bool, default: False
             Controls verbosity.
         """
+        warnings.warn(
+            "BrukerTiffSinglePlaneConverter is deprecated and will be removed on or after February 2027."
+            "Use BrukerTiffImagingInterface instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+
         from roiextractors.extractors.tiffimagingextractors.brukertiffimagingextractor import (
             _determine_imaging_is_volumetric,
         )
@@ -261,20 +258,28 @@ class BrukerTiffSinglePlaneConverter(NWBConverter):
         streams = BrukerTiffSinglePlaneImagingInterface.get_streams(folder_path=folder_path)
         channel_streams = streams["channel_streams"]
         interface_name = "BrukerImaging"
-        for channel_stream_name in channel_streams:
-            if len(channel_streams) > 1:
-                interface_name += channel_stream_name.replace("_", "")
-            self.data_interface_objects[interface_name] = BrukerTiffSinglePlaneImagingInterface(
-                folder_path=folder_path,
-                stream_name=channel_stream_name,
-            )
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", FutureWarning)
+            for channel_stream_name in channel_streams:
+                if len(channel_streams) > 1:
+                    interface_name += channel_stream_name.replace("_", "")
+                self.data_interface_objects[interface_name] = BrukerTiffSinglePlaneImagingInterface(
+                    folder_path=folder_path,
+                    stream_name=channel_stream_name,
+                )
+
+    def get_metadata(self) -> DeepDict:
+        metadata = DeepDict()
+        for interface in self.data_interface_objects.values():
+            interface_metadata = interface.get_metadata()
+            metadata = dict_deep_update(metadata, interface_metadata)
+        return metadata
 
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
         metadata,
         stub_test: bool = False,
-        stub_frames: int | None = None,
         stub_samples: int = 100,
     ):
         """
@@ -289,96 +294,14 @@ class BrukerTiffSinglePlaneConverter(NWBConverter):
         stub_test : bool, optional
             If True, only a subset of the data (defined by `stub_samples`) will be added for testing purposes,
             by default False.
-        stub_frames : int, optional
-            .. deprecated:: February 2026
-                Use `stub_samples` instead.
         stub_samples : int, default: 100
-            The number of samples (frames) to use for testing. When provided, takes precedence over `stub_frames`.
+            The number of samples (frames) to use for testing.
         """
-        # Handle deprecation of stub_frames in favor of stub_samples
-        if stub_frames is not None and stub_samples != 100:
-            raise ValueError("Cannot specify both 'stub_frames' and 'stub_samples'. Use 'stub_samples' only.")
-
-        if stub_frames is not None:
-            warnings.warn(
-                "The 'stub_frames' parameter is deprecated and will be removed on or after February 2026. "
-                "Use 'stub_samples' instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            effective_stub_samples = stub_frames
-        else:
-            effective_stub_samples = stub_samples
-
         for photon_series_index, (interface_name, data_interface) in enumerate(self.data_interface_objects.items()):
             data_interface.add_to_nwbfile(
                 nwbfile=nwbfile,
                 metadata=metadata,
                 photon_series_index=photon_series_index,
                 stub_test=stub_test,
-                stub_samples=effective_stub_samples,
-            )
-
-    def run_conversion(
-        self,
-        nwbfile_path: FilePath | None = None,
-        nwbfile: NWBFile | None = None,
-        metadata: dict | None = None,
-        overwrite: bool = False,
-        stub_test: bool = False,
-        stub_frames: int | None = None,
-        stub_samples: int = 100,
-    ) -> None:
-        """
-        Run the NWB conversion process for all instantiated data interfaces.
-
-        Parameters
-        ----------
-        nwbfile_path : FilePath, optional
-            The file path where the NWB file will be written. If None, the file is handled in-memory.
-        nwbfile : NWBFile, optional
-            An existing in-memory NWBFile object. If None, a new NWBFile object will be created.
-        metadata : dict, optional
-            Metadata dictionary used to create or validate the NWBFile. If None, metadata is automatically generated.
-        overwrite : bool, optional
-            If True, the NWBFile at `nwbfile_path` is overwritten if it exists. If False (default), data is appended.
-        stub_test : bool, optional
-            If True, only a subset of the data (up to `stub_samples`) is used for testing purposes. By default False.
-        stub_frames : int, optional
-            .. deprecated:: February 2026
-                Use `stub_samples` instead.
-        stub_samples : int, default: 100
-            The number of samples (frames) to use for testing. When provided, takes precedence over `stub_frames`.
-        """
-        # Handle deprecation of stub_frames in favor of stub_samples
-        if stub_frames is not None and stub_samples != 100:
-            raise ValueError("Cannot specify both 'stub_frames' and 'stub_samples'. Use 'stub_samples' only.")
-
-        if stub_frames is not None:
-            warnings.warn(
-                "The 'stub_frames' parameter is deprecated and will be removed on or after February 2026. "
-                "Use 'stub_samples' instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            effective_stub_samples = stub_frames
-        else:
-            effective_stub_samples = stub_samples
-
-        if metadata is None:
-            metadata = self.get_metadata()
-
-        self.validate_metadata(metadata=metadata)
-
-        self.temporally_align_data_interfaces()
-
-        with make_or_load_nwbfile(
-            nwbfile_path=nwbfile_path,
-            nwbfile=nwbfile,
-            metadata=metadata,
-            overwrite=overwrite,
-            verbose=self.verbose,
-        ) as nwbfile_out:
-            self.add_to_nwbfile(
-                nwbfile=nwbfile_out, metadata=metadata, stub_test=stub_test, stub_samples=effective_stub_samples
+                stub_samples=stub_samples,
             )

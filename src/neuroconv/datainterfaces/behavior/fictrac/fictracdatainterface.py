@@ -156,6 +156,7 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
     def __init__(
         self,
         file_path: FilePath,
+        *,
         radius: float | None = None,
         configuration_file_path: FilePath | None = None,
         verbose: bool = False,
@@ -175,6 +176,7 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
         verbose : bool, default: False
             controls verbosity. ``True`` by default.
         """
+
         self.file_path = Path(file_path)
         self.verbose = verbose
         self.radius = radius
@@ -269,7 +271,7 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
             position_container.add_spatial_series(spatial_series)
 
         # Add the container to the processing module
-        processing_module = get_module(nwbfile=nwbfile, name="behavior")
+        processing_module = get_module(nwbfile=nwbfile, name="behavior", description="processed behavioral data")
         processing_module.add(position_container)
 
     def get_original_timestamps(self):
@@ -313,7 +315,9 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
 
         fictrac_data_df = pd.read_csv(self.file_path, sep=",", header=None, usecols=[self.timestamps_column])
 
-        timestamps = fictrac_data_df[self.timestamps_column].values / 1000.0  # Transform to seconds
+        # Explicitly convert to numpy for HDMF compatibility with pandas 3.0+
+        # See https://github.com/hdmf-dev/hdmf/issues/1384
+        timestamps = fictrac_data_df[self.timestamps_column].to_numpy(dtype="float64") / 1000.0  # Transform to seconds
 
         # Correct for the case when only the first timestamp was replaced by system time
         first_difference = timestamps[1] - timestamps[0]
@@ -377,7 +381,7 @@ def extract_session_start_time(
         The session start time of in UTC as a datetime object. `None` if the session start time cannot be extracted.
 
     """
-    with open(file_path, "r") as file:
+    with open(file_path, "r", encoding="utf-8") as file:
         first_line = file.readline()
 
     timestamps_column = FicTracDataInterface.timestamps_column
@@ -387,7 +391,7 @@ def extract_session_start_time(
     length_in_seconds_of_a_10_year_experiment = 10 * 365 * 24 * 60 * 60
     if first_timestamp > length_in_seconds_of_a_10_year_experiment:
         utc_timestamp = first_timestamp
-        return datetime.utcfromtimestamp(utc_timestamp).replace(tzinfo=timezone.utc)
+        return datetime.fromtimestamp(utc_timestamp, tz=timezone.utc)
 
     if configuration_file_path is None:
         configuration_file_path = file_path.parent / "fictrac_config.txt"
@@ -464,7 +468,7 @@ def parse_fictrac_config(file_path: FilePath) -> dict:
     }
 
     # Open and read the file
-    with open(file_path, "r") as f:
+    with open(file_path, "r", encoding="utf-8") as f:
         file_lines = f.readlines()
 
     parsed_config = {}

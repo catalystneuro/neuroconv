@@ -22,6 +22,7 @@ class Hdf5ImagingInterface(BaseImagingExtractorInterface):
     def __init__(
         self,
         file_path: FilePath,
+        *,
         mov_field: str = "mov",
         sampling_frequency: float | None = None,
         start_time: float | None = None,
@@ -29,6 +30,7 @@ class Hdf5ImagingInterface(BaseImagingExtractorInterface):
         channel_names: ArrayType | None = None,
         verbose: bool = False,
         photon_series_type: Literal["OnePhotonSeries", "TwoPhotonSeries"] = "TwoPhotonSeries",
+        metadata_key: str | None = None,
     ):
         """
 
@@ -42,7 +44,14 @@ class Hdf5ImagingInterface(BaseImagingExtractorInterface):
         metadata : dict, optional
         channel_names : list of str, optional
         verbose : bool, default: False
+        metadata_key : str, optional
+            # TODO: improve docstring once #1653 (ophys metadata documentation) is merged
+            Metadata key for this interface. When None, defaults to "hdf5_imaging".
         """
+
+        if metadata_key is None:
+            metadata_key = "hdf5_imaging"
+
         super().__init__(
             file_path=file_path,
             mov_field=mov_field,
@@ -52,4 +61,5 @@ class Hdf5ImagingInterface(BaseImagingExtractorInterface):
             channel_names=channel_names,
             verbose=verbose,
             photon_series_type=photon_series_type,
+            metadata_key=metadata_key,
         )

@@ -24,7 +24,10 @@ Convert Neuralynx data to NWB using
     >>> interface = NeuralynxSortingInterface(folder_path=folder_path, verbose=False, stream_id="0")
     >>>
     >>> metadata = interface.get_metadata()
-    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific")).isoformat()
+    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("Asia/Tokyo")).isoformat()
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
+    >>> # Add subject information (required for DANDI upload)
+    >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
+    >>>
     >>> nwbfile_path = f"{path_to_save_nwbfile}"  # This should be something like: "./neuralynx_conversion.nwb"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)

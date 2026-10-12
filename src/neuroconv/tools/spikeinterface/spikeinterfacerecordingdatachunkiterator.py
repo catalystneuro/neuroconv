@@ -1,5 +1,6 @@
 from typing import Iterable
 
+import numpy as np
 from spikeinterface import BaseRecording
 from tqdm import tqdm
 
@@ -14,7 +15,7 @@ class SpikeInterfaceRecordingDataChunkIterator(GenericDataChunkIterator):
         self,
         recording: BaseRecording,
         segment_index: int = 0,
-        return_scaled: bool = False,
+        return_in_uV: bool = False,
         buffer_gb: float | None = None,
         buffer_shape: tuple | None = None,
         chunk_mb: float | None = None,
@@ -33,8 +34,8 @@ class SpikeInterfaceRecordingDataChunkIterator(GenericDataChunkIterator):
         segment_index : int, optional
             The recording segment to iterate on.
             Defaults to 0.
-        return_scaled : bool, optional
-            Whether to return the trace data in scaled units (uV, if True) or in the raw data type (if False).
+        return_in_uV : bool, optional
+            Whether to return the trace data in microvolts (if True) or in the raw data type (if False).
             Defaults to False.
         buffer_gb : float, optional
             The upper bound on size in gigabytes (GB) of each selection from the iteration.
@@ -67,7 +68,7 @@ class SpikeInterfaceRecordingDataChunkIterator(GenericDataChunkIterator):
         """
         self.recording = recording
         self.segment_index = segment_index
-        self.return_scaled = return_scaled
+        self.return_in_uV = return_in_uV
         self.channel_ids = recording.get_channel_ids()
         super().__init__(
             buffer_gb=buffer_gb,
@@ -84,7 +85,7 @@ class SpikeInterfaceRecordingDataChunkIterator(GenericDataChunkIterator):
 
         number_of_channels = self.recording.get_num_channels()
         number_of_frames = self.recording.get_num_samples(segment_index=self.segment_index)
-        dtype = self.recording.get_dtype()
+        dtype = self._get_dtype()  # The dtype written, which is wider than the recording's when scaled
 
         chunk_shape = get_electrical_series_chunk_shape(
             number_of_channels=number_of_channels, number_of_frames=number_of_frames, dtype=dtype, chunk_mb=chunk_mb
@@ -92,17 +93,40 @@ class SpikeInterfaceRecordingDataChunkIterator(GenericDataChunkIterator):
 
         return chunk_shape
 
+    @property
+    def shape(self):
+        """Return (num_samples, num_channels) for this recording segment."""
+        return (self.recording.get_num_samples(segment_index=self.segment_index), self.recording.get_num_channels())
+
+    @property
+    def ndim(self):
+        """Return the number of dimensions (always 2: samples x channels)."""
+        return 2
+
+    def __len__(self):
+        """Return the number of samples in this recording segment."""
+        return self.recording.get_num_samples(segment_index=self.segment_index)
+
+    def __getitem__(self, selection):
+        """Enable array-like slicing, lazily reading only the requested traces from the recording."""
+        resolved = self._convert_index_to_slices(selection)
+        return self._get_data(resolved)
+
     def _get_data(self, selection: tuple[slice]) -> Iterable:
         return self.recording.get_traces(
             segment_index=self.segment_index,
             channel_ids=self.channel_ids[selection[1]],
             start_frame=selection[0].start,
             end_frame=selection[0].stop,
-            return_in_uV=self.return_scaled,
+            return_in_uV=self.return_in_uV,
         )
 
     def _get_dtype(self):
+        # spikeinterface casts to float32 when it has gains and offsets to apply, and returns the
+        # traces untouched when it has none, so only the first case departs from the source dtype.
+        if self.return_in_uV and self.recording.has_scaleable_traces():
+            return np.dtype("float32")
         return self.recording.get_dtype()
 
     def _get_maxshape(self):
-        return (self.recording.get_num_samples(segment_index=self.segment_index), self.recording.get_num_channels())
+        return self.shape

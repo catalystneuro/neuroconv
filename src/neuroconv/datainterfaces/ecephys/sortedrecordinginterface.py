@@ -48,6 +48,7 @@ class SortedRecordingConverter(ConverterPipe):
     def __init__(
         self,
         recording_interface: BaseRecordingExtractorInterface,
+        *,
         sorting_interface: BaseSortingExtractorInterface,
         unit_ids_to_channel_ids: dict[str | int, list[str | int]],
     ):

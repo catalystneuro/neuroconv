@@ -53,7 +53,7 @@ files in Excel or Google Sheets and export the data as .csv.
         df_subjects.query("subject_id == @subject_id").iloc[0].to_dict()
 
         spikeglx_interface = SpikeGLXRecordingInterface(spikeglx_filepath)
-        dlc_interface = DeepLabCutInterface(dlc_filepath)
+        dlc_interface = DeepLabCutInterface(dlc_filepath, sampling_frequency=30.0)
 
         converter = ConverterPipe([spikeglx_interface, dlc_interface])
 

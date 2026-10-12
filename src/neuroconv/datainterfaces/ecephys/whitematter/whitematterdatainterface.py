@@ -38,12 +38,14 @@ class WhiteMatterRecordingInterface(BaseRecordingExtractorInterface):
     def __init__(
         self,
         file_path: FilePath,
+        *,
         sampling_frequency: float,
         num_channels: int,
         channel_ids: Optional[list] = None,
         is_filtered: Optional[bool] = None,
         verbose: bool = False,
-        es_key: str = "ElectricalSeries",
+        es_key: str | None = None,
+        metadata_key: str | None = None,
     ):
         """
         Initialize reading of OpenEphys binary recording.
@@ -64,7 +66,11 @@ class WhiteMatterRecordingInterface(BaseRecordingExtractorInterface):
             If True, will print out additional information.
         es_key : str, default: "ElectricalSeries"
             The key of this ElectricalSeries in the metadata dictionary.
+        metadata_key : str, optional
+            Key that indexes this interface's entries in the dict-based metadata. Defaults to
+            ``"white_matter_recording"``.
         """
+
         super().__init__(
             file_path=file_path,
             sampling_frequency=sampling_frequency,
@@ -73,4 +79,8 @@ class WhiteMatterRecordingInterface(BaseRecordingExtractorInterface):
             is_filtered=is_filtered,
             verbose=verbose,
             es_key=es_key,
+            metadata_key=metadata_key,
         )
+
+        if metadata_key is None:
+            self.metadata_key = "white_matter_recording"

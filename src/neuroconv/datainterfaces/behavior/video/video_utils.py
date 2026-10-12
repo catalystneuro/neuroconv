@@ -307,7 +307,7 @@ class VideoDataChunkIterator(GenericDataChunkIterator):
         assert all(np.array(chunk_shape) > 0), f"Some dimensions of chunk_shape ({chunk_shape}) are less than zero!"
 
         sample_shape = self._sample_shape
-        series_shape = self._get_maxshape()
+        series_shape = self.shape
         dtype = self._get_dtype()
 
         buffer_shape = get_image_series_buffer_shape(
@@ -320,11 +320,51 @@ class VideoDataChunkIterator(GenericDataChunkIterator):
 
         return buffer_shape
 
+    @property
+    def shape(self):
+        """Return (num_frames, height, width, channels) for this video."""
+        return (self._num_samples, *self._sample_shape)
+
+    @property
+    def ndim(self):
+        """Return the number of dimensions (always 4: frames x height x width x channels)."""
+        return len(self.shape)
+
+    def __len__(self):
+        """Return the number of frames in this video."""
+        return self._num_samples
+
+    def __getitem__(self, selection):
+        """Enable array-like slicing with random frame access for video data.
+
+        Unlike _get_data (which reads frames sequentially from the current cursor
+        position), this method seeks to the correct frame position first, reads the
+        requested range, and applies spatial slicing on the result.
+
+        Note that this mutates the video capture position, so concurrent access
+        from multiple threads is not safe.
+        """
+        resolved = self._convert_index_to_slices(selection)
+
+        # Seek to the correct frame position before reading
+        start_frame = resolved[0].start
+        end_frame = resolved[0].stop
+        self.video_capture_ob.current_frame = start_frame
+
+        num_frames = end_frame - start_frame
+        frames = np.empty(shape=(num_frames, *self.shape[1:]), dtype=self._dtype)
+        for frame_index in range(num_frames):
+            frames[frame_index] = next(self.video_capture_ob)
+
+        # Apply spatial slicing (height, width, channels)
+        spatial_selection = (slice(0, num_frames),) + resolved[1:]
+        return frames[spatial_selection]
+
     def _get_data(self, selection: tuple[slice]) -> np.ndarray:
         start_frame = selection[0].start
         end_frame = selection[0].stop
 
-        shape = (end_frame - start_frame, *self._maxshape[1:])
+        shape = (end_frame - start_frame, *self.shape[1:])
         frames = np.empty(shape=shape, dtype=self._dtype)
         for frame_number in range(end_frame - start_frame):
             frames[frame_number] = next(self.video_capture_ob)
@@ -334,4 +374,4 @@ class VideoDataChunkIterator(GenericDataChunkIterator):
         return self._dtype
 
     def _get_maxshape(self) -> tuple[int, int, int, int]:
-        return (self._num_samples, *self._sample_shape)
+        return self.shape

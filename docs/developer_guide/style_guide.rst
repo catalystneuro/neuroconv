@@ -31,6 +31,26 @@ DataInterface conventions
 #. Use :code:`file_path` and :code:`folder_path` as arguments for the location of input files and folders/directories respectively.
 #. As an exception to convention to separate words for underscores, we use :code:`nwbfile` to refer to an instance
    of :py:class:`~pynwb.file.NWBFile`.
+#. In :code:`__init__` methods of data interfaces, only :code:`file_path`, :code:`folder_path`, or :code:`file_paths`
+   should be accepted as positional arguments. All other parameters must be keyword-only, enforced with the :code:`*`
+   separator after the path parameter. For example:
+
+   .. code-block:: python
+
+      def __init__(self, file_path: FilePath, *, verbose: bool = False, metadata_key: str | None = None):
+
+#. In :code:`add_to_nwbfile` methods of leaf interfaces (not converters), only :code:`nwbfile` and :code:`metadata`
+   should be accepted as positional arguments. All other parameters (conversion options) must be keyword-only.
+   When deprecating existing positional usage, use the :code:`*args` pattern with a :code:`FutureWarning` to maintain
+   backward compatibility during the transition period. At the version the warning names, replace
+   :code:`*args` with :code:`*` to enforce keyword-only arguments. See :ref:`deprecations`.
+#. Keep the public surface of a data interface minimal: the class, its public methods, and the
+   :code:`metadata_key` and :code:`alignment` attributes where the interface uses them. Other instance attributes
+   are private and prefixed with an underscore (:code:`self._subject`, not :code:`self.subject`), because users
+   come to rely on any public attribute, and one holding a reader object makes the reader's type public too.
+   Do not reassign :code:`self.verbose`, which :code:`BaseDataInterface` already sets. Put the code that reads the
+   source format in a private module, such as :code:`_myformat_reader.py`, whose leading underscore makes
+   everything inside it private.
 
 Other conventions
 -----------------

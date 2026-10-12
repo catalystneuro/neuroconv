@@ -94,9 +94,13 @@ class TestIntanAnalogInterface:
         assert interface.metadata_key in metadata["TimeSeries"]
 
         # Check device metadata for RHD
-        device = metadata["Devices"][0]
+        device = metadata["Devices"]["intan_device"]
         assert device["name"] == "Intan"
-        assert device["manufacturer"] == "Intan"
+        assert device["device_model_metadata_key"] == "intan_rhd2000_model"
+        assert metadata["DeviceModels"]["intan_rhd2000_model"] == {
+            "name": "RHD2000 Recording System",
+            "manufacturer": "Intan",
+        }
         assert "RHD Recording System" in device["description"]
 
     def test_get_metadata_rhs_file(self):
@@ -110,9 +114,13 @@ class TestIntanAnalogInterface:
         assert interface.metadata_key in metadata["TimeSeries"]
 
         # Check device metadata for RHS
-        device = metadata["Devices"][0]
+        device = metadata["Devices"]["intan_device"]
         assert device["name"] == "Intan"
-        assert device["manufacturer"] == "Intan"
+        assert device["device_model_metadata_key"] == "intan_rhs2000_model"
+        assert metadata["DeviceModels"]["intan_rhs2000_model"] == {
+            "name": "RHS2000 Stim-Recording System",
+            "manufacturer": "Intan",
+        }
         assert "RHS Stim/Recording System" in device["description"]
 
     def test_get_channel_names_adc_channels(self):
@@ -182,3 +190,18 @@ class TestIntanAnalogInterface:
             assert time_series.data.shape[0] > 0  # Should have some time points
             assert time_series.data.shape[1] == len(interface.get_channel_names())
             assert "DC amplifier channels" in time_series.description
+
+
+def test_metadata_key_does_not_rename_series():
+    """The key addresses the entry; the TimeSeries name comes from the stream and is unaffected."""
+    file_path = ECEPHY_DATA_PATH / "intan" / "rhs_stim_data_single_file_format" / "intanTestFile.rhs"
+    stream_name = "USB board ADC input channel"
+
+    default_interface = IntanAnalogInterface(file_path=file_path, stream_name=stream_name)
+    assert default_interface.metadata_key == "intan_analog"
+    assert default_interface.get_metadata()["TimeSeries"]["intan_analog"]["name"] == "TimeSeriesIntanADCInput"
+
+    custom_interface = IntanAnalogInterface(file_path=file_path, stream_name=stream_name, metadata_key="my_analog")
+    time_series_metadata = custom_interface.get_metadata()["TimeSeries"]
+    assert set(time_series_metadata) == {"my_analog"}
+    assert time_series_metadata["my_analog"]["name"] == "TimeSeriesIntanADCInput"

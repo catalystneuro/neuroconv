@@ -26,7 +26,14 @@ class BiocamRecordingInterface(BaseRecordingExtractorInterface):
         schema["properties"]["file_path"]["description"] = "Path to the .bwr file."
         return schema
 
-    def __init__(self, file_path: FilePath, verbose: bool = False, es_key: str = "ElectricalSeries"):
+    def __init__(
+        self,
+        file_path: FilePath,
+        *,
+        verbose: bool = False,
+        es_key: str | None = None,
+        metadata_key: str | None = None,
+    ):
         """
         Load and prepare data for Biocam.
 
@@ -37,5 +44,12 @@ class BiocamRecordingInterface(BaseRecordingExtractorInterface):
         verbose : bool, default: False
             Allows verbose.
         es_key: str, default: "ElectricalSeries"
+        metadata_key : str, optional
+            Key that indexes this interface's entries in the dict-based metadata. Defaults to
+            ``"biocam_recording"``.
         """
-        super().__init__(file_path=file_path, verbose=verbose, es_key=es_key)
+
+        super().__init__(file_path=file_path, verbose=verbose, es_key=es_key, metadata_key=metadata_key)
+
+        if metadata_key is None:
+            self.metadata_key = "biocam_recording"

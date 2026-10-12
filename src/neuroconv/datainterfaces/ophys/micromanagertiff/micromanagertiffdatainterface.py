@@ -35,7 +35,9 @@ class MicroManagerTiffImagingInterface(BaseImagingExtractorInterface):
         return MicroManagerTiffImagingExtractor
 
     @validate_call
-    def __init__(self, folder_path: DirectoryPath, verbose: bool = False):
+    def __init__(
+        self, folder_path: DirectoryPath, *, verbose: bool = False, metadata_key: str | None = None
+    ):  # TODO: change to * (keyword only) on or after August 2026
         """
         Data Interface for MicroManagerTiffImagingExtractor.
 
@@ -45,16 +47,28 @@ class MicroManagerTiffImagingInterface(BaseImagingExtractorInterface):
             The folder path that contains the OME-TIF image files (.ome.tif files) and
            the 'DisplaySettings' JSON file.
         verbose : bool, default: False
+        metadata_key : str, optional
+            Metadata key for this interface. When None, defaults to "micromanager_imaging".
         """
-        super().__init__(folder_path=folder_path)
+
+        if metadata_key is None:
+            metadata_key = "micromanager_imaging"
+
+        super().__init__(folder_path=folder_path, metadata_key=metadata_key)
         self.verbose = verbose
         # Micro-Manager uses "Default" as channel name, for clarity we rename it to  'OpticalChannelDefault'
         channel_name = self.imaging_extractor._channel_names[0]
         self.imaging_extractor._channel_names = [f"OpticalChannel{channel_name}"]
 
-    def get_metadata(self) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         """
         Get metadata for the Micro-Manager TIFF imaging data.
+
+        Parameters
+        ----------
+        use_new_metadata_format : bool, default: True
+            When False, returns the old list-based metadata format (backward compatible).
+            When True, returns dict-based metadata with Micro-Manager provenance.
 
         Returns
         -------
@@ -62,10 +76,30 @@ class MicroManagerTiffImagingInterface(BaseImagingExtractorInterface):
             Dictionary containing metadata including session start time, imaging plane details,
             and two-photon series configuration.
         """
-        metadata = super().get_metadata()
-
         micromanager_metadata = self.imaging_extractor.micromanager_metadata
         session_start_time = parse(micromanager_metadata["Summary"]["StartTime"])
+
+        if use_new_metadata_format:
+            metadata = super().get_metadata(use_new_metadata_format=True)
+            metadata["NWBFile"]["session_start_time"] = session_start_time
+            metadata["Ophys"] = {
+                "ImagingPlanes": {
+                    self.metadata_key: {
+                        "imaging_rate": self.imaging_extractor.get_sampling_frequency(),
+                    },
+                },
+                "MicroscopySeries": {
+                    self.metadata_key: {
+                        "description": "Imaging data acquired with Micro-Manager.",
+                        "imaging_plane_metadata_key": self.metadata_key,
+                        "unit": "px",
+                        "format": "tiff",
+                    },
+                },
+            }
+            return metadata
+
+        metadata = super().get_metadata(use_new_metadata_format=False)
         metadata["NWBFile"].update(session_start_time=session_start_time)
 
         imaging_plane_metadata = metadata["Ophys"]["ImagingPlane"][0]

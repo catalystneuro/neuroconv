@@ -56,7 +56,7 @@ class TestNeuroConvDeploymentBatchJob(unittest.TestCase):
             "team_drive = \n",
             "\n",
         ]
-        with open(file=self.test_config_file_path, mode="w") as io:
+        with open(file=self.test_config_file_path, mode="w", encoding="utf-8") as io:
             io.writelines(rclone_config_contents)
 
     def test_deploy_neuroconv_batch_job(self):

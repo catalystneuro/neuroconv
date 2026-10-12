@@ -4,7 +4,7 @@ metadata:
     institution: My Institution
 
 data_interfaces:
-  video: VideoInterface
+  video: ExternalVideoInterface
 
 experiments:
   ymaze:

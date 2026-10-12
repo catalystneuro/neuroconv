@@ -27,10 +27,12 @@ Convert Neuralynx data to NWB using
     >>> # session_start_time is required for conversion. If it cannot be inferred
     >>> # automatically from the source files you must supply one.
     >>> session_start_time = metadata["NWBFile"]["session_start_time"]
-    >>> session_start_time = session_start_time.replace(tzinfo=ZoneInfo("US/Pacific"))
+    >>> session_start_time = session_start_time.replace(tzinfo=ZoneInfo("Asia/Tokyo"))
     >>> metadata["NWBFile"]["session_start_time"] = session_start_time
+    >>> # Add subject information (required for DANDI upload)
+    >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
     >>>
-    >>>  # Choose a path for saving the nwb file and run the conversion
+    >>> # Choose a path for saving the nwb file and run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"  # This should be something like: "./saved_file.nwb"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 

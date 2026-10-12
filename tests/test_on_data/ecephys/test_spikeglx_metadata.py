@@ -2,12 +2,8 @@ import datetime
 
 import probeinterface as pi
 from numpy.testing import assert_array_equal
-from spikeinterface.extractors.extractor_classes import SpikeGLXRecordingExtractor
 
 from neuroconv.datainterfaces import SpikeGLXRecordingInterface
-from neuroconv.datainterfaces.ecephys.spikeglx.spikeglx_utils import (
-    get_session_start_time,
-)
 
 from ..setup_paths import ECEPHY_DATA_PATH
 
@@ -15,12 +11,12 @@ SPIKEGLX_PATH = ECEPHY_DATA_PATH / "spikeglx"
 
 
 def test_spikelgx_session_start_time_lf():
-    folder_path = SPIKEGLX_PATH / "Noise4Sam_g0" / "Noise4Sam_g0_imec0"
+    folder_path = SPIKEGLX_PATH / "Noise4Sam_g0"
     stream_id = "imec0.lf"
-    recording = SpikeGLXRecordingExtractor(folder_path=folder_path, stream_id=stream_id)
-    recording_metadata = recording.neo_reader.signals_info_dict[(0, stream_id)]["meta"]
+    interface = SpikeGLXRecordingInterface(folder_path=folder_path, stream_id=stream_id)
 
-    assert get_session_start_time(recording_metadata) == datetime.datetime(2020, 11, 3, 10, 35, 10)
+    session_start_time = interface._get_session_start_time()
+    assert session_start_time == datetime.datetime(2020, 11, 3, 10, 35, 10)
 
 
 def test_spikelgx_recording_property_addition():
@@ -35,6 +31,8 @@ def test_spikelgx_recording_property_addition():
     expected_group_name = [f"Neuropixels{probe_name}Shank{shank_id}" for shank_id in expected_shank_ids]
 
     expected_contact_shapes = ["square"] * n_channels
+    expected_adc_group = probe.contact_annotations["adc_group"]
+    expected_adc_sample_order = probe.contact_annotations["adc_sample_order"]
 
     # Initialize the interface and get the added properties
     folder_path = ap_file_path.parent
@@ -42,7 +40,11 @@ def test_spikelgx_recording_property_addition():
     group_name = interface.recording_extractor.get_property("group_name")
     contact_shapes = interface.recording_extractor.get_property("contact_shapes")
     shank_ids = interface.recording_extractor.get_property("shank_ids")
+    adc_group = interface.recording_extractor.get_property("adc_group")
+    adc_sample_order = interface.recording_extractor.get_property("adc_sample_order")
 
     assert_array_equal(group_name, expected_group_name)
     assert_array_equal(contact_shapes, expected_contact_shapes)
     assert_array_equal(shank_ids, expected_shank_ids)
+    assert_array_equal(adc_group, expected_adc_group)
+    assert_array_equal(adc_sample_order, expected_adc_sample_order)

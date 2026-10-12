@@ -28,6 +28,7 @@ class KiloSortSortingInterface(BaseSortingExtractorInterface):
     def __init__(
         self,
         folder_path: DirectoryPath,
+        *,
         keep_good_only: bool = False,
         verbose: bool = False,
     ):
@@ -42,6 +43,7 @@ class KiloSortSortingInterface(BaseSortingExtractorInterface):
             If True, only Kilosort-labeled 'good' units are returned
         verbose: bool, default: True
         """
+
         super().__init__(folder_path=folder_path, keep_good_only=keep_good_only, verbose=verbose)
 
     def get_metadata(self) -> DeepDict:

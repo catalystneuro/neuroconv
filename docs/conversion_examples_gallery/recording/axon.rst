@@ -21,6 +21,8 @@ Convert Axon ABF data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.
     >>> metadata = interface.get_metadata()
     >>> # session_start_time is automatically extracted from ABF file metadata
     >>> # but can be overridden if needed
+    >>> # Add subject information (required for DANDI upload)
+    >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
     >>>
     >>> nwbfile_path = f"{path_to_save_nwbfile}"  # This should be something like: "./saved_file.nwb"
     >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)

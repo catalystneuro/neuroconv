@@ -25,7 +25,9 @@ class MiniscopeBehaviorInterface(BaseDataInterface):
         return source_schema
 
     @validate_call
-    def __init__(self, folder_path: DirectoryPath, verbose: bool = False):
+    def __init__(
+        self, folder_path: DirectoryPath, *, verbose: bool = False
+    ):  # TODO: change to * (keyword only) on or after August 2026
         """
         Initialize reading recordings from the Miniscope behavioral camera.
 
@@ -37,11 +39,13 @@ class MiniscopeBehaviorInterface(BaseDataInterface):
         verbose : bool, optional
             If True, enables verbose mode for detailed logging, by default False.
         """
-        from ndx_miniscope.utils import (
-            get_recording_start_times,
-            get_starting_frames,
-            get_timestamps,
-            read_miniscope_config,
+
+        from ...ophys.miniscope._miniscope_readers import (
+            _get_fused_timestamps,
+            _get_recording_start_times,
+            _get_starting_frames,
+            _raise_if_miniscope_v3_format,
+            _read_miniscope_config,
         )
 
         natsort = get_package(package_name="natsort", installation_instructions="pip install natsort")
@@ -49,6 +53,7 @@ class MiniscopeBehaviorInterface(BaseDataInterface):
         super().__init__(folder_path=folder_path, verbose=verbose)
 
         folder_path = Path(self.source_data["folder_path"])
+        _raise_if_miniscope_v3_format(folder_path=str(folder_path))
         self._behav_avi_file_paths = natsort.natsorted(list(folder_path.glob("*/BehavCam*/*.avi")))
         assert (
             self._behav_avi_file_paths
@@ -61,12 +66,14 @@ class MiniscopeBehaviorInterface(BaseDataInterface):
         ), f"The configuration files ({configuration_file_name} files) are missing from '{folder_path}'."
 
         behavcam_subfolders = list(folder_path.glob("*/BehavCam*/"))
-        self._miniscope_config = read_miniscope_config(folder_path=str(behavcam_subfolders[0]))
+        self._miniscope_config = _read_miniscope_config(folder_path=str(behavcam_subfolders[0]))
 
-        self._recording_start_times = get_recording_start_times(folder_path=str(folder_path))
-        self._starting_frames = get_starting_frames(folder_path=str(folder_path))
+        self._recording_start_times = _get_recording_start_times(folder_path=str(folder_path))
+        self._starting_frames = _get_starting_frames(
+            folder_path=str(folder_path), video_file_pattern="*/BehavCam*/*.avi"
+        )
         assert len(self._starting_frames) == len(self._behav_avi_file_paths)
-        self._timestamps = get_timestamps(folder_path=str(folder_path), file_pattern="BehavCam*/timeStamps.csv")
+        self._timestamps = _get_fused_timestamps(folder_path=str(folder_path), file_pattern="BehavCam*/timeStamps.csv")
 
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()

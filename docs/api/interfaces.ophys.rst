@@ -40,7 +40,6 @@ Sbx Imaging
 ScanImage Imaging
 -----------------
 .. automodule:: neuroconv.datainterfaces.ophys.scanimage.scanimageimaginginterfaces
-    :exclude-members: ScanImageMultiFileImagingInterface, ScanImageMultiPlaneImagingInterface, ScanImageMultiPlaneMultiFileImagingInterface, ScanImageSinglePlaneImagingInterface, ScanImageSinglePlaneMultiFileImagingInterface
 
 Tiff Imaging
 ------------
@@ -77,11 +76,3 @@ Sima Segmentation
 Suite2p Segmentation
 --------------------
 .. automodule:: neuroconv.datainterfaces.ophys.suite2p.suite2pdatainterface
-
-
-Fiber Photometry
-================
-
-TDT Fiber Photometry
---------------------
-.. automodule:: neuroconv.datainterfaces.ophys.tdt_fp.tdtfiberphotometrydatainterface
