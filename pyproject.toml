@@ -26,6 +26,7 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Operating System :: POSIX :: Linux",
     "Operating System :: Microsoft :: Windows",
     "Operating System :: MacOS",
@@ -38,7 +39,7 @@ dependencies = [
     "PyYAML>=5.4",
     "h5py>=3.9.0",
     "hdmf>=6.2.0",
-    "hdmf_zarr>=0.11",
+    "hdmf_zarr>=0.11; python_version < '3.14'",
     "pynwb>=4.2.0",
     "pydantic>=2.0",
     "typing_extensions>=4.1.0",
@@ -51,8 +52,10 @@ dependencies = [
     "docstring-parser",  # For building json schema from method signatures
     "packaging",  # Issue 903
     "referencing", # for the json schema references
-    "numcodecs<0.16.0", # 0.16.0 is incompatible with zarr < 3: https://github.com/zarr-developers/numcodecs/issues/721
-    "zarr<3",  # the Zarr backend uses the zarr 2 API (zarr.codec_registry); hdmf_zarr>=0.14 requires zarr>=3
+    "numcodecs<0.16.0; python_version < '3.14'", # 0.16.0 is incompatible with zarr < 3: https://github.com/zarr-developers/numcodecs/issues/721
+    "numcodecs>=0.16.5; python_version >= '3.14'",
+    "zarr<3; python_version < '3.14'",  # the Zarr backend uses the zarr 2 API (zarr.codec_registry); hdmf_zarr>=0.14 requires zarr>=3
+    "zarr>=3; python_version >= '3.14'",
 ]
 
 
