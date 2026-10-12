@@ -70,7 +70,7 @@ class MinianSegmentationInterface(BaseSegmentationExtractorInterface):
     def __init__(
         self,
         folder_path: DirectoryPath,
-        *args,  # TODO: change to * (keyword only) on or after August 2026
+        *,
         sampling_frequency: Optional[float] = None,
         timestamps_path: Optional[FilePath] = None,
         verbose: bool = False,
@@ -91,34 +91,6 @@ class MinianSegmentationInterface(BaseSegmentationExtractorInterface):
         metadata_key : str, optional
             Metadata key for this interface. When None, defaults to "minian_segmentation".
         """
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "sampling_frequency",
-                "timestamps_path",
-                "verbose",
-            ]
-            num_positional_args_before_args = 1  # folder_path
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args + 1} were given. "
-                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
-                    "Please use keyword arguments."
-                )
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to MinianSegmentationInterface.__init__() is deprecated "
-                f"and will be removed on or after August 2026. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            sampling_frequency = positional_values.get("sampling_frequency", sampling_frequency)
-            timestamps_path = positional_values.get("timestamps_path", timestamps_path)
-            verbose = positional_values.get("verbose", verbose)
 
         if metadata_key is None:
             metadata_key = "minian_segmentation"
@@ -141,7 +113,7 @@ class MinianSegmentationInterface(BaseSegmentationExtractorInterface):
         self,
         nwbfile: NWBFile,
         metadata: Optional[dict] = None,
-        *args,  # TODO: change to * (keyword only) on or after August 2026
+        *,
         stub_test: bool = False,
         stub_samples: int = 100,
         include_background_segmentation: bool = True,
@@ -151,46 +123,6 @@ class MinianSegmentationInterface(BaseSegmentationExtractorInterface):
         plane_segmentation_name: Optional[str] = None,
         iterator_options: Optional[dict] = None,
     ):
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "stub_test",
-                "stub_samples",
-                "include_background_segmentation",
-                "include_roi_centroids",
-                "include_roi_acceptance",
-                "mask_type",
-                "plane_segmentation_name",
-                "iterator_options",
-            ]
-            num_positional_args_before_args = 2  # nwbfile, metadata
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"add_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args} were given. "
-                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
-                    "Please use keyword arguments."
-                )
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to MinianSegmentationInterface.add_to_nwbfile() is deprecated "
-                f"and will be removed on or after August 2026. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            stub_test = positional_values.get("stub_test", stub_test)
-            stub_samples = positional_values.get("stub_samples", stub_samples)
-            include_background_segmentation = positional_values.get(
-                "include_background_segmentation", include_background_segmentation
-            )
-            include_roi_centroids = positional_values.get("include_roi_centroids", include_roi_centroids)
-            include_roi_acceptance = positional_values.get("include_roi_acceptance", include_roi_acceptance)
-            mask_type = positional_values.get("mask_type", mask_type)
-            plane_segmentation_name = positional_values.get("plane_segmentation_name", plane_segmentation_name)
-            iterator_options = positional_values.get("iterator_options", iterator_options)
 
         if include_roi_acceptance is not None:
             warnings.warn(
