@@ -5,7 +5,8 @@ made once, against output GuPPy itself produced, in
 ``tests/test_on_data/fiber_photometry/guppy/test_reference_session.py``; asserting it a second time
 against ``mock_guppy`` -- a replica written from the same beliefs as the reader -- would prove nothing.
 
-* Parsing: the bin-label parser, exercised directly on hand-built labels.
+* Parsing: the bin-label parser and the splitting of a pre-CSV GuPPy run's ``.h5`` tables, exercised
+  directly on hand-built labels and DataFrames.
 * Behavior and branches: the options a caller can flip and the shapes a GuPPy folder can take, run
   against ``mock_guppy`` because they need *a* folder rather than a *faithful* one.
 
@@ -23,6 +24,10 @@ import pytest
 from pynwb import NWBHDF5IO
 from pynwb.testing.mock.file import mock_NWBFile
 
+from neuroconv.datainterfaces.fiber_photometry.guppy._legacy_results import (
+    split_legacy_event_matrix,
+    split_legacy_peak_auc,
+)
 from neuroconv.datainterfaces.fiber_photometry.guppy.guppydatainterface import (
     GuppyInterface,
 )
@@ -79,6 +84,97 @@ class TestBinEdges:
     def test_trials_integer_labels(self):
         bin_edges = GuppyInterface._bin_edges(["bin_(0-3)", "bin_(3-6)"])
         np.testing.assert_array_equal(bin_edges, np.array([[0.0, 3.0], [3.0, 6.0]]))
+
+
+class TestSplitLegacyEventMatrix:
+    """``split_legacy_event_matrix`` moves the ``bin_`` COLUMNS of a pre-CSV PSTH/cross-corr table to a table of their own."""
+
+    def test_time_min_float_labels(self):
+        dataframe = pandas.DataFrame(
+            {
+                "0.5": [1.0, 2.0],
+                "bin_(0.0-2.0)": [10.0, 11.0],
+                "bin_err_(0.0-2.0)": [0.1, 0.2],
+                "bin_(2.0-4.0)": [12.0, 13.0],
+                "bin_err_(2.0-4.0)": [0.3, 0.4],
+                "timestamps": [-1.0, 1.0],
+                "mean": [1.0, 2.0],
+                "err": [0.0, 0.0],
+            }
+        )
+        event_matrix, binned = split_legacy_event_matrix(dataframe)
+        assert list(event_matrix.columns) == ["0.5", "timestamps", "mean", "err"]
+        assert list(binned.columns) == [
+            "timestamps",
+            "bin_(0.0-2.0)",
+            "bin_err_(0.0-2.0)",
+            "bin_(2.0-4.0)",
+            "bin_err_(2.0-4.0)",
+        ]
+        np.testing.assert_array_equal(binned["bin_(2.0-4.0)"].to_numpy(), [12.0, 13.0])
+
+    def test_trials_integer_labels(self):
+        dataframe = pandas.DataFrame(
+            {
+                "7.0": [1.0],
+                "bin_(0-3)": [10.0],
+                "bin_err_(0-3)": [0.1],
+                "timestamps": [0.0],
+                "mean": [1.0],
+                "err": [0.0],
+            }
+        )
+        event_matrix, binned = split_legacy_event_matrix(dataframe)
+        assert list(event_matrix.columns) == ["7.0", "timestamps", "mean", "err"]
+        assert list(binned.columns) == ["timestamps", "bin_(0-3)", "bin_err_(0-3)"]
+
+    def test_unbinned_table(self):
+        dataframe = pandas.DataFrame({"0.5": [1.0], "timestamps": [0.0], "mean": [1.0], "err": [0.0]})
+        event_matrix, binned = split_legacy_event_matrix(dataframe)
+        assert list(event_matrix.columns) == ["0.5", "timestamps", "mean", "err"]
+        assert binned is None
+
+
+class TestSplitLegacyPeakAuc:
+    """``split_legacy_peak_auc`` turns a pre-CSV peak/AUC table's INDEX into session/trial and session/bin columns."""
+
+    SESSION = "Photo_249_391-200721-120136"
+
+    def test_time_min_float_rows_route_to_bins(self):
+        index = [
+            f"{self.SESSION}_3.0",
+            f"{self.SESSION}_12.5",
+            f"{self.SESSION}_bin_(0.0-2.0)",
+            f"{self.SESSION}_bin_(2.0-4.0)",
+            f"{self.SESSION}_mean",
+        ]
+        dataframe = pandas.DataFrame({"peak_pos_1": [1.0, 2.0, 3.0, 4.0, 5.0]}, index=index)
+        trials, binned = split_legacy_peak_auc(dataframe)
+        assert trials.to_dict("list") == {
+            "session": [self.SESSION] * 3,
+            "trial": ["3.0", "12.5", "mean"],
+            "peak_pos_1": [1.0, 2.0, 5.0],
+        }
+        assert binned.to_dict("list") == {
+            "session": [self.SESSION] * 2,
+            "bin": ["bin_(0.0-2.0)", "bin_(2.0-4.0)"],
+            "peak_pos_1": [3.0, 4.0],
+        }
+
+    def test_trials_integer_rows(self):
+        index = [f"{self.SESSION}_7.0", f"{self.SESSION}_bin_(0-3)", f"{self.SESSION}_mean"]
+        dataframe = pandas.DataFrame({"area_1": [1.0, 2.0, 3.0]}, index=index)
+        trials, binned = split_legacy_peak_auc(dataframe)
+        assert list(trials["trial"]) == ["7.0", "mean"]
+        assert list(binned["bin"]) == ["bin_(0-3)"]
+        assert list(binned["area_1"]) == [2.0]
+
+    def test_unbinned_table(self):
+        index = [f"{self.SESSION}_3.0", f"{self.SESSION}_mean"]
+        dataframe = pandas.DataFrame({"area_1": [1.0, 2.0]}, index=index)
+        trials, binned = split_legacy_peak_auc(dataframe)
+        assert list(trials["trial"]) == ["3.0", "mean"]
+        assert binned is None
 
 
 class TestGuppyInterfaceBehavior:
