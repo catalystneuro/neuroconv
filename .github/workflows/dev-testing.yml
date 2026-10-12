@@ -72,7 +72,6 @@ jobs:
       - name: Dev gallery - ROIExtractors
         run: pip install --no-cache-dir --force-reinstall --no-deps git+https://github.com/CatalystNeuro/roiextractors@main
       - name: Dev gallery - DANDI
-        if: matrix.python-version != '3.10'  # dandi requires >=3.11
         run: pip install --no-cache-dir --force-reinstall --no-deps git+https://github.com/dandi/dandi-cli@master
       - name: Dev gallery - PyNWB
         run: pip install --no-cache-dir --force-reinstall --no-deps git+https://github.com/NeurodataWithoutBorders/pynwb@dev

@@ -7,7 +7,6 @@ from .roiextractors import (
 )
 from .roiextractors_pending_deprecation import (
     add_devices_to_nwbfile,
-    add_fluorescence_traces_to_nwbfile,
     get_nwb_imaging_metadata,
     get_nwb_segmentation_metadata,
 )

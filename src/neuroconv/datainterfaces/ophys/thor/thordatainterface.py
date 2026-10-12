@@ -1,6 +1,5 @@
 """Interface for Thor TIFF files with OME metadata."""
 
-import warnings
 from datetime import datetime, timezone
 
 import numpy as np
@@ -46,7 +45,7 @@ class ThorImagingInterface(BaseImagingExtractorInterface):
     def __init__(
         self,
         file_path: FilePath,
-        *args,
+        *,
         channel_name: str | None = None,
         verbose: bool = False,
         metadata_key: str | None = None,
@@ -67,32 +66,6 @@ class ThorImagingInterface(BaseImagingExtractorInterface):
             Metadata key for this interface. When None, defaults to "thor_imaging"
             or "thor_imaging_channel_{channel_name}" if channel_name is provided.
         """
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "channel_name",
-                "verbose",
-            ]
-            num_positional_args_before_args = 1  # file_path
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args + 1} were given. "
-                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
-                    "Please use keyword arguments."
-                )
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to ThorImagingInterface.__init__() is deprecated "
-                f"and will be removed on or after August 2026. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            channel_name = positional_values.get("channel_name", channel_name)
-            verbose = positional_values.get("verbose", verbose)
 
         if metadata_key is None:
             metadata_key = f"thor_imaging_channel_{channel_name}" if channel_name is not None else "thor_imaging"

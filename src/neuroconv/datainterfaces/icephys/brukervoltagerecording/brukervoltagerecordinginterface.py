@@ -102,9 +102,6 @@ class BrukerVoltageRecordingInterface(BaseIcephysInterface):
         self._condition = condition
         self._stimulus_type = stimulus_type
         self._metadata_key = metadata_key
-        # Seconds added to this interface's series timestamps; a converter sets it for multi-electrode
-        # alignment. Default 0 leaves single-interface output unchanged.
-        self._starting_time_shift = 0.0
         self.source_data = dict(
             file_paths=file_paths,
             response_signal_name=response_signal_name,
@@ -142,6 +139,12 @@ class BrukerVoltageRecordingInterface(BaseIcephysInterface):
         # combining electrodes overrides it with a disambiguated label, since that stem collides across
         # session folders. It is a label, not a claim about which cell this is.
         self._run_identity = self._cycle_headers[0].stem
+        self._alignment_key = self._series_metadata_key
+        self.alignment._register_series(
+            key=self._alignment_key,
+            get_native_times=self._get_native_times,
+            default_start_time=0.0,
+        )
 
     # Registry keys derive from the run identity so a converter that overrides `_run_identity` propagates to
     # all of them. The electrode is per run rather than per signal, because `Primary` and `Secondary` are two
@@ -314,7 +317,6 @@ class BrukerVoltageRecordingInterface(BaseIcephysInterface):
     def _get_icephys_series_data(self):
         """Map the PrairieView response into the base writer representation."""
         data, timestamps, sweep_sample_ranges = self._concatenate_cycles()
-        timestamps = timestamps + self._starting_time_shift
         signal = self._response_signal
         conversion = (signal.multiplier / signal.divisor) * get_conversion_from_unit(signal.unit_name)
         response_data = _IcephysSeriesData(data=data, timestamps=timestamps, conversion=float(conversion))
@@ -345,6 +347,16 @@ class BrukerVoltageRecordingInterface(BaseIcephysInterface):
         return [signal.name for signal in _read_cycle_header(Path(file_path)).recorded_signals]
 
     # ------------------------------------------------------------------ writing helpers
+
+    def _get_native_times(self):
+        import pandas as pd
+
+        times = []
+        for header in self._cycle_headers:
+            count = len(pd.read_csv(header.file_path, usecols=[0]))
+            start = (header.start_datetime - self._recording_start_datetime).total_seconds()
+            times.append(start + np.arange(count) / header.rate)
+        return np.concatenate(times)
 
     def _concatenate_cycles(self):
         """Read the response signal across every cycle and lay them end to end on one timeline; return

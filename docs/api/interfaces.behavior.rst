@@ -13,6 +13,12 @@ DeepLabCut
 ----------
 .. automodule:: neuroconv.datainterfaces.behavior.deeplabcut.deeplabcutdatainterface
 
+EthoVision
+----------
+.. autoclass:: neuroconv.datainterfaces.behavior.ethovision.ethovisiontrackinterface.EthoVisionTrackInterface
+
+.. autoclass:: neuroconv.datainterfaces.behavior.ethovision.ethovisionmanualscoringinterface.EthoVisionManualScoringInterface
+
 FicTrac
 -------
 .. automodule:: neuroconv.datainterfaces.behavior.fictrac.fictracdatainterface
@@ -28,10 +34,6 @@ Neuralynx NVT
 SLEAP
 -----
 .. automodule:: neuroconv.datainterfaces.behavior.sleap.sleapdatainterface
-
-Video
------
-.. automodule:: neuroconv.datainterfaces.behavior.video.videodatainterface
 
 MedPC
 -----

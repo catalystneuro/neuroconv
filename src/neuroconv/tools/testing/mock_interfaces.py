@@ -938,7 +938,7 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
 
     def __init__(
         self,
-        *args,
+        *,
         num_channels: int = 4,
         sampling_frequency: float = 30_000.0,
         durations: tuple[float, ...] = (1.0,),
@@ -949,43 +949,6 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
         set_probe: bool = False,
         calibration: Literal["unknown", "uniform", "heterogeneous_gains", "heterogeneous_offsets"] = "uniform",
     ):
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "num_channels",
-                "sampling_frequency",
-                "durations",
-                "seed",
-                "verbose",
-                "es_key",
-                "set_probe",
-            ]
-            # Number of positional parameters before *args in the signature (self is counted by Python in error messages)
-            num_positional_args_before_args = 1  # self
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"MockRecordingInterface.__init__() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments "
-                    f"but {len(args) + num_positional_args_before_args} were given. "
-                    "Note: Positional arguments are deprecated and will be removed in June 2026 or after. Please use keyword arguments."
-                )
-            # Map positional args to keyword args, positional args take precedence
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to MockRecordingInterface.__init__() is deprecated "
-                f"and will be removed in June 2026 or after. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            num_channels = positional_values.get("num_channels", num_channels)
-            sampling_frequency = positional_values.get("sampling_frequency", sampling_frequency)
-            durations = positional_values.get("durations", durations)
-            seed = positional_values.get("seed", seed)
-            verbose = positional_values.get("verbose", verbose)
-            es_key = positional_values.get("es_key", es_key)
-            set_probe = positional_values.get("set_probe", set_probe)
 
         super().__init__(
             num_channels=num_channels,
@@ -1199,7 +1162,7 @@ class MockImagingInterface(BaseImagingExtractorInterface):
         self,
         nwbfile: NWBFile,
         metadata: dict | None = None,
-        *args,
+        *,
         photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "TwoPhotonSeries",
         photon_series_index: int = 0,
         parent_container: Literal["acquisition", "processing/ophys"] = "acquisition",
@@ -1210,9 +1173,6 @@ class MockImagingInterface(BaseImagingExtractorInterface):
     ):
         """
         Add imaging data to the NWB file.
-
-        This method demonstrates the *args pattern for deprecating positional arguments
-        while maintaining schema validation for keyword-only arguments.
 
         Parameters
         ----------
@@ -1235,42 +1195,6 @@ class MockImagingInterface(BaseImagingExtractorInterface):
         iterator_options : dict, optional
             Options for controlling the iterative write process.
         """
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "photon_series_type",
-                "photon_series_index",
-                "parent_container",
-                "stub_test",
-                "always_write_timestamps",
-                "iterator_type",
-                "iterator_options",
-            ]
-            num_positional_args_before_args = 2  # nwbfile, metadata
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"add_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args} were given. "
-                    "Note: Positional arguments are deprecated and will be removed in June 2026 or after. Please use keyword arguments."
-                )
-            # Map positional args to keyword args, positional args take precedence
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to add_to_nwbfile is deprecated "
-                f"and will be removed in June 2026 or after. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            photon_series_type = positional_values.get("photon_series_type", photon_series_type)
-            photon_series_index = positional_values.get("photon_series_index", photon_series_index)
-            parent_container = positional_values.get("parent_container", parent_container)
-            stub_test = positional_values.get("stub_test", stub_test)
-            always_write_timestamps = positional_values.get("always_write_timestamps", always_write_timestamps)
-            iterator_type = positional_values.get("iterator_type", iterator_type)
-            iterator_options = positional_values.get("iterator_options", iterator_options)
 
         # Call parent implementation with keyword arguments
         super().add_to_nwbfile(
@@ -1441,12 +1365,12 @@ class MockPoseEstimationInterface(BasePoseEstimationInterface):
             Metadata key for this interface.
         pose_estimation_metadata_key : str, optional
             Deprecated. Renamed to ``metadata_key``; passing it forwards the value to
-            ``metadata_key`` and will be removed on or after February 2027.
+            ``metadata_key`` and will be removed in v0.12.0.
         """
         if pose_estimation_metadata_key is not None:
             warnings.warn(
                 "The 'pose_estimation_metadata_key' argument has been renamed to 'metadata_key' and "
-                "will be removed on or after February 2027. Please use 'metadata_key' instead.",
+                "will be removed in v0.12.0. Please use 'metadata_key' instead.",
                 DeprecationWarning,
                 stacklevel=2,
             )
@@ -1496,7 +1420,6 @@ class MockPoseEstimationInterface(BasePoseEstimationInterface):
             self._original_timestamps = frame_times[np.sort(labeled_frames)]
         else:
             self._original_timestamps = np.linspace(0.0, float(num_samples) / 30.0, num_samples)
-        self._timestamps = np.copy(self._original_timestamps)
 
         # Generate pose estimation data
         self.pose_data = self._generate_pose_data()
@@ -1537,14 +1460,6 @@ class MockPoseEstimationInterface(BasePoseEstimationInterface):
     def get_original_timestamps(self) -> np.ndarray:
         """Get the original timestamps before any alignment."""
         return self._original_timestamps
-
-    def get_timestamps(self) -> np.ndarray:
-        """Get the current (possibly aligned) timestamps."""
-        return self._timestamps
-
-    def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
-        """Set aligned timestamps."""
-        self._timestamps = aligned_timestamps
 
     def get_metadata(self) -> DeepDict:
         """Name the objects after this interface's key and add what the mock pretends its source records."""
@@ -1592,13 +1507,14 @@ class MockExternalVideoInterface(ExternalVideoInterface):
     """
     A mock external video interface for testing purposes.
 
-    Overrides exactly one thing: what the container header says. The frame count and the frame rate are
-    constructor arguments rather than reads, so a test can compose a video of any length into a conversion
+    Overrides what the container header says, and the one frame time the interface reads at the start of
+    each file. The frame count and the frame rate are constructor arguments rather than reads, and every file's
+    first frame sits at zero, so a test can compose a video of any length into a conversion
     at no cost, and everything else runs the real interface's course. In particular the timing is left
     unset, as it is on a freshly constructed real interface, so a single file writes a starting time and a
     rate while several files raise until the test says where they sit.
 
-    Nothing that reads the video itself is stubbed, only the header, so a method that decodes frames
+    Nothing else that reads the video is stubbed, so a method that decodes frames
     (``get_original_timestamps``, and ``set_aligned_segment_starting_times`` which goes through it) will
     fail here as it would on any missing file. Give the times directly with ``set_aligned_timestamps``.
 
@@ -1657,13 +1573,17 @@ class MockExternalVideoInterface(ExternalVideoInterface):
         metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
         return metadata
 
-    def _get_header_frame_counts(self) -> list[int]:
+    def get_header_frame_counts(self) -> list[int]:
         """Return the frame count the mock was built with, so the write path opens no files."""
         return [self.num_frames] * self._number_of_files
 
-    def _get_header_frame_rates(self) -> list[float]:
+    def get_header_frame_rates(self) -> list[float]:
         """Return the frame rate the mock was built with, so the write path opens no files."""
         return [self.frame_rate] * self._number_of_files
+
+    def _get_first_frame_time(self, *, file_index: int) -> float:
+        """Return zero, the first frame time of most containers, so placing a file opens nothing."""
+        return 0.0
 
 
 class MockIcephysInterface(BaseDataInterface):

@@ -1,5 +1,6 @@
 from abc import abstractmethod
 from dataclasses import dataclass, field
+from functools import partial
 
 import numpy as np
 from hdmf.common import MeaningsTable, VectorIndex
@@ -102,11 +103,22 @@ class BaseEventsInterface(BaseDataInterface):
         # Filled on the first _get_events_data_dict() call and reused thereafter, so the backend is
         # coerced once even though get_metadata, add_to_nwbfile, and alignment all read it.
         self._events_data_dict = None
-        # Alignment by composition: the interface holds the offset applied to its event times at write and
-        # exposes it as ``interface.alignment`` (so ``alignment.shift_times``), rather than inheriting the
-        # array-shaped BaseTemporalAlignmentInterface contract, which does not fit events. Minimal (offset +
-        # shift_times) for now; see neuroconv/_temporal_alignment.py.
-        self.alignment = _TemporalAlignment()
+        self._alignment = None
+
+    @property
+    def alignment(self):
+        if self._alignment is None:
+            alignment = _TemporalAlignment()
+            for source_id in self.get_event_type_source_ids():
+                alignment._register_events(
+                    key=source_id,
+                    get_native_times=partial(self._get_native_event_times, event_type_source_id=source_id),
+                )
+            self._alignment = alignment
+        return self._alignment
+
+    def _get_native_event_times(self, *, event_type_source_id):
+        return self._get_events_data_dict()[event_type_source_id].timestamps
 
     @abstractmethod
     def _get_events_data_dict(self) -> dict[str, _EventsData]:
@@ -160,8 +172,8 @@ class BaseEventsInterface(BaseDataInterface):
         with the next falling one and its onsets are those rising edges, so a line configured to be
         written with its pulse widths still answers with the edge times.
 
-        The times are this interface's **current** times, which is ``self.alignment.offset`` added to the
-        source's own clock. That is what makes them usable as the input to another stream's alignment:
+        The times are this interface's **current** times, including shifts.
+        That is what makes them usable as the input to another stream's alignment:
         pulses recorded by a device that has itself been shifted onto a session clock come back already
         on that clock, and reading them before the shift would leave them wrong by the drift with nothing
         to catch it.
@@ -193,7 +205,7 @@ class BaseEventsInterface(BaseDataInterface):
                 f"{sorted(events_data_dict)}, which get_event_type_source_ids lists."
             )
 
-        return events_data_dict[event_type_source_id].timestamps + self.alignment.offset
+        return self.alignment[event_type_source_id].get_times()
 
     def get_metadata_schema(self) -> dict:
         """
@@ -444,11 +456,6 @@ class BaseEventsInterface(BaseDataInterface):
         event_types = metadata["Events"][self.metadata_key]["event_types"]
         event_data = self._get_events_data_dict()
 
-        # Apply the alignment offset here (lazily, at write): every written timestamp is native + offset, so
-        # the cached internal representation stays in the source clock. A shift is rigid, so durations are
-        # left unchanged.
-        time_offset = self.alignment.offset
-
         # Flatten this interface's types into rows (timestamp, event_name, duration, cells) and collect the
         # value-column specs keyed by column_name.
         rows = []
@@ -460,6 +467,7 @@ class BaseEventsInterface(BaseDataInterface):
         ragged_column_names = set()
         for event_type_source_id in event_type_source_ids:
             event = event_data[event_type_source_id]
+            timestamps = self.get_event_times(event_type_source_id)
             entry = event_types[event_type_source_id]
             event_name = entry["event_name"]
             resolved_columns = []
@@ -476,7 +484,7 @@ class BaseEventsInterface(BaseDataInterface):
                 if any(_holds_several_values(value) for value in event.payload[field_source_id]):
                     ragged_column_names.add(column_name)
                 resolved_columns.append((field_source_id, column_name, self._labels_map(column_spec)))
-            for index, timestamp in enumerate(event.timestamps):
+            for index, timestamp in enumerate(timestamps):
                 cells = {}
                 for field_source_id, column_name, labels_map in resolved_columns:
                     value = event.payload[field_source_id][index]
@@ -487,7 +495,7 @@ class BaseEventsInterface(BaseDataInterface):
                     else:
                         cells[column_name] = labels_map[str(value)]
                 duration = float(event.durations[index]) if event.durations is not None else np.nan
-                rows.append((float(timestamp) + time_offset, event_name, duration, cells))
+                rows.append((float(timestamp), event_name, duration, cells))
 
         n_existing = len(table.id)
         has_duration = any(event_data[source_id].durations is not None for source_id in event_type_source_ids)

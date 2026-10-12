@@ -112,11 +112,6 @@ class BORISInterface(BaseEventsInterface):
         self.metadata_key = metadata_key or "_".join(["boris", *(word.lower() for word in observation_words)])
         self._project = _read_boris_project(file_path=file_path)
         self._observation = _read_boris_observation(file_path=file_path, observation_name=observation_name)
-        # The observation's `time offset` shifts the whole observation, which is what a rigid alignment
-        # offset is, so it goes through the alignment surface rather than being folded into the times. That
-        # keeps the read times the file's own and leaves the offset re-settable.
-        if self._observation.time_offset:
-            self.alignment.shift_times(self._observation.time_offset)
 
     def get_metadata(self) -> DeepDict:
         """
@@ -307,7 +302,9 @@ class BORISInterface(BaseEventsInterface):
             behavior = self._project.behaviors.get(code)
             is_point = behavior is None or behavior.behavior_type == "point"
 
-            onsets = np.array([occurrence.onset for occurrence in occurrences], dtype=float)
+            onsets = (
+                np.array([occurrence.onset for occurrence in occurrences], dtype=float) + self._observation.time_offset
+            )
             # A point behavior has no extent at all, which is `None`; a state behavior always has the
             # column, carrying `NaN` for a bout whose stop was never scored.
             durations = None
@@ -530,10 +527,11 @@ class BORISInterface(BaseEventsInterface):
                 **({"index": True} if field in filled_ragged_fields else {}),
             )
 
-        offset = self.alignment.offset
+        aligned_times = {code: self.get_event_times(code) for code in events_data_dict}
         for occurrence in closed_bouts:
             payload = events_data_dict[occurrence.code].payload
             index = rows_by_occurrence[id(occurrence)]
+            onset = aligned_times[occurrence.code][index]
             # A behavior writes an empty cell in a column it does not own, since the bouts table keeps
             # the union of the per-behavior columns.
             cells = {
@@ -541,8 +539,8 @@ class BORISInterface(BaseEventsInterface):
                 for field in payload_fields
             }
             bouts.add_interval(
-                start_time=occurrence.onset + offset,
-                stop_time=occurrence.onset + occurrence.duration + offset,
+                start_time=onset,
+                stop_time=onset + occurrence.duration,
                 label=occurrence.code,
                 **cells,
             )
