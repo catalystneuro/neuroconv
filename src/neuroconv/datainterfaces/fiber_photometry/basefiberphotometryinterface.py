@@ -185,7 +185,13 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
         series_metadata = dict(name="FiberPhotometryResponseSeries")
-        return dict_deep_update(metadata, dict(FiberPhotometry={self.metadata_key: series_metadata}))
+        fiber_photometry_metadata = {self.metadata_key: series_metadata}
+        if self._commanded_voltage_key_to_get_data:
+            fiber_photometry_metadata["CommandedVoltageSeries"] = {
+                key: dict(name=f"CommandedVoltageSeries{key}", unit="volts")
+                for key in self._commanded_voltage_key_to_get_data
+            }
+        return dict_deep_update(metadata, dict(FiberPhotometry=fiber_photometry_metadata))
 
     def _get_number_of_traces(self) -> int:
         """Return how many traces this interface's response series carries, one per table row.
@@ -402,6 +408,7 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         always_write_timestamps: bool = False,
     ) -> None:
         commanded_voltage_metadata_by_key = metadata.get("FiberPhotometry", {}).get("CommandedVoltageSeries", {})
+        # TODO: remove in v0.12.0, once metadata that still carries 'stream_name' and 'index' had a release to move
         for key, entry in commanded_voltage_metadata_by_key.items():
             if "stream_name" in entry or "index" in entry:
                 raise ValueError(
@@ -423,7 +430,7 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
                 description=commanded_voltage_metadata.get("description", ""),
                 data=data,
                 unit=commanded_voltage_metadata["unit"],
-                frequency=commanded_voltage_metadata["frequency"],
+                frequency=commanded_voltage_metadata.get("frequency"),
                 timing_kwargs=self._timing_kwargs_from_timestamps(timestamps, always_write_timestamps),
             )
 
