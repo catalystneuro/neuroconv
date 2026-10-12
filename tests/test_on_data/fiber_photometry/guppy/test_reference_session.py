@@ -1,7 +1,7 @@
 """The GuPPy reference session: the one module in this directory whose inputs GuPPy itself produced.
 
-``guppy_example_1`` is a synthetic CSV session that a stock GuPPy 2.0.0a9 run processed end to end,
-so its ``guppy_example_1_output_1`` folder is genuine GuPPy output. Every other module here pairs a
+``guppy_example_1`` is a synthetic CSV session that a stock GuPPy run processed end to end (the
+version is recorded in its ``GuPPyParamtersUsed.json``), so its ``guppy_example_1_output_1`` folder is genuine GuPPy output. Every other module here pairs a
 real acquisition file with ``mock_guppy``, a hand-written replica of GuPPy's on-disk format.
 
 Two rules keep this module an independent check on that replica.
@@ -41,7 +41,7 @@ from ...setup_paths import OPHYS_DATA_PATH
 
 SESSION_FOLDER = OPHYS_DATA_PATH / "fiber_photometry_datasets" / "Guppy" / "guppy_example_1"
 GUPPY_OUTPUT_FOLDER = SESSION_FOLDER / "guppy_example_1_output_1"
-# GuPPy prefixes every peak-AUC row label with the session name, which it takes from the folder name.
+# GuPPy labels every peak-AUC row with the session name, which it takes from the folder name.
 SESSION_NAME = "guppy_example_1"
 
 # storesList.csv pairs six raw stores with the labels GuPPy gave them:
@@ -146,20 +146,13 @@ def read_hdf5_dataset(file_path, dataset_name):
 
 
 def trial_columns(dataframe):
-    """The per-trial columns of a PSTH/cross-correlation frame: GuPPy names each one after its onset."""
-    columns = []
-    for column in dataframe.columns:
-        try:
-            float(column)
-        except ValueError:
-            continue
-        columns.append(column)
-    return columns
+    """The per-trial columns of a PSTH/cross-correlation frame: every column but the axis and the summary."""
+    return [column for column in dataframe.columns if column not in ("timestamps", "mean", "err")]
 
 
 def psth_source_path(event, recording_site, feature, *, baseline_corrected):
     correction = "" if baseline_corrected else "baselineUncorrected_"
-    return GUPPY_OUTPUT_FOLDER / f"{event}_{recording_site}_{correction}{feature}_{recording_site}.h5"
+    return GUPPY_OUTPUT_FOLDER / f"{event}_{recording_site}_{correction}{feature}_{recording_site}.csv"
 
 
 class TestGuppyReferenceSession:
@@ -236,7 +229,7 @@ class TestGuppyReferenceSession:
     def test_parameters_match_the_recorded_json(self, nwbfile):
         """GuPPyParamtersUsed.json is transcribed onto GuppyParameters, names normalised to snake_case."""
         parameters = nwbfile.lab_meta_data["guppy_parameters"]
-        assert parameters.guppy_version == "2.0.0a9"
+        assert parameters.guppy_version == "2.0.0b5"
         assert parameters.zscore_method == "standard z-score"
         assert parameters.artifacts_removal_method == "replace with NaN"
         assert bool(parameters.remove_artifacts) is True
@@ -401,7 +394,9 @@ class TestGuppyReferenceSession:
         for recording_site in RECORDING_SITES:
             # The interface discovers z_score before dff, which is the order the rows land in.
             for feature in ("z_score", "dff"):
-                source = pandas.read_hdf(GUPPY_OUTPUT_FOLDER / f"freqAndAmp_{feature}_{recording_site}.h5")
+                source = pandas.read_csv(
+                    GUPPY_OUTPUT_FOLDER / f"freqAndAmp_{feature}_{recording_site}.csv", index_col=0
+                )
                 expected_rows.append(
                     (
                         recording_site,
@@ -433,7 +428,7 @@ class TestGuppyReferenceSession:
 
                     traces_blocks, mean_blocks, onsets = [], [], []
                     for event in EVENT_NAMES:
-                        source = pandas.read_hdf(
+                        source = pandas.read_csv(
                             psth_source_path(event, recording_site, feature, baseline_corrected=baseline_corrected)
                         )
                         np.testing.assert_array_equal(
@@ -463,7 +458,8 @@ class TestGuppyReferenceSession:
         assert psth.binned_mean.shape == (NUM_PERI_EVENT_SAMPLES, len(BIN_EDGES_PER_EVENT) * len(EVENT_NAMES))
         assert self.event_names(module, psth.bin_event) == [event for event in EVENT_NAMES for _ in BIN_EDGES_PER_EVENT]
 
-        source = pandas.read_hdf(psth_source_path("nose_poke", "dms", "dff", baseline_corrected=True))
+        psth_path = psth_source_path("nose_poke", "dms", "dff", baseline_corrected=True)
+        source = pandas.read_csv(psth_path.with_name(f"binned_{psth_path.name}"))
         for column, (start, stop) in enumerate(BIN_EDGES_PER_EVENT):
             np.testing.assert_array_equal(
                 psth.binned_mean[:, column], source[f"bin_({start}-{stop})"].to_numpy(dtype=np.float64)
@@ -479,17 +475,16 @@ class TestGuppyReferenceSession:
 
                 mean_columns = []
                 for event in EVENT_NAMES:
-                    source = pandas.read_hdf(
-                        GUPPY_OUTPUT_FOLDER / f"peak_AUC_{event}_{recording_site}_{feature}_{recording_site}.h5"
+                    source = pandas.read_csv(
+                        GUPPY_OUTPUT_FOLDER / f"peak_AUC_{event}_{recording_site}_{feature}_{recording_site}.csv",
+                        dtype=dict(session=str, trial=str),
                     )
-                    mean_row = f"{SESSION_NAME}_mean"
+                    assert set(source["session"]) == {SESSION_NAME}
+                    mean_row = source[source["trial"] == "mean"]
                     mean_columns.append(
-                        np.array(
-                            [
-                                float(source.loc[mean_row, f"peak_pos_{window + 1}"])
-                                for window in range(len(PEAK_WINDOW_STARTS))
-                            ]
-                        )
+                        mean_row[[f"peak_pos_{window + 1}" for window in range(len(PEAK_WINDOW_STARTS))]]
+                        .to_numpy(dtype=np.float64)
+                        .reshape(-1)
                     )
                 np.testing.assert_array_equal(peak_auc.mean_peak_positive[:], np.stack(mean_columns, axis=1))
                 np.testing.assert_array_equal(peak_auc.trial_onset_times[:], PSTH_TRIAL_ONSETS)
@@ -505,8 +500,8 @@ class TestGuppyReferenceSession:
 
             trials_blocks, mean_blocks = [], []
             for event in EVENT_NAMES:
-                source = pandas.read_hdf(
-                    GUPPY_OUTPUT_FOLDER / "cross_correlation_output" / f"corr_{event}_{feature}_dms_nac.h5"
+                source = pandas.read_csv(
+                    GUPPY_OUTPUT_FOLDER / "cross_correlation_output" / f"corr_{event}_{feature}_dms_nac.csv"
                 )
                 np.testing.assert_array_equal(cross_correlation.lag[:], source["timestamps"].to_numpy(dtype=np.float64))
                 trials_blocks.append(source[trial_columns(source)].to_numpy(dtype=np.float64))

@@ -359,7 +359,6 @@ tdt_fp = [
 guppy = [
     "neuroconv[fiber_photometry_minimal]",
     "ndx-guppy>=0.2.1",
-    "tables",
     # Every acquisition format GuppyConverter can read, so one install covers a GuPPy session
     # whatever it was recorded on.
     "neuroconv[tdt_fp]",
@@ -497,7 +496,7 @@ ophys = [
     # TODO: remove on or after August 2027. Fiber photometry is its own modality now (see the
     # 'Fiber Photometry' section above) and no other modality aggregate pulls in another one.
     # This line is kept so that an install which reached photometry through neuroconv[ophys] keeps
-    # working, at the cost of every calcium imaging install carrying tdt, ndx-guppy, tables and h5py.
+    # working, at the cost of every calcium imaging install carrying tdt, ndx-guppy and h5py.
     # No documentation has ever pointed at this path, every photometry gallery page installs the
     # single format extra it needs, so removing it should reach very few people.
     "neuroconv[fiber_photometry]",
