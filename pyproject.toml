@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "neuroconv"
-version = "0.10.3.dev0"
+version = "0.11.0.dev0"
 description = "Convert data from proprietary formats to NWB format."
 readme = "README.md"
 authors = [
@@ -193,7 +193,7 @@ events = [
 
 ## Ecephys
 ecephys_minimal = [  # Keeps the minimal versions of ecephys dependencies in the repo
-    "spikeinterface>=0.105.0",
+    "spikeinterface>=0.105.1",
     "neo>=0.14.5",
     "natsort>=7.1.1",
 ]
@@ -635,7 +635,7 @@ showcontent = true
 [tool.codespell]
 skip = '.git*,*.pdf,*.css,*.svg'
 check-hidden = true
-ignore-words-list = 'assertin,sortings,Tye,trough'
+ignore-words-list = 'assertin,sortings,Tye,trough,ect'
 
 [dependency-groups]
 test = [
@@ -658,7 +658,7 @@ docs = [
     "sphinx-design==0.7.0; python_version>='3.11'",  # Used by metadata_templates.rst to show the YAML and JSON forms of each template in tabs.
     "pydata_sphinx_theme==0.16.1",  # Latest as of April 2025.
     "roiextractors",  # Needed for the API documentation
-    "spikeinterface>=0.105.0",  # Needed for the API documentation
+    "spikeinterface>=0.105.1",  # Needed for the API documentation
     "natsort>=7.1.1",  # Needed for the API documentation
     "pytest" # used to build the documentation for tools.testing
 ]

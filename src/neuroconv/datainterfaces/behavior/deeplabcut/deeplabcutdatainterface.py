@@ -77,7 +77,7 @@ class DeepLabCutInterface(BasePoseEstimationInterface):
     def __init__(
         self,
         file_path: FilePath,
-        *args,  # TODO: change to * (keyword only) on or after August 2026
+        *,
         config_file_path: FilePath | None = None,
         subject_name: str = "ind1",
         pose_estimation_metadata_key: str | None = None,
@@ -106,7 +106,7 @@ class DeepLabCutInterface(BasePoseEstimationInterface):
             used to link the skeleton to the subject in the NWB file.
         pose_estimation_metadata_key : str, optional
             Deprecated. Renamed to ``metadata_key``; passing it forwards the value to ``metadata_key``
-            and will be removed on or after February 2027. Passing both raises ``ValueError``.
+            and will be removed in v0.12.0. Passing both raises ``ValueError``.
         verbose : bool, default: False
             Controls verbosity of the conversion process.
         metadata_key : str, optional
@@ -186,38 +186,6 @@ class DeepLabCutInterface(BasePoseEstimationInterface):
         - When the subject_name matches a subject_id in the NWBFile, the skeleton will be automatically
         linked to that subject.
         """
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "config_file_path",
-                "subject_name",
-                "pose_estimation_metadata_key",
-                "verbose",
-            ]
-            num_positional_args_before_args = 1  # file_path
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args + 1} were given. "
-                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
-                    "Please use keyword arguments."
-                )
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to DeepLabCutInterface.__init__() is deprecated "
-                f"and will be removed on or after August 2026. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            config_file_path = positional_values.get("config_file_path", config_file_path)
-            subject_name = positional_values.get("subject_name", subject_name)
-            pose_estimation_metadata_key = positional_values.get(
-                "pose_estimation_metadata_key", pose_estimation_metadata_key
-            )
-            verbose = positional_values.get("verbose", verbose)
 
         # This import is to assure that the ndx_pose is in the global namespace when an pynwb.io object is created
         from importlib.metadata import version
@@ -250,7 +218,7 @@ class DeepLabCutInterface(BasePoseEstimationInterface):
         if pose_estimation_metadata_key is not None:
             warnings.warn(
                 "The 'pose_estimation_metadata_key' argument has been renamed to 'metadata_key' and "
-                "will be removed on or after February 2027. Please use 'metadata_key' instead.",
+                "will be removed in v0.12.0. Please use 'metadata_key' instead.",
                 DeprecationWarning,
                 stacklevel=2,
             )
