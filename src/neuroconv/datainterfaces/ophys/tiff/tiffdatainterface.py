@@ -1,4 +1,3 @@
-import warnings
 from typing import Literal, Optional
 
 from pydantic import FilePath, validate_call
@@ -32,7 +31,7 @@ class TiffImagingInterface(BaseImagingExtractorInterface):
         self,
         file_paths: list[FilePath],
         sampling_frequency: float = None,
-        *args,  # TODO: change to * (keyword only) on or after August 2026
+        *,
         dimension_order: str = "ZCT",
         num_channels: int = 1,
         channel_name: Optional[str] = None,
@@ -168,40 +167,6 @@ class TiffImagingInterface(BaseImagingExtractorInterface):
 
             All dimension orders → T: Simple planar time series (all orderings equivalent)
         """
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "dimension_order",
-                "num_channels",
-                "channel_name",
-                "num_planes",
-                "verbose",
-                "photon_series_type",
-            ]
-            num_positional_args_before_args = 2  # file_paths, sampling_frequency
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args + 1} were given. "
-                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
-                    "Please use keyword arguments."
-                )
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to TiffImagingInterface.__init__() is deprecated "
-                f"and will be removed on or after August 2026. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            dimension_order = positional_values.get("dimension_order", dimension_order)
-            num_channels = positional_values.get("num_channels", num_channels)
-            channel_name = positional_values.get("channel_name", channel_name)
-            num_planes = positional_values.get("num_planes", num_planes)
-            verbose = positional_values.get("verbose", verbose)
-            photon_series_type = positional_values.get("photon_series_type", photon_series_type)
 
         if metadata_key is None:
             metadata_key = f"tiff_imaging_channel_{channel_name}" if channel_name is not None else "tiff_imaging"
