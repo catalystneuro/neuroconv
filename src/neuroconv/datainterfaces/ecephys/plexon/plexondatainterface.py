@@ -284,9 +284,7 @@ class PlexonSortingInterface(BaseSortingExtractorInterface):
         return PlexonSortingExtractor
 
     @validate_call
-    def __init__(
-        self, file_path: FilePath, *, verbose: bool = False
-    ):  # TODO: change to * (keyword only) on or after August 2026
+    def __init__(self, file_path: FilePath, *, verbose: bool = False):
         """
         Load and prepare data for Plexon.
 

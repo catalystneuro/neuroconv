@@ -49,7 +49,7 @@ class ThorImagingInterface(BaseImagingExtractorInterface):
         channel_name: str | None = None,
         verbose: bool = False,
         metadata_key: str | None = None,
-    ):  # TODO: change to * (keyword only) on or after August 2026
+    ):
         """
         Initialize reading of a TIFF file.
 

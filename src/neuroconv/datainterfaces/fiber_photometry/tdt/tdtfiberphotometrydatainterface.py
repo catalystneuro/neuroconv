@@ -32,9 +32,7 @@ class _TDTFiberPhotometryInterfaceMultiSeries(TDTLoadMixin, BaseTemporalAlignmen
     associated_suffixes = ("Tbk", "Tdx", "tev", "tin", "tsq")
 
     @validate_call
-    def __init__(
-        self, folder_path: DirectoryPath, *, verbose: bool = False
-    ):  # TODO: change to * (keyword only) on or after August 2026
+    def __init__(self, folder_path: DirectoryPath, *, verbose: bool = False):
         """Initialize the TDTFiberPhotometryInterface.
 
         Parameters
