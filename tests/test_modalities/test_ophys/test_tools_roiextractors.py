@@ -29,7 +29,6 @@ from neuroconv.tools.nwb_helpers import get_module
 from neuroconv.tools.roiextractors import (
     _check_if_imaging_fits_into_memory,
     add_devices_to_nwbfile,
-    add_fluorescence_traces_to_nwbfile,
     add_imaging_to_nwbfile,
     add_segmentation_to_nwbfile,
 )
@@ -42,6 +41,7 @@ from neuroconv.tools.roiextractors.roiextractors import (
     get_full_ophys_metadata,
 )
 from neuroconv.tools.roiextractors.roiextractors_pending_deprecation import (
+    _add_fluorescence_traces_to_nwbfile,
     _add_image_segmentation_to_nwbfile,
     _add_imaging_plane_to_nwbfile_old_list_format,
     _add_photon_series_to_nwbfile_old_list_format,
@@ -50,6 +50,36 @@ from neuroconv.tools.roiextractors.roiextractors_pending_deprecation import (
     _get_default_ophys_metadata_old_metadata_list,
 )
 from neuroconv.utils import dict_deep_update
+
+
+def add_fluorescence_traces_to_nwbfile(
+    segmentation_extractor,
+    nwbfile,
+    metadata,
+    plane_segmentation_name=None,
+    include_background_segmentation=False,
+    iterator_options=None,
+):
+    """Write the ROI traces the way the removed public wrapper did, so these tests keep covering the old-format writer."""
+    traces_to_add = {
+        trace_name: trace
+        for trace_name, trace in segmentation_extractor.get_traces_dict().items()
+        if trace is not None and math.prod(trace.shape) != 0
+    }
+    if include_background_segmentation:
+        traces_to_add.pop("neuropil", None)
+    if not traces_to_add:
+        return nwbfile
+    return _add_fluorescence_traces_to_nwbfile(
+        segmentation_extractor=segmentation_extractor,
+        traces_to_add=traces_to_add,
+        background_or_roi_ids=segmentation_extractor.get_roi_ids(),
+        nwbfile=nwbfile,
+        metadata=metadata,
+        default_plane_segmentation_index=0,
+        plane_segmentation_name=plane_segmentation_name,
+        iterator_options=iterator_options,
+    )
 
 
 class TestAddDevices(unittest.TestCase):
