@@ -293,6 +293,21 @@ class NWBConverter:
         metadata = metadata or self._get_metadata_for_writing()
 
         conversion_options = conversion_options or dict()
+
+        def add_commanded_voltages(converter, options):
+            for child_name, child in converter.data_interface_objects.items():
+                child_options = options.get(child_name, {})
+                if isinstance(child, NWBConverter):
+                    add_commanded_voltages(child, child_options)
+                elif (write_drives := getattr(child, "_add_commanded_voltage_series", None)) is not None:
+                    drive_options = {
+                        key: child_options[key]
+                        for key in ("stub_test", "stub_samples", "always_write_timestamps")
+                        if key in child_options
+                    }
+                    write_drives(nwbfile=nwbfile, metadata=metadata, **drive_options)
+
+        add_commanded_voltages(self, conversion_options)
         for child_name, child in self.data_interface_objects.items():
             child_options = conversion_options.get(child_name, dict())
             if isinstance(child, NWBConverter):

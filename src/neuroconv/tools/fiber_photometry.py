@@ -214,7 +214,7 @@ def add_commanded_voltage_series(
     description: str,
     data,
     unit: str,
-    frequency: float,
+    frequency: float | None,
     timing_kwargs: dict,
 ):
     """Add a ``CommandedVoltageSeries`` to ``nwbfile.acquisition``, idempotently by name.
