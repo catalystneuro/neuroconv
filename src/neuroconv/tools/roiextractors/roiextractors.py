@@ -1391,7 +1391,7 @@ def add_segmentation_to_nwbfile(
             "`include_roi_acceptance` is deprecated and has no effect. ROI acceptance is now "
             "written automatically as a column on the PlaneSegmentation table whenever the "
             "segmentation extractor exposes acceptance/rejection through its property system. "
-            "This parameter will be removed on or after February 2027.",
+            "This parameter will be removed in v0.12.0.",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -1544,7 +1544,7 @@ def write_segmentation_to_nwbfile(
             "`include_roi_acceptance` is deprecated and has no effect. ROI acceptance is now "
             "written automatically as a column on the PlaneSegmentation table whenever the "
             "segmentation extractor exposes acceptance/rejection through its property system. "
-            "This parameter will be removed on or after February 2027.",
+            "This parameter will be removed in v0.12.0.",
             DeprecationWarning,
             stacklevel=2,
         )
