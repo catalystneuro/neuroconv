@@ -1089,7 +1089,7 @@ def add_imaging_to_nwbfile(
         explicitly, regardless of whether the sampling rate is uniform.
     metadata_key : str, optional
         The key in ``metadata["Ophys"]["MicroscopySeries"]`` identifying the series.
-        When provided, uses the new dict-based metadata format and ``photon_series_index`` is ignored.
+        For old list-based metadata, the series picked by ``photon_series_index`` is translated under this key.
 
     Returns
     -------
@@ -1361,7 +1361,8 @@ def add_segmentation_to_nwbfile(
         Options for iterating over the data, by default None.
     metadata_key : str, optional
         The key in ``metadata["Ophys"]["PlaneSegmentations"]`` identifying the segmentation.
-        When provided, uses the new dict-based metadata format.
+        For old list-based metadata, the plane segmentation named by ``plane_segmentation_name``, or the first one
+        when it is not given, is translated under this key.
 
     Returns
     -------
