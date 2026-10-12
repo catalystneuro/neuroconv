@@ -312,7 +312,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             self._number_of_segments == 1
         ), "This recording has multiple segments; please use 'align_segment_timestamps' instead."
 
-        self.recording_extractor.set_times(times=aligned_timestamps, with_warning=False)
+        self.recording_extractor.set_times(times=aligned_timestamps)
 
     def set_aligned_segment_timestamps(self, aligned_segment_timestamps: list[np.ndarray]):
         """
@@ -336,7 +336,6 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             self.recording_extractor.set_times(
                 times=aligned_segment_timestamps[segment_index],
                 segment_index=segment_index,
-                with_warning=False,
             )
 
     def set_aligned_starting_time(self, aligned_starting_time: float):
