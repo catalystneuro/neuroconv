@@ -269,14 +269,6 @@ class TestAddImagingPlane(TestCase):
 
 
 # TODO: Drop this test class once support for list-based metadata is removed (September 2026).
-# The dict-based equivalent is TestAddSegmentation.
-# TODO: Drop this test class once support for list-based metadata is removed (September 2026).
-# The dict-based equivalent is TestAddSegmentation.
-# TODO: Drop this test class once support for list-based metadata is removed (September 2026).
-# The dict-based equivalent is TestAddSegmentation.
-# TODO: Drop this test class once support for list-based metadata is removed (September 2026).
-# The dict-based equivalent is TestAddSegmentation.
-# TODO: Drop this test class once support for list-based metadata is removed (September 2026).
 # The dict-based equivalent is TestAddImaging.
 class TestAddPhotonSeries(TestCase):
     @classmethod
