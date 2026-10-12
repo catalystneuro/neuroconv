@@ -188,8 +188,7 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         fiber_photometry_metadata = {self.metadata_key: series_metadata}
         if self._commanded_voltage_key_to_get_data:
             fiber_photometry_metadata["CommandedVoltageSeries"] = {
-                key: dict(name=f"CommandedVoltageSeries{key}", unit="volts")
-                for key in self._commanded_voltage_key_to_get_data
+                key: dict(name=f"CommandedVoltageSeries{key}") for key in self._commanded_voltage_key_to_get_data
             }
         return dict_deep_update(metadata, dict(FiberPhotometry=fiber_photometry_metadata))
 
@@ -429,7 +428,8 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
                 name=commanded_voltage_metadata["name"],
                 description=commanded_voltage_metadata.get("description", ""),
                 data=data,
-                unit=commanded_voltage_metadata["unit"],
+                # The source records no unit, so a missing one gets the placeholder here, where the series is built.
+                unit=commanded_voltage_metadata.get("unit", "volts"),
                 frequency=commanded_voltage_metadata.get("frequency"),
                 timing_kwargs=self._timing_kwargs_from_timestamps(timestamps, always_write_timestamps),
             )

@@ -280,7 +280,7 @@ A TDT store such as ``Fi1d`` holds one drive per channel, so a TDT drive is a ``
 stream, so the stream name alone selects it. Each format reads its own selection, and the base interface
 registers the drive as a time-bearing object through a private method, so the shared interface carries
 no selection syntax of its own. The corresponding ``CommandedVoltageSeries`` metadata entry describes the
-output, and ``get_metadata`` fills it with a default ``name`` and ``unit`` for each declared drive. Registering the drive at construction makes it available for alignment before writing. It has its
+output, and ``get_metadata`` fills it with a default ``name`` for each declared drive. Registering the drive at construction makes it available for alignment before writing. It has its
 own timestamps because drives and responses can have different sampling rates and sample counts.
 
 Each interface writes only its declared drives. A converter first writes the drives from all its
