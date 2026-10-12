@@ -25,9 +25,7 @@ class MiniscopeBehaviorInterface(BaseDataInterface):
         return source_schema
 
     @validate_call
-    def __init__(
-        self, folder_path: DirectoryPath, *, verbose: bool = False
-    ):  # TODO: change to * (keyword only) on or after August 2026
+    def __init__(self, folder_path: DirectoryPath, *, verbose: bool = False):
         """
         Initialize reading recordings from the Miniscope behavioral camera.
 

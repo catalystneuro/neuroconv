@@ -1056,7 +1056,6 @@ def add_imaging_to_nwbfile(
     iterator_options: dict | None = None,
     parent_container: Literal["acquisition", "processing/ophys"] = "acquisition",
     always_write_timestamps: bool = False,
-    # TODO: move metadata_key after metadata once positional args removed (September 2026)
     metadata_key: str | None = None,
 ) -> NWBFile:
     """
@@ -1337,7 +1336,6 @@ def add_segmentation_to_nwbfile(
     include_roi_acceptance: bool | None = None,
     mask_type: Literal["image", "pixel", "voxel"] = "image",
     iterator_options: dict | None = None,
-    # TODO: move metadata_key after metadata once positional args removed (September 2026)
     metadata_key: str | None = None,
 ) -> NWBFile:
     """

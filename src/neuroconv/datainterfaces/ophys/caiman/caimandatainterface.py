@@ -31,9 +31,7 @@ class CaimanSegmentationInterface(BaseSegmentationExtractorInterface):
 
         return CaimanSegmentationExtractor
 
-    def __init__(
-        self, file_path: FilePath, *, verbose: bool = False, metadata_key: str | None = None
-    ):  # TODO: change to * (keyword only) on or after August 2026
+    def __init__(self, file_path: FilePath, *, verbose: bool = False, metadata_key: str | None = None):
         """
         Parameters
         ----------
