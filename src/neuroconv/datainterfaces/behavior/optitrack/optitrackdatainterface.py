@@ -5,16 +5,19 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from pydantic import FilePath, validate_call
+from pynwb import TimeSeries
+from pynwb.behavior import SpatialSeries
 from pynwb.file import NWBFile
 
 from .._pose_metadata_template import _get_pose_estimation_template_entry, _get_skeleton_template_entry
 from ..baseposeestimationinterface import BasePoseEstimationInterface
+from ....tools.nwb_helpers import get_module
 from ....tools.nwb_helpers._metadata_and_file_helpers import (
     _get_device_model_template_entry,
     _get_device_template_entry,
 )
 from ....tools.pose_estimation import _add_pose_estimation_to_nwbfile
-from ....utils import DeepDict, to_camel_case, to_snake_case
+from ....utils import DeepDict, calculate_regular_series_rate, to_camel_case, to_snake_case
 
 # Rows 3 to 7 of a Motive CSV export, after the export settings line and a blank line
 # (Motive docs, "CSV Header").
@@ -330,6 +333,24 @@ class OptiTrackInterface(BasePoseEstimationInterface):
                 PoseEstimationSeries=series_metadata,
             )
 
+        rotation_type = self._header.get("Rotation Type")
+        for (asset_type, label), rotation in self._get_rotations().items():
+            asset = f"{asset_type} '{label}'"
+            series_name = f"{to_camel_case(to_snake_case(asset_type))}{to_camel_case(to_snake_case(label))}"
+            if rotation_type == "Quaternion":
+                entry = dict(
+                    name=f"RotationQuaternion{series_name}",
+                    description=(f"Orientation of {asset} as a unit quaternion (scalar-first: w, x, y, z)."),
+                    unit="n.a.",
+                )
+            else:
+                entry = dict(
+                    name=f"Rotation{series_name}",
+                    description=(f"Orientation of {asset} as Euler angles in degrees (x, y, z)."),
+                    unit="degrees",
+                )
+            metadata["TimeSeries"][self._get_rotation_metadata_key(asset_type, label)] = entry
+
         return metadata
 
     def get_metadata_template(self) -> DeepDict:
@@ -406,3 +427,16 @@ class OptiTrackInterface(BasePoseEstimationInterface):
                 metadata=metadata,
                 metadata_key=container_metadata_key,
             )
+
+        rate = calculate_regular_series_rate(series=timestamps)
+        timing = dict(rate=rate, starting_time=float(timestamps[0])) if rate else dict(timestamps=timestamps)
+        series_metadata = metadata.get("TimeSeries", {})
+        behavior_module = get_module(nwbfile=nwbfile, name="behavior", description="processed behavioral data")
+        for (asset_type, label), rotation in self._get_rotations().items():
+            rotation_metadata_key = self._get_rotation_metadata_key(asset_type, label)
+            if rotation_metadata_key not in series_metadata:
+                continue
+            data = np.column_stack(list(rotation.values()))[:end_frame]
+            series_kwargs = dict(series_metadata[rotation_metadata_key], data=data, **timing)
+            series_class = TimeSeries if self._header.get("Rotation Type") == "Quaternion" else SpatialSeries
+            behavior_module.add(series_class(**series_kwargs))
