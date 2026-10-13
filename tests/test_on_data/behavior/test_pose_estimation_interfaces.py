@@ -13,6 +13,7 @@ from neuroconv.datainterfaces import (
     DANNCEInterface,
     DeepLabCutInterface,
     LightningPoseDataInterface,
+    OptiTrackInterface,
     SLEAPInterface,
 )
 from neuroconv.tools.testing.data_interface_mixins import (
@@ -57,7 +58,6 @@ class TestLightningPoseDataInterface(PoseEstimationInterfaceTestMixin):
     @pytest.fixture(scope="class", autouse=True)
     @classmethod
     def setup_metadata(cls):
-
         cls.pose_estimation_name = "PoseEstimation"
         cls.original_video_height = 406
         cls.original_video_width = 396
@@ -1494,3 +1494,133 @@ class TestDANNCEInterfaceMultiAnimal(_DANNCEMetadataPropagationMixin, PoseEstima
         for series in pe.pose_estimation_series.values():
             assert series.data.shape == (50, 3)
         nwbfile.read_io.close()
+
+
+class TestOptiTrackInterface(PoseEstimationInterfaceTestMixin):
+    """A take with one rigid body."""
+
+    data_interface_cls = OptiTrackInterface
+    interface_kwargs = dict(
+        file_path=str(
+            BEHAVIOR_DATA_PATH / "optitrack" / "single_rigid_body" / "format_1_23" / "Take 2023-03-15 08.25.25 AM.csv"
+        )
+    )
+    save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 3, 15, 8, 25, 25, 277000)
+
+        assert list(metadata["Pose"]["PoseEstimations"]) == ["optitrack_rigid_body"]
+        container_entry = metadata["Pose"]["PoseEstimations"]["optitrack_rigid_body"]
+        assert container_entry["name"] == "PoseEstimationRigidBody"
+        assert container_entry["source_software"] == "Motive"
+        series_entry = container_entry["PoseEstimationSeries"]["RigidBody"]
+        assert series_entry["name"] == "PoseEstimationSeriesRigidBody"
+        assert series_entry["unit"] == "meters"
+
+        assert metadata["Pose"]["Skeletons"]["optitrack_rigid_body"]["nodes"] == ["RigidBody"]
+
+    def run_custom_checks(self):
+        nwbfile = read_nwb(self.nwbfile_path)
+        series = nwbfile.processing["behavior"]["PoseEstimationRigidBody"].pose_estimation_series[
+            "PoseEstimationSeriesRigidBody"
+        ]
+        assert series.rate == 120.0
+        assert series.starting_time == 0.0
+        assert series.data.shape == (1200, 3)
+        # Frame 0 of the source, position X, Y, Z.
+        assert_array_equal(series.data[0], [0.602826, 0.040212, 0.051992])
+        assert series.confidence is None
+        nwbfile.read_io.close()
+
+
+class TestOptiTrackInterfaceAssetTypes(PoseEstimationInterfaceTestMixin):
+    """A take with two rigid bodies, their marker constraints, labeled markers and unlabeled markers."""
+
+    data_interface_cls = OptiTrackInterface
+    interface_kwargs = dict(
+        file_path=str(BEHAVIOR_DATA_PATH / "optitrack" / "rotation_and_units" / "quaternion_meters" / "block 2.csv")
+    )
+    save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        containers_metadata = metadata["Pose"]["PoseEstimations"]
+        assert list(containers_metadata) == [
+            "optitrack_rigid_body",
+            "optitrack_rigid_body_marker",
+            "optitrack_marker",
+        ]
+        assert [entry["name"] for entry in containers_metadata.values()] == [
+            "PoseEstimationRigidBody",
+            "PoseEstimationRigidBodyMarker",
+            "PoseEstimationMarker",
+        ]
+        assert list(containers_metadata["optitrack_rigid_body"]["PoseEstimationSeries"]) == [
+            "transmitter",
+            "reciver",
+        ]
+        # Seven rigid body markers, and seven of the fifteen markers: the eight unlabeled ones are left out.
+        assert len(containers_metadata["optitrack_rigid_body_marker"]["PoseEstimationSeries"]) == 7
+        marker_names = list(containers_metadata["optitrack_marker"]["PoseEstimationSeries"])
+        assert len(marker_names) == 7
+        assert not any(name.startswith("Unlabeled") for name in marker_names)
+
+    def run_custom_checks(self):
+        nwbfile = read_nwb(self.nwbfile_path)
+        behavior_module = nwbfile.processing["behavior"]
+        series = behavior_module["PoseEstimationRigidBodyMarker"].pose_estimation_series[
+            "PoseEstimationSeriesTransmitterMarker1"
+        ]
+        assert_array_equal(series.data[0], [1.332051, 0.342950, 0.112557])
+        # `reciver` is untracked, its cells empty, in 57 of the 100 frames.
+        reciver = behavior_module["PoseEstimationRigidBody"].pose_estimation_series["PoseEstimationSeriesReciver"]
+        assert np.isnan(reciver.data[:]).all(axis=1).sum() == 57
+        nwbfile.read_io.close()
+
+
+class TestOptiTrackInterfaceFileVariants:
+    """How the interface reads the export layouts and edge cases in the OptiTrack test data."""
+
+    euler_file_path = BEHAVIOR_DATA_PATH / "optitrack" / "rotation_and_units" / "euler_xyz_millimeters" / "block 2.csv"
+    blank_cells_file_path = (
+        BEHAVIOR_DATA_PATH / "optitrack" / "untracked_rigid_body" / "blank_cells" / "Take 2022-02-28 10.23.34 AM.csv"
+    )
+    zeros_file_path = (
+        BEHAVIOR_DATA_PATH / "optitrack" / "untracked_rigid_body" / "zeros_instead_of_blanks" / "V4_throw_003.csv"
+    )
+    format_1_22_file_path = (
+        BEHAVIOR_DATA_PATH
+        / "optitrack"
+        / "single_rigid_body"
+        / "format_1_22_truncated_start_time"
+        / "Take 2023-01-24 09.35.03 AM.csv"
+    )
+
+    def test_millimeters_are_the_unit(self):
+        interface = OptiTrackInterface(file_path=self.euler_file_path)
+        containers_metadata = interface.get_metadata()["Pose"]["PoseEstimations"]
+        for container_entry in containers_metadata.values():
+            for series_entry in container_entry["PoseEstimationSeries"].values():
+                assert series_entry["unit"] == "millimeters"
+
+    def test_an_asset_never_tracked_is_left_out_with_a_warning(self):
+        with pytest.warns(UserWarning, match="Rigid Body 'RigidBody 2'"):
+            interface = OptiTrackInterface(file_path=self.blank_cells_file_path)
+            keypoint_names = interface._get_keypoint_names("Rigid Body")
+        assert keypoint_names == ["drone_stein"]
+
+    def test_position_at_the_origin_is_written_as_nan(self):
+        """`V4Glider` is at position 0,0,0 in frames 0 to 85, before it was first tracked."""
+        interface = OptiTrackInterface(file_path=self.zeros_file_path)
+        positions, confidence = interface._get_keypoint_data("Rigid Body")["V4Glider"]
+        assert np.isnan(positions[:86]).all()
+        assert not np.isnan(positions[86:]).any()
+
+    def test_format_1_22_reads_without_a_session_start_time(self):
+        """Its `Capture Start Time` is a 1969 date, an overflow that is not read."""
+        interface = OptiTrackInterface(file_path=self.format_1_22_file_path)
+        assert interface._get_keypoint_names("Rigid Body") == ["RigidBody 01"]
+        with pytest.warns(UserWarning, match="Could not parse 'Capture Start Time'"):
+            metadata = interface.get_metadata()
+        assert "session_start_time" not in metadata["NWBFile"]
+        assert len(interface.get_original_timestamps()) == 1000
