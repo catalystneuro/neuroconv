@@ -30,12 +30,12 @@ _STUB_SAMPLES = 100
 
 
 class OptiTrackInterface(BasePoseEstimationInterface):
-    """Data interface for rigid body positions in OptiTrack Motive CSV exports."""
+    """Data interface for the positions and rotations in OptiTrack Motive CSV exports."""
 
     display_name = "OptiTrack"
     keywords = ("behavior", "pose estimation", "motion capture")
     associated_suffixes = (".csv",)
-    info = "Interface for rigid body positions exported to CSV by OptiTrack Motive."
+    info = "Interface for positions and rotations exported to CSV by OptiTrack Motive."
 
     @classmethod
     def get_source_schema(cls) -> dict:
@@ -52,11 +52,16 @@ class OptiTrackInterface(BasePoseEstimationInterface):
         metadata_key: str | None = None,
     ):
         """
-        Interface for writing the positions in an OptiTrack Motive CSV export to NWB.
+        Interface for writing the positions and rotations in an OptiTrack Motive CSV export to NWB.
 
         Each marker type in the export (e.g. ``Rigid Body``) is written as one ``ndx-pose`` ``PoseEstimation``
         container, with one keypoint per marker. Its entry in the metadata is
         keyed ``f"{metadata_key}_{asset_type}"`` in snake case, for example ``"optitrack_rigid_body"``.
+
+        The rotation of each asset that has one, such as a rigid body, is written to the behavior module as a
+        ``SpatialSeries`` in degrees for an Euler angle export, or as a ``TimeSeries`` with columns w, x, y, z
+        for a quaternion export. Its entry in ``metadata["TimeSeries"]`` is keyed
+        ``f"{metadata_key}_{asset_type}_{label}_rotation"`` in snake case.
 
         Parameters
         ----------
@@ -72,9 +77,10 @@ class OptiTrackInterface(BasePoseEstimationInterface):
         Metadata Structure
         ------------------
         One container and one skeleton per asset type in the export, under the top-level
-        ``metadata["Pose"]`` registries, both keyed ``f"{metadata_key}_{asset_type}"`` in snake case. For an
-        export with a single rigid body, ``RigidBody``, in meters and with no marker columns (a head-mounted
-        rigid body on a mouse):
+        ``metadata["Pose"]`` registries, both keyed ``f"{metadata_key}_{asset_type}"`` in snake case, and one
+        rotation per rigid body under ``metadata["TimeSeries"]``. For an export with a single rigid body,
+        ``RigidBody``, in meters, with XYZ Euler angles and no marker columns (a head-mounted rigid body on a
+        mouse):
 
         .. code-block:: python
 
@@ -95,32 +101,31 @@ class OptiTrackInterface(BasePoseEstimationInterface):
                         "optitrack_rigid_body": {
                             "name": "PoseEstimationRigidBody",
                             "source_software": "Motive",
-                            "source_software_version": "1.23",  # `Format Version` in the export settings
                             "skeleton_metadata_key": "optitrack_rigid_body",  # -> Pose.Skeletons
                             "PoseEstimationSeries": {
                                 "RigidBody": {  # keyed by the asset name in Motive
                                     "name": "PoseEstimationSeriesRigidBody",
-                                    "description": (
-                                        "Position (x, y, z) of the center of rigid body 'RigidBody', as solved "
-                                        "by OptiTrack Motive."
-                                    ),
+                                    "description": "Position (x, y, z) of Rigid Body 'RigidBody' marker.",
                                     "unit": "meters",  # from `Length Units` in the export settings
-                                    "reference_frame": (
-                                        "Motive's global coordinate system, whose origin is the ground plane set "
-                                        "during calibration of the capture volume. The axis convention chosen at "
-                                        "export is not recorded in the file."
-                                    ),
                                 },
                             },
                         },
                     },
                 },
+                "TimeSeries": {
+                    "optitrack_rigid_body_rigid_body_rotation": {
+                        "name": "RotationRigidBody",
+                        "description": "Orientation of Rigid Body 'RigidBody' as Euler angles in degrees (x, y, z).",
+                        "unit": "degrees",
+                    },
+                },
             }
 
         The keys are internal handles and never appear in the NWB file; rename the written objects through
-        their ``name`` fields. Delete an entry from ``metadata["Pose"]["PoseEstimations"]`` to leave that
-        container out of the file. :meth:`get_metadata_template` returns the same structure with the fields
-        the export does not record, such as the camera device, marked as blanks.
+        their ``name`` fields. Delete an entry from ``metadata["Pose"]["PoseEstimations"]`` or
+        ``metadata["TimeSeries"]`` to leave that container or rotation out of the file.
+        :meth:`get_metadata_template` returns the same structure with the fields the export does not record,
+        such as the camera device, marked as blanks.
         """
         # This import is to assure that the ndx_pose is in the global namespace when an pynwb.io object is created
         # For more detail, see https://github.com/rly/ndx-pose/issues/36
@@ -324,7 +329,7 @@ class OptiTrackInterface(BasePoseEstimationInterface):
         rotation_type = self._header.get("Rotation Type")
         for (asset_type, label), rotation in self._get_rotations().items():
             asset = f"{asset_type} '{label}'"
-            series_name = f"{to_camel_case(to_snake_case(asset_type))}{to_camel_case(to_snake_case(label))}"
+            series_name = to_camel_case(to_snake_case(label))
             if rotation_type == "Quaternion":
                 entry = dict(
                     name=f"RotationQuaternion{series_name}",
