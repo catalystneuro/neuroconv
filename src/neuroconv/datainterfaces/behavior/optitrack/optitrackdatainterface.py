@@ -163,27 +163,98 @@ class OptiTrackInterface(BasePoseEstimationInterface):
         contains the type of measurement_type for each column (e.g., position, rotation, marker), and the axis row begins with
         ``Frame``and contains the axis for each column (e.g., X, Y, Z).
         """
-        data = pd.read_csv(self.file_path, skiprows=1, header=list(range(len(_MOTIVE_HEADER_LEVELS))), index_col=[0, 1])
-        data.columns.names = _MOTIVE_HEADER_LEVELS
-        data.index.names = ["frame", "time"]
-        return data
+        if self._motion_capture_data is not None:
+            return self._motion_capture_data
+
+        self._motion_capture_data = pd.read_csv(
+            self.file_path, skiprows=1, header=list(range(len(_MOTIVE_HEADER_LEVELS))), index_col=[0, 1]
+        )
+        self._motion_capture_data.columns.names = _MOTIVE_HEADER_LEVELS
+        self._motion_capture_data.index.names = ["frame", "time"]
+        return self._motion_capture_data
+
+    def _get_assets(self) -> dict[tuple[str, str], dict[str, dict[str, np.ndarray]]]:
+        """Every column of the export, as ``{(marker_type, label): {measurement_type: {axis: values}}}``, in file order.
+
+        For example ``assets[("Rigid Body", "RigidBody")]["Position"]["X"]``.
+        """
+        assets = {}
+        for (marker_type, label, _, measurement_type, axis), values in self._read_motion_capture_data().items():
+            asset = assets.setdefault((marker_type, label), {})
+            asset.setdefault(measurement_type, {})[axis] = values.to_numpy(dtype=np.float64)
+        return assets
 
     def _get_positions(self) -> dict[str, dict[str, np.ndarray]]:
+        """The positions of every asset, as ``{marker_type: {label: (num_frames, 3) array}}``, in file order.
+
+        Unlabeled markers and assets that were never tracked in any frame are omitted. A frame where an asset was not tracked, empty or at the origin, is ``np.nan``.
+        """
         if self._positions is not None:
             return self._positions
-        data = self._read_motion_capture_data()
-        measurements = data.xs(key="Position", axis=1, level="measurement_type").droplevel("id", axis=1)
-        assets = dict.fromkeys(measurements.columns.droplevel("axis"))  # (type, name) pairs, in file order
-        self._positions = {}
-        for marker_type, label in assets:
-            positions = measurements[(marker_type, label)][["X", "Y", "Z"]].to_numpy()
-            self._positions.setdefault(marker_type, {})[label] = positions
+
+        positions_by_type = {}
+        never_tracked = []
+        for (marker_type, label), measurements in self._get_assets().items():
+            is_unlabeled_marker = marker_type == "Marker" and label.startswith("Unlabeled")
+            if "Position" not in measurements or is_unlabeled_marker:
+                continue
+            position = measurements["Position"]
+            positions = np.column_stack([position["X"], position["Y"], position["Z"]])
+
+            # In a frame where an asset was not tracked, Motive leaves its cells empty. In one export in the test
+            # data (zeros_instead_of_blanks), a rigid body holds position 0,0,0 in the frames before it was first
+            # tracked instead. A position exactly at the origin is treated as untracked.
+            is_at_origin = (positions == 0.0).all(axis=1)
+            positions[is_at_origin] = np.nan
+
+            if np.isnan(positions).all():
+                never_tracked.append(f"{marker_type} '{label}'")
+                continue
+            positions_by_type.setdefault(marker_type, {})[label] = positions
+
+        if never_tracked:
+            warnings.warn(
+                f"Not tracked in any frame of '{self.file_path}', so not written: {', '.join(never_tracked)}.",
+                UserWarning,
+                stacklevel=2,
+            )
+        if not positions_by_type:
+            raise ValueError(f"No asset in '{self.file_path}' was tracked in any frame, so there is nothing to write.")
+        self._positions = positions_by_type
         return self._positions
 
     def get_original_timestamps(self) -> np.ndarray:
-        """The ``Time`` column of the export, in seconds from the start of the take."""
-        times = self._read_motion_capture_data().index.get_level_values("time").to_numpy()
-        return times
+        """The time of each frame, ``Frame / Export Frame Rate``, in seconds from the start of the take."""
+        frames = self._read_motion_capture_data().index.get_level_values("frame").to_numpy(dtype=np.float64)
+        return frames / float(self._header["Export Frame Rate"])
+
+    def _get_rotation_metadata_key(self, asset_type: str, label: str) -> str:
+        """The key of one asset's rotation in ``metadata["TimeSeries"]``, e.g. ``"optitrack_rigid_body_transmitter_rotation"``."""
+        return f"{self._get_container_metadata_key(asset_type)}_{to_snake_case(label)}_rotation"
+
+    def _get_rotations(self) -> dict[tuple[str, str], dict[str, np.ndarray]]:
+        """The rotation of every asset that is written and has one, ``{(asset_type, label): {axis: values}}``.
+
+        Rigid bodies have a rotation, and so do the bones of skeletons and trained markersets. A frame where the
+        asset's position is untracked, empty or at the origin, is untracked in its rotation too, so the two series
+        agree on which frames hold a pose.
+        """
+        assets = self._get_assets()
+        rotations = {}
+        for asset_type, positions_by_label in self._get_positions().items():
+            for label, positions in positions_by_label.items():
+                rotation = assets[(asset_type, label)].get("Rotation")
+                if rotation is None:
+                    continue
+                # Quaternions are written scalar first (W, X, Y, Z), as in MiniscopeHeadOrientationInterface. Euler
+                # angles keep the X, Y, Z file order.
+                if "W" in rotation:
+                    rotation = {axis: rotation[axis] for axis in ("W", "X", "Y", "Z")}
+                is_untracked = np.isnan(positions).all(axis=1)
+                rotations[(asset_type, label)] = {
+                    axis: np.where(is_untracked, np.nan, values) for axis, values in rotation.items()
+                }
+        return rotations
 
     def _get_container_metadata_key(self, asset_type: str) -> str:
         """The key of one asset type's container and skeleton, e.g. ``"optitrack_rigid_body"``."""
