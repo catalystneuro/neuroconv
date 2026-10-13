@@ -130,6 +130,7 @@ class OptiTrackInterface(BasePoseEstimationInterface):
         self._header = self._read_header()
 
         self.metadata_key = metadata_key or "optitrack"
+        self._motion_capture_data = None
         self._positions = None
 
         super().__init__(verbose=verbose, file_path=file_path)
@@ -294,10 +295,6 @@ class OptiTrackInterface(BasePoseEstimationInterface):
         if session_start_time is not None:
             metadata["NWBFile"]["session_start_time"] = session_start_time
 
-        # TODO: not sure what this should be. The Motive CSV docs say global coordinates are relative to
-        #  "the origin of the ground plane, set with a calibration square during the Calibration process".
-        #  Local coordinates are relative to a parent bone.
-        reference_frame = "(0,0,0) is unknown."
         unit = self._header.get("Length Units")
 
         for asset_type, positions in self._get_positions().items():
@@ -309,7 +306,6 @@ class OptiTrackInterface(BasePoseEstimationInterface):
                 series_entry = dict(
                     name=f"PoseEstimationSeries{to_camel_case(to_snake_case(asset_name))}",
                     description=f"Position (x, y, z) of {asset_type} '{asset_name}' marker.",
-                    # reference_frame=reference_frame,
                 )
                 if unit is not None:
                     series_entry["unit"] = str(unit).lower()
@@ -318,17 +314,9 @@ class OptiTrackInterface(BasePoseEstimationInterface):
             metadata["Pose"]["Skeletons"][container_metadata_key] = dict(
                 name=f"Skeleton{container_name}", nodes=list(positions), edges=[]
             )
-            # can we provide the version of the motive software?
-            # PROPOSED (question above): not from the CSV. The Motive docs list everything the first row holds
-            # (format version, take name, capture and export frame rate, capture start time and frame, frame
-            # counts, rotation type, length units, coordinate space), and the Motive version is not among
-            # them. A user who knows it can set `source_software_version` in the metadata. A comment here would
-            # keep the next reader from wondering the same thing:
-            # # `Format Version` is the version of the CSV layout, the only version the export records.
             metadata["Pose"]["PoseEstimations"][container_metadata_key] = dict(
                 name=container_name,
                 source_software="Motive",
-                # source_software_version=self._header["Format Version"],
                 skeleton_metadata_key=container_metadata_key,
                 PoseEstimationSeries=series_metadata,
             )
