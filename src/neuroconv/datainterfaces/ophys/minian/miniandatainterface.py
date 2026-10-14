@@ -116,10 +116,7 @@ class MinianSegmentationInterface(BaseSegmentationExtractorInterface):
         *,
         stub_test: bool = False,
         stub_samples: int = 100,
-        include_background_segmentation: bool = True,
-        include_roi_centroids: bool = True,
         include_roi_acceptance: Optional[bool] = None,
-        mask_type: Optional[str] = "image",  # Literal["image", "pixel", "voxel"]
         plane_segmentation_name: Optional[str] = None,
         iterator_options: Optional[dict] = None,
     ):
@@ -139,9 +136,6 @@ class MinianSegmentationInterface(BaseSegmentationExtractorInterface):
             metadata=metadata,
             stub_test=stub_test,
             stub_samples=stub_samples,
-            include_background_segmentation=include_background_segmentation,
-            include_roi_centroids=include_roi_centroids,
-            mask_type=mask_type,
             plane_segmentation_name=plane_segmentation_name,
             iterator_options=iterator_options,
         )
