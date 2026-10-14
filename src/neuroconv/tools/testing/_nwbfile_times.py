@@ -4,7 +4,7 @@ from pynwb import TimeSeries
 from pynwb.file import NWBFile
 
 
-def get_nwbfile_times(nwbfile: NWBFile) -> dict[str, np.ndarray]:
+def _get_nwbfile_times(nwbfile: NWBFile) -> dict[str, np.ndarray]:
     """Collect every time an NWB file holds, keyed by the field's path in the file.
 
     Which fields count as times is decided per neurodata type: a ``TimeSeries`` contributes its timestamps,

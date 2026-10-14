@@ -30,7 +30,7 @@ from neuroconv.datainterfaces.ophys.basesegmentationextractorinterface import (
     BaseSegmentationExtractorInterface,
 )
 from neuroconv.tools.fiber_photometry import get_fiber_photometry_table
-from neuroconv.tools.testing._nwbfile_times import get_nwbfile_times
+from neuroconv.tools.testing._nwbfile_times import _get_nwbfile_times
 from neuroconv.utils.json_schema import _NWBMetaDataEncoder
 
 
@@ -211,12 +211,12 @@ class DataInterfaceTestMixin:
 
         # Each build starts from a fresh interface because aligning changes its state
         original_nwbfile = self.interface.create_nwbfile(metadata=metadata, **self.conversion_options)
-        original_times = get_nwbfile_times(original_nwbfile)
+        original_times = _get_nwbfile_times(original_nwbfile)
         assert original_times, "The interface wrote no time-bearing object, so there is nothing to align."
 
         shifted_interface = self.data_interface_cls(**self.interface_kwargs)
         shifted_interface.alignment.shift_times(shift)
-        shifted_times = get_nwbfile_times(
+        shifted_times = _get_nwbfile_times(
             shifted_interface.create_nwbfile(metadata=metadata, **self.conversion_options)
         )
 
@@ -248,14 +248,14 @@ class DataInterfaceTestMixin:
 
         # Each build starts from a fresh interface because aligning changes its state
         original_nwbfile = self.interface.create_nwbfile(metadata=metadata, **self.conversion_options)
-        original_times = get_nwbfile_times(original_nwbfile)
+        original_times = _get_nwbfile_times(original_nwbfile)
         assert original_times, "The interface wrote no time-bearing object, so there is nothing to align."
 
         replaced_interface = self.data_interface_cls(**self.interface_kwargs)
         for key in replaced_interface.alignment.keys():
             time_bearing_object = replaced_interface.alignment[key]
             time_bearing_object.set_times(time_bearing_object.get_times() * stretch + shift)
-        replaced_times = get_nwbfile_times(
+        replaced_times = _get_nwbfile_times(
             replaced_interface.create_nwbfile(metadata=metadata, **self.conversion_options)
         )
 
