@@ -53,6 +53,8 @@ def _get_metadata_for_writing(interface) -> dict:
 
 
 _ALIGNMENT_TEST_SHIFT = 1.5
+# Replacement times also change the spacing, so a writer that keeps only their first value cannot pass
+_ALIGNMENT_TEST_STRETCH = 2.0
 
 
 def _unwrap_to_array(values) -> np.ndarray:
@@ -268,7 +270,7 @@ class DataInterfaceTestMixin:
 
         return interface.create_nwbfile(metadata=metadata, **self.conversion_options)
 
-    def _assert_shifted_times(self, reference: NWBFile, aligned: NWBFile):
+    def _assert_written_times(self, reference: NWBFile, aligned: NWBFile, transform):
         reference_times = _get_written_times(reference)
         aligned_times = _get_written_times(aligned)
 
@@ -277,7 +279,7 @@ class DataInterfaceTestMixin:
         for identifier, times in reference_times.items():
             assert_allclose(
                 aligned_times[identifier],
-                times + _ALIGNMENT_TEST_SHIFT,
+                transform(times),
                 rtol=0,
                 atol=1e-9,
                 err_msg=f"{identifier} was written but did not move with the alignment",
@@ -290,7 +292,9 @@ class DataInterfaceTestMixin:
         reference = self._create_nwbfile_after(lambda interface: None)
 
         shifted = self._create_nwbfile_after(lambda interface: interface.alignment.shift_times(_ALIGNMENT_TEST_SHIFT))
-        self._assert_shifted_times(reference=reference, aligned=shifted)
+        self._assert_written_times(
+            reference=reference, aligned=shifted, transform=lambda times: times + _ALIGNMENT_TEST_SHIFT
+        )
 
         # `set_times` is not supported for events, so an interface that registers any skips this half
         if any(isinstance(alignment[key], _TimeBearingEventsTable) for key in alignment.keys()):
@@ -299,10 +303,16 @@ class DataInterfaceTestMixin:
         def replace_times(interface):
             for key in interface.alignment.keys():
                 time_bearing_object = interface.alignment[key]
-                time_bearing_object.set_times(time_bearing_object.get_times() + _ALIGNMENT_TEST_SHIFT)
+                time_bearing_object.set_times(
+                    time_bearing_object.get_times() * _ALIGNMENT_TEST_STRETCH + _ALIGNMENT_TEST_SHIFT
+                )
 
         replaced = self._create_nwbfile_after(replace_times)
-        self._assert_shifted_times(reference=reference, aligned=replaced)
+        self._assert_written_times(
+            reference=reference,
+            aligned=replaced,
+            transform=lambda times: times * _ALIGNMENT_TEST_STRETCH + _ALIGNMENT_TEST_SHIFT,
+        )
 
     def test_alignment_keeps_regular_series_compact(self, setup_interface):
         """A series written as ``starting_time`` and ``rate`` is still written that way after a shift.
