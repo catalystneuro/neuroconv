@@ -31,9 +31,7 @@ class AudioInterface(BaseTemporalAlignmentInterface):
     info = "Interface for writing audio recordings to an NWB file."
 
     @validate_call
-    def __init__(
-        self, file_paths: list[FilePath], *, verbose: bool = False
-    ):  # TODO: change to * (keyword only) on or after August 2026
+    def __init__(self, file_paths: list[FilePath], *, verbose: bool = False):
         """
         Data interface for writing acoustic recordings to an NWB file.
 

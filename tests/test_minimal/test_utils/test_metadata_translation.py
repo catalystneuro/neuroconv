@@ -307,6 +307,29 @@ class TestOphysTranslationContract:
 
         assert _translate_old_metadata(_old_format_ophys_metadata()) == expected_translated_metadata
 
+    def test_tuples_are_translated_like_lists(self):
+        """Nothing but the shape of `Device` and `ImagingPlane` marks this block as old."""
+        metadata = {
+            "Ophys": {
+                "Device": ({"name": "MyMicroscope", "description": "A microscope I described"},),
+                "ImagingPlane": ({"name": "ImagingPlaneGreen", "indicator": "GCaMP6f", "device": "MyMicroscope"},),
+            }
+        }
+        expected_translated_metadata = {
+            "Devices": {"MyMicroscope": {"name": "MyMicroscope", "description": "A microscope I described"}},
+            "Ophys": {
+                "ImagingPlanes": {
+                    "ImagingPlaneGreen": {
+                        "name": "ImagingPlaneGreen",
+                        "indicator": "GCaMP6f",
+                        "device_metadata_key": "MyMicroscope",
+                    }
+                },
+            },
+        }
+
+        assert _translate_old_metadata(metadata) == expected_translated_metadata
+
     def test_the_addressed_photon_series_is_filed_under_the_metadata_key(self):
         expected_translated_metadata = {
             "Devices": {"MyMicroscope": {"name": "MyMicroscope", "description": "A microscope I described"}},

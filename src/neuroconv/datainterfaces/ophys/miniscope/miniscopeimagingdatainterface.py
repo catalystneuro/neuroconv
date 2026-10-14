@@ -47,9 +47,7 @@ class _MiniscopeMultiRecordingInterface(BaseImagingExtractorInterface):
         return MiniscopeMultiRecordingImagingExtractor
 
     @validate_call
-    def __init__(
-        self, folder_path: DirectoryPath, *, verbose: bool = False
-    ):  # TODO: change to * (keyword only) on or after August 2026
+    def __init__(self, folder_path: DirectoryPath, *, verbose: bool = False):
         """
         Initialize reading the Miniscope imaging data.
 

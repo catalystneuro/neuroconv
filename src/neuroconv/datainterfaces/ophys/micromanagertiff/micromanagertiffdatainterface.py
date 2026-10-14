@@ -35,9 +35,7 @@ class MicroManagerTiffImagingInterface(BaseImagingExtractorInterface):
         return MicroManagerTiffImagingExtractor
 
     @validate_call
-    def __init__(
-        self, folder_path: DirectoryPath, *, verbose: bool = False, metadata_key: str | None = None
-    ):  # TODO: change to * (keyword only) on or after August 2026
+    def __init__(self, folder_path: DirectoryPath, *, verbose: bool = False, metadata_key: str | None = None):
         """
         Data Interface for MicroManagerTiffImagingExtractor.
 

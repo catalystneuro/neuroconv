@@ -506,9 +506,7 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
         extractor_instance = extractor_class(**self.extractor_kwargs)
         return extractor_instance
 
-    def __init__(
-        self, file_path: FilePath, *, verbose: bool = False
-    ):  # TODO: change to * (keyword only) on or after August 2026
+    def __init__(self, file_path: FilePath, *, verbose: bool = False):
         """
         Initialize read of Cell Explorer file.
 

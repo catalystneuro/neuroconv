@@ -175,9 +175,7 @@ class AxonaUnitRecordingInterface(AxonaRecordingInterface):
             type="object",
         )
 
-    def __init__(
-        self, file_path: FilePath, *, noise_std: float = 3.5
-    ):  # TODO: change to * (keyword only) on or after August 2026
+    def __init__(self, file_path: FilePath, *, noise_std: float = 3.5):
 
         super().__init__(filename=file_path, noise_std=noise_std)
         self.source_data = dict(file_path=file_path, noise_std=noise_std)

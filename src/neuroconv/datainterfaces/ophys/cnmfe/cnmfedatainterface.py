@@ -16,9 +16,7 @@ class CnmfeSegmentationInterface(BaseSegmentationExtractorInterface):
 
         return CnmfeSegmentationExtractor
 
-    def __init__(
-        self, file_path: FilePath, *, verbose: bool = False, metadata_key: str | None = None
-    ):  # TODO: change to * (keyword only) on or after August 2026
+    def __init__(self, file_path: FilePath, *, verbose: bool = False, metadata_key: str | None = None):
 
         if metadata_key is None:
             metadata_key = "cnmfe_segmentation"
