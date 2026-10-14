@@ -86,9 +86,6 @@ ZARR_COMPRESSION_EXPECTED = {
     "bz2": "bz2",
     "zlib": "zlib",
     "zstd": "zstd",
-    "jenkins_lookup3": "jenkinslookup3",  # Note: the underscores removed in string representation
-    "delta": None,  # TODO, implement a test for this, requires dtype parameter
-    "categorize": None,  # TODO, implement a test for this, requires labels and dtype parameters
 }
 
 
