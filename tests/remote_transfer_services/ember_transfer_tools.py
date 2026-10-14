@@ -1,6 +1,7 @@
 import os
 import sys
 from datetime import datetime
+from importlib.util import find_spec
 from platform import python_version as get_python_version
 
 import pytest
@@ -12,8 +13,9 @@ from neuroconv.tools.nwb_helpers import (
     make_nwbfile_from_metadata,
 )
 
-# The `dandi` extra does not install on Python 3.14, see pyproject.toml.
-pytest.importorskip("dandi")
+# The `dandi` extra does not install on Python 3.14, see pyproject.toml. A marker instead of `pytest.importorskip`,
+# since a module skipped at collection leaves xdist with no tests and pytest then exits with code 5.
+pytestmark = pytest.mark.skipif(find_spec("dandi") is None, reason="dandi is not installed")
 
 EMBER_SANDBOX_API_KEY = os.getenv("EMBER_SANDBOX_API_KEY")
 HAVE_EMBER_KEY = EMBER_SANDBOX_API_KEY is not None and EMBER_SANDBOX_API_KEY != ""  # can be "" from external forks

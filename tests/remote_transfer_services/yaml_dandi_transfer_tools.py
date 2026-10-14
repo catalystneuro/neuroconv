@@ -12,11 +12,15 @@ from neuroconv import run_conversion_from_yaml
 
 from ..test_on_data.setup_paths import ECEPHY_DATA_PATH, OUTPUT_PATH
 
-# The `dandi` extra does not install on Python 3.14, see pyproject.toml.
-pytest.importorskip("dandi")
+try:
+    import dandi.dandiapi
+    from dandi.exceptions import NotFoundError
+except ImportError:  # The `dandi` extra does not install on Python 3.14, see pyproject.toml.
+    dandi = None
 
-import dandi.dandiapi
-from dandi.exceptions import NotFoundError
+# A marker instead of `pytest.importorskip`, since a module skipped at collection leaves xdist with no tests and
+# pytest then exits with code 5.
+pytestmark = pytest.mark.skipif(dandi is None, reason="dandi is not installed")
 
 DANDI_SANDBOX_API_KEY = os.getenv("DANDI_SANDBOX_API_KEY")
 HAVE_DANDI_KEY = DANDI_SANDBOX_API_KEY is not None and DANDI_SANDBOX_API_KEY != ""  # can be "" from external forks
@@ -25,7 +29,7 @@ MAXIMUM_WAIT_IN_SECONDS = 120
 POLL_INTERVAL_IN_SECONDS = 2
 
 
-def _asset_is_from_this_run(dandiset: dandi.dandiapi.RemoteDandiset, asset_path: str) -> bool:
+def _asset_is_from_this_run(dandiset: "dandi.dandiapi.RemoteDandiset", asset_path: str) -> bool:
     """Whether the sandbox holds an asset at this path that this run uploaded.
 
     Past runs leave an asset at the same path, so existence alone is not enough: the modification time is
