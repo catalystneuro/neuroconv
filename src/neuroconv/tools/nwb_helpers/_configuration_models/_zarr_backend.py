@@ -1,10 +1,12 @@
 """Base Pydantic models for the ZarrDatasetConfiguration."""
 
-from typing import ClassVar, Literal
+from typing import Any, ClassVar, Literal
 
 import psutil
+import zarr
 from hdmf_zarr import ZarrDataIO
-from pydantic import Field
+from packaging.version import Version
+from pydantic import Field, model_validator
 
 from ._base_backend import BackendConfiguration
 from ._zarr_dataset_io import ZarrDatasetIOConfiguration
@@ -35,3 +37,14 @@ class ZarrBackendConfiguration(BackendConfiguration):
         le=psutil.cpu_count(),
         default=psutil.cpu_count() - 1,
     )
+
+    # TODO: remove with the zarr 3 port. Python 3.14 only installs zarr 3, and the Zarr backend still speaks zarr 2.
+    @model_validator(mode="before")
+    @classmethod
+    def raise_under_zarr_3(cls, values: Any) -> Any:
+        if Version(zarr.__version__).major >= 3:
+            raise NotImplementedError(
+                f"The Zarr backend does not support zarr 3 yet, and zarr {zarr.__version__} is installed. "
+                "Use the HDF5 backend, or Python 3.13 or older for Zarr."
+            )
+        return values
