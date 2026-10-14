@@ -1,6 +1,5 @@
 from abc import abstractmethod
 from dataclasses import dataclass, field
-from functools import partial
 
 import numpy as np
 from hdmf.common import MeaningsTable, VectorIndex
@@ -112,21 +111,15 @@ class BaseEventsInterface(BaseDataInterface):
             for source_id in self.get_event_type_source_ids():
                 alignment._register_events(
                     key=source_id,
-                    get_native_times=partial(self._get_native_event_times, event_type_source_id=source_id),
-                    get_native_durations=partial(self._get_native_event_durations, event_type_source_id=source_id),
+                    get_native_times=lambda source_id=source_id: self._get_events_data_dict()[source_id].timestamps,
+                    get_native_durations=lambda source_id=source_id: self._get_events_data_dict()[source_id].durations,
                 )
             self._alignment = alignment
         return self._alignment
 
-    def _get_native_event_times(self, *, event_type_source_id):
-        return self._get_events_data_dict()[event_type_source_id].timestamps
-
     def _get_event_durations(self, event_type_source_id: str) -> np.ndarray | None:
         """The durations of one event type on this interface's current clock, ``None`` for a type without any."""
         return self.alignment[event_type_source_id].get_durations()
-
-    def _get_native_event_durations(self, *, event_type_source_id):
-        return self._get_events_data_dict()[event_type_source_id].durations
 
     @abstractmethod
     def _get_events_data_dict(self) -> dict[str, _EventsData]:
