@@ -57,24 +57,6 @@ _ALIGNMENT_TEST_SHIFT = 1.5
 _ALIGNMENT_TEST_STRETCH = 2.0
 
 
-def _unwrap_to_array(values) -> np.ndarray:
-    """Read the values of a written column or dataset, whether it holds an array, a ``DataIO`` or an iterator."""
-    if hasattr(values, "data"):
-        values = values.data
-    if hasattr(values, "dtype") or isinstance(values, (list, tuple)):
-        return np.asarray(values)
-    return np.asarray(values[:])
-
-
-def _object_path(container) -> tuple[str, ...]:
-    """Names from the NWB file down to the container, which identify it across two builds of the same file."""
-    names = []
-    while container is not None and not isinstance(container, NWBFile):
-        names.append(container.name)
-        container = container.parent
-    return tuple(reversed(names))
-
-
 def _get_written_times(nwbfile: NWBFile) -> dict[tuple[str, tuple[str, ...]], np.ndarray]:
     """Collect every time an NWB file holds, keyed by the object's type, its path and the field.
 
@@ -84,10 +66,12 @@ def _get_written_times(nwbfile: NWBFile) -> dict[tuple[str, tuple[str, ...]], np
     """
     written_times = {}
     for container in nwbfile.objects.values():
-        identifier = (type(container).__name__, _object_path(container))
+        # Object ids differ between two builds of the same file, so the names down from the file identify an object
+        path = (container.name, *(ancestor.name for ancestor in container.get_ancestors()))
+        identifier = (type(container).__name__, path)
         if isinstance(container, TimeSeries):
             if container.timestamps is not None:
-                times = _unwrap_to_array(container.timestamps)
+                times = np.asarray(container.timestamps)
             else:
                 number_of_samples = get_data_shape(container.data)[0]
                 times = container.starting_time + np.arange(number_of_samples) / container.rate
@@ -96,7 +80,7 @@ def _get_written_times(nwbfile: NWBFile) -> dict[tuple[str, tuple[str, ...]], np
             for column_name in container.colnames:
                 is_time_column = column_name == "timestamp" or column_name.endswith("_time")
                 if is_time_column and not isinstance(container[column_name], VectorIndex):
-                    written_times[identifier + (column_name,)] = _unwrap_to_array(container[column_name])
+                    written_times[identifier + (column_name,)] = np.asarray(container[column_name].data)
     return written_times
 
 
