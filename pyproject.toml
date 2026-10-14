@@ -55,7 +55,7 @@ dependencies = [
     "referencing", # for the json schema references
     "numcodecs<0.16.0; python_version < '3.14'", # 0.16.0 is incompatible with zarr < 3: https://github.com/zarr-developers/numcodecs/issues/721
     "numcodecs>=0.16.5; python_version >= '3.14'",
-    "zarr<3; python_version < '3.14'",  # the Zarr backend uses the zarr 2 API (zarr.codec_registry); hdmf_zarr>=0.14 requires zarr>=3
+    "zarr<3; python_version < '3.14'",  # dandi and spikeinterface hold zarr 2 here, so the Zarr backend (zarr 3 only) raises
     "zarr>=3; python_version >= '3.14'",
 ]
 

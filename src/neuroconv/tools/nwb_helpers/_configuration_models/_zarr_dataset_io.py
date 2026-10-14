@@ -3,47 +3,58 @@
 import warnings
 from typing import Any, ClassVar, Literal
 
-import numcodecs
+import zarr
 from hdmf import Container
-from numcodecs import Shuffle
+from packaging.version import Version
 from pydantic import Field, InstanceOf, model_validator
 from typing_extensions import Self
 
 from ._base_dataset_io import _DEFAULT_GZIP_LEVEL, DatasetIOConfiguration
 
-# Listed explicitly rather than harvested from `zarr.codec_registry`, which zarr v3 removed, so that importing
-# this module does not depend on the zarr version installed. Split by what a codec consumes: a compression method
-# acts on the bytes a dataset serializes to, a filter method on its values.
+# The Zarr backend requires zarr 3, and Python 3.13 and older resolve zarr 2, where `ZarrBackendConfiguration`
+# raises before any codec is built. These classes only exist in zarr 3, so under zarr 2 they stand in as `object`
+# to keep this module importable.
+if Version(zarr.__version__).major >= 3:
+    from zarr.abc.codec import ArrayArrayCodec, BytesBytesCodec
+    from zarr.codecs import BloscCodec, GzipCodec, ZstdCodec
+    from zarr.codecs.numcodecs import BZ2, LZ4, LZMA, Delta, Fletcher32, JenkinsLookup3, PackBits, Shuffle, Zlib
+else:
+    ArrayArrayCodec = BytesBytesCodec = BloscCodec = GzipCodec = ZstdCodec = object
+    BZ2 = LZ4 = LZMA = Delta = Fletcher32 = JenkinsLookup3 = PackBits = Shuffle = Zlib = object
+
+# Split by the zarr 3 codec stage: a compression method is a bytes-to-bytes codec and goes in `compressors`, a
+# filter method is an array-to-array codec and goes in `filters`. Gzip, Blosc and Zstd are the native zarr 3 codecs,
+# readable by implementations without numcodecs.
 AVAILABLE_ZARR_COMPRESSION_METHODS = {
-    "blosc": numcodecs.Blosc,
-    "bz2": numcodecs.BZ2,
-    "gzip": numcodecs.GZip,
-    "lz4": numcodecs.LZ4,
-    "lzma": numcodecs.LZMA,
-    "zlib": numcodecs.Zlib,
-    "zstd": numcodecs.Zstd,
+    "blosc": BloscCodec,
+    "bz2": BZ2,
+    "gzip": GzipCodec,
+    "lz4": LZ4,
+    "lzma": LZMA,
+    "zlib": Zlib,
+    "zstd": ZstdCodec,
 }
 
 AVAILABLE_ZARR_FILTER_METHODS = {
-    "delta": numcodecs.Delta,
+    "delta": Delta,
 }
 
 # ======================================================================================================
 # Deprecated in v0.11.0, to be removed in v0.12.0.
 #
-# Every codec name used to be accepted in both `compressors` and `filters`, including value transforms
-# (`categorize`, `packbits`) and checksums (`fletcher32`, `jenkins_lookup3`) that are neither. Until
-# v0.12.0 both fields still accept every name they accepted before, with a FutureWarning for a name in
-# the wrong one. At v0.12.0 delete this map, type `compressors` against AVAILABLE_ZARR_COMPRESSION_METHODS
-# and `filters` against AVAILABLE_ZARR_FILTER_METHODS, and resolve each through its own map.
+# Every codec name used to be accepted in both `compressors` and `filters`, including the value transform
+# `packbits` and the checksums `fletcher32` and `jenkins_lookup3`, which are neither. Until v0.12.0 both
+# fields still accept them, with a FutureWarning for a name in the wrong one, and `get_data_io_kwargs()`
+# places each codec in the stage its class belongs to. `categorize` has no zarr 3 codec and is gone. At
+# v0.12.0 delete this map, type `compressors` against AVAILABLE_ZARR_COMPRESSION_METHODS and `filters`
+# against AVAILABLE_ZARR_FILTER_METHODS, and resolve each through its own map.
 # ======================================================================================================
 _ZARR_CODECS_ACCEPTED_UNTIL_V0_12 = {
     **AVAILABLE_ZARR_COMPRESSION_METHODS,
     **AVAILABLE_ZARR_FILTER_METHODS,
-    "categorize": numcodecs.Categorize,
-    "fletcher32": numcodecs.Fletcher32,
-    "jenkins_lookup3": numcodecs.JenkinsLookup3,
-    "packbits": numcodecs.PackBits,
+    "fletcher32": Fletcher32,
+    "jenkins_lookup3": JenkinsLookup3,
+    "packbits": PackBits,
 }
 # ======================================================================================================
 # End of the block deprecated in v0.11.0, to be removed in v0.12.0.
@@ -54,20 +65,18 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
     """A data model for configuring options about an object that will become a Zarr Dataset in the file."""
 
     # Shuffle rearranges bytes rather than compressing them, so it can never be the compression method of a
-    # dataset. Zarr v2 has nowhere but `filters` to store it, which is where `get_data_io_kwargs()` puts it.
+    # dataset. It is a bytes-to-bytes codec and runs in `compressors`, ahead of the compression method.
     _pure_filter_names: ClassVar[tuple[str, ...]] = ("shuffle",)
 
     compressors: (
-        list[
-            Literal[(*_pure_filter_names, *_ZARR_CODECS_ACCEPTED_UNTIL_V0_12.keys())] | InstanceOf[numcodecs.abc.Codec]
-        ]
+        list[Literal[(*_pure_filter_names, *_ZARR_CODECS_ACCEPTED_UNTIL_V0_12.keys())] | InstanceOf[BytesBytesCodec]]
         | None
     ) = Field(
         default=["gzip"],  # TODO: would like this to be 'auto'
         description=(
             "The ordered collection of codecs to apply to this dataset after it is serialized to bytes. "
             "Each element can be either a string that matches an available method on your system, "
-            "or an instantiated numcodec.Codec object. "
+            "or an instantiated zarr bytes-to-bytes codec. "
             "A filter such as 'shuffle' composes with a compression method rather than replacing one, so both "
             "live in this list. "
             "Set to `None` to disable compression."
@@ -79,16 +88,14 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
         default=None, description="The optional parameters to use for each specified compressor."
     )
     filters: (
-        list[
-            Literal[(*_pure_filter_names, *_ZARR_CODECS_ACCEPTED_UNTIL_V0_12.keys())] | InstanceOf[numcodecs.abc.Codec]
-        ]
+        list[Literal[(*_pure_filter_names, *_ZARR_CODECS_ACCEPTED_UNTIL_V0_12.keys())] | InstanceOf[ArrayArrayCodec]]
         | None
     ) = Field(
         default=None,
         description=(
             "The ordered collection of codecs to apply to this dataset's values before it is serialized to bytes. "
             "Each element can be either a string that matches an available method on your system, "
-            "or an instantiated numcodec.Codec object."
+            "or an instantiated zarr array-to-array codec. "
             "Set to `None` to disable filtering."
         ),
     )
@@ -203,7 +210,7 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
         if not self.filters:
             return self
 
-        if any(filter_method == "shuffle" or isinstance(filter_method, Shuffle) for filter_method in self.filters):
+        if any(filter_method == "shuffle" for filter_method in self.filters):
             warnings.warn(
                 "Naming 'shuffle' in `filters` is deprecated and will be removed in v0.12.0. It rearranges "
                 "the serialized bytes rather than the values, so it belongs in `compressors`, as in "
@@ -263,49 +270,31 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
     # ==================================================================================================
 
     def _instantiate_codec(self, codec, codec_options: dict[str, Any] | None):
-        if isinstance(codec, numcodecs.abc.Codec):
+        if not isinstance(codec, str):
             return codec
 
         codec_options = dict(codec_options or dict())
         if codec == "gzip":
             codec_options.setdefault("level", _DEFAULT_GZIP_LEVEL)
 
-        # `numcodecs.Shuffle` defaults `elementsize` to 4 whatever the dtype is, so on anything wider it
-        # transposes the wrong byte planes and recovers almost nothing. The configuration knows the dtype.
-        # TODO: remove once hdmf-zarr moves off `zarr<3.0`, where `Shuffle.evolve_from_array_spec` fills
-        # `elementsize` from the array dtype upstream.
-        if codec == "shuffle" and "elementsize" not in codec_options:
-            codec_options["elementsize"] = self.dtype.itemsize
-
         codec_class = Shuffle if codec == "shuffle" else _ZARR_CODECS_ACCEPTED_UNTIL_V0_12[codec]
         return codec_class(**codec_options)
 
     def get_data_io_kwargs(self) -> dict[str, Any]:
-        filters = None
-        if self.filters:
-            all_filter_options = self.filter_options or [dict() for _ in self.filters]
-            filters = [
-                self._instantiate_codec(filter_method, filter_options)
-                for filter_method, filter_options in zip(self.filters, all_filter_options)
-            ]
-
-        # Zarr v2 has a single compressor slot, so every other entry of `compressors` has to ride in `filters`.
-        # TODO: remove this split once hdmf-zarr moves off `zarr<3.0`, where `compressors` is itself an ordered list.
+        filters = self.filters or []
+        filter_options = self.filter_options or [None] * len(filters)
         compressors = self.compressors or []
         compressor_options = self.compressor_options or [None] * len(compressors)
-        compression_index = self._compressor_index()
+        codecs = [
+            self._instantiate_codec(codec, codec_options)
+            for codec, codec_options in zip([*filters, *compressors], [*filter_options, *compressor_options])
+        ]
 
-        for index, (codec, codec_options) in enumerate(zip(compressors, compressor_options)):
-            if index == compression_index:
-                continue
-            filters = (filters or []) + [self._instantiate_codec(codec, codec_options)]
+        # Each codec goes to the stage its class runs in, which also places a name deprecated in the other field.
+        array_codecs = [codec for codec in codecs if isinstance(codec, ArrayArrayCodec)]
+        bytes_codecs = [codec for codec in codecs if isinstance(codec, BytesBytesCodec)]
 
-        if compression_index is None:
-            compressor = False
-        else:
-            compressor = self._instantiate_codec(compressors[compression_index], compressor_options[compression_index])
-
-        return dict(chunks=self.chunk_shape, filters=filters, compressor=compressor)
+        return dict(chunks=self.chunk_shape, filters=array_codecs or None, compressors=bytes_codecs or False)
 
     @classmethod
     def from_neurodata_object_with_existing(
@@ -332,24 +321,8 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
             neurodata_object=neurodata_object,
             dataset_name=dataset_name,
         )
-        compression_method = getattr(neurodata_object, dataset_name).compressor
-        filters = list(getattr(neurodata_object, dataset_name).filters or [])
+        zarr_array = getattr(neurodata_object, dataset_name)
+        compressors = list(zarr_array.compressors)
+        filters = list(zarr_array.filters)
 
-        # Shuffle lives in `compressors` in this model and in `filters` on disk, since Zarr v2 has nowhere
-        # else to put it, so it is moved back here. Without this a file this library wrote reports a
-        # different configuration than the one that wrote it.
-        shuffle_methods = [filter_method for filter_method in filters if isinstance(filter_method, Shuffle)]
-        filters = [filter_method for filter_method in filters if not isinstance(filter_method, Shuffle)]
-
-        compressors = ["shuffle" for _ in shuffle_methods]
-        compressor_options = [dict(elementsize=shuffle.elementsize) for shuffle in shuffle_methods]
-        if compression_method is not None:
-            compressors.append(compression_method)
-            compressor_options.append(None)
-
-        return cls(
-            **kwargs,
-            compressors=compressors or None,
-            compressor_options=compressor_options if any(compressor_options) else None,
-            filters=filters or None,
-        )
+        return cls(**kwargs, compressors=compressors or None, filters=filters or None)
