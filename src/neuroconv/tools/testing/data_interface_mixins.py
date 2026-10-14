@@ -197,16 +197,14 @@ class DataInterfaceTestMixin:
         )
         assert alignment.keys() == tuple(self.expected_alignment_keys)
 
-    def test_alignment_reaches_the_nwbfile(self, setup_interface):
-        """Every time an interface writes moves when the interface is aligned, for both ways of changing times."""
+    def test_alignment_shift_times_reaches_the_nwbfile(self, setup_interface):
+        """Every time an interface writes moves when the interface is shifted."""
         try:
-            alignment = self.interface.alignment
+            self.interface.alignment
         except (AttributeError, NotImplementedError):
             pytest.skip("The interface does not support temporal alignment.")
 
         shift = 1.5
-        # Replacement times also change the spacing, so a writer that keeps only their first value cannot pass
-        stretch = 2.0
 
         metadata = _get_metadata_for_writing(self.interface)
         metadata["NWBFile"].setdefault("session_start_time", datetime.now().astimezone())
@@ -232,9 +230,27 @@ class DataInterfaceTestMixin:
                 err_msg=f"{identifier} was written but did not move with the alignment",
             )
 
-        # `set_times` is not supported for events, so an interface that registers any skips this half
+    def test_alignment_set_times_reaches_the_nwbfile(self, setup_interface):
+        """Every time an interface writes is replaced when the times of each of its objects are replaced."""
+        try:
+            alignment = self.interface.alignment
+        except (AttributeError, NotImplementedError):
+            pytest.skip("The interface does not support temporal alignment.")
+
         if any(isinstance(alignment[key], _TimeBearingEventsTable) for key in alignment.keys()):
-            return
+            pytest.skip("`set_times` is not supported for events.")
+
+        shift = 1.5
+        # The spacing changes too, so a writer that keeps only the first replaced time cannot pass
+        stretch = 2.0
+
+        metadata = _get_metadata_for_writing(self.interface)
+        metadata["NWBFile"].setdefault("session_start_time", datetime.now().astimezone())
+
+        # Each build starts from a fresh interface because aligning changes its state
+        reference = self.interface.create_nwbfile(metadata=metadata, **self.conversion_options)
+        reference_times = get_nwbfile_times(reference)
+        assert reference_times, "The interface wrote no time-bearing object, so there is nothing to align."
 
         replaced_interface = self.data_interface_cls(**self.interface_kwargs)
         for key in replaced_interface.alignment.keys():
@@ -916,7 +932,10 @@ class MedPCInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
     def test_alignment_keys(self):
         pass
 
-    def test_alignment_reaches_the_nwbfile(self):
+    def test_alignment_shift_times_reaches_the_nwbfile(self):
+        pass
+
+    def test_alignment_set_times_reaches_the_nwbfile(self):
         pass
 
     def test_metadata(self):
@@ -1155,7 +1174,10 @@ class TDTFiberPhotometryInterfaceMixin(DataInterfaceTestMixin, TemporalAlignment
     def test_alignment_keys(self):
         pass
 
-    def test_alignment_reaches_the_nwbfile(self):
+    def test_alignment_shift_times_reaches_the_nwbfile(self):
+        pass
+
+    def test_alignment_set_times_reaches_the_nwbfile(self):
         pass
 
     def test_metadata(self):
