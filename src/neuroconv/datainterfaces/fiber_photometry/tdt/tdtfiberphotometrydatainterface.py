@@ -3,6 +3,7 @@ import warnings
 from contextlib import redirect_stdout
 from copy import deepcopy
 from datetime import datetime, timezone
+from functools import partial
 from typing import Literal
 
 import numpy as np
@@ -32,9 +33,7 @@ class _TDTFiberPhotometryInterfaceMultiSeries(TDTLoadMixin, BaseTemporalAlignmen
     associated_suffixes = ("Tbk", "Tdx", "tev", "tin", "tsq")
 
     @validate_call
-    def __init__(
-        self, folder_path: DirectoryPath, *args, verbose: bool = False
-    ):  # TODO: change to * (keyword only) on or after August 2026
+    def __init__(self, folder_path: DirectoryPath, *, verbose: bool = False):
         """Initialize the TDTFiberPhotometryInterface.
 
         Parameters
@@ -44,30 +43,6 @@ class _TDTFiberPhotometryInterfaceMultiSeries(TDTLoadMixin, BaseTemporalAlignmen
         verbose : bool, optional
             Whether to print status messages, default = True.
         """
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "verbose",
-            ]
-            num_positional_args_before_args = 1  # folder_path
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args + 1} were given. "
-                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
-                    "Please use keyword arguments."
-                )
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to TDTFiberPhotometryInterface.__init__() is deprecated "
-                f"and will be removed on or after August 2026. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            verbose = positional_values.get("verbose", verbose)
 
         super().__init__(
             folder_path=folder_path,
@@ -251,7 +226,7 @@ class _TDTFiberPhotometryInterfaceMultiSeries(TDTLoadMixin, BaseTemporalAlignmen
         self,
         nwbfile: NWBFile,
         metadata: dict,
-        *args,  # TODO: change to * (keyword only) on or after August 2026
+        *,
         stub_test: bool = False,
         t1: float = 0.0,
         t2: float = 0.0,
@@ -280,36 +255,6 @@ class _TDTFiberPhotometryInterfaceMultiSeries(TDTLoadMixin, BaseTemporalAlignmen
         AssertionError
             If the timing_source is not one of "original", "aligned_timestamps", or "aligned_starting_time_and_rate".
         """
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "stub_test",
-                "t1",
-                "t2",
-                "timing_source",
-            ]
-            num_positional_args_before_args = 2  # nwbfile, metadata
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"add_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args} were given. "
-                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
-                    "Please use keyword arguments."
-                )
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to TDTFiberPhotometryInterface.add_to_nwbfile() is deprecated "
-                f"and will be removed on or after August 2026. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            stub_test = positional_values.get("stub_test", stub_test)
-            t1 = positional_values.get("t1", t1)
-            t2 = positional_values.get("t2", t2)
-            timing_source = positional_values.get("timing_source", timing_source)
 
         from ndx_fiber_photometry import (
             CommandedVoltageSeries,
@@ -569,6 +514,7 @@ class _TDTFiberPhotometryInterfaceSingleSeries(TDTLoadMixin, BaseFiberPhotometry
         stream_names: str | list[str],
         metadata_key: str | None = None,
         stream_indices: list[int] | None = None,
+        commanded_voltage_streams: dict[str, dict] | None = None,
         verbose: bool = False,
     ):
         super().__init__(
@@ -576,8 +522,20 @@ class _TDTFiberPhotometryInterfaceSingleSeries(TDTLoadMixin, BaseFiberPhotometry
             stream_names=stream_names,
             metadata_key=metadata_key,
             stream_indices=stream_indices,
+            commanded_voltage_streams=commanded_voltage_streams,
             verbose=verbose,
         )
+        for key, commanded_voltage_stream in (commanded_voltage_streams or {}).items():
+            stream_name = commanded_voltage_stream["stream_name"]
+            self._register_commanded_voltage(
+                key=key,
+                get_data=partial(
+                    self._get_commanded_voltage_data,
+                    stream_name=stream_name,
+                    index=commanded_voltage_stream.get("index"),
+                ),
+                get_native_times=partial(self._get_stream_timestamps, stream_name=stream_name),
+            )
 
     @classmethod
     def get_available_streams(cls, folder_path: DirectoryPath) -> list[str]:
@@ -616,6 +574,13 @@ class _TDTFiberPhotometryInterfaceSingleSeries(TDTLoadMixin, BaseFiberPhotometry
         num_samples = np.asarray(stream.data).shape[-1]
         return starting_time + np.arange(num_samples) / rate
 
+    def _get_commanded_voltage_data(self, *, stream_name: str, index: int | None) -> np.ndarray:
+        # A store such as Fi1d holds one drive per channel, so a drive is a store and a column of it.
+        data = self._get_stream_data(stream_name=stream_name)
+        if index is not None and data.ndim == 2:
+            data = data[:, index]
+        return data
+
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
         tdt_photometry = self.load(evtype=["scalars"])  # Quickly loads info without loading all the data.
@@ -635,7 +600,7 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
 
     .. deprecated::
         Constructing without ``stream_names`` routes to the deprecated multi-series implementation,
-        which writes every stream at once and will be removed on or after February 2027. Pass
+        which writes every stream at once and will be removed in v0.12.0. Pass
         ``stream_names`` to use the single-series interface.
     """
 
@@ -652,6 +617,7 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         stream_names: str | list[str] | None = None,
         metadata_key: str | None = None,
         stream_indices: list[int] | None = None,
+        commanded_voltage_streams: dict[str, dict] | None = None,
         verbose: bool = False,
     ):
         """Initialize the TDTFiberPhotometryInterface.
@@ -669,13 +635,19 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             metadata. When ``None`` (default), it is generated from ``stream_names``.
         stream_indices : list of int, optional
             Column indices selecting which channels of the (column-stacked) stream data to keep.
+        commanded_voltage_streams : dict, optional
+            Drive signals keyed by their metadata and alignment keys. Each entry names the ``stream_name``
+            of the store holding the drive and, for a store with one drive per channel such as ``Fi1d``,
+            the 0-based column ``index``, the same convention as ``stream_indices``.
         verbose : bool, default: False
             Whether to print status messages.
         """
         if stream_names is None:
+            if commanded_voltage_streams:
+                raise ValueError("commanded_voltage_streams requires the single-series interface: pass stream_names.")
             warnings.warn(
                 "Constructing TDTFiberPhotometryInterface without `stream_names` uses the deprecated "
-                "multi-series behavior, which will be removed on or after February 2027. Pass "
+                "multi-series behavior, which will be removed in v0.12.0. Pass "
                 "`stream_names=` to write a single FiberPhotometryResponseSeries "
                 "(see TDTFiberPhotometryInterface.get_available_streams).",
                 DeprecationWarning,
@@ -688,6 +660,7 @@ class TDTFiberPhotometryInterface(BaseTemporalAlignmentInterface):
                 stream_names=stream_names,
                 metadata_key=metadata_key,
                 stream_indices=stream_indices,
+                commanded_voltage_streams=commanded_voltage_streams,
                 verbose=verbose,
             )
         self.verbose = verbose

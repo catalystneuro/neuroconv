@@ -263,7 +263,7 @@ class TestAddElectricalSeriesSavingTimestampsVsRates(unittest.TestCase):
 
     def test_non_uniform_timestamps(self):
         expected_timestamps = np.array([0.0, 2.0, 10.0])
-        self.test_recording_extractor.set_times(times=expected_timestamps, with_warning=False)
+        self.test_recording_extractor.set_times(times=expected_timestamps)
         add_recording_to_nwbfile(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
 
         acquisition_module = self.nwbfile.acquisition
@@ -279,7 +279,7 @@ class TestAddElectricalSeriesSavingTimestampsVsRates(unittest.TestCase):
         number_of_samples = self.test_recording_extractor.get_num_samples()
         measured_sampling_frequency = self.sampling_frequency * (1 + 100e-6)  # a 100 ppm faster clock
         timestamps = np.arange(number_of_samples) / measured_sampling_frequency
-        self.test_recording_extractor.set_times(times=timestamps, with_warning=False)
+        self.test_recording_extractor.set_times(times=timestamps)
 
         add_recording_to_nwbfile(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
 

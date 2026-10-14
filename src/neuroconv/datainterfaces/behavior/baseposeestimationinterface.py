@@ -39,7 +39,7 @@ class BasePoseEstimationInterface(BaseDataInterface):
 
     def get_timestamps(self) -> np.ndarray:
         warnings.warn(
-            "`get_timestamps` is deprecated and will be removed in v0.12.0. "
+            "`get_timestamps` is deprecated and will be removed in v0.13.0. "
             "Use `interface.alignment[key].get_times()` instead.",
             FutureWarning,
             stacklevel=2,
@@ -48,7 +48,7 @@ class BasePoseEstimationInterface(BaseDataInterface):
 
     def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
         warnings.warn(
-            "`set_aligned_timestamps` is deprecated and will be removed in v0.12.0. "
+            "`set_aligned_timestamps` is deprecated and will be removed in v0.13.0. "
             "Use `interface.alignment[key].set_times(times)` instead.",
             FutureWarning,
             stacklevel=2,
@@ -57,7 +57,7 @@ class BasePoseEstimationInterface(BaseDataInterface):
 
     def set_aligned_starting_time(self, aligned_starting_time: float) -> None:
         warnings.warn(
-            "`set_aligned_starting_time` is deprecated and will be removed in v0.12.0. "
+            "`set_aligned_starting_time` is deprecated and will be removed in v0.13.0. "
             "Use `interface.alignment.shift_times(delta)` instead.",
             FutureWarning,
             stacklevel=2,
@@ -66,7 +66,7 @@ class BasePoseEstimationInterface(BaseDataInterface):
 
     def align_by_interpolation(self, unaligned_timestamps: np.ndarray, aligned_timestamps: np.ndarray) -> None:
         warnings.warn(
-            "`align_by_interpolation` is deprecated and will be removed in v0.12.0. "
+            "`align_by_interpolation` is deprecated and will be removed in v0.13.0. "
             "Use `interface.alignment[key].remap_times(local_sync_times=..., reference_sync_times=...)` instead.",
             FutureWarning,
             stacklevel=2,
