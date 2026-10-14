@@ -24,9 +24,6 @@ from roiextractors import (
 
 from .imagingextractordatachunkiterator import ImagingExtractorDataChunkIterator
 from .roiextractors_pending_deprecation import (
-    _add_devices_to_nwbfile_old_list_format,
-    _add_photon_series_to_nwbfile_old_list_format,
-    _add_segmentation_to_nwbfile_old_list_format,
     get_nwb_segmentation_metadata,
 )
 from ..hdmf import SliceableDataChunkIterator
@@ -1091,7 +1088,7 @@ def add_imaging_to_nwbfile(
         explicitly, regardless of whether the sampling rate is uniform.
     metadata_key : str, optional
         The key in ``metadata["Ophys"]["MicroscopySeries"]`` identifying the series.
-        When provided, uses the new dict-based metadata format and ``photon_series_index`` is ignored.
+        For old list-based metadata, the series picked by ``photon_series_index`` is translated under this key.
 
     Returns
     -------
@@ -1119,32 +1116,18 @@ def add_imaging_to_nwbfile(
             photon_series_index=photon_series_index,
         )
 
-    if _is_dict_based_metadata(metadata):
-        metadata_key = metadata_key or "default_metadata_key"
-        nwbfile = _add_photon_series_to_nwbfile(
-            imaging=imaging,
-            nwbfile=nwbfile,
-            metadata=metadata,
-            photon_series_type=photon_series_type,
-            metadata_key=metadata_key,
-            iterator_type=iterator_type,
-            iterator_options=iterator_options,
-            parent_container=parent_container,
-            always_write_timestamps=always_write_timestamps,
-        )
-    else:
-        _add_devices_to_nwbfile_old_list_format(nwbfile=nwbfile, metadata=metadata)
-        nwbfile = _add_photon_series_to_nwbfile_old_list_format(
-            imaging=imaging,
-            nwbfile=nwbfile,
-            metadata=metadata,
-            photon_series_type=photon_series_type,
-            photon_series_index=photon_series_index,
-            iterator_type=iterator_type,
-            iterator_options=iterator_options,
-            parent_container=parent_container,
-            always_write_timestamps=always_write_timestamps,
-        )
+    metadata_key = metadata_key or "default_metadata_key"
+    nwbfile = _add_photon_series_to_nwbfile(
+        imaging=imaging,
+        nwbfile=nwbfile,
+        metadata=metadata,
+        photon_series_type=photon_series_type,
+        metadata_key=metadata_key,
+        iterator_type=iterator_type,
+        iterator_options=iterator_options,
+        parent_container=parent_container,
+        always_write_timestamps=always_write_timestamps,
+    )
 
     return nwbfile
 
@@ -1361,7 +1344,8 @@ def add_segmentation_to_nwbfile(
         Options for iterating over the data, by default None.
     metadata_key : str, optional
         The key in ``metadata["Ophys"]["PlaneSegmentations"]`` identifying the segmentation.
-        When provided, uses the new dict-based metadata format.
+        For old list-based metadata, the plane segmentation named by ``plane_segmentation_name``, or the first one
+        when it is not given, is translated under this key.
 
     Returns
     -------
@@ -1414,23 +1398,14 @@ def add_segmentation_to_nwbfile(
         if not any(trace is not None and math.prod(trace.shape) != 0 for trace in traces):
             metadata["Ophys"] = {key: value for key, value in metadata["Ophys"].items() if key != "RoiResponses"}
 
-    if _is_dict_based_metadata(metadata):
-        metadata_key = metadata_key or "default_metadata_key"
-        nwbfile = _add_segmentation_to_nwbfile(
-            segmentation_extractor=segmentation_extractor,
-            nwbfile=nwbfile,
-            metadata=metadata,
-            metadata_key=metadata_key,
-            iterator_options=iterator_options,
-        )
-    else:
-        nwbfile = _add_segmentation_to_nwbfile_old_list_format(
-            segmentation_extractor=segmentation_extractor,
-            nwbfile=nwbfile,
-            metadata=metadata,
-            plane_segmentation_name=plane_segmentation_name,
-            iterator_options=iterator_options,
-        )
+    metadata_key = metadata_key or "default_metadata_key"
+    nwbfile = _add_segmentation_to_nwbfile(
+        segmentation_extractor=segmentation_extractor,
+        nwbfile=nwbfile,
+        metadata=metadata,
+        metadata_key=metadata_key,
+        iterator_options=iterator_options,
+    )
 
     return nwbfile
 
