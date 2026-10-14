@@ -25,7 +25,7 @@ from ....utils import DeepDict
 # spikeglxnidqinterface.py only because that module imports this one.
 _NEO_ADDRESSING_DEPRECATION = (
     "Addressing a NIDQ channel by neo's stream-qualified id ('nidq#XA0') is deprecated and will be "
-    "removed on or after August 2027. Use the board's own name ('XA0'), which is what the SpikeGLX "
+    "removed in v0.13.0. Use the board's own name ('XA0'), which is what the SpikeGLX "
     "header, CatGT and get_channel_names() all show. The stream prefix distinguishes nothing here, "
     "since this interface only ever reads the nidq stream."
 )
@@ -125,7 +125,7 @@ class _SpikeGLXNIDQEventsInterface(BaseEventsInterface):
             # own name. neo's stream-qualified id ("nidq#XD0") is accepted too, as a temporary
             # backwards-compatibility shim: this interface handed those ids back from get_channel_names()
             # and took them in analog_channel_groups for its first few releases, so user code has them.
-            # Both now warn and go on or after August 2027, together with this block and the collision
+            # Both now warn and go in v0.13.0, together with this block and the collision
             # check inside it, which exists only because two spellings do.
             normalized = {}
             used_neo_addressing = False
