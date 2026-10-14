@@ -1122,6 +1122,26 @@ class TestEventsTemporalAlignment:
         np.testing.assert_allclose(np.asarray(events["timestamp"][:]), [5.1, 5.2, 5.3, 5.4])
         np.testing.assert_allclose(np.asarray(events["duration"][:]), [0.05, 0.05, 0.05, 0.05])
 
+    def test_set_times_replaces_onsets_and_keeps_durations(self):
+        # The caller gave onsets only, so each event keeps the duration it had.
+        interface = MockEventsInterface(event_extent="event with duration")
+        interface.alignment["events"].set_times([1.0, 2.0, 3.0, 4.0])
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile)
+        events = nwbfile.get_events_table("Events")
+        np.testing.assert_allclose(np.asarray(events["timestamp"][:]), [1.0, 2.0, 3.0, 4.0])
+        np.testing.assert_allclose(np.asarray(events["duration"][:]), [0.05, 0.05, 0.05, 0.05])
+
+    def test_remap_times_remaps_onsets_and_durations(self):
+        # A reference clock running at twice the rate stretches each interval as well as moving it.
+        interface = MockEventsInterface(event_extent="event with duration")
+        interface.alignment.remap_times(local_sync_times=[0.0, 1.0], reference_sync_times=[0.0, 2.0])
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile)
+        events = nwbfile.get_events_table("Events")
+        np.testing.assert_allclose(np.asarray(events["timestamp"][:]), [0.2, 0.4, 0.6, 0.8])
+        np.testing.assert_allclose(np.asarray(events["duration"][:]), [0.1, 0.1, 0.1, 0.1])
+
     def test_merged_table_is_time_sorted_on_aligned_times(self):
         # The cross-interface counterpart of TestMockEventsInterface.test_merged_table_is_time_sorted, and the
         # only case where two different offsets meet: two systems pooling their events into one shared table,

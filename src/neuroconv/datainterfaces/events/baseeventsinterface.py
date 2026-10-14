@@ -113,12 +113,20 @@ class BaseEventsInterface(BaseDataInterface):
                 alignment._register_events(
                     key=source_id,
                     get_native_times=partial(self._get_native_event_times, event_type_source_id=source_id),
+                    get_native_durations=partial(self._get_native_event_durations, event_type_source_id=source_id),
                 )
             self._alignment = alignment
         return self._alignment
 
     def _get_native_event_times(self, *, event_type_source_id):
         return self._get_events_data_dict()[event_type_source_id].timestamps
+
+    def _get_event_durations(self, event_type_source_id: str) -> np.ndarray | None:
+        """The durations of one event type on this interface's current clock, ``None`` for a type without any."""
+        return self.alignment[event_type_source_id].get_durations()
+
+    def _get_native_event_durations(self, *, event_type_source_id):
+        return self._get_events_data_dict()[event_type_source_id].durations
 
     @abstractmethod
     def _get_events_data_dict(self) -> dict[str, _EventsData]:
@@ -468,6 +476,7 @@ class BaseEventsInterface(BaseDataInterface):
         for event_type_source_id in event_type_source_ids:
             event = event_data[event_type_source_id]
             timestamps = self.get_event_times(event_type_source_id)
+            durations = self._get_event_durations(event_type_source_id)
             entry = event_types[event_type_source_id]
             event_name = entry["event_name"]
             resolved_columns = []
@@ -494,7 +503,7 @@ class BaseEventsInterface(BaseDataInterface):
                         cells[column_name] = [labels_map[str(item)] for item in value]
                     else:
                         cells[column_name] = labels_map[str(value)]
-                duration = float(event.durations[index]) if event.durations is not None else np.nan
+                duration = float(durations[index]) if durations is not None else np.nan
                 rows.append((float(timestamp), event_name, duration, cells))
 
         n_existing = len(table.id)

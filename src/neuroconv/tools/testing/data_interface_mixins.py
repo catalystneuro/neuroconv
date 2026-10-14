@@ -237,12 +237,11 @@ class DataInterfaceTestMixin:
         except (AttributeError, NotImplementedError):
             pytest.skip("The interface does not support temporal alignment.")
 
-        if any(isinstance(alignment[key], _TimeBearingEventsTable) for key in alignment.keys()):
-            pytest.skip("`set_times` is not supported for events.")
-
         shift = 1.5
-        # The spacing changes too, so a writer that keeps only the first replaced time cannot pass
-        stretch = 2.0
+        # The spacing changes too, so a writer that keeps only the first replaced time cannot pass. Not for
+        # events, whose durations stay as they were, so an end time only follows a rigid change of the onsets.
+        has_events = any(isinstance(alignment[key], _TimeBearingEventsTable) for key in alignment.keys())
+        stretch = 1.0 if has_events else 2.0
 
         metadata = _get_metadata_for_writing(self.interface)
         metadata["NWBFile"].setdefault("session_start_time", datetime.now().astimezone())
