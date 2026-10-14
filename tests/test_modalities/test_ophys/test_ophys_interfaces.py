@@ -14,6 +14,7 @@ from neuroconv.tools.testing.mock_interfaces import (
 
 class TestMockImagingInterface(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = MockImagingInterface
+    expected_alignment_keys = ("mock_imaging",)
     interface_kwargs = dict()
     # The mock reads no imaging modality from its source, so it keeps the base's generic series name.
     optical_series_name = "MicroscopySeries"
