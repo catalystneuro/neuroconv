@@ -104,6 +104,7 @@ class TestBORISVersion1_6(BORISTestMixin):
     """Format 1.6: no `category` field on a behavior, and `modifiers` a flat comma-separated string."""
 
     data_interface_cls = BORISInterface
+    expected_alignment_keys = ("forage", "rest", "groom", "call")
     conversion_options = dict()  # what is written is set at construction, not at write
     save_directory = OUTPUT_PATH
 
@@ -164,6 +165,7 @@ class TestBORISVersion4_0(BORISTestMixin):
     """Format 4.0: categories exist, modifiers are still a flat string, and times are in seconds."""
 
     data_interface_cls = BORISInterface
+    expected_alignment_keys = ("walk", "stand", "drink", "peck", "vigilance")
     conversion_options = dict()  # what is written is set at construction, not at write
     save_directory = OUTPUT_PATH
 
@@ -230,6 +232,19 @@ class TestBORISCategorizedEthogram(BORISTestMixin):
     """The BORIS Android demo project: eleven behaviors, of which this observation scores a few."""
 
     data_interface_cls = BORISInterface
+    expected_alignment_keys = (
+        "groom",
+        "run",
+        "walk",
+        "attack",
+        "play",
+        "jump",
+        "approach",
+        "drink",
+        "eat",
+        "defecate",
+        "urinate",
+    )
     conversion_options = dict()  # what is written is set at construction, not at write
     save_directory = OUTPUT_PATH
 
@@ -296,6 +311,7 @@ class TestBORISModifierSlots(BORISTestMixin):
     """All three modifier slot types. Every behavior scored here is a point behavior, so no bouts."""
 
     data_interface_cls = BORISInterface
+    expected_alignment_keys = ("p", "a", "b", "z", "x", "many modifiers", "2 sets", "multiple modif", "numeric")
     conversion_options = dict()  # what is written is set at construction, not at write
     save_directory = OUTPUT_PATH
 
@@ -422,6 +438,7 @@ class TestBORISMultiSubject(BORISTestMixin):
     """One observation carrying events from two named subjects, which is why subject is a column."""
 
     data_interface_cls = BORISInterface
+    expected_alignment_keys = ("p", "s", "q", "r", "m")
     conversion_options = dict()  # what is written is set at construction, not at write
     save_directory = OUTPUT_PATH
 
@@ -487,6 +504,7 @@ class TestBORISUntidyModifiers(BORISTestMixin):
     """Untidy declared values and the literal `None` token for a slot nobody answered."""
 
     data_interface_cls = BORISInterface
+    expected_alignment_keys = ("p", "r")
     conversion_options = dict()  # what is written is set at construction, not at write
     save_directory = OUTPUT_PATH
 
@@ -562,6 +580,7 @@ class TestBORISTimeOffsetAndUndeclaredCodes(BORISTestMixin):
     """
 
     data_interface_cls = BORISInterface
+    expected_alignment_keys = ("Foraging/Caching", "Exploración", "Burrowing", "Freeze", "Allogroom", "Foraging")
     conversion_options = dict()  # what is written is set at construction, not at write
     save_directory = OUTPUT_PATH
 

@@ -28,6 +28,10 @@ class TestEthoVisionManualScoring(EventsInterfaceTestMixin):
     file_path = ETHOVISION_FOLDER_PATH / "excel/single_arena_single_subject/track_and_manual_scoring/two_c57.xlsx"
     interface_kwargs = dict(file_path=file_path)
     data_interface_cls = EthoVisionManualScoringInterface
+    expected_alignment_keys = (
+        "ethovision_arena_1_subject_1_manual_scoring_onsets",
+        "ethovision_arena_1_subject_1_manual_scoring_offsets",
+    )
     save_directory = OUTPUT_PATH
 
     expected_session_start_time = datetime(2022, 1, 25, 19, 38, 10)
@@ -80,6 +84,10 @@ class TestEthoVisionManualScoringOnly(EventsInterfaceTestMixin):
     file_path = ETHOVISION_FOLDER_PATH / "excel/single_arena_single_subject/manual_scoring_only/manual_scoring.xlsx"
     interface_kwargs = dict(file_path=file_path)
     data_interface_cls = EthoVisionManualScoringInterface
+    expected_alignment_keys = (
+        "ethovision_arena_1_subject_1_manual_scoring_onsets",
+        "ethovision_arena_1_subject_1_manual_scoring_offsets",
+    )
     save_directory = OUTPUT_PATH
 
     expected_session_start_time = datetime(2023, 12, 13, 12, 58, 24, 71000)

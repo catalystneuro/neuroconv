@@ -9,12 +9,16 @@ from typing import Literal
 
 import numpy as np
 import pytest
+from hdmf.common import DynamicTable, VectorIndex
+from hdmf.utils import get_data_shape
 from jsonschema.validators import Draft7Validator, validate
 from numpy.testing import assert_allclose, assert_array_equal
-from pynwb import read_nwb
+from pynwb import TimeSeries, read_nwb
+from pynwb.file import NWBFile
 from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv import BaseDataInterface, NWBConverter
+from neuroconv._temporal_alignment import _TimeBearingEventsTable
 from neuroconv.datainterfaces.ecephys.baserecordingextractorinterface import (
     BaseRecordingExtractorInterface,
 )
@@ -46,6 +50,61 @@ def _get_metadata_for_writing(interface) -> dict:
         return interface.get_metadata(use_new_metadata_format=True)
 
     return interface.get_metadata()
+
+
+_ALIGNMENT_TEST_SHIFT = 1.5
+
+
+def _unwrap_to_array(values) -> np.ndarray:
+    """Read the values of a written column or dataset, whether it holds an array, a ``DataIO`` or an iterator."""
+    if hasattr(values, "data"):
+        values = values.data
+    if hasattr(values, "dtype") or isinstance(values, (list, tuple)):
+        return np.asarray(values)
+    return np.asarray(values[:])
+
+
+def _object_path(container) -> tuple[str, ...]:
+    """Names from the NWB file down to the container, which identify it across two builds of the same file."""
+    names = []
+    while container is not None and not isinstance(container, NWBFile):
+        names.append(container.name)
+        container = container.parent
+    return tuple(reversed(names))
+
+
+def _get_written_times(nwbfile: NWBFile) -> dict[tuple[str, tuple[str, ...]], np.ndarray]:
+    """Collect every time an NWB file holds, keyed by the object's type, its path and the field.
+
+    Which fields count as times is decided per neurodata type: ``timestamps`` or ``starting_time`` and ``rate``
+    for a ``TimeSeries``, and for a table the columns named ``timestamp`` or ending in ``_time``. Durations are
+    not times and are left out because a shift never changes them.
+    """
+    written_times = {}
+    for container in nwbfile.objects.values():
+        identifier = (type(container).__name__, _object_path(container))
+        if isinstance(container, TimeSeries):
+            if container.timestamps is not None:
+                times = _unwrap_to_array(container.timestamps)
+            else:
+                number_of_samples = get_data_shape(container.data)[0]
+                times = container.starting_time + np.arange(number_of_samples) / container.rate
+            written_times[identifier + ("times",)] = times
+        elif isinstance(container, DynamicTable):
+            for column_name in container.colnames:
+                is_time_column = column_name == "timestamp" or column_name.endswith("_time")
+                if is_time_column and not isinstance(container[column_name], VectorIndex):
+                    written_times[identifier + (column_name,)] = _unwrap_to_array(container[column_name])
+    return written_times
+
+
+def _get_compactly_written_series(nwbfile: NWBFile) -> set[tuple[str, ...]]:
+    """The paths of the series written as ``starting_time`` and ``rate`` rather than as ``timestamps``."""
+    return {
+        _object_path(container)
+        for container in nwbfile.objects.values()
+        if isinstance(container, TimeSeries) and container.timestamps is None
+    }
 
 
 class DataInterfaceTestMixin:
@@ -177,6 +236,86 @@ class DataInterfaceTestMixin:
             self.check_read_nwb(nwbfile_path=nwbfile_path)
 
         self.run_custom_checks()
+
+    # Stated by each test class as a literal tuple of the keys its interface registers, in registration order.
+    # Keys are public API users type into ``alignment[key]``, so the expected value is never derived from the
+    # interface under test, which could not fail.
+    expected_alignment_keys: tuple[str, ...] | None = None
+
+    def _get_alignment_or_skip(self, interface):
+        try:
+            return interface.alignment
+        except (AttributeError, NotImplementedError):
+            pytest.skip("The interface does not support temporal alignment.")
+
+    def test_alignment_keys(self, setup_interface):
+        alignment = self._get_alignment_or_skip(self.interface)
+
+        assert self.expected_alignment_keys is not None, (
+            f"{type(self).__name__} must state `expected_alignment_keys`, the literal tuple of keys that "
+            f"{self.data_interface_cls.__name__} registers in `alignment`."
+        )
+        assert alignment.keys() == tuple(self.expected_alignment_keys)
+
+    def _create_nwbfile_after(self, operation) -> NWBFile:
+        """Build the interface's NWB file in memory after applying ``operation`` to a fresh interface."""
+        interface = self.data_interface_cls(**self.interface_kwargs)
+        operation(interface)
+
+        metadata = self.edit_metadata(_get_metadata_for_writing(interface))
+        if "session_start_time" not in metadata["NWBFile"]:
+            metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
+
+        return interface.create_nwbfile(metadata=metadata, **self.conversion_options)
+
+    def _assert_shifted_times(self, reference: NWBFile, aligned: NWBFile):
+        reference_times = _get_written_times(reference)
+        aligned_times = _get_written_times(aligned)
+
+        assert reference_times, "The interface wrote no time-bearing object, so there is nothing to align."
+        assert aligned_times.keys() == reference_times.keys()
+        for identifier, times in reference_times.items():
+            assert_allclose(
+                aligned_times[identifier],
+                times + _ALIGNMENT_TEST_SHIFT,
+                rtol=0,
+                atol=1e-9,
+                err_msg=f"{identifier} was written but did not move with the alignment",
+            )
+
+    def test_alignment_reaches_the_nwbfile(self, setup_interface):
+        """Every time an interface writes moves when the interface is aligned, for both ways of changing times."""
+        alignment = self._get_alignment_or_skip(self.interface)
+
+        reference = self._create_nwbfile_after(lambda interface: None)
+
+        shifted = self._create_nwbfile_after(lambda interface: interface.alignment.shift_times(_ALIGNMENT_TEST_SHIFT))
+        self._assert_shifted_times(reference=reference, aligned=shifted)
+
+        # `set_times` is not supported for events, so an interface that registers any skips this half
+        if any(isinstance(alignment[key], _TimeBearingEventsTable) for key in alignment.keys()):
+            return
+
+        def replace_times(interface):
+            for key in interface.alignment.keys():
+                time_bearing_object = interface.alignment[key]
+                time_bearing_object.set_times(time_bearing_object.get_times() + _ALIGNMENT_TEST_SHIFT)
+
+        replaced = self._create_nwbfile_after(replace_times)
+        self._assert_shifted_times(reference=reference, aligned=replaced)
+
+    def test_alignment_keeps_regular_series_compact(self, setup_interface):
+        """A series written as ``starting_time`` and ``rate`` is still written that way after a shift.
+
+        Kept apart from the checks above because the times are the same either way: a failure here means a
+        larger file and more memory at write, not a wrong one.
+        """
+        self._get_alignment_or_skip(self.interface)
+
+        reference = self._create_nwbfile_after(lambda interface: None)
+        shifted = self._create_nwbfile_after(lambda interface: interface.alignment.shift_times(_ALIGNMENT_TEST_SHIFT))
+
+        assert _get_compactly_written_series(shifted) == _get_compactly_written_series(reference)
 
     def edit_metadata(self, metadata: dict) -> dict:
         """Override this to edit the interface's metadata before it is written, the way a user would."""
@@ -837,6 +976,15 @@ class MedPCInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
     A mixin for testing MedPC interfaces.
     """
 
+    def test_alignment_keys(self):
+        pass
+
+    def test_alignment_reaches_the_nwbfile(self):
+        pass
+
+    def test_alignment_keeps_regular_series_compact(self):
+        pass
+
     def test_metadata(self):
         pass
 
@@ -1069,6 +1217,15 @@ class MiniscopeImagingInterfaceMixin(ImagingExtractorInterfaceTestMixin):
 
 class TDTFiberPhotometryInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
     """Mixin for testing TDT Fiber Photometry interfaces."""
+
+    def test_alignment_keys(self):
+        pass
+
+    def test_alignment_reaches_the_nwbfile(self):
+        pass
+
+    def test_alignment_keeps_regular_series_compact(self):
+        pass
 
     def test_metadata(self):
         pass
