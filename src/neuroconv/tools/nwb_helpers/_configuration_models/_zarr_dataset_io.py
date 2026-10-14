@@ -12,21 +12,42 @@ from typing_extensions import Self
 from ._base_dataset_io import _DEFAULT_GZIP_LEVEL, DatasetIOConfiguration
 
 # Listed explicitly rather than harvested from `zarr.codec_registry`, which zarr v3 removed, so that importing
-# this module does not depend on the zarr version installed.
+# this module does not depend on the zarr version installed. Split by what a codec consumes: a compression method
+# acts on the bytes a dataset serializes to, a filter method on its values.
 AVAILABLE_ZARR_COMPRESSION_METHODS = {
     "blosc": numcodecs.Blosc,
     "bz2": numcodecs.BZ2,
-    "categorize": numcodecs.Categorize,
-    "delta": numcodecs.Delta,
-    "fletcher32": numcodecs.Fletcher32,
     "gzip": numcodecs.GZip,
-    "jenkins_lookup3": numcodecs.JenkinsLookup3,
     "lz4": numcodecs.LZ4,
     "lzma": numcodecs.LZMA,
-    "packbits": numcodecs.PackBits,
     "zlib": numcodecs.Zlib,
     "zstd": numcodecs.Zstd,
 }
+
+AVAILABLE_ZARR_FILTER_METHODS = {
+    "delta": numcodecs.Delta,
+}
+
+# ======================================================================================================
+# Deprecated in v0.11.0, to be removed in v0.12.0.
+#
+# Every codec name used to be accepted in both `compressors` and `filters`, including value transforms
+# (`categorize`, `packbits`) and checksums (`fletcher32`, `jenkins_lookup3`) that are neither. Until
+# v0.12.0 both fields still accept every name they accepted before, with a FutureWarning for a name in
+# the wrong one. At v0.12.0 delete this map, type `compressors` against AVAILABLE_ZARR_COMPRESSION_METHODS
+# and `filters` against AVAILABLE_ZARR_FILTER_METHODS, and resolve each through its own map.
+# ======================================================================================================
+_ZARR_CODECS_ACCEPTED_UNTIL_V0_12 = {
+    **AVAILABLE_ZARR_COMPRESSION_METHODS,
+    **AVAILABLE_ZARR_FILTER_METHODS,
+    "categorize": numcodecs.Categorize,
+    "fletcher32": numcodecs.Fletcher32,
+    "jenkins_lookup3": numcodecs.JenkinsLookup3,
+    "packbits": numcodecs.PackBits,
+}
+# ======================================================================================================
+# End of the block deprecated in v0.11.0, to be removed in v0.12.0.
+# ======================================================================================================
 
 
 class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
@@ -38,7 +59,7 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
 
     compressors: (
         list[
-            Literal[(*_pure_filter_names, *AVAILABLE_ZARR_COMPRESSION_METHODS.keys())] | InstanceOf[numcodecs.abc.Codec]
+            Literal[(*_pure_filter_names, *_ZARR_CODECS_ACCEPTED_UNTIL_V0_12.keys())] | InstanceOf[numcodecs.abc.Codec]
         ]
         | None
     ) = Field(
@@ -59,7 +80,7 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
     )
     filters: (
         list[
-            Literal[(*_pure_filter_names, *AVAILABLE_ZARR_COMPRESSION_METHODS.keys())] | InstanceOf[numcodecs.abc.Codec]
+            Literal[(*_pure_filter_names, *_ZARR_CODECS_ACCEPTED_UNTIL_V0_12.keys())] | InstanceOf[numcodecs.abc.Codec]
         ]
         | None
     ) = Field(
@@ -197,6 +218,50 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
     # End of the block deprecated in v0.10.2, to be removed in v0.12.0.
     # ==================================================================================================
 
+    # ==================================================================================================
+    # Deprecated in v0.11.0, to be removed in v0.12.0. See `_ZARR_CODECS_ACCEPTED_UNTIL_V0_12`.
+    # ==================================================================================================
+
+    @model_validator(mode="after")
+    def warn_on_codecs_outside_their_map(self) -> Self:
+        """Accept a codec name in the field it does not belong to for one release cycle."""
+        misplaced_compressors = [
+            compressor
+            for compressor in self.compressors or []
+            if isinstance(compressor, str)
+            and compressor not in (*self._pure_filter_names, *AVAILABLE_ZARR_COMPRESSION_METHODS)
+        ]
+        if misplaced_compressors:
+            warnings.warn(
+                f"Naming {misplaced_compressors} in `compressors` is deprecated and will be removed in v0.12.0. "
+                f"The compression methods are {list(AVAILABLE_ZARR_COMPRESSION_METHODS)}, and the filter methods, "
+                f"which belong in `filters`, are {list(AVAILABLE_ZARR_FILTER_METHODS)}.",
+                FutureWarning,
+                stacklevel=2,
+            )
+
+        # 'shuffle' in `filters` has its own deprecation above.
+        misplaced_filters = [
+            filter_method
+            for filter_method in self.filters or []
+            if isinstance(filter_method, str)
+            and filter_method not in (*self._pure_filter_names, *AVAILABLE_ZARR_FILTER_METHODS)
+        ]
+        if misplaced_filters:
+            warnings.warn(
+                f"Naming {misplaced_filters} in `filters` is deprecated and will be removed in v0.12.0. "
+                f"The filter methods are {list(AVAILABLE_ZARR_FILTER_METHODS)}, and the compression methods, "
+                f"which belong in `compressors`, are {list(AVAILABLE_ZARR_COMPRESSION_METHODS)}.",
+                FutureWarning,
+                stacklevel=2,
+            )
+
+        return self
+
+    # ==================================================================================================
+    # End of the block deprecated in v0.11.0, to be removed in v0.12.0.
+    # ==================================================================================================
+
     def _instantiate_codec(self, codec, codec_options: dict[str, Any] | None):
         if isinstance(codec, numcodecs.abc.Codec):
             return codec
@@ -212,7 +277,7 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
         if codec == "shuffle" and "elementsize" not in codec_options:
             codec_options["elementsize"] = self.dtype.itemsize
 
-        codec_class = Shuffle if codec == "shuffle" else AVAILABLE_ZARR_COMPRESSION_METHODS[codec]
+        codec_class = Shuffle if codec == "shuffle" else _ZARR_CODECS_ACCEPTED_UNTIL_V0_12[codec]
         return codec_class(**codec_options)
 
     def get_data_io_kwargs(self) -> dict[str, Any]:
