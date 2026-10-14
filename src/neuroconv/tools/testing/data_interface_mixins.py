@@ -208,7 +208,7 @@ class DataInterfaceTestMixin:
         # Replacement times also change the spacing, so a writer that keeps only their first value cannot pass
         stretch = 2.0
 
-        metadata = self.edit_metadata(_get_metadata_for_writing(self.interface))
+        metadata = _get_metadata_for_writing(self.interface)
         metadata["NWBFile"].setdefault("session_start_time", datetime.now().astimezone())
 
         # Each build starts from a fresh interface because aligning changes its state
