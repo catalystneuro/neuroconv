@@ -1,5 +1,3 @@
-import warnings
-
 from pydantic import DirectoryPath, validate_call
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
@@ -33,7 +31,6 @@ class TdtRecordingInterface(BaseRecordingExtractorInterface):
         *,
         folder_path: DirectoryPath,
         gain: float,
-        stream_id: str = "0",  # Stream "0" corresponds to LFP for gin data. Other streams seem non-electrical.
         verbose: bool = False,
         es_key: str | None = None,
         stream_name: str | None = None,
@@ -46,42 +43,23 @@ class TdtRecordingInterface(BaseRecordingExtractorInterface):
         ----------
         folder_path : str or Path
             Path to the directory with the corresponding files (TSQ, TBK, TEV, SEV)
-        stream_id : str, "0" by default
-            Select from multiple streams.
         gain : float
             The conversion factor from int16 to microvolts.
         verbose : bool, default: False
             Allows verbose.
         es_key : str, optional
         stream_name : str or None, optional
-            Name of the stream to select. If None, stream_id is used.
+            Name of the stream to select. If None, the first stream is used.
         metadata_key : str, optional
             Key that indexes this interface's entries in the dict-based metadata. Defaults to
             ``"tdt_recording"``.
-
-
-        Notes
-        -----
-        Either stream_id or stream_name can be used to select the desired stream.
-        If neither are specified, this interface defaults to the first stream, with stream_id "0".
-        If both are specified, stream_name takes precedence.
         """
 
-        # Deprecate stream_id parameter
-        # TODO: Remove after June 2026 - Only external videos will be supported
-        if stream_id is not None:
-            warnings.warn(
-                "The 'stream_id' parameter is deprecated and will be removed in June 2026. "
-                "Use 'stream_name' parameter instead to select the desired stream.",
-                FutureWarning,
-                stacklevel=2,
-            )
-
-        if stream_name is not None:
-            stream_id = None
+        if stream_name is None:
+            stream_names, _ = self.get_extractor_class().get_streams(folder_path=folder_path)
+            stream_name = stream_names[0]
         super().__init__(
             folder_path=folder_path,
-            stream_id=stream_id,
             stream_name=stream_name,
             verbose=verbose,
             es_key=es_key,

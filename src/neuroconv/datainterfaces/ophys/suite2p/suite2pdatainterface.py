@@ -268,9 +268,7 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
         *,
         stub_test: bool = False,
         stub_samples: int = 100,
-        include_roi_centroids: bool = True,
         include_roi_acceptance: bool | None = None,
-        mask_type: str | None = "image",  # Literal["image", "pixel", "voxel"]
         plane_segmentation_name: str | None = None,
         iterator_options: dict | None = None,
     ):
@@ -288,24 +286,11 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
             by default False.
         stub_samples : int, optional
             The number of samples (frames) to include in the subset if `stub_test` is True, by default 100.
-        include_roi_centroids : bool, optional
-            Whether to include the centroids of regions of interest (ROIs) in the data, by default True.
         include_roi_acceptance : bool, optional
             Deprecated and ignored. ROI acceptance is now written automatically as a
             column on the PlaneSegmentation table whenever the segmentation extractor
             exposes acceptance/rejection through its property system.
-        mask_type : str, default: 'image'
-            There are three types of ROI masks in NWB, 'image', 'pixel', and 'voxel'.
-
-            * 'image' masks have the same shape as the reference images the segmentation was applied to, and weight each pixel
-            by its contribution to the ROI (typically boolean, with 0 meaning 'not in the ROI').
-            * 'pixel' masks are instead indexed by ROI, with the data at each index being the shape of the image by the number
-            of pixels in each ROI.
-            * 'voxel' masks are instead indexed by ROI, with the data at each index being the shape of the volume by the number
-            of voxels in each ROI.
-
-            Specify your choice between these two as mask_type='image', 'pixel', 'voxel', or None.
-            plane_segmentation_name : str, optional
+        plane_segmentation_name : str, optional
             The name of the plane segmentation object, by default None.
         iterator_options : dict, optional
             Additional options for iterating over the data, by default None.
@@ -316,7 +301,7 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
                 "`include_roi_acceptance` is deprecated and has no effect. ROI acceptance is now "
                 "written automatically as a column on the PlaneSegmentation table whenever the "
                 "segmentation extractor exposes acceptance/rejection through its property system. "
-                "This parameter will be removed on or after February 2027.",
+                "This parameter will be removed in v0.12.0.",
                 DeprecationWarning,
                 stacklevel=2,
             )
@@ -337,8 +322,6 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
             metadata=metadata,
             stub_test=stub_test,
             stub_samples=stub_samples,
-            include_roi_centroids=include_roi_centroids,
-            mask_type=mask_type,
             plane_segmentation_name=self.plane_segmentation_name,
             iterator_options=iterator_options,
         )

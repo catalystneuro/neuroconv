@@ -31,9 +31,7 @@ class AudioInterface(BaseTemporalAlignmentInterface):
     info = "Interface for writing audio recordings to an NWB file."
 
     @validate_call
-    def __init__(
-        self, file_paths: list[FilePath], *, verbose: bool = False
-    ):  # TODO: change to * (keyword only) on or after August 2026
+    def __init__(self, file_paths: list[FilePath], *, verbose: bool = False):
         """
         Data interface for writing acoustic recordings to an NWB file.
 
@@ -193,7 +191,7 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         iterator_options : dict, optional
             Dictionary of options for the SliceableDataChunkIterator.
         write_as : {'stimulus', 'acquisition'}, optional
-            Deprecated. Use ``parent_container`` instead. Will be removed on or after February 2027.
+            Deprecated. Use ``parent_container`` instead. Will be removed in v0.12.0.
 
         Returns
         -------
@@ -202,7 +200,7 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         if write_as is not None:
             warnings.warn(
                 "The 'write_as' parameter of AudioInterface.add_to_nwbfile() is deprecated and will be removed "
-                "on or after February 2027. Use 'parent_container' instead.",
+                "in v0.12.0. Use 'parent_container' instead.",
                 FutureWarning,
                 stacklevel=2,
             )

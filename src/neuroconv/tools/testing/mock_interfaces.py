@@ -1,5 +1,6 @@
 import warnings
 from datetime import datetime, timezone
+from functools import partial
 from pathlib import Path
 from typing import Literal
 
@@ -767,6 +768,7 @@ class MockFiberPhotometryInterface(BaseFiberPhotometryInterface):
         sampling_frequency: float = 100.0,
         seed: int = 0,
         metadata_key: str | None = None,
+        commanded_voltage_streams: dict[str, str] | None = None,
         verbose: bool = False,
     ):
         """Initialize a mock fiber photometry interface.
@@ -794,6 +796,9 @@ class MockFiberPhotometryInterface(BaseFiberPhotometryInterface):
             Seed for the synthetic data.
         metadata_key : str, optional
             Override the response-series metadata key (default derived from the wavelengths).
+        commanded_voltage_streams : dict, optional
+            Drive signals keyed by their metadata and alignment keys, each mapped to one of this mock's
+            stream names (``"470nm"`` for the default wavelength), as the Doric interface takes them.
         verbose : bool, default: False
             Whether to print status messages.
         """
@@ -810,7 +815,18 @@ class MockFiberPhotometryInterface(BaseFiberPhotometryInterface):
         self._seed = int(seed)
         # One source stream per wavelength, named after it so the derived metadata_key is readable.
         stream_names = [f"{wavelength:g}nm" for wavelength in self._excitation_wavelengths_in_nm]
-        super().__init__(stream_names=stream_names, metadata_key=metadata_key, verbose=verbose)
+        super().__init__(
+            stream_names=stream_names,
+            metadata_key=metadata_key,
+            commanded_voltage_streams=commanded_voltage_streams,
+            verbose=verbose,
+        )
+        for key, stream_name in (commanded_voltage_streams or {}).items():
+            self._register_commanded_voltage(
+                key=key,
+                get_data=partial(self._get_stream_data, stream_name=stream_name),
+                get_native_times=partial(self._get_stream_timestamps, stream_name=stream_name),
+            )
 
     def _get_stream_data(self, *, stream_name: str) -> np.ndarray:
         # Deterministic per-wavelength synthetic trace (a distinct seed each, so the traces differ).
@@ -1365,12 +1381,12 @@ class MockPoseEstimationInterface(BasePoseEstimationInterface):
             Metadata key for this interface.
         pose_estimation_metadata_key : str, optional
             Deprecated. Renamed to ``metadata_key``; passing it forwards the value to
-            ``metadata_key`` and will be removed on or after February 2027.
+            ``metadata_key`` and will be removed in v0.12.0.
         """
         if pose_estimation_metadata_key is not None:
             warnings.warn(
                 "The 'pose_estimation_metadata_key' argument has been renamed to 'metadata_key' and "
-                "will be removed on or after February 2027. Please use 'metadata_key' instead.",
+                "will be removed in v0.12.0. Please use 'metadata_key' instead.",
                 DeprecationWarning,
                 stacklevel=2,
             )
