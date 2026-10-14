@@ -9,12 +9,9 @@ from typing import Literal
 
 import numpy as np
 import pytest
-from hdmf.common import DynamicTable, VectorIndex
-from hdmf.utils import get_data_shape
 from jsonschema.validators import Draft7Validator, validate
 from numpy.testing import assert_allclose, assert_array_equal
-from pynwb import TimeSeries, read_nwb
-from pynwb.file import NWBFile
+from pynwb import read_nwb
 from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv import BaseDataInterface, NWBConverter
@@ -33,6 +30,7 @@ from neuroconv.datainterfaces.ophys.basesegmentationextractorinterface import (
     BaseSegmentationExtractorInterface,
 )
 from neuroconv.tools.fiber_photometry import get_fiber_photometry_table
+from neuroconv.tools.testing._nwbfile_times import get_nwbfile_times
 from neuroconv.utils.json_schema import _NWBMetaDataEncoder
 
 
@@ -55,33 +53,6 @@ def _get_metadata_for_writing(interface) -> dict:
 _ALIGNMENT_TEST_SHIFT = 1.5
 # Replacement times also change the spacing, so a writer that keeps only their first value cannot pass
 _ALIGNMENT_TEST_STRETCH = 2.0
-
-
-def _get_written_times(nwbfile: NWBFile) -> dict[tuple[str, tuple[str, ...]], np.ndarray]:
-    """Collect every time an NWB file holds, keyed by the object's type, its path and the field.
-
-    Which fields count as times is decided per neurodata type: ``timestamps`` or ``starting_time`` and ``rate``
-    for a ``TimeSeries``, and for a table the columns named ``timestamp`` or ending in ``_time``. Durations are
-    not times and are left out because a shift never changes them.
-    """
-    written_times = {}
-    for container in nwbfile.objects.values():
-        # Object ids differ between two builds of the same file, so the names down from the file identify an object
-        path = (container.name, *(ancestor.name for ancestor in container.get_ancestors()))
-        identifier = (type(container).__name__, path)
-        if isinstance(container, TimeSeries):
-            if container.timestamps is not None:
-                times = np.asarray(container.timestamps)
-            else:
-                number_of_samples = get_data_shape(container.data)[0]
-                times = container.starting_time + np.arange(number_of_samples) / container.rate
-            written_times[identifier + ("times",)] = times
-        elif isinstance(container, DynamicTable):
-            for column_name in container.colnames:
-                is_time_column = column_name == "timestamp" or column_name.endswith("_time")
-                if is_time_column and not isinstance(container[column_name], VectorIndex):
-                    written_times[identifier + (column_name,)] = np.asarray(container[column_name].data)
-    return written_times
 
 
 class DataInterfaceTestMixin:
@@ -243,12 +214,12 @@ class DataInterfaceTestMixin:
 
         # Each build starts from a fresh interface because aligning changes its state
         reference = self.interface.create_nwbfile(metadata=metadata, **self.conversion_options)
-        reference_times = _get_written_times(reference)
+        reference_times = get_nwbfile_times(reference)
         assert reference_times, "The interface wrote no time-bearing object, so there is nothing to align."
 
         shifted_interface = self.data_interface_cls(**self.interface_kwargs)
         shifted_interface.alignment.shift_times(_ALIGNMENT_TEST_SHIFT)
-        shifted_times = _get_written_times(
+        shifted_times = get_nwbfile_times(
             shifted_interface.create_nwbfile(metadata=metadata, **self.conversion_options)
         )
 
@@ -272,7 +243,7 @@ class DataInterfaceTestMixin:
             time_bearing_object.set_times(
                 time_bearing_object.get_times() * _ALIGNMENT_TEST_STRETCH + _ALIGNMENT_TEST_SHIFT
             )
-        replaced_times = _get_written_times(
+        replaced_times = get_nwbfile_times(
             replaced_interface.create_nwbfile(metadata=metadata, **self.conversion_options)
         )
 
