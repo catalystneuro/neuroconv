@@ -5,14 +5,18 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from platform import python_version as get_python_version
 
-import dandi.dandiapi
 import pytest
 import yaml
-from dandi.exceptions import NotFoundError
 
 from neuroconv import run_conversion_from_yaml
 
 from ..test_on_data.setup_paths import ECEPHY_DATA_PATH, OUTPUT_PATH
+
+# The `dandi` extra does not install on Python 3.14, see pyproject.toml.
+pytest.importorskip("dandi")
+
+import dandi.dandiapi
+from dandi.exceptions import NotFoundError
 
 DANDI_SANDBOX_API_KEY = os.getenv("DANDI_SANDBOX_API_KEY")
 HAVE_DANDI_KEY = DANDI_SANDBOX_API_KEY is not None and DANDI_SANDBOX_API_KEY != ""  # can be "" from external forks

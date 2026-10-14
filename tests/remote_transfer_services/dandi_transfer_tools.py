@@ -12,6 +12,9 @@ from neuroconv.tools.nwb_helpers import (
     make_nwbfile_from_metadata,
 )
 
+# The `dandi` extra does not install on Python 3.14, see pyproject.toml.
+pytest.importorskip("dandi")
+
 EMBER_SANDBOX_API_KEY = os.getenv("EMBER_SANDBOX_API_KEY")
 if EMBER_SANDBOX_API_KEY is not None:
     del os.environ["EMBER_SANDBOX_API_KEY"]  # Will only remove within this test run
