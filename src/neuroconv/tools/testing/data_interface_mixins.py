@@ -50,11 +50,6 @@ def _get_metadata_for_writing(interface) -> dict:
     return interface.get_metadata()
 
 
-_ALIGNMENT_TEST_SHIFT = 1.5
-# Replacement times also change the spacing, so a writer that keeps only their first value cannot pass
-_ALIGNMENT_TEST_STRETCH = 2.0
-
-
 class DataInterfaceTestMixin:
     """
     Generic class for testing DataInterfaces.
@@ -209,6 +204,10 @@ class DataInterfaceTestMixin:
         except (AttributeError, NotImplementedError):
             pytest.skip("The interface does not support temporal alignment.")
 
+        shift = 1.5
+        # Replacement times also change the spacing, so a writer that keeps only their first value cannot pass
+        stretch = 2.0
+
         metadata = self.edit_metadata(_get_metadata_for_writing(self.interface))
         metadata["NWBFile"].setdefault("session_start_time", datetime.now().astimezone())
 
@@ -218,7 +217,7 @@ class DataInterfaceTestMixin:
         assert reference_times, "The interface wrote no time-bearing object, so there is nothing to align."
 
         shifted_interface = self.data_interface_cls(**self.interface_kwargs)
-        shifted_interface.alignment.shift_times(_ALIGNMENT_TEST_SHIFT)
+        shifted_interface.alignment.shift_times(shift)
         shifted_times = get_nwbfile_times(
             shifted_interface.create_nwbfile(metadata=metadata, **self.conversion_options)
         )
@@ -227,7 +226,7 @@ class DataInterfaceTestMixin:
         for identifier, times in reference_times.items():
             assert_allclose(
                 shifted_times[identifier],
-                times + _ALIGNMENT_TEST_SHIFT,
+                times + shift,
                 rtol=0,
                 atol=1e-9,
                 err_msg=f"{identifier} was written but did not move with the alignment",
@@ -240,9 +239,7 @@ class DataInterfaceTestMixin:
         replaced_interface = self.data_interface_cls(**self.interface_kwargs)
         for key in replaced_interface.alignment.keys():
             time_bearing_object = replaced_interface.alignment[key]
-            time_bearing_object.set_times(
-                time_bearing_object.get_times() * _ALIGNMENT_TEST_STRETCH + _ALIGNMENT_TEST_SHIFT
-            )
+            time_bearing_object.set_times(time_bearing_object.get_times() * stretch + shift)
         replaced_times = get_nwbfile_times(
             replaced_interface.create_nwbfile(metadata=metadata, **self.conversion_options)
         )
@@ -251,7 +248,7 @@ class DataInterfaceTestMixin:
         for identifier, times in reference_times.items():
             assert_allclose(
                 replaced_times[identifier],
-                times * _ALIGNMENT_TEST_STRETCH + _ALIGNMENT_TEST_SHIFT,
+                times * stretch + shift,
                 rtol=0,
                 atol=1e-9,
                 err_msg=f"{identifier} was written but did not move with the alignment",
