@@ -1,6 +1,5 @@
 import math
 import warnings
-from typing import Literal
 
 import numpy as np
 from pynwb import NWBFile
@@ -272,10 +271,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         metadata: dict | None = None,
         *,
         stub_test: bool = False,
-        include_background_segmentation: bool = False,
-        include_roi_centroids: bool = True,
         include_roi_acceptance: bool | None = None,
-        mask_type: Literal["image", "pixel", "voxel"] = "image",
         plane_segmentation_name: str | None = None,
         iterator_options: dict | None = None,
         stub_samples: int = 100,
@@ -291,28 +287,10 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         metadata : dict, optional
             The metadata for the interface
         stub_test : bool, default: False
-        include_background_segmentation : bool, default: False
-            Whether to include the background plane segmentation and fluorescence traces in the NWB file. If False,
-            neuropil traces are included in the main plane segmentation rather than the background plane segmentation.
-        include_roi_centroids : bool, default: True
-            Whether to include the ROI centroids on the PlaneSegmentation table.
-            If there are a very large number of ROIs (such as in whole-brain recordings),
-            you may wish to disable this for faster write speeds.
         include_roi_acceptance : bool, optional
             Deprecated and ignored. ROI acceptance is now written automatically as a
             column on the PlaneSegmentation table whenever the segmentation extractor
             exposes acceptance/rejection through its property system.
-        mask_type : str, default: 'image'
-            There are three types of ROI masks in NWB, 'image', 'pixel', and 'voxel'.
-
-            * 'image' masks have the same shape as the reference images the segmentation was applied to, and weight each pixel
-              by its contribution to the ROI (typically boolean, with 0 meaning 'not in the ROI').
-            * 'pixel' masks are instead indexed by ROI, with the data at each index being the shape of the image by the number
-              of pixels in each ROI.
-            * 'voxel' masks are instead indexed by ROI, with the data at each index being the shape of the volume by the number
-              of voxels in each ROI.
-
-            Specify your choice between these two as mask_type='image', 'pixel', 'voxel'
         plane_segmentation_name : str, optional
             The name of the plane segmentation to be added.
         iterator_options : dict, optional
@@ -342,7 +320,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
                 "`include_roi_acceptance` is deprecated and has no effect. ROI acceptance is now "
                 "written automatically as a column on the PlaneSegmentation table whenever the "
                 "segmentation extractor exposes acceptance/rejection through its property system. "
-                "This parameter will be removed on or after February 2027.",
+                "This parameter will be removed in v0.12.0.",
                 DeprecationWarning,
                 stacklevel=2,
             )
@@ -362,9 +340,6 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             segmentation_extractor=segmentation_extractor,
             nwbfile=nwbfile,
             metadata=metadata,
-            include_background_segmentation=include_background_segmentation,
-            include_roi_centroids=include_roi_centroids,
-            mask_type=mask_type,
             plane_segmentation_name=plane_segmentation_name,
             iterator_options=iterator_options,
             metadata_key=self.metadata_key,

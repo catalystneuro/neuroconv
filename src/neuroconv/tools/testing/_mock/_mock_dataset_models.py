@@ -7,6 +7,7 @@ import numpy as np
 from ...nwb_helpers import (
     AVAILABLE_HDF5_COMPRESSION_METHODS,
     AVAILABLE_ZARR_COMPRESSION_METHODS,
+    AVAILABLE_ZARR_FILTER_METHODS,
     HDF5BackendConfiguration,
     HDF5DatasetIOConfiguration,
     ZarrBackendConfiguration,
@@ -53,9 +54,7 @@ def mock_ZarrDatasetIOConfiguration(
         "gzip",
     ),
     compressor_options: Iterable[dict[str, Any] | None] | None = None,
-    filters: (
-        Iterable[Literal[tuple(AVAILABLE_ZARR_COMPRESSION_METHODS.keys())] | numcodecs.abc.Codec | None] | None
-    ) = None,
+    filters: Iterable[Literal[tuple(AVAILABLE_ZARR_FILTER_METHODS.keys())] | numcodecs.abc.Codec | None] | None = None,
     filter_options: Iterable[dict[str, Any]] | None = None,
 ) -> ZarrDatasetIOConfiguration:
     """Mock object of a ZarrDatasetIOConfiguration with NeuroPixel-like values to show chunk/buffer recommendations."""

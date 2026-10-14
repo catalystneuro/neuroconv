@@ -1056,7 +1056,6 @@ def add_imaging_to_nwbfile(
     iterator_options: dict | None = None,
     parent_container: Literal["acquisition", "processing/ophys"] = "acquisition",
     always_write_timestamps: bool = False,
-    # TODO: move metadata_key after metadata once positional args removed (September 2026)
     metadata_key: str | None = None,
 ) -> NWBFile:
     """
@@ -1152,7 +1151,7 @@ def add_imaging_to_nwbfile(
 
 def write_imaging_to_nwbfile(
     imaging: ImagingExtractor,
-    nwbfile_path: FilePath | None = None,
+    nwbfile_path: FilePath,
     nwbfile: NWBFile | None = None,
     metadata: dict | None = None,
     overwrite: bool = False,
@@ -1172,18 +1171,16 @@ def write_imaging_to_nwbfile(
     ----------
     imaging : ImagingExtractor
         The imaging extractor object to be written to nwb.
-    nwbfile_path : FilePath, optional
-        Path for where to write the NWBFile.
-        If not provided, only adds data to the in-memory nwbfile without writing to disk.
-        **Deprecated**: Using this function without nwbfile_path is deprecated.
-        Use ``add_imaging_to_nwbfile`` instead.
+    nwbfile_path : FilePath
+        Path for where to write the NWBFile. To add data to an in-memory NWBFile without writing it, use
+        ``add_imaging_to_nwbfile`` instead.
     nwbfile : NWBFile, optional
         If passed, this function will fill the relevant fields within the NWBFile object.
         E.g., calling::
 
-            write_imaging_to_nwbfile(imaging=my_imaging_extractor, nwbfile=my_nwbfile)
+            write_imaging_to_nwbfile(imaging=my_imaging_extractor, nwbfile_path=nwbfile_path, nwbfile=my_nwbfile)
 
-        will result in the appropriate changes to the my_nwbfile object.
+        adds the imaging data to my_nwbfile and writes it to nwbfile_path.
     metadata : dict, optional
         Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
     overwrite : bool, default: False
@@ -1214,31 +1211,7 @@ def write_imaging_to_nwbfile(
     NWBFile or None
         The NWBFile object when writing a new file or using an in-memory nwbfile.
         Returns None when appending to an existing file on disk (append_on_disk_nwbfile=True).
-        **Deprecated**: Returning NWBFile in append mode is deprecated and will return None on or after June 2026.
     """
-    # Handle deprecated usage without nwbfile_path
-    if nwbfile_path is None:
-        warnings.warn(
-            "Using 'write_imaging_to_nwbfile' without 'nwbfile_path' to only add data to an in-memory nwbfile "
-            "is deprecated and will be removed on or after June 2026. Use 'add_imaging_to_nwbfile' instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        if nwbfile is None:
-            raise ValueError(
-                "Either 'nwbfile_path' or 'nwbfile' must be provided. "
-                "To add data to an in-memory nwbfile, use 'add_imaging_to_nwbfile' instead."
-            )
-        add_imaging_to_nwbfile(
-            imaging=imaging,
-            nwbfile=nwbfile,
-            metadata=metadata,
-            photon_series_type=photon_series_type,
-            iterator_type=iterator_type,
-            iterator_options=iterator_options,
-        )
-        return nwbfile
-
     iterator_options = iterator_options or dict()
 
     if metadata is None:
@@ -1300,13 +1273,6 @@ def write_imaging_to_nwbfile(
 
     else:
         # Append mode: read existing file, add data, write back
-        warnings.warn(
-            "Returning an NWBFile object when using append_on_disk_nwbfile=True is deprecated "
-            "and will return None on or after June 2026.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-
         IO = BACKEND_NWB_IO[backend]
 
         with IO(path=str(nwbfile_path), mode="r+", load_namespaces=True) as io:
@@ -1331,7 +1297,7 @@ def write_imaging_to_nwbfile(
         if verbose:
             print(f"NWB file saved at {nwbfile_path}!")
 
-        return nwbfile
+        return None
 
 
 def _segmentation_extractor_has_data(segmentation_extractor: SegmentationExtractor) -> bool:
@@ -1364,13 +1330,8 @@ def add_segmentation_to_nwbfile(
     metadata: dict | None = None,
     *,
     plane_segmentation_name: str | None = None,
-    background_plane_segmentation_name: str | None = None,
-    include_background_segmentation: bool = False,
-    include_roi_centroids: bool = True,
     include_roi_acceptance: bool | None = None,
-    mask_type: Literal["image", "pixel", "voxel"] = "image",
     iterator_options: dict | None = None,
-    # TODO: move metadata_key after metadata once positional args removed (September 2026)
     metadata_key: str | None = None,
 ) -> NWBFile:
     """
@@ -1392,21 +1353,10 @@ def add_segmentation_to_nwbfile(
         Deprecated: in the dict-based format, use ``metadata_key`` for pattern discovery and edit
         ``metadata["Ophys"]["PlaneSegmentations"][metadata_key]["name"]`` directly. Will be removed
         when the old list-based metadata format is removed.
-    background_plane_segmentation_name : str, optional
-        The name of the background PlaneSegmentation, if any, by default None.
-        Used with the old list-based metadata format.
-        Deprecated: same guidance as ``plane_segmentation_name``.
-    include_background_segmentation : bool, optional
-        If True, includes background plane segmentation, by default False.
-        Used with the old list-based metadata format.
-    include_roi_centroids : bool, optional
-        If True, includes the centroids of the regions of interest (ROIs), by default True.
     include_roi_acceptance : bool, optional
         Deprecated and ignored. ROI acceptance is now written automatically as a
         column on the PlaneSegmentation table whenever the segmentation extractor
         exposes acceptance/rejection through its property system.
-    mask_type : str
-        Type of mask to use for segmentation; can be either "image" or "pixel", by default "image".
     iterator_options : dict, optional
         Options for iterating over the data, by default None.
     metadata_key : str, optional
@@ -1424,7 +1374,7 @@ def add_segmentation_to_nwbfile(
             "`include_roi_acceptance` is deprecated and has no effect. ROI acceptance is now "
             "written automatically as a column on the PlaneSegmentation table whenever the "
             "segmentation extractor exposes acceptance/rejection through its property system. "
-            "This parameter will be removed on or after February 2027.",
+            "This parameter will be removed in v0.12.0.",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -1479,10 +1429,6 @@ def add_segmentation_to_nwbfile(
             nwbfile=nwbfile,
             metadata=metadata,
             plane_segmentation_name=plane_segmentation_name,
-            background_plane_segmentation_name=background_plane_segmentation_name,
-            include_background_segmentation=include_background_segmentation,
-            include_roi_centroids=include_roi_centroids,
-            mask_type=mask_type,
             iterator_options=iterator_options,
         )
 
@@ -1491,15 +1437,12 @@ def add_segmentation_to_nwbfile(
 
 def write_segmentation_to_nwbfile(
     segmentation_extractor: SegmentationExtractor,
-    nwbfile_path: FilePath | None = None,
+    nwbfile_path: FilePath,
     nwbfile: NWBFile | None = None,
     metadata: dict | None = None,
     overwrite: bool = False,
     verbose: bool = False,
-    include_background_segmentation: bool = False,
-    include_roi_centroids: bool = True,
     include_roi_acceptance: bool | None = None,
-    mask_type: Literal["image", "pixel", "voxel"] = "image",
     *,
     iterator_options: dict | None = None,
     backend: Literal["hdf5", "zarr"] | None = None,
@@ -1513,46 +1456,28 @@ def write_segmentation_to_nwbfile(
     ----------
     segmentation_extractor : SegmentationExtractor
         The segmentation extractor object to be written to nwb.
-    nwbfile_path : FilePath, optional
-        Path for where to write the NWBFile.
-        If not provided, only adds data to the in-memory nwbfile without writing to disk.
-        **Deprecated**: Using this function without nwbfile_path is deprecated.
-        Use ``add_segmentation_to_nwbfile`` instead.
+    nwbfile_path : FilePath
+        Path for where to write the NWBFile. To add data to an in-memory NWBFile without writing it, use
+        ``add_segmentation_to_nwbfile`` instead.
     nwbfile : NWBFile, optional
         If passed, this function will fill the relevant fields within the NWBFile object.
         E.g., calling::
 
-            write_segmentation_to_nwbfile(segmentation_extractor=my_segmentation_extractor, nwbfile=my_nwbfile)
+            write_segmentation_to_nwbfile(
+                segmentation_extractor=my_segmentation_extractor, nwbfile_path=nwbfile_path, nwbfile=my_nwbfile
+            )
 
-        will result in the appropriate changes to the my_nwbfile object.
+        adds the segmentation data to my_nwbfile and writes it to nwbfile_path.
     metadata : dict, optional
         Metadata dictionary with information used to create the NWBFile when one does not exist or overwrite=True.
     overwrite : bool, default: False
         Whether to overwrite the NWBFile if one exists at the nwbfile_path.
     verbose : bool, default: False
         If 'nwbfile_path' is specified, informs user after a successful write operation.
-    include_background_segmentation : bool, default: False
-        Whether to include the background plane segmentation and fluorescence traces in the NWB file. If False,
-        neuropil traces are included in the main plane segmentation rather than the background plane segmentation.
-    include_roi_centroids : bool, default: True
-        Whether to include the ROI centroids on the PlaneSegmentation table.
-        If there are a very large number of ROIs (such as in whole-brain recordings), you may wish to disable this for
-        faster write speeds.
     include_roi_acceptance : bool, optional
         Deprecated and ignored. ROI acceptance is now written automatically as a
         column on the PlaneSegmentation table whenever the segmentation extractor
         exposes acceptance/rejection through its property system.
-    mask_type : {"image", "pixel", "voxel"}, default: "image"
-        There are three types of ROI masks in NWB, 'image', 'pixel', and 'voxel'.
-
-        * 'image' masks have the same shape as the reference images the segmentation was applied to, and weight each pixel
-          by its contribution to the ROI (typically boolean, with 0 meaning 'not in the ROI').
-        * 'pixel' masks are instead indexed by ROI, with the data at each index being the shape of the image by the number
-          of pixels in each ROI.
-        * 'voxel' masks are instead indexed by ROI, with the data at each index being the shape of the volume by the number
-          of voxels in each ROI.
-
-        Specify your choice between these two as mask_type='image', 'pixel', 'voxel'
     iterator_options : dict, optional
         A dictionary with options for the internal iterators that process the data.
     backend : {"hdf5", "zarr"}, optional
@@ -1569,7 +1494,6 @@ def write_segmentation_to_nwbfile(
     NWBFile or None
         The NWBFile object when writing a new file or using an in-memory nwbfile.
         Returns None when appending to an existing file on disk (append_on_disk_nwbfile=True).
-        **Deprecated**: Returning NWBFile in append mode is deprecated and will return None on or after June 2026.
     """
     iterator_options = iterator_options or dict()
 
@@ -1578,7 +1502,7 @@ def write_segmentation_to_nwbfile(
             "`include_roi_acceptance` is deprecated and has no effect. ROI acceptance is now "
             "written automatically as a column on the PlaneSegmentation table whenever the "
             "segmentation extractor exposes acceptance/rejection through its property system. "
-            "This parameter will be removed on or after February 2027.",
+            "This parameter will be removed in v0.12.0.",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -1594,32 +1518,6 @@ def write_segmentation_to_nwbfile(
         metadata_input = metadata[num] if metadata else {}
         metadata_base_list[num] = dict_deep_update(metadata_base_list[num], metadata_input, append_list=False)
     metadata_base_common = metadata_base_list[0]
-
-    # Handle deprecated usage without nwbfile_path
-    if nwbfile_path is None:
-        warnings.warn(
-            "Using 'write_segmentation_to_nwbfile' without 'nwbfile_path' to only add data to an in-memory nwbfile "
-            "is deprecated and will be removed on or after June 2026. Use 'add_segmentation_to_nwbfile' instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        if nwbfile is None:
-            raise ValueError(
-                "Either 'nwbfile_path' or 'nwbfile' must be provided. "
-                "To add data to an in-memory nwbfile, use 'add_segmentation_to_nwbfile' instead."
-            )
-        _ = get_module(nwbfile=nwbfile, name="ophys", description="contains optical physiology processed data")
-        for seg_extractor, seg_metadata in zip(segmentation_extractors, metadata_base_list):
-            add_segmentation_to_nwbfile(
-                segmentation_extractor=seg_extractor,
-                nwbfile=nwbfile,
-                metadata=seg_metadata,
-                include_background_segmentation=include_background_segmentation,
-                include_roi_centroids=include_roi_centroids,
-                mask_type=mask_type,
-                iterator_options=iterator_options,
-            )
-        return nwbfile
 
     appending_to_in_memory_nwbfile = nwbfile is not None
     file_initially_exists = nwbfile_path.exists()
@@ -1658,9 +1556,6 @@ def write_segmentation_to_nwbfile(
                 segmentation_extractor=seg_extractor,
                 nwbfile=nwbfile,
                 metadata=seg_metadata,
-                include_background_segmentation=include_background_segmentation,
-                include_roi_centroids=include_roi_centroids,
-                mask_type=mask_type,
                 iterator_options=iterator_options,
             )
 
@@ -1678,13 +1573,6 @@ def write_segmentation_to_nwbfile(
 
     else:
         # Append mode: read existing file, add data, write back
-        warnings.warn(
-            "Returning an NWBFile object when using append_on_disk_nwbfile=True is deprecated "
-            "and will return None on or after June 2026.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-
         IO = BACKEND_NWB_IO[backend]
 
         with IO(path=str(nwbfile_path), mode="r+", load_namespaces=True) as io:
@@ -1696,9 +1584,6 @@ def write_segmentation_to_nwbfile(
                     segmentation_extractor=seg_extractor,
                     nwbfile=nwbfile,
                     metadata=seg_metadata,
-                    include_background_segmentation=include_background_segmentation,
-                    include_roi_centroids=include_roi_centroids,
-                    mask_type=mask_type,
                     iterator_options=iterator_options,
                 )
 
@@ -1712,4 +1597,4 @@ def write_segmentation_to_nwbfile(
         if verbose:
             print(f"NWB file saved at {nwbfile_path}!")
 
-        return nwbfile
+        return None

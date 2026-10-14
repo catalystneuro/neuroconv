@@ -461,7 +461,7 @@ class CellExplorerLFPInterface(CellExplorerRecordingInterface):
         if write_as is not None:
             warnings.warn(
                 "The 'write_as' parameter of CellExplorerLFPInterface.add_to_nwbfile() is deprecated and will be "
-                "removed on or after February 2027. Use 'parent_container' instead "
+                "removed in v0.12.0. Use 'parent_container' instead "
                 "('raw' -> 'acquisition', 'lfp' -> 'processing/LFP', 'processed' -> 'processing/FilteredEphys').",
                 FutureWarning,
                 stacklevel=2,
@@ -506,9 +506,7 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
         extractor_instance = extractor_class(**self.extractor_kwargs)
         return extractor_instance
 
-    def __init__(
-        self, file_path: FilePath, *, verbose: bool = False
-    ):  # TODO: change to * (keyword only) on or after August 2026
+    def __init__(self, file_path: FilePath, *, verbose: bool = False):
         """
         Initialize read of Cell Explorer file.
 
