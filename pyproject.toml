@@ -40,6 +40,7 @@ dependencies = [
     "h5py>=3.9.0",
     "hdmf>=6.2.0",
     "hdmf_zarr>=0.11; python_version < '3.14'",
+    "hdmf_zarr>=0.14; python_version >= '3.14'",
     "pynwb>=4.2.0",
     "pydantic>=2.0",
     "typing_extensions>=4.1.0",
@@ -69,7 +70,8 @@ dependencies = [
 neuroconv = "neuroconv.tools.yaml_conversion_specification._yaml_conversion_specification:run_conversion_from_yaml_cli"
 
 [project.optional-dependencies]
-dandi = ["dandi>=0.70.0"]
+# dandi caps zarr<=3.1.5 and hdmf_zarr>=0.14, the only release on Python 3.14, requires zarr>=3.4.0
+dandi = ["dandi>=0.70.0; python_version < '3.14'"]
 compressors = ["hdf5plugin"]
 aws = ["boto3"]
 
