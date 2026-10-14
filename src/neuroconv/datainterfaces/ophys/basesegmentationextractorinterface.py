@@ -12,6 +12,7 @@ from ._metadata_template import (
     _get_imaging_plane_template_entry,
     _resolve_device_metadata_key,
 )
+from ..._temporal_alignment import _TemporalAlignment
 from ...baseextractorinterface import BaseExtractorInterface
 from ...tools.nwb_helpers._metadata_and_file_helpers import (
     _get_device_model_template_entry,
@@ -35,6 +36,43 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         self.verbose = verbose
         self.segmentation_extractor = self._extractor_instance
         self.metadata_key = metadata_key
+        self._alignment_key = metadata_key or "default_metadata_key"
+        self._alignment = _TemporalAlignment()
+        self._alignment._register_series(
+            key=self._alignment_key,
+            get_native_times=self._get_native_times,
+            default_start_time=self._get_native_start_time,
+        )
+
+    @property
+    def alignment(self) -> _TemporalAlignment:
+        return self._alignment
+
+    def _get_native_times(self) -> np.ndarray:
+        return self.segmentation_extractor.get_timestamps()
+
+    def _get_native_start_time(self) -> float:
+        if self.segmentation_extractor.get_num_samples() == 0:
+            return np.nan
+        if self.segmentation_extractor.has_time_vector():
+            times = self.segmentation_extractor.get_timestamps(start_sample=0, end_sample=1)
+        else:
+            times = self.segmentation_extractor.get_native_timestamps(start_sample=0, end_sample=1)
+        return float(times[0]) if times is not None else 0.0
+
+    def _get_aligned_timing(self, end_sample: int | None = None) -> dict:
+        series = self.alignment[self._alignment_key]
+        if series._times is None:
+            # A zero standing in for the native times reads back as the shift alignment applied, so a series
+            # nobody re-timed is written from the extractor's own timing without building a time vector.
+            return dict(time_shift=float(series._get_times(get_default_times=lambda: np.zeros(1))[0]))
+        times = series.get_times()
+        num_samples = self.segmentation_extractor.get_num_samples()
+        if times.ndim != 1 or times.size != num_samples:
+            raise ValueError(
+                f"Segmentation timestamps must be one-dimensional with one time per sample ({num_samples})."
+            )
+        return dict(timestamps=times[:end_sample])
 
     @property
     def roi_ids(self):
@@ -261,10 +299,43 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         return reinitialized_extractor.get_timestamps()
 
     def get_timestamps(self) -> np.ndarray:
-        return self.segmentation_extractor.get_timestamps()
+        warnings.warn(
+            "`get_timestamps` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.alignment[key].get_times()` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        return self.alignment[self._alignment_key].get_times()
 
     def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
-        self.segmentation_extractor.set_times(times=aligned_timestamps)
+        warnings.warn(
+            "`set_aligned_timestamps` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.alignment[key].set_times(times)` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        self.alignment[self._alignment_key].set_times(aligned_timestamps)
+
+    def set_aligned_starting_time(self, aligned_starting_time: float) -> None:
+        warnings.warn(
+            "`set_aligned_starting_time` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.alignment.shift_times(delta)` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        self.alignment.shift_times(aligned_starting_time)
+
+    def align_by_interpolation(self, unaligned_timestamps: np.ndarray, aligned_timestamps: np.ndarray) -> None:
+        warnings.warn(
+            "`align_by_interpolation` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.alignment.remap_times(local_sync_times=..., reference_sync_times=...)` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        self.alignment.remap_times(
+            local_sync_times=unaligned_timestamps,
+            reference_sync_times=aligned_timestamps,
+        )
 
     def add_to_nwbfile(
         self,
@@ -348,6 +419,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             )
 
         segmentation_extractor = self.segmentation_extractor
+        timing = self._get_aligned_timing(end_sample=stub_samples if stub_test else None)
 
         if roi_ids_to_add is not None:
             segmentation_extractor = segmentation_extractor.select_rois(roi_ids=roi_ids_to_add)
@@ -368,4 +440,5 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             plane_segmentation_name=plane_segmentation_name,
             iterator_options=iterator_options,
             metadata_key=self.metadata_key,
+            **timing,
         )
