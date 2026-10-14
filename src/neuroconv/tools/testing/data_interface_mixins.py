@@ -210,9 +210,9 @@ class DataInterfaceTestMixin:
         metadata["NWBFile"].setdefault("session_start_time", datetime.now().astimezone())
 
         # Each build starts from a fresh interface because aligning changes its state
-        reference = self.interface.create_nwbfile(metadata=metadata, **self.conversion_options)
-        reference_times = get_nwbfile_times(reference)
-        assert reference_times, "The interface wrote no time-bearing object, so there is nothing to align."
+        original_nwbfile = self.interface.create_nwbfile(metadata=metadata, **self.conversion_options)
+        original_times = get_nwbfile_times(original_nwbfile)
+        assert original_times, "The interface wrote no time-bearing object, so there is nothing to align."
 
         shifted_interface = self.data_interface_cls(**self.interface_kwargs)
         shifted_interface.alignment.shift_times(shift)
@@ -220,8 +220,8 @@ class DataInterfaceTestMixin:
             shifted_interface.create_nwbfile(metadata=metadata, **self.conversion_options)
         )
 
-        assert shifted_times.keys() == reference_times.keys()
-        for identifier, times in reference_times.items():
+        assert shifted_times.keys() == original_times.keys()
+        for identifier, times in original_times.items():
             assert_allclose(
                 shifted_times[identifier],
                 times + shift,
@@ -248,9 +248,9 @@ class DataInterfaceTestMixin:
         metadata["NWBFile"].setdefault("session_start_time", datetime.now().astimezone())
 
         # Each build starts from a fresh interface because aligning changes its state
-        reference = self.interface.create_nwbfile(metadata=metadata, **self.conversion_options)
-        reference_times = get_nwbfile_times(reference)
-        assert reference_times, "The interface wrote no time-bearing object, so there is nothing to align."
+        original_nwbfile = self.interface.create_nwbfile(metadata=metadata, **self.conversion_options)
+        original_times = get_nwbfile_times(original_nwbfile)
+        assert original_times, "The interface wrote no time-bearing object, so there is nothing to align."
 
         replaced_interface = self.data_interface_cls(**self.interface_kwargs)
         for key in replaced_interface.alignment.keys():
@@ -260,8 +260,8 @@ class DataInterfaceTestMixin:
             replaced_interface.create_nwbfile(metadata=metadata, **self.conversion_options)
         )
 
-        assert replaced_times.keys() == reference_times.keys()
-        for identifier, times in reference_times.items():
+        assert replaced_times.keys() == original_times.keys()
+        for identifier, times in original_times.items():
             assert_allclose(
                 replaced_times[identifier],
                 times * stretch + shift,
