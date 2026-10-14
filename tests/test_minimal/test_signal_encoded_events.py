@@ -250,7 +250,7 @@ class TestAnalogSignals:
     """The other half of the conditioning vocabulary: cuts on a continuous trace."""
 
     def test_a_single_cut_turns_an_analog_trace_into_a_readable_line(self):
-        """`thresholds` exists to make a line out of a continuous trace, which edge readings then read."""
+        """A given cut exists to make a line out of a continuous trace, which edge readings then read."""
         interface = MockSignalEncodedEventsInterface(
             analog_waveforms={"photodiode": "levels"},
             detection_configuration={
@@ -276,7 +276,7 @@ class TestAnalogSignals:
         np.testing.assert_allclose(events.durations, [0.2, 0.2])
 
     def test_an_analog_signal_is_absent_from_the_zero_configuration_default(self):
-        """`thresholds` has no defensible default, and inventing one fabricates events."""
+        """A continuous trace has no defensible default cut, and inventing one fabricates events."""
         interface = MockSignalEncodedEventsInterface(
             digital_line_waveforms={0: "pulses"}, analog_waveforms={"photodiode": "levels"}
         )

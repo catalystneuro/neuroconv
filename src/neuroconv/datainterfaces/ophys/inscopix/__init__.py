@@ -1,1 +1,2 @@
 from .inscopiximagingdatainterface import InscopixImagingInterface
+from .inscopixgpiodatainterface import InscopixGpioInterface
