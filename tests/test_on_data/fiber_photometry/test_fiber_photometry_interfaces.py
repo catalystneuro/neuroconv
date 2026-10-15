@@ -44,6 +44,15 @@ class TestTDTFiberPhotometryInterface(TestCase, TDTFiberPhotometryInterfaceMixin
             "description": "Fiber optic implants (Doric Lenses; 400 um, 0.48 NA) were placed above DMS (AP 0.8, ML 1.5, DV 2.8) and DLS (AP 0.1, ML 2.8, DV 3.5). The DMS implant was placed in the hemisphere receiving a medial SNc viral injection, while the DLS implant was placed in the hemisphere receiving a lateral SNc viral injection. Calcium signals from dopamine terminals in DMS and DLS were recorded during RI30, on the first and last days of RI60/RR20 training as well as on both footshock probes for each mouse. All recordings were done using a fiber photometry rig with optical components from Doric lenses controlled by a real-time processor from Tucker Davis Technologies (TDT; RZ5P). TDT Synapse software was used for data acquisition.",
             "serial_number": "OF001",
             "model": "optical_fiber_model",
+            "fiber_insertion": {
+                "name": "fiber_insertion",
+                "anatomical_target": "DMS",
+                "origin": "bregma",
+                "orientation": "RAS",
+                "x_in_mm": 1.5,
+                "y_in_mm": 0.8,
+                "z_in_mm": -2.8,
+            },
         },
         {
             "name": "excitation_source_calcium_signal",
@@ -66,6 +75,8 @@ class TestTDTFiberPhotometryInterface(TestCase, TDTFiberPhotometryInterfaceMixin
             "description": "This battery-operated photoreceiver has high gain and detects CW light signals in the sub-picowatt to nanowatt range. When used in conjunction with a modulated light source and a lock-in amplifier to reduce the measurement bandwidth, it achieves sensitivity levels in the femtowatt range. Doric offer this Newport product with add-on fiber optic adapter that improves coupling efficiency between the large core, high NA optical fibers used in Fiber Photometry and relatively small detector area. Its output analog voltage (0-5 V) can be monitored with an oscilloscope or with a DAQ board to record the data with a computer.",
             "serial_number": "PD001",
             "model": "photodetector_model",
+            "gain": 1.0e10,
+            "gain_unit": "V/W",
         },
         {
             "name": "emission_filter",
@@ -114,8 +125,6 @@ class TestTDTFiberPhotometryInterface(TestCase, TDTFiberPhotometryInterfaceMixin
             "model_number": "Newport Visible Femtowatt Photoreceiver Module",
             "detector_type": "photodiode",
             "wavelength_range_in_nm": [400.0, 700.0],
-            "gain": 1.0e10,
-            "gain_unit": "V/W",
         },
         {
             "name": "emission_filter_model",
@@ -176,25 +185,31 @@ class TestTDTFiberPhotometryInterface(TestCase, TDTFiberPhotometryInterfaceMixin
             "name": "dms_virus_injection",
             "description": "Viral injection into medial SNc for DMS fiber photometry experiments.",
             "viral_vector": "dms_virus",
-            "location": "medial SNc",
-            "hemisphere": "right",
-            "reference": "bregma at the cortical surface",
-            "ap_in_mm": -3.1,
-            "ml_in_mm": 0.8,
-            "dv_in_mm": -4.7,
             "volume_in_uL": 1.0,
+            "viral_injection_coordinates": {
+                "name": "viral_injection_coordinates",
+                "anatomical_target": "medial SNc",
+                "origin": "bregma at the cortical surface",
+                "orientation": "RAS",
+                "x_in_mm": 0.8,
+                "y_in_mm": -3.1,
+                "z_in_mm": -4.7,
+            },
         },
         {
             "name": "dls_virus_injection",
             "description": "Viral injection into lateral SNc for DLS fiber photometry experiments.",
             "viral_vector": "dls_virus",
-            "location": "lateral SNc",
-            "hemisphere": "right",
-            "reference": "bregma at the cortical surface",
-            "ap_in_mm": -3.1,
-            "ml_in_mm": 1.3,
-            "dv_in_mm": -4.2,
             "volume_in_uL": 1.0,
+            "viral_injection_coordinates": {
+                "name": "viral_injection_coordinates",
+                "anatomical_target": "lateral SNc",
+                "origin": "bregma at the cortical surface",
+                "orientation": "RAS",
+                "x_in_mm": 1.3,
+                "y_in_mm": -3.1,
+                "z_in_mm": -4.2,
+            },
         },
     ]
     expected_fiber_photometry_indicators = [
@@ -378,6 +393,12 @@ class TestTDTFiberPhotometryInterface(TestCase, TDTFiberPhotometryInterfaceMixin
                     np.testing.assert_equal(
                         getattr(device, key), expected_value
                     ), f"Device {expected_name} attribute {key} is {getattr(device, key)} but expected {expected_value}"
+                elif isinstance(expected_value, dict):
+                    sub_object = getattr(device, key)
+                    for sub_key, expected_sub_value in expected_value.items():
+                        assert (
+                            getattr(sub_object, sub_key) == expected_sub_value
+                        ), f"Device {expected_name} {key}.{sub_key} is {getattr(sub_object, sub_key)} but expected {expected_sub_value}"
                 else:
                     assert (
                         getattr(device, key) == expected_value
@@ -426,6 +447,13 @@ class TestTDTFiberPhotometryInterface(TestCase, TDTFiberPhotometryInterfaceMixin
                     virus_injection.viral_vector.name == expected_viral_vector
                 ), f"Virus injection {expected_name} viral vector is {virus_injection.viral_vector.name} but expected {expected_viral_vector}"
                 for key, expected_value in virus_injection_dict.items():
+                    if isinstance(expected_value, dict):
+                        sub_object = getattr(virus_injection, key)
+                        for sub_key, expected_sub_value in expected_value.items():
+                            assert (
+                                getattr(sub_object, sub_key) == expected_sub_value
+                            ), f"Virus injection {expected_name} {key}.{sub_key} is {getattr(sub_object, sub_key)} but expected {expected_sub_value}"
+                        continue
                     assert (
                         getattr(virus_injection, key) == expected_value
                     ), f"Virus injection {expected_name} attribute {key} is {getattr(virus_injection, key)} but expected {expected_value}"

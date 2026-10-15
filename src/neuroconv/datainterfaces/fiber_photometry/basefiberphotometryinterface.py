@@ -236,11 +236,15 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
             optical_fiber_key: dict(
                 type="OpticalFiber",
                 name=None,
+                # Position of the fiber tip, e.g. origin="bregma" and orientation="RAS" (x right, y anterior,
+                # z superior). Delete it for a fiber that is not implanted.
                 fiber_insertion=dict(
-                    insertion_position_ap_in_mm=None,
-                    insertion_position_ml_in_mm=None,
-                    insertion_position_dv_in_mm=None,
-                    depth_in_mm=None,
+                    anatomical_target=None,
+                    origin=None,
+                    orientation=None,
+                    x_in_mm=None,
+                    y_in_mm=None,
+                    z_in_mm=None,
                 ),
             )
             for optical_fiber_key in optical_fiber_keys

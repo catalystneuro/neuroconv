@@ -26,8 +26,9 @@ extensions NeuroConv writes:
 - ``IntracellularElectrode.location`` (icephys);
 - ``OptogeneticStimulusSite.location`` (optogenetics);
 - the ``FiberPhotometryTable`` ``location`` column (fiber photometry);
-- ``ViralVectorInjection.location``, the targeted region of a virus injection (``ndx-ophys-devices``,
-  used by both fiber photometry and ``ndx-optogenetics``).
+- ``StereotacticPosition.anatomical_target``, the targeted region of an implanted fiber (``fiber_insertion``)
+  or of a virus injection (``viral_injection_coordinates``) (``ndx-ophys-devices``, used by fiber
+  photometry, ``ndx-optogenetics`` and ``ndx-microscopy``).
 
 Two steps: infer, then annotate
 -------------------------------

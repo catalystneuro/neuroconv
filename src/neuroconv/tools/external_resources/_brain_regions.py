@@ -165,23 +165,31 @@ def get_brain_region_term(location: str, species: str = "Mus musculus") -> Brain
 
 
 def _location_containers(nwbfile: NWBFile) -> list:
-    """Every object on the file that carries a scalar ``location`` attribute naming a brain region.
+    """Every ``(object, attribute)`` on the file whose scalar attribute names a brain region.
 
-    Covers ``ElectrodeGroup`` (ecephys), ``ImagingPlane`` (ophys), ``IntracellularElectrode``
-    (icephys), ``OptogeneticStimulusSite`` (ogen), and every ``ndx-ophys-devices``
-    ``ViralVectorInjection``, whose ``location`` is the targeted region. Injections are found by type
-    wherever they sit (the fiber-photometry and optogenetics containers both hold them), so no
-    extension has to be installed for the rest to work. Objects whose ``location`` is unset are
-    skipped.
+    Covers the ``location`` of ``ElectrodeGroup`` (ecephys), ``ImagingPlane`` (ophys),
+    ``IntracellularElectrode`` (icephys) and ``OptogeneticStimulusSite`` (ogen), and the
+    ``anatomical_target`` of every ``ndx-ophys-devices`` ``StereotacticPosition`` (an optical fiber's
+    ``fiber_insertion``, a viral vector injection's ``viral_injection_coordinates``). Positions are
+    found by type wherever they sit, so no extension has to be installed for the rest to work.
+    Objects whose attribute is unset are skipped.
     """
     containers = [
-        *nwbfile.electrode_groups.values(),
-        *nwbfile.imaging_planes.values(),
-        *nwbfile.icephys_electrodes.values(),
-        *nwbfile.ogen_sites.values(),
-        *(obj for obj in nwbfile.objects.values() if getattr(obj, "neurodata_type", None) == "ViralVectorInjection"),
+        *((container, "location") for container in nwbfile.electrode_groups.values()),
+        *((container, "location") for container in nwbfile.imaging_planes.values()),
+        *((container, "location") for container in nwbfile.icephys_electrodes.values()),
+        *((container, "location") for container in nwbfile.ogen_sites.values()),
+        *(
+            (obj, "anatomical_target")
+            for obj in nwbfile.objects.values()
+            if getattr(obj, "neurodata_type", None) == "StereotacticPosition"
+        ),
     ]
-    return [container for container in containers if _unwrapped(getattr(container, "location", None)) is not None]
+    return [
+        (container, attribute)
+        for container, attribute in containers
+        if _unwrapped(getattr(container, attribute, None)) is not None
+    ]
 
 
 def _all_locations(nwbfile: NWBFile) -> list:
@@ -195,8 +203,8 @@ def _all_locations(nwbfile: NWBFile) -> list:
     electrodes = nwbfile.electrodes
     if electrodes is not None and "location" in electrodes.colnames:
         locations.update(dict.fromkeys(str(value) for value in _unwrapped(electrodes["location"].data)))
-    for container in _location_containers(nwbfile):
-        locations.setdefault(_unwrapped(container.location))
+    for container, attribute in _location_containers(nwbfile):
+        locations.setdefault(_unwrapped(getattr(container, attribute)))
 
     # Lazy import: fiber_photometry.py imports (transitively) from tools.external_resources.
     from ..fiber_photometry import get_fiber_photometry_table
@@ -214,7 +222,7 @@ def infer_brain_region_external_resources(nwbfile: NWBFile) -> dict:
 
     This is the **inference** half of brain-region annotation: it walks every anatomical
     ``location`` on ``nwbfile`` (the electrodes table, electrode groups, imaging planes,
-    intracellular electrodes, optogenetic stimulus sites, viral vector injections, and the
+    intracellular electrodes, optogenetic stimulus sites, stereotactic positions (fiber insertions and viral vector injection sites), and the
     ``FiberPhotometryTable``), resolves each distinct string to a brain-atlas term with
     :func:`get_brain_region_term` -- choosing the atlas from ``nwbfile.subject.species`` (Allen Mouse
     or Human Brain Atlas, or the species-agnostic UBERON fallback) -- and returns explicit

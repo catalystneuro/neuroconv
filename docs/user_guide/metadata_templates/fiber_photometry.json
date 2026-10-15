@@ -26,10 +26,12 @@
             "name": null,
             "device_model_metadata_key": "optical_fiber_model",
             "fiber_insertion": {
-                "insertion_position_ap_in_mm": null,
-                "insertion_position_ml_in_mm": null,
-                "insertion_position_dv_in_mm": null,
-                "depth_in_mm": null
+                "anatomical_target": null,
+                "origin": null,
+                "orientation": null,
+                "x_in_mm": null,
+                "y_in_mm": null,
+                "z_in_mm": null
             }
         },
         "optical_fiber_1": {
@@ -37,10 +39,12 @@
             "name": null,
             "device_model_metadata_key": "optical_fiber_model",
             "fiber_insertion": {
-                "insertion_position_ap_in_mm": null,
-                "insertion_position_ml_in_mm": null,
-                "insertion_position_dv_in_mm": null,
-                "depth_in_mm": null
+                "anatomical_target": null,
+                "origin": null,
+                "orientation": null,
+                "x_in_mm": null,
+                "y_in_mm": null,
+                "z_in_mm": null
             }
         },
         "excitation_source": {

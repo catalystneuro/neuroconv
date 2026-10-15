@@ -255,7 +255,7 @@ detector it came from.
 
 **Add the devices and point the row at them.** A device is the specific physical unit used in this
 recording, and it holds the facts about that unit as it was used here. The clearest example is the optical
-fiber's ``fiber_insertion``: where in the brain it was implanted, its stereotactic coordinates and depth.
+fiber's ``fiber_insertion``: the brain region it targets and the stereotactic position of its tip.
 That is often the most experimentally important metadata in the whole chain, it is what lets a downstream
 analyst say which brain region each trace reports. An excitation source can carry the power and
 intensity it was driven at, and a photodetector its gain, the per-recording configuration a reader needs
@@ -305,8 +305,12 @@ then set the row's reference keys to point at them:
             "type": "OpticalFiber",
             "name": "optical_fiber",
             "fiber_insertion": {
-                "depth_in_mm": 4.0,
-                "insertion_position_ap_in_mm": 3.0,
+                "anatomical_target": "VTA",
+                "origin": "bregma",
+                "orientation": "RAS",
+                "x_in_mm": 0.5,
+                "y_in_mm": -3.1,
+                "z_in_mm": -4.6,
             },
         },
         excitation_source_key: {
@@ -395,8 +399,12 @@ ndx-ophys-devices class. Define the models, point each device at its model with
             "type": "OpticalFiber",
             "name": "optical_fiber",
             "fiber_insertion": {
-                "depth_in_mm": 4.0,
-                "insertion_position_ap_in_mm": 3.0,
+                "anatomical_target": "VTA",
+                "origin": "bregma",
+                "orientation": "RAS",
+                "x_in_mm": 0.5,
+                "y_in_mm": -3.1,
+                "z_in_mm": -4.6,
             },
         },
         excitation_source_key: {
@@ -514,8 +522,12 @@ combined in a converter:
             "type": "OpticalFiber",
             "name": "optical_fiber",
             "fiber_insertion": {
-                "depth_in_mm": 4.0,
-                "insertion_position_ap_in_mm": 3.0,
+                "anatomical_target": "VTA",
+                "origin": "bregma",
+                "orientation": "RAS",
+                "x_in_mm": 0.5,
+                "y_in_mm": -3.1,
+                "z_in_mm": -4.6,
             },
         },
         signal_source_key: {
@@ -639,16 +651,24 @@ one interface is enough, and its region lists both rows.
             "type": "OpticalFiber",
             "name": "optical_fiber_dms",
             "fiber_insertion": {
-                "depth_in_mm": 4.2,
-                "insertion_position_ap_in_mm": 0.8,
+                "anatomical_target": "DMS",
+                "origin": "bregma",
+                "orientation": "RAS",
+                "x_in_mm": 1.5,
+                "y_in_mm": 0.8,
+                "z_in_mm": -2.8,
             },
         },
         dls_fiber_key: {
             "type": "OpticalFiber",
             "name": "optical_fiber_dls",
             "fiber_insertion": {
-                "depth_in_mm": 4.0,
-                "insertion_position_ap_in_mm": 0.5,
+                "anatomical_target": "DLS",
+                "origin": "bregma",
+                "orientation": "RAS",
+                "x_in_mm": 2.8,
+                "y_in_mm": 0.5,
+                "z_in_mm": -3.5,
             },
         },
         excitation_source_key: {
@@ -777,8 +797,12 @@ Filling in the one-fiber recording from the first section:
     indicator["name"] = "indicator"
     indicator["label"] = "GCaMP6s"
     metadata["Devices"]["optical_fiber_0"]["fiber_insertion"] = {
-        "depth_in_mm": 4.0,
-        "insertion_position_ap_in_mm": 3.0,
+        "anatomical_target": "VTA",
+        "origin": "bregma",
+        "orientation": "RAS",
+        "x_in_mm": 0.5,
+        "y_in_mm": -3.1,
+        "z_in_mm": -4.6,
     }
     for device_key in ("optical_fiber_0", "excitation_source", "photodetector"):
         metadata["Devices"][device_key]["name"] = device_key

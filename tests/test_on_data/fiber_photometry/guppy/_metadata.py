@@ -32,7 +32,14 @@ def build_device_metadata(recording_sites):
             "type": "OpticalFiber",
             "name": f"optical_fiber_{recording_site}",
             "device_model_metadata_key": "optical_fiber_model",
-            "fiber_insertion": {"depth_in_mm": 2.8},
+            "fiber_insertion": {
+                "anatomical_target": recording_site.upper(),
+                "origin": "bregma",
+                "orientation": "RAS",
+                "x_in_mm": 1.5,
+                "y_in_mm": 0.8,
+                "z_in_mm": -2.8,
+            },
         }
     return {
         "DeviceModels": {

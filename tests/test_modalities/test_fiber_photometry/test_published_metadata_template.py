@@ -66,12 +66,9 @@ def test_published_fiber_photometry_template_converts_once_filled(tmp_path):
     fiber_photometry_metadata["calcium_signal"]["description"] = "GCaMP6s at 465 nm in DMS and DLS."
 
     devices_metadata = metadata["Devices"]
-    for device_metadata_key in ("optical_fiber_0", "optical_fiber_1"):
-        devices_metadata[device_metadata_key]["fiber_insertion"] = dict(
-            insertion_position_ap_in_mm=3.0,
-            insertion_position_ml_in_mm=1.0,
-            insertion_position_dv_in_mm=4.0,
-            depth_in_mm=4.0,
+    for device_metadata_key, target, x_in_mm in (("optical_fiber_0", "DMS", 1.5), ("optical_fiber_1", "DLS", 2.8)):
+        devices_metadata[device_metadata_key]["fiber_insertion"].update(
+            anatomical_target=target, origin="bregma", orientation="RAS", x_in_mm=x_in_mm, y_in_mm=0.5, z_in_mm=-3.0
         )
     for device_metadata_key in ("dichroic_mirror", "excitation_filter"):
         devices_metadata[device_metadata_key].pop("device_model_metadata_key")

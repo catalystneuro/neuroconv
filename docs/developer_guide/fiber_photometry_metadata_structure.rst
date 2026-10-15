@@ -101,7 +101,8 @@ The complete fiber photometry metadata structure (one interface with ``metadata_
         # Device instances. Each carries a `type` and links its model by `device_model_metadata_key`.
         "Devices": {
             "fiber_dms": {"type": "OpticalFiber", "name": "optical_fiber_dms", "device_model_metadata_key": "ofm",
-                          "fiber_insertion": {"depth_in_mm": 4.2, "insertion_position_ap_in_mm": 0.8}},
+                          "fiber_insertion": {"anatomical_target": "DMS", "origin": "bregma", "orientation": "RAS",
+                                              "x_in_mm": 1.5, "y_in_mm": 0.8, "z_in_mm": -4.2}},
             "led_465": {"type": "ExcitationSource", "name": "excitation_source_465",
                         "device_model_metadata_key": "esm"},
             "pd": {"type": "Photodetector", "name": "photodetector", "device_model_metadata_key": "pdm"},
@@ -213,9 +214,9 @@ to the actual NWB object (e.g. an ``optical_fiber_metadata_key`` resolves to ``D
 and then ``nwbfile.devices[name]``). A device instance and its model are separate entries linked by
 ``device_model_metadata_key``, written through the shared device helpers (``_add_device_to_nwbfile`` /
 ``_add_device_model_to_nwbfile``); an entry's ``type`` selects the concrete ndx-ophys-devices class.
-Optical fibers are the one special case: each carries a nested ``fiber_insertion`` block (stereotaxic
-coordinates and insertion geometry), a *contained* component specified inline rather than a
-separately-keyed object.
+Optical fibers are the one special case: each can carry a nested ``fiber_insertion`` block (the
+stereotactic position of the fiber tip, built into a ``StereotacticPosition``), a *contained* component
+specified inline rather than a separately-keyed object.
 
 
 The FiberPhotometryTable and Regions

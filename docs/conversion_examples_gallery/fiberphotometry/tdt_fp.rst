@@ -27,7 +27,12 @@ Specify the minimal metadata required for the conversion.
   ...                     "name": "optical_fiber",
   ...                     "model": "optical_fiber_model",
   ...                     "fiber_insertion": {
-  ...                         "depth_in_mm": 2.8
+  ...                         "anatomical_target": "DMS",
+  ...                         "origin": "bregma",
+  ...                         "orientation": "RAS",
+  ...                         "x_in_mm": 1.5,
+  ...                         "y_in_mm": 0.8,
+  ...                         "z_in_mm": -2.8
   ...                     }
   ...                 }
   ...             ],
@@ -200,15 +205,14 @@ To ensure that the NWB file is fully annotated, specify the metadata using the f
   ...                     "model": "optical_fiber_model",
   ...                     "serial_number": "OF001",
   ...                     "fiber_insertion": {
-  ...                         "depth_in_mm": 2.8,
-  ...                         "insertion_position_ap_in_mm": 0.8,
-  ...                         "insertion_position_ml_in_mm": 1.5,
-  ...                         "insertion_position_dv_in_mm": 2.8,
-  ...                         "position_reference": "bregma",
-  ...                         "hemisphere": "right",
-  ...                         "insertion_angle_pitch_in_deg": 0.0,
-  ...                         "insertion_angle_yaw_in_deg": 0.0,
-  ...                         "insertion_angle_roll_in_deg": 0.0
+  ...                         "anatomical_target": "DMS",
+  ...                         "origin": "bregma",
+  ...                         "orientation": "RAS",
+  ...                         "x_in_mm": 1.5,
+  ...                         "y_in_mm": 0.8,
+  ...                         "z_in_mm": -2.8,
+  ...                         "pitch_in_deg": 0.0,
+  ...                         "roll_in_deg": 0.0
   ...                     }
   ...                 }
   ...             ],
@@ -248,9 +252,7 @@ To ensure that the NWB file is fully annotated, specify the metadata using the f
   ...                     "manufacturer": "Doric Lenses",
   ...                     "model_number": "Newport Visible Femtowatt Photoreceiver Module",
   ...                     "detector_type": "photodiode",
-  ...                     "wavelength_range_in_nm": [400.0, 700.0],
-  ...                     "gain": 1.0e+10,
-  ...                     "gain_unit": "V/W"
+  ...                     "wavelength_range_in_nm": [400.0, 700.0]
   ...                 }
   ...             ],
   ...             "Photodetectors": [
@@ -258,7 +260,9 @@ To ensure that the NWB file is fully annotated, specify the metadata using the f
   ...                     "name": "photodetector",
   ...                     "description": "This battery-operated photoreceiver has high gain and detects CW light signals in the sub-picowatt to nanowatt range. When used in conjunction with a modulated light source and a lock-in amplifier to reduce the measurement bandwidth, it achieves sensitivity levels in the femtowatt range. Doric offer this Newport product with add-on fiber optic adapter that improves coupling efficiency between the large core, high NA optical fibers used in Fiber Photometry and relatively small detector area. Its output analog voltage (0-5 V) can be monitored with an oscilloscope or with a DAQ board to record the data with a computer.",
   ...                     "model": "photodetector_model",
-  ...                     "serial_number": "PD001"
+  ...                     "serial_number": "PD001",
+  ...                     "gain": 1.0e+10,
+  ...                     "gain_unit": "V/W"
   ...                 }
   ...             ],
   ...             "BandOpticalFilterModels": [
@@ -348,25 +352,29 @@ To ensure that the NWB file is fully annotated, specify the metadata using the f
   ...                     "name": "dms_virus_injection",
   ...                     "description": "Viral injection into medial SNc for DMS fiber photometry experiments.",
   ...                     "viral_vector": "dms_virus",
-  ...                     "location": "medial SNc",
-  ...                     "hemisphere": "right",
-  ...                     "reference": "bregma at the cortical surface",
-  ...                     "ap_in_mm": -3.1,
-  ...                     "ml_in_mm": 0.8,
-  ...                     "dv_in_mm": -4.7,
-  ...                     "volume_in_uL": 1.0
+  ...                     "volume_in_uL": 1.0,
+  ...                     "viral_injection_coordinates": {
+  ...                         "anatomical_target": "medial SNc",
+  ...                         "origin": "bregma at the cortical surface",
+  ...                         "orientation": "RAS",
+  ...                         "x_in_mm": 0.8,
+  ...                         "y_in_mm": -3.1,
+  ...                         "z_in_mm": -4.7
+  ...                     }
   ...                 },
   ...                 {
   ...                     "name": "dls_virus_injection",
   ...                     "description": "Viral injection into lateral SNc for DLS fiber photometry experiments.",
   ...                     "viral_vector": "dls_virus",
-  ...                     "location": "lateral SNc",
-  ...                     "hemisphere": "right",
-  ...                     "reference": "bregma at the cortical surface",
-  ...                     "ap_in_mm": -3.1,
-  ...                     "ml_in_mm": 1.3,
-  ...                     "dv_in_mm": -4.2,
-  ...                     "volume_in_uL": 1.0
+  ...                     "volume_in_uL": 1.0,
+  ...                     "viral_injection_coordinates": {
+  ...                         "anatomical_target": "lateral SNc",
+  ...                         "origin": "bregma at the cortical surface",
+  ...                         "orientation": "RAS",
+  ...                         "x_in_mm": 1.3,
+  ...                         "y_in_mm": -3.1,
+  ...                         "z_in_mm": -4.2
+  ...                     }
   ...                 }
   ...             ],
   ...             "FiberPhotometryIndicators": [

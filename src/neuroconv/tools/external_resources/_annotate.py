@@ -13,7 +13,7 @@ string it annotates (HERD links a term to an object through that string):
 - ``metadata["ExternalResources"]["species"]`` -> ``{species string: term-or-list}`` for ``Subject.species``;
 - ``metadata["ExternalResources"]["brain_regions"]`` -> ``{location string: term-or-list}`` for every
   anatomical ``location`` field on the file (the electrodes table and electrode groups, imaging
-  planes, intracellular electrodes, optogenetic stimulus sites, viral vector injections, and the
+  planes, intracellular electrodes, optogenetic stimulus sites, stereotactic positions (fiber insertions and viral vector injection sites), and the
   ``FiberPhotometryTable``), regardless of which modality it belongs to.
 
 Each term is an explicit ``{"id": <CURIE>, "uri": <resolvable URI>}`` dict; a list of them annotates
@@ -194,13 +194,14 @@ def _brain_region_annotation_sites(nwbfile: NWBFile) -> list:
     Covers the electrodes table ``location`` column (ecephys) and the ``FiberPhotometryTable``
     ``location`` column (fiber photometry), if present, plus every object with a scalar ``location``
     attribute (electrode groups, imaging planes, intracellular electrodes, optogenetic stimulus
-    sites, and viral vector injections). Duplicate location strings within a table column are
-    collapsed to one reference per column.
+    sites) and the ``anatomical_target`` of every stereotactic position (fiber insertions, viral
+    vector injection sites). Duplicate location strings within a table column are collapsed to one
+    reference per column.
 
     ``container`` is the object HERD records the reference against (the ``location`` column, a
     ``VectorData``, for a table; the object itself otherwise). ``attribute`` and ``relative_path``
     are how that value is addressed for :meth:`HERD.add_ref` / :meth:`HERD.get_key` -- ``None`` /
-    ``""`` for a standalone column, and ``"location"`` for a scalar attribute.
+    ``""`` for a standalone column, and the attribute name for a scalar attribute.
     """
     sites = []
 
@@ -210,8 +211,8 @@ def _brain_region_annotation_sites(nwbfile: NWBFile) -> list:
         for location in dict.fromkeys(_unwrapped(location_column.data)):  # unique, order-preserving
             sites.append((location_column, None, "", location))
 
-    for container in _location_containers(nwbfile):
-        sites.append((container, "location", "location", _unwrapped(container.location)))
+    for container, attribute in _location_containers(nwbfile):
+        sites.append((container, attribute, attribute, _unwrapped(getattr(container, attribute))))
 
     # Lazy import: avoids a circular import at module load time (fiber_photometry.py imports from
     # tools.nwb_helpers, which imports from tools.external_resources).
@@ -252,7 +253,7 @@ def add_brain_region_external_resources(nwbfile: NWBFile, metadata: dict | None 
     Reads ``metadata["ExternalResources"]["brain_regions"]`` -- a ``{location string: term-or-list}`` mapping
     of explicit ``{"id": ..., "uri": ...}`` terms -- and, for every ``location`` value on the file
     (the electrodes table, electrode groups, imaging planes, intracellular electrodes, optogenetic
-    stimulus sites, viral vector injections, and the ``FiberPhotometryTable``) that the map covers, attaches machine-readable references stored in-file under
+    stimulus sites, stereotactic positions (fiber insertions and viral vector injection sites), and the ``FiberPhotometryTable``) that the map covers, attaches machine-readable references stored in-file under
     ``/general/external_resources``.
 
     Nothing is inferred: locations the metadata does not name are left untouched. Use
