@@ -298,6 +298,30 @@ class TestStrainTerms:
         assert get_strain_suggestion(strain) is None
         assert get_strain_term(strain) is None
 
+    def test_alias_claimed_by_two_strains_is_left_out(self):
+        from neuroconv.tools.external_resources._strain import _build_alias_table
+        from neuroconv.tools.external_resources._term_sets import TermInfo
+
+        # An upstream term set could reuse one of our aliases for another strain; that must not
+        # break the import, and the alias names neither strain.
+        term_set = {
+            "C57BL/6J": TermInfo("C57BL/6J", "RRID:A", "https://a", "", aliases=("shared",)),
+            "C57BL/6N": TermInfo("C57BL/6N", "RRID:B", "https://b", "", aliases=("Shared", "b6n")),
+        }
+        assert _build_alias_table(term_set) == {"c57bl/6j": "C57BL/6J", "c57bl/6n": "C57BL/6N", "b6n": "C57BL/6N"}
+
+    def test_bundled_strain_aliases_do_not_collide(self):
+        from neuroconv.tools.external_resources._term_sets import (
+            _TERM_SET_DIRECTORY,
+            _load_term_set_file,
+        )
+
+        claimed_by = {}
+        for info in _load_term_set_file(_TERM_SET_DIRECTORY / "strains.yaml").values():
+            for alias in (info.value, *info.aliases):
+                claimed_by.setdefault(alias.lower(), set()).add(info.value)
+        assert {alias: values for alias, values in claimed_by.items() if len(values) > 1} == {}
+
     def test_validate_strain_warns_for_informal_spelling(self):
         with pytest.warns(UserWarning, match="'Long-Evans'.*bioregistry.io/RRID:RGD_2308852"):
             term = validate_strain("long evans")
