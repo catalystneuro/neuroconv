@@ -12,7 +12,7 @@ Three kinds of value are annotated:
 
 - the subject's **species**, mapped to `NCBITaxon <https://bioregistry.io/registry/ncbitaxon>`_;
 - the subject's **strain**, mapped to `RRID <https://bioregistry.io/registry/rrid>`_ (Research
-  Resource Identifiers) for common laboratory rodent strains;
+  Resource Identifiers) for common laboratory strains;
 - anatomical **brain regions** (``location`` fields), mapped to the
   `Allen Mouse Brain Atlas <https://bioregistry.io/registry/mba>`_ (MBA) for mouse subjects, the
   `Allen Human Brain Atlas <https://bioregistry.io/registry/hba>`_ (HBA) for human subjects, a
@@ -177,11 +177,13 @@ Strain
 
 NWB stores a subject's laboratory strain in :py:attr:`Subject.strain <pynwb.file.Subject.strain>`
 as free text (e.g. ``"C57BL/6J"``, ``"Long-Evans"``). NeuroConv standardizes it the same way it
-standardizes species, backed by a small, curated, offline table of common laboratory rodent strains
-(:py:data:`~neuroconv.tools.external_resources.STRAIN_TERMS`). Unlike species, a strain is only
-recognized by its exact designation or a listed alias, in any letter case. Near misses and
-designations without a substrain (``"C57BL/6"``, ``"BALB/c"``) are not matched, because each of
-them names several strains with different RRIDs.
+standardizes species, backed by a small, curated, offline table of common laboratory strains
+(:py:data:`~neuroconv.tools.external_resources.STRAIN_TERMS`). The table bundled with NeuroConv
+covers mouse and rat strains; when the optional ``neuro-termsets`` package is installed, its worm,
+fly, zebrafish, and transgenic Cre-driver and reporter mouse lines are added. Unlike species, a
+strain is only recognized by its exact designation or a listed alias, in any letter case. Near
+misses and designations without a substrain (``"C57BL/6"``, ``"BALB/c"``) are not matched, because
+each of them names several strains with different RRIDs.
 
 Suggesting a standardized term
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -228,10 +230,10 @@ in the merge:
     # {'ExternalResources': {'strain': {'long evans': {
     #     'id': 'RRID:RGD_2308852', 'uri': 'https://scicrunch.org/resolver/RRID:RGD_2308852'}}}}
 
-    # An in-house line the curated table does not recognize:
+    # A strain the curated table does not include (JAX stock 005304):
     metadata["ExternalResources"] = {
         "strain": {
-            "my in-house line": {"id": "RRID:IMSR_JAX:000664", "uri": "https://scicrunch.org/resolver/RRID:IMSR_JAX:000664"},
+            "C57BL/6NJ": {"id": "RRID:IMSR_JAX:005304", "uri": "https://scicrunch.org/resolver/RRID:IMSR_JAX:005304"},
         },
     }
 

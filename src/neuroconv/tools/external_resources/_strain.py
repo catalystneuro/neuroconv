@@ -2,13 +2,15 @@
 
 NWB stores ``Subject.strain`` as free text (e.g. ``"C57BL/6J"``, ``"Long-Evans"``). To make files
 interoperable and to support downstream external-resource annotation (HERD / RRID), this module
-recognizes common laboratory rodent strains and gently suggests the canonical designation and its
+recognizes common laboratory strains and gently suggests the canonical designation and its
 RRID (Research Resource Identifier) when a user supplies an informal variant spelling (e.g.
 ``"long evans"``, ``"wistar rat"``).
 
 This is intentionally a small curated table rather than a full ontology client: it runs offline,
 has no extra dependencies, and only emits a suggestion when it is confident there is a better term.
-Valid-but-uncurated strains pass silently.
+Valid-but-uncurated strains pass silently. The bundled table covers mouse and rat strains; when the
+optional ``neuro-termsets`` package is installed, its worm, fly, zebrafish, and transgenic Cre-driver
+and reporter mouse lines are merged in.
 """
 
 import warnings
