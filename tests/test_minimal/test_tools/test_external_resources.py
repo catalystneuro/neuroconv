@@ -634,6 +634,20 @@ class TestExternalResourcesMetadataSchema:
 
         return load_dict_from_file(Path(neuroconv.__file__).parent / "schemas" / "base_metadata_schema.json")
 
+    def test_schema_file_has_no_duplicate_keys(self):
+        import json
+
+        import neuroconv
+
+        def _reject_duplicates(pairs):
+            keys = [key for key, _ in pairs]
+            duplicates = {key for key in keys if keys.count(key) > 1}
+            assert not duplicates, f"Duplicate keys in base_metadata_schema.json: {sorted(duplicates)}"
+            return dict(pairs)
+
+        schema_path = Path(neuroconv.__file__).parent / "schemas" / "base_metadata_schema.json"
+        json.loads(schema_path.read_text(encoding="utf-8"), object_pairs_hook=_reject_duplicates)
+
     def _validate(self, block, schema):
         nwbfile_metadata = {"session_start_time": datetime(2020, 1, 1, tzinfo=tzutc())}
         validate_metadata(metadata={"NWBFile": nwbfile_metadata, "ExternalResources": block}, schema=schema)
