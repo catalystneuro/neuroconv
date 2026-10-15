@@ -187,6 +187,9 @@ class EthoVisionManualScoringInterface(BaseEventsInterface):
     def get_event_times(self, event_type_source_id: str) -> np.ndarray:
         return self._get_events_data_dict()[event_type_source_id].timestamps
 
+    def _get_event_durations(self, event_type_source_id: str) -> np.ndarray | None:
+        return self._get_events_data_dict()[event_type_source_id].durations
+
     def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict | None = None) -> None:
         """Write one subject's Manual Scoring events, Ethogram and closed state bouts."""
         resolved_metadata = DeepDict(self.get_metadata())

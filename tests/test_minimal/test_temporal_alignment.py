@@ -223,14 +223,61 @@ class TestAlignmentEdgeCases:
         with pytest.raises(ValueError, match=re.escape(message)):
             alignment["a"].remap_times(local_sync_times=[0, 1], reference_sync_times=[0, 1, 2])
 
-    def test_events_reject_timestamp_replacement_and_remapping(self):
-        """Check that registered events reject timestamp replacement and remapping."""
-        # TODO: Remove these rejection checks when event timestamp replacement and remapping are supported.
+
+class TestEventsAlignment:
+    @pytest.fixture
+    def events_alignment(self):
         alignment = _TemporalAlignment()
-        alignment._register_events(key="e", get_native_times=lambda: np.array([0.5, 1.5]))
+        alignment._register_events(
+            key="e",
+            get_native_times=lambda: np.array([1.0, 4.0, 5.0]),
+            get_native_durations=lambda: np.array([2.0, 0.5, np.nan]),
+        )
+        return alignment
 
-        with pytest.raises(NotImplementedError, match="Event timestamp replacement is not supported yet"):
-            alignment["e"].set_times([1.0, 2.0])
+    def test_shift_moves_onsets_and_keeps_durations(self, events_alignment):
+        """Check that a rigid shift moves the onsets and leaves every duration, including a missing one."""
+        events_alignment.shift_times(10.0)
 
-        with pytest.raises(NotImplementedError, match="Event timestamp remapping is not supported yet"):
-            alignment["e"].remap_times(local_sync_times=[0, 1], reference_sync_times=[0, 1])
+        assert_allclose(events_alignment["e"].get_times(), [11.0, 14.0, 15.0])
+        assert_allclose(events_alignment["e"].get_durations(), [2.0, 0.5, np.nan])
+
+    def test_set_times_replaces_onsets_and_keeps_durations(self, events_alignment):
+        """Check that replacement onsets are written as given and the durations are not touched."""
+        events_alignment["e"].set_times([20.0, 30.0, 50.0])
+
+        assert_allclose(events_alignment["e"].get_times(), [20.0, 30.0, 50.0])
+        assert_allclose(events_alignment["e"].get_durations(), [2.0, 0.5, np.nan])
+
+    def test_set_times_needs_one_onset_per_event(self, events_alignment):
+        """Check that replacement onsets with the wrong count are rejected."""
+        message = "`set_times` needs one onset per event: this event type has 3 events and 2 times were given."
+        with pytest.raises(ValueError, match=re.escape(message)):
+            events_alignment["e"].set_times([1.0, 2.0])
+
+    def test_remap_times_recomputes_durations_through_the_map(self, events_alignment):
+        """Check that remapping against a clock running at twice the rate doubles the durations and keeps a missing one."""
+        events_alignment.remap_times(local_sync_times=[0.0, 10.0], reference_sync_times=[0.0, 20.0])
+
+        assert_allclose(events_alignment["e"].get_times(), [2.0, 8.0, 10.0])
+        assert_allclose(events_alignment["e"].get_durations(), [4.0, 1.0, np.nan])
+
+    def test_remap_times_after_a_shift_uses_the_shifted_onsets(self, events_alignment):
+        """Check that a duration is remapped from where its interval currently sits, a shift applied earlier included."""
+        events_alignment.shift_times(1.0)
+        events_alignment.remap_times(local_sync_times=[0.0, 10.0], reference_sync_times=[0.0, 20.0])
+
+        assert_allclose(events_alignment["e"].get_times(), [4.0, 10.0, 12.0])
+        assert_allclose(events_alignment["e"].get_durations(), [4.0, 1.0, np.nan])
+
+    def test_a_type_without_durations_has_none(self):
+        """Check that an event type registered without durations reports none before and after remapping."""
+        alignment = _TemporalAlignment()
+        alignment._register_events(key="e", get_native_times=lambda: np.array([1.0, 2.0]))
+
+        assert alignment["e"].get_durations() is None
+
+        alignment.remap_times(local_sync_times=[0.0, 10.0], reference_sync_times=[0.0, 20.0])
+
+        assert_allclose(alignment["e"].get_times(), [2.0, 4.0])
+        assert alignment["e"].get_durations() is None
