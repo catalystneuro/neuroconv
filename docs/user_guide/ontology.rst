@@ -183,8 +183,8 @@ standardizes species, backed by a small, curated, offline table of common labora
 Suggesting a standardized term
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-When ``Subject.strain`` is a recognized informal spelling (e.g. ``"black 6"``) or a likely typo of a
-known designation, NeuroConv emits a ``UserWarning`` the same way it does for species, while the
+When ``Subject.strain`` is a recognized informal spelling (e.g. ``"black 6"``) of a known
+designation, NeuroConv emits a ``UserWarning`` the same way it does for species, while the
 metadata is processed in :py:func:`~neuroconv.tools.nwb_helpers.make_nwbfile_from_metadata`:
 
 .. code-block:: python

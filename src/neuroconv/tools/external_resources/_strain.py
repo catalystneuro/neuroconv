@@ -11,7 +11,6 @@ has no extra dependencies, and only emits a suggestion when it is confident ther
 Valid-but-uncurated strains pass silently.
 """
 
-import difflib
 import warnings
 from dataclasses import dataclass
 
@@ -60,9 +59,10 @@ def get_strain_suggestion(strain: str) -> tuple[StrainTerm, str] | None:
     Suggest a canonical strain term for a user-provided strain string.
 
     The lookup is high-precision: it only returns a suggestion when ``strain`` is a recognized
-    informal spelling or a close typo of a known strain designation. An exact match to a known
-    canonical designation or an unrecognized (but possibly valid) strain both return ``None``
-    (nothing to suggest).
+    informal spelling of a known strain designation. An exact match to a known canonical
+    designation or an unrecognized (but possibly valid) strain both return ``None`` (nothing to
+    suggest). Near misses are not guessed, because real strain designations often differ from each
+    other by one or two characters (``"C57BL/6NJ"`` is not ``"C57BL/6N"``).
 
     Parameters
     ----------
@@ -96,13 +96,6 @@ def get_strain_suggestion(strain: str) -> tuple[StrainTerm, str] | None:
         reason = f"{strain!r} is an informal spelling"
         return STRAIN_TERMS[canonical_name], reason
 
-    # Likely typo of a known designation (e.g. "C57BL/6j" -> "C57BL/6J").
-    close_matches = difflib.get_close_matches(stripped, STRAIN_TERMS.keys(), n=1, cutoff=0.85)
-    if close_matches:
-        canonical_name = close_matches[0]
-        reason = f"{strain!r} closely matches a known strain designation"
-        return STRAIN_TERMS[canonical_name], reason
-
     return None
 
 
@@ -112,7 +105,7 @@ def get_strain_term(strain: str | None) -> StrainTerm | None:
 
     Unlike :func:`get_strain_suggestion` (which only fires when there is a *better* term to
     recommend), this returns the :class:`StrainTerm` whenever the strain can be recognized at
-    all: an exact canonical designation, an informal spelling, or a likely typo. It is the lookup
+    all: an exact canonical designation or an informal spelling. It is the lookup
     used to attach an RRID external-resource reference to an already-valid strain value.
 
     Parameters
@@ -141,7 +134,7 @@ def validate_strain(strain: str | None) -> StrainTerm | None:
     Warn (non-blocking) when a better standardized strain term is available.
 
     This never raises and never blocks conversion; it only emits a ``UserWarning`` with a
-    concrete suggestion when ``strain`` is a recognized informal spelling or a likely typo. It
+    concrete suggestion when ``strain`` is a recognized informal spelling. It
     is safe to call on any metadata value, including ``None``.
 
     Parameters
@@ -177,7 +170,7 @@ def infer_strain_external_resources(nwbfile: NWBFile) -> dict:
     Infer the strain term for the file's subject, as ``{"ExternalResources": {"strain": ...}}``.
 
     This is the **inference** half of strain annotation: it resolves ``nwbfile.subject.strain`` (an
-    informal spelling, a likely typo, or a canonical designation) to its RRID term via
+    informal spelling or a canonical designation) to its RRID term via
     :func:`get_strain_term` and returns an explicit ``{"id": ..., "uri": ...}`` term keyed by that
     value exactly as written (``"black 6"`` stays the key, because HERD links the term to
     ``Subject.strain`` through that string). The deterministic
@@ -188,7 +181,7 @@ def infer_strain_external_resources(nwbfile: NWBFile) -> dict:
 
         metadata = dict_deep_update(infer_strain_external_resources(nwbfile), metadata, append_list=False)
 
-    A recognized informal spelling or typo also emits the :func:`validate_strain` ``UserWarning``.
+    A recognized informal spelling also emits the :func:`validate_strain` ``UserWarning``.
 
     Parameters
     ----------
@@ -203,7 +196,7 @@ def infer_strain_external_resources(nwbfile: NWBFile) -> dict:
     """
     subject = getattr(nwbfile, "subject", None)
     strain = _unwrapped(getattr(subject, "strain", None))
-    validate_strain(strain)  # non-blocking suggestion for informal spellings / typos
+    validate_strain(strain)  # non-blocking suggestion for informal spellings
 
     term = get_strain_term(strain)
     if term is None:

@@ -255,18 +255,27 @@ class TestStrainTerms:
         assert get_strain_term("Long-Evans").rrid == "RRID:RGD_2308852"
         assert get_strain_suggestion("Long-Evans") is None
 
+    def test_informal_spelling_is_suggested(self):
+        term, reason = get_strain_suggestion("  Long Evans  ")  # case-insensitive and stripped
+        assert term.canonical_name == "Long-Evans"
+        assert "informal spelling" in reason
+        assert get_strain_term("  Long Evans  ") == term
+
     @pytest.mark.parametrize(
-        "strain, expected_strain, reason",
+        "strain",
         [
-            ("  Long Evans  ", "Long-Evans", "informal spelling"),  # case-insensitive and stripped
-            ("Sprague Dawly", "Sprague Dawley", "closely matches"),
+            # Real strains one or two characters away from a known designation must not take its RRID.
+            "C57BL/6NJ",
+            "BALB/cByJ",
+            "C57BL/6JRj",
+            "Ai140",
+            "Vglut1-ires-Cre",
+            "Sprague Dawly",  # typos are not guessed either
         ],
     )
-    def test_informal_spellings_and_typos_are_suggested(self, strain, expected_strain, reason):
-        term, suggestion_reason = get_strain_suggestion(strain)
-        assert term.canonical_name == expected_strain
-        assert reason in suggestion_reason
-        assert get_strain_term(strain) == term
+    def test_near_miss_is_not_matched(self, strain):
+        assert get_strain_suggestion(strain) is None
+        assert get_strain_term(strain) is None
 
     @pytest.mark.parametrize("strain", ["Octodon degus strain X", "", None, 42])
     def test_unrecognized_returns_none(self, strain):
