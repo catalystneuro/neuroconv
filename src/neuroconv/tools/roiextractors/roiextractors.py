@@ -272,7 +272,16 @@ def _get_ophys_metadata_entry(metadata: dict, section: str, key_name: str, key: 
     Checked rather than indexed: ``metadata`` is often a ``DeepDict``, where a missing key auto-vivifies an empty
     entry that the writers would then fill from the placeholders, writing the file without any error.
     """
-    entries = metadata.get("Ophys", {}).get(section, {})
+    entries = metadata
+    location = "metadata"
+    for level in ("Ophys", section):
+        if level not in entries:
+            raise ValueError(
+                f"{key_name} '{key}' was not found in metadata['Ophys']['{section}'] because {location} has no "
+                f"'{level}' (available keys: {list(entries)})."
+            )
+        entries = entries[level]
+        location += f"['{level}']"
     if key not in entries:
         raise ValueError(
             f"{key_name} '{key}' was not found in metadata['Ophys']['{section}'] (available keys: {list(entries)})."
