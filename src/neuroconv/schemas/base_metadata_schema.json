@@ -274,6 +274,35 @@
           {"type": "array", "minItems": 1, "items": {"$ref": "#/definitions/Term"}}
         ]
       }
+    },
+    "Term": {
+      "title": "Term",
+      "description": "An external resource entity, e.g. {'id': 'NCBITaxon:10090', 'uri': 'http://purl.obolibrary.org/obo/NCBITaxon_10090'}.",
+      "type": "object",
+      "required": ["id", "uri"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The entity's compact identifier (CURIE), e.g. 'MBA:382'."
+        },
+        "uri": {
+          "type": "string",
+          "minLength": 1,
+          "description": "A resolvable URI for the entity."
+        }
+      }
+    },
+    "TermMap": {
+      "title": "TermMap",
+      "description": "Maps each value as written in the file to one term, or to a list of terms to annotate it with several resources.",
+      "type": "object",
+      "additionalProperties": {
+        "oneOf": [
+          {"$ref": "#/definitions/Term"},
+          {"type": "array", "minItems": 1, "items": {"$ref": "#/definitions/Term"}}
+        ]
+      }
     }
   }
 }

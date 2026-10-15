@@ -483,7 +483,7 @@ class ExternalVideoInterface(BaseDataInterface):
 
         .. deprecated::
             Use ``interface.alignment[key].get_times()``, which reads the file it names rather than
-            handing back a list whose order the caller has to know. Removed in v0.12.0.
+            handing back a list whose order the caller has to know. Removed in v0.13.0.
 
         Returns
         -------
@@ -495,7 +495,7 @@ class ExternalVideoInterface(BaseDataInterface):
             frame; `stub_test=True` reads only the first 10 frames of each file.
         """
         warnings.warn(
-            "`get_timestamps` is deprecated and will be removed in v0.12.0. "
+            "`get_timestamps` is deprecated and will be removed in v0.13.0. "
             "Use `interface.alignment[key].get_times()` instead.",
             FutureWarning,
             stacklevel=2,
@@ -514,7 +514,7 @@ class ExternalVideoInterface(BaseDataInterface):
 
         .. deprecated::
             Use ``interface.alignment[key].set_times(times)``, which names the file the times land on.
-            Removed in v0.12.0.
+            Removed in v0.13.0.
 
         Parameters
         ----------
@@ -522,7 +522,7 @@ class ExternalVideoInterface(BaseDataInterface):
             The synchronized timestamps for data in this interface, one array per video file.
         """
         warnings.warn(
-            "`set_aligned_timestamps` is deprecated and will be removed in v0.12.0. "
+            "`set_aligned_timestamps` is deprecated and will be removed in v0.13.0. "
             "Use `interface.alignment[key].set_times(times)` instead.",
             FutureWarning,
             stacklevel=2,
@@ -549,7 +549,7 @@ class ExternalVideoInterface(BaseDataInterface):
 
         .. deprecated::
             Use ``interface.alignment[key].move_start_to(starting_time)`` to place each file, or
-            ``interface.alignment.shift_times(delta)`` to move files already placed. Removed in v0.12.0.
+            ``interface.alignment.shift_times(delta)`` to move files already placed. Removed in v0.13.0.
 
         Parameters
         ----------
@@ -557,7 +557,7 @@ class ExternalVideoInterface(BaseDataInterface):
             The common starting time for all segments of temporal data in this interface.
         """
         warnings.warn(
-            "`set_aligned_starting_time` is deprecated and will be removed in v0.12.0. Use "
+            "`set_aligned_starting_time` is deprecated and will be removed in v0.13.0. Use "
             "`interface.alignment[key].move_start_to(starting_time)` to place each file, or "
             "`interface.alignment.shift_times(delta)` to move files already placed.",
             FutureWarning,
@@ -591,7 +591,7 @@ class ExternalVideoInterface(BaseDataInterface):
         .. deprecated::
             Use ``interface.alignment[key].move_start_to(starting_time)`` per file, which states where the file
             begins instead of adding an offset to whatever it currently carries, so calling it twice does not
-            shift twice. Removed in v0.12.0.
+            shift twice. Removed in v0.13.0.
 
         Parameters
         ----------
@@ -603,7 +603,7 @@ class ExternalVideoInterface(BaseDataInterface):
             of each file.
         """
         warnings.warn(
-            "`set_aligned_segment_starting_times` is deprecated and will be removed in v0.12.0. "
+            "`set_aligned_segment_starting_times` is deprecated and will be removed in v0.13.0. "
             "Use `interface.alignment[key].move_start_to(starting_time)` instead, which is absolute rather than "
             "relative and so does not accumulate when called twice.",
             FutureWarning,
@@ -644,10 +644,10 @@ class ExternalVideoInterface(BaseDataInterface):
 
         .. deprecated::
             Use ``interface.alignment.remap_times(local_sync_times=..., reference_sync_times=...)``, whose
-            argument names say which clock each set of pulses came off. Removed in v0.12.0.
+            argument names say which clock each set of pulses came off. Removed in v0.13.0.
         """
         warnings.warn(
-            "`align_by_interpolation` is deprecated and will be removed in v0.12.0. Use "
+            "`align_by_interpolation` is deprecated and will be removed in v0.13.0. Use "
             "`interface.alignment.remap_times(local_sync_times=..., reference_sync_times=...)` instead.",
             FutureWarning,
             stacklevel=2,
@@ -658,7 +658,7 @@ class ExternalVideoInterface(BaseDataInterface):
         self,
         nwbfile: NWBFile,
         metadata: dict | None = None,
-        *args,  # TODO: change to * (keyword only) on or after August 2026
+        *,
         starting_frames: list[int] | None = None,
         parent_container: Literal["acquisition", "processing/behavior"] = "acquisition",
         module_description: str = "processed behavioral data",
@@ -703,7 +703,7 @@ class ExternalVideoInterface(BaseDataInterface):
             the video entry by ``device_metadata_key``; it is created and linked to the ImageSeries,
             establishing a connection between the video data and the camera that captured it. Passing the
             camera nested under the video entry as ``device=dict(...)`` is still accepted but deprecated
-            (removal on or after February 2027).
+            (removal in v0.12.0).
         starting_frames : list, optional
             List of start frames for each video written using external mode.
             If not provided, it is computed from the frame count of each video file.
@@ -724,36 +724,6 @@ class ExternalVideoInterface(BaseDataInterface):
             container, read frame by frame (slow on long videos), with any placement (``move_start_to``) or
             shift (``shift_times``) applied; a file with times set is written with those times, unchanged.
         """
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "starting_frames",
-                "parent_container",
-                "module_description",
-                "always_write_timestamps",
-            ]
-            num_positional_args_before_args = 2  # nwbfile, metadata
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"add_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args} were given. "
-                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
-                    "Please use keyword arguments."
-                )
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to ExternalVideoInterface.add_to_nwbfile() is deprecated "
-                f"and will be removed on or after August 2026. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            starting_frames = positional_values.get("starting_frames", starting_frames)
-            parent_container = positional_values.get("parent_container", parent_container)
-            module_description = positional_values.get("module_description", module_description)
-            always_write_timestamps = positional_values.get("always_write_timestamps", always_write_timestamps)
         if parent_container not in {"acquisition", "processing/behavior"}:
             raise ValueError(
                 f"parent_container must be either 'acquisition' or 'processing/behavior', not {parent_container}."
@@ -787,7 +757,7 @@ class ExternalVideoInterface(BaseDataInterface):
         elif legacy_device_kwargs is not None:
             warnings.warn(
                 "Passing the camera device nested under the video metadata entry is deprecated and will be "
-                "removed on or after February 2027. Use a top-level metadata['Devices'][key] entry referenced "
+                "removed in v0.12.0. Use a top-level metadata['Devices'][key] entry referenced "
                 "by 'device_metadata_key' instead.",
                 FutureWarning,
                 stacklevel=2,
