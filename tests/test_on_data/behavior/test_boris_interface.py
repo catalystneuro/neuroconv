@@ -31,6 +31,13 @@ class BORISTestMixin(EventsInterfaceTestMixin):
     before its own.
     """
 
+    # BORIS does not support `set_times` and `remap_times` yet, see `BORISInterface._supports_set_and_remap_times`
+    def test_alignment_set_times_reaches_the_nwbfile(self):
+        pass
+
+    def test_alignment_remap_times_reaches_the_nwbfile(self):
+        pass
+
     def run_custom_checks(self):
         nwbfile = read_nwb(self.nwbfile_path)
         behavior_module = nwbfile.processing["behavior"]
