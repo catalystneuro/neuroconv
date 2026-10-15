@@ -201,18 +201,13 @@ def _add_subject_attribute_external_resource(nwbfile: NWBFile, metadata: dict | 
         _warn_read_only_herd(len(entities))
         return False
 
-    # All terms for this value share one HERD key; reuse the key object across entities so a
-    # single object<->key link carries every ontology reference (matching
-    # add_brain_region_external_resources, which needs the same fan-out avoidance).
-    key = None
-    for entity_id, entity_uri in entities:
-        if key is None:
-            key = _find_existing_key(herd, subject, attribute, value)
-        if key is None:
-            herd.add_ref(container=subject, attribute=attribute, key=value, entity_id=entity_id, entity_uri=entity_uri)
-            key = herd.get_key(value, container=subject, relative_path=attribute)
-        else:
-            herd.add_ref(container=subject, attribute=attribute, key=key, entity_id=entity_id, entity_uri=entity_uri)
+    # All terms for this value share one HERD key: the first reference creates it and the others
+    # reuse the key object, so a single object<->key link carries every ontology reference.
+    (first_id, first_uri), *other_entities = entities
+    herd.add_ref(container=subject, attribute=attribute, key=value, entity_id=first_id, entity_uri=first_uri)
+    key = herd.get_key(value, container=subject, relative_path=attribute)
+    for entity_id, entity_uri in other_entities:
+        herd.add_ref(container=subject, attribute=attribute, key=key, entity_id=entity_id, entity_uri=entity_uri)
 
     # ``external_resources`` is write-once; only assign when we created the HERD, otherwise we
     # have extended the object already linked to the file in place.

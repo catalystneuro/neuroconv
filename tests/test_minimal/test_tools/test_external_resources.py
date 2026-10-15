@@ -576,6 +576,16 @@ class TestStrainExternalResource:
         assert objects["object_id"].tolist() == [nwbfile.subject.object_id]
         assert objects["relative_path"].tolist() == ["strain"]
 
+    def test_several_terms_share_one_key(self):
+        nwbfile = _make_nwbfile(strain="Long-Evans")
+        second_term = {"id": "RRID:RGD_0000000", "uri": "https://example.org/RGD_0000000"}
+        metadata = _strain_metadata({"Long-Evans": [LONG_EVANS_STRAIN_TERM, second_term]})
+        assert add_strain_external_resource(nwbfile, metadata=metadata) is True
+
+        herd = nwbfile.external_resources
+        assert herd.keys.to_dataframe()["key"].tolist() == ["Long-Evans"]
+        assert herd.to_dataframe()["entity_id"].tolist() == ["RRID:RGD_2308852", "RRID:RGD_0000000"]
+
 
 # ---------------------------------------------------------------------------
 # Brain-region HERD annotation (metadata -> file)
