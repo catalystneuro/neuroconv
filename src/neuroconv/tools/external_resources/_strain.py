@@ -18,7 +18,7 @@ from dataclasses import dataclass
 
 from pynwb import NWBFile
 
-from ._term_sets import _build_alias_table, _unwrapped, load_term_set
+from ._term_sets import _build_alias_table, _unwrapped, _ValueMatcher, load_term_set
 
 __all__ = [
     "STRAIN_TERMS",
@@ -47,10 +47,15 @@ STRAIN_TERMS: dict[str, StrainTerm] = {
     for info in _STRAIN_TERM_SET.values()
 }
 
-# Common informal spellings -> canonical strain designation, from the strain TermSet's ``aliases``
-# plus each canonical designation itself (so "c57bl/6j" resolves to "C57BL/6J").
-# Keys are lower-cased and compared case-insensitively.
-_COMMON_NAME_TO_CANONICAL: dict[str, str] = _build_alias_table(_STRAIN_TERM_SET, include_values=True)
+# Matches informal spellings from the strain TermSet's ``aliases``, plus each canonical designation
+# in any letter case (so "c57bl/6j" resolves to "C57BL/6J"). Near misses are not matched.
+_STRAIN_MATCHER = _ValueMatcher(
+    values=tuple(STRAIN_TERMS),
+    alias_table=_build_alias_table(_STRAIN_TERM_SET, include_values=True),
+    identifier_prefixes=("http://", "https://", "rrid:"),
+    alias_reason="is an informal spelling",
+    close_match_reason=None,
+)
 
 
 def get_strain_suggestion(strain: str) -> tuple[StrainTerm, str] | None:
@@ -74,28 +79,11 @@ def get_strain_suggestion(strain: str) -> tuple[StrainTerm, str] | None:
         The suggested canonical term and a human-readable reason for the suggestion, or ``None``
         when no confident suggestion is available.
     """
-    if not isinstance(strain, str):
+    suggestion = _STRAIN_MATCHER.suggest(strain)
+    if suggestion is None:
         return None
-
-    stripped = strain.strip()
-    if stripped == "":
-        return None
-
-    # Already a canonical designation we recognize -> nothing to suggest.
-    if stripped in STRAIN_TERMS:
-        return None
-
-    lowered = stripped.lower()
-    if lowered.startswith(("http://", "https://")) or lowered.startswith("rrid:"):
-        return None
-
-    # Recognized informal spelling.
-    if lowered in _COMMON_NAME_TO_CANONICAL:
-        canonical_name = _COMMON_NAME_TO_CANONICAL[lowered]
-        reason = f"{strain!r} is an informal spelling"
-        return STRAIN_TERMS[canonical_name], reason
-
-    return None
+    canonical_name, reason = suggestion
+    return STRAIN_TERMS[canonical_name], reason
 
 
 def get_strain_term(strain: str | None) -> StrainTerm | None:
@@ -117,15 +105,8 @@ def get_strain_term(strain: str | None) -> StrainTerm | None:
     StrainTerm or None
         The canonical term for a recognized strain, or ``None`` when it cannot be resolved.
     """
-    if not isinstance(strain, str):
-        return None
-
-    stripped = strain.strip()
-    if stripped in STRAIN_TERMS:
-        return STRAIN_TERMS[stripped]
-
-    suggestion = get_strain_suggestion(strain)
-    return suggestion[0] if suggestion is not None else None
+    canonical_name = _STRAIN_MATCHER.resolve(strain)
+    return STRAIN_TERMS[canonical_name] if canonical_name is not None else None
 
 
 def validate_strain(strain: str | None) -> StrainTerm | None:
