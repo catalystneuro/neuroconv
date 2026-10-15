@@ -3,7 +3,6 @@
 from pathlib import Path
 from typing import Literal
 
-import numcodecs
 import numpy as np
 import pytest
 from hdmf.common import DynamicTable, VectorData
@@ -72,7 +71,9 @@ def test_simple_time_series_override(
         assert written_data.compression == "gzip"
         assert written_data.compression_opts == higher_gzip_level
     elif backend == "zarr":
-        assert written_data.compressor == numcodecs.GZip(level=5)
+        from zarr.codecs import GzipCodec
+
+        assert written_data.compressors == (GzipCodec(level=5),)
     written_nwbfile.read_io.close()
 
 
@@ -114,27 +115,14 @@ def test_simple_dynamic_table_override(tmpdir: Path, backend: Literal["hdf5", "z
         assert written_data.compression == "gzip"
         assert written_data.compression_opts == higher_gzip_level
     elif backend == "zarr":
-        assert written_data.compressor == numcodecs.GZip(level=5)
+        from zarr.codecs import GzipCodec
+
+        assert written_data.compressors == (GzipCodec(level=5),)
     written_nwbfile.read_io.close()
 
 
-def written_filters_and_compressors(array) -> tuple[list, list]:
-    """
-    Read a written Zarr array's codec chain in the terms zarr 3 uses.
-
-    `Array.compressors` is a zarr 3 property that reports the bytes-to-bytes run for a v2 and a v3 array
-    alike, while `Array.compressor` is the v2-only spelling it deprecates. Reading through it here keeps
-    these assertions phrased in the vocabulary the model speaks, and the fallback can go when hdmf-zarr
-    moves off `zarr<3.0`.
-    """
-    filters = list(array.filters or ())
-    if hasattr(array, "compressors"):
-        return filters, list(array.compressors)
-    return filters, [] if array.compressor is None else [array.compressor]
-
-
-def test_shuffle_is_correctly_propagated_as_filter_in_zarr(tmpdir: Path):
-    """Zarr v2 has one compressor slot, so a shuffle named beside a compression method is written as a filter."""
+def test_shuffle_is_correctly_propagated_in_zarr(tmpdir: Path):
+    """Shuffle runs in `compressors` ahead of the compression method, with its element size taken from the dtype."""
     array = np.zeros(shape=(3_000, 16), dtype="int16")
 
     nwbfile = mock_NWBFile()
@@ -153,7 +141,9 @@ def test_shuffle_is_correctly_propagated_as_filter_in_zarr(tmpdir: Path):
     written_nwbfile = read_nwb(nwbfile_path)
     written_data = written_nwbfile.acquisition["TestTimeSeries"].data
 
-    filters, compressors = written_filters_and_compressors(written_data)
-    assert filters == [numcodecs.Shuffle(elementsize=2)]
-    assert compressors == [numcodecs.GZip(level=4)]
+    from zarr.codecs import GzipCodec
+    from zarr.codecs.numcodecs import Shuffle
+
+    assert written_data.filters == ()
+    assert written_data.compressors == (Shuffle(elementsize=2), GzipCodec(level=4))
     written_nwbfile.read_io.close()

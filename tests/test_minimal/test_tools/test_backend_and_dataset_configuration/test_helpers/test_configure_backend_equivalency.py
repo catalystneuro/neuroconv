@@ -3,7 +3,6 @@
 from pathlib import Path
 from typing import Literal
 
-import numcodecs
 import numpy as np
 import pytest
 from numpy.testing import assert_array_equal
@@ -83,7 +82,9 @@ def test_configure_backend_equivalency(
         assert written_data.compression == "gzip"
         assert written_data.compression_opts == 2
     elif backend == "zarr":
-        assert written_data.compressor == numcodecs.GZip(level=2)
+        from zarr.codecs import GzipCodec
+
+        assert written_data.compressors == (GzipCodec(level=2),)
 
     assert_array_equal(array_1, written_data[:])
     written_nwbfile.read_io.close()
