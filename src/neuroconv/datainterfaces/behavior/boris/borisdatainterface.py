@@ -528,6 +528,7 @@ class BORISInterface(BaseEventsInterface):
             )
 
         aligned_times = {code: self.get_event_times(code) for code in events_data_dict}
+        aligned_durations = {code: self._get_event_durations(code) for code in events_data_dict}
         for occurrence in closed_bouts:
             payload = events_data_dict[occurrence.code].payload
             index = rows_by_occurrence[id(occurrence)]
@@ -540,7 +541,7 @@ class BORISInterface(BaseEventsInterface):
             }
             bouts.add_interval(
                 start_time=onset,
-                stop_time=onset + occurrence.duration,
+                stop_time=onset + aligned_durations[occurrence.code][index],
                 label=occurrence.code,
                 **cells,
             )
