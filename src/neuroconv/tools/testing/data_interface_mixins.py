@@ -285,9 +285,10 @@ class DataInterfaceTestMixin:
         all_times = np.concatenate([times.ravel() for times in original_times.values()])
         all_durations = np.concatenate([[0.0], *(durations.ravel() for durations in original_durations.values())])
         local_sync_times = np.array([np.nanmin(all_times) - 1.0, np.nanmax(all_times) + np.nanmax(all_durations) + 1.0])
+        reference_sync_times = local_sync_times * stretch + shift
         remapped_interface = self.data_interface_cls(**self.interface_kwargs)
         remapped_interface.alignment.remap_times(
-            local_sync_times=local_sync_times, reference_sync_times=local_sync_times * stretch + shift
+            local_sync_times=local_sync_times, reference_sync_times=reference_sync_times
         )
         remapped_nwbfile = remapped_interface.create_nwbfile(metadata=metadata, **self.conversion_options)
         remapped_times = _get_nwbfile_times(remapped_nwbfile)
