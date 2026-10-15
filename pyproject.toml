@@ -55,7 +55,7 @@ dependencies = [
     "referencing", # for the json schema references
     "numcodecs<0.16.0; python_version < '3.14'", # 0.16.0 is incompatible with zarr < 3: https://github.com/zarr-developers/numcodecs/issues/721
     "numcodecs>=0.16.5; python_version >= '3.14'",
-    "zarr<3; python_version < '3.14'",  # the Zarr backend uses the zarr 2 API (zarr.codec_registry); hdmf_zarr>=0.14 requires zarr>=3
+    "zarr<3; python_version < '3.14'",  # dandi and spikeinterface hold zarr 2 here, so the Zarr backend (zarr 3 only) raises
     "zarr>=3; python_version >= '3.14'",
 ]
 
@@ -199,7 +199,7 @@ events = [
 ## Ecephys
 ecephys_minimal = [  # Keeps the minimal versions of ecephys dependencies in the repo
     "spikeinterface>=0.105.1",
-    "neo>=0.14.5",
+    "neo>=0.14.5,<0.14.6",  # 0.14.6 raises on Neuralynx gaps, lift after the spikeinterface release with SpikeInterface/spikeinterface#4865
     "natsort>=7.1.1",
 ]
 alphaomega = [
