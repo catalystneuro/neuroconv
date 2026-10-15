@@ -38,13 +38,13 @@ class ZarrBackendConfiguration(BackendConfiguration):
         default=psutil.cpu_count() - 1,
     )
 
-    # TODO: remove with the zarr 3 port. Python 3.14 only installs zarr 3, and the Zarr backend still speaks zarr 2.
+    # Python 3.13 and older resolve zarr 2, held there by the zarr pins of dandi and spikeinterface.
     @model_validator(mode="before")
     @classmethod
-    def raise_under_zarr_3(cls, values: Any) -> Any:
-        if Version(zarr.__version__).major >= 3:
+    def raise_without_zarr_3(cls, values: Any) -> Any:
+        if Version(zarr.__version__).major < 3:
             raise NotImplementedError(
-                f"The Zarr backend does not support zarr 3 yet, and zarr {zarr.__version__} is installed. "
-                "Use the HDF5 backend, or Python 3.13 or older for Zarr."
+                f"The Zarr backend requires zarr 3, and zarr {zarr.__version__} is installed. "
+                "zarr 3 installs with neuroconv on Python 3.14 and newer."
             )
         return values
