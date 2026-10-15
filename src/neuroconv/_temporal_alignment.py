@@ -204,10 +204,11 @@ class _TimeBearingEventsTable(_TimeBearingSeries):
     map(onset)``: it changes whenever the two clocks run at different rates.
     """
 
-    def __init__(self, *, get_native_times, get_native_durations=None):
+    def __init__(self, *, get_native_times, get_native_durations=None, supports_set_and_remap_times=True):
         super().__init__(get_native_times=get_native_times)
         self._get_native_durations = get_native_durations
         self._durations: np.ndarray | None = None
+        self._supports_set_and_remap_times = supports_set_and_remap_times
 
     def get_durations(self) -> np.ndarray | None:
         """Return the durations of this event type's events, or ``None`` for a type without durations."""
@@ -219,6 +220,8 @@ class _TimeBearingEventsTable(_TimeBearingSeries):
 
     def set_times(self, times) -> None:
         """Write these onsets for this event type, one per event, leaving the durations as they are."""
+        if not self._supports_set_and_remap_times:
+            raise NotImplementedError("Event timestamp replacement is not supported yet for this interface.")
         times = np.asarray(times)
         number_of_events = np.asarray(self._get_native_times()).size
         if times.shape != (number_of_events,):
@@ -230,6 +233,8 @@ class _TimeBearingEventsTable(_TimeBearingSeries):
 
     def remap_times(self, *, local_sync_times, reference_sync_times, interpolation_function=None) -> None:
         """Re-express the onsets on a reference clock, and recompute every duration through the same map."""
+        if not self._supports_set_and_remap_times:
+            raise NotImplementedError("Event timestamp remapping is not supported yet for this interface.")
         onsets = self.get_times()
         durations = self.get_durations()
         super().remap_times(
@@ -271,9 +276,13 @@ class _TemporalAlignment:
         self._name_to_time_bearing_object[key] = time_bearing_object
         return time_bearing_object
 
-    def _register_events(self, *, key: str, get_native_times, get_native_durations=None):
+    def _register_events(
+        self, *, key: str, get_native_times, get_native_durations=None, supports_set_and_remap_times=True
+    ):
         time_bearing_object = _TimeBearingEventsTable(
-            get_native_times=get_native_times, get_native_durations=get_native_durations
+            get_native_times=get_native_times,
+            get_native_durations=get_native_durations,
+            supports_set_and_remap_times=supports_set_and_remap_times,
         )
         self._name_to_time_bearing_object[key] = time_bearing_object
         return time_bearing_object
