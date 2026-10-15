@@ -98,13 +98,19 @@ Its :ref:`section on templates <how_to_annotate_from_a_template>` starts from sc
     ...         "type": "OpticalFiber",
     ...         "name": "optical_fiber_dms",
     ...         "device_model_metadata_key": "optical_fiber_model",
-    ...         "fiber_insertion": {"depth_in_mm": 2.8},
+    ...         "fiber_insertion": {
+    ...             "anatomical_target": "DMS", "origin": "bregma", "orientation": "RAS",
+    ...             "x_in_mm": 1.5, "y_in_mm": 0.8, "z_in_mm": -2.8,
+    ...         },
     ...     },
     ...     "optical_fiber_nac": {
     ...         "type": "OpticalFiber",
     ...         "name": "optical_fiber_nac",
     ...         "device_model_metadata_key": "optical_fiber_model",
-    ...         "fiber_insertion": {"depth_in_mm": 4.2},
+    ...         "fiber_insertion": {
+    ...             "anatomical_target": "NAc", "origin": "bregma", "orientation": "RAS",
+    ...             "x_in_mm": 1.0, "y_in_mm": 1.4, "z_in_mm": -4.2,
+    ...         },
     ...     },
     ...     "excitation_source_signal": {
     ...         "type": "ExcitationSource",

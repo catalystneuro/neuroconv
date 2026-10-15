@@ -14,7 +14,7 @@ from ndx_fiber_photometry import (
     FiberPhotometryViruses,
     FiberPhotometryVirusInjections,
 )
-from ndx_ophys_devices import Indicator, ViralVector, ViralVectorInjection
+from ndx_ophys_devices import Indicator, StereotacticPosition, ViralVector, ViralVectorInjection
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.file import Subject
 
@@ -35,14 +35,17 @@ def _add_virus_injection(nwbfile: NWBFile, injection_location) -> None:
     )
     injection = ViralVectorInjection(
         name="injection0",
-        location=injection_location,
-        hemisphere="left",
-        reference="Bregma",
-        ap_in_mm=1.0,
-        ml_in_mm=1.0,
-        dv_in_mm=1.0,
         volume_in_uL=0.5,
         viral_vector=viral_vector,
+        viral_injection_coordinates=StereotacticPosition(
+            name="viral_injection_coordinates",
+            anatomical_target=injection_location,
+            origin="bregma",
+            orientation="RAS",
+            x_in_mm=-0.5,
+            y_in_mm=-3.1,
+            z_in_mm=-4.6,
+        ),
     )
     indicator = Indicator(name="indicator0", label="GCaMP", description="d", manufacturer="m")
     nwbfile.add_lab_meta_data(
@@ -96,7 +99,7 @@ assert not any(module.startswith("ndx_") for module in sys.modules), "an extensi
         with NWBHDF5IO(path, "r") as io:
             dataframe = io.read().external_resources.to_dataframe()
         rows = set(zip(dataframe["object_type"], dataframe["key"], dataframe["entity_id"]))
-        assert rows == {("Subject", "Mus musculus", "NCBITaxon:10090"), ("ViralVectorInjection", "VTA", "MBA:749")}
+        assert rows == {("Subject", "Mus musculus", "NCBITaxon:10090"), ("StereotacticPosition", "VTA", "MBA:749")}
 
     def test_fiber_photometry_table_location_is_annotated(self):
         from neuroconv.tools.fiber_photometry import get_fiber_photometry_table
@@ -125,7 +128,9 @@ assert not any(module.startswith("ndx_") for module in sys.modules), "an extensi
                 type="OpticalFiber",
                 name="optical_fiber",
                 device_model_metadata_key="optical_fiber_model",
-                fiber_insertion=dict(depth_in_mm=1.0),
+                fiber_insertion=dict(
+                    anatomical_target="CA1", origin="bregma", orientation="RAS", x_in_mm=1.5, y_in_mm=-2.0, z_in_mm=-1.3
+                ),
             ),
             excitation_source=dict(
                 type="ExcitationSource", name="excitation_source", device_model_metadata_key="excitation_source_model"
@@ -167,3 +172,6 @@ assert not any(module.startswith("ndx_") for module in sys.modules), "an extensi
         objects = nwbfile.external_resources.objects.to_dataframe()
         location_column = get_fiber_photometry_table(nwbfile)["location"]
         assert location_column.object_id in objects["object_id"].tolist()
+        # The fiber's own stereotactic target is annotated through its anatomical_target
+        fiber_insertion = nwbfile.devices["optical_fiber"].fiber_insertion
+        assert fiber_insertion.object_id in objects["object_id"].tolist()

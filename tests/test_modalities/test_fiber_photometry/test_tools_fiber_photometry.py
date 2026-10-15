@@ -41,8 +41,6 @@ from neuroconv.tools.fiber_photometry import add_ophys_device, add_ophys_device_
                 "model_number": "Newport Visible Femtowatt Photoreceiver Module",
                 "detector_type": "photodiode",
                 "wavelength_range_in_nm": [400.0, 700.0],
-                "gain": 1.0e10,
-                "gain_unit": "V/W",
             },
         ),
         (
@@ -107,8 +105,6 @@ def test_add_ophys_device_model(device_type, device_metadata):
     elif device_type == "PhotodetectorModel":
         assert device_model.detector_type == device_metadata["detector_type"]
         assert device_model.wavelength_range_in_nm == device_metadata["wavelength_range_in_nm"]
-        assert device_model.gain == device_metadata["gain"]
-        assert device_model.gain_unit == device_metadata["gain_unit"]
     elif device_type == "BandOpticalFilterModel":
         assert device_model.filter_type == device_metadata["filter_type"]
         assert device_model.center_wavelength_in_nm == device_metadata["center_wavelength_in_nm"]
@@ -154,6 +150,8 @@ def test_add_ophys_device_model(device_type, device_metadata):
                 "description": "High-gain photoreceiver for fluorescence detection.",
                 "model": "photodetector_model",
                 "serial_number": "PD001",
+                "gain": 1.0e10,
+                "gain_unit": "V/W",
             },
         ),
         (
@@ -209,8 +207,6 @@ def test_add_ophys_device(device_type, device_metadata):
             {
                 "detector_type": "photodiode",
                 "wavelength_range_in_nm": [400.0, 700.0],
-                "gain": 1.0e10,
-                "gain_unit": "V/W",
             }
         )
         model_type = "PhotodetectorModel"
@@ -267,6 +263,8 @@ def test_add_ophys_device(device_type, device_metadata):
         assert device.exposure_time_in_s == device_metadata["exposure_time_in_s"]
     elif device_type == "Photodetector":
         assert device.serial_number == device_metadata["serial_number"]
+        assert device.gain == device_metadata["gain"]
+        assert device.gain_unit == device_metadata["gain_unit"]
     elif device_type == "DichroicMirror":
         assert device.serial_number == device_metadata["serial_number"]
 

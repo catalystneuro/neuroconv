@@ -5,6 +5,7 @@ from pynwb import NWBFile
 
 from neuroconv.tools import get_package
 from neuroconv.tools.nwb_helpers import _add_device_to_nwbfile
+from neuroconv.tools.nwb_helpers._device_types import _build_inline_containers
 
 #: FiberPhotometryTable row reference fields (``<field>_metadata_key``) mapping to the ndx row column.
 _ROW_DEVICE_KEY_FIELDS = {
@@ -150,7 +151,7 @@ def add_fiber_photometry_devices(*, nwbfile: NWBFile, metadata: dict) -> None:
     the owning interface then silently reuses. A referenced device's ``device_model_metadata_key``
     is resolved on demand by the canonical helper, so its model needs no separate pass, and an
     optical fiber's nested ``fiber_insertion`` dict is built into an
-    ``ndx_ophys_devices.FiberInsertion`` by the same helper.
+    ``ndx_ophys_devices.StereotacticPosition`` by the same helper.
     """
     table_metadata = metadata["FiberPhotometry"]["FiberPhotometryTable"]
 
@@ -294,6 +295,10 @@ def add_fiber_photometry_lab_metadata(*, nwbfile: NWBFile, fiber_photometry_meta
             key: value for key, value in injection_metadata.items() if key != "viral_vector_metadata_key"
         }
         injection_metadata["viral_vector"] = key_to_viral_vector[viral_vector_metadata_key]
+        # The nested ``viral_injection_coordinates`` dict becomes a ``StereotacticPosition``
+        injection_metadata = _build_inline_containers(
+            target_class=ndx_ophys_devices.ViralVectorInjection, kwargs=injection_metadata
+        )
         key_to_injection[injection_metadata_key] = ndx_ophys_devices.ViralVectorInjection(**injection_metadata)
     virus_injections = (
         ndx_fiber_photometry.FiberPhotometryVirusInjections(viral_vector_injections=list(key_to_injection.values()))

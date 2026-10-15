@@ -335,7 +335,7 @@ image = [
 
 ## Fiber Photometry
 fiber_photometry_minimal = [  # Keeps the minimal version of the fiber photometry dependency in the repo
-    "ndx-fiber-photometry>=0.2.3,<0.3",  # 0.3.0 adopts ndx-ophys-devices 0.4, which removes FiberInsertion used by the TDT interface
+    "ndx-fiber-photometry>=0.3.0,<0.4",
 ]
 csv_fp = [
     "neuroconv[fiber_photometry_minimal]",

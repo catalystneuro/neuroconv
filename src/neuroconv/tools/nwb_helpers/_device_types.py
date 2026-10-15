@@ -127,7 +127,9 @@ def _build_inline_containers(*, target_class: type, kwargs: dict) -> dict:
             continue
 
         if is_dict:
-            kwargs[argument_name] = container_class(**value)
+            # A single sub-object sits in a slot named after it (``OpticalFiber.fiber_insertion`` is a
+            # ``StereotacticPosition`` named "fiber_insertion"), so its dict may leave the name out.
+            kwargs[argument_name] = container_class(**{"name": argument_name, **value})
         elif accepts_list:
             kwargs[argument_name] = [container_class(**element) for element in value]
 

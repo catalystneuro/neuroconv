@@ -13,6 +13,7 @@ from pynwb.file import NWBFile
 from neuroconv.basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from neuroconv.tools import get_package
 from neuroconv.tools.fiber_photometry import add_ophys_device, add_ophys_device_model
+from neuroconv.tools.nwb_helpers._device_types import _build_inline_containers
 from neuroconv.utils import DeepDict
 
 from ._tdt_mixin import TDTLoadMixin
@@ -266,7 +267,6 @@ class _TDTFiberPhotometryInterfaceMultiSeries(TDTLoadMixin, BaseTemporalAlignmen
             FiberPhotometryVirusInjections,
         )
         from ndx_ophys_devices import (
-            FiberInsertion,
             Indicator,
             OpticalFiber,
             ViralVector,
@@ -325,13 +325,12 @@ class _TDTFiberPhotometryInterfaceMultiSeries(TDTLoadMixin, BaseTemporalAlignmen
                     device_metadata=device_metadata,
                     device_type=device_type,
                 )
-        # Add Optical Fibers (special case bc they have additional FiberInsertion objects)
+        # Add Optical Fibers (special case bc their optional fiber_insertion is a nested StereotacticPosition)
         optical_fibers_metadata = metadata["Ophys"]["FiberPhotometry"].get("OpticalFibers", [])
         for optical_fiber_metadata in optical_fibers_metadata:
-            fiber_insertion_metadata = optical_fiber_metadata["fiber_insertion"]
-            fiber_insertion = FiberInsertion(**fiber_insertion_metadata)
-            optical_fiber_metadata = deepcopy(optical_fiber_metadata)
-            optical_fiber_metadata["fiber_insertion"] = fiber_insertion
+            optical_fiber_metadata = _build_inline_containers(
+                target_class=OpticalFiber, kwargs=deepcopy(optical_fiber_metadata)
+            )
             assert (
                 optical_fiber_metadata["model"] in nwbfile.device_models
             ), f"Device model {optical_fiber_metadata['model']} not found in NWBFile device_models for {optical_fiber_metadata['name']}."
@@ -358,6 +357,9 @@ class _TDTFiberPhotometryInterfaceMultiSeries(TDTLoadMixin, BaseTemporalAlignmen
             viral_vector = name_to_viral_vector[viral_vector_injection_metadata["viral_vector"]]
             viral_vector_injection_metadata = deepcopy(viral_vector_injection_metadata)
             viral_vector_injection_metadata["viral_vector"] = viral_vector
+            viral_vector_injection_metadata = _build_inline_containers(
+                target_class=ViralVectorInjection, kwargs=viral_vector_injection_metadata
+            )
             viral_vector_injection = ViralVectorInjection(**viral_vector_injection_metadata)
             name_to_viral_vector_injection[viral_vector_injection.name] = viral_vector_injection
         if len(name_to_viral_vector_injection) > 0:

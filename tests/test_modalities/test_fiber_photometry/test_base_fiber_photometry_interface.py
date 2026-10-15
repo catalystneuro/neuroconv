@@ -51,13 +51,17 @@ def full_metadata():
             type="OpticalFiber",
             name="optical_fiber_dms",
             device_model_metadata_key="optical_fiber_model",
-            fiber_insertion=dict(depth_in_mm=4.0, insertion_position_ap_in_mm=3.0),
+            fiber_insertion=dict(
+                anatomical_target="DMS", origin="bregma", orientation="RAS", x_in_mm=1.5, y_in_mm=0.8, z_in_mm=-2.8
+            ),
         ),
         optical_fiber_dls=dict(
             type="OpticalFiber",
             name="optical_fiber_dls",
             device_model_metadata_key="optical_fiber_model",
-            fiber_insertion=dict(depth_in_mm=4.2, insertion_position_ap_in_mm=0.5),
+            fiber_insertion=dict(
+                anatomical_target="DLS", origin="bregma", orientation="RAS", x_in_mm=2.8, y_in_mm=0.1, z_in_mm=-3.5
+            ),
         ),
         excitation_source=dict(
             type="ExcitationSource",
@@ -234,9 +238,13 @@ class TestMockFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
             }
             optical_fiber = read_nwbfile.devices["optical_fiber_dms"]
             assert optical_fiber.model.name == "optical_fiber_model"
-            assert optical_fiber.fiber_insertion.depth_in_mm == 4.0
-            assert optical_fiber.fiber_insertion.insertion_position_ap_in_mm == 3.0
-            assert read_nwbfile.devices["optical_fiber_dls"].fiber_insertion.depth_in_mm == 4.2
+            fiber_insertion = optical_fiber.fiber_insertion
+            assert fiber_insertion.name == "fiber_insertion"
+            assert fiber_insertion.anatomical_target == "DMS"
+            assert fiber_insertion.origin == "bregma"
+            assert fiber_insertion.orientation == "RAS"
+            assert (fiber_insertion.x_in_mm, fiber_insertion.y_in_mm, fiber_insertion.z_in_mm) == (1.5, 0.8, -2.8)
+            assert read_nwbfile.devices["optical_fiber_dls"].fiber_insertion.z_in_mm == -3.5
             assert read_nwbfile.devices["excitation_source"].model.name == "excitation_source_model"
             assert read_nwbfile.devices["photodetector"].model.name == "photodetector_model"
 
@@ -289,8 +297,8 @@ class TestMockFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
             # The fiber is written with no model, but everything else about it survives.
             optical_fiber = read_nwbfile.devices["optical_fiber_dms"]
             assert optical_fiber.model is None
-            assert optical_fiber.fiber_insertion.depth_in_mm == 4.0
-            assert optical_fiber.fiber_insertion.insertion_position_ap_in_mm == 3.0
+            assert optical_fiber.fiber_insertion.anatomical_target == "DMS"
+            assert optical_fiber.fiber_insertion.z_in_mm == -2.8
 
             # Only the fibers' model was dropped; the other two devices keep theirs.
             assert "optical_fiber_model" not in read_nwbfile.device_models
@@ -391,11 +399,8 @@ class TestMockFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
         for model_metadata_key, model_metadata in metadata["DeviceModels"].items():
             model_metadata["name"] = model_metadata_key
 
-        devices_metadata["optical_fiber_0"]["fiber_insertion"] = dict(
-            insertion_position_ap_in_mm=3.0,
-            insertion_position_ml_in_mm=1.0,
-            insertion_position_dv_in_mm=4.0,
-            depth_in_mm=4.0,
+        devices_metadata["optical_fiber_0"]["fiber_insertion"].update(
+            anatomical_target="VTA", origin="bregma", orientation="RAS", x_in_mm=0.5, y_in_mm=-3.1, z_in_mm=-4.6
         )
         devices_metadata["optical_fiber_0"]["device_model_metadata_key"] = "optical_fiber_model"
         devices_metadata["excitation_source"]["device_model_metadata_key"] = "excitation_source_model"
@@ -428,6 +433,7 @@ class TestMockFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
             "photodetector_model",
         }
         assert read_nwbfile.devices["optical_fiber_0"].model.numerical_aperture == 0.48
+        assert read_nwbfile.devices["optical_fiber_0"].fiber_insertion.anatomical_target == "VTA"
 
         table = read_nwbfile.lab_meta_data["fiber_photometry"].fiber_photometry_table
         assert len(table) == 1
