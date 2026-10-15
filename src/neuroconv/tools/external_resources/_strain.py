@@ -4,7 +4,7 @@ NWB stores ``Subject.strain`` as free text (e.g. ``"C57BL/6J"``, ``"Long-Evans"`
 interoperable and to support downstream external-resource annotation (HERD / RRID), this module
 recognizes common laboratory rodent strains and gently suggests the canonical designation and its
 RRID (Research Resource Identifier) when a user supplies an informal variant spelling (e.g.
-``"black 6"``, ``"Long Evans"``).
+``"long evans"``, ``"wistar rat"``).
 
 This is intentionally a small curated table rather than a full ontology client: it runs offline,
 has no extra dependencies, and only emits a suggestion when it is confident there is a better term.
@@ -173,7 +173,7 @@ def infer_strain_external_resources(nwbfile: NWBFile) -> dict:
     This is the **inference** half of strain annotation: it resolves ``nwbfile.subject.strain`` (an
     informal spelling or a canonical designation) to its RRID term via
     :func:`get_strain_term` and returns an explicit ``{"id": ..., "uri": ...}`` term keyed by that
-    value exactly as written (``"black 6"`` stays the key, because HERD links the term to
+    value exactly as written (``"long evans"`` stays the key, because HERD links the term to
     ``Subject.strain`` through that string). The deterministic
     :func:`neuroconv.tools.external_resources.add_strain_external_resource` then writes that term into
     the file as a HERD reference.

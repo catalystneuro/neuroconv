@@ -162,8 +162,8 @@ class TestUpstreamTermSets:
         assert "Xenopus laevis" in merged  # bundled-only values are kept
 
         merged = load_term_set("strains.yaml")
-        assert merged["C57BL/6J"].curie == "RRID:IMSR_JAX:000664"
-        assert "b6" in merged["C57BL/6J"].aliases  # ours survive an upstream entry without aliases
+        assert merged["Long-Evans"].curie == "RRID:RGD_2308852"
+        assert "long evans" in merged["Long-Evans"].aliases  # ours survive an upstream entry without aliases
         assert "N2" in merged  # upstream-only values (worm, zebrafish, fly, Cre lines) are kept
 
     def test_upstream_terms_are_preferred_and_merged(self, monkeypatch, tmp_path):
@@ -287,15 +287,21 @@ class TestStrainTerms:
         assert get_strain_suggestion(strain) is None
         assert get_strain_term(strain) is None
 
+    @pytest.mark.parametrize("strain", ["C57BL/6", "c57bl6", "black 6", "B6", "BALB/c", "balbc"])
+    def test_designation_without_substrain_is_not_matched(self, strain):
+        # These name several substrains (C57BL/6J, C57BL/6NCrl, BALB/cByJ, ...), so no single RRID applies.
+        assert get_strain_suggestion(strain) is None
+        assert get_strain_term(strain) is None
+
     @pytest.mark.parametrize("strain", ["Octodon degus strain X", "", None, 42])
     def test_unrecognized_returns_none(self, strain):
         assert get_strain_suggestion(strain) is None
         assert get_strain_term(strain) is None
 
     def test_validate_strain_warns_for_informal_spelling(self):
-        with pytest.warns(UserWarning, match="'C57BL/6J'.*bioregistry.io/RRID:IMSR_JAX:000664"):
-            term = validate_strain("black 6")
-        assert term.canonical_name == "C57BL/6J"
+        with pytest.warns(UserWarning, match="'Long-Evans'.*bioregistry.io/RRID:RGD_2308852"):
+            term = validate_strain("long evans")
+        assert term.canonical_name == "Long-Evans"
 
 
 # ---------------------------------------------------------------------------
@@ -406,11 +412,11 @@ class TestInferStrainExternalResources:
         }
 
     def test_informal_spelling_is_the_key(self):
-        nwbfile = _make_nwbfile(strain="black 6")
+        nwbfile = _make_nwbfile(strain="long evans")
         with pytest.warns(UserWarning):
             inferred = infer_strain_external_resources(nwbfile)
         # Keyed by the value as written: HERD links the term to Subject.strain through that string.
-        assert inferred["ExternalResources"]["strain"]["black 6"]["id"] == "RRID:IMSR_JAX:000664"
+        assert inferred["ExternalResources"]["strain"]["long evans"] == LONG_EVANS_STRAIN_TERM
 
     @pytest.mark.parametrize("kwargs", [dict(strain="my in-house line"), dict(strain=None), dict(with_subject=False)])
     def test_unrecognized_or_missing_strain_returns_empty(self, kwargs):
