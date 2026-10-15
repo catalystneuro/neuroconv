@@ -186,7 +186,8 @@ def infer_species_external_resources(nwbfile: NWBFile) -> dict:
 
         metadata = dict_deep_update(infer_species_external_resources(nwbfile), metadata, append_list=False)
 
-    A recognized common name or typo also emits the :func:`validate_species` ``UserWarning``.
+    It does not warn: the :func:`validate_species` suggestion for an informal value is emitted once,
+    when :func:`neuroconv.tools.nwb_helpers.make_nwbfile_from_metadata` processes the metadata.
 
     Parameters
     ----------
@@ -201,8 +202,6 @@ def infer_species_external_resources(nwbfile: NWBFile) -> dict:
     """
     subject = getattr(nwbfile, "subject", None)
     species = _unwrapped(getattr(subject, "species", None))
-    validate_species(species)  # non-blocking suggestion for common names / typos
-
     term = get_species_term(species)
     if term is None:
         return {}

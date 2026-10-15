@@ -1,6 +1,7 @@
 """Tests for neuroconv.tools.external_resources: term resolution, metadata inference, and HERD annotation."""
 
 import sys
+import warnings
 from datetime import datetime
 from pathlib import Path
 
@@ -456,7 +457,8 @@ class TestInferSpeciesExternalResources:
 
     def test_common_name_is_the_key(self):
         nwbfile = _make_nwbfile(species="mouse")
-        with pytest.warns(UserWarning):
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")  # the suggestion is only emitted when the file is created
             inferred = infer_species_external_resources(nwbfile)
         # Keyed by the value as written: HERD links the term to Subject.species through that string.
         assert inferred == {"ExternalResources": {"species": {"mouse": MOUSE_SPECIES_TERM}}}
@@ -480,7 +482,8 @@ class TestInferStrainExternalResources:
 
     def test_informal_spelling_is_the_key(self):
         nwbfile = _make_nwbfile(strain="long evans")
-        with pytest.warns(UserWarning):
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")  # the suggestion is only emitted when the file is created
             inferred = infer_strain_external_resources(nwbfile)
         # Keyed by the value as written: HERD links the term to Subject.strain through that string.
         assert inferred["ExternalResources"]["strain"]["long evans"] == LONG_EVANS_STRAIN_TERM

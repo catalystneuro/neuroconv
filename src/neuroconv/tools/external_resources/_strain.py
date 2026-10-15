@@ -180,7 +180,8 @@ def infer_strain_external_resources(nwbfile: NWBFile) -> dict:
 
         metadata = dict_deep_update(infer_strain_external_resources(nwbfile), metadata, append_list=False)
 
-    A recognized informal spelling also emits the :func:`validate_strain` ``UserWarning``.
+    It does not warn: the :func:`validate_strain` suggestion for an informal value is emitted once,
+    when :func:`neuroconv.tools.nwb_helpers.make_nwbfile_from_metadata` processes the metadata.
 
     Parameters
     ----------
@@ -195,8 +196,6 @@ def infer_strain_external_resources(nwbfile: NWBFile) -> dict:
     """
     subject = getattr(nwbfile, "subject", None)
     strain = _unwrapped(getattr(subject, "strain", None))
-    validate_strain(strain)  # non-blocking suggestion for informal spellings
-
     term = get_strain_term(strain)
     if term is None:
         return {}
