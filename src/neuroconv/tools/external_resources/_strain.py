@@ -44,11 +44,12 @@ STRAIN_TERMS: dict[str, StrainTerm] = {
 }
 
 
-# Common informal spellings -> canonical strain designation, from the strain TermSet's ``aliases``.
+# Common informal spellings -> canonical strain designation, from the strain TermSet's ``aliases``
+# plus each canonical designation itself (so "c57bl/6j" resolves to "C57BL/6J").
 # Keys are lower-cased and compared case-insensitively.
 _COMMON_NAME_TO_CANONICAL: dict[str, str] = {}
 for _info in load_term_set("strains.yaml").values():
-    for _alias in _info.aliases:
+    for _alias in (_info.value, *_info.aliases):
         _claimed_by = _COMMON_NAME_TO_CANONICAL.setdefault(_alias.lower(), _info.value)
         if _claimed_by != _info.value:
             raise ValueError(f"Strain alias {_alias!r} of {_info.value!r} is already used for {_claimed_by!r}.")

@@ -262,6 +262,16 @@ class TestStrainTerms:
         assert get_strain_term("  Long Evans  ") == term
 
     @pytest.mark.parametrize(
+        "strain, expected_strain",
+        [("c57bl/6j", "C57BL/6J"), ("wistar", "Wistar"), ("long-evans", "Long-Evans"), ("BALB/CJ", "BALB/cJ")],
+    )
+    def test_canonical_name_in_another_case_is_suggested(self, strain, expected_strain):
+        term, reason = get_strain_suggestion(strain)
+        assert term.canonical_name == expected_strain
+        assert "informal spelling" in reason
+        assert get_strain_term(strain) == term
+
+    @pytest.mark.parametrize(
         "strain",
         [
             # Real strains one or two characters away from a known designation must not take its RRID.
