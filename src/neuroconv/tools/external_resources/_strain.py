@@ -18,7 +18,7 @@ from dataclasses import dataclass
 
 from pynwb import NWBFile
 
-from ._term_sets import TermInfo, _unwrapped, load_term_set
+from ._term_sets import _build_alias_table, _unwrapped, load_term_set
 
 __all__ = [
     "STRAIN_TERMS",
@@ -39,20 +39,6 @@ class StrainTerm:
     entity_uri: str  # resolvable URI for the RRID entity (usable as a HERD ``entity_uri``)
 
 
-def _build_alias_table(term_set: dict[str, TermInfo]) -> dict[str, str]:
-    """
-    Map each lower-cased alias and canonical designation to its canonical designation.
-
-    An alias that two strains claim (possible once the optional upstream term set is merged in)
-    names neither of them, so it is left out instead of picking one.
-    """
-    claimed_by: dict[str, set[str]] = {}
-    for info in term_set.values():
-        for alias in (info.value, *info.aliases):
-            claimed_by.setdefault(alias.lower(), set()).add(info.value)
-    return {alias: values.pop() for alias, values in claimed_by.items() if len(values) == 1}
-
-
 _STRAIN_TERM_SET = load_term_set("strains.yaml")
 
 # Canonical strain designation -> StrainTerm, from the curated strain TermSet.
@@ -64,7 +50,7 @@ STRAIN_TERMS: dict[str, StrainTerm] = {
 # Common informal spellings -> canonical strain designation, from the strain TermSet's ``aliases``
 # plus each canonical designation itself (so "c57bl/6j" resolves to "C57BL/6J").
 # Keys are lower-cased and compared case-insensitively.
-_COMMON_NAME_TO_CANONICAL: dict[str, str] = _build_alias_table(_STRAIN_TERM_SET)
+_COMMON_NAME_TO_CANONICAL: dict[str, str] = _build_alias_table(_STRAIN_TERM_SET, include_values=True)
 
 
 def get_strain_suggestion(strain: str) -> tuple[StrainTerm, str] | None:

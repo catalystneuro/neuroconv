@@ -207,6 +207,73 @@ class TestUpstreamTermSets:
         assert "murine" in aliases and "house mouse" in aliases  # the aliases of both sources are combined
         assert aliases.count("mouse") == 1  # a name both sources list appears once
 
+    @pytest.mark.parametrize(
+        "include_values, expected",
+        [
+            (False, {"b6n": "C57BL/6N"}),
+            (True, {"c57bl/6j": "C57BL/6J", "c57bl/6n": "C57BL/6N", "b6n": "C57BL/6N"}),
+        ],
+    )
+    def test_alias_claimed_by_two_values_is_left_out(self, include_values, expected):
+        from neuroconv.tools.external_resources._term_sets import TermInfo, _build_alias_table
+
+        # An upstream term set could reuse one of our aliases for another value; the alias then
+        # names neither of them.
+        term_set = {
+            "C57BL/6J": TermInfo("C57BL/6J", "RRID:A", "https://a", "", aliases=("shared",)),
+            "C57BL/6N": TermInfo("C57BL/6N", "RRID:B", "https://b", "", aliases=("Shared", "b6n")),
+        }
+        assert _build_alias_table(term_set, include_values=include_values) == expected
+
+    @pytest.mark.parametrize("file_name", ["species.yaml", "strains.yaml"])
+    def test_bundled_aliases_do_not_collide(self, file_name):
+        from neuroconv.tools.external_resources._term_sets import (
+            _TERM_SET_DIRECTORY,
+            _load_term_set_file,
+        )
+
+        claimed_by = {}
+        for info in _load_term_set_file(_TERM_SET_DIRECTORY / file_name).values():
+            for alias in (info.value, *info.aliases):
+                claimed_by.setdefault(alias.lower(), set()).add(info.value)
+        assert {alias: values for alias, values in claimed_by.items() if len(values) > 1} == {}
+
+    def test_upstream_alias_collision_does_not_break_species_import(self, monkeypatch, tmp_path):
+        import importlib
+
+        from neuroconv.tools.external_resources import _species
+        from neuroconv.tools.external_resources._term_sets import load_term_set, load_upstream_term_set
+
+        upstream_yaml = tmp_path / "upstream_species.yaml"
+        upstream_yaml.write_text(
+            "prefixes:\n"
+            "  NCBITaxon: http://purl.obolibrary.org/obo/NCBITaxon_\n"
+            "enums:\n"
+            "  Species:\n"
+            "    permissible_values:\n"
+            "      Rattus norvegicus:\n"
+            "        meaning: NCBITaxon:10116\n"
+            "        aliases:\n"
+            "          - mouse\n",  # bundled lists "mouse" for Mus musculus
+            encoding="utf-8",
+        )
+
+        class _FakeNeuroTermsets:
+            @staticmethod
+            def get_termset_path(name):
+                return str(upstream_yaml)
+
+        monkeypatch.setitem(sys.modules, "neuro_termsets", _FakeNeuroTermsets())
+        try:
+            reloaded = importlib.reload(_species)
+            assert reloaded.get_species_suggestion("mouse") is None  # claimed twice, so it names neither
+            assert reloaded.get_species_suggestion("house mouse")[0].canonical_name == "Mus musculus"
+        finally:
+            monkeypatch.undo()
+            load_term_set.cache_clear()
+            load_upstream_term_set.cache_clear()
+            importlib.reload(_species)
+
 
 # ---------------------------------------------------------------------------
 # Species term resolution
@@ -297,30 +364,6 @@ class TestStrainTerms:
     def test_unrecognized_returns_none(self, strain):
         assert get_strain_suggestion(strain) is None
         assert get_strain_term(strain) is None
-
-    def test_alias_claimed_by_two_strains_is_left_out(self):
-        from neuroconv.tools.external_resources._strain import _build_alias_table
-        from neuroconv.tools.external_resources._term_sets import TermInfo
-
-        # An upstream term set could reuse one of our aliases for another strain; that must not
-        # break the import, and the alias names neither strain.
-        term_set = {
-            "C57BL/6J": TermInfo("C57BL/6J", "RRID:A", "https://a", "", aliases=("shared",)),
-            "C57BL/6N": TermInfo("C57BL/6N", "RRID:B", "https://b", "", aliases=("Shared", "b6n")),
-        }
-        assert _build_alias_table(term_set) == {"c57bl/6j": "C57BL/6J", "c57bl/6n": "C57BL/6N", "b6n": "C57BL/6N"}
-
-    def test_bundled_strain_aliases_do_not_collide(self):
-        from neuroconv.tools.external_resources._term_sets import (
-            _TERM_SET_DIRECTORY,
-            _load_term_set_file,
-        )
-
-        claimed_by = {}
-        for info in _load_term_set_file(_TERM_SET_DIRECTORY / "strains.yaml").values():
-            for alias in (info.value, *info.aliases):
-                claimed_by.setdefault(alias.lower(), set()).add(info.value)
-        assert {alias: values for alias, values in claimed_by.items() if len(values) > 1} == {}
 
     def test_validate_strain_warns_for_informal_spelling(self):
         with pytest.warns(UserWarning, match="'Long-Evans'.*bioregistry.io/RRID:RGD_2308852"):

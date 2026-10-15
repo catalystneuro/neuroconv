@@ -158,6 +158,22 @@ def load_term_set(file_name: str) -> dict[str, TermInfo]:
     return term_set
 
 
+def _build_alias_table(term_set: dict[str, TermInfo], *, include_values: bool) -> dict[str, str]:
+    """
+    Map each lower-cased alias to the permissible value it names.
+
+    With ``include_values``, each permissible value itself is added too, so a value written in
+    another letter case resolves. An alias that two values claim (possible once the optional
+    upstream term set is merged in) names neither of them, so it is left out instead of picking one.
+    """
+    claimed_by: dict[str, set[str]] = {}
+    for info in term_set.values():
+        names = (info.value, *info.aliases) if include_values else info.aliases
+        for name in names:
+            claimed_by.setdefault(name.lower(), set()).add(info.value)
+    return {name: values.pop() for name, values in claimed_by.items() if len(values) == 1}
+
+
 def _unwrapped(value):
     """The plain value behind an HDMF ``TermSetWrapper``, or ``value`` itself.
 

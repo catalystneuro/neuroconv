@@ -17,7 +17,7 @@ from dataclasses import dataclass
 
 from pynwb import NWBFile
 
-from ._term_sets import _unwrapped, load_term_set
+from ._term_sets import _build_alias_table, _unwrapped, load_term_set
 
 __all__ = [
     "SPECIES_TERMS",
@@ -38,21 +38,17 @@ class SpeciesTerm:
     entity_uri: str  # resolvable URI for the NCBITaxon entity (usable as a HERD ``entity_uri``)
 
 
+_SPECIES_TERM_SET = load_term_set("species.yaml")
+
 # Canonical Latin binomial -> SpeciesTerm, from the curated species TermSet.
 SPECIES_TERMS: dict[str, SpeciesTerm] = {
     info.value: SpeciesTerm(canonical_name=info.value, ncbitaxon_id=info.curie, entity_uri=info.entity_uri)
-    for info in load_term_set("species.yaml").values()
+    for info in _SPECIES_TERM_SET.values()
 }
-
 
 # Common (English) names -> canonical Latin binomial, from the species TermSet's ``aliases``.
 # Keys are lower-cased and compared case-insensitively.
-_COMMON_NAME_TO_CANONICAL: dict[str, str] = {}
-for _info in load_term_set("species.yaml").values():
-    for _alias in _info.aliases:
-        _claimed_by = _COMMON_NAME_TO_CANONICAL.setdefault(_alias.lower(), _info.value)
-        if _claimed_by != _info.value:
-            raise ValueError(f"Species alias {_alias!r} of {_info.value!r} is already used for {_claimed_by!r}.")
+_COMMON_NAME_TO_CANONICAL: dict[str, str] = _build_alias_table(_SPECIES_TERM_SET, include_values=False)
 
 
 def get_species_suggestion(species: str) -> tuple[SpeciesTerm, str] | None:
