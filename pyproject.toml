@@ -199,7 +199,7 @@ events = [
 ## Ecephys
 ecephys_minimal = [  # Keeps the minimal versions of ecephys dependencies in the repo
     "spikeinterface>=0.105.1",
-    "neo>=0.14.5",
+    "neo>=0.14.5,<0.14.6",  # 0.14.6 raises on Neuralynx gaps, lift after the spikeinterface release with SpikeInterface/spikeinterface#4865
     "natsort>=7.1.1",
 ]
 alphaomega = [
