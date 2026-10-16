@@ -83,9 +83,7 @@ def _skeleton_nodes(nwbfile: NWBFile) -> list:
     not), so ``ndx-pose`` does not have to be installed for the rest of the file to work.
     """
     skeletons = [obj for obj in nwbfile.objects.values() if getattr(obj, "neurodata_type", None) == "Skeleton"]
-    return [
-        (skeleton, node_name) for skeleton in skeletons for node_name in dict.fromkeys(_unwrapped(skeleton.nodes))
-    ]
+    return [(skeleton, node_name) for skeleton in skeletons for node_name in dict.fromkeys(_unwrapped(skeleton.nodes))]
 
 
 def infer_anatomy_external_resources(nwbfile: NWBFile, node_structures: dict[str, str] | None = None) -> dict:
