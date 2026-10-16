@@ -13,6 +13,7 @@ from pynwb import NWBFile
 from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from ....tools import get_module
 from ....tools.nwb_helpers import _get_container_by_name
+from ....tools.nwb_helpers._metadata_and_file_helpers import _validate_metadata_key
 from ....utils import DeepDict, calculate_regular_series_rate, load_dict_from_file
 
 
@@ -809,13 +810,12 @@ class VameInterface(BaseTemporalAlignmentInterface):
         pose_estimation = None
         pose_estimation_key = project_metadata.get("pose_estimation_metadata_key")
         if pose_estimation_key is not None:
-            pose_estimations_registry = default_metadata.get("Pose", {}).get("PoseEstimations", {})
-            if pose_estimation_key not in pose_estimations_registry:
-                raise ValueError(
-                    f"pose_estimation_metadata_key '{pose_estimation_key}' was not found in "
-                    f"metadata['Pose']['PoseEstimations']. Available keys: "
-                    f"{list(pose_estimations_registry)}."
-                )
+            _validate_metadata_key(
+                default_metadata,
+                metadata_path=("Pose", "PoseEstimations"),
+                metadata_key=pose_estimation_key,
+            )
+            pose_estimations_registry = default_metadata["Pose"]["PoseEstimations"]
             pose_container_name = pose_estimations_registry[pose_estimation_key]["name"]
             pose_estimation = _get_container_by_name(nwbfile, pose_container_name, "PoseEstimation")
 

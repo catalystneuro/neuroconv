@@ -35,6 +35,7 @@ from ...tools.fiber_photometry import (
     get_fiber_photometry_table_region,
 )
 from ...tools.nwb_helpers import get_module
+from ...tools.nwb_helpers._metadata_and_file_helpers import _validate_metadata_key, _validate_metadata_path
 from ...utils import DeepDict, dict_deep_update, get_base_schema
 from ...utils.checks import calculate_regular_series_rate
 
@@ -87,7 +88,11 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         # native times are registered as a callable, so naming the object reads nothing.
         # See neuroconv/_temporal_alignment.py.
         self.alignment = _TemporalAlignment()
-        self.alignment._register_series(key=self.metadata_key, get_native_times=self.get_original_timestamps)
+        self.alignment._register(
+            key=self.metadata_key,
+            get_native_times=self.get_original_timestamps,
+            get_number_of_samples=lambda: len(self.get_original_timestamps()),
+        )
         super().__init__(verbose=verbose, stream_names=stream_names, **source_data)
         # Keep the ndx extensions registered so pynwb IO works correctly.
         import ndx_fiber_photometry  # noqa: F401
@@ -395,7 +400,11 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         if key == self.metadata_key:
             raise ValueError(f"Commanded-voltage key '{key}' is also the response-series key.")
         self._commanded_voltage_key_to_get_data[key] = get_data
-        self.alignment._register_series(key=key, get_native_times=get_native_times)
+        self.alignment._register(
+            key=key,
+            get_native_times=get_native_times,
+            get_number_of_samples=lambda: len(get_native_times()),
+        )
 
     def _add_commanded_voltage_series(
         self,
@@ -415,6 +424,11 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
                     "the owning interface's 'commanded_voltage_streams' constructor argument."
                 )
         for key, get_data in self._commanded_voltage_key_to_get_data.items():
+            _validate_metadata_key(
+                metadata,
+                metadata_path=("FiberPhotometry", "CommandedVoltageSeries"),
+                metadata_key=key,
+            )
             commanded_voltage_metadata = commanded_voltage_metadata_by_key[key]
             if commanded_voltage_metadata["name"] in nwbfile.acquisition:
                 continue
@@ -473,6 +487,7 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         from ndx_fiber_photometry import FiberPhotometryResponseSeries
 
         metadata = metadata or self.get_metadata()
+        _validate_metadata_key(metadata, metadata_path=("FiberPhotometry",), metadata_key=self.metadata_key)
         fiber_photometry_metadata = metadata["FiberPhotometry"]
         self._validate_metadata(fiber_photometry_metadata)
         series_metadata = fiber_photometry_metadata[self.metadata_key]
@@ -496,9 +511,9 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
 
             fiber_photometry_table = add_fiber_photometry_lab_metadata(
                 nwbfile=nwbfile,
-                fiber_photometry_metadata=fiber_photometry_metadata,
-                devices_metadata=metadata["Devices"],
+                metadata=metadata,
             )
+            _validate_metadata_path(metadata, ("FiberPhotometry", "FiberPhotometryTable", "rows"))
             table_region = get_fiber_photometry_table_region(
                 fiber_photometry_table=fiber_photometry_table,
                 table_rows_metadata=fiber_photometry_metadata["FiberPhotometryTable"]["rows"],

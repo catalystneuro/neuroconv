@@ -1,4 +1,5 @@
 import math
+import re
 import unittest
 from copy import deepcopy
 from datetime import datetime
@@ -39,6 +40,7 @@ from neuroconv.tools.roiextractors.roiextractors_pending_deprecation import (
     _add_photon_series_to_nwbfile_old_list_format,
     _get_default_ophys_metadata_old_metadata_list,
 )
+from neuroconv.utils import DeepDict
 
 
 class TestAddDevices(unittest.TestCase):
@@ -1518,6 +1520,53 @@ class TestAddImaging:
 
         assert metadata == metadata_before, "Metadata was mutated"
 
+    def test_misspelled_metadata_key_raises(self):
+        """A metadata_key missing from MicroscopySeries raises instead of writing the placeholders."""
+        nwbfile = mock_NWBFile()
+        imaging = generate_dummy_imaging_extractor(num_samples=10, num_rows=5, num_columns=5)
+        metadata = {"Ophys": {"MicroscopySeries": {"my_series": {}}}}
+
+        expected = (
+            "metadata_key 'my_seires' was not found in metadata['Ophys']['MicroscopySeries']. Available keys are:"
+            "\n['my_series']"
+        )
+        with pytest.raises(ValueError, match=re.escape(expected)):
+            add_imaging_to_nwbfile(imaging=imaging, nwbfile=nwbfile, metadata=metadata, metadata_key="my_seires")
+
+    def test_misspelled_imaging_plane_metadata_key_raises(self):
+        """An imaging_plane_metadata_key missing from ImagingPlanes raises instead of using the default plane."""
+        nwbfile = mock_NWBFile()
+        imaging = generate_dummy_imaging_extractor(num_samples=10, num_rows=5, num_columns=5)
+        metadata = {
+            "Ophys": {
+                "ImagingPlanes": {"my_plane": {}},
+                "MicroscopySeries": {"my_series": {"imaging_plane_metadata_key": "my_plnae"}},
+            }
+        }
+
+        expected = (
+            "metadata_key 'my_plnae' was not found in metadata['Ophys']['ImagingPlanes']. Available keys are:\n"
+            "['my_plane']"
+        )
+        with pytest.raises(ValueError, match=re.escape(expected)):
+            add_imaging_to_nwbfile(imaging=imaging, nwbfile=nwbfile, metadata=metadata, metadata_key="my_series")
+
+    def test_missing_ophys_section_in_deep_dict_raises(self):
+        """On a DeepDict, a missing Ophys section raises instead of being created and filled with placeholders."""
+        nwbfile = mock_NWBFile()
+        imaging = generate_dummy_imaging_extractor(num_samples=10, num_rows=5, num_columns=5)
+        metadata = DeepDict()
+        metadata["NWBFile"]["session_description"] = "A session."
+        metadata_before = deepcopy(metadata)
+
+        expected = (
+            "metadata_key 'my_series' was not found in metadata['Ophys']['MicroscopySeries']. metadata has no "
+            "'Ophys'. Available keys are:\n['NWBFile']"
+        )
+        with pytest.raises(ValueError, match=re.escape(expected)):
+            add_imaging_to_nwbfile(imaging=imaging, nwbfile=nwbfile, metadata=metadata, metadata_key="my_series")
+        assert metadata == metadata_before, "Metadata was mutated"
+
 
 class TestAddSegmentation:
     """Tests for the dict-based metadata segmentation pipeline (add_segmentation_to_nwbfile)."""
@@ -1854,6 +1903,47 @@ class TestAddSegmentation:
         )
 
         assert metadata == metadata_before, "Metadata was mutated"
+
+    def test_misspelled_metadata_key_raises(self):
+        """A metadata_key missing from PlaneSegmentations raises instead of writing the placeholders."""
+        nwbfile = mock_NWBFile()
+        segmentation_extractor = generate_dummy_segmentation_extractor()
+        metadata = {"Ophys": {"PlaneSegmentations": {"my_segmentation": {}}}}
+
+        expected = (
+            "metadata_key 'my_segmnetation' was not found in metadata['Ophys']['PlaneSegmentations']. Available "
+            "keys are:\n['my_segmentation']"
+        )
+        with pytest.raises(ValueError, match=re.escape(expected)):
+            add_segmentation_to_nwbfile(
+                segmentation_extractor=segmentation_extractor,
+                nwbfile=nwbfile,
+                metadata=metadata,
+                metadata_key="my_segmnetation",
+            )
+
+    def test_misspelled_imaging_plane_metadata_key_raises(self):
+        """An imaging_plane_metadata_key missing from ImagingPlanes raises instead of using the default plane."""
+        nwbfile = mock_NWBFile()
+        segmentation_extractor = generate_dummy_segmentation_extractor()
+        metadata = {
+            "Ophys": {
+                "ImagingPlanes": {"my_plane": {}},
+                "PlaneSegmentations": {"my_segmentation": {"imaging_plane_metadata_key": "my_plnae"}},
+            }
+        }
+
+        expected = (
+            "metadata_key 'my_plnae' was not found in metadata['Ophys']['ImagingPlanes']. Available keys are:\n"
+            "['my_plane']"
+        )
+        with pytest.raises(ValueError, match=re.escape(expected)):
+            add_segmentation_to_nwbfile(
+                segmentation_extractor=segmentation_extractor,
+                nwbfile=nwbfile,
+                metadata=metadata,
+                metadata_key="my_segmentation",
+            )
 
     def test_no_roi_responses_metadata(self):
         """When no RoiResponses metadata is provided but extractor has traces, write with placeholder metadata."""

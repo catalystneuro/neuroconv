@@ -357,8 +357,8 @@ def test_dangling_device_metadata_key_raises(nwb_converter, nwbfile_path, metada
     """A device_metadata_key with no matching Devices entry raises instead of silently dropping the device."""
     metadata["Behavior"]["InternalVideos"]["video_test1"]["device_metadata_key"] = "missing_camera"
     expected_message = (
-        "device_metadata_key 'missing_camera' was not found in metadata['Devices'] "
-        "(available keys: ['video_test1_camera', 'video_test2_camera'])."
+        "metadata_key 'missing_camera' was not found in metadata['Devices']. Available keys are:\n"
+        "['video_test1_camera', 'video_test2_camera']"
     )
     with pytest.raises(ValueError, match=re.escape(expected_message)):
         nwb_converter.run_conversion(

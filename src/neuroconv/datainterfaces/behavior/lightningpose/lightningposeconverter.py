@@ -8,6 +8,7 @@ from neuroconv.datainterfaces import LightningPoseDataInterface
 from neuroconv.datainterfaces.behavior.video.externalvideointerface import (
     ExternalVideoInterface,
 )
+from neuroconv.tools.nwb_helpers._metadata_and_file_helpers import _validate_metadata_key
 from neuroconv.utils import (
     DeepDict,
     dict_deep_update,
@@ -150,6 +151,11 @@ class LightningPoseConverter(BaseDataInterface):
         pose_metadata = deepcopy(metadata)
         if "Pose" in pose_metadata:
             pose_estimation_interface = self.data_interface_objects["PoseEstimation"]
+            _validate_metadata_key(
+                pose_metadata,
+                metadata_path=("Pose", "PoseEstimations"),
+                metadata_key=pose_estimation_interface.metadata_key,
+            )
             container_metadata = pose_metadata["Pose"]["PoseEstimations"][pose_estimation_interface.metadata_key]
             # A link to the ImageSeries written above rather than the source path it was read from, and the
             # paths dropped with it: the object is in the file, so the path would only be a weaker copy.

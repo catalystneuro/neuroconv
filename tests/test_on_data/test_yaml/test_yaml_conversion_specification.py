@@ -14,6 +14,9 @@ from neuroconv.utils import load_dict_from_file
 from ..setup_paths import BEHAVIOR_DATA_PATH, OUTPUT_PATH
 from ..setup_paths import ECEPHY_DATA_PATH as DATA_PATH
 
+# The `dandi` extra does not install on Python 3.14, see pyproject.toml.
+pytest.importorskip("dandi")
+
 
 @pytest.mark.parametrize(
     "fname",

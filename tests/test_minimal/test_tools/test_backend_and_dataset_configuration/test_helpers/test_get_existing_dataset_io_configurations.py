@@ -4,10 +4,11 @@ from typing import Literal
 
 import numpy as np
 import pytest
+import zarr
 from hdmf.common import VectorData
 from hdmf_zarr import ZarrDataIO
 from hdmf_zarr.nwb import NWBZarrIO
-from numcodecs import Blosc, Delta, GZip, Shuffle
+from packaging.version import Version
 from pynwb import NWBHDF5IO, H5DataIO
 from pynwb.base import DynamicTable
 from pynwb.behavior import CompassDirection
@@ -24,6 +25,12 @@ from neuroconv.tools.nwb_helpers import (
     get_module,
 )
 
+# The Zarr cases need zarr 3, which only installs on Python 3.14 and newer. Under zarr 2 they are skipped, see
+# tests/conftest.py.
+if Version(zarr.__version__).major >= 3:
+    from zarr.codecs import GzipCodec, ZstdCodec
+    from zarr.codecs.numcodecs import Delta, Shuffle
+
 
 @pytest.mark.parametrize("backend", ["hdf5", "zarr"])
 def test_configuration_on_time_series(tmp_path, backend: Literal["hdf5", "zarr"]):
@@ -31,7 +38,7 @@ def test_configuration_on_time_series(tmp_path, backend: Literal["hdf5", "zarr"]
 
     nwbfile = mock_NWBFile()
     if backend == "zarr":  # ZarrDataIO compresses by default, so we disable it to test no-compression
-        data = ZarrDataIO(data=data, compressor=False)
+        data = ZarrDataIO(data=data, compressors=False)
     time_series = mock_TimeSeries(name="TestTimeSeries", data=data)
     nwbfile.add_acquisition(time_series)
 
@@ -39,11 +46,9 @@ def test_configuration_on_time_series(tmp_path, backend: Literal["hdf5", "zarr"]
     if backend == "hdf5":
         data = H5DataIO(data=data, compression="gzip", compression_opts=2, chunks=(1, 3))
     elif backend == "zarr":
-        compressor = Blosc(cname="lz4", clevel=5, shuffle=Blosc.SHUFFLE, blocksize=0)
-        filter1 = Blosc(cname="zstd", clevel=1, shuffle=Blosc.SHUFFLE)
-        filter2 = Blosc(cname="zstd", clevel=2, shuffle=Blosc.SHUFFLE)
-        filters = [filter1, filter2]
-        data = ZarrDataIO(data=data, chunks=(1, 3), compressor=compressor, filters=filters)
+        compressor = GzipCodec(level=5)
+        filters = [Delta(dtype=str(data.dtype))]
+        data = ZarrDataIO(data=data, chunks=(1, 3), compressors=[compressor], filters=filters)
     compressed_time_series = mock_TimeSeries(
         name="CompressedTimeSeries",
         data=data,
@@ -122,18 +127,16 @@ def test_configuration_on_dynamic_table(tmp_path, backend: Literal["hdf5", "zarr
 
     nwbfile = mock_NWBFile()
     if backend == "zarr":  # ZarrDataIO compresses by default, so we disable it to test no-compression
-        data = ZarrDataIO(data=data, compressor=False)
+        data = ZarrDataIO(data=data, compressors=False)
     column = VectorData(name="TestColumn", description="", data=data)
 
     data = np.array([0.1, 0.2, 0.3])
     if backend == "hdf5":
         data = H5DataIO(data=data, compression="gzip", compression_opts=2, chunks=(1,))
     elif backend == "zarr":
-        compressor = Blosc(cname="lz4", clevel=5, shuffle=Blosc.SHUFFLE, blocksize=0)
-        filter1 = Blosc(cname="zstd", clevel=1, shuffle=Blosc.SHUFFLE)
-        filter2 = Blosc(cname="zstd", clevel=2, shuffle=Blosc.SHUFFLE)
-        filters = [filter1, filter2]
-        data = ZarrDataIO(data=data, chunks=(1,), compressor=compressor, filters=filters)
+        compressor = GzipCodec(level=5)
+        filters = [Delta(dtype=str(data.dtype))]
+        data = ZarrDataIO(data=data, chunks=(1,), compressors=[compressor], filters=filters)
     compressed_column = VectorData(
         name="CompressedColumn",
         description="",
@@ -214,12 +217,11 @@ def test_configuration_on_ragged_units_table(tmp_path, backend: Literal["hdf5", 
         spike_times = H5DataIO(data=spike_times, compression="gzip", compression_opts=2, chunks=(2,))
         waveforms = H5DataIO(data=waveforms, compression="gzip", compression_opts=2, chunks=(1, 3, 3))
     elif backend == "zarr":
-        compressor = Blosc(cname="lz4", clevel=5, shuffle=Blosc.SHUFFLE, blocksize=0)
-        filter1 = Blosc(cname="zstd", clevel=1, shuffle=Blosc.SHUFFLE)
-        filter2 = Blosc(cname="zstd", clevel=2, shuffle=Blosc.SHUFFLE)
-        filters = [filter1, filter2]
-        spike_times = ZarrDataIO(data=spike_times, chunks=(2,), compressor=compressor, filters=filters)
-        waveforms = ZarrDataIO(data=waveforms, chunks=(1, 3, 3), compressor=compressor, filters=filters)
+        compressor = GzipCodec(level=5)
+        spike_times_filters = [Delta(dtype=str(spike_times.dtype))]
+        waveforms_filters = [Delta(dtype=str(waveforms.dtype))]
+        spike_times = ZarrDataIO(data=spike_times, chunks=(2,), compressors=[compressor], filters=spike_times_filters)
+        waveforms = ZarrDataIO(data=waveforms, chunks=(1, 3, 3), compressors=[compressor], filters=waveforms_filters)
     nwbfile.add_unit_column(name="compressed_spike_times", description="", data=spike_times, index=index)
     nwbfile.add_unit_column(name="compressed_waveforms", description="", data=waveforms, index=index)
 
@@ -247,7 +249,7 @@ def test_configuration_on_ragged_units_table(tmp_path, backend: Literal["hdf5", 
             assert dataset_configuration.chunk_shape == (5,)
             assert dataset_configuration.compressor_options is None
         elif backend == "zarr":
-            assert dataset_configuration.compressors == [compressor]
+            assert dataset_configuration.compressors == [ZstdCodec(level=0, checksum=False)]
             assert dataset_configuration.chunk_shape == (5,)
             assert dataset_configuration.compressor_options is None
             assert dataset_configuration.filters is None
@@ -267,7 +269,7 @@ def test_configuration_on_ragged_units_table(tmp_path, backend: Literal["hdf5", 
             assert dataset_configuration.chunk_shape == (2,)
             assert dataset_configuration.compressor_options is None
         elif backend == "zarr":
-            assert dataset_configuration.compressors == [compressor]
+            assert dataset_configuration.compressors == [ZstdCodec(level=0, checksum=False)]
             assert dataset_configuration.chunk_shape == (2,)
             assert dataset_configuration.compressor_options is None
             assert dataset_configuration.filters is None
@@ -287,7 +289,7 @@ def test_configuration_on_ragged_units_table(tmp_path, backend: Literal["hdf5", 
             assert dataset_configuration.chunk_shape == (15, 3)
             assert dataset_configuration.compressor_options is None
         elif backend == "zarr":
-            assert dataset_configuration.compressors == [compressor]
+            assert dataset_configuration.compressors == [ZstdCodec(level=0, checksum=False)]
             assert dataset_configuration.chunk_shape == (15, 3)
             assert dataset_configuration.compressor_options is None
             assert dataset_configuration.filters is None
@@ -307,7 +309,7 @@ def test_configuration_on_ragged_units_table(tmp_path, backend: Literal["hdf5", 
             assert dataset_configuration.chunk_shape == (5,)
             assert dataset_configuration.compressor_options is None
         elif backend == "zarr":
-            assert dataset_configuration.compressors == [compressor]
+            assert dataset_configuration.compressors == [ZstdCodec(level=0, checksum=False)]
             assert dataset_configuration.chunk_shape == (5,)
             assert dataset_configuration.compressor_options is None
             assert dataset_configuration.filters is None
@@ -327,7 +329,7 @@ def test_configuration_on_ragged_units_table(tmp_path, backend: Literal["hdf5", 
             assert dataset_configuration.chunk_shape == (2,)
             assert dataset_configuration.compressor_options is None
         elif backend == "zarr":
-            assert dataset_configuration.compressors == [compressor]
+            assert dataset_configuration.compressors == [ZstdCodec(level=0, checksum=False)]
             assert dataset_configuration.chunk_shape == (2,)
             assert dataset_configuration.compressor_options is None
             assert dataset_configuration.filters is None
@@ -349,7 +351,7 @@ def test_configuration_on_ragged_units_table(tmp_path, backend: Literal["hdf5", 
         elif backend == "zarr":
             assert dataset_configuration.compressors == [compressor]
             assert dataset_configuration.compressor_options is None
-            assert dataset_configuration.filters == filters
+            assert dataset_configuration.filters == spike_times_filters
             assert dataset_configuration.filter_options is None
 
         dataset_configuration = next(
@@ -366,7 +368,7 @@ def test_configuration_on_ragged_units_table(tmp_path, backend: Literal["hdf5", 
             assert dataset_configuration.compressor_options is None
             assert dataset_configuration.chunk_shape == (2,)
         elif backend == "zarr":
-            assert dataset_configuration.compressors == [compressor]
+            assert dataset_configuration.compressors == [ZstdCodec(level=0, checksum=False)]
             assert dataset_configuration.compressor_options is None
             assert dataset_configuration.filters is None
             assert dataset_configuration.filter_options is None
@@ -388,7 +390,7 @@ def test_configuration_on_ragged_units_table(tmp_path, backend: Literal["hdf5", 
         elif backend == "zarr":
             assert dataset_configuration.compressors == [compressor]
             assert dataset_configuration.compressor_options is None
-            assert dataset_configuration.filters == filters
+            assert dataset_configuration.filters == waveforms_filters
             assert dataset_configuration.filter_options is None
 
         dataset_configuration = next(
@@ -405,7 +407,7 @@ def test_configuration_on_ragged_units_table(tmp_path, backend: Literal["hdf5", 
             assert dataset_configuration.compressor_options is None
             assert dataset_configuration.chunk_shape == (2,)
         elif backend == "zarr":
-            assert dataset_configuration.compressors == [compressor]
+            assert dataset_configuration.compressors == [ZstdCodec(level=0, checksum=False)]
             assert dataset_configuration.compressor_options is None
             assert dataset_configuration.filters is None
             assert dataset_configuration.filter_options is None
@@ -418,7 +420,7 @@ def test_configuration_on_compass_direction(tmp_path, backend: Literal["hdf5", "
 
     nwbfile = mock_NWBFile()
     if backend == "zarr":  # ZarrDataIO compresses by default, so we disable it to test no-compression
-        data = ZarrDataIO(data=data, compressor=False)
+        data = ZarrDataIO(data=data, compressors=False)
     spatial_series = mock_SpatialSeries(name="TestSpatialSeries", data=data)
     compass_direction = CompassDirection(name="TestCompassDirection", spatial_series=spatial_series)
     behavior_module = get_module(nwbfile=nwbfile, name="behavior")
@@ -427,11 +429,9 @@ def test_configuration_on_compass_direction(tmp_path, backend: Literal["hdf5", "
     if backend == "hdf5":
         data = H5DataIO(data=data, compression="gzip", compression_opts=2, chunks=(1, 3))
     elif backend == "zarr":
-        filter1 = Blosc(cname="zstd", clevel=1, shuffle=Blosc.SHUFFLE)
-        filter2 = Blosc(cname="zstd", clevel=2, shuffle=Blosc.SHUFFLE)
-        filters = [filter1, filter2]
-        compressor = Blosc(cname="lz4", clevel=5, shuffle=Blosc.SHUFFLE, blocksize=0)
-        data = ZarrDataIO(data=data, chunks=(1, 3), compressor=compressor, filters=filters)
+        compressor = GzipCodec(level=5)
+        filters = [Delta(dtype=str(data.dtype))]
+        data = ZarrDataIO(data=data, chunks=(1, 3), compressors=[compressor], filters=filters)
     compressed_spatial_series = mock_SpatialSeries(
         name="CompressedSpatialSeries",
         data=data,
@@ -506,8 +506,8 @@ def test_configuration_on_ndx_events(tmp_path, backend: Literal["hdf5", "zarr"])
 
     nwbfile = mock_NWBFile()
     if backend == "zarr":  # ZarrDataIO compresses by default, so we disable it to test no-compression
-        data = ZarrDataIO(data=data, compressor=False)
-        timestamps = ZarrDataIO(data=timestamps, compressor=False)
+        data = ZarrDataIO(data=data, compressors=False)
+        timestamps = ZarrDataIO(data=timestamps, compressors=False)
     labeled_events = LabeledEvents(
         name="TestLabeledEvents",
         description="",
@@ -523,12 +523,11 @@ def test_configuration_on_ndx_events(tmp_path, backend: Literal["hdf5", "zarr"])
         data = H5DataIO(data=data, compression="gzip", compression_opts=2, chunks=(3,))
         timestamps = H5DataIO(data=timestamps, compression="gzip", compression_opts=2, chunks=(3,))
     elif backend == "zarr":
-        compressor = Blosc(cname="lz4", clevel=5, shuffle=Blosc.SHUFFLE, blocksize=0)
-        filter1 = Blosc(cname="zstd", clevel=1, shuffle=Blosc.SHUFFLE)
-        filter2 = Blosc(cname="zstd", clevel=2, shuffle=Blosc.SHUFFLE)
-        filters = [filter1, filter2]
-        data = ZarrDataIO(data=data, chunks=(3,), compressor=compressor, filters=filters)
-        timestamps = ZarrDataIO(data=timestamps, chunks=(3,), compressor=compressor, filters=filters)
+        compressor = GzipCodec(level=5)
+        data_filters = [Delta(dtype=str(data.dtype))]
+        timestamps_filters = [Delta(dtype=str(timestamps.dtype))]
+        data = ZarrDataIO(data=data, chunks=(3,), compressors=[compressor], filters=data_filters)
+        timestamps = ZarrDataIO(data=timestamps, chunks=(3,), compressors=[compressor], filters=timestamps_filters)
     compressed_labeled_events = LabeledEvents(
         name="CompressedLabeledEvents",
         description="",
@@ -607,7 +606,7 @@ def test_configuration_on_ndx_events(tmp_path, backend: Literal["hdf5", "zarr"])
         elif backend == "zarr":
             assert data_dataset_configuration.compressors == [compressor]
             assert data_dataset_configuration.compressor_options is None
-            assert data_dataset_configuration.filters == filters
+            assert data_dataset_configuration.filters == data_filters
             assert data_dataset_configuration.filter_options is None
 
         timestamps_dataset_configuration = next(
@@ -627,7 +626,7 @@ def test_configuration_on_ndx_events(tmp_path, backend: Literal["hdf5", "zarr"])
         elif backend == "zarr":
             assert timestamps_dataset_configuration.compressors == [compressor]
             assert timestamps_dataset_configuration.compressor_options is None
-            assert timestamps_dataset_configuration.filters == filters
+            assert timestamps_dataset_configuration.filters == timestamps_filters
             assert timestamps_dataset_configuration.filter_options is None
 
 
@@ -637,7 +636,7 @@ def test_configuration_on_time_series_automatic_backend(tmp_path, backend: Liter
 
     nwbfile = mock_NWBFile()
     if backend == "zarr":  # ZarrDataIO compresses by default, so we disable it to test no-compression
-        data = ZarrDataIO(data=data, compressor=False)
+        data = ZarrDataIO(data=data, compressors=False)
     time_series = mock_TimeSeries(name="TestTimeSeries", data=data)
     nwbfile.add_acquisition(time_series)
 
@@ -645,11 +644,9 @@ def test_configuration_on_time_series_automatic_backend(tmp_path, backend: Liter
     if backend == "hdf5":
         data = H5DataIO(data=data, compression="gzip", compression_opts=2, chunks=(1, 3))
     elif backend == "zarr":
-        compressor = Blosc(cname="lz4", clevel=5, shuffle=Blosc.SHUFFLE, blocksize=0)
-        filter1 = Blosc(cname="zstd", clevel=1, shuffle=Blosc.SHUFFLE)
-        filter2 = Blosc(cname="zstd", clevel=2, shuffle=Blosc.SHUFFLE)
-        filters = [filter1, filter2]
-        data = ZarrDataIO(data=data, chunks=(1, 3), compressor=compressor, filters=filters)
+        compressor = GzipCodec(level=5)
+        filters = [Delta(dtype=str(data.dtype))]
+        data = ZarrDataIO(data=data, chunks=(1, 3), compressors=[compressor], filters=filters)
     compressed_time_series = mock_TimeSeries(
         name="CompressedTimeSeries",
         data=data,
@@ -827,7 +824,7 @@ def test_timestamps_written_without_shuffle_are_read_back_without_it(tmp_path, b
     if backend == "hdf5":
         timestamps = H5DataIO(data=timestamps, chunks=(100,), compression="gzip", shuffle=False)
     elif backend == "zarr":
-        timestamps = ZarrDataIO(data=timestamps, chunks=(100,), compressor=GZip(level=1), filters=None)
+        timestamps = ZarrDataIO(data=timestamps, chunks=(100,), compressors=[GzipCodec(level=1)], filters=None)
 
     nwbfile = mock_NWBFile()
     nwbfile.add_acquisition(mock_TimeSeries(name="TestTimeSeries", data=np.zeros(shape=(100,)), timestamps=timestamps))
@@ -848,17 +845,16 @@ def test_timestamps_written_without_shuffle_are_read_back_without_it(tmp_path, b
         if backend == "hdf5":
             assert dataset_configuration.compressors == ["gzip"]
         elif backend == "zarr":
-            assert dataset_configuration.compressors == [GZip(level=1)]
+            assert dataset_configuration.compressors == [GzipCodec(level=1)]
             assert dataset_configuration.filters is None
 
 
 def test_zarr_shuffle_is_read_back_into_compressors(tmp_path):
-    """Zarr v2 stores shuffle in `filters`, so a file this library wrote has to report `compressors`."""
+    """Shuffle is a bytes-to-bytes codec, so zarr 3 stores it in `compressors` and it is read back there."""
     timestamps = ZarrDataIO(
         data=np.arange(100, dtype="float64") / 30.0,
         chunks=(100,),
-        compressor=GZip(level=1),
-        filters=[Shuffle(elementsize=8)],
+        compressors=[Shuffle(elementsize=8), GzipCodec(level=1)],
     )
 
     nwbfile = mock_NWBFile()
@@ -876,22 +872,22 @@ def test_zarr_shuffle_is_read_back_into_compressors(tmp_path):
             if dataset_configuration.location_in_file == "acquisition/TestTimeSeries/timestamps"
         )
 
-    assert dataset_configuration.compressors == ["shuffle", GZip(level=1)]
-    assert dataset_configuration.compressor_options == [dict(elementsize=8), None]
+    assert dataset_configuration.compressors == [Shuffle(elementsize=8), GzipCodec(level=1)]
+    assert dataset_configuration.compressor_options is None
     assert dataset_configuration.filters is None
 
     # The configuration read back reproduces the settings it was read from
     assert dataset_configuration.get_data_io_kwargs() == dict(
-        chunks=(100,), compressor=GZip(level=1), filters=[Shuffle(elementsize=8)]
+        chunks=(100,), filters=None, compressors=[Shuffle(elementsize=8), GzipCodec(level=1)]
     )
 
 
 def test_zarr_value_filters_are_read_back_into_filters(tmp_path):
-    """Only shuffle moves: a codec that transforms values is still a filter method."""
+    """A codec that transforms values is an array-to-array codec, so it is read back as a filter method."""
     data = ZarrDataIO(
         data=np.arange(100, dtype="int16"),
         chunks=(100,),
-        compressor=GZip(level=1),
+        compressors=[GzipCodec(level=1)],
         filters=[Delta(dtype="int16")],
     )
 
@@ -910,5 +906,5 @@ def test_zarr_value_filters_are_read_back_into_filters(tmp_path):
             if dataset_configuration.location_in_file == "acquisition/TestTimeSeries/data"
         )
 
-    assert dataset_configuration.compressors == [GZip(level=1)]
+    assert dataset_configuration.compressors == [GzipCodec(level=1)]
     assert dataset_configuration.filters == [Delta(dtype="int16")]
