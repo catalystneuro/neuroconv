@@ -5,6 +5,7 @@ from pynwb import NWBFile
 
 from neuroconv.tools import get_package
 from neuroconv.tools.nwb_helpers import _add_device_to_nwbfile
+from neuroconv.tools.nwb_helpers._metadata_and_file_helpers import _validate_metadata_key, _validate_metadata_path
 
 #: FiberPhotometryTable row reference fields (``<field>_metadata_key``) mapping to the ndx row column.
 _ROW_DEVICE_KEY_FIELDS = {
@@ -152,6 +153,7 @@ def add_fiber_photometry_devices(*, nwbfile: NWBFile, metadata: dict) -> None:
     optical fiber's nested ``fiber_insertion`` dict is built into an
     ``ndx_ophys_devices.FiberInsertion`` by the same helper.
     """
+    _validate_metadata_path(metadata, ("FiberPhotometry", "FiberPhotometryTable", "rows"))
     table_metadata = metadata["FiberPhotometry"]["FiberPhotometryTable"]
 
     # One device type at a time, each collected across every row. Rows share hardware (two channels
@@ -255,7 +257,7 @@ def get_fiber_photometry_table(nwbfile: NWBFile):
     return fiber_photometry_lab_meta_data.fiber_photometry_table
 
 
-def add_fiber_photometry_lab_metadata(*, nwbfile: NWBFile, fiber_photometry_metadata: dict, devices_metadata: dict):
+def add_fiber_photometry_lab_metadata(*, nwbfile: NWBFile, metadata: dict):
     """Build the shared ``FiberPhotometry`` lab metadata (viruses, injections, indicators, table).
 
     This is a build-once operation guarded by the presence of the ``"fiber_photometry"`` lab
@@ -263,7 +265,7 @@ def add_fiber_photometry_lab_metadata(*, nwbfile: NWBFile, fiber_photometry_meta
     metadata, and subsequent interfaces reuse it. Devices and any ``CommandedVoltageSeries`` referenced
     by a table row must already be present in the NWBFile. Entries reference each other with
     ``_metadata_key`` fields (e.g. a table row's ``optical_fiber_metadata_key``), resolved here — device
-    keys against the top-level ``devices_metadata`` (``metadata["Devices"]``).
+    keys against ``metadata["Devices"]``.
 
     Returns the ``FiberPhotometryTable`` so callers can build table regions.
     """
@@ -273,6 +275,10 @@ def add_fiber_photometry_lab_metadata(*, nwbfile: NWBFile, fiber_photometry_meta
     existing_table = get_fiber_photometry_table(nwbfile)
     if existing_table is not None:
         return existing_table
+
+    _validate_metadata_path(metadata, ("FiberPhotometry", "FiberPhotometryTable", "rows"))
+    fiber_photometry_metadata = metadata["FiberPhotometry"]
+    devices_metadata = metadata.get("Devices", {})
 
     key_to_viral_vector = {}
     for viral_vector_metadata_key, viral_vector_metadata in fiber_photometry_metadata.get(
@@ -293,6 +299,12 @@ def add_fiber_photometry_lab_metadata(*, nwbfile: NWBFile, fiber_photometry_meta
         injection_metadata = {
             key: value for key, value in injection_metadata.items() if key != "viral_vector_metadata_key"
         }
+        _validate_metadata_key(
+            metadata,
+            ("FiberPhotometry", "FiberPhotometryViruses"),
+            viral_vector_metadata_key,
+            field="viral_vector_metadata_key",
+        )
         injection_metadata["viral_vector"] = key_to_viral_vector[viral_vector_metadata_key]
         key_to_injection[injection_metadata_key] = ndx_ophys_devices.ViralVectorInjection(**injection_metadata)
     virus_injections = (
@@ -301,6 +313,7 @@ def add_fiber_photometry_lab_metadata(*, nwbfile: NWBFile, fiber_photometry_meta
         else None
     )
 
+    _validate_metadata_path(metadata, ("FiberPhotometry", "FiberPhotometryIndicators"))
     key_to_indicator = {}
     for indicator_metadata_key, indicator_metadata in fiber_photometry_metadata.get(
         "FiberPhotometryIndicators", {}
@@ -310,6 +323,12 @@ def add_fiber_photometry_lab_metadata(*, nwbfile: NWBFile, fiber_photometry_meta
             key: value for key, value in indicator_metadata.items() if key != "viral_vector_injection_metadata_key"
         }
         if injection_key is not None:
+            _validate_metadata_key(
+                metadata,
+                ("FiberPhotometry", "FiberPhotometryVirusInjections"),
+                injection_key,
+                field="viral_vector_injection_metadata_key",
+            )
             indicator_metadata["viral_vector_injection"] = key_to_injection[injection_key]
         key_to_indicator[indicator_metadata_key] = ndx_ophys_devices.Indicator(**indicator_metadata)
     if not key_to_indicator:
@@ -338,12 +357,24 @@ def add_fiber_photometry_lab_metadata(*, nwbfile: NWBFile, fiber_photometry_meta
         row_data["location"] = row_metadata["location"]
         row_data["excitation_wavelength_in_nm"] = row_metadata["excitation_wavelength_in_nm"]
         row_data["emission_wavelength_in_nm"] = row_metadata["emission_wavelength_in_nm"]
+        _validate_metadata_key(
+            metadata,
+            ("FiberPhotometry", "FiberPhotometryIndicators"),
+            row_metadata["indicator_metadata_key"],
+            field="indicator_metadata_key",
+        )
         row_data["indicator"] = key_to_indicator[row_metadata["indicator_metadata_key"]]
         if "coordinates" in row_metadata:
             row_data["coordinates"] = row_metadata["coordinates"]
         if "notes" in row_metadata:
             row_data["notes"] = row_metadata["notes"]
         if "commanded_voltage_series_metadata_key" in row_metadata:
+            _validate_metadata_key(
+                metadata,
+                ("FiberPhotometry", "CommandedVoltageSeries"),
+                row_metadata["commanded_voltage_series_metadata_key"],
+                field="commanded_voltage_series_metadata_key",
+            )
             commanded_voltage_name = commanded_voltage_key_to_name[
                 row_metadata["commanded_voltage_series_metadata_key"]
             ]

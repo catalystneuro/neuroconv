@@ -9,6 +9,7 @@ from pynwb.file import NWBFile
 
 from ..._temporal_alignment import _TemporalAlignment
 from ...basedatainterface import BaseDataInterface
+from ...tools.nwb_helpers._metadata_and_file_helpers import _validate_metadata_key, _validate_metadata_path
 from ...utils import to_camel_case
 
 
@@ -323,6 +324,8 @@ class BaseEventsInterface(BaseDataInterface):
         if metadata is None:
             metadata = self.get_metadata()
 
+        _validate_metadata_key(metadata, ("Events",), self.metadata_key, field="metadata_key")
+        _validate_metadata_path(metadata, ("Events", self.metadata_key, "event_types"))
         events_metadata = metadata["Events"]
         self._validate_shared_columns(events_metadata)
         event_tables_metadata = events_metadata.get("EventTables", {})

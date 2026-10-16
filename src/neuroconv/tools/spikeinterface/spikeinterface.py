@@ -28,6 +28,7 @@ from ..nwb_helpers import (
 from ..nwb_helpers._metadata_and_file_helpers import (
     _add_device_to_nwbfile,
     _fetch_backend_from_nwbfile_on_disk,
+    _validate_metadata_key,
     configure_and_write_nwbfile,
 )
 from ...utils import (
@@ -463,6 +464,8 @@ def add_recording_to_nwbfile(
 
     if metadata is None:
         metadata = _get_ecephys_metadata_placeholders()
+    if metadata_key is not None:
+        _validate_metadata_key(metadata, ("Ecephys", "ElectricalSeries"), metadata_key, field="metadata_key")
 
     add_recording_metadata_to_nwbfile(
         recording=recording, nwbfile=nwbfile, metadata=metadata, null_values_for_properties=null_values_for_properties
@@ -752,13 +755,7 @@ def _add_recording_segment_to_nwbfile(
 
     # Update with user metadata - allows override of all fields including name, description, data, timestamps, etc.
     if metadata_key is not None:
-        electrical_series_metadata_dict = metadata.get("Ecephys", {}).get("ElectricalSeries", {})
-        if metadata_key not in electrical_series_metadata_dict:
-            raise ValueError(
-                f"metadata['Ecephys']['ElectricalSeries'] does not contain key '{metadata_key}'. "
-                f"Available keys: {sorted(electrical_series_metadata_dict)}"
-            )
-        eseries_kwargs.update(electrical_series_metadata_dict[metadata_key])
+        eseries_kwargs.update(metadata["Ecephys"]["ElectricalSeries"][metadata_key])
     elif metadata is not None and "Ecephys" in metadata and es_key is not None:
         assert es_key in metadata["Ecephys"], f"metadata['Ecephys'] dictionary does not contain key '{es_key}'"
         eseries_kwargs.update(metadata["Ecephys"][es_key])
@@ -1852,11 +1849,8 @@ def add_recording_as_time_series_to_nwbfile(
                 "whenever that block is present. To write the recording with default metadata, pass no "
                 "metadata at all."
             )
-        if metadata_key not in metadata["TimeSeries"]:
-            raise ValueError(
-                f"metadata['TimeSeries'] does not contain key '{metadata_key}'. "
-                f"Available keys: {list(metadata['TimeSeries'])}."
-            )
+    if metadata_key is not None:
+        _validate_metadata_key(metadata or {}, ("TimeSeries",), metadata_key, field="metadata_key")
 
     num_segments = recording.get_num_segments()
     for segment_index in range(num_segments):

@@ -1,6 +1,7 @@
 """Data-free tests of the shared fiber photometry writer, driven by ``MockFiberPhotometryInterface``."""
 
 import re
+from copy import deepcopy
 from datetime import datetime, timezone
 
 import numpy as np
@@ -9,10 +10,12 @@ from jsonschema.validators import Draft7Validator
 from numpy.testing import assert_allclose, assert_array_equal
 from pynwb import NWBHDF5IO, read_nwb
 
+from neuroconv.tools.fiber_photometry import add_fiber_photometry_devices
 from neuroconv.tools.testing.data_interface_mixins import (
     FiberPhotometryInterfaceTestMixin,
 )
 from neuroconv.tools.testing.mock_interfaces import MockFiberPhotometryInterface
+from neuroconv.utils import DeepDict
 
 
 @pytest.fixture
@@ -696,3 +699,88 @@ class TestFiberPhotometryTemporalAlignment:
 
         assert nwbfile.acquisition["FiberPhotometryResponseSeries"].starting_time == pytest.approx(4.0)
         assert nwbfile.acquisition["CommandedVoltageSeries470"].starting_time == pytest.approx(4.0)
+
+
+@pytest.mark.parametrize("missing_path", [("FiberPhotometryTable", "rows"), ("FiberPhotometryIndicators",)])
+def test_provenance_requires_collections(full_metadata, missing_path):
+    interface = MockFiberPhotometryInterface(num_fibers=2)
+    photometry = DeepDict(full_metadata["FiberPhotometry"])
+    full_metadata["FiberPhotometry"] = photometry
+    parent = photometry
+    location = "metadata['FiberPhotometry']"
+    for level in missing_path[:-1]:
+        parent[level] = DeepDict(parent[level])
+        parent = parent[level]
+        location += f"['{level}']"
+    missing_level = missing_path[-1]
+    del parent[missing_level]
+    original = deepcopy(full_metadata)
+
+    with pytest.raises(ValueError) as error:
+        interface.create_nwbfile(metadata=full_metadata)
+
+    assert str(error.value) == (
+        f"Required metadata path {location}['{missing_level}'] is missing: "
+        f"{location} has no '{missing_level}' (available keys: {list(parent)})."
+    )
+    assert full_metadata == original
+
+
+@pytest.mark.parametrize(
+    "field, registry",
+    [
+        ("viral_vector_metadata_key", "FiberPhotometryViruses"),
+        ("viral_vector_injection_metadata_key", "FiberPhotometryVirusInjections"),
+        ("indicator_metadata_key", "FiberPhotometryIndicators"),
+        ("commanded_voltage_series_metadata_key", "CommandedVoltageSeries"),
+    ],
+)
+def test_provenance_references_require_registered_entries(full_metadata, field, registry):
+    interface = MockFiberPhotometryInterface(num_fibers=2)
+    photometry = full_metadata["FiberPhotometry"]
+    photometry[registry] = DeepDict()
+    if field == "viral_vector_metadata_key":
+        photometry["FiberPhotometryVirusInjections"] = {"injection": {field: "missing"}}
+    elif field == "viral_vector_injection_metadata_key":
+        photometry["FiberPhotometryIndicators"]["indicator"][field] = "missing"
+    else:
+        photometry["FiberPhotometryTable"]["rows"]["dms"][field] = "missing"
+        if registry == "FiberPhotometryIndicators":
+            photometry[registry]["indicator"] = {"name": "indicator", "label": "GCaMP6s"}
+    original = deepcopy(full_metadata)
+
+    with pytest.raises(ValueError) as error:
+        interface.create_nwbfile(metadata=full_metadata)
+
+    assert str(error.value) == (
+        f"{field} 'missing' was not found in metadata['FiberPhotometry']['{registry}'] "
+        f"(available keys: {list(photometry[registry])})."
+    )
+    assert full_metadata == original
+
+
+def test_device_enumeration_without_references_needs_no_device_registry():
+    metadata = DeepDict(FiberPhotometry={"FiberPhotometryTable": {"rows": {"row": {}}}})
+    original = deepcopy(metadata)
+    nwbfile = MockFiberPhotometryInterface().create_nwbfile()
+
+    add_fiber_photometry_devices(nwbfile=nwbfile, metadata=metadata)
+
+    assert not nwbfile.devices
+    assert metadata == original
+
+
+def test_registered_commanded_voltage_requires_metadata():
+    interface = MockFiberPhotometryInterface(commanded_voltage_streams={"drive": "470nm"})
+    metadata = interface.get_metadata()
+    metadata["FiberPhotometry"]["CommandedVoltageSeries"] = DeepDict()
+    original = deepcopy(metadata)
+
+    with pytest.raises(ValueError) as error:
+        interface.create_nwbfile(metadata=metadata)
+
+    assert str(error.value) == (
+        "commanded_voltage_series_metadata_key 'drive' was not found in "
+        "metadata['FiberPhotometry']['CommandedVoltageSeries'] (available keys: [])."
+    )
+    assert metadata == original

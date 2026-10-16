@@ -11,6 +11,7 @@ from pynwb.behavior import CompassDirection, Position, SpatialSeries
 from ....basedatainterface import BaseDataInterface
 from ....tools import get_module
 from ....tools.nwb_helpers import _get_container_by_name
+from ....tools.nwb_helpers._metadata_and_file_helpers import _validate_metadata_key
 from ....utils import DeepDict
 
 
@@ -417,12 +418,10 @@ class MoseqKeyPointsInterface(BaseDataInterface):
         source_pose = None
         pose_estimation_key = recording_metadata.get("pose_estimation_metadata_key")
         if pose_estimation_key is not None:
-            pose_estimations_registry = default_metadata.get("Pose", {}).get("PoseEstimations", {})
-            if pose_estimation_key not in pose_estimations_registry:
-                raise ValueError(
-                    f"pose_estimation_metadata_key '{pose_estimation_key}' was not found in "
-                    f"metadata['Pose']['PoseEstimations']. Available keys: {list(pose_estimations_registry)}."
-                )
+            _validate_metadata_key(
+                default_metadata, ("Pose", "PoseEstimations"), pose_estimation_key, field="pose_estimation_metadata_key"
+            )
+            pose_estimations_registry = default_metadata["Pose"]["PoseEstimations"]
             pose_container_name = pose_estimations_registry[pose_estimation_key]["name"]
             source_pose = _get_container_by_name(nwbfile, pose_container_name, "PoseEstimation")
 

@@ -6,6 +6,7 @@ from hdmf.common import MeaningsTable
 from pydantic import FilePath, validate_call
 from pynwb.file import NWBFile
 
+from neuroconv.tools.nwb_helpers._metadata_and_file_helpers import _validate_metadata_key, _validate_metadata_path
 from neuroconv.utils import DeepDict
 
 from ._boris_reader import (
@@ -200,6 +201,8 @@ class BORISInterface(BaseEventsInterface):
         """
         if metadata is None:
             metadata = self.get_metadata()
+        _validate_metadata_key(metadata, ("Events",), self.metadata_key, field="metadata_key")
+        _validate_metadata_path(metadata, ("Events", self.metadata_key, "event_types"))
         self._check_table_name_is_free(nwbfile=nwbfile, metadata=metadata)
         self._check_columns_are_not_shared_by_two_behaviors(metadata=metadata)
         super().add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
@@ -218,7 +221,7 @@ class BORISInterface(BaseEventsInterface):
         Only the events table needs this. The bouts table goes through `ProcessingModule.add`, which
         rejects a duplicate name already.
         """
-        declared = metadata["Events"]["EventTables"].get(self.metadata_key)
+        declared = metadata["Events"].get("EventTables", {}).get(self.metadata_key)
         if declared is None:
             # The user re-routed the behaviors and named the tables themselves, so the name this
             # interface would have chosen is not in play.

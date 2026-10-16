@@ -12,6 +12,7 @@ from pynwb.icephys import (
 )
 
 from .nwb_helpers import _add_device_to_nwbfile
+from .nwb_helpers._metadata_and_file_helpers import _validate_metadata_key
 from ..utils import DeepDict, calculate_regular_series_rate
 
 # The key under which the default (placeholder) entries are registered. An interface re-keys these to its own
@@ -52,6 +53,7 @@ def _add_patch_clamp_series_to_nwbfile(
 ):
     """Construct and add one response or stimulus series from an icephys data record."""
     metadata_registry = "PatchClampStimulusSeries" if is_stimulus else "PatchClampSeries"
+    _validate_metadata_key(metadata, ("Icephys", metadata_registry), series_metadata_key, field="series_metadata_key")
     series_metadata = metadata["Icephys"][metadata_registry][series_metadata_key]
     series_class = _STIMULUS_CLASS[mode] if is_stimulus else _RESPONSE_CLASS[mode]
     series_kwargs = dict(
@@ -162,6 +164,9 @@ def _add_intracellular_electrode_to_nwbfile(nwbfile: NWBFile, metadata: dict, el
     dedups by ``name``, and so does the device, so several interfaces pointing at one entry share a single object.
     """
     placeholders = _get_icephys_metadata_placeholders()
+    _validate_metadata_key(
+        metadata, ("Icephys", "IntracellularElectrodes"), electrode_metadata_key, field="electrode_metadata_key"
+    )
     electrode_metadata = {
         **placeholders["Icephys"]["IntracellularElectrodes"][DEFAULT_METADATA_KEY],
         **metadata["Icephys"]["IntracellularElectrodes"][electrode_metadata_key],
