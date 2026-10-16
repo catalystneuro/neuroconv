@@ -130,7 +130,11 @@ class EthoVisionTrackInterface(BaseDataInterface):
         }
         # Alignment by composition, the component the events interfaces hold; see neuroconv/_temporal_alignment.py.
         self.alignment = _TemporalAlignment()
-        self.alignment._register_series(key=self.metadata_key, get_native_times=lambda: self._track.trial_time)
+        self.alignment._register(
+            key=self.metadata_key,
+            get_native_times=lambda: self._track.trial_time,
+            get_number_of_samples=lambda: len(self._track.trial_time),
+        )
 
     def get_metadata_schema(self) -> dict:
         metadata_schema = super().get_metadata_schema()

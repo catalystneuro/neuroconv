@@ -9,6 +9,7 @@ Install NeuroConv with the additional dependencies necessary for reading Plexon 
 
 .. warning::
     When running plexon2 conversion on platforms other than Windows, you also need to install `wine <https://www.winehq.org/>`_.
+    Plexon2 is not supported on Python 3.14 outside Windows at the moment.
 
 Convert Plexon2 recording data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.plexon.plexondatainterface.Plexon2RecordingInterface`.
 

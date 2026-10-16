@@ -1,6 +1,5 @@
 from abc import abstractmethod
 from dataclasses import dataclass, field
-from functools import partial
 
 import numpy as np
 from hdmf.common import MeaningsTable, VectorIndex
@@ -9,6 +8,7 @@ from pynwb.file import NWBFile
 
 from ..._temporal_alignment import _TemporalAlignment
 from ...basedatainterface import BaseDataInterface
+from ...tools.nwb_helpers._metadata_and_file_helpers import _validate_metadata_key, _validate_metadata_path
 from ...utils import to_camel_case
 
 
@@ -110,15 +110,20 @@ class BaseEventsInterface(BaseDataInterface):
         if self._alignment is None:
             alignment = _TemporalAlignment()
             for source_id in self.get_event_type_source_ids():
-                alignment._register_events(
+                alignment._register(
                     key=source_id,
-                    get_native_times=partial(self._get_native_event_times, event_type_source_id=source_id),
+                    get_native_times=lambda source_id=source_id: self._get_events_data_dict()[source_id].timestamps,
+                    get_number_of_samples=lambda source_id=source_id: len(
+                        self._get_events_data_dict()[source_id].timestamps
+                    ),
+                    get_native_durations=lambda source_id=source_id: self._get_events_data_dict()[source_id].durations,
                 )
             self._alignment = alignment
         return self._alignment
 
-    def _get_native_event_times(self, *, event_type_source_id):
-        return self._get_events_data_dict()[event_type_source_id].timestamps
+    def _get_event_durations(self, event_type_source_id: str) -> np.ndarray | None:
+        """The durations of one event type on this interface's current clock, ``None`` for a type without any."""
+        return self.alignment[event_type_source_id].get_durations()
 
     @abstractmethod
     def _get_events_data_dict(self) -> dict[str, _EventsData]:
@@ -323,6 +328,8 @@ class BaseEventsInterface(BaseDataInterface):
         if metadata is None:
             metadata = self.get_metadata()
 
+        _validate_metadata_key(metadata, metadata_path=("Events",), metadata_key=self.metadata_key)
+        _validate_metadata_path(metadata, ("Events", self.metadata_key, "event_types"))
         events_metadata = metadata["Events"]
         self._validate_shared_columns(events_metadata)
         event_tables_metadata = events_metadata.get("EventTables", {})
@@ -468,6 +475,7 @@ class BaseEventsInterface(BaseDataInterface):
         for event_type_source_id in event_type_source_ids:
             event = event_data[event_type_source_id]
             timestamps = self.get_event_times(event_type_source_id)
+            durations = self._get_event_durations(event_type_source_id)
             entry = event_types[event_type_source_id]
             event_name = entry["event_name"]
             resolved_columns = []
@@ -494,7 +502,7 @@ class BaseEventsInterface(BaseDataInterface):
                         cells[column_name] = [labels_map[str(item)] for item in value]
                     else:
                         cells[column_name] = labels_map[str(value)]
-                duration = float(event.durations[index]) if event.durations is not None else np.nan
+                duration = float(durations[index]) if durations is not None else np.nan
                 rows.append((float(timestamp), event_name, duration, cells))
 
         n_existing = len(table.id)

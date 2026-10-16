@@ -1486,6 +1486,10 @@ def wine_is_required_and_missing() -> bool:
     wine_is_required_and_missing(),
     reason="Plexon2 reads its files through a Windows DLL and Wine is not installed on this platform.",
 )
+@pytest.mark.skipif(
+    platform != "win32" and this_python_version >= version.parse("3.14"),
+    reason="Plexon2 is not supported on Python 3.14 outside Windows at the moment, as zugbruecke cannot start its Wine session there.",
+)
 class TestPlexon2RecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = Plexon2RecordingInterface
     interface_kwargs = dict(

@@ -160,7 +160,8 @@ class ExternalVideoInterface(BaseDataInterface):
             # Every file starts where its container puts its first frame, usually zero, until it is placed:
             # several files record nothing about how they relate, so none is assumed, and files left unplaced
             # overlap and raise when written.
-            self.alignment._register_series(
+            # No sample count here: the write checks it, in `_check_timestamps_number_matches_frames`.
+            self.alignment._register(
                 key=segment_key,
                 get_native_times=partial(self._get_default_times, file_index=file_index),
                 default_start_time=partial(self._get_first_frame_time, file_index=file_index),
@@ -417,7 +418,7 @@ class ExternalVideoInterface(BaseDataInterface):
         or a deprecated setter) is based on its container's own per-frame timestamps
         (:meth:`_get_container_times`) instead of the header-rate default, decoding every frame of
         that file; a file with times set is unaffected and keeps them. Either way the object's own offset and
-        the interface's offset are added exactly as :meth:`_TimeBearingSeries.get_times` would.
+        the interface's offset are added exactly as :meth:`_TimeBearingObject.get_times` would.
         """
         segment_times = []
         for file_index, segment_key in enumerate(self._segment_keys):

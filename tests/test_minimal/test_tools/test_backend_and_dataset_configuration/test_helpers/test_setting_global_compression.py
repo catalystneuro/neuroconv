@@ -86,9 +86,6 @@ ZARR_COMPRESSION_EXPECTED = {
     "bz2": "bz2",
     "zlib": "zlib",
     "zstd": "zstd",
-    "jenkins_lookup3": "jenkinslookup3",  # Note: the underscores removed in string representation
-    "delta": None,  # TODO, implement a test for this, requires dtype parameter
-    "categorize": None,  # TODO, implement a test for this, requires labels and dtype parameters
 }
 
 
@@ -274,11 +271,11 @@ class TestGlobalCompressionZarr:
         dataset2 = zarr_group["acquisition/TestTimeSeries2/data"]
 
         # Verify that compression is applied
-        assert dataset1.compressor is not None
-        assert dataset2.compressor is not None
+        assert dataset1.compressors[0] is not None
+        assert dataset2.compressors[0] is not None
         # Check that the compressor name matches the expected compression method
-        assert expected_compression in str(dataset1.compressor).lower()
-        assert expected_compression in str(dataset2.compressor).lower()
+        assert expected_compression in str(dataset1.compressors[0]).lower()
+        assert expected_compression in str(dataset2.compressors[0]).lower()
         read_nwbfile.read_io.close()
 
     def test_global_compression_with_options(self, tmp_path):
@@ -312,16 +309,16 @@ class TestGlobalCompressionZarr:
         dataset2 = zarr_group["acquisition/TestTimeSeries2/data"]
 
         # Verify that compression is applied
-        assert dataset1.compressor is not None
-        assert dataset2.compressor is not None
+        assert dataset1.compressors[0] is not None
+        assert dataset2.compressors[0] is not None
         # Check that the compressor name matches the expected compression method
-        assert "gzip" in str(dataset1.compressor).lower()
-        assert "gzip" in str(dataset2.compressor).lower()
+        assert "gzip" in str(dataset1.compressors[0]).lower()
+        assert "gzip" in str(dataset2.compressors[0]).lower()
         # Check that compression level is applied (for gzip compressor)
-        if hasattr(dataset1.compressor, "level"):
-            assert dataset1.compressor.level == 6
-        if hasattr(dataset2.compressor, "level"):
-            assert dataset2.compressor.level == 6
+        if hasattr(dataset1.compressors[0], "level"):
+            assert dataset1.compressors[0].level == 6
+        if hasattr(dataset2.compressors[0], "level"):
+            assert dataset2.compressors[0].level == 6
         read_nwbfile.read_io.close()
 
     def test_global_compression_invalid_method(self, tmp_path):

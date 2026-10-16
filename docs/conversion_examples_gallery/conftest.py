@@ -118,6 +118,10 @@ def pytest_runtest_setup(item):
             if version.parse(python_version) < version.parse("3.10") and os == "Darwin":
                 pytest.skip("Skipping doctests for deeplabcut.rst on Python 3.9 and macOS")
 
+        if test_file.name == "plexon2.rst":
+            if os != "Windows" and version.parse(python_version) >= version.parse("3.14"):
+                pytest.skip("Plexon2 is not supported on Python 3.14 outside Windows at the moment, as zugbruecke cannot start its Wine session there.")
+
         # Check if we are running the doctest from inscopix.rst
         if test_file.name == "inscopix.rst":
             # Skip on macOS ARM64
