@@ -32,6 +32,7 @@ import warnings
 
 from pynwb import NWBFile, get_type_map
 
+from ._anatomy import _skeleton_nodes
 from ._brain_regions import _location_containers
 from ._term_sets import _unwrapped
 
@@ -404,23 +405,12 @@ def _anatomy_mapping_from_metadata(metadata: dict | None) -> dict:
 def _anatomy_annotation_sites(nwbfile: NWBFile) -> list:
     """Collect ``(container, attribute, relative_path, node name)`` tuples to annotate.
 
-    Covers every ``ndx-pose`` ``Skeleton.nodes`` entry in ``nwbfile.processing["behavior"]["Skeletons"]``
-    (the container path NeuroConv's own pose-estimation interfaces write to), if present. Unlike
-    the brain-region sites, ``nodes`` is a plain array attribute of the ``Skeleton`` itself (not a
-    separate ``VectorData`` column), so the ``Skeleton`` is the HERD container and ``"nodes"`` is
-    both the attribute and the relative path.
+    Covers every ``ndx-pose`` ``Skeleton.nodes`` entry on the file, wherever the ``Skeleton`` sits.
+    Unlike the brain-region sites, ``nodes`` is a plain array attribute of the ``Skeleton`` itself
+    (not a separate ``VectorData`` column), so the ``Skeleton`` is the HERD container and ``"nodes"``
+    is both the attribute and the relative path.
     """
-    sites = []
-    behavior_module = nwbfile.processing.get("behavior")
-    if behavior_module is None:
-        return sites
-    skeletons_container = behavior_module.data_interfaces.get("Skeletons")
-    if skeletons_container is None:
-        return sites
-    for skeleton in skeletons_container.skeletons.values():
-        for node_name in dict.fromkeys(_unwrapped(skeleton.nodes)):  # unique, order-preserving
-            sites.append((skeleton, "nodes", "nodes", node_name))
-    return sites
+    return [(skeleton, "nodes", "nodes", node_name) for skeleton, node_name in _skeleton_nodes(nwbfile)]
 
 
 def add_anatomy_external_resources(nwbfile: NWBFile, metadata: dict | None = None) -> int:

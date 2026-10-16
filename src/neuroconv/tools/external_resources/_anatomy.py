@@ -73,22 +73,17 @@ def get_anatomy_term(name: str | None) -> AnatomyTerm | None:
     return ANATOMY_TERMS[canonical_name] if canonical_name is not None else None
 
 
-def _skeleton_node_names(nwbfile: NWBFile) -> list:
-    """Every distinct ``ndx-pose`` ``Skeleton.nodes`` entry on the file, or ``[]`` if there is none.
+def _skeleton_nodes(nwbfile: NWBFile) -> list:
+    """Every ``(skeleton, node name)`` pair on the file, each node name once per ``Skeleton``.
 
-    Reads ``nwbfile.processing["behavior"]["Skeletons"]``, the container path NeuroConv's own
-    pose-estimation interfaces write to.
+    ``ndx-pose`` ``Skeleton`` objects are found by type wherever they sit (NeuroConv's own
+    pose-estimation interfaces write them to ``processing["behavior"]["Skeletons"]``, other tools may
+    not), so ``ndx-pose`` does not have to be installed for the rest of the file to work.
     """
-    behavior_module = nwbfile.processing.get("behavior")
-    if behavior_module is None:
-        return []
-    skeletons_container = behavior_module.data_interfaces.get("Skeletons")
-    if skeletons_container is None:
-        return []
-    names: dict = {}
-    for skeleton in skeletons_container.skeletons.values():
-        names.update(dict.fromkeys(str(node_name) for node_name in _unwrapped(skeleton.nodes)))
-    return list(names)
+    skeletons = [obj for obj in nwbfile.objects.values() if getattr(obj, "neurodata_type", None) == "Skeleton"]
+    return [
+        (skeleton, node_name) for skeleton in skeletons for node_name in dict.fromkeys(_unwrapped(skeleton.nodes))
+    ]
 
 
 def infer_anatomy_external_resources(nwbfile: NWBFile) -> dict:
@@ -118,7 +113,7 @@ def infer_anatomy_external_resources(nwbfile: NWBFile) -> dict:
         ``Skeleton`` or no node name resolves.
     """
     anatomy = {}
-    for node_name in _skeleton_node_names(nwbfile):
+    for node_name in dict.fromkeys(node_name for _, node_name in _skeleton_nodes(nwbfile)):
         term = get_anatomy_term(node_name)
         if term is not None:
             anatomy[node_name] = {"id": term.curie, "uri": term.entity_uri}

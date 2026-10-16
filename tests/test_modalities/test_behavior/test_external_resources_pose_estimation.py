@@ -26,10 +26,10 @@ def _make_nwbfile(species="Mus musculus") -> NWBFile:
     return nwbfile
 
 
-def _add_skeleton(nwbfile: NWBFile, node_names, name="skeleton0"):
+def _add_skeleton(nwbfile: NWBFile, node_names, name="skeleton0", module_name="behavior"):
     skeleton = Skeleton(name=name, nodes=list(node_names), edges=None)
-    behavior_module = nwbfile.processing.get("behavior") or nwbfile.create_processing_module(
-        name="behavior", description="d"
+    behavior_module = nwbfile.processing.get(module_name) or nwbfile.create_processing_module(
+        name=module_name, description="d"
     )
     if "Skeletons" not in behavior_module.data_interfaces:
         behavior_module.add(Skeletons(skeletons=[skeleton]))
@@ -60,6 +60,13 @@ class TestInferAnatomyExternalResources:
 
     def test_no_skeleton_returns_empty(self):
         assert infer_anatomy_external_resources(_make_nwbfile()) == {}
+
+    def test_skeleton_outside_the_behavior_module_is_found(self):
+        nwbfile = _make_nwbfile()
+        _add_skeleton(nwbfile, ["Snout"], module_name="pose")
+
+        anatomy = infer_anatomy_external_resources(nwbfile)["ExternalResources"]["anatomy"]
+        assert anatomy["Snout"]["id"] == "UBERON:0006333"
 
 
 # ---------------------------------------------------------------------------
@@ -114,6 +121,15 @@ class TestAnatomyExternalResources:
         assert add_anatomy_external_resources(nwbfile, metadata=metadata) == 2
         dataframe = nwbfile.external_resources.to_dataframe()
         assert sorted(dataframe["key"].tolist()) == ["Snout", "Tail"]
+
+    def test_skeleton_outside_the_behavior_module_is_annotated(self):
+        nwbfile = _make_nwbfile()
+        skeleton = _add_skeleton(nwbfile, ["Snout"], module_name="pose")
+        metadata = _anatomy_metadata({"Snout": {"id": "UBERON:0006333", "uri": "https://example.org/UBERON_0006333"}})
+
+        assert add_anatomy_external_resources(nwbfile, metadata=metadata) == 1
+        objects = nwbfile.external_resources.objects.to_dataframe()
+        assert objects["object_id"].tolist() == [skeleton.object_id]
 
 
 # ---------------------------------------------------------------------------
