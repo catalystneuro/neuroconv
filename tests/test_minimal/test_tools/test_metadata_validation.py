@@ -45,7 +45,7 @@ def test_key_errors_name_the_first_missing_level_without_mutation(dictionary_typ
 
     with pytest.raises(ValueError) as error:
         _validate_metadata_key(
-            metadata, metadata_path=("Ophys", "MicroscopySeries"), metadata_key="selected", field="metadata_key"
+            metadata, metadata_path=("Ophys", "MicroscopySeries"), metadata_key="selected", error_label="metadata_key"
         )
 
     assert str(error.value) == expected
@@ -98,7 +98,7 @@ def test_validators_only_check_existence(dictionary_type, entry):
 
     assert (
         _validate_metadata_key(
-            metadata, metadata_path=("Devices",), metadata_key="selected", field="device_metadata_key"
+            metadata, metadata_path=("Devices",), metadata_key="selected", error_label="device_metadata_key"
         )
         is None
     )
@@ -112,7 +112,7 @@ def test_key_error_preserves_the_reference_field():
             {"Devices": {"camera": {}}},
             metadata_path=("Devices",),
             metadata_key="camera_typo",
-            field="device_metadata_key",
+            error_label="device_metadata_key",
         )
 
     assert str(error.value) == (

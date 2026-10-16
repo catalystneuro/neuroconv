@@ -303,7 +303,7 @@ def add_fiber_photometry_lab_metadata(*, nwbfile: NWBFile, metadata: dict):
             metadata,
             metadata_path=("FiberPhotometry", "FiberPhotometryViruses"),
             metadata_key=viral_vector_metadata_key,
-            field="viral_vector_metadata_key",
+            error_label="viral_vector_metadata_key",
         )
         injection_metadata["viral_vector"] = key_to_viral_vector[viral_vector_metadata_key]
         key_to_injection[injection_metadata_key] = ndx_ophys_devices.ViralVectorInjection(**injection_metadata)
@@ -327,7 +327,7 @@ def add_fiber_photometry_lab_metadata(*, nwbfile: NWBFile, metadata: dict):
                 metadata,
                 metadata_path=("FiberPhotometry", "FiberPhotometryVirusInjections"),
                 metadata_key=injection_key,
-                field="viral_vector_injection_metadata_key",
+                error_label="viral_vector_injection_metadata_key",
             )
             indicator_metadata["viral_vector_injection"] = key_to_injection[injection_key]
         key_to_indicator[indicator_metadata_key] = ndx_ophys_devices.Indicator(**indicator_metadata)
@@ -361,7 +361,7 @@ def add_fiber_photometry_lab_metadata(*, nwbfile: NWBFile, metadata: dict):
             metadata,
             metadata_path=("FiberPhotometry", "FiberPhotometryIndicators"),
             metadata_key=row_metadata["indicator_metadata_key"],
-            field="indicator_metadata_key",
+            error_label="indicator_metadata_key",
         )
         row_data["indicator"] = key_to_indicator[row_metadata["indicator_metadata_key"]]
         if "coordinates" in row_metadata:
@@ -373,7 +373,7 @@ def add_fiber_photometry_lab_metadata(*, nwbfile: NWBFile, metadata: dict):
                 metadata,
                 metadata_path=("FiberPhotometry", "CommandedVoltageSeries"),
                 metadata_key=row_metadata["commanded_voltage_series_metadata_key"],
-                field="commanded_voltage_series_metadata_key",
+                error_label="commanded_voltage_series_metadata_key",
             )
             commanded_voltage_name = commanded_voltage_key_to_name[
                 row_metadata["commanded_voltage_series_metadata_key"]

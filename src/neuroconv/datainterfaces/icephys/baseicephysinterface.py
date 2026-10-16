@@ -41,7 +41,7 @@ class BaseIcephysInterface(BaseDataInterface):
             metadata,
             metadata_path=("Icephys", "PatchClampSeries"),
             metadata_key=series_metadata_key,
-            field="series_metadata_key",
+            error_label="series_metadata_key",
         )
         response_metadata = metadata["Icephys"]["PatchClampSeries"][series_metadata_key]
         electrode = _add_intracellular_electrode_to_nwbfile(

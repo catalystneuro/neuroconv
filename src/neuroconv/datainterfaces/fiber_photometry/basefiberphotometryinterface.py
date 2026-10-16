@@ -420,7 +420,7 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
                 metadata,
                 metadata_path=("FiberPhotometry", "CommandedVoltageSeries"),
                 metadata_key=key,
-                field="commanded_voltage_series_metadata_key",
+                error_label="commanded_voltage_series_metadata_key",
             )
             commanded_voltage_metadata = commanded_voltage_metadata_by_key[key]
             if commanded_voltage_metadata["name"] in nwbfile.acquisition:
@@ -481,7 +481,7 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
 
         metadata = metadata or self.get_metadata()
         _validate_metadata_key(
-            metadata, metadata_path=("FiberPhotometry",), metadata_key=self.metadata_key, field="metadata_key"
+            metadata, metadata_path=("FiberPhotometry",), metadata_key=self.metadata_key, error_label="metadata_key"
         )
         fiber_photometry_metadata = metadata["FiberPhotometry"]
         self._validate_metadata(fiber_photometry_metadata)
