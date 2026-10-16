@@ -386,6 +386,19 @@ name with a laterality marker (e.g. ``"EarL"``) does not resolve and is left out
     #   {"Snout": {"id": "UBERON:0006333", "uri": "..."}, "Shoulder": {"id": "UBERON:0001467", "uri": "..."}}
     #   "EarL" is not recognized and does not appear.
 
+Most skeletons name keypoints with a side or position (``"ShoulderLeft"``, ``"SpineFront"``). Pass
+``node_structures`` to state the structure each such node tracks; the node is resolved through that
+structure name and stays keyed by its own name. A structure name that does not resolve raises a
+``ValueError``:
+
+.. code-block:: python
+
+    infer_anatomy_external_resources(
+        nwbfile, node_structures={"ShoulderLeft": "Shoulder", "ShoulderRight": "Shoulder", "SpineFront": "Spine"}
+    )["ExternalResources"]["anatomy"]
+    #   {"ShoulderLeft": {"id": "UBERON:0001467", ...}, "ShoulderRight": {"id": "UBERON:0001467", ...},
+    #    "SpineFront": {"id": "UBERON:0001130", ...}, ...}
+
 Curating the map by hand
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 

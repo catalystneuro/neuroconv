@@ -72,6 +72,27 @@ class TestInferAnatomyExternalResources:
         anatomy = infer_anatomy_external_resources(nwbfile)["ExternalResources"]["anatomy"]
         assert anatomy["Snout"]["id"] == "UBERON:0006333"
 
+    def test_node_structures_resolve_lab_specific_names(self):
+        nwbfile = _make_nwbfile()
+        _add_skeleton(nwbfile, ["Snout", "ShoulderLeft", "SpineFront", "EarL"])
+        node_structures = {"ShoulderLeft": "Shoulder", "SpineFront": "vertebral column", "HipLeft": "Hip"}
+
+        anatomy = infer_anatomy_external_resources(nwbfile, node_structures=node_structures)
+        # Keyed by the node name as written; "Snout" is looked up as is, "EarL" is not listed and not
+        # recognized, and "HipLeft" is not on the file.
+        assert {name: term["id"] for name, term in anatomy["ExternalResources"]["anatomy"].items()} == {
+            "Snout": "UBERON:0006333",
+            "ShoulderLeft": "UBERON:0001467",
+            "SpineFront": "UBERON:0001130",
+        }
+
+    def test_unresolvable_node_structure_raises(self):
+        nwbfile = _make_nwbfile()
+        _add_skeleton(nwbfile, ["Snout"])
+
+        with pytest.raises(ValueError, match="'ShoulderLeft'.*'Shouldr'"):
+            infer_anatomy_external_resources(nwbfile, node_structures={"ShoulderLeft": "Shouldr"})
+
 
 # ---------------------------------------------------------------------------
 # General-anatomy HERD annotation (metadata -> file)

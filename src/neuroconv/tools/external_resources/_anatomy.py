@@ -88,7 +88,7 @@ def _skeleton_nodes(nwbfile: NWBFile) -> list:
     ]
 
 
-def infer_anatomy_external_resources(nwbfile: NWBFile) -> dict:
+def infer_anatomy_external_resources(nwbfile: NWBFile, node_structures: dict[str, str] | None = None) -> dict:
     """
     Infer anatomy terms for the file's skeleton node names, as ``{"ExternalResources": {"anatomy": ...}}``.
 
@@ -99,6 +99,12 @@ def infer_anatomy_external_resources(nwbfile: NWBFile) -> dict:
     :func:`neuroconv.tools.external_resources.add_anatomy_external_resources` then writes those terms
     into the file as HERD references.
 
+    Skeletons usually name keypoints with a side or position (``"ShoulderLeft"``, ``"SpineFront"``),
+    which the curated table does not recognize. ``node_structures`` states the structure such a node
+    tracks (``{"ShoulderLeft": "Shoulder"}``); the node is then resolved through that structure name,
+    and the result is still keyed by the node name as written. Nodes it does not list are looked up
+    as they are.
+
     Nothing is modified. Merge the result under your metadata so that terms you wrote yourself win::
 
         metadata = dict_deep_update(infer_anatomy_external_resources(nwbfile), metadata, append_list=False)
@@ -107,16 +113,35 @@ def infer_anatomy_external_resources(nwbfile: NWBFile) -> dict:
     ----------
     nwbfile : NWBFile
         A populated file (data already added) whose ``Skeleton`` node names are read.
+    node_structures : dict of str to str, optional
+        ``{node name: structure name}`` for nodes whose name is not itself a recognized structure.
+        Each structure name must resolve with :func:`get_anatomy_term`. Entries for nodes the file
+        does not have are ignored.
 
     Returns
     -------
     dict
         ``{"ExternalResources": {"anatomy": {node name: term}}}``, or ``{}`` when the file has no
         ``Skeleton`` or no node name resolves.
+
+    Raises
+    ------
+    ValueError
+        If a structure name in ``node_structures`` is not recognized.
     """
+    node_terms = {}
+    for node_name, structure_name in (node_structures or {}).items():
+        node_terms[node_name] = get_anatomy_term(structure_name)
+        if node_terms[node_name] is None:
+            raise ValueError(
+                f"node_structures maps node {node_name!r} to {structure_name!r}, which is not a recognized "
+                "anatomical structure. Use a name or alias from ANATOMY_TERMS, or state the node's term "
+                'in metadata["ExternalResources"]["anatomy"] instead.'
+            )
+
     anatomy = {}
     for node_name in dict.fromkeys(node_name for _, node_name in _skeleton_nodes(nwbfile)):
-        term = get_anatomy_term(node_name)
+        term = node_terms[node_name] if node_name in node_terms else get_anatomy_term(node_name)
         if term is not None:
             anatomy[node_name] = {"id": term.curie, "uri": term.entity_uri}
 
