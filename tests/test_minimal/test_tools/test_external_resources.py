@@ -170,7 +170,7 @@ class TestUpstreamTermSets:
 
         merged = load_term_set("general_anatomy.yaml")
         assert merged["Snout"].curie == "UBERON:0006333"
-        assert "nose" in merged["Snout"].aliases  # ours survive an upstream entry without aliases
+        assert "muzzle" in merged["Snout"].aliases  # ours survive an upstream entry without aliases
         assert "Brain" in merged  # upstream-only values (organs, not just skeleton parts) are kept
 
     def test_upstream_terms_are_preferred_and_merged(self, monkeypatch, tmp_path):
@@ -496,7 +496,7 @@ class TestAnatomyTerms:
         [
             ("Trapezius muscle", "Trapezius muscle"),  # canonical name
             ("SNOUT", "Snout"),  # case-insensitive
-            ("nose", "Snout"),  # informal alias
+            ("muzzle", "Snout"),  # informal alias
             ("forepaw", "Hand"),
         ],
     )
@@ -504,6 +504,21 @@ class TestAnatomyTerms:
         term = get_anatomy_term(name)
         assert term.name == expected_name
         assert term.curie.startswith("UBERON:")
+
+    @pytest.mark.parametrize(
+        "name, expected_curie",
+        [
+            # An informal name UBERON has its own term for resolves to that term, not to a broader one.
+            ("nose", "UBERON:0012128"),  # nose tip, not snout
+            ("arm", "UBERON:0001460"),  # arm, not forelimb stylopod
+            ("pinna", "UBERON:0001757"),  # pinna, not external ear
+            ("muzzle", "UBERON:0006333"),
+            ("upper arm", "UBERON:0003822"),
+            ("external ear", "UBERON:0001691"),
+        ],
+    )
+    def test_alias_resolves_to_its_own_uberon_term(self, name, expected_curie):
+        assert get_anatomy_term(name).curie == expected_curie
 
     @pytest.mark.parametrize("name", ["EarL", "ear_l", "not a structure", "", None, 42])
     def test_unrecognized_returns_none(self, name):
