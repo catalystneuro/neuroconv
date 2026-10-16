@@ -358,9 +358,10 @@ General anatomy
 ``Skeleton.nodes`` (e.g. ``"Snout"``, ``"Shoulder"``, ``"Tail"``). NeuroConv can attach a UBERON
 reference to each recognized node name, so downstream tools can resolve the exact anatomical
 structure a keypoint tracks. This is independent of brain-region annotation above: it never looks
-at ``location`` fields, and the vocabulary (:py:data:`~neuroconv.tools.external_resources.ANATOMY_TERMS`,
-~28 curated skeleton parts and muscles) is species-agnostic -- there is no per-species atlas
-selection.
+at ``location`` fields, and the vocabulary (:py:data:`~neuroconv.tools.external_resources.ANATOMY_TERMS`)
+is species-agnostic -- there is no per-species atlas selection. The table bundled with NeuroConv
+covers common skeleton parts and muscles; when the optional ``neuro-termsets`` package is
+installed, its organs, nerves, limbs, retina and vibrissa terms are added.
 
 How node names are resolved
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -380,7 +381,7 @@ name with a laterality marker (e.g. ``"EarL"``) does not resolve and is left out
     term.curie        # 'UBERON:0002380'
     term.entity_uri   # 'http://purl.obolibrary.org/obo/UBERON_0002380'
 
-    # skeleton.nodes == ["Snout", "Shoulder", "EarL"] on an nwbfile.processing["behavior"]["Skeletons"] entry
+    # skeleton.nodes == ["Snout", "Shoulder", "EarL"] on an ndx-pose Skeleton anywhere in the file
     infer_anatomy_external_resources(nwbfile)["ExternalResources"]["anatomy"]
     #   {"Snout": {"id": "UBERON:0006333", "uri": "..."}, "Shoulder": {"id": "UBERON:0001467", "uri": "..."}}
     #   "EarL" is not recognized and does not appear.

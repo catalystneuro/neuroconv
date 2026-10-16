@@ -6,7 +6,9 @@ This is deliberately independent from ``_brain_regions.py``: brain-region annota
 targets a different site -- individual body-part names in an ``ndx-pose`` ``Skeleton.nodes`` array
 (pose-estimation keypoints) -- and uses one species-agnostic vocabulary of skeleton parts and
 muscles backed by `UBERON <https://bioregistry.io/registry/uberon>`_
-(``term_sets/general_anatomy.yaml``), not an atlas selected per species.
+(``term_sets/general_anatomy.yaml``), not an atlas selected per species. When the optional
+``neuro-termsets`` package is installed, its general-anatomy terms (organs, nerves, limbs, retina,
+vibrissa) are merged in.
 
 The lookup is high-precision, same as the other ontology tools here: it recognizes a curated set
 of canonical structure names and a handful of common informal spellings, and returns ``None`` for
