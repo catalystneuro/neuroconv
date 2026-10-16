@@ -16,8 +16,9 @@ What an operation is called on is what it applies to. ``shift_times`` and ``move
 scopes: on one object they move that object, on the interface they move every object by one common amount.
 Literal times belong to one object and so cannot be given without one. Each object holds its own offset, and
 the interface holds none, so an interface that names nothing has nothing to move and every operation on it
-raises. Events interfaces register their event types on first access to alignment. Event objects support
-rigid shifts and placement; timestamp replacement and remapping remain unsupported.
+raises. Events interfaces register their event types on first access to alignment. An event object supports
+every operation; its durations never change under a shift, are left alone by ``set_times``, and are recomputed
+through the map by ``remap_times``, since two clocks that drift stretch an interval as well as move it.
 
 The offset is **held and applied when times are asked for**, rather than added into the times when it is
 given. The obvious alternative, walking every object on each shift and rewriting its times in place, reads
@@ -195,11 +196,57 @@ class _TimeBearingSeries:
 
 
 class _TimeBearingEventsTable(_TimeBearingSeries):
+    """The onsets of one event type, with the durations of its events when the type is an interval type.
+
+    Times are the onsets. A rigid shift moves them and leaves the durations, since a translation cancels in a
+    difference. ``set_times`` replaces the onsets and leaves the durations, which the caller did not give.
+    ``remap_times`` re-times both ends of every interval, so a duration becomes ``map(onset + duration) -
+    map(onset)``: it changes whenever the two clocks run at different rates.
+    """
+
+    def __init__(self, *, get_native_times, get_native_durations=None, supports_set_and_remap_times=True):
+        super().__init__(get_native_times=get_native_times)
+        self._get_native_durations = get_native_durations
+        self._durations: np.ndarray | None = None
+        self._supports_set_and_remap_times = supports_set_and_remap_times
+
+    def get_durations(self) -> np.ndarray | None:
+        """Return the durations of this event type's events, or ``None`` for a type without durations."""
+        if self._durations is not None:
+            return self._durations
+        if self._get_native_durations is None:
+            return None
+        return self._get_native_durations()
+
     def set_times(self, times) -> None:
-        raise NotImplementedError("Event timestamp replacement is not supported yet.")
+        """Write these onsets for this event type, one per event, leaving the durations as they are."""
+        if not self._supports_set_and_remap_times:
+            raise NotImplementedError("Event timestamp replacement is not supported yet for this interface.")
+        times = np.asarray(times)
+        number_of_events = np.asarray(self._get_native_times()).size
+        if times.shape != (number_of_events,):
+            raise ValueError(
+                f"`set_times` needs one onset per event: this event type has {number_of_events} events and "
+                f"{times.size} times were given."
+            )
+        super().set_times(times)
 
     def remap_times(self, *, local_sync_times, reference_sync_times, interpolation_function=None) -> None:
-        raise NotImplementedError("Event timestamp remapping is not supported yet.")
+        """Re-express the onsets on a reference clock, and recompute every duration through the same map."""
+        if not self._supports_set_and_remap_times:
+            raise NotImplementedError("Event timestamp remapping is not supported yet for this interface.")
+        onsets = self.get_times()
+        durations = self.get_durations()
+        super().remap_times(
+            local_sync_times=local_sync_times,
+            reference_sync_times=reference_sync_times,
+            interpolation_function=interpolation_function,
+        )
+        if durations is not None:
+            if interpolation_function is None:
+                interpolation_function = np.interp
+            remapped_ends = interpolation_function(onsets + durations, local_sync_times, reference_sync_times)
+            self._durations = remapped_ends - self._times
 
 
 class _TemporalAlignment:
@@ -229,8 +276,14 @@ class _TemporalAlignment:
         self._name_to_time_bearing_object[key] = time_bearing_object
         return time_bearing_object
 
-    def _register_events(self, *, key: str, get_native_times):
-        time_bearing_object = _TimeBearingEventsTable(get_native_times=get_native_times)
+    def _register_events(
+        self, *, key: str, get_native_times, get_native_durations=None, supports_set_and_remap_times=True
+    ):
+        time_bearing_object = _TimeBearingEventsTable(
+            get_native_times=get_native_times,
+            get_native_durations=get_native_durations,
+            supports_set_and_remap_times=supports_set_and_remap_times,
+        )
         self._name_to_time_bearing_object[key] = time_bearing_object
         return time_bearing_object
 

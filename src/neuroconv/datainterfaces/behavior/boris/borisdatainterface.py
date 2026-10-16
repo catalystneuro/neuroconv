@@ -63,6 +63,10 @@ class BORISInterface(BaseEventsInterface):
     info = "Data Interface for one observation of a BORIS project."
     associated_suffixes = (".boris",)
 
+    # The bouts table is derived from the events, so `set_times` and `remap_times` wait until behavioral
+    # events settle how a derived table follows them.
+    _supports_set_and_remap_times = False
+
     @staticmethod
     def get_observation_names(file_path: FilePath) -> list[str]:
         """Return the names of the observations a ``.boris`` file holds, in file order.
@@ -531,6 +535,7 @@ class BORISInterface(BaseEventsInterface):
             )
 
         aligned_times = {code: self.get_event_times(code) for code in events_data_dict}
+        aligned_durations = {code: self._get_event_durations(code) for code in events_data_dict}
         for occurrence in closed_bouts:
             payload = events_data_dict[occurrence.code].payload
             index = rows_by_occurrence[id(occurrence)]
@@ -543,7 +548,7 @@ class BORISInterface(BaseEventsInterface):
             }
             bouts.add_interval(
                 start_time=onset,
-                stop_time=onset + occurrence.duration,
+                stop_time=onset + aligned_durations[occurrence.code][index],
                 label=occurrence.code,
                 **cells,
             )
