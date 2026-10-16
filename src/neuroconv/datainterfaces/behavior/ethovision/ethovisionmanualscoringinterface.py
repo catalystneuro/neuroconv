@@ -93,13 +93,15 @@ class EthoVisionManualScoringInterface(BaseEventsInterface):
         self._event_onsets_alignment_key = f"{self.metadata_key}_manual_scoring_onsets"
         self._event_offsets_alignment_key = f"{self.metadata_key}_manual_scoring_offsets"
         self._alignment = _TemporalAlignment()
-        self.alignment._register_series(
+        self.alignment._register(
             key=self._event_onsets_alignment_key,
             get_native_times=lambda: np.asarray([event.onset for event in self._scoring_events], dtype=float),
+            get_number_of_samples=lambda: len(self._scoring_events),
         )
-        self.alignment._register_series(
+        self.alignment._register(
             key=self._event_offsets_alignment_key,
             get_native_times=self._get_native_event_offsets,
+            get_number_of_samples=lambda: len(self._scoring_events),
         )
 
     def _get_native_event_offsets(self) -> np.ndarray:
