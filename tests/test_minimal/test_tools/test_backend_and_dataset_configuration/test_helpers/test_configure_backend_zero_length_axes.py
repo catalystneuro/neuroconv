@@ -8,7 +8,6 @@ helper function which is called by `BackendConfiguration.from_nwbfile(...)`.
 from pathlib import Path
 from typing import Literal
 
-import numcodecs
 import numpy as np
 import pytest
 from hdmf.common import DynamicTable, VectorData
@@ -128,7 +127,9 @@ def test_dynamic_table_skip_zero_length_axis(
     if backend == "hdf5":
         assert written_data.compression == "gzip"
     elif backend == "zarr":
-        assert written_data.compressor == numcodecs.GZip(level=4)
+        from zarr.codecs import GzipCodec
+
+        assert written_data.compressors == (GzipCodec(level=4),)
 
     assert_array_equal(integer_array, written_data[:])
     written_nwbfile.read_io.close()

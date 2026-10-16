@@ -23,15 +23,10 @@ def _get_zarr_store_path(zarr_array: zarr.Array) -> str | None:
     """
     The path of the Zarr 'file' a Zarr Array was read from, or None when its store keeps no path.
 
-    A `ConsolidatedMetadataStore` holds the path on the store it wraps rather than on itself, and
-    hdmf-zarr hands one back for every dataset reached through a link, `DynamicTable` columns among
-    them, whatever mode the file itself was opened in.
+    A zarr 3 `LocalStore` keeps its path in `root`. Other stores, such as a `MemoryStore`, have none.
     """
-    store = zarr_array.store
-    store_path = getattr(store, "path", None)
-    if store_path is None:
-        store_path = getattr(getattr(store, "store", None), "path", None)
-    return store_path
+    store_root = getattr(zarr_array.store, "root", None)
+    return None if store_root is None else str(store_root)
 
 
 def _is_dataset_written_to_file(

@@ -5,17 +5,13 @@ from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
 from tempfile import mkdtemp
-from types import MethodType
-from typing import Literal
 from unittest.mock import Mock
 
 import numpy as np
 import psutil
 import pytest
 from hdmf.testing import TestCase
-from numpy.testing import assert_array_equal, assert_raises
-from numpy.typing import ArrayLike
-from parameterized import param, parameterized
+from numpy.testing import assert_array_equal
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.ophys import OnePhotonSeries
 from pynwb.testing.mock.file import mock_NWBFile
@@ -25,11 +21,9 @@ from roiextractors.testing import (
 )
 
 from neuroconv.tools.hdmf import SliceableDataChunkIterator
-from neuroconv.tools.nwb_helpers import get_module
 from neuroconv.tools.roiextractors import (
     _check_if_imaging_fits_into_memory,
     add_devices_to_nwbfile,
-    add_fluorescence_traces_to_nwbfile,
     add_imaging_to_nwbfile,
     add_segmentation_to_nwbfile,
 )
@@ -42,14 +36,11 @@ from neuroconv.tools.roiextractors.roiextractors import (
     get_full_ophys_metadata,
 )
 from neuroconv.tools.roiextractors.roiextractors_pending_deprecation import (
-    _add_image_segmentation_to_nwbfile,
     _add_imaging_plane_to_nwbfile_old_list_format,
     _add_photon_series_to_nwbfile_old_list_format,
-    _add_plane_segmentation_to_nwbfile,
-    _add_summary_images_to_nwbfile,
     _get_default_ophys_metadata_old_metadata_list,
 )
-from neuroconv.utils import dict_deep_update
+from neuroconv.utils import DeepDict
 
 
 class TestAddDevices(unittest.TestCase):
@@ -277,1114 +268,6 @@ class TestAddImagingPlane(TestCase):
 
         second_imaging_plane = imaging_planes[second_imaging_plane_name]
         assert second_imaging_plane.name == second_imaging_plane_name
-
-
-# TODO: Drop this test class once support for list-based metadata is removed (September 2026).
-# The dict-based equivalent is TestAddSegmentation.
-class TestAddImageSegmentation(unittest.TestCase):
-    def setUp(self):
-        self.session_start_time = datetime.now().astimezone()
-        self.nwbfile = NWBFile(
-            session_description="session_description",
-            identifier="file_id",
-            session_start_time=self.session_start_time,
-        )
-
-        self.metadata = dict(Ophys=dict())
-
-        self.image_segmentation_name = "image_segmentation_name"
-        image_segmentation_metadata = dict(ImageSegmentation=dict(name=self.image_segmentation_name))
-
-        self.metadata["Ophys"].update(image_segmentation_metadata)
-
-    def test_add_image_segmentation_to_nwbfile(self):
-        """
-        Test that _add_image_segmentation_to_nwbfile method adds an image segmentation to the nwbfile
-        specified by the metadata.
-        """
-
-        _add_image_segmentation_to_nwbfile(nwbfile=self.nwbfile, metadata=self.metadata)
-
-        ophys = get_module(self.nwbfile, "ophys")
-
-        image_segmentation = ophys.data_interfaces.get(self.image_segmentation_name)
-        self.assertEqual(image_segmentation.name, self.image_segmentation_name)
-
-
-def _generate_test_masks(num_rois: int, mask_type: Literal["pixel", "voxel"]) -> list:
-    masks = list()
-    size = 3 if mask_type == "pixel" else 4
-    for idx in range(1, num_rois + 1):
-        masks.append(np.arange(idx, idx + size * idx, dtype=np.dtype("uint8")).reshape(-1, size))
-    return masks
-
-
-def _generate_casted_test_masks(num_rois: int, mask_type: Literal["pixel", "voxel"]) -> list:
-    original_mask = _generate_test_masks(num_rois=num_rois, mask_type=mask_type)
-    casted_masks = list()
-    for per_roi_mask in original_mask:
-        casted_masks.append([tuple(x) for x in per_roi_mask])
-    return casted_masks
-
-
-def assert_masks_equal(mask: list[list[tuple[int, int, int]]], expected_mask: list[list[tuple[int, int, int]]]):
-    """
-    Asserts that two lists of pixel masks of inhomogeneous shape are equal.
-    """
-    assert len(mask) == len(expected_mask)
-    for mask_ind in range(len(mask)):
-        assert_array_equal(mask[mask_ind], expected_mask[mask_ind])
-
-
-# TODO: Drop this test class once support for list-based metadata is removed (September 2026).
-# The dict-based equivalent is TestAddSegmentation.
-class TestAddPlaneSegmentation(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.num_rois = 10
-        cls.num_samples = 20
-        cls.num_rows = 25
-        cls.num_columns = 20
-
-        cls.session_start_time = datetime.now().astimezone()
-
-        cls.image_segmentation_name = "image_segmentation_name"
-        cls.plane_segmentation_name = "plane_segmentation_name"
-
-    def setUp(self):
-        self.segmentation_extractor = generate_dummy_segmentation_extractor(
-            num_rois=self.num_rois,
-            num_samples=self.num_samples,
-            num_rows=self.num_rows,
-            num_columns=self.num_columns,
-        )
-        self.nwbfile = NWBFile(
-            session_description="session_description",
-            identifier="file_id",
-            session_start_time=self.session_start_time,
-        )
-
-        self.metadata = dict(Ophys=dict())
-
-        self.plane_segmentation_metadata = dict(
-            name=self.plane_segmentation_name, description="Segmented ROIs", imaging_plane="ImagingPlane"
-        )
-
-        image_segmentation_metadata = dict(
-            ImageSegmentation=dict(
-                name=self.image_segmentation_name,
-                plane_segmentations=[
-                    self.plane_segmentation_metadata,
-                ],
-            )
-        )
-
-        self.metadata["Ophys"].update(image_segmentation_metadata)
-
-    def test_add_plane_segmentation_to_nwbfile(self):
-        """Test that _add_plane_segmentation_to_nwbfile method adds a plane segmentation to the nwbfile
-        specified by the metadata."""
-        _add_plane_segmentation_to_nwbfile(
-            segmentation_extractor=self.segmentation_extractor,
-            nwbfile=self.nwbfile,
-            metadata=self.metadata,
-            plane_segmentation_name=self.plane_segmentation_name,
-        )
-
-        image_segmentation = self.nwbfile.processing["ophys"].get(self.image_segmentation_name)
-        plane_segmentations = image_segmentation.plane_segmentations
-
-        self.assertEqual(len(plane_segmentations), 1)
-
-        plane_segmentation = plane_segmentations[self.plane_segmentation_name]
-
-        self.assertEqual(plane_segmentation.name, self.plane_segmentation_name)
-        self.assertEqual(plane_segmentation.description, self.plane_segmentation_metadata["description"])
-
-        plane_segmentation_num_rois = len(plane_segmentation.id)
-        self.assertEqual(plane_segmentation_num_rois, self.num_rois)
-
-        plane_segmentation_roi_centroid_data = plane_segmentation["ROICentroids"].data
-        expected_roi_centroid_data = self.segmentation_extractor.get_roi_locations()[(1, 0), :].T
-
-        assert_array_equal(plane_segmentation_roi_centroid_data, expected_roi_centroid_data)
-
-        # transpose to num_rois x image_width x image_height
-        expected_image_masks = self.segmentation_extractor.get_roi_image_masks().T
-        assert_array_equal(plane_segmentation["image_mask"], expected_image_masks)
-
-    def test_do_not_include_roi_centroids(self):
-        """Test that setting `include_roi_centroids=False` prevents the centroids from being calculated and added."""
-        _add_plane_segmentation_to_nwbfile(
-            segmentation_extractor=self.segmentation_extractor,
-            nwbfile=self.nwbfile,
-            metadata=self.metadata,
-            include_roi_centroids=False,
-            plane_segmentation_name=self.plane_segmentation_name,
-        )
-
-        image_segmentation = self.nwbfile.processing["ophys"].get(self.image_segmentation_name)
-        plane_segmentations = image_segmentation.plane_segmentations
-        plane_segmentation = plane_segmentations[self.plane_segmentation_name]
-
-        assert "ROICentroids" not in plane_segmentation
-
-    @parameterized.expand(
-        [
-            param(
-                rejected_list=[],
-                expected_rejected_roi_ids=[0] * 10,
-            ),
-            param(
-                rejected_list=[
-                    "roi_0",
-                    "roi_1",
-                    "roi_2",
-                    "roi_3",
-                    "roi_4",
-                    "roi_5",
-                    "roi_6",
-                    "roi_7",
-                    "roi_8",
-                    "roi_9",
-                ],
-                expected_rejected_roi_ids=[1] * 10,
-            ),
-            param(
-                rejected_list=[
-                    "roi_2",
-                    "roi_6",
-                    "roi_8",
-                ],
-                expected_rejected_roi_ids=[
-                    0,
-                    0,
-                    1,
-                    0,
-                    0,
-                    0,
-                    1,
-                    0,
-                    1,
-                    0,
-                ],
-            ),
-        ],
-    )
-    def test_rejected_roi_ids(self, rejected_list, expected_rejected_roi_ids):
-        """Test that the ROI ids that were rejected are correctly written via the property system.
-
-        The ``is_accepted`` and ``is_rejected`` columns come from the segmentation extractor's
-        property system (the new path after roiextractors removed ``get_accepted_list`` /
-        ``get_rejected_list``).
-        """
-        segmentation_extractor = generate_dummy_segmentation_extractor(
-            num_rois=self.num_rois,
-            num_samples=self.num_samples,
-            num_rows=self.num_rows,
-            num_columns=self.num_columns,
-            rejected_list=rejected_list,
-        )
-
-        _add_plane_segmentation_to_nwbfile(
-            segmentation_extractor=segmentation_extractor,
-            nwbfile=self.nwbfile,
-            metadata=self.metadata,
-            plane_segmentation_name=self.plane_segmentation_name,
-        )
-
-        image_segmentation = self.nwbfile.processing["ophys"].get(self.image_segmentation_name)
-        plane_segmentations = image_segmentation.plane_segmentations
-
-        plane_segmentation = plane_segmentations[self.plane_segmentation_name]
-
-        expected_is_rejected = np.array(expected_rejected_roi_ids, dtype=bool)
-        expected_is_accepted = np.logical_not(expected_is_rejected)
-
-        assert_array_equal(plane_segmentation["is_rejected"].data, expected_is_rejected)
-        assert_array_equal(plane_segmentation["is_accepted"].data, expected_is_accepted)
-
-    def test_pixel_masks(self):
-        """Test the voxel mask option for writing a plane segmentation table."""
-        segmentation_extractor = generate_dummy_segmentation_extractor(
-            num_rois=self.num_rois,
-            num_samples=self.num_samples,
-            num_rows=self.num_rows,
-            num_columns=self.num_columns,
-        )
-
-        def get_roi_pixel_masks(self, roi_ids: ArrayLike | None = None) -> list[np.ndarray]:
-            roi_ids = roi_ids or range(self.get_num_rois())
-            pixel_masks = _generate_test_masks(num_rois=len(roi_ids), mask_type="pixel")
-            return pixel_masks
-
-        segmentation_extractor.get_roi_pixel_masks = MethodType(get_roi_pixel_masks, segmentation_extractor)
-
-        _add_plane_segmentation_to_nwbfile(
-            segmentation_extractor=segmentation_extractor,
-            nwbfile=self.nwbfile,
-            metadata=self.metadata,
-            mask_type="pixel",
-            plane_segmentation_name=self.plane_segmentation_name,
-        )
-
-        image_segmentation = self.nwbfile.processing["ophys"].get(self.image_segmentation_name)
-        plane_segmentations = image_segmentation.plane_segmentations
-
-        plane_segmentation = plane_segmentations[self.plane_segmentation_name]
-
-        true_pixel_masks = _generate_casted_test_masks(num_rois=self.num_rois, mask_type="pixel")
-        assert_masks_equal(plane_segmentation["pixel_mask"][:], true_pixel_masks)
-
-    def test_voxel_masks(self):
-        """Test the voxel mask option for writing a plane segmentation table."""
-        segmentation_extractor = generate_dummy_segmentation_extractor(
-            num_rois=self.num_rois,
-            num_samples=self.num_samples,
-            num_rows=self.num_rows,
-            num_columns=self.num_columns,
-        )
-
-        def get_roi_pixel_masks(self, roi_ids: ArrayLike | None = None) -> list[np.ndarray]:
-            roi_ids = roi_ids or range(self.get_num_rois())
-            voxel_masks = _generate_test_masks(num_rois=len(roi_ids), mask_type="voxel")
-            return voxel_masks
-
-        segmentation_extractor.get_roi_pixel_masks = MethodType(get_roi_pixel_masks, segmentation_extractor)
-
-        _add_plane_segmentation_to_nwbfile(
-            segmentation_extractor=segmentation_extractor,
-            nwbfile=self.nwbfile,
-            metadata=self.metadata,
-            mask_type="voxel",
-            plane_segmentation_name=self.plane_segmentation_name,
-        )
-
-        image_segmentation = self.nwbfile.processing["ophys"].get(self.image_segmentation_name)
-        plane_segmentations = image_segmentation.plane_segmentations
-
-        plane_segmentation = plane_segmentations[self.plane_segmentation_name]
-
-        true_voxel_masks = _generate_casted_test_masks(num_rois=self.num_rois, mask_type="voxel")
-        assert_masks_equal(plane_segmentation["voxel_mask"][:], true_voxel_masks)
-
-    def test_invalid_mask_type(self):
-        """Test that an invalid mask_type raises a AssertionError."""
-        segmentation_extractor = generate_dummy_segmentation_extractor(
-            num_rois=self.num_rois,
-            num_samples=self.num_samples,
-            num_rows=self.num_rows,
-            num_columns=self.num_columns,
-        )
-        expected_error_message = re.escape(
-            "Keyword argument 'mask_type' must be one of either 'image', 'pixel', 'voxel'. " "Received 'invalid'."
-        )
-        with pytest.raises(AssertionError, match=expected_error_message):
-            _add_plane_segmentation_to_nwbfile(
-                segmentation_extractor=segmentation_extractor,
-                nwbfile=self.nwbfile,
-                metadata=self.metadata,
-                mask_type="invalid",
-                plane_segmentation_name=self.plane_segmentation_name,
-            )
-
-    def test_pixel_masks_auto_switch(self):
-        segmentation_extractor = generate_dummy_segmentation_extractor(
-            num_rois=self.num_rois,
-            num_samples=self.num_samples,
-            num_rows=self.num_rows,
-            num_columns=self.num_columns,
-        )
-
-        def get_roi_pixel_masks(self, roi_ids: ArrayLike | None = None) -> list[np.ndarray]:
-            roi_ids = roi_ids or range(self.get_num_rois())
-            pixel_masks = _generate_test_masks(num_rois=len(roi_ids), mask_type="pixel")
-            return pixel_masks
-
-        segmentation_extractor.get_roi_pixel_masks = MethodType(get_roi_pixel_masks, segmentation_extractor)
-
-        with self.assertWarnsRegex(
-            expected_warning=UserWarning,
-            expected_regex=(
-                "Specified mask_type='voxel', but ROIExtractors returned 3-dimensional masks. "
-                "Using mask_type='pixel' instead."
-            ),
-        ):
-            _add_plane_segmentation_to_nwbfile(
-                segmentation_extractor=segmentation_extractor,
-                nwbfile=self.nwbfile,
-                metadata=self.metadata,
-                mask_type="voxel",
-                plane_segmentation_name=self.plane_segmentation_name,
-            )
-
-        image_segmentation = self.nwbfile.processing["ophys"].get(self.image_segmentation_name)
-        plane_segmentations = image_segmentation.plane_segmentations
-
-        plane_segmentation = plane_segmentations[self.plane_segmentation_name]
-
-        true_voxel_masks = _generate_casted_test_masks(num_rois=self.num_rois, mask_type="pixel")
-        assert_masks_equal(plane_segmentation["pixel_mask"][:], true_voxel_masks)
-
-    def test_voxel_masks_auto_switch(self):
-        segmentation_extractor = generate_dummy_segmentation_extractor(
-            num_rois=self.num_rois,
-            num_samples=self.num_samples,
-            num_rows=self.num_rows,
-            num_columns=self.num_columns,
-        )
-
-        def get_roi_pixel_masks(self, roi_ids: ArrayLike | None = None) -> list[np.ndarray]:
-            roi_ids = roi_ids or range(self.get_num_rois())
-            voxel_masks = _generate_test_masks(num_rois=len(roi_ids), mask_type="voxel")
-            return voxel_masks
-
-        segmentation_extractor.get_roi_pixel_masks = MethodType(get_roi_pixel_masks, segmentation_extractor)
-
-        with self.assertWarnsRegex(
-            expected_warning=UserWarning,
-            expected_regex=(
-                "Specified mask_type='pixel', but ROIExtractors returned 4-dimensional masks. "
-                "Using mask_type='voxel' instead."
-            ),
-        ):
-            _add_plane_segmentation_to_nwbfile(
-                segmentation_extractor=segmentation_extractor,
-                nwbfile=self.nwbfile,
-                metadata=self.metadata,
-                mask_type="pixel",
-                plane_segmentation_name=self.plane_segmentation_name,
-            )
-
-        image_segmentation = self.nwbfile.processing["ophys"].get(self.image_segmentation_name)
-        plane_segmentations = image_segmentation.plane_segmentations
-
-        plane_segmentation = plane_segmentations[self.plane_segmentation_name]
-
-        true_voxel_masks = _generate_casted_test_masks(num_rois=self.num_rois, mask_type="voxel")
-        assert_masks_equal(plane_segmentation["voxel_mask"][:], true_voxel_masks)
-
-    def test_not_overwriting_plane_segmentation_if_same_name(self):
-        """Test that adding a plane segmentation with the same name will not overwrite
-        the existing plane segmentation."""
-
-        _add_plane_segmentation_to_nwbfile(
-            segmentation_extractor=self.segmentation_extractor,
-            nwbfile=self.nwbfile,
-            metadata=self.metadata,
-            plane_segmentation_name=self.plane_segmentation_name,
-        )
-
-        self.plane_segmentation_metadata["description"] = "modified description"
-
-        _add_plane_segmentation_to_nwbfile(
-            segmentation_extractor=self.segmentation_extractor,
-            nwbfile=self.nwbfile,
-            metadata=self.metadata,
-            plane_segmentation_name=self.plane_segmentation_name,
-        )
-
-        image_segmentation = self.nwbfile.processing["ophys"].get(self.image_segmentation_name)
-
-        assert len(image_segmentation.plane_segmentations) == 1
-        assert self.plane_segmentation_name in image_segmentation.plane_segmentations
-
-        plane_segmentation = image_segmentation.plane_segmentations[self.plane_segmentation_name]
-
-        self.assertNotEqual(plane_segmentation.description, self.plane_segmentation_metadata["description"])
-
-    def test_add_two_plane_segmentation(self):
-        """Test adding two plane segmentations to the nwbfile."""
-
-        # Add first plane segmentation
-        first_plane_segmentation_name = "first_plane_segmentation_name"
-        first_plane_segmentation_description = "first_plane_segmentation_description"
-        self.plane_segmentation_metadata["name"] = first_plane_segmentation_name
-        self.plane_segmentation_metadata["description"] = first_plane_segmentation_description
-        _add_plane_segmentation_to_nwbfile(
-            segmentation_extractor=self.segmentation_extractor,
-            nwbfile=self.nwbfile,
-            metadata=self.metadata,
-            plane_segmentation_name=first_plane_segmentation_name,
-        )
-
-        # Add second plane segmentation
-        second_plane_segmentation_name = "second_plane_segmentation_name"
-        second_plane_segmentation_description = "second_plane_segmentation_description"
-        self.plane_segmentation_metadata["name"] = second_plane_segmentation_name
-        self.plane_segmentation_metadata["description"] = second_plane_segmentation_description
-        _add_plane_segmentation_to_nwbfile(
-            segmentation_extractor=self.segmentation_extractor,
-            nwbfile=self.nwbfile,
-            metadata=self.metadata,
-            plane_segmentation_name=second_plane_segmentation_name,
-        )
-
-        image_segmentation = self.nwbfile.processing["ophys"].get(self.image_segmentation_name)
-
-        assert len(image_segmentation.plane_segmentations) == 2
-        assert second_plane_segmentation_name in image_segmentation.plane_segmentations
-        assert first_plane_segmentation_name in image_segmentation.plane_segmentations
-
-        first_plane_segmentation = image_segmentation.plane_segmentations[first_plane_segmentation_name]
-        second_plane_segmentation = image_segmentation.plane_segmentations[second_plane_segmentation_name]
-
-        assert first_plane_segmentation.name == first_plane_segmentation_name
-        assert first_plane_segmentation.description == first_plane_segmentation_description
-
-        assert second_plane_segmentation.name == second_plane_segmentation_name
-        assert second_plane_segmentation.description == second_plane_segmentation_description
-
-    def test_add_plane_segmentation_to_nwbfile_raises_when_name_not_found_in_metadata(self):
-        """Test adding a plane segmentation raises an error when the name is not found in the metadata."""
-        plane_segmentation_name = "plane_segmentation_non_existing_in_the_metadata"
-        with self.assertRaisesWith(
-            exc_type=ValueError,
-            exc_msg=f"Metadata for Plane Segmentation '{plane_segmentation_name}' not found in metadata['Ophys']['ImageSegmentation']['plane_segmentations'].",
-        ):
-            _add_plane_segmentation_to_nwbfile(
-                segmentation_extractor=self.segmentation_extractor,
-                nwbfile=self.nwbfile,
-                metadata=self.metadata,
-                plane_segmentation_name=plane_segmentation_name,
-            )
-
-    def test_add_plane_segmentation_with_custom_properties(self):
-        """Test that custom properties of various dtypes are added as columns and values are correct."""
-        # Create a dummy segmentation extractor with known ROI count
-        num_rois = 5
-        segmentation_extractor = generate_dummy_segmentation_extractor(
-            num_rois=num_rois,
-            num_samples=self.num_samples,
-            num_rows=self.num_rows,
-            num_columns=self.num_columns,
-        )
-
-        # Add custom properties with known values and types
-        roi_ids = segmentation_extractor.get_roi_ids()
-        custom_float = np.arange(num_rois, dtype=np.float32) * 0.5
-        custom_bool = np.array([True, False, True, False, True])
-        custom_label = np.array(["A", "B", "A", "C", "B"], dtype=object)
-
-        segmentation_extractor.set_property("custom_float", custom_float, ids=roi_ids)
-        segmentation_extractor.set_property("custom_bool", custom_bool, ids=roi_ids)
-        segmentation_extractor.set_property("custom_label", custom_label, ids=roi_ids)
-
-        # Ensure metadata contains the correct plane segmentation name
-        plane_segmentation_metadata = dict(
-            name=self.plane_segmentation_name, description="Segmented ROIs", imaging_plane="ImagingPlane"
-        )
-        image_segmentation_metadata = dict(
-            ImageSegmentation=dict(
-                name=self.image_segmentation_name,
-                plane_segmentations=[plane_segmentation_metadata],
-            )
-        )
-        self.metadata["Ophys"].update(image_segmentation_metadata)
-
-        # Add to NWB
-        _add_plane_segmentation_to_nwbfile(
-            segmentation_extractor=segmentation_extractor,
-            nwbfile=self.nwbfile,
-            metadata=self.metadata,
-            plane_segmentation_name=self.plane_segmentation_name,
-        )
-
-        # Retrieve plane segmentation
-        image_segmentation = self.nwbfile.processing["ophys"].get(self.image_segmentation_name)
-        plane_segmentation = image_segmentation.plane_segmentations[self.plane_segmentation_name]
-
-        # Check that properties are present and values match
-        for prop, expected in [
-            ("custom_float", custom_float),
-            ("custom_bool", custom_bool),
-            ("custom_label", custom_label),
-        ]:
-            assert prop in plane_segmentation
-            np.testing.assert_array_equal(plane_segmentation[prop].data, expected)
-
-
-# TODO: Drop this test class once support for list-based metadata is removed (September 2026).
-# The dict-based equivalent is TestAddSegmentation.
-class TestAddFluorescenceTraces(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.num_rois = 10
-        cls.num_samples = 20
-        cls.num_rows = 25
-        cls.num_columns = 20
-
-        cls.session_start_time = datetime.now().astimezone()
-
-        cls.fluorescence_name = "Fluorescence"
-        cls.df_over_f_name = "DfOverF"
-
-        cls.raw_roi_response_series_metadata = dict(
-            name="RoiResponseSeries",
-            description="raw fluorescence signal",
-        )
-
-        cls.dff_roi_response_series_metadata = dict(
-            name="RoiResponseSeries",
-            description="relative (df/f) fluorescence signal",
-        )
-
-        cls.deconvolved_roi_response_series_metadata = dict(
-            name="Deconvolved",
-            description="deconvolved fluorescence signal",
-        )
-
-        cls.neuropil_roi_response_series_metadata = dict(
-            name="Neuropil",
-            description="neuropil fluorescence signal",
-            unit="test_unit",
-        )
-
-    def setUp(self):
-        self.segmentation_extractor = generate_dummy_segmentation_extractor(
-            num_rois=self.num_rois,
-            num_samples=self.num_samples,
-            num_rows=self.num_rows,
-            num_columns=self.num_columns,
-        )
-        self.nwbfile = NWBFile(
-            session_description="session_description",
-            identifier="file_id",
-            session_start_time=self.session_start_time,
-        )
-
-        self.metadata = dict(Ophys=dict())
-
-        fluorescence_metadata = dict(
-            Fluorescence=dict(
-                PlaneSegmentation=dict(
-                    name=self.fluorescence_name,
-                    raw=self.raw_roi_response_series_metadata,
-                    deconvolved=self.deconvolved_roi_response_series_metadata,
-                    neuropil=self.neuropil_roi_response_series_metadata,
-                )
-            )
-        )
-
-        dff_metadata = dict(
-            DfOverF=dict(
-                PlaneSegmentation=dict(
-                    name=self.df_over_f_name,
-                    dff=self.dff_roi_response_series_metadata,
-                )
-            )
-        )
-
-        self.metadata["Ophys"].update(fluorescence_metadata)
-        self.metadata["Ophys"].update(dff_metadata)
-
-    def test_add_fluorescence_traces_to_nwbfile(self):
-        """Test fluorescence traces are added correctly to the nwbfile."""
-
-        add_fluorescence_traces_to_nwbfile(
-            segmentation_extractor=self.segmentation_extractor,
-            nwbfile=self.nwbfile,
-            metadata=self.metadata,
-        )
-
-        ophys = get_module(self.nwbfile, "ophys")
-        assert self.fluorescence_name in ophys.data_interfaces
-
-        fluorescence = ophys.get(self.fluorescence_name)
-
-        self.assertEqual(fluorescence.name, self.fluorescence_name)
-        self.assertEqual(len(fluorescence.roi_response_series), 3)
-
-        self.assertEqual(
-            fluorescence["RoiResponseSeries"].description,
-            self.raw_roi_response_series_metadata["description"],
-        )
-
-        self.assertNotEqual(
-            fluorescence["RoiResponseSeries"].description,
-            self.dff_roi_response_series_metadata["description"],
-        )
-
-        self.assertEqual(
-            fluorescence["Deconvolved"].description,
-            self.deconvolved_roi_response_series_metadata["description"],
-        )
-
-        self.assertEqual(
-            fluorescence["Neuropil"].unit,
-            self.neuropil_roi_response_series_metadata["unit"],
-        )
-
-        self.assertAlmostEqual(
-            fluorescence["Neuropil"].rate,
-            self.segmentation_extractor.get_sampling_frequency(),
-            places=3,
-        )
-
-        traces = self.segmentation_extractor.get_traces_dict()
-
-        for nwb_series_name, roiextractors_name in zip(
-            ["RoiResponseSeries", "Deconvolved", "Neuropil"], ["raw", "deconvolved", "neuropil"]
-        ):
-            series_outer_data = fluorescence[nwb_series_name].data
-            assert_array_equal(series_outer_data.data.data, traces[roiextractors_name])
-
-        # Check that df/F trace data is not being written to the Fluorescence container
-        df_over_f = ophys.get(self.df_over_f_name)
-        assert_raises(
-            AssertionError,
-            assert_array_equal,
-            fluorescence["RoiResponseSeries"].data,
-            df_over_f["RoiResponseSeries"].data,
-        )
-
-    # TODO: Temporarily disabled - requires fix in roiextractors main for raw=None handling
-    # See: https://github.com/catalystneuro/roiextractors/pull/508
-    def _test_add_df_over_f_trace(self):
-        """Test df/f traces are added to the nwbfile."""
-
-        segmentation_extractor = generate_dummy_segmentation_extractor(
-            num_rois=self.num_rois,
-            num_samples=self.num_samples,
-            num_rows=300,
-            num_columns=400,
-            has_raw_signal=False,  # Only dff signal, no raw
-            has_dff_signal=True,
-            has_deconvolved_signal=False,
-            has_neuropil_signal=False,
-        )
-
-        add_fluorescence_traces_to_nwbfile(
-            segmentation_extractor=segmentation_extractor,
-            nwbfile=self.nwbfile,
-            metadata=self.metadata,
-        )
-
-        ophys = get_module(self.nwbfile, "ophys")
-        assert self.df_over_f_name in ophys.data_interfaces
-
-        assert self.fluorescence_name not in ophys.data_interfaces
-
-        df_over_f = ophys.get(self.df_over_f_name)
-
-        self.assertEqual(df_over_f.name, self.df_over_f_name)
-        self.assertEqual(len(df_over_f.roi_response_series), 1)
-
-        trace_name = self.dff_roi_response_series_metadata["name"]
-        self.assertEqual(
-            df_over_f[trace_name].description,
-            self.dff_roi_response_series_metadata["description"],
-        )
-
-        self.assertEqual(df_over_f[trace_name].unit, "n.a.")
-
-        self.assertAlmostEqual(
-            df_over_f[trace_name].rate,
-            segmentation_extractor.get_sampling_frequency(),
-            places=3,
-        )
-
-        traces = segmentation_extractor.get_traces_dict()
-
-        series_outer_data = df_over_f[trace_name].data
-        assert_array_equal(series_outer_data.data.data, traces["dff"])
-
-    def test_add_fluorescence_one_of_the_traces_is_none(self):
-        """Test that roi response series with None values are not added to the
-        nwbfile."""
-
-        segmentation_extractor = generate_dummy_segmentation_extractor(
-            num_rois=self.num_rois,
-            num_samples=self.num_samples,
-            num_rows=self.num_rows,
-            num_columns=self.num_columns,
-            has_neuropil_signal=False,
-        )
-
-        add_fluorescence_traces_to_nwbfile(
-            segmentation_extractor=segmentation_extractor,
-            nwbfile=self.nwbfile,
-            metadata=self.metadata,
-        )
-
-        ophys = get_module(self.nwbfile, "ophys")
-        roi_response_series = ophys.get(self.fluorescence_name).roi_response_series
-
-        assert "Neuropil" not in roi_response_series
-
-        self.assertEqual(len(roi_response_series), 2)
-
-    def test_add_fluorescence_one_of_the_traces_is_empty(self):
-        """Test that roi response series with empty/None values are not added to the nwbfile."""
-
-        # Use the public API to create an extractor without deconvolved trace
-        # (passing None for deconvolved is equivalent to empty in the filtering logic)
-        segmentation_extractor = generate_dummy_segmentation_extractor(
-            num_rois=self.num_rois,
-            num_samples=self.num_samples,
-            num_rows=self.num_rows,
-            num_columns=self.num_columns,
-            has_raw_signal=True,
-            has_dff_signal=False,
-            has_deconvolved_signal=False,  # No deconvolved signal
-            has_neuropil_signal=True,
-        )
-        self.segmentation_extractor = segmentation_extractor
-
-        add_fluorescence_traces_to_nwbfile(
-            segmentation_extractor=self.segmentation_extractor,
-            nwbfile=self.nwbfile,
-            metadata=self.metadata,
-        )
-
-        ophys = get_module(self.nwbfile, "ophys")
-        roi_response_series = ophys.get(self.fluorescence_name).roi_response_series
-
-        assert "Deconvolved" not in roi_response_series
-        self.assertEqual(len(roi_response_series), 2)
-
-    def test_add_fluorescence_one_of_the_traces_is_all_zeros(self):
-        """Test that roi response series with all zero values ARE added to the
-        nwbfile (zeros are valid data with size > 0, different from None/empty)."""
-
-        # Zeros have size > 0, so they pass the filtering and are added
-        # This is the correct behavior - zeros are valid data!
-        add_fluorescence_traces_to_nwbfile(
-            segmentation_extractor=self.segmentation_extractor,
-            nwbfile=self.nwbfile,
-            metadata=self.metadata,
-        )
-
-        ophys = get_module(self.nwbfile, "ophys")
-        roi_response_series = ophys.get(self.fluorescence_name).roi_response_series
-
-        # All traces from dummy extractor are added (including if any were zeros)
-        self.assertEqual(len(roi_response_series), 3)
-
-    # TODO: Temporarily disabled - requires fix in roiextractors main for raw=None handling
-    # See: https://github.com/catalystneuro/roiextractors/pull/508
-    def _test_no_traces_are_added(self):
-        """Test that no traces are added to the nwbfile if they are all zeros or
-        None."""
-        segmentation_extractor = generate_dummy_segmentation_extractor(
-            num_rois=self.num_rois,
-            num_samples=self.num_samples,
-            num_rows=self.num_rows,
-            num_columns=self.num_columns,
-            has_raw_signal=False,  # No signals at all
-            has_dff_signal=False,
-            has_deconvolved_signal=False,
-            has_neuropil_signal=False,
-        )
-
-        add_fluorescence_traces_to_nwbfile(
-            segmentation_extractor=segmentation_extractor,
-            nwbfile=self.nwbfile,
-            metadata=self.metadata,
-        )
-
-        ophys = get_module(self.nwbfile, "ophys")
-        assert self.fluorescence_name not in ophys.data_interfaces
-        assert self.df_over_f_name not in ophys.data_interfaces
-
-    def test_not_overwriting_fluorescence_if_same_name(self):
-        """Test that adding fluorescence traces container with the same name will not
-        overwrite the existing fluorescence container in nwbfile."""
-
-        add_fluorescence_traces_to_nwbfile(
-            segmentation_extractor=self.segmentation_extractor,
-            nwbfile=self.nwbfile,
-            metadata=self.metadata,
-        )
-
-        self.deconvolved_roi_response_series_metadata["description"] = "second description"
-
-        add_fluorescence_traces_to_nwbfile(
-            segmentation_extractor=self.segmentation_extractor,
-            nwbfile=self.nwbfile,
-            metadata=self.metadata,
-        )
-
-        ophys = get_module(self.nwbfile, "ophys")
-        roi_response_series = ophys.get(self.fluorescence_name).roi_response_series
-
-        self.assertNotEqual(roi_response_series["Deconvolved"].description, "second description")
-
-    def test_add_fluorescence_traces_to_nwbfile_to_existing_container(self):
-        """Test that new traces can be added to an existing fluorescence container."""
-
-        segmentation_extractor = generate_dummy_segmentation_extractor(
-            num_rois=self.num_rois,
-            num_samples=self.num_samples,
-            num_rows=self.num_rows,
-            num_columns=self.num_columns,
-            has_raw_signal=True,
-            has_dff_signal=False,
-            has_deconvolved_signal=False,
-            has_neuropil_signal=False,
-        )
-
-        add_fluorescence_traces_to_nwbfile(
-            segmentation_extractor=segmentation_extractor,
-            nwbfile=self.nwbfile,
-            metadata=self.metadata,
-        )
-
-        ophys = get_module(self.nwbfile, "ophys")
-        roi_response_series = ophys.get(self.fluorescence_name).roi_response_series
-
-        self.assertEqual(len(roi_response_series), 1)
-
-        self.raw_roi_response_series_metadata["description"] = "second description"
-
-        segmentation_extractor = generate_dummy_segmentation_extractor(
-            num_rois=self.num_rois,
-            num_samples=self.num_samples,
-            num_rows=self.num_rows,
-            num_columns=self.num_columns,
-        )
-
-        add_fluorescence_traces_to_nwbfile(
-            segmentation_extractor=segmentation_extractor,
-            nwbfile=self.nwbfile,
-            metadata=self.metadata,
-        )
-
-        ophys = get_module(self.nwbfile, "ophys")
-        roi_response_series = ophys.get(self.fluorescence_name).roi_response_series
-
-        self.assertEqual(len(roi_response_series), 3)
-
-        # check that raw traces are not overwritten
-        self.assertNotEqual(roi_response_series["RoiResponseSeries"].description, "second description")
-
-    def test_add_fluorescence_traces_to_nwbfile_irregular_timestamps(self):
-        """Test adding traces with irregular timestamps."""
-
-        times = [0.0, 0.12, 0.15, 0.19, 0.1]
-        segmentation_extractor = generate_dummy_segmentation_extractor(
-            num_rois=2,
-            num_samples=5,
-            num_rows=self.num_rows,
-            num_columns=self.num_columns,
-        )
-        segmentation_extractor.set_times(times)
-
-        add_fluorescence_traces_to_nwbfile(
-            segmentation_extractor=segmentation_extractor,
-            nwbfile=self.nwbfile,
-            metadata=self.metadata,
-        )
-
-        ophys = get_module(self.nwbfile, "ophys")
-        roi_response_series = ophys.get(self.fluorescence_name).roi_response_series
-        for series_name in roi_response_series.keys():
-            self.assertEqual(roi_response_series[series_name].rate, None)
-            self.assertEqual(roi_response_series[series_name].starting_time, None)
-            assert_array_equal(roi_response_series[series_name].timestamps.data, times)
-
-    def test_add_fluorescence_traces_to_nwbfile_regular_timestamps(self):
-        """Test that adding traces with regular timestamps, the 'timestamps' are not added
-        to the NWB file, instead 'rate' and 'starting_time' is used."""
-
-        times = np.arange(0, 5)
-        segmentation_extractor = generate_dummy_segmentation_extractor(
-            num_rois=2,
-            num_samples=5,
-            num_rows=self.num_rows,
-            num_columns=self.num_columns,
-        )
-        segmentation_extractor.set_times(times)
-
-        add_fluorescence_traces_to_nwbfile(
-            segmentation_extractor=segmentation_extractor,
-            nwbfile=self.nwbfile,
-            metadata=self.metadata,
-        )
-
-        ophys = get_module(self.nwbfile, "ophys")
-        roi_response_series = ophys.get(self.fluorescence_name).roi_response_series
-        for series_name in roi_response_series.keys():
-            self.assertEqual(roi_response_series[series_name].rate, 1.0)
-            self.assertEqual(roi_response_series[series_name].starting_time, times[0])
-            self.assertEqual(roi_response_series[series_name].timestamps, None)
-
-    def test_add_fluorescence_traces_to_nwbfile_with_plane_segmentation_name_specified(self):
-        plane_segmentation_name = "plane_segmentation_name"
-        metadata = _get_default_ophys_metadata_old_metadata_list()
-        metadata = dict_deep_update(metadata, self.metadata)
-
-        metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0].update(name=plane_segmentation_name)
-        metadata["Ophys"]["Fluorescence"][plane_segmentation_name] = metadata["Ophys"]["Fluorescence"].pop(
-            "PlaneSegmentation"
-        )
-        metadata["Ophys"]["DfOverF"][plane_segmentation_name] = metadata["Ophys"]["DfOverF"].pop("PlaneSegmentation")
-
-        add_fluorescence_traces_to_nwbfile(
-            segmentation_extractor=self.segmentation_extractor,
-            nwbfile=self.nwbfile,
-            metadata=metadata,
-            plane_segmentation_name=plane_segmentation_name,
-        )
-
-        ophys = get_module(self.nwbfile, "ophys")
-        image_segmentation = ophys.get("ImageSegmentation")
-
-        assert len(image_segmentation.plane_segmentations) == 1
-        assert plane_segmentation_name in image_segmentation.plane_segmentations
-
-
-# TODO: Drop this test class once support for list-based metadata is removed (September 2026).
-# The dict-based equivalent is TestAddSegmentation.
-class TestAddFluorescenceTracesMultiPlaneCase(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.num_rois_first_plane = 10
-        cls.num_rois_second_plane = 5
-        cls.num_samples = 20
-        cls.num_rows = 25
-        cls.num_columns = 20
-
-        cls.session_start_time = datetime.now().astimezone()
-
-        cls.metadata = _get_default_ophys_metadata_old_metadata_list()
-
-        cls.plane_segmentation_first_plane_name = "PlaneSegmentationFirstPlane"
-        cls.metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0].update(
-            name=cls.plane_segmentation_first_plane_name
-        )
-
-        cls.fluorescence_name = "Fluorescence"
-        cls.df_over_f_name = "DfOverF"
-
-        cls.raw_roi_response_series_metadata = dict(
-            name="RoiResponseSeries",
-            description="raw fluorescence signal",
-        )
-
-        cls.dff_roi_response_series_metadata = dict(
-            name="RoiResponseSeries",
-            description="relative (df/f) fluorescence signal",
-        )
-
-        cls.deconvolved_roi_response_series_metadata = dict(
-            name="Deconvolved",
-            description="deconvolved fluorescence signal",
-        )
-
-        cls.neuropil_roi_response_series_metadata = dict(
-            name="Neuropil",
-            description="neuropil fluorescence signal",
-            unit="test_unit",
-        )
-
-        cls.metadata["Ophys"]["Fluorescence"].update(
-            {
-                cls.plane_segmentation_first_plane_name: dict(
-                    name=cls.fluorescence_name,
-                    raw=cls.raw_roi_response_series_metadata,
-                    deconvolved=cls.deconvolved_roi_response_series_metadata,
-                    neuropil=cls.neuropil_roi_response_series_metadata,
-                )
-            }
-        )
-        cls.metadata["Ophys"]["DfOverF"].update(
-            {
-                cls.plane_segmentation_first_plane_name: dict(
-                    name=cls.df_over_f_name,
-                    dff=cls.dff_roi_response_series_metadata,
-                )
-            }
-        )
-
-    def setUp(self):
-        self.segmentation_extractor_first_plane = generate_dummy_segmentation_extractor(
-            num_rois=self.num_rois_first_plane,
-            num_samples=self.num_samples,
-            num_rows=self.num_rows,
-            num_columns=self.num_columns,
-        )
-        self.segmentation_extractor_second_plane = generate_dummy_segmentation_extractor(
-            num_rois=self.num_rois_second_plane,
-            num_samples=self.num_samples,
-            num_rows=self.num_rows,
-            num_columns=self.num_columns,
-        )
-        self.nwbfile = NWBFile(
-            session_description="session_description",
-            identifier="file_id",
-            session_start_time=self.session_start_time,
-        )
-
-    def test_add_fluorescence_traces_to_nwbfile_for_two_plane_segmentations(self):
-        add_fluorescence_traces_to_nwbfile(
-            segmentation_extractor=self.segmentation_extractor_first_plane,
-            nwbfile=self.nwbfile,
-            metadata=self.metadata,
-            plane_segmentation_name=self.plane_segmentation_first_plane_name,
-        )
-
-        # Add second plane segmentation metadata
-        metadata = deepcopy(self.metadata)
-        second_imaging_plane_name = "ImagingPlaneSecondPlane"
-        metadata["Ophys"]["ImagingPlane"][0].update(name=second_imaging_plane_name)
-
-        second_plane_segmentation_name = "PlaneSegmentationSecondPlane"
-        metadata["Ophys"]["ImageSegmentation"]["plane_segmentations"][0].update(
-            name=second_plane_segmentation_name,
-            description="second plane segmentation description",
-            imaging_plane=second_imaging_plane_name,
-        )
-
-        metadata["Ophys"]["Fluorescence"][second_plane_segmentation_name] = deepcopy(
-            metadata["Ophys"]["Fluorescence"][self.plane_segmentation_first_plane_name]
-        )
-        metadata["Ophys"]["DfOverF"][second_plane_segmentation_name] = deepcopy(
-            metadata["Ophys"]["DfOverF"][self.plane_segmentation_first_plane_name]
-        )
-
-        metadata["Ophys"]["Fluorescence"][second_plane_segmentation_name]["raw"].update(
-            name="RoiResponseSeriesSecondPlane"
-        )
-        metadata["Ophys"]["Fluorescence"][second_plane_segmentation_name]["deconvolved"].update(
-            name="DeconvolvedSecondPlane"
-        )
-        metadata["Ophys"]["Fluorescence"][second_plane_segmentation_name]["neuropil"].update(name="NeuropilSecondPlane")
-        metadata["Ophys"]["DfOverF"][second_plane_segmentation_name]["dff"].update(name="RoiResponseSeriesSecondPlane")
-
-        add_fluorescence_traces_to_nwbfile(
-            segmentation_extractor=self.segmentation_extractor_second_plane,
-            nwbfile=self.nwbfile,
-            metadata=metadata,
-            plane_segmentation_name=second_plane_segmentation_name,
-        )
-
-        ophys = get_module(self.nwbfile, "ophys")
-        image_segmentation = ophys.get("ImageSegmentation")
-
-        self.assertEqual(len(image_segmentation.plane_segmentations), 2)
-        self.assertIn(self.plane_segmentation_first_plane_name, image_segmentation.plane_segmentations)
-        self.assertIn(second_plane_segmentation_name, image_segmentation.plane_segmentations)
-        second_plane_segmentation = image_segmentation.plane_segmentations[second_plane_segmentation_name]
-        self.assertEqual(second_plane_segmentation.name, second_plane_segmentation_name)
-        self.assertEqual(second_plane_segmentation.description, "second plane segmentation description")
-
-        fluorescence = ophys.get(self.fluorescence_name)
-        self.assertEqual(fluorescence.name, self.fluorescence_name)
-        self.assertEqual(len(fluorescence.roi_response_series), 6)
-
-        df_over_f = ophys.get(self.df_over_f_name)
-        self.assertEqual(df_over_f.name, self.df_over_f_name)
-        self.assertEqual(len(df_over_f.roi_response_series), 2)
-
-        self.assertEqual(
-            fluorescence.roi_response_series["RoiResponseSeriesSecondPlane"].data.maxshape,
-            (self.num_samples, self.num_rois_second_plane),
-        )
-        self.assertEqual(
-            df_over_f.roi_response_series["RoiResponseSeriesSecondPlane"].data.maxshape,
-            (self.num_samples, self.num_rois_second_plane),
-        )
 
 
 # TODO: Drop this test class once support for list-based metadata is removed (September 2026).
@@ -1764,162 +647,6 @@ class TestAddPhotonSeries(TestCase):
 
 
 # TODO: Drop this test class once support for list-based metadata is removed (September 2026).
-class TestAddSummaryImages(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.session_start_time = datetime.now().astimezone()
-
-        cls.metadata = dict(Ophys=dict())
-
-        cls.segmentation_images_name = "segmentation_images"
-        cls.mean_image_name = "mean_image"
-        cls.correlation_image_name = "correlation_image"
-        segmentation_images_metadata = dict(
-            name=cls.segmentation_images_name,
-            description="description",
-            PlaneSegmentation=dict(
-                correlation=dict(name=cls.correlation_image_name, description="test description for correlation image"),
-                mean=dict(name=cls.mean_image_name, description="test description for mean image"),
-            ),
-        )
-
-        cls.metadata["Ophys"].update(SegmentationImages=segmentation_images_metadata)
-
-    def setUp(self):
-        self.nwbfile = NWBFile(
-            session_description="session_description",
-            identifier="file_id",
-            session_start_time=self.session_start_time,
-        )
-
-    def test_add_summary_images_to_nwbfile(self):
-        segmentation_extractor = generate_dummy_segmentation_extractor(num_rows=10, num_columns=15)
-
-        _add_summary_images_to_nwbfile(
-            nwbfile=self.nwbfile,
-            segmentation_extractor=segmentation_extractor,
-            metadata=self.metadata,
-        )
-
-        ophys = self.nwbfile.get_processing_module("ophys")
-        self.assertIn(self.segmentation_images_name, ophys.data_interfaces)
-        images_collection = ophys.data_interfaces[self.segmentation_images_name]
-
-        extracted_images_dict = images_collection.images
-        self.assertEqual(extracted_images_dict[self.mean_image_name].description, "test description for mean image")
-        self.assertEqual(
-            extracted_images_dict[self.correlation_image_name].description, "test description for correlation image"
-        )
-
-        extracted_images_dict = {img_name: img.data.T for img_name, img in extracted_images_dict.items()}
-        expected_images_dict = segmentation_extractor.get_images_dict()
-
-        images_metadata = self.metadata["Ophys"]["SegmentationImages"]["PlaneSegmentation"]
-        for image_name, image_data in expected_images_dict.items():
-            image_name_from_metadata = images_metadata[image_name]["name"]
-            np.testing.assert_almost_equal(image_data, extracted_images_dict[image_name_from_metadata])
-
-    def test_extractor_with_one_summary_image_suppressed(self):
-        segmentation_extractor = generate_dummy_segmentation_extractor(num_rows=10, num_columns=15)
-        segmentation_extractor._image_correlation = None
-
-        _add_summary_images_to_nwbfile(
-            nwbfile=self.nwbfile,
-            segmentation_extractor=segmentation_extractor,
-            metadata=self.metadata,
-        )
-
-        ophys = self.nwbfile.get_processing_module("ophys")
-        images_collection = ophys.data_interfaces[self.segmentation_images_name]
-
-        extracted_images_number = len(images_collection.images)
-        expected_images_number = len(
-            {img_name: img for img_name, img in segmentation_extractor.get_images_dict().items() if img is not None}
-        )
-        assert extracted_images_number == expected_images_number
-
-    def test_extractor_with_no_summary_images(self):
-        segmentation_extractor = generate_dummy_segmentation_extractor(
-            num_rows=10, num_columns=15, has_summary_images=False
-        )
-
-        self.nwbfile.create_processing_module("ophys", "contains optical physiology processed data")
-
-        _add_summary_images_to_nwbfile(
-            nwbfile=self.nwbfile,
-            segmentation_extractor=segmentation_extractor,
-            metadata=self.metadata,
-        )
-
-        ophys = self.nwbfile.get_processing_module("ophys")
-        assert self.segmentation_images_name not in ophys.data_interfaces
-
-    def test_extractor_with_no_summary_images_and_no_ophys_module(self):
-        segmentation_extractor = generate_dummy_segmentation_extractor(
-            num_rows=10, num_columns=15, has_summary_images=False
-        )
-
-        _add_summary_images_to_nwbfile(
-            nwbfile=self.nwbfile, segmentation_extractor=segmentation_extractor, metadata=self.metadata
-        )
-
-        assert len(self.nwbfile.processing) == 0
-
-    def test_add_summary_images_to_nwbfile_invalid_plane_segmentation_name(self):
-        with self.assertRaisesWith(
-            exc_type=ValueError,
-            exc_msg="Plane segmentation 'invalid_plane_segmentation_name' not found in metadata['Ophys']['SegmentationImages']",
-        ):
-            _add_summary_images_to_nwbfile(
-                nwbfile=self.nwbfile,
-                segmentation_extractor=generate_dummy_segmentation_extractor(num_rows=10, num_columns=15),
-                metadata=self.metadata,
-                plane_segmentation_name="invalid_plane_segmentation_name",
-            )
-
-    def test_add_summary_images_to_nwbfile_from_two_planes(self):
-        segmentation_extractor_first_plane = generate_dummy_segmentation_extractor(num_rows=10, num_columns=15)
-
-        _add_summary_images_to_nwbfile(
-            nwbfile=self.nwbfile,
-            segmentation_extractor=segmentation_extractor_first_plane,
-            metadata=self.metadata,
-            plane_segmentation_name="PlaneSegmentation",
-        )
-
-        metadata = deepcopy(self.metadata)
-        segmentation_images_metadata = metadata["Ophys"]["SegmentationImages"]
-        images_metadata = segmentation_images_metadata["PlaneSegmentation"]
-        images_metadata["mean"].update(name="test_mean_image_name")
-        images_metadata["correlation"].update(name="test_correlation_image_name")
-        plane_segmentation_name = "test_plane_segmentation_name"
-        segmentation_images_metadata.update(
-            {plane_segmentation_name: segmentation_images_metadata["PlaneSegmentation"]}
-        )
-
-        segmentation_extractor_second_plane = generate_dummy_segmentation_extractor(num_rows=10, num_columns=15)
-
-        _add_summary_images_to_nwbfile(
-            nwbfile=self.nwbfile,
-            segmentation_extractor=segmentation_extractor_second_plane,
-            metadata=metadata,
-            plane_segmentation_name=plane_segmentation_name,
-        )
-
-        ophys = self.nwbfile.get_processing_module("ophys")
-        images_collection = ophys.data_interfaces[self.segmentation_images_name]
-        extracted_images_number = len(images_collection.images)
-        self.assertEqual(extracted_images_number, 4)
-
-        extracted_images_dict = {img_name: img.data.T for img_name, img in images_collection.images.items()}
-        expected_images_second_plane = segmentation_extractor_second_plane.get_images_dict()
-
-        images_metadata = metadata["Ophys"]["SegmentationImages"][plane_segmentation_name]
-        for image_name, image_data in expected_images_second_plane.items():
-            image_name_from_metadata = images_metadata[image_name]["name"]
-            np.testing.assert_almost_equal(image_data, extracted_images_dict[image_name_from_metadata])
-
-
 class TestNoMetadataMutation:
     def test_get_default_ophys_metadata_old_metadata_list_returns_independent_instances(self):
         """Test that _get_default_ophys_metadata_old_metadata_list() returns independent instances that don't share mutable state."""
@@ -2087,159 +814,6 @@ class TestNoMetadataMutation:
             nwbfile=nwbfile,
             metadata=metadata,
             photon_series_type="TwoPhotonSeries",
-        )
-
-        # Verify metadata was not mutated - compare entire dict structure
-        assert metadata == metadata_before, "Metadata was mutated"
-
-    def test_add_image_segmentation_no_metadata_mutation(self):
-        """Test that _add_image_segmentation_to_nwbfile does not mutate the input metadata."""
-        nwbfile = mock_NWBFile()
-
-        # Create metadata with image segmentation
-        metadata = {"Ophys": {"ImageSegmentation": {"name": "TestImageSegmentation"}}}
-
-        # Deep copy to compare entire structure before and after
-        metadata_before = deepcopy(metadata)
-
-        # Call function
-        _add_image_segmentation_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
-
-        # Verify metadata was not mutated - compare entire dict structure
-        assert metadata == metadata_before, "Metadata was mutated"
-
-    def test_add_plane_segmentation_no_metadata_mutation(self):
-        """Test that _add_plane_segmentation_to_nwbfile does not mutate the input metadata."""
-        from roiextractors.testing import generate_dummy_segmentation_extractor
-
-        nwbfile = mock_NWBFile()
-        segmentation_extractor = generate_dummy_segmentation_extractor()
-
-        # Create metadata with plane segmentation
-        metadata = {
-            "Ophys": {
-                "Device": [{"name": "TestMicroscope"}],
-                "ImagingPlane": [
-                    {
-                        "name": "TestImagingPlane",
-                        "description": "Test imaging plane",
-                        "excitation_lambda": 488.0,
-                        "indicator": "GCaMP6f",
-                        "location": "V1",
-                        "device": "TestMicroscope",
-                        "optical_channel": [
-                            {
-                                "name": "Green",
-                                "emission_lambda": 510.0,
-                                "description": "Green channel",
-                            }
-                        ],
-                    }
-                ],
-                "ImageSegmentation": {
-                    "name": "TestImageSegmentation",
-                    "plane_segmentations": [
-                        {
-                            "name": "TestPlaneSegmentation",
-                            "description": "Test plane segmentation",
-                            "imaging_plane": "TestImagingPlane",
-                        }
-                    ],
-                },
-            }
-        }
-
-        # Deep copy to compare entire structure before and after
-        metadata_before = deepcopy(metadata)
-
-        # Call function
-        _add_plane_segmentation_to_nwbfile(
-            segmentation_extractor=segmentation_extractor,
-            nwbfile=nwbfile,
-            metadata=metadata,
-            plane_segmentation_name="TestPlaneSegmentation",
-        )
-
-        # Verify metadata was not mutated - compare entire dict structure
-        assert metadata == metadata_before, "Metadata was mutated"
-
-    def test_add_fluorescence_traces_no_metadata_mutation(self):
-        """Test that add_fluorescence_traces_to_nwbfile does not mutate the input metadata."""
-        from roiextractors.testing import generate_dummy_segmentation_extractor
-
-        nwbfile = mock_NWBFile()
-        segmentation_extractor = generate_dummy_segmentation_extractor()
-
-        # Create metadata with fluorescence traces
-        metadata = {
-            "Ophys": {
-                "Device": [{"name": "TestMicroscope"}],
-                "ImagingPlane": [
-                    {
-                        "name": "TestImagingPlane",
-                        "description": "Test imaging plane",
-                        "excitation_lambda": 488.0,
-                        "indicator": "GCaMP6f",
-                        "location": "V1",
-                        "device": "TestMicroscope",
-                        "optical_channel": [
-                            {
-                                "name": "Green",
-                                "emission_lambda": 510.0,
-                                "description": "Green channel",
-                            }
-                        ],
-                    }
-                ],
-                "ImageSegmentation": {
-                    "name": "TestImageSegmentation",
-                    "plane_segmentations": [
-                        {
-                            "name": "PlaneSegmentation",
-                            "description": "Test plane segmentation",
-                            "imaging_plane": "TestImagingPlane",
-                        }
-                    ],
-                },
-                "Fluorescence": {
-                    "PlaneSegmentation": {
-                        "raw": {
-                            "name": "RoiResponseSeries",
-                            "description": "Raw fluorescence",
-                            "unit": "n.a.",
-                        },
-                        "deconvolved": {
-                            "name": "Deconvolved",
-                            "description": "Deconvolved fluorescence",
-                            "unit": "n.a.",
-                        },
-                        "neuropil": {
-                            "name": "Neuropil",
-                            "description": "Neuropil fluorescence",
-                            "unit": "n.a.",
-                        },
-                    },
-                },
-                "DfOverF": {
-                    "PlaneSegmentation": {
-                        "dff": {
-                            "name": "RoiResponseSeries",
-                            "description": "DfOverF",
-                            "unit": "n.a.",
-                        }
-                    },
-                },
-            }
-        }
-
-        # Deep copy to compare entire structure before and after
-        metadata_before = deepcopy(metadata)
-
-        # Call function
-        add_fluorescence_traces_to_nwbfile(
-            segmentation_extractor=segmentation_extractor,
-            nwbfile=nwbfile,
-            metadata=metadata,
         )
 
         # Verify metadata was not mutated - compare entire dict structure
@@ -2946,6 +1520,53 @@ class TestAddImaging:
 
         assert metadata == metadata_before, "Metadata was mutated"
 
+    def test_misspelled_metadata_key_raises(self):
+        """A metadata_key missing from MicroscopySeries raises instead of writing the placeholders."""
+        nwbfile = mock_NWBFile()
+        imaging = generate_dummy_imaging_extractor(num_samples=10, num_rows=5, num_columns=5)
+        metadata = {"Ophys": {"MicroscopySeries": {"my_series": {}}}}
+
+        expected = (
+            "metadata_key 'my_seires' was not found in metadata['Ophys']['MicroscopySeries'] "
+            "(available keys: ['my_series'])."
+        )
+        with pytest.raises(ValueError, match=re.escape(expected)):
+            add_imaging_to_nwbfile(imaging=imaging, nwbfile=nwbfile, metadata=metadata, metadata_key="my_seires")
+
+    def test_misspelled_imaging_plane_metadata_key_raises(self):
+        """An imaging_plane_metadata_key missing from ImagingPlanes raises instead of using the default plane."""
+        nwbfile = mock_NWBFile()
+        imaging = generate_dummy_imaging_extractor(num_samples=10, num_rows=5, num_columns=5)
+        metadata = {
+            "Ophys": {
+                "ImagingPlanes": {"my_plane": {}},
+                "MicroscopySeries": {"my_series": {"imaging_plane_metadata_key": "my_plnae"}},
+            }
+        }
+
+        expected = (
+            "imaging_plane_metadata_key 'my_plnae' was not found in metadata['Ophys']['ImagingPlanes'] "
+            "(available keys: ['my_plane'])."
+        )
+        with pytest.raises(ValueError, match=re.escape(expected)):
+            add_imaging_to_nwbfile(imaging=imaging, nwbfile=nwbfile, metadata=metadata, metadata_key="my_series")
+
+    def test_missing_ophys_section_in_deep_dict_raises(self):
+        """On a DeepDict, a missing Ophys section raises instead of being created and filled with placeholders."""
+        nwbfile = mock_NWBFile()
+        imaging = generate_dummy_imaging_extractor(num_samples=10, num_rows=5, num_columns=5)
+        metadata = DeepDict()
+        metadata["NWBFile"]["session_description"] = "A session."
+        metadata_before = deepcopy(metadata)
+
+        expected = (
+            "metadata_key 'my_series' was not found in metadata['Ophys']['MicroscopySeries'] "
+            "because metadata has no 'Ophys' (available keys: ['NWBFile'])."
+        )
+        with pytest.raises(ValueError, match=re.escape(expected)):
+            add_imaging_to_nwbfile(imaging=imaging, nwbfile=nwbfile, metadata=metadata, metadata_key="my_series")
+        assert metadata == metadata_before, "Metadata was mutated"
+
 
 class TestAddSegmentation:
     """Tests for the dict-based metadata segmentation pipeline (add_segmentation_to_nwbfile)."""
@@ -3282,6 +1903,47 @@ class TestAddSegmentation:
         )
 
         assert metadata == metadata_before, "Metadata was mutated"
+
+    def test_misspelled_metadata_key_raises(self):
+        """A metadata_key missing from PlaneSegmentations raises instead of writing the placeholders."""
+        nwbfile = mock_NWBFile()
+        segmentation_extractor = generate_dummy_segmentation_extractor()
+        metadata = {"Ophys": {"PlaneSegmentations": {"my_segmentation": {}}}}
+
+        expected = (
+            "metadata_key 'my_segmnetation' was not found in metadata['Ophys']['PlaneSegmentations'] "
+            "(available keys: ['my_segmentation'])."
+        )
+        with pytest.raises(ValueError, match=re.escape(expected)):
+            add_segmentation_to_nwbfile(
+                segmentation_extractor=segmentation_extractor,
+                nwbfile=nwbfile,
+                metadata=metadata,
+                metadata_key="my_segmnetation",
+            )
+
+    def test_misspelled_imaging_plane_metadata_key_raises(self):
+        """An imaging_plane_metadata_key missing from ImagingPlanes raises instead of using the default plane."""
+        nwbfile = mock_NWBFile()
+        segmentation_extractor = generate_dummy_segmentation_extractor()
+        metadata = {
+            "Ophys": {
+                "ImagingPlanes": {"my_plane": {}},
+                "PlaneSegmentations": {"my_segmentation": {"imaging_plane_metadata_key": "my_plnae"}},
+            }
+        }
+
+        expected = (
+            "imaging_plane_metadata_key 'my_plnae' was not found in metadata['Ophys']['ImagingPlanes'] "
+            "(available keys: ['my_plane'])."
+        )
+        with pytest.raises(ValueError, match=re.escape(expected)):
+            add_segmentation_to_nwbfile(
+                segmentation_extractor=segmentation_extractor,
+                nwbfile=nwbfile,
+                metadata=metadata,
+                metadata_key="my_segmentation",
+            )
 
     def test_no_roi_responses_metadata(self):
         """When no RoiResponses metadata is provided but extractor has traces, write with placeholder metadata."""

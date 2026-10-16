@@ -12,7 +12,7 @@ Four kinds of value are annotated:
 
 - the subject's **species**, mapped to `NCBITaxon <https://bioregistry.io/registry/ncbitaxon>`_;
 - the subject's **strain**, mapped to `RRID <https://bioregistry.io/registry/rrid>`_ (Research
-  Resource Identifiers) for common laboratory rodent strains;
+  Resource Identifiers) for common laboratory strains;
 - anatomical **brain regions** (``location`` fields), mapped to the
   `Allen Mouse Brain Atlas <https://bioregistry.io/registry/mba>`_ (MBA) for mouse subjects, the
   `Allen Human Brain Atlas <https://bioregistry.io/registry/hba>`_ (HBA) for human subjects, a
@@ -45,7 +45,7 @@ Ontology support is deliberately split into two independent halves, both in
    :py:func:`~neuroconv.tools.external_resources.infer_strain_external_resources`,
    :py:func:`~neuroconv.tools.external_resources.infer_brain_region_external_resources` and
    :py:func:`~neuroconv.tools.external_resources.infer_anatomy_external_resources` read a populated
-   ``NWBFile``, resolve the free-text values a lab wrote (``"mouse"``, ``"black 6"``, ``"CA1"``, ``"Snout"``) to ontology terms
+   ``NWBFile``, resolve the free-text values a lab wrote (``"mouse"``, ``"long evans"``, ``"CA1"``, ``"Snout"``) to ontology terms
    and return them as a ``{"ExternalResources": {...}}`` metadata block, **keyed by the value each term
    describes**. They do not modify anything. This step guesses; run it when you want NeuroConv to
    propose terms, then inspect the result and merge it into your metadata.
@@ -187,23 +187,28 @@ Strain
 
 NWB stores a subject's laboratory strain in :py:attr:`Subject.strain <pynwb.file.Subject.strain>`
 as free text (e.g. ``"C57BL/6J"``, ``"Long-Evans"``). NeuroConv standardizes it the same way it
-standardizes species, backed by a small, curated, offline table of common laboratory rodent strains
-(:py:data:`~neuroconv.tools.external_resources.STRAIN_TERMS`).
+standardizes species, backed by a small, curated, offline table of common laboratory strains
+(:py:data:`~neuroconv.tools.external_resources.STRAIN_TERMS`). The table bundled with NeuroConv
+covers mouse and rat strains; when the optional ``neuro-termsets`` package is installed, its worm,
+fly, zebrafish, and transgenic Cre-driver and reporter mouse lines are added. Unlike species, a
+strain is only recognized by its exact designation or a listed alias, in any letter case. Near
+misses and designations without a substrain (``"C57BL/6"``, ``"BALB/c"``) are not matched, because
+each of them names several strains with different RRIDs.
 
 Suggesting a standardized term
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-When ``Subject.strain`` is a recognized informal spelling (e.g. ``"black 6"``) or a likely typo of a
-known designation, NeuroConv emits a ``UserWarning`` the same way it does for species, while the
+When ``Subject.strain`` is a recognized informal spelling (e.g. ``"long evans"``) of a known
+designation, NeuroConv emits a ``UserWarning`` the same way it does for species, while the
 metadata is processed in :py:func:`~neuroconv.tools.nwb_helpers.make_nwbfile_from_metadata`:
 
 .. code-block:: python
 
     from neuroconv.tools.external_resources import validate_strain
 
-    validate_strain("black 6")
-    # UserWarning: Subject strain 'black 6' is an informal spelling. Consider using 'C57BL/6J'
-    # (RRID:IMSR_JAX:000664) for interoperability. See https://bioregistry.io/RRID:IMSR_JAX:000664
+    validate_strain("long evans")
+    # UserWarning: Subject strain 'long evans' is an informal spelling. Consider using 'Long-Evans'
+    # (RRID:RGD_2308852) for interoperability. See https://bioregistry.io/RRID:RGD_2308852
 
 :py:func:`~neuroconv.tools.external_resources.get_strain_term` resolves a value to its canonical term
 (including exact canonical matches) without emitting a warning:
@@ -231,14 +236,14 @@ in the merge:
 
     from neuroconv.tools.external_resources import infer_strain_external_resources
 
-    infer_strain_external_resources(nwbfile)  # nwbfile.subject.strain == "black 6"
-    # {'ExternalResources': {'strain': {'black 6': {
-    #     'id': 'RRID:IMSR_JAX:000664', 'uri': 'https://scicrunch.org/resolver/RRID:IMSR_JAX:000664'}}}}
+    infer_strain_external_resources(nwbfile)  # nwbfile.subject.strain == "long evans"
+    # {'ExternalResources': {'strain': {'long evans': {
+    #     'id': 'RRID:RGD_2308852', 'uri': 'https://scicrunch.org/resolver/RRID:RGD_2308852'}}}}
 
-    # An in-house line the curated table does not recognize:
+    # A strain the curated table does not include (JAX stock 005304):
     metadata["ExternalResources"] = {
         "strain": {
-            "my in-house line": {"id": "RRID:IMSR_JAX:000664", "uri": "https://scicrunch.org/resolver/RRID:IMSR_JAX:000664"},
+            "C57BL/6NJ": {"id": "RRID:IMSR_JAX:005304", "uri": "https://scicrunch.org/resolver/RRID:IMSR_JAX:005304"},
         },
     }
 
@@ -522,7 +527,7 @@ NeuroConv (one per vocabulary, the same format used by
 `HDMF's TermSet <https://hdmf.readthedocs.io/en/stable/tutorials/plot_term_set.html>`_), so the
 mappings are transparent and editable.
 
-The informal names NeuroConv accepts (``"hippocampus"``, ``"V1"``, ``"mouse"``, ``"black 6"``) are stored in the
+The informal names NeuroConv accepts (``"hippocampus"``, ``"V1"``, ``"mouse"``, ``"long evans"``) are stored in the
 same files as LinkML ``aliases`` on the term they resolve to, so adding one is a YAML edit and needs
 no code change:
 

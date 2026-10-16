@@ -1,6 +1,7 @@
 """Tests for neuroconv.tools.external_resources: term resolution, metadata inference, and HERD annotation."""
 
 import sys
+import warnings
 from datetime import datetime
 from pathlib import Path
 
@@ -163,8 +164,8 @@ class TestUpstreamTermSets:
         assert "Xenopus laevis" in merged  # bundled-only values are kept
 
         merged = load_term_set("strains.yaml")
-        assert merged["C57BL/6J"].curie == "RRID:IMSR_JAX:000664"
-        assert "b6" in merged["C57BL/6J"].aliases  # ours survive an upstream entry without aliases
+        assert merged["Long-Evans"].curie == "RRID:RGD_2308852"
+        assert "long evans" in merged["Long-Evans"].aliases  # ours survive an upstream entry without aliases
         assert "N2" in merged  # upstream-only values (worm, zebrafish, fly, Cre lines) are kept
 
         merged = load_term_set("general_anatomy.yaml")
@@ -212,6 +213,73 @@ class TestUpstreamTermSets:
         aliases = merged["Mus musculus"].aliases
         assert "murine" in aliases and "house mouse" in aliases  # the aliases of both sources are combined
         assert aliases.count("mouse") == 1  # a name both sources list appears once
+
+    @pytest.mark.parametrize(
+        "include_values, expected",
+        [
+            (False, {"b6n": "C57BL/6N"}),
+            (True, {"c57bl/6j": "C57BL/6J", "c57bl/6n": "C57BL/6N", "b6n": "C57BL/6N"}),
+        ],
+    )
+    def test_alias_claimed_by_two_values_is_left_out(self, include_values, expected):
+        from neuroconv.tools.external_resources._term_sets import TermInfo, _build_alias_table
+
+        # An upstream term set could reuse one of our aliases for another value; the alias then
+        # names neither of them.
+        term_set = {
+            "C57BL/6J": TermInfo("C57BL/6J", "RRID:A", "https://a", "", aliases=("shared",)),
+            "C57BL/6N": TermInfo("C57BL/6N", "RRID:B", "https://b", "", aliases=("Shared", "b6n")),
+        }
+        assert _build_alias_table(term_set, include_values=include_values) == expected
+
+    @pytest.mark.parametrize("file_name", ["species.yaml", "strains.yaml"])
+    def test_bundled_aliases_do_not_collide(self, file_name):
+        from neuroconv.tools.external_resources._term_sets import (
+            _TERM_SET_DIRECTORY,
+            _load_term_set_file,
+        )
+
+        claimed_by = {}
+        for info in _load_term_set_file(_TERM_SET_DIRECTORY / file_name).values():
+            for alias in (info.value, *info.aliases):
+                claimed_by.setdefault(alias.lower(), set()).add(info.value)
+        assert {alias: values for alias, values in claimed_by.items() if len(values) > 1} == {}
+
+    def test_upstream_alias_collision_does_not_break_species_import(self, monkeypatch, tmp_path):
+        import importlib
+
+        from neuroconv.tools.external_resources import _species
+        from neuroconv.tools.external_resources._term_sets import load_term_set, load_upstream_term_set
+
+        upstream_yaml = tmp_path / "upstream_species.yaml"
+        upstream_yaml.write_text(
+            "prefixes:\n"
+            "  NCBITaxon: http://purl.obolibrary.org/obo/NCBITaxon_\n"
+            "enums:\n"
+            "  Species:\n"
+            "    permissible_values:\n"
+            "      Rattus norvegicus:\n"
+            "        meaning: NCBITaxon:10116\n"
+            "        aliases:\n"
+            "          - mouse\n",  # bundled lists "mouse" for Mus musculus
+            encoding="utf-8",
+        )
+
+        class _FakeNeuroTermsets:
+            @staticmethod
+            def get_termset_path(name):
+                return str(upstream_yaml)
+
+        monkeypatch.setitem(sys.modules, "neuro_termsets", _FakeNeuroTermsets())
+        try:
+            reloaded = importlib.reload(_species)
+            assert reloaded.get_species_suggestion("mouse") is None  # claimed twice, so it names neither
+            assert reloaded.get_species_suggestion("house mouse")[0].canonical_name == "Mus musculus"
+        finally:
+            monkeypatch.undo()
+            load_term_set.cache_clear()
+            load_upstream_term_set.cache_clear()
+            importlib.reload(_species)
 
 
 # ---------------------------------------------------------------------------
@@ -261,18 +329,43 @@ class TestStrainTerms:
         assert get_strain_term("Long-Evans").rrid == "RRID:RGD_2308852"
         assert get_strain_suggestion("Long-Evans") is None
 
+    def test_informal_spelling_is_suggested(self):
+        term, reason = get_strain_suggestion("  Long Evans  ")  # case-insensitive and stripped
+        assert term.canonical_name == "Long-Evans"
+        assert "informal spelling" in reason
+        assert get_strain_term("  Long Evans  ") == term
+
     @pytest.mark.parametrize(
-        "strain, expected_strain, reason",
+        "strain, expected_strain",
+        [("c57bl/6j", "C57BL/6J"), ("wistar", "Wistar"), ("long-evans", "Long-Evans"), ("BALB/CJ", "BALB/cJ")],
+    )
+    def test_canonical_name_in_another_case_is_suggested(self, strain, expected_strain):
+        term, reason = get_strain_suggestion(strain)
+        assert term.canonical_name == expected_strain
+        assert "informal spelling" in reason
+        assert get_strain_term(strain) == term
+
+    @pytest.mark.parametrize(
+        "strain",
         [
-            ("  Long Evans  ", "Long-Evans", "informal spelling"),  # case-insensitive and stripped
-            ("Sprague Dawly", "Sprague Dawley", "closely matches"),
+            # Real strains one or two characters away from a known designation must not take its RRID.
+            "C57BL/6NJ",
+            "BALB/cByJ",
+            "C57BL/6JRj",
+            "Ai140",
+            "Vglut1-ires-Cre",
+            "Sprague Dawly",  # typos are not guessed either
         ],
     )
-    def test_informal_spellings_and_typos_are_suggested(self, strain, expected_strain, reason):
-        term, suggestion_reason = get_strain_suggestion(strain)
-        assert term.canonical_name == expected_strain
-        assert reason in suggestion_reason
-        assert get_strain_term(strain) == term
+    def test_near_miss_is_not_matched(self, strain):
+        assert get_strain_suggestion(strain) is None
+        assert get_strain_term(strain) is None
+
+    @pytest.mark.parametrize("strain", ["C57BL/6", "c57bl6", "black 6", "B6", "BALB/c", "balbc"])
+    def test_designation_without_substrain_is_not_matched(self, strain):
+        # These name several substrains (C57BL/6J, C57BL/6NCrl, BALB/cByJ, ...), so no single RRID applies.
+        assert get_strain_suggestion(strain) is None
+        assert get_strain_term(strain) is None
 
     @pytest.mark.parametrize("strain", ["Octodon degus strain X", "", None, 42])
     def test_unrecognized_returns_none(self, strain):
@@ -280,9 +373,9 @@ class TestStrainTerms:
         assert get_strain_term(strain) is None
 
     def test_validate_strain_warns_for_informal_spelling(self):
-        with pytest.warns(UserWarning, match="'C57BL/6J'.*bioregistry.io/RRID:IMSR_JAX:000664"):
-            term = validate_strain("black 6")
-        assert term.canonical_name == "C57BL/6J"
+        with pytest.warns(UserWarning, match="'Long-Evans'.*bioregistry.io/RRID:RGD_2308852"):
+            term = validate_strain("long evans")
+        assert term.canonical_name == "Long-Evans"
 
 
 # ---------------------------------------------------------------------------
@@ -396,7 +489,8 @@ class TestInferSpeciesExternalResources:
 
     def test_common_name_is_the_key(self):
         nwbfile = _make_nwbfile(species="mouse")
-        with pytest.warns(UserWarning):
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")  # the suggestion is only emitted when the file is created
             inferred = infer_species_external_resources(nwbfile)
         # Keyed by the value as written: HERD links the term to Subject.species through that string.
         assert inferred == {"ExternalResources": {"species": {"mouse": MOUSE_SPECIES_TERM}}}
@@ -419,11 +513,12 @@ class TestInferStrainExternalResources:
         }
 
     def test_informal_spelling_is_the_key(self):
-        nwbfile = _make_nwbfile(strain="black 6")
-        with pytest.warns(UserWarning):
+        nwbfile = _make_nwbfile(strain="long evans")
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")  # the suggestion is only emitted when the file is created
             inferred = infer_strain_external_resources(nwbfile)
         # Keyed by the value as written: HERD links the term to Subject.strain through that string.
-        assert inferred["ExternalResources"]["strain"]["black 6"]["id"] == "RRID:IMSR_JAX:000664"
+        assert inferred["ExternalResources"]["strain"]["long evans"] == LONG_EVANS_STRAIN_TERM
 
     @pytest.mark.parametrize("kwargs", [dict(strain="my in-house line"), dict(strain=None), dict(with_subject=False)])
     def test_unrecognized_or_missing_strain_returns_empty(self, kwargs):
@@ -559,6 +654,16 @@ class TestStrainExternalResource:
         assert objects["object_id"].tolist() == [nwbfile.subject.object_id]
         assert objects["relative_path"].tolist() == ["strain"]
 
+    def test_several_terms_share_one_key(self):
+        nwbfile = _make_nwbfile(strain="Long-Evans")
+        second_term = {"id": "RRID:RGD_0000000", "uri": "https://example.org/RGD_0000000"}
+        metadata = _strain_metadata({"Long-Evans": [LONG_EVANS_STRAIN_TERM, second_term]})
+        assert add_strain_external_resource(nwbfile, metadata=metadata) is True
+
+        herd = nwbfile.external_resources
+        assert herd.keys.to_dataframe()["key"].tolist() == ["Long-Evans"]
+        assert herd.to_dataframe()["entity_id"].tolist() == ["RRID:RGD_2308852", "RRID:RGD_0000000"]
+
 
 # ---------------------------------------------------------------------------
 # Brain-region HERD annotation (metadata -> file)
@@ -665,6 +770,20 @@ class TestExternalResourcesMetadataSchema:
         import neuroconv
 
         return load_dict_from_file(Path(neuroconv.__file__).parent / "schemas" / "base_metadata_schema.json")
+
+    def test_schema_file_has_no_duplicate_keys(self):
+        import json
+
+        import neuroconv
+
+        def _reject_duplicates(pairs):
+            keys = [key for key, _ in pairs]
+            duplicates = {key for key in keys if keys.count(key) > 1}
+            assert not duplicates, f"Duplicate keys in base_metadata_schema.json: {sorted(duplicates)}"
+            return dict(pairs)
+
+        schema_path = Path(neuroconv.__file__).parent / "schemas" / "base_metadata_schema.json"
+        json.loads(schema_path.read_text(encoding="utf-8"), object_pairs_hook=_reject_duplicates)
 
     def _validate(self, block, schema):
         nwbfile_metadata = {"session_start_time": datetime(2020, 1, 1, tzinfo=tzutc())}

@@ -379,7 +379,7 @@ class TestDANNCEInterfaceTimestamps:
         file_path = dannce_mat_file[0]
         interface = DANNCEInterface(file_paths=file_path, sampling_rate=30.0)
 
-        assert interface.alignment.keys() == (interface.metadata_key,)
+        assert interface.alignment.keys() == ("dannce",)
 
     def test_set_times(self, dannce_mat_file):
         file_path, n_samples, _, _, _ = dannce_mat_file
