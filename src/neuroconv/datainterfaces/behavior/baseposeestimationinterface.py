@@ -28,7 +28,11 @@ class BasePoseEstimationInterface(BaseDataInterface):
     def __init__(self, verbose: bool = False, **source_data):
         super().__init__(verbose=verbose, **source_data)
         self._alignment = _TemporalAlignment()
-        self._alignment._register_series(key=self.metadata_key, get_native_times=self.get_original_timestamps)
+        self._alignment._register(
+            key=self.metadata_key,
+            get_native_times=self.get_original_timestamps,
+            get_number_of_samples=self._get_number_of_samples,
+        )
 
     @property
     def alignment(self):
@@ -36,6 +40,12 @@ class BasePoseEstimationInterface(BaseDataInterface):
 
     def _get_timestamps(self) -> np.ndarray:
         return self.alignment[self.metadata_key].get_times()
+
+    def _get_number_of_samples(self) -> int:
+        # Read off the keypoint data and not the times, which some formats cannot give without a rate and
+        # others give only by decoding the video
+        positions, _ = next(iter(self._get_keypoint_data().values()))
+        return len(positions)
 
     def get_timestamps(self) -> np.ndarray:
         warnings.warn(

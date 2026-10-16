@@ -87,7 +87,11 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         # native times are registered as a callable, so naming the object reads nothing.
         # See neuroconv/_temporal_alignment.py.
         self.alignment = _TemporalAlignment()
-        self.alignment._register_series(key=self.metadata_key, get_native_times=self.get_original_timestamps)
+        self.alignment._register(
+            key=self.metadata_key,
+            get_native_times=self.get_original_timestamps,
+            get_number_of_samples=lambda: len(self.get_original_timestamps()),
+        )
         super().__init__(verbose=verbose, stream_names=stream_names, **source_data)
         # Keep the ndx extensions registered so pynwb IO works correctly.
         import ndx_fiber_photometry  # noqa: F401
@@ -395,7 +399,11 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         if key == self.metadata_key:
             raise ValueError(f"Commanded-voltage key '{key}' is also the response-series key.")
         self._commanded_voltage_key_to_get_data[key] = get_data
-        self.alignment._register_series(key=key, get_native_times=get_native_times)
+        self.alignment._register(
+            key=key,
+            get_native_times=get_native_times,
+            get_number_of_samples=lambda: len(get_native_times()),
+        )
 
     def _add_commanded_voltage_series(
         self,
