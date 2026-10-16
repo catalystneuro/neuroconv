@@ -15,6 +15,7 @@ installed -- see :func:`load_upstream_term_set`. This is a soft, optional upgrad
 dependency: NeuroConv works exactly as it does today when ``neuro-termsets`` is absent.
 """
 
+import difflib
 from dataclasses import dataclass, replace
 from functools import lru_cache
 from pathlib import Path
@@ -38,6 +39,7 @@ _TERM_SET_DIRECTORY = Path(__file__).parent / "term_sets"
 # unmapped until the two agree on a key convention.
 _UPSTREAM_TERM_SET_NAMES: dict[str, str] = {
     "species.yaml": "subject_species_ncbitaxon_termset.yaml",
+    "strains.yaml": "strain_termset.yaml",
 }
 
 
@@ -155,6 +157,72 @@ def load_term_set(file_name: str) -> dict[str, TermInfo]:
         term_set = merged
 
     return term_set
+
+
+def _build_alias_table(term_set: dict[str, TermInfo], *, include_values: bool) -> dict[str, str]:
+    """
+    Map each lower-cased alias to the permissible value it names.
+
+    With ``include_values``, each permissible value itself is added too, so a value written in
+    another letter case resolves. An alias that two values claim (possible once the optional
+    upstream term set is merged in) names neither of them, so it is left out instead of picking one.
+    """
+    claimed_by: dict[str, set[str]] = {}
+    for info in term_set.values():
+        names = (info.value, *info.aliases) if include_values else info.aliases
+        for name in names:
+            claimed_by.setdefault(name.lower(), set()).add(info.value)
+    return {name: values.pop() for name, values in claimed_by.items() if len(values) == 1}
+
+
+@dataclass(frozen=True)
+class _ValueMatcher:
+    """Match a free-text subject value (species, strain) to a permissible value of a term set.
+
+    Shared by the species and strain lookups, which differ only in their tables, the identifier
+    prefixes they leave alone, their reason wording, and whether near misses are matched.
+    """
+
+    values: tuple[str, ...]  # the permissible values, matched exactly (ordered, so near-miss ties are stable)
+    alias_table: dict[str, str]  # lower-cased alias -> permissible value (see ``_build_alias_table``)
+    identifier_prefixes: tuple[str, ...]  # lower-cased prefixes of values that are already identifiers
+    alias_reason: str  # e.g. "is a common name"
+    close_match_reason: str | None  # e.g. "closely matches a known species name"; None disables near misses
+
+    def suggest(self, value) -> tuple[str, str] | None:
+        """Return ``(permissible value, reason)`` when ``value`` is not itself a permissible value but names one."""
+        if not isinstance(value, str):
+            return None
+
+        stripped = value.strip()
+        if stripped == "" or stripped in self.values:
+            return None
+
+        lowered = stripped.lower()
+        if lowered.startswith(self.identifier_prefixes):
+            return None
+
+        if lowered in self.alias_table:
+            return self.alias_table[lowered], f"{value!r} {self.alias_reason}"
+
+        if self.close_match_reason is not None:
+            close_matches = difflib.get_close_matches(stripped, self.values, n=1, cutoff=0.85)
+            if close_matches:
+                return close_matches[0], f"{value!r} {self.close_match_reason}"
+
+        return None
+
+    def resolve(self, value) -> str | None:
+        """Return the permissible value ``value`` names (exactly or through :meth:`suggest`), or ``None``."""
+        if not isinstance(value, str):
+            return None
+
+        stripped = value.strip()
+        if stripped in self.values:
+            return stripped
+
+        suggestion = self.suggest(value)
+        return suggestion[0] if suggestion is not None else None
 
 
 def _unwrapped(value):

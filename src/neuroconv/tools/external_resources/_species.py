@@ -11,13 +11,12 @@ offline, has no extra dependencies, and only emits a suggestion when it is confi
 is a better term. Valid-but-uncommon species pass silently.
 """
 
-import difflib
 import warnings
 from dataclasses import dataclass
 
 from pynwb import NWBFile
 
-from ._term_sets import _unwrapped, load_term_set
+from ._term_sets import _build_alias_table, _unwrapped, _ValueMatcher, load_term_set
 
 __all__ = [
     "SPECIES_TERMS",
@@ -38,21 +37,23 @@ class SpeciesTerm:
     entity_uri: str  # resolvable URI for the NCBITaxon entity (usable as a HERD ``entity_uri``)
 
 
+_SPECIES_TERM_SET = load_term_set("species.yaml")
+
 # Canonical Latin binomial -> SpeciesTerm, from the curated species TermSet.
 SPECIES_TERMS: dict[str, SpeciesTerm] = {
     info.value: SpeciesTerm(canonical_name=info.value, ncbitaxon_id=info.curie, entity_uri=info.entity_uri)
-    for info in load_term_set("species.yaml").values()
+    for info in _SPECIES_TERM_SET.values()
 }
 
-
-# Common (English) names -> canonical Latin binomial, from the species TermSet's ``aliases``.
-# Keys are lower-cased and compared case-insensitively.
-_COMMON_NAME_TO_CANONICAL: dict[str, str] = {}
-for _info in load_term_set("species.yaml").values():
-    for _alias in _info.aliases:
-        _claimed_by = _COMMON_NAME_TO_CANONICAL.setdefault(_alias.lower(), _info.value)
-        if _claimed_by != _info.value:
-            raise ValueError(f"Species alias {_alias!r} of {_info.value!r} is already used for {_claimed_by!r}.")
+# Matches common (English) names from the species TermSet's ``aliases`` and likely typos of a
+# Latin binomial (e.g. "Homo sapien" -> "Homo sapiens").
+_SPECIES_MATCHER = _ValueMatcher(
+    values=tuple(SPECIES_TERMS),
+    alias_table=_build_alias_table(_SPECIES_TERM_SET, include_values=False),
+    identifier_prefixes=("http://", "https://", "ncbitaxon:"),
+    alias_reason="is a common name",
+    close_match_reason="closely matches a known species name",
+)
 
 
 def get_species_suggestion(species: str) -> tuple[SpeciesTerm, str] | None:
@@ -75,36 +76,11 @@ def get_species_suggestion(species: str) -> tuple[SpeciesTerm, str] | None:
         The suggested canonical term and a human-readable reason for the suggestion, or
         ``None`` when no confident suggestion is available.
     """
-    if not isinstance(species, str):
+    suggestion = _SPECIES_MATCHER.suggest(species)
+    if suggestion is None:
         return None
-
-    stripped = species.strip()
-    if stripped == "":
-        return None
-
-    # Already a canonical Latin binomial we recognize -> nothing to suggest.
-    if stripped in SPECIES_TERMS:
-        return None
-
-    # A taxonomy URL is already a machine-readable reference -> leave it alone.
-    lowered = stripped.lower()
-    if lowered.startswith(("http://", "https://")) or lowered.startswith("ncbitaxon:"):
-        return None
-
-    # Recognized common (English) name.
-    if lowered in _COMMON_NAME_TO_CANONICAL:
-        canonical_name = _COMMON_NAME_TO_CANONICAL[lowered]
-        reason = f"{species!r} is a common name"
-        return SPECIES_TERMS[canonical_name], reason
-
-    # Likely typo of a known binomial (e.g. "Homo sapien" -> "Homo sapiens").
-    close_matches = difflib.get_close_matches(stripped, SPECIES_TERMS.keys(), n=1, cutoff=0.85)
-    if close_matches:
-        canonical_name = close_matches[0]
-        reason = f"{species!r} closely matches a known species name"
-        return SPECIES_TERMS[canonical_name], reason
-
-    return None
+    canonical_name, reason = suggestion
+    return SPECIES_TERMS[canonical_name], reason
 
 
 def get_species_term(species: str | None) -> SpeciesTerm | None:
@@ -126,15 +102,8 @@ def get_species_term(species: str | None) -> SpeciesTerm | None:
     SpeciesTerm or None
         The canonical term for a recognized species, or ``None`` when it cannot be resolved.
     """
-    if not isinstance(species, str):
-        return None
-
-    stripped = species.strip()
-    if stripped in SPECIES_TERMS:
-        return SPECIES_TERMS[stripped]
-
-    suggestion = get_species_suggestion(species)
-    return suggestion[0] if suggestion is not None else None
+    canonical_name = _SPECIES_MATCHER.resolve(species)
+    return SPECIES_TERMS[canonical_name] if canonical_name is not None else None
 
 
 def validate_species(species: str | None) -> SpeciesTerm | None:
@@ -190,7 +159,8 @@ def infer_species_external_resources(nwbfile: NWBFile) -> dict:
 
         metadata = dict_deep_update(infer_species_external_resources(nwbfile), metadata, append_list=False)
 
-    A recognized common name or typo also emits the :func:`validate_species` ``UserWarning``.
+    It does not warn: the :func:`validate_species` suggestion for an informal value is emitted once,
+    when :func:`neuroconv.tools.nwb_helpers.make_nwbfile_from_metadata` processes the metadata.
 
     Parameters
     ----------
@@ -205,8 +175,6 @@ def infer_species_external_resources(nwbfile: NWBFile) -> dict:
     """
     subject = getattr(nwbfile, "subject", None)
     species = _unwrapped(getattr(subject, "species", None))
-    validate_species(species)  # non-blocking suggestion for common names / typos
-
     term = get_species_term(species)
     if term is None:
         return {}
