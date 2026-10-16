@@ -17,6 +17,9 @@ from neuroconv.tools.icephys import (
 )
 from neuroconv.tools.testing.mock_interfaces import MockIcephysInterface
 
+# TODO: Test missing response, stimulus, and electrode metadata through BaseIcephysInterface.add_to_nwbfile()
+# once MockIcephysInterface uses that base class and supports stimulus data.
+
 SAMPLING_FREQUENCY = 10_000.0
 SWEEP_DURATION = 1.0
 # A sweep stops at the time of its last sample, which is one sample period short of its full duration.
