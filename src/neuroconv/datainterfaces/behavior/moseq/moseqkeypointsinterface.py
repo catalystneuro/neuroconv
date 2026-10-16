@@ -353,7 +353,7 @@ class MoseqKeyPointsInterface(BaseDataInterface):
             dropped; the ``source_pose`` and ``source_video`` links are external references and are
             kept. ``"both"`` (the default) writes both.
         """
-        from ....tools.pose_estimation import _build_ethogram_from_labels
+        from ....tools.behavior import _add_ethogram_to_nwbfile, _get_bouts_and_behaviors_from_labels
 
         write_algorithm_output = data_to_write in ("algorithm_output", "both")
         write_curated = data_to_write in ("ethogram", "both")
@@ -448,24 +448,22 @@ class MoseqKeyPointsInterface(BaseDataInterface):
         # is not in results.h5 at all. The bouts point back at the latent trajectory they came from,
         # when it was written; with data_to_write="ethogram" there is no object to link to.
         ethogram_metadata = default_metadata["Behavior"]["Ethograms"][self.metadata_key]
-        bouts, catalogue = _build_ethogram_from_labels(
-            labels=self._read_dataset("syllable"),
-            timestamps=timestamps,
-            frame_period=frame_period,
-            bouts_name=ethogram_metadata["EthogramBouts"]["name"],
-            bouts_description=ethogram_metadata["EthogramBouts"]["description"],
+        _add_ethogram_to_nwbfile(
+            nwbfile,
+            **_get_bouts_and_behaviors_from_labels(
+                labels=self._read_dataset("syllable"),
+                timestamps=timestamps,
+                frame_period=frame_period,
+                class_definition=(
+                    "keypoint-MoSeq unsupervised syllable; the id is specific to the run that produced it and "
+                    "carries no meaning outside it."
+                ),
+            ),
+            ethogram_metadata=ethogram_metadata,
             labeling_method="automated",
             source_software="keypoint-MoSeq",
             source=latent_state_series,
             source_pose=source_pose,
             source_video=source_video,
-            catalogue_name=ethogram_metadata["Ethogram"]["name"],
-            catalogue_description=ethogram_metadata["Ethogram"]["description"],
-            class_definition=(
-                "keypoint-MoSeq unsupervised syllable; the id is specific to the run that produced it and carries "
-                "no meaning outside it."
-            ),
             exclusive=True,  # keypoint-MoSeq syllables are a single-label partition.
         )
-        behavior_module.add(catalogue)
-        behavior_module.add(bouts)
