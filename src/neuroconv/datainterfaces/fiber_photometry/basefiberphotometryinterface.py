@@ -35,6 +35,7 @@ from ...tools.fiber_photometry import (
     get_fiber_photometry_table_region,
 )
 from ...tools.nwb_helpers import get_module
+from ...tools.nwb_helpers._metadata_and_file_helpers import _validate_metadata_key, _validate_metadata_path
 from ...utils import DeepDict, dict_deep_update, get_base_schema
 from ...utils.checks import calculate_regular_series_rate
 
@@ -423,6 +424,11 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
                     "the owning interface's 'commanded_voltage_streams' constructor argument."
                 )
         for key, get_data in self._commanded_voltage_key_to_get_data.items():
+            _validate_metadata_key(
+                metadata,
+                metadata_path=("FiberPhotometry", "CommandedVoltageSeries"),
+                metadata_key=key,
+            )
             commanded_voltage_metadata = commanded_voltage_metadata_by_key[key]
             if commanded_voltage_metadata["name"] in nwbfile.acquisition:
                 continue
@@ -481,6 +487,7 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         from ndx_fiber_photometry import FiberPhotometryResponseSeries
 
         metadata = metadata or self.get_metadata()
+        _validate_metadata_key(metadata, metadata_path=("FiberPhotometry",), metadata_key=self.metadata_key)
         fiber_photometry_metadata = metadata["FiberPhotometry"]
         self._validate_metadata(fiber_photometry_metadata)
         series_metadata = fiber_photometry_metadata[self.metadata_key]
@@ -504,9 +511,9 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
 
             fiber_photometry_table = add_fiber_photometry_lab_metadata(
                 nwbfile=nwbfile,
-                fiber_photometry_metadata=fiber_photometry_metadata,
-                devices_metadata=metadata["Devices"],
+                metadata=metadata,
             )
+            _validate_metadata_path(metadata, ("FiberPhotometry", "FiberPhotometryTable", "rows"))
             table_region = get_fiber_photometry_table_region(
                 fiber_photometry_table=fiber_photometry_table,
                 table_rows_metadata=fiber_photometry_metadata["FiberPhotometryTable"]["rows"],
