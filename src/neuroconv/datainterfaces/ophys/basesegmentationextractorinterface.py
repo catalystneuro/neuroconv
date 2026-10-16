@@ -37,10 +37,11 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         self.metadata_key = metadata_key
         self._alignment_key = metadata_key or "default_metadata_key"
         self._alignment = _TemporalAlignment()
-        self._alignment._register_series(
+        self._alignment._register(
             key=self._alignment_key,
             get_native_times=self._get_native_times,
             default_start_time=self._get_native_start_time,
+            get_number_of_samples=self.segmentation_extractor.get_num_samples,
         )
 
     @property
