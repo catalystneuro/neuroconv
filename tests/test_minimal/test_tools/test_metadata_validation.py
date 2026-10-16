@@ -44,7 +44,9 @@ def test_key_errors_name_the_first_missing_level_without_mutation(dictionary_typ
     original = deepcopy(metadata)
 
     with pytest.raises(ValueError) as error:
-        _validate_metadata_key(metadata, ("Ophys", "MicroscopySeries"), "selected", field="metadata_key")
+        _validate_metadata_key(
+            metadata, metadata_path=("Ophys", "MicroscopySeries"), metadata_key="selected", field="metadata_key"
+        )
 
     assert str(error.value) == expected
     assert metadata == original
@@ -94,14 +96,24 @@ def test_validators_only_check_existence(dictionary_type, entry):
     metadata = dictionary_type(Devices=dictionary_type(selected=entry))
     original = deepcopy(metadata)
 
-    assert _validate_metadata_key(metadata, ("Devices",), "selected", field="device_metadata_key") is None
+    assert (
+        _validate_metadata_key(
+            metadata, metadata_path=("Devices",), metadata_key="selected", field="device_metadata_key"
+        )
+        is None
+    )
     assert _validate_metadata_path(metadata, ("Devices", "selected")) is None
     assert metadata == original
 
 
 def test_key_error_preserves_the_reference_field():
     with pytest.raises(ValueError) as error:
-        _validate_metadata_key({"Devices": {"camera": {}}}, ("Devices",), "camera_typo", field="device_metadata_key")
+        _validate_metadata_key(
+            {"Devices": {"camera": {}}},
+            metadata_path=("Devices",),
+            metadata_key="camera_typo",
+            field="device_metadata_key",
+        )
 
     assert str(error.value) == (
         "device_metadata_key 'camera_typo' was not found in metadata['Devices'] (available keys: ['camera'])."

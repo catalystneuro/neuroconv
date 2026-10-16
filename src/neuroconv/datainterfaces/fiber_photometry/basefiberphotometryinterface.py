@@ -418,8 +418,8 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         for key, get_data in self._commanded_voltage_key_to_get_data.items():
             _validate_metadata_key(
                 metadata,
-                ("FiberPhotometry", "CommandedVoltageSeries"),
-                key,
+                metadata_path=("FiberPhotometry", "CommandedVoltageSeries"),
+                metadata_key=key,
                 field="commanded_voltage_series_metadata_key",
             )
             commanded_voltage_metadata = commanded_voltage_metadata_by_key[key]
@@ -480,7 +480,9 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         from ndx_fiber_photometry import FiberPhotometryResponseSeries
 
         metadata = metadata or self.get_metadata()
-        _validate_metadata_key(metadata, ("FiberPhotometry",), self.metadata_key, field="metadata_key")
+        _validate_metadata_key(
+            metadata, metadata_path=("FiberPhotometry",), metadata_key=self.metadata_key, field="metadata_key"
+        )
         fiber_photometry_metadata = metadata["FiberPhotometry"]
         self._validate_metadata(fiber_photometry_metadata)
         series_metadata = fiber_photometry_metadata[self.metadata_key]

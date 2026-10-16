@@ -354,7 +354,12 @@ class LightningPoseDataInterface(BasePoseEstimationInterface):
                 FutureWarning,
                 stacklevel=2,
             )
-            _validate_metadata_key(metadata_copy, ("Pose", "PoseEstimations"), self.metadata_key, field="metadata_key")
+            _validate_metadata_key(
+                metadata_copy,
+                metadata_path=("Pose", "PoseEstimations"),
+                metadata_key=self.metadata_key,
+                field="metadata_key",
+            )
             containers_metadata = metadata_copy["Pose"]["PoseEstimations"]
             for series_entry in containers_metadata[self.metadata_key]["PoseEstimationSeries"].values():
                 series_entry.update(deprecated_options)

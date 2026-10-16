@@ -301,8 +301,8 @@ def add_fiber_photometry_lab_metadata(*, nwbfile: NWBFile, metadata: dict):
         }
         _validate_metadata_key(
             metadata,
-            ("FiberPhotometry", "FiberPhotometryViruses"),
-            viral_vector_metadata_key,
+            metadata_path=("FiberPhotometry", "FiberPhotometryViruses"),
+            metadata_key=viral_vector_metadata_key,
             field="viral_vector_metadata_key",
         )
         injection_metadata["viral_vector"] = key_to_viral_vector[viral_vector_metadata_key]
@@ -325,8 +325,8 @@ def add_fiber_photometry_lab_metadata(*, nwbfile: NWBFile, metadata: dict):
         if injection_key is not None:
             _validate_metadata_key(
                 metadata,
-                ("FiberPhotometry", "FiberPhotometryVirusInjections"),
-                injection_key,
+                metadata_path=("FiberPhotometry", "FiberPhotometryVirusInjections"),
+                metadata_key=injection_key,
                 field="viral_vector_injection_metadata_key",
             )
             indicator_metadata["viral_vector_injection"] = key_to_injection[injection_key]
@@ -359,8 +359,8 @@ def add_fiber_photometry_lab_metadata(*, nwbfile: NWBFile, metadata: dict):
         row_data["emission_wavelength_in_nm"] = row_metadata["emission_wavelength_in_nm"]
         _validate_metadata_key(
             metadata,
-            ("FiberPhotometry", "FiberPhotometryIndicators"),
-            row_metadata["indicator_metadata_key"],
+            metadata_path=("FiberPhotometry", "FiberPhotometryIndicators"),
+            metadata_key=row_metadata["indicator_metadata_key"],
             field="indicator_metadata_key",
         )
         row_data["indicator"] = key_to_indicator[row_metadata["indicator_metadata_key"]]
@@ -371,8 +371,8 @@ def add_fiber_photometry_lab_metadata(*, nwbfile: NWBFile, metadata: dict):
         if "commanded_voltage_series_metadata_key" in row_metadata:
             _validate_metadata_key(
                 metadata,
-                ("FiberPhotometry", "CommandedVoltageSeries"),
-                row_metadata["commanded_voltage_series_metadata_key"],
+                metadata_path=("FiberPhotometry", "CommandedVoltageSeries"),
+                metadata_key=row_metadata["commanded_voltage_series_metadata_key"],
                 field="commanded_voltage_series_metadata_key",
             )
             commanded_voltage_name = commanded_voltage_key_to_name[

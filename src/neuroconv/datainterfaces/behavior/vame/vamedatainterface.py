@@ -811,7 +811,10 @@ class VameInterface(BaseTemporalAlignmentInterface):
         pose_estimation_key = project_metadata.get("pose_estimation_metadata_key")
         if pose_estimation_key is not None:
             _validate_metadata_key(
-                default_metadata, ("Pose", "PoseEstimations"), pose_estimation_key, field="pose_estimation_metadata_key"
+                default_metadata,
+                metadata_path=("Pose", "PoseEstimations"),
+                metadata_key=pose_estimation_key,
+                field="pose_estimation_metadata_key",
             )
             pose_estimations_registry = default_metadata["Pose"]["PoseEstimations"]
             pose_container_name = pose_estimations_registry[pose_estimation_key]["name"]

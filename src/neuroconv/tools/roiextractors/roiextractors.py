@@ -399,7 +399,9 @@ def _add_photon_series_to_nwbfile(
     """
     iterator_options = iterator_options or dict()
 
-    _validate_metadata_key(metadata, ("Ophys", "MicroscopySeries"), metadata_key, field="metadata_key")
+    _validate_metadata_key(
+        metadata, metadata_path=("Ophys", "MicroscopySeries"), metadata_key=metadata_key, field="metadata_key"
+    )
     photon_series_metadata = metadata["Ophys"]["MicroscopySeries"][metadata_key]
 
     # Copy to avoid mutation
@@ -418,7 +420,10 @@ def _add_photon_series_to_nwbfile(
     imaging_plane_metadata_key = photon_series_kwargs.pop("imaging_plane_metadata_key", None)
     if imaging_plane_metadata_key is not None:
         _validate_metadata_key(
-            metadata, ("Ophys", "ImagingPlanes"), imaging_plane_metadata_key, field="imaging_plane_metadata_key"
+            metadata,
+            metadata_path=("Ophys", "ImagingPlanes"),
+            metadata_key=imaging_plane_metadata_key,
+            field="imaging_plane_metadata_key",
         )
         imaging_plane_metadata = metadata["Ophys"]["ImagingPlanes"][imaging_plane_metadata_key]
     else:
@@ -515,7 +520,9 @@ def _add_plane_segmentation_to_nwbfile(
     NWBFile
         The NWBFile with the added PlaneSegmentation.
     """
-    _validate_metadata_key(metadata, ("Ophys", "PlaneSegmentations"), metadata_key, field="metadata_key")
+    _validate_metadata_key(
+        metadata, metadata_path=("Ophys", "PlaneSegmentations"), metadata_key=metadata_key, field="metadata_key"
+    )
     plane_seg_metadata = metadata["Ophys"]["PlaneSegmentations"][metadata_key].copy()
 
     # Required by the NWB ``PlaneSegmentation`` object; default any the interface did not supply from the
@@ -531,7 +538,10 @@ def _add_plane_segmentation_to_nwbfile(
     imaging_plane_metadata_key = plane_seg_metadata.pop("imaging_plane_metadata_key", None)
     if imaging_plane_metadata_key is not None:
         _validate_metadata_key(
-            metadata, ("Ophys", "ImagingPlanes"), imaging_plane_metadata_key, field="imaging_plane_metadata_key"
+            metadata,
+            metadata_path=("Ophys", "ImagingPlanes"),
+            metadata_key=imaging_plane_metadata_key,
+            field="imaging_plane_metadata_key",
         )
         imaging_plane_metadata = metadata["Ophys"]["ImagingPlanes"][imaging_plane_metadata_key]
     else:
@@ -745,7 +755,9 @@ def _add_roi_response_traces_to_nwbfile(
 
     # Resolve PlaneSegmentation via the same metadata_key, defaulting its name the same way the
     # segmentation writer does.
-    _validate_metadata_key(metadata, ("Ophys", "PlaneSegmentations"), metadata_key, field="metadata_key")
+    _validate_metadata_key(
+        metadata, metadata_path=("Ophys", "PlaneSegmentations"), metadata_key=metadata_key, field="metadata_key"
+    )
     plane_segmentation_metadata = metadata["Ophys"]["PlaneSegmentations"][metadata_key]
     plane_segmentation_name = plane_segmentation_metadata.get("name", "PlaneSegmentation")
     ophys_module = get_module(nwbfile, "ophys", description="contains optical physiology processed data")

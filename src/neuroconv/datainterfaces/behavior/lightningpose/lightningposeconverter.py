@@ -152,7 +152,10 @@ class LightningPoseConverter(BaseDataInterface):
         if "Pose" in pose_metadata:
             pose_estimation_interface = self.data_interface_objects["PoseEstimation"]
             _validate_metadata_key(
-                pose_metadata, ("Pose", "PoseEstimations"), pose_estimation_interface.metadata_key, field="metadata_key"
+                pose_metadata,
+                metadata_path=("Pose", "PoseEstimations"),
+                metadata_key=pose_estimation_interface.metadata_key,
+                field="metadata_key",
             )
             container_metadata = pose_metadata["Pose"]["PoseEstimations"][pose_estimation_interface.metadata_key]
             # A link to the ImageSeries written above rather than the source path it was read from, and the
