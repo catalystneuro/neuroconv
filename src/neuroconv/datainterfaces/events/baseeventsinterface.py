@@ -97,10 +97,6 @@ class BaseEventsInterface(BaseDataInterface):
 
     keywords = ("events",)
 
-    # Whether `set_times` and `remap_times` work on this interface's event types. An interface that derives
-    # another written table from its events turns this off until that table is handled too.
-    _supports_set_and_remap_times = True
-
     def __init__(self, **source_data):
         super().__init__(**source_data)
         # Filled on the first _get_events_data_dict() call and reused thereafter, so the backend is
@@ -120,7 +116,6 @@ class BaseEventsInterface(BaseDataInterface):
                         self._get_events_data_dict()[source_id].timestamps
                     ),
                     get_native_durations=lambda source_id=source_id: self._get_events_data_dict()[source_id].durations,
-                    supports_set_and_remap_times=self._supports_set_and_remap_times,
                 )
             self._alignment = alignment
         return self._alignment

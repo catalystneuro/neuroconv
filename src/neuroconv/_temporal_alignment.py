@@ -54,7 +54,6 @@ class _TimeBearingObject:
         default_start_time=None,
         get_number_of_samples=None,
         get_native_durations=None,
-        supports_set_and_remap_times=True,
     ):
         # A callable rather than an array, so an interface registers its objects without reading its source.
         # The start is separate so that placing an object needs one number, not every sample time; a number
@@ -65,7 +64,6 @@ class _TimeBearingObject:
         # when they were taken, which is when `set_times` is needed most.
         self._get_number_of_samples = get_number_of_samples
         self._get_native_durations = get_native_durations
-        self._supports_set_and_remap_times = supports_set_and_remap_times
         self._times: np.ndarray | None = None
         self._durations: np.ndarray | None = None
         self._object_offset = 0.0
@@ -157,8 +155,6 @@ class _TimeBearingObject:
         for this object; a shift applied afterwards still moves it, the way any later correction would. For an
         event type they are the timestamps, and the durations are left as they are.
         """
-        if not self._supports_set_and_remap_times:
-            raise NotImplementedError("Event timestamp replacement is not supported yet for this interface.")
         times = np.asarray(times)
         if self._get_number_of_samples is not None:
             number_of_samples = self._get_number_of_samples()
@@ -226,8 +222,6 @@ class _TimeBearingObject:
         the first local pulse lands on the first reference time; ``interpolation_function`` is how you
         choose otherwise.
         """
-        if not self._supports_set_and_remap_times:
-            raise NotImplementedError("Event timestamp remapping is not supported yet for this interface.")
         local_sync_times = np.asarray(local_sync_times)
         reference_sync_times = np.asarray(reference_sync_times)
         if local_sync_times.shape != reference_sync_times.shape:
@@ -269,7 +263,6 @@ class _TemporalAlignment:
         default_start_time=None,
         get_number_of_samples=None,
         get_native_durations=None,
-        supports_set_and_remap_times=True,
     ) -> _TimeBearingObject:
         """Name one time-bearing object. Called by the interface, not by a user.
 
@@ -284,7 +277,6 @@ class _TemporalAlignment:
             default_start_time=default_start_time,
             get_number_of_samples=get_number_of_samples,
             get_native_durations=get_native_durations,
-            supports_set_and_remap_times=supports_set_and_remap_times,
         )
         self._name_to_time_bearing_object[key] = time_bearing_object
         return time_bearing_object
