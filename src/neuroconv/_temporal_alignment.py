@@ -39,11 +39,12 @@ class _TimeBearingObject:
     interface writes when nothing has been said: the times its source recorded, or the ones its header gives
     where the source records none.
 
-    The times of an event type are its onsets, and an event type of intervals also has one duration per onset.
-    A rigid shift moves the onsets and leaves the durations, since a translation cancels in a difference. ``set_times`` replaces the onsets and
-    leaves the durations, which the caller did not give. ``remap_times`` re-times both ends of every interval,
-    so a duration becomes ``map(onset + duration) - map(onset)``: it changes whenever the two clocks run at
-    different rates.
+    Events are written to an ``EventsTable``, a ``DynamicTable`` with a ``timestamp`` column and an optional
+    ``duration`` column. The times of an event type are its timestamps, and it may have one duration per
+    timestamp. A rigid shift moves the timestamps and leaves the durations, since a translation cancels in a
+    difference. ``set_times`` replaces the timestamps and leaves the durations, which the caller did not give.
+    ``remap_times`` re-times both ends of every event, so a duration becomes ``map(timestamp + duration) -
+    map(timestamp)``: it changes whenever the two clocks run at different rates.
     """
 
     def __init__(
@@ -88,7 +89,7 @@ class _TimeBearingObject:
 
     @property
     def has_durations(self) -> bool:
-        """Whether this object has one duration per time, which only an event type of intervals has."""
+        """Whether this object has one duration per timestamp, which only an event type can have."""
         return self.get_durations() is not None
 
     def _get_start_time(self) -> float:
@@ -154,7 +155,7 @@ class _TimeBearingObject:
         For per-sample times you already trust, from a synchronization signal or a computation of your own.
         They are the times the file will carry, so a shift or a ``move_start_to`` applied earlier is superseded
         for this object; a shift applied afterwards still moves it, the way any later correction would. For an
-        event type they are the onsets, and its durations are left as they are.
+        event type they are the timestamps, and the durations are left as they are.
         """
         if not self._supports_set_and_remap_times:
             raise NotImplementedError("Event timestamp replacement is not supported yet for this interface.")
