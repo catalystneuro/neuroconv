@@ -1104,6 +1104,8 @@ def add_imaging_to_nwbfile(
     metadata_key : str, optional
         The key in ``metadata["Ophys"]["MicroscopySeries"]`` identifying the series.
         For old list-based metadata, the series picked by ``photon_series_index`` is translated under this key.
+        Required when ``metadata`` with keyed entries is passed, starting in v0.13.0; omitting it there
+        currently warns. Pass no ``metadata`` to write with default metadata instead.
 
     Returns
     -------
@@ -1112,6 +1114,7 @@ def add_imaging_to_nwbfile(
 
     """
 
+    metadata_was_passed = metadata is not None
     if metadata is None:
         metadata = _get_ophys_metadata_placeholders()
 
@@ -1129,6 +1132,23 @@ def add_imaging_to_nwbfile(
             metadata_key=metadata_key,
             photon_series_type=photon_series_type,
             photon_series_index=photon_series_index,
+        )
+
+    # Ask whether the caller's metadata carries keyed ``MicroscopySeries`` entries rather than whether it looks
+    # dict-based anywhere, as ``add_recording_to_nwbfile`` does: a converter hands every interface one
+    # dictionary, and another interface's block says nothing about this one.
+    registry_metadata = metadata.get("Ophys", {}).get("MicroscopySeries", {})
+    has_keyed_entries = isinstance(registry_metadata, dict) and any(
+        isinstance(entry, dict) for entry in registry_metadata.values()
+    )
+    if metadata_was_passed and metadata_key is None and has_keyed_entries:
+        warnings.warn(
+            "Metadata was passed but no `metadata_key` was provided. `metadata_key` selects which "
+            "`metadata['Ophys']['MicroscopySeries']` entry to write, and it will be required whenever metadata "
+            "is passed starting in v0.13.0. Pass it explicitly, for example `metadata_key='my_metadata_key'`, "
+            "or pass no metadata at all to write with default metadata.",
+            FutureWarning,
+            stacklevel=2,
         )
 
     metadata_key = metadata_key or "default_metadata_key"
@@ -1361,6 +1381,8 @@ def add_segmentation_to_nwbfile(
         The key in ``metadata["Ophys"]["PlaneSegmentations"]`` identifying the segmentation.
         For old list-based metadata, the plane segmentation named by ``plane_segmentation_name``, or the first one
         when it is not given, is translated under this key.
+        Required when ``metadata`` with keyed entries is passed, starting in v0.13.0; omitting it there
+        currently warns. Pass no ``metadata`` to write with default metadata instead.
 
     Returns
     -------
@@ -1390,6 +1412,7 @@ def add_segmentation_to_nwbfile(
             "is indistinguishable from a successful conversion."
         )
 
+    metadata_was_passed = metadata is not None
     if metadata is None:
         metadata = _get_ophys_metadata_placeholders()
 
@@ -1412,6 +1435,23 @@ def add_segmentation_to_nwbfile(
         traces = segmentation_extractor.get_traces_dict().values()
         if not any(trace is not None and math.prod(trace.shape) != 0 for trace in traces):
             metadata["Ophys"] = {key: value for key, value in metadata["Ophys"].items() if key != "RoiResponses"}
+
+    # Ask whether the caller's metadata carries keyed ``PlaneSegmentations`` entries rather than whether it looks
+    # dict-based anywhere, as ``add_recording_to_nwbfile`` does: a converter hands every interface one
+    # dictionary, and another interface's block says nothing about this one.
+    registry_metadata = metadata.get("Ophys", {}).get("PlaneSegmentations", {})
+    has_keyed_entries = isinstance(registry_metadata, dict) and any(
+        isinstance(entry, dict) for entry in registry_metadata.values()
+    )
+    if metadata_was_passed and metadata_key is None and has_keyed_entries:
+        warnings.warn(
+            "Metadata was passed but no `metadata_key` was provided. `metadata_key` selects which "
+            "`metadata['Ophys']['PlaneSegmentations']` entry to write, and it will be required whenever metadata "
+            "is passed starting in v0.13.0. Pass it explicitly, for example `metadata_key='my_metadata_key'`, "
+            "or pass no metadata at all to write with default metadata.",
+            FutureWarning,
+            stacklevel=2,
+        )
 
     metadata_key = metadata_key or "default_metadata_key"
     nwbfile = _add_segmentation_to_nwbfile(
