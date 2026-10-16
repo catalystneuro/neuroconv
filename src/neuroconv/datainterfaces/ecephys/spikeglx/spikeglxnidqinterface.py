@@ -674,7 +674,7 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
                 metadata=metadata,
             )
 
-        if self._events_interface is not None:
+        if self._events_interface is not None and self._events_interface.get_event_type_source_ids():
             events_metadata = (
                 self._rewrite_legacy_events_metadata(metadata) if self._uses_legacy_digital_path else metadata
             )

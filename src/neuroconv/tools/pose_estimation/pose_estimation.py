@@ -6,7 +6,7 @@ import numpy as np
 from pynwb import NWBFile
 
 from ..nwb_helpers import get_module
-from ..nwb_helpers._metadata_and_file_helpers import _add_device_to_nwbfile
+from ..nwb_helpers._metadata_and_file_helpers import _add_device_to_nwbfile, _validate_metadata_key
 from ...utils.checks import calculate_regular_series_rate
 
 # Key the placeholder registry entries are filed under when the caller supplies no metadata; mirrors the
@@ -45,14 +45,8 @@ def _resolve_image_series(nwbfile: NWBFile, metadata: dict, metadata_key: str, f
     or in the behavior processing module, so both are searched and a missing one is a caller error about
     ordering rather than about metadata.
     """
-    videos_metadata = metadata.get("Behavior", {}).get("ExternalVideos", {})
-    if metadata_key not in videos_metadata:
-        raise ValueError(
-            f"{field} '{metadata_key}' was not found in metadata['Behavior']['ExternalVideos'] "
-            f"(available keys: {list(videos_metadata)})."
-        )
-
-    image_series_name = videos_metadata[metadata_key]["name"]
+    _validate_metadata_key(metadata, metadata_path=("Behavior", "ExternalVideos"), metadata_key=metadata_key)
+    image_series_name = metadata["Behavior"]["ExternalVideos"][metadata_key]["name"]
     if image_series_name in nwbfile.acquisition:
         return nwbfile.acquisition[image_series_name]
     behavior_module = nwbfile.processing.get("behavior")
@@ -118,10 +112,9 @@ def _add_pose_estimation_to_nwbfile(
     if metadata is None:
         metadata = placeholders
 
-    pose_metadata = metadata.get("Pose", {})
     container_entry, container_name, behavior_module = _get_container_entry(
         nwbfile=nwbfile,
-        pose_metadata=pose_metadata,
+        metadata=metadata,
         registry="PoseEstimations",
         metadata_key=metadata_key,
         default_name=placeholder_container["name"],
@@ -135,7 +128,7 @@ def _add_pose_estimation_to_nwbfile(
     skeleton = _get_or_build_skeleton(
         nwbfile=nwbfile,
         behavior_module=behavior_module,
-        pose_metadata=pose_metadata,
+        metadata=metadata,
         skeleton_metadata_key=container_entry.get("skeleton_metadata_key"),
     )
 
@@ -229,10 +222,9 @@ def _add_multi_camera_pose_estimation_to_nwbfile(
     """
     from ndx_pose import MultiCameraPoseEstimation, PoseEstimation
 
-    pose_metadata = metadata.get("Pose", {})
     container_entry, container_name, behavior_module = _get_container_entry(
         nwbfile=nwbfile,
-        pose_metadata=pose_metadata,
+        metadata=metadata,
         registry="MultiCameraPoseEstimations",
         metadata_key=metadata_key,
         default_name="MultiCameraPoseEstimation",
@@ -241,7 +233,7 @@ def _add_multi_camera_pose_estimation_to_nwbfile(
     skeleton = _get_or_build_skeleton(
         nwbfile=nwbfile,
         behavior_module=behavior_module,
-        pose_metadata=pose_metadata,
+        metadata=metadata,
         skeleton_metadata_key=container_entry.get("skeleton_metadata_key"),
     )
 
@@ -253,15 +245,14 @@ def _add_multi_camera_pose_estimation_to_nwbfile(
         placeholder_series=placeholders["Pose"]["PoseEstimations"][DEFAULT_METADATA_KEY]["PoseEstimationSeries"],
     )
 
-    camera_entries = pose_metadata.get("PoseEstimations", {})
     camera_pose_estimations = []
     for camera_metadata_key in container_entry.get("pose_estimation_metadata_keys") or []:
-        if camera_metadata_key not in camera_entries:
-            raise ValueError(
-                f"pose_estimation_metadata_keys entry '{camera_metadata_key}' was not found in "
-                f"metadata['Pose']['PoseEstimations'] (available keys: {list(camera_entries)})."
-            )
-        camera_entry = camera_entries[camera_metadata_key]
+        _validate_metadata_key(
+            metadata,
+            metadata_path=("Pose", "PoseEstimations"),
+            metadata_key=camera_metadata_key,
+        )
+        camera_entry = metadata["Pose"]["PoseEstimations"][camera_metadata_key]
         if camera_entry.get("PoseEstimationSeries"):
             raise ValueError(
                 f"The per-camera entry '{camera_metadata_key}' has 'PoseEstimationSeries', but a per-camera child "
@@ -299,22 +290,14 @@ def _add_multi_camera_pose_estimation_to_nwbfile(
 
 
 def _get_container_entry(
-    *, nwbfile: NWBFile, pose_metadata: dict, registry: str, metadata_key: str, default_name: str
+    *, nwbfile: NWBFile, metadata: dict, registry: str, metadata_key: str, default_name: str
 ) -> tuple[dict, str, object]:
     """Find a container's entry in ``metadata["Pose"][registry]``, and refuse a name the file already has.
 
     Returns the entry, the container's name, and the behavior module it goes in.
     """
-    # Checked rather than indexed: ``metadata`` is often a ``DeepDict``, where a missing key auto-vivifies
-    # into an empty entry instead of raising, and the write then succeeds against the placeholders with
-    # names nobody asked for.
-    containers_metadata = pose_metadata.get(registry, {})
-    if metadata_key not in containers_metadata:
-        raise ValueError(
-            f"metadata_key '{metadata_key}' was not found in metadata['Pose']['{registry}'] "
-            f"(available keys: {list(containers_metadata)})."
-        )
-    container_entry = containers_metadata[metadata_key]
+    _validate_metadata_key(metadata, metadata_path=("Pose", registry), metadata_key=metadata_key)
+    container_entry = metadata["Pose"][registry][metadata_key]
     container_name = container_entry.get("name", default_name)
 
     behavior_module = get_module(nwbfile=nwbfile, name="behavior", description="processed behavioral data")
@@ -323,7 +306,7 @@ def _get_container_entry(
     return container_entry, container_name, behavior_module
 
 
-def _get_or_build_skeleton(*, nwbfile: NWBFile, behavior_module, pose_metadata: dict, skeleton_metadata_key):
+def _get_or_build_skeleton(*, nwbfile: NWBFile, behavior_module, metadata: dict, skeleton_metadata_key):
     """Return the ``Skeleton`` a container entry points at, reusing one already in the file by name.
 
     ``None`` when the entry names no skeleton. A newly built skeleton is not added to the file here; that
@@ -334,13 +317,12 @@ def _get_or_build_skeleton(*, nwbfile: NWBFile, behavior_module, pose_metadata: 
     if skeleton_metadata_key is None:
         return None
 
-    skeletons_metadata = pose_metadata.get("Skeletons", {})
-    if skeleton_metadata_key not in skeletons_metadata:
-        raise ValueError(
-            f"skeleton_metadata_key '{skeleton_metadata_key}' was not found in "
-            f"metadata['Pose']['Skeletons'] (available keys: {list(skeletons_metadata)})."
-        )
-    skeleton_entry = skeletons_metadata[skeleton_metadata_key]
+    _validate_metadata_key(
+        metadata,
+        metadata_path=("Pose", "Skeletons"),
+        metadata_key=skeleton_metadata_key,
+    )
+    skeleton_entry = metadata["Pose"]["Skeletons"][skeleton_metadata_key]
     skeleton_name = skeleton_entry["name"]
     existing_skeletons = (
         behavior_module["Skeletons"].skeletons if "Skeletons" in behavior_module.data_interfaces else {}

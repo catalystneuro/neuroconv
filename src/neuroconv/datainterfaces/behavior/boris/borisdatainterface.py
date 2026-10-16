@@ -5,6 +5,7 @@ import numpy as np
 from pydantic import FilePath, validate_call
 from pynwb.file import NWBFile
 
+from neuroconv.tools.nwb_helpers._metadata_and_file_helpers import _validate_metadata_key, _validate_metadata_path
 from neuroconv.utils import DeepDict
 
 from ._boris_reader import (
@@ -61,10 +62,6 @@ class BORISInterface(BaseEventsInterface):
     display_name = "BORIS"
     info = "Data Interface for one observation of a BORIS project."
     associated_suffixes = (".boris",)
-
-    # The bouts table is derived from the events, so `set_times` and `remap_times` wait until behavioral
-    # events settle how a derived table follows them.
-    _supports_set_and_remap_times = False
 
     @staticmethod
     def get_observation_names(file_path: FilePath) -> list[str]:
@@ -204,6 +201,8 @@ class BORISInterface(BaseEventsInterface):
         """
         if metadata is None:
             metadata = self.get_metadata()
+        _validate_metadata_key(metadata, metadata_path=("Events",), metadata_key=self.metadata_key)
+        _validate_metadata_path(metadata, ("Events", self.metadata_key, "event_types"))
         self._check_table_name_is_free(nwbfile=nwbfile, metadata=metadata)
         self._check_columns_are_not_shared_by_two_behaviors(metadata=metadata)
         super().add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
@@ -222,7 +221,7 @@ class BORISInterface(BaseEventsInterface):
         Only the events table needs this. The bouts table goes through `ProcessingModule.add`, which
         rejects a duplicate name already.
         """
-        declared = metadata["Events"]["EventTables"].get(self.metadata_key)
+        declared = metadata["Events"].get("EventTables", {}).get(self.metadata_key)
         if declared is None:
             # The user re-routed the behaviors and named the tables themselves, so the name this
             # interface would have chosen is not in play.

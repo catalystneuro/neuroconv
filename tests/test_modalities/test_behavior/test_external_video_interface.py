@@ -1031,8 +1031,8 @@ def test_dangling_device_metadata_key_raises(nwb_converter, nwbfile_path, metada
 
     conversion_options = dict(Video1=dict(starting_frames=[0, 4]))
     expected_message = (
-        "device_metadata_key 'missing_camera' was not found in metadata['Devices'] "
-        "(available keys: ['video_test1_camera', 'video_test3_camera'])."
+        "metadata_key 'missing_camera' was not found in metadata['Devices']. Available keys are:\n"
+        "['video_test1_camera', 'video_test3_camera']"
     )
     with pytest.raises(ValueError, match=re.escape(expected_message)):
         nwb_converter.run_conversion(

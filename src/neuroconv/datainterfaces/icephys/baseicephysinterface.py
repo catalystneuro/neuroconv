@@ -12,6 +12,7 @@ from ...tools.icephys import (
     _add_patch_clamp_series_to_nwbfile,
     _IcephysSeriesData,
 )
+from ...tools.nwb_helpers._metadata_and_file_helpers import _validate_metadata_key
 
 
 class BaseIcephysInterface(BaseDataInterface):
@@ -36,6 +37,11 @@ class BaseIcephysInterface(BaseDataInterface):
             metadata = self.get_metadata()
 
         series_metadata_key = self._series_metadata_key
+        _validate_metadata_key(
+            metadata,
+            metadata_path=("Icephys", "PatchClampSeries"),
+            metadata_key=series_metadata_key,
+        )
         response_metadata = metadata["Icephys"]["PatchClampSeries"][series_metadata_key]
         electrode = _add_intracellular_electrode_to_nwbfile(
             nwbfile=nwbfile,

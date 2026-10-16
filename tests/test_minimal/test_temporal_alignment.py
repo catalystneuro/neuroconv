@@ -15,8 +15,8 @@ def alignment():
         "b": np.array([2.0, 2.1, 2.2]),
     }
     alignment = _TemporalAlignment()
-    alignment._register_series(key="a", get_native_times=lambda: native_times["a"])
-    alignment._register_series(key="b", get_native_times=lambda: native_times["b"])
+    alignment._register(key="a", get_native_times=lambda: native_times["a"])
+    alignment._register(key="b", get_native_times=lambda: native_times["b"])
     return alignment
 
 
@@ -109,7 +109,7 @@ class TestObjectAlignment:
         native_times = np.array([0.0, 0.1, 0.2])
         original_times = native_times.copy()
         alignment = _TemporalAlignment()
-        alignment._register_series(key="a", get_native_times=lambda: native_times)
+        alignment._register(key="a", get_native_times=lambda: native_times)
 
         alignment.shift_times(1.0)
         alignment["a"].get_times()
@@ -228,9 +228,10 @@ class TestEventsAlignment:
     @pytest.fixture
     def events_alignment(self):
         alignment = _TemporalAlignment()
-        alignment._register_events(
+        alignment._register(
             key="e",
             get_native_times=lambda: np.array([1.0, 4.0, 5.0]),
+            get_number_of_samples=lambda: 3,
             get_native_durations=lambda: np.array([2.0, 0.5, np.nan]),
         )
         return alignment
@@ -251,7 +252,7 @@ class TestEventsAlignment:
 
     def test_set_times_needs_one_onset_per_event(self, events_alignment):
         """Check that replacement onsets with the wrong count are rejected."""
-        message = "`set_times` needs one onset per event: this event type has 3 events and 2 times were given."
+        message = "This object has 3 samples, but 2 times were given. `set_times` needs one time per sample."
         with pytest.raises(ValueError, match=re.escape(message)):
             events_alignment["e"].set_times([1.0, 2.0])
 
@@ -273,7 +274,7 @@ class TestEventsAlignment:
     def test_a_type_without_durations_has_none(self):
         """Check that an event type registered without durations reports none before and after remapping."""
         alignment = _TemporalAlignment()
-        alignment._register_events(key="e", get_native_times=lambda: np.array([1.0, 2.0]))
+        alignment._register(key="e", get_native_times=lambda: np.array([1.0, 2.0]))
 
         assert alignment["e"].get_durations() is None
 
