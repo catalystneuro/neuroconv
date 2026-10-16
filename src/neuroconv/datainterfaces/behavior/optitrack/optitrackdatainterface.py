@@ -1,0 +1,435 @@
+import warnings
+from datetime import datetime
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+from pydantic import FilePath, validate_call
+from pynwb import TimeSeries
+from pynwb.behavior import SpatialSeries
+from pynwb.file import NWBFile
+
+from .._pose_metadata_template import _get_pose_estimation_template_entry, _get_skeleton_template_entry
+from ..baseposeestimationinterface import BasePoseEstimationInterface
+from ....tools.nwb_helpers import get_module
+from ....tools.nwb_helpers._metadata_and_file_helpers import (
+    _get_device_model_template_entry,
+    _get_device_template_entry,
+)
+from ....tools.pose_estimation import _add_pose_estimation_to_nwbfile
+from ....utils import DeepDict, calculate_regular_series_rate, to_camel_case, to_snake_case
+
+# Rows 3 to 7 of a Motive CSV export, after the export settings line and a blank line
+# (Motive docs, "CSV Header").
+_MOTIVE_HEADER_LEVELS = ("marker_type", "label", "id", "measurement_type", "axis")
+
+_MOTIVE_CAPTURE_START_TIME_FORMATS = ("%Y-%m-%d %I.%M.%S.%f %p", "%Y-%m-%d %I.%M.%S %p")
+
+# How many samples ``add_to_nwbfile(stub_test=True)`` writes.
+_STUB_SAMPLES = 100
+
+
+class OptiTrackInterface(BasePoseEstimationInterface):
+    """Data interface for the positions and rotations in OptiTrack Motive CSV exports."""
+
+    display_name = "OptiTrack"
+    keywords = ("behavior", "pose estimation", "motion capture")
+    associated_suffixes = (".csv",)
+    info = "Interface for positions and rotations exported to CSV by OptiTrack Motive."
+
+    @classmethod
+    def get_source_schema(cls) -> dict:
+        source_schema = super().get_source_schema()
+        source_schema["properties"]["file_path"]["description"] = "Path to the .csv file exported by Motive."
+        return source_schema
+
+    @validate_call
+    def __init__(
+        self,
+        file_path: FilePath,
+        *,
+        verbose: bool = False,
+        metadata_key: str | None = None,
+    ):
+        """
+        Interface for writing the positions and rotations in an OptiTrack Motive CSV export to NWB.
+
+        Each marker type in the export (e.g. ``Rigid Body``) is written as one ``ndx-pose`` ``PoseEstimation``
+        container, with one keypoint per marker. Its entry in the metadata is
+        keyed ``f"{metadata_key}_{asset_type}"`` in snake case, for example ``"optitrack_rigid_body"``.
+
+        The rotation of each asset that has one, such as a rigid body, is written to the behavior module as a
+        ``SpatialSeries`` in degrees for an Euler angle export, or as a ``TimeSeries`` with columns w, x, y, z
+        for a quaternion export. Its entry in ``metadata["TimeSeries"]`` is keyed
+        ``f"{metadata_key}_{asset_type}_{label}_rotation"`` in snake case.
+
+        Parameters
+        ----------
+        file_path : FilePath
+            Path to the .csv file exported by Motive.
+        verbose : bool, default: False
+            Controls verbosity.
+
+        metadata_key : str, optional
+            Key addressing this interface's entries in the dict-based metadata. Defaults to
+            ``"optitrack"`` when not provided.
+
+        Metadata Structure
+        ------------------
+        One container and one skeleton per asset type in the export, under the top-level
+        ``metadata["Pose"]`` registries, both keyed ``f"{metadata_key}_{asset_type}"`` in snake case, and one
+        rotation per rigid body under ``metadata["TimeSeries"]``. For an export with a single rigid body,
+        ``RigidBody``, in meters, with XYZ Euler angles and no marker columns (a head-mounted rigid body on a
+        mouse):
+
+        .. code-block:: python
+
+            metadata = {
+                "NWBFile": {
+                    # From `Capture Start Time` in the export settings, without a time zone
+                    "session_start_time": datetime(2023, 2, 20, 10, 10, 13, 343000),
+                },
+                "Pose": {
+                    "Skeletons": {
+                        "optitrack_rigid_body": {
+                            "name": "SkeletonPoseEstimationRigidBody",
+                            "nodes": ["RigidBody"],  # one per asset, named as in Motive
+                            "edges": [],
+                        },
+                    },
+                    "PoseEstimations": {
+                        "optitrack_rigid_body": {
+                            "name": "PoseEstimationRigidBody",
+                            "source_software": "Motive",
+                            "skeleton_metadata_key": "optitrack_rigid_body",  # -> Pose.Skeletons
+                            "PoseEstimationSeries": {
+                                "RigidBody": {  # keyed by the asset name in Motive
+                                    "name": "PoseEstimationSeriesRigidBody",
+                                    "description": "Position (x, y, z) of Rigid Body 'RigidBody' marker.",
+                                    "unit": "meters",  # from `Length Units` in the export settings
+                                },
+                            },
+                        },
+                    },
+                },
+                "TimeSeries": {
+                    "optitrack_rigid_body_rigid_body_rotation": {
+                        "name": "RotationRigidBody",
+                        "description": "Orientation of Rigid Body 'RigidBody' as Euler angles in degrees (x, y, z).",
+                        "unit": "degrees",
+                    },
+                },
+            }
+
+        The keys are internal handles and never appear in the NWB file; rename the written objects through
+        their ``name`` fields. Delete an entry from ``metadata["Pose"]["PoseEstimations"]`` or
+        ``metadata["TimeSeries"]`` to leave that container or rotation out of the file.
+        :meth:`get_metadata_template` returns the same structure with the fields the export does not record,
+        such as the camera device, marked as blanks.
+        """
+        # This import is to assure that the ndx_pose is in the global namespace when an pynwb.io object is created
+        # For more detail, see https://github.com/rly/ndx-pose/issues/36
+        import ndx_pose  # noqa: F401
+
+        self.file_path = Path(file_path)
+        self._header = self._read_header()
+
+        self.metadata_key = metadata_key or "optitrack"
+        self._motion_capture_data = None
+        self._positions = None
+
+        super().__init__(verbose=verbose, file_path=file_path)
+
+    def _read_header(self) -> dict[str, str]:
+        """Read the header line from a Motive CSV export.
+
+        The first row of the file contains general information about the export, including the format version of the CSV
+        export, name of the Take file, the captured frame rate, export frame rate, capture start time, capture start frame,
+        number of total frames, total exported frames, rotation type, length units, and coordinate space type.
+
+        When the header is disabled during export, this information is excluded from the CSV files. Instead, the file
+        will have frame IDs in the first column, time data on the second column, and the corresponding motion capture
+        data in the remaining columns.
+        """
+        first_line = (
+            pd.read_csv(self.file_path, nrows=1, header=None, dtype=str, keep_default_na=False).iloc[0].tolist()
+        )
+        if "Format Version" not in first_line:
+            raise ValueError(
+                f"'{self.file_path}' does not start with the header information ('Format Version, ...'), it is either"
+                f" not a Motive CSV export or it was exported with 'Header information' turned off. "
+                f"Export the take again from Motive with 'Header information' enabled."
+            )
+        header = dict(zip(first_line[0::2], first_line[1::2]))
+
+        return header
+
+    def _read_motion_capture_data(self) -> pd.DataFrame:
+        """Read the data from a Motive CSV export.
+
+        The second row of the file is blank, and the next five rows contain the asset header, which has five rows of information for each
+        asset in the export. The five rows are: ``Type``, ``Name``, ``ID``, measurement_type, and axis. The measurement_type row
+        contains the type of measurement_type for each column (e.g., position, rotation, marker), and the axis row begins with
+        ``Frame``and contains the axis for each column (e.g., X, Y, Z).
+        """
+        if self._motion_capture_data is not None:
+            return self._motion_capture_data
+
+        self._motion_capture_data = pd.read_csv(
+            self.file_path, skiprows=1, header=list(range(len(_MOTIVE_HEADER_LEVELS))), index_col=[0, 1]
+        )
+        self._motion_capture_data.columns.names = _MOTIVE_HEADER_LEVELS
+        self._motion_capture_data.index.names = ["frame", "time"]
+        return self._motion_capture_data
+
+    def _get_assets(self) -> dict[tuple[str, str], dict[str, dict[str, np.ndarray]]]:
+        """Every column of the export, as ``{(marker_type, label): {measurement_type: {axis: values}}}``, in file order.
+
+        For example ``assets[("Rigid Body", "RigidBody")]["Position"]["X"]``.
+        """
+        assets = {}
+        for (marker_type, label, _, measurement_type, axis), values in self._read_motion_capture_data().items():
+            asset = assets.setdefault((marker_type, label), {})
+            asset.setdefault(measurement_type, {})[axis] = values.to_numpy(dtype=np.float64)
+        return assets
+
+    def _get_positions(self) -> dict[str, dict[str, np.ndarray]]:
+        """The positions of every asset, as ``{marker_type: {label: (num_frames, 3) array}}``, in file order.
+
+        Unlabeled markers and assets that were never tracked in any frame are omitted. A frame where an asset was not tracked, empty or at the origin, is ``np.nan``.
+        """
+        if self._positions is not None:
+            return self._positions
+
+        positions_by_type = {}
+        never_tracked = []
+        for (marker_type, label), measurements in self._get_assets().items():
+            is_unlabeled_marker = marker_type == "Marker" and label.startswith("Unlabeled")
+            if "Position" not in measurements or is_unlabeled_marker:
+                continue
+            position = measurements["Position"]
+            positions = np.column_stack([position["X"], position["Y"], position["Z"]])
+
+            # In a frame where an asset was not tracked, Motive leaves its cells empty. In one export in the test
+            # data (zeros_instead_of_blanks), a rigid body holds position 0,0,0 in the frames before it was first
+            # tracked instead. A position exactly at the origin is treated as untracked.
+            is_at_origin = (positions == 0.0).all(axis=1)
+            positions[is_at_origin] = np.nan
+
+            if np.isnan(positions).all():
+                never_tracked.append(f"{marker_type} '{label}'")
+                continue
+            positions_by_type.setdefault(marker_type, {})[label] = positions
+
+        if never_tracked:
+            warnings.warn(
+                f"Not tracked in any frame of '{self.file_path}', so not written: {', '.join(never_tracked)}.",
+                UserWarning,
+                stacklevel=2,
+            )
+        if not positions_by_type:
+            raise ValueError(f"No asset in '{self.file_path}' was tracked in any frame, so there is nothing to write.")
+        self._positions = positions_by_type
+        return self._positions
+
+    def get_original_timestamps(self) -> np.ndarray:
+        """The time of each frame, ``Frame / Export Frame Rate``, in seconds from the start of the take."""
+        frames = self._read_motion_capture_data().index.get_level_values("frame").to_numpy(dtype=np.float64)
+        return frames / float(self._header["Export Frame Rate"])
+
+    def _get_rotation_metadata_key(self, asset_type: str, label: str) -> str:
+        """The key of one asset's rotation in ``metadata["TimeSeries"]``, e.g. ``"optitrack_rigid_body_transmitter_rotation"``."""
+        return f"{self._get_container_metadata_key(asset_type)}_{to_snake_case(label)}_rotation"
+
+    def _get_rotations(self) -> dict[tuple[str, str], dict[str, np.ndarray]]:
+        """The rotation of every asset that is written and has one, ``{(asset_type, label): {axis: values}}``.
+
+        Rigid bodies have a rotation, and so do the bones of skeletons and trained markersets. A frame where the
+        asset's position is untracked, empty or at the origin, is untracked in its rotation too, so the two series
+        agree on which frames hold a pose.
+        """
+        assets = self._get_assets()
+        rotations = {}
+        for asset_type, positions_by_label in self._get_positions().items():
+            for label, positions in positions_by_label.items():
+                rotation = assets[(asset_type, label)].get("Rotation")
+                if rotation is None:
+                    continue
+                # Quaternions are written scalar first (W, X, Y, Z), as in MiniscopeHeadOrientationInterface. Euler
+                # angles keep the X, Y, Z file order.
+                if "W" in rotation:
+                    rotation = {axis: rotation[axis] for axis in ("W", "X", "Y", "Z")}
+                is_untracked = np.isnan(positions).all(axis=1)
+                rotations[(asset_type, label)] = {
+                    axis: np.where(is_untracked, np.nan, values) for axis, values in rotation.items()
+                }
+        return rotations
+
+    def _get_container_metadata_key(self, asset_type: str) -> str:
+        """The key of one asset type's container and skeleton, e.g. ``"optitrack_rigid_body"``."""
+        return f"{self.metadata_key}_{to_snake_case(asset_type)}"
+
+    def _get_keypoint_names(self, asset_type: str) -> list[str]:
+        return list(self._get_positions()[asset_type])
+
+    def _get_keypoint_data(self, asset_type: str) -> dict[str, tuple[np.ndarray, np.ndarray | None]]:
+        # Motive records no confidence for a position.
+        return {asset_name: (positions, None) for asset_name, positions in self._get_positions()[asset_type].items()}
+
+    def _get_session_start_time(self) -> datetime | None:
+        capture_start_time = self._header.get("Capture Start Time", "")
+        if not capture_start_time:
+            return None
+        for time_format in _MOTIVE_CAPTURE_START_TIME_FORMATS:
+            try:
+                return datetime.strptime(capture_start_time, time_format)
+            except ValueError:
+                continue
+        warnings.warn(
+            f"Could not parse 'Capture Start Time' from the Motive export (got {capture_start_time!r}). "
+            f"Expected one of the formats {_MOTIVE_CAPTURE_START_TIME_FORMATS}. Session start time will not be set "
+            "automatically."
+        )
+        return None
+
+    def get_metadata(self) -> DeepDict:
+        """One container and one skeleton per asset type, keyed ``f"{metadata_key}_{asset_type}"``."""
+        metadata = self._get_base_metadata()
+
+        session_start_time = self._get_session_start_time()
+        if session_start_time is not None:
+            metadata["NWBFile"]["session_start_time"] = session_start_time
+
+        unit = self._header.get("Length Units")
+
+        for asset_type, positions in self._get_positions().items():
+            container_metadata_key = self._get_container_metadata_key(asset_type)
+            container_name = f"PoseEstimation{to_camel_case(to_snake_case(asset_type))}"
+
+            series_metadata = {}
+            for asset_name in positions:
+                series_entry = dict(
+                    name=f"PoseEstimationSeries{to_camel_case(to_snake_case(asset_name))}",
+                    description=f"Position (x, y, z) of {asset_type} '{asset_name}' marker.",
+                )
+                if unit is not None:
+                    series_entry["unit"] = str(unit).lower()
+                series_metadata[asset_name] = series_entry
+
+            metadata["Pose"]["Skeletons"][container_metadata_key] = dict(
+                name=f"Skeleton{container_name}", nodes=list(positions), edges=[]
+            )
+            metadata["Pose"]["PoseEstimations"][container_metadata_key] = dict(
+                name=container_name,
+                source_software="Motive",
+                skeleton_metadata_key=container_metadata_key,
+                PoseEstimationSeries=series_metadata,
+            )
+
+        rotation_type = self._header.get("Rotation Type")
+        for (asset_type, label), rotation in self._get_rotations().items():
+            asset = f"{asset_type} '{label}'"
+            series_name = to_camel_case(to_snake_case(label))
+            if rotation_type == "Quaternion":
+                entry = dict(
+                    name=f"RotationQuaternion{series_name}",
+                    description=(f"Orientation of {asset} as a unit quaternion (scalar-first: w, x, y, z)."),
+                    unit="n.a.",
+                )
+            else:
+                entry = dict(
+                    name=f"Rotation{series_name}",
+                    description=(f"Orientation of {asset} as Euler angles in degrees (x, y, z)."),
+                    unit="degrees",
+                )
+            metadata["TimeSeries"][self._get_rotation_metadata_key(asset_type, label)] = entry
+
+        return metadata
+
+    def get_metadata_template(self) -> DeepDict:
+        """Return the containers, skeletons and camera system this interface can write, with the blanks marked.
+
+        The per-asset-type counterpart of :meth:`BasePoseEstimationInterface.get_metadata_template`: one
+        ``PoseEstimation`` container and one skeleton per asset type, each keyed
+        ``f"{metadata_key}_{asset_type}"``, all linked to one ``Device`` for the OptiTrack camera system,
+        and already cross-referenced. Fill in the blanks and pass the result to ``add_to_nwbfile`` or
+        ``run_conversion``.
+
+        The fields offered are the ones a motion capture export can be described by. There is no
+        ``confidence_definition``, since Motive records no confidence for a position, no ``scorer``, since
+        no model is run, and no video links, since the positions are triangulated from every camera in the
+        system rather than estimated from one video. The ``camera_model`` entry needs a ``name`` and a
+        ``manufacturer``; to go without a camera model, delete that entry and the
+        ``device_model_metadata_key`` pointing at it. Any other field left blank is skipped rather than
+        written.
+        """
+        device_metadata_key = "camera"
+        device_model_metadata_key = "camera_model"
+
+        skeleton_entries = {}
+        container_entries = {}
+        for asset_type in self._get_positions():
+            container_metadata_key = self._get_container_metadata_key(asset_type)
+            keypoint_names = self._get_keypoint_names(asset_type)
+            skeleton_entries[container_metadata_key] = _get_skeleton_template_entry(keypoint_names=keypoint_names)
+            container_entries[container_metadata_key] = _get_pose_estimation_template_entry(
+                keypoint_names=keypoint_names,
+                skeleton_metadata_key=container_metadata_key,
+                device_metadata_key=device_metadata_key,
+            )
+
+        template = DeepDict(
+            dict(
+                DeviceModels={device_model_metadata_key: _get_device_model_template_entry()},
+                Devices={
+                    device_metadata_key: _get_device_template_entry(device_model_metadata_key=device_model_metadata_key)
+                },
+                Pose=dict(Skeletons=skeleton_entries, PoseEstimations=container_entries),
+            )
+        )
+
+        # Whatever the source recorded wins over the template, as in the base class.
+        template.deep_update(self.get_metadata())
+        return template
+
+    def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict | None = None, *, stub_test: bool = False) -> None:
+        """Write one ``PoseEstimation`` container per asset type to the file's behavior module.
+
+        The caller's metadata reaches the writer as they wrote it, as in the base class. An asset type whose
+        entry is not in ``metadata["Pose"]["PoseEstimations"]`` is not written, so deleting an entry is how
+        to leave a container out.
+        """
+        metadata = metadata if metadata is not None else self.get_metadata()
+        containers_metadata = metadata.get("Pose", {}).get("PoseEstimations", {})
+
+        end_frame = _STUB_SAMPLES if stub_test else None
+        timestamps = self._get_timestamps()[:end_frame]
+
+        for asset_type in self._get_positions():
+            container_metadata_key = self._get_container_metadata_key(asset_type)
+            if container_metadata_key not in containers_metadata:
+                continue
+            keypoint_data = {
+                name: (positions[:end_frame], confidence)
+                for name, (positions, confidence) in self._get_keypoint_data(asset_type).items()
+            }
+            _add_pose_estimation_to_nwbfile(
+                nwbfile=nwbfile,
+                keypoint_data=keypoint_data,
+                timestamps=timestamps,
+                metadata=metadata,
+                metadata_key=container_metadata_key,
+            )
+
+        rate = calculate_regular_series_rate(series=timestamps)
+        timing = dict(rate=rate, starting_time=float(timestamps[0])) if rate else dict(timestamps=timestamps)
+        series_metadata = metadata.get("TimeSeries", {})
+        behavior_module = get_module(nwbfile=nwbfile, name="behavior", description="processed behavioral data")
+        for (asset_type, label), rotation in self._get_rotations().items():
+            rotation_metadata_key = self._get_rotation_metadata_key(asset_type, label)
+            if rotation_metadata_key not in series_metadata:
+                continue
+            data = np.column_stack(list(rotation.values()))[:end_frame]
+            series_kwargs = dict(series_metadata[rotation_metadata_key], data=data, **timing)
+            series_class = TimeSeries if self._header.get("Rotation Type") == "Quaternion" else SpatialSeries
+            behavior_module.add(series_class(**series_kwargs))

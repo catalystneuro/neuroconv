@@ -122,6 +122,7 @@ Keypoint estimation
 
     DeepLabCut <behavior/deeplabcut>
     LightningPose <behavior/lightningpose>
+    OptiTrack <behavior/optitrack>
     SLEAP <behavior/sleap>
 
 Behavioral segmentation
