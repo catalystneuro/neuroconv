@@ -1611,6 +1611,25 @@ class TestAddTimeSeriesMetadataKeyResolution:
                 iterator_type=None,
             )
 
+    def test_explicit_key_without_a_time_series_block_raises(self):
+        metadata = {"NWBFile": {}}
+        original = deepcopy(metadata)
+        expected = (
+            "metadata_key 'my_metadata_key' was not found in metadata['TimeSeries']. metadata has no 'TimeSeries'. "
+            "Available keys are:\n['NWBFile']"
+        )
+
+        with pytest.raises(ValueError, match=re.escape(expected)):
+            add_recording_as_time_series_to_nwbfile(
+                recording=self._recording(),
+                nwbfile=mock_NWBFile(),
+                metadata=metadata,
+                metadata_key="my_metadata_key",
+                iterator_type=None,
+            )
+
+        assert metadata == original
+
 
 class TestAddSpatialSeries:
     def test_default_values_spatial_series(self):
