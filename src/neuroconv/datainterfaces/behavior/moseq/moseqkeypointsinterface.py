@@ -422,7 +422,6 @@ class MoseqKeyPointsInterface(BaseDataInterface):
                 default_metadata,
                 metadata_path=("Pose", "PoseEstimations"),
                 metadata_key=pose_estimation_key,
-                error_label="pose_estimation_metadata_key",
             )
             pose_estimations_registry = default_metadata["Pose"]["PoseEstimations"]
             pose_container_name = pose_estimations_registry[pose_estimation_key]["name"]

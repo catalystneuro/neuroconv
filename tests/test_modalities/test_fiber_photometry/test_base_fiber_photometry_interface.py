@@ -753,8 +753,8 @@ def test_provenance_references_require_registered_entries(full_metadata, field, 
         interface.create_nwbfile(metadata=full_metadata)
 
     assert str(error.value) == (
-        f"{field} 'missing' was not found in metadata['FiberPhotometry']['{registry}'] "
-        f"(available keys: {list(photometry[registry])})."
+        f"metadata_key 'missing' was not found in metadata['FiberPhotometry']['{registry}']. Available keys are:\n"
+        f"{list(photometry[registry])}"
     )
     assert full_metadata == original
 
@@ -780,7 +780,7 @@ def test_registered_commanded_voltage_requires_metadata():
         interface.create_nwbfile(metadata=metadata)
 
     assert str(error.value) == (
-        "commanded_voltage_series_metadata_key 'drive' was not found in "
-        "metadata['FiberPhotometry']['CommandedVoltageSeries'] (available keys: [])."
+        "metadata_key 'drive' was not found in metadata['FiberPhotometry']['CommandedVoltageSeries']. "
+        "Available keys are:\n[]"
     )
     assert metadata == original

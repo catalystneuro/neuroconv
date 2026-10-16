@@ -1527,8 +1527,8 @@ class TestAddImaging:
         metadata = {"Ophys": {"MicroscopySeries": {"my_series": {}}}}
 
         expected = (
-            "metadata_key 'my_seires' was not found in metadata['Ophys']['MicroscopySeries'] "
-            "(available keys: ['my_series'])."
+            "metadata_key 'my_seires' was not found in metadata['Ophys']['MicroscopySeries']. Available keys are:"
+            "\n['my_series']"
         )
         with pytest.raises(ValueError, match=re.escape(expected)):
             add_imaging_to_nwbfile(imaging=imaging, nwbfile=nwbfile, metadata=metadata, metadata_key="my_seires")
@@ -1545,8 +1545,8 @@ class TestAddImaging:
         }
 
         expected = (
-            "imaging_plane_metadata_key 'my_plnae' was not found in metadata['Ophys']['ImagingPlanes'] "
-            "(available keys: ['my_plane'])."
+            "metadata_key 'my_plnae' was not found in metadata['Ophys']['ImagingPlanes']. Available keys are:\n"
+            "['my_plane']"
         )
         with pytest.raises(ValueError, match=re.escape(expected)):
             add_imaging_to_nwbfile(imaging=imaging, nwbfile=nwbfile, metadata=metadata, metadata_key="my_series")
@@ -1560,8 +1560,8 @@ class TestAddImaging:
         metadata_before = deepcopy(metadata)
 
         expected = (
-            "metadata_key 'my_series' was not found in metadata['Ophys']['MicroscopySeries'] "
-            "because metadata has no 'Ophys' (available keys: ['NWBFile'])."
+            "metadata_key 'my_series' was not found in metadata['Ophys']['MicroscopySeries']. metadata has no "
+            "'Ophys'. Available keys are:\n['NWBFile']"
         )
         with pytest.raises(ValueError, match=re.escape(expected)):
             add_imaging_to_nwbfile(imaging=imaging, nwbfile=nwbfile, metadata=metadata, metadata_key="my_series")
@@ -1911,8 +1911,8 @@ class TestAddSegmentation:
         metadata = {"Ophys": {"PlaneSegmentations": {"my_segmentation": {}}}}
 
         expected = (
-            "metadata_key 'my_segmnetation' was not found in metadata['Ophys']['PlaneSegmentations'] "
-            "(available keys: ['my_segmentation'])."
+            "metadata_key 'my_segmnetation' was not found in metadata['Ophys']['PlaneSegmentations']. Available "
+            "keys are:\n['my_segmentation']"
         )
         with pytest.raises(ValueError, match=re.escape(expected)):
             add_segmentation_to_nwbfile(
@@ -1934,8 +1934,8 @@ class TestAddSegmentation:
         }
 
         expected = (
-            "imaging_plane_metadata_key 'my_plnae' was not found in metadata['Ophys']['ImagingPlanes'] "
-            "(available keys: ['my_plane'])."
+            "metadata_key 'my_plnae' was not found in metadata['Ophys']['ImagingPlanes']. Available keys are:\n"
+            "['my_plane']"
         )
         with pytest.raises(ValueError, match=re.escape(expected)):
             add_segmentation_to_nwbfile(

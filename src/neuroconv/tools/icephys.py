@@ -57,7 +57,6 @@ def _add_patch_clamp_series_to_nwbfile(
         metadata,
         metadata_path=("Icephys", metadata_registry),
         metadata_key=series_metadata_key,
-        error_label="series_metadata_key",
     )
     series_metadata = metadata["Icephys"][metadata_registry][series_metadata_key]
     series_class = _STIMULUS_CLASS[mode] if is_stimulus else _RESPONSE_CLASS[mode]
@@ -173,7 +172,6 @@ def _add_intracellular_electrode_to_nwbfile(nwbfile: NWBFile, metadata: dict, el
         metadata,
         metadata_path=("Icephys", "IntracellularElectrodes"),
         metadata_key=electrode_metadata_key,
-        error_label="electrode_metadata_key",
     )
     electrode_metadata = {
         **placeholders["Icephys"]["IntracellularElectrodes"][DEFAULT_METADATA_KEY],

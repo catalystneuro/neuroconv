@@ -155,7 +155,6 @@ class LightningPoseConverter(BaseDataInterface):
                 pose_metadata,
                 metadata_path=("Pose", "PoseEstimations"),
                 metadata_key=pose_estimation_interface.metadata_key,
-                error_label="metadata_key",
             )
             container_metadata = pose_metadata["Pose"]["PoseEstimations"][pose_estimation_interface.metadata_key]
             # A link to the ImageSeries written above rather than the source path it was read from, and the

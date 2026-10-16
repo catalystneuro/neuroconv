@@ -469,7 +469,6 @@ def add_recording_to_nwbfile(
             metadata,
             metadata_path=("Ecephys", "ElectricalSeries"),
             metadata_key=metadata_key,
-            error_label="metadata_key",
         )
 
     add_recording_metadata_to_nwbfile(
@@ -1855,9 +1854,7 @@ def add_recording_as_time_series_to_nwbfile(
                 "metadata at all."
             )
     if metadata_key is not None:
-        _validate_metadata_key(
-            metadata or {}, metadata_path=("TimeSeries",), metadata_key=metadata_key, error_label="metadata_key"
-        )
+        _validate_metadata_key(metadata or {}, metadata_path=("TimeSeries",), metadata_key=metadata_key)
 
     num_segments = recording.get_num_segments()
     for segment_index in range(num_segments):

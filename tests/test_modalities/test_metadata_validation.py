@@ -36,19 +36,19 @@ def test_writers_reject_missing_metadata_without_mutation(interface_factory, reg
     interface = interface_factory(metadata_key="selected")
     metadata = dictionary_type(NWBFile={})
     location = "metadata" + "".join(f"[{level!r}]" for level in registry_path)
-    expected = f"metadata_key 'selected' was not found in {location}"
+    expected = f"metadata_key 'selected' was not found in {location}."
     if missing == "section" or (missing == "registry" and len(registry_path) == 1):
-        expected += f" because metadata has no '{registry_path[0]}' (available keys: ['NWBFile'])."
+        expected += f" metadata has no '{registry_path[0]}'. Available keys are:\n['NWBFile']"
     elif missing == "registry":
         metadata[registry_path[0]] = dictionary_type(other={})
-        expected += f" because metadata['{registry_path[0]}'] has no '{registry_path[1]}' (available keys: ['other'])."
+        expected += f" metadata['{registry_path[0]}'] has no '{registry_path[1]}'. Available keys are:\n['other']"
     else:
         parent = metadata
         for level in registry_path:
             parent[level] = dictionary_type()
             parent = parent[level]
         parent["known"] = {}
-        expected += " (available keys: ['known'])."
+        expected += " Available keys are:\n['known']"
     original = deepcopy(metadata)
 
     with pytest.raises(ValueError) as error:
@@ -77,8 +77,8 @@ def test_explicit_time_series_key_requires_its_registry():
         )
 
     assert str(error.value) == (
-        "metadata_key 'selected' was not found in metadata['TimeSeries'] "
-        "because metadata has no 'TimeSeries' (available keys: ['NWBFile'])."
+        "metadata_key 'selected' was not found in metadata['TimeSeries']. metadata has no 'TimeSeries'. "
+        "Available keys are:\n['NWBFile']"
     )
     assert metadata == original
 
@@ -116,7 +116,6 @@ def test_intracellular_references_require_registered_entries(registry):
     metadata = DeepDict(Icephys=DeepDict({registry: DeepDict(known={})}))
     original = deepcopy(metadata)
     nwbfile = mock_NWBFile()
-    field = "electrode_metadata_key" if registry == "IntracellularElectrodes" else "series_metadata_key"
 
     with pytest.raises(ValueError) as error:
         if registry == "IntracellularElectrodes":
@@ -129,6 +128,6 @@ def test_intracellular_references_require_registered_entries(registry):
             )
 
     assert str(error.value) == (
-        f"{field} 'selected' was not found in metadata['Icephys']['{registry}'] (available keys: ['known'])."
+        f"metadata_key 'selected' was not found in metadata['Icephys']['{registry}']. Available keys are:\n['known']"
     )
     assert metadata == original

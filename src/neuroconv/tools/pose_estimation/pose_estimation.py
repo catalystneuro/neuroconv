@@ -45,9 +45,7 @@ def _resolve_image_series(nwbfile: NWBFile, metadata: dict, metadata_key: str, f
     or in the behavior processing module, so both are searched and a missing one is a caller error about
     ordering rather than about metadata.
     """
-    _validate_metadata_key(
-        metadata, metadata_path=("Behavior", "ExternalVideos"), metadata_key=metadata_key, error_label=field
-    )
+    _validate_metadata_key(metadata, metadata_path=("Behavior", "ExternalVideos"), metadata_key=metadata_key)
     image_series_name = metadata["Behavior"]["ExternalVideos"][metadata_key]["name"]
     if image_series_name in nwbfile.acquisition:
         return nwbfile.acquisition[image_series_name]
@@ -253,7 +251,6 @@ def _add_multi_camera_pose_estimation_to_nwbfile(
             metadata,
             metadata_path=("Pose", "PoseEstimations"),
             metadata_key=camera_metadata_key,
-            error_label="pose_estimation_metadata_keys entry",
         )
         camera_entry = metadata["Pose"]["PoseEstimations"][camera_metadata_key]
         if camera_entry.get("PoseEstimationSeries"):
@@ -299,9 +296,7 @@ def _get_container_entry(
 
     Returns the entry, the container's name, and the behavior module it goes in.
     """
-    _validate_metadata_key(
-        metadata, metadata_path=("Pose", registry), metadata_key=metadata_key, error_label="metadata_key"
-    )
+    _validate_metadata_key(metadata, metadata_path=("Pose", registry), metadata_key=metadata_key)
     container_entry = metadata["Pose"][registry][metadata_key]
     container_name = container_entry.get("name", default_name)
 
@@ -326,7 +321,6 @@ def _get_or_build_skeleton(*, nwbfile: NWBFile, behavior_module, metadata: dict,
         metadata,
         metadata_path=("Pose", "Skeletons"),
         metadata_key=skeleton_metadata_key,
-        error_label="skeleton_metadata_key",
     )
     skeleton_entry = metadata["Pose"]["Skeletons"][skeleton_metadata_key]
     skeleton_name = skeleton_entry["name"]

@@ -16,18 +16,24 @@ def dictionary_type(request):
     [
         (
             "Ophys",
-            "metadata_key 'selected' was not found in metadata['Ophys']['MicroscopySeries'] "
-            "because metadata has no 'Ophys' (available keys: ['NWBFile']).",
+            (
+                "metadata_key 'selected' was not found in metadata['Ophys']['MicroscopySeries']. metadata has no "
+                "'Ophys'. Available keys are:\n['NWBFile']"
+            ),
         ),
         (
             "MicroscopySeries",
-            "metadata_key 'selected' was not found in metadata['Ophys']['MicroscopySeries'] "
-            "because metadata['Ophys'] has no 'MicroscopySeries' (available keys: ['ImagingPlanes']).",
+            (
+                "metadata_key 'selected' was not found in metadata['Ophys']['MicroscopySeries']. metadata['Ophys'] "
+                "has no 'MicroscopySeries'. Available keys are:\n['ImagingPlanes']"
+            ),
         ),
         (
             "selected",
-            "metadata_key 'selected' was not found in metadata['Ophys']['MicroscopySeries'] "
-            "(available keys: ['known']).",
+            (
+                "metadata_key 'selected' was not found in metadata['Ophys']['MicroscopySeries']. Available keys are:\n"
+                "['known']"
+            ),
         ),
     ],
 )
@@ -44,9 +50,7 @@ def test_key_errors_name_the_first_missing_level_without_mutation(dictionary_typ
     original = deepcopy(metadata)
 
     with pytest.raises(ValueError) as error:
-        _validate_metadata_key(
-            metadata, metadata_path=("Ophys", "MicroscopySeries"), metadata_key="selected", error_label="metadata_key"
-        )
+        _validate_metadata_key(metadata, metadata_path=("Ophys", "MicroscopySeries"), metadata_key="selected")
 
     assert str(error.value) == expected
     assert metadata == original
@@ -96,25 +100,19 @@ def test_validators_only_check_existence(dictionary_type, entry):
     metadata = dictionary_type(Devices=dictionary_type(selected=entry))
     original = deepcopy(metadata)
 
-    assert (
-        _validate_metadata_key(
-            metadata, metadata_path=("Devices",), metadata_key="selected", error_label="device_metadata_key"
-        )
-        is None
-    )
+    assert _validate_metadata_key(metadata, metadata_path=("Devices",), metadata_key="selected") is None
     assert _validate_metadata_path(metadata, ("Devices", "selected")) is None
     assert metadata == original
 
 
-def test_key_error_preserves_the_reference_field():
+def test_key_error_names_the_selected_key():
     with pytest.raises(ValueError) as error:
         _validate_metadata_key(
             {"Devices": {"camera": {}}},
             metadata_path=("Devices",),
             metadata_key="camera_typo",
-            error_label="device_metadata_key",
         )
 
     assert str(error.value) == (
-        "device_metadata_key 'camera_typo' was not found in metadata['Devices'] (available keys: ['camera'])."
+        "metadata_key 'camera_typo' was not found in metadata['Devices']. Available keys are:\n['camera']"
     )

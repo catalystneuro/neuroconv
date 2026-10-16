@@ -330,9 +330,7 @@ class BaseEventsInterface(BaseDataInterface):
         if metadata is None:
             metadata = self.get_metadata()
 
-        _validate_metadata_key(
-            metadata, metadata_path=("Events",), metadata_key=self.metadata_key, error_label="metadata_key"
-        )
+        _validate_metadata_key(metadata, metadata_path=("Events",), metadata_key=self.metadata_key)
         _validate_metadata_path(metadata, ("Events", self.metadata_key, "event_types"))
         events_metadata = metadata["Events"]
         self._validate_shared_columns(events_metadata)

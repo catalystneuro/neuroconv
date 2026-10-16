@@ -358,7 +358,6 @@ class LightningPoseDataInterface(BasePoseEstimationInterface):
                 metadata_copy,
                 metadata_path=("Pose", "PoseEstimations"),
                 metadata_key=self.metadata_key,
-                error_label="metadata_key",
             )
             containers_metadata = metadata_copy["Pose"]["PoseEstimations"]
             for series_entry in containers_metadata[self.metadata_key]["PoseEstimationSeries"].values():

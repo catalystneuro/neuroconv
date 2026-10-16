@@ -65,8 +65,7 @@ class TestAddDeviceModel:
         nwbfile = mock_NWBFile()
         metadata = {"DeviceModels": {"a_model": {"name": "Model", "manufacturer": "ACME"}}}
         expected_message = (
-            "device_model_metadata_key 'absent' was not found in metadata['DeviceModels'] "
-            "(available keys: ['a_model'])."
+            "metadata_key 'absent' was not found in metadata['DeviceModels']. Available keys are:\n['a_model']"
         )
         with pytest.raises(ValueError, match=re.escape(expected_message)):
             _add_device_model_to_nwbfile(nwbfile=nwbfile, metadata=metadata, metadata_key="absent")
@@ -85,7 +84,7 @@ class TestAddDeviceMissingKey:
         registry["a_camera"] = {"name": "Camera"}
         metadata = {"Devices": registry}
         expected_message = (
-            "device_metadata_key 'a_camrea' was not found in metadata['Devices'] " "(available keys: ['a_camera'])."
+            "metadata_key 'a_camrea' was not found in metadata['Devices']. Available keys are:\n['a_camera']"
         )
         with pytest.raises(ValueError, match=re.escape(expected_message)):
             _add_device_to_nwbfile(nwbfile=nwbfile, metadata=metadata, metadata_key="a_camrea")

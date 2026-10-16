@@ -205,9 +205,7 @@ class BORISInterface(BaseEventsInterface):
         """
         if metadata is None:
             metadata = self.get_metadata()
-        _validate_metadata_key(
-            metadata, metadata_path=("Events",), metadata_key=self.metadata_key, error_label="metadata_key"
-        )
+        _validate_metadata_key(metadata, metadata_path=("Events",), metadata_key=self.metadata_key)
         _validate_metadata_path(metadata, ("Events", self.metadata_key, "event_types"))
         self._check_table_name_is_free(nwbfile=nwbfile, metadata=metadata)
         self._check_columns_are_not_shared_by_two_behaviors(metadata=metadata)
