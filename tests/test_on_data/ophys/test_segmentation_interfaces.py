@@ -613,6 +613,9 @@ class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTes
     def test_alignment_set_times_reaches_the_nwbfile(self):
         pytest.skip("This fixture has no traces, so the interface writes nothing that carries a time.")
 
+    def test_alignment_remap_times_reaches_the_nwbfile(self):
+        pytest.skip("This fixture has no traces, so the interface writes nothing that carries a time.")
+
     def check_extracted_metadata(self, metadata):
         """Check the new dict-based metadata format."""
         metadata_key = "inscopix_segmentation"
@@ -734,6 +737,9 @@ class TestInscopixSegmentationInterfaceCellSetPart1(SegmentationExtractorInterfa
         pytest.skip("This fixture has no traces, so the interface writes nothing that carries a time.")
 
     def test_alignment_set_times_reaches_the_nwbfile(self):
+        pytest.skip("This fixture has no traces, so the interface writes nothing that carries a time.")
+
+    def test_alignment_remap_times_reaches_the_nwbfile(self):
         pytest.skip("This fixture has no traces, so the interface writes nothing that carries a time.")
 
     def check_extracted_metadata(self, metadata):
