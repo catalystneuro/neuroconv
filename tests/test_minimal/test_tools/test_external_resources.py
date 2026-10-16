@@ -492,18 +492,17 @@ class TestBrainRegionTerms:
 
 class TestAnatomyTerms:
     @pytest.mark.parametrize(
-        "name, expected_name",
+        "name, expected_name, expected_curie",
         [
-            ("Trapezius muscle", "Trapezius muscle"),  # canonical name
-            ("SNOUT", "Snout"),  # case-insensitive
-            ("muzzle", "Snout"),  # informal alias
-            ("forepaw", "Hand"),
+            ("Trapezius muscle", "Trapezius muscle", "UBERON:0002380"),  # canonical name
+            ("SNOUT", "Snout", "UBERON:0006333"),  # case-insensitive
+            ("muzzle", "Snout", "UBERON:0006333"),  # informal alias
+            ("forepaw", "Hand", "UBERON:0002398"),
         ],
     )
-    def test_lookup(self, name, expected_name):
+    def test_lookup(self, name, expected_name, expected_curie):
         term = get_anatomy_term(name)
-        assert term.name == expected_name
-        assert term.curie.startswith("UBERON:")
+        assert (term.name, term.curie) == (expected_name, expected_curie)
 
     @pytest.mark.parametrize(
         "name, expected_curie",

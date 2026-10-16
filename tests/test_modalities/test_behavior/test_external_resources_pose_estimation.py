@@ -14,7 +14,6 @@ from pynwb.file import Subject
 
 from neuroconv.tools.external_resources import (
     add_anatomy_external_resources,
-    get_anatomy_term,
     infer_anatomy_external_resources,
 )
 from neuroconv.tools.testing.mock_interfaces import MockPoseEstimationInterface
@@ -53,10 +52,15 @@ class TestInferAnatomyExternalResources:
         nwbfile = _make_nwbfile()
         _add_skeleton(nwbfile, ["Snout", "Shoulder", "EarL"])
 
-        anatomy = infer_anatomy_external_resources(nwbfile)["ExternalResources"]["anatomy"]
-        assert anatomy["Snout"]["id"] == get_anatomy_term("Snout").curie
-        assert anatomy["Shoulder"]["id"] == get_anatomy_term("Shoulder").curie
-        assert "EarL" not in anatomy  # unresolved (lab-specific, laterality marker) is skipped
+        # "EarL" is unresolved (lab-specific, laterality marker), so it is left out.
+        assert infer_anatomy_external_resources(nwbfile) == {
+            "ExternalResources": {
+                "anatomy": {
+                    "Snout": {"id": "UBERON:0006333", "uri": "http://purl.obolibrary.org/obo/UBERON_0006333"},
+                    "Shoulder": {"id": "UBERON:0001467", "uri": "http://purl.obolibrary.org/obo/UBERON_0001467"},
+                }
+            }
+        }
 
     def test_no_skeleton_returns_empty(self):
         assert infer_anatomy_external_resources(_make_nwbfile()) == {}
@@ -121,6 +125,32 @@ class TestAnatomyExternalResources:
         assert add_anatomy_external_resources(nwbfile, metadata=metadata) == 2
         dataframe = nwbfile.external_resources.to_dataframe()
         assert sorted(dataframe["key"].tolist()) == ["Snout", "Tail"]
+
+    def test_second_call_adds_nothing(self):
+        nwbfile = _make_nwbfile()
+        _add_skeleton(nwbfile, ["Snout"])
+        metadata = _anatomy_metadata({"Snout": {"id": "UBERON:0006333", "uri": "https://example.org/UBERON_0006333"}})
+
+        assert add_anatomy_external_resources(nwbfile, metadata=metadata) == 1
+        assert add_anatomy_external_resources(nwbfile, metadata=metadata) == 0
+        assert len(nwbfile.external_resources.to_dataframe()) == 1
+
+    def test_several_terms_share_one_key(self):
+        nwbfile = _make_nwbfile()
+        _add_skeleton(nwbfile, ["Snout"])
+        metadata = _anatomy_metadata(
+            {
+                "Snout": [
+                    {"id": "UBERON:0006333", "uri": "https://example.org/UBERON_0006333"},
+                    {"id": "UBERON:0012128", "uri": "https://example.org/UBERON_0012128"},
+                ]
+            }
+        )
+
+        assert add_anatomy_external_resources(nwbfile, metadata=metadata) == 2
+        herd = nwbfile.external_resources
+        assert herd.keys.to_dataframe()["key"].tolist() == ["Snout"]
+        assert herd.to_dataframe()["entity_id"].tolist() == ["UBERON:0006333", "UBERON:0012128"]
 
     def test_skeleton_outside_the_behavior_module_is_annotated(self):
         nwbfile = _make_nwbfile()
