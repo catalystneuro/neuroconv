@@ -17,7 +17,7 @@ from dataclasses import dataclass
 
 from pynwb import NWBFile
 
-from ._term_sets import _unwrapped, load_term_set
+from ._term_sets import _build_alias_table, _unwrapped, _ValueMatcher, load_term_set
 
 __all__ = ["ANATOMY_TERMS", "AnatomyTerm", "get_anatomy_term", "infer_anatomy_external_resources"]
 
@@ -39,13 +39,15 @@ ANATOMY_TERMS: dict[str, AnatomyTerm] = {
     for info in _GENERAL_ANATOMY_TERM_SET.values()
 }
 
-_LOWER_TO_CANONICAL: dict[str, str] = {name.lower(): name for name in ANATOMY_TERMS}
-
-# Common informal names and abbreviations -> canonical structure name, from the term set's
-# ``aliases`` (compared case-insensitively).
-_ALIAS_TO_CANONICAL: dict[str, str] = {
-    alias.lower(): info.value for info in _GENERAL_ANATOMY_TERM_SET.values() for alias in info.aliases
-}
+# Matches each canonical structure name in any letter case and the common informal names and
+# abbreviations from the term set's ``aliases``. Near misses are not matched.
+_ANATOMY_MATCHER = _ValueMatcher(
+    values=tuple(ANATOMY_TERMS),
+    alias_table=_build_alias_table(_GENERAL_ANATOMY_TERM_SET, include_values=True),
+    identifier_prefixes=("http://", "https://", "uberon:"),
+    alias_reason="is an informal name",
+    close_match_reason=None,
+)
 
 
 def get_anatomy_term(name: str | None) -> AnatomyTerm | None:
@@ -67,14 +69,8 @@ def get_anatomy_term(name: str | None) -> AnatomyTerm | None:
     AnatomyTerm or None
         The recognized term, or ``None`` when the string cannot be resolved.
     """
-    if not isinstance(name, str):
-        return None
-    stripped = name.strip()
-    if stripped == "":
-        return None
-    lowered = stripped.lower()
-    canonical_name = _LOWER_TO_CANONICAL.get(lowered) or _ALIAS_TO_CANONICAL.get(lowered)
-    return ANATOMY_TERMS.get(canonical_name) if canonical_name is not None else None
+    canonical_name = _ANATOMY_MATCHER.resolve(name)
+    return ANATOMY_TERMS[canonical_name] if canonical_name is not None else None
 
 
 def _skeleton_node_names(nwbfile: NWBFile) -> list:

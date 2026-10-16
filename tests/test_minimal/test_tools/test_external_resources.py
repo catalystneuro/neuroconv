@@ -232,7 +232,7 @@ class TestUpstreamTermSets:
         }
         assert _build_alias_table(term_set, include_values=include_values) == expected
 
-    @pytest.mark.parametrize("file_name", ["species.yaml", "strains.yaml"])
+    @pytest.mark.parametrize("file_name", ["species.yaml", "strains.yaml", "general_anatomy.yaml"])
     def test_bundled_aliases_do_not_collide(self, file_name):
         from neuroconv.tools.external_resources._term_sets import (
             _TERM_SET_DIRECTORY,
@@ -280,6 +280,42 @@ class TestUpstreamTermSets:
             load_term_set.cache_clear()
             load_upstream_term_set.cache_clear()
             importlib.reload(_species)
+
+    def test_upstream_alias_collision_leaves_the_anatomy_alias_out(self, monkeypatch, tmp_path):
+        import importlib
+
+        from neuroconv.tools.external_resources import _anatomy
+        from neuroconv.tools.external_resources._term_sets import load_term_set, load_upstream_term_set
+
+        upstream_yaml = tmp_path / "upstream_general_anatomy.yaml"
+        upstream_yaml.write_text(
+            "prefixes:\n"
+            "  UBERON: http://purl.obolibrary.org/obo/UBERON_\n"
+            "enums:\n"
+            "  AnatomicalStructure:\n"
+            "    permissible_values:\n"
+            "      Head:\n"
+            "        meaning: UBERON:0000033\n"
+            "        aliases:\n"
+            "          - muzzle\n",  # bundled lists "muzzle" for Snout
+            encoding="utf-8",
+        )
+
+        class _FakeNeuroTermsets:
+            @staticmethod
+            def get_termset_path(name):
+                return str(upstream_yaml)
+
+        monkeypatch.setitem(sys.modules, "neuro_termsets", _FakeNeuroTermsets())
+        try:
+            reloaded = importlib.reload(_anatomy)
+            assert reloaded.get_anatomy_term("muzzle") is None  # claimed twice, so it names neither
+            assert reloaded.get_anatomy_term("Snout").curie == "UBERON:0006333"
+        finally:
+            monkeypatch.undo()
+            load_term_set.cache_clear()
+            load_upstream_term_set.cache_clear()
+            importlib.reload(_anatomy)
 
 
 # ---------------------------------------------------------------------------
