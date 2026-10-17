@@ -63,6 +63,7 @@ class TestMockImagingInterface(ImagingExtractorInterfaceTestMixin):
 class TestMockSegmentationInterface(SegmentationExtractorInterfaceTestMixin):
 
     data_interface_cls = MockSegmentationInterface
+    expected_alignment_keys = ("mock_segmentation",)
     interface_kwargs = dict()
 
     def check_extracted_metadata(self, metadata: dict):

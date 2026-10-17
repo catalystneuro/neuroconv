@@ -107,7 +107,7 @@ class MinianSegmentationInterface(BaseSegmentationExtractorInterface):
         return self.segmentation_extractor.get_native_timestamps(start_sample=start_sample, end_sample=end_sample)
 
     def get_timestamps(self, start_sample: Optional[int] = None, end_sample: Optional[int] = None) -> ndarray:
-        return self.segmentation_extractor.get_timestamps(start_sample=start_sample, end_sample=end_sample)
+        return super().get_timestamps()[start_sample:end_sample]
 
     def add_to_nwbfile(
         self,
