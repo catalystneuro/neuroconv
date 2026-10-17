@@ -68,6 +68,8 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         # A zero standing in for the native times reads back as the shift alignment applied
         time_shift = float(series._get_times(get_default_times=lambda: np.zeros(1))[0])
         is_aligned = series._times is not None or time_shift != 0.0
+        # TODO: once roiextractors has a start time for extractors without a time vector, set it from `time_shift`
+        # when the times were only shifted, instead of building the full times array
         # Times left by an earlier aligned write are replaced too, so undoing the alignment reaches the file
         if is_aligned or self.segmentation_extractor.has_time_vector():
             self.segmentation_extractor.set_times(times=series.get_times())
