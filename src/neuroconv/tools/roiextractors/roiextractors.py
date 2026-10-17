@@ -649,8 +649,6 @@ def _add_roi_response_traces_to_nwbfile(
     metadata: dict,
     metadata_key: str,
     iterator_options: dict | None = None,
-    timestamps: np.ndarray | None = None,
-    time_shift: float = 0.0,
 ) -> NWBFile:
     """
     Add ROI response traces to an NWBFile using dict-based metadata.
@@ -681,10 +679,6 @@ def _add_roi_response_traces_to_nwbfile(
         ``metadata["Ophys"]["PlaneSegmentations"]``.
     iterator_options : dict, optional
         Options for the data chunk iterator.
-    timestamps : numpy.ndarray, optional
-        Aligned timestamps with one time per sample. When provided, replaces the extractor's timing.
-    time_shift : float, default: 0.0
-        Shift in seconds applied to the extractor's timing when ``timestamps`` is not provided.
 
     Returns
     -------
@@ -774,31 +768,22 @@ def _add_roi_response_traces_to_nwbfile(
     )
 
     # Resolve timestamps
-    if timestamps is None:
-        timestamps_were_set = segmentation_extractor.has_time_vector()
-        if timestamps_were_set:
-            timestamps = segmentation_extractor.get_timestamps()
-        else:
-            timestamps = segmentation_extractor.get_native_timestamps()
-        if timestamps is not None:
-            timestamps = timestamps + time_shift
+    timestamps_were_set = segmentation_extractor.has_time_vector()
+    if timestamps_were_set:
+        timestamps = segmentation_extractor.get_timestamps()
+    else:
+        timestamps = segmentation_extractor.get_native_timestamps()
 
     timestamps_are_available = timestamps is not None
 
     if timestamps_are_available:
-        timestamps = np.asarray(timestamps)
-        num_samples = segmentation_extractor.get_num_samples()
-        if timestamps.ndim != 1 or timestamps.size != num_samples:
-            raise ValueError(
-                f"Segmentation timestamps must be one-dimensional with one time per sample ({num_samples})."
-            )
         rate = calculate_regular_series_rate(series=timestamps)
         timestamps_are_regular = rate is not None
         starting_time = timestamps[0]
     else:
         rate = float(segmentation_extractor.get_sampling_frequency())
         timestamps_are_regular = True
-        starting_time = time_shift
+        starting_time = 0.0
 
     # All traces go into a single Fluorescence container, matching the pattern from
     # ndx-microscopy (single MicroscopyResponseSeriesContainer) and avoiding the
@@ -953,8 +938,6 @@ def _add_segmentation_to_nwbfile(
     metadata: dict,
     metadata_key: str,
     iterator_options: dict | None = None,
-    timestamps: np.ndarray | None = None,
-    time_shift: float = 0.0,
 ) -> NWBFile:
     """
     Add segmentation data to an NWBFile using dict-based metadata.
@@ -973,10 +956,6 @@ def _add_segmentation_to_nwbfile(
         The key used across ``PlaneSegmentations`` and ``RoiResponses``.
     iterator_options : dict, optional
         Options for the data chunk iterator.
-    timestamps : numpy.ndarray, optional
-        Aligned timestamps with one time per sample. When provided, replaces the extractor's timing.
-    time_shift : float, default: 0.0
-        Shift in seconds applied to the extractor's timing when ``timestamps`` is not provided.
 
     Returns
     -------
@@ -996,8 +975,6 @@ def _add_segmentation_to_nwbfile(
         metadata=metadata,
         metadata_key=metadata_key,
         iterator_options=iterator_options,
-        timestamps=timestamps,
-        time_shift=time_shift,
     )
 
     _add_summary_images_to_nwbfile(
@@ -1374,8 +1351,6 @@ def add_segmentation_to_nwbfile(
     include_roi_acceptance: bool | None = None,
     iterator_options: dict | None = None,
     metadata_key: str | None = None,
-    timestamps: np.ndarray | None = None,
-    time_shift: float = 0.0,
 ) -> NWBFile:
     """
     Add segmentation data from a SegmentationExtractor object to an NWBFile.
@@ -1408,10 +1383,6 @@ def add_segmentation_to_nwbfile(
         when it is not given, is translated under this key.
         Required when ``metadata`` with keyed entries is passed, starting in v0.13.0; omitting it there
         currently warns. Pass no ``metadata`` to write with default metadata instead.
-    timestamps : numpy.ndarray, optional
-        Aligned timestamps with one time per sample. When provided, replaces the extractor's timing.
-    time_shift : float, default: 0.0
-        Shift in seconds applied to the extractor's timing when ``timestamps`` is not provided.
 
     Returns
     -------
@@ -1489,8 +1460,6 @@ def add_segmentation_to_nwbfile(
         metadata=metadata,
         metadata_key=metadata_key,
         iterator_options=iterator_options,
-        timestamps=timestamps,
-        time_shift=time_shift,
     )
 
     return nwbfile
