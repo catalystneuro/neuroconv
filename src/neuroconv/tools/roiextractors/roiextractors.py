@@ -364,8 +364,6 @@ def _add_photon_series_to_nwbfile(
     iterator_type: str | None = "v2",
     iterator_options: dict | None = None,
     always_write_timestamps: bool = False,
-    timestamps: np.ndarray | None = None,
-    time_shift: float = 0.0,
 ) -> NWBFile:
     """
     Add a photon series using the dict-based metadata format.
@@ -447,26 +445,32 @@ def _add_photon_series_to_nwbfile(
     )
     photon_series_kwargs["data"] = imaging_extractor_iterator
 
-    if timestamps is None:
-        if always_write_timestamps or imaging.has_time_vector():
+    if always_write_timestamps:
+        timestamps = imaging.get_timestamps()
+        photon_series_kwargs.update(timestamps=timestamps)
+    else:
+        # Resolve timestamps: user-set > native hardware > none
+        timestamps_were_set = imaging.has_time_vector()
+        if timestamps_were_set:
             timestamps = imaging.get_timestamps()
         else:
             timestamps = imaging.get_native_timestamps()
-        if timestamps is not None:
-            timestamps = timestamps + time_shift
 
-    if timestamps is not None:
-        timestamps = np.asarray(timestamps)
-        num_samples = imaging.get_num_samples()
-        if timestamps.ndim != 1 or timestamps.size != num_samples:
-            raise ValueError(f"Imaging timestamps must be one-dimensional with one time per sample ({num_samples}).")
-        rate = None if always_write_timestamps else calculate_regular_series_rate(series=timestamps)
-        if rate is None:
-            photon_series_kwargs.update(timestamps=timestamps)
+        timestamps_are_available = timestamps is not None
+
+        if timestamps_are_available:
+            rate = calculate_regular_series_rate(series=timestamps)
+            timestamps_are_regular = rate is not None
+            starting_time = timestamps[0]
         else:
-            photon_series_kwargs.update(rate=rate, starting_time=timestamps[0])
-    else:
-        photon_series_kwargs.update(rate=float(imaging.get_sampling_frequency()), starting_time=time_shift)
+            rate = float(imaging.get_sampling_frequency())
+            timestamps_are_regular = True
+            starting_time = 0.0
+
+        if timestamps_are_regular:
+            photon_series_kwargs.update(rate=rate, starting_time=starting_time)
+        else:
+            photon_series_kwargs.update(timestamps=timestamps)
 
     # Add the photon series to the nwbfile
     photon_series_map = dict(OnePhotonSeries=OnePhotonSeries, TwoPhotonSeries=TwoPhotonSeries)
@@ -1065,8 +1069,6 @@ def add_imaging_to_nwbfile(
     parent_container: Literal["acquisition", "processing/ophys"] = "acquisition",
     always_write_timestamps: bool = False,
     metadata_key: str | None = None,
-    timestamps: np.ndarray | None = None,
-    time_shift: float = 0.0,
 ) -> NWBFile:
     """
     Add imaging data from an ImagingExtractor object to an NWBFile.
@@ -1104,11 +1106,6 @@ def add_imaging_to_nwbfile(
         For old list-based metadata, the series picked by ``photon_series_index`` is translated under this key.
         Required when ``metadata`` with keyed entries is passed, starting in v0.13.0; omitting it there
         currently warns. Pass no ``metadata`` to write with default metadata instead.
-
-    timestamps : numpy.ndarray, optional
-        Aligned timestamps with one time per sample. When provided, replaces the extractor's timing.
-    time_shift : float, default: 0.0
-        Shift in seconds applied to extractor timing when ``timestamps`` is not provided.
 
     Returns
     -------
@@ -1165,8 +1162,6 @@ def add_imaging_to_nwbfile(
         iterator_options=iterator_options,
         parent_container=parent_container,
         always_write_timestamps=always_write_timestamps,
-        timestamps=timestamps,
-        time_shift=time_shift,
     )
 
     return nwbfile

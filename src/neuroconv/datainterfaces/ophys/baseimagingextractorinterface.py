@@ -97,29 +97,29 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
     def alignment(self) -> _TemporalAlignment:
         return self._alignment
 
+    # The native times are read from the format and never from `get_timestamps`, which returns the times
+    # `_set_aligned_times_on_extractor` stored, so an aligned write does not change the times the next one starts from
     def _get_native_times(self) -> np.ndarray:
-        return self.imaging_extractor.get_timestamps()
+        native_timestamps = self.imaging_extractor.get_native_timestamps()
+        if native_timestamps is not None:
+            return native_timestamps
+        num_samples = self.imaging_extractor.get_num_samples()
+        return np.arange(num_samples) / self.imaging_extractor.get_sampling_frequency()
 
     def _get_native_start_time(self) -> float:
         if self.imaging_extractor.get_num_samples() == 0:
             return np.nan
-        if self.imaging_extractor.has_time_vector():
-            times = self.imaging_extractor.get_timestamps(start_sample=0, end_sample=1)
-        else:
-            times = self.imaging_extractor.get_native_timestamps(start_sample=0, end_sample=1)
+        times = self.imaging_extractor.get_native_timestamps(start_sample=0, end_sample=1)
         return float(times[0]) if times is not None else 0.0
 
-    def _get_aligned_timing(self, end_sample: int | None = None) -> dict:
+    def _set_aligned_times_on_extractor(self) -> None:
         series = self.alignment[self._alignment_key]
-        if series._times is None:
-            # A zero standing in for the native times reads back as the shift alignment applied, so a series
-            # nobody re-timed is written from the extractor's own timing without building a time vector.
-            return dict(time_shift=float(series._get_times(get_default_times=lambda: np.zeros(1))[0]))
-        times = series.get_times()
-        num_samples = self.imaging_extractor.get_num_samples()
-        if times.ndim != 1 or times.size != num_samples:
-            raise ValueError(f"Imaging timestamps must be one-dimensional with one time per sample ({num_samples}).")
-        return dict(timestamps=times[:end_sample])
+        # A zero standing in for the native times reads back as the shift alignment applied
+        time_shift = float(series._get_times(get_default_times=lambda: np.zeros(1))[0])
+        is_aligned = series._times is not None or time_shift != 0.0
+        # Times left by an earlier aligned write are replaced too, so undoing the alignment reaches the file
+        if is_aligned or self.imaging_extractor.has_time_vector():
+            self.imaging_extractor.set_times(times=series.get_times())
 
     def get_metadata_schema(self) -> dict:
         """
@@ -397,7 +397,8 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
 
         from ...tools.roiextractors import add_imaging_to_nwbfile
 
-        timing = self._get_aligned_timing(end_sample=stub_samples if stub_test else None)
+        # Set before slicing, since a slice copies its parent's times
+        self._set_aligned_times_on_extractor()
         if stub_test:
             stub_samples = min([stub_samples, self.imaging_extractor.get_num_samples()])
             imaging_extractor = self.imaging_extractor.slice_samples(start_sample=0, end_sample=stub_samples)
@@ -418,5 +419,4 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
             iterator_type=iterator_type,
             iterator_options=iterator_options,
             metadata_key=self.metadata_key,
-            **timing,
         )
