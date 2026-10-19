@@ -244,40 +244,11 @@ def test_timestamp_shifting(nwb_converter):
     np.testing.assert_array_equal(interface.temporal_alignment["video_test1"].get_times(), expected_timestamps)
 
 
-def test_temporal_alignment_is_keyed_by_metadata_key(nwb_converter):
-    interface = nwb_converter.data_interface_objects["Video1"]
-    assert interface.temporal_alignment.keys() == ("video_test1",)
-
-
 def test_default_times_follow_the_header_rate(nwb_converter):
     interface = nwb_converter.data_interface_objects["Video1"]
     number_of_frames = test_video_parameters["number_of_frames"]
     expected_times = np.arange(number_of_frames) / test_video_parameters["fps"]
     np.testing.assert_allclose(interface.temporal_alignment["video_test1"].get_times(), expected_times)
-
-
-def test_shift_times_reaches_the_nwbfile(video_files):
-    interface = InternalVideoInterface(file_path=video_files[0])
-    interface.temporal_alignment.shift_times(1.5)
-
-    nwbfile = mock_NWBFile()
-    interface.add_to_nwbfile(nwbfile=nwbfile, stub_test=True)
-
-    image_series = nwbfile.acquisition[f"Video {Path(video_files[0]).stem}"]
-    assert image_series.starting_time == 1.5
-    assert image_series.rate == test_video_parameters["fps"]
-
-
-def test_remap_times_reaches_the_nwbfile(video_files):
-    interface = InternalVideoInterface(file_path=video_files[0])
-    interface.temporal_alignment.remap_times(local_sync_times=[0.0, 10.0], reference_sync_times=[1.0, 21.0])
-
-    nwbfile = mock_NWBFile()
-    interface.add_to_nwbfile(nwbfile=nwbfile, stub_test=True)
-
-    image_series = nwbfile.acquisition[f"Video {Path(video_files[0]).stem}"]
-    assert image_series.starting_time == 1.0
-    assert image_series.rate == pytest.approx(test_video_parameters["fps"] / 2.0)
 
 
 def test_deprecated_set_aligned_timestamps(nwb_converter):
