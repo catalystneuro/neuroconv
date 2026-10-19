@@ -267,7 +267,7 @@ stream. The formats that record drives, TDT and Doric, take them at construction
         metadata_key="gcamp_dms",
         commanded_voltage_streams={"cv_dms": {"stream_name": "Fi1d", "index": 0}},
     )
-    interface.alignment["cv_dms"].shift_times(0.2)
+    interface.temporal_alignment["cv_dms"].shift_times(0.2)
 
     interface = DoricFiberPhotometryInterface(
         file_path=...,

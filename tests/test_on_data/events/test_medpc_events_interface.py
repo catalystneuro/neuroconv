@@ -121,7 +121,7 @@ class TestPerArrayLernerLab(EventsInterfaceTestMixin):
     def test_alignment_shifts_the_written_times(self, setup_interface):
         metadata = self.edit_metadata(self.interface.get_metadata())
         original_timestamps = self.interface.get_event_times("A")
-        self.interface.alignment.shift_times(delta=1.23)
+        self.interface.temporal_alignment.shift_times(delta=1.23)
 
         assert np.allclose(self.interface.get_event_times("A"), original_timestamps + 1.23)
 
