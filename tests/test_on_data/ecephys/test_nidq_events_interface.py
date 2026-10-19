@@ -117,7 +117,7 @@ class TestSignalAddressing:
     """How a signal is named, decided from the header at construction with no sample read."""
 
     def test_neo_addressing_is_accepted_for_backwards_compatibility(self):
-        """`nidq#XD0` still reaches `XD0`, behind a `FutureWarning`, until August 2027.
+        """`nidq#XD0` still reaches `XD0`, behind a `FutureWarning`, until v0.13.0.
 
         The board's own name is canonical: `~snsChanMap`, CatGT and `get_channel_names()` all say
         `XD0`, and the derived identifier, hence the written table name, carries no prefix. neo builds

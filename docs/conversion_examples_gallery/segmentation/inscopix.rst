@@ -28,7 +28,7 @@ Convert Inscopix segmentation data to NWB using :py:class:`~neuroconv.datainterf
     >>>
     >>> # Run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
-    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, mask_type="pixel")
+    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
 NeuroConv aims to automatically add all the metadata annotations that are present in the source format.
 It is often the case that crucial information is not available there, such as the anatomical location,

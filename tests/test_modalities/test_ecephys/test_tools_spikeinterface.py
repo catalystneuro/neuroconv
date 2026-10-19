@@ -263,7 +263,7 @@ class TestAddElectricalSeriesSavingTimestampsVsRates(unittest.TestCase):
 
     def test_non_uniform_timestamps(self):
         expected_timestamps = np.array([0.0, 2.0, 10.0])
-        self.test_recording_extractor.set_times(times=expected_timestamps, with_warning=False)
+        self.test_recording_extractor.set_times(times=expected_timestamps)
         add_recording_to_nwbfile(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
 
         acquisition_module = self.nwbfile.acquisition
@@ -279,7 +279,7 @@ class TestAddElectricalSeriesSavingTimestampsVsRates(unittest.TestCase):
         number_of_samples = self.test_recording_extractor.get_num_samples()
         measured_sampling_frequency = self.sampling_frequency * (1 + 100e-6)  # a 100 ppm faster clock
         timestamps = np.arange(number_of_samples) / measured_sampling_frequency
-        self.test_recording_extractor.set_times(times=timestamps, with_warning=False)
+        self.test_recording_extractor.set_times(times=timestamps)
 
         add_recording_to_nwbfile(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
 
@@ -1598,7 +1598,11 @@ class TestAddTimeSeriesMetadataKeyResolution:
         nwbfile = mock_NWBFile()
         metadata = {"TimeSeries": {"my_time_series": {"unit": "custom_unit"}}}
 
-        with pytest.raises(ValueError, match="does not contain key 'stale_key'"):
+        expected = (
+            "metadata_key 'stale_key' was not found in metadata['TimeSeries']. Available keys are:\n"
+            "['my_time_series']"
+        )
+        with pytest.raises(ValueError, match=re.escape(expected)):
             add_recording_as_time_series_to_nwbfile(
                 recording=self._recording(),
                 nwbfile=nwbfile,
@@ -1606,6 +1610,25 @@ class TestAddTimeSeriesMetadataKeyResolution:
                 metadata_key="stale_key",
                 iterator_type=None,
             )
+
+    def test_explicit_key_without_a_time_series_block_raises(self):
+        metadata = {"NWBFile": {}}
+        original = deepcopy(metadata)
+        expected = (
+            "metadata_key 'my_metadata_key' was not found in metadata['TimeSeries']. metadata has no 'TimeSeries'. "
+            "Available keys are:\n['NWBFile']"
+        )
+
+        with pytest.raises(ValueError, match=re.escape(expected)):
+            add_recording_as_time_series_to_nwbfile(
+                recording=self._recording(),
+                nwbfile=mock_NWBFile(),
+                metadata=metadata,
+                metadata_key="my_metadata_key",
+                iterator_type=None,
+            )
+
+        assert metadata == original
 
 
 class TestAddSpatialSeries:
@@ -3331,8 +3354,8 @@ class TestAddRecording:
         metadata["Ecephys"]["ElectricalSeries"] = {"known_key": {"name": "ElectricalSeries"}}
 
         expected_error = re.escape(
-            "metadata['Ecephys']['ElectricalSeries'] does not contain key 'missing_key'. "
-            "Available keys: ['known_key']"
+            "metadata_key 'missing_key' was not found in metadata['Ecephys']['ElectricalSeries']. Available keys "
+            "are:\n['known_key']"
         )
         with pytest.raises(ValueError, match=expected_error):
             add_recording_to_nwbfile(

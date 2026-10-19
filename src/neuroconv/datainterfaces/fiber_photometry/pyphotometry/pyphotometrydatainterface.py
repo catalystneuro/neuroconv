@@ -185,7 +185,7 @@ class PyPhotometryFiberPhotometryInterface(BaseFiberPhotometryInterface):
             return array[: min(stub_samples, len(array))] if stub_test else array
 
         timing_kwargs = self._timing_kwargs_from_timestamps(
-            stub(self.alignment[self.metadata_key].get_times()), always_write_timestamps
+            stub(self.temporal_alignment[self.metadata_key].get_times()), always_write_timestamps
         )
 
         # The LED-on trace is the difference before the subtraction, so every field of the row the

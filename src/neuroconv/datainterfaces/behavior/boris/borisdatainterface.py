@@ -6,6 +6,7 @@ from hdmf.common import MeaningsTable
 from pydantic import FilePath, validate_call
 from pynwb.file import NWBFile
 
+from neuroconv.tools.nwb_helpers._metadata_and_file_helpers import _validate_metadata_key, _validate_metadata_path
 from neuroconv.utils import DeepDict
 
 from ._boris_reader import (
@@ -112,11 +113,6 @@ class BORISInterface(BaseEventsInterface):
         self.metadata_key = metadata_key or "_".join(["boris", *(word.lower() for word in observation_words)])
         self._project = _read_boris_project(file_path=file_path)
         self._observation = _read_boris_observation(file_path=file_path, observation_name=observation_name)
-        # The observation's `time offset` shifts the whole observation, which is what a rigid alignment
-        # offset is, so it goes through the alignment surface rather than being folded into the times. That
-        # keeps the read times the file's own and leaves the offset re-settable.
-        if self._observation.time_offset:
-            self.alignment.shift_times(self._observation.time_offset)
 
     def get_metadata(self) -> DeepDict:
         """
@@ -205,6 +201,8 @@ class BORISInterface(BaseEventsInterface):
         """
         if metadata is None:
             metadata = self.get_metadata()
+        _validate_metadata_key(metadata, metadata_path=("Events",), metadata_key=self.metadata_key)
+        _validate_metadata_path(metadata, ("Events", self.metadata_key, "event_types"))
         self._check_table_name_is_free(nwbfile=nwbfile, metadata=metadata)
         self._check_columns_are_not_shared_by_two_behaviors(metadata=metadata)
         super().add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
@@ -223,7 +221,7 @@ class BORISInterface(BaseEventsInterface):
         Only the events table needs this. The bouts table goes through `ProcessingModule.add`, which
         rejects a duplicate name already.
         """
-        declared = metadata["Events"]["EventTables"].get(self.metadata_key)
+        declared = metadata["Events"].get("EventTables", {}).get(self.metadata_key)
         if declared is None:
             # The user re-routed the behaviors and named the tables themselves, so the name this
             # interface would have chosen is not in play.
@@ -307,7 +305,9 @@ class BORISInterface(BaseEventsInterface):
             behavior = self._project.behaviors.get(code)
             is_point = behavior is None or behavior.behavior_type == "point"
 
-            onsets = np.array([occurrence.onset for occurrence in occurrences], dtype=float)
+            onsets = (
+                np.array([occurrence.onset for occurrence in occurrences], dtype=float) + self._observation.time_offset
+            )
             # A point behavior has no extent at all, which is `None`; a state behavior always has the
             # column, carrying `NaN` for a bout whose stop was never scored.
             durations = None
@@ -530,10 +530,12 @@ class BORISInterface(BaseEventsInterface):
                 **({"index": True} if field in filled_ragged_fields else {}),
             )
 
-        offset = self.alignment.offset
+        aligned_times = {code: self.get_event_times(code) for code in events_data_dict}
+        aligned_durations = {code: self._get_event_durations(code) for code in events_data_dict}
         for occurrence in closed_bouts:
             payload = events_data_dict[occurrence.code].payload
             index = rows_by_occurrence[id(occurrence)]
+            onset = aligned_times[occurrence.code][index]
             # A behavior writes an empty cell in a column it does not own, since the bouts table keeps
             # the union of the per-behavior columns.
             cells = {
@@ -541,8 +543,8 @@ class BORISInterface(BaseEventsInterface):
                 for field in payload_fields
             }
             bouts.add_interval(
-                start_time=occurrence.onset + offset,
-                stop_time=occurrence.onset + occurrence.duration + offset,
+                start_time=onset,
+                stop_time=onset + aligned_durations[occurrence.code][index],
                 label=occurrence.code,
                 **cells,
             )

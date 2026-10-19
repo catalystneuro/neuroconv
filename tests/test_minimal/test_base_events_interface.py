@@ -15,6 +15,7 @@ from neuroconv.tools.testing.mock_interfaces import MockEventsInterface
 
 class TestMockEventsInterface(EventsInterfaceTestMixin):
     data_interface_cls = MockEventsInterface
+    expected_alignment_keys = ("events",)
     interface_kwargs = dict()
 
     def test_get_metadata(self):
@@ -1088,7 +1089,7 @@ class TestEventsAcrossInterfaces:
 
 
 class TestEventsTemporalAlignment:
-    """Gross temporal alignment on ``BaseEventsInterface``: ``interface.alignment.shift_times`` offsets event times at write.
+    """Gross temporal alignment on ``BaseEventsInterface``: ``interface.temporal_alignment.shift_times`` offsets event times at write.
 
     The mock's single "events" type has native timestamps ``[0.1, 0.2, 0.3, 0.4]`` (``[0.1, 0.2, 0.3]`` at
     ``num_events=3``), so two interfaces built the same way sit on top of each other until one is shifted.
@@ -1104,8 +1105,8 @@ class TestEventsTemporalAlignment:
     def test_shift_times_offsets_written_timestamps_and_accumulates(self):
         # Relative and rigid: repeated shifts sum, and the written events move by the total.
         interface = MockEventsInterface()
-        interface.alignment.shift_times(1.0)
-        interface.alignment.shift_times(0.5)
+        interface.temporal_alignment.shift_times(1.0)
+        interface.temporal_alignment.shift_times(0.5)
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile)
         written = np.asarray(nwbfile.get_events_table("Events")["timestamp"][:])
@@ -1114,7 +1115,7 @@ class TestEventsTemporalAlignment:
     def test_shift_preserves_durations(self):
         # A shift moves timestamps but leaves each event's duration unchanged.
         interface = MockEventsInterface(event_extent="event with duration")
-        interface.alignment.shift_times(5.0)
+        interface.temporal_alignment.shift_times(5.0)
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile)
         events = nwbfile.get_events_table("Events")
@@ -1131,7 +1132,7 @@ class TestEventsTemporalAlignment:
         # what a single-interface shift cannot pin, since a rigid shift never reorders a stream against itself.
         interface_a = MockEventsInterface(metadata_key="events_a", num_events=3, event_payload="timestamps only")
         interface_b = MockEventsInterface(metadata_key="events_b", num_events=3, event_payload="timestamps only")
-        interface_b.alignment.shift_times(0.15)  # B's clock started 0.15 s after A's
+        interface_b.temporal_alignment.shift_times(0.15)  # B's clock started 0.15 s after A's
         metadata = {
             "Events": {
                 "EventTables": {"shared": {"table_name": "Trials", "description": "Trials from two systems."}},
@@ -1200,7 +1201,7 @@ class TestGetEventTimes:
     def test_answers_on_the_interfaces_current_clock(self):
         """Shifted times, not native ones, so the events can be the input to another stream's alignment."""
         interface = MockEventsInterface()
-        interface.alignment.shift_times(5.0)
+        interface.temporal_alignment.shift_times(5.0)
 
         shifted_timestamps = interface.get_event_times(event_type_source_id="events")
         expected_timestamps = [5.1, 5.2, 5.3, 5.4]

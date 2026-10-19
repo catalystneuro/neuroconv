@@ -25,6 +25,7 @@ and synchronize data across multiple sources.
   temporal_alignment
   csvs
   expand_path
+  ontology
   backend_configuration
   linking_sorted_data
   yaml

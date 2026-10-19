@@ -3,7 +3,7 @@ from typing import Literal
 from pydantic import DirectoryPath, validate_call
 from pynwb import NWBFile
 
-from . import csv_utils, doric_utils, npm_utils, tdt_utils
+from . import csv_utils, doric_utils, npm_utils, pyphotometry_utils, tdt_utils
 from .csv_utils import build_csv_acquisition_interface, build_csv_events_interface
 from .doric_utils import build_doric_acquisition_interface, build_doric_events_interface
 from .guppydatainterface import (
@@ -15,6 +15,10 @@ from .npm_utils import (
     build_npm_acquisition_interface,
     build_npm_events_interface,
     npm_event_source_id_to_store_id,
+)
+from .pyphotometry_utils import (
+    build_pyphotometry_acquisition_interface,
+    build_pyphotometry_events_interface,
 )
 from .tdt_utils import build_tdt_acquisition_interface, build_tdt_events_interface
 from ....nwbconverter import ConverterPipe
@@ -31,10 +35,12 @@ _STORE_ROLES = ("signal", "control")
 # The formats a GuPPy session can have been recorded in -- every format GuPPy itself supports. Each has
 # a ``<format>_utils`` module reading it; supporting another means writing that module, widening this,
 # and adding a branch to each of the two _build_*_interfaces methods below.
-AcquisitionFormat = Literal["tdt", "csv", "doric", "npm"]
+AcquisitionFormat = Literal["tdt", "csv", "doric", "npm", "pyphotometry"]
 _ACQUISITION_SUFFIXES = tuple(
     dict.fromkeys(
-        suffix for module in (tdt_utils, csv_utils, doric_utils, npm_utils) for suffix in module.ASSOCIATED_SUFFIXES
+        suffix
+        for module in (tdt_utils, csv_utils, doric_utils, npm_utils, pyphotometry_utils)
+        for suffix in module.ASSOCIATED_SUFFIXES
     )
 )
 
@@ -111,8 +117,9 @@ class GuppyConverter(ConverterPipe):
             Path to the folder holding the raw acquisition traces -- for TDT, the tank folder
             containing the Tbk, Tdx, tev, tin and tsq files; for CSV, the folder holding one
             ``<store>.csv`` per channel; for Doric, the folder holding the single ``.doric`` or
-            DoricStudio ``.csv`` export. For NPM this must be the GuPPy session folder itself, since
-            GuPPy's ``file<N>`` store names index that folder's CSVs in sorted order.
+            DoricStudio ``.csv`` export; for pyPhotometry, the folder holding the single ``.ppd``
+            file. For NPM this must be the GuPPy session folder itself, since GuPPy's ``file<N>`` store
+            names index that folder's CSVs in sorted order.
         events_folder_path : DirectoryPath
             Path to the folder holding the raw discrete events. GuPPy writes a session's traces and
             events into one folder, so for TDT this is the same tank folder as
@@ -124,14 +131,15 @@ class GuppyConverter(ConverterPipe):
             Path to the GuPPy ``<session>_output_<N>`` folder containing ``storesList.csv``,
             the per-recording-site derived ``.hdf5`` files, and the ``GuPPyParamtersUsed.json``
             provenance file (discovered automatically by the GuPPy interface).
-        acquisition_format : {"tdt", "csv", "doric", "npm"}
+        acquisition_format : {"tdt", "csv", "doric", "npm", "pyphotometry"}
             The format the session's traces were recorded in, selecting which interfaces read
             ``fiber_photometry_folder_path``. ``"doric"`` covers all three Doric layouts -- modern and
             legacy ``.doric`` HDF5 and DoricStudio ``.csv`` exports -- resolved from the one
             acquisition file in the folder, and ``"npm"`` covers both the state-column and header-less
-            Neurophotometrics layouts. One format per session: a series column-stacks one store per
-            recording site onto a single timestamps vector, which stores from two acquisition systems
-            do not share. The events side is not tied to it: an event store GuPPy's custom-event
+            Neurophotometrics layouts. ``"pyphotometry"`` reads one signal per series, since the board
+            samples no two signals at the same instant, so each role can come from one recording site.
+            One format per session: a series column-stacks one store per recording site onto a single
+            timestamps vector, which stores from two acquisition systems do not share. The events side is not tied to it: an event store GuPPy's custom-event
             import wrote a CSV for is read from that CSV, whatever the traces were recorded in.
         verbose : bool, optional
             Whether to print status messages, default = False.
@@ -267,6 +275,10 @@ class GuppyConverter(ConverterPipe):
                     metadata_key=metadata_key,
                     verbose=verbose,
                 )
+            elif acquisition_format == "pyphotometry":
+                interface = build_pyphotometry_acquisition_interface(
+                    folder_path=folder_path, store_ids=store_ids, metadata_key=metadata_key, verbose=verbose
+                )
             else:
                 raise NotImplementedError(
                     f"No acquisition interface is wired up for acquisition_format={acquisition_format!r}."
@@ -315,8 +327,8 @@ class GuppyConverter(ConverterPipe):
 
         events_specs: list[dict] = []
         if acquisition_store_ids:
-            # A TDT epoc name and a Doric detection spec are already the storesList.csv id, so those
-            # two need no translation. NPM is the exception -- see npm_event_source_id_to_store_id.
+            # A TDT epoc name and a Doric or pyPhotometry detection spec are already the storesList.csv
+            # id, so those need no translation. NPM is the exception -- see npm_event_source_id_to_store_id.
             source_id_to_store_id = (
                 npm_event_source_id_to_store_id(folder_path=folder_path, event_store_ids=acquisition_store_ids)
                 if acquisition_format == "npm"
@@ -382,6 +394,10 @@ class GuppyConverter(ConverterPipe):
                     guppy_folder_path=guppy_folder_path,
                     event_store_ids=store_ids,
                     verbose=verbose,
+                )
+            elif events_format == "pyphotometry":
+                interface = build_pyphotometry_events_interface(
+                    folder_path=folder_path, event_store_ids=store_ids, verbose=verbose
                 )
             else:
                 raise NotImplementedError(f"No events interface is wired up for events_format={events_format!r}.")
