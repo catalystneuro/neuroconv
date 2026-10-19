@@ -251,31 +251,6 @@ def test_default_times_follow_the_header_rate(nwb_converter):
     np.testing.assert_allclose(interface.temporal_alignment["video_test1"].get_times(), expected_times)
 
 
-def test_deprecated_set_aligned_timestamps(nwb_converter):
-    interface = nwb_converter.data_interface_objects["Video1"]
-    aligned_timestamps = np.array([1.0, 2.0, 3.0])
-    with pytest.warns(FutureWarning, match="set_aligned_timestamps"):
-        interface.set_aligned_timestamps(aligned_timestamps=aligned_timestamps)
-    with pytest.warns(FutureWarning, match="get_timestamps"):
-        timestamps = interface.get_timestamps()
-    np.testing.assert_array_equal(timestamps, aligned_timestamps)
-
-
-def test_deprecated_set_aligned_starting_time_places_the_video(nwb_converter):
-    interface = nwb_converter.data_interface_objects["Video1"]
-    with pytest.warns(FutureWarning, match="set_aligned_starting_time"):
-        interface.set_aligned_starting_time(aligned_starting_time=10.0)
-    assert interface.temporal_alignment["video_test1"].get_times()[0] == 10.0
-
-
-def test_deprecated_set_aligned_starting_time_shifts_timestamps_that_were_set(nwb_converter):
-    interface = nwb_converter.data_interface_objects["Video1"]
-    interface.temporal_alignment["video_test1"].set_times(np.array([1.0, 2.0, 3.0]))
-    with pytest.warns(FutureWarning, match="set_aligned_starting_time"):
-        interface.set_aligned_starting_time(aligned_starting_time=5.0)
-    np.testing.assert_array_equal(interface.temporal_alignment["video_test1"].get_times(), [6.0, 7.0, 8.0])
-
-
 def test_get_original_timestamps_stub(nwb_converter):
     """Test that get_original_timestamps respects stub_test parameter."""
     interface = nwb_converter.data_interface_objects["Video1"]
