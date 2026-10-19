@@ -476,7 +476,7 @@ class TestEthoVisionEdgeCases:
 
     def test_remap_times_moves_the_track(self):
         interface = EthoVisionTrackInterface(file_path=TestEthoVisionTrackAndManualScoring.file_path)
-        interface.alignment.remap_times(
+        interface.temporal_alignment.remap_times(
             local_sync_times=np.array([0.0, 200.0]),
             reference_sync_times=np.array([10.0, 410.0]),
         )

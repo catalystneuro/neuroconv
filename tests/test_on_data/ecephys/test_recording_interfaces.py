@@ -1468,27 +1468,9 @@ class TestPlexonLFPInterface(RecordingExtractorInterfaceTestMixin):
         assert metadata["Ecephys"]["ElectricalSeries"] == expected_electrical_series
 
 
-def wine_is_required_and_missing() -> bool:
-    """Whether these tests need Wine on this platform and it is not installed.
-
-    Plexon2 reads its files through a Windows DLL, so every platform other than Windows runs that DLL
-    under Wine. macOS has no Wine to install since the wine-crossover Homebrew cask was removed
-    upstream in April 2026, and on Linux the apt install is allowed to fail rather than take an
-    unrelated pull request's whole run down with it, so the binary is not guaranteed to be there.
-    """
-    import platform
-    import shutil
-
-    return platform.system() != "Windows" and shutil.which("wine") is None
-
-
 @pytest.mark.skipif(
-    wine_is_required_and_missing(),
-    reason="Plexon2 reads its files through a Windows DLL and Wine is not installed on this platform.",
-)
-@pytest.mark.skipif(
-    platform != "win32" and this_python_version >= version.parse("3.14"),
-    reason="Plexon2 is not supported on Python 3.14 outside Windows at the moment, as zugbruecke cannot start its Wine session there.",
+    platform != "win32",
+    reason="Plexon2 tests only run on Windows because Wine-based testing is no longer maintained.",
 )
 class TestPlexon2RecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = Plexon2RecordingInterface

@@ -1050,7 +1050,7 @@ class TestDeepLabCutInterfaceSetTimestamps(PoseEstimationInterfaceTestMixin):
         metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
 
         self.interface.set_aligned_timestamps(custom_timestamps)
-        assert len(self.interface.alignment[self.interface.metadata_key].get_times()) == 2330
+        assert len(self.interface.temporal_alignment[self.interface.metadata_key].get_times()) == 2330
 
         self.interface.run_conversion(
             nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True, backend=self.backend

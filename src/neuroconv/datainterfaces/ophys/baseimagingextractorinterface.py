@@ -94,7 +94,7 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         )
 
     @property
-    def alignment(self) -> _TemporalAlignment:
+    def temporal_alignment(self) -> _TemporalAlignment:
         return self._alignment
 
     # The native times are read from the format and never from `get_timestamps`, which returns the times
@@ -113,7 +113,7 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         return float(times[0]) if times is not None else 0.0
 
     def _set_aligned_times_on_extractor(self) -> None:
-        series = self.alignment[self._alignment_key]
+        series = self.temporal_alignment[self._alignment_key]
         # A zero standing in for the native times reads back as the shift alignment applied
         time_shift = float(series._get_times(get_default_times=lambda: np.zeros(1))[0])
         is_aligned = series._times is not None or time_shift != 0.0
@@ -311,38 +311,38 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
     def get_timestamps(self) -> np.ndarray:
         warnings.warn(
             "`get_timestamps` is deprecated and will be removed in v0.13.0. "
-            "Use `interface.alignment[key].get_times()` instead.",
+            "Use `interface.temporal_alignment[key].get_times()` instead.",
             FutureWarning,
             stacklevel=2,
         )
-        return self.alignment[self._alignment_key].get_times()
+        return self.temporal_alignment[self._alignment_key].get_times()
 
     def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
         warnings.warn(
             "`set_aligned_timestamps` is deprecated and will be removed in v0.13.0. "
-            "Use `interface.alignment[key].set_times(times)` instead.",
+            "Use `interface.temporal_alignment[key].set_times(times)` instead.",
             FutureWarning,
             stacklevel=2,
         )
-        self.alignment[self._alignment_key].set_times(aligned_timestamps)
+        self.temporal_alignment[self._alignment_key].set_times(aligned_timestamps)
 
     def set_aligned_starting_time(self, aligned_starting_time: float) -> None:
         warnings.warn(
             "`set_aligned_starting_time` is deprecated and will be removed in v0.13.0. "
-            "Use `interface.alignment.shift_times(delta)` instead.",
+            "Use `interface.temporal_alignment.shift_times(delta)` instead.",
             FutureWarning,
             stacklevel=2,
         )
-        self.alignment.shift_times(aligned_starting_time)
+        self.temporal_alignment.shift_times(aligned_starting_time)
 
     def align_by_interpolation(self, unaligned_timestamps: np.ndarray, aligned_timestamps: np.ndarray) -> None:
         warnings.warn(
             "`align_by_interpolation` is deprecated and will be removed in v0.13.0. "
-            "Use `interface.alignment.remap_times(local_sync_times=..., reference_sync_times=...)` instead.",
+            "Use `interface.temporal_alignment.remap_times(local_sync_times=..., reference_sync_times=...)` instead.",
             FutureWarning,
             stacklevel=2,
         )
-        self.alignment.remap_times(
+        self.temporal_alignment.remap_times(
             local_sync_times=unaligned_timestamps,
             reference_sync_times=aligned_timestamps,
         )

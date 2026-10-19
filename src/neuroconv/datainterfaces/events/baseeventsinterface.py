@@ -106,7 +106,7 @@ class BaseEventsInterface(BaseDataInterface):
         self._alignment = None
 
     @property
-    def alignment(self):
+    def temporal_alignment(self):
         if self._alignment is None:
             alignment = _TemporalAlignment()
             for source_id in self.get_event_type_source_ids():
@@ -123,7 +123,7 @@ class BaseEventsInterface(BaseDataInterface):
 
     def _get_event_durations(self, event_type_source_id: str) -> np.ndarray | None:
         """The durations of one event type on this interface's current clock, ``None`` for a type without any."""
-        return self.alignment[event_type_source_id].get_durations()
+        return self.temporal_alignment[event_type_source_id].get_durations()
 
     @abstractmethod
     def _get_events_data_dict(self) -> dict[str, _EventsData]:
@@ -210,7 +210,7 @@ class BaseEventsInterface(BaseDataInterface):
                 f"{sorted(events_data_dict)}, which get_event_type_source_ids lists."
             )
 
-        return self.alignment[event_type_source_id].get_times()
+        return self.temporal_alignment[event_type_source_id].get_times()
 
     def get_metadata_schema(self) -> dict:
         """
