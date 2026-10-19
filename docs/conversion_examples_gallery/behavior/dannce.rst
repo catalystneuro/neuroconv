@@ -52,7 +52,7 @@ When ``calibration_path`` is a Label3D ``.mat`` file, the table is read from the
 
 Without a sync table the samples are taken to be consecutive frames from the start of the recording,
 which only holds when no frame was skipped. With neither ``sampling_rate`` nor a sync table, set the
-times yourself with ``interface.alignment[interface.metadata_key].set_times(times)``.
+times yourself with ``interface.temporal_alignment[interface.metadata_key].set_times(times)``.
 
 Camera calibration and multiple cameras
 ========================================

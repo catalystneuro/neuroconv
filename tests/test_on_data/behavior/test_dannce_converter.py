@@ -79,7 +79,7 @@ class TestDANNCEConverterSingleSubject(_TestCaseWithTemporaryDirectory):
         cls.construction_warnings = [str(record.message) for record in construction_warnings]
         cls.frametimes = np.load(run_path / "videos" / "Camera1" / "frametimes.npy")[1]
         dannce_interface = cls.converter.data_interface_objects["DANNCE"]
-        dannce_interface.alignment[dannce_interface.metadata_key].set_times(cls.frametimes)
+        dannce_interface.temporal_alignment[dannce_interface.metadata_key].set_times(cls.frametimes)
 
     def test_frametimes_without_sync_warn(self):
         assert any("no sync table to map" in message for message in self.construction_warnings)
@@ -190,7 +190,9 @@ class TestDANNCEConverterClassicDannceNoFrametimes(_TestCaseWithTemporaryDirecto
         """sampleIDs 1 and 11 are sync rows for frames 0 and 1, so at 100 Hz the times are 0.00 and 0.01 s."""
         dannce_interface = self.converter.data_interface_objects["DANNCE"]
         np.testing.assert_array_equal(dannce_interface._sample_id, [1, 11])
-        np.testing.assert_allclose(dannce_interface.alignment[dannce_interface.metadata_key].get_times(), [0.0, 0.01])
+        np.testing.assert_allclose(
+            dannce_interface.temporal_alignment[dannce_interface.metadata_key].get_times(), [0.0, 0.01]
+        )
 
     def test_expected_metadata(self):
         metadata = self.converter.get_metadata()
@@ -252,7 +254,7 @@ class TestDANNCEConverterPredictionsSplitAcrossJobs(_TestCaseWithTemporaryDirect
         frames = dannce_interface.video_frame_indices
         np.testing.assert_array_equal(frames, np.arange(50))
         np.testing.assert_allclose(
-            dannce_interface.alignment[dannce_interface.metadata_key].get_times(), self.frametimes[frames]
+            dannce_interface.temporal_alignment[dannce_interface.metadata_key].get_times(), self.frametimes[frames]
         )
 
     def test_run_conversion(self):
@@ -303,8 +305,8 @@ class TestDANNCEConverterMultipleSubjectsSharedDevices(_TestCaseWithTemporaryDir
             subject_name="rat2",
             camera_names=cls.converter_rat1._camera_names,
         )
-        cls.interface_rat2.alignment[cls.interface_rat2.metadata_key].set_times(
-            cls.converter_rat1._dannce_interface.alignment[
+        cls.interface_rat2.temporal_alignment[cls.interface_rat2.metadata_key].set_times(
+            cls.converter_rat1._dannce_interface.temporal_alignment[
                 cls.converter_rat1._dannce_interface.metadata_key
             ].get_times()
         )
@@ -351,7 +353,9 @@ class TestDANNCEInterfaceAvgAndMaxPredictions(TestCase):
             sync_path=str(self.run_path / "label3d_dannce.mat"),
             sampling_rate=100.0,
         )
-        np.testing.assert_allclose(interface.alignment[interface.metadata_key].get_times(), np.arange(100) / 100.0)
+        np.testing.assert_allclose(
+            interface.temporal_alignment[interface.metadata_key].get_times(), np.arange(100) / 100.0
+        )
 
     def test_times_through_matlab_v73_sync(self):
         """'com_dannce.mat' is a MATLAB v7.3 (HDF5) file carrying the same sync table."""
@@ -360,7 +364,9 @@ class TestDANNCEInterfaceAvgAndMaxPredictions(TestCase):
             sync_path=str(self.run_path / "com_dannce.mat"),
             sampling_rate=100.0,
         )
-        np.testing.assert_allclose(interface.alignment[interface.metadata_key].get_times(), np.arange(100) / 100.0)
+        np.testing.assert_allclose(
+            interface.temporal_alignment[interface.metadata_key].get_times(), np.arange(100) / 100.0
+        )
 
     def test_avg_predictions_load_and_write(self):
         interface = DANNCEInterface(
@@ -408,7 +414,9 @@ class TestDANNCEInterfacePreLabel3dLayout(TestCase):
         )
         assert interface._pred.shape == (100, 3, 22)
         assert interface._camera_names == [f"Camera{i}" for i in range(1, 7)]
-        np.testing.assert_allclose(interface.alignment[interface.metadata_key].get_times(), np.arange(100) / 100.0)
+        np.testing.assert_allclose(
+            interface.temporal_alignment[interface.metadata_key].get_times(), np.arange(100) / 100.0
+        )
 
         from pynwb.testing.mock.file import mock_NWBFile
 
@@ -479,8 +487,8 @@ class TestDANNCEConverterOneFilePerSubject(_TestCaseWithTemporaryDirectory):
             subject_name="rat2",
             camera_names=cls.converter_rat1._camera_names,
         )
-        cls.interface_rat2.alignment[cls.interface_rat2.metadata_key].set_times(
-            cls.converter_rat1._dannce_interface.alignment[
+        cls.interface_rat2.temporal_alignment[cls.interface_rat2.metadata_key].set_times(
+            cls.converter_rat1._dannce_interface.temporal_alignment[
                 cls.converter_rat1._dannce_interface.metadata_key
             ].get_times()
         )
@@ -543,8 +551,8 @@ class TestDANNCEConverterThreeSubjectsSharedDevices(_TestCaseWithTemporaryDirect
                 subject_name=subject_name,
                 camera_names=cls.converter_animal0._camera_names,
             )
-            interface.alignment[interface.metadata_key].set_times(
-                cls.converter_animal0._dannce_interface.alignment[
+            interface.temporal_alignment[interface.metadata_key].set_times(
+                cls.converter_animal0._dannce_interface.temporal_alignment[
                     cls.converter_animal0._dannce_interface.metadata_key
                 ].get_times()
             )
@@ -648,8 +656,8 @@ class TestDANNCEConverterTwoRunsForOneSubject(_TestCaseWithTemporaryDirectory):
             metadata_key="PoseEstimationSDANNCERun",
             camera_names=cls.converter_dannce_run._camera_names,
         )
-        cls.interface_sdannce_run.alignment[cls.interface_sdannce_run.metadata_key].set_times(
-            cls.converter_dannce_run._dannce_interface.alignment[
+        cls.interface_sdannce_run.temporal_alignment[cls.interface_sdannce_run.metadata_key].set_times(
+            cls.converter_dannce_run._dannce_interface.temporal_alignment[
                 cls.converter_dannce_run._dannce_interface.metadata_key
             ].get_times()
         )

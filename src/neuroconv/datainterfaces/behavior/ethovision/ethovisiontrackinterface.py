@@ -129,8 +129,8 @@ class EthoVisionTrackInterface(BaseDataInterface):
             for channel_name, snake_name in self._channel_snake_names.items()
         }
         # Alignment by composition, the component the events interfaces hold; see neuroconv/_temporal_alignment.py.
-        self.alignment = _TemporalAlignment()
-        self.alignment._register(
+        self.temporal_alignment = _TemporalAlignment()
+        self.temporal_alignment._register(
             key=self.metadata_key,
             get_native_times=lambda: self._track.trial_time,
             get_number_of_samples=lambda: len(self._track.trial_time),
@@ -208,7 +208,7 @@ class EthoVisionTrackInterface(BaseDataInterface):
             resolved_metadata.deep_update(metadata)
         processing_module = get_module(nwbfile=nwbfile, name="behavior", description="Processed behavioral data.")
 
-        timestamps = self.alignment[self.metadata_key].get_times()
+        timestamps = self.temporal_alignment[self.metadata_key].get_times()
         rate = calculate_regular_series_rate(series=timestamps)
         time_kwargs = dict(rate=rate, starting_time=timestamps[0]) if rate else dict(timestamps=timestamps)
 
