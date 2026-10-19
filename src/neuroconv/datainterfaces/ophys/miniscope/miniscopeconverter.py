@@ -373,12 +373,11 @@ class MiniscopeConverter(ConverterPipe):
                     )
                     timestamps = _get_device_folder_timestamps(folder_path=str(camera_folder_path))
                     segment_boundaries = list(starting_frames) + [len(timestamps)]
-                    interface.set_aligned_timestamps(
-                        aligned_timestamps=[
-                            timestamps[segment_start:segment_stop]
-                            for segment_start, segment_stop in zip(segment_boundaries[:-1], segment_boundaries[1:])
-                        ]
-                    )
+                    segment_ranges = zip(segment_boundaries[:-1], segment_boundaries[1:])
+                    for segment_key, (segment_start, segment_stop) in zip(
+                        interface.temporal_alignment.keys(), segment_ranges, strict=True
+                    ):
+                        interface.temporal_alignment[segment_key].set_times(timestamps[segment_start:segment_stop])
 
                     data_interfaces[interface_name] = interface
                     self._behavior_video_interfaces[interface_name] = dict(
@@ -518,9 +517,7 @@ class MiniscopeConverter(ConverterPipe):
             if session_start_time is None:
                 continue
             time_offset = (session_start_time - min_session_start_time).total_seconds()
-            self.data_interface_objects[video_interface_name].set_aligned_starting_time(
-                aligned_starting_time=time_offset
-            )
+            self.data_interface_objects[video_interface_name].temporal_alignment.shift_times(time_offset)
 
         # Align head orientation interfaces with their paired imaging interfaces
         for ho_interface_name in self._get_head_orientation_interface_names():
