@@ -44,7 +44,7 @@ SLEAP_MACOS_INTEL_PYTHON_313_UNSUPPORTED = (
 
 class TestLightningPoseDataInterface(PoseEstimationInterfaceTestMixin):
     data_interface_cls = LightningPoseDataInterface
-    expected_alignment_keys = ("lightning_pose_key",)
+    expected_temporal_alignment_keys = ("lightning_pose_key",)
     interface_kwargs = dict(
         file_path=str(BEHAVIOR_DATA_PATH / "lightningpose" / "outputs/2023-11-09/10-14-37/video_preds/test_vid.csv"),
         original_video_file_path=str(
@@ -266,7 +266,7 @@ class TestLightningPoseDataInterface(PoseEstimationInterfaceTestMixin):
 
 class TestLightningPoseDataInterfaceWithStubTest(PoseEstimationInterfaceTestMixin):
     data_interface_cls = LightningPoseDataInterface
-    expected_alignment_keys = ("lightning_pose_key",)
+    expected_temporal_alignment_keys = ("lightning_pose_key",)
     interface_kwargs = dict(
         file_path=str(BEHAVIOR_DATA_PATH / "lightningpose" / "outputs/2023-11-09/10-14-37/video_preds/test_vid.csv"),
         original_video_file_path=str(
@@ -290,7 +290,7 @@ class TestLightningPoseDataInterfaceWithStubTest(PoseEstimationInterfaceTestMixi
 
 class TestSLEAPInterface(PoseEstimationInterfaceTestMixin):
     data_interface_cls = SLEAPInterface
-    expected_alignment_keys = ("sleap_track_0",)
+    expected_temporal_alignment_keys = ("sleap_track_0",)
     interface_kwargs = dict(
         file_path=str(BEHAVIOR_DATA_PATH / "sleap" / "predictions_1.2.7_provenance_and_tracking.slp"),
         video_file_path=str(BEHAVIOR_DATA_PATH / "sleap" / "melanogaster_courtship.mp4"),
@@ -498,7 +498,7 @@ class TestSLEAPHumanInstances(PoseEstimationInterfaceTestMixin):
     """
 
     data_interface_cls = SLEAPInterface
-    expected_alignment_keys = ("sleap_track_0",)
+    expected_temporal_alignment_keys = ("sleap_track_0",)
     interface_kwargs = dict(
         file_path=str(
             BEHAVIOR_DATA_PATH / "sleap" / "human_and_model_instances" / "solo_human_instances" / "remora_video_1.slp"
@@ -721,7 +721,7 @@ class TestSLEAPWithoutTracks:
 )
 class TestDeepLabCutInterface(PoseEstimationInterfaceTestMixin):
     data_interface_cls = DeepLabCutInterface
-    expected_alignment_keys = ("deep_lab_cut_key",)
+    expected_temporal_alignment_keys = ("deep_lab_cut_key",)
     interface_kwargs = dict(
         file_path=str(
             BEHAVIOR_DATA_PATH
@@ -936,7 +936,7 @@ class TestDeepLabCutInterfaceWithLandmarks(PoseEstimationInterfaceTestMixin):
     """
 
     data_interface_cls = DeepLabCutInterface
-    expected_alignment_keys = ("deep_lab_cut_metadata_key",)
+    expected_temporal_alignment_keys = ("deep_lab_cut_metadata_key",)
     interface_kwargs = dict(
         file_path=str(
             BEHAVIOR_DATA_PATH
@@ -995,7 +995,7 @@ class TestDeepLabCutInterfaceWithLandmarks(PoseEstimationInterfaceTestMixin):
 )
 class TestDeepLabCutInterfaceNoConfigFile(PoseEstimationInterfaceTestMixin):
     data_interface_cls = DeepLabCutInterface
-    expected_alignment_keys = ("deep_lab_cut_key",)
+    expected_temporal_alignment_keys = ("deep_lab_cut_key",)
     interface_kwargs = dict(
         file_path=str(
             BEHAVIOR_DATA_PATH
@@ -1017,7 +1017,7 @@ class TestDeepLabCutInterfaceNoConfigFile(PoseEstimationInterfaceTestMixin):
 )
 class TestDeepLabCutInterfaceSetTimestamps(PoseEstimationInterfaceTestMixin):
     data_interface_cls = DeepLabCutInterface
-    expected_alignment_keys = ("deep_lab_cut_key",)
+    expected_temporal_alignment_keys = ("deep_lab_cut_key",)
     interface_kwargs = dict(
         file_path=str(
             BEHAVIOR_DATA_PATH
@@ -1075,7 +1075,7 @@ class TestDeepLabCutInterfaceSetTimestamps(PoseEstimationInterfaceTestMixin):
 )
 class TestDeepLabCutInterfaceFromCSV(PoseEstimationInterfaceTestMixin):
     data_interface_cls = DeepLabCutInterface
-    expected_alignment_keys = ("deep_lab_cut_metadata_key",)
+    expected_temporal_alignment_keys = ("deep_lab_cut_metadata_key",)
     interface_kwargs = dict(
         file_path=str(
             BEHAVIOR_DATA_PATH
@@ -1332,7 +1332,7 @@ class _DANNCEMetadataPropagationMixin:
 )
 class TestDANNCEInterface(_DANNCEMetadataPropagationMixin, PoseEstimationInterfaceTestMixin):
     data_interface_cls = DANNCEInterface
-    expected_alignment_keys = ("dannce",)
+    expected_temporal_alignment_keys = ("dannce",)
     interface_kwargs = dict(
         file_paths=str(
             BEHAVIOR_DATA_PATH
@@ -1421,7 +1421,7 @@ class TestDANNCEInterfaceWithCalibration(_DANNCEMetadataPropagationMixin, PoseEs
     camera_names = [f"Camera{i}" for i in range(1, 7)]
 
     data_interface_cls = DANNCEInterface
-    expected_alignment_keys = ("dannce",)
+    expected_temporal_alignment_keys = ("dannce",)
     interface_kwargs = dict(
         file_paths=str(
             BEHAVIOR_DATA_PATH
@@ -1472,7 +1472,7 @@ class TestDANNCEInterfaceMultiAnimal(_DANNCEMetadataPropagationMixin, PoseEstima
     animal_index), which the plain `TestDANNCEInterface` above (3D 'pred') does not exercise."""
 
     data_interface_cls = DANNCEInterface
-    expected_alignment_keys = ("dannce_rat2",)
+    expected_temporal_alignment_keys = ("dannce_rat2",)
     interface_kwargs = dict(
         file_paths=str(
             BEHAVIOR_DATA_PATH

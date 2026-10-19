@@ -26,7 +26,7 @@ class TestCSVFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
     """Single-file CSV fiber photometry interface (one FiberPhotometryResponseSeries)."""
 
     data_interface_cls = CSVFiberPhotometryInterface
-    expected_alignment_keys = ("calcium_signal",)
+    expected_temporal_alignment_keys = ("calcium_signal",)
     conversion_options = dict(stub_test=True, stub_samples=STUB_SAMPLES)
 
     # First STUB_SAMPLES samples of the "data" column, written from the bare scaffold metadata.

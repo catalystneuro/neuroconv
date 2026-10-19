@@ -15,7 +15,7 @@ from neuroconv.tools.testing.mock_interfaces import MockEventsInterface
 
 class TestMockEventsInterface(EventsInterfaceTestMixin):
     data_interface_cls = MockEventsInterface
-    expected_alignment_keys = ("events",)
+    expected_temporal_alignment_keys = ("events",)
     interface_kwargs = dict()
 
     def test_get_metadata(self):

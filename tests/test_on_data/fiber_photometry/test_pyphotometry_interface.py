@@ -35,7 +35,7 @@ class TestPyPhotometrySymbolicMode(FiberPhotometryInterfaceTestMixin):
     """Round-trip the first analog input of a ``2EX_2EM_pulsed`` recording, header version 1.0."""
 
     data_interface_cls = PyPhotometryFiberPhotometryInterface
-    expected_alignment_keys = ("fiber_photometry_detector_1_excitation_1",)
+    expected_temporal_alignment_keys = ("fiber_photometry_detector_1_excitation_1",)
     file_path = PYPHOTOMETRY_PATH / "mode_named_symbolically" / "two_excitation_two_emission_pulsed.ppd"
     interface_kwargs = dict(file_path=file_path, stream_name="detector_1_excitation_1")
     conversion_options = dict(stub_test=True, stub_samples=5)
@@ -68,7 +68,7 @@ class TestPyPhotometryOneColourTimeDivisionSignal(FiberPhotometryInterfaceTestMi
     """Round-trip the first analog input of a ``1 colour time div.`` recording, header version 0.3."""
 
     data_interface_cls = PyPhotometryFiberPhotometryInterface
-    expected_alignment_keys = ("fiber_photometry_detector_1_excitation_1",)
+    expected_temporal_alignment_keys = ("fiber_photometry_detector_1_excitation_1",)
     file_path = PYPHOTOMETRY_PATH / "mode_named_in_prose" / "one_colour_time_division.ppd"
     interface_kwargs = dict(file_path=file_path, stream_name="detector_1_excitation_1")
     conversion_options = dict(stub_test=True, stub_samples=5)
@@ -109,7 +109,7 @@ class TestPyPhotometryOneColourTimeDivisionControl(FiberPhotometryInterfaceTestM
     """
 
     data_interface_cls = PyPhotometryFiberPhotometryInterface
-    expected_alignment_keys = ("fiber_photometry_detector_1_excitation_2",)
+    expected_temporal_alignment_keys = ("fiber_photometry_detector_1_excitation_2",)
     file_path = PYPHOTOMETRY_PATH / "mode_named_in_prose" / "one_colour_time_division.ppd"
     interface_kwargs = dict(file_path=file_path, stream_name="detector_1_excitation_2")
     conversion_options = dict(stub_test=True, stub_samples=5)
@@ -128,7 +128,7 @@ class TestPyPhotometryTwoColourTimeDivision(FiberPhotometryInterfaceTestMixin):
     """
 
     data_interface_cls = PyPhotometryFiberPhotometryInterface
-    expected_alignment_keys = ("fiber_photometry_detector_1_excitation_1",)
+    expected_temporal_alignment_keys = ("fiber_photometry_detector_1_excitation_1",)
     file_path = PYPHOTOMETRY_PATH / "mode_named_in_prose" / "two_colour_time_division.ppd"
     interface_kwargs = dict(file_path=file_path, stream_name="detector_1_excitation_1")
     conversion_options = dict(stub_test=True, stub_samples=5)
@@ -151,7 +151,7 @@ class TestPyPhotometryTwoColourContinuous(FiberPhotometryInterfaceTestMixin):
     """
 
     data_interface_cls = PyPhotometryFiberPhotometryInterface
-    expected_alignment_keys = ("fiber_photometry_detector_2_excitation_2",)
+    expected_temporal_alignment_keys = ("fiber_photometry_detector_2_excitation_2",)
     file_path = PYPHOTOMETRY_PATH / "mode_named_in_prose" / "two_colour_continuous.ppd"
     interface_kwargs = dict(file_path=file_path, stream_name="detector_2_excitation_2")
     conversion_options = dict(stub_test=True, stub_samples=5)
@@ -177,7 +177,7 @@ class TestPyPhotometryIndicatorNamedMode(FiberPhotometryInterfaceTestMixin):
     """
 
     data_interface_cls = PyPhotometryFiberPhotometryInterface
-    expected_alignment_keys = ("fiber_photometry_detector_1_excitation_1",)
+    expected_temporal_alignment_keys = ("fiber_photometry_detector_1_excitation_1",)
     file_path = PYPHOTOMETRY_PATH / "mode_named_by_indicators" / "gcamp_rfp_dif.ppd"
     interface_kwargs = dict(file_path=file_path, stream_name="detector_1_excitation_1")
     conversion_options = dict(stub_test=True, stub_samples=5)
@@ -224,7 +224,7 @@ class TestPyPhotometryPreJsonHeader(FiberPhotometryInterfaceTestMixin):
     """
 
     data_interface_cls = PyPhotometryFiberPhotometryInterface
-    expected_alignment_keys = ("fiber_photometry_detector_1_excitation_1",)
+    expected_temporal_alignment_keys = ("fiber_photometry_detector_1_excitation_1",)
     file_path = PYPHOTOMETRY_PATH / "header_predates_json" / "two_signals_200hz.ppd"
     interface_kwargs = dict(file_path=file_path, stream_name="detector_1_excitation_1")
     conversion_options = dict(stub_test=True, stub_samples=5)

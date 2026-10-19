@@ -24,7 +24,7 @@ class TestIntanDigitalInterface(EventsInterfaceTestMixin):
     # count from zero, which is why the name is the handle and the bit is not).
     FILE_PATH = ECEPHY_DATA_PATH / "intan" / "intan_fps_test_231117_052500" / "info.rhd"
     data_interface_cls = IntanDigitalInterface
-    expected_alignment_keys = ("DIGITAL-IN-01",)
+    expected_temporal_alignment_keys = ("DIGITAL-IN-01",)
     interface_kwargs = dict(file_path=FILE_PATH)
 
     def test_get_metadata(self):
@@ -99,7 +99,7 @@ class TestIntanDigitalBothWords(EventsInterfaceTestMixin):
     # cannot exercise.
     FILE_PATH = ECEPHY_DATA_PATH / "intan" / "rhs_stim_data_single_file_format" / "intanTestFile.rhs"
     data_interface_cls = IntanDigitalInterface
-    expected_alignment_keys = (
+    expected_temporal_alignment_keys = (
         "DIGITAL-IN-01",
         "DIGITAL-IN-02",
         "DIGITAL-IN-03",
