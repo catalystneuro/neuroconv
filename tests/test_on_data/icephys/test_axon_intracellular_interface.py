@@ -46,7 +46,7 @@ class TestAxonMultiSweepVoltageClampCommand(DataInterfaceTestMixin):
     the core single-series + table path with the irregular-timing (timestamps) branch."""
 
     data_interface_cls = AxonIntracellularInterface
-    expected_alignment_keys = ("user_list_IN0",)
+    expected_temporal_alignment_keys = ("user_list_IN0",)
     file_path = ICEPHYS_DATA_PATH / "read_raw_protocol" / "user_list.abf"
     response_channel_name = "IN0"
     interface_kwargs = dict(
@@ -157,7 +157,7 @@ class TestAxonSingleSweepABFv1(DataInterfaceTestMixin):
     """
 
     data_interface_cls = AxonIntracellularInterface
-    expected_alignment_keys = ("abf1_gapfree_bogus_episode_count_10Vm",)
+    expected_temporal_alignment_keys = ("abf1_gapfree_bogus_episode_count_10Vm",)
     file_path = ICEPHYS_DATA_PATH / "abf1_gapfree_bogus_episode_count.abf"
     response_channel_name = "10Vm"
     interface_kwargs = dict(
@@ -225,7 +225,7 @@ class TestAxonVoltageClampCommand(DataInterfaceTestMixin):
     VoltageClampSeries + VoltageClampStimulusSeries with the regular-timing (rate) branch."""
 
     data_interface_cls = AxonIntracellularInterface
-    expected_alignment_keys = ("step_IN0",)
+    expected_temporal_alignment_keys = ("step_IN0",)
     file_path = ICEPHYS_DATA_PATH / "read_raw_protocol" / "step.abf"
     response_channel_name = "IN0"
     interface_kwargs = dict(
@@ -300,7 +300,7 @@ class TestAxonIZero(DataInterfaceTestMixin):
     """I=0 mode: IZeroClampSeries and no stimulus."""
 
     data_interface_cls = AxonIntracellularInterface
-    expected_alignment_keys = ("abf2_zero_current_clamp_IN0",)
+    expected_temporal_alignment_keys = ("abf2_zero_current_clamp_IN0",)
     file_path = ICEPHYS_DATA_PATH / "abf2_zero_current_clamp.abf"
     response_channel_name = "IN0"
     interface_kwargs = dict(
@@ -369,7 +369,7 @@ class TestAxonRecordedMonitorStimulus(DataInterfaceTestMixin):
     reconstructed command: CurrentClampSeries + CurrentClampStimulusSeries from a recorded channel."""
 
     data_interface_cls = AxonIntracellularInterface
-    expected_alignment_keys = ("current_clamp_IN0",)
+    expected_temporal_alignment_keys = ("current_clamp_IN0",)
     file_path = ICEPHYS_DATA_PATH / "dual_patch_pairs" / "current_clamp.abf"
     response_channel_name = "IN0"
     interface_kwargs = dict(

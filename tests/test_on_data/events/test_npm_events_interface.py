@@ -23,7 +23,7 @@ NPM_EVENTS_PATH = OPHYS_DATA_PATH / "events_datasets" / "NPM"
 
 class TestNPMStringLabels(EventsInterfaceTestMixin):
     data_interface_cls = NPMEventsInterface
-    expected_alignment_keys = ("whitenoise", "pinknoise")
+    expected_temporal_alignment_keys = ("whitenoise", "pinknoise")
     interface_kwargs = dict(file_path=NPM_EVENTS_PATH / "event_type_as_string" / "bl72bl82_12feb2024_stimuli.csv")
 
     def test_string_labels(self, setup_interface):
@@ -94,7 +94,7 @@ class TestNPMStringLabels(EventsInterfaceTestMixin):
 
 class TestNPMNumericLabels(EventsInterfaceTestMixin):
     data_interface_cls = NPMEventsInterface
-    expected_alignment_keys = ("1", "3")
+    expected_temporal_alignment_keys = ("1", "3")
     interface_kwargs = dict(file_path=NPM_EVENTS_PATH / "event_type_as_number" / "ttls.csv")
 
     def test_numeric_labels(self, setup_interface):
@@ -143,7 +143,7 @@ class TestNPMNumericLabels(EventsInterfaceTestMixin):
 
 class TestNPMBoolLabels(EventsInterfaceTestMixin):
     data_interface_cls = NPMEventsInterface
-    expected_alignment_keys = ("True", "False")
+    expected_temporal_alignment_keys = ("True", "False")
     interface_kwargs = dict(file_path=NPM_EVENTS_PATH / "event_type_as_bool" / "PagCeAVgatFear_1442_ts0.csv")
 
     def test_bool_labels(self, setup_interface):
@@ -174,7 +174,7 @@ class TestNPMBoolLabels(EventsInterfaceTestMixin):
 
 class TestNPMSingleEventType(EventsInterfaceTestMixin):
     data_interface_cls = NPMEventsInterface
-    expected_alignment_keys = ("1",)
+    expected_temporal_alignment_keys = ("1",)
     interface_kwargs = dict(file_path=NPM_EVENTS_PATH / "single_event_type" / "PagCeAVgatFear_1512_ts0.csv")
 
     def test_single_event_type(self, setup_interface):

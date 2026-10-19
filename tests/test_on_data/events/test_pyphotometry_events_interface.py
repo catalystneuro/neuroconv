@@ -101,7 +101,7 @@ class TestPyPhotometryNarrowPulsesAndIdleLine(PyPhotometryEventsRoundTrip):
     was low, and it ends on a low sample, which leaves every high period closed.
     """
 
-    expected_alignment_keys = ("digital_1", "digital_2")
+    expected_temporal_alignment_keys = ("digital_1", "digital_2")
     file_path = PYPHOTOMETRY_EVENTS_PATH / "narrow_pulses_and_idle_line" / "one_colour_time_division_window.ppd"
     interface_kwargs = dict(file_path=file_path)
 
@@ -146,7 +146,7 @@ class TestPyPhotometryStartsAndEndsHigh(PyPhotometryEventsRoundTrip):
     running to the end of the file, which is the shape of a closed bug in Doric's reader.
     """
 
-    expected_alignment_keys = ("digital_1", "digital_2")
+    expected_temporal_alignment_keys = ("digital_1", "digital_2")
     file_path = PYPHOTOMETRY_EVENTS_PATH / "starts_and_ends_high" / "one_colour_time_division_window.ppd"
     interface_kwargs = dict(file_path=file_path)
 
@@ -191,7 +191,7 @@ class TestPyPhotometryWidePulsesOnBothLines(PyPhotometryEventsRoundTrip):
     zero. Every edge of the window falls on a low sample of both lines, so nothing here is truncated.
     """
 
-    expected_alignment_keys = ("digital_1", "digital_2")
+    expected_temporal_alignment_keys = ("digital_1", "digital_2")
     file_path = PYPHOTOMETRY_EVENTS_PATH / "wide_pulses_on_both_lines" / "two_colour_time_division_window.ppd"
     interface_kwargs = dict(file_path=file_path)
 

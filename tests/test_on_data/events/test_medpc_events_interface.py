@@ -24,7 +24,7 @@ class TestPerArrayLernerLab(EventsInterfaceTestMixin):
     pairing the port-entry onsets in G with the durations in E."""
 
     data_interface_cls = MedPCArrayEventsInterface
-    expected_alignment_keys = ("A", "B", "C", "D", "G")
+    expected_temporal_alignment_keys = ("A", "B", "C", "D", "G")
 
     event_names = {
         "A": "left_nose_poke_times",
@@ -174,7 +174,7 @@ class TestPerArrayTyeLab(EventsInterfaceTestMixin):
     and whose `.MPC` source names what each array holds."""
 
     data_interface_cls = MedPCArrayEventsInterface
-    expected_alignment_keys = ("P", "N", "Q", "R", "S", "H")
+    expected_temporal_alignment_keys = ("P", "N", "Q", "R", "S", "H")
     event_names = {
         "P": "lick_start_ethanol",
         "N": "lick_end_ethanol",
@@ -297,7 +297,7 @@ class TestPackedWithLegend(EventsInterfaceTestMixin):
     and the legend of `ExampleFile2` names each code."""
 
     data_interface_cls = MedPCPackedEventsInterface
-    expected_alignment_keys = ("001", "011", "051", "021", "052", "012", "050", "022")
+    expected_temporal_alignment_keys = ("001", "011", "051", "021", "052", "012", "050", "022")
     event_names = {
         "001": "lick",
         "011": "pump_a_on",
@@ -393,7 +393,7 @@ class TestPackedWithoutLegend(EventsInterfaceTestMixin):
     beside it is a later version whose numbering disagrees with the file, so the codes cannot be named."""
 
     data_interface_cls = MedPCPackedEventsInterface
-    expected_alignment_keys = ("036", "034", "004", "029", "041", "001", "030", "002", "012", "032")
+    expected_temporal_alignment_keys = ("036", "034", "004", "029", "041", "001", "030", "002", "012", "032")
     event_names = {
         code: f"code_{code}" for code in ("036", "034", "004", "029", "041", "001", "030", "032", "002", "012")
     }
@@ -466,7 +466,7 @@ class TestPackedVariableWidthCodes(EventsInterfaceTestMixin):
     against it rather than inferred."""
 
     data_interface_cls = MedPCPackedEventsInterface
-    expected_alignment_keys = (
+    expected_temporal_alignment_keys = (
         "999",
         "987",
         "100",
@@ -596,7 +596,7 @@ class TestPackedRelativeMode(EventsInterfaceTestMixin):
     values are times only once accumulated."""
 
     data_interface_cls = MedPCPackedEventsInterface
-    expected_alignment_keys = ("1",)
+    expected_temporal_alignment_keys = ("1",)
     event_names = {"1": "lever_press"}
 
     interface_kwargs = dict(
