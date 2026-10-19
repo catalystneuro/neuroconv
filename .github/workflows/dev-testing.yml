@@ -28,7 +28,7 @@ env:
 jobs:
   run:
     name: Ubuntu tests with Python ${{ matrix.python-version }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
@@ -46,18 +46,6 @@ jobs:
           python -m pip install -U pip  # Official recommended way
           git config --global user.email "CI@example.com"
           git config --global user.name "CI Almighty"
-
-      - name: Install Wine (For Plexon2 Tests)
-        uses: ./.github/actions/install-wine
-        with:
-          os: ${{ runner.os }}
-      # Neo downloads the Plexon reader DLL into the home directory the first time a .pl2 file is
-      # opened, with a bare urlopen that has no timeout. Caching it keeps the test run off the network.
-      - name: Cache the Plexon2 reader DLL
-        uses: actions/cache@v5
-        with:
-          path: ~/.plexon_dlls_for_neo
-          key: plexon-dlls-${{ runner.os }}
 
       - name: Install full requirements
         run: |

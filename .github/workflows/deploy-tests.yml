@@ -63,7 +63,7 @@ jobs:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     with:  #  Ternary operator: condition && value_if_true || value_if_false
       python-versions: ${{ github.event.pull_request.draft == true && format('["{0}"]', needs.load_python_and_os_versions.outputs.MIN_PYTHON_VERSION) || needs.load_python_and_os_versions.outputs.ALL_PYTHON_VERSIONS }}
-      os-versions: ${{ github.event.pull_request.draft == true && '["ubuntu-24.04"]' || needs.load_python_and_os_versions.outputs.ALL_OS_VERSIONS }}
+      os-versions: ${{ github.event.pull_request.draft == true && '["ubuntu-latest"]' || needs.load_python_and_os_versions.outputs.ALL_OS_VERSIONS }}
 
   # If the conversion gallery is the only thing that changed, run doctests only
   run-doctests-only:
@@ -76,7 +76,7 @@ jobs:
       S3_GIN_BUCKET: ${{ secrets.S3_GIN_BUCKET }}
     with:  #  Ternary operator: condition && value_if_true || value_if_false
       python-versions: ${{ github.event.pull_request.draft == true && format('["{0}"]', needs.load_python_and_os_versions.outputs.MIN_PYTHON_VERSION) || needs.load_python_and_os_versions.outputs.ALL_PYTHON_VERSIONS }}
-      os-versions: ${{ github.event.pull_request.draft == true && '["ubuntu-24.04"]' || needs.load_python_and_os_versions.outputs.ALL_OS_VERSIONS }}
+      os-versions: ${{ github.event.pull_request.draft == true && '["ubuntu-latest"]' || needs.load_python_and_os_versions.outputs.ALL_OS_VERSIONS }}
 
 
   run-live-service-tests:
@@ -94,7 +94,7 @@ jobs:
       # platform-specific, so a pull request runs every OS on the newest Python only; the dev dailies
       # still run the full matrix nightly.
       python-versions: ${{ format('["{0}"]', needs.load_python_and_os_versions.outputs.MAX_PYTHON_VERSION) }}
-      os-versions: ${{ github.event.pull_request.draft == true && '["ubuntu-24.04"]' || needs.load_python_and_os_versions.outputs.ALL_OS_VERSIONS }}
+      os-versions: ${{ github.event.pull_request.draft == true && '["ubuntu-latest"]' || needs.load_python_and_os_versions.outputs.ALL_OS_VERSIONS }}
 
 
   # A gallery page names the extra it needs, and `pyproject.toml` declares that extra, so either side
@@ -110,7 +110,7 @@ jobs:
       S3_GIN_BUCKET: ${{ secrets.S3_GIN_BUCKET }}
     with:  #  Ternary operator: condition && value_if_true || value_if_false
       python-versions: ${{ github.event.pull_request.draft == true && format('["{0}"]', needs.load_python_and_os_versions.outputs.MIN_PYTHON_VERSION) || needs.load_python_and_os_versions.outputs.ALL_PYTHON_VERSIONS }}
-      os-versions: ${{ github.event.pull_request.draft == true && '["ubuntu-24.04"]' || needs.load_python_and_os_versions.outputs.ALL_OS_VERSIONS }}
+      os-versions: ${{ github.event.pull_request.draft == true && '["ubuntu-latest"]' || needs.load_python_and_os_versions.outputs.ALL_OS_VERSIONS }}
       # Only the changed pages, except when the dependencies moved: those can break any page resolving
       # through them, and extras reference each other, so that case takes the whole gallery. The condition
       # is written this way round because `a && '' || b` cannot yield the empty string, GitHub falling
