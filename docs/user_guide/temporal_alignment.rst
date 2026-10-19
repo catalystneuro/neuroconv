@@ -24,14 +24,14 @@ such as a ``Device``, an
 ``ImagingPlane`` or the electrodes table are written by interfaces but carry no times, so they are not time-bearing
 objects.
 
-Every interface exposes its alignment methods under ``interface.alignment``, and each time-bearing object is reached
-there by its name: ``imaging_interface.alignment["two_photon_series"]`` is the ``TwoPhotonSeries`` of an imaging
+Every interface exposes its alignment methods under ``interface.temporal_alignment``, and each time-bearing object is reached
+there by its name: ``imaging_interface.temporal_alignment["two_photon_series"]`` is the ``TwoPhotonSeries`` of an imaging
 interface. ``get_times`` returns the times an object will write. Before you align anything, those are the source's
 native times:
 
 .. code-block:: python
 
-    imaging_interface.alignment["two_photon_series"].get_times()   # one time per sample, in seconds
+    imaging_interface.temporal_alignment["two_photon_series"].get_times()   # one time per sample, in seconds
 
 Gross and fine alignment
 ------------------------
@@ -73,7 +73,7 @@ Aligning one object
 -------------------
 
 The examples in this section align one time-bearing object. We use the ``TwoPhotonSeries`` of an imaging interface
-throughout, reached as ``imaging_interface.alignment["two_photon_series"]``. Interfaces that write several objects are
+throughout, reached as ``imaging_interface.temporal_alignment["two_photon_series"]``. Interfaces that write several objects are
 covered in `Interfaces with several objects`_.
 
 Gross alignment
@@ -103,14 +103,14 @@ starts: that pulse tells you the offset, and one call moves the whole stream ont
 
 .. code-block:: python
 
-    imaging_interface.alignment["two_photon_series"].shift_times(3.0)   # every sample now sits 3.0 seconds later
+    imaging_interface.temporal_alignment["two_photon_series"].shift_times(3.0)   # every sample now sits 3.0 seconds later
 
 When what you know is where the stream began rather than how far it is off, for instance that imaging started 4.2
 seconds into the session, give that position to ``move_start_to``:
 
 .. code-block:: python
 
-    imaging_interface.alignment["two_photon_series"].move_start_to(4.2)   # the first sample now sits at 4.2 seconds
+    imaging_interface.temporal_alignment["two_photon_series"].move_start_to(4.2)   # the first sample now sits at 4.2 seconds
 
 A series starts at its first sample, and an events table starts at its earliest event. A later ``shift_times`` moves
 the object from that position.
@@ -126,7 +126,7 @@ signal or any computation you trust, hand them to ``set_times``:
 
 .. code-block:: python
 
-    imaging_interface.alignment["two_photon_series"].set_times(frame_times)
+    imaging_interface.temporal_alignment["two_photon_series"].set_times(frame_times)
 
 These are the times the file will carry: ``set_times`` writes them exactly as given. Call ``get_times`` afterwards
 and you get back what you just set. The call replaces whatever the object had, including any earlier shift or
@@ -153,7 +153,7 @@ samples that fall between pulses:
     pulses_local = ...       # on the timeline the object currently reports
     pulses_reference = ...   # the same pulses on the reference clock
 
-    imaging_interface.alignment["two_photon_series"].remap_times(
+    imaging_interface.temporal_alignment["two_photon_series"].remap_times(
         local_sync_times=pulses_local,
         reference_sync_times=pulses_reference,
     )
@@ -190,7 +190,7 @@ for instance to mark the samples outside the pulse range instead of clamping the
 
     from functools import partial
 
-    imaging_interface.alignment["two_photon_series"].remap_times(
+    imaging_interface.temporal_alignment["two_photon_series"].remap_times(
         local_sync_times=pulses_local,
         reference_sync_times=pulses_reference,
         interpolation_function=partial(np.interp, left=np.nan, right=np.nan),
@@ -207,7 +207,7 @@ as long as it takes the object's times and the two pulse arrays and returns the 
     def extrapolating(times, local_sync_times, reference_sync_times):
         return interp1d(local_sync_times, reference_sync_times, fill_value="extrapolate")(times)
 
-    imaging_interface.alignment["two_photon_series"].remap_times(
+    imaging_interface.temporal_alignment["two_photon_series"].remap_times(
         local_sync_times=pulses_local,
         reference_sync_times=pulses_reference,
         interpolation_function=extrapolating,
@@ -239,25 +239,25 @@ an audio interface one per file. Which objects an interface writes depends on th
    * - Trials or epochs
      - the ``TimeIntervals`` table
 
-``alignment`` works as a dictionary whose keys (which as a general rule are derived from a ``metadata_key`` plus
+``temporal_alignment`` works as a dictionary whose keys (which as a general rule are derived from a ``metadata_key`` plus
 qualifiers) allow access to the specific time-bearing objects:
 
 .. code-block:: python
 
-    video_interface.alignment.keys()                    # e.g. ("trial_01", "trial_02", "trial_03")
+    video_interface.temporal_alignment.keys()                    # e.g. ("trial_01", "trial_02", "trial_03")
 
-    video_interface.alignment["trial_01"].get_times()
-    video_interface.alignment["trial_01"].set_times(times)
-    video_interface.alignment["trial_01"].remap_times(local_sync_times=pulses_local, reference_sync_times=pulses_reference)
+    video_interface.temporal_alignment["trial_01"].get_times()
+    video_interface.temporal_alignment["trial_01"].set_times(times)
+    video_interface.temporal_alignment["trial_01"].remap_times(local_sync_times=pulses_local, reference_sync_times=pulses_reference)
 
 A session recorded as separate trial files may have each file's clock starting near zero. When you know the time each
 file began on the session clock, place each object with ``move_start_to``:
 
 .. code-block:: python
 
-    video_interface.alignment["trial_01"].move_start_to(0.0)
-    video_interface.alignment["trial_02"].move_start_to(65.0)
-    video_interface.alignment["trial_03"].move_start_to(130.0)
+    video_interface.temporal_alignment["trial_01"].move_start_to(0.0)
+    video_interface.temporal_alignment["trial_02"].move_start_to(65.0)
+    video_interface.temporal_alignment["trial_03"].move_start_to(130.0)
 
 Each call places one file and leaves its siblings where they are.
 
@@ -266,24 +266,24 @@ A correction can also belong to one object. If a synchronization check finds one
 
 .. code-block:: python
 
-    video_interface.alignment["trial_02"].shift_times(-0.040)
+    video_interface.temporal_alignment["trial_02"].shift_times(-0.040)
 
-As a convenience, we allow some of the methods to work on all the items of the ``alignment``. Calling
+As a convenience, we allow some of the methods to work on all the items of the ``temporal_alignment``. Calling
 ``shift_times``, ``move_start_to`` and ``remap_times`` without a key will operate on all the time-bearing objects.
 
-``alignment.shift_times(delta)`` moves every object of the interface by ``delta``, so their relationships stay intact:
+``temporal_alignment.shift_times(delta)`` moves every object of the interface by ``delta``, so their relationships stay intact:
 they slide together by the same amount. Use it when their relative timing is already correct and the whole group needs
 the same correction:
 
 .. code-block:: python
 
-    video_interface.alignment.shift_times(3.0)   # every video now sits 3.0 seconds later on the session clock
+    video_interface.temporal_alignment.shift_times(3.0)   # every video now sits 3.0 seconds later on the session clock
 
 You can also move an entire interface to a known position:
 
 .. code-block:: python
 
-    video_interface.alignment.move_start_to(100.0)
+    video_interface.temporal_alignment.move_start_to(100.0)
 
 The interface uses the earliest start among its objects and moves every object by the same amount. The three trials
 above now start at 100, 164.96 and 230 seconds, preserving the correction to the second trial. Their relative timing
@@ -293,22 +293,22 @@ Calling ``move_start_to(100.0)`` separately on each trial would instead put all 
 .. image:: ../_static/images/time_alignment_moves_together.png
    :width: 600px
    :align: center
-   :alt: Three panels of one interface's three time-bearing objects. As loaded; after alignment.shift_times(3.0),
-         every object 3.0 seconds from where it was; after alignment.move_start_to(5.0), the earliest start at
+   :alt: Three panels of one interface's three time-bearing objects. As loaded; after temporal_alignment.shift_times(3.0),
+         every object 3.0 seconds from where it was; after temporal_alignment.move_start_to(5.0), the earliest start at
          5.0 seconds from session start. In both moved panels the gaps between the objects are unchanged.
 
-Calling ``alignment.remap_times`` uses one set of synchronization-pulse pairs to transform every object's
+Calling ``temporal_alignment.remap_times`` uses one set of synchronization-pulse pairs to transform every object's
 timestamps. As an example, consider a recording setup with a camera and an electrophysiology system that both
 timestamp the same synchronization pulses. The camera saves several video files while keeping its clock running
 between files. Use the camera's pulse times as ``local_sync_times`` and the electrophysiology system's pulse times
-as ``reference_sync_times``. Calling ``video_interface.alignment.remap_times`` then maps every file's frame times
+as ``reference_sync_times``. Calling ``video_interface.temporal_alignment.remap_times`` then maps every file's frame times
 onto the electrophysiology clock.
 
 .. figure:: ../_static/images/time_alignment_remap_together.png
    :width: 600px
    :align: center
    :alt: One set of local_sync_times and reference_sync_times defines a mapping from the continuous camera clock
-         to the electrophysiology clock. A single video_interface.alignment.remap_times call applies this mapping
+         to the electrophysiology clock. A single video_interface.temporal_alignment.remap_times call applies this mapping
          to sample timestamps in trial_01, trial_02 and trial_03. Each file remains a separate object.
 
    Each video file is a separate time-bearing object. Because their timestamps share one continuous camera clock,
@@ -321,18 +321,18 @@ Alignment in a converter
 ------------------------
 
 A converter is where alignment usually happens, since that is where several interfaces meet. A converter has an
-``alignment`` of its own, and its keys nest: the first key is the name of an interface the converter holds, and
-``converter.alignment[name]`` is that interface's ``alignment``. From there, indexing continues into the interface's
+``temporal_alignment`` of its own, and its keys nest: the first key is the name of an interface the converter holds, and
+``converter.temporal_alignment[name]`` is that interface's ``temporal_alignment``. From there, indexing continues into the interface's
 own objects as before:
 
 .. code-block:: python
 
-    converter.alignment.keys()               # e.g. ("Recording", "Behavior", "Video")
-    converter.alignment["Video"].keys()      # e.g. ("trial_01", "trial_02", "trial_03")
-    converter.alignment["Video"]["trial_02"].shift_times(-0.040)   # one file of the video interface
+    converter.temporal_alignment.keys()               # e.g. ("Recording", "Behavior", "Video")
+    converter.temporal_alignment["Video"].keys()      # e.g. ("trial_01", "trial_02", "trial_03")
+    converter.temporal_alignment["Video"]["trial_02"].shift_times(-0.040)   # one file of the video interface
 
-Called on the converter's ``alignment`` itself, ``shift_times`` and ``move_start_to`` move every interface it holds by
-one common amount, just as an interface moves its objects, as long as each of them exposes an ``alignment``. Calling
+Called on the converter's ``temporal_alignment`` itself, ``shift_times`` and ``move_start_to`` move every interface it holds by
+one common amount, just as an interface moves its objects, as long as each of them exposes a ``temporal_alignment``. Calling
 ``remap_times`` there applies one map to every interface, which is right only when all of them run on one clock. Each
 interface usually has its own clock and its own correction, so most alignment is one call per interface.
 
@@ -350,7 +350,7 @@ and before running the conversion:
     converter = ConverterPipe(data_interfaces=dict(Recording=recording_interface, Behavior=behavior_interface))
 
     behavior_delay = ...  # how far the behavior box starts after the recording, however you obtain it
-    converter.alignment["Behavior"].shift_times(behavior_delay)
+    converter.temporal_alignment["Behavior"].shift_times(behavior_delay)
 
     converter.run_conversion(nwbfile_path="session.nwb")
 
@@ -373,11 +373,11 @@ A subclass of :py:class:`.NWBConverter` packages a conversion you run repeatedly
 
         def temporally_align_data_interfaces(self, metadata=None, conversion_options=None):
             behavior_delay = ...  # how far the behavior box starts after the recording, however you obtain it
-            self.alignment["Behavior"].shift_times(behavior_delay)
+            self.temporal_alignment["Behavior"].shift_times(behavior_delay)
 
 Inside this method you apply whatever each stream needs: ``shift_times`` for a correction, ``move_start_to`` for a
-destination, or ``remap_times`` to re-time a drifting stream against the reference, on ``self.alignment[name]`` for a
-whole interface or on ``self.alignment[name][key]`` for one of its objects.
+destination, or ``remap_times`` to re-time a drifting stream against the reference, on ``self.temporal_alignment[name]`` for a
+whole interface or on ``self.temporal_alignment[name][key]`` for one of its objects.
 
 One caveat applies to both: the calls mutate the live interfaces, so a step that runs twice compounds unless it states
 a result. A ``shift_times`` shifts twice and a ``remap_times`` remaps times that were already remapped, while

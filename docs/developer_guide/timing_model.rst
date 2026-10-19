@@ -33,7 +33,7 @@ Composition
 -----------
 
 To make this object-level model available across modalities, interfaces expose timing operations through
-``interface.alignment``. The component manages alignment state and operations, while each interface identifies its
+``interface.temporal_alignment``. The component manages alignment state and operations, while each interface identifies its
 objects and supplies access to their native times. This division lets the same implementation handle an interface
 with one series or several independent sets of times, without knowing how either source format stores them.
 Modality-specific code defines what can be aligned, and the shared component defines how alignment behaves.
@@ -43,7 +43,7 @@ such as ``get_timestamps() -> np.ndarray`` and ``set_aligned_timestamps(np.ndarr
 An events interface has separate times for each event type, so returning a dictionary violates that contract and
 combining the arrays loses their separate identities. Inheritance could support object registration too, but it would
 still tie alignment to the interface hierarchy and place timing methods beside ``get_metadata`` and
-``add_to_nwbfile``. A held component keeps those methods together under ``alignment`` without requiring a particular
+``add_to_nwbfile``. A held component keeps those methods together under ``temporal_alignment`` without requiring a particular
 interface base class. That same attribute gives converters a common surface through which to check alignment support
 and apply collection operations.
 
@@ -142,7 +142,7 @@ Collection operations
 
 Converters let users align their component interfaces individually through nested addressing or together through
 collection operations. For example, if a session converter contains a SpikeGLX converter under ``"SpikeGLX"``,
-calling ``converter.alignment["SpikeGLX"].shift_times(delta)`` shifts its streams together, including both the
+calling ``converter.temporal_alignment["SpikeGLX"].shift_times(delta)`` shifts its streams together, including both the
 action-potential and low-frequency bands of a Neuropixels 1.0 recording. This lets users correct the acquisition's
 timing without separately adjusting each stream.
 
@@ -161,7 +161,7 @@ Nested addressing
 -----------------
 
 Because intermediate collections are useful operation targets, alignment addressing follows the converter's
-structure. ``converter.alignment[name]`` exposes ``converter.data_interface_objects[name].alignment``, and indexing
+structure. ``converter.temporal_alignment[name]`` exposes ``converter.data_interface_objects[name].temporal_alignment``, and indexing
 continues through nested converters until an interface's keys select its time-bearing objects. ``keys()`` lists the
 immediate members of the selected collection. This reuses child names from converter configuration and gives each
 intermediate collection a handle.

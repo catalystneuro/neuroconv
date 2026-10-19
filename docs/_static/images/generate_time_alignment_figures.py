@@ -313,7 +313,7 @@ def build_coarse():
     panel(
         axes[1],
         shift=3.0,
-        title="alignment[key].shift_times(3.0): measured from where the object was",
+        title="temporal_alignment[key].shift_times(3.0): measured from where the object was",
         arrow_from=loaded_ticks[0],
         arrow_to=loaded_ticks[0] + 3.0,
         arrow_label="delta = 3.0",
@@ -321,7 +321,7 @@ def build_coarse():
     panel(
         axes[2],
         shift=5.0 - loaded_ticks[0],
-        title="alignment[key].move_start_to(5.0): measured from session start",
+        title="temporal_alignment[key].move_start_to(5.0): measured from session start",
         arrow_from=0.0,
         arrow_to=5.0,
         arrow_label="t = 5.0",
@@ -381,7 +381,7 @@ def build_moves_together():
     panel(
         axes[1],
         shift=3.0,
-        title="alignment.shift_times(3.0): measured from where the objects were",
+        title="temporal_alignment.shift_times(3.0): measured from where the objects were",
         arrow_from=loaded_starts[0],
         arrow_to=loaded_starts[0] + 3.0,
         arrow_label="delta = 3.0",
@@ -389,7 +389,7 @@ def build_moves_together():
     panel(
         axes[2],
         shift=5.0 - loaded_starts[0],
-        title="alignment.move_start_to(5.0): measured from session start to the earliest start",
+        title="temporal_alignment.move_start_to(5.0): measured from session start to the earliest start",
         arrow_from=0.0,
         arrow_to=5.0,
         arrow_label="t = 5.0",
@@ -462,7 +462,7 @@ def build_remap_together():
         fig.text(
             0.5,
             0.53,
-            "video_interface.alignment.remap_times(...)",
+            "video_interface.temporal_alignment.remap_times(...)",
             ha="center",
             fontsize=13,
             fontfamily="DejaVu Sans Mono",
