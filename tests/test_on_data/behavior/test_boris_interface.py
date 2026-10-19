@@ -54,8 +54,8 @@ class BORISTestMixin(EventsInterfaceTestMixin):
         original_durations = _get_nwbfile_durations(original_nwbfile)
 
         replaced_interface = self.data_interface_cls(**self.interface_kwargs)
-        for key in replaced_interface.alignment.keys():
-            time_bearing_object = replaced_interface.alignment[key]
+        for key in replaced_interface.temporal_alignment.keys():
+            time_bearing_object = replaced_interface.temporal_alignment[key]
             time_bearing_object.set_times(time_bearing_object.get_times() * stretch + shift)
         replaced_nwbfile = replaced_interface.create_nwbfile(metadata=metadata, **self.conversion_options)
         replaced_times = _get_nwbfile_times(replaced_nwbfile)

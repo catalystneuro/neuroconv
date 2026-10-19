@@ -156,7 +156,7 @@ def test_the_raw_pair_is_cut_and_timed_like_the_difference_it_came_from(tmp_path
     """
     file_path = write_ppd_file(tmp_path, repeats=4)
     interface = PyPhotometryFiberPhotometryInterface(file_path=file_path)
-    interface.alignment.shift_times(7.5)
+    interface.temporal_alignment.shift_times(7.5)
     nwbfile = mock_NWBFile()
 
     interface.add_to_nwbfile(nwbfile=nwbfile, stub_test=True, stub_samples=3)
