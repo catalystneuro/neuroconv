@@ -184,14 +184,14 @@ class LightningPoseDataInterface(BasePoseEstimationInterface):
     def get_timestamps(self, stub_test: bool = False) -> np.ndarray:
         warnings.warn(
             "`get_timestamps` is deprecated and will be removed in v0.13.0. "
-            "Use `interface.alignment[key].get_times()` instead.",
+            "Use `interface.temporal_alignment[key].get_times()` instead.",
             FutureWarning,
             stacklevel=2,
         )
         return self._get_timestamps(stub_test=stub_test)
 
     def _get_timestamps(self, stub_test: bool = False) -> np.ndarray:
-        time_bearing_object = self.alignment[self.metadata_key]
+        time_bearing_object = self.temporal_alignment[self.metadata_key]
         if stub_test:
             return time_bearing_object._get_times(
                 get_default_times=partial(self.get_original_timestamps, stub_test=True)

@@ -46,7 +46,7 @@ class AxonIntracellularConverter(ConverterPipe):
         if interfaces:
             _, starting_times = self._compute_alignment(interfaces)
             for interface, starting_time in starting_times.items():
-                interface.alignment.move_start_to(starting_time)
+                interface.temporal_alignment.move_start_to(starting_time)
 
     def get_metadata(self) -> dict:
         interfaces = list(self.data_interface_objects.values())
@@ -104,7 +104,8 @@ class AxonIntracellularConverter(ConverterPipe):
         file_paths = {str(interface._file_path) for interface in interfaces}
         if len(file_paths) == 1:
             return interfaces[0]._recording_start_datetime, {
-                interface: interface.alignment[interface._alignment_key]._get_start_time() for interface in interfaces
+                interface: interface.temporal_alignment[interface._alignment_key]._get_start_time()
+                for interface in interfaces
             }
 
         # Aligning files by rec_datetime needs real header start times (ABF version 2); a version-1 file
@@ -124,7 +125,7 @@ class AxonIntracellularConverter(ConverterPipe):
         start_datetimes = {interface: interface._recording_start_datetime for interface in interfaces}
         session_start_datetime = min(start_datetimes.values())
         starting_times = {
-            interface: interface.alignment[interface._alignment_key]._get_start_time()
+            interface: interface.temporal_alignment[interface._alignment_key]._get_start_time()
             + (start_datetime - session_start_datetime).total_seconds()
             for interface, start_datetime in start_datetimes.items()
         }
