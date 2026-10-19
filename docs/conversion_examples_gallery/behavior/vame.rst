@@ -75,7 +75,7 @@ to list the session names recorded in ``config.yaml``.
 
     >>> metadata = interface.get_metadata()
     >>> metadata["NWBFile"].update(
-    ...     session_start_time=datetime(2024, 1, 1, 12, 0, 0, tzinfo=ZoneInfo("US/Pacific")),
+    ...     session_start_time=datetime(2024, 1, 1, 12, 0, 0, tzinfo=ZoneInfo("Asia/Tokyo")),
     ...     session_description="Open-field behavioral recording segmented with VAME.",
     ... )
     >>> # Add subject information (required for DANDI upload)
@@ -120,7 +120,7 @@ to retrieve the auto-populated defaults, then use
 
     >>> custom_metadata = {
     ...     "NWBFile": {
-    ...         "session_start_time": datetime(2024, 1, 1, 12, 0, 0, tzinfo=ZoneInfo("US/Pacific")),
+    ...         "session_start_time": datetime(2024, 1, 1, 12, 0, 0, tzinfo=ZoneInfo("Asia/Tokyo")),
     ...         "session_description": "Open-field behavioral recording segmented with VAME.",
     ...     },
     ...     "Subject": dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D"),
@@ -160,7 +160,7 @@ instead of ``sampling_frequency_hz``:
     >>> interface.set_aligned_timestamps(aligned_timestamps)
     >>> metadata = interface.get_metadata()
     >>> metadata["NWBFile"].update(
-    ...     session_start_time=datetime(2024, 1, 1, 12, 0, 0, tzinfo=ZoneInfo("US/Pacific")),
+    ...     session_start_time=datetime(2024, 1, 1, 12, 0, 0, tzinfo=ZoneInfo("Asia/Tokyo")),
     ...     session_description="Open-field behavioral recording segmented with VAME.",
     ... )
     >>> interface.run_conversion(nwbfile_path=path_to_save_nwbfile, metadata=metadata, overwrite=True)
@@ -239,7 +239,7 @@ Each instance gets its own metadata entry and its own ``VAMEProject`` group:
 
     >>> custom_metadata = {
     ...     "NWBFile": {
-    ...         "session_start_time": datetime(2024, 1, 1, 12, 0, 0, tzinfo=ZoneInfo("US/Pacific")),
+    ...         "session_start_time": datetime(2024, 1, 1, 12, 0, 0, tzinfo=ZoneInfo("Asia/Tokyo")),
     ...         "session_description": "Multi-project VAME behavioral segmentation.",
     ...     },
     ...     "Subject": dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D"),

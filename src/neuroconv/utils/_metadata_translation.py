@@ -165,7 +165,9 @@ def _translate_ecephys_block(
 
 def _ophys_block_is_old(ophys_metadata: dict) -> bool:
     """Whether an ``Ophys`` block is written in the old list-based format."""
-    if isinstance(ophys_metadata.get("Device"), list) or isinstance(ophys_metadata.get("ImagingPlane"), list):
+    if isinstance(ophys_metadata.get("Device"), (list, tuple)) or isinstance(
+        ophys_metadata.get("ImagingPlane"), (list, tuple)
+    ):
         return True
 
     # These blocks exist only in the old format: their dict-format counterparts are named differently.
@@ -311,7 +313,7 @@ def _warn_that_the_old_format_is_deprecated() -> None:
     """
     warnings.warn(
         "The metadata passed to NeuroConv is in the old list-based format, which is deprecated and will "
-        "be removed on or after August 2027. It was converted for this conversion, so the file written is "
+        "be removed in v0.13.0. It was converted for this conversion, so the file written is "
         "unaffected. The dict-based format keys each entry by a name you choose instead of by its position "
         "in a list. Call get_metadata() and edit the dictionary it returns to see the shape your interface "
         "expects.",

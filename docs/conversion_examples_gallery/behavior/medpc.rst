@@ -46,7 +46,7 @@ Convert MedPC output data to NWB using
     >>> # Extract what metadata we can from the source file
     >>> metadata = interface.get_metadata()
     >>> # We add the time zone information, which is required by NWB
-    >>> session_start_time = datetime(2019, 4, 9, 10, 34, 30).replace(tzinfo=ZoneInfo("US/Pacific"))
+    >>> session_start_time = datetime(2019, 4, 9, 10, 34, 30).replace(tzinfo=ZoneInfo("Asia/Tokyo"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>> metadata["MedPC"]["medpc_name_to_info_dict"] = {
     ...         "A": {"name": "left_nose_poke_times", "is_array": True},

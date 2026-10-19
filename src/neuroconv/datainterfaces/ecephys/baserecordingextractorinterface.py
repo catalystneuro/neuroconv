@@ -80,7 +80,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         # construction. Without the sentinel the deprecation warning would fire for everyone.
         if es_key is not None:
             warnings.warn(
-                "The 'es_key' argument is deprecated and will be removed on or after February 2027. "
+                "The 'es_key' argument is deprecated and will be removed in v0.12.0. "
                 "Use 'metadata_key' instead: it is the same concept, the key addressing this interface's "
                 "entry in the metadata, and it is the one the dict-based format uses. The name written to "
                 "the file comes from that entry's 'name' field, not from the key.",
@@ -312,7 +312,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             self._number_of_segments == 1
         ), "This recording has multiple segments; please use 'align_segment_timestamps' instead."
 
-        self.recording_extractor.set_times(times=aligned_timestamps, with_warning=False)
+        self.recording_extractor.set_times(times=aligned_timestamps)
 
     def set_aligned_segment_timestamps(self, aligned_segment_timestamps: list[np.ndarray]):
         """
@@ -336,7 +336,6 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             self.recording_extractor.set_times(
                 times=aligned_segment_timestamps[segment_index],
                 segment_index=segment_index,
-                with_warning=False,
             )
 
     def set_aligned_starting_time(self, aligned_starting_time: float):
@@ -475,7 +474,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             - 'processing/FilteredEphys': a ``FilteredEphys`` container in the ecephys processing module.
         write_as : {'raw', 'processed', 'lfp'}, optional
             Deprecated. Use ``parent_container`` instead ('raw' -> 'acquisition', 'lfp' -> 'processing/LFP',
-            'processed' -> 'processing/FilteredEphys'). Will be removed on or after February 2027.
+            'processed' -> 'processing/FilteredEphys'). Will be removed in v0.12.0.
         data_representation : {'digital_counts', 'physical_units'}, default='digital_counts'
             How the trace values are materialized in the stored data array.
             - 'digital_counts': store the raw integer samples and carry the per-channel gain in
@@ -524,7 +523,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         if write_as is not None:
             warnings.warn(
                 "The 'write_as' parameter of BaseRecordingExtractorInterface.add_to_nwbfile() is deprecated and "
-                "will be removed on or after February 2027. Use 'parent_container' instead "
+                "will be removed in v0.12.0. Use 'parent_container' instead "
                 "('raw' -> 'acquisition', 'lfp' -> 'processing/LFP', 'processed' -> 'processing/FilteredEphys').",
                 FutureWarning,
                 stacklevel=2,

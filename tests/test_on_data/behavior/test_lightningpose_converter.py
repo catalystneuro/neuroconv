@@ -1,3 +1,4 @@
+import os
 import shutil
 import tempfile
 from datetime import datetime
@@ -5,7 +6,7 @@ from pathlib import Path
 from warnings import warn
 
 from hdmf.testing import TestCase
-from pynwb import NWBHDF5IO
+from pynwb import read_nwb
 from pynwb.image import ImageSeries
 
 from neuroconv import ConverterPipe, NWBConverter
@@ -149,8 +150,8 @@ class TestLightningPoseConverter(TestCase):
     def assertNWBFileStructure(self, nwbfile_path: str, stub_test: bool = False, links_video: bool = True):
         from ndx_pose import PoseEstimation
 
-        with NWBHDF5IO(path=nwbfile_path) as io:
-            nwbfile = io.read()
+        nwbfile = read_nwb(nwbfile_path)
+        try:
 
             self.assertEqual(nwbfile.session_start_time, datetime(2023, 11, 9, 10, 14, 37).astimezone())
 
@@ -158,7 +159,14 @@ class TestLightningPoseConverter(TestCase):
             self.assertIn(self.original_video_name, nwbfile.acquisition)
             image_series = nwbfile.acquisition[self.original_video_name]
             self.assertIsInstance(image_series, ImageSeries)
-            self.assertEqual(image_series.external_file[:], self.original_video_file_path)
+            # Written relative to the NWB file, except on Windows CI where the data sits on another drive
+            output_directory = Path(nwbfile_path).resolve().parent
+            video_path = Path(self.original_video_file_path).resolve()
+            if video_path.anchor == output_directory.anchor:
+                expected_external_file = Path(os.path.relpath(video_path, start=output_directory)).as_posix()
+            else:
+                expected_external_file = video_path.as_posix()
+            self.assertEqual(image_series.external_file[:], expected_external_file)
             self.assertEqual(image_series.description, "The original video used for pose estimation.")
 
             # Check labeled video added to behavior processing module
@@ -166,10 +174,12 @@ class TestLightningPoseConverter(TestCase):
             self.assertIn(self.labeled_video_name, behavior.data_interfaces)
             image_series_labeled_video = behavior.data_interfaces[self.labeled_video_name]
             self.assertIsInstance(image_series_labeled_video, ImageSeries)
-            self.assertEqual(
-                image_series_labeled_video.external_file[:],
-                self.labeled_video_file_path,
-            )
+            labeled_video_path = Path(self.labeled_video_file_path).resolve()
+            if labeled_video_path.anchor == output_directory.anchor:
+                expected_labeled_file = Path(os.path.relpath(labeled_video_path, start=output_directory)).as_posix()
+            else:
+                expected_labeled_file = labeled_video_path.as_posix()
+            self.assertEqual(image_series_labeled_video.external_file[:], expected_labeled_file)
             self.assertEqual(
                 image_series_labeled_video.description,
                 "The video recorded by camera with the pose estimation labels.",
@@ -196,6 +206,8 @@ class TestLightningPoseConverter(TestCase):
             for pose_estimation_series in pose_estimation_container.pose_estimation_series.values():
                 self.assertEqual(pose_estimation_series.data.shape[0], num_frames)
                 self.assertEqual(pose_estimation_series.confidence.shape[0], num_frames)
+        finally:
+            nwbfile.read_io.close()
 
     def test_converter_in_converter(self):
         class TestConverter(NWBConverter):

@@ -23,7 +23,7 @@ def test_get_data_io_kwargs():
     hdf5_dataset_configuration = mock_HDF5DatasetIOConfiguration()
 
     assert hdf5_dataset_configuration.get_data_io_kwargs() == dict(
-        chunks=(78125, 64), compression="gzip", compression_opts=None
+        chunks=(78125, 64), compression="gzip", compression_opts=4
     )
 
 
@@ -37,7 +37,7 @@ def test_get_data_io_kwargs_with_shuffle():
     hdf5_dataset_configuration = mock_HDF5DatasetIOConfiguration(compressors=["shuffle", "gzip"])
 
     assert hdf5_dataset_configuration.get_data_io_kwargs() == dict(
-        chunks=(78125, 64), compression="gzip", compression_opts=None, shuffle=True
+        chunks=(78125, 64), compression="gzip", compression_opts=4, shuffle=True
     )
 
 
@@ -45,7 +45,7 @@ def test_get_data_io_kwargs_with_shuffle_and_fletcher32():
     hdf5_dataset_configuration = mock_HDF5DatasetIOConfiguration(compressors=["shuffle", "gzip", "fletcher32"])
 
     assert hdf5_dataset_configuration.get_data_io_kwargs() == dict(
-        chunks=(78125, 64), compression="gzip", compression_opts=None, shuffle=True, fletcher32=True
+        chunks=(78125, 64), compression="gzip", compression_opts=4, shuffle=True, fletcher32=True
     )
 
 

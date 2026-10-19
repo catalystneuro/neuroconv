@@ -46,7 +46,7 @@ class TestAudioInterface(AudioInterfaceTestMixin):
     @classmethod
     def setup_test(cls, tmp_path_factory):
 
-        cls.session_start_time = datetime.now(tz=gettz(name="US/Pacific"))
+        cls.session_start_time = datetime.now(tz=gettz(name="Asia/Tokyo"))
         cls.num_frames = int(1e7)
         cls.num_audio_files = 3
         cls.sampling_rate = 500

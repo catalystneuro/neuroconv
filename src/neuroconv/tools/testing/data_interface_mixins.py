@@ -29,6 +29,10 @@ from neuroconv.datainterfaces.ophys.basesegmentationextractorinterface import (
     BaseSegmentationExtractorInterface,
 )
 from neuroconv.tools.fiber_photometry import get_fiber_photometry_table
+from neuroconv.tools.testing._nwbfile_times import (
+    _get_nwbfile_durations,
+    _get_nwbfile_times,
+)
 from neuroconv.utils.json_schema import _NWBMetaDataEncoder
 
 
@@ -144,7 +148,10 @@ class DataInterfaceTestMixin:
         metadata_before_add_method = deepcopy(metadata)
 
         self.interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **self.conversion_options)
-        assert metadata == metadata_before_add_method
+        # Compared with `np.testing.assert_equal` rather than `==`: metadata may nest numpy arrays (e.g.
+        # DANNCE's calibration matrices), and `dict.__eq__` recurses into `==` on every value, which raises
+        # rather than returning a bool for an array with more than one element.
+        np.testing.assert_equal(metadata, metadata_before_add_method)
 
     @pytest.mark.parametrize("backend", ["hdf5", "zarr"])
     def test_all_conversion_checks(self, setup_interface, tmp_path, backend):
@@ -160,6 +167,7 @@ class DataInterfaceTestMixin:
 
         nwbfile_path = str(tmp_path / f"{self.__class__.__name__}_{self.test_name}_{backend}.nwb")
         self.nwbfile_path = nwbfile_path
+        self.backend = backend
 
         self.interface.run_conversion(
             nwbfile_path=nwbfile_path,
@@ -172,9 +180,147 @@ class DataInterfaceTestMixin:
         if backend in self.check_read_nwb_backends:
             self.check_read_nwb(nwbfile_path=nwbfile_path)
 
-        # Custom checks tend to write more files of their own, so they run against one backend only
-        if backend == "hdf5":
-            self.run_custom_checks()
+        self.run_custom_checks()
+
+    # Stated by each test class as a literal tuple of the keys its interface registers, in registration order.
+    # Keys are public API users type into ``alignment[key]``, so the expected value is never derived from the
+    # interface under test, which could not fail.
+    expected_temporal_alignment_keys: tuple[str, ...] | None = None
+
+    def test_temporal_alignment_keys(self, setup_interface):
+        alignment_attribute = "temporal_alignment" if hasattr(self.interface, "temporal_alignment") else "alignment"
+        if not hasattr(self.interface, alignment_attribute):
+            pytest.skip("The interface does not support temporal alignment.")
+
+        assert self.expected_temporal_alignment_keys is not None, (
+            f"{type(self).__name__} must state `expected_temporal_alignment_keys`, the literal tuple of keys that "
+            f"{self.data_interface_cls.__name__} registers in `{alignment_attribute}`."
+        )
+        assert getattr(self.interface, alignment_attribute).keys() == tuple(self.expected_temporal_alignment_keys)
+
+    def test_temporal_alignment_shift_times_reaches_the_nwbfile(self, setup_interface):
+        """Every time an interface writes moves when the interface is shifted."""
+        alignment_attribute = "temporal_alignment" if hasattr(self.interface, "temporal_alignment") else "alignment"
+        if not hasattr(self.interface, alignment_attribute):
+            pytest.skip("The interface does not support temporal alignment.")
+
+        shift = 1.5
+
+        metadata = _get_metadata_for_writing(self.interface)
+        metadata["NWBFile"].setdefault("session_start_time", datetime.now().astimezone())
+
+        # Each build starts from a fresh interface because aligning changes its state
+        original_nwbfile = self.interface.create_nwbfile(metadata=metadata, **self.conversion_options)
+        original_times = _get_nwbfile_times(original_nwbfile)
+        assert original_times, "The interface wrote no time-bearing object, so there is nothing to align."
+
+        shifted_interface = self.data_interface_cls(**self.interface_kwargs)
+        getattr(shifted_interface, alignment_attribute).shift_times(shift)
+        shifted_times = _get_nwbfile_times(
+            shifted_interface.create_nwbfile(metadata=metadata, **self.conversion_options)
+        )
+
+        assert shifted_times.keys() == original_times.keys()
+        for identifier, times in original_times.items():
+            assert_allclose(
+                shifted_times[identifier],
+                times + shift,
+                rtol=0,
+                atol=1e-9,
+                err_msg=f"{identifier} was written but did not move with the alignment",
+            )
+
+    def test_temporal_alignment_set_times_reaches_the_nwbfile(self, setup_interface):
+        """Every time an interface writes is replaced when the times of each of its objects are replaced."""
+        alignment_attribute = "temporal_alignment" if hasattr(self.interface, "temporal_alignment") else "alignment"
+        if not hasattr(self.interface, alignment_attribute):
+            pytest.skip("The interface does not support temporal alignment.")
+
+        shift = 1.5
+        # The spacing changes too, so a writer that keeps only the first replaced time cannot pass
+        stretch = 2.0
+
+        metadata = _get_metadata_for_writing(self.interface)
+        metadata["NWBFile"].setdefault("session_start_time", datetime.now().astimezone())
+
+        # Each build starts from a fresh interface because aligning changes its state
+        original_nwbfile = self.interface.create_nwbfile(metadata=metadata, **self.conversion_options)
+        original_times = _get_nwbfile_times(original_nwbfile)
+        assert original_times, "The interface wrote no time-bearing object, so there is nothing to align."
+
+        replaced_interface = self.data_interface_cls(**self.interface_kwargs)
+        for key in getattr(replaced_interface, alignment_attribute).keys():
+            time_bearing_object = getattr(replaced_interface, alignment_attribute)[key]
+            time_bearing_object.set_times(time_bearing_object.get_times() * stretch + shift)
+        replaced_times = _get_nwbfile_times(
+            replaced_interface.create_nwbfile(metadata=metadata, **self.conversion_options)
+        )
+
+        assert replaced_times.keys() == original_times.keys()
+        for identifier, times in original_times.items():
+            assert_allclose(
+                replaced_times[identifier],
+                times * stretch + shift,
+                rtol=0,
+                atol=1e-9,
+                err_msg=f"{identifier} was written but did not move with the alignment",
+            )
+
+    def test_temporal_alignment_remap_times_reaches_the_nwbfile(self, setup_interface):
+        """Every time and every duration an interface writes follows a remap of the interface."""
+        alignment_attribute = "temporal_alignment" if hasattr(self.interface, "temporal_alignment") else "alignment"
+        if not hasattr(self.interface, alignment_attribute):
+            pytest.skip("The interface does not support temporal alignment.")
+
+        shift = 1.5
+        stretch = 2.0
+
+        metadata = _get_metadata_for_writing(self.interface)
+        metadata["NWBFile"].setdefault("session_start_time", datetime.now().astimezone())
+
+        # Each build starts from a fresh interface because aligning changes its state
+        original_nwbfile = self.interface.create_nwbfile(metadata=metadata, **self.conversion_options)
+        original_times = _get_nwbfile_times(original_nwbfile)
+        original_durations = _get_nwbfile_durations(original_nwbfile)
+        assert original_times, "The interface wrote no time-bearing object, so there is nothing to align."
+        # Without this an interface that drops its durations would pass the duration checks below on `{} == {}`.
+        # The converse does not hold yet: EthoVision manual scoring writes durations it computes from two series
+        alignment = getattr(self.interface, alignment_attribute)
+        if any(alignment[key].has_durations for key in alignment.keys()):
+            assert original_durations, "A time-bearing object has durations, but the interface wrote none."
+
+        # Two pulses beyond every written time and every interval end make the map the line
+        # `times * stretch + shift`, which every time lands on and which stretches every duration by `stretch`
+        all_times = np.concatenate([times.ravel() for times in original_times.values()])
+        all_durations = np.concatenate([[0.0], *(durations.ravel() for durations in original_durations.values())])
+        local_sync_times = np.array([np.nanmin(all_times) - 1.0, np.nanmax(all_times) + np.nanmax(all_durations) + 1.0])
+        reference_sync_times = local_sync_times * stretch + shift
+        remapped_interface = self.data_interface_cls(**self.interface_kwargs)
+        getattr(remapped_interface, alignment_attribute).remap_times(
+            local_sync_times=local_sync_times, reference_sync_times=reference_sync_times
+        )
+        remapped_nwbfile = remapped_interface.create_nwbfile(metadata=metadata, **self.conversion_options)
+        remapped_times = _get_nwbfile_times(remapped_nwbfile)
+        remapped_durations = _get_nwbfile_durations(remapped_nwbfile)
+
+        assert remapped_times.keys() == original_times.keys()
+        for identifier, times in original_times.items():
+            assert_allclose(
+                remapped_times[identifier],
+                times * stretch + shift,
+                rtol=0,
+                atol=1e-9,
+                err_msg=f"{identifier} was written but did not move with the alignment",
+            )
+        assert remapped_durations.keys() == original_durations.keys()
+        for identifier, durations in original_durations.items():
+            assert_allclose(
+                remapped_durations[identifier],
+                durations * stretch,
+                rtol=0,
+                atol=1e-9,
+                err_msg=f"{identifier} was written but did not stretch with the alignment",
+            )
 
     def edit_metadata(self, metadata: dict) -> dict:
         """Override this to edit the interface's metadata before it is written, the way a user would."""
@@ -186,7 +332,7 @@ class DataInterfaceTestMixin:
         pass
 
     def run_custom_checks(self):
-        """Override this in child classes to inject additional custom checks."""
+        """Check each conversion using ``self.nwbfile_path`` and ``self.backend`` for any additional writes."""
         pass
 
 
@@ -297,9 +443,6 @@ class TemporalAlignmentMixin:
 class ImagingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
     data_interface_cls: type[BaseImagingExtractorInterface]
     optical_series_name: str = "TwoPhotonSeries"
-
-    # `check_read_nwb` goes through roiextractors' NwbImagingExtractor, which opens the file with NWBHDF5IO
-    check_read_nwb_backends = ("hdf5",)
 
     # TODO: remove test_metadata_old_list_format and check_extracted_metadata_old_list_format
     # when old list-based metadata format is removed
@@ -428,7 +571,7 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
             else:
                 electrical_series_path = f"acquisition/{electrical_series_name}"
 
-            self.nwb_recording = NwbRecordingExtractor(
+            nwb_recording = NwbRecordingExtractor(
                 file_path=nwbfile_path,
                 electrical_series_path=electrical_series_path,
                 use_pynwb=True,
@@ -450,20 +593,20 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
             # Edge case that only occurs in testing, but should eventually be fixed nonetheless
             # The NwbRecordingExtractor on spikeinterface experiences an issue when duplicated channel_ids
             # are specified, which occurs during check_recordings_equal when there is only one channel
-            if self.nwb_recording.get_channel_ids()[0] != self.nwb_recording.get_channel_ids()[-1]:
-                check_recordings_equal(RX1=recording, RX2=self.nwb_recording, return_in_uV=False)
+            if nwb_recording.get_channel_ids()[0] != nwb_recording.get_channel_ids()[-1]:
+                check_recordings_equal(RX1=recording, RX2=nwb_recording, return_in_uV=False)
 
                 # This was added to test probe, we should just compare the probes
                 for property_name in ["rel_x", "rel_y", "rel_z"]:
                     if (
                         property_name in properties_in_the_recording
-                        or property_name in self.nwb_recording.get_property_keys()
+                        or property_name in nwb_recording.get_property_keys()
                     ):
                         assert_array_equal(
-                            recording.get_property(property_name), self.nwb_recording.get_property(property_name)
+                            recording.get_property(property_name), nwb_recording.get_property(property_name)
                         )
-                if recording.has_scaleable_traces() and self.nwb_recording.has_scaleable_traces():
-                    check_recordings_equal(RX1=recording, RX2=self.nwb_recording, return_in_uV=True)
+                if recording.has_scaleable_traces() and nwb_recording.has_scaleable_traces():
+                    check_recordings_equal(RX1=recording, RX2=nwb_recording, return_in_uV=True)
 
             # Compare channel groups
             # Neuroconv ALWAYS writes a string property `group_name` to the electrode table.
@@ -476,7 +619,7 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
                 default_group_name = "ElectrodeGroup"
                 group_name_array = np.full(channel_name.size, fill_value=default_group_name)
 
-            group_names_in_nwb = self.nwb_recording.get_property("group")
+            group_names_in_nwb = nwb_recording.get_property("group")
             np.testing.assert_array_equal(group_name_array, group_names_in_nwb)
 
     def check_interface_set_aligned_timestamps(self):
@@ -838,6 +981,18 @@ class MedPCInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
     A mixin for testing MedPC interfaces.
     """
 
+    def test_temporal_alignment_keys(self):
+        pass
+
+    def test_temporal_alignment_shift_times_reaches_the_nwbfile(self):
+        pass
+
+    def test_temporal_alignment_set_times_reaches_the_nwbfile(self):
+        pass
+
+    def test_temporal_alignment_remap_times_reaches_the_nwbfile(self):
+        pass
+
     def test_metadata(self):
         pass
 
@@ -1042,9 +1197,6 @@ class MiniscopeImagingInterfaceMixin(ImagingExtractorInterfaceTestMixin):
 
     optical_series_name = "OnePhotonSeries"
 
-    # This mixin reads the file itself instead of going through NwbImagingExtractor, so zarr is checkable
-    check_read_nwb_backends = ("hdf5", "zarr")
-
     def check_read_nwb(self, nwbfile_path: str):
         from ndx_miniscope import Miniscope
 
@@ -1073,6 +1225,18 @@ class MiniscopeImagingInterfaceMixin(ImagingExtractorInterfaceTestMixin):
 
 class TDTFiberPhotometryInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
     """Mixin for testing TDT Fiber Photometry interfaces."""
+
+    def test_temporal_alignment_keys(self):
+        pass
+
+    def test_temporal_alignment_shift_times_reaches_the_nwbfile(self):
+        pass
+
+    def test_temporal_alignment_set_times_reaches_the_nwbfile(self):
+        pass
+
+    def test_temporal_alignment_remap_times_reaches_the_nwbfile(self):
+        pass
 
     def test_metadata(self):
         pass
@@ -1521,3 +1685,5 @@ class EventsInterfaceTestMixin(DataInterfaceTestMixin):
             written_timestamps = np.asarray(table["timestamp"][:])[rows]
 
             assert_allclose(written_timestamps, self.interface.get_event_times(event_type_source_id))
+
+        nwbfile.read_io.close()

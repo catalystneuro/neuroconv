@@ -24,7 +24,7 @@ describes them. Point :py:class:`~neuroconv.converters.BrukerTiffConverter` at t
     >>> metadata = converter.get_metadata()
     >>> # For data provenance we can add the time zone information to the conversion if missing
     >>> session_start_time = metadata["NWBFile"]["session_start_time"]
-    >>> tzinfo = ZoneInfo("US/Pacific")
+    >>> tzinfo = ZoneInfo("Asia/Tokyo")
     >>> metadata["NWBFile"].update(session_start_time=session_start_time.replace(tzinfo=tzinfo))
     >>> # Add subject information (required for DANDI upload)
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
@@ -66,7 +66,7 @@ The setting has no effect on planar sessions.
     >>>
     >>> metadata = converter.get_metadata()
     >>> session_start_time = metadata["NWBFile"]["session_start_time"]
-    >>> tzinfo = ZoneInfo("US/Pacific")
+    >>> tzinfo = ZoneInfo("Asia/Tokyo")
     >>> metadata["NWBFile"].update(session_start_time=session_start_time.replace(tzinfo=tzinfo))
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
     >>>
@@ -91,7 +91,7 @@ yourself. ``channel_name`` selects one channel
     >>>
     >>> metadata = interface.get_metadata()
     >>> session_start_time = metadata["NWBFile"]["session_start_time"]
-    >>> tzinfo = ZoneInfo("US/Pacific")
+    >>> tzinfo = ZoneInfo("Asia/Tokyo")
     >>> metadata["NWBFile"].update(session_start_time=session_start_time.replace(tzinfo=tzinfo))
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
     >>>
@@ -116,7 +116,7 @@ microscope stays shared.
     >>>
     >>> metadata = converter.get_metadata()
     >>> session_start_time = metadata["NWBFile"]["session_start_time"]
-    >>> tzinfo = ZoneInfo("US/Pacific")
+    >>> tzinfo = ZoneInfo("Asia/Tokyo")
     >>> metadata["NWBFile"].update(session_start_time=session_start_time.replace(tzinfo=tzinfo))
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
     >>>

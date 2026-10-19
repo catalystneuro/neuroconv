@@ -7,7 +7,7 @@ from hdmf import Container
 from pydantic import Field, InstanceOf, model_validator
 from typing_extensions import Self
 
-from ._base_dataset_io import DatasetIOConfiguration
+from ._base_dataset_io import _DEFAULT_GZIP_LEVEL, DatasetIOConfiguration
 from ...importing import is_package_installed
 
 _base_hdf5_filters = set(h5py.filters.decode)
@@ -133,7 +133,10 @@ class HDF5DatasetIOConfiguration(DatasetIOConfiguration):
             # configuration read back off disk, so the value is taken by position rather than by name.
             compression_bundle = dict(
                 compression=compression_method,
-                compression_opts=next(iter((compression_options or dict()).values()), None),
+                compression_opts=next(
+                    iter((compression_options or dict()).values()),
+                    _DEFAULT_GZIP_LEVEL if compression_method == "gzip" else None,
+                ),
             )
         elif isinstance(compression_method, h5py._hl.filters.FilterRefBase):
             compression_bundle = dict(**compression_method, allow_plugin_filters=True)

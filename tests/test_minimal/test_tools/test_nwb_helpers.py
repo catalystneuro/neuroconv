@@ -47,7 +47,7 @@ class TestNWBHelpers(TestCase):
 
     def test_metadata_integrity(self):
         """Test that the original metadata is not modified."""
-        session_start_time = datetime(2023, 6, 22, 9, 0, 0, tzinfo=ZoneInfo("America/New_York"))
+        session_start_time = datetime(2023, 6, 22, 9, 0, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
         session_description = "Original description"
         identifier = "original_identifier"
         metadata = dict(

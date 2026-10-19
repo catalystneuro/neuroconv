@@ -145,3 +145,37 @@ def test_unwrapped_dynamic_table_zarr(zarr_nwbfile_path):
     assert dataset_configuration.compressor_options is None
     assert dataset_configuration.filters is None
     assert dataset_configuration.filter_options is None
+
+
+def test_backend_auto_detected_from_appended_hdf5_file(hdf5_nwbfile_path):
+    with NWBHDF5IO(path=hdf5_nwbfile_path, mode="a") as io:
+        nwbfile = io.read()
+        nwbfile.add_acquisition(mock_TimeSeries(name="AutoDetectedTimeSeries", data=np.array([[1, 2, 3]])))
+        dataset_configurations = list(get_default_dataset_io_configurations(nwbfile=nwbfile, backend=None))
+
+    assert len(dataset_configurations) == 1
+    assert isinstance(dataset_configurations[0], HDF5DatasetIOConfiguration)
+
+
+def test_backend_auto_detected_from_appended_zarr_file(zarr_nwbfile_path):
+    with NWBZarrIO(path=zarr_nwbfile_path, mode="a") as io:
+        nwbfile = io.read()
+        nwbfile.add_acquisition(mock_TimeSeries(name="AutoDetectedTimeSeries", data=np.array([[1, 2, 3]])))
+        dataset_configurations = list(get_default_dataset_io_configurations(nwbfile=nwbfile, backend=None))
+
+    assert len(dataset_configurations) == 1
+    assert isinstance(dataset_configurations[0], ZarrDatasetIOConfiguration)
+
+
+def test_backend_required_for_in_memory_nwbfile():
+    with pytest.raises(ValueError, match="was not read from an existing file"):
+        list(get_default_dataset_io_configurations(nwbfile=mock_NWBFile(), backend=None))
+
+
+@pytest.mark.parametrize("io_class, fixture_name", [(NWBHDF5IO, "hdf5_nwbfile_path"), (NWBZarrIO, "zarr_nwbfile_path")])
+def test_backend_required_for_file_read_without_appending(io_class, fixture_name, request):
+    nwbfile_path = request.getfixturevalue(fixture_name)
+    with io_class(path=nwbfile_path, mode="r") as io:
+        nwbfile = io.read()
+        with pytest.raises(ValueError, match="without opening it for appending"):
+            list(get_default_dataset_io_configurations(nwbfile=nwbfile, backend=None))

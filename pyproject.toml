@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "neuroconv"
-version = "0.10.2.dev0"
+version = "0.11.0.dev0"
 description = "Convert data from proprietary formats to NWB format."
 readme = "README.md"
 authors = [
@@ -23,25 +23,25 @@ license = { file = "license.txt" }
 keywords = ["nwb", "NeurodataWithoutBorders"]
 classifiers = [
     "Intended Audience :: Science/Research",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Operating System :: POSIX :: Linux",
     "Operating System :: Microsoft :: Windows",
     "Operating System :: MacOS",
     "License :: OSI Approved :: BSD License",
 
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
-    "numpy>=1.22.0; python_version <= '3.11'",
-    "numpy>=1.26.0; python_version >= '3.12'",
+    "numpy>=2.0.0",
     "PyYAML>=5.4",
     "h5py>=3.9.0",
     "hdmf>=6.2.0",
-    "hdmf_zarr>=0.11",
-    "pynwb>=4.0.0",
+    "hdmf_zarr>=0.11; python_version < '3.14'",
+    "hdmf_zarr>=0.14; python_version >= '3.14'",
+    "pynwb>=4.2.0",
     "pydantic>=2.0",
     "typing_extensions>=4.1.0",
     "psutil>=5.8.0",
@@ -53,7 +53,10 @@ dependencies = [
     "docstring-parser",  # For building json schema from method signatures
     "packaging",  # Issue 903
     "referencing", # for the json schema references
-    "numcodecs<0.16.0", # 0.16.0 is incompatible with zarr < 3: https://github.com/zarr-developers/numcodecs/issues/721
+    "numcodecs<0.16.0; python_version < '3.14'", # 0.16.0 is incompatible with zarr < 3: https://github.com/zarr-developers/numcodecs/issues/721
+    "numcodecs>=0.16.5; python_version >= '3.14'",
+    "zarr<3; python_version < '3.14'",  # dandi and spikeinterface hold zarr 2 here, so the Zarr backend (zarr 3 only) raises
+    "zarr>=3; python_version >= '3.14'",
 ]
 
 
@@ -67,7 +70,8 @@ dependencies = [
 neuroconv = "neuroconv.tools.yaml_conversion_specification._yaml_conversion_specification:run_conversion_from_yaml_cli"
 
 [project.optional-dependencies]
-dandi = ["dandi>=0.70.0"]
+# dandi caps zarr<=3.1.5 and hdmf_zarr>=0.14, the only release on Python 3.14, requires zarr>=3.4.0
+dandi = ["dandi>=0.70.0; python_version < '3.14'"]
 compressors = ["hdf5plugin"]
 aws = ["boto3"]
 
@@ -91,6 +95,12 @@ text = [
 audio = [
     "ndx-sound>=0.2.3",  # 0.2.3 fixes the starting_time dtype so the spec resolves under hdmf>=6
     "scipy", # for scipy.io.wavfile
+]
+dannce = [
+    "ndx-pose>=0.4.0",
+    "scipy",
+    "pymatreader>=0.0.32",
+    "neuroconv[video]",
 ]
 sleap = [
     "av>=10.0.0",
@@ -130,10 +140,16 @@ vame = [
 boris = [
     "ndx-ethogram>=0.1.0",  # a BORIS project is a coding scheme plus its events, and the scheme is an Ethogram
 ]
+ethovision = [
+    "openpyxl",  # Excel is one of EthoVision's three Track-export containers
+    "ndx-ethogram>=0.1.0",  # manual-scoring rows also produce an Ethogram and EthogramBouts
+]
 behavior = [
     "neuroconv[boris]",
+    "neuroconv[ethovision]",
     "neuroconv[sleap]",
     "neuroconv[audio]",
+    "neuroconv[dannce]",
     "neuroconv[deeplabcut]",
     "neuroconv[fictrac]",
     "neuroconv[video]",
@@ -179,8 +195,9 @@ events = [
 
 ## Ecephys
 ecephys_minimal = [  # Keeps the minimal versions of ecephys dependencies in the repo
-    "spikeinterface>=0.104.7",
-    "neo>=0.14.5",
+    "spikeinterface>=0.105.1",
+    "neo>=0.14.5,<0.14.6",  # 0.14.6 raises on Neuralynx gaps, lift after the spikeinterface release with SpikeInterface/spikeinterface#4865
+    "natsort>=7.1.1",
 ]
 alphaomega = [
     "neuroconv[ecephys_minimal]",
@@ -310,11 +327,12 @@ icephys = [
 ## Image
 image = [
     "pillow>=10.0.0",
+    "natsort>=7.1.1",
 ]
 
 ## Fiber Photometry
 fiber_photometry_minimal = [  # Keeps the minimal version of the fiber photometry dependency in the repo
-    "ndx-fiber-photometry>=0.2.3",
+    "ndx-fiber-photometry>=0.2.3,<0.3",  # 0.3.0 adopts ndx-ophys-devices 0.4, which removes FiberInsertion used by the TDT interface
 ]
 csv_fp = [
     "neuroconv[fiber_photometry_minimal]",
@@ -354,6 +372,7 @@ guppy = [
     "neuroconv[doric_events]",
     "neuroconv[npm_fp]",
     "neuroconv[npm_events]",
+    "neuroconv[pyphotometry]",
 ]
 fiber_photometry = [
     "neuroconv[csv_fp]",
@@ -367,7 +386,7 @@ fiber_photometry = [
 
 ## Ophys
 ophys_minimal = [  # Keeps the minimal version of ophys dependencies in the repo
-    "roiextractors>=0.9.0",
+    "roiextractors>=0.10.0",
 ]
 # What it takes to read a tiff, stated once for the formats that are stored as one. Membership is by
 # what the format reads and not by modality, so Inscopix (.isxd) and Miniscope (video) are not here.
@@ -524,7 +543,7 @@ PYTHONWARNDEFAULTENCODING = "1"  # Emit EncodingWarning when open() lacks explic
 
 [tool.black]
 line-length = 120
-target-version = ['py39', 'py310']
+target-version = ['py311']
 include = '\.pyi?$'
 extend-exclude = '''
 /(
@@ -549,7 +568,7 @@ extend-exclude = '''
 # formatted. Ruff's default line length is 88, and its default exclusions already cover the ones black
 # lists, so the width is the only setting that has to be restated.
 line-length = 120
-target-version = "py310"
+target-version = "py311"
 
 [tool.ruff.lint]
 select = [
@@ -580,7 +599,6 @@ known-first-party = ["neuroconv"]
 directory = "changelog_entries"
 filename = "CHANGELOG.md"
 template = "changelog_entries/template.md"
-start_string = "<!-- towncrier release notes start -->\n"
 title_format = "# v{version} ({project_date})"
 issue_format = "[PR #{issue}](https://github.com/catalystneuro/neuroconv/pull/{issue})"
 ignore = ["template.md"]
@@ -609,7 +627,7 @@ showcontent = true
 [tool.codespell]
 skip = '.git*,*.pdf,*.css,*.svg'
 check-hidden = true
-ignore-words-list = 'assertin,sortings,Tye,trough'
+ignore-words-list = 'assertin,sortings,Tye,trough,ect'
 
 [dependency-groups]
 test = [
@@ -632,7 +650,8 @@ docs = [
     "sphinx-design==0.7.0; python_version>='3.11'",  # Used by metadata_templates.rst to show the YAML and JSON forms of each template in tabs.
     "pydata_sphinx_theme==0.16.1",  # Latest as of April 2025.
     "roiextractors",  # Needed for the API documentation
-    "spikeinterface>=0.104.7",  # Needed for the API documentation
+    "spikeinterface>=0.105.1",  # Needed for the API documentation
+    "natsort>=7.1.1",  # Needed for the API documentation
     "pytest" # used to build the documentation for tools.testing
 ]
 

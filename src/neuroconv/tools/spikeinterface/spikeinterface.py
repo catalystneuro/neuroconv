@@ -7,6 +7,7 @@ import psutil
 import pynwb
 from hdmf.common.table import VectorIndex
 from hdmf.data_utils import AbstractDataChunkIterator
+from natsort import natsorted
 from pydantic import FilePath
 from spikeinterface import BaseRecording, BaseSorting, SortingAnalyzer
 from spikeinterface.core.segmentutils import AppendSegmentRecording
@@ -27,6 +28,7 @@ from ..nwb_helpers import (
 from ..nwb_helpers._metadata_and_file_helpers import (
     _add_device_to_nwbfile,
     _fetch_backend_from_nwbfile_on_disk,
+    _validate_metadata_key,
     configure_and_write_nwbfile,
 )
 from ...utils import (
@@ -367,7 +369,7 @@ def add_recording_to_nwbfile(
         - 'processing/FilteredEphys': a ``FilteredEphys`` container in the ecephys processing module.
     write_as : {'raw', 'processed', 'lfp'}, optional
         Deprecated. Use ``parent_container`` instead ('raw' -> 'acquisition', 'lfp' -> 'processing/LFP',
-        'processed' -> 'processing/FilteredEphys'). Will be removed on or after February 2027.
+        'processed' -> 'processing/FilteredEphys'). Will be removed in v0.12.0.
     data_representation : {'digital_counts', 'physical_units'}, default: 'digital_counts'
         How the trace values are materialized in the stored data array.
         - 'digital_counts': store the raw integer samples and carry the per-channel gain in
@@ -410,7 +412,7 @@ def add_recording_to_nwbfile(
     if write_as is not None:
         warnings.warn(
             "The 'write_as' parameter of add_recording_to_nwbfile is deprecated and will be removed "
-            "on or after February 2027. Use 'parent_container' instead "
+            "in v0.12.0. Use 'parent_container' instead "
             "('raw' -> 'acquisition', 'lfp' -> 'processing/LFP', 'processed' -> 'processing/FilteredEphys').",
             FutureWarning,
             stacklevel=2,
@@ -462,6 +464,12 @@ def add_recording_to_nwbfile(
 
     if metadata is None:
         metadata = _get_ecephys_metadata_placeholders()
+    if metadata_key is not None:
+        _validate_metadata_key(
+            metadata,
+            metadata_path=("Ecephys", "ElectricalSeries"),
+            metadata_key=metadata_key,
+        )
 
     add_recording_metadata_to_nwbfile(
         recording=recording, nwbfile=nwbfile, metadata=metadata, null_values_for_properties=null_values_for_properties
@@ -546,13 +554,14 @@ def add_sorting_to_nwbfile(
             - "sds": np.ndarray of shape (num_units, num_samples, num_channels), optional
             - "sampling_rate": float, the sampling rate of the waveforms in Hz
             - "unit": str, the unit of measurement (default: "volts")
+            - "time_before_peak_in_ms": float, the time from the start of each waveform to the spike peak, optional
     write_as : {'units', 'processing'}, optional
-        Deprecated. Use ``parent_container`` instead. Will be removed on or after February 2027.
+        Deprecated. Use ``parent_container`` instead. Will be removed in v0.12.0.
     """
     if write_as is not None:
         warnings.warn(
             "The 'write_as' parameter of add_sorting_to_nwbfile is deprecated and will be removed "
-            "on or after February 2027. Use 'parent_container' instead.",
+            "in v0.12.0. Use 'parent_container' instead.",
             FutureWarning,
             stacklevel=2,
         )
@@ -564,6 +573,7 @@ def add_sorting_to_nwbfile(
         _waveform_sds = waveform_data_dict.get("sds")
         _waveform_rate = waveform_data_dict.get("sampling_rate")
         _waveform_unit = waveform_data_dict.get("unit", "volts")
+        _waveform_time_before_peak_in_ms = waveform_data_dict.get("time_before_peak_in_ms")
     elif waveform_means is not None:
         # Deprecated path - emit FutureWarning for gradual migration
         warnings.warn(
@@ -576,11 +586,13 @@ def add_sorting_to_nwbfile(
         _waveform_sds = waveform_sds
         _waveform_rate = None
         _waveform_unit = "volts"
+        _waveform_time_before_peak_in_ms = None
     else:
         _waveform_means = None
         _waveform_sds = None
         _waveform_rate = None
         _waveform_unit = "volts"
+        _waveform_time_before_peak_in_ms = None
 
     # Resolution from sorting's sampling frequency
     _resolution = 1.0 / sorting.get_sampling_frequency()
@@ -606,6 +618,7 @@ def add_sorting_to_nwbfile(
         null_values_for_properties=null_values_for_properties,
         waveform_rate=_waveform_rate,
         waveform_unit=_waveform_unit,
+        waveform_time_before_peak_in_ms=_waveform_time_before_peak_in_ms,
         resolution=_resolution,
     )
 
@@ -746,13 +759,7 @@ def _add_recording_segment_to_nwbfile(
 
     # Update with user metadata - allows override of all fields including name, description, data, timestamps, etc.
     if metadata_key is not None:
-        electrical_series_metadata_dict = metadata.get("Ecephys", {}).get("ElectricalSeries", {})
-        if metadata_key not in electrical_series_metadata_dict:
-            raise ValueError(
-                f"metadata['Ecephys']['ElectricalSeries'] does not contain key '{metadata_key}'. "
-                f"Available keys: {sorted(electrical_series_metadata_dict)}"
-            )
-        eseries_kwargs.update(electrical_series_metadata_dict[metadata_key])
+        eseries_kwargs.update(metadata["Ecephys"]["ElectricalSeries"][metadata_key])
     elif metadata is not None and "Ecephys" in metadata and es_key is not None:
         assert es_key in metadata["Ecephys"], f"metadata['Ecephys'] dictionary does not contain key '{es_key}'"
         eseries_kwargs.update(metadata["Ecephys"][es_key])
@@ -834,7 +841,7 @@ def add_devices_to_nwbfile(nwbfile: pynwb.NWBFile, metadata: DeepDict | None = N
     devices within the metadata list will also be created.
 
     .. deprecated::
-        ``add_devices_to_nwbfile`` is deprecated and will be removed on or after February 2027.
+        ``add_devices_to_nwbfile`` is deprecated and will be removed in v0.12.0.
         Use the dict-based metadata format (``metadata["Devices"]``) with
         :func:`add_recording_to_nwbfile` instead, or call
         :func:`~neuroconv.tools.nwb_helpers._add_device_to_nwbfile` directly for a single device.
@@ -858,7 +865,7 @@ def add_devices_to_nwbfile(nwbfile: pynwb.NWBFile, metadata: DeepDict | None = N
         Missing keys in an element of metadata['Ecephys']['Device'] will be auto-populated with defaults.
     """
     warnings.warn(
-        "add_devices_to_nwbfile is deprecated and will be removed on or after February 2027. "
+        "add_devices_to_nwbfile is deprecated and will be removed in v0.12.0. "
         "Use _add_device_to_nwbfile with the new dict-based metadata format (metadata['Devices']) instead.",
         FutureWarning,
         stacklevel=2,
@@ -1416,13 +1423,21 @@ def _add_electrodes_to_nwbfile(
     data_to_add["group_name"] = dict(description="group_name", data=group_names, index=False)
 
     # Location in spikeinterface is equivalent to rel_x, rel_y, rel_z in the nwb standard
-    if "location" in data_to_add:
-        data = data_to_add["location"]["data"]
-        column_number_to_property = {0: "rel_x", 1: "rel_y", 2: "rel_z"}
-        for column_number in range(data.shape[1]):
-            property = column_number_to_property[column_number]
-            data_to_add[property] = dict(description=property, data=data[:, column_number], index=False)
+    # The "location" property is removed in SpikeInterface v0.105.0. Use the get_channel_locations
+    # function instead
+    locations_data = None
+    if recording.has_probe():
+        locations_data = recording.get_channel_locations()
+    elif "location" in data_to_add:
+        # Some Interfaces set the 'location' property instead of the probe to
+        # prevent modifying groups (e.g. CellExplorer)
+        locations_data = data_to_add["location"]["data"]
         data_to_add.pop("location")
+    if locations_data is not None:
+        column_number_to_property = {0: "rel_x", 1: "rel_y", 2: "rel_z"}
+        for column_number in range(locations_data.shape[1]):
+            property = column_number_to_property[column_number]
+            data_to_add[property] = dict(description=property, data=locations_data[:, column_number], index=False)
 
     # In the electrode table location is the brain area of spikeinterface
     if "brain_area" in data_to_add:
@@ -1527,8 +1542,11 @@ def _add_electrodes_to_nwbfile(
     indices_for_null_values = [index for index in range(electrode_table_size) if index not in new_indices_set]
     extending_column = len(indices_for_null_values) > 0
 
-    # Add properties as columns (exclude channel_name and electrode_name as they were handled above)
-    for property in properties_to_add_by_columns - {"channel_name", "electrode_name"}:
+    # Add properties as columns (exclude channel_name and electrode_name as they were handled above).
+    # Sorted as iterating the set makes the column order depend on string hashing, which python
+    # randomizes per process, so the same recording produced a different column order on every run.
+    # See https://github.com/catalystneuro/neuroconv/issues/792
+    for property in natsorted(properties_to_add_by_columns - {"channel_name", "electrode_name"}):
         cols_args = data_to_add[property]
         data = cols_args["data"]
 
@@ -1585,10 +1603,10 @@ def add_electrodes_to_nwbfile(
     orchestrates devices, electrode groups, and electrodes together and should be
     used to ensure all recording metadata is properly added.
 
-    This function will be removed on or after February 2027.
+    This function will be removed in v0.12.0.
     """
     warnings.warn(
-        "add_electrodes_to_nwbfile is deprecated and will be removed on or after February 2027. "
+        "add_electrodes_to_nwbfile is deprecated and will be removed in v0.12.0. "
         "Use add_recording_metadata_to_nwbfile to ensure all recording metadata "
         "(devices, electrode groups, and electrodes) is properly added.",
         FutureWarning,
@@ -1835,11 +1853,8 @@ def add_recording_as_time_series_to_nwbfile(
                 "whenever that block is present. To write the recording with default metadata, pass no "
                 "metadata at all."
             )
-        if metadata_key not in metadata["TimeSeries"]:
-            raise ValueError(
-                f"metadata['TimeSeries'] does not contain key '{metadata_key}'. "
-                f"Available keys: {list(metadata['TimeSeries'])}."
-            )
+    if metadata_key is not None:
+        _validate_metadata_key(metadata or {}, metadata_path=("TimeSeries",), metadata_key=metadata_key)
 
     num_segments = recording.get_num_segments()
     for segment_index in range(num_segments):
@@ -2067,14 +2082,14 @@ def add_recording_as_spatial_series_to_nwbfile(
         By default (False), the function checks if timestamps are uniformly sampled,
         and if so, stores data using a regular sampling rate.
     write_as : {'acquisition', 'processing'}, optional
-        Deprecated. Use ``parent_container`` instead. Will be removed on or after February 2027.
+        Deprecated. Use ``parent_container`` instead. Will be removed in v0.12.0.
 
 
     """
     if write_as is not None:
         warnings.warn(
             "The 'write_as' parameter of add_recording_as_spatial_series_to_nwbfile is deprecated and will be "
-            "removed on or after February 2027. Use 'parent_container' instead.",
+            "removed in v0.12.0. Use 'parent_container' instead.",
             FutureWarning,
             stacklevel=2,
         )
@@ -2346,7 +2361,7 @@ def write_recording_to_nwbfile(
         - 'processing/FilteredEphys' writes a ``FilteredEphys`` container in the ecephys processing module
     write_as: {'raw', 'processed', 'lfp'}, optional
         Deprecated. Use ``parent_container`` instead ('raw' -> 'acquisition', 'lfp' -> 'processing/LFP',
-        'processed' -> 'processing/FilteredEphys'). Will be removed on or after February 2027.
+        'processed' -> 'processing/FilteredEphys'). Will be removed in v0.12.0.
     es_key: str, optional
         Key in metadata dictionary containing metadata info for the specific electrical series
     iterator_type: {"v2",  None}
@@ -2436,7 +2451,7 @@ def write_recording_to_nwbfile(
         if write_as is not None:
             warnings.warn(
                 "The 'write_as' parameter of write_recording_to_nwbfile is deprecated and will be removed "
-                "on or after February 2027. Use 'parent_container' instead "
+                "in v0.12.0. Use 'parent_container' instead "
                 "('raw' -> 'acquisition', 'lfp' -> 'processing/LFP', 'processed' -> 'processing/FilteredEphys').",
                 FutureWarning,
                 stacklevel=2,
@@ -2477,7 +2492,7 @@ def write_recording_to_nwbfile(
             if write_as is not None:
                 warnings.warn(
                     "The 'write_as' parameter of write_recording_to_nwbfile is deprecated and will be removed "
-                    "on or after February 2027. Use 'parent_container' instead "
+                    "in v0.12.0. Use 'parent_container' instead "
                     "('raw' -> 'acquisition', 'lfp' -> 'processing/LFP', 'processed' -> 'processing/FilteredEphys').",
                     FutureWarning,
                     stacklevel=2,
@@ -2525,6 +2540,7 @@ def _add_units_table_to_nwbfile(
     *,
     waveform_rate: float | None = None,
     waveform_unit: str = "volts",
+    waveform_time_before_peak_in_ms: float | None = None,
     resolution: float | None = None,
     null_values_for_properties: dict | None = None,
 ):
@@ -2646,6 +2662,9 @@ def _add_units_table_to_nwbfile(
         Sampling rate of the waveform data in Hz. Sets Units.waveform_rate attribute.
     waveform_unit : str, default: "volts"
         Unit of measurement for waveform data. Sets Units.waveform_unit attribute.
+    waveform_time_before_peak_in_ms : float, optional
+        Time from the start of each waveform to the spike peak in milliseconds, which is the alignment
+        point used during sorting. Sets Units.waveform_time_before_peak_in_ms attribute.
     resolution : float, optional
         The smallest possible difference between two spike times in seconds.
         Sets Units.resolution attribute.
@@ -2688,6 +2707,7 @@ def _add_units_table_to_nwbfile(
         description=unit_table_description,
         waveform_rate=waveform_rate,
         waveform_unit=waveform_unit,
+        waveform_time_before_peak_in_ms=waveform_time_before_peak_in_ms,
         resolution=resolution,
     )
     if unit_electrode_indices is not None:
@@ -2922,8 +2942,10 @@ def _add_units_table_to_nwbfile(
     indices_for_null_values = [index for index in range(unit_table_size) if index not in new_indices_set]
     extending_column = len(indices_for_null_values) > 0
 
-    # Add properties as columns
-    for property in properties_to_add_by_columns - {"unit_name"}:
+    # Add properties as columns.
+    # Sorted for the same reason as the electrodes table above, see
+    # https://github.com/catalystneuro/neuroconv/issues/792
+    for property in natsorted(properties_to_add_by_columns - {"unit_name"}):
         cols_args = data_to_add[property]
         data = cols_args["data"]
 
@@ -3048,7 +3070,7 @@ def write_sorting_to_nwbfile(
         A dictionary mapping properties to their respective default values. If a property is not found in this
         dictionary, a sensible default value based on the type of `sample_data` will be used.
     write_as : {'units', 'processing'}, optional
-        Deprecated. Use ``parent_container`` instead. Will be removed on or after February 2027.
+        Deprecated. Use ``parent_container`` instead. Will be removed in v0.12.0.
 
     Returns
     -------
@@ -3059,7 +3081,7 @@ def write_sorting_to_nwbfile(
     if write_as is not None:
         warnings.warn(
             "The 'write_as' parameter of write_sorting_to_nwbfile is deprecated and will be removed "
-            "on or after February 2027. Use 'parent_container' instead.",
+            "in v0.12.0. Use 'parent_container' instead.",
             FutureWarning,
             stacklevel=2,
         )
@@ -3222,12 +3244,12 @@ def add_sorting_analyzer_to_nwbfile(
         A dictionary mapping properties to their respective default values. If a property is not found in this
         dictionary, a sensible default value based on the type of `sample_data` will be used.
     write_as : {'units', 'processing'}, optional
-        Deprecated. Use ``parent_container`` instead. Will be removed on or after February 2027.
+        Deprecated. Use ``parent_container`` instead. Will be removed in v0.12.0.
     """
     if write_as is not None:
         warnings.warn(
             "The 'write_as' parameter of add_sorting_analyzer_to_nwbfile is deprecated and will be removed "
-            "on or after February 2027. Use 'parent_container' instead.",
+            "in v0.12.0. Use 'parent_container' instead.",
             FutureWarning,
             stacklevel=2,
         )
@@ -3248,6 +3270,16 @@ def add_sorting_analyzer_to_nwbfile(
         raise ValueError("No templates found in the sorting analyzer.")
     template_means = template_extension.get_templates()
     template_stds = template_extension.get_templates(operator="std")
+
+    # The analyzer knows the rate the templates were sampled at and where the spike peak sits inside each
+    # of them. `ms_before` is backfilled from `nbefore` by the templates extension, so it is there even on
+    # an analyzer computed before it was a parameter.
+    waveform_rate = sorting_analyzer.sampling_frequency
+    waveform_time_before_peak_in_ms = template_extension.params["ms_before"]
+    # Scaled traces in spikeinterface are microvolts. An analyzer whose recording has no gains keeps the
+    # digital counts, which carry no physical unit.
+    waveform_unit = "microvolts" if sorting_analyzer.return_in_uV else "a.u."
+
     sorting = sorting_analyzer.sorting
     if unit_ids is not None:
         unit_indices = sorting.ids_to_indices(unit_ids)
@@ -3305,6 +3337,9 @@ def add_sorting_analyzer_to_nwbfile(
         unit_table_description=units_description,
         waveform_means=template_means,
         waveform_sds=template_stds,
+        waveform_rate=waveform_rate,
+        waveform_unit=waveform_unit,
+        waveform_time_before_peak_in_ms=waveform_time_before_peak_in_ms,
         unit_electrode_indices=unit_electrode_indices,
         null_values_for_properties=null_values_for_properties,
     )
@@ -3400,7 +3435,7 @@ def write_sorting_analyzer_to_nwbfile(
         A dictionary mapping properties to their respective default values. If a property is not found in this
         dictionary, a sensible default value based on the type of `sample_data` will be used.
     write_as : {'units', 'processing'}, optional
-        Deprecated. Use ``parent_container`` instead. Will be removed on or after February 2027.
+        Deprecated. Use ``parent_container`` instead. Will be removed in v0.12.0.
 
     Returns
     -------
@@ -3411,7 +3446,7 @@ def write_sorting_analyzer_to_nwbfile(
     if write_as is not None:
         warnings.warn(
             "The 'write_as' parameter of write_sorting_analyzer_to_nwbfile is deprecated and will be removed "
-            "on or after February 2027. Use 'parent_container' instead.",
+            "in v0.12.0. Use 'parent_container' instead.",
             FutureWarning,
             stacklevel=2,
         )

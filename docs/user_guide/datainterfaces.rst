@@ -92,7 +92,7 @@ If it is not found, you must add it:
     from datetime import datetime
     from zoneinfo import ZoneInfo
 
-    metadata["NWBFile"]["session_start_time"] = datetime(2021, 1, 1, 12, 0, 0, tzinfo=ZoneInfo("US/Pacific"))
+    metadata["NWBFile"]["session_start_time"] = datetime(2021, 1, 1, 12, 0, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
 
 You can use ``tz.tzlocal()`` to get the local timezone.
 
@@ -101,7 +101,7 @@ This is not required but is a recommended best practice. Here is how you would a
 
 .. code-block:: python
 
-    metadata["NWBFile"]["session_start_time"] = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("US/Pacific"))
+    metadata["NWBFile"]["session_start_time"] = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("Asia/Tokyo"))
 
 NWB Best Practices also recommends several other fields that are rarely present in the extracted metadata.
 The metadata dictionary is the place to add this information:

@@ -58,7 +58,7 @@ says how to read each.
     >>> # subject read from the header
     >>> metadata = array_interface.get_metadata()
     >>> # The file states no time zone, so we add it
-    >>> session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("US/Pacific"))
+    >>> session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("Asia/Tokyo"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>> # The subject_id comes from the file; the rest is required for DANDI upload
     >>> metadata["Subject"].update(species="Mus musculus", sex="M", age="P30D")
@@ -110,7 +110,7 @@ variable becomes an event type named after its digits, so a code you do not name
     ... )
     >>>
     >>> metadata = packed_interface.get_metadata()
-    >>> session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("US/Eastern"))
+    >>> session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("Asia/Tokyo"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>> metadata["Subject"].update(species="Rattus norvegicus", sex="M", age="P90D")
     >>>

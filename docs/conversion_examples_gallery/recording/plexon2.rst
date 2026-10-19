@@ -9,6 +9,11 @@ Install NeuroConv with the additional dependencies necessary for reading Plexon 
 
 .. warning::
     When running plexon2 conversion on platforms other than Windows, you also need to install `wine <https://www.winehq.org/>`_.
+    Plexon2 is not supported on Python 3.14 outside Windows at the moment.
+
+    Plexon2 reading through Wine worked in our tests on Ubuntu 24.04 with Wine 9, but failed on Ubuntu 26.04 with Wine 10.
+    We are working on migrating to a reader that does not require Wine.
+    See `issue #2119 (Remove the Wine dependency from the Plexon2 interface) <https://github.com/catalystneuro/neuroconv/issues/2119>`_ for details.
 
 Convert Plexon2 recording data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.plexon.plexondatainterface.Plexon2RecordingInterface`.
 
@@ -26,7 +31,7 @@ Convert Plexon2 recording data to NWB using :py:class:`~neuroconv.datainterfaces
     # Extract what metadata we can from the source files
     metadata = interface.get_metadata()
     # For data provenance we add the time zone information to the conversion
-    tzinfo = ZoneInfo("US/Pacific")
+    tzinfo = ZoneInfo("Asia/Tokyo")
     session_start_time = metadata["NWBFile"]["session_start_time"]
     metadata["NWBFile"].update(session_start_time=session_start_time.replace(tzinfo=tzinfo))
     # Add subject information (required for DANDI upload)

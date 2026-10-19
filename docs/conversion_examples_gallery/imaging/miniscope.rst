@@ -35,7 +35,7 @@ streams into a single NWB conversion. Behavioral video is handled automatically 
     >>>
     >>> metadata = converter.get_metadata()
     >>> session_start_time = metadata["NWBFile"]["session_start_time"]
-    >>> metadata["NWBFile"].update(session_start_time=session_start_time.replace(tzinfo=ZoneInfo("US/Pacific")))
+    >>> metadata["NWBFile"].update(session_start_time=session_start_time.replace(tzinfo=ZoneInfo("Asia/Tokyo")))
     >>> # Add subject information (required for DANDI upload)
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
     >>>
@@ -91,7 +91,7 @@ The interface expects a folder with the following structure:
     >>> metadata = interface.get_metadata()
     >>> session_start_time = metadata["NWBFile"]["session_start_time"]
     >>> # For data provenance we can add the time zone information to the conversion
-    >>> metadata["NWBFile"]["session_start_time"] = session_start_time.replace(tzinfo=ZoneInfo("US/Pacific"))
+    >>> metadata["NWBFile"]["session_start_time"] = session_start_time.replace(tzinfo=ZoneInfo("Asia/Tokyo"))
     >>> # Add subject information (required for DANDI upload)
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
     >>>
@@ -102,10 +102,9 @@ The interface expects a folder with the following structure:
 **Alternative Parameters for Custom File Locations:**
 
 If your data is organized differently than the format above (e.g., you have changed the names, or the
-configuration file or timestamps are in another directory), you can specify the structure using the following parameters:
+timestamps are in another directory), you can specify the structure using the following parameters:
 
 - ``file_paths``: List of .avi file paths (must be named 0.avi, 1.avi, 2.avi, ...) from the same acquisition
-- ``configuration_file_path``: Path to the metaData.json configuration file
 - ``timeStamps_file_path``: Path to the timeStamps.csv file. If not provided, the interface looks for ``timeStamps.csv`` in the same directory as the video files
 
 For more information see the
@@ -207,7 +206,7 @@ we need to use ``set_aligned_starting_time()`` to shift the timestamps of the se
     >>> # Configure metadata (session_start_time is automatically extracted from first acquisition)
     >>> metadata = converter.get_metadata()
     >>> session_start_time = metadata["NWBFile"]["session_start_time"]
-    >>> metadata["NWBFile"]["session_start_time"] = session_start_time.replace(tzinfo=ZoneInfo("US/Pacific"))
+    >>> metadata["NWBFile"]["session_start_time"] = session_start_time.replace(tzinfo=ZoneInfo("Asia/Tokyo"))
     >>> # Add subject information (required for DANDI upload)
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
     >>>
