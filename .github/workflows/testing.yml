@@ -192,14 +192,10 @@ jobs:
           uv pip install --system ".[full]"
           uv pip install --system --group sorting_analyzer
 
-      - name: Install Wine (For Plexon2 Data Tests)
-        uses: ./.github/actions/install-wine
-        with:
-          os: ${{ runner.os }}
-
       # Neo downloads the Plexon reader DLL into the home directory the first time a .pl2 file is
       # opened, with a bare urlopen that has no timeout. Caching it keeps the test run off the network.
       - name: Cache the Plexon2 reader DLL
+        if: runner.os == 'Windows'
         uses: actions/cache@v5
         with:
           path: ~/.plexon_dlls_for_neo
