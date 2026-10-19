@@ -110,7 +110,7 @@ def full_metadata():
 
 class TestMockFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
     data_interface_cls = MockFiberPhotometryInterface
-    expected_alignment_keys = ("fiber_photometry_470nm",)
+    expected_temporal_alignment_keys = ("fiber_photometry_470nm",)
     interface_kwargs = dict(num_fibers=2)
     conversion_options = dict(stub_test=True, stub_samples=3)
 

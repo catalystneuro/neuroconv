@@ -80,7 +80,7 @@ class TestBrukerCurrentClamp(DataInterfaceTestMixin):
     off the unit, and the ``Multiclamp700B Ch1`` spelling of the amplifier name."""
 
     data_interface_cls = BrukerVoltageRecordingInterface
-    expected_alignment_keys = ("cell1-001_Primary",)
+    expected_temporal_alignment_keys = ("cell1-001_Primary",)
     file_path = cycle_csv_path("cc_01_cell1-001")
     interface_kwargs = dict(file_paths=[file_path])
     save_directory = OUTPUT_PATH
@@ -147,7 +147,7 @@ class TestBrukerVoltageClamp(DataInterfaceTestMixin):
     factor, and the ``Multiclamp700B`` spelling with no channel suffix."""
 
     data_interface_cls = BrukerVoltageRecordingInterface
-    expected_alignment_keys = ("cell1_LED12-018_Primary",)
+    expected_temporal_alignment_keys = ("cell1_LED12-018_Primary",)
     file_path = cycle_csv_path("vc_01_cell1_LED12-018")
     interface_kwargs = dict(file_paths=[file_path])
     save_directory = OUTPUT_PATH

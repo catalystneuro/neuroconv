@@ -185,20 +185,20 @@ class DataInterfaceTestMixin:
     # Stated by each test class as a literal tuple of the keys its interface registers, in registration order.
     # Keys are public API users type into ``alignment[key]``, so the expected value is never derived from the
     # interface under test, which could not fail.
-    expected_alignment_keys: tuple[str, ...] | None = None
+    expected_temporal_alignment_keys: tuple[str, ...] | None = None
 
-    def test_alignment_keys(self, setup_interface):
+    def test_temporal_alignment_keys(self, setup_interface):
         alignment_attribute = "temporal_alignment" if hasattr(self.interface, "temporal_alignment") else "alignment"
         if not hasattr(self.interface, alignment_attribute):
             pytest.skip("The interface does not support temporal alignment.")
 
-        assert self.expected_alignment_keys is not None, (
-            f"{type(self).__name__} must state `expected_alignment_keys`, the literal tuple of keys that "
+        assert self.expected_temporal_alignment_keys is not None, (
+            f"{type(self).__name__} must state `expected_temporal_alignment_keys`, the literal tuple of keys that "
             f"{self.data_interface_cls.__name__} registers in `{alignment_attribute}`."
         )
-        assert getattr(self.interface, alignment_attribute).keys() == tuple(self.expected_alignment_keys)
+        assert getattr(self.interface, alignment_attribute).keys() == tuple(self.expected_temporal_alignment_keys)
 
-    def test_alignment_shift_times_reaches_the_nwbfile(self, setup_interface):
+    def test_temporal_alignment_shift_times_reaches_the_nwbfile(self, setup_interface):
         """Every time an interface writes moves when the interface is shifted."""
         alignment_attribute = "temporal_alignment" if hasattr(self.interface, "temporal_alignment") else "alignment"
         if not hasattr(self.interface, alignment_attribute):
@@ -230,7 +230,7 @@ class DataInterfaceTestMixin:
                 err_msg=f"{identifier} was written but did not move with the alignment",
             )
 
-    def test_alignment_set_times_reaches_the_nwbfile(self, setup_interface):
+    def test_temporal_alignment_set_times_reaches_the_nwbfile(self, setup_interface):
         """Every time an interface writes is replaced when the times of each of its objects are replaced."""
         alignment_attribute = "temporal_alignment" if hasattr(self.interface, "temporal_alignment") else "alignment"
         if not hasattr(self.interface, alignment_attribute):
@@ -266,7 +266,7 @@ class DataInterfaceTestMixin:
                 err_msg=f"{identifier} was written but did not move with the alignment",
             )
 
-    def test_alignment_remap_times_reaches_the_nwbfile(self, setup_interface):
+    def test_temporal_alignment_remap_times_reaches_the_nwbfile(self, setup_interface):
         """Every time and every duration an interface writes follows a remap of the interface."""
         alignment_attribute = "temporal_alignment" if hasattr(self.interface, "temporal_alignment") else "alignment"
         if not hasattr(self.interface, alignment_attribute):
@@ -981,16 +981,16 @@ class MedPCInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
     A mixin for testing MedPC interfaces.
     """
 
-    def test_alignment_keys(self):
+    def test_temporal_alignment_keys(self):
         pass
 
-    def test_alignment_shift_times_reaches_the_nwbfile(self):
+    def test_temporal_alignment_shift_times_reaches_the_nwbfile(self):
         pass
 
-    def test_alignment_set_times_reaches_the_nwbfile(self):
+    def test_temporal_alignment_set_times_reaches_the_nwbfile(self):
         pass
 
-    def test_alignment_remap_times_reaches_the_nwbfile(self):
+    def test_temporal_alignment_remap_times_reaches_the_nwbfile(self):
         pass
 
     def test_metadata(self):
@@ -1226,16 +1226,16 @@ class MiniscopeImagingInterfaceMixin(ImagingExtractorInterfaceTestMixin):
 class TDTFiberPhotometryInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
     """Mixin for testing TDT Fiber Photometry interfaces."""
 
-    def test_alignment_keys(self):
+    def test_temporal_alignment_keys(self):
         pass
 
-    def test_alignment_shift_times_reaches_the_nwbfile(self):
+    def test_temporal_alignment_shift_times_reaches_the_nwbfile(self):
         pass
 
-    def test_alignment_set_times_reaches_the_nwbfile(self):
+    def test_temporal_alignment_set_times_reaches_the_nwbfile(self):
         pass
 
-    def test_alignment_remap_times_reaches_the_nwbfile(self):
+    def test_temporal_alignment_remap_times_reaches_the_nwbfile(self):
         pass
 
     def test_metadata(self):
