@@ -207,9 +207,9 @@ jobs:
 
       - name: Run full pytest
         # Ternary operator: only the job that uploads to Codecov below pays for coverage instrumentation
-        run: pytest -vv ${{ (matrix.python-version == steps.min_python.outputs.version && matrix.os == 'ubuntu-latest') && '--cov=neuroconv --cov-report xml:./codecov.xml' || '' }}
+        run: pytest -vv ${{ (matrix.python-version == steps.min_python.outputs.version && matrix.os == 'ubuntu-24.04') && '--cov=neuroconv --cov-report xml:./codecov.xml' || '' }}
       - name: Upload full coverage to Codecov
-        if: ${{ matrix.python-version == steps.min_python.outputs.version && matrix.os == 'ubuntu-latest' }}
+        if: ${{ matrix.python-version == steps.min_python.outputs.version && matrix.os == 'ubuntu-24.04' }}
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
