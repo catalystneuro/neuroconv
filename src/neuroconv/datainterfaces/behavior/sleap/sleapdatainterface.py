@@ -194,13 +194,13 @@ class SLEAPInterface(BasePoseEstimationInterface):
         super().__init__(file_path=file_path)
 
     @property
-    def alignment(self):
+    def temporal_alignment(self):
         if self._legacy_interface is not None:
             raise NotImplementedError(
                 "Alignment is not supported by the deprecated whole-file SLEAP writer. "
                 "Select one individual with 'track_name' to align its pose container."
             )
-        return super().alignment
+        return super().temporal_alignment
 
     def _get_labels(self):
         """Read the .slp file once and cache it."""

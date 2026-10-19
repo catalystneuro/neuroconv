@@ -28,7 +28,7 @@ class BaseIcephysInterface(BaseDataInterface):
         self._alignment = _TemporalAlignment()
 
     @property
-    def alignment(self):
+    def temporal_alignment(self):
         return self._alignment
 
     def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict | None = None) -> None:
@@ -49,7 +49,7 @@ class BaseIcephysInterface(BaseDataInterface):
             electrode_metadata_key=response_metadata["electrode_metadata_key"],
         )
         response_data, stimulus_data, sweep_sample_ranges = self._get_icephys_series_data()
-        timestamps = self.alignment[self._alignment_key].get_times()
+        timestamps = self.temporal_alignment[self._alignment_key].get_times()
         if timestamps.ndim != 1 or len(timestamps) != len(response_data.data):
             raise ValueError("Intracellular timestamps must be one-dimensional with one time per response sample.")
         response_data.timestamps = timestamps
