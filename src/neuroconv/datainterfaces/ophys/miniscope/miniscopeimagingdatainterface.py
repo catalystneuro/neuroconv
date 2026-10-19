@@ -166,7 +166,7 @@ class _MiniscopeMultiRecordingInterface(BaseImagingExtractorInterface):
         )
 
         # Set before slicing, since a slice copies its parent's times
-        self.imaging_extractor.set_times(times=self.alignment[self._alignment_key].get_times())
+        self.imaging_extractor.set_times(times=self.temporal_alignment[self._alignment_key].get_times())
         imaging_extractor = self.imaging_extractor
         if stub_test:
             stub_samples = min([stub_samples, self.imaging_extractor.get_num_samples()])
