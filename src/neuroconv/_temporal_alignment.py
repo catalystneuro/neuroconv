@@ -1,16 +1,16 @@
-"""Temporal-alignment machinery, held by interfaces via composition and exposed as ``interface.alignment``.
+"""Temporal-alignment machinery, held by interfaces via composition and exposed as ``interface.temporal_alignment``.
 
 An interface's alignment surface is a container. It names the interface's **time-bearing objects**, the
 things it writes that carry a time coordinate, so that a single one can be reached and re-timed on its own::
 
-    interface.alignment.shift_times(3.0)                       # every object, rigid, accumulates
-    interface.alignment.move_start_to(100.0)                   # every object, the earliest start at 100 s
-    interface.alignment.keys()                                 # the objects this interface can name
-    interface.alignment["response"].get_times()                # the times this object will be written on
-    interface.alignment["response"].set_times(times)           # this object's times outright
-    interface.alignment["response"].shift_times(-0.040)        # this object alone, rigid, accumulates
-    interface.alignment["response"].move_start_to(12.5)        # this object's first sample at 12.5 s, one number
-    interface.alignment["response"].remap_times(...)           # this object's clock against a reference
+    interface.temporal_alignment.shift_times(3.0)                       # every object, rigid, accumulates
+    interface.temporal_alignment.move_start_to(100.0)                   # every object, the earliest start at 100 s
+    interface.temporal_alignment.keys()                                 # the objects this interface can name
+    interface.temporal_alignment["response"].get_times()                # the times this object will be written on
+    interface.temporal_alignment["response"].set_times(times)           # this object's times outright
+    interface.temporal_alignment["response"].shift_times(-0.040)        # this object alone, rigid, accumulates
+    interface.temporal_alignment["response"].move_start_to(12.5)        # this object's first sample at 12.5 s, one number
+    interface.temporal_alignment["response"].remap_times(...)           # this object's clock against a reference
 
 What an operation is called on is what it applies to. ``shift_times`` and ``move_start_to`` work at both
 scopes: on one object they move that object, on the interface they move every object by one common amount.
@@ -32,7 +32,7 @@ import numpy as np
 
 
 class _TimeBearingObject:
-    """One time-bearing object, reached as ``interface.alignment[key]``: a series, or the events of one type.
+    """One time-bearing object, reached as ``interface.temporal_alignment[key]``: a series, or the events of one type.
 
     Holds an optional replacement for the object's times and one offset of its own, so the source times are
     never mutated and what is written is ``(replacement or default) + offset``. The default times are what the
@@ -118,7 +118,7 @@ class _TimeBearingObject:
 
         For a correction that belongs to one object, a trial video a synchronization check finds 40
         milliseconds late. It is relative, so repeated calls accumulate; a correction for every object of the
-        interface is ``interface.alignment.shift_times(delta)``.
+        interface is ``interface.temporal_alignment.shift_times(delta)``.
         """
         self._object_offset += float(delta)
 
@@ -170,7 +170,7 @@ class _TimeBearingObject:
         """Re-express this object's times on a reference clock through synchronization pulses.
 
         Use this when the two clocks drift, so no single shift lines them up. When they differ only by a
-        constant, ``interface.alignment.shift_times`` says so more cheaply and keeps a regular series
+        constant, ``interface.temporal_alignment.shift_times`` says so more cheaply and keeps a regular series
         regular.
 
         Parameters
@@ -242,14 +242,14 @@ class _TimeBearingObject:
 
 
 class _TemporalAlignment:
-    """The alignment surface for an interface's time-bearing objects, exposed as ``interface.alignment``.
+    """The alignment surface for an interface's time-bearing objects, exposed as ``interface.temporal_alignment``.
 
     Names the objects the interface registered, each holding its own offset, ``output = default + offset``,
     ``0.0`` by default (identity). ``shift_times``,
     ``move_start_to`` and ``remap_times`` called here act on every object: the first two move them all by one
-    common amount, and ``remap_times`` is one clock's correction. Called on ``alignment[key]`` they act on that
+    common amount, and ``remap_times`` is one clock's correction. Called on ``temporal_alignment[key]`` they act on that
     object alone, and times for one object are given only through the object itself,
-    ``alignment[key].set_times(times)``.
+    ``temporal_alignment[key].set_times(times)``.
     """
 
     def __init__(self):

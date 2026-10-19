@@ -93,12 +93,12 @@ class EthoVisionManualScoringInterface(BaseEventsInterface):
         self._event_onsets_alignment_key = f"{self.metadata_key}_manual_scoring_onsets"
         self._event_offsets_alignment_key = f"{self.metadata_key}_manual_scoring_offsets"
         self._alignment = _TemporalAlignment()
-        self.alignment._register(
+        self.temporal_alignment._register(
             key=self._event_onsets_alignment_key,
             get_native_times=lambda: np.asarray([event.onset for event in self._scoring_events], dtype=float),
             get_number_of_samples=lambda: len(self._scoring_events),
         )
-        self.alignment._register(
+        self.temporal_alignment._register(
             key=self._event_offsets_alignment_key,
             get_native_times=self._get_native_event_offsets,
             get_number_of_samples=lambda: len(self._scoring_events),
@@ -164,8 +164,8 @@ class EthoVisionManualScoringInterface(BaseEventsInterface):
         return metadata
 
     def _get_events_data_dict(self) -> dict[str, _EventsData]:
-        current_onsets = self.alignment[self._event_onsets_alignment_key].get_times()
-        current_offsets = self.alignment[self._event_offsets_alignment_key].get_times()
+        current_onsets = self.temporal_alignment[self._event_onsets_alignment_key].get_times()
+        current_offsets = self.temporal_alignment[self._event_offsets_alignment_key].get_times()
         grouped_indices: dict[str, list[int]] = {}
         for index, event in enumerate(self._scoring_events):
             event_kind = "point" if event.duration is None else "state"
@@ -232,8 +232,8 @@ class EthoVisionManualScoringInterface(BaseEventsInterface):
                 continue
             catalogue.add_row(behavior=behavior, definition="", behavior_type=behavior_type, category="")
 
-        current_onsets = self.alignment[self._event_onsets_alignment_key].get_times()
-        current_offsets = self.alignment[self._event_offsets_alignment_key].get_times()
+        current_onsets = self.temporal_alignment[self._event_onsets_alignment_key].get_times()
+        current_offsets = self.temporal_alignment[self._event_offsets_alignment_key].get_times()
         closed_indices = [
             index
             for index, event in enumerate(self._scoring_events)

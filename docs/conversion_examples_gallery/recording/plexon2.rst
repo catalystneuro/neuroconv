@@ -11,6 +11,10 @@ Install NeuroConv with the additional dependencies necessary for reading Plexon 
     When running plexon2 conversion on platforms other than Windows, you also need to install `wine <https://www.winehq.org/>`_.
     Plexon2 is not supported on Python 3.14 outside Windows at the moment.
 
+    Plexon2 reading through Wine worked in our tests on Ubuntu 24.04 with Wine 9, but failed on Ubuntu 26.04 with Wine 10.
+    We are working on migrating to a reader that does not require Wine.
+    See `issue #2119 (Remove the Wine dependency from the Plexon2 interface) <https://github.com/catalystneuro/neuroconv/issues/2119>`_ for details.
+
 Convert Plexon2 recording data to NWB using :py:class:`~neuroconv.datainterfaces.ecephys.plexon.plexondatainterface.Plexon2RecordingInterface`.
 
 .. code-block:: python
