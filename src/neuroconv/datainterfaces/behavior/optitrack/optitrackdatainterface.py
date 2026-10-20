@@ -233,7 +233,12 @@ class OptiTrackInterface(BasePoseEstimationInterface):
         return self._positions
 
     def get_original_timestamps(self) -> np.ndarray:
-        """The time of each frame, ``Frame / Export Frame Rate``, in seconds from the start of the take."""
+        """The time of each frame, ``Frame / Export Frame Rate``, in seconds from the start of the take.
+
+        The export also has a ``Time (Seconds)`` column. The choice between the two is empirical: across the
+        exports we compared they agree, except in Motive 3.0 exports that round ``Time`` to whole milliseconds,
+        where the ``Frame / Export Frame Rate`` is the more precise of the two.
+        """
         frames = self._read_motion_capture_data().index.get_level_values("frame").to_numpy(dtype=np.float64)
         return frames / float(self._header["Export Frame Rate"])
 
