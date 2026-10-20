@@ -295,6 +295,18 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
         metadata = interface.get_metadata()
         interface.create_nwbfile(stub_test=True, metadata=metadata)
 
+    def test_segment_entry_overrides_only_its_segment(self):
+        interface = MockRecordingInterface(durations=[0.100, 0.100, 0.100], calibration="uniform")
+        metadata = interface.get_metadata()
+        electrical_series_metadata = metadata["Ecephys"]["ElectricalSeries"]
+        electrical_series_metadata[interface.metadata_key]["description"] = "Shared description."
+        electrical_series_metadata[f"{interface.metadata_key}_1"] = dict(name="SecondSegment")
+
+        nwbfile = interface.create_nwbfile(metadata=metadata)
+
+        assert set(nwbfile.acquisition) == {"ElectricalSeries0", "SecondSegment", "ElectricalSeries2"}
+        assert {series.description for series in nwbfile.acquisition.values()} == {"Shared description."}
+
     def test_always_write_timestamps(self, setup_interface):
 
         nwbfile = self.interface.create_nwbfile(always_write_timestamps=True)

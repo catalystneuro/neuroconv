@@ -403,6 +403,9 @@ def add_recording_to_nwbfile(
         When provided, uses the dict-based metadata format and ``es_key`` is ignored.
         When omitted, the series name and description come from the per-``parent_container`` defaults
         in :func:`_add_recording_segment_to_nwbfile`.
+        On a recording with several segments the entry applies to all of them, and an optional entry keyed
+        ``{metadata_key}_{segment_index}`` overrides it field by field for that segment only, its ``name``
+        used as given.
 
     Notes
     -----
@@ -770,6 +773,13 @@ def _add_recording_segment_to_nwbfile(
     if recording.get_num_segments() > 1 and "name" in eseries_kwargs:
         width = int(np.ceil(np.log10((recording.get_num_segments()))))
         eseries_kwargs["name"] += f"{segment_index:0{width}}"
+
+    # An entry keyed ``{metadata_key}_{segment_index}`` is optional and overrides the shared entry for this
+    # segment only, its name used as given.
+    segment_metadata_key = f"{metadata_key}_{segment_index}"
+    has_segment_override = metadata_key is not None and segment_metadata_key in metadata["Ecephys"]["ElectricalSeries"]
+    if has_segment_override:
+        eseries_kwargs.update(metadata["Ecephys"]["ElectricalSeries"][segment_metadata_key])
 
     # Create ElectricalSeries object and add it to nwbfile
     es = pynwb.ecephys.ElectricalSeries(**eseries_kwargs)
