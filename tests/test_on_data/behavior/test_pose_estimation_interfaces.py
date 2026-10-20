@@ -1624,3 +1624,18 @@ class TestOptiTrackInterfaceFileVariants:
             metadata = interface.get_metadata()
         assert "session_start_time" not in metadata["NWBFile"]
         assert len(interface.get_original_timestamps()) == 1000
+
+    def test_export_without_header_raises(self, tmp_path):
+        """An export with 'Header information' turned off holds only the frame rows, so there are no asset names,
+        units, rotation type or rate to read the columns by."""
+        source_file_path = (
+            BEHAVIOR_DATA_PATH
+            / "optitrack"
+            / "csv_export"
+            / "without_header"
+            / "quaternions_millimeters"
+            / "Take 2017-02-19 05.39.28 PM_batch.csv"
+        )
+
+        with pytest.raises(ValueError, match="exported with 'Header information' turned off"):
+            OptiTrackInterface(file_path=source_file_path)
