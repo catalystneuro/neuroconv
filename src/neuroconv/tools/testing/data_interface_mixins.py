@@ -284,10 +284,12 @@ class DataInterfaceTestMixin:
         original_durations = _get_nwbfile_durations(original_nwbfile)
         assert original_times, "The interface wrote no time-bearing object, so there is nothing to align."
         # Without this an interface that drops its durations would pass the duration checks below on `{} == {}`.
-        # The converse does not hold yet: EthoVision manual scoring writes durations it computes from two series
+        # The converse catches durations written from outside the alignment, which a remap would not reach.
         alignment = getattr(self.interface, alignment_attribute)
         if any(alignment[key].has_durations for key in alignment.keys()):
             assert original_durations, "A time-bearing object has durations, but the interface wrote none."
+        else:
+            assert not original_durations, "The interface wrote durations, but no time-bearing object has any."
 
         # Two pulses beyond every written time and every interval end make the map the line
         # `times * stretch + shift`, which every time lands on and which stretches every duration by `stretch`
