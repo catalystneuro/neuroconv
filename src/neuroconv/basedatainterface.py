@@ -7,6 +7,7 @@ from jsonschema.validators import validate
 from pydantic import FilePath, validate_call
 from pynwb import NWBFile
 
+from .tools.external_resources import add_external_resources_to_nwbfile
 from .tools.nwb_helpers import (
     BACKEND_NWB_IO,
     HDF5BackendConfiguration,
@@ -18,6 +19,7 @@ from .tools.nwb_helpers import (
 )
 from .tools.nwb_helpers._metadata_and_file_helpers import (
     _fetch_backend_from_nwbfile_on_disk,
+    _make_image_series_paths_relative_to_nwbfile,
     configure_and_write_nwbfile,
 )
 from .utils import (
@@ -183,7 +185,6 @@ class BaseDataInterface(ABC):
 
         nwbfile = make_nwbfile_from_metadata(metadata=metadata)
         self.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **conversion_options)
-
         return nwbfile
 
     @abstractmethod
@@ -315,12 +316,15 @@ class BaseDataInterface(ABC):
         Write NWBFile to a file path on disk.
 
         Private helper method for run_conversion in write mode.
-        Creates a new NWBFile or uses provided one, then writes to disk.
+        Creates a new NWBFile or uses provided one, annotates it with the HERD terms in the metadata,
+        then writes to disk.
         """
         if nwbfile is not None:
             self.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **conversion_options)
         else:
             nwbfile = self.create_nwbfile(metadata=metadata, **conversion_options)
+
+        add_external_resources_to_nwbfile(nwbfile, metadata=metadata)
 
         configure_and_write_nwbfile(
             nwbfile=nwbfile,
@@ -341,7 +345,8 @@ class BaseDataInterface(ABC):
         Append data to an existing NWB file.
 
         Private helper method for run_conversion in append mode.
-        Reads existing file, adds interface data, and writes back.
+        Reads existing file, adds interface data, annotates it with the HERD terms in the metadata,
+        and writes back.
         """
         backend = _fetch_backend_from_nwbfile_on_disk(
             nwbfile_path=nwbfile_path, backend=backend, backend_configuration=backend_configuration
@@ -353,10 +358,14 @@ class BaseDataInterface(ABC):
 
             self.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, **conversion_options)
 
+            # Before the backend configuration, so the HERD tables are configured like everything else.
+            add_external_resources_to_nwbfile(nwbfile, metadata=metadata)
+
             if backend_configuration is None:
                 backend_configuration = self.get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
 
             configure_backend(nwbfile=nwbfile, backend_configuration=backend_configuration)
+            _make_image_series_paths_relative_to_nwbfile(nwbfile=nwbfile, nwbfile_path=nwbfile_path)
 
             io.write(nwbfile)
 

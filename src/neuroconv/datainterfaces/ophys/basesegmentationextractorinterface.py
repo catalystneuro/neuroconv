@@ -1,6 +1,5 @@
 import math
 import warnings
-from typing import Literal
 
 import numpy as np
 from pynwb import NWBFile
@@ -270,12 +269,9 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         self,
         nwbfile: NWBFile,
         metadata: dict | None = None,
-        *args,  # TODO: change to * (keyword only) on or after August 2026
+        *,
         stub_test: bool = False,
-        include_background_segmentation: bool = False,
-        include_roi_centroids: bool = True,
         include_roi_acceptance: bool | None = None,
-        mask_type: Literal["image", "pixel", "voxel"] = "image",
         plane_segmentation_name: str | None = None,
         iterator_options: dict | None = None,
         stub_samples: int = 100,
@@ -291,28 +287,10 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         metadata : dict, optional
             The metadata for the interface
         stub_test : bool, default: False
-        include_background_segmentation : bool, default: False
-            Whether to include the background plane segmentation and fluorescence traces in the NWB file. If False,
-            neuropil traces are included in the main plane segmentation rather than the background plane segmentation.
-        include_roi_centroids : bool, default: True
-            Whether to include the ROI centroids on the PlaneSegmentation table.
-            If there are a very large number of ROIs (such as in whole-brain recordings),
-            you may wish to disable this for faster write speeds.
         include_roi_acceptance : bool, optional
             Deprecated and ignored. ROI acceptance is now written automatically as a
             column on the PlaneSegmentation table whenever the segmentation extractor
             exposes acceptance/rejection through its property system.
-        mask_type : str, default: 'image'
-            There are three types of ROI masks in NWB, 'image', 'pixel', and 'voxel'.
-
-            * 'image' masks have the same shape as the reference images the segmentation was applied to, and weight each pixel
-              by its contribution to the ROI (typically boolean, with 0 meaning 'not in the ROI').
-            * 'pixel' masks are instead indexed by ROI, with the data at each index being the shape of the image by the number
-              of pixels in each ROI.
-            * 'voxel' masks are instead indexed by ROI, with the data at each index being the shape of the volume by the number
-              of voxels in each ROI.
-
-            Specify your choice between these two as mask_type='image', 'pixel', 'voxel'
         plane_segmentation_name : str, optional
             The name of the plane segmentation to be added.
         iterator_options : dict, optional
@@ -337,54 +315,12 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         """
         from ...tools.roiextractors import add_segmentation_to_nwbfile
 
-        # TODO: Remove this block in August 2026 or after when positional arguments are no longer supported.
-        if args:
-            parameter_names = [
-                "stub_test",
-                "include_background_segmentation",
-                "include_roi_centroids",
-                "include_roi_acceptance",
-                "mask_type",
-                "plane_segmentation_name",
-                "iterator_options",
-                "stub_samples",
-                "roi_ids_to_add",
-            ]
-            num_positional_args_before_args = 2  # nwbfile, metadata
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"add_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args} were given. "
-                    "Note: Positional arguments are deprecated and will be removed in August 2026 or after. Please use keyword arguments."
-                )
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to add_to_nwbfile is deprecated "
-                f"and will be removed in August 2026 or after. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            stub_test = positional_values.get("stub_test", stub_test)
-            include_background_segmentation = positional_values.get(
-                "include_background_segmentation", include_background_segmentation
-            )
-            include_roi_centroids = positional_values.get("include_roi_centroids", include_roi_centroids)
-            include_roi_acceptance = positional_values.get("include_roi_acceptance", include_roi_acceptance)
-            mask_type = positional_values.get("mask_type", mask_type)
-            plane_segmentation_name = positional_values.get("plane_segmentation_name", plane_segmentation_name)
-            iterator_options = positional_values.get("iterator_options", iterator_options)
-            stub_samples = positional_values.get("stub_samples", stub_samples)
-            roi_ids_to_add = positional_values.get("roi_ids_to_add", roi_ids_to_add)
-
         if include_roi_acceptance is not None:
             warnings.warn(
                 "`include_roi_acceptance` is deprecated and has no effect. ROI acceptance is now "
                 "written automatically as a column on the PlaneSegmentation table whenever the "
                 "segmentation extractor exposes acceptance/rejection through its property system. "
-                "This parameter will be removed on or after February 2027.",
+                "This parameter will be removed in v0.12.0.",
                 DeprecationWarning,
                 stacklevel=2,
             )
@@ -404,9 +340,6 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
             segmentation_extractor=segmentation_extractor,
             nwbfile=nwbfile,
             metadata=metadata,
-            include_background_segmentation=include_background_segmentation,
-            include_roi_centroids=include_roi_centroids,
-            mask_type=mask_type,
             plane_segmentation_name=plane_segmentation_name,
             iterator_options=iterator_options,
             metadata_key=self.metadata_key,

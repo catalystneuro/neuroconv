@@ -12,6 +12,7 @@ from pynwb.image import ImageSeries
 from tqdm import tqdm
 
 from .video_utils import VideoCaptureContext, VideoDataChunkIterator
+from ...._temporal_alignment import _TemporalAlignment
 from ....basedatainterface import BaseDataInterface
 from ....tools import get_package
 from ....tools.nwb_helpers import _add_device_to_nwbfile, get_module
@@ -80,8 +81,7 @@ class InternalVideoInterface(BaseDataInterface):
         get_package(package_name="cv2", installation_instructions="pip install opencv-python-headless")
         file_path = Path(file_path)
         self.verbose = verbose
-        self._timestamps = None
-        self._starting_time = None
+        self._header_timing = None
         # metadata_key is the registry key (for cross-component linking); the ImageSeries name is
         # kept distinct and is never derived from the key. Name precedence: explicit video_name, else
         # a stem-based default. video_name is retained as a back-compat convenience.
@@ -90,6 +90,16 @@ class InternalVideoInterface(BaseDataInterface):
         self._default_device_metadata_key = f"{self.metadata_key}_camera"
         self._default_device_name = f"{self._default_name} Camera Device"
         super().__init__(file_path=file_path)
+
+        # Alignment by composition, the component `ExternalVideoInterface` holds, with the one video keyed by
+        # `metadata_key`. See neuroconv/_temporal_alignment.py.
+        # No sample count here, because the header can state it wrongly.
+        self.temporal_alignment = _TemporalAlignment()
+        self.temporal_alignment._register(
+            key=self.metadata_key,
+            get_native_times=self._get_default_times,
+            default_start_time=lambda: self._get_header_timing()[2],
+        )
 
     def get_metadata_schema(self):
         metadata_schema = super().get_metadata_schema()
@@ -166,72 +176,137 @@ class InternalVideoInterface(BaseDataInterface):
             # method is simply returning range(length) / fps 100% of the time for any given format
             return video.get_video_timestamps(max_frames=max_frames)
 
+    def _get_header_timing(self) -> tuple[int, float, float]:
+        """
+        Return the frame count and frame rate the container header states, and the time it stores for the first frame.
+
+        The first frame time is the video's native start, zero for most files. Reading it decodes one frame.
+        """
+        if self._header_timing is None:
+            with VideoCaptureContext(file_path=str(self.source_data["file_path"])) as video:
+                frame_count = video.get_video_frame_count()
+                frame_rate = video.get_video_fps()
+                timestamps = video.get_video_timestamps(max_frames=1, display_progress=False)
+            first_frame_time = float(timestamps[0]) if timestamps.size else 0.0
+            self._header_timing = (frame_count, frame_rate, first_frame_time)
+        return self._header_timing
+
+    def _get_default_times(self) -> np.ndarray:
+        """
+        Return the times of the video as its header describes them: the first frame time spaced by the header rate.
+
+        These are not the per-frame timestamps of :meth:`get_original_timestamps`, which reads every frame. The
+        write path has always used the header rate for a video nothing had aligned, and these times collapse to
+        that rate when written.
+        """
+        frame_count, frame_rate, first_frame_time = self._get_header_timing()
+        return first_frame_time + np.arange(frame_count) / frame_rate
+
+    def _get_container_times(self) -> np.ndarray:
+        """Return the timestamps the container stores for every frame, for ``always_write_timestamps=True``."""
+        return self.get_original_timestamps()
+
     def get_timestamps(self, stub_test: bool = False) -> np.ndarray:
         """
         Retrieve the timestamps for the data in this interface.
 
+        .. deprecated::
+            Use ``interface.temporal_alignment[key].get_times()``. Removed in v0.13.0.
+
         Parameters
         ----------
         stub_test : bool, default: False
-            If True, limits the number of frames to scan through to 10.
+            Where no timestamps were set they are read with `get_original_timestamps`, which reads every
+            frame; `stub_test=True` reads only the first 10 frames.
 
         Returns
         -------
         timestamps : numpy.ndarray
-            The timestamps for the data stream.
+            The timestamps set on the video or, where none were set, the timestamps stored in the video file.
         """
-        if self._timestamps is not None:
-            return self._timestamps
-        else:
-            return self.get_original_timestamps(stub_test=stub_test)
+        warnings.warn(
+            "`get_timestamps` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment[key].get_times()` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        time_bearing_object = self.temporal_alignment[self.metadata_key]
+        if time_bearing_object._times is not None:
+            return time_bearing_object.get_times()
+        return self.get_original_timestamps(stub_test=stub_test)
 
     def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
         """
         Replace all timestamps for this interface with those aligned to the common session start time.
 
-        Must be in units seconds relative to the common 'session_start_time'.
+        .. deprecated::
+            Use ``interface.temporal_alignment[key].set_times(times)``. Removed in v0.13.0.
 
         Parameters
         ----------
         aligned_timestamps : numpy.ndarray
             The synchronized timestamps for data in this interface.
         """
-        assert (
-            self._starting_time is None
-        ), "If setting both timestamps and starting times, please set the timestamps first so they can be shifted by the starting times."
-        self._timestamps = aligned_timestamps
+        warnings.warn(
+            "`set_aligned_timestamps` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment[key].set_times(times)` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        self.temporal_alignment[self.metadata_key].set_times(aligned_timestamps)
 
     def set_aligned_starting_time(self, aligned_starting_time: float, stub_test: bool = False):
         """
-        Align all starting times for all videos in this interface relative to the common session start time.
+        Set the starting time of the video, or shift the timestamps set on it by this amount.
 
-        Must be in units seconds relative to the common 'session_start_time'.
+        .. deprecated::
+            Use ``interface.temporal_alignment[key].move_start_to(starting_time)`` to place the video, or
+            ``interface.temporal_alignment.shift_times(delta)`` to move it. Removed in v0.13.0.
 
         Parameters
         ----------
         aligned_starting_time : float
-            The common starting time for all segments of temporal data in this interface.
+            The starting time of the video relative to the common session start time.
         stub_test : bool, default: False
-            If timestamps have not been set to this interface, it will attempt to retrieve them
-            using the `.get_original_timestamps` method, which scans through each video;
-            a process which can take some time to complete.
-
-            To limit that scan to a small number of frames, set `stub_test=True`.
+            Unused, kept for backward compatibility.
         """
-        if self._timestamps is not None:
-            aligned_timestamps = self.get_timestamps(stub_test=stub_test) + aligned_starting_time
-            self.set_aligned_timestamps(aligned_timestamps=aligned_timestamps)
+        warnings.warn(
+            "`set_aligned_starting_time` is deprecated and will be removed in v0.13.0. Use "
+            "`interface.temporal_alignment[key].move_start_to(starting_time)` to place the video, or "
+            "`interface.temporal_alignment.shift_times(delta)` to move it.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        time_bearing_object = self.temporal_alignment[self.metadata_key]
+        # As before the alignment surface: timestamps that were set are shifted, otherwise the video is placed
+        if time_bearing_object._times is not None:
+            time_bearing_object.shift_times(aligned_starting_time)
         else:
-            self._starting_time = aligned_starting_time
+            time_bearing_object.move_start_to(aligned_starting_time)
 
     def align_by_interpolation(self, unaligned_timestamps: np.ndarray, aligned_timestamps: np.ndarray):
-        raise NotImplementedError("The `align_by_interpolation` method has not been developed for this interface yet.")
+        """
+        Re-express the video's times on another clock by interpolating between paired timestamps.
+
+        .. deprecated::
+            Use ``interface.temporal_alignment.remap_times(local_sync_times=..., reference_sync_times=...)``.
+            Removed in v0.13.0.
+        """
+        warnings.warn(
+            "`align_by_interpolation` is deprecated and will be removed in v0.13.0. Use "
+            "`interface.temporal_alignment.remap_times(local_sync_times=..., reference_sync_times=...)` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        self.temporal_alignment.remap_times(
+            local_sync_times=unaligned_timestamps, reference_sync_times=aligned_timestamps
+        )
 
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
         metadata: dict | None = None,
-        *args,  # TODO: change to * (keyword only) on or after August 2026
+        *,
         stub_test: bool = False,
         buffer_data: bool = True,
         iterator_options: dict | None = None,
@@ -278,7 +353,7 @@ class InternalVideoInterface(BaseDataInterface):
             the video entry by ``device_metadata_key``; it is created and linked to the ImageSeries,
             establishing a connection between the video data and the camera that captured it. Passing the
             camera nested under the video entry as ``device=dict(...)`` is still accepted but deprecated
-            (removal on or after February 2027).
+            (removal in v0.12.0).
         stub_test : bool, default: False
             If ``True``, truncates the write operation for fast testing.
         buffer_data : bool, default: True
@@ -324,40 +399,6 @@ class InternalVideoInterface(BaseDataInterface):
             If set to True, timestamps will be written explicitly, regardless of whether they were set directly or need
             to be retrieved from the video file.
         """
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "stub_test",
-                "buffer_data",
-                "iterator_options",
-                "parent_container",
-                "module_description",
-                "always_write_timestamps",
-            ]
-            num_positional_args_before_args = 2  # nwbfile, metadata
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"add_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args} were given. "
-                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
-                    "Please use keyword arguments."
-                )
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to InternalVideoInterface.add_to_nwbfile() is deprecated "
-                f"and will be removed on or after August 2026. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            stub_test = positional_values.get("stub_test", stub_test)
-            buffer_data = positional_values.get("buffer_data", buffer_data)
-            iterator_options = positional_values.get("iterator_options", iterator_options)
-            parent_container = positional_values.get("parent_container", parent_container)
-            module_description = positional_values.get("module_description", module_description)
-            always_write_timestamps = positional_values.get("always_write_timestamps", always_write_timestamps)
         if parent_container not in {"acquisition", "processing/behavior"}:
             raise ValueError(
                 f"parent_container must be either 'acquisition' or 'processing/behavior', not {parent_container}."
@@ -391,7 +432,7 @@ class InternalVideoInterface(BaseDataInterface):
         elif legacy_device_kwargs is not None:
             warnings.warn(
                 "Passing the camera device nested under the video metadata entry is deprecated and will be "
-                "removed on or after February 2027. Use a top-level metadata['Devices'][key] entry referenced "
+                "removed in v0.12.0. Use a top-level metadata['Devices'][key] entry referenced "
                 "by 'device_metadata_key' instead.",
                 FutureWarning,
                 stacklevel=2,
@@ -450,22 +491,21 @@ class InternalVideoInterface(BaseDataInterface):
 
         from ....utils import calculate_regular_series_rate
 
-        if always_write_timestamps:
-            timestamps = self.get_timestamps()
-            image_series_kwargs.update(timestamps=timestamps)
-        elif self._timestamps is not None:
-            # Check if timestamps are regular
-            rate = calculate_regular_series_rate(series=self._timestamps)
-            if rate is not None:
-                starting_time = self._timestamps[0]
-                image_series_kwargs.update(starting_time=starting_time, rate=rate)
-            else:
-                image_series_kwargs.update(timestamps=self._timestamps)
+        time_bearing_object = self.temporal_alignment[self.metadata_key]
+        if time_bearing_object._times is None and not always_write_timestamps:
+            # Times nobody set run at the header rate, so the start is all the alignment changes
+            _, rate, _ = self._get_header_timing()
+            image_series_kwargs.update(starting_time=time_bearing_object._get_start_time(), rate=rate)
         else:
-            starting_time = self._starting_time if self._starting_time is not None else 0.0
-            with VideoCaptureContext(file_path=str(file_path)) as video:
-                rate = video.get_video_fps()
-            image_series_kwargs.update(starting_time=starting_time, rate=rate)
+            if always_write_timestamps:
+                timestamps = time_bearing_object._get_times(get_default_times=self._get_container_times)
+            else:
+                timestamps = time_bearing_object.get_times()
+            rate = None if always_write_timestamps else calculate_regular_series_rate(series=timestamps)
+            if rate is not None:
+                image_series_kwargs.update(starting_time=timestamps[0], rate=rate)
+            else:
+                image_series_kwargs.update(timestamps=timestamps)
 
         # Attach image series
         image_series = ImageSeries(**image_series_kwargs)

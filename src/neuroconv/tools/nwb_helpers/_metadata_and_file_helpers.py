@@ -1,17 +1,19 @@
 """Collection of helper functions related to NWB."""
 
+import os
 import uuid
 import warnings
 from contextlib import contextmanager
 from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import FilePath
 from pynwb import NWBFile, read_nwb
 from pynwb.device import Device, DeviceModel
 from pynwb.file import Subject
+from pynwb.image import ImageSeries
 
 from . import (
     BACKEND_NWB_IO,
@@ -26,8 +28,48 @@ from ._device_types import (
     _resolve_type,
 )
 from ._provenance import describe_source_script
+from ..external_resources import validate_species
 from ...utils.dict import DeepDict, load_dict_from_file
 from ...utils.json_schema import _validate_device_registry_names, validate_metadata
+
+
+def _walk_metadata_path(metadata: dict, path: tuple[str, ...]) -> tuple[Any, str, str | None]:
+    """Return the reached section, its location, and the first missing level, without creating entries."""
+    section = metadata
+    location = "metadata"
+    for level in path:
+        if level not in section:
+            return section, location, level
+        section = section.get(level)
+        location += f"[{level!r}]"
+    return section, location, None
+
+
+def _validate_metadata_key(metadata: dict, *, metadata_path: tuple[str, ...], metadata_key: str) -> None:
+    """Require a selected metadata entry, with a diagnostic naming its key, path, and available keys.
+
+    This gives any dictionary a useful error instead of a bare KeyError. The safe traversal also prevents
+    DeepDict from creating missing entries that writers could silently fill with placeholder metadata.
+    Only existence is checked, not the fields or values within the selected entry.
+    """
+    registry, location, missing_level = _walk_metadata_path(metadata, metadata_path)
+    registry_location = "metadata" + "".join(f"[{level!r}]" for level in metadata_path)
+    message = f"metadata_key '{metadata_key}' was not found in {registry_location}."
+    if missing_level is not None:
+        raise ValueError(f"{message} {location} has no '{missing_level}'. Available keys are:\n{list(registry)}")
+    if metadata_key not in registry:
+        raise ValueError(f"{message} Available keys are:\n{list(registry)}")
+
+
+def _validate_metadata_path(metadata: dict, path: tuple[str, ...]) -> None:
+    """Require a metadata path without creating entries or checking its contents."""
+    section, location, missing_level = _walk_metadata_path(metadata, path)
+    if missing_level is not None:
+        required_location = "metadata" + "".join(f"[{level!r}]" for level in path)
+        raise ValueError(
+            f"Required metadata path {required_location} is missing: {location} has no '{missing_level}' "
+            f"(available keys: {list(section)})."
+        )
 
 
 def get_module(nwbfile: NWBFile, name: str, description: str = None):
@@ -155,6 +197,13 @@ def make_nwbfile_from_metadata(metadata: dict) -> NWBFile:
     schema_path = Path(__file__).resolve().parent.parent.parent / "schemas" / "base_metadata_schema.json"
     base_metadata_schema = load_dict_from_file(file_path=schema_path)
     assert metadata is not None, "Metadata is required to create an NWBFile but metadata=None was passed."
+
+    # Recommend a standardized species term (non-blocking). Runs before schema validation so
+    # that common names (e.g. "mouse") surface a helpful suggestion even though the schema's
+    # binomial pattern will subsequently reject them.
+    if isinstance(metadata.get("Subject"), dict):
+        validate_species(metadata["Subject"].get("species"))
+
     validate_metadata(metadata=metadata, schema=base_metadata_schema)
 
     # Anything the caller did not provide falls back to the same defaults an interface would have given
@@ -287,13 +336,8 @@ def _add_device_model_to_nwbfile(
         The DeviceModel object (either newly created or existing).
     """
     _validate_device_registry_names(metadata)
-    device_models_metadata = metadata.get("DeviceModels", {})
-    if metadata_key not in device_models_metadata:
-        raise ValueError(
-            f"device_model_metadata_key '{metadata_key}' was not found in metadata['DeviceModels'] "
-            f"(available keys: {list(device_models_metadata)})."
-        )
-    device_model_metadata = device_models_metadata[metadata_key]
+    _validate_metadata_key(metadata, metadata_path=("DeviceModels",), metadata_key=metadata_key)
+    device_model_metadata = metadata["DeviceModels"][metadata_key]
 
     model_name = device_model_metadata["name"]
     if model_name in nwbfile.device_models:
@@ -376,16 +420,8 @@ def _add_device_to_nwbfile(
         if metadata is None:
             raise ValueError("Provide `metadata` with `metadata_key`.")
         _validate_device_registry_names(metadata)
-        # Checked rather than indexed: ``metadata`` is often a ``DeepDict``, where a missing key
-        # auto-vivifies instead of raising, and the failure then surfaces several lines later as
-        # ``TypeError: unhashable type: 'DeepDict'`` naming neither the key nor the registry.
-        devices_metadata = metadata.get("Devices", {})
-        if metadata_key not in devices_metadata:
-            raise ValueError(
-                f"device_metadata_key '{metadata_key}' was not found in metadata['Devices'] "
-                f"(available keys: {list(devices_metadata)})."
-            )
-        device_metadata = devices_metadata[metadata_key]
+        _validate_metadata_key(metadata, metadata_path=("Devices",), metadata_key=metadata_key)
+        device_metadata = metadata["Devices"][metadata_key]
         device_model_metadata_key = device_metadata.get("device_model_metadata_key")
         if device_model_metadata_key is not None:
             model = _add_device_model_to_nwbfile(
@@ -450,7 +486,7 @@ def make_or_load_nwbfile(
         If 'nwbfile_path' is specified, informs user after a successful write operation.
     """
     warnings.warn(
-        "`make_or_load_nwbfile` is deprecated and will be removed on or after February 2027. "
+        "`make_or_load_nwbfile` is deprecated and will be removed in v0.12.0. "
         "Use the `run_conversion` method of an interface or converter, or `configure_and_write_nwbfile` "
         "for an NWBFile that has already been assembled.",
         FutureWarning,
@@ -623,6 +659,45 @@ def _fetch_backend_from_nwbfile_on_disk(
     return backend_on_disk
 
 
+def _make_image_series_paths_relative_to_nwbfile(nwbfile: NWBFile, nwbfile_path: Path) -> None:
+    """
+    Rewrite every ``ImageSeries.external_file`` entry so it is relative to the directory of ``nwbfile_path``.
+
+    The NWB specification reads ``external_file`` relative to the NWB file, while interfaces store whatever
+    path the caller handed them, which is usually absolute or relative to the working directory. An
+    ``ImageSeries`` read from an existing file is left alone, since its entries are already relative to that
+    file and not to the working directory. URLs are left as they are, and an entry that has no relative path
+    to the output at all (on Windows, a file on another drive) is written absolute. The result always uses
+    forward slashes so it stays meaningful once the file leaves the machine that wrote it.
+    """
+    output_directory = Path(nwbfile_path).resolve().parent
+    # `nwbfile.objects` is built on its first read and never invalidated, so it does not hold anything added
+    # to the file afterwards. `all_children` recomputes the walk.
+    for neurodata_object in nwbfile.all_children():
+        if not isinstance(neurodata_object, ImageSeries) or not neurodata_object.external_file:
+            continue
+        if neurodata_object.container_source is not None:  # read from disk, so already relative to that file
+            continue
+        rewritten_entries = []
+        for entry in neurodata_object.external_file:
+            entry = str(entry)  # an interface may have stored a `Path`
+            absolute_entry = Path(entry).resolve()
+            is_url = "://" in entry
+            if is_url:
+                rewritten_entries.append(entry)
+                continue
+            is_on_another_drive = absolute_entry.anchor != output_directory.anchor  # Windows: no relative path exists
+            if is_on_another_drive:
+                rewritten_entries.append(absolute_entry.as_posix())
+                continue
+            # TODO: replace with `absolute_entry.relative_to(output_directory, walk_up=True)` once the Python
+            # floor is 3.12; before that `Path.relative_to` cannot produce `..` segments.
+            rewritten_entries.append(Path(os.path.relpath(absolute_entry, start=output_directory)).as_posix())
+        # The setter refuses a field that is already set, and the list itself may belong to the interface that
+        # built the series, so a new list goes in where the setter would have stored it.
+        neurodata_object.fields["external_file"] = rewritten_entries
+
+
 def configure_and_write_nwbfile(
     nwbfile: NWBFile,
     nwbfile_path: FilePath | None = None,
@@ -635,6 +710,10 @@ def configure_and_write_nwbfile(
     A ``backend`` or a ``backend_configuration`` must be provided. To use the default backend configuration for
     the specified backend, provide only ``backend``. To use a custom backend configuration, provide
     ``backend_configuration``. If both are provided, ``backend`` must match ``backend_configuration.backend``.
+
+    Before writing, every ``ImageSeries.external_file`` in ``nwbfile`` is replaced so its entries are relative to
+    the directory of ``nwbfile_path``, as the NWB specification reads them. An ``ImageSeries`` read from an
+    existing file keeps its paths.
 
     Parameters
     ----------
@@ -669,6 +748,7 @@ def configure_and_write_nwbfile(
             nwbfile.set_modified()
             io.export(nwbfile=nwbfile, src_io=nwbfile.read_io, write_args=dict(link_data=False))
         else:
+            _make_image_series_paths_relative_to_nwbfile(nwbfile=nwbfile, nwbfile_path=nwbfile_path)
             io.write(nwbfile)
 
 
@@ -704,3 +784,5 @@ def repack_nwbfile(
         backend_configuration=backend_configuration,
         nwbfile_path=export_nwbfile_path,
     )
+
+    nwbfile.read_io.close()

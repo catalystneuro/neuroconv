@@ -43,21 +43,12 @@ class TestCaimanSegmentationInterface(SegmentationExtractorInterfaceTestMixin):
 
     @pytest.fixture(
         params=[
-            {"mask_type": "image", "include_background_segmentation": True},
-            {"mask_type": "pixel", "include_background_segmentation": True},
-            {"mask_type": "voxel", "include_background_segmentation": True},
-            # {"mask_type": None, "include_background_segmentation": True}, # Uncomment when https://github.com/catalystneuro/neuroconv/issues/530 is resolved
-            {"include_roi_centroids": False, "include_background_segmentation": True},
-            {"include_roi_acceptance": False, "include_background_segmentation": True},
-            {"include_background_segmentation": False},
+            {},
+            {"include_roi_acceptance": False},
         ],
         ids=[
-            "mask_type_image",
-            "mask_type_pixel",
-            "mask_type_voxel",
-            "exclude_roi_centroids",
+            "default",
             "exclude_roi_acceptance",
-            "exclude_background_segmentation",
         ],
     )
     def setup_interface(self, request):
@@ -605,7 +596,6 @@ class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTes
     data_interface_cls = InscopixSegmentationInterface
     interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "cellset.isxd"))
     save_directory = OUTPUT_PATH
-    conversion_options = dict(mask_type="pixel")
 
     def check_extracted_metadata(self, metadata):
         """Check the new dict-based metadata format."""
@@ -722,7 +712,6 @@ class TestInscopixSegmentationInterfaceCellSetPart1(SegmentationExtractorInterfa
         file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "cellset_series_part1.isxd")
     )
     save_directory = OUTPUT_PATH
-    conversion_options = dict(mask_type="pixel")
 
     def check_extracted_metadata(self, metadata):
         """Check the new dict-based metadata format on a fixture without rich device metadata."""
@@ -809,18 +798,12 @@ class TestMinianSegmentationInterface(SegmentationExtractorInterfaceTestMixin):
 
     @pytest.fixture(
         params=[
-            {"mask_type": "image", "include_background_segmentation": True},
-            {"mask_type": "pixel", "include_background_segmentation": True},
-            {"include_roi_centroids": False, "include_background_segmentation": True},
-            {"include_roi_acceptance": False, "include_background_segmentation": True},
-            {"include_background_segmentation": False},
+            {},
+            {"include_roi_acceptance": False},
         ],
         ids=[
-            "mask_type_image",
-            "mask_type_pixel",
-            "exclude_roi_centroids",
+            "default",
             "exclude_roi_acceptance",
-            "exclude_background_segmentation",
         ],
     )
     def setup_interface(self, request):

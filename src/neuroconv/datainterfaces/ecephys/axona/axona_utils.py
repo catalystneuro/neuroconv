@@ -275,7 +275,7 @@ def read_bin_file_position_data(bin_file_path: FilePath) -> np.ndarray:
 
     # Create timestamps from position of samples in `.bin` file to ensure
     # alignment with ecephys data
-    set_file = bin_file_path.split(".")[0] + ".set"
+    set_file = str(Path(bin_file_path).with_suffix(".set"))
     sr_ecephys = int(parse_generic_header(set_file, ["rawRate"])["rawRate"])
 
     packets_per_ms = sr_ecephys / 3000
@@ -304,7 +304,7 @@ def read_pos_file_position_data(pos_file_path: FilePath) -> np.ndarray:
         Columns are time (ms), X, Y, x, y, PX, px, tot_px, unused
     """
 
-    pos_file_path = pos_file_path.split(".")[0] + ".pos"
+    pos_file_path = str(Path(pos_file_path).with_suffix(".pos"))
 
     bytes_packet = 20
     footer_size = len("\r\ndata_end\r\n")
@@ -349,7 +349,7 @@ def read_pos_file_position_data(pos_file_path: FilePath) -> np.ndarray:
     ).T
 
     # Create time column in ms assuming regularly sampled data starting from 0
-    set_file = pos_file_path.split(".")[0] + ".set"
+    set_file = str(Path(pos_file_path).with_suffix(".set"))
     dur_ecephys = float(parse_generic_header(set_file, ["duration"])["duration"])
 
     pos_data = np.hstack(
@@ -376,7 +376,7 @@ def get_position_object(file_path: FilePath) -> Position:
     pynwb.behavior.Position
         Position object containing multiple SpatialSeries, one for each position
         channel (time, X, Y, x, y, PX, px, px_total, unused). Each series contains
-        timestamps and corresponding position data. The timestamps are in milliseconds
+        timestamps and corresponding position data. The timestamps are in seconds
         and are aligned to the start of raw acquisition if reading from a .bin file.
     """
     position = Position()
@@ -397,7 +397,8 @@ def get_position_object(file_path: FilePath) -> Position:
         position_data = read_bin_file_position_data(file_path)
     else:
         position_data = read_pos_file_position_data(file_path)
-    position_timestamps = position_data[:, 0]
+    # The time column is in milliseconds and NWB timestamps are in seconds
+    position_timestamps = position_data[:, 0] / 1000.0
 
     for ichan in range(position_data.shape[1]):
         spatial_series = SpatialSeries(

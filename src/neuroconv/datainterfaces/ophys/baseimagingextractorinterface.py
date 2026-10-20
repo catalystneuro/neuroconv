@@ -13,6 +13,7 @@ from ._metadata_template import (
     _get_imaging_plane_template_entry,
     _resolve_device_metadata_key,
 )
+from ..._temporal_alignment import _TemporalAlignment
 from ...baseextractorinterface import BaseExtractorInterface
 from ...tools.nwb_helpers._metadata_and_file_helpers import (
     _get_device_model_template_entry,
@@ -83,6 +84,44 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         self.verbose = verbose
         self.photon_series_type = photon_series_type
         self.metadata_key = metadata_key
+        self._alignment_key = metadata_key or "default_metadata_key"
+        self._alignment = _TemporalAlignment()
+        self._alignment._register(
+            key=self._alignment_key,
+            get_native_times=self._get_native_times,
+            default_start_time=self._get_native_start_time,
+            get_number_of_samples=self.imaging_extractor.get_num_samples,
+        )
+
+    @property
+    def temporal_alignment(self) -> _TemporalAlignment:
+        return self._alignment
+
+    # The native times are read from the format and never from `get_timestamps`, which returns the times
+    # `_set_aligned_times_on_extractor` stored, so an aligned write does not change the times the next one starts from
+    def _get_native_times(self) -> np.ndarray:
+        native_timestamps = self.imaging_extractor.get_native_timestamps()
+        if native_timestamps is not None:
+            return native_timestamps
+        num_samples = self.imaging_extractor.get_num_samples()
+        return np.arange(num_samples) / self.imaging_extractor.get_sampling_frequency()
+
+    def _get_native_start_time(self) -> float:
+        if self.imaging_extractor.get_num_samples() == 0:
+            return np.nan
+        times = self.imaging_extractor.get_native_timestamps(start_sample=0, end_sample=1)
+        return float(times[0]) if times is not None else 0.0
+
+    def _set_aligned_times_on_extractor(self) -> None:
+        series = self.temporal_alignment[self._alignment_key]
+        # A zero standing in for the native times reads back as the shift alignment applied
+        time_shift = float(series._get_times(get_default_times=lambda: np.zeros(1))[0])
+        is_aligned = series._times is not None or time_shift != 0.0
+        # TODO: once roiextractors has a start time for extractors without a time vector, set it from `time_shift`
+        # when the times were only shifted, instead of building the full times array
+        # Times left by an earlier aligned write are replaced too, so undoing the alignment reaches the file
+        if is_aligned or self.imaging_extractor.has_time_vector():
+            self.imaging_extractor.set_times(times=series.get_times())
 
     def get_metadata_schema(self) -> dict:
         """
@@ -270,16 +309,49 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         return reinitialized_extractor.get_timestamps()
 
     def get_timestamps(self) -> np.ndarray:
-        return self.imaging_extractor.get_timestamps()
+        warnings.warn(
+            "`get_timestamps` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment[key].get_times()` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        return self.temporal_alignment[self._alignment_key].get_times()
 
     def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
-        self.imaging_extractor.set_times(times=aligned_timestamps)
+        warnings.warn(
+            "`set_aligned_timestamps` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment[key].set_times(times)` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        self.temporal_alignment[self._alignment_key].set_times(aligned_timestamps)
+
+    def set_aligned_starting_time(self, aligned_starting_time: float) -> None:
+        warnings.warn(
+            "`set_aligned_starting_time` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment.shift_times(delta)` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        self.temporal_alignment.shift_times(aligned_starting_time)
+
+    def align_by_interpolation(self, unaligned_timestamps: np.ndarray, aligned_timestamps: np.ndarray) -> None:
+        warnings.warn(
+            "`align_by_interpolation` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment.remap_times(local_sync_times=..., reference_sync_times=...)` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        self.temporal_alignment.remap_times(
+            local_sync_times=unaligned_timestamps,
+            reference_sync_times=aligned_timestamps,
+        )
 
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
         metadata: dict | None = None,
-        *args,  # TODO: change to * (keyword only) on or after August 2026
+        *,
         photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "TwoPhotonSeries",
         photon_series_index: int = 0,
         parent_container: Literal["acquisition", "processing/ophys"] = "acquisition",
@@ -327,44 +399,8 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
 
         from ...tools.roiextractors import add_imaging_to_nwbfile
 
-        # TODO: Remove this block in August 2026 or after when positional arguments are no longer supported.
-        if args:
-            parameter_names = [
-                "photon_series_type",
-                "photon_series_index",
-                "parent_container",
-                "stub_test",
-                "always_write_timestamps",
-                "iterator_type",
-                "iterator_options",
-                "stub_samples",
-            ]
-            num_positional_args_before_args = 2  # nwbfile, metadata
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"add_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args} were given. "
-                    "Note: Positional arguments are deprecated and will be removed in August 2026 or after. Please use keyword arguments."
-                )
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to add_to_nwbfile is deprecated "
-                f"and will be removed in August 2026 or after. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            photon_series_type = positional_values.get("photon_series_type", photon_series_type)
-            photon_series_index = positional_values.get("photon_series_index", photon_series_index)
-            parent_container = positional_values.get("parent_container", parent_container)
-            stub_test = positional_values.get("stub_test", stub_test)
-            always_write_timestamps = positional_values.get("always_write_timestamps", always_write_timestamps)
-            iterator_type = positional_values.get("iterator_type", iterator_type)
-            iterator_options = positional_values.get("iterator_options", iterator_options)
-            stub_samples = positional_values.get("stub_samples", stub_samples)
-
+        # Set before slicing, since a slice copies its parent's times
+        self._set_aligned_times_on_extractor()
         if stub_test:
             stub_samples = min([stub_samples, self.imaging_extractor.get_num_samples()])
             imaging_extractor = self.imaging_extractor.slice_samples(start_sample=0, end_sample=stub_samples)

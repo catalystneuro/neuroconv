@@ -1,0 +1,179 @@
+id: https://neuroconv.readthedocs.io/termset/species
+name: Species
+version: 0.0.1
+prefixes:
+  NCBITaxon: http://purl.obolibrary.org/obo/NCBITaxon_
+imports:
+  - linkml:types
+default_range: string
+
+enums:
+  Species:
+    permissible_values:
+      Mus musculus:
+        description: house mouse
+        meaning: NCBITaxon:10090
+        aliases:
+          - mouse
+          - house mouse
+          - mice
+          - laboratory mouse
+          - lab mouse
+      Rattus norvegicus:
+        description: Norway rat
+        meaning: NCBITaxon:10116
+        aliases:
+          - rat
+          - norway rat
+          - rats
+          - brown rat
+          - laboratory rat
+          - lab rat
+      Homo sapiens:
+        description: human
+        meaning: NCBITaxon:9606
+        aliases:
+          - human
+          - humans
+      Macaca mulatta:
+        description: rhesus macaque
+        meaning: NCBITaxon:9544
+        aliases:
+          - macaque
+          - rhesus macaque
+          - rhesus monkey
+          - rhesus
+          - rhesus macaques
+          - rhesus monkeys
+      Macaca fascicularis:
+        description: crab-eating macaque
+        meaning: NCBITaxon:9541
+        aliases:
+          - cynomolgus macaque
+          - crab-eating macaque
+          - cynomolgus
+          - cynomolgus monkey
+          - long-tailed macaque
+      Callithrix jacchus:
+        description: common marmoset
+        meaning: NCBITaxon:9483
+        aliases:
+          - marmoset
+          - common marmoset
+      Mustela putorius furo:
+        description: domestic ferret
+        meaning: NCBITaxon:9669
+        aliases:
+          - ferret
+          - domestic ferret
+      Danio rerio:
+        description: zebrafish
+        meaning: NCBITaxon:7955
+        aliases:
+          - zebrafish
+          - zebra fish
+      Drosophila melanogaster:
+        description: fruit fly
+        meaning: NCBITaxon:7227
+        aliases:
+          - fruit fly
+          - fly
+          - drosophila
+          - fruit flies
+      Caenorhabditis elegans:
+        description: roundworm
+        meaning: NCBITaxon:6239
+        aliases:
+          - worm
+          - c. elegans
+          - roundworm
+          - c elegans
+      Gallus gallus:
+        description: chicken
+        meaning: NCBITaxon:9031
+        aliases:
+          - chicken
+          - domestic chicken
+      Sus scrofa:
+        description: pig
+        meaning: NCBITaxon:9823
+        aliases:
+          - pig
+          - domestic pig
+          - swine
+      Oryctolagus cuniculus:
+        description: rabbit
+        meaning: NCBITaxon:9986
+        aliases:
+          - rabbit
+          - domestic rabbit
+          - european rabbit
+      Cavia porcellus:
+        description: guinea pig
+        meaning: NCBITaxon:10141
+        aliases:
+          - guinea pig
+          - guinea-pig
+      Felis catus:
+        description: domestic cat
+        meaning: NCBITaxon:9685
+        aliases:
+          - cat
+          - domestic cat
+      Canis lupus familiaris:
+        description: domestic dog
+        meaning: NCBITaxon:9615
+        aliases:
+          - dog
+          - domestic dog
+          - canis familiaris
+      Ovis aries:
+        description: sheep
+        meaning: NCBITaxon:9940
+        aliases:
+          - sheep
+          - domestic sheep
+      Mesocricetus auratus:
+        description: golden hamster
+        meaning: NCBITaxon:10036
+        aliases:
+          - hamster
+          - golden hamster
+          - syrian hamster
+      Monodelphis domestica:
+        description: gray short-tailed opossum
+        meaning: NCBITaxon:13616
+        aliases:
+          - opossum
+          - gray short-tailed opossum
+          - grey short-tailed opossum
+      Taeniopygia guttata:
+        description: zebra finch
+        meaning: NCBITaxon:59729
+        aliases:
+          - zebra finch
+      Xenopus laevis:
+        description: African clawed frog
+        meaning: NCBITaxon:8355
+        aliases:
+          - african clawed frog
+          - clawed frog
+      Ambystoma mexicanum:
+        description: axolotl
+        meaning: NCBITaxon:8296
+        aliases:
+          - axolotl
+      Carassius auratus:
+        description: goldfish
+        meaning: NCBITaxon:7957
+        aliases:
+          - goldfish
+          - gold fish
+      Apis mellifera:
+        description: western honey bee
+        meaning: NCBITaxon:7460
+        aliases:
+          - honeybee
+          - honey bee
+          - western honey bee
+          - western honeybee
