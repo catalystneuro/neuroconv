@@ -35,6 +35,7 @@ from ...tools.fiber_photometry import (
     get_fiber_photometry_table_region,
 )
 from ...tools.nwb_helpers import get_module
+from ...tools.nwb_helpers._metadata_and_file_helpers import _validate_metadata_key, _validate_metadata_path
 from ...utils import DeepDict, dict_deep_update, get_base_schema
 from ...utils.checks import calculate_regular_series_rate
 
@@ -86,8 +87,12 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         # response series and any declared drives, under the same keys their metadata uses. The
         # native times are registered as a callable, so naming the object reads nothing.
         # See neuroconv/_temporal_alignment.py.
-        self.alignment = _TemporalAlignment()
-        self.alignment._register_series(key=self.metadata_key, get_native_times=self.get_original_timestamps)
+        self.temporal_alignment = _TemporalAlignment()
+        self.temporal_alignment._register(
+            key=self.metadata_key,
+            get_native_times=self.get_original_timestamps,
+            get_number_of_samples=lambda: len(self.get_original_timestamps()),
+        )
         super().__init__(verbose=verbose, stream_names=stream_names, **source_data)
         # Keep the ndx extensions registered so pynwb IO works correctly.
         import ndx_fiber_photometry  # noqa: F401
@@ -114,6 +119,15 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
     # Temporal alignment API (scalar, standard)
     # ------------------------------------------------------------------
 
+    @property
+    def alignment(self):
+        warnings.warn(
+            "`alignment` is deprecated and will be removed in v0.13.0. Use `temporal_alignment` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        return self.temporal_alignment
+
     def get_original_timestamps(self) -> np.ndarray:
         """Return the original (unaligned) timestamps of this interface's primary stream."""
         return self._get_stream_timestamps(stream_name=self.stream_names[0])
@@ -122,61 +136,63 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         """Return the times this interface's response series will be written on.
 
         .. deprecated::
-            Use ``interface.alignment[key].get_times()``, which reads the object it names rather than
+            Use ``interface.temporal_alignment[key].get_times()``, which reads the object it names rather than
             assuming the interface writes one. Removed in v0.12.0.
         """
         warnings.warn(
             "`get_timestamps` is deprecated and will be removed in v0.12.0. "
-            "Use `interface.alignment[key].get_times()` instead.",
+            "Use `interface.temporal_alignment[key].get_times()` instead.",
             FutureWarning,
             stacklevel=2,
         )
-        return self.alignment[self.metadata_key].get_times()
+        return self.temporal_alignment[self.metadata_key].get_times()
 
     def set_aligned_timestamps(self, aligned_timestamps: np.ndarray) -> None:
         """Replace this interface's timestamps with externally aligned values.
 
         .. deprecated::
-            Use ``interface.alignment[key].set_times(aligned_timestamps)``, which does the same thing and
+            Use ``interface.temporal_alignment[key].set_times(aligned_timestamps)``, which does the same thing and
             names the object it lands on. Removed in v0.12.0.
         """
         warnings.warn(
             "`set_aligned_timestamps` is deprecated and will be removed in v0.12.0. "
-            "Use `interface.alignment[key].set_times(times)` instead.",
+            "Use `interface.temporal_alignment[key].set_times(times)` instead.",
             FutureWarning,
             stacklevel=2,
         )
-        self.alignment[self.metadata_key].set_times(aligned_timestamps)
+        self.temporal_alignment[self.metadata_key].set_times(aligned_timestamps)
 
     def set_aligned_starting_time(self, aligned_starting_time: float) -> None:
         """Shift this interface's times by ``aligned_starting_time`` seconds.
 
         .. deprecated::
-            Use ``interface.alignment.shift_times(delta)``, which is the same rigid shift under a name that
+            Use ``interface.temporal_alignment.shift_times(delta)``, which is the same rigid shift under a name that
             says so. Removed in v0.12.0.
         """
         warnings.warn(
             "`set_aligned_starting_time` is deprecated and will be removed in v0.12.0. "
-            "Use `interface.alignment.shift_times(delta)` instead.",
+            "Use `interface.temporal_alignment.shift_times(delta)` instead.",
             FutureWarning,
             stacklevel=2,
         )
-        self.alignment.shift_times(aligned_starting_time)
+        self.temporal_alignment.shift_times(aligned_starting_time)
 
     def align_by_interpolation(self, unaligned_timestamps: np.ndarray, aligned_timestamps: np.ndarray) -> None:
         """Re-time this interface against a reference clock through synchronization pulses.
 
         .. deprecated::
-            Use ``interface.alignment.remap_times(local_sync_times=..., reference_sync_times=...)``, whose
+            Use ``interface.temporal_alignment.remap_times(local_sync_times=..., reference_sync_times=...)``, whose
             argument names say which clock each set of pulses came off. Removed in v0.12.0.
         """
         warnings.warn(
             "`align_by_interpolation` is deprecated and will be removed in v0.12.0. Use "
-            "`interface.alignment.remap_times(local_sync_times=..., reference_sync_times=...)` instead.",
+            "`interface.temporal_alignment.remap_times(local_sync_times=..., reference_sync_times=...)` instead.",
             FutureWarning,
             stacklevel=2,
         )
-        self.alignment.remap_times(local_sync_times=unaligned_timestamps, reference_sync_times=aligned_timestamps)
+        self.temporal_alignment.remap_times(
+            local_sync_times=unaligned_timestamps, reference_sync_times=aligned_timestamps
+        )
 
     # ------------------------------------------------------------------
     # Metadata
@@ -395,7 +411,11 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         if key == self.metadata_key:
             raise ValueError(f"Commanded-voltage key '{key}' is also the response-series key.")
         self._commanded_voltage_key_to_get_data[key] = get_data
-        self.alignment._register_series(key=key, get_native_times=get_native_times)
+        self.temporal_alignment._register(
+            key=key,
+            get_native_times=get_native_times,
+            get_number_of_samples=lambda: len(get_native_times()),
+        )
 
     def _add_commanded_voltage_series(
         self,
@@ -415,11 +435,16 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
                     "the owning interface's 'commanded_voltage_streams' constructor argument."
                 )
         for key, get_data in self._commanded_voltage_key_to_get_data.items():
+            _validate_metadata_key(
+                metadata,
+                metadata_path=("FiberPhotometry", "CommandedVoltageSeries"),
+                metadata_key=key,
+            )
             commanded_voltage_metadata = commanded_voltage_metadata_by_key[key]
             if commanded_voltage_metadata["name"] in nwbfile.acquisition:
                 continue
             data = np.asarray(get_data())
-            timestamps = self.alignment[key].get_times()
+            timestamps = self.temporal_alignment[key].get_times()
             if stub_test:
                 data = data[:stub_samples]
                 timestamps = timestamps[:stub_samples]
@@ -473,6 +498,7 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         from ndx_fiber_photometry import FiberPhotometryResponseSeries
 
         metadata = metadata or self.get_metadata()
+        _validate_metadata_key(metadata, metadata_path=("FiberPhotometry",), metadata_key=self.metadata_key)
         fiber_photometry_metadata = metadata["FiberPhotometry"]
         self._validate_metadata(fiber_photometry_metadata)
         series_metadata = fiber_photometry_metadata[self.metadata_key]
@@ -496,9 +522,9 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
 
             fiber_photometry_table = add_fiber_photometry_lab_metadata(
                 nwbfile=nwbfile,
-                fiber_photometry_metadata=fiber_photometry_metadata,
-                devices_metadata=metadata["Devices"],
+                metadata=metadata,
             )
+            _validate_metadata_path(metadata, ("FiberPhotometry", "FiberPhotometryTable", "rows"))
             table_region = get_fiber_photometry_table_region(
                 fiber_photometry_table=fiber_photometry_table,
                 table_rows_metadata=fiber_photometry_metadata["FiberPhotometryTable"]["rows"],
@@ -510,7 +536,7 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
 
         # Add this interface's single response series.
         data = stub(self._read_response_data())
-        timestamps = stub(self.alignment[self.metadata_key].get_times())
+        timestamps = stub(self.temporal_alignment[self.metadata_key].get_times())
         timing_kwargs = self._timing_kwargs_from_timestamps(timestamps, always_write_timestamps)
 
         response_series = FiberPhotometryResponseSeries(

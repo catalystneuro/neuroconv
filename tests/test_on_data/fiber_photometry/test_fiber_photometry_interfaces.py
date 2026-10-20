@@ -692,6 +692,7 @@ class TestTDTFiberPhotometryInterfaceSingleSeries(FiberPhotometryInterfaceTestMi
     """Tests the new single-series TDTFiberPhotometryInterface (one FiberPhotometryResponseSeries)."""
 
     data_interface_cls = TDTFiberPhotometryInterface
+    expected_temporal_alignment_keys = ("Signal",)
     interface_kwargs = dict(
         folder_path=str(OPHYS_DATA_PATH / "fiber_photometry_datasets" / "TDT" / "Photo_249_391-200721-120136_stubbed"),
         stream_names="Dv1A",
@@ -736,6 +737,7 @@ class TestDoricFiberPhotometryInterface(FiberPhotometryInterfaceTestMixin):
     """Tests the single-series DoricFiberPhotometryInterface (one FiberPhotometryResponseSeries)."""
 
     data_interface_cls = DoricFiberPhotometryInterface
+    expected_temporal_alignment_keys = ("Signal",)
     interface_kwargs = dict(
         file_path=str(OPHYS_DATA_PATH / "fiber_photometry_datasets" / "doric" / "BBC300_Acq_0093_stub.doric"),
         stream_names="BBC300_ROISignals_Series0001_CAM1EXC1_ROI01",
@@ -772,6 +774,7 @@ class TestDoricFiberPhotometryInterfaceCSV(FiberPhotometryInterfaceTestMixin):
     """Tests the CSV variant of DoricFiberPhotometryInterface (DoricStudio CSV export)."""
 
     data_interface_cls = DoricFiberPhotometryInterface
+    expected_temporal_alignment_keys = ("Signal",)
     interface_kwargs = dict(
         file_path=str(OPHYS_DATA_PATH / "fiber_photometry_datasets" / "doric" / "oft_2024-03-01T10_16_32_signal.csv"),
         stream_names="sig",
@@ -801,6 +804,7 @@ class TestDoricFiberPhotometryInterfaceCSVGroupedHeader(FiberPhotometryInterface
     """
 
     data_interface_cls = DoricFiberPhotometryInterface
+    expected_temporal_alignment_keys = ("Signal",)
     interface_kwargs = dict(
         file_path=str(OPHYS_DATA_PATH / "fiber_photometry_datasets" / "doric" / "12282020-cfc-pppda7_0000.csv"),
         stream_names="Raw",
@@ -828,6 +832,7 @@ class TestDoricFiberPhotometryInterfaceLegacyHDF5(FiberPhotometryInterfaceTestMi
     """
 
     data_interface_cls = DoricFiberPhotometryInterface
+    expected_temporal_alignment_keys = ("Signal",)
     interface_kwargs = dict(
         file_path=str(OPHYS_DATA_PATH / "fiber_photometry_datasets" / "doric" / "D2-EPConsole_0039_stub.doric"),
         stream_names="Console_AIn-1 - Raw",

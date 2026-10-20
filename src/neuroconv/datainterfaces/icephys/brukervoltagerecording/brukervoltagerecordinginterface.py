@@ -140,10 +140,11 @@ class BrukerVoltageRecordingInterface(BaseIcephysInterface):
         # session folders. It is a label, not a claim about which cell this is.
         self._run_identity = self._cycle_headers[0].stem
         self._alignment_key = self._series_metadata_key
-        self.alignment._register_series(
+        self.temporal_alignment._register(
             key=self._alignment_key,
             get_native_times=self._get_native_times,
             default_start_time=0.0,
+            get_number_of_samples=lambda: len(self._get_native_times()),
         )
 
     # Registry keys derive from the run identity so a converter that overrides `_run_identity` propagates to

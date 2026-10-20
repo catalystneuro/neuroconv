@@ -349,7 +349,7 @@ class TestDANNCEInterfaceTimestamps:
         file_path, n_samples, _, _, _ = dannce_mat_file
         interface = DANNCEInterface(file_paths=file_path, sampling_rate=30.0)
 
-        timestamps = interface.alignment[interface.metadata_key].get_times()
+        timestamps = interface.temporal_alignment[interface.metadata_key].get_times()
         expected = np.arange(n_samples, dtype="float64") / 30.0
         np.testing.assert_allclose(timestamps, expected)
 
@@ -366,7 +366,7 @@ class TestDANNCEInterfaceTimestamps:
         interface = DANNCEInterface(file_paths=file_path)
 
         with pytest.raises(ValueError, match="No timing information is available"):
-            interface.alignment[interface.metadata_key].get_times()
+            interface.temporal_alignment[interface.metadata_key].get_times()
 
     def test_no_timestamps_raises_on_write(self, dannce_mat_file):
         file_path, _, _, _, _ = dannce_mat_file
@@ -379,34 +379,38 @@ class TestDANNCEInterfaceTimestamps:
         file_path = dannce_mat_file[0]
         interface = DANNCEInterface(file_paths=file_path, sampling_rate=30.0)
 
-        assert interface.alignment.keys() == (interface.metadata_key,)
+        assert interface.temporal_alignment.keys() == ("dannce",)
 
     def test_set_times(self, dannce_mat_file):
         file_path, n_samples, _, _, _ = dannce_mat_file
         interface = DANNCEInterface(file_paths=file_path)
 
         custom_timestamps = np.linspace(10.0, 20.0, n_samples)
-        interface.alignment[interface.metadata_key].set_times(custom_timestamps)
+        interface.temporal_alignment[interface.metadata_key].set_times(custom_timestamps)
 
-        np.testing.assert_array_equal(interface.alignment[interface.metadata_key].get_times(), custom_timestamps)
+        np.testing.assert_array_equal(
+            interface.temporal_alignment[interface.metadata_key].get_times(), custom_timestamps
+        )
 
     def test_set_times_overrides_sampling_rate(self, dannce_mat_file):
         file_path, n_samples, _, _, _ = dannce_mat_file
         interface = DANNCEInterface(file_paths=file_path, sampling_rate=30.0)
 
         custom_timestamps = np.linspace(10.0, 20.0, n_samples)
-        interface.alignment[interface.metadata_key].set_times(custom_timestamps)
+        interface.temporal_alignment[interface.metadata_key].set_times(custom_timestamps)
 
-        np.testing.assert_array_equal(interface.alignment[interface.metadata_key].get_times(), custom_timestamps)
+        np.testing.assert_array_equal(
+            interface.temporal_alignment[interface.metadata_key].get_times(), custom_timestamps
+        )
 
     def test_shift_times(self, dannce_mat_file):
         file_path, n_samples, _, _, _ = dannce_mat_file
         interface = DANNCEInterface(file_paths=file_path, sampling_rate=30.0)
 
-        interface.alignment.shift_times(5.0)
+        interface.temporal_alignment.shift_times(5.0)
 
         expected = np.arange(n_samples, dtype="float64") / 30.0 + 5.0
-        np.testing.assert_allclose(interface.alignment[interface.metadata_key].get_times(), expected)
+        np.testing.assert_allclose(interface.temporal_alignment[interface.metadata_key].get_times(), expected)
 
 
 class TestDANNCEInterfaceMetadata:
@@ -708,7 +712,7 @@ class TestDANNCEInterfaceSync:
         )
 
         assert_array_equal(interface.video_frame_indices, frames)
-        np.testing.assert_allclose(interface.alignment[interface.metadata_key].get_times(), frames / 100.0)
+        np.testing.assert_allclose(interface.temporal_alignment[interface.metadata_key].get_times(), frames / 100.0)
 
     def test_sync_directory_layout(self, tmp_path, classic_dannce_mat_file):
         file_path, sample_ids = classic_dannce_mat_file
@@ -724,7 +728,7 @@ class TestDANNCEInterfaceSync:
         interface = DANNCEInterface(file_paths=file_path, sampling_rate=100.0, sync_path=sync_dir)
 
         assert_array_equal(interface.video_frame_indices, frames)
-        np.testing.assert_allclose(interface.alignment[interface.metadata_key].get_times(), frames / 100.0)
+        np.testing.assert_allclose(interface.temporal_alignment[interface.metadata_key].get_times(), frames / 100.0)
 
     def test_struct_array_layout(self, tmp_path, classic_dannce_mat_file):
         """A MATLAB struct array (rather than Label3D's cell array) is read the same way."""
@@ -747,7 +751,7 @@ class TestDANNCEInterfaceSync:
 
         assert interface.video_frame_indices is None
         np.testing.assert_allclose(
-            interface.alignment[interface.metadata_key].get_times(), np.arange(len(sample_ids)) / 100.0
+            interface.temporal_alignment[interface.metadata_key].get_times(), np.arange(len(sample_ids)) / 100.0
         )
 
     def test_sample_id_missing_from_sync_raises(self, tmp_path, classic_dannce_mat_file):
@@ -839,7 +843,7 @@ class TestDANNCEInterfaceConversion:
         # timestamps are stored explicitly rather than as rate+starting_time.
         rng = np.random.default_rng(0)
         custom_timestamps = np.sort(rng.uniform(0.0, 10.0, n_samples))
-        interface.alignment[interface.metadata_key].set_times(custom_timestamps)
+        interface.temporal_alignment[interface.metadata_key].set_times(custom_timestamps)
 
         nwbfile = NWBFile(
             session_description="test",
@@ -1220,8 +1224,8 @@ class TestDANNCEInterfaceConversion:
         )
         interface = DANNCEInterface(file_paths=file_path, sampling_rate=30.0)
         irregular_times = np.cumsum(rng.uniform(0.01, 0.05, n_samples))
-        interface.alignment[interface.metadata_key].set_times(irregular_times)
-        interface.alignment.shift_times(2.0)
+        interface.temporal_alignment[interface.metadata_key].set_times(irregular_times)
+        interface.temporal_alignment.shift_times(2.0)
 
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile, stub_test=True)
