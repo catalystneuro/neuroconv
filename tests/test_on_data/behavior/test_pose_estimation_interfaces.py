@@ -1502,7 +1502,12 @@ class TestOptiTrackInterface(PoseEstimationInterfaceTestMixin):
     data_interface_cls = OptiTrackInterface
     interface_kwargs = dict(
         file_path=str(
-            BEHAVIOR_DATA_PATH / "optitrack" / "single_rigid_body" / "format_1_23" / "Take 2023-03-15 08.25.25 AM.csv"
+            BEHAVIOR_DATA_PATH
+            / "optitrack"
+            / "csv_export"
+            / "version_1_23"
+            / "euler_angles_yxz_meters"
+            / "Take 2023-03-15 08.25.25 AM.csv"
         )
     )
     save_directory = OUTPUT_PATH
@@ -1539,7 +1544,9 @@ class TestOptiTrackInterfaceAssetTypes(PoseEstimationInterfaceTestMixin):
 
     data_interface_cls = OptiTrackInterface
     interface_kwargs = dict(
-        file_path=str(BEHAVIOR_DATA_PATH / "optitrack" / "rotation_and_units" / "quaternion_meters" / "block 2.csv")
+        file_path=str(
+            BEHAVIOR_DATA_PATH / "optitrack" / "csv_export" / "version_1_23" / "quaternions_meters" / "block 2.csv"
+        )
     )
     save_directory = OUTPUT_PATH
 
@@ -1581,18 +1588,31 @@ class TestOptiTrackInterfaceAssetTypes(PoseEstimationInterfaceTestMixin):
 class TestOptiTrackInterfaceFileVariants:
     """How the interface reads the export layouts and edge cases in the OptiTrack test data."""
 
-    euler_file_path = BEHAVIOR_DATA_PATH / "optitrack" / "rotation_and_units" / "euler_xyz_millimeters" / "block 2.csv"
+    euler_file_path = (
+        BEHAVIOR_DATA_PATH
+        / "optitrack"
+        / "csv_export"
+        / "version_1_23"
+        / "euler_angles_xyz_millimeters"
+        / "block 2.csv"
+    )
     blank_cells_file_path = (
-        BEHAVIOR_DATA_PATH / "optitrack" / "untracked_rigid_body" / "blank_cells" / "Take 2022-02-28 10.23.34 AM.csv"
+        BEHAVIOR_DATA_PATH
+        / "optitrack"
+        / "csv_export"
+        / "version_1_21"
+        / "quaternions_meters"
+        / "Take 2022-02-28 10.23.34 AM.csv"
     )
     zeros_file_path = (
-        BEHAVIOR_DATA_PATH / "optitrack" / "untracked_rigid_body" / "zeros_instead_of_blanks" / "V4_throw_003.csv"
+        BEHAVIOR_DATA_PATH / "optitrack" / "csv_export" / "edge_cases" / "zeros_instead_of_blanks" / "V4_throw_003.csv"
     )
     format_1_22_file_path = (
         BEHAVIOR_DATA_PATH
         / "optitrack"
-        / "single_rigid_body"
-        / "format_1_22_truncated_start_time"
+        / "csv_export"
+        / "version_1_22"
+        / "euler_angles_yxz_meters"
         / "Take 2023-01-24 09.35.03 AM.csv"
     )
 

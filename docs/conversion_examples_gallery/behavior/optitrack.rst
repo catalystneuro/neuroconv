@@ -20,7 +20,7 @@ for quaternion exports, with columns in the order w, x, y, z.
     >>> from neuroconv.datainterfaces import OptiTrackInterface
     >>>
     >>> # Change the file_path so it points to the csv file in your system
-    >>> file_path = BEHAVIOR_DATA_PATH / "optitrack" / "single_rigid_body" / "format_1_23" / "Take 2023-03-15 08.25.25 AM.csv"
+    >>> file_path = BEHAVIOR_DATA_PATH / "optitrack" / "csv_export" / "version_1_23" / "euler_angles_yxz_meters" / "Take 2023-03-15 08.25.25 AM.csv"
     >>> interface = OptiTrackInterface(file_path=file_path)
     >>>
     >>> # Extract what metadata we can from the source files
