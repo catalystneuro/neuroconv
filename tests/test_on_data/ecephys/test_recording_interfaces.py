@@ -81,10 +81,10 @@ class TestAxonRecordingInterface(RecordingExtractorInterfaceTestMixin):
                 description="Axon Instruments (now Molecular Devices) data acquisition system (pCLAMP/AxoScope)",
             )
         }
-        # The series keeps the name and description the old format gives it.
+        # The series keeps the description the old format gives it.
         expected_electrical_series = {
             "axon_recording": dict(
-                name="ElectricalSeriesRaw", description="Raw acquisition traces from Axon Binary Format file."
+                name="ElectricalSeries", description="Raw acquisition traces from Axon Binary Format file."
             )
         }
 
@@ -1462,7 +1462,7 @@ class TestPlexonLFPInterface(RecordingExtractorInterfaceTestMixin):
     def check_extracted_metadata(self, metadata: dict):
         # An LFP interface names its own series; the base would emit the plain 'ElectricalSeries'.
         expected_metadata_key = "plexon_lfp"
-        expected_electrical_series = {"plexon_lfp": dict(name="ElectricalSeriesLF")}
+        expected_electrical_series = {"plexon_lfp": dict(name="ElectricalSeriesLFP")}
 
         assert self.interface.metadata_key == expected_metadata_key
         assert metadata["Ecephys"]["ElectricalSeries"] == expected_electrical_series
@@ -1612,7 +1612,7 @@ def test_metadata_key_is_accepted_and_forwarded(interface_class, interface_kwarg
             PlexonLFPInterface,
             dict(file_path=str(ECEPHY_DATA_PATH / "plexon" / "4chDemoPLX.plx")),
             "plexon_lfp",
-            "ElectricalSeriesLF",
+            "ElectricalSeriesLFP",
         ),
         (
             CellExplorerLFPInterface,

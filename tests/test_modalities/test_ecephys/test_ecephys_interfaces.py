@@ -304,8 +304,12 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
         nwbfile = interface.create_nwbfile(metadata=metadata)
 
-        assert set(nwbfile.acquisition) == {"ElectricalSeries0", "SecondSegment", "ElectricalSeries2"}
-        assert {series.description for series in nwbfile.acquisition.values()} == {"Shared description."}
+        descriptions = {name: series.description for name, series in nwbfile.acquisition.items()}
+        assert descriptions == {
+            "ElectricalSeriesSegment0": "Shared description. Segment 0 of 3.",
+            "SecondSegment": "Shared description. Segment 1 of 3.",
+            "ElectricalSeriesSegment2": "Shared description. Segment 2 of 3.",
+        }
 
     def test_always_write_timestamps(self, setup_interface):
 
