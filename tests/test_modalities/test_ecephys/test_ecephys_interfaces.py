@@ -250,9 +250,9 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
             "The channels of this recording have heterogeneous offsets, which a single NWB "
             "ElectricalSeries cannot represent.\n"
             "Multiple offsets were found per channel IDs:\n"
-            "  Offset 0: Channel IDs ['0', '1']\n"
-            "  Offset 1: Channel IDs ['2', '3']\n"
-            "  Offset 2: Channel IDs ['4']\n"
+            "  Offset 0: Channel IDs ['channel_a', 'channel_b']\n"
+            "  Offset 1: Channel IDs ['channel_c', 'channel_d']\n"
+            "  Offset 2: Channel IDs ['channel_e']\n"
             "\n"
             "If these channels are all the same kind of signal and the offsets come from "
             "per-channel scaling, pass data_representation='physical_units' as a conversion "
@@ -270,10 +270,10 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
         the reduced one, so everything downstream of the interface sees only the channels that are left."""
         interface = MockRecordingInterface(num_channels=5, durations=[0.100])
 
-        returned_interface = interface.remove_channels(channel_ids=["1", "3"])
+        returned_interface = interface.remove_channels(channel_ids=["channel_b", "channel_d"])
 
         assert returned_interface is interface  # returns self so the call can be chained
-        assert list(interface.channel_ids) == ["0", "2", "4"]
+        assert list(interface.channel_ids) == ["channel_a", "channel_c", "channel_e"]
 
     def test_stub(self, setup_interface):
         interface = self.interface
