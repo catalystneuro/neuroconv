@@ -8,6 +8,7 @@ from pynwb.file import NWBFile
 
 from ..._temporal_alignment import _TemporalAlignment
 from ...basedatainterface import BaseDataInterface
+from ...tools.nwb_helpers._metadata_and_file_helpers import _validate_metadata_key, _validate_metadata_path
 from ...utils import to_camel_case
 
 
@@ -97,10 +98,6 @@ class BaseEventsInterface(BaseDataInterface):
 
     keywords = ("events",)
 
-    # Whether `set_times` and `remap_times` work on this interface's event types. An interface that derives
-    # another written table from its events turns this off until that table is handled too.
-    _supports_set_and_remap_times = True
-
     def __init__(self, **source_data):
         super().__init__(**source_data)
         # Filled on the first _get_events_data_dict() call and reused thereafter, so the backend is
@@ -109,22 +106,24 @@ class BaseEventsInterface(BaseDataInterface):
         self._alignment = None
 
     @property
-    def alignment(self):
+    def temporal_alignment(self):
         if self._alignment is None:
             alignment = _TemporalAlignment()
             for source_id in self.get_event_type_source_ids():
-                alignment._register_events(
+                alignment._register(
                     key=source_id,
                     get_native_times=lambda source_id=source_id: self._get_events_data_dict()[source_id].timestamps,
+                    get_number_of_samples=lambda source_id=source_id: len(
+                        self._get_events_data_dict()[source_id].timestamps
+                    ),
                     get_native_durations=lambda source_id=source_id: self._get_events_data_dict()[source_id].durations,
-                    supports_set_and_remap_times=self._supports_set_and_remap_times,
                 )
             self._alignment = alignment
         return self._alignment
 
     def _get_event_durations(self, event_type_source_id: str) -> np.ndarray | None:
         """The durations of one event type on this interface's current clock, ``None`` for a type without any."""
-        return self.alignment[event_type_source_id].get_durations()
+        return self.temporal_alignment[event_type_source_id].get_durations()
 
     @abstractmethod
     def _get_events_data_dict(self) -> dict[str, _EventsData]:
@@ -211,7 +210,7 @@ class BaseEventsInterface(BaseDataInterface):
                 f"{sorted(events_data_dict)}, which get_event_type_source_ids lists."
             )
 
-        return self.alignment[event_type_source_id].get_times()
+        return self.temporal_alignment[event_type_source_id].get_times()
 
     def get_metadata_schema(self) -> dict:
         """
@@ -329,6 +328,8 @@ class BaseEventsInterface(BaseDataInterface):
         if metadata is None:
             metadata = self.get_metadata()
 
+        _validate_metadata_key(metadata, metadata_path=("Events",), metadata_key=self.metadata_key)
+        _validate_metadata_path(metadata, ("Events", self.metadata_key, "event_types"))
         events_metadata = metadata["Events"]
         self._validate_shared_columns(events_metadata)
         event_tables_metadata = events_metadata.get("EventTables", {})

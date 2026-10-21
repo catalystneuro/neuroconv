@@ -4,8 +4,8 @@ from pynwb.file import NWBFile
 
 from ._ethovision_reader import get_available_scorings, parse_start_time, select_scoring
 from ...events.baseeventsinterface import BaseEventsInterface, _EventsData
-from ...._temporal_alignment import _TemporalAlignment
 from ....tools import get_module
+from ....tools.behavior import _add_ethogram_to_nwbfile
 from ....utils import DeepDict, to_camel_case, to_snake_case
 
 
@@ -90,26 +90,6 @@ class EthoVisionManualScoringInterface(BaseEventsInterface):
         )
 
         self._scoring_events = [event for event in self._scoring_sheet.events if event.subject == self._subject]
-        self._event_onsets_alignment_key = f"{self.metadata_key}_manual_scoring_onsets"
-        self._event_offsets_alignment_key = f"{self.metadata_key}_manual_scoring_offsets"
-        self._alignment = _TemporalAlignment()
-        self.alignment._register_series(
-            key=self._event_onsets_alignment_key,
-            get_native_times=lambda: np.asarray([event.onset for event in self._scoring_events], dtype=float),
-        )
-        self.alignment._register_series(
-            key=self._event_offsets_alignment_key,
-            get_native_times=self._get_native_event_offsets,
-        )
-
-    def _get_native_event_offsets(self) -> np.ndarray:
-        return np.asarray(
-            [
-                event.onset + event.duration if event.duration is not None and not np.isnan(event.duration) else np.nan
-                for event in self._scoring_events
-            ],
-            dtype=float,
-        )
 
     def get_metadata_schema(self) -> dict:
         metadata_schema = super().get_metadata_schema()
@@ -146,7 +126,7 @@ class EthoVisionManualScoringInterface(BaseEventsInterface):
         event_types = metadata["Events"][self.metadata_key]["event_types"]
         for source_id in self._get_events_data_dict():
             event_types[source_id] = {
-                "event_name": source_id.split(":", maxsplit=1)[1],
+                "event_name": source_id,
                 "table_metadata_key": self._manual_scoring_metadata_key,
                 "columns": {
                     "subject": {
@@ -162,33 +142,29 @@ class EthoVisionManualScoringInterface(BaseEventsInterface):
         return metadata
 
     def _get_events_data_dict(self) -> dict[str, _EventsData]:
-        current_onsets = self.alignment[self._event_onsets_alignment_key].get_times()
-        current_offsets = self.alignment[self._event_offsets_alignment_key].get_times()
-        grouped_indices: dict[str, list[int]] = {}
-        for index, event in enumerate(self._scoring_events):
-            event_kind = "point" if event.duration is None else "state"
-            grouped_indices.setdefault(f"{event_kind}:{event.behavior}", []).append(index)
+        if self._events_data_dict is not None:
+            return self._events_data_dict
+
+        events_by_behavior: dict[str, list] = {}
+        for event in self._scoring_events:
+            events_by_behavior.setdefault(event.behavior, []).append(event)
 
         events_data_dict = {}
-        for source_id, indices in grouped_indices.items():
-            is_point = source_id.startswith("point:")
-            durations = None if is_point else current_offsets[indices] - current_onsets[indices]
-            events_data_dict[source_id] = _EventsData(
-                event_type_source_id=source_id,
-                timestamps=current_onsets[indices],
-                durations=durations,
+        for behavior, events in events_by_behavior.items():
+            is_point = [event.duration is None for event in events]
+            if any(is_point) and not all(is_point):
+                raise ValueError(f"EthoVision behavior '{behavior}' appears as both a point and state behavior.")
+            events_data_dict[behavior] = _EventsData(
+                event_type_source_id=behavior,
+                timestamps=np.asarray([event.onset for event in events], dtype=float),
+                durations=None if all(is_point) else np.asarray([event.duration for event in events], dtype=float),
                 payload={
-                    "subject": np.asarray([self._scoring_events[index].subject for index in indices], dtype=object),
-                    "arena": np.asarray([self._arena] * len(indices), dtype=object),
+                    "subject": np.asarray([event.subject for event in events], dtype=object),
+                    "arena": np.asarray([self._arena] * len(events), dtype=object),
                 },
             )
-        return events_data_dict
-
-    def get_event_times(self, event_type_source_id: str) -> np.ndarray:
-        return self._get_events_data_dict()[event_type_source_id].timestamps
-
-    def _get_event_durations(self, event_type_source_id: str) -> np.ndarray | None:
-        return self._get_events_data_dict()[event_type_source_id].durations
+        self._events_data_dict = events_data_dict
+        return self._events_data_dict
 
     def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict | None = None) -> None:
         """Write one subject's Manual Scoring events, Ethogram and closed state bouts."""
@@ -199,67 +175,56 @@ class EthoVisionManualScoringInterface(BaseEventsInterface):
         self._add_ethogram_to_nwbfile(nwbfile=nwbfile, metadata=resolved_metadata)
 
     def _add_ethogram_to_nwbfile(self, *, nwbfile: NWBFile, metadata: dict) -> None:
-        # TODO: Unify Ethogram/EthogramBouts construction with BORIS and the VAME/MoSeq label-based
-        # helper once the shared API accepts already formed intervals, catalogue rows, and extra columns.
-        from ndx_ethogram import Ethogram, EthogramBouts
-
         ethogram_metadata = metadata["Behavior"]["Ethograms"][self._manual_scoring_metadata_key]
-        processing_module = get_module(nwbfile=nwbfile, name="behavior", description="Processed behavioral data.")
-        catalogue_name = ethogram_metadata["Ethogram"]["name"]
-        catalogue = processing_module.data_interfaces.get(catalogue_name)
-        if catalogue is None:
-            catalogue = Ethogram(**ethogram_metadata["Ethogram"], exclusive=False)
-            processing_module.add(catalogue)
-        elif not isinstance(catalogue, Ethogram):
-            raise TypeError(f"Behavior object '{catalogue_name}' exists but is not an Ethogram.")
+        # Created here if missing, so the module the ethogram writer adds to carries this description.
+        get_module(nwbfile=nwbfile, name="behavior", description="Processed behavioral data.")
 
-        behavior_types = {}
+        events_data_dict = self._get_events_data_dict()
+        behavior_types = {
+            behavior: "point" if events_data.durations is None else "state"
+            for behavior, events_data in events_data_dict.items()
+        }
+
+        # A bout follows its event as aligned, ending its aligned duration after its aligned onset, and the bouts
+        # keep the order the events were scored in. An event's row in its behavior's arrays is its position among
+        # the events scored against that behavior.
+        aligned_times = {behavior: self.get_event_times(behavior) for behavior in events_data_dict}
+        aligned_durations = {behavior: self._get_event_durations(behavior) for behavior in events_data_dict}
+        closed_bouts = []
+        rows_seen = {}
         for event in self._scoring_events:
-            behavior_type = "point" if event.duration is None else "state"
-            previous = behavior_types.setdefault(event.behavior, behavior_type)
-            if previous != behavior_type:
-                raise ValueError(f"EthoVision behavior '{event.behavior}' appears as both a point and state behavior.")
-        existing_behaviors = {row["behavior"]: row["behavior_type"] for _, row in catalogue.to_dataframe().iterrows()}
-        for behavior, behavior_type in behavior_types.items():
-            if behavior in existing_behaviors:
-                if existing_behaviors[behavior] != behavior_type:
-                    raise ValueError(
-                        f"EthoVision behavior '{behavior}' is already catalogued as "
-                        f"'{existing_behaviors[behavior]}', not '{behavior_type}'."
-                    )
-                continue
-            catalogue.add_row(behavior=behavior, definition="", behavior_type=behavior_type, category="")
-
-        current_onsets = self.alignment[self._event_onsets_alignment_key].get_times()
-        current_offsets = self.alignment[self._event_offsets_alignment_key].get_times()
-        closed_indices = [
-            index
-            for index, event in enumerate(self._scoring_events)
-            if event.duration is not None and not np.isnan(event.duration)
+            row = rows_seen.get(event.behavior, 0)
+            rows_seen[event.behavior] = row + 1
+            if event.duration is not None and not np.isnan(event.duration):
+                closed_bouts.append((event, row))
+        start_times = [aligned_times[event.behavior][row] for event, row in closed_bouts]
+        stop_times = [
+            start_time + aligned_durations[event.behavior][row]
+            for start_time, (event, row) in zip(start_times, closed_bouts)
         ]
-        if not closed_indices:
-            return
-
-        bouts_name = ethogram_metadata["EthogramBouts"]["name"]
-        bouts = processing_module.data_interfaces.get(bouts_name)
-        if bouts is None:
-            bouts = EthogramBouts(
-                **ethogram_metadata["EthogramBouts"],
-                labeling_method="manual",
-                source_software="Noldus EthoVision XT",
-                ethogram=catalogue,
-            )
-            bouts.add_column(name="subject", description="The subject the bout was scored on.")
-            bouts.add_column(name="arena", description="The EthoVision arena in which the bout was scored.")
-            processing_module.add(bouts)
-        elif not isinstance(bouts, EthogramBouts):
-            raise TypeError(f"Behavior object '{bouts_name}' exists but is not an EthogramBouts table.")
-        for index in closed_indices:
-            event = self._scoring_events[index]
-            bouts.add_interval(
-                start_time=current_onsets[index],
-                stop_time=current_offsets[index],
-                label=event.behavior,
-                subject=event.subject,
-                arena=self._arena,
-            )
+        _add_ethogram_to_nwbfile(
+            nwbfile,
+            start_times=start_times,
+            stop_times=stop_times,
+            labels=[event.behavior for event, _ in closed_bouts],
+            behaviors=[
+                dict(behavior=behavior, definition="", behavior_type=behavior_type, category="")
+                for behavior, behavior_type in behavior_types.items()
+            ],
+            ethogram_metadata=ethogram_metadata,
+            labeling_method="manual",
+            exclusive=False,
+            source_software="Noldus EthoVision XT",
+            bout_columns={
+                "subject": {
+                    "description": "The subject the bout was scored on.",
+                    "data": [event.subject for event, _ in closed_bouts],
+                },
+                "arena": {
+                    "description": "The EthoVision arena in which the bout was scored.",
+                    "data": [self._arena] * len(closed_bouts),
+                },
+            },
+            # Every subject scored in this arena writes into one arena-level bouts table.
+            extend_bouts=True,
+        )

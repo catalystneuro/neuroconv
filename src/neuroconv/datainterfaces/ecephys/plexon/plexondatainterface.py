@@ -92,7 +92,6 @@ class PlexonLFPInterface(BaseLFPExtractorInterface):
     display_name = "Plexon LFP Recording"
     associated_suffixes = (".plx",)
     info = "Interface for Plexon low pass filtered data."
-    _default_es_key = "ElectricalSeriesLF"
 
     @classmethod
     def get_extractor_class(cls):
@@ -150,11 +149,6 @@ class PlexonLFPInterface(BaseLFPExtractorInterface):
 
     def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
-
-        if use_new_metadata_format:
-            # The base emits the NWB-conventional "ElectricalSeries" name. This interface writes the
-            # low-pass filtered stream, so it states its own name here, matching the old list-based format.
-            metadata["Ecephys"]["ElectricalSeries"][self.metadata_key]["name"] = "ElectricalSeriesLF"
 
         neo_reader = self.recording_extractor.neo_reader
 

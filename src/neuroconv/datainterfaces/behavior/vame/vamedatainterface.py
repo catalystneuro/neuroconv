@@ -13,6 +13,7 @@ from pynwb import NWBFile
 from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from ....tools import get_module
 from ....tools.nwb_helpers import _get_container_by_name
+from ....tools.nwb_helpers._metadata_and_file_helpers import _validate_metadata_key
 from ....utils import DeepDict, calculate_regular_series_rate, load_dict_from_file
 
 
@@ -614,7 +615,7 @@ class VameInterface(BaseTemporalAlignmentInterface):
     def _add_ethogram_for_run(
         self,
         *,
-        behavior_module,
+        nwbfile: NWBFile,
         run_key: str,
         motif_series,
         motif_data: np.ndarray,
@@ -628,14 +629,13 @@ class VameInterface(BaseTemporalAlignmentInterface):
     ) -> None:
         """Derive and add a curated ``EthogramBouts`` + ``Ethogram`` catalogue for one motif run.
 
-        Thin VAME-specific adapter over the tool-agnostic
-        ``neuroconv.tools.pose_estimation._build_ethogram_from_labels``: it supplies VAME's names,
-        provenance, full motif label space (``n_clusters``), and the per-frame community labels that
-        become the catalogue's ``category`` column.
+        Thin VAME-specific adapter over the tool-agnostic ``neuroconv.tools.behavior`` helpers: it supplies
+        VAME's names, provenance, full motif label space (``n_clusters``), and the per-frame community labels
+        that become the catalogue's ``category`` column.
         """
         if bouts_metadata is None or catalogue_metadata is None:
             return
-        from ....tools.pose_estimation import _build_ethogram_from_labels
+        from ....tools.behavior import _add_ethogram_to_nwbfile, _get_bouts_and_behaviors_from_labels
 
         n_clusters = self._vame_config.get("n_clusters")
         vame_version = str(self._vame_config.get("vame_version", "")).strip()
@@ -646,28 +646,25 @@ class VameInterface(BaseTemporalAlignmentInterface):
                 algorithm=run_key,
             )
         )
-        bouts, catalogue = _build_ethogram_from_labels(
-            labels=motif_data,
-            timestamps=timestamps,
-            frame_period=frame_period,
-            bouts_name=bouts_metadata["name"],
-            bouts_description=bouts_metadata["description"],
+        _add_ethogram_to_nwbfile(
+            nwbfile,
+            **_get_bouts_and_behaviors_from_labels(
+                labels=motif_data,
+                timestamps=timestamps,
+                frame_period=frame_period,
+                class_ids=range(int(n_clusters)) if n_clusters is not None else None,
+                class_definition="VAME unsupervised motif; the cluster id has no a-priori meaning.",
+                category_labels=community_data,
+            ),
+            ethogram_metadata={"Ethogram": catalogue_metadata, "EthogramBouts": bouts_metadata},
             labeling_method="automated",
             source_software=f"VAME {vame_version}" if vame_version else "VAME",
             parameters=parameters,
             source=motif_series,
             source_pose=pose_estimation,
             source_video=source_video,
-            catalogue_name=catalogue_metadata["name"],
-            catalogue_description=catalogue_metadata["description"],
-            class_ids=range(int(n_clusters)) if n_clusters is not None else None,
-            class_definition="VAME unsupervised motif; the cluster id has no a-priori meaning.",
-            category_labels=community_data,
             exclusive=True,  # VAME motifs are a single-label partition.
         )
-        if catalogue is not None:
-            behavior_module.add(catalogue)
-        behavior_module.add(bouts)
 
     def add_to_nwbfile(
         self,
@@ -809,13 +806,12 @@ class VameInterface(BaseTemporalAlignmentInterface):
         pose_estimation = None
         pose_estimation_key = project_metadata.get("pose_estimation_metadata_key")
         if pose_estimation_key is not None:
-            pose_estimations_registry = default_metadata.get("Pose", {}).get("PoseEstimations", {})
-            if pose_estimation_key not in pose_estimations_registry:
-                raise ValueError(
-                    f"pose_estimation_metadata_key '{pose_estimation_key}' was not found in "
-                    f"metadata['Pose']['PoseEstimations']. Available keys: "
-                    f"{list(pose_estimations_registry)}."
-                )
+            _validate_metadata_key(
+                default_metadata,
+                metadata_path=("Pose", "PoseEstimations"),
+                metadata_key=pose_estimation_key,
+            )
+            pose_estimations_registry = default_metadata["Pose"]["PoseEstimations"]
             pose_container_name = pose_estimations_registry[pose_estimation_key]["name"]
             pose_estimation = _get_container_by_name(nwbfile, pose_container_name, "PoseEstimation")
 
@@ -874,7 +870,7 @@ class VameInterface(BaseTemporalAlignmentInterface):
                 motif_series = motif_series_objects[self._motif_series_key(run_key)] if write_faithful else None
                 ethogram_metadata = ethograms_metadata.get(f"{self._metadata_key}_{run_key}")
                 self._add_ethogram_for_run(
-                    behavior_module=behavior_module,
+                    nwbfile=nwbfile,
                     run_key=run_key,
                     motif_series=motif_series,
                     motif_data=motif_data_by_run[run_key],

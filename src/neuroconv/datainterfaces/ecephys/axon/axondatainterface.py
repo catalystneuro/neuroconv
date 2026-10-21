@@ -127,7 +127,7 @@ class AxonRecordingInterface(BaseRecordingExtractorInterface):
             }
 
             metadata["Ecephys"]["ElectricalSeries"][self.metadata_key].update(
-                name="ElectricalSeriesRaw", description="Raw acquisition traces from Axon Binary Format file."
+                name="ElectricalSeries", description="Raw acquisition traces from Axon Binary Format file."
             )
 
             return metadata

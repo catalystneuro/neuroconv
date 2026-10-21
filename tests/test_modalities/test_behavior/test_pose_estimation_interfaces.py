@@ -17,7 +17,7 @@ from neuroconv.tools.testing.mock_interfaces import (
 
 class TestMockPoseEstimationInterface(PoseEstimationInterfaceTestMixin):
     data_interface_cls = MockPoseEstimationInterface
-    expected_alignment_keys = ("mock_pose_key",)
+    expected_temporal_alignment_keys = ("mock_pose_key",)
     interface_kwargs = dict(num_samples=100, num_nodes=3, seed=42, metadata_key="mock_pose_key")
 
     def check_extracted_metadata(self, metadata: dict):

@@ -7,7 +7,7 @@ from contextlib import contextmanager
 from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import FilePath
 from pynwb import NWBFile, read_nwb
@@ -31,6 +31,45 @@ from ._provenance import describe_source_script
 from ..external_resources import validate_species, validate_strain
 from ...utils.dict import DeepDict, load_dict_from_file
 from ...utils.json_schema import _validate_device_registry_names, validate_metadata
+
+
+def _walk_metadata_path(metadata: dict, path: tuple[str, ...]) -> tuple[Any, str, str | None]:
+    """Return the reached section, its location, and the first missing level, without creating entries."""
+    section = metadata
+    location = "metadata"
+    for level in path:
+        if level not in section:
+            return section, location, level
+        section = section.get(level)
+        location += f"[{level!r}]"
+    return section, location, None
+
+
+def _validate_metadata_key(metadata: dict, *, metadata_path: tuple[str, ...], metadata_key: str) -> None:
+    """Require a selected metadata entry, with a diagnostic naming its key, path, and available keys.
+
+    This gives any dictionary a useful error instead of a bare KeyError. The safe traversal also prevents
+    DeepDict from creating missing entries that writers could silently fill with placeholder metadata.
+    Only existence is checked, not the fields or values within the selected entry.
+    """
+    registry, location, missing_level = _walk_metadata_path(metadata, metadata_path)
+    registry_location = "metadata" + "".join(f"[{level!r}]" for level in metadata_path)
+    message = f"metadata_key '{metadata_key}' was not found in {registry_location}."
+    if missing_level is not None:
+        raise ValueError(f"{message} {location} has no '{missing_level}'. Available keys are:\n{list(registry)}")
+    if metadata_key not in registry:
+        raise ValueError(f"{message} Available keys are:\n{list(registry)}")
+
+
+def _validate_metadata_path(metadata: dict, path: tuple[str, ...]) -> None:
+    """Require a metadata path without creating entries or checking its contents."""
+    section, location, missing_level = _walk_metadata_path(metadata, path)
+    if missing_level is not None:
+        required_location = "metadata" + "".join(f"[{level!r}]" for level in path)
+        raise ValueError(
+            f"Required metadata path {required_location} is missing: {location} has no '{missing_level}' "
+            f"(available keys: {list(section)})."
+        )
 
 
 def get_module(nwbfile: NWBFile, name: str, description: str = None):
@@ -298,13 +337,8 @@ def _add_device_model_to_nwbfile(
         The DeviceModel object (either newly created or existing).
     """
     _validate_device_registry_names(metadata)
-    device_models_metadata = metadata.get("DeviceModels", {})
-    if metadata_key not in device_models_metadata:
-        raise ValueError(
-            f"device_model_metadata_key '{metadata_key}' was not found in metadata['DeviceModels'] "
-            f"(available keys: {list(device_models_metadata)})."
-        )
-    device_model_metadata = device_models_metadata[metadata_key]
+    _validate_metadata_key(metadata, metadata_path=("DeviceModels",), metadata_key=metadata_key)
+    device_model_metadata = metadata["DeviceModels"][metadata_key]
 
     model_name = device_model_metadata["name"]
     if model_name in nwbfile.device_models:
@@ -387,16 +421,8 @@ def _add_device_to_nwbfile(
         if metadata is None:
             raise ValueError("Provide `metadata` with `metadata_key`.")
         _validate_device_registry_names(metadata)
-        # Checked rather than indexed: ``metadata`` is often a ``DeepDict``, where a missing key
-        # auto-vivifies instead of raising, and the failure then surfaces several lines later as
-        # ``TypeError: unhashable type: 'DeepDict'`` naming neither the key nor the registry.
-        devices_metadata = metadata.get("Devices", {})
-        if metadata_key not in devices_metadata:
-            raise ValueError(
-                f"device_metadata_key '{metadata_key}' was not found in metadata['Devices'] "
-                f"(available keys: {list(devices_metadata)})."
-            )
-        device_metadata = devices_metadata[metadata_key]
+        _validate_metadata_key(metadata, metadata_path=("Devices",), metadata_key=metadata_key)
+        device_metadata = metadata["Devices"][metadata_key]
         device_model_metadata_key = device_metadata.get("device_model_metadata_key")
         if device_model_metadata_key is not None:
             model = _add_device_model_to_nwbfile(
