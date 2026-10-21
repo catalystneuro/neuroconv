@@ -59,10 +59,10 @@ class AxonRecordingInterface(BaseRecordingExtractorInterface):
 
         self.file_path = Path(file_path)
 
-        super().__init__(file_path=file_path, verbose=verbose, es_key=es_key, metadata_key=metadata_key)
-
         if metadata_key is None:
-            self.metadata_key = "axon_recording"
+            metadata_key = "axon_recording"
+
+        super().__init__(file_path=file_path, verbose=verbose, es_key=es_key, metadata_key=metadata_key)
 
     def _get_start_datetime(self, neo_reader):
         """

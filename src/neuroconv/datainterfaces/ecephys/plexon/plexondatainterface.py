@@ -62,12 +62,12 @@ class PlexonRecordingInterface(BaseRecordingExtractorInterface):
         invalid_stream_names = ["FPl-Low Pass Filtered", "SPKC-High Pass Filtered", "AI-Auxiliary Input"]
         assert stream_name not in invalid_stream_names, f"Invalid stream name: {stream_name}"
 
+        if metadata_key is None:
+            metadata_key = "plexon_recording"
+
         super().__init__(
             file_path=file_path, verbose=verbose, es_key=es_key, metadata_key=metadata_key, stream_name=stream_name
         )
-
-        if metadata_key is None:
-            self.metadata_key = "plexon_recording"
 
     def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
@@ -140,12 +140,12 @@ class PlexonLFPInterface(BaseLFPExtractorInterface):
         invalid_stream_names = ["WB-Wideband", "SPKC-High Pass Filtered", "AI-Auxiliary Input"]
         assert stream_name not in invalid_stream_names, f"Invalid stream name: {stream_name}"
 
+        if metadata_key is None:
+            metadata_key = "plexon_lfp"
+
         super().__init__(
             file_path=file_path, verbose=verbose, es_key=es_key, metadata_key=metadata_key, stream_name=stream_name
         )
-
-        if metadata_key is None:
-            self.metadata_key = "plexon_lfp"
 
     def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
@@ -232,15 +232,15 @@ class Plexon2RecordingInterface(BaseRecordingExtractorInterface):
         else:
             self.stream_id = "WB"
         assert Path(file_path).is_file(), f"Plexon file not found in: {file_path}"
+        if metadata_key is None:
+            metadata_key = "plexon2_recording"
+
         super().__init__(
             file_path=file_path,
             verbose=verbose,
             es_key=es_key,
             metadata_key=metadata_key,
         )
-
-        if metadata_key is None:
-            self.metadata_key = "plexon2_recording"
 
     def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)

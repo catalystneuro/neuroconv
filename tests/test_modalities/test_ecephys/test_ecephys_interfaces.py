@@ -1,5 +1,6 @@
 import re
 import sys
+import warnings
 from platform import python_version as get_python_version
 
 import jsonschema
@@ -207,6 +208,7 @@ class TestSortingInterface(SortingExtractorInterfaceTestMixin):
 class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = MockRecordingInterface
     interface_kwargs = dict(num_channels=4, durations=[0.100], calibration="uniform")
+    expected_temporal_alignment_keys = ("ElectricalSeries_0",)
 
     def check_extracted_metadata(self, metadata: dict):
         # New dict-based format: the interface emits only the ElectricalSeries entry keyed by
@@ -642,6 +644,120 @@ class TestAssertions(TestCase):
             ),
         ):
             Spike2RecordingInterface.get_all_channels_info(file_path="does_not_matter.smrx")
+
+
+class TestRecordingTemporalAlignment:
+    """The recording interface on ``interface.temporal_alignment``: one time-bearing object per segment."""
+
+    def test_a_shift_writes_a_starting_time_without_building_the_times(self):
+        interface = MockRecordingInterface(durations=[0.1], sampling_frequency=1_000.0)
+
+        def refuse_to_build_times(*args, **kwargs):
+            raise AssertionError("The times were built.")
+
+        interface.recording_extractor.get_times = refuse_to_build_times
+        interface.temporal_alignment.shift_times(1.5)
+
+        electrical_series = interface.create_nwbfile().acquisition["ElectricalSeries"]
+
+        assert electrical_series.starting_time == 1.5
+        assert electrical_series.rate == 1_000.0
+        assert electrical_series.timestamps is None
+
+    def test_a_shifted_time_vector_is_written_the_same_on_every_write(self):
+        interface = MockRecordingInterface(durations=[0.1])
+        number_of_samples = interface.recording_extractor.get_num_samples()
+        native_times = np.arange(number_of_samples) / interface.recording_extractor.get_sampling_frequency() + 3.0
+        interface.recording_extractor.set_times(times=native_times.copy())
+        build_native_recording = interface._get_native_recording
+
+        # The mock's source has no time vector, so the rebuilt recording is given the one the source would carry
+        def build_native_recording_with_time_vector():
+            native_recording = build_native_recording()
+            native_recording.set_times(times=native_times.copy())
+            return native_recording
+
+        interface._get_native_recording = build_native_recording_with_time_vector
+        interface.temporal_alignment.shift_times(1.5)
+
+        first_series = interface.create_nwbfile().acquisition["ElectricalSeries"]
+        second_series = interface.create_nwbfile().acquisition["ElectricalSeries"]
+
+        assert first_series.starting_time == second_series.starting_time == 4.5
+
+    def test_undoing_a_shift_reaches_the_next_write(self):
+        interface = MockRecordingInterface(durations=[0.1])
+        interface.temporal_alignment.shift_times(1.5)
+        interface.create_nwbfile()
+
+        interface.temporal_alignment.shift_times(-1.5)
+        electrical_series = interface.create_nwbfile().acquisition["ElectricalSeries"]
+
+        assert electrical_series.starting_time == 0.0
+
+    def test_a_stub_writes_the_aligned_times_of_the_samples_it_keeps(self):
+        interface = MockRecordingInterface(durations=[0.1])
+        native_times = interface.temporal_alignment["ElectricalSeries_0"].get_times()
+        irregular_times = native_times + np.random.default_rng(seed=0).random(size=native_times.size) * 1e-5
+        interface.temporal_alignment["ElectricalSeries_0"].set_times(irregular_times)
+
+        electrical_series = interface.create_nwbfile(stub_test=True).acquisition["ElectricalSeries"]
+
+        number_of_written_samples = electrical_series.data.maxshape[0]
+        assert number_of_written_samples < native_times.size
+        np.testing.assert_array_equal(electrical_series.timestamps, irregular_times[:number_of_written_samples])
+
+    def test_the_alignment_follows_the_extractor_through_remove_channels(self):
+        interface = MockRecordingInterface(num_channels=4, durations=[0.1])
+        interface.temporal_alignment.shift_times(1.5)
+        interface.remove_channels(channel_ids=[interface.channel_ids[0]])
+
+        electrical_series = interface.create_nwbfile().acquisition["ElectricalSeries"]
+
+        assert electrical_series.starting_time == 1.5
+        assert electrical_series.data.maxshape[1] == 3
+
+    def test_segments_without_a_start_in_the_source_warn_until_placed(self):
+        interface = MockRecordingInterface(durations=[0.1, 0.1, 0.1])
+
+        with pytest.warns(UserWarning, match=r"\['ElectricalSeries_1', 'ElectricalSeries_2'\]"):
+            interface.create_nwbfile()
+
+        interface.temporal_alignment["ElectricalSeries_1"].move_start_to(10.0)
+        interface.temporal_alignment["ElectricalSeries_2"].move_start_to(20.0)
+        with warnings.catch_warnings():
+            warnings.filterwarnings("error", message="The source gives no start time")
+            nwbfile = interface.create_nwbfile()
+
+        starting_times = [series.starting_time for series in nwbfile.acquisition.values()]
+        assert starting_times == [0.0, 10.0, 20.0]
+
+    def test_deprecated_methods_warn_and_route_through_the_alignment(self):
+        interface = MockRecordingInterface(durations=[0.1])
+        native_times = interface.recording_extractor.get_times()
+
+        with pytest.warns(FutureWarning, match="set_aligned_starting_time"):
+            interface.set_aligned_starting_time(aligned_starting_time=1.0)
+        with pytest.warns(FutureWarning, match="get_timestamps"):
+            np.testing.assert_array_equal(interface.get_timestamps(), native_times + 1.0)
+
+        with pytest.warns(FutureWarning, match="set_aligned_timestamps"):
+            interface.set_aligned_timestamps(aligned_timestamps=native_times + 5.0)
+        with pytest.warns(FutureWarning, match="set_aligned_segment_starting_times"):
+            interface.set_aligned_segment_starting_times(aligned_segment_starting_times=[1.0])
+        np.testing.assert_array_equal(
+            interface.temporal_alignment["ElectricalSeries_0"].get_times(), native_times + 6.0
+        )
+
+        with pytest.warns(FutureWarning, match="set_aligned_segment_timestamps"):
+            interface.set_aligned_segment_timestamps(aligned_segment_timestamps=[native_times])
+        with pytest.warns(FutureWarning, match="align_by_interpolation"):
+            interface.align_by_interpolation(
+                unaligned_timestamps=np.array([0.0, 1.0]), aligned_timestamps=np.array([0.0, 2.0])
+            )
+        np.testing.assert_allclose(interface.temporal_alignment["ElectricalSeries_0"].get_times(), native_times * 2.0)
+
+        assert not interface.recording_extractor.has_time_vector()
 
 
 # This is a temporary test class to show that the migration path to kwargs only works as intended.
