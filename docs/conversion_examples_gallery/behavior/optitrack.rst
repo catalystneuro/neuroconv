@@ -7,12 +7,12 @@ Install NeuroConv with the additional dependencies necessary for reading OptiTra
 
     pip install "neuroconv[optitrack]"
 
-Convert the positions and rotations in a CSV file exported by OptiTrack Motive to NWB using
+Convert the rigid bodies, skeletons and marker sets in a CSV file exported by OptiTrack Motive to NWB using
 :py:class:`~neuroconv.datainterfaces.behavior.optitrack.optitrackdatainterface.OptiTrackInterface`.
-Each asset type in the export (rigid bodies, rigid body marker constraints and labeled markers) is written as
-one ``ndx-pose`` ``PoseEstimation`` container, with one keypoint per asset. The rotation of each rigid body is
-written to the behavior module as a ``SpatialSeries`` in degrees for Euler angle exports, or as a ``TimeSeries``
-for quaternion exports, with columns in the order w, x, y, z.
+Each rigid body is written to the behavior module as a ``SpatialSeries`` for its position and a ``TimeSeries``
+for its orientation, in Euler angles or as a quaternion with columns w, x, y, z. The labeled bones and markers
+of each skeleton or marker set are written as one ``ndx-pose`` ``MultiCameraPoseEstimation`` container, and the
+orientation of each bone as a ``TimeSeries`` like a rigid body's.
 
 .. code-block:: python
 

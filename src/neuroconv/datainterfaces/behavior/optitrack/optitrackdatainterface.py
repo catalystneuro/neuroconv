@@ -9,33 +9,38 @@ from pynwb import TimeSeries
 from pynwb.behavior import SpatialSeries
 from pynwb.file import NWBFile
 
-from .._pose_metadata_template import _get_pose_estimation_template_entry, _get_skeleton_template_entry
+from .._pose_metadata_template import _get_skeleton_template_entry
 from ..baseposeestimationinterface import BasePoseEstimationInterface
 from ....tools.nwb_helpers import get_module
-from ....tools.nwb_helpers._metadata_and_file_helpers import (
-    _get_device_model_template_entry,
-    _get_device_template_entry,
-)
-from ....tools.pose_estimation import _add_pose_estimation_to_nwbfile
+from ....tools.pose_estimation import _add_multi_camera_pose_estimation_to_nwbfile
 from ....utils import DeepDict, calculate_regular_series_rate, to_camel_case, to_snake_case
 
 # Rows 3 to 7 of a Motive CSV export, after the export settings line and a blank line
-# (Motive docs, "CSV Header").
+# (Motive docs, "CSV Header"). Format version 1.25 adds a `Parent` row after `ID`.
 _MOTIVE_HEADER_LEVELS = ("marker_type", "label", "id", "measurement_type", "axis")
+_MOTIVE_HEADER_LEVELS_WITH_PARENT = ("marker_type", "label", "id", "parent", "measurement_type", "axis")
 
 _MOTIVE_CAPTURE_START_TIME_FORMATS = ("%Y-%m-%d %I.%M.%S.%f %p", "%Y-%m-%d %I.%M.%S %p")
+
+# The asset types whose labeled points are written as pose estimation, grouped by the skeleton or marker set
+# that owns them. `Rigid Body Marker` columns are not among them: they are where Motive's model puts each
+# marker, computed from the rigid body's pose rather than measured.
+_POSE_ASSET_TYPES = ("Bone", "Marker")
+
+# The owner of labeled markers whose label names none, as in exports from Motive 2.
+_UNOWNED_MARKERS_OWNER = "Markers"
 
 # How many samples ``add_to_nwbfile(stub_test=True)`` writes.
 _STUB_SAMPLES = 100
 
 
 class OptiTrackInterface(BasePoseEstimationInterface):
-    """Data interface for the positions and rotations in OptiTrack Motive CSV exports."""
+    """Data interface for the rigid bodies, skeletons and marker sets in OptiTrack Motive CSV exports."""
 
     display_name = "OptiTrack"
     keywords = ("behavior", "pose estimation", "motion capture")
     associated_suffixes = (".csv",)
-    info = "Interface for positions and rotations exported to CSV by OptiTrack Motive."
+    info = "Interface for the rigid bodies, skeletons and marker sets exported to CSV by OptiTrack Motive."
 
     @classmethod
     def get_source_schema(cls) -> dict:
@@ -52,16 +57,18 @@ class OptiTrackInterface(BasePoseEstimationInterface):
         metadata_key: str | None = None,
     ):
         """
-        Interface for writing the positions and rotations in an OptiTrack Motive CSV export to NWB.
+        Interface for writing the rigid bodies, skeletons and marker sets in an OptiTrack Motive CSV export to NWB.
 
-        Each marker type in the export (e.g. ``Rigid Body``) is written as one ``ndx-pose`` ``PoseEstimation``
-        container, with one keypoint per marker. Its entry in the metadata is
-        keyed ``f"{metadata_key}_{asset_type}"`` in snake case, for example ``"optitrack_rigid_body"``.
+        Each rigid body is one object with a position and an orientation. Its position is written to the
+        behavior module as a ``SpatialSeries``, and its orientation as a ``TimeSeries``, Euler angles in
+        degrees with columns x, y, z and the export's rotation order in the description, or a unit quaternion
+        with columns w, x, y, z.
 
-        The rotation of each asset that has one, such as a rigid body, is written to the behavior module as a
-        ``SpatialSeries`` in degrees for an Euler angle export, or as a ``TimeSeries`` with columns w, x, y, z
-        for a quaternion export. Its entry in ``metadata["TimeSeries"]`` is keyed
-        ``f"{metadata_key}_{asset_type}_{label}_rotation"`` in snake case.
+        The labeled points of each skeleton or marker set, the bones and the labeled markers named
+        ``"{owner}:{point}"`` in the export, are written as one ``ndx-pose`` ``MultiCameraPoseEstimation``
+        container, since Motive triangulates them in 3D from all of its cameras. A bone also has an orientation,
+        which is written as a ``TimeSeries`` like a rigid body's. Unlabeled markers and the ``Rigid Body Marker``
+        columns, which Motive computes from the rigid body's pose, are left out.
 
         Parameters
         ----------
@@ -76,11 +83,13 @@ class OptiTrackInterface(BasePoseEstimationInterface):
 
         Metadata Structure
         ------------------
-        One container and one skeleton per asset type in the export, under the top-level
-        ``metadata["Pose"]`` registries, both keyed ``f"{metadata_key}_{asset_type}"`` in snake case, and one
-        rotation per rigid body under ``metadata["TimeSeries"]``. For an export with a single rigid body,
-        ``RigidBody``, in meters, with XYZ Euler angles and no marker columns (a head-mounted rigid body on a
-        mouse):
+        One ``SpatialSeries`` and one ``TimeSeries`` per rigid body, keyed ``f"{metadata_key}_{label}"`` and
+        ``f"{metadata_key}_{label}_orientation"`` in snake case, and one container and one skeleton per
+        skeleton or marker set under the top-level ``metadata["Pose"]`` registries, keyed
+        ``f"{metadata_key}_{owner}"`` in snake case. The orientation of each bone of a skeleton is a
+        ``TimeSeries`` keyed ``f"{metadata_key}_{owner}_{bone}_orientation"``, with the same fields as a
+        rigid body's. For an export in meters, with XYZ Euler angles, of a
+        rigid body ``RigidBody`` and a marker set ``Head`` with two markers:
 
         .. code-block:: python
 
@@ -89,43 +98,51 @@ class OptiTrackInterface(BasePoseEstimationInterface):
                     # From `Capture Start Time` in the export settings, without a time zone
                     "session_start_time": datetime(2023, 2, 20, 10, 10, 13, 343000),
                 },
-                "Pose": {
-                    "Skeletons": {
-                        "optitrack_rigid_body": {
-                            "name": "SkeletonPoseEstimationRigidBody",
-                            "nodes": ["RigidBody"],  # one per asset, named as in Motive
-                            "edges": [],
-                        },
-                    },
-                    "PoseEstimations": {
-                        "optitrack_rigid_body": {
-                            "name": "PoseEstimationRigidBody",
-                            "source_software": "Motive",
-                            "skeleton_metadata_key": "optitrack_rigid_body",  # -> Pose.Skeletons
-                            "PoseEstimationSeries": {
-                                "RigidBody": {  # keyed by the asset name in Motive
-                                    "name": "PoseEstimationSeriesRigidBody",
-                                    "description": "Position (x, y, z) of Rigid Body 'RigidBody' marker.",
-                                    "unit": "meters",  # from `Length Units` in the export settings
-                                },
-                            },
-                        },
+                "SpatialSeries": {
+                    "optitrack_rigid_body": {
+                        "name": "PositionRigidBody",
+                        "description": "Position (x, y, z) of Rigid Body 'RigidBody'.",
+                        "unit": "meters",  # from `Length Units` in the export settings
                     },
                 },
                 "TimeSeries": {
-                    "optitrack_rigid_body_rigid_body_rotation": {
-                        "name": "RotationRigidBody",
-                        "description": "Orientation of Rigid Body 'RigidBody' as Euler angles in degrees (x, y, z).",
+                    "optitrack_rigid_body_orientation": {
+                        "name": "OrientationRigidBody",
+                        "description": "Orientation of Rigid Body 'RigidBody' as Euler angles in degrees (x, y, z) ...",
                         "unit": "degrees",
+                    },
+                },
+                "Pose": {
+                    "Skeletons": {
+                        "optitrack_head": {
+                            "name": "SkeletonHead",
+                            "nodes": ["Left", "Right"],  # one per labeled point, named as in Motive
+                            "edges": [],
+                        },
+                    },
+                    "MultiCameraPoseEstimations": {
+                        "optitrack_head": {
+                            "name": "PoseEstimationHead",
+                            "source_software": "Motive",
+                            "skeleton_metadata_key": "optitrack_head",  # -> Pose.Skeletons
+                            "PoseEstimationSeries": {
+                                "Left": {  # keyed by the point's name in Motive, without its owner
+                                    "name": "PoseEstimationSeriesLeft",
+                                    "description": "Position (x, y, z) of Marker 'Head:Left'.",
+                                    "unit": "meters",
+                                },
+                                "Right": {...},
+                            },
+                        },
                     },
                 },
             }
 
         The keys are internal handles and never appear in the NWB file; rename the written objects through
-        their ``name`` fields. Delete an entry from ``metadata["Pose"]["PoseEstimations"]`` or
-        ``metadata["TimeSeries"]`` to leave that container or rotation out of the file.
-        :meth:`get_metadata_template` returns the same structure with the fields the export does not record,
-        such as the camera device, marked as blanks.
+        their ``name`` fields. Delete an entry from ``metadata["SpatialSeries"]``, ``metadata["TimeSeries"]``
+        or ``metadata["Pose"]["MultiCameraPoseEstimations"]`` to leave that object out of the file.
+        :meth:`get_metadata_template` returns the same structure with the fields the export does not record
+        marked as blanks.
         """
         # This import is to assure that the ndx_pose is in the global namespace when an pynwb.io object is created
         # For more detail, see https://github.com/rly/ndx-pose/issues/36
@@ -136,7 +153,9 @@ class OptiTrackInterface(BasePoseEstimationInterface):
 
         self.metadata_key = metadata_key or "optitrack"
         self._motion_capture_data = None
-        self._positions = None
+        self._rigid_bodies = None
+        self._labeled_points = None
+        self._bone_orientations = None
 
         super().__init__(verbose=verbose, file_path=file_path)
 
@@ -154,6 +173,12 @@ class OptiTrackInterface(BasePoseEstimationInterface):
         first_line = (
             pd.read_csv(self.file_path, nrows=1, header=None, dtype=str, keep_default_na=False).iloc[0].tolist()
         )
+        if first_line[0] == "comment":
+            raise ValueError(
+                f"'{self.file_path}' is in the row-typed layout of early Motive and Arena exports (one row per asset "
+                "per frame, introduced by 'comment' rows), which is not supported yet. Export the take again from a "
+                "current Motive version."
+            )
         if "Format Version" not in first_line:
             raise ValueError(
                 f"'{self.file_path}' does not start with the header information ('Format Version, ...'), it is either"
@@ -170,15 +195,29 @@ class OptiTrackInterface(BasePoseEstimationInterface):
         The second row of the file is blank, and the next five rows contain the asset header, which has five rows of information for each
         asset in the export. The five rows are: ``Type``, ``Name``, ``ID``, measurement_type, and axis. The measurement_type row
         contains the type of measurement_type for each column (e.g., position, rotation, marker), and the axis row begins with
-        ``Frame``and contains the axis for each column (e.g., X, Y, Z).
+        ``Frame``and contains the axis for each column (e.g., X, Y, Z). Format version 1.25 adds a sixth row, ``Parent``,
+        after ``ID``.
         """
         if self._motion_capture_data is not None:
             return self._motion_capture_data
 
-        self._motion_capture_data = pd.read_csv(
-            self.file_path, skiprows=1, header=list(range(len(_MOTIVE_HEADER_LEVELS))), index_col=[0, 1]
+        with open(self.file_path, encoding="utf-8") as file:
+            next(file)  # the export settings line
+            num_header_rows = 0
+            for line in file:
+                if line.strip():
+                    num_header_rows += 1
+                if line.startswith("Frame,"):
+                    break
+        header_levels = (
+            _MOTIVE_HEADER_LEVELS_WITH_PARENT
+            if num_header_rows == len(_MOTIVE_HEADER_LEVELS_WITH_PARENT)
+            else _MOTIVE_HEADER_LEVELS
         )
-        self._motion_capture_data.columns.names = _MOTIVE_HEADER_LEVELS
+        self._motion_capture_data = pd.read_csv(
+            self.file_path, skiprows=1, header=list(range(len(header_levels))), index_col=[0, 1]
+        )
+        self._motion_capture_data.columns.names = header_levels
         self._motion_capture_data.index.names = ["frame", "time"]
         return self._motion_capture_data
 
@@ -187,25 +226,37 @@ class OptiTrackInterface(BasePoseEstimationInterface):
 
         For example ``assets[("Rigid Body", "RigidBody")]["Position"]["X"]``.
         """
+        motion_capture_data = self._read_motion_capture_data()
         assets = {}
-        for (marker_type, label, _, measurement_type, axis), values in self._read_motion_capture_data().items():
-            asset = assets.setdefault((marker_type, label), {})
-            asset.setdefault(measurement_type, {})[axis] = values.to_numpy(dtype=np.float64)
+        for column, values in motion_capture_data.items():
+            levels = dict(zip(motion_capture_data.columns.names, column))
+            asset = assets.setdefault((levels["marker_type"], levels["label"]), {})
+            asset.setdefault(levels["measurement_type"], {})[levels["axis"]] = values.to_numpy(dtype=np.float64)
         return assets
 
-    def _get_positions(self) -> dict[str, dict[str, np.ndarray]]:
-        """The positions of every asset, as ``{marker_type: {label: (num_frames, 3) array}}``, in file order.
+    def _read_tracked_assets(self) -> None:
+        """Sort the assets that were tracked into rigid bodies and labeled points, in file order.
 
-        Unlabeled markers and assets that were never tracked in any frame are omitted. A frame where an asset was not tracked, empty or at the origin, is ``np.nan``.
+        Fills ``self._rigid_bodies``, ``{label: {"position": (num_frames, 3) array, "orientation": {axis:
+        values} or None}}``, ``self._labeled_points``, ``{owner: {point: (asset_type, (num_frames, 3)
+        array)}}``, and ``self._bone_orientations``, ``{owner: {bone: {axis: values}}}``. A frame where an
+        asset was not tracked, empty or at the origin, is ``np.nan``; assets never tracked in any frame are
+        left out with a warning.
         """
-        if self._positions is not None:
-            return self._positions
-
-        positions_by_type = {}
+        rigid_bodies = {}
+        labeled_points = {}
+        bone_orientations = {}
         never_tracked = []
-        for (marker_type, label), measurements in self._get_assets().items():
-            is_unlabeled_marker = marker_type == "Marker" and label.startswith("Unlabeled")
-            if "Position" not in measurements or is_unlabeled_marker:
+        for (asset_type, label), measurements in self._get_assets().items():
+            if asset_type == "Bone" and self._header.get("Coordinate Space") == "Local":
+                raise ValueError(
+                    f"'{self.file_path}' was exported with local coordinates, where each bone's position and "
+                    "rotation are relative to its parent bone, which is not supported. Export the take again from "
+                    "Motive with global coordinates."
+                )
+            is_rigid_body = asset_type == "Rigid Body"
+            is_labeled_point = asset_type in _POSE_ASSET_TYPES and not label.startswith("Unlabeled")
+            if not (is_rigid_body or is_labeled_point) or "Position" not in measurements:
                 continue
             position = measurements["Position"]
             positions = np.column_stack([position["X"], position["Y"], position["Z"]])
@@ -213,24 +264,62 @@ class OptiTrackInterface(BasePoseEstimationInterface):
             # In a frame where an asset was not tracked, Motive leaves its cells empty. In one export in the test
             # data (zeros_instead_of_blanks), a rigid body holds position 0,0,0 in the frames before it was first
             # tracked instead. A position exactly at the origin is treated as untracked.
-            is_at_origin = (positions == 0.0).all(axis=1)
-            positions[is_at_origin] = np.nan
+            is_untracked = (positions == 0.0).all(axis=1)
+            positions[is_untracked] = np.nan
+            is_untracked |= np.isnan(positions).all(axis=1)
 
-            if np.isnan(positions).all():
-                never_tracked.append(f"{marker_type} '{label}'")
+            if is_untracked.all():
+                never_tracked.append(f"{asset_type} '{label}'")
                 continue
-            positions_by_type.setdefault(marker_type, {})[label] = positions
+
+            rotation = measurements.get("Rotation")
+            orientation = None if rotation is None else _get_orientation(rotation=rotation, is_untracked=is_untracked)
+            if is_rigid_body:
+                rigid_bodies[label] = dict(position=positions, orientation=orientation)
+                continue
+
+            owner, _, point = label.rpartition(":")
+            owner = owner or _UNOWNED_MARKERS_OWNER
+            points = labeled_points.setdefault(owner, {})
+            if point in points:
+                raise ValueError(
+                    f"'{label}' in '{self.file_path}' is both a {points[point][0]} and a {asset_type}, so the two "
+                    "cannot be told apart as nodes of one skeleton."
+                )
+            points[point] = (asset_type, positions)
+            # Bones have a rotation; markers have none.
+            if orientation is not None:
+                bone_orientations.setdefault(owner, {})[point] = orientation
 
         if never_tracked:
             warnings.warn(
                 f"Not tracked in any frame of '{self.file_path}', so not written: {', '.join(never_tracked)}.",
                 UserWarning,
-                stacklevel=2,
+                stacklevel=3,
             )
-        if not positions_by_type:
+        if not rigid_bodies and not labeled_points:
             raise ValueError(f"No asset in '{self.file_path}' was tracked in any frame, so there is nothing to write.")
-        self._positions = positions_by_type
-        return self._positions
+        self._rigid_bodies = rigid_bodies
+        self._labeled_points = labeled_points
+        self._bone_orientations = bone_orientations
+
+    def _get_rigid_bodies(self) -> dict[str, dict]:
+        """The position and orientation of every rigid body, ``{label: {"position": ..., "orientation": ...}}``."""
+        if self._rigid_bodies is None:
+            self._read_tracked_assets()
+        return self._rigid_bodies
+
+    def _get_labeled_points(self) -> dict[str, dict[str, tuple[str, np.ndarray]]]:
+        """The labeled points of every skeleton and marker set, ``{owner: {point: (asset_type, positions)}}``."""
+        if self._labeled_points is None:
+            self._read_tracked_assets()
+        return self._labeled_points
+
+    def _get_bone_orientations(self) -> dict[str, dict[str, dict[str, np.ndarray]]]:
+        """The orientation of every bone of every skeleton, ``{owner: {bone: {axis: values}}}``."""
+        if self._labeled_points is None:
+            self._read_tracked_assets()
+        return self._bone_orientations
 
     def get_original_timestamps(self) -> np.ndarray:
         """The time of each frame, ``Frame / Export Frame Rate``, in seconds from the start of the take.
@@ -242,44 +331,42 @@ class OptiTrackInterface(BasePoseEstimationInterface):
         frames = self._read_motion_capture_data().index.get_level_values("frame").to_numpy(dtype=np.float64)
         return frames / float(self._header["Export Frame Rate"])
 
-    def _get_rotation_metadata_key(self, asset_type: str, label: str) -> str:
-        """The key of one asset's rotation in ``metadata["TimeSeries"]``, e.g. ``"optitrack_rigid_body_transmitter_rotation"``."""
-        return f"{self._get_container_metadata_key(asset_type)}_{to_snake_case(label)}_rotation"
+    def _get_rigid_body_metadata_key(self, label: str) -> str:
+        """The key of one rigid body's position in ``metadata["SpatialSeries"]``, e.g. ``"optitrack_transmitter"``.
 
-    def _get_rotations(self) -> dict[tuple[str, str], dict[str, np.ndarray]]:
-        """The rotation of every asset that is written and has one, ``{(asset_type, label): {axis: values}}``.
-
-        Rigid bodies have a rotation, and so do the bones of skeletons and trained markersets. A frame where the
-        asset's position is untracked, empty or at the origin, is untracked in its rotation too, so the two series
-        agree on which frames hold a pose.
+        Its orientation in ``metadata["TimeSeries"]`` is keyed the same, with ``"_orientation"`` appended.
         """
-        assets = self._get_assets()
-        rotations = {}
-        for asset_type, positions_by_label in self._get_positions().items():
-            for label, positions in positions_by_label.items():
-                rotation = assets[(asset_type, label)].get("Rotation")
-                if rotation is None:
-                    continue
-                # Quaternions are written scalar first (W, X, Y, Z), as in MiniscopeHeadOrientationInterface. Euler
-                # angles keep the X, Y, Z file order.
-                if "W" in rotation:
-                    rotation = {axis: rotation[axis] for axis in ("W", "X", "Y", "Z")}
-                is_untracked = np.isnan(positions).all(axis=1)
-                rotations[(asset_type, label)] = {
-                    axis: np.where(is_untracked, np.nan, values) for axis, values in rotation.items()
-                }
-        return rotations
+        return f"{self.metadata_key}_{to_snake_case(label)}"
 
-    def _get_container_metadata_key(self, asset_type: str) -> str:
-        """The key of one asset type's container and skeleton, e.g. ``"optitrack_rigid_body"``."""
-        return f"{self.metadata_key}_{to_snake_case(asset_type)}"
+    def _get_container_metadata_key(self, owner: str) -> str:
+        """The key of one skeleton or marker set's container and skeleton, e.g. ``"optitrack_skeleton_001"``."""
+        return f"{self.metadata_key}_{to_snake_case(owner)}"
 
-    def _get_keypoint_names(self, asset_type: str) -> list[str]:
-        return list(self._get_positions()[asset_type])
+    def _get_bone_orientation_metadata_key(self, owner: str, bone: str) -> str:
+        """The key of one bone's orientation in ``metadata["TimeSeries"]``, e.g.
+        ``"optitrack_skeleton_001_l_thigh_orientation"``."""
+        return f"{self._get_container_metadata_key(owner)}_{to_snake_case(bone)}_orientation"
 
-    def _get_keypoint_data(self, asset_type: str) -> dict[str, tuple[np.ndarray, np.ndarray | None]]:
+    def _get_orientation_metadata(self, name: str, asset: str) -> dict:
+        """The ``metadata["TimeSeries"]`` entry for one orientation, in the export's rotation type."""
+        rotation_type = self._header.get("Rotation Type")
+        if rotation_type == "Quaternion":
+            description = f"Orientation of {asset} as a unit quaternion, scalar first (w, x, y, z)."
+            unit = "n.a."
+        else:
+            description = (
+                f"Orientation of {asset} as Euler angles in degrees (x, y, z), applied in Motive's {rotation_type} "
+                "rotation order."
+            )
+            unit = "degrees"
+        return dict(name=name, description=description, unit=unit)
+
+    def _get_keypoint_names(self, owner: str) -> list[str]:
+        return list(self._get_labeled_points()[owner])
+
+    def _get_keypoint_data(self, owner: str) -> dict[str, tuple[np.ndarray, np.ndarray | None]]:
         # Motive records no confidence for a position.
-        return {asset_name: (positions, None) for asset_name, positions in self._get_positions()[asset_type].items()}
+        return {point: (positions, None) for point, (_, positions) in self._get_labeled_points()[owner].items()}
 
     def _get_session_start_time(self) -> datetime | None:
         capture_start_time = self._header.get("Capture Start Time", "")
@@ -298,127 +385,126 @@ class OptiTrackInterface(BasePoseEstimationInterface):
         return None
 
     def get_metadata(self) -> DeepDict:
-        """One container and one skeleton per asset type, keyed ``f"{metadata_key}_{asset_type}"``."""
+        """One position and orientation per rigid body, and one container and skeleton per skeleton or marker set."""
         metadata = self._get_base_metadata()
 
         session_start_time = self._get_session_start_time()
         if session_start_time is not None:
             metadata["NWBFile"]["session_start_time"] = session_start_time
 
-        unit = self._header.get("Length Units")
+        # Exports before format version 1.2 do not record their length units.
+        length_units = self._header.get("Length Units")
+        unit = length_units.lower() if length_units else "n.a."
 
-        for asset_type, positions in self._get_positions().items():
-            container_metadata_key = self._get_container_metadata_key(asset_type)
-            container_name = f"PoseEstimation{to_camel_case(to_snake_case(asset_type))}"
+        for label, rigid_body in self._get_rigid_bodies().items():
+            metadata_key = self._get_rigid_body_metadata_key(label)
+            series_name = to_camel_case(to_snake_case(label))
+            metadata["SpatialSeries"][metadata_key] = dict(
+                name=f"Position{series_name}",
+                description=f"Position (x, y, z) of Rigid Body '{label}'.",
+                unit=unit,
+            )
+
+            if rigid_body["orientation"] is not None:
+                metadata["TimeSeries"][f"{metadata_key}_orientation"] = self._get_orientation_metadata(
+                    name=f"Orientation{series_name}", asset=f"Rigid Body '{label}'"
+                )
+
+        for owner, points in self._get_labeled_points().items():
+            metadata_key = self._get_container_metadata_key(owner)
+            owner_name = to_camel_case(to_snake_case(owner))
 
             series_metadata = {}
-            for asset_name in positions:
-                series_entry = dict(
-                    name=f"PoseEstimationSeries{to_camel_case(to_snake_case(asset_name))}",
-                    description=f"Position (x, y, z) of {asset_type} '{asset_name}' marker.",
+            for point, (asset_type, _) in points.items():
+                label = point if owner == _UNOWNED_MARKERS_OWNER else f"{owner}:{point}"
+                series_metadata[point] = dict(
+                    name=f"PoseEstimationSeries{to_camel_case(to_snake_case(point))}",
+                    description=f"Position (x, y, z) of {asset_type} '{label}'.",
+                    unit=unit,
                 )
-                if unit is not None:
-                    series_entry["unit"] = str(unit).lower()
-                series_metadata[asset_name] = series_entry
 
-            metadata["Pose"]["Skeletons"][container_metadata_key] = dict(
-                name=f"Skeleton{container_name}", nodes=list(positions), edges=[]
+            metadata["Pose"]["Skeletons"][metadata_key] = dict(
+                name=f"Skeleton{owner_name}", nodes=list(points), edges=[]
             )
-            metadata["Pose"]["PoseEstimations"][container_metadata_key] = dict(
-                name=container_name,
+            metadata["Pose"]["MultiCameraPoseEstimations"][metadata_key] = dict(
+                name=f"PoseEstimation{owner_name}",
                 source_software="Motive",
-                skeleton_metadata_key=container_metadata_key,
+                skeleton_metadata_key=metadata_key,
                 PoseEstimationSeries=series_metadata,
             )
 
-        rotation_type = self._header.get("Rotation Type")
-        for (asset_type, label), rotation in self._get_rotations().items():
-            asset = f"{asset_type} '{label}'"
-            series_name = to_camel_case(to_snake_case(label))
-            if rotation_type == "Quaternion":
-                entry = dict(
-                    name=f"RotationQuaternion{series_name}",
-                    description=(f"Orientation of {asset} as a unit quaternion (scalar-first: w, x, y, z)."),
-                    unit="n.a.",
+            for bone in self._get_bone_orientations().get(owner, {}):
+                metadata["TimeSeries"][self._get_bone_orientation_metadata_key(owner, bone)] = (
+                    self._get_orientation_metadata(
+                        name=f"Orientation{owner_name}{to_camel_case(to_snake_case(bone))}",
+                        asset=f"Bone '{owner}:{bone}'",
+                    )
                 )
-            else:
-                entry = dict(
-                    name=f"Rotation{series_name}",
-                    description=(f"Orientation of {asset} as Euler angles in degrees (x, y, z)."),
-                    unit="degrees",
-                )
-            metadata["TimeSeries"][self._get_rotation_metadata_key(asset_type, label)] = entry
 
         return metadata
 
     def get_metadata_template(self) -> DeepDict:
-        """Return the containers, skeletons and camera system this interface can write, with the blanks marked.
+        """Return the containers and skeletons this interface can write, with the blanks marked.
 
-        The per-asset-type counterpart of :meth:`BasePoseEstimationInterface.get_metadata_template`: one
-        ``PoseEstimation`` container and one skeleton per asset type, each keyed
-        ``f"{metadata_key}_{asset_type}"``, all linked to one ``Device`` for the OptiTrack camera system,
-        and already cross-referenced. Fill in the blanks and pass the result to ``add_to_nwbfile`` or
+        The multi-camera counterpart of :meth:`BasePoseEstimationInterface.get_metadata_template`: one
+        ``MultiCameraPoseEstimation`` container and one skeleton per skeleton or marker set, each keyed
+        ``f"{metadata_key}_{owner}"`` and already cross-referenced, plus the rigid bodies' series as
+        :meth:`get_metadata` returns them. Fill in the blanks and pass the result to ``add_to_nwbfile`` or
         ``run_conversion``.
 
         The fields offered are the ones a motion capture export can be described by. There is no
-        ``confidence_definition``, since Motive records no confidence for a position, no ``scorer``, since
-        no model is run, and no video links, since the positions are triangulated from every camera in the
-        system rather than estimated from one video. The ``camera_model`` entry needs a ``name`` and a
-        ``manufacturer``; to go without a camera model, delete that entry and the
-        ``device_model_metadata_key`` pointing at it. Any other field left blank is skipped rather than
-        written.
+        ``confidence_definition``, since Motive records no confidence for a position, and no cameras: a
+        ``MultiCameraPoseEstimation`` links its cameras through per-camera ``PoseEstimation`` children,
+        and the export records nothing per camera to fill them with. Any field left blank is skipped
+        rather than written.
         """
-        device_metadata_key = "camera"
-        device_model_metadata_key = "camera_model"
-
         skeleton_entries = {}
         container_entries = {}
-        for asset_type in self._get_positions():
-            container_metadata_key = self._get_container_metadata_key(asset_type)
-            keypoint_names = self._get_keypoint_names(asset_type)
-            skeleton_entries[container_metadata_key] = _get_skeleton_template_entry(keypoint_names=keypoint_names)
-            container_entries[container_metadata_key] = _get_pose_estimation_template_entry(
-                keypoint_names=keypoint_names,
-                skeleton_metadata_key=container_metadata_key,
-                device_metadata_key=device_metadata_key,
+        for owner in self._get_labeled_points():
+            metadata_key = self._get_container_metadata_key(owner)
+            keypoint_names = self._get_keypoint_names(owner)
+            skeleton_entries[metadata_key] = _get_skeleton_template_entry(keypoint_names=keypoint_names)
+            container_entries[metadata_key] = dict(
+                name=None,
+                description=None,
+                source_software=None,
+                source_software_version=None,
+                skeleton_metadata_key=metadata_key,
+                PoseEstimationSeries={
+                    keypoint_name: dict(name=None, description=None, unit=None, reference_frame=None)
+                    for keypoint_name in keypoint_names
+                },
             )
 
-        template = DeepDict(
-            dict(
-                DeviceModels={device_model_metadata_key: _get_device_model_template_entry()},
-                Devices={
-                    device_metadata_key: _get_device_template_entry(device_model_metadata_key=device_model_metadata_key)
-                },
-                Pose=dict(Skeletons=skeleton_entries, PoseEstimations=container_entries),
-            )
-        )
+        template = DeepDict(dict(Pose=dict(Skeletons=skeleton_entries, MultiCameraPoseEstimations=container_entries)))
 
         # Whatever the source recorded wins over the template, as in the base class.
         template.deep_update(self.get_metadata())
         return template
 
     def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict | None = None, *, stub_test: bool = False) -> None:
-        """Write one ``PoseEstimation`` container per asset type to the file's behavior module.
+        """Write the rigid bodies' series, one ``MultiCameraPoseEstimation`` per skeleton or marker set, and
+        the bones' orientations.
 
-        The caller's metadata reaches the writer as they wrote it, as in the base class. An asset type whose
-        entry is not in ``metadata["Pose"]["PoseEstimations"]`` is not written, so deleting an entry is how
-        to leave a container out.
+        Everything goes to the file's behavior module. The caller's metadata reaches the writer as they
+        wrote it, as in the base class. An object whose entry is not in the metadata is not written, so
+        deleting an entry is how to leave it out.
         """
         metadata = metadata if metadata is not None else self.get_metadata()
-        containers_metadata = metadata.get("Pose", {}).get("PoseEstimations", {})
 
         end_frame = _STUB_SAMPLES if stub_test else None
         timestamps = self._get_timestamps()[:end_frame]
 
-        for asset_type in self._get_positions():
-            container_metadata_key = self._get_container_metadata_key(asset_type)
+        containers_metadata = metadata.get("Pose", {}).get("MultiCameraPoseEstimations", {})
+        for owner in self._get_labeled_points():
+            container_metadata_key = self._get_container_metadata_key(owner)
             if container_metadata_key not in containers_metadata:
                 continue
             keypoint_data = {
                 name: (positions[:end_frame], confidence)
-                for name, (positions, confidence) in self._get_keypoint_data(asset_type).items()
+                for name, (positions, confidence) in self._get_keypoint_data(owner).items()
             }
-            _add_pose_estimation_to_nwbfile(
+            _add_multi_camera_pose_estimation_to_nwbfile(
                 nwbfile=nwbfile,
                 keypoint_data=keypoint_data,
                 timestamps=timestamps,
@@ -428,13 +514,38 @@ class OptiTrackInterface(BasePoseEstimationInterface):
 
         rate = calculate_regular_series_rate(series=timestamps)
         timing = dict(rate=rate, starting_time=float(timestamps[0])) if rate else dict(timestamps=timestamps)
-        series_metadata = metadata.get("TimeSeries", {})
+        spatial_series_metadata = metadata.get("SpatialSeries", {})
+        time_series_metadata = metadata.get("TimeSeries", {})
+        # Written directly to the behavior module without a `Position` container, following
+        # NeurodataWithoutBorders/nwb-schema#616, as EthoVisionTrackInterface does.
         behavior_module = get_module(nwbfile=nwbfile, name="behavior", description="processed behavioral data")
-        for (asset_type, label), rotation in self._get_rotations().items():
-            rotation_metadata_key = self._get_rotation_metadata_key(asset_type, label)
-            if rotation_metadata_key not in series_metadata:
+        for label, rigid_body in self._get_rigid_bodies().items():
+            metadata_key = self._get_rigid_body_metadata_key(label)
+            if metadata_key in spatial_series_metadata:
+                position = rigid_body["position"][:end_frame]
+                behavior_module.add(SpatialSeries(**spatial_series_metadata[metadata_key], data=position, **timing))
+
+        orientations = {
+            f"{self._get_rigid_body_metadata_key(label)}_orientation": rigid_body["orientation"]
+            for label, rigid_body in self._get_rigid_bodies().items()
+            if rigid_body["orientation"] is not None
+        }
+        for owner, bones in self._get_bone_orientations().items():
+            for bone, orientation in bones.items():
+                orientations[self._get_bone_orientation_metadata_key(owner, bone)] = orientation
+        for orientation_metadata_key, orientation in orientations.items():
+            if orientation_metadata_key not in time_series_metadata:
                 continue
-            data = np.column_stack(list(rotation.values()))[:end_frame]
-            series_kwargs = dict(series_metadata[rotation_metadata_key], data=data, **timing)
-            series_class = TimeSeries if self._header.get("Rotation Type") == "Quaternion" else SpatialSeries
-            behavior_module.add(series_class(**series_kwargs))
+            data = np.column_stack(list(orientation.values()))[:end_frame]
+            behavior_module.add(TimeSeries(**time_series_metadata[orientation_metadata_key], data=data, **timing))
+
+
+def _get_orientation(*, rotation: dict[str, np.ndarray], is_untracked: np.ndarray) -> dict[str, np.ndarray]:
+    """One asset's rotation columns, ``{axis: values}``, in the order they are written.
+
+    Quaternions are written scalar first (W, X, Y, Z), as in MiniscopeHeadOrientationInterface. Euler angles are
+    written X, Y, Z whatever the rotation order, which Motive also uses as the column order; the rotation order
+    goes in the description. A frame without a position holds no pose, so the orientation is untracked there too.
+    """
+    axes = ("W", "X", "Y", "Z") if "W" in rotation else ("X", "Y", "Z")
+    return {axis: np.where(is_untracked, np.nan, rotation[axis]) for axis in axes}
