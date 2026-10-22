@@ -1011,6 +1011,18 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
             # which otherwise returns a new recording and leaves this one unchanged.
             self.recording_extractor.set_probe(probe, group_mode="by_probe", in_place=True)
 
+        def _letters(index):
+            name = ""
+            index += 1
+            while index:
+                index, remainder = divmod(index - 1, 26)
+                name = chr(97 + remainder) + name
+            return name
+
+        self.recording_extractor = self.recording_extractor.rename_channels(
+            new_channel_ids=[f"channel_{_letters(index)}" for index in range(number_of_channels)]
+        )
+
     def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         """
         Get metadata for the recording interface.

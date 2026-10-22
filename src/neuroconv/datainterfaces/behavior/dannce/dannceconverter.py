@@ -140,8 +140,8 @@ class DANNCEConverter(BaseDataInterface):
     @staticmethod
     def _set_segment_times(video_interface: ExternalVideoInterface, segment_timestamps: list[np.ndarray]) -> None:
         """Give each of a camera's video files its own times, through that file's alignment key."""
-        for segment_key, timestamps in zip(video_interface.alignment.keys(), segment_timestamps, strict=True):
-            video_interface.alignment[segment_key].set_times(timestamps)
+        for segment_key, timestamps in zip(video_interface.temporal_alignment.keys(), segment_timestamps, strict=True):
+            video_interface.temporal_alignment[segment_key].set_times(timestamps)
 
     @validate_call
     def __init__(
@@ -177,10 +177,10 @@ class DANNCEConverter(BaseDataInterface):
             (shape ``(2, n_video_frames)``; row 0 = 1-indexed frame number, row 1 = elapsed seconds
             since recording start) -- not every DANNCE rig records with campy/pCamPI, so this is
             optional per camera. When present, it is used to set the times of each of that camera's
-            video files (via ``alignment[segment_key].set_times``); when absent, that video keeps
+            video files (via ``temporal_alignment[segment_key].set_times``); when absent, that video keeps
             ``ExternalVideoInterface``'s own default timestamps (derived directly from the video
             file). The first camera's frametimes, if present, also give the DANNCE pose estimation's
-            times (via ``DANNCEInterface.alignment[metadata_key].set_times``): each prediction's
+            times (via ``DANNCEInterface.temporal_alignment[metadata_key].set_times``): each prediction's
             ``sampleID`` is mapped to its video frame through the sync table (``sync_path``), and the
             frametimes are read at those frames. Without a sync table the frametimes are not used for
             the pose, since a ``sampleID`` is not itself a frame index; a warning says so, and
@@ -292,7 +292,7 @@ class DANNCEConverter(BaseDataInterface):
                     f"'{camera_name}' has frametimes for only {len(frametimes)} frames. Check that the sync table, "
                     "predictions and videos come from the same recording."
                 )
-            self._dannce_interface.alignment[self._dannce_interface.metadata_key].set_times(
+            self._dannce_interface.temporal_alignment[self._dannce_interface.metadata_key].set_times(
                 frametimes[video_frame_indices]
             )
             return
@@ -311,7 +311,7 @@ class DANNCEConverter(BaseDataInterface):
             warnings.warn(
                 f"No timing information is available for the DANNCE pose estimation: {what_is_missing}, and no "
                 "'sampling_rate' was given. Pass 'sampling_rate', or call "
-                "'converter.data_interface_objects[\"DANNCE\"].alignment[key].set_times(times)' before writing.",
+                "'converter.data_interface_objects[\"DANNCE\"].temporal_alignment[key].set_times(times)' before writing.",
                 _NoTimingInformationWarning,
                 stacklevel=5,  # _set_pose_times, __init__, two validate_call frames, caller
             )
@@ -359,9 +359,9 @@ class DANNCEConverter(BaseDataInterface):
         frame_rates = video_interface.get_header_frame_rates()
         starting_time = 0.0
         for segment_key, frame_count, frame_rate in zip(
-            video_interface.alignment.keys(), frame_counts, frame_rates, strict=True
+            video_interface.temporal_alignment.keys(), frame_counts, frame_rates, strict=True
         ):
-            video_interface.alignment[segment_key].move_start_to(starting_time)
+            video_interface.temporal_alignment[segment_key].move_start_to(starting_time)
             starting_time += frame_count / frame_rate
 
     def get_metadata(self) -> DeepDict:

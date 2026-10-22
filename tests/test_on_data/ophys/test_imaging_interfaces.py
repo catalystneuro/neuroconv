@@ -41,6 +41,7 @@ except ImportError:
 
 class TestTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = TiffImagingInterface
+    expected_temporal_alignment_keys = ("tiff_imaging",)
     interface_kwargs = dict(
         file_paths=[str(OPHYS_DATA_PATH / "imaging_datasets" / "Tif" / "demoMovie.tif")],
         sampling_frequency=15.0,  # typically provided by user
@@ -65,6 +66,7 @@ class TestTiffImagingInterfaceMultiFile(ImagingExtractorInterfaceTestMixin):
     optical_series_name = "MicroscopySeries"
 
     data_interface_cls = TiffImagingInterface
+    expected_temporal_alignment_keys = ("tiff_imaging_channel_0",)
     interface_kwargs = dict(
         file_paths=[
             str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20240320_multifile_00001.tif"),
@@ -81,6 +83,7 @@ class TestTiffImagingInterfaceMultiFile(ImagingExtractorInterfaceTestMixin):
 
 class TestScanImageImagingInterfaceMultiPlaneChannel1(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = ScanImageImagingInterface
+    expected_temporal_alignment_keys = ("scan_image_imaging_channel_1",)
     interface_kwargs = dict(
         file_paths=[OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif"],
         channel_name="Channel 1",
@@ -147,6 +150,7 @@ class TestScanImageImagingInterfaceMultiPlaneChannel1(ImagingExtractorInterfaceT
 
 class TestScanImageImagingInterfaceMultiPlaneChannel4(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = ScanImageImagingInterface
+    expected_temporal_alignment_keys = ("scan_image_imaging_channel_4",)
     interface_kwargs = dict(
         file_paths=[OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif"],
         channel_name="Channel 4",
@@ -281,6 +285,7 @@ class TestScanImageImagingInterfaceSinglePlaneCase(ImagingExtractorInterfaceTest
         self.optical_series_name = self.photon_series_name
         self.imaging_plane_name = request.param["expected_imaging_plane_name"]
         self.expected_metadata_key = request.param["expected_metadata_key"]
+        self.expected_temporal_alignment_keys = (request.param["expected_metadata_key"],)
         self.interface = self.data_interface_cls(**self.interface_kwargs)
 
         return self.interface, self.test_name
@@ -421,6 +426,7 @@ class TestScanImageImagingInterfaceSingleChannelNoChannelName(ImagingExtractorIn
     """
 
     data_interface_cls = ScanImageImagingInterface
+    expected_temporal_alignment_keys = ("scan_image_imaging",)
     interface_kwargs = dict(
         file_path=str(
             OPHYS_DATA_PATH
@@ -520,6 +526,7 @@ def test_two_channels_of_one_acquisition_share_one_device_entry():
 @pytest.mark.skipif(platform.machine() == "arm64", reason="Interface not supported on arm64 architecture")
 class TestScanImageLegacyImagingInterface(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = ScanImageLegacyImagingInterface
+    expected_temporal_alignment_keys = ("scan_image_legacy_imaging",)
     interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Tif" / "sample_scanimage.tiff"))
     save_directory = OUTPUT_PATH
 
@@ -559,6 +566,7 @@ class TestScanImageLegacyImagingInterface(ImagingExtractorInterfaceTestMixin):
 
 class TestHdf5ImagingInterface(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = Hdf5ImagingInterface
+    expected_temporal_alignment_keys = ("hdf5_imaging",)
     interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "hdf5" / "demoMovie.hdf5"))
     save_directory = OUTPUT_PATH
     # The hdf5 reader states no series name, so the generic one is written.
@@ -575,6 +583,7 @@ class TestHdf5ImagingInterface(ImagingExtractorInterfaceTestMixin):
 
 class TestSbxImagingInterfaceMat(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = SbxImagingInterface
+    expected_temporal_alignment_keys = ("sbx_imaging",)
     interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Scanbox" / "sample.mat"))
     save_directory = OUTPUT_PATH
     # Scanbox states no series name, so the generic one is written.
@@ -599,6 +608,7 @@ class TestSbxImagingInterfaceMat(ImagingExtractorInterfaceTestMixin):
 
 class TestSbxImagingInterfaceSBX(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = SbxImagingInterface
+    expected_temporal_alignment_keys = ("sbx_imaging",)
     interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Scanbox" / "sample.sbx"))
 
     save_directory = OUTPUT_PATH
@@ -610,6 +620,7 @@ class TestBrukerTiffImagingInterfaceSinglePlane(ImagingExtractorInterfaceTestMix
     """Tests the unified BrukerTiffImagingInterface against single-channel single-plane data."""
 
     data_interface_cls = BrukerTiffImagingInterface
+    expected_temporal_alignment_keys = ("bruker_tiff_imaging",)
     interface_kwargs = dict(
         folder_path=str(
             OPHYS_DATA_PATH / "imaging_datasets" / "BrukerTif" / "NCCR32_2023_02_20_Into_the_void_t_series_baseline-000"
@@ -692,6 +703,7 @@ class TestBrukerTiffImagingInterfaceVolumetric(ImagingExtractorInterfaceTestMixi
     """Tests the unified BrukerTiffImagingInterface against single-channel volumetric data."""
 
     data_interface_cls = BrukerTiffImagingInterface
+    expected_temporal_alignment_keys = ("bruker_tiff_imaging",)
     interface_kwargs = dict(
         folder_path=str(
             OPHYS_DATA_PATH / "imaging_datasets" / "BrukerTif" / "NCCR32_2022_11_03_IntoTheVoid_t_series-005"
@@ -755,6 +767,7 @@ class TestBrukerTiffImagingInterfaceDualColor(ImagingExtractorInterfaceTestMixin
     """Tests the unified BrukerTiffImagingInterface against multi-channel single-plane data."""
 
     data_interface_cls = BrukerTiffImagingInterface
+    expected_temporal_alignment_keys = ("bruker_tiff_imaging_Ch1",)
     interface_kwargs = dict(
         folder_path=str(
             OPHYS_DATA_PATH / "imaging_datasets" / "BrukerTif" / "NCCR62_2023_07_06_IntoTheVoid_t_series_Dual_color-000"
@@ -769,6 +782,7 @@ class TestBrukerTiffImagingInterfaceDisjointPlane(ImagingExtractorInterfaceTestM
     """Unified interface pinned to a single depth plane of a volumetric acquisition (disjoint layout)."""
 
     data_interface_cls = BrukerTiffImagingInterface
+    expected_temporal_alignment_keys = ("bruker_tiff_imaging_plane0",)
     interface_kwargs = dict(
         folder_path=str(
             OPHYS_DATA_PATH / "imaging_datasets" / "BrukerTif" / "NCCR32_2022_11_03_IntoTheVoid_t_series-005"
@@ -787,6 +801,7 @@ class TestBrukerTiffImagingInterfaceDisjointPlane(ImagingExtractorInterfaceTestM
 
 class TestBrukerTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = BrukerTiffSinglePlaneImagingInterface
+    expected_temporal_alignment_keys = ("default_metadata_key",)
     interface_kwargs = dict(
         folder_path=str(
             OPHYS_DATA_PATH / "imaging_datasets" / "BrukerTif" / "NCCR32_2023_02_20_Into_the_void_t_series_baseline-000"
@@ -871,6 +886,7 @@ class TestBrukerTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
 
 class TestBrukerTiffImagingInterfaceDualPlaneCase(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = BrukerTiffMultiPlaneImagingInterface
+    expected_temporal_alignment_keys = ("default_metadata_key",)
     interface_kwargs = dict(
         folder_path=str(
             OPHYS_DATA_PATH / "imaging_datasets" / "BrukerTif" / "NCCR32_2022_11_03_IntoTheVoid_t_series-005"
@@ -952,6 +968,7 @@ class TestBrukerTiffImagingInterfaceDualPlaneCase(ImagingExtractorInterfaceTestM
 
 class TestBrukerTiffImagingInterfaceDualPlaneDisjointCase(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = BrukerTiffSinglePlaneImagingInterface
+    expected_temporal_alignment_keys = ("default_metadata_key",)
     interface_kwargs = dict(
         folder_path=str(
             OPHYS_DATA_PATH / "imaging_datasets" / "BrukerTif" / "NCCR32_2022_11_03_IntoTheVoid_t_series-005"
@@ -1051,6 +1068,7 @@ class TestBrukerTiffImagingInterfaceDualPlaneDisjointCase(ImagingExtractorInterf
 
 class TestBrukerTiffImagingInterfaceDualColorCase(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = BrukerTiffSinglePlaneImagingInterface
+    expected_temporal_alignment_keys = ("default_metadata_key",)
     interface_kwargs = dict(
         folder_path=str(
             OPHYS_DATA_PATH / "imaging_datasets" / "BrukerTif" / "NCCR62_2023_07_06_IntoTheVoid_t_series_Dual_color-000"
@@ -1149,6 +1167,7 @@ class TestBrukerTiffImagingInterfaceDualColorCase(ImagingExtractorInterfaceTestM
 
 class TestMicroManagerTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = MicroManagerTiffImagingInterface
+    expected_temporal_alignment_keys = ("micromanager_imaging",)
     interface_kwargs = dict(
         folder_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "MicroManagerTif" / "TS12_20220407_20hz_noteasy_1")
     )
@@ -1256,6 +1275,7 @@ class TestThorImagingInterface(ImagingExtractorInterfaceTestMixin):
     channel_name = "ChanA"
     optical_series_name: str = f"TwoPhotonSeries{channel_name}"
     data_interface_cls = ThorImagingInterface
+    expected_temporal_alignment_keys = ("thor_imaging_channel_ChanA",)
     interface_kwargs = dict(
         file_path=str(
             OPHYS_DATA_PATH
@@ -1341,6 +1361,7 @@ class TestThorImagingInterface(ImagingExtractorInterfaceTestMixin):
 )
 class Test_MiniscopeMultiRecordingInterface(MiniscopeImagingInterfaceMixin):
     data_interface_cls = _MiniscopeMultiRecordingInterface
+    expected_temporal_alignment_keys = ("default_metadata_key",)
     interface_kwargs = dict(folder_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "C6-J588_Disc5"))
     save_directory = OUTPUT_PATH
 
@@ -1404,6 +1425,7 @@ class Test_MiniscopeMultiRecordingInterface(MiniscopeImagingInterfaceMixin):
 
 class TestMiniscopeImagingInterface(MiniscopeImagingInterfaceMixin):
     data_interface_cls = MiniscopeImagingInterface
+    expected_temporal_alignment_keys = ("miniscope_imaging",)
     interface_kwargs = dict(
         folder_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "C6-J588_Disc5" / "15_03_28" / "Miniscope")
     )
@@ -1582,6 +1604,7 @@ class TestMiniscopeImagingInterfaceV4BNO(MiniscopeImagingInterfaceMixin):
     """
 
     data_interface_cls = MiniscopeImagingInterface
+    expected_temporal_alignment_keys = ("miniscope_imaging",)
     interface_kwargs = dict(
         folder_path=str(
             OPHYS_DATA_PATH
@@ -1683,6 +1706,7 @@ class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfac
     """Test InscopixImagingInterface with movie_128x128x100_part1.isxd (minimal metadata file)."""
 
     data_interface_cls = InscopixImagingInterface
+    expected_temporal_alignment_keys = ("inscopix_imaging",)
     save_directory = OUTPUT_PATH
     interface_kwargs = dict(
         file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_128x128x100_part1.isxd")
@@ -1810,6 +1834,7 @@ class TestInscopixImagingInterfaceDualColorMovieWithDroppedFrames(ImagingExtract
     """Test InscopixImagingInterface with dual_color_movie_with_dropped_frames.isxd (single-plane file with rich acquisition metadata)."""
 
     data_interface_cls = InscopixImagingInterface
+    expected_temporal_alignment_keys = ("inscopix_imaging",)
     save_directory = OUTPUT_PATH
     interface_kwargs = dict(
         file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "dual_color_movie_with_dropped_frames.isxd")
@@ -1873,6 +1898,7 @@ class TestInscopixImagingInterfaceMovieU8(ImagingExtractorInterfaceTestMixin):
     """Test InscopixImagingInterface with movie_u8.isxd (minimal metadata file, uint8 dtype)."""
 
     data_interface_cls = InscopixImagingInterface
+    expected_temporal_alignment_keys = ("inscopix_imaging",)
     save_directory = OUTPUT_PATH
     interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_u8.isxd"))
     # Inscopix states no series name, so the generic one is written.
@@ -1950,6 +1976,7 @@ class TestFemtonicsImagingInterfaceP29(ImagingExtractorInterfaceTestMixin):
     """Test FemtonicsImagingInterface with p29.mesc file."""
 
     data_interface_cls = FemtonicsImagingInterface
+    expected_temporal_alignment_keys = ("femtonics_imaging_MUnit_0_channel_UG",)
     interface_kwargs = dict(
         file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"),
         munit_name="MUnit_0",
@@ -2056,6 +2083,7 @@ class TestFemtonicsImagingInterfaceP30(ImagingExtractorInterfaceTestMixin):
     """Test FemtonicsImagingInterface with p30.mesc file."""
 
     data_interface_cls = FemtonicsImagingInterface
+    expected_temporal_alignment_keys = ("femtonics_imaging_MUnit_0_channel_UG",)
     interface_kwargs = dict(
         file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p30.mesc"),
         munit_name="MUnit_0",

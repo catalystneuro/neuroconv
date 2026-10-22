@@ -118,8 +118,8 @@ class DeepLabCutInterface(BasePoseEstimationInterface):
         sampling_frequency : float, optional
             The frame rate of the video the pose was estimated from, in Hz. A DeepLabCut output file's rows
             are video frames and carry no times, and neither the file nor the project config records the
-            rate, so one of ``sampling_frequency`` or ``alignment[key].set_times`` is required before writing.
-            Pass this for a constant frame rate; call ``alignment[key].set_times`` when the frames have times
+            rate, so one of ``sampling_frequency`` or ``temporal_alignment[key].set_times`` is required before writing.
+            Pass this for a constant frame rate; call ``temporal_alignment[key].set_times`` when the frames have times
             of their own, from a hardware clock or an alignment against another stream.
 
 
@@ -622,7 +622,7 @@ class DeepLabCutInterface(BasePoseEstimationInterface):
                 "frames, and neither the file nor the project config records the frame rate, so the "
                 "times cannot be derived from the source. Pass 'sampling_frequency' to "
                 "DeepLabCutInterface for a constant frame rate, or call "
-                "'interface.alignment[key].set_times(times)' with one time per sample."
+                "'interface.temporal_alignment[key].set_times(times)' with one time per sample."
             )
         return np.asarray(self._read_animal_dataframe().index) / self.sampling_frequency
 

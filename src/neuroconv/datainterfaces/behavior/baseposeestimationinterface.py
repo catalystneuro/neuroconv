@@ -28,19 +28,29 @@ class BasePoseEstimationInterface(BaseDataInterface):
     def __init__(self, verbose: bool = False, **source_data):
         super().__init__(verbose=verbose, **source_data)
         self._alignment = _TemporalAlignment()
-        self._alignment._register_series(key=self.metadata_key, get_native_times=self.get_original_timestamps)
+        self._alignment._register(
+            key=self.metadata_key,
+            get_native_times=self.get_original_timestamps,
+            get_number_of_samples=self._get_number_of_samples,
+        )
 
     @property
-    def alignment(self):
+    def temporal_alignment(self):
         return self._alignment
 
     def _get_timestamps(self) -> np.ndarray:
-        return self.alignment[self.metadata_key].get_times()
+        return self.temporal_alignment[self.metadata_key].get_times()
+
+    def _get_number_of_samples(self) -> int:
+        # Read off the keypoint data and not the times, which some formats cannot give without a rate and
+        # others give only by decoding the video
+        positions, _ = next(iter(self._get_keypoint_data().values()))
+        return len(positions)
 
     def get_timestamps(self) -> np.ndarray:
         warnings.warn(
             "`get_timestamps` is deprecated and will be removed in v0.13.0. "
-            "Use `interface.alignment[key].get_times()` instead.",
+            "Use `interface.temporal_alignment[key].get_times()` instead.",
             FutureWarning,
             stacklevel=2,
         )
@@ -49,29 +59,29 @@ class BasePoseEstimationInterface(BaseDataInterface):
     def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
         warnings.warn(
             "`set_aligned_timestamps` is deprecated and will be removed in v0.13.0. "
-            "Use `interface.alignment[key].set_times(times)` instead.",
+            "Use `interface.temporal_alignment[key].set_times(times)` instead.",
             FutureWarning,
             stacklevel=2,
         )
-        self.alignment[self.metadata_key].set_times(aligned_timestamps)
+        self.temporal_alignment[self.metadata_key].set_times(aligned_timestamps)
 
     def set_aligned_starting_time(self, aligned_starting_time: float) -> None:
         warnings.warn(
             "`set_aligned_starting_time` is deprecated and will be removed in v0.13.0. "
-            "Use `interface.alignment.shift_times(delta)` instead.",
+            "Use `interface.temporal_alignment.shift_times(delta)` instead.",
             FutureWarning,
             stacklevel=2,
         )
-        self.alignment.shift_times(aligned_starting_time)
+        self.temporal_alignment.shift_times(aligned_starting_time)
 
     def align_by_interpolation(self, unaligned_timestamps: np.ndarray, aligned_timestamps: np.ndarray) -> None:
         warnings.warn(
             "`align_by_interpolation` is deprecated and will be removed in v0.13.0. "
-            "Use `interface.alignment[key].remap_times(local_sync_times=..., reference_sync_times=...)` instead.",
+            "Use `interface.temporal_alignment[key].remap_times(local_sync_times=..., reference_sync_times=...)` instead.",
             FutureWarning,
             stacklevel=2,
         )
-        self.alignment[self.metadata_key].remap_times(
+        self.temporal_alignment[self.metadata_key].remap_times(
             local_sync_times=unaligned_timestamps, reference_sync_times=aligned_timestamps
         )
 

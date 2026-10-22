@@ -134,7 +134,7 @@ class DANNCEInterface(BasePoseEstimationInterface):
     field.
 
     All landmarks share one ``sampleID`` vector, so the interface holds one alignment key,
-    ``interface.alignment[interface.metadata_key]``.
+    ``interface.temporal_alignment[interface.metadata_key]``.
     """
 
     display_name = "DANNCE"
@@ -404,7 +404,7 @@ class DANNCEInterface(BasePoseEstimationInterface):
             the times are ``arange(n_samples) / sampling_rate``, which is only correct when the
             predicted samples are consecutive video frames from the start of the recording, with
             none skipped; a warning at construction says so. When it is not given, set the times with
-            ``interface.alignment[interface.metadata_key].set_times(times)`` before conversion; a
+            ``interface.temporal_alignment[interface.metadata_key].set_times(times)`` before conversion; a
             warning at construction says that too.
         landmark_names : list of str, optional
             Names for each tracked landmark/body part. Must match the number of landmarks in the
@@ -520,7 +520,7 @@ class DANNCEInterface(BasePoseEstimationInterface):
         if sampling_rate is None:
             warnings.warn(
                 "No timing information is available for this DANNCE output: no 'sampling_rate' was given. "
-                "Pass 'sampling_rate', or call 'interface.alignment[interface.metadata_key].set_times(times)' "
+                "Pass 'sampling_rate', or call 'interface.temporal_alignment[interface.metadata_key].set_times(times)' "
                 "with one time per sample before writing.",
                 _NoTimingInformationWarning,
                 stacklevel=4,  # __init__, two validate_call frames, caller
@@ -659,7 +659,7 @@ class DANNCEInterface(BasePoseEstimationInterface):
                 "No timing information is available for this DANNCE output. The prediction file records "
                 "sample labels but no frame rate, so the times cannot be derived from the source. Pass "
                 "'sampling_rate' to DANNCEInterface, or call "
-                "'interface.alignment[interface.metadata_key].set_times(times)' with one time per sample."
+                "'interface.temporal_alignment[interface.metadata_key].set_times(times)' with one time per sample."
             )
         if self._video_frame_indices is not None:
             frames = self._video_frame_indices

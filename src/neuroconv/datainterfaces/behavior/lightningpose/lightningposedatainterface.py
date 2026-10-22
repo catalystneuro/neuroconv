@@ -10,6 +10,7 @@ from pydantic import FilePath, validate_call
 from pynwb import NWBFile
 
 from ..baseposeestimationinterface import BasePoseEstimationInterface
+from ....tools.nwb_helpers._metadata_and_file_helpers import _validate_metadata_key
 from ....tools.pose_estimation import _add_pose_estimation_to_nwbfile
 from ....utils import (
     DeepDict,
@@ -183,14 +184,14 @@ class LightningPoseDataInterface(BasePoseEstimationInterface):
     def get_timestamps(self, stub_test: bool = False) -> np.ndarray:
         warnings.warn(
             "`get_timestamps` is deprecated and will be removed in v0.13.0. "
-            "Use `interface.alignment[key].get_times()` instead.",
+            "Use `interface.temporal_alignment[key].get_times()` instead.",
             FutureWarning,
             stacklevel=2,
         )
         return self._get_timestamps(stub_test=stub_test)
 
     def _get_timestamps(self, stub_test: bool = False) -> np.ndarray:
-        time_bearing_object = self.alignment[self.metadata_key]
+        time_bearing_object = self.temporal_alignment[self.metadata_key]
         if stub_test:
             return time_bearing_object._get_times(
                 get_default_times=partial(self.get_original_timestamps, stub_test=True)
@@ -353,15 +354,12 @@ class LightningPoseDataInterface(BasePoseEstimationInterface):
                 FutureWarning,
                 stacklevel=2,
             )
-            # Reached with ``.get`` and checked rather than indexed: ``metadata_copy`` is often a
-            # ``DeepDict``, where indexing a key that addresses nothing creates it, which would leave the
-            # writer's own check with an empty entry to find instead of a missing one.
-            containers_metadata = metadata_copy.get("Pose", {}).get("PoseEstimations", {})
-            if self.metadata_key not in containers_metadata:
-                raise ValueError(
-                    f"metadata_key '{self.metadata_key}' was not found in metadata['Pose']['PoseEstimations'] "
-                    f"(available keys: {list(containers_metadata)})."
-                )
+            _validate_metadata_key(
+                metadata_copy,
+                metadata_path=("Pose", "PoseEstimations"),
+                metadata_key=self.metadata_key,
+            )
+            containers_metadata = metadata_copy["Pose"]["PoseEstimations"]
             for series_entry in containers_metadata[self.metadata_key]["PoseEstimationSeries"].values():
                 series_entry.update(deprecated_options)
 

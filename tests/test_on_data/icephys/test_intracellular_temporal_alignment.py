@@ -1,7 +1,7 @@
 """Gross temporal alignment on the intracellular interfaces.
 
 Both readers hold it through ``BaseIntracellularInterface``, so these run the same assertions over the two of
-them: ``interface.alignment.shift_times(delta)`` moves the written series and nothing else about it, and the
+them: ``interface.temporal_alignment.shift_times(delta)`` moves the written series and nothing else about it, and the
 shift adds to the placement a converter computes rather than replacing it.
 
 The two fixtures also cover the two timing representations between them. The Axon one is a multi-sweep file
@@ -71,8 +71,8 @@ def test_shift_moves_the_written_series_and_accumulates(build_interface):
     unshifted_series = written_response_series(build_interface())
 
     interface = build_interface()
-    interface.alignment.shift_times(1.0)
-    interface.alignment.shift_times(0.5)
+    interface.temporal_alignment.shift_times(1.0)
+    interface.temporal_alignment.shift_times(0.5)
     shifted_series = written_response_series(interface)
 
     assert_allclose(written_times(shifted_series), written_times(unshifted_series) + 1.5)
@@ -95,7 +95,7 @@ def test_shift_moves_a_converter_placed_set_as_a_block():
 
     converter = AxonIntracellularConverter(data_interfaces=build_interfaces())
     for interface in converter.data_interface_objects.values():
-        interface.alignment.shift_times(7.0)
+        interface.temporal_alignment.shift_times(7.0)
     shifted_starts = converter_series_starts(converter)
 
     # Every series moved by the same seven seconds, so the files keep the placement they were given.

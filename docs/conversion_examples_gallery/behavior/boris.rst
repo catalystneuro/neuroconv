@@ -72,7 +72,7 @@ If they are, the thing to check is whether they share a clock. Two observations 
 media do, since their times are positions in that media and each one's ``time offset`` already places it
 there. Two that do not share media have no relationship the file records, and their dates are when
 somebody sat down to score rather than when anything happened, so putting them on a common clock is yours
-to do with ``interface.alignment.shift_times``. Once they are on one clock, assemble the interfaces into a
+to do with ``interface.temporal_alignment.shift_times``. Once they are on one clock, assemble the interfaces into a
 :py:class:`~neuroconv.nwbconverter.ConverterPipe` and convert as above. Each observation keeps its own
 events table and its own bouts table, named after it, and the ethogram is written once, since one project
 has one coding scheme.

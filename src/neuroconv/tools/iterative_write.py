@@ -167,3 +167,45 @@ def get_electrical_series_chunk_shape(
     chunk_frames = min(chunk_frames, number_of_frames)
 
     return (chunk_frames, chunk_channels)
+
+
+def get_unit_waveform_chunk_shape(
+    *,
+    num_units: int,
+    num_samples: int,
+    num_electrodes: int | None = None,
+    dtype: np.dtype,
+    chunk_mb: float = 10.0,
+) -> tuple[int, int] | tuple[int, int, int]:
+    """
+    Estimate good chunk shape for a waveform_mean or waveform_sd column of a Units table.
+
+    Each chunk holds whole templates, so reading the template of one unit touches a single chunk.
+
+    Parameters
+    ----------
+    num_units : int
+        The number of units in the Units table.
+    num_samples : int
+        The number of samples in each template.
+    num_electrodes : int, optional
+        The number of electrodes in each template. None for a column of shape (num_units, num_samples).
+    dtype : np.dtype
+        The data type of the waveform column.
+    chunk_mb : float, optional
+        The upper bound on size in megabytes (MB) of the internal chunk for the HDF5 dataset.
+        If a single template is larger than this, the chunk holds one unit.
+
+    Returns
+    -------
+    tuple[int, int] | tuple[int, int, int]
+        The chunk shape for the waveform column.
+    """
+    assert chunk_mb > 0, f"chunk_mb ({chunk_mb}) must be greater than zero!"
+
+    waveform_shape = (num_samples,) if num_electrodes is None else (num_samples, num_electrodes)
+    single_waveform_bytes = math.prod(waveform_shape) * dtype.itemsize
+    units_per_chunk = int(chunk_mb * 1e6 // single_waveform_bytes)
+    units_per_chunk = max(min(units_per_chunk, num_units), 1)
+
+    return (units_per_chunk, *waveform_shape)
