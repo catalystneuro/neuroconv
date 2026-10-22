@@ -403,6 +403,9 @@ def add_recording_to_nwbfile(
         When provided, uses the dict-based metadata format and ``es_key`` is ignored.
         When omitted, the series name and description come from the per-``parent_container`` defaults
         in :func:`_add_recording_segment_to_nwbfile`.
+        On a recording with several segments the entry applies to all of them, and an optional entry keyed
+        ``{metadata_key}_{segment_index}`` overrides it field by field for that segment only, its ``name``
+        used as given.
 
     Notes
     -----
@@ -651,17 +654,18 @@ def _add_recording_segment_to_nwbfile(
         f"but instead received value {parent_container}"
     )
 
-    modality_signature = {"acquisition": "Raw", "processing/LFP": "LFP", "processing/FilteredEphys": "Processed"}[
-        parent_container
-    ]
-    default_name = f"ElectricalSeries{modality_signature}"
+    default_name = {
+        "acquisition": "ElectricalSeries",
+        "processing/LFP": "ElectricalSeriesLFP",
+        "processing/FilteredEphys": "ElectricalSeries",
+    }
     default_description = {
         "acquisition": "Raw acquired data",
         "processing/LFP": "Processed data - LFP",
         "processing/FilteredEphys": "Processed data",
     }
 
-    eseries_kwargs = dict(name=default_name, description=default_description[parent_container])
+    eseries_kwargs = dict(name=default_name[parent_container], description=default_description[parent_container])
 
     # Select and/or create module if lfp or processed data is to be stored.
     if parent_container in ["processing/LFP", "processing/FilteredEphys"]:
@@ -764,12 +768,20 @@ def _add_recording_segment_to_nwbfile(
         assert es_key in metadata["Ecephys"], f"metadata['Ecephys'] dictionary does not contain key '{es_key}'"
         eseries_kwargs.update(metadata["Ecephys"][es_key])
 
-    # If the recording extractor has more than 1 segment, append numbers to the names so that the names are unique.
-    # 0-pad these names based on the number of segments.
-    # If there are 10 segments use 2 digits, if there are 100 segments use 3 digits, etc.
-    if recording.get_num_segments() > 1 and "name" in eseries_kwargs:
-        width = int(np.ceil(np.log10((recording.get_num_segments()))))
-        eseries_kwargs["name"] += f"{segment_index:0{width}}"
+    # If the recording extractor has more than 1 segment, append the unpadded segment index to the name so that the
+    # names are unique and match the ``{metadata_key}_{segment_index}`` keys, and state the segment in the description.
+    number_of_segments = recording.get_num_segments()
+    if number_of_segments > 1 and "name" in eseries_kwargs:
+        eseries_kwargs["name"] += f"Segment{segment_index}"
+        separator = "" if eseries_kwargs["description"].endswith(".") else "."
+        eseries_kwargs["description"] += f"{separator} Segment {segment_index} of {number_of_segments}."
+
+    # An entry keyed ``{metadata_key}_{segment_index}`` is optional and overrides the shared entry for this
+    # segment only, its name used as given.
+    segment_metadata_key = f"{metadata_key}_{segment_index}"
+    has_segment_override = metadata_key is not None and segment_metadata_key in metadata["Ecephys"]["ElectricalSeries"]
+    if has_segment_override:
+        eseries_kwargs.update(metadata["Ecephys"]["ElectricalSeries"][segment_metadata_key])
 
     # Create ElectricalSeries object and add it to nwbfile
     es = pynwb.ecephys.ElectricalSeries(**eseries_kwargs)
@@ -1987,8 +1999,7 @@ def _add_time_series_segment_to_nwbfile(
 
     # Handle multi-segment naming
     if recording.get_num_segments() > 1 and "name" in tseries_kwargs:
-        width = int(np.ceil(np.log10((recording.get_num_segments()))))
-        tseries_kwargs["name"] += f"{segment_index:0{width}}"
+        tseries_kwargs["name"] += f"Segment{segment_index}"
 
     # Fill in required fields with defaults if missing
     required_fields = ["name", "description", "unit"]
@@ -2184,8 +2195,7 @@ def _add_spatial_series_segment_to_nwbfile(
 
     # Handle multi-segment naming
     if recording.get_num_segments() > 1 and "name" in series_kwargs:
-        width = int(np.ceil(np.log10(recording.get_num_segments())))
-        series_kwargs["name"] += f"{segment_index:0{width}}"
+        series_kwargs["name"] += f"Segment{segment_index}"
 
     # Fill in missing required fields with defaults
     # Note: 'description' has default='no description' and 'unit' has default='meters' in the schema
