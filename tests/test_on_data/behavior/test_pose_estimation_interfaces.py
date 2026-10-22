@@ -1519,6 +1519,8 @@ class _OptiTrackInterfaceTestMixin(DataInterfaceTestMixin):
     writes ``MultiCameraPoseEstimation`` containers and the rigid bodies' series instead.
     """
 
+    expected_temporal_alignment_keys = ("optitrack",)
+
     def check_read_nwb(self, nwbfile_path: str):
         from ndx_pose import MultiCameraPoseEstimation
         from pynwb.behavior import SpatialSeries

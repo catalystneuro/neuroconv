@@ -27,7 +27,8 @@ _MOTIVE_CAPTURE_START_TIME_FORMATS = ("%Y-%m-%d %I.%M.%S.%f %p", "%Y-%m-%d %I.%M
 # marker, computed from the rigid body's pose rather than measured.
 _POSE_ASSET_TYPES = ("Bone", "Marker")
 
-# The owner of labeled markers whose label names none, as in exports from Motive 2.
+# Used in place of an owner to name the container of labeled markers with no owner in their label, as written by
+# exports in format versions 1.1 and 1.2.
 _UNOWNED_MARKERS_OWNER = "Markers"
 
 # How many samples ``add_to_nwbfile(stub_test=True)`` writes.
@@ -69,6 +70,13 @@ class OptiTrackInterface(BasePoseEstimationInterface):
         container, since Motive triangulates them in 3D from all of its cameras. A bone also has an orientation,
         which is written as a ``TimeSeries`` like a rigid body's. Unlabeled markers and the ``Rigid Body Marker``
         columns, which Motive computes from the rigid body's pose, are left out.
+
+        The skeleton or marker set a point belongs to is read from its label: Motive writes each labeled bone
+        and marker in the ``Name`` row as ``"{owner}:{point}"``, such as ``"Cello:TA"``, and records the owner
+        nowhere else. Each point is a node named ``point`` in its owner's container, and its description
+        quotes the full label as it is in the export, since the same point name can belong to several owners
+        (``"Bow:TA"`` and ``"Cello:TA"``). Exports in format versions 1.1 and 1.2 write labeled markers
+        without an owner, such as ``"Marker_10302"``; those go in one container, ``PoseEstimationMarkers``.
 
         Parameters
         ----------
@@ -153,9 +161,7 @@ class OptiTrackInterface(BasePoseEstimationInterface):
 
         self.metadata_key = metadata_key or "optitrack"
         self._motion_capture_data = None
-        self._rigid_bodies = None
-        self._labeled_points = None
-        self._bone_orientations = None
+        self._tracked_assets = None
 
         super().__init__(verbose=verbose, file_path=file_path)
 
@@ -234,15 +240,18 @@ class OptiTrackInterface(BasePoseEstimationInterface):
             asset.setdefault(levels["measurement_type"], {})[levels["axis"]] = values.to_numpy(dtype=np.float64)
         return assets
 
-    def _read_tracked_assets(self) -> None:
-        """Sort the assets that were tracked into rigid bodies and labeled points, in file order.
+    def _get_tracked_assets(self) -> dict[str, dict]:
+        """Sort the assets that were tracked into rigid bodies, labeled points and bone orientations, in file order.
 
-        Fills ``self._rigid_bodies``, ``{label: {"position": (num_frames, 3) array, "orientation": {axis:
-        values} or None}}``, ``self._labeled_points``, ``{owner: {point: (asset_type, (num_frames, 3)
-        array)}}``, and ``self._bone_orientations``, ``{owner: {bone: {axis: values}}}``. A frame where an
-        asset was not tracked, empty or at the origin, is ``np.nan``; assets never tracked in any frame are
-        left out with a warning.
+        Returns a dict with ``"rigid_bodies"``, ``{label: {"position": (num_frames, 3) array, "orientation":
+        {axis: values} or None}}``, ``"labeled_points"``, ``{owner: {point: (asset_type, (num_frames, 3)
+        array)}}``, and ``"bone_orientations"``, ``{owner: {bone: {axis: values}}}``. Labeled points with no owner in their
+        label, as in exports from Motive 2, have the owner ``""``. A frame where an asset was not tracked,
+        empty or at the origin, is ``np.nan``; assets never tracked in any frame are left out with a warning.
         """
+        if self._tracked_assets is not None:
+            return self._tracked_assets
+
         rigid_bodies = {}
         labeled_points = {}
         bone_orientations = {}
@@ -279,7 +288,6 @@ class OptiTrackInterface(BasePoseEstimationInterface):
                 continue
 
             owner, _, point = label.rpartition(":")
-            owner = owner or _UNOWNED_MARKERS_OWNER
             points = labeled_points.setdefault(owner, {})
             if point in points:
                 raise ValueError(
@@ -299,27 +307,27 @@ class OptiTrackInterface(BasePoseEstimationInterface):
             )
         if not rigid_bodies and not labeled_points:
             raise ValueError(f"No asset in '{self.file_path}' was tracked in any frame, so there is nothing to write.")
-        self._rigid_bodies = rigid_bodies
-        self._labeled_points = labeled_points
-        self._bone_orientations = bone_orientations
+        self._tracked_assets = dict(
+            rigid_bodies=rigid_bodies, labeled_points=labeled_points, bone_orientations=bone_orientations
+        )
+        return self._tracked_assets
 
     def _get_rigid_bodies(self) -> dict[str, dict]:
         """The position and orientation of every rigid body, ``{label: {"position": ..., "orientation": ...}}``."""
-        if self._rigid_bodies is None:
-            self._read_tracked_assets()
-        return self._rigid_bodies
+        return self._get_tracked_assets()["rigid_bodies"]
 
     def _get_labeled_points(self) -> dict[str, dict[str, tuple[str, np.ndarray]]]:
         """The labeled points of every skeleton and marker set, ``{owner: {point: (asset_type, positions)}}``."""
-        if self._labeled_points is None:
-            self._read_tracked_assets()
-        return self._labeled_points
+        return self._get_tracked_assets()["labeled_points"]
 
     def _get_bone_orientations(self) -> dict[str, dict[str, dict[str, np.ndarray]]]:
         """The orientation of every bone of every skeleton, ``{owner: {bone: {axis: values}}}``."""
-        if self._labeled_points is None:
-            self._read_tracked_assets()
-        return self._bone_orientations
+        return self._get_tracked_assets()["bone_orientations"]
+
+    def _get_number_of_samples(self) -> int:
+        # One per frame, for every asset; the base class reads it off the keypoints, which an export of rigid
+        # bodies alone does not have.
+        return len(self._read_motion_capture_data())
 
     def get_original_timestamps(self) -> np.ndarray:
         """The time of each frame, ``Frame / Export Frame Rate``, in seconds from the start of the take.
@@ -340,7 +348,7 @@ class OptiTrackInterface(BasePoseEstimationInterface):
 
     def _get_container_metadata_key(self, owner: str) -> str:
         """The key of one skeleton or marker set's container and skeleton, e.g. ``"optitrack_skeleton_001"``."""
-        return f"{self.metadata_key}_{to_snake_case(owner)}"
+        return f"{self.metadata_key}_{to_snake_case(owner or _UNOWNED_MARKERS_OWNER)}"
 
     def _get_bone_orientation_metadata_key(self, owner: str, bone: str) -> str:
         """The key of one bone's orientation in ``metadata["TimeSeries"]``, e.g.
@@ -397,31 +405,40 @@ class OptiTrackInterface(BasePoseEstimationInterface):
         unit = length_units.lower() if length_units else "n.a."
 
         for label, rigid_body in self._get_rigid_bodies().items():
+            asset = f"Rigid Body '{label}'"
             metadata_key = self._get_rigid_body_metadata_key(label)
             series_name = to_camel_case(to_snake_case(label))
             metadata["SpatialSeries"][metadata_key] = dict(
                 name=f"Position{series_name}",
-                description=f"Position (x, y, z) of Rigid Body '{label}'.",
+                description=f"Position (x, y, z) of {asset}.",
                 unit=unit,
             )
 
             if rigid_body["orientation"] is not None:
                 metadata["TimeSeries"][f"{metadata_key}_orientation"] = self._get_orientation_metadata(
-                    name=f"Orientation{series_name}", asset=f"Rigid Body '{label}'"
+                    name=f"Orientation{series_name}", asset=asset
                 )
 
+        bone_orientations = self._get_bone_orientations()
         for owner, points in self._get_labeled_points().items():
             metadata_key = self._get_container_metadata_key(owner)
-            owner_name = to_camel_case(to_snake_case(owner))
+            owner_name = to_camel_case(to_snake_case(owner or _UNOWNED_MARKERS_OWNER))
 
             series_metadata = {}
             for point, (asset_type, _) in points.items():
-                label = point if owner == _UNOWNED_MARKERS_OWNER else f"{owner}:{point}"
+                asset = f"{asset_type} '{_get_label(owner, point)}'"
                 series_metadata[point] = dict(
                     name=f"PoseEstimationSeries{to_camel_case(to_snake_case(point))}",
-                    description=f"Position (x, y, z) of {asset_type} '{label}'.",
+                    description=f"Position (x, y, z) of {asset}.",
                     unit=unit,
                 )
+
+                if point in bone_orientations.get(owner, {}):
+                    metadata["TimeSeries"][self._get_bone_orientation_metadata_key(owner, point)] = (
+                        self._get_orientation_metadata(
+                            name=f"Orientation{owner_name}{to_camel_case(to_snake_case(point))}", asset=asset
+                        )
+                    )
 
             metadata["Pose"]["Skeletons"][metadata_key] = dict(
                 name=f"Skeleton{owner_name}", nodes=list(points), edges=[]
@@ -432,14 +449,6 @@ class OptiTrackInterface(BasePoseEstimationInterface):
                 skeleton_metadata_key=metadata_key,
                 PoseEstimationSeries=series_metadata,
             )
-
-            for bone in self._get_bone_orientations().get(owner, {}):
-                metadata["TimeSeries"][self._get_bone_orientation_metadata_key(owner, bone)] = (
-                    self._get_orientation_metadata(
-                        name=f"Orientation{owner_name}{to_camel_case(to_snake_case(bone))}",
-                        asset=f"Bone '{owner}:{bone}'",
-                    )
-                )
 
         return metadata
 
@@ -538,6 +547,16 @@ class OptiTrackInterface(BasePoseEstimationInterface):
                 continue
             data = np.column_stack(list(orientation.values()))[:end_frame]
             behavior_module.add(TimeSeries(**time_series_metadata[orientation_metadata_key], data=data, **timing))
+
+
+def _get_label(owner: str, point: str) -> str:
+    """The label of a labeled point as Motive writes it in the ``Name`` row of the export.
+
+    That is ``"{owner}:{point}"``, such as ``"Cello:TA"``, or ``point`` alone for a point whose label names no
+    owner. Descriptions quote it so they match the export, and so points of different owners with the same
+    name, ``"Bow:TA"`` and ``"Cello:TA"``, stay apart.
+    """
+    return f"{owner}:{point}" if owner else point
 
 
 def _get_orientation(*, rotation: dict[str, np.ndarray], is_untracked: np.ndarray) -> dict[str, np.ndarray]:
