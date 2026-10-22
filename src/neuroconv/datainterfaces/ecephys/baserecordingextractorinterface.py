@@ -7,13 +7,46 @@ from pynwb import NWBFile
 from pynwb.device import Device
 from pynwb.ecephys import ElectricalSeries, ElectrodeGroup
 
-from ..._temporal_alignment import _TemporalAlignment
+from ..._temporal_alignment import _BaseTimeBearingObject, _TemporalAlignment
 from ...baseextractorinterface import BaseExtractorInterface
 from ...utils import (
     DeepDict,
     get_base_schema,
     get_schema_from_hdmf_class,
 )
+
+
+class _RecordingSegmentTimeBearingObject(_BaseTimeBearingObject):
+    """One recording segment as a time-bearing object, its alignment kept on the recording itself.
+
+    It holds no times and no offset of its own. Every operation goes to the recording the interface holds, through
+    SpikeInterface's ``shift_times`` and ``set_times``, so the writer reads the aligned times from the recording and
+    nothing is applied at write time. The recording is looked up on every call because an interface replaces it
+    after registering its segments when it drops channels.
+    """
+
+    def __init__(self, *, get_recording, segment_index: int):
+        self._get_recording = get_recording
+        self._segment_index = segment_index
+
+    def get_times(self) -> np.ndarray:
+        """Return the times this segment will be written on."""
+        # A copy, since SpikeInterface hands out the array it stores and editing it would move the recording
+        return np.array(self._get_recording().get_times(segment_index=self._segment_index))
+
+    def _get_start_time(self) -> float:
+        return float(self._get_recording().get_start_time(segment_index=self._segment_index))
+
+    def _get_number_of_samples(self) -> int:
+        return self._get_recording().get_num_samples(segment_index=self._segment_index)
+
+    def _add_offset(self, delta: float) -> None:
+        self._get_recording().shift_times(shift=delta, segment_index=self._segment_index)
+
+    def _replace_times(self, times: np.ndarray) -> None:
+        # A copy, since SpikeInterface keeps the array it is given and a later shift adds into it
+        times = np.array(times, dtype="float64")
+        self._get_recording().set_times(times=times, segment_index=self._segment_index)
 
 
 class BaseRecordingExtractorInterface(BaseExtractorInterface):
@@ -102,85 +135,35 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         """Name every segment as a time-bearing object, keyed ``{metadata_key}_{segment_index}``.
 
         The key is the one a ``{metadata_key}_{segment_index}`` metadata entry uses to override the series of that
-        segment, so one name addresses a segment for both. Registering reads nothing: the native times are read
-        when asked for.
+        segment, so one name addresses a segment for both. Registering reads nothing.
         """
         self._alignment = _TemporalAlignment()
         for segment_index in range(self._number_of_segments):
-            self._alignment._register(
+            self._alignment._register_time_bearing_object(
                 key=f"{self.metadata_key}_{segment_index}",
-                get_native_times=partial(self._get_native_segment_times, segment_index=segment_index),
-                default_start_time=partial(self._get_native_segment_start_time, segment_index=segment_index),
-                get_number_of_samples=partial(self._get_segment_number_of_samples, segment_index=segment_index),
+                time_bearing_object=_RecordingSegmentTimeBearingObject(
+                    get_recording=partial(getattr, self, "recording_extractor"), segment_index=segment_index
+                ),
             )
-        self._extractor_has_aligned_times = False
 
     @property
     def temporal_alignment(self) -> _TemporalAlignment:
         return self._alignment
 
-    # TODO: read the native times from the held extractor once SpikeInterface can return them apart from the times
-    # set on a recording, as roiextractors' `get_native_timestamps` does. Until then a recording is built anew from
-    # the source for them, since the held one carries the aligned times after a write.
-    def _get_native_recording(self):
-        return self._initialize_extractor(self.source_data)
-
-    def _get_native_segment_times(self, *, segment_index: int) -> np.ndarray:
-        return self._get_native_recording().get_times(segment_index=segment_index)
-
-    def _get_native_segment_start_time(self, *, segment_index: int) -> float:
-        return float(self._get_native_recording().get_start_time(segment_index=segment_index))
-
-    def _get_segment_number_of_samples(self, *, segment_index: int) -> int:
-        return self.recording_extractor.get_num_samples(segment_index=segment_index)
-
-    def _set_aligned_times_on_extractor(self) -> None:
-        """Set the aligned times of every segment on the held extractor, for the writer to read them from it.
-
-        Each segment is set to its native times plus its alignment rather than shifted from where it stands, so a
-        second write sets the same times. Once the extractor has carried aligned times it is set on every write,
-        so undoing the alignment reaches the file too.
-        """
-        is_aligned = any(
-            self.temporal_alignment[key]._times is not None or self.temporal_alignment[key]._object_offset != 0.0
-            for key in self.temporal_alignment.keys()
-        )
-        if not is_aligned and not self._extractor_has_aligned_times:
-            return
-
-        native_recording = self._get_native_recording()
-        for segment_index, key in enumerate(self.temporal_alignment.keys()):
-            time_bearing_object = self.temporal_alignment[key]
-            if time_bearing_object._times is not None or native_recording.has_time_vector(segment_index=segment_index):
-                times = time_bearing_object._get_times(
-                    get_default_times=partial(native_recording.get_times, segment_index=segment_index)
-                )
-                self.recording_extractor.set_times(times=times, segment_index=segment_index)
-            else:
-                # Only the start moves, so the segment is still written as a start and a rate
-                native_start_time = native_recording.get_start_time(segment_index=segment_index)
-                current_start_time = self.recording_extractor.get_start_time(segment_index=segment_index)
-                start_time_change = native_start_time + time_bearing_object._object_offset - current_start_time
-                if start_time_change != 0.0:
-                    self.recording_extractor.shift_times(shift=start_time_change, segment_index=segment_index)
-        self._extractor_has_aligned_times = True
-
     def _warn_about_unplaced_segments(self) -> None:
-        """Warn when a segment after the first has no start in the source and its alignment places it nowhere.
+        """Warn when a segment after the first has no start, neither from the source nor from its alignment.
 
         Such a segment is written from 0 s, like the first one, so the two may overlap. An overlap the user
         sets through alignment is not warned about.
         """
-        source_starts = self.recording_extractor.get_segment_t_starts() or [None] * self._number_of_segments
-        unplaced_keys = []
-        for segment_index, key in enumerate(self.temporal_alignment.keys()):
-            time_bearing_object = self.temporal_alignment[key]
-            has_source_start = source_starts[segment_index] is not None or self.recording_extractor.has_time_vector(
-                segment_index=segment_index
-            )
-            is_aligned = time_bearing_object._times is not None or time_bearing_object._object_offset != 0.0
-            if segment_index > 0 and not has_source_start and not is_aligned:
-                unplaced_keys.append(key)
+        starts = self.recording_extractor.get_segment_t_starts() or [None] * self._number_of_segments
+        unplaced_keys = [
+            key
+            for segment_index, key in enumerate(self.temporal_alignment.keys())
+            if segment_index > 0
+            and starts[segment_index] is None
+            and not self.recording_extractor.has_time_vector(segment_index=segment_index)
+        ]
 
         if unplaced_keys:
             warnings.warn(
@@ -651,8 +634,6 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
 
         if write_electrical_series:
             self._warn_about_unplaced_segments()
-        # Set before stubbing, since the stub copies its parent's times
-        self._set_aligned_times_on_extractor()
         recording = self.recording_extractor
         if stub_test:
             recording = _stub_recording(recording=recording)

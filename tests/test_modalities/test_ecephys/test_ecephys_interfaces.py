@@ -22,6 +22,8 @@ from neuroconv.tools.testing.mock_interfaces import (
 
 python_version = Version(get_python_version())
 
+from neuroconv._temporal_alignment import _TemporalAlignment
+from neuroconv.tools.testing._temporal_alignment_rules import _TemporalAlignmentRulesTestMixin
 from neuroconv.tools.testing.data_interface_mixins import (
     RecordingExtractorInterfaceTestMixin,
     SortingExtractorInterfaceTestMixin,
@@ -664,37 +666,6 @@ class TestRecordingTemporalAlignment:
         assert electrical_series.rate == 1_000.0
         assert electrical_series.timestamps is None
 
-    def test_a_shifted_time_vector_is_written_the_same_on_every_write(self):
-        interface = MockRecordingInterface(durations=[0.1])
-        number_of_samples = interface.recording_extractor.get_num_samples()
-        native_times = np.arange(number_of_samples) / interface.recording_extractor.get_sampling_frequency() + 3.0
-        interface.recording_extractor.set_times(times=native_times.copy())
-        build_native_recording = interface._get_native_recording
-
-        # The mock's source has no time vector, so the rebuilt recording is given the one the source would carry
-        def build_native_recording_with_time_vector():
-            native_recording = build_native_recording()
-            native_recording.set_times(times=native_times.copy())
-            return native_recording
-
-        interface._get_native_recording = build_native_recording_with_time_vector
-        interface.temporal_alignment.shift_times(1.5)
-
-        first_series = interface.create_nwbfile().acquisition["ElectricalSeries"]
-        second_series = interface.create_nwbfile().acquisition["ElectricalSeries"]
-
-        assert first_series.starting_time == second_series.starting_time == 4.5
-
-    def test_undoing_a_shift_reaches_the_next_write(self):
-        interface = MockRecordingInterface(durations=[0.1])
-        interface.temporal_alignment.shift_times(1.5)
-        interface.create_nwbfile()
-
-        interface.temporal_alignment.shift_times(-1.5)
-        electrical_series = interface.create_nwbfile().acquisition["ElectricalSeries"]
-
-        assert electrical_series.starting_time == 0.0
-
     def test_a_stub_writes_the_aligned_times_of_the_samples_it_keeps(self):
         interface = MockRecordingInterface(durations=[0.1])
         native_times = interface.temporal_alignment["ElectricalSeries_0"].get_times()
@@ -757,7 +728,23 @@ class TestRecordingTemporalAlignment:
             )
         np.testing.assert_allclose(interface.temporal_alignment["ElectricalSeries_0"].get_times(), native_times * 2.0)
 
-        assert not interface.recording_extractor.has_time_vector()
+
+class TestRecordingSegmentRules(_TemporalAlignmentRulesTestMixin):
+    """The shared rules, run on recording segments, whose alignment SpikeInterface holds."""
+
+    @pytest.fixture
+    def alignment(self):
+        interface = MockRecordingInterface(num_channels=1, sampling_frequency=10.0, durations=(0.5, 0.3))
+        # The second segment starts at 2.0 s, as the shared rules expect
+        interface.recording_extractor.shift_times(2.0, segment_index=1)
+        alignment = _TemporalAlignment()
+        alignment._register_time_bearing_object(
+            key="a", time_bearing_object=interface.temporal_alignment["ElectricalSeries_0"]
+        )
+        alignment._register_time_bearing_object(
+            key="b", time_bearing_object=interface.temporal_alignment["ElectricalSeries_1"]
+        )
+        return alignment
 
 
 # This is a temporary test class to show that the migration path to kwargs only works as intended.
