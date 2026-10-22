@@ -30,6 +30,9 @@
   "behavior/moseq_keypoints.rst": {
     "extra": "moseq"
   },
+  "behavior/optitrack.rst": {
+    "extra": "optitrack"
+  },
   "behavior/sleap.rst": {
     "extra": "sleap"
   },
