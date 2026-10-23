@@ -277,7 +277,10 @@ class DoricEventsInterface(BaseEventsInterface):
                     conditioned = _condition_signal(data, spec["signal_conditioning"])
                     onset_frames, offset_frames = _detect_events(conditioned, spec["detection"])
                     onsets, durations = _frames_to_seconds(
-                        onset_frames, offset_frames, time, transition_time=spec.get("transition_time", "sample_after")
+                        onset_frames=onset_frames,
+                        offset_frames=offset_frames,
+                        timestamps=time,
+                        transition_time=spec.get("transition_time", "sample_after"),
                     )
                     events_data_dict[event_type_source_id] = _EventsData(
                         event_type_source_id=event_type_source_id,
