@@ -79,7 +79,7 @@ def _condition_signal(trace: np.ndarray, signal_conditioning: dict) -> np.ndarra
     **The postcondition is the contract:** whatever comes back is two-valued, the same length as the
     input, and indexed on the same timeline. Two-valued is what the edge readings need, and having every
     cut guarantee it is why detection needs no check of its own. Length preservation is what lets
-    :func:`_detect_events` return frame indices that still address the caller's original timestamps, so a
+    :func:`_detect_events` return sample indices that still address the caller's original timestamps, so a
     step that resampled or dropped samples would silently break the conversion and does not belong here.
 
     Parameters
@@ -202,15 +202,15 @@ def _detect_events(
     discrete_trace: np.ndarray,
     detection: str,
 ) -> tuple[np.ndarray, np.ndarray | None]:
-    """Read a discrete-valued signal's transitions as events, in frame indices.
+    """Read a discrete-valued signal's transitions as events, in sample indices.
 
     The second of the two stages (the first is :func:`_condition_signal`). It takes **no threshold**:
     conditioning has already happened, so a rising edge is simply a transition from the lower value to
     the higher one and no cut is needed or wanted here.
 
-    Frames rather than seconds, and offsets rather than durations, are deliberate. The caller holds the
+    Sample indices rather than seconds, and offsets rather than durations, are deliberate. The caller holds the
     timestamps, so it can index them at both ends of an event and get the exact elapsed time. Returning
-    a frame count instead would force the caller to multiply by an assumed sampling period, which is
+    a sample count instead would force the caller to multiply by an assumed sampling period, which is
     wrong for any source whose clock is not regular.
 
     .. warning::
@@ -245,10 +245,10 @@ def _detect_events(
 
     Returns
     -------
-    onset_frames : numpy.ndarray
-        Frame indices of the event onsets.
-    offset_frames : numpy.ndarray or None
-        ``None`` for a point reading. For a durative reading, the closing frame of each event, as
+    onset_samples : numpy.ndarray
+        Sample indices of the event onsets.
+    offset_samples : numpy.ndarray or None
+        ``None`` for a point reading. For a durative reading, the closing sample of each event, as
         ``float64`` so an event with no closing edge in the trace can carry ``NaN`` (a truncated
         interval). ``None`` for ``"rising"``, ``"falling"`` and ``"value_change"``, which are point
         readings.
@@ -278,58 +278,59 @@ def _detect_events(
         # Distinguishing the values is a conditioning job (cut a line per distinction), not a payload.
         return np.flatnonzero(difference) + 1, None
 
-    rising_frames = np.flatnonzero(difference > 0) + 1
-    falling_frames = np.flatnonzero(difference < 0) + 1
+    rising_samples = np.flatnonzero(difference > 0) + 1
+    falling_samples = np.flatnonzero(difference < 0) + 1
     if detection == "rising":
-        return rising_frames, None
+        return rising_samples, None
     if detection == "falling":
-        return falling_frames, None
+        return falling_samples, None
 
-    onset_frames, closing_frames = (
-        (rising_frames, falling_frames) if detection == "high_period" else (falling_frames, rising_frames)
+    onset_samples, closing_samples = (
+        (rising_samples, falling_samples) if detection == "high_period" else (falling_samples, rising_samples)
     )
     # For each onset, the first close strictly after it; onsets and closes strictly alternate on a
     # two-valued signal, so this pairs each onset with its own closing edge.
-    close_index = np.searchsorted(closing_frames, onset_frames, side="right")
-    offset_frames = np.full(onset_frames.shape, np.nan, dtype="float64")
-    matched = close_index < len(closing_frames)
-    offset_frames[matched] = closing_frames[close_index[matched]]
-    return onset_frames, offset_frames
+    close_index = np.searchsorted(closing_samples, onset_samples, side="right")
+    offset_samples = np.full(onset_samples.shape, np.nan, dtype="float64")
+    matched = close_index < len(closing_samples)
+    offset_samples[matched] = closing_samples[close_index[matched]]
+    return onset_samples, offset_samples
 
 
-def _frames_to_seconds(
-    onset_frames: np.ndarray,
-    offset_frames: np.ndarray | None,
+def _samples_to_seconds(
+    *,
+    onset_samples: np.ndarray,
+    offset_samples: np.ndarray | None,
     timestamps: np.ndarray | Callable[[np.ndarray], np.ndarray],
     event_time_convention: str = "sample_after_transition",
 ) -> tuple[np.ndarray, np.ndarray | None]:
-    """Convert event frames to onset times and durations in seconds, by reading the clock at each frame.
+    """Convert event samples to onset times and durations in seconds, by reading the clock at each sample.
 
     The third and last shared step, and the one the interfaces used to each do slightly differently.
     Durations come from reading the clock at both ends of an event and subtracting, which is exact
-    whether the sampling is regular or not. Estimating a sampling period and multiplying by a frame
+    whether the sampling is regular or not. Estimating a sampling period and multiplying by a sample
     count is only correct for a regular clock and silently wrong for a source that records a timestamp
     per change, such as Inscopix.
 
     Parameters
     ----------
-    onset_frames : numpy.ndarray
-        Frame indices of the event onsets, from :func:`_detect_events`.
-    offset_frames : numpy.ndarray or None
-        Closing frames, or None for a point reading. ``NaN`` marks an event with no closing edge.
+    onset_samples : numpy.ndarray
+        Sample indices of the event onsets, from :func:`_detect_events`.
+    offset_samples : numpy.ndarray or None
+        Closing sample indices, or None for a point reading. ``NaN`` marks an event with no closing edge.
     timestamps : numpy.ndarray or callable
-        The signal's own clock. An **array** holds one timestamp per frame and is indexed at the event
-        frames, which is what a source storing its clock (Doric, Inscopix) hands over. A **callable**
-        takes an array of frame indices and returns their times, for a source that derives its clock
+        The signal's own clock. An **array** holds one timestamp per sample and is indexed at the event
+        samples, which is what a source storing its clock (Doric, Inscopix) hands over. A **callable**
+        takes an array of sample indices and returns their times, for a source that derives its clock
         from a sampling rate instead of storing one (Intan, SpikeGLX NIDQ): materialising three hours at
         30 kHz to read a few dozen indices would cost hundreds of megabytes for nothing, and the
-        callable reads only the frames the events actually landed on.
+        callable reads only the samples the events actually landed on.
     event_time_convention : {"sample_after_transition", "sample_before_transition", "halfway_between_samples"}
-        Which time each event gets from its transition. A transition at frame ``k`` happened somewhere
+        Which time each event gets from its transition. A transition at sample ``k`` happened somewhere
         between samples ``k - 1`` and ``k``. ``"sample_after_transition"`` (the default) reads the clock at
         ``k``, the first sample at the new level; ``"sample_before_transition"`` reads it at ``k - 1``, the
         last sample at the old level; and ``"halfway_between_samples"`` takes the mean of the two readings,
-        which on an irregular clock is not a fixed shift. Closing frames are read the same way, so on a
+        which on an irregular clock is not a fixed shift. Closing samples are read the same way, so on a
         regular clock a duration does not depend on this choice.
 
     Returns
@@ -356,24 +357,24 @@ def _frames_to_seconds(
         read_clock = timestamps
     else:
         clock = np.asarray(timestamps, dtype="float64")
-        read_clock = lambda frames: clock[frames]  # noqa: E731
+        read_clock = lambda samples: clock[samples]  # noqa: E731
 
-    def read_event_times(frames: np.ndarray) -> np.ndarray:
-        # Frames come from np.diff plus one, so k - 1 is never before the first sample.
+    def read_event_times(samples: np.ndarray) -> np.ndarray:
+        # Samples come from np.diff plus one, so k - 1 is never before the first sample.
         if event_time_convention == "sample_after_transition":
-            return np.asarray(read_clock(frames), dtype="float64")
-        sample_before = np.asarray(read_clock(frames - 1), dtype="float64")
+            return np.asarray(read_clock(samples), dtype="float64")
+        sample_before = np.asarray(read_clock(samples - 1), dtype="float64")
         if event_time_convention == "sample_before_transition":
             return sample_before
-        return (sample_before + np.asarray(read_clock(frames), dtype="float64")) / 2
+        return (sample_before + np.asarray(read_clock(samples), dtype="float64")) / 2
 
-    onsets = read_event_times(onset_frames)
-    if offset_frames is None:
+    onsets = read_event_times(onset_samples)
+    if offset_samples is None:
         return onsets, None
 
     durations = np.full(onsets.shape, np.nan, dtype="float64")
-    closed = ~np.isnan(offset_frames)
-    closing_times = read_event_times(offset_frames[closed].astype("int64"))
+    closed = ~np.isnan(offset_samples)
+    closing_times = read_event_times(offset_samples[closed].astype("int64"))
     durations[closed] = closing_times - onsets[closed]
     return onsets, durations
 

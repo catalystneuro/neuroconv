@@ -13,7 +13,7 @@ from ....tools.events import (
 from ....tools.signal_processing import (
     _condition_signal,
     _detect_events,
-    _frames_to_seconds,
+    _samples_to_seconds,
 )
 
 
@@ -199,10 +199,10 @@ class DoricCSVEventsInterface(BaseEventsInterface):
                 # A DoricStudio digital column is already 0/1, so its cut is the derived midpoint,
                 # which lands between the two levels and hands detection back the same line.
                 conditioned = _condition_signal(data, spec["signal_conditioning"])
-                onset_frames, offset_frames = _detect_events(conditioned, spec["detection"])
-                onsets, durations = _frames_to_seconds(
-                    onset_frames=onset_frames,
-                    offset_frames=offset_frames,
+                onset_samples, offset_samples = _detect_events(conditioned, spec["detection"])
+                onsets, durations = _samples_to_seconds(
+                    onset_samples=onset_samples,
+                    offset_samples=offset_samples,
                     timestamps=time,
                     event_time_convention=spec.get("event_time_convention", "sample_after_transition"),
                 )

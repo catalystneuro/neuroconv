@@ -1693,7 +1693,7 @@ class EventsInterfaceTestMixin(DataInterfaceTestMixin):
     def test_event_time_convention_reaches_every_event_type(self, setup_interface):
         """``event_time_convention`` on every spec moves every event to the sample before its transition.
 
-        Guards each signal-encoded interface's pass-through to ``_frames_to_seconds``: one that dropped it
+        Guards each signal-encoded interface's pass-through to ``_samples_to_seconds``: one that dropped it
         would accept the key and ignore it. On any increasing clock the sample before a transition is
         strictly earlier than the one after it, so this holds whatever the fixture.
         """
