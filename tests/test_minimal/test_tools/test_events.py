@@ -218,22 +218,7 @@ class TestResolveDetectionPlan:
             "DI/O-2",
         ]
 
-    def test_event_time_convention_does_not_enter_derived_identifiers(self):
-        """It moves an event's time without selecting which transitions are events, so names stay put."""
-        detection_configuration = {
-            "DI/O-1": [
-                {
-                    "signal_conditioning": {"binarize": "midpoint"},
-                    "detection": "rising",
-                    "event_time_convention": "sample_before_transition",
-                },
-                {"signal_conditioning": {"binarize": "midpoint"}, "detection": "falling"},
-            ]
-        }
-
-        assert _get_event_type_source_ids(detection_configuration) == ["DI/O-1_rising", "DI/O-1_falling"]
-
-    def test_specs_that_differ_only_in_event_time_convention_collide(self):
+    def test_timing_the_same_events_two_ways_needs_an_event_name(self):
         """The same transitions written twice need an event_name to tell them apart."""
         with pytest.raises(ValueError, match="same identifier 'DI/O-1_rising'"):
             _resolve_detection_plan(

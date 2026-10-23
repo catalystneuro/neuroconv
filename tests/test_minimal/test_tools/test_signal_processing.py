@@ -353,9 +353,14 @@ class TestDetectEvents:
 
 
 class TestSamplesToSeconds:
-    """Durations come from reading the clock at both ends, which is exact on any clock."""
+    """Durations come from reading the clock at both ends, which is exact on any clock.
+
+    Which samples are read around each transition is set by ``event_time_convention``: the first sample at the
+    new level, the last at the old, or halfway between them.
+    """
 
     LINE = np.array([0, 0, 1, 1, 1, 0, 0, 1, 0], dtype="int16")
+    REGULAR_CLOCK = np.arange(9) * 0.001
 
     def test_regular_clock(self):
         timestamps = np.arange(9) * 0.001
@@ -399,14 +404,7 @@ class TestSamplesToSeconds:
         assert durations[0] == pytest.approx(0.002)
         assert np.isnan(durations[1])
 
-
-class TestEventTimeConvention:
-    """Which time an event gets: the first sample at the new level, the last at the old, or halfway."""
-
-    LINE = np.array([0, 0, 1, 1, 1, 0, 0, 1, 0], dtype="int16")
-    REGULAR_CLOCK = np.arange(9) * 0.001
-
-    def test_sample_after_is_the_default(self):
+    def test_sample_after_transition_is_the_default(self):
         onset_samples, offset_samples = _detect_events(self.LINE, "rising")
         default_onsets, _ = _samples_to_seconds(
             onset_samples=onset_samples, offset_samples=offset_samples, timestamps=self.REGULAR_CLOCK
@@ -420,7 +418,7 @@ class TestEventTimeConvention:
         assert_array_equal(default_onsets, np.array([0.002, 0.007]))
         assert_array_equal(explicit_onsets, default_onsets)
 
-    def test_sample_before_reads_the_last_sample_at_the_old_level(self):
+    def test_sample_before_transition_reads_the_last_sample_at_the_old_level(self):
         onset_samples, offset_samples = _detect_events(self.LINE, "rising")
         onsets, _ = _samples_to_seconds(
             onset_samples=onset_samples,
@@ -430,7 +428,7 @@ class TestEventTimeConvention:
         )
         assert_array_equal(onsets, np.array([0.001, 0.006]))
 
-    def test_halfway_is_between_the_two_samples(self):
+    def test_halfway_between_samples_lands_between_the_two_samples(self):
         onset_samples, offset_samples = _detect_events(self.LINE, "falling")
         onsets, _ = _samples_to_seconds(
             onset_samples=onset_samples,
@@ -440,7 +438,7 @@ class TestEventTimeConvention:
         )
         assert onsets == pytest.approx([0.0045, 0.0075])
 
-    def test_halfway_is_the_mean_of_two_clock_readings_on_an_irregular_clock(self):
+    def test_halfway_between_samples_is_the_mean_of_two_clock_readings_on_an_irregular_clock(self):
         """Not a fixed half-period shift: a fall across a one-second gap lands in the middle of the gap."""
         # A one-second gap between frames 4 and 5; every other step is 1 ms.
         timestamps = np.array([0.0, 0.001, 0.002, 0.003, 0.004, 1.004, 1.005, 1.006, 1.007])
@@ -469,7 +467,7 @@ class TestEventTimeConvention:
             assert onsets == pytest.approx(default_onsets - shift)
             assert durations == pytest.approx(default_durations)
 
-    def test_an_unclosed_event_keeps_a_nan_duration_under_every_setting(self):
+    def test_an_unclosed_event_keeps_a_nan_duration_under_every_convention(self):
         onset_samples, offset_samples = _detect_events(self.LINE, "low_period")
         for event_time_convention in ("sample_after_transition", "sample_before_transition", "halfway_between_samples"):
             _, durations = _samples_to_seconds(
