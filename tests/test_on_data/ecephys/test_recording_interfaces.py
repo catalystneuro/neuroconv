@@ -54,6 +54,7 @@ this_python_version = version.parse(python_version())
 
 class TestAlphaOmegaRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = AlphaOmegaRecordingInterface
+    expected_temporal_alignment_keys = ("alpha_omega_recording_0", "alpha_omega_recording_1", "alpha_omega_recording_2")
     interface_kwargs = dict(folder_path=str(ECEPHY_DATA_PATH / "alphaomega" / "mpx_map_version4"))
     save_directory = OUTPUT_PATH
 
@@ -70,6 +71,7 @@ class TestAlphaOmegaRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
 class TestAxonRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = AxonRecordingInterface
+    expected_temporal_alignment_keys = ("axon_recording_0",)
     interface_kwargs = dict(file_path=str(ECEPHY_DATA_PATH / "axon" / "File_axon_1.abf"))
     save_directory = OUTPUT_PATH
 
@@ -124,6 +126,7 @@ class TestAxonRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
 class TestAxonaRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = AxonaRecordingInterface
+    expected_temporal_alignment_keys = ("axona_recording_0",)
     interface_kwargs = dict(file_path=str(ECEPHY_DATA_PATH / "axona" / "axona_raw.bin"))
     save_directory = OUTPUT_PATH
 
@@ -157,6 +160,7 @@ class TestAxonaRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
 class TestAxonaLFPDataInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = AxonaLFPDataInterface
+    expected_temporal_alignment_keys = ("ElectricalSeriesLFP_0",)
     interface_kwargs = dict(file_path=str(ECEPHY_DATA_PATH / "axona" / "dataset_unit_spikes" / "20140815-180secs.eeg"))
     save_directory = OUTPUT_PATH
     is_lfp_interface = True
@@ -177,6 +181,7 @@ class TestAxonaLFPDataInterface(RecordingExtractorInterfaceTestMixin):
 
 class TestBiocamRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = BiocamRecordingInterface
+    expected_temporal_alignment_keys = ("biocam_recording_0",)
     interface_kwargs = dict(file_path=str(ECEPHY_DATA_PATH / "biocam" / "biocam_hw3.0_fw1.6.brw"))
     save_directory = OUTPUT_PATH
 
@@ -192,6 +197,7 @@ class TestBiocamRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
 class TestBlackrockRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = BlackrockRecordingInterface
+    expected_temporal_alignment_keys = ("blackrock_recording_0",)
     save_directory = OUTPUT_PATH
 
     def check_extracted_metadata(self, metadata: dict):
@@ -224,6 +230,7 @@ class TestBlackrockRecordingInterface(RecordingExtractorInterfaceTestMixin):
 )
 class TestSpike2RecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = Spike2RecordingInterface
+    expected_temporal_alignment_keys = ("spike2_recording_0",)
     interface_kwargs = dict(file_path=str(ECEPHY_DATA_PATH / "spike2" / "m365_1sec.smrx"))
     save_directory = OUTPUT_PATH
 
@@ -237,6 +244,7 @@ class TestSpike2RecordingInterface(RecordingExtractorInterfaceTestMixin):
 
 class TestCellExplorerRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = CellExplorerRecordingInterface
+    expected_temporal_alignment_keys = ("cell_explorer_recording_0",)
     save_directory = OUTPUT_PATH
 
     def check_extracted_metadata(self, metadata: dict):
@@ -319,6 +327,7 @@ class TestCellExplorerRecordingInterface(RecordingExtractorInterfaceTestMixin):
 @pytest.mark.filterwarnings("ignore:Found a mix of voltage and non-voltage units:UserWarning")
 class TestEDFRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = EDFRecordingInterface
+    expected_temporal_alignment_keys = ("edf_recording_0",)
     # ch3 is in pA, ch5 in Celsius and ch4 states no unit, so none of the three belongs in an
     # ElectricalSeries. Only ch1 and ch2 are electrode channels.
     interface_kwargs = dict(
@@ -347,6 +356,7 @@ class TestEDFRecordingInterfaceFullMetadata(RecordingExtractorInterfaceTestMixin
     """This file states every header field the format defines."""
 
     data_interface_cls = EDFRecordingInterface
+    expected_temporal_alignment_keys = ("edf_recording_0",)
     interface_kwargs = dict(
         file_path=str(ECEPHY_DATA_PATH / "edf" / "metadata_annotations" / "full_metadata.edf"),
     )
@@ -372,6 +382,7 @@ class TestEDFRecordingInterfaceMultiStream(RecordingExtractorInterfaceTestMixin)
     """This file sampled part of its signals at 100 Hz and the rest at 1 Hz, so it holds two streams."""
 
     data_interface_cls = EDFRecordingInterface
+    expected_temporal_alignment_keys = ("edf_recording_0",)
     interface_kwargs = dict(
         file_path=str(ECEPHY_DATA_PATH / "edf" / "heterogeneous_offsets" / "same_unit_offsets_multirate.edf"),
         stream_name="stream ((100.0,) Hz)",
@@ -443,6 +454,7 @@ class TestEDFRecordingInterfaceMultiStream(RecordingExtractorInterfaceTestMixin)
 
 class TestIntanRecordingInterfaceRHS(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = IntanRecordingInterface
+    expected_temporal_alignment_keys = ("intan_recording_0",)
     interface_kwargs = dict(file_path=ECEPHY_DATA_PATH / "intan" / "intan_rhs_test_1.rhs")
 
     def check_extracted_metadata(self, metadata: dict):
@@ -487,6 +499,7 @@ class TestIntanRecordingInterfaceRHS(RecordingExtractorInterfaceTestMixin):
 
 class TestIntanRecordingInterfaceRHD(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = IntanRecordingInterface
+    expected_temporal_alignment_keys = ("intan_recording_0",)
     save_directory = OUTPUT_PATH
 
     def check_extracted_metadata(self, metadata: dict):
@@ -603,6 +616,7 @@ class TestIntanRecordingInterfaceRHD(RecordingExtractorInterfaceTestMixin):
 @pytest.mark.skip(reason="This interface fails to load the necessary plugin sometimes.")
 class TestMaxOneRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = MaxOneRecordingInterface
+    expected_temporal_alignment_keys = ("maxone_recording_0",)
     interface_kwargs = dict(
         file_path=str(ECEPHY_DATA_PATH / "maxwell" / "MaxOne_data" / "Record" / "000011" / "data.raw.h5")
     )
@@ -637,6 +651,7 @@ class TestMaxOneRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
 class TestMCSRawRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = MCSRawRecordingInterface
+    expected_temporal_alignment_keys = ("mcs_raw_recording_0",)
     interface_kwargs = dict(file_path=str(ECEPHY_DATA_PATH / "rawmcs" / "raw_mcs_with_header_1.raw"))
     save_directory = OUTPUT_PATH
 
@@ -650,6 +665,7 @@ class TestMCSRawRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
 class TestMEArecRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = MEArecRecordingInterface
+    expected_temporal_alignment_keys = ("mearec_recording_0",)
     interface_kwargs = dict(file_path=str(ECEPHY_DATA_PATH / "mearec" / "mearec_test_10s.h5"))
     save_directory = OUTPUT_PATH
 
@@ -773,6 +789,7 @@ class TestNeuralynxRecordingInterfaceV540:
 
 class TestMultiStreamNeuralynxRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = NeuralynxRecordingInterface
+    expected_temporal_alignment_keys = ("neuralynx_recording_0",)
     interface_kwargs = dict(
         folder_path=str(ECEPHY_DATA_PATH / "neuralynx" / "Cheetah_v6.4.1dev" / "original_data"),
         stream_name="stream0_32000Hz_2mVRange_DSPFilter2",
@@ -809,6 +826,7 @@ class TestMultiStreamNeuralynxRecordingInterface(RecordingExtractorInterfaceTest
 
 class TestNeuroScopeRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = NeuroScopeRecordingInterface
+    expected_temporal_alignment_keys = ("neuroscope_recording_0",)
     interface_kwargs = dict(file_path=str(ECEPHY_DATA_PATH / "neuroscope" / "test1" / "test1.dat"))
     save_directory = OUTPUT_PATH
 
@@ -828,6 +846,7 @@ class TestNeuroScopeRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
 class TestNeuroScopeLFPInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = NeuroScopeLFPInterface
+    expected_temporal_alignment_keys = ("neuroscope_lfp_0",)
     interface_kwargs = dict(
         file_path=str(ECEPHY_DATA_PATH / "neuroscope" / "dataset_1" / "YutaMouse42-151117.eeg"),
         xml_file_path=str(ECEPHY_DATA_PATH / "neuroscope" / "dataset_1" / "YutaMouse42-151117.xml"),
@@ -888,6 +907,7 @@ class TestOpenEphysBinaryRecordingInterfaceClassMethodsAndAssertions:
 
 class TestOpenEphysBinaryRecordingInterfaceVersion0_4_4(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = OpenEphysBinaryRecordingInterface
+    expected_temporal_alignment_keys = ("open_ephys_recording_0",)
     interface_kwargs = dict(folder_path=str(ECEPHY_DATA_PATH / "openephysbinary" / "v0.4.4.1_with_video_tracking"))
     save_directory = OUTPUT_PATH
 
@@ -913,6 +933,7 @@ class TestOpenEphysBinaryRecordingInterfaceVersion0_4_4(RecordingExtractorInterf
 
 class TestOpenEphysBinaryRecordingInterfaceVersion0_5_3_Stream1(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = OpenEphysBinaryRecordingInterface
+    expected_temporal_alignment_keys = ("open_ephys_recording_0",)
     interface_kwargs = dict(
         folder_path=str(ECEPHY_DATA_PATH / "openephysbinary" / "v0.5.3_two_neuropixels_stream" / "Record_Node_107"),
         stream_name="Record_Node_107#Neuropix-PXI-116.0",
@@ -931,6 +952,7 @@ class TestOpenEphysBinaryRecordingInterfaceVersion0_5_3_Stream1(RecordingExtract
 
 class TestOpenEphysBinaryRecordingInterfaceVersion0_5_3_Stream2(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = OpenEphysBinaryRecordingInterface
+    expected_temporal_alignment_keys = ("open_ephys_recording_0",)
     interface_kwargs = dict(
         folder_path=str(ECEPHY_DATA_PATH / "openephysbinary" / "v0.5.3_two_neuropixels_stream" / "Record_Node_107"),
         stream_name="Record_Node_107#Neuropix-PXI-116.1",
@@ -953,6 +975,7 @@ class TestOpenEphysBinaryRecordingInterfaceWithBlocks_version_0_6_block_1_stream
     """From Issue #695, exposed `block_index` argument and added tests on data that include multiple blocks."""
 
     data_interface_cls = OpenEphysBinaryRecordingInterface
+    expected_temporal_alignment_keys = ("open_ephys_recording_0",)
     interface_kwargs = dict(
         folder_path=str(
             ECEPHY_DATA_PATH / "openephysbinary" / "v0.6.x_neuropixels_multiexp_multistream" / "Record Node 101"
@@ -979,6 +1002,7 @@ class TestOpenEphysBinaryRecordingInterfaceNeuropixelsProbe(RecordingExtractorIn
     catalogue probe from them and spikeinterface attaches none at all."""
 
     data_interface_cls = OpenEphysBinaryRecordingInterface
+    expected_temporal_alignment_keys = ("open_ephys_recording_0",)
     interface_kwargs = dict(
         folder_path=str(ECEPHY_DATA_PATH / "openephysbinary" / "v0.6.x_neuropixels_with_sync" / "Record Node 104"),
         stream_name="Record Node 104#Neuropix-PXI-100.ProbeA-AP",
@@ -1023,6 +1047,7 @@ class TestOpenEphysBinaryRecordingInterfaceProbeWithoutSerialNumber(RecordingExt
     the NP2014, all linking to the single probe."""
 
     data_interface_cls = OpenEphysBinaryRecordingInterface
+    expected_temporal_alignment_keys = ("my_probe_0",)
     interface_kwargs = dict(
         folder_path=str(
             ECEPHY_DATA_PATH / "openephysbinary" / "v0.6.x_onebox_neuropixels_nontrivial_wiring" / "Record Node 101"
@@ -1068,6 +1093,7 @@ class TestOpenEphysBinaryRecordingInterfaceNonNeuralDataExcluded(RecordingExtrac
     """Test that non-neural channels are not written as ElectricalSeries"""
 
     data_interface_cls = OpenEphysBinaryRecordingInterface
+    expected_temporal_alignment_keys = ("open_ephys_recording_0",)
     interface_kwargs = dict(
         folder_path=str(ECEPHY_DATA_PATH / "openephysbinary" / "neural_and_non_neural_data_mixed"),
         stream_name="Rhythm_FPGA-100.0",
@@ -1092,6 +1118,7 @@ class TestOpenEphysBinaryRecordingInterfaceNonNeuralDataExcluded(RecordingExtrac
 
 class TestOpenEphysLegacyRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = OpenEphysLegacyRecordingInterface
+    expected_temporal_alignment_keys = ("open_ephys_recording_0",)
     interface_kwargs = dict(folder_path=str(ECEPHY_DATA_PATH / "openephys" / "OpenEphys_SampleData_1"))
     save_directory = OUTPUT_PATH
 
@@ -1113,6 +1140,7 @@ class TestOpenEphysLegacyRecordingInterface(RecordingExtractorInterfaceTestMixin
 
 class TestOpenEphysRecordingInterfaceRouter(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = OpenEphysRecordingInterface
+    expected_temporal_alignment_keys = ("open_ephys_recording_0",)
     save_directory = OUTPUT_PATH
 
     @pytest.fixture(
@@ -1192,6 +1220,7 @@ class TestOpenEphysRecordingInterfaceRedirects(TestCase):
 
 class TestSpikeGadgetsRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = SpikeGadgetsRecordingInterface
+    expected_temporal_alignment_keys = ("spikegadgets_recording_0",)
     save_directory = OUTPUT_PATH
 
     def check_extracted_metadata(self, metadata: dict):
@@ -1241,6 +1270,7 @@ class TestSpikeGadgetsRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
 class TestSpikeGLXRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = SpikeGLXRecordingInterface
+    expected_temporal_alignment_keys = ("spikeglx_imec0_ap_0",)
     interface_kwargs = dict(
         folder_path=ECEPHY_DATA_PATH / "spikeglx" / "Noise4Sam_g0" / "Noise4Sam_g0_imec0", stream_id="imec0.ap"
     )
@@ -1299,6 +1329,7 @@ class TestSpikeGLXRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
 class TestSpikeGLXRecordingInterfaceLF(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = SpikeGLXRecordingInterface
+    expected_temporal_alignment_keys = ("spikeglx_imec0_lf_0",)
     interface_kwargs = dict(
         folder_path=ECEPHY_DATA_PATH / "spikeglx" / "Noise4Sam_g0" / "Noise4Sam_g0_imec0", stream_id="imec0.lf"
     )
@@ -1315,6 +1346,7 @@ class TestSpikeGLXRecordingInterfaceLF(RecordingExtractorInterfaceTestMixin):
 
 class TestSpikeGLXRecordingInterfaceLongNHP(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = SpikeGLXRecordingInterface
+    expected_temporal_alignment_keys = ("spikeglx_imec0_ap_0",)
     interface_kwargs = dict(
         folder_path=str(ECEPHY_DATA_PATH / "spikeglx" / "long_nhp_stubbed" / "snippet_g0" / "snippet_g0_imec0"),
         stream_id="imec0.ap",
@@ -1374,6 +1406,7 @@ class TestSpikeGLXRecordingInterfaceLongNHP(RecordingExtractorInterfaceTestMixin
 
 class TestTdtRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = TdtRecordingInterface
+    expected_temporal_alignment_keys = ("tdt_recording_0", "tdt_recording_1")
     test_gain_value = 0.195  # arbitrary value to test gain
     save_directory = OUTPUT_PATH
 
@@ -1419,6 +1452,7 @@ class TestTdtRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
 class TestPlexonRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = PlexonRecordingInterface
+    expected_temporal_alignment_keys = ("plexon_recording_0",)
     interface_kwargs = dict(
         file_path=str(ECEPHY_DATA_PATH / "plexon" / "4chDemoPLX.plx"),
     )
@@ -1437,6 +1471,7 @@ class TestPlexonRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
 class TestCellExplorerLFPInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = CellExplorerLFPInterface
+    expected_temporal_alignment_keys = ("cell_explorer_lfp_0",)
     interface_kwargs = dict(
         folder_path=str(ECEPHY_DATA_PATH / "cellexplorer" / "dataset_4" / "Peter_MS22_180629_110319_concat_stubbed"),
     )
@@ -1453,6 +1488,7 @@ class TestCellExplorerLFPInterface(RecordingExtractorInterfaceTestMixin):
 
 class TestPlexonLFPInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = PlexonLFPInterface
+    expected_temporal_alignment_keys = ("plexon_lfp_0",)
     interface_kwargs = dict(
         file_path=str(ECEPHY_DATA_PATH / "plexon" / "4chDemoPLX.plx"),
     )
@@ -1474,6 +1510,7 @@ class TestPlexonLFPInterface(RecordingExtractorInterfaceTestMixin):
 )
 class TestPlexon2RecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = Plexon2RecordingInterface
+    expected_temporal_alignment_keys = ("plexon2_recording_0",)
     interface_kwargs = dict(
         file_path=str(ECEPHY_DATA_PATH / "plexon" / "4chDemoPL2.pl2"),
     )
@@ -1492,6 +1529,7 @@ class TestPlexon2RecordingInterface(RecordingExtractorInterfaceTestMixin):
 
 class TestWhiteMatterRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = WhiteMatterRecordingInterface
+    expected_temporal_alignment_keys = ("white_matter_recording_0",)
     interface_kwargs = dict(
         file_path=str(
             ECEPHY_DATA_PATH / "whitematter" / "HSW_2024_12_12__10_28_23__70min_17sec__hsamp_64ch_25000sps_stub.bin"

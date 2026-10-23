@@ -28,90 +28,55 @@ vector standing in for one scalar, and it would open every source a caller had m
 means nothing is read until someone asks for times.
 """
 
+from abc import ABC, abstractmethod
+
 import numpy as np
 
 
-class _TimeBearingObject:
+class _BaseTimeBearingObject(ABC):
     """One time-bearing object, reached as ``interface.temporal_alignment[key]``: a series, or the events of one type.
 
-    Holds an optional replacement for the object's times and one offset of its own, so the source times are
-    never mutated and what is written is ``(replacement or default) + offset``. The default times are what the
-    interface writes when nothing has been said: the times its source recorded, or the ones its header gives
-    where the source records none.
-
-    Events are written to an ``EventsTable``, a ``DynamicTable`` with a ``timestamp`` column and an optional
-    ``duration`` column. The times of an event type are its timestamps, and it may have one duration per
-    timestamp. A rigid shift moves the timestamps and leaves the durations, since a translation cancels in a
-    difference. ``set_times`` replaces the timestamps and leaves the durations, which the caller did not give.
-    ``remap_times`` re-times both ends of every event, so a duration becomes ``map(timestamp + duration) -
-    map(timestamp)``: it changes whenever the two clocks run at different rates.
+    Writes the operations once, in terms of a few steps a subclass provides: read the times, read the first time,
+    read the number of samples, add an offset, and replace the times. A subclass decides where the alignment is
+    kept, in its own fields or in the object that holds the data, and nothing else.
     """
 
-    def __init__(
-        self,
-        *,
-        get_native_times,
-        default_start_time=None,
-        get_number_of_samples=None,
-        get_native_durations=None,
-    ):
-        # A callable rather than an array, so an interface registers its objects without reading its source.
-        # The start is separate so that placing an object needs one number, not every sample time; a number
-        # where the interface knows it outright, a callable where it has to be read from a header.
-        self._get_native_times = get_native_times
-        self._default_start_time = default_start_time
-        # The count is separate from the times because some objects know how many samples they have but not
-        # when they were taken, which is when `set_times` is needed most.
-        self._get_number_of_samples = get_number_of_samples
-        self._get_native_durations = get_native_durations
-        self._times: np.ndarray | None = None
-        self._durations: np.ndarray | None = None
-        self._object_offset = 0.0
-
+    @abstractmethod
     def get_times(self) -> np.ndarray:
         """Return the times this object will be written on, its offset included."""
-        return self._get_times(get_default_times=self._get_native_times)
 
-    def _get_times(self, *, get_default_times) -> np.ndarray:
-        """``get_times`` with ``get_default_times`` standing in for the default, for a writer that needs another one."""
-        times = self._times if self._times is not None else get_default_times()
-        return times + self._object_offset
+    @abstractmethod
+    def _get_start_time(self) -> float:
+        """The time this object's first sample will be written on, without building its times, for the write path."""
+
+    @abstractmethod
+    def _get_number_of_samples(self) -> int | None:
+        """How many times ``set_times`` has to be given, or ``None`` when the count is not known and not checked."""
+
+    @abstractmethod
+    def _add_offset(self, delta: float) -> None:
+        """Move every time of this object by ``delta`` seconds."""
+
+    @abstractmethod
+    def _replace_times(self, times: np.ndarray) -> None:
+        """Make ``times`` this object's times, with no offset on top of them."""
 
     def get_durations(self) -> np.ndarray | None:
         """Return the durations of this object's events, or ``None`` for an object without durations."""
-        if self._durations is not None:
-            return self._durations
-        if self._get_native_durations is None:
-            return None
-        return self._get_native_durations()
+        return None
+
+    def _replace_durations(self, durations: np.ndarray) -> None:
+        """Make ``durations`` this object's durations. Only an object with durations provides it."""
+        raise NotImplementedError
 
     @property
     def has_durations(self) -> bool:
         """Whether this object has one duration per timestamp, which only an event type can have."""
         return self.get_durations() is not None
 
-    def _get_start_time(self) -> float:
-        """The time this object's first sample will be written on, without building its times, for the write path."""
-        return self._get_base_start_time() + self._object_offset
-
-    def _get_base_start_time(self) -> float:
-        """The first time of what the offsets are added to, without building the times where the interface said it."""
-        if self._times is not None:
-            base_start_time = self._times[0] if self._times.size else np.nan
-        elif callable(self._default_start_time):
-            base_start_time = self._default_start_time()
-        elif self._default_start_time is not None:
-            base_start_time = self._default_start_time
-        else:
-            default_times = np.asarray(self._get_native_times())
-            base_start_time = default_times[0] if default_times.size else np.nan
-        return float(base_start_time)
-
     def _is_empty(self) -> bool:
         """Whether this object has no samples, which leaves it no start to place or to be placed by."""
-        if self._times is not None:
-            return self._times.size == 0
-        return np.asarray(self._get_native_times()).size == 0
+        return self.get_times().size == 0
 
     def shift_times(self, delta: float) -> None:
         """Shift this object alone by ``delta`` seconds, leaving the interface's other objects where they are.
@@ -120,7 +85,7 @@ class _TimeBearingObject:
         milliseconds late. It is relative, so repeated calls accumulate; a correction for every object of the
         interface is ``interface.temporal_alignment.shift_times(delta)``.
         """
-        self._object_offset += float(delta)
+        self._add_offset(float(delta))
 
     def move_start_to(self, starting_time: float) -> None:
         """Place this object so that its first sample sits at ``starting_time`` seconds on the session clock.
@@ -139,13 +104,13 @@ class _TimeBearingObject:
         starting_time = float(starting_time)
         if not np.isfinite(starting_time):
             raise ValueError(f"`move_start_to` needs a finite time in seconds, not {starting_time}.")
-        base_start_time = self._get_base_start_time()
-        if not np.isfinite(base_start_time):
+        start_time = self._get_start_time()
+        if not np.isfinite(start_time):
             raise ValueError(
                 "This object has no finite first time to place: it is empty, or a remap marked its first "
                 "sample as outside the pulses."
             )
-        self._object_offset = starting_time - base_start_time
+        self._add_offset(starting_time - start_time)
 
     def set_times(self, times) -> None:
         """Write these times for this object, exactly as given, one per sample.
@@ -156,15 +121,13 @@ class _TimeBearingObject:
         event type they are the timestamps, and the durations are left as they are.
         """
         times = np.asarray(times)
-        if self._get_number_of_samples is not None:
-            number_of_samples = self._get_number_of_samples()
-            if times.shape != (number_of_samples,):
-                raise ValueError(
-                    f"This object has {number_of_samples} samples, but {times.size} times were given. "
-                    "`set_times` needs one time per sample."
-                )
-        self._times = times
-        self._object_offset = 0.0
+        number_of_samples = self._get_number_of_samples()
+        if number_of_samples is not None and times.shape != (number_of_samples,):
+            raise ValueError(
+                f"This object has {number_of_samples} samples, but {times.size} times were given. "
+                "`set_times` needs one time per sample."
+            )
+        self._replace_times(times)
 
     def remap_times(self, *, local_sync_times, reference_sync_times, interpolation_function=None) -> None:
         """Re-express this object's times on a reference clock through synchronization pulses.
@@ -236,9 +199,95 @@ class _TimeBearingObject:
         remapped_times = interpolation_function(times, local_sync_times, reference_sync_times)
         if durations is not None:
             remapped_ends = interpolation_function(times + durations, local_sync_times, reference_sync_times)
-            self._durations = remapped_ends - remapped_times
-        self._times = remapped_times
+            self._replace_durations(remapped_ends - remapped_times)
+        self._replace_times(remapped_times)
+
+
+class _TimeBearingObject(_BaseTimeBearingObject):
+    """One time-bearing object, reached as ``interface.temporal_alignment[key]``: a series, or the events of one type.
+
+    Holds an optional replacement for the object's times and one offset of its own, so the source times are
+    never mutated and what is written is ``(replacement or default) + offset``. The default times are what the
+    interface writes when nothing has been said: the times its source recorded, or the ones its header gives
+    where the source records none.
+
+    Events are written to an ``EventsTable``, a ``DynamicTable`` with a ``timestamp`` column and an optional
+    ``duration`` column. The times of an event type are its timestamps, and it may have one duration per
+    timestamp. A rigid shift moves the timestamps and leaves the durations, since a translation cancels in a
+    difference. ``set_times`` replaces the timestamps and leaves the durations, which the caller did not give.
+    ``remap_times`` re-times both ends of every event, so a duration becomes ``map(timestamp + duration) -
+    map(timestamp)``: it changes whenever the two clocks run at different rates.
+    """
+
+    def __init__(
+        self,
+        *,
+        get_native_times,
+        default_start_time=None,
+        get_number_of_samples=None,
+        get_native_durations=None,
+    ):
+        # A callable rather than an array, so an interface registers its objects without reading its source.
+        # The start is separate so that placing an object needs one number, not every sample time; a number
+        # where the interface knows it outright, a callable where it has to be read from a header.
+        self._get_native_times = get_native_times
+        self._default_start_time = default_start_time
+        # The count is separate from the times because some objects know how many samples they have but not
+        # when they were taken, which is when `set_times` is needed most.
+        self._get_native_number_of_samples = get_number_of_samples
+        self._get_native_durations = get_native_durations
+        self._times: np.ndarray | None = None
+        self._durations: np.ndarray | None = None
         self._object_offset = 0.0
+
+    def get_times(self) -> np.ndarray:
+        """Return the times this object will be written on, its offset included."""
+        return self._get_times(get_default_times=self._get_native_times)
+
+    def _get_times(self, *, get_default_times) -> np.ndarray:
+        """``get_times`` with ``get_default_times`` standing in for the default, for a writer that needs another one."""
+        times = self._times if self._times is not None else get_default_times()
+        return times + self._object_offset
+
+    def get_durations(self) -> np.ndarray | None:
+        """Return the durations of this object's events, or ``None`` for an object without durations."""
+        if self._durations is not None:
+            return self._durations
+        if self._get_native_durations is None:
+            return None
+        return self._get_native_durations()
+
+    def _get_start_time(self) -> float:
+        """The time this object's first sample will be written on, without building its times, for the write path."""
+        return self._get_base_start_time() + self._object_offset
+
+    def _get_base_start_time(self) -> float:
+        """The first time of what the offsets are added to, without building the times where the interface said it."""
+        if self._times is not None:
+            base_start_time = self._times[0] if self._times.size else np.nan
+        elif callable(self._default_start_time):
+            base_start_time = self._default_start_time()
+        elif self._default_start_time is not None:
+            base_start_time = self._default_start_time
+        else:
+            default_times = np.asarray(self._get_native_times())
+            base_start_time = default_times[0] if default_times.size else np.nan
+        return float(base_start_time)
+
+    def _get_number_of_samples(self) -> int | None:
+        if self._get_native_number_of_samples is None:
+            return None
+        return self._get_native_number_of_samples()
+
+    def _add_offset(self, delta: float) -> None:
+        self._object_offset += delta
+
+    def _replace_times(self, times: np.ndarray) -> None:
+        self._times = times
+        self._object_offset = 0.0
+
+    def _replace_durations(self, durations: np.ndarray) -> None:
+        self._durations = durations
 
 
 class _TemporalAlignment:
@@ -253,7 +302,7 @@ class _TemporalAlignment:
     """
 
     def __init__(self):
-        self._name_to_time_bearing_object: dict[str, _TimeBearingObject] = {}
+        self._name_to_time_bearing_object: dict[str, _BaseTimeBearingObject] = {}
 
     def _register(
         self,
@@ -278,14 +327,22 @@ class _TemporalAlignment:
             get_number_of_samples=get_number_of_samples,
             get_native_durations=get_native_durations,
         )
-        self._name_to_time_bearing_object[key] = time_bearing_object
+        self._register_time_bearing_object(key=key, time_bearing_object=time_bearing_object)
         return time_bearing_object
+
+    def _register_time_bearing_object(self, *, key: str, time_bearing_object: _BaseTimeBearingObject) -> None:
+        """Name a time-bearing object the interface built itself. Called by the interface, not by a user.
+
+        For an object that keeps its alignment somewhere other than a ``_TimeBearingObject``, a recording
+        segment whose alignment SpikeInterface holds.
+        """
+        self._name_to_time_bearing_object[key] = time_bearing_object
 
     def keys(self) -> tuple[str, ...]:
         """The time-bearing objects this interface can name, empty when it names none."""
         return tuple(self._name_to_time_bearing_object)
 
-    def __getitem__(self, key: str) -> _TimeBearingObject:
+    def __getitem__(self, key: str) -> _BaseTimeBearingObject:
         if key not in self._name_to_time_bearing_object:
             named = ", ".join(repr(name) for name in self._name_to_time_bearing_object) or "nothing"
             raise KeyError(f"{key!r} is not a time-bearing object of this interface. It names {named}.")
@@ -336,7 +393,7 @@ class _TemporalAlignment:
         """Re-express every time-bearing object on a reference clock through synchronization pulses.
 
         One acquisition clock means one correction, so this needs no key. See
-        :meth:`_TimeBearingObject.remap_times`.
+        :meth:`_BaseTimeBearingObject.remap_times`.
         """
         if not self._name_to_time_bearing_object:
             raise NotImplementedError(

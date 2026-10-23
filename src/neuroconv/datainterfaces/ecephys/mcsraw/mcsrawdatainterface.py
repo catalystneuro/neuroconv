@@ -49,7 +49,7 @@ class MCSRawRecordingInterface(BaseRecordingExtractorInterface):
             ``"mcs_raw_recording"``.
         """
 
-        super().__init__(file_path=file_path, verbose=verbose, es_key=es_key, metadata_key=metadata_key)
-
         if metadata_key is None:
-            self.metadata_key = "mcs_raw_recording"
+            metadata_key = "mcs_raw_recording"
+
+        super().__init__(file_path=file_path, verbose=verbose, es_key=es_key, metadata_key=metadata_key)
