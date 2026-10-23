@@ -273,9 +273,9 @@ class MockBehaviorEventInterface(BaseTemporalAlignmentInterface):
         This method creates a DynamicTable to store event times and adds it to the NWBFile's acquisition.
         """
         table = DynamicTable(name="BehaviorEvents", description="Times of various classified behaviors.")
-        table.add_column(name="event_time_convention", description="Time of each event.")
+        table.add_column(name="event_time", description="Time of each event.")
         for timestamp in self.get_timestamps():
-            table.add_row(event_time_convention=timestamp)
+            table.add_row(event_time=timestamp)
         nwbfile.add_acquisition(table)
 
 
