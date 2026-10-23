@@ -31,14 +31,14 @@ class TestValidateDetectionConfiguration:
             AVAILABLE_SIGNALS,
         )
 
-    def test_event_time_is_a_recognized_key(self):
+    def test_event_time_convention_is_a_recognized_key(self):
         _validate_detection_configuration(
             {
                 "DI/O-1": [
                     {
                         "signal_conditioning": {"binarize": "midpoint"},
                         "detection": "rising",
-                        "event_time": "sample_before",
+                        "event_time_convention": "sample_before_transition",
                     }
                 ]
             },
@@ -218,14 +218,14 @@ class TestResolveDetectionPlan:
             "DI/O-2",
         ]
 
-    def test_event_time_does_not_enter_derived_identifiers(self):
+    def test_event_time_convention_does_not_enter_derived_identifiers(self):
         """It moves an event's time without selecting which transitions are events, so names stay put."""
         detection_configuration = {
             "DI/O-1": [
                 {
                     "signal_conditioning": {"binarize": "midpoint"},
                     "detection": "rising",
-                    "event_time": "sample_before",
+                    "event_time_convention": "sample_before_transition",
                 },
                 {"signal_conditioning": {"binarize": "midpoint"}, "detection": "falling"},
             ]
@@ -233,7 +233,7 @@ class TestResolveDetectionPlan:
 
         assert _get_event_type_source_ids(detection_configuration) == ["DI/O-1_rising", "DI/O-1_falling"]
 
-    def test_specs_that_differ_only_in_event_time_collide(self):
+    def test_specs_that_differ_only_in_event_time_convention_collide(self):
         """The same transitions written twice need an event_name to tell them apart."""
         with pytest.raises(ValueError, match="same identifier 'DI/O-1_rising'"):
             _resolve_detection_plan(
@@ -243,7 +243,7 @@ class TestResolveDetectionPlan:
                         {
                             "signal_conditioning": {"binarize": "midpoint"},
                             "detection": "rising",
-                            "event_time": "sample_before",
+                            "event_time_convention": "sample_before_transition",
                         },
                     ]
                 }

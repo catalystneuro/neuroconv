@@ -398,7 +398,7 @@ class TestFramesToSeconds:
         assert np.isnan(durations[1])
 
 
-class TestEventTime:
+class TestEventTimeConvention:
     """Which time an event gets: the first sample at the new level, the last at the old, or halfway."""
 
     LINE = np.array([0, 0, 1, 1, 1, 0, 0, 1, 0], dtype="int16")
@@ -413,7 +413,7 @@ class TestEventTime:
             onset_frames=onset_frames,
             offset_frames=offset_frames,
             timestamps=self.REGULAR_CLOCK,
-            event_time="sample_after",
+            event_time_convention="sample_after_transition",
         )
         assert_array_equal(default_onsets, np.array([0.002, 0.007]))
         assert_array_equal(explicit_onsets, default_onsets)
@@ -424,14 +424,17 @@ class TestEventTime:
             onset_frames=onset_frames,
             offset_frames=offset_frames,
             timestamps=self.REGULAR_CLOCK,
-            event_time="sample_before",
+            event_time_convention="sample_before_transition",
         )
         assert_array_equal(onsets, np.array([0.001, 0.006]))
 
     def test_halfway_is_between_the_two_samples(self):
         onset_frames, offset_frames = _detect_events(self.LINE, "falling")
         onsets, _ = _frames_to_seconds(
-            onset_frames=onset_frames, offset_frames=offset_frames, timestamps=self.REGULAR_CLOCK, event_time="halfway"
+            onset_frames=onset_frames,
+            offset_frames=offset_frames,
+            timestamps=self.REGULAR_CLOCK,
+            event_time_convention="halfway_between_samples",
         )
         assert onsets == pytest.approx([0.0045, 0.0075])
 
@@ -441,7 +444,10 @@ class TestEventTime:
         timestamps = np.array([0.0, 0.001, 0.002, 0.003, 0.004, 1.004, 1.005, 1.006, 1.007])
         onset_frames, offset_frames = _detect_events(self.LINE, "falling")
         onsets, _ = _frames_to_seconds(
-            onset_frames=onset_frames, offset_frames=offset_frames, timestamps=timestamps, event_time="halfway"
+            onset_frames=onset_frames,
+            offset_frames=offset_frames,
+            timestamps=timestamps,
+            event_time_convention="halfway_between_samples",
         )
         # Half of a 1 ms median period before frame 5 would say 1.0035.
         assert onsets[0] == pytest.approx(0.504)
@@ -451,24 +457,24 @@ class TestEventTime:
         default_onsets, default_durations = _frames_to_seconds(
             onset_frames=onset_frames, offset_frames=offset_frames, timestamps=self.REGULAR_CLOCK
         )
-        for event_time, shift in (("sample_before", 0.001), ("halfway", 0.0005)):
+        for event_time_convention, shift in (("sample_before_transition", 0.001), ("halfway_between_samples", 0.0005)):
             onsets, durations = _frames_to_seconds(
                 onset_frames=onset_frames,
                 offset_frames=offset_frames,
                 timestamps=self.REGULAR_CLOCK,
-                event_time=event_time,
+                event_time_convention=event_time_convention,
             )
             assert onsets == pytest.approx(default_onsets - shift)
             assert durations == pytest.approx(default_durations)
 
     def test_an_unclosed_event_keeps_a_nan_duration_under_every_setting(self):
         onset_frames, offset_frames = _detect_events(self.LINE, "low_period")
-        for event_time in ("sample_after", "sample_before", "halfway"):
+        for event_time_convention in ("sample_after_transition", "sample_before_transition", "halfway_between_samples"):
             _, durations = _frames_to_seconds(
                 onset_frames=onset_frames,
                 offset_frames=offset_frames,
                 timestamps=self.REGULAR_CLOCK,
-                event_time=event_time,
+                event_time_convention=event_time_convention,
             )
             assert durations[0] == pytest.approx(0.002)
             assert np.isnan(durations[1])
@@ -476,28 +482,28 @@ class TestEventTime:
     def test_a_callable_clock_reads_the_same_times_as_an_array(self):
         """Intan and SpikeGLX NIDQ hand over a callable, so the earlier sample is read through it too."""
         onset_frames, offset_frames = _detect_events(self.LINE, "high_period")
-        for event_time in ("sample_after", "sample_before", "halfway"):
+        for event_time_convention in ("sample_after_transition", "sample_before_transition", "halfway_between_samples"):
             from_array = _frames_to_seconds(
                 onset_frames=onset_frames,
                 offset_frames=offset_frames,
                 timestamps=self.REGULAR_CLOCK,
-                event_time=event_time,
+                event_time_convention=event_time_convention,
             )
             from_callable = _frames_to_seconds(
                 onset_frames=onset_frames,
                 offset_frames=offset_frames,
                 timestamps=lambda frame_indices: frame_indices * 0.001,
-                event_time=event_time,
+                event_time_convention=event_time_convention,
             )
             assert from_callable[0] == pytest.approx(from_array[0])
             assert from_callable[1] == pytest.approx(from_array[1])
 
-    def test_invalid_event_time_raises(self):
+    def test_invalid_event_time_convention_raises(self):
         onset_frames, offset_frames = _detect_events(self.LINE, "rising")
-        with pytest.raises(ValueError, match="Invalid event_time 'midpoint'"):
+        with pytest.raises(ValueError, match="Invalid event_time_convention 'midpoint'"):
             _frames_to_seconds(
                 onset_frames=onset_frames,
                 offset_frames=offset_frames,
                 timestamps=self.REGULAR_CLOCK,
-                event_time="midpoint",
+                event_time_convention="midpoint",
             )

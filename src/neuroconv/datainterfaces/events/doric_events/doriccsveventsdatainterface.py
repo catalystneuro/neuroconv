@@ -204,7 +204,7 @@ class DoricCSVEventsInterface(BaseEventsInterface):
                     onset_frames=onset_frames,
                     offset_frames=offset_frames,
                     timestamps=time,
-                    event_time=spec.get("event_time", "sample_after"),
+                    event_time_convention=spec.get("event_time_convention", "sample_after_transition"),
                 )
                 events_data_dict[event_type_source_id] = _EventsData(
                     event_type_source_id=event_type_source_id,

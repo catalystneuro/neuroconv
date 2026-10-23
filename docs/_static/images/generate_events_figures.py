@@ -15,7 +15,8 @@ Produces eight figures:
 - ``events_five_readings.png``           - the detection vocabulary: three point readings and two durative ones.
 - ``events_several_levels.png``          - one signal read at three cut points, giving three nested durative events.
 - ``events_high_period_limit.png``       - where a duration reading breaks down: the grid, not the pulse.
-- ``events_event_time.png``         - which time a transition gets: each reading under the three settings.
+- ``events_event_time_convention.png`` - which time an event gets: one edge with the legend, then each reading
+  under the three conventions.
 
 One figure per conditioning cut, deliberately: a cut added later is a new builder and a new figure beside
 its own paragraph, rather than a redraw of a comparison that has to grow a panel.
@@ -554,66 +555,113 @@ def build_high_period_limit():
     plt.close(fig)
 
 
-def build_event_time():
-    """Which time a transition gets: the five readings of one line, each drawn under all three settings.
+# Each convention keeps one colour and one description across both panels of its figure.
+EVENT_TIME_CONVENTION_COLORS = {"sample_after_transition": RED, "halfway_between_samples": BLACK, "sample_before_transition": REF}
+EVENT_TIME_CONVENTION_DESCRIPTIONS = {
+    "sample_after_transition": "the first sample at the new level (default)",
+    "halfway_between_samples": "the middle of the gap",
+    "sample_before_transition": "the last sample at the old level",
+}
+EVENT_TIME_CONVENTION_TIMES = {
+    "sample_after_transition": lambda gap: gap[1],
+    "halfway_between_samples": lambda gap: sum(gap) / 2,
+    "sample_before_transition": lambda gap: gap[0],
+}
+# Both panels share this horizontal scale and label column, so the samples of the top panel sit exactly above
+# the first samples of the line in the bottom one.
+EVENT_TIME_CONVENTION_X_LIM = (-2.2, 9.8)
 
-    The line has three edges, the fewest that give every reading a closed event, so each sample gets room
-    and the dots on the line show exactly where the samples are. A transition falls in the gap between two
-    of them: ``sample_after`` puts each event on the right-hand sample, ``sample_before`` on the left-hand one
-    and ``halfway`` between them. Point readings show every marker moving to its side of the gap, and durative
-    readings show a whole interval shifting with its duration unchanged.
-    """
-    colors = {"sample_after": RED, "halfway": BLACK, "sample_before": REF}
-    times = {"sample_after": lambda gap: gap[1], "halfway": lambda gap: sum(gap) / 2, "sample_before": lambda gap: gap[0]}
+
+def _draw_event_time_convention_edge(ax):
+    """One edge, the true edge the recording does not keep, where each convention times the event, and the legend."""
+    samples = np.arange(4)
+    true_edge = 1.25
+    y_low, y_high = 2.3, 2.9
+    y_event = 1.0
+
+    ax.vlines(samples, y_event, y_high + 0.05, color=GUIDE, lw=0.9, zorder=0)
+    two_valued_line(ax, [-0.3, true_edge, samples[-1] + 0.3], [0, 1, 1], y_low=y_low, y_high=y_high)
+    ax.plot(samples, np.where(samples > true_edge, y_high, y_low), linestyle="none", marker="o", markersize=7, color=BLACK)
+    ax.text(-0.5, (y_low + y_high) / 2, "line", ha="right", va="center", fontsize=11, color=BLACK)
+    ax.vlines(true_edge, y_event - 0.15, y_high + 0.3, color=NOTE, lw=1.4, linestyles="dashed")
+    ax.text(true_edge, y_high + 0.37, "the true edge, not recorded", ha="center", va="bottom", fontsize=10, color=NOTE)
+
+    ax.hlines(y_event, -0.15, samples[-1] + 0.3, color="0.75", lw=1.2)
+    for name, color in EVENT_TIME_CONVENTION_COLORS.items():
+        point_events(ax, y_event + 0.08, [EVENT_TIME_CONVENTION_TIMES[name]((1, 2))], color=color)
+    ax.text(-0.5, y_event + 0.08, "event", ha="right", va="center", fontsize=11, color=BLACK)
+
+    # -- legend: the value name in its colour, and what it means ---------------------------------
+    for y, (name, color) in zip((2.75, 1.9, 1.05), EVENT_TIME_CONVENTION_COLORS.items()):
+        point_events(ax, y + 0.08, [4.6], color=color)
+        ax.text(4.95, y + 0.2, name, ha="left", va="center", fontsize=11, color=color)
+        ax.text(4.95, y - 0.12, EVENT_TIME_CONVENTION_DESCRIPTIONS[name], ha="left", va="center", fontsize=10, color=NOTE)
+
+    clean(
+        ax,
+        xlim=EVENT_TIME_CONVENTION_X_LIM,
+        ylim=(0.6, 3.75),
+        title="The true edge falls between two samples, and each convention times the event around it",
+    )
+
+
+def _draw_event_time_convention_readings(ax):
+    """The five readings of one line, each drawn under all three conventions, across the full width."""
     values = np.array([0, 0, 1, 1, 1, 0, 0, 0, 1, 1])
     samples = np.arange(values.size)
-    edges = [1.4, 4.6, 7.3]  # where the line is drawn changing, inside each gap
+    edges = [1.25, 4.6, 7.3]  # where the line is drawn changing, inside each gap; the first matches the top panel
     rising_gaps, falling_gaps = [(1, 2), (7, 8)], [(4, 5)]
-
     y_low, y_high = 5.0, 5.6
     rows = {"rising": 3.95, "falling": 3.3, "value_change": 2.65, "high_period": 1.35, "low_period": 0.45}
-    x_lim, right_column = (-3.4, 15.2), 9.7
+    x_lim = EVENT_TIME_CONVENTION_X_LIM
 
-    fig, ax = plt.subplots(figsize=(10.5, 6.0))
     ax.vlines(samples, 0.1, y_high + 0.05, color=GUIDE, lw=0.9, zorder=0)
     two_valued_line(ax, [-0.3, *edges, samples[-1] + 0.3], [0, 1, 0, 1, 1], y_low=y_low, y_high=y_high)
     ax.plot(samples, np.where(values > 0, y_high, y_low), linestyle="none", marker="o", markersize=7, color=BLACK)
     ax.text(-0.5, (y_low + y_high) / 2, "line", ha="right", va="center", fontsize=11, color=BLACK)
-    ax.text(right_column, (y_low + y_high) / 2, "  dots: its samples", ha="left", va="center", fontsize=10.5, color=NOTE)
 
     def group_header(y_rule, text):
-        ax.hlines(y_rule, x_lim[0] + 0.2, x_lim[1] - 0.2, color="0.82", lw=0.9)
-        ax.text(x_lim[0] + 0.3, y_rule - 0.12, text, ha="left", va="top", fontsize=10.5, color=NOTE)
+        ax.hlines(y_rule, x_lim[0] + 0.1, x_lim[1] - 0.1, color="0.82", lw=0.9)
+        ax.text(x_lim[0] + 0.15, y_rule - 0.12, text, ha="left", va="top", fontsize=10.5, color=NOTE)
 
     group_header(4.75, "point readings: every time moves to the chosen side of its gap")
     group_header(2.15, "durative readings: both ends move together, so the duration does not change")
 
-    # -- point readings: one marker per setting at each edge -------------------------------------
+    # -- point readings: one marker per convention at each edge ----------------------------------
     point_gaps = {"rising": rising_gaps, "falling": falling_gaps, "value_change": sorted(rising_gaps + falling_gaps)}
     for reading, gaps in point_gaps.items():
         y = rows[reading]
         ax.hlines(y, -0.15, samples[-1] + 0.3, color="0.75", lw=1.2)
-        for name, color in colors.items():
-            point_events(ax, y + 0.08, [times[name](gap) for gap in gaps], color=color)
+        for name, color in EVENT_TIME_CONVENTION_COLORS.items():
+            point_events(ax, y + 0.08, [EVENT_TIME_CONVENTION_TIMES[name](gap) for gap in gaps], color=color)
         ax.text(-0.5, y + 0.08, reading, ha="right", va="center", fontsize=11, color=BLACK)
 
-    # -- durative readings: one span per setting for each event, stacked -------------------------
+    # -- durative readings: one span per convention for each event, stacked ----------------------
     events = {"high_period": (rising_gaps[0], falling_gaps[0]), "low_period": (falling_gaps[0], rising_gaps[1])}
     for reading, (opening, closing) in events.items():
         y = rows[reading]
-        for offset, (name, color) in zip((0.25, 0.0, -0.25), colors.items()):
-            durative_event(ax, y + offset, times[name](opening), times[name](closing), color=color, lw=2.0, cap=0.08)
+        for offset, (name, color) in zip((0.25, 0.0, -0.25), EVENT_TIME_CONVENTION_COLORS.items()):
+            times = EVENT_TIME_CONVENTION_TIMES[name]
+            durative_event(ax, y + offset, times(opening), times(closing), color=color, lw=2.0, cap=0.08)
         ax.text(-0.5, y, reading, ha="right", va="center", fontsize=11, color=BLACK)
 
-    # -- legend ------------------------------------------------------------------------------------
-    for y, (name, color) in zip((3.95, 3.3, 2.65), colors.items()):
-        point_events(ax, y + 0.08, [right_column + 0.5], color=color)
-        label = name + " (default)" if name == "sample_after" else name
-        ax.text(right_column + 0.85, y + 0.08, label, ha="left", va="center", fontsize=10.5, color=color)
+    clean(ax, xlim=x_lim, ylim=(-0.05, 6.0), title="How the convention moves the events of each reading")
 
-    clean(ax, xlim=x_lim, ylim=(-0.05, 6.0), title="How event_time moves the events of each reading")
-    fig.tight_layout()
-    fig.savefig(OUTDIR / "events_event_time.png", dpi=200, bbox_inches="tight")
+
+def build_event_time_convention():
+    """Which time an event gets from its transition, in two panels sharing one horizontal scale.
+
+    The top panel is one edge: the line changes somewhere between two samples, at a true edge the recording
+    does not keep, and each ``event_time_convention`` puts the event at a different place around it. It also
+    holds the legend, so each colour is defined next to the samples it refers to. The bottom panel is the
+    five readings of one line under the three conventions: point readings show every marker moving to its
+    side of the gap, and durative readings show a whole interval shifting with its duration unchanged.
+    """
+    fig, (edge_ax, readings_ax) = plt.subplots(2, 1, figsize=(10.5, 9.2), gridspec_kw={"height_ratios": [3.2, 6.0]})
+    _draw_event_time_convention_edge(edge_ax)
+    _draw_event_time_convention_readings(readings_ax)
+    fig.tight_layout(h_pad=2.0)
+    fig.savefig(OUTDIR / "events_event_time_convention.png", dpi=200, bbox_inches="tight")
     plt.close(fig)
 
 
@@ -626,11 +674,11 @@ def main():
     build_five_readings()
     build_several_levels()
     build_high_period_limit()
-    build_event_time()
+    build_event_time_convention()
     print(
         "wrote events_two_stages.png, events_conditioning_binarize.png, events_conditioning_bits.png, "
         "events_five_readings.png, events_several_levels.png, events_high_period_limit.png and "
-        "events_event_time.png"
+        "events_event_time_convention.png"
     )
 
 

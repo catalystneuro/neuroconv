@@ -273,9 +273,9 @@ class MockBehaviorEventInterface(BaseTemporalAlignmentInterface):
         This method creates a DynamicTable to store event times and adds it to the NWBFile's acquisition.
         """
         table = DynamicTable(name="BehaviorEvents", description="Times of various classified behaviors.")
-        table.add_column(name="event_time", description="Time of each event.")
+        table.add_column(name="event_time_convention", description="Time of each event.")
         for timestamp in self.get_timestamps():
-            table.add_row(event_time=timestamp)
+            table.add_row(event_time_convention=timestamp)
         nwbfile.add_acquisition(table)
 
 
@@ -744,7 +744,7 @@ class MockSignalEncodedEventsInterface(BaseEventsInterface):
                     onset_frames=onset_frames,
                     offset_frames=offset_frames,
                     timestamps=timestamps,
-                    event_time=spec.get("event_time", "sample_after"),
+                    event_time_convention=spec.get("event_time_convention", "sample_after_transition"),
                 )
                 events_data_dict[event_type_source_id] = _EventsData(
                     event_type_source_id=event_type_source_id,
