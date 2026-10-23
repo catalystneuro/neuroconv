@@ -386,3 +386,67 @@ class TestFramesToSeconds:
         _, durations = _frames_to_seconds(*_detect_events(self.LINE, "low_period")[:2], timestamps)
         assert durations[0] == pytest.approx(0.002)
         assert np.isnan(durations[1])
+
+
+class TestTransitionTime:
+    """Which time a transition gets: the first sample at the new level, the last at the old, or halfway."""
+
+    LINE = np.array([0, 0, 1, 1, 1, 0, 0, 1, 0], dtype="int16")
+    REGULAR_CLOCK = np.arange(9) * 0.001
+
+    def test_sample_after_is_the_default(self):
+        frames = _detect_events(self.LINE, "rising")[:2]
+        default_onsets, _ = _frames_to_seconds(*frames, self.REGULAR_CLOCK)
+        explicit_onsets, _ = _frames_to_seconds(*frames, self.REGULAR_CLOCK, transition_time="sample_after")
+        assert_array_equal(default_onsets, np.array([0.002, 0.007]))
+        assert_array_equal(explicit_onsets, default_onsets)
+
+    def test_sample_before_reads_the_last_sample_at_the_old_level(self):
+        onsets, _ = _frames_to_seconds(
+            *_detect_events(self.LINE, "rising")[:2], self.REGULAR_CLOCK, transition_time="sample_before"
+        )
+        assert_array_equal(onsets, np.array([0.001, 0.006]))
+
+    def test_halfway_is_between_the_two_samples(self):
+        onsets, _ = _frames_to_seconds(
+            *_detect_events(self.LINE, "falling")[:2], self.REGULAR_CLOCK, transition_time="halfway"
+        )
+        assert onsets == pytest.approx([0.0045, 0.0075])
+
+    def test_halfway_is_the_mean_of_two_clock_readings_on_an_irregular_clock(self):
+        """Not a fixed half-period shift: a fall across a one-second gap lands in the middle of the gap."""
+        # A one-second gap between frames 4 and 5; every other step is 1 ms.
+        timestamps = np.array([0.0, 0.001, 0.002, 0.003, 0.004, 1.004, 1.005, 1.006, 1.007])
+        onsets, _ = _frames_to_seconds(*_detect_events(self.LINE, "falling")[:2], timestamps, transition_time="halfway")
+        # Half of a 1 ms median period before frame 5 would say 1.0035.
+        assert onsets[0] == pytest.approx(0.504)
+
+    def test_both_ends_of_a_durative_event_move_so_the_duration_does_not(self):
+        frames = _detect_events(self.LINE, "high_period")[:2]
+        default_onsets, default_durations = _frames_to_seconds(*frames, self.REGULAR_CLOCK)
+        for transition_time, shift in (("sample_before", 0.001), ("halfway", 0.0005)):
+            onsets, durations = _frames_to_seconds(*frames, self.REGULAR_CLOCK, transition_time=transition_time)
+            assert onsets == pytest.approx(default_onsets - shift)
+            assert durations == pytest.approx(default_durations)
+
+    def test_an_unclosed_event_keeps_a_nan_duration_under_every_setting(self):
+        frames = _detect_events(self.LINE, "low_period")[:2]
+        for transition_time in ("sample_after", "sample_before", "halfway"):
+            _, durations = _frames_to_seconds(*frames, self.REGULAR_CLOCK, transition_time=transition_time)
+            assert durations[0] == pytest.approx(0.002)
+            assert np.isnan(durations[1])
+
+    def test_a_callable_clock_reads_the_same_times_as_an_array(self):
+        """Intan and SpikeGLX NIDQ hand over a callable, so the earlier sample is read through it too."""
+        frames = _detect_events(self.LINE, "high_period")[:2]
+        for transition_time in ("sample_after", "sample_before", "halfway"):
+            from_array = _frames_to_seconds(*frames, self.REGULAR_CLOCK, transition_time=transition_time)
+            from_callable = _frames_to_seconds(
+                *frames, lambda frame_indices: frame_indices * 0.001, transition_time=transition_time
+            )
+            assert from_callable[0] == pytest.approx(from_array[0])
+            assert from_callable[1] == pytest.approx(from_array[1])
+
+    def test_invalid_transition_time_raises(self):
+        with pytest.raises(ValueError, match="Invalid transition_time 'midpoint'"):
+            _frames_to_seconds(*_detect_events(self.LINE, "rising")[:2], self.REGULAR_CLOCK, transition_time="midpoint")

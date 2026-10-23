@@ -182,6 +182,22 @@ def test_nidq_detection_configuration_selects_one_line():
     assert len(camera) == 163
 
 
+def test_nidq_transition_time_moves_events_to_the_sample_before():
+    """``transition_time`` reaches the NIDQ events, which no events test mixin covers."""
+    folder_path = ECEPHY_DATA_PATH / "spikeglx" / "DigitalChannelTest_g0"
+    spec = {"signal_conditioning": {"bits": [0]}, "detection": "high_period"}
+    default_interface = SpikeGLXNIDQInterface(folder_path=folder_path, detection_configuration={"XD0": [spec]})
+    sample_before_interface = SpikeGLXNIDQInterface(
+        folder_path=folder_path, detection_configuration={"XD0": [{**spec, "transition_time": "sample_before"}]}
+    )
+
+    default_times = default_interface._events_interface.get_event_times("XD0")
+    sample_before_times = sample_before_interface._events_interface.get_event_times("XD0")
+    sampling_period = 1 / default_interface.recording_extractor.get_sampling_frequency()
+    assert len(default_times) > 0
+    np.testing.assert_allclose(sample_before_times, default_times - sampling_period)
+
+
 def test_nidq_digital_metadata_customization(tmp_path):
     """The deprecated metadata shape is still what get_metadata hands back, and still honoured.
 

@@ -31,6 +31,20 @@ class TestValidateDetectionConfiguration:
             AVAILABLE_SIGNALS,
         )
 
+    def test_transition_time_is_a_recognized_key(self):
+        _validate_detection_configuration(
+            {
+                "DI/O-1": [
+                    {
+                        "signal_conditioning": {"binarize": "midpoint"},
+                        "detection": "rising",
+                        "transition_time": "sample_before",
+                    }
+                ]
+            },
+            AVAILABLE_SIGNALS,
+        )
+
     def test_empty_configuration_raises(self):
         """``{}`` is distinct from ``None``: it selects nothing, which is always a mistake."""
         with pytest.raises(ValueError, match="detection_configuration is empty"):
@@ -203,6 +217,37 @@ class TestResolveDetectionPlan:
             "DI/O-1_falling",
             "DI/O-2",
         ]
+
+    def test_transition_time_does_not_enter_derived_identifiers(self):
+        """It moves an event's time without selecting which transitions are events, so names stay put."""
+        detection_configuration = {
+            "DI/O-1": [
+                {
+                    "signal_conditioning": {"binarize": "midpoint"},
+                    "detection": "rising",
+                    "transition_time": "sample_before",
+                },
+                {"signal_conditioning": {"binarize": "midpoint"}, "detection": "falling"},
+            ]
+        }
+
+        assert _get_event_type_source_ids(detection_configuration) == ["DI/O-1_rising", "DI/O-1_falling"]
+
+    def test_specs_that_differ_only_in_transition_time_collide(self):
+        """The same transitions written twice need an event_name to tell them apart."""
+        with pytest.raises(ValueError, match="same identifier 'DI/O-1_rising'"):
+            _resolve_detection_plan(
+                {
+                    "DI/O-1": [
+                        {"signal_conditioning": {"binarize": "midpoint"}, "detection": "rising"},
+                        {
+                            "signal_conditioning": {"binarize": "midpoint"},
+                            "detection": "rising",
+                            "transition_time": "sample_before",
+                        },
+                    ]
+                }
+            )
 
     def test_duplicate_identifiers_raise(self):
         """Rule 4 is cross-signal, which is why it lives here rather than in the per-signal validator."""

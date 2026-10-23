@@ -4,7 +4,7 @@ Run from the repository root::
 
     uv run --with matplotlib --with numpy python docs/_static/images/generate_events_figures.py
 
-Produces seven figures:
+Produces eight figures:
 
 - ``events_pipeline_model.png``          - the spine figure: the two stages, what the data is at each seam,
   and which settings each stage takes.
@@ -15,6 +15,7 @@ Produces seven figures:
 - ``events_five_readings.png``           - the detection vocabulary: three point readings and two durative ones.
 - ``events_several_levels.png``          - one signal read at three cut points, giving three nested durative events.
 - ``events_high_period_limit.png``       - where a duration reading breaks down: the grid, not the pulse.
+- ``events_transition_time.png``         - which time a transition gets: each reading under the three settings.
 
 One figure per conditioning cut, deliberately: a cut added later is a new builder and a new figure beside
 its own paragraph, rather than a redraw of a comparison that has to grow a panel.
@@ -553,6 +554,69 @@ def build_high_period_limit():
     plt.close(fig)
 
 
+def build_transition_time():
+    """Which time a transition gets: the five readings of one line, each drawn under all three settings.
+
+    The line has three edges, the fewest that give every reading a closed event, so each sample gets room
+    and the dots on the line show exactly where the samples are. A transition falls in the gap between two
+    of them: ``sample_after`` puts each event on the right-hand sample, ``sample_before`` on the left-hand one
+    and ``halfway`` between them. Point readings show every marker moving to its side of the gap, and durative
+    readings show a whole interval shifting with its duration unchanged.
+    """
+    colors = {"sample_after": RED, "halfway": BLACK, "sample_before": REF}
+    times = {"sample_after": lambda gap: gap[1], "halfway": lambda gap: sum(gap) / 2, "sample_before": lambda gap: gap[0]}
+    values = np.array([0, 0, 1, 1, 1, 0, 0, 0, 1, 1])
+    samples = np.arange(values.size)
+    edges = [1.4, 4.6, 7.3]  # where the line is drawn changing, inside each gap
+    rising_gaps, falling_gaps = [(1, 2), (7, 8)], [(4, 5)]
+
+    y_low, y_high = 5.0, 5.6
+    rows = {"rising": 3.95, "falling": 3.3, "value_change": 2.65, "high_period": 1.35, "low_period": 0.45}
+    x_lim, right_column = (-3.4, 15.2), 9.7
+
+    fig, ax = plt.subplots(figsize=(10.5, 6.0))
+    ax.vlines(samples, 0.1, y_high + 0.05, color=GUIDE, lw=0.9, zorder=0)
+    two_valued_line(ax, [-0.3, *edges, samples[-1] + 0.3], [0, 1, 0, 1, 1], y_low=y_low, y_high=y_high)
+    ax.plot(samples, np.where(values > 0, y_high, y_low), linestyle="none", marker="o", markersize=7, color=BLACK)
+    ax.text(-0.5, (y_low + y_high) / 2, "line", ha="right", va="center", fontsize=11, color=BLACK)
+    ax.text(right_column, (y_low + y_high) / 2, "  dots: its samples", ha="left", va="center", fontsize=10.5, color=NOTE)
+
+    def group_header(y_rule, text):
+        ax.hlines(y_rule, x_lim[0] + 0.2, x_lim[1] - 0.2, color="0.82", lw=0.9)
+        ax.text(x_lim[0] + 0.3, y_rule - 0.12, text, ha="left", va="top", fontsize=10.5, color=NOTE)
+
+    group_header(4.75, "point readings: every time moves to the chosen side of its gap")
+    group_header(2.15, "durative readings: both ends move together, so the duration does not change")
+
+    # -- point readings: one marker per setting at each edge -------------------------------------
+    point_gaps = {"rising": rising_gaps, "falling": falling_gaps, "value_change": sorted(rising_gaps + falling_gaps)}
+    for reading, gaps in point_gaps.items():
+        y = rows[reading]
+        ax.hlines(y, -0.15, samples[-1] + 0.3, color="0.75", lw=1.2)
+        for name, color in colors.items():
+            point_events(ax, y + 0.08, [times[name](gap) for gap in gaps], color=color)
+        ax.text(-0.5, y + 0.08, reading, ha="right", va="center", fontsize=11, color=BLACK)
+
+    # -- durative readings: one span per setting for each event, stacked -------------------------
+    events = {"high_period": (rising_gaps[0], falling_gaps[0]), "low_period": (falling_gaps[0], rising_gaps[1])}
+    for reading, (opening, closing) in events.items():
+        y = rows[reading]
+        for offset, (name, color) in zip((0.25, 0.0, -0.25), colors.items()):
+            durative_event(ax, y + offset, times[name](opening), times[name](closing), color=color, lw=2.0, cap=0.08)
+        ax.text(-0.5, y, reading, ha="right", va="center", fontsize=11, color=BLACK)
+
+    # -- legend ------------------------------------------------------------------------------------
+    for y, (name, color) in zip((3.95, 3.3, 2.65), colors.items()):
+        point_events(ax, y + 0.08, [right_column + 0.5], color=color)
+        label = name + " (default)" if name == "sample_after" else name
+        ax.text(right_column + 0.85, y + 0.08, label, ha="left", va="center", fontsize=10.5, color=color)
+
+    clean(ax, xlim=x_lim, ylim=(-0.05, 6.0), title="How transition_time moves the events of each reading")
+    fig.tight_layout()
+    fig.savefig(OUTDIR / "events_transition_time.png", dpi=200, bbox_inches="tight")
+    plt.close(fig)
+
+
 def main():
     """Generate every event-extraction figure into this directory."""
     build_pipeline_model()
@@ -562,9 +626,11 @@ def main():
     build_five_readings()
     build_several_levels()
     build_high_period_limit()
+    build_transition_time()
     print(
         "wrote events_two_stages.png, events_conditioning_binarize.png, events_conditioning_bits.png, "
-        "events_five_readings.png, events_several_levels.png and events_high_period_limit.png"
+        "events_five_readings.png, events_several_levels.png, events_high_period_limit.png and "
+        "events_transition_time.png"
     )
 
 
