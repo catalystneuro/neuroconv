@@ -18,6 +18,7 @@ from neuroconv.tools.external_resources import (
     add_external_resources_to_nwbfile,
     add_species_external_resource,
     add_strain_external_resource,
+    get_anatomy_term,
     get_brain_region_term,
     get_species_suggestion,
     get_species_term,
@@ -167,6 +168,11 @@ class TestUpstreamTermSets:
         assert "long evans" in merged["Long-Evans"].aliases  # ours survive an upstream entry without aliases
         assert "N2" in merged  # upstream-only values (worm, zebrafish, fly, Cre lines) are kept
 
+        merged = load_term_set("general_anatomy.yaml")
+        assert merged["Snout"].curie == "UBERON:0006333"
+        assert "muzzle" in merged["Snout"].aliases  # ours survive an upstream entry without aliases
+        assert "Brain" in merged  # upstream-only values (organs, not just skeleton parts) are kept
+
     def test_upstream_terms_are_preferred_and_merged(self, monkeypatch, tmp_path):
         upstream_yaml = tmp_path / "upstream_species.yaml"
         upstream_yaml.write_text(
@@ -226,7 +232,7 @@ class TestUpstreamTermSets:
         }
         assert _build_alias_table(term_set, include_values=include_values) == expected
 
-    @pytest.mark.parametrize("file_name", ["species.yaml", "strains.yaml"])
+    @pytest.mark.parametrize("file_name", ["species.yaml", "strains.yaml", "general_anatomy.yaml"])
     def test_bundled_aliases_do_not_collide(self, file_name):
         from neuroconv.tools.external_resources._term_sets import (
             _TERM_SET_DIRECTORY,
@@ -274,6 +280,42 @@ class TestUpstreamTermSets:
             load_term_set.cache_clear()
             load_upstream_term_set.cache_clear()
             importlib.reload(_species)
+
+    def test_upstream_alias_collision_leaves_the_anatomy_alias_out(self, monkeypatch, tmp_path):
+        import importlib
+
+        from neuroconv.tools.external_resources import _anatomy
+        from neuroconv.tools.external_resources._term_sets import load_term_set, load_upstream_term_set
+
+        upstream_yaml = tmp_path / "upstream_general_anatomy.yaml"
+        upstream_yaml.write_text(
+            "prefixes:\n"
+            "  UBERON: http://purl.obolibrary.org/obo/UBERON_\n"
+            "enums:\n"
+            "  AnatomicalStructure:\n"
+            "    permissible_values:\n"
+            "      Head:\n"
+            "        meaning: UBERON:0000033\n"
+            "        aliases:\n"
+            "          - muzzle\n",  # bundled lists "muzzle" for Snout
+            encoding="utf-8",
+        )
+
+        class _FakeNeuroTermsets:
+            @staticmethod
+            def get_termset_path(name):
+                return str(upstream_yaml)
+
+        monkeypatch.setitem(sys.modules, "neuro_termsets", _FakeNeuroTermsets())
+        try:
+            reloaded = importlib.reload(_anatomy)
+            assert reloaded.get_anatomy_term("muzzle") is None  # claimed twice, so it names neither
+            assert reloaded.get_anatomy_term("Snout").curie == "UBERON:0006333"
+        finally:
+            monkeypatch.undo()
+            load_term_set.cache_clear()
+            load_upstream_term_set.cache_clear()
+            importlib.reload(_anatomy)
 
 
 # ---------------------------------------------------------------------------
@@ -441,6 +483,46 @@ class TestBrainRegionTerms:
     def test_unrecognized_species_returns_none(self):
         assert get_brain_region_term("CA1", species=None) is None
         assert get_brain_region_term("CA1", species="not a species") is None
+
+
+# ---------------------------------------------------------------------------
+# General-anatomy term resolution
+# ---------------------------------------------------------------------------
+
+
+class TestAnatomyTerms:
+    @pytest.mark.parametrize(
+        "name, expected_name, expected_curie",
+        [
+            ("Trapezius muscle", "Trapezius muscle", "UBERON:0002380"),  # canonical name
+            ("SNOUT", "Snout", "UBERON:0006333"),  # case-insensitive
+            ("muzzle", "Snout", "UBERON:0006333"),  # informal alias
+            ("forepaw", "Hand", "UBERON:0002398"),
+        ],
+    )
+    def test_lookup(self, name, expected_name, expected_curie):
+        term = get_anatomy_term(name)
+        assert (term.name, term.curie) == (expected_name, expected_curie)
+
+    @pytest.mark.parametrize(
+        "name, expected_curie",
+        [
+            # An informal name UBERON has its own term for resolves to that term, not to a broader one.
+            ("nose", "UBERON:0012128"),  # nose tip, not snout
+            ("arm", "UBERON:0001460"),  # arm, not forelimb stylopod
+            ("pinna", "UBERON:0001757"),  # pinna, not external ear
+            ("muzzle", "UBERON:0006333"),
+            ("upper arm", "UBERON:0003822"),
+            ("external ear", "UBERON:0001691"),
+        ],
+    )
+    def test_alias_resolves_to_its_own_uberon_term(self, name, expected_curie):
+        assert get_anatomy_term(name).curie == expected_curie
+
+    @pytest.mark.parametrize("name", ["EarL", "ear_l", "not a structure", "", None, 42])
+    def test_unrecognized_returns_none(self, name):
+        # Lab-specific keypoint names with laterality markers are not recognized: high precision over guessing.
+        assert get_anatomy_term(name) is None
 
 
 # ---------------------------------------------------------------------------
@@ -763,10 +845,11 @@ class TestExternalResourcesMetadataSchema:
             {},
             {"species": {"Mus musculus": MOUSE_SPECIES_TERM}},
             {"strain": {"Long-Evans": LONG_EVANS_STRAIN_TERM}},
+            {"anatomy": {"Snout": {"id": "UBERON:0006333", "uri": "https://example.org/UBERON_0006333"}}},
             {"brain_regions": {"CA1": [BRAIN_REGION_TERM, {"id": "UBERON:0003881", "uri": "https://example.org/U"}]}},
             {"brain_regions": {"CA1": {**BRAIN_REGION_TERM, "label": "Field CA1"}}},  # extra keys are allowed
         ],
-        ids=["empty", "species", "strain", "list_of_terms", "term_with_label"],
+        ids=["empty", "species", "strain", "anatomy", "list_of_terms", "term_with_label"],
     )
     def test_valid_blocks_pass(self, block, base_metadata_schema):
         self._validate(block, base_metadata_schema)
