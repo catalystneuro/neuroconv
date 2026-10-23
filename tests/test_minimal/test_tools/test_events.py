@@ -31,6 +31,20 @@ class TestValidateDetectionConfiguration:
             AVAILABLE_SIGNALS,
         )
 
+    def test_event_time_convention_is_a_recognized_key(self):
+        _validate_detection_configuration(
+            {
+                "DI/O-1": [
+                    {
+                        "signal_conditioning": {"binarize": "midpoint"},
+                        "detection": "rising",
+                        "event_time_convention": "sample_before_transition",
+                    }
+                ]
+            },
+            AVAILABLE_SIGNALS,
+        )
+
     def test_empty_configuration_raises(self):
         """``{}`` is distinct from ``None``: it selects nothing, which is always a mistake."""
         with pytest.raises(ValueError, match="detection_configuration is empty"):
@@ -203,6 +217,22 @@ class TestResolveDetectionPlan:
             "DI/O-1_falling",
             "DI/O-2",
         ]
+
+    def test_timing_the_same_events_two_ways_needs_an_event_name(self):
+        """The same transitions written twice need an event_name to tell them apart."""
+        with pytest.raises(ValueError, match="same identifier 'DI/O-1_rising'"):
+            _resolve_detection_plan(
+                {
+                    "DI/O-1": [
+                        {"signal_conditioning": {"binarize": "midpoint"}, "detection": "rising"},
+                        {
+                            "signal_conditioning": {"binarize": "midpoint"},
+                            "detection": "rising",
+                            "event_time_convention": "sample_before_transition",
+                        },
+                    ]
+                }
+            )
 
     def test_duplicate_identifiers_raise(self):
         """Rule 4 is cross-signal, which is why it lives here rather than in the per-signal validator."""
