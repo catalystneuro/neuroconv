@@ -64,7 +64,7 @@ def get_falling_frames_from_ttl(trace: np.ndarray, threshold: float | None = Non
 
 
 _DETECTION_READINGS = ("rising", "falling", "high_period", "low_period", "value_change")
-_TRANSITION_TIMES = ("sample_after", "sample_before", "halfway")
+_EVENT_TIMES = ("sample_after", "sample_before", "halfway")
 _CUTS = ("bits", "binarize")
 _BINARIZE_METHODS = ("midpoint",)
 
@@ -301,7 +301,7 @@ def _frames_to_seconds(
     onset_frames: np.ndarray,
     offset_frames: np.ndarray | None,
     timestamps: np.ndarray | Callable[[np.ndarray], np.ndarray],
-    transition_time: str = "sample_after",
+    event_time: str = "sample_after",
 ) -> tuple[np.ndarray, np.ndarray | None]:
     """Convert event frames to onset times and durations in seconds, by reading the clock at each frame.
 
@@ -324,13 +324,13 @@ def _frames_to_seconds(
         from a sampling rate instead of storing one (Intan, SpikeGLX NIDQ): materialising three hours at
         30 kHz to read a few dozen indices would cost hundreds of megabytes for nothing, and the
         callable reads only the frames the events actually landed on.
-    transition_time : {"sample_after", "sample_before", "halfway"}, optional
-        Which time each transition gets. A transition at frame ``k`` happened somewhere between samples
-        ``k - 1`` and ``k``. ``"sample_after"`` (the default) reads the clock at ``k``, the first sample at
-        the new level; ``"sample_before"`` reads it at ``k - 1``, the last sample at the old level; and
-        ``"halfway"`` takes the mean of the two readings, which on an irregular clock is not a fixed
-        shift. Closing frames are read the same way, so on a regular clock a duration does not depend on
-        this choice.
+    event_time : {"sample_after", "sample_before", "halfway"}, optional
+        Which time each event gets from its transition. A transition at frame ``k`` happened somewhere
+        between samples ``k - 1`` and ``k``. ``"sample_after"`` (the default) reads the clock at ``k``, the
+        first sample at the new level; ``"sample_before"`` reads it at ``k - 1``, the last sample at the old
+        level; and ``"halfway"`` takes the mean of the two readings, which on an irregular clock is not a
+        fixed shift. Closing frames are read the same way, so on a regular clock a duration does not depend
+        on this choice.
 
     Returns
     -------
@@ -344,10 +344,10 @@ def _frames_to_seconds(
     Raises
     ------
     ValueError
-        If ``transition_time`` is not a known value.
+        If ``event_time`` is not a known value.
     """
-    if transition_time not in _TRANSITION_TIMES:
-        raise ValueError(f"Invalid transition_time '{transition_time}'. Valid values are {list(_TRANSITION_TIMES)}.")
+    if event_time not in _EVENT_TIMES:
+        raise ValueError(f"Invalid event_time '{event_time}'. Valid values are {list(_EVENT_TIMES)}.")
 
     if callable(timestamps):
         read_clock = timestamps
@@ -355,22 +355,22 @@ def _frames_to_seconds(
         clock = np.asarray(timestamps, dtype="float64")
         read_clock = lambda frames: clock[frames]  # noqa: E731
 
-    def read_transition_times(frames: np.ndarray) -> np.ndarray:
+    def read_event_times(frames: np.ndarray) -> np.ndarray:
         # Frames come from np.diff plus one, so k - 1 is never before the first sample.
-        if transition_time == "sample_after":
+        if event_time == "sample_after":
             return np.asarray(read_clock(frames), dtype="float64")
         sample_before = np.asarray(read_clock(frames - 1), dtype="float64")
-        if transition_time == "sample_before":
+        if event_time == "sample_before":
             return sample_before
         return (sample_before + np.asarray(read_clock(frames), dtype="float64")) / 2
 
-    onsets = read_transition_times(onset_frames)
+    onsets = read_event_times(onset_frames)
     if offset_frames is None:
         return onsets, None
 
     durations = np.full(onsets.shape, np.nan, dtype="float64")
     closed = ~np.isnan(offset_frames)
-    closing_times = read_transition_times(offset_frames[closed].astype("int64"))
+    closing_times = read_event_times(offset_frames[closed].astype("int64"))
     durations[closed] = closing_times - onsets[closed]
     return onsets, durations
 

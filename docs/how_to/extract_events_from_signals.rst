@@ -118,11 +118,11 @@ A spec states exactly one of the two. A signal with more than two levels is read
 distinction, on the same signal, which is also how one digital word becomes many event types, one spec
 per bit.
 
-.. _events_transition_time:
+.. _events_event_time:
 
 Each event is timed at one of the two samples around its transition, or halfway between them. A sampled
 line changes level between two consecutive samples, and the true edge falls somewhere in the gap between
-them, so the optional ``transition_time`` says where in that gap the event is timed:
+them, so the optional ``event_time`` says where in that gap the event is timed:
 
 - ``"sample_after"``, the default, is the time of the first sample at the new level, the earliest sample
   where the change can be seen.
@@ -131,7 +131,7 @@ them, so the optional ``transition_time`` says where in that gap the event is ti
   the other two can be off by up to a whole one, but it falls between samples and never equals one of the
   signal's timestamps.
 
-.. image:: ../_static/images/events_transition_time.png
+.. image:: ../_static/images/events_event_time.png
    :width: 700px
    :align: center
    :alt: A two-valued line drawn with its ten samples as dots: it rises between samples 1 and 2, falls
@@ -162,7 +162,7 @@ signal, and each signal holds a **list** of specs, one per event type you want d
             {
                 "signal_conditioning": {...},            # stage one: how this signal becomes a line
                 "detection": "<reading>",                # stage two: which transitions become events
-                "transition_time": "sample_after",       # optional: which time each transition gets
+                "event_time": "sample_after",       # optional: which time each event gets
                 "event_name": "<your name>",             # optional
             },
             # more specs on the same signal, one per event type derived from it
@@ -191,8 +191,8 @@ one spec, because one signal may yield several event types.
 - ``"high_period"``, each rising edge to the next falling one, with a duration
 - ``"low_period"``, each falling edge to the next rising one, with a duration
 
-``transition_time`` is optional, and controls which time each transition gets
-(:ref:`illustrated above <events_transition_time>`). It is one of:
+``event_time`` is optional, and controls which time each event gets
+(:ref:`illustrated above <events_event_time>`). It is one of:
 
 - ``"sample_after"``, the first sample at the new level (the default)
 - ``"sample_before"``, the last sample at the old level

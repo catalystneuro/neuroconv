@@ -15,7 +15,7 @@ Produces eight figures:
 - ``events_five_readings.png``           - the detection vocabulary: three point readings and two durative ones.
 - ``events_several_levels.png``          - one signal read at three cut points, giving three nested durative events.
 - ``events_high_period_limit.png``       - where a duration reading breaks down: the grid, not the pulse.
-- ``events_transition_time.png``         - which time a transition gets: each reading under the three settings.
+- ``events_event_time.png``         - which time a transition gets: each reading under the three settings.
 
 One figure per conditioning cut, deliberately: a cut added later is a new builder and a new figure beside
 its own paragraph, rather than a redraw of a comparison that has to grow a panel.
@@ -554,7 +554,7 @@ def build_high_period_limit():
     plt.close(fig)
 
 
-def build_transition_time():
+def build_event_time():
     """Which time a transition gets: the five readings of one line, each drawn under all three settings.
 
     The line has three edges, the fewest that give every reading a closed event, so each sample gets room
@@ -611,9 +611,9 @@ def build_transition_time():
         label = name + " (default)" if name == "sample_after" else name
         ax.text(right_column + 0.85, y + 0.08, label, ha="left", va="center", fontsize=10.5, color=color)
 
-    clean(ax, xlim=x_lim, ylim=(-0.05, 6.0), title="How transition_time moves the events of each reading")
+    clean(ax, xlim=x_lim, ylim=(-0.05, 6.0), title="How event_time moves the events of each reading")
     fig.tight_layout()
-    fig.savefig(OUTDIR / "events_transition_time.png", dpi=200, bbox_inches="tight")
+    fig.savefig(OUTDIR / "events_event_time.png", dpi=200, bbox_inches="tight")
     plt.close(fig)
 
 
@@ -626,11 +626,11 @@ def main():
     build_five_readings()
     build_several_levels()
     build_high_period_limit()
-    build_transition_time()
+    build_event_time()
     print(
         "wrote events_two_stages.png, events_conditioning_binarize.png, events_conditioning_bits.png, "
         "events_five_readings.png, events_several_levels.png, events_high_period_limit.png and "
-        "events_transition_time.png"
+        "events_event_time.png"
     )
 
 

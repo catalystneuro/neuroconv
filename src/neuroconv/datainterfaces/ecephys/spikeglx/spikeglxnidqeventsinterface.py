@@ -299,7 +299,7 @@ class _SpikeGLXNIDQEventsInterface(BaseEventsInterface):
                     onset_frames=onset_frames,
                     offset_frames=offset_frames,
                     timestamps=self.recording_extractor.sample_index_to_time,
-                    transition_time=spec.get("transition_time", "sample_after"),
+                    event_time=spec.get("event_time", "sample_after"),
                 )
                 events_data_dict[event_type_source_id] = _EventsData(
                     event_type_source_id=event_type_source_id,

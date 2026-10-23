@@ -1690,8 +1690,8 @@ class EventsInterfaceTestMixin(DataInterfaceTestMixin):
 
         nwbfile.read_io.close()
 
-    def test_transition_time_reaches_every_event_type(self, setup_interface):
-        """``transition_time`` on every spec moves every event to the sample before its transition.
+    def test_event_time_reaches_every_event_type(self, setup_interface):
+        """``event_time`` on every spec moves every event to the sample before its transition.
 
         Guards each signal-encoded interface's pass-through to ``_frames_to_seconds``: one that dropped it
         would accept the key and ignore it. On any increasing clock the sample before a transition is
@@ -1702,7 +1702,7 @@ class EventsInterfaceTestMixin(DataInterfaceTestMixin):
             pytest.skip("Not a signal-encoded events interface.")
 
         sample_before_configuration = {
-            signal_source_id: [{**spec, "transition_time": "sample_before"} for spec in specs]
+            signal_source_id: [{**spec, "event_time": "sample_before"} for spec in specs]
             for signal_source_id, specs in detection_configuration.items()
         }
         sample_before_interface = self.data_interface_cls(
