@@ -6,6 +6,7 @@ Interfaces
 
     interfaces.ecephys
     interfaces.icephys
+    interfaces.eeg
     interfaces.ophys
     interfaces.image
     interfaces.fiber_photometry
