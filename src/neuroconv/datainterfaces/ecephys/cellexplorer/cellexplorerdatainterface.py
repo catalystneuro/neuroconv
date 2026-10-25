@@ -301,46 +301,18 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
         return BinaryRecordingExtractor
 
     def _initialize_extractor(self, interface_kwargs: dict):
-        # The binary file carries none of its own parameters, so the extractor is built by hand from the session
-        # file instead of from the source data passed straight to the extractor class
-        session_path = Path(interface_kwargs["folder_path"])
-        session_id = session_path.stem
-        session_data_file_path = session_path / f"{session_id}.session.mat"
-        assert session_data_file_path.is_file(), f"File {session_data_file_path} does not exist"
+        # CellExplorerRecordingInterface uses custom BinaryRecordingExtractor initialization
+        # This method is not called due to custom __init__ implementation
+        # This is just to satisfy the abstract method requirement
+        # The actual initialization happens in __init__
+        self.extractor_kwargs = interface_kwargs.copy()
+        self.extractor_kwargs.pop("verbose", None)
+        self.extractor_kwargs.pop("es_key", None)
 
-        from pymatreader import read_mat
-
-        ignore_fields = ["animal", "behavioralTracking", "timeSeries", "spikeSorting", "epochs"]
-        session_data = read_mat(filename=session_data_file_path, ignore_fields=ignore_fields)["session"]
-        extracellular_data = session_data["extracellular"]
-        num_channels = int(extracellular_data["nChannels"])
-        gain = float(extracellular_data["leastSignificantBit"])  # Usually a value of 0.195 when intan is used
-        gains_to_uv = np.ones(num_channels) * gain
-        dtype = np.dtype(extracellular_data["precision"])
-        sampling_frequency = float(extracellular_data[self.sampling_frequency_key])
-
-        # Channels in CellExplorer are 1-indexed
-        channel_ids = [str(1 + i) for i in range(num_channels)]
-        binary_file_path = session_path / f"{session_id}.{self.binary_file_extension}"
-        assert binary_file_path.is_file(), f"Binary file {binary_file_path.name} does not exist in `folder_path`"
-
-        from spikeinterface.core.binaryrecordingextractor import (
-            BinaryRecordingExtractor,
+        # Return a placeholder - this won't actually be used
+        return self.get_extractor_class()(
+            file_paths=["dummy_path"], sampling_frequency=30000, num_channels=1, dtype="int16"
         )
-
-        recording_extractor = BinaryRecordingExtractor(
-            file_paths=[binary_file_path],
-            sampling_frequency=sampling_frequency,
-            num_channels=num_channels,
-            dtype=dtype,
-            t_starts=None,
-            file_offset=0,
-            gain_to_uV=gains_to_uv,
-            offset_to_uV=None,
-            channel_ids=channel_ids,
-        )
-
-        return add_channel_metadata_to_recoder(recording_extractor=recording_extractor, folder_path=session_path)
 
     @classmethod
     def get_source_schema(cls) -> dict:
@@ -379,7 +351,44 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
         self._number_of_segments = 1  # CellExplorer is mono segment
 
         self.session_id = self.session_path.stem
-        self.recording_extractor = self._initialize_extractor(self.source_data)
+        session_data_file_path = self.session_path / f"{self.session_id}.session.mat"
+        assert session_data_file_path.is_file(), f"File {session_data_file_path} does not exist"
+
+        from pymatreader import read_mat
+
+        ignore_fields = ["animal", "behavioralTracking", "timeSeries", "spikeSorting", "epochs"]
+        session_data = read_mat(filename=session_data_file_path, ignore_fields=ignore_fields)["session"]
+        extracellular_data = session_data["extracellular"]
+        num_channels = int(extracellular_data["nChannels"])
+        gain = float(extracellular_data["leastSignificantBit"])  # Usually a value of 0.195 when intan is used
+        gains_to_uv = np.ones(num_channels) * gain
+        dtype = np.dtype(extracellular_data["precision"])
+        sampling_frequency = float(extracellular_data[self.sampling_frequency_key])
+
+        # Channels in CellExplorer are 1-indexed
+        channel_ids = [str(1 + i) for i in range(num_channels)]
+        binary_file_path = self.session_path / f"{self.session_id}.{self.binary_file_extension}"
+        assert binary_file_path.is_file(), f"Binary file {binary_file_path.name} does not exist in `folder_path`"
+
+        from spikeinterface.core.binaryrecordingextractor import (
+            BinaryRecordingExtractor,
+        )
+
+        self.recording_extractor = BinaryRecordingExtractor(
+            file_paths=[binary_file_path],
+            sampling_frequency=sampling_frequency,
+            num_channels=num_channels,
+            dtype=dtype,
+            t_starts=None,
+            file_offset=0,
+            gain_to_uV=gains_to_uv,
+            offset_to_uV=None,
+            channel_ids=channel_ids,
+        )
+
+        self.recording_extractor = add_channel_metadata_to_recoder(
+            recording_extractor=self.recording_extractor, folder_path=folder_path
+        )
 
         self._register_segments()
 

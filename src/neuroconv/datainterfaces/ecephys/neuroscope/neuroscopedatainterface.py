@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import numpy as np
 from pydantic import DirectoryPath, FilePath
 
 from .neuroscope_utils import (
@@ -232,6 +233,17 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
         if session_start_time is not None:
             metadata["NWBFile"]["session_start_time"] = session_start_time
         return metadata
+
+    def get_original_timestamps(self) -> np.ndarray:
+        # TODO: add generic method for aliasing from NeuroConv signature to SI init
+        new_recording = self._initialize_extractor({"file_path": self.source_data["file_path"]})
+        if self._number_of_segments == 1:
+            return new_recording.get_times()
+        else:
+            return [
+                new_recording.get_times(segment_index=segment_index)
+                for segment_index in range(self._number_of_segments)
+            ]
 
 
 class NeuroScopeLFPInterface(BaseLFPExtractorInterface):

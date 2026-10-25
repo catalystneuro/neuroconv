@@ -3,6 +3,7 @@
 from datetime import datetime
 from pathlib import Path
 
+import numpy as np
 from pydantic import DirectoryPath, validate_call
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
@@ -355,6 +356,18 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
             )
 
         return metadata
+
+    def get_original_timestamps(self) -> np.ndarray:
+        new_recording = self._initialize_extractor(
+            self.source_data
+        )  # TODO: add generic method for aliasing from NeuroConv signature to SI init
+        if self._number_of_segments == 1:
+            return new_recording.get_times()
+        else:
+            return [
+                new_recording.get_times(segment_index=segment_index)
+                for segment_index in range(self._number_of_segments)
+            ]
 
     def _get_session_start_time(self) -> datetime | None:
         """
