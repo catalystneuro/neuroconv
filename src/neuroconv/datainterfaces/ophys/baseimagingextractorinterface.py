@@ -97,8 +97,6 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
     def temporal_alignment(self) -> _TemporalAlignment:
         return self._alignment
 
-    # The native times are read from the format and never from `get_timestamps`, which returns any times set on the
-    # extractor. The alignment is held by the time-bearing object and handed to the writer, never set on the extractor
     def _get_native_times(self) -> np.ndarray:
         native_timestamps = self.imaging_extractor.get_native_timestamps()
         if native_timestamps is not None:
@@ -112,6 +110,9 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         times = self.imaging_extractor.get_native_timestamps(start_sample=0, end_sample=1)
         return float(times[0]) if times is not None else 0.0
 
+    # TODO: once the minimum roiextractors version includes https://github.com/catalystneuro/roiextractors/pull/632,
+    # `has_time_vector()` answers this without reading timestamps; replace the body with
+    # `self.imaging_extractor.has_time_vector()`, which is also True for times set directly on the extractor
     def _has_native_timestamps(self) -> bool:
         """Whether the format records one time per sample, read from the first sample alone."""
         if self.imaging_extractor.get_num_samples() == 0:

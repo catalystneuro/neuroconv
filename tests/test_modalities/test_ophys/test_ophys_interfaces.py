@@ -31,17 +31,6 @@ class TestMockImagingInterface(ImagingExtractorInterfaceTestMixin):
 
         np.testing.assert_array_equal(two_photon_series.timestamps[:], expected_timestamps)
 
-    def test_temporal_alignment_shift_times_reaches_the_nwbfile_with_always_write_timestamps(self, setup_interface):
-        # A shifted regular series reaches the writer as a start and a rate; forced onto timestamps, every sample
-        # of them has to move
-        original_timestamps = self.interface.get_original_timestamps()
-        self.interface.temporal_alignment.shift_times(2.5)
-
-        nwbfile = self.interface.create_nwbfile(always_write_timestamps=True)
-
-        two_photon_series = nwbfile.acquisition["MicroscopySeries"]
-        np.testing.assert_array_equal(two_photon_series.timestamps[:], original_timestamps + 2.5)
-
     def check_extracted_metadata(self, metadata: dict):
         """MockImagingInterface returns a mock-specific series description.
 

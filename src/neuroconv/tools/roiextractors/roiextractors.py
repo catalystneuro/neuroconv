@@ -387,8 +387,6 @@ def _add_photon_series_to_nwbfile(
         The NWB type of photon series to create.
     metadata_key : str or None
         The key in ``metadata["Ophys"]["MicroscopySeries"]`` identifying the series.
-    photon_series_index : int
-        The series to translate from old list-based metadata.
     timestamps : numpy.ndarray or None
         One time per sample, or None when the times are ``starting_time`` at the sampling frequency.
     starting_time : float or None
@@ -444,14 +442,6 @@ def _add_photon_series_to_nwbfile(
         )
     metadata_key = metadata_key or "default_metadata_key"
 
-    rate = float(imaging.get_sampling_frequency())
-    if timestamps is not None:
-        regular_rate = None if always_write_timestamps else calculate_regular_series_rate(series=timestamps)
-        if regular_rate is not None:  # a start and a rate stand in for the timestamps
-            timestamps, starting_time, rate = None, float(timestamps[0]), regular_rate
-    elif always_write_timestamps:
-        timestamps = starting_time + np.arange(imaging.get_num_samples()) / rate
-
     iterator_options = iterator_options or dict()
 
     _validate_metadata_key(metadata, metadata_path=("Ophys", "MicroscopySeries"), metadata_key=metadata_key)
@@ -500,10 +490,26 @@ def _add_photon_series_to_nwbfile(
     )
     photon_series_kwargs["data"] = imaging_extractor_iterator
 
-    if timestamps is not None:
+    if always_write_timestamps:
+        # Built from the given start and not from the extractor, whose own times carry no alignment
+        if timestamps is None:
+            timestamps = starting_time + np.arange(imaging.get_num_samples()) / imaging.get_sampling_frequency()
         photon_series_kwargs.update(timestamps=timestamps)
     else:
-        photon_series_kwargs.update(starting_time=starting_time, rate=rate)
+        timestamps_are_available = timestamps is not None
+
+        if timestamps_are_available:
+            rate = calculate_regular_series_rate(series=timestamps)
+            timestamps_are_regular = rate is not None
+            starting_time = timestamps[0]
+        else:
+            rate = float(imaging.get_sampling_frequency())
+            timestamps_are_regular = True
+
+        if timestamps_are_regular:
+            photon_series_kwargs.update(rate=rate, starting_time=starting_time)
+        else:
+            photon_series_kwargs.update(timestamps=timestamps)
 
     # Add the photon series to the nwbfile
     photon_series_map = dict(OnePhotonSeries=OnePhotonSeries, TwoPhotonSeries=TwoPhotonSeries)
