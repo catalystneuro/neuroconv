@@ -123,6 +123,16 @@ class TestAxonRecordingInterface(RecordingExtractorInterfaceTestMixin):
         assert electrical_series_raw["name"] == "ElectricalSeriesRaw"
         assert electrical_series_raw["description"] == "Raw acquisition traces from Axon Binary Format file."
 
+    def test_get_metadata_after_remove_channels(self):
+        # A cell, a ventral root and a stimulus in one file, where only the root is an extracellular recording
+        folder_path = ECEPHY_DATA_PATH / "axon" / "intracellular_data" / "spinal_cord_clamp_examples"
+        interface = AxonRecordingInterface(file_path=folder_path / "24102012_Current_Clamp.abf")
+        session_start_time = interface.get_metadata()["NWBFile"]["session_start_time"]
+
+        interface.remove_channels(channel_ids=["0", "2"])
+
+        assert interface.get_metadata()["NWBFile"]["session_start_time"] == session_start_time
+
 
 class TestAxonaRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = AxonaRecordingInterface
