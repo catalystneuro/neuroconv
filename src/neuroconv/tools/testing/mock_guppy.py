@@ -120,7 +120,7 @@ def generate_mock_guppy_output_folder(
         case). The windows must fall inside the trace timebase.
     bin_width : float, optional
         Width (s) of the whole-session time bins, written to the parameters file and used for
-        ``binned_metrics_<recording_site>.h5``. Pass ``None`` to emit no binned tables at all (the case
+        ``binned_metrics_<recording_site>.csv``. Pass ``None`` to emit no binned tables at all (the case
         where **Compute Binned Metrics?** was off), which also suppresses the covariate tables.
     covariates : dict of str to (sequence of float, sequence of float), optional
         Behavioral covariates as ``{name: (timestamps, values)}``, each written as an ordinary store and
@@ -129,7 +129,7 @@ def generate_mock_guppy_output_folder(
         score. Pass an empty dict for a session carrying no covariate.
     tonic_epochs : tuple of (str, float, float), optional
         ``(label, start, end)`` tonic epoch windows written to ``tonic_epochs_<recording_site>.csv`` for
-        every recording_site, with their per-epoch means in ``tonic_<recording_site>.h5``. Pass an empty
+        every recording_site, with their per-epoch means in ``tonic_means_<recording_site>.csv``. Pass an empty
         tuple to emit neither file (the case where GuPPy's optional tonic analysis was not run). A window
         may run past the last sample, which is how GuPPy records an epoch ending at the nominal recording
         duration; it is clamped to the samples available when averaged.
@@ -552,10 +552,9 @@ def _write_tonic_epochs(folder_path, recording_site, tonic_epochs) -> None:
 
 
 def _write_tonic_means(folder_path, recording_site, tonic_epochs, timestamps, trace) -> None:
-    """``tonic_<recording_site>.h5`` -- one row per epoch, columns ``mean_zscore``, ``mean_dff``.
+    """``tonic_means_<recording_site>.csv`` -- one row per epoch, columns ``mean_zscore``, ``mean_dff``.
 
-    Written as a DataFrame via ``to_hdf(key="df")``, indexed by the epoch labels of
-    ``tonic_epochs_<recording_site>.csv`` (index name ``epoch``). ``mean_zscore`` is the mean of the
+    Indexed by the epoch labels of ``tonic_epochs_<recording_site>.csv`` in its first column, ``epoch``. ``mean_zscore`` is the mean of the
     trace over the window, clamped to the samples available; ``mean_dff`` is that value scaled down,
     since the real dF/F and z-score traces differ and a reader must not be able to confuse the two
     columns.
@@ -570,16 +569,16 @@ def _write_tonic_means(folder_path, recording_site, tonic_epochs, timestamps, tr
         {"mean_zscore": mean_zscore, "mean_dff": [value / 10.0 for value in mean_zscore]},
         index=pandas.Index(labels, name="epoch"),
     )
-    dataframe.to_hdf(folder_path / f"tonic_{recording_site}.h5", key="df", mode="w")
+    dataframe.to_csv(folder_path / f"tonic_means_{recording_site}.csv")
 
 
 def _write_freq_and_amp(folder_path, feature, recording_site) -> None:
-    """``freqAndAmp_<feature>_<recording_site>.h5`` -- one row, columns ``freq (events/min)``, ``amplitude``.
+    """``freqAndAmp_<feature>_<recording_site>.csv`` -- one row, columns ``freq (events/min)``, ``amplitude``.
 
-    Written as a DataFrame via ``to_hdf(key="df")``.
+    The session label is in an unnamed first column.
     """
     dataframe = pandas.DataFrame([[28.7, 2.18]], index=[_SESSION_ID], columns=["freq (events/min)", "amplitude"])
-    dataframe.to_hdf(folder_path / f"freqAndAmp_{feature}_{recording_site}.h5", key="df", mode="w")
+    dataframe.to_csv(folder_path / f"freqAndAmp_{feature}_{recording_site}.csv")
 
 
 def _write_covariate_store(folder_path, covariate_name, timestamps, values) -> None:
@@ -615,10 +614,9 @@ def _bin_index(timestamps, bin_edges) -> np.ndarray:
 
 
 def _write_binned_metrics(folder_path, recording_site, bin_edges, timestamps, trace, features) -> None:
-    """``binned_metrics_<recording_site>.h5`` and ``.csv`` -- one row per fixed-width time bin.
+    """``binned_metrics_<recording_site>.csv`` -- one row per fixed-width time bin.
 
-    Written as a DataFrame via ``to_hdf(key="df")`` and ``to_csv``, indexed ``0..n_bins-1`` (index name
-    ``bin``), with columns ``bin_start``, ``bin_end``, ``n_samples``, ``mean_zscore``, ``mean_dff`` and a
+    Indexed ``0..n_bins-1`` in its first column, ``bin``, with columns ``bin_start``, ``bin_end``, ``n_samples``, ``mean_zscore``, ``mean_dff`` and a
     ``transient_count_<feature>`` per feature the detector ran on. ``mean_dff`` is the z-score mean scaled
     down, since the real traces differ and a reader must not be able to confuse the two columns.
     """
@@ -639,15 +637,13 @@ def _write_binned_metrics(folder_path, recording_site, bin_edges, timestamps, tr
     )
     for feature in sorted(features):
         binned["transient_count_" + feature] = np.histogram(_TRANSIENT_PEAK_TIMES, bins=bin_edges)[0]
-    binned.to_hdf(folder_path / f"binned_metrics_{recording_site}.h5", key="df", mode="w")
     binned.to_csv(folder_path / f"binned_metrics_{recording_site}.csv")
 
 
 def _write_binned_covariates(folder_path, recording_site, bin_edges, covariates) -> None:
-    """``binned_covariates_<recording_site>.h5`` and ``.csv`` -- the covariate means on the metrics' bins.
+    """``binned_covariates_<recording_site>.csv`` -- the covariate means on the metrics' bins.
 
-    Written as a DataFrame via ``to_hdf(key="df")`` and ``to_csv``, indexed ``0..n_bins-1`` (index name
-    ``bin``), with columns ``bin_start``, ``bin_end``, one ``<covariate>`` mean column and one
+    Indexed ``0..n_bins-1`` in its first column, ``bin``, with columns ``bin_start``, ``bin_end``, one ``<covariate>`` mean column and one
     ``n_samples_<covariate>`` count column per covariate. A bin holding no score reads NaN with a count
     of 0.
     """
@@ -664,15 +660,13 @@ def _write_binned_covariates(folder_path, recording_site, bin_edges, covariates)
         columns["n_samples_" + covariate_name] = counts
 
     binned = pandas.DataFrame(columns, index=pandas.RangeIndex(n_bins, name="bin"))
-    binned.to_hdf(folder_path / f"binned_covariates_{recording_site}.h5", key="df", mode="w")
     binned.to_csv(folder_path / f"binned_covariates_{recording_site}.csv")
 
 
 def _write_covariate_correlations(folder_path, recording_site, features, covariates) -> None:
-    """``covariate_correlations_<recording_site>.h5`` and ``.csv`` -- one row per (metric, covariate) pair.
+    """``covariate_correlations_<recording_site>.csv`` -- one row per (metric, covariate) pair.
 
-    Written as a DataFrame via ``to_hdf(key="df")`` and ``to_csv``, indexed ``0..n_pairs-1`` (index name
-    ``pair``), with columns ``metric``, ``covariate``, ``pearson_r``, ``spearman_rho`` and ``n_bins``.
+    Indexed ``0..n_pairs-1`` in its first column, ``pair``, with columns ``metric``, ``covariate``, ``pearson_r``, ``spearman_rho`` and ``n_bins``.
     ``metric`` names a column of the binned-metrics table. There is no p-value column: GuPPy reports none,
     because per-bin photometry and a behavioral score are both autocorrelated across bins.
 
@@ -692,41 +686,41 @@ def _write_covariate_correlations(folder_path, recording_site, features, covaria
                 }
             )
     correlations = pandas.DataFrame(rows, index=pandas.RangeIndex(len(rows), name="pair"))
-    correlations.to_hdf(folder_path / f"covariate_correlations_{recording_site}.h5", key="df", mode="w")
     correlations.to_csv(folder_path / f"covariate_correlations_{recording_site}.csv")
 
 
-def _event_matrix_dataframe(axis, trial_onsets, bin_edges) -> pandas.DataFrame:
-    """Build the shared PSTH / cross-correlation DataFrame layout.
+def _write_event_matrix(file_path, axis, trial_onsets, bin_edges) -> None:
+    """Write the shared PSTH / cross-correlation layout, plus its ``binned_`` companion when there are bins.
 
-    Columns: one float-named column per trial onset, then ``bin_(a-b)``/``bin_err_(a-b)`` pairs,
-    then ``timestamps``, ``mean``, ``err`` -- all float32.
+    The table has columns ``timestamps``, one float-named column per trial onset, then ``mean`` and
+    ``err``, with no index column. The binned table beside it, named with a ``binned_`` prefix, has
+    ``timestamps`` followed by a ``bin_(a-b)``/``bin_err_(a-b)`` pair per bin. All values are float32.
     """
     num_points = axis.shape[0]
-    data = {}
     trial_columns = np.linspace(-0.5, 0.5, num_points, dtype=np.float32)
+    data = {"timestamps": axis.astype(np.float32)}
     for index, onset in enumerate(trial_onsets):
         data[repr(float(onset))] = trial_columns + 0.01 * index
-    for start, stop in bin_edges:
-        data[f"bin_({start}-{stop})"] = np.full(num_points, 0.1 * (start + 1), dtype=np.float32)
-        data[f"bin_err_({start}-{stop})"] = np.full(num_points, 0.01, dtype=np.float32)
-    data["timestamps"] = axis.astype(np.float32)
     data["mean"] = trial_columns
     data["err"] = np.full(num_points, 0.05, dtype=np.float32)
-    return pandas.DataFrame(data)
+    pandas.DataFrame(data).to_csv(file_path, index=False)
+
+    if not bin_edges:
+        return
+    binned_data = {"timestamps": axis.astype(np.float32)}
+    for start, stop in bin_edges:
+        binned_data[f"bin_({start}-{stop})"] = np.full(num_points, 0.1 * (start + 1), dtype=np.float32)
+        binned_data[f"bin_err_({start}-{stop})"] = np.full(num_points, 0.01, dtype=np.float32)
+    pandas.DataFrame(binned_data).to_csv(file_path.with_name(f"binned_{file_path.name}"), index=False)
 
 
 def _write_psth(
     folder_path, event, recording_site, feature, baseline_corrected, peri_event_time, trial_onsets, bin_edges
 ) -> None:
-    """PSTH ``.h5`` -- ``<event>_<recording_site>_<feature>_<recording_site>.h5`` (+ ``baselineUncorrected`` variant).
-
-    Written as a DataFrame via ``to_hdf(key="df")``.
-    """
+    """PSTH ``<event>_<recording_site>_<feature>_<recording_site>.csv`` (+ ``baselineUncorrected`` variant)."""
     suffix = "" if baseline_corrected else "baselineUncorrected_"
-    filename = f"{event}_{recording_site}_{suffix}{feature}_{recording_site}.h5"
-    dataframe = _event_matrix_dataframe(peri_event_time, trial_onsets, bin_edges)
-    dataframe.to_hdf(folder_path / filename, key="df", mode="w")
+    filename = f"{event}_{recording_site}_{suffix}{feature}_{recording_site}.csv"
+    _write_event_matrix(folder_path / filename, peri_event_time, trial_onsets, bin_edges)
 
 
 def _significance_dataframe(axis, num_trials, num_trials_b, offset) -> pandas.DataFrame:
@@ -765,50 +759,53 @@ def _significance_dataframe(axis, num_trials, num_trials_b, offset) -> pandas.Da
 def _write_psth_significance(
     folder_path, event, event_b, recording_site, feature, peri_event_time, num_trials, num_trials_b, offset
 ) -> None:
-    """Significance ``.h5`` and ``.csv`` -- ``psth_significance_output/significance_<comparison>.h5``.
+    """Significance ``psth_significance_output/significance_<comparison>.csv``, with no index column.
 
     The comparison stem is the PSTH's own stem, ``<event>_<recording_site>_<feature>_<recording_site>``,
-    with the two events joined by ``_vs_`` for an event-versus-event comparison. The ``.csv`` twin holds
-    the same table, written without the index.
+    with the two events joined by ``_vs_`` for an event-versus-event comparison.
     """
     directory = folder_path / "psth_significance_output"
     directory.mkdir(exist_ok=True)
     events = event if event_b is None else f"{event}_vs_{event_b}"
     stem = f"significance_{events}_{recording_site}_{feature}_{recording_site}"
     dataframe = _significance_dataframe(peri_event_time, num_trials, num_trials_b, offset)
-    dataframe.to_hdf(directory / f"{stem}.h5", key="df", mode="w")
     dataframe.to_csv(directory / f"{stem}.csv", index=False)
 
 
 def _write_cross_correlation(
     folder_path, event, feature, recording_site_1, recording_site_2, lag_axis, trial_onsets, bin_edges
 ) -> None:
-    """Cross-correlation ``.h5`` -- ``corr_<event>_<feature>_<recording_site_1>_<recording_site_2>.h5``.
-
-    Written as a DataFrame via ``to_hdf(key="df")``.
-    """
-    filename = f"corr_{event}_{feature}_{recording_site_1}_{recording_site_2}.h5"
-    dataframe = _event_matrix_dataframe(lag_axis, trial_onsets, bin_edges)
-    dataframe.to_hdf(folder_path / filename, key="df", mode="w")
+    """Cross-correlation ``corr_<event>_<feature>_<recording_site_1>_<recording_site_2>.csv``."""
+    filename = f"corr_{event}_{feature}_{recording_site_1}_{recording_site_2}.csv"
+    _write_event_matrix(folder_path / filename, lag_axis, trial_onsets, bin_edges)
 
 
 def _write_peak_auc(folder_path, event, recording_site, feature, trial_onsets, bin_edges, num_windows) -> None:
-    """Peak/AUC ``.h5`` -- ``peak_AUC_<event>_<recording_site>_<feature>_<recording_site>.h5``.
+    """Peak/AUC ``peak_AUC_<event>_<recording_site>_<feature>_<recording_site>.csv``, plus ``binned_peak_AUC_``.
 
-    Columns are ``peak_pos_<w>``/``peak_neg_<w>``/``area_<w>`` per window; index rows are
-    ``<session>_<onset>`` per trial, ``<session>_bin_(a-b)``, and ``<session>_mean``. Written as a
-    DataFrame via ``to_hdf(key="df")``.
+    The table has columns ``session`` and ``trial`` (the onset per trial row, then ``mean``) followed by
+    ``peak_pos_<w>``/``peak_neg_<w>``/``area_<w>`` per window, with no index column. When there are bins,
+    the binned table beside it has ``session`` and ``bin`` (``bin_(a-b)``) followed by the same metrics.
     """
     columns = []
     for window in range(1, num_windows + 1):
         columns.extend([f"peak_pos_{window}", f"peak_neg_{window}", f"area_{window}"])
 
-    index = [f"{_SESSION_ID}_{repr(float(onset))}" for onset in trial_onsets]
-    index += [f"{_SESSION_ID}_bin_({start}-{stop})" for start, stop in bin_edges]
-    index += [f"{_SESSION_ID}_mean"]
+    # Values count up through the trial rows, then the bin rows, then the mean row.
+    num_trials = len(trial_onsets)
+    bin_labels = [f"bin_({start}-{stop})" for start, stop in bin_edges]
+    num_rows = num_trials + len(bin_labels) + 1
+    values = np.arange(num_rows * len(columns), dtype=np.float64).reshape(num_rows, len(columns))
 
-    values = np.arange(len(index) * len(columns), dtype=np.float64).reshape(len(index), len(columns))
-    dataframe = pandas.DataFrame(values, index=index, columns=columns)
-    dataframe.to_hdf(
-        folder_path / f"peak_AUC_{event}_{recording_site}_{feature}_{recording_site}.h5", key="df", mode="w"
-    )
+    filename = f"peak_AUC_{event}_{recording_site}_{feature}_{recording_site}.csv"
+    dataframe = pandas.DataFrame(np.concatenate([values[:num_trials], values[-1:]]), columns=columns)
+    dataframe.insert(0, "trial", [repr(float(onset)) for onset in trial_onsets] + ["mean"])
+    dataframe.insert(0, "session", _SESSION_ID)
+    dataframe.to_csv(folder_path / filename, index=False)
+
+    if not bin_labels:
+        return
+    binned_dataframe = pandas.DataFrame(values[num_trials:-1], columns=columns)
+    binned_dataframe.insert(0, "bin", bin_labels)
+    binned_dataframe.insert(0, "session", _SESSION_ID)
+    binned_dataframe.to_csv(folder_path / f"binned_{filename}", index=False)
