@@ -3631,4 +3631,9 @@ def _stub_recording(recording: BaseRecording, *, stub_samples: int = 100) -> Bas
     ]
     recording_stubbed = AppendSegmentRecording(recording_list=recording_segments_stubbed)
 
+    # Appending keeps each segment's start but drops its time vector, so a segment that has one gets its cut times back
+    for segment_index, segment in enumerate(recording_segments_stubbed):
+        if segment.has_time_vector():
+            recording_stubbed.set_times(times=segment.get_times(), segment_index=segment_index)
+
     return recording_stubbed
