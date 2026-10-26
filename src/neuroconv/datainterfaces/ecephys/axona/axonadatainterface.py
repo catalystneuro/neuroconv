@@ -59,10 +59,10 @@ class AxonaRecordingInterface(BaseRecordingExtractorInterface):
             ``"axona_recording"``.
         """
 
-        super().__init__(file_path=file_path, verbose=verbose, es_key=es_key, metadata_key=metadata_key)
-
         if metadata_key is None:
-            self.metadata_key = "axona_recording"
+            metadata_key = "axona_recording"
+
+        super().__init__(file_path=file_path, verbose=verbose, es_key=es_key, metadata_key=metadata_key)
 
         self.metadata_in_set_file = self.recording_extractor.neo_reader.file_parameters["set"]["file_header"]
 

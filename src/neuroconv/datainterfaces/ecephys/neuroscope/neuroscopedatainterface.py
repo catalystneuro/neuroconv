@@ -206,10 +206,10 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
         if xml_file_path is None:
             xml_file_path = get_xml_file_path(data_file_path=file_path)
 
-        super().__init__(file_path=file_path, verbose=verbose, es_key=es_key, metadata_key=metadata_key)
-
         if metadata_key is None:
-            self.metadata_key = "neuroscope_recording"
+            metadata_key = "neuroscope_recording"
+
+        super().__init__(file_path=file_path, verbose=verbose, es_key=es_key, metadata_key=metadata_key)
 
         self.source_data["xml_file_path"] = xml_file_path
 
@@ -314,10 +314,10 @@ class NeuroScopeLFPInterface(BaseLFPExtractorInterface):
         if xml_file_path is None:
             xml_file_path = get_xml_file_path(data_file_path=file_path)
 
-        super().__init__(file_path=file_path, metadata_key=metadata_key)
-
         if metadata_key is None:
-            self.metadata_key = "neuroscope_lfp"
+            metadata_key = "neuroscope_lfp"
+
+        super().__init__(file_path=file_path, metadata_key=metadata_key)
 
         self.source_data["xml_file_path"] = xml_file_path
 
