@@ -390,6 +390,8 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
             recording_extractor=self.recording_extractor, folder_path=folder_path
         )
 
+        self._register_segments()
+
     def get_original_timestamps(self):
         num_frames = self.recording_extractor.get_num_samples()
         sampling_frequency = self.recording_extractor.get_sampling_frequency()

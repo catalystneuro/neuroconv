@@ -207,6 +207,7 @@ class TestSortingInterface(SortingExtractorInterfaceTestMixin):
 class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = MockRecordingInterface
     interface_kwargs = dict(num_channels=4, durations=[0.100], calibration="uniform")
+    expected_temporal_alignment_keys = ("ElectricalSeries_0",)
 
     def check_extracted_metadata(self, metadata: dict):
         # New dict-based format: the interface emits only the ElectricalSeries entry keyed by
@@ -227,14 +228,14 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
         # Dict-based metadata routes metadata_key through to the pipeline.
         new_metadata = interface.get_metadata(use_new_metadata_format=True)
-        with patch("neuroconv.tools.spikeinterface.add_recording_to_nwbfile") as mock_add:
+        with patch("neuroconv.tools.spikeinterface.spikeinterface._add_recording_to_nwbfile") as mock_add:
             interface.add_to_nwbfile(nwbfile=mock_NWBFile(), metadata=new_metadata)
             assert mock_add.call_args.kwargs["metadata_key"] == "probeA"
 
         # Old list-based metadata must pass metadata_key=None so the pipeline routes through es_key
         # (the two are mutually exclusive downstream).
         old_metadata = interface.get_metadata(use_new_metadata_format=False)
-        with patch("neuroconv.tools.spikeinterface.add_recording_to_nwbfile") as mock_add:
+        with patch("neuroconv.tools.spikeinterface.spikeinterface._add_recording_to_nwbfile") as mock_add:
             interface.add_to_nwbfile(nwbfile=mock_NWBFile(), metadata=old_metadata)
             assert mock_add.call_args.kwargs["metadata_key"] is None
 
