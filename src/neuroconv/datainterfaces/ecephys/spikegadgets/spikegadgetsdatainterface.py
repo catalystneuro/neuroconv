@@ -66,12 +66,12 @@ class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
             ``"spikegadgets_recording"``.
         """
 
+        if metadata_key is None:
+            metadata_key = "spikegadgets_recording"
+
         super().__init__(
             file_path=file_path, stream_id=stream_id, verbose=verbose, es_key=es_key, metadata_key=metadata_key
         )
-
-        if metadata_key is None:
-            self.metadata_key = "spikegadgets_recording"
 
         if gains is not None:
             if len(gains) == 1:

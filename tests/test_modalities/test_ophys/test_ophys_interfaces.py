@@ -53,7 +53,7 @@ class TestMockImagingInterface(ImagingExtractorInterfaceTestMixin):
         metadata = interface.get_metadata()
         nwbfile = mock_NWBFile()
 
-        with patch("neuroconv.tools.roiextractors.add_imaging_to_nwbfile") as mock_add:
+        with patch("neuroconv.tools.roiextractors.roiextractors._add_photon_series_to_nwbfile") as mock_add:
             interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
             mock_add.assert_called_once()
             call_kwargs = mock_add.call_args[1]

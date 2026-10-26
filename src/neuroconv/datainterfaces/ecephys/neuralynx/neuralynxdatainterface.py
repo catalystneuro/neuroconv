@@ -70,6 +70,9 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
             ``"neuralynx_recording"``.
         """
 
+        if metadata_key is None:
+            metadata_key = "neuralynx_recording"
+
         super().__init__(
             folder_path=folder_path,
             stream_name=stream_name,
@@ -77,9 +80,6 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
             es_key=es_key,
             metadata_key=metadata_key,
         )
-
-        if metadata_key is None:
-            self.metadata_key = "neuralynx_recording"
 
         # convert properties of object dtype (e.g. datetime) and bool as these are not supported by nwb
         for key in self.recording_extractor.get_property_keys():

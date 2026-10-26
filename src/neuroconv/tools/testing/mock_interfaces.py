@@ -46,7 +46,7 @@ from ...tools.icephys import _RESPONSE_CLASS, _add_intracellular_electrode_to_nw
 from ...tools.signal_processing import (
     _condition_signal,
     _detect_events,
-    _frames_to_seconds,
+    _samples_to_seconds,
 )
 from ...utils import (
     ArrayType,
@@ -739,8 +739,10 @@ class MockSignalEncodedEventsInterface(BaseEventsInterface):
             signal = self._get_signal(signal_source_id)
             for event_type_source_id, spec in detection_specs:
                 conditioned = _condition_signal(signal, spec["signal_conditioning"])
-                onset_frames, offset_frames = _detect_events(conditioned, spec["detection"])
-                onsets, durations = _frames_to_seconds(onset_frames, offset_frames, timestamps)
+                onset_samples, offset_samples = _detect_events(conditioned, spec["detection"])
+                onsets, durations = _samples_to_seconds(
+                    onset_samples=onset_samples, offset_samples=offset_samples, timestamps=timestamps
+                )
                 events_data_dict[event_type_source_id] = _EventsData(
                     event_type_source_id=event_type_source_id,
                     timestamps=onsets,

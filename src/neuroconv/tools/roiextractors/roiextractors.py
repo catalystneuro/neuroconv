@@ -357,9 +357,12 @@ def _add_photon_series_to_nwbfile(
     *,
     imaging: ImagingExtractor,
     nwbfile: NWBFile,
-    metadata: dict,
+    metadata: dict | None,
     photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"],
-    metadata_key: str,
+    metadata_key: str | None,
+    photon_series_index: int,
+    timestamps: np.ndarray | None,
+    starting_time: float | None,
     parent_container: Literal["acquisition", "processing/ophys"] = "acquisition",
     iterator_type: str | None = "v2",
     iterator_options: dict | None = None,
@@ -378,12 +381,16 @@ def _add_photon_series_to_nwbfile(
         The imaging extractor to get the data from.
     nwbfile : NWBFile
         The NWB file to add the photon series to.
-    metadata : dict
-        The full metadata dictionary with dict-based format.
+    metadata : dict or None
+        The full metadata dictionary. Old list-based metadata is translated, and None writes default metadata.
     photon_series_type : {'OnePhotonSeries', 'TwoPhotonSeries'}
         The NWB type of photon series to create.
-    metadata_key : str
+    metadata_key : str or None
         The key in ``metadata["Ophys"]["MicroscopySeries"]`` identifying the series.
+    timestamps : numpy.ndarray or None
+        One time per sample, or None when the times are ``starting_time`` at the sampling frequency.
+    starting_time : float or None
+        The time of the first sample when ``timestamps`` is None.
     parent_container : {'acquisition', 'processing/ophys'}, optional
         The container where the photon series is added, default is nwbfile.acquisition.
     iterator_type : str, default: 'v2'
@@ -397,6 +404,44 @@ def _add_photon_series_to_nwbfile(
     NWBFile
         The NWBFile passed as an input with the photon series added.
     """
+    metadata_was_passed = metadata is not None
+    if metadata is None:
+        metadata = _get_ophys_metadata_placeholders()
+
+    # Old-shaped metadata is converted here, before the series is built, so everything below sees one format.
+    # The old format addresses a series by position in ``Ophys[photon_series_type]`` and the new one by key, so
+    # the entry this call writes is named here and handed to the translator; when the caller gave no key, the
+    # series' own name becomes it.
+    ophys_metadata = metadata.get("Ophys", {})
+    if isinstance(ophys_metadata, dict) and _ophys_block_is_old(ophys_metadata):
+        series_list = ophys_metadata.get(photon_series_type, [])
+        if metadata_key is None and photon_series_index < len(series_list):
+            metadata_key = series_list[photon_series_index].get("name")
+        metadata = _translate_old_metadata(
+            metadata,
+            metadata_key=metadata_key,
+            photon_series_type=photon_series_type,
+            photon_series_index=photon_series_index,
+        )
+
+    # Ask whether the caller's metadata carries keyed ``MicroscopySeries`` entries rather than whether it looks
+    # dict-based anywhere, as ``add_recording_to_nwbfile`` does: a converter hands every interface one
+    # dictionary, and another interface's block says nothing about this one.
+    registry_metadata = metadata.get("Ophys", {}).get("MicroscopySeries", {})
+    has_keyed_entries = isinstance(registry_metadata, dict) and any(
+        isinstance(entry, dict) for entry in registry_metadata.values()
+    )
+    if metadata_was_passed and metadata_key is None and has_keyed_entries:
+        warnings.warn(
+            "Metadata was passed but no `metadata_key` was provided. `metadata_key` selects which "
+            "`metadata['Ophys']['MicroscopySeries']` entry to write, and it will be required whenever metadata "
+            "is passed starting in v0.13.0. Pass it explicitly, for example `metadata_key='my_metadata_key'`, "
+            "or pass no metadata at all to write with default metadata.",
+            FutureWarning,
+            stacklevel=3,
+        )
+    metadata_key = metadata_key or "default_metadata_key"
+
     iterator_options = iterator_options or dict()
 
     _validate_metadata_key(metadata, metadata_path=("Ophys", "MicroscopySeries"), metadata_key=metadata_key)
@@ -446,16 +491,11 @@ def _add_photon_series_to_nwbfile(
     photon_series_kwargs["data"] = imaging_extractor_iterator
 
     if always_write_timestamps:
-        timestamps = imaging.get_timestamps()
+        # Built from the given start and not from the extractor, whose own times carry no alignment
+        if timestamps is None:
+            timestamps = starting_time + np.arange(imaging.get_num_samples()) / imaging.get_sampling_frequency()
         photon_series_kwargs.update(timestamps=timestamps)
     else:
-        # Resolve timestamps: user-set > native hardware > none
-        timestamps_were_set = imaging.has_time_vector()
-        if timestamps_were_set:
-            timestamps = imaging.get_timestamps()
-        else:
-            timestamps = imaging.get_native_timestamps()
-
         timestamps_are_available = timestamps is not None
 
         if timestamps_are_available:
@@ -465,7 +505,6 @@ def _add_photon_series_to_nwbfile(
         else:
             rate = float(imaging.get_sampling_frequency())
             timestamps_are_regular = True
-            starting_time = 0.0
 
         if timestamps_are_regular:
             photon_series_kwargs.update(rate=rate, starting_time=starting_time)
@@ -1113,51 +1152,19 @@ def add_imaging_to_nwbfile(
         The NWB file with the imaging data added
 
     """
+    # The extractor's set timestamps, else its native ones, else a start of zero at its sampling frequency
+    timestamps = imaging.get_timestamps() if imaging.has_time_vector() else imaging.get_native_timestamps()
+    starting_time = 0.0 if timestamps is None else None
 
-    metadata_was_passed = metadata is not None
-    if metadata is None:
-        metadata = _get_ophys_metadata_placeholders()
-
-    # Old-shaped metadata is converted here, the last public function before the private writers, so
-    # everything below sees one format. The old format addresses a series by position in
-    # ``Ophys[photon_series_type]`` and the new one by key, so the entry this call writes is named here
-    # and handed to the translator; when the caller gave no key, the series' own name becomes it.
-    ophys_metadata = metadata.get("Ophys", {})
-    if isinstance(ophys_metadata, dict) and _ophys_block_is_old(ophys_metadata):
-        series_list = ophys_metadata.get(photon_series_type, [])
-        if metadata_key is None and photon_series_index < len(series_list):
-            metadata_key = series_list[photon_series_index].get("name")
-        metadata = _translate_old_metadata(
-            metadata,
-            metadata_key=metadata_key,
-            photon_series_type=photon_series_type,
-            photon_series_index=photon_series_index,
-        )
-
-    # Ask whether the caller's metadata carries keyed ``MicroscopySeries`` entries rather than whether it looks
-    # dict-based anywhere, as ``add_recording_to_nwbfile`` does: a converter hands every interface one
-    # dictionary, and another interface's block says nothing about this one.
-    registry_metadata = metadata.get("Ophys", {}).get("MicroscopySeries", {})
-    has_keyed_entries = isinstance(registry_metadata, dict) and any(
-        isinstance(entry, dict) for entry in registry_metadata.values()
-    )
-    if metadata_was_passed and metadata_key is None and has_keyed_entries:
-        warnings.warn(
-            "Metadata was passed but no `metadata_key` was provided. `metadata_key` selects which "
-            "`metadata['Ophys']['MicroscopySeries']` entry to write, and it will be required whenever metadata "
-            "is passed starting in v0.13.0. Pass it explicitly, for example `metadata_key='my_metadata_key'`, "
-            "or pass no metadata at all to write with default metadata.",
-            FutureWarning,
-            stacklevel=2,
-        )
-
-    metadata_key = metadata_key or "default_metadata_key"
     nwbfile = _add_photon_series_to_nwbfile(
         imaging=imaging,
         nwbfile=nwbfile,
         metadata=metadata,
         photon_series_type=photon_series_type,
         metadata_key=metadata_key,
+        photon_series_index=photon_series_index,
+        timestamps=timestamps,
+        starting_time=starting_time,
         iterator_type=iterator_type,
         iterator_options=iterator_options,
         parent_container=parent_container,
