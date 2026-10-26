@@ -392,7 +392,7 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
             The number of samples (frames) to use for testing.
         """
 
-        from ...tools.roiextractors.roiextractors import _add_imaging_to_nwbfile
+        from ...tools.roiextractors.roiextractors import _add_photon_series_to_nwbfile
 
         if stub_test:
             stub_samples = min([stub_samples, self.imaging_extractor.get_num_samples()])
@@ -415,18 +415,18 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
             starting_time = series._get_start_time()
             rate = float(self.imaging_extractor.get_sampling_frequency())
 
-        _add_imaging_to_nwbfile(
+        _add_photon_series_to_nwbfile(
             imaging=imaging_extractor,
             nwbfile=nwbfile,
             metadata=metadata,
+            metadata_key=self.metadata_key,
+            photon_series_type=photon_series_type,
+            photon_series_index=photon_series_index,
             timestamps=timestamps,
             starting_time=starting_time,
             rate=rate,
-            photon_series_type=photon_series_type,
-            photon_series_index=photon_series_index,
-            parent_container=parent_container,
             always_write_timestamps=always_write_timestamps,
+            parent_container=parent_container,
             iterator_type=iterator_type,
             iterator_options=iterator_options,
-            metadata_key=self.metadata_key,
         )
