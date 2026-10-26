@@ -687,6 +687,8 @@ def _add_roi_response_traces_to_nwbfile(
     nwbfile: NWBFile,
     metadata: dict,
     metadata_key: str,
+    timestamps: np.ndarray | None,
+    starting_time: float | None,
     iterator_options: dict | None = None,
 ) -> NWBFile:
     """
@@ -716,6 +718,10 @@ def _add_roi_response_traces_to_nwbfile(
     metadata_key : str
         The key used to look up both ``metadata["Ophys"]["RoiResponses"]`` and
         ``metadata["Ophys"]["PlaneSegmentations"]``.
+    timestamps : numpy.ndarray or None
+        One time per sample, or None when the times are ``starting_time`` at the sampling frequency.
+    starting_time : float or None
+        The time of the first sample when ``timestamps`` is None.
     iterator_options : dict, optional
         Options for the data chunk iterator.
 
@@ -806,13 +812,6 @@ def _add_roi_response_traces_to_nwbfile(
         description=f"The ROIs for {imaging_plane_name}.",
     )
 
-    # Resolve timestamps
-    timestamps_were_set = segmentation_extractor.has_time_vector()
-    if timestamps_were_set:
-        timestamps = segmentation_extractor.get_timestamps()
-    else:
-        timestamps = segmentation_extractor.get_native_timestamps()
-
     timestamps_are_available = timestamps is not None
 
     if timestamps_are_available:
@@ -822,7 +821,6 @@ def _add_roi_response_traces_to_nwbfile(
     else:
         rate = float(segmentation_extractor.get_sampling_frequency())
         timestamps_are_regular = True
-        starting_time = 0.0
 
     # All traces go into a single Fluorescence container, matching the pattern from
     # ndx-microscopy (single MicroscopyResponseSeriesContainer) and avoiding the
@@ -974,8 +972,11 @@ def _add_segmentation_to_nwbfile(
     *,
     segmentation_extractor: SegmentationExtractor,
     nwbfile: NWBFile,
-    metadata: dict,
-    metadata_key: str,
+    metadata: dict | None,
+    metadata_key: str | None,
+    plane_segmentation_name: str | None,
+    timestamps: np.ndarray | None,
+    starting_time: float | None,
     iterator_options: dict | None = None,
 ) -> NWBFile:
     """
@@ -989,10 +990,14 @@ def _add_segmentation_to_nwbfile(
         The segmentation extractor containing all segmentation data.
     nwbfile : NWBFile
         The NWB file to add segmentation data to.
-    metadata : dict
-        The full metadata dictionary with dict-based format.
-    metadata_key : str
+    metadata : dict or None
+        The full metadata dictionary. Old list-based metadata is translated, and None writes default metadata.
+    metadata_key : str or None
         The key used across ``PlaneSegmentations`` and ``RoiResponses``.
+    timestamps : numpy.ndarray or None
+        One time per sample of the traces, or None when the times are ``starting_time`` at the sampling frequency.
+    starting_time : float or None
+        The time of the first sample when ``timestamps`` is None.
     iterator_options : dict, optional
         Options for the data chunk iterator.
 
@@ -1001,6 +1006,61 @@ def _add_segmentation_to_nwbfile(
     NWBFile
         The NWBFile with the added segmentation data.
     """
+    # Without this the writer either fails inside the mask handling with an AttributeError naming a
+    # private attribute or, where masks are absent, writes an imaging plane and an empty table that read
+    # as a successful conversion. See https://github.com/catalystneuro/neuroconv/issues/1401.
+    if not _segmentation_extractor_has_data(segmentation_extractor=segmentation_extractor):
+        raise ValueError(
+            f"{type(segmentation_extractor).__name__} contains no segmentation data: it reports 0 ROIs, "
+            "no traces and no summary images. This is usually an empty result from the segmentation "
+            "pipeline, or a file whose data is not where the format expected it. Writing it would produce "
+            "an NWB file holding an imaging plane, a device and an empty ROI table and nothing else, which "
+            "is indistinguishable from a successful conversion."
+        )
+
+    metadata_was_passed = metadata is not None
+    if metadata is None:
+        metadata = _get_ophys_metadata_placeholders()
+
+    # As in ``add_imaging_to_nwbfile``: the old format addresses a plane segmentation by name and the new
+    # one by key, so the entry this call writes is named here. Traces and summary images are keyed by the
+    # same handle, which is why the translator needs to know which name it is.
+    ophys_metadata = metadata.get("Ophys", {})
+    if isinstance(ophys_metadata, dict) and _ophys_block_is_old(ophys_metadata):
+        segmentation_list = ophys_metadata.get("ImageSegmentation", {}).get("plane_segmentations", [])
+        addressed_name = plane_segmentation_name
+        if addressed_name is None and segmentation_list:
+            addressed_name = segmentation_list[0].get("name")
+        if metadata_key is None:
+            metadata_key = addressed_name
+        metadata = _translate_old_metadata(metadata, metadata_key=metadata_key, plane_segmentation_name=addressed_name)
+        # The old format's defaults declare six trace roles on every segmentation, so a translated block
+        # asks for traces from extractors that expose none, `InscopixSegmentationInterface` among them.
+        # That is boilerplate rather than a request, and the old writer answered it by writing nothing, so
+        # the block goes here rather than letting the writer reject metadata the caller never wrote.
+        traces = segmentation_extractor.get_traces_dict().values()
+        if not any(trace is not None and math.prod(trace.shape) != 0 for trace in traces):
+            metadata["Ophys"] = {key: value for key, value in metadata["Ophys"].items() if key != "RoiResponses"}
+
+    # Ask whether the caller's metadata carries keyed ``PlaneSegmentations`` entries rather than whether it looks
+    # dict-based anywhere, as ``add_recording_to_nwbfile`` does: a converter hands every interface one
+    # dictionary, and another interface's block says nothing about this one.
+    registry_metadata = metadata.get("Ophys", {}).get("PlaneSegmentations", {})
+    has_keyed_entries = isinstance(registry_metadata, dict) and any(
+        isinstance(entry, dict) for entry in registry_metadata.values()
+    )
+    if metadata_was_passed and metadata_key is None and has_keyed_entries:
+        warnings.warn(
+            "Metadata was passed but no `metadata_key` was provided. `metadata_key` selects which "
+            "`metadata['Ophys']['PlaneSegmentations']` entry to write, and it will be required whenever metadata "
+            "is passed starting in v0.13.0. Pass it explicitly, for example `metadata_key='my_metadata_key'`, "
+            "or pass no metadata at all to write with default metadata.",
+            FutureWarning,
+            stacklevel=3,
+        )
+
+    metadata_key = metadata_key or "default_metadata_key"
+
     _add_plane_segmentation_to_nwbfile(
         segmentation_extractor=segmentation_extractor,
         nwbfile=nwbfile,
@@ -1013,6 +1073,8 @@ def _add_segmentation_to_nwbfile(
         nwbfile=nwbfile,
         metadata=metadata,
         metadata_key=metadata_key,
+        timestamps=timestamps,
+        starting_time=starting_time,
         iterator_options=iterator_options,
     )
 
@@ -1407,65 +1469,22 @@ def add_segmentation_to_nwbfile(
             stacklevel=2,
         )
 
-    # Without this the writer either fails inside the mask handling with an AttributeError naming a
-    # private attribute or, where masks are absent, writes an imaging plane and an empty table that read
-    # as a successful conversion. See https://github.com/catalystneuro/neuroconv/issues/1401.
-    if not _segmentation_extractor_has_data(segmentation_extractor=segmentation_extractor):
-        raise ValueError(
-            f"{type(segmentation_extractor).__name__} contains no segmentation data: it reports 0 ROIs, "
-            "no traces and no summary images. This is usually an empty result from the segmentation "
-            "pipeline, or a file whose data is not where the format expected it. Writing it would produce "
-            "an NWB file holding an imaging plane, a device and an empty ROI table and nothing else, which "
-            "is indistinguishable from a successful conversion."
-        )
-
-    metadata_was_passed = metadata is not None
-    if metadata is None:
-        metadata = _get_ophys_metadata_placeholders()
-
-    # As in ``add_imaging_to_nwbfile``: the old format addresses a plane segmentation by name and the new
-    # one by key, so the entry this call writes is named here. Traces and summary images are keyed by the
-    # same handle, which is why the translator needs to know which name it is.
-    ophys_metadata = metadata.get("Ophys", {})
-    if isinstance(ophys_metadata, dict) and _ophys_block_is_old(ophys_metadata):
-        segmentation_list = ophys_metadata.get("ImageSegmentation", {}).get("plane_segmentations", [])
-        addressed_name = plane_segmentation_name
-        if addressed_name is None and segmentation_list:
-            addressed_name = segmentation_list[0].get("name")
-        if metadata_key is None:
-            metadata_key = addressed_name
-        metadata = _translate_old_metadata(metadata, metadata_key=metadata_key, plane_segmentation_name=addressed_name)
-        # The old format's defaults declare six trace roles on every segmentation, so a translated block
-        # asks for traces from extractors that expose none, `InscopixSegmentationInterface` among them.
-        # That is boilerplate rather than a request, and the old writer answered it by writing nothing, so
-        # the block goes here rather than letting the writer reject metadata the caller never wrote.
-        traces = segmentation_extractor.get_traces_dict().values()
-        if not any(trace is not None and math.prod(trace.shape) != 0 for trace in traces):
-            metadata["Ophys"] = {key: value for key, value in metadata["Ophys"].items() if key != "RoiResponses"}
-
-    # Ask whether the caller's metadata carries keyed ``PlaneSegmentations`` entries rather than whether it looks
-    # dict-based anywhere, as ``add_recording_to_nwbfile`` does: a converter hands every interface one
-    # dictionary, and another interface's block says nothing about this one.
-    registry_metadata = metadata.get("Ophys", {}).get("PlaneSegmentations", {})
-    has_keyed_entries = isinstance(registry_metadata, dict) and any(
-        isinstance(entry, dict) for entry in registry_metadata.values()
+    # The extractor's set timestamps, else its native ones, else a start of zero at its sampling frequency
+    timestamps = (
+        segmentation_extractor.get_timestamps()
+        if segmentation_extractor.has_time_vector()
+        else segmentation_extractor.get_native_timestamps()
     )
-    if metadata_was_passed and metadata_key is None and has_keyed_entries:
-        warnings.warn(
-            "Metadata was passed but no `metadata_key` was provided. `metadata_key` selects which "
-            "`metadata['Ophys']['PlaneSegmentations']` entry to write, and it will be required whenever metadata "
-            "is passed starting in v0.13.0. Pass it explicitly, for example `metadata_key='my_metadata_key'`, "
-            "or pass no metadata at all to write with default metadata.",
-            FutureWarning,
-            stacklevel=2,
-        )
+    starting_time = 0.0 if timestamps is None else None
 
-    metadata_key = metadata_key or "default_metadata_key"
     nwbfile = _add_segmentation_to_nwbfile(
         segmentation_extractor=segmentation_extractor,
         nwbfile=nwbfile,
         metadata=metadata,
         metadata_key=metadata_key,
+        plane_segmentation_name=plane_segmentation_name,
+        timestamps=timestamps,
+        starting_time=starting_time,
         iterator_options=iterator_options,
     )
 

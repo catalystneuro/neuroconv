@@ -48,8 +48,6 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
     def temporal_alignment(self) -> _TemporalAlignment:
         return self._alignment
 
-    # The native times are read from the format and never from `get_timestamps`, which returns the times
-    # `_set_aligned_times_on_extractor` stored, so an aligned write does not change the times the next one starts from
     def _get_native_times(self) -> np.ndarray:
         native_timestamps = self.segmentation_extractor.get_native_timestamps()
         if native_timestamps is not None:
@@ -63,16 +61,14 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         times = self.segmentation_extractor.get_native_timestamps(start_sample=0, end_sample=1)
         return float(times[0]) if times is not None else 0.0
 
-    def _set_aligned_times_on_extractor(self) -> None:
-        series = self.temporal_alignment[self._alignment_key]
-        # A zero standing in for the native times reads back as the shift alignment applied
-        time_shift = float(series._get_times(get_default_times=lambda: np.zeros(1))[0])
-        is_aligned = series._times is not None or time_shift != 0.0
-        # TODO: once roiextractors has a start time for extractors without a time vector, set it from `time_shift`
-        # when the times were only shifted, instead of building the full times array
-        # Times left by an earlier aligned write are replaced too, so undoing the alignment reaches the file
-        if is_aligned or self.segmentation_extractor.has_time_vector():
-            self.segmentation_extractor.set_times(times=series.get_times())
+    # TODO: once the minimum roiextractors version includes https://github.com/catalystneuro/roiextractors/pull/632,
+    # `has_time_vector()` answers this without reading timestamps; replace the body with
+    # `self.segmentation_extractor.has_time_vector()`, which is also True for times set directly on the extractor
+    def _has_native_timestamps(self) -> bool:
+        """Whether the format records one time per sample, read from the first sample alone."""
+        if self.segmentation_extractor.get_num_samples() == 0:
+            return False
+        return self.segmentation_extractor.get_native_timestamps(start_sample=0, end_sample=1) is not None
 
     @property
     def roi_ids(self):
@@ -385,7 +381,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         -------
 
         """
-        from ...tools.roiextractors import add_segmentation_to_nwbfile
+        from ...tools.roiextractors.roiextractors import _add_segmentation_to_nwbfile
 
         if include_roi_acceptance is not None:
             warnings.warn(
@@ -397,8 +393,6 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
                 stacklevel=2,
             )
 
-        # Set before selecting and slicing, since both copy their parent's times
-        self._set_aligned_times_on_extractor()
         segmentation_extractor = self.segmentation_extractor
 
         if roi_ids_to_add is not None:
@@ -410,11 +404,24 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
 
         metadata = metadata or self._get_metadata_for_writing()
 
-        add_segmentation_to_nwbfile(
+        # The aligned times are handed to the writer. Timestamps when the times were replaced or the format records
+        # one per sample, otherwise the aligned start at the sampling frequency, so shifted regular traces are written
+        # as a start and a rate without building their times
+        series = self.temporal_alignment[self._alignment_key]
+        if series._times is not None or self._has_native_timestamps():
+            timestamps = series.get_times()[: segmentation_extractor.get_num_samples()]
+            starting_time = None
+        else:
+            timestamps = None
+            starting_time = series._get_start_time()
+
+        _add_segmentation_to_nwbfile(
             segmentation_extractor=segmentation_extractor,
             nwbfile=nwbfile,
             metadata=metadata,
             plane_segmentation_name=plane_segmentation_name,
             iterator_options=iterator_options,
             metadata_key=self.metadata_key,
+            timestamps=timestamps,
+            starting_time=starting_time,
         )
