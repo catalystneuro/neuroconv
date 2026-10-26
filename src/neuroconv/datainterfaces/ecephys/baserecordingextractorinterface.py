@@ -331,6 +331,12 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         timestamps: numpy.ndarray or list of numpy.ndarray
             The timestamps for the data stream; if the recording has multiple segments, then a list of timestamps is returned.
         """
+        warnings.warn(
+            "`get_timestamps` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment[key].get_times()` instead, one key per segment.",
+            FutureWarning,
+            stacklevel=2,
+        )
         if self._number_of_segments == 1:
             return self.recording_extractor.get_times()
         else:
@@ -340,6 +346,12 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             ]
 
     def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
+        warnings.warn(
+            "`set_aligned_timestamps` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment[key].set_times(times)` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
         assert (
             self._number_of_segments == 1
         ), "This recording has multiple segments; please use 'align_segment_timestamps' instead."
@@ -357,6 +369,12 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         aligned_segment_timestamps : list of numpy.ndarray
             The synchronized timestamps for segment of data in this interface.
         """
+        warnings.warn(
+            "`set_aligned_segment_timestamps` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment[key].set_times(times)` on each segment instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
         assert isinstance(
             aligned_segment_timestamps, list
         ), "Recording has multiple segment! Please pass a list of timestamps to align each segment."
@@ -371,13 +389,17 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             )
 
     def set_aligned_starting_time(self, aligned_starting_time: float):
-        if self._number_of_segments == 1:
-            self.set_aligned_timestamps(aligned_timestamps=self.get_timestamps() + aligned_starting_time)
-        else:
-            self.set_aligned_segment_timestamps(
-                aligned_segment_timestamps=[
-                    segment_timestamps + aligned_starting_time for segment_timestamps in self.get_timestamps()
-                ]
+        warnings.warn(
+            "`set_aligned_starting_time` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment.shift_times(delta)` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        # The recording is read and set directly, so a call warns once and not for every deprecated method it used
+        for segment_index in range(self._number_of_segments):
+            segment_timestamps = self.recording_extractor.get_times(segment_index=segment_index)
+            self.recording_extractor.set_times(
+                times=segment_timestamps + aligned_starting_time, segment_index=segment_index
             )
 
     def set_aligned_segment_starting_times(self, aligned_segment_starting_times: list[float]):
@@ -391,21 +413,22 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         aligned_segment_starting_times : list of floats
             The starting time for each segment of data in this interface.
         """
+        warnings.warn(
+            "`set_aligned_segment_starting_times` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment[key].shift_times(delta)` on each segment instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
         assert len(aligned_segment_starting_times) == self._number_of_segments, (
             f"The length of the starting_times ({len(aligned_segment_starting_times)}) does not match the "
             "number of segments ({self._number_of_segments})!"
         )
 
-        if self._number_of_segments == 1:
-            self.set_aligned_starting_time(aligned_starting_time=aligned_segment_starting_times[0])
-        else:
-            aligned_segment_timestamps = [
-                segment_timestamps + aligned_segment_starting_time
-                for segment_timestamps, aligned_segment_starting_time in zip(
-                    self.get_timestamps(), aligned_segment_starting_times
-                )
-            ]
-            self.set_aligned_segment_timestamps(aligned_segment_timestamps=aligned_segment_timestamps)
+        for segment_index, aligned_segment_starting_time in enumerate(aligned_segment_starting_times):
+            segment_timestamps = self.recording_extractor.get_times(segment_index=segment_index)
+            self.recording_extractor.set_times(
+                times=segment_timestamps + aligned_segment_starting_time, segment_index=segment_index
+            )
 
     def set_probe(self, probe: "Probe | ProbeGroup", group_mode: Literal["by_shank", "by_probe"]):
         """
@@ -463,9 +486,16 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         unaligned_timestamps: np.ndarray,
         aligned_timestamps: np.ndarray,
     ):
+        warnings.warn(
+            "`align_by_interpolation` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment.remap_times(local_sync_times=..., reference_sync_times=...)` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
         if self._number_of_segments == 1:
-            self.set_aligned_timestamps(
-                aligned_timestamps=np.interp(x=self.get_timestamps(), xp=unaligned_timestamps, fp=aligned_timestamps)
+            timestamps = self.recording_extractor.get_times()
+            self.recording_extractor.set_times(
+                times=np.interp(x=timestamps, xp=unaligned_timestamps, fp=aligned_timestamps)
             )
         else:
             raise NotImplementedError("Multi-segment support for aligning by interpolation has not been added yet.")
