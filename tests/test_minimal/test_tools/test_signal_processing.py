@@ -6,7 +6,7 @@ from numpy.testing import assert_array_equal
 from neuroconv.tools.signal_processing import (
     _condition_signal,
     _detect_events,
-    _frames_to_seconds,
+    _samples_to_seconds,
     get_falling_frames_from_ttl,
     get_rising_frames_from_ttl,
 )
@@ -267,7 +267,7 @@ class TestConditionSignal:
             _condition_signal(np.array([0.0, 1.0, np.nan, 0.0]), {"binarize": "midpoint"})
 
     def test_conditioning_preserves_length(self):
-        """The contract detection depends on: frame indices must still address the caller's timestamps."""
+        """The contract detection depends on: sample indices must still address the caller's timestamps."""
         trace = np.array([0.1, 2.0, 4.0, 0.1, 2.0])
         for conditioning in ({"binarize": 1.0}, {"binarize": "midpoint"}):
             assert _condition_signal(trace, conditioning).size == trace.size
@@ -282,9 +282,9 @@ class TestConditionSignal:
 
 
 class TestDetectEvents:
-    """Detection is signal-to-events, in frame indices, and takes no threshold."""
+    """Detection is signal-to-events, in sample indices, and takes no threshold."""
 
-    # A 0/1 line with two high pulses: rising at frames [2, 7], falling at frames [5, 8].
+    # A 0/1 line with two high pulses: rising at samples [2, 7], falling at samples [5, 8].
     LINE = np.array([0, 0, 1, 1, 1, 0, 0, 1, 0], dtype="int16")
 
     def test_takes_no_threshold(self):
@@ -352,37 +352,49 @@ class TestDetectEvents:
             _detect_events(self.LINE, detection="nope")
 
 
-class TestFramesToSeconds:
+class TestSamplesToSeconds:
     """Durations come from reading the clock at both ends, which is exact on any clock."""
 
     LINE = np.array([0, 0, 1, 1, 1, 0, 0, 1, 0], dtype="int16")
 
     def test_regular_clock(self):
         timestamps = np.arange(9) * 0.001
-        onsets, durations = _frames_to_seconds(*_detect_events(self.LINE, "high_period")[:2], timestamps)
+        onset_samples, offset_samples = _detect_events(self.LINE, "high_period")
+        onsets, durations = _samples_to_seconds(
+            onset_samples=onset_samples, offset_samples=offset_samples, timestamps=timestamps
+        )
         assert_array_equal(onsets, np.array([0.002, 0.007]))
         assert_array_equal(durations, np.array([0.003, 0.001]))
 
     def test_irregular_clock_is_exact_where_a_median_period_would_not_be(self):
-        """The reason durations are not a frame count times an estimated period."""
-        # A one-second gap between frames 4 and 5; every other step is 1 ms.
+        """The reason durations are not a sample count times an estimated period."""
+        # A one-second gap between samples 4 and 5; every other step is 1 ms.
         timestamps = np.array([0.0, 0.001, 0.002, 0.003, 0.004, 1.004, 1.005, 1.006, 1.007])
-        onsets, durations = _frames_to_seconds(*_detect_events(self.LINE, "high_period")[:2], timestamps)
+        onset_samples, offset_samples = _detect_events(self.LINE, "high_period")
+        onsets, durations = _samples_to_seconds(
+            onset_samples=onset_samples, offset_samples=offset_samples, timestamps=timestamps
+        )
 
         assert_array_equal(onsets, np.array([0.002, 1.006]))
-        # Frames 2 -> 5 really spans the gap: 1.004 - 0.002. A median period of 1 ms would say 0.003.
+        # Samples 2 -> 5 really span the gap: 1.004 - 0.002. A median period of 1 ms would say 0.003.
         assert durations[0] == pytest.approx(1.002)
         assert durations[1] == pytest.approx(0.001)
 
     def test_point_reading_has_no_durations(self):
         timestamps = np.arange(9) * 0.001
-        onsets, durations = _frames_to_seconds(*_detect_events(self.LINE, "rising")[:2], timestamps)
+        onset_samples, offset_samples = _detect_events(self.LINE, "rising")
+        onsets, durations = _samples_to_seconds(
+            onset_samples=onset_samples, offset_samples=offset_samples, timestamps=timestamps
+        )
         assert_array_equal(onsets, np.array([0.002, 0.007]))
         assert durations is None
 
     def test_unclosed_event_keeps_a_nan_duration(self):
         """NaN marks a truncated interval, which is what NWB's DurationVectorData expects."""
         timestamps = np.arange(9) * 0.001
-        _, durations = _frames_to_seconds(*_detect_events(self.LINE, "low_period")[:2], timestamps)
+        onset_samples, offset_samples = _detect_events(self.LINE, "low_period")
+        _, durations = _samples_to_seconds(
+            onset_samples=onset_samples, offset_samples=offset_samples, timestamps=timestamps
+        )
         assert durations[0] == pytest.approx(0.002)
         assert np.isnan(durations[1])

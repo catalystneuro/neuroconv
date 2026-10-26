@@ -2,10 +2,10 @@ import re
 from datetime import datetime
 
 import numpy as np
-from hdmf.common import MeaningsTable
 from pydantic import FilePath, validate_call
 from pynwb.file import NWBFile
 
+from neuroconv.tools.nwb_helpers._metadata_and_file_helpers import _validate_metadata_key, _validate_metadata_path
 from neuroconv.utils import DeepDict
 
 from ._boris_reader import (
@@ -15,6 +15,7 @@ from ._boris_reader import (
     _strip_modifier_shortcut,
 )
 from ...events.baseeventsinterface import BaseEventsInterface, _EventsData
+from ....tools.behavior import _add_ethogram_to_nwbfile
 
 
 class BORISInterface(BaseEventsInterface):
@@ -200,6 +201,8 @@ class BORISInterface(BaseEventsInterface):
         """
         if metadata is None:
             metadata = self.get_metadata()
+        _validate_metadata_key(metadata, metadata_path=("Events",), metadata_key=self.metadata_key)
+        _validate_metadata_path(metadata, ("Events", self.metadata_key, "event_types"))
         self._check_table_name_is_free(nwbfile=nwbfile, metadata=metadata)
         self._check_columns_are_not_shared_by_two_behaviors(metadata=metadata)
         super().add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
@@ -218,7 +221,7 @@ class BORISInterface(BaseEventsInterface):
         Only the events table needs this. The bouts table goes through `ProcessingModule.add`, which
         rejects a duplicate name already.
         """
-        declared = metadata["Events"]["EventTables"].get(self.metadata_key)
+        declared = metadata["Events"].get("EventTables", {}).get(self.metadata_key)
         if declared is None:
             # The user re-routed the behaviors and named the tables themselves, so the name this
             # interface would have chosen is not in play.
@@ -348,109 +351,12 @@ class BORISInterface(BaseEventsInterface):
 
     def _add_ethogram_to_nwbfile(self, nwbfile: NWBFile) -> None:
         """Write the coding scheme as an ``Ethogram`` catalogue and the closed bouts as ``EthogramBouts``."""
-        from ndx_ethogram import Ethogram, EthogramBouts
-
         behavior_module = nwbfile.processing.get("behavior") or nwbfile.create_processing_module(
             name="behavior", description="Behavioral annotations."
         )
 
         catalogue = behavior_module.data_interfaces.get("Ethogram")
-        if catalogue is None:
-            catalogue = Ethogram(
-                name="Ethogram",
-                description="The BORIS coding scheme: every behavior the project declares.",
-                # BORIS states exclusion per behavior, as the set of codes that starting one terminates, so
-                # a scheme can make four behaviors mutually exclusive and leave the rest free. A single
-                # boolean cannot carry that, and asserting True would overclaim, so the flag stays False
-                # and the per-behavior sets go into the `excludes` column below.
-                exclusive=False,
-            )
-            # BORIS states exclusion per behavior, as the codes that starting one terminates, so it is
-            # per-behavior data and belongs in a column beside `category` rather than in the table-level
-            # `exclusive` flag, which asks a different question: whether the whole scheme is a single
-            # label partition. Written only where some behavior excludes something, for the same dtype
-            # reason as the modifier columns below.
-            declares_exclusions = any(behavior.excluded for behavior in self._project.behaviors.values())
-            if declares_exclusions:
-                catalogue.add_column(
-                    name="excludes",
-                    description=(
-                        "The behaviors that starting this one terminates, as BORIS's exclusion matrix "
-                        "states them. Per behavior and partial, so a scheme can make four behaviors "
-                        "mutually exclusive and leave the rest free, and enforced per subject, so a "
-                        "multi-subject observation has overlapping bouts however complete the matrix "
-                        "is. Empty where the behavior excludes nothing."
-                    ),
-                    index=True,
-                )
-            # A behavior's modifier slots are a property of the behavior rather than of any occurrence,
-            # so they belong here. The menu is written as BORIS records it, with the keyboard shortcut
-            # stripped, so a declared value and a recorded answer are the same string.
-            #
-            # Written only where some behavior declares a slot. Half of real projects declare none at
-            # all, and a ragged column whose every row is an empty list gives hdmf no dtype to infer, so
-            # writing it unconditionally fails at write rather than storing an empty column.
-            declares_modifiers = any(behavior.modifier_slots for behavior in self._project.behaviors.values())
-            if declares_modifiers:
-                catalogue.add_column(
-                    name="modifiers",
-                    description=(
-                        "The modifier slots this behavior declares, named as the scheme names them and in "
-                        "the order it declares them. Empty where the behavior declares no modifiers."
-                    ),
-                    index=True,
-                )
-                catalogue.add_column(
-                    name="modifier_values",
-                    description=(
-                        "The menu each slot in `modifiers` offers, in the same order, with the keyboard "
-                        "shortcut stripped as BORIS strips it when recording. Empty for a free numeric "
-                        "slot, which has no menu."
-                    ),
-                    index=2,
-                )
-            # What the author wrote about each slot, which describes the question it asks and not the
-            # answers it offers. Its own guard rather than `declares_modifiers`, because a described slot
-            # is much rarer than a slot: 17 of the 95 in the corpus, in 3 of 50 projects, so writing it
-            # with every row empty would fail at write for want of a dtype in most files.
-            describes_modifiers = any(
-                slot.description for behavior in self._project.behaviors.values() for slot in behavior.modifier_slots
-            )
-            if describes_modifiers:
-                catalogue.add_column(
-                    name="modifier_descriptions",
-                    description=(
-                        "What the ethogram's author wrote about each slot in `modifiers`, in the same "
-                        "order. Empty where a slot was left undescribed, which most are."
-                    ),
-                    index=True,
-                )
-            for behavior in self._project.behaviors.values():
-                catalogue.add_row(
-                    behavior=behavior.code,
-                    definition=behavior.description,
-                    behavior_type=behavior.behavior_type,
-                    category=behavior.category,
-                    **({"excludes": behavior.excluded} if declares_exclusions else {}),
-                    **(
-                        {
-                            "modifiers": [slot.name.strip() for slot in behavior.modifier_slots],
-                            "modifier_values": [
-                                [_strip_modifier_shortcut(value) for value in slot.values]
-                                for slot in behavior.modifier_slots
-                            ],
-                        }
-                        if declares_modifiers
-                        else {}
-                    ),
-                    **(
-                        {"modifier_descriptions": [slot.description for slot in behavior.modifier_slots]}
-                        if describes_modifiers
-                        else {}
-                    ),
-                )
-            behavior_module.add(catalogue)
-        elif list(catalogue["behavior"].data) != list(self._project.behaviors):
+        if catalogue is not None and list(catalogue["behavior"].data) != list(self._project.behaviors):
             # A second observation of the same project meets its own catalogue and reuses it. A second
             # project meets somebody else's, and extending it would make one catalogue claim to be the
             # scheme of two projects while its `exclusive` flag and its rows describe only the first.
@@ -461,6 +367,90 @@ class BORISInterface(BaseEventsInterface):
                 "BORIS projects cannot share one NWB file. Write them to separate files."
             )
 
+        behavior_columns = {}
+        # BORIS states exclusion per behavior, as the codes that starting one terminates, so it is
+        # per-behavior data and belongs in a column beside `category` rather than in the table-level
+        # `exclusive` flag, which asks a different question: whether the whole scheme is a single
+        # label partition. Written only where some behavior excludes something, for the same dtype
+        # reason as the modifier columns below.
+        declares_exclusions = any(behavior.excluded for behavior in self._project.behaviors.values())
+        if declares_exclusions:
+            behavior_columns["excludes"] = {
+                "description": (
+                    "The behaviors that starting this one terminates, as BORIS's exclusion matrix "
+                    "states them. Per behavior and partial, so a scheme can make four behaviors "
+                    "mutually exclusive and leave the rest free, and enforced per subject, so a "
+                    "multi-subject observation has overlapping bouts however complete the matrix "
+                    "is. Empty where the behavior excludes nothing."
+                ),
+                "index": True,
+            }
+        # A behavior's modifier slots are a property of the behavior rather than of any occurrence,
+        # so they belong here. The menu is written as BORIS records it, with the keyboard shortcut
+        # stripped, so a declared value and a recorded answer are the same string.
+        #
+        # Written only where some behavior declares a slot. Half of real projects declare none at
+        # all, and a ragged column whose every row is an empty list gives hdmf no dtype to infer, so
+        # writing it unconditionally fails at write rather than storing an empty column.
+        declares_modifiers = any(behavior.modifier_slots for behavior in self._project.behaviors.values())
+        if declares_modifiers:
+            behavior_columns["modifiers"] = {
+                "description": (
+                    "The modifier slots this behavior declares, named as the scheme names them and in "
+                    "the order it declares them. Empty where the behavior declares no modifiers."
+                ),
+                "index": True,
+            }
+            behavior_columns["modifier_values"] = {
+                "description": (
+                    "The menu each slot in `modifiers` offers, in the same order, with the keyboard "
+                    "shortcut stripped as BORIS strips it when recording. Empty for a free numeric "
+                    "slot, which has no menu."
+                ),
+                "index": 2,
+            }
+        # What the author wrote about each slot, which describes the question it asks and not the
+        # answers it offers. Its own guard rather than `declares_modifiers`, because a described slot
+        # is much rarer than a slot: 17 of the 95 in the corpus, in 3 of 50 projects, so writing it
+        # with every row empty would fail at write for want of a dtype in most files.
+        describes_modifiers = any(
+            slot.description for behavior in self._project.behaviors.values() for slot in behavior.modifier_slots
+        )
+        if describes_modifiers:
+            behavior_columns["modifier_descriptions"] = {
+                "description": (
+                    "What the ethogram's author wrote about each slot in `modifiers`, in the same "
+                    "order. Empty where a slot was left undescribed, which most are."
+                ),
+                "index": True,
+            }
+        behaviors = [
+            dict(
+                behavior=behavior.code,
+                definition=behavior.description,
+                behavior_type=behavior.behavior_type,
+                category=behavior.category,
+                **({"excludes": behavior.excluded} if declares_exclusions else {}),
+                **(
+                    {
+                        "modifiers": [slot.name.strip() for slot in behavior.modifier_slots],
+                        "modifier_values": [
+                            [_strip_modifier_shortcut(value) for value in slot.values]
+                            for slot in behavior.modifier_slots
+                        ],
+                    }
+                    if declares_modifiers
+                    else {}
+                ),
+                **(
+                    {"modifier_descriptions": [slot.description for slot in behavior.modifier_slots]}
+                    if describes_modifiers
+                    else {}
+                ),
+            )
+            for behavior in self._project.behaviors.values()
+        ]
+
         # A bout with no stop cannot be an interval row, having no stop time to write. It stays in the
         # events table with a NaN duration, which is the honest reading of a start nobody closed.
         closed_bouts = [
@@ -468,11 +458,6 @@ class BORISInterface(BaseEventsInterface):
             for occurrence in self._observation.occurrences
             if occurrence.duration is not None and not np.isnan(occurrence.duration)
         ]
-        # An observation can hold no closed bout at all, a scheme of point behaviors or a session nobody
-        # finished. The catalogue still says what could have been scored; an empty interval table would
-        # say nothing the catalogue does not.
-        if not closed_bouts:
-            return
 
         # One bouts table for the observation, matching the events table. It carries the union of the
         # per-behavior columns, and a behavior writes an empty cell in a column it never asks.
@@ -489,16 +474,6 @@ class BORISInterface(BaseEventsInterface):
             rows_by_occurrence[id(occurrence)] = seen.get(occurrence.code, 0)
             seen[occurrence.code] = rows_by_occurrence[id(occurrence)] + 1
 
-        bouts = EthogramBouts(
-            name=f"{_to_object_name(name=self._observation.name)}Bouts",
-            description=(
-                f"State behavior bouts scored in BORIS observation '{self._observation.name}'. "
-                "Point behaviors and bouts whose stop was never scored are in the events table."
-            ),
-            labeling_method="manual",
-            source_software="BORIS",
-            ethogram=catalogue,
-        )
         # A modifier field holds the values ticked in one slot, so its column is ragged here too: the
         # interval view describes a bout the same way the events table does.
         ragged_fields = {
@@ -520,30 +495,33 @@ class BORISInterface(BaseEventsInterface):
             )
         }
         payload_fields = [field for field in payload_fields if field not in ragged_fields - filled_ragged_fields]
-        for field in payload_fields:
-            bouts.add_column(
-                name=field,
-                description=self._column_description(field=field),
-                **({"index": True} if field in filled_ragged_fields else {}),
-            )
+        # A behavior writes an empty cell in a column it does not own, since the bouts table keeps the
+        # union of the per-behavior columns.
+        bout_columns = {
+            field: {
+                "description": self._column_description(field=field),
+                "data": [
+                    (
+                        events_data_dict[occurrence.code].payload[field][rows_by_occurrence[id(occurrence)]]
+                        if field in events_data_dict[occurrence.code].payload
+                        else ([] if field in ragged_fields else "")
+                    )
+                    for occurrence in closed_bouts
+                ],
+                "index": field in filled_ragged_fields,
+            }
+            for field in payload_fields
+        }
 
         aligned_times = {code: self.get_event_times(code) for code in events_data_dict}
-        for occurrence in closed_bouts:
-            payload = events_data_dict[occurrence.code].payload
-            index = rows_by_occurrence[id(occurrence)]
-            onset = aligned_times[occurrence.code][index]
-            # A behavior writes an empty cell in a column it does not own, since the bouts table keeps
-            # the union of the per-behavior columns.
-            cells = {
-                field: (payload[field][index] if field in payload else ([] if field in ragged_fields else ""))
-                for field in payload_fields
-            }
-            bouts.add_interval(
-                start_time=onset,
-                stop_time=onset + occurrence.duration,
-                label=occurrence.code,
-                **cells,
-            )
+        aligned_durations = {code: self._get_event_durations(code) for code in events_data_dict}
+        start_times = [
+            aligned_times[occurrence.code][rows_by_occurrence[id(occurrence)]] for occurrence in closed_bouts
+        ]
+        stop_times = [
+            start_time + aligned_durations[occurrence.code][rows_by_occurrence[id(occurrence)]]
+            for start_time, occurrence in zip(start_times, closed_bouts)
+        ]
 
         # `label` holds the behavior code, the same vocabulary the events table's `event_type` carries, so
         # it earns the same MeaningsTable. The two coincide by construction, both being built from the
@@ -552,30 +530,57 @@ class BORISInterface(BaseEventsInterface):
         # bout, so this lists the state subset of what `event_type` lists. As there, a behavior the scheme
         # left undescribed earns no row, and a scheme that describes nothing gets no table at all rather
         # than one restating each code back at the reader.
-        described_state_behaviors = [
-            behavior
-            for behavior in self._project.behaviors.values()
-            if behavior.behavior_type == "state" and behavior.description
-        ]
-        if described_state_behaviors:
-            meanings_table = MeaningsTable(target=bouts["label"], description="Meaning of each behavior.")
-            for behavior in described_state_behaviors:
-                meanings_table.add_row(value=behavior.code, meaning=behavior.description)
-            bouts.add_meanings_table(meanings_table)
-
+        column_meanings = {
+            "label": {
+                "description": "Meaning of each behavior.",
+                "meanings": {
+                    behavior.code: behavior.description
+                    for behavior in self._project.behaviors.values()
+                    if behavior.behavior_type == "state" and behavior.description
+                },
+            }
+        }
         # `subject` is categorical here too and BORIS describes a subject, so it earns its meanings on
         # both tables for the same reason `label` does. Built through `_column_spec`, the same call the
         # events table's column goes through, so the two cannot drift apart.
-        if "subject" in bouts.colnames:
-            categories = self._column_spec(field="subject", values=np.asarray(bouts["subject"].data, dtype=object))[
-                "column_categories"
-            ]
-            meanings_table = MeaningsTable(target=bouts["subject"], description="Meaning of each subject.")
-            for name, meaning in categories["meanings"].items():
-                meanings_table.add_row(value=categories["labels"][name], meaning=meaning)
-            bouts.add_meanings_table(meanings_table)
+        if "subject" in bout_columns:
+            subjects = np.asarray(bout_columns["subject"]["data"], dtype=object)
+            categories = self._column_spec(field="subject", values=subjects)["column_categories"]
+            column_meanings["subject"] = {
+                "description": "Meaning of each subject.",
+                "meanings": {categories["labels"][name]: meaning for name, meaning in categories["meanings"].items()},
+            }
 
-        behavior_module.add(bouts)
+        _add_ethogram_to_nwbfile(
+            nwbfile,
+            start_times=start_times,
+            stop_times=stop_times,
+            labels=[occurrence.code for occurrence in closed_bouts],
+            behaviors=behaviors,
+            ethogram_metadata={
+                "Ethogram": {
+                    "name": "Ethogram",
+                    "description": "The BORIS coding scheme: every behavior the project declares.",
+                },
+                "EthogramBouts": {
+                    "name": f"{_to_object_name(name=self._observation.name)}Bouts",
+                    "description": (
+                        f"State behavior bouts scored in BORIS observation '{self._observation.name}'. "
+                        "Point behaviors and bouts whose stop was never scored are in the events table."
+                    ),
+                },
+            },
+            labeling_method="manual",
+            # BORIS states exclusion per behavior, as the set of codes that starting one terminates, so a
+            # scheme can make four behaviors mutually exclusive and leave the rest free. A single boolean
+            # cannot carry that, and asserting True would overclaim, so the flag stays False and the
+            # per-behavior sets go into the `excludes` column.
+            exclusive=False,
+            source_software="BORIS",
+            behavior_columns=behavior_columns,
+            bout_columns=bout_columns,
+            column_meanings=column_meanings,
+        )
 
     def _modifier_set_descriptions(self) -> dict[str, str]:
         """What each modifier column's set was described as, keyed by column name.

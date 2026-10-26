@@ -164,10 +164,11 @@ class AxonIntracellularInterface(BaseIcephysInterface):
         self._num_sweeps = int(reader.header["nb_segment"][0])
         self._sampling_rate = float(reader.get_signal_sampling_rate())
         self._alignment_key = self._series_metadata_key
-        self.alignment._register_series(
+        self.temporal_alignment._register(
             key=self._alignment_key,
             get_native_times=self._get_native_times,
             default_start_time=self._get_native_start_time,
+            get_number_of_samples=lambda: len(self._get_native_times()),
         )
 
     # Registry keys derive from the run identity so a converter that overrides `_run_identity` propagates to all

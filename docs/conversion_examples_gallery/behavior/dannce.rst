@@ -20,7 +20,7 @@ Convert DANNCE (or social DANNCE / sDANNCE) 3D pose estimation data to NWB using
     >>> interface = DANNCEInterface(file_paths=file_path, sampling_rate=30.0, verbose=False)
     >>> metadata = interface.get_metadata()
     >>> # DANNCE prediction files do not carry a session start time, so it must be set explicitly
-    >>> session_start_time = datetime(2024, 6, 24, 13, 58, 40, tzinfo=ZoneInfo("US/Eastern"))
+    >>> session_start_time = datetime(2024, 6, 24, 13, 58, 40, tzinfo=ZoneInfo("Asia/Tokyo"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>> # Add subject information (required for DANDI upload)
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Rattus norvegicus", sex="M", age="P90D")
@@ -52,7 +52,7 @@ When ``calibration_path`` is a Label3D ``.mat`` file, the table is read from the
 
 Without a sync table the samples are taken to be consecutive frames from the start of the recording,
 which only holds when no frame was skipped. With neither ``sampling_rate`` nor a sync table, set the
-times yourself with ``interface.alignment[interface.metadata_key].set_times(times)``.
+times yourself with ``interface.temporal_alignment[interface.metadata_key].set_times(times)``.
 
 Camera calibration and multiple cameras
 ========================================

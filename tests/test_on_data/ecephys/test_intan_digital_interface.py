@@ -24,6 +24,7 @@ class TestIntanDigitalInterface(EventsInterfaceTestMixin):
     # count from zero, which is why the name is the handle and the bit is not).
     FILE_PATH = ECEPHY_DATA_PATH / "intan" / "intan_fps_test_231117_052500" / "info.rhd"
     data_interface_cls = IntanDigitalInterface
+    expected_temporal_alignment_keys = ("DIGITAL-IN-01",)
     interface_kwargs = dict(file_path=FILE_PATH)
 
     def test_get_metadata(self):
@@ -98,6 +99,33 @@ class TestIntanDigitalBothWords(EventsInterfaceTestMixin):
     # cannot exercise.
     FILE_PATH = ECEPHY_DATA_PATH / "intan" / "rhs_stim_data_single_file_format" / "intanTestFile.rhs"
     data_interface_cls = IntanDigitalInterface
+    expected_temporal_alignment_keys = (
+        "DIGITAL-IN-01",
+        "DIGITAL-IN-02",
+        "DIGITAL-IN-03",
+        "DIGITAL-IN-04",
+        "DIGITAL-IN-05",
+        "DIGITAL-IN-06",
+        "DIGITAL-IN-13",
+        "DIGITAL-IN-14",
+        "DIGITAL-IN-15",
+        "DIGITAL-OUT-01",
+        "DIGITAL-OUT-02",
+        "DIGITAL-OUT-03",
+        "DIGITAL-OUT-04",
+        "DIGITAL-OUT-05",
+        "DIGITAL-OUT-06",
+        "DIGITAL-OUT-07",
+        "DIGITAL-OUT-08",
+        "DIGITAL-OUT-09",
+        "DIGITAL-OUT-10",
+        "DIGITAL-OUT-11",
+        "DIGITAL-OUT-12",
+        "DIGITAL-OUT-13",
+        "DIGITAL-OUT-14",
+        "DIGITAL-OUT-15",
+        "DIGITAL-OUT-16",
+    )
     interface_kwargs = dict(file_path=FILE_PATH)
     DIGITAL_IN = "USB board digital input channel"
     DIGITAL_OUT = "USB board digital output channel"

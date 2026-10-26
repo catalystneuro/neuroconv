@@ -1,6 +1,5 @@
 """Tests for writing an NWB file that was read from disk while an extension it uses was never imported."""
 
-import numcodecs
 import numpy as np
 import pytest
 from hdmf.build import BuildManager
@@ -76,4 +75,6 @@ def test_configure_and_write_nwbfile_with_unimported_extension(
         if backend == "hdf5":
             assert written_data.compression == "gzip"
         else:
-            assert written_data.compressor == numcodecs.GZip(level=4)
+            from zarr.codecs import GzipCodec
+
+            assert written_data.compressors == (GzipCodec(level=4),)
