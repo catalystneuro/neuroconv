@@ -514,7 +514,7 @@ class TestFiberPhotometryTemporalAlignment:
         assert response_series.starting_time == pytest.approx(1.5)
         assert response_series.rate == pytest.approx(100.0)
 
-    def test_shift_moves_an_explicitly_written_timestamps_vector(self):
+    def test_temporal_alignment_shift_times_reaches_the_nwbfile_with_always_write_timestamps(self):
         # The other timing representation. A regular series collapses to starting_time + rate, where the
         # shift lands in one scalar; forced onto the explicit vector, every sample of it has to move.
         interface = MockFiberPhotometryInterface()

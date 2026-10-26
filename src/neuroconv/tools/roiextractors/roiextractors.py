@@ -360,10 +360,12 @@ def _add_photon_series_to_nwbfile(
     metadata: dict,
     photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"],
     metadata_key: str,
+    timestamps: np.ndarray | None,
+    starting_time: float | None,
+    rate: float | None,
     parent_container: Literal["acquisition", "processing/ophys"] = "acquisition",
     iterator_type: str | None = "v2",
     iterator_options: dict | None = None,
-    always_write_timestamps: bool = False,
 ) -> NWBFile:
     """
     Add a photon series using the dict-based metadata format.
@@ -384,13 +386,17 @@ def _add_photon_series_to_nwbfile(
         The NWB type of photon series to create.
     metadata_key : str
         The key in ``metadata["Ophys"]["MicroscopySeries"]`` identifying the series.
+    timestamps : numpy.ndarray or None
+        One time per sample, written as they are. None when the series is written as ``starting_time`` and ``rate``.
+    starting_time : float or None
+        The time of the first sample when ``timestamps`` is None.
+    rate : float or None
+        The sampling rate when ``timestamps`` is None.
     parent_container : {'acquisition', 'processing/ophys'}, optional
         The container where the photon series is added, default is nwbfile.acquisition.
     iterator_type : str, default: 'v2'
         The type of iterator to use when adding the photon series to the NWB file.
     iterator_options : dict, optional
-    always_write_timestamps : bool, default: False
-        Set to True to always write timestamps.
 
     Returns
     -------
@@ -445,32 +451,10 @@ def _add_photon_series_to_nwbfile(
     )
     photon_series_kwargs["data"] = imaging_extractor_iterator
 
-    if always_write_timestamps:
-        timestamps = imaging.get_timestamps()
+    if timestamps is not None:
         photon_series_kwargs.update(timestamps=timestamps)
     else:
-        # Resolve timestamps: user-set > native hardware > none
-        timestamps_were_set = imaging.has_time_vector()
-        if timestamps_were_set:
-            timestamps = imaging.get_timestamps()
-        else:
-            timestamps = imaging.get_native_timestamps()
-
-        timestamps_are_available = timestamps is not None
-
-        if timestamps_are_available:
-            rate = calculate_regular_series_rate(series=timestamps)
-            timestamps_are_regular = rate is not None
-            starting_time = timestamps[0]
-        else:
-            rate = float(imaging.get_sampling_frequency())
-            timestamps_are_regular = True
-            starting_time = 0.0
-
-        if timestamps_are_regular:
-            photon_series_kwargs.update(rate=rate, starting_time=starting_time)
-        else:
-            photon_series_kwargs.update(timestamps=timestamps)
+        photon_series_kwargs.update(starting_time=starting_time, rate=rate)
 
     # Add the photon series to the nwbfile
     photon_series_map = dict(OnePhotonSeries=OnePhotonSeries, TwoPhotonSeries=TwoPhotonSeries)
@@ -1113,7 +1097,50 @@ def add_imaging_to_nwbfile(
         The NWB file with the imaging data added
 
     """
+    # The extractor's set timestamps, else its native ones, else a start of zero at its sampling frequency
+    timestamps = imaging.get_timestamps() if imaging.has_time_vector() else imaging.get_native_timestamps()
+    starting_time, rate = None, None
+    if timestamps is None:
+        starting_time, rate = 0.0, float(imaging.get_sampling_frequency())
 
+    return _add_imaging_to_nwbfile(
+        imaging=imaging,
+        nwbfile=nwbfile,
+        metadata=metadata,
+        timestamps=timestamps,
+        starting_time=starting_time,
+        rate=rate,
+        photon_series_type=photon_series_type,
+        photon_series_index=photon_series_index,
+        iterator_type=iterator_type,
+        iterator_options=iterator_options,
+        parent_container=parent_container,
+        always_write_timestamps=always_write_timestamps,
+        metadata_key=metadata_key,
+    )
+
+
+def _add_imaging_to_nwbfile(
+    *,
+    imaging: ImagingExtractor,
+    nwbfile: NWBFile,
+    metadata: dict | None,
+    timestamps: np.ndarray | None,
+    starting_time: float | None,
+    rate: float | None,
+    photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"],
+    photon_series_index: int,
+    iterator_type: str | None,
+    iterator_options: dict | None,
+    parent_container: Literal["acquisition", "processing/ophys"],
+    always_write_timestamps: bool,
+    metadata_key: str | None,
+) -> NWBFile:
+    """``add_imaging_to_nwbfile`` with the times given instead of read from the extractor.
+
+    For an interface, which holds the aligned times itself. The times are ``timestamps`` with one time per sample,
+    or ``starting_time`` and ``rate``.
+    """
     metadata_was_passed = metadata is not None
     if metadata is None:
         metadata = _get_ophys_metadata_placeholders()
@@ -1148,8 +1175,15 @@ def add_imaging_to_nwbfile(
             "is passed starting in v0.13.0. Pass it explicitly, for example `metadata_key='my_metadata_key'`, "
             "or pass no metadata at all to write with default metadata.",
             FutureWarning,
-            stacklevel=2,
+            stacklevel=3,
         )
+
+    if timestamps is not None:
+        regular_rate = None if always_write_timestamps else calculate_regular_series_rate(series=timestamps)
+        if regular_rate is not None:  # a start and a rate stand in for the timestamps
+            timestamps, starting_time, rate = None, float(timestamps[0]), regular_rate
+    elif always_write_timestamps:
+        timestamps = starting_time + np.arange(imaging.get_num_samples()) / rate
 
     metadata_key = metadata_key or "default_metadata_key"
     nwbfile = _add_photon_series_to_nwbfile(
@@ -1158,10 +1192,12 @@ def add_imaging_to_nwbfile(
         metadata=metadata,
         photon_series_type=photon_series_type,
         metadata_key=metadata_key,
+        timestamps=timestamps,
+        starting_time=starting_time,
+        rate=rate,
         iterator_type=iterator_type,
         iterator_options=iterator_options,
         parent_container=parent_container,
-        always_write_timestamps=always_write_timestamps,
     )
 
     return nwbfile

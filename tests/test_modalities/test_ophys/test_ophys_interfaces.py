@@ -31,6 +31,17 @@ class TestMockImagingInterface(ImagingExtractorInterfaceTestMixin):
 
         np.testing.assert_array_equal(two_photon_series.timestamps[:], expected_timestamps)
 
+    def test_temporal_alignment_shift_times_reaches_the_nwbfile_with_always_write_timestamps(self, setup_interface):
+        # A shifted regular series reaches the writer as a start and a rate; forced onto timestamps, every sample
+        # of them has to move
+        original_timestamps = self.interface.get_original_timestamps()
+        self.interface.temporal_alignment.shift_times(2.5)
+
+        nwbfile = self.interface.create_nwbfile(always_write_timestamps=True)
+
+        two_photon_series = nwbfile.acquisition["MicroscopySeries"]
+        np.testing.assert_array_equal(two_photon_series.timestamps[:], original_timestamps + 2.5)
+
     def check_extracted_metadata(self, metadata: dict):
         """MockImagingInterface returns a mock-specific series description.
 
@@ -53,7 +64,7 @@ class TestMockImagingInterface(ImagingExtractorInterfaceTestMixin):
         metadata = interface.get_metadata()
         nwbfile = mock_NWBFile()
 
-        with patch("neuroconv.tools.roiextractors.add_imaging_to_nwbfile") as mock_add:
+        with patch("neuroconv.tools.roiextractors.roiextractors._add_imaging_to_nwbfile") as mock_add:
             interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
             mock_add.assert_called_once()
             call_kwargs = mock_add.call_args[1]
