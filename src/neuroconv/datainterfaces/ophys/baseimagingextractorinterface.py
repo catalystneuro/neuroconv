@@ -409,24 +409,22 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         series = self.temporal_alignment[self._alignment_key]
         if series._times is not None or self._has_native_timestamps():
             timestamps = series.get_times()[: imaging_extractor.get_num_samples()]
-            starting_time, rate = None, None
+            starting_time = None
         else:
             timestamps = None
             starting_time = series._get_start_time()
-            rate = float(self.imaging_extractor.get_sampling_frequency())
 
         _add_photon_series_to_nwbfile(
             imaging=imaging_extractor,
             nwbfile=nwbfile,
             metadata=metadata,
-            metadata_key=self.metadata_key,
             photon_series_type=photon_series_type,
             photon_series_index=photon_series_index,
-            timestamps=timestamps,
-            starting_time=starting_time,
-            rate=rate,
-            always_write_timestamps=always_write_timestamps,
             parent_container=parent_container,
+            always_write_timestamps=always_write_timestamps,
             iterator_type=iterator_type,
             iterator_options=iterator_options,
+            metadata_key=self.metadata_key,
+            timestamps=timestamps,
+            starting_time=starting_time,
         )

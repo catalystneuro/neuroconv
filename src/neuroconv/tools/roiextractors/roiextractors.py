@@ -358,25 +358,22 @@ def _add_photon_series_to_nwbfile(
     imaging: ImagingExtractor,
     nwbfile: NWBFile,
     metadata: dict | None,
-    metadata_key: str | None,
     photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"],
+    metadata_key: str | None,
     photon_series_index: int,
     timestamps: np.ndarray | None,
     starting_time: float | None,
-    rate: float | None,
-    always_write_timestamps: bool,
-    parent_container: Literal["acquisition", "processing/ophys"],
-    iterator_type: str | None,
-    iterator_options: dict | None,
+    parent_container: Literal["acquisition", "processing/ophys"] = "acquisition",
+    iterator_type: str | None = "v2",
+    iterator_options: dict | None = None,
+    always_write_timestamps: bool = False,
 ) -> NWBFile:
     """
-    Add a photon series, with its times given instead of read from the extractor.
+    Add a photon series using the dict-based metadata format.
 
-    The one writer behind ``add_imaging_to_nwbfile`` and the imaging interfaces, which differ only in where the
-    times come from. It prepares the metadata, decides once whether the times are written as timestamps or as a
-    starting time and a rate, and writes the series. Looks up the microscopy series in
-    ``metadata["Ophys"]["MicroscopySeries"][metadata_key]`` and resolves the imaging plane via
-    ``imaging_plane_metadata_key`` in the series metadata.
+    Looks up the microscopy series in ``metadata["Ophys"]["MicroscopySeries"][metadata_key]``
+    and creates it in the NWBFile. Resolves the imaging plane via ``imaging_plane_metadata_key``
+    in the series metadata.
 
     Parameters
     ----------
@@ -386,25 +383,23 @@ def _add_photon_series_to_nwbfile(
         The NWB file to add the photon series to.
     metadata : dict or None
         The full metadata dictionary. Old list-based metadata is translated, and None writes default metadata.
-    metadata_key : str or None
-        The key in ``metadata["Ophys"]["MicroscopySeries"]`` identifying the series.
     photon_series_type : {'OnePhotonSeries', 'TwoPhotonSeries'}
         The NWB type of photon series to create.
+    metadata_key : str or None
+        The key in ``metadata["Ophys"]["MicroscopySeries"]`` identifying the series.
     photon_series_index : int
         The series to translate from old list-based metadata.
     timestamps : numpy.ndarray or None
-        One time per sample, or None when the times are given as ``starting_time`` and ``rate``.
+        One time per sample, or None when the times are ``starting_time`` at the sampling frequency.
     starting_time : float or None
         The time of the first sample when ``timestamps`` is None.
-    rate : float or None
-        The sampling rate when ``timestamps`` is None.
-    always_write_timestamps : bool
-        Write timestamps even when a starting time and a rate can represent the times.
-    parent_container : {'acquisition', 'processing/ophys'}
-        The container where the photon series is added.
-    iterator_type : str or None
+    parent_container : {'acquisition', 'processing/ophys'}, optional
+        The container where the photon series is added, default is nwbfile.acquisition.
+    iterator_type : str, default: 'v2'
         The type of iterator to use when adding the photon series to the NWB file.
-    iterator_options : dict or None
+    iterator_options : dict, optional
+    always_write_timestamps : bool, default: False
+        Set to True to always write timestamps.
 
     Returns
     -------
@@ -449,6 +444,7 @@ def _add_photon_series_to_nwbfile(
         )
     metadata_key = metadata_key or "default_metadata_key"
 
+    rate = float(imaging.get_sampling_frequency())
     if timestamps is not None:
         regular_rate = None if always_write_timestamps else calculate_regular_series_rate(series=timestamps)
         if regular_rate is not None:  # a start and a rate stand in for the timestamps
@@ -1152,25 +1148,24 @@ def add_imaging_to_nwbfile(
     """
     # The extractor's set timestamps, else its native ones, else a start of zero at its sampling frequency
     timestamps = imaging.get_timestamps() if imaging.has_time_vector() else imaging.get_native_timestamps()
-    starting_time, rate = None, None
-    if timestamps is None:
-        starting_time, rate = 0.0, float(imaging.get_sampling_frequency())
+    starting_time = 0.0 if timestamps is None else None
 
-    return _add_photon_series_to_nwbfile(
+    nwbfile = _add_photon_series_to_nwbfile(
         imaging=imaging,
         nwbfile=nwbfile,
         metadata=metadata,
-        metadata_key=metadata_key,
         photon_series_type=photon_series_type,
+        metadata_key=metadata_key,
         photon_series_index=photon_series_index,
         timestamps=timestamps,
         starting_time=starting_time,
-        rate=rate,
-        always_write_timestamps=always_write_timestamps,
-        parent_container=parent_container,
         iterator_type=iterator_type,
         iterator_options=iterator_options,
+        parent_container=parent_container,
+        always_write_timestamps=always_write_timestamps,
     )
+
+    return nwbfile
 
 
 def write_imaging_to_nwbfile(

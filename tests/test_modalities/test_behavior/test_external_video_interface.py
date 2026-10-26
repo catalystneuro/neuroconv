@@ -772,7 +772,7 @@ def test_always_write_timestamps_with_nothing_set_uses_container_timestamps(vide
     np.testing.assert_array_equal(image_series.timestamps[:], expected_timestamps)
 
 
-def test_temporal_alignment_shift_times_reaches_the_nwbfile_with_always_write_timestamps(video_files):
+def test_always_write_timestamps_with_a_placement_offsets_container_timestamps(video_files):
     """A `move_start_to` (or a `shift_times`) applied to an unset file still has to move it under the flag."""
     interface = ExternalVideoInterface(file_paths=[video_files[0]])
     original_timestamps = interface.get_original_timestamps()[0]
