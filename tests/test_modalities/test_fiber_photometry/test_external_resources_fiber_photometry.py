@@ -74,16 +74,16 @@ class TestFiberPhotometryExternalResources:
         annotate_in_fresh_process = f"""
 import sys
 from pynwb import NWBHDF5IO
-from neuroconv.tools.external_resources import (
-    add_external_resources_to_nwbfile,
-    infer_brain_region_external_resources,
-    infer_species_external_resources,
-)
-from neuroconv.utils import dict_deep_update
+from neuroconv.tools.external_resources import add_external_resources_to_nwbfile
 
+metadata = {{
+    "ExternalResources": {{
+        "species": {{"Mus musculus": {{"id": "NCBITaxon:10090", "uri": "http://purl.obolibrary.org/obo/NCBITaxon_10090"}}}},
+        "brain_regions": {{"VTA": {{"id": "MBA:749", "uri": "https://purl.brain-bican.org/ontology/mbao/MBA_749"}}}},
+    }}
+}}
 with NWBHDF5IO({str(path)!r}, "r+", load_namespaces=True) as io:
     nwbfile = io.read()
-    metadata = dict_deep_update(infer_species_external_resources(nwbfile), infer_brain_region_external_resources(nwbfile))
     add_external_resources_to_nwbfile(nwbfile, metadata=metadata)
     io.write(nwbfile)
 assert not any(module.startswith("ndx_") for module in sys.modules), "an extension was imported"
