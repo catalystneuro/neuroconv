@@ -122,7 +122,6 @@ Keypoint estimation
 
     DeepLabCut <behavior/deeplabcut>
     LightningPose <behavior/lightningpose>
-    OptiTrack <behavior/optitrack>
     SLEAP <behavior/sleap>
 
 Behavioral segmentation
@@ -146,6 +145,7 @@ Behavior
     EthoVision <behavior/ethovision>
     FicTrac <behavior/fictrac>
     Neuralynx NVT <behavior/neuralynx_nvt>
+    OptiTrack <behavior/optitrack>
     Videos <behavior/video>
     MedPC <behavior/medpc>
 
