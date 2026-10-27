@@ -1,4 +1,5 @@
 import warnings
+from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
 
@@ -27,6 +28,9 @@ _POSE_ASSET_TYPES = ("Bone", "Marker")
 # exports in format versions 1.1 and 1.2.
 _UNOWNED_MARKERS_OWNER = "Markers"
 
+# The column of a rigid body's fit error, named `Error Per Marker` in exports before format version 1.23.
+_MEAN_MARKER_ERROR_MEASUREMENTS = ("Mean Marker Error", "Error Per Marker")
+
 # How many samples ``add_to_nwbfile(stub_test=True)`` writes.
 _STUB_SAMPLES = 100
 
@@ -45,6 +49,24 @@ class OptiTrackInterface(BaseDataInterface):
         source_schema["properties"]["file_path"]["description"] = "Path to the .csv file exported by Motive."
         return source_schema
 
+    def get_metadata_schema(self) -> dict:
+        metadata_schema = super().get_metadata_schema()
+        # `unit` is not required: exports before format version 1.2 record no length units, and the series is
+        # then written with "n.a.".
+        series_schema = {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string"},
+                "description": {"type": "string"},
+                "unit": {"type": "string"},
+            },
+            "required": ["name", "description"],
+            "additionalProperties": True,
+        }
+        metadata_schema["properties"]["SpatialSeries"] = {"type": "object", "additionalProperties": series_schema}
+        metadata_schema["properties"]["TimeSeries"] = {"type": "object", "additionalProperties": series_schema}
+        return metadata_schema
+
     @validate_call
     def __init__(
         self,
@@ -59,7 +81,9 @@ class OptiTrackInterface(BaseDataInterface):
         Each rigid body is one object with a position and an orientation. Its position is written to the
         behavior module as a ``SpatialSeries``, and its orientation as a ``TimeSeries``, Euler angles in
         degrees with columns x, y, z and the export's rotation order in the description, or a unit quaternion
-        with columns w, x, y, z.
+        with columns w, x, y, z. When the export has the rigid body's ``Mean Marker Error`` (``Error Per
+        Marker`` before format version 1.23), how well Motive fit the rigid body in each frame, it is written
+        as a third ``TimeSeries``.
 
         The labeled points of each skeleton or marker set, the bones and the labeled markers named
         ``"{owner}:{point}"`` in the export, are written as one ``ndx-pose`` ``MultiCameraPoseEstimation``
@@ -92,7 +116,8 @@ class OptiTrackInterface(BaseDataInterface):
         skeleton or marker set under the top-level ``metadata["Pose"]`` registries, keyed
         ``f"{metadata_key}_{owner}"`` in snake case. The orientation of each bone of a skeleton is a
         ``TimeSeries`` keyed ``f"{metadata_key}_{owner}_{bone}_orientation"``, with the same fields as a
-        rigid body's. For an export in meters, with XYZ Euler angles, of a
+        rigid body's, and a rigid body's mean marker error a ``TimeSeries`` keyed
+        ``f"{metadata_key}_{label}_mean_marker_error"``. For an export in meters, with XYZ Euler angles, of a
         rigid body ``RigidBody`` and a marker set ``Head`` with two markers:
 
         .. code-block:: python
@@ -105,14 +130,14 @@ class OptiTrackInterface(BaseDataInterface):
                 "SpatialSeries": {
                     "optitrack_rigid_body": {
                         "name": "PositionRigidBody",
-                        "description": "Position (x, y, z) of Rigid Body 'RigidBody'.",
-                        "unit": "meters",  # from `Length Units` in the export settings
+                        "description": "Position (x, y, z) of the pivot point of Rigid Body 'RigidBody', ...",
+                        "unit": "meters",  # from `Length Units` in the export settings, left out if not there
                     },
                 },
                 "TimeSeries": {
                     "optitrack_rigid_body_orientation": {
                         "name": "OrientationRigidBody",
-                        "description": "Orientation of Rigid Body 'RigidBody' as Euler angles in degrees (x, y, z) ...",
+                        "description": "Orientation of Rigid Body 'RigidBody' as intrinsic Euler angles ...",
                         "unit": "degrees",
                     },
                 },
@@ -178,7 +203,7 @@ class OptiTrackInterface(BaseDataInterface):
         """Sort the assets that were tracked into rigid bodies, labeled points and bone orientations, in file order.
 
         Returns a dict with ``"rigid_bodies"``, ``{label: {"position": (num_frames, 3) array, "orientation":
-        {axis: values} or None}}``, ``"labeled_points"``, ``{owner: {point: (asset_type, (num_frames, 3)
+        {axis: values} or None, "mean_marker_error": (num_frames,) array or None}}``, ``"labeled_points"``, ``{owner: {point: (asset_type, (num_frames, 3)
         array)}}``, and ``"bone_orientations"``, ``{owner: {bone: {axis: values}}}``. Labeled points with no
         owner in their label, as in exports in format versions 1.1 and 1.2, have the owner ``""``. A frame
         where an asset was not tracked, empty or at the origin, is ``np.nan``; assets never tracked in any
@@ -219,7 +244,16 @@ class OptiTrackInterface(BaseDataInterface):
             rotation = measurements.get("Rotation")
             orientation = None if rotation is None else _get_orientation(rotation=rotation, is_untracked=is_untracked)
             if is_rigid_body:
-                rigid_bodies[label] = dict(position=positions, orientation=orientation)
+                error = next(
+                    (measurements[name] for name in _MEAN_MARKER_ERROR_MEASUREMENTS if name in measurements), None
+                )
+                # One column, whose axis cell is empty.
+                mean_marker_error = (
+                    None if error is None else np.where(is_untracked, np.nan, next(iter(error.values())))
+                )
+                rigid_bodies[label] = dict(
+                    position=positions, orientation=orientation, mean_marker_error=mean_marker_error
+                )
                 continue
 
             owner, _, point = label.rpartition(":")
@@ -295,13 +329,17 @@ class OptiTrackInterface(BaseDataInterface):
     def _get_orientation_metadata(self, name: str, asset: str) -> dict:
         """The ``metadata["TimeSeries"]`` entry for one orientation, in the export's rotation type."""
         rotation_type = self._header.get("Rotation Type")
+        reference = "relative to the room axes, with zero at its pose when it was created (or last reset) in Motive"
         if rotation_type == "Quaternion":
-            description = f"Orientation of {asset} as a unit quaternion, scalar first (w, x, y, z)."
+            description = (
+                f"Orientation of {asset} as a unit quaternion in the Hamilton convention, scalar first (w, x, y, z), "
+                f"{reference}."
+            )
             unit = "n.a."
         else:
             description = (
-                f"Orientation of {asset} as Euler angles in degrees (x, y, z), applied in Motive's {rotation_type} "
-                "rotation order."
+                f"Orientation of {asset} as intrinsic Euler angles in degrees (x, y, z), applied in Motive's "
+                f"{rotation_type} rotation order, {reference}."
             )
             unit = "degrees"
         return dict(name=name, description=description, unit=unit)
@@ -330,9 +368,9 @@ class OptiTrackInterface(BaseDataInterface):
         if session_start_time is not None:
             metadata["NWBFile"]["session_start_time"] = session_start_time
 
-        # Exports before format version 1.2 do not record their length units.
+        # Exports before format version 1.2 do not record their length units
         length_units = self._header.get("Length Units")
-        unit = length_units.lower() if length_units else "n.a."
+        unit = dict(unit=length_units.lower()) if length_units else dict()
 
         for label, rigid_body in self._get_rigid_bodies().items():
             asset = f"Rigid Body '{label}'"
@@ -340,13 +378,23 @@ class OptiTrackInterface(BaseDataInterface):
             series_name = to_camel_case(to_snake_case(label))
             metadata["SpatialSeries"][metadata_key] = dict(
                 name=f"Position{series_name}",
-                description=f"Position (x, y, z) of {asset}.",
-                unit=unit,
+                description=f"Position (x, y, z) of the pivot point of {asset}, by default its markers' centroid.",
+                **unit,
             )
 
             if rigid_body["orientation"] is not None:
                 metadata["TimeSeries"][f"{metadata_key}_orientation"] = self._get_orientation_metadata(
                     name=f"Orientation{series_name}", asset=asset
+                )
+
+            if rigid_body["mean_marker_error"] is not None:
+                metadata["TimeSeries"][f"{metadata_key}_mean_marker_error"] = dict(
+                    name=f"MeanMarkerError{series_name}",
+                    description=(
+                        f"Mean marker error of {asset} as reported by Motive: the average distance between its "
+                        "detected markers and their expected locations in the rigid body model."
+                    ),
+                    **unit,
                 )
 
         bone_orientations = self._get_bone_orientations()
@@ -360,7 +408,7 @@ class OptiTrackInterface(BaseDataInterface):
                 series_metadata[point] = dict(
                     name=f"PoseEstimationSeries{to_camel_case(to_snake_case(point))}",
                     description=f"Position (x, y, z) of {asset}.",
-                    unit=unit,
+                    **unit,
                 )
 
                 if point in bone_orientations.get(owner, {}):
@@ -429,6 +477,12 @@ class OptiTrackInterface(BaseDataInterface):
         deleting an entry is how to leave it out.
         """
         metadata = metadata if metadata is not None else self.get_metadata()
+        metadata = deepcopy(metadata)
+        series_entries = [*metadata.get("SpatialSeries", {}).values(), *metadata.get("TimeSeries", {}).values()]
+        for container_entry in metadata.get("Pose", {}).get("MultiCameraPoseEstimations", {}).values():
+            series_entries.extend(container_entry.get("PoseEstimationSeries", {}).values())
+        for series_entry in series_entries:
+            series_entry.setdefault("unit", "n.a.")
 
         end_frame = _STUB_SAMPLES if stub_test else None
         timestamps = self._get_timestamps()[:end_frame]
@@ -461,19 +515,27 @@ class OptiTrackInterface(BaseDataInterface):
                 position = rigid_body["position"][:end_frame]
                 behavior_module.add(SpatialSeries(**spatial_series_metadata[metadata_key], data=position, **timing))
 
-        orientations = {
-            f"{self._get_rigid_body_metadata_key(label)}_orientation": rigid_body["orientation"]
-            for label, rigid_body in self._get_rigid_bodies().items()
-            if rigid_body["orientation"] is not None
-        }
+        # Every TimeSeries this interface writes, keyed by its entry in metadata["TimeSeries"].
+        time_series_data = {}
+        for label, rigid_body in self._get_rigid_bodies().items():
+            metadata_key = self._get_rigid_body_metadata_key(label)
+            if rigid_body["orientation"] is not None:
+                time_series_data[f"{metadata_key}_orientation"] = np.column_stack(
+                    list(rigid_body["orientation"].values())
+                )
+            if rigid_body["mean_marker_error"] is not None:
+                time_series_data[f"{metadata_key}_mean_marker_error"] = rigid_body["mean_marker_error"]
         for owner, bones in self._get_bone_orientations().items():
             for bone, orientation in bones.items():
-                orientations[self._get_bone_orientation_metadata_key(owner, bone)] = orientation
-        for orientation_metadata_key, orientation in orientations.items():
-            if orientation_metadata_key not in time_series_metadata:
+                time_series_data[self._get_bone_orientation_metadata_key(owner, bone)] = np.column_stack(
+                    list(orientation.values())
+                )
+        for time_series_metadata_key, data in time_series_data.items():
+            if time_series_metadata_key not in time_series_metadata:
                 continue
-            data = np.column_stack(list(orientation.values()))[:end_frame]
-            behavior_module.add(TimeSeries(**time_series_metadata[orientation_metadata_key], data=data, **timing))
+            behavior_module.add(
+                TimeSeries(**time_series_metadata[time_series_metadata_key], data=data[:end_frame], **timing)
+            )
 
 
 def _get_label(owner: str, point: str) -> str:

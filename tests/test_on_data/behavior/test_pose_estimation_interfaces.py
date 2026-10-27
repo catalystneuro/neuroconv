@@ -1534,11 +1534,12 @@ class _OptiTrackInterfaceTestMixin(DataInterfaceTestMixin):
             series = behavior_module[series_entry["name"]]
             assert isinstance(series, SpatialSeries)
             assert series.data.shape == (num_frames, 3)
-            assert series.unit == series_entry["unit"]
+            # An export with no length units has no `unit` in its entries and is written with "n.a.".
+            assert series.unit == series_entry.get("unit", "n.a.")
         for series_entry in metadata["TimeSeries"].values():
             series = behavior_module[series_entry["name"]]
             assert series.data.shape[0] == num_frames
-            assert series.unit == series_entry["unit"]
+            assert series.unit == series_entry.get("unit", "n.a.")
         for container_metadata_key, container_entry in metadata["Pose"]["MultiCameraPoseEstimations"].items():
             container = behavior_module[container_entry["name"]]
             assert isinstance(container, MultiCameraPoseEstimation)
@@ -1566,11 +1567,21 @@ class TestOptiTrackInterfaceRigidBody(_OptiTrackInterfaceTestMixin):
         position_entry = metadata["SpatialSeries"]["optitrack_rigid_body"]
         assert position_entry["name"] == "PositionRigidBody"
         assert position_entry["unit"] == "meters"
+        assert position_entry["description"] == (
+            "Position (x, y, z) of the pivot point of Rigid Body 'RigidBody', by default its markers' centroid."
+        )
 
         orientation_entry = metadata["TimeSeries"]["optitrack_rigid_body_orientation"]
         assert orientation_entry["name"] == "OrientationRigidBody"
         assert orientation_entry["unit"] == "degrees"
-        assert "(x, y, z), applied in Motive's YXZ rotation order" in orientation_entry["description"]
+        assert orientation_entry["description"] == (
+            "Orientation of Rigid Body 'RigidBody' as intrinsic Euler angles in degrees (x, y, z), applied in "
+            "Motive's YXZ rotation order, relative to the room axes, with zero at its pose when it was created "
+            "(or last reset) in Motive."
+        )
+
+        # This export has no mean marker error column.
+        assert list(metadata["TimeSeries"]) == ["optitrack_rigid_body_orientation"]
 
         # A rigid body is one object, so it is not written as pose estimation.
         assert not metadata["Pose"]["MultiCameraPoseEstimations"]
@@ -1601,6 +1612,13 @@ class TestOptiTrackInterfaceRigidBodiesWithMarkers(_OptiTrackInterfaceTestMixin)
         orientation_entry = metadata["TimeSeries"]["optitrack_transmitter_orientation"]
         assert orientation_entry["name"] == "OrientationTransmitter"
         assert orientation_entry["unit"] == "n.a."
+        assert orientation_entry["description"].startswith(
+            "Orientation of Rigid Body 'transmitter' as a unit quaternion in the Hamilton convention, scalar first"
+        )
+
+        error_entry = metadata["TimeSeries"]["optitrack_transmitter_mean_marker_error"]
+        assert error_entry["name"] == "MeanMarkerErrorTransmitter"
+        assert error_entry["unit"] == "meters"
 
         # The labeled markers of each rigid body are measured, so they are written, one container per owner. The
         # eight unlabeled markers are left out.
@@ -1632,6 +1650,9 @@ class TestOptiTrackInterfaceRigidBodiesWithMarkers(_OptiTrackInterfaceTestMixin)
         # `reciver` is untracked, its cells empty, in 57 of the 100 frames, in its position and its orientation.
         assert np.isnan(behavior_module["PositionReciver"].data[:]).all(axis=1).sum() == 57
         assert np.isnan(behavior_module["OrientationReciver"].data[:]).all(axis=1).sum() == 57
+        # Frame 0 of the source's `Mean Marker Error` column.
+        assert behavior_module["MeanMarkerErrorTransmitter"].data[0] == 0.001009
+        assert np.isnan(behavior_module["MeanMarkerErrorReciver"].data[:]).sum() == 57
         nwbfile.read_io.close()
 
 
@@ -1663,7 +1684,9 @@ class TestOptiTrackInterfaceSkeleton(_OptiTrackInterfaceTestMixin):
         orientation_entry = metadata["TimeSeries"]["optitrack_skeleton_001_l_thigh_orientation"]
         assert orientation_entry["name"] == "OrientationSkeleton001LThigh"
         assert orientation_entry["unit"] == "degrees"
-        assert orientation_entry["description"].startswith("Orientation of Bone 'Skeleton 001:LThigh' as Euler angles")
+        assert orientation_entry["description"].startswith(
+            "Orientation of Bone 'Skeleton 001:LThigh' as intrinsic Euler angles"
+        )
 
     def run_custom_checks(self):
         nwbfile = read_nwb(self.nwbfile_path)
@@ -1713,14 +1736,20 @@ class TestOptiTrackInterfaceFormat1_1RigidBody(_OptiTrackInterfaceTestMixin):
 
     def check_extracted_metadata(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2016, 2, 4, 19, 20, 44, 718000)
-        assert metadata["SpatialSeries"]["optitrack_rigid_body_1"]["unit"] == "n.a."
+        # No length units in the export, so no `unit` in the metadata; it is filled where the series is built.
+        assert "unit" not in metadata["SpatialSeries"]["optitrack_rigid_body_1"]
         assert metadata["TimeSeries"]["optitrack_rigid_body_1_orientation"]["unit"] == "n.a."
+        # Named `Error Per Marker` in this format version.
+        assert "unit" not in metadata["TimeSeries"]["optitrack_rigid_body_1_mean_marker_error"]
 
     def run_custom_checks(self):
         nwbfile = read_nwb(self.nwbfile_path)
         behavior_module = nwbfile.processing["behavior"]
         assert_array_equal(behavior_module["PositionRigidBody1"].data[0], [-1.395789, 0.790427, 0.443426])
         assert_array_equal(behavior_module["OrientationRigidBody1"].data[0], [0.999966, 0.001154, 0.007851, -0.002402])
+        assert behavior_module["PositionRigidBody1"].unit == "n.a."
+        assert behavior_module["MeanMarkerErrorRigidBody1"].unit == "n.a."
+        assert behavior_module["MeanMarkerErrorRigidBody1"].data[0] == 0.000296
         nwbfile.read_io.close()
 
 
@@ -1741,13 +1770,15 @@ class TestOptiTrackInterfaceFormat1_1MarkersOnly(_OptiTrackInterfaceTestMixin):
         assert container_entry["name"] == "PoseEstimationMarkers"
         series_entry = container_entry["PoseEstimationSeries"]["Marker_10302"]
         assert series_entry["description"] == "Position (x, y, z) of Marker 'Marker_10302'."
-        assert series_entry["unit"] == "n.a."
+        assert "unit" not in series_entry
 
     def run_custom_checks(self):
         nwbfile = read_nwb(self.nwbfile_path)
         container = nwbfile.processing["behavior"]["PoseEstimationMarkers"]
         series = container.pose_estimation_series["PoseEstimationSeriesMarker10302"]
         assert_array_equal(series.data[0], [-3.410486, 1.415261, 3.989416])
+        # Without the fill, ndx-pose would write its default unit, pixels.
+        assert series.unit == "n.a."
         nwbfile.read_io.close()
 
 
@@ -1914,3 +1945,11 @@ class TestOptiTrackInterfaceFileVariants:
         interface = OptiTrackInterface(file_path=self.local_coordinates_file_path)
         with pytest.raises(ValueError, match="local coordinates"):
             interface.get_metadata()
+
+    def test_metadata_schema_declares_the_series(self):
+        """NWB GUIDE builds its metadata forms from the schema."""
+        interface = OptiTrackInterface(file_path=self.euler_file_path)
+        metadata_schema = interface.get_metadata_schema()
+        for registry in ("SpatialSeries", "TimeSeries"):
+            series_schema = metadata_schema["properties"][registry]["additionalProperties"]
+            assert series_schema["required"] == ["name", "description"]
