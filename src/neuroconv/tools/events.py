@@ -14,7 +14,7 @@ interface, which is where the documented contract lives.
 # the silent-discard failure this validation exists to remove. They land with their implementation.
 _CUTS = ("bits", "binarize")
 _BINARIZE_METHODS = ("midpoint",)
-_SPEC_KEYS = ("signal_conditioning", "detection", "event_name")
+_SPEC_KEYS = ("signal_conditioning", "detection", "event_time_convention", "event_name")
 
 
 def _validate_detection_configuration(detection_configuration: dict, available_signals: dict) -> None:
@@ -103,7 +103,8 @@ def _validate_spec(
         raise ValueError(
             f"detection_configuration spec for '{signal_source_id}' has unrecognized key(s) "
             f"{sorted(unknown_keys)}. A spec holds 'signal_conditioning' (how to reach a discrete-valued "
-            "signal), 'detection' (which transitions become events), and an optional 'event_name'."
+            "signal), 'detection' (which transitions become events), an optional 'event_time_convention' (which "
+            "time each event gets), and an optional 'event_name'."
         )
     if "detection" not in spec:
         raise ValueError(
@@ -203,7 +204,9 @@ def _resolve_event_types(detection_configuration: dict) -> list[tuple[str, str, 
     2. Several specs: the identifier is the signal handle plus every distinguishing component present,
        in conditioning-then-detection order, giving ``XD0_bit0_rising`` or ``DIN-01_rising`` /
        ``DIN-01_falling``. Every component is included rather than only the differing ones, so adding a
-       spec later does not rename its siblings.
+       spec later does not rename its siblings. ``event_time_convention`` is not a component: it moves an
+       event's time without selecting which transitions are events, so two specs that differ only in it
+       collide under rule 4.
     3. A spec's ``event_name`` replaces the derived identifier entirely. Set it when you want an
        identifier pinned against later edits, since a signal going from one spec to several moves it
        from rule 1 to rule 2 and the derived form changes.
