@@ -49,3 +49,10 @@ class TestOpenEphysLegacyConversions(TestCase):
 
         assert "session_start_time" in metadata["NWBFile"]
         self.assertEqual(metadata["NWBFile"]["session_start_time"], datetime(2020, 4, 29, 0, 0))
+
+    def test_get_metadata_after_remove_channels(self):
+        session_start_time = self.interface.get_metadata()["NWBFile"]["session_start_time"]
+
+        self.interface.remove_channels(channel_ids=[self.interface.channel_ids[-1]])
+
+        assert self.interface.get_metadata()["NWBFile"]["session_start_time"] == session_start_time
