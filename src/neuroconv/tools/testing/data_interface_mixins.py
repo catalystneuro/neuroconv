@@ -1689,3 +1689,27 @@ class EventsInterfaceTestMixin(DataInterfaceTestMixin):
             assert_allclose(written_timestamps, self.interface.get_event_times(event_type_source_id))
 
         nwbfile.read_io.close()
+
+    def test_event_time_convention_reaches_every_event_type(self, setup_interface):
+        """``event_time_convention`` on every spec moves every event to the sample before its transition.
+
+        Guards each signal-encoded interface's pass-through to ``_samples_to_seconds``: one that dropped it
+        would accept the key and ignore it. On any increasing clock the sample before a transition is
+        strictly earlier than the one after it, so this holds whatever the fixture.
+        """
+        detection_configuration = getattr(self.interface, "_detection_configuration", None)
+        if detection_configuration is None:
+            pytest.skip("Not a signal-encoded events interface.")
+
+        sample_before_configuration = {
+            signal_source_id: [{**spec, "event_time_convention": "sample_before_transition"} for spec in specs]
+            for signal_source_id, specs in detection_configuration.items()
+        }
+        sample_before_interface = self.data_interface_cls(
+            **{**self.interface_kwargs, "detection_configuration": sample_before_configuration}
+        )
+        for event_type_source_id in self.interface.get_event_type_source_ids():
+            default_times = self.interface.get_event_times(event_type_source_id)
+            sample_before_times = sample_before_interface.get_event_times(event_type_source_id)
+            assert len(sample_before_times) == len(default_times)
+            assert np.all(sample_before_times < default_times)
