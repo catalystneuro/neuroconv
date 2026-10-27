@@ -27,6 +27,7 @@ except ImportError:
 
 class TestCaimanSegmentationInterface(SegmentationExtractorInterfaceTestMixin):
     data_interface_cls = CaimanSegmentationInterface
+    expected_temporal_alignment_keys = ("caiman_segmentation",)
     interface_kwargs = dict(
         file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "caiman" / "caiman_analysis.hdf5")
     )
@@ -66,6 +67,7 @@ class TestCaimanSegmentationInterface450(SegmentationExtractorInterfaceTestMixin
     """Test class for CaImAn interface with a file containing quality metrics."""
 
     data_interface_cls = CaimanSegmentationInterface
+    expected_temporal_alignment_keys = ("caiman_segmentation",)
     interface_kwargs = dict(
         file_path=(
             OPHYS_DATA_PATH
@@ -143,6 +145,7 @@ class TestCaimanSegmentationInterface750(SegmentationExtractorInterfaceTestMixin
     """Test class for CaImAn interface with a file containing quality metrics."""
 
     data_interface_cls = CaimanSegmentationInterface
+    expected_temporal_alignment_keys = ("caiman_segmentation",)
     interface_kwargs = dict(
         file_path=(
             OPHYS_DATA_PATH
@@ -220,6 +223,7 @@ class TestCaimanSegmentationInterface1000(SegmentationExtractorInterfaceTestMixi
     """Test class for CaImAn interface with a file containing quality metrics."""
 
     data_interface_cls = CaimanSegmentationInterface
+    expected_temporal_alignment_keys = ("caiman_segmentation",)
     interface_kwargs = dict(
         file_path=(
             OPHYS_DATA_PATH
@@ -295,6 +299,7 @@ class TestCaimanSegmentationInterface1000(SegmentationExtractorInterfaceTestMixi
 
 class TestCnmfeSegmentationInterface(SegmentationExtractorInterfaceTestMixin):
     data_interface_cls = CnmfeSegmentationInterface
+    expected_temporal_alignment_keys = ("cnmfe_segmentation",)
     interface_kwargs = dict(
         file_path=str(
             OPHYS_DATA_PATH / "segmentation_datasets" / "cnmfe" / "2014_04_01_p203_m19_check01_cnmfeAnalysis.mat"
@@ -314,6 +319,7 @@ class TestCnmfeSegmentationInterface(SegmentationExtractorInterfaceTestMixin):
 
 class TestExtractSegmentationInterface(SegmentationExtractorInterfaceTestMixin):
     data_interface_cls = ExtractSegmentationInterface
+    expected_temporal_alignment_keys = ("extract_segmentation",)
     save_directory = OUTPUT_PATH
 
     def check_extracted_metadata(self, metadata: dict):
@@ -367,6 +373,7 @@ def test_extract_segmentation_interface_non_default_output_struct_name():
 
 class TestSuite2pSegmentationInterfaceChan1Plane0(SegmentationExtractorInterfaceTestMixin):
     data_interface_cls = Suite2pSegmentationInterface
+    expected_temporal_alignment_keys = ("suite2p_segmentation_chan1_plane0",)
     save_directory = OUTPUT_PATH
     interface_kwargs = dict(
         folder_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "suite2p"),
@@ -443,6 +450,7 @@ class TestSuite2pSegmentationInterfaceChan1Plane0(SegmentationExtractorInterface
 
 class TestSuite2pSegmentationInterfaceChan2Plane0(SegmentationExtractorInterfaceTestMixin):
     data_interface_cls = Suite2pSegmentationInterface
+    expected_temporal_alignment_keys = ("suite2p_segmentation_chan2_plane0",)
     save_directory = OUTPUT_PATH
     interface_kwargs = dict(
         folder_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "suite2p"),
@@ -520,6 +528,7 @@ class TestSuite2pSegmentationInterfaceChan2Plane0(SegmentationExtractorInterface
 
 class TestSuite2pSegmentationInterfaceWithStubTest(SegmentationExtractorInterfaceTestMixin):
     data_interface_cls = Suite2pSegmentationInterface
+    expected_temporal_alignment_keys = ("suite2p_segmentation_chan1_plane0",)
     interface_kwargs = dict(
         folder_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "suite2p"),
         channel_name="chan1",
@@ -594,8 +603,29 @@ class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTes
     """Tests for InscopixSegmentationInterface."""
 
     data_interface_cls = InscopixSegmentationInterface
+    expected_temporal_alignment_keys = ("inscopix_segmentation",)
     interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "cellset.isxd"))
     save_directory = OUTPUT_PATH
+
+    # TODO: remove these three skips once a roiextractors release includes
+    # https://github.com/catalystneuro/roiextractors/pull/639 or an equivalent fix.
+    def test_temporal_alignment_shift_times_reaches_the_nwbfile(self):
+        pytest.skip(
+            "roiextractors' InscopixSegmentationExtractor does not fill get_traces_dict(), so no traces are written "
+            "and nothing carries a time: https://github.com/catalystneuro/roiextractors/pull/639"
+        )
+
+    def test_temporal_alignment_set_times_reaches_the_nwbfile(self):
+        pytest.skip(
+            "roiextractors' InscopixSegmentationExtractor does not fill get_traces_dict(), so no traces are written "
+            "and nothing carries a time: https://github.com/catalystneuro/roiextractors/pull/639"
+        )
+
+    def test_temporal_alignment_remap_times_reaches_the_nwbfile(self):
+        pytest.skip(
+            "roiextractors' InscopixSegmentationExtractor does not fill get_traces_dict(), so no traces are written "
+            "and nothing carries a time: https://github.com/catalystneuro/roiextractors/pull/639"
+        )
 
     def check_extracted_metadata(self, metadata):
         """Check the new dict-based metadata format."""
@@ -708,10 +738,31 @@ class TestInscopixSegmentationInterfaceCellSetPart1(SegmentationExtractorInterfa
     """Tests for InscopixSegmentationInterface with the cellset_series_part1 dataset."""
 
     data_interface_cls = InscopixSegmentationInterface
+    expected_temporal_alignment_keys = ("inscopix_segmentation",)
     interface_kwargs = dict(
         file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "cellset_series_part1.isxd")
     )
     save_directory = OUTPUT_PATH
+
+    # TODO: remove these three skips once a roiextractors release includes
+    # https://github.com/catalystneuro/roiextractors/pull/639 or an equivalent fix.
+    def test_temporal_alignment_shift_times_reaches_the_nwbfile(self):
+        pytest.skip(
+            "roiextractors' InscopixSegmentationExtractor does not fill get_traces_dict(), so no traces are written "
+            "and nothing carries a time: https://github.com/catalystneuro/roiextractors/pull/639"
+        )
+
+    def test_temporal_alignment_set_times_reaches_the_nwbfile(self):
+        pytest.skip(
+            "roiextractors' InscopixSegmentationExtractor does not fill get_traces_dict(), so no traces are written "
+            "and nothing carries a time: https://github.com/catalystneuro/roiextractors/pull/639"
+        )
+
+    def test_temporal_alignment_remap_times_reaches_the_nwbfile(self):
+        pytest.skip(
+            "roiextractors' InscopixSegmentationExtractor does not fill get_traces_dict(), so no traces are written "
+            "and nothing carries a time: https://github.com/catalystneuro/roiextractors/pull/639"
+        )
 
     def check_extracted_metadata(self, metadata):
         """Check the new dict-based metadata format on a fixture without rich device metadata."""
@@ -781,6 +832,7 @@ class TestInscopixSegmentationInterfaceCellSetPart1(SegmentationExtractorInterfa
 
 class TestMinianSegmentationInterface(SegmentationExtractorInterfaceTestMixin):
     data_interface_cls = MinianSegmentationInterface
+    expected_temporal_alignment_keys = ("minian_segmentation",)
     interface_kwargs = dict(
         folder_path=OPHYS_DATA_PATH / "segmentation_datasets" / "minian" / "segmented_data_3units_100frames"
     )
@@ -819,6 +871,7 @@ class TestMinianSegmentationInterface(SegmentationExtractorInterfaceTestMixin):
 
 class TestMinianSegmentationInterfaceWithStubTest(SegmentationExtractorInterfaceTestMixin):
     data_interface_cls = MinianSegmentationInterface
+    expected_temporal_alignment_keys = ("minian_segmentation",)
     interface_kwargs = dict(
         folder_path=OPHYS_DATA_PATH / "segmentation_datasets" / "minian" / "segmented_data_3units_100frames",
     )
