@@ -64,6 +64,7 @@ def get_falling_frames_from_ttl(trace: np.ndarray, threshold: float | None = Non
 
 
 _DETECTION_READINGS = ("rising", "falling", "high_period", "low_period", "value_change")
+_EVENT_TIME_CONVENTIONS = ("sample_after_transition", "sample_before_transition", "halfway_between_samples")
 _CUTS = ("bits", "binarize")
 _BINARIZE_METHODS = ("midpoint",)
 
@@ -301,6 +302,7 @@ def _samples_to_seconds(
     onset_samples: np.ndarray,
     offset_samples: np.ndarray | None,
     timestamps: np.ndarray | Callable[[np.ndarray], np.ndarray],
+    event_time_convention: str = "sample_after_transition",
 ) -> tuple[np.ndarray, np.ndarray | None]:
     """Convert event samples to onset times and durations in seconds, by reading the clock at each sample.
 
@@ -323,6 +325,13 @@ def _samples_to_seconds(
         from a sampling rate instead of storing one (Intan, SpikeGLX NIDQ): materialising three hours at
         30 kHz to read a few dozen indices would cost hundreds of megabytes for nothing, and the
         callable reads only the samples the events actually landed on.
+    event_time_convention : {"sample_after_transition", "sample_before_transition", "halfway_between_samples"}
+        Which time each event gets from its transition. A transition at sample ``k`` happened somewhere
+        between samples ``k - 1`` and ``k``. ``"sample_after_transition"`` (the default) reads the clock at
+        ``k``, the first sample at the new level; ``"sample_before_transition"`` reads it at ``k - 1``, the
+        last sample at the old level; and ``"halfway_between_samples"`` takes the mean of the two readings,
+        which on an irregular clock is not a fixed shift. Closing samples are read the same way, so on a
+        regular clock a duration does not depend on this choice.
 
     Returns
     -------
@@ -332,20 +341,40 @@ def _samples_to_seconds(
         ``None`` for a point reading. Otherwise per-event durations in seconds, with ``NaN`` for an
         event whose offset is missing (a truncated interval), which is what NWB's ``DurationVectorData``
         expects.
+
+    Raises
+    ------
+    ValueError
+        If ``event_time_convention`` is not a known value.
     """
+    if event_time_convention not in _EVENT_TIME_CONVENTIONS:
+        raise ValueError(
+            f"Invalid event_time_convention '{event_time_convention}'. "
+            f"Valid values are {list(_EVENT_TIME_CONVENTIONS)}."
+        )
+
     if callable(timestamps):
         read_clock = timestamps
     else:
         clock = np.asarray(timestamps, dtype="float64")
         read_clock = lambda samples: clock[samples]  # noqa: E731
 
-    onsets = np.asarray(read_clock(onset_samples), dtype="float64")
+    def read_event_times(samples: np.ndarray) -> np.ndarray:
+        # Samples come from np.diff plus one, so k - 1 is never before the first sample.
+        if event_time_convention == "sample_after_transition":
+            return np.asarray(read_clock(samples), dtype="float64")
+        sample_before = np.asarray(read_clock(samples - 1), dtype="float64")
+        if event_time_convention == "sample_before_transition":
+            return sample_before
+        return (sample_before + np.asarray(read_clock(samples), dtype="float64")) / 2
+
+    onsets = read_event_times(onset_samples)
     if offset_samples is None:
         return onsets, None
 
     durations = np.full(onsets.shape, np.nan, dtype="float64")
     closed = ~np.isnan(offset_samples)
-    closing_times = np.asarray(read_clock(offset_samples[closed].astype("int64")), dtype="float64")
+    closing_times = read_event_times(offset_samples[closed].astype("int64"))
     durations[closed] = closing_times - onsets[closed]
     return onsets, durations
 
