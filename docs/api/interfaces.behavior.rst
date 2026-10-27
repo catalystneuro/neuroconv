@@ -37,6 +37,10 @@ Neuralynx NVT
 -------------
 .. automodule:: neuroconv.datainterfaces.behavior.neuralynx.neuralynx_nvt_interface
 
+OptiTrack
+---------
+.. autoclass:: neuroconv.datainterfaces.behavior.optitrack.optitrackdatainterface.OptiTrackInterface
+
 SLEAP
 -----
 .. automodule:: neuroconv.datainterfaces.behavior.sleap.sleapdatainterface
