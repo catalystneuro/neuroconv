@@ -81,10 +81,10 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
             self.file_path = file_path
 
         self.stream_id = str(nsx_to_load)
-        super().__init__(file_path=file_path, verbose=verbose, es_key=es_key, metadata_key=metadata_key)
-
         if metadata_key is None:
-            self.metadata_key = "blackrock_recording"
+            metadata_key = "blackrock_recording"
+
+        super().__init__(file_path=file_path, verbose=verbose, es_key=es_key, metadata_key=metadata_key)
 
     def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)

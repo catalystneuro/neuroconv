@@ -59,10 +59,14 @@ class AxonRecordingInterface(BaseRecordingExtractorInterface):
 
         self.file_path = Path(file_path)
 
+        if metadata_key is None:
+            metadata_key = "axon_recording"
+
         super().__init__(file_path=file_path, verbose=verbose, es_key=es_key, metadata_key=metadata_key)
 
-        if metadata_key is None:
-            self.metadata_key = "axon_recording"
+        # Read the start time while the recording is still the neo-based extractor, as `remove_channels`
+        # replaces it with a channel slice that does not carry the `neo_reader`
+        self._session_start_time = self._get_start_datetime(self.recording_extractor.neo_reader)
 
     def _get_start_datetime(self, neo_reader):
         """
@@ -101,10 +105,7 @@ class AxonRecordingInterface(BaseRecordingExtractorInterface):
     def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
 
-        # Extract session start time from ABF file using the existing neo_reader
-        neo_reader = self.recording_extractor.neo_reader
-        session_start_time = self._get_start_datetime(neo_reader)
-        session_start_time_str = session_start_time.strftime("%Y-%m-%dT%H:%M:%S%z")
+        session_start_time_str = self._session_start_time.strftime("%Y-%m-%dT%H:%M:%S%z")
         metadata["NWBFile"].update(session_start_time=session_start_time_str)
 
         axon_device = dict(

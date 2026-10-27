@@ -126,6 +126,11 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
                 f"The selected stream '{stream_name}' is not in the available streams '{available_streams}'!"
             )
 
+        # ``metadata_key`` is a snake_case dict handle, not the series name. A session is a single Open Ephys
+        # recording, so the default is a constant; conversions that combine several streams pass their own.
+        if metadata_key is None:
+            metadata_key = "open_ephys_recording"
+
         super().__init__(
             folder_path=folder_path,
             stream_name=stream_name,
@@ -134,11 +139,6 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
             es_key=es_key,
             metadata_key=metadata_key,
         )
-
-        # ``metadata_key`` is a snake_case dict handle, not the series name. A session is a single Open Ephys
-        # recording, so the default is a constant; conversions that combine several streams pass their own.
-        if metadata_key is None:
-            self.metadata_key = "open_ephys_recording"
 
         # Check if the recording has ADC channels
         recording = self.recording_extractor
