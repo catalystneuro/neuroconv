@@ -1035,7 +1035,8 @@ def _add_segmentation_to_nwbfile(
             metadata_key = addressed_name
         metadata = _translate_old_metadata(metadata, metadata_key=metadata_key, plane_segmentation_name=addressed_name)
         # The old format's defaults declare six trace roles on every segmentation, so a translated block
-        # asks for traces from extractors that expose none, `InscopixSegmentationInterface` among them.
+        # asks for traces from extractors that expose none, `InscopixSegmentationInterface` among them (a
+        # roiextractors bug: `InscopixSegmentationExtractor` does not fill `get_traces_dict()`).
         # That is boilerplate rather than a request, and the old writer answered it by writing nothing, so
         # the block goes here rather than letting the writer reject metadata the caller never wrote.
         traces = segmentation_extractor.get_traces_dict().values()
