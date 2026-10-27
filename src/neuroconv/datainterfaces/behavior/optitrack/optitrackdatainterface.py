@@ -3,22 +3,18 @@ from datetime import datetime
 from pathlib import Path
 
 import numpy as np
-import pandas as pd
 from pydantic import FilePath, validate_call
 from pynwb import TimeSeries
 from pynwb.behavior import SpatialSeries
 from pynwb.file import NWBFile
 
+from ._optitrack_reader import get_assets, read_header, read_motion_capture_data
 from .._pose_metadata_template import _get_skeleton_template_entry
-from ..baseposeestimationinterface import BasePoseEstimationInterface
+from ...._temporal_alignment import _TemporalAlignment
+from ....basedatainterface import BaseDataInterface
 from ....tools.nwb_helpers import get_module
 from ....tools.pose_estimation import _add_multi_camera_pose_estimation_to_nwbfile
 from ....utils import DeepDict, calculate_regular_series_rate, to_camel_case, to_snake_case
-
-# Rows 3 to 7 of a Motive CSV export, after the export settings line and a blank line
-# (Motive docs, "CSV Header"). Format version 1.25 adds a `Parent` row after `ID`.
-_MOTIVE_HEADER_LEVELS = ("marker_type", "label", "id", "measurement_type", "axis")
-_MOTIVE_HEADER_LEVELS_WITH_PARENT = ("marker_type", "label", "id", "parent", "measurement_type", "axis")
 
 _MOTIVE_CAPTURE_START_TIME_FORMATS = ("%Y-%m-%d %I.%M.%S.%f %p", "%Y-%m-%d %I.%M.%S %p")
 
@@ -35,7 +31,7 @@ _UNOWNED_MARKERS_OWNER = "Markers"
 _STUB_SAMPLES = 100
 
 
-class OptiTrackInterface(BasePoseEstimationInterface):
+class OptiTrackInterface(BaseDataInterface):
     """Data interface for the rigid bodies, skeletons and marker sets in OptiTrack Motive CSV exports."""
 
     display_name = "OptiTrack"
@@ -156,89 +152,27 @@ class OptiTrackInterface(BasePoseEstimationInterface):
         # For more detail, see https://github.com/rly/ndx-pose/issues/36
         import ndx_pose  # noqa: F401
 
-        self.file_path = Path(file_path)
-        self._header = self._read_header()
+        self._file_path = Path(file_path)
+        self._header = read_header(self._file_path)
 
         self.metadata_key = metadata_key or "optitrack"
         self._motion_capture_data = None
         self._tracked_assets = None
 
-        super().__init__(verbose=verbose, file_path=file_path)
+        super().__init__(verbose=verbose, file_path=file_path, metadata_key=self.metadata_key)
 
-    def _read_header(self) -> dict[str, str]:
-        """Read the header line from a Motive CSV export.
-
-        The first row of the file contains general information about the export, including the format version of the CSV
-        export, name of the Take file, the captured frame rate, export frame rate, capture start time, capture start frame,
-        number of total frames, total exported frames, rotation type, length units, and coordinate space type.
-
-        When the header is disabled during export, this information is excluded from the CSV files. Instead, the file
-        will have frame IDs in the first column, time data on the second column, and the corresponding motion capture
-        data in the remaining columns.
-        """
-        first_line = (
-            pd.read_csv(self.file_path, nrows=1, header=None, dtype=str, keep_default_na=False).iloc[0].tolist()
+        self.temporal_alignment = _TemporalAlignment()
+        self.temporal_alignment._register(
+            key=self.metadata_key,
+            get_native_times=self.get_original_timestamps,
+            get_number_of_samples=self._get_number_of_samples,
         )
-        if first_line[0] == "comment":
-            raise ValueError(
-                f"'{self.file_path}' is in the row-typed layout of early Motive and Arena exports (one row per asset "
-                "per frame, introduced by 'comment' rows), which is not supported yet. Export the take again from a "
-                "current Motive version."
-            )
-        if "Format Version" not in first_line:
-            raise ValueError(
-                f"'{self.file_path}' does not start with the header information ('Format Version, ...'), it is either"
-                f" not a Motive CSV export or it was exported with 'Header information' turned off. "
-                f"Export the take again from Motive with 'Header information' enabled."
-            )
-        header = dict(zip(first_line[0::2], first_line[1::2]))
 
-        return header
-
-    def _read_motion_capture_data(self) -> pd.DataFrame:
-        """Read the data from a Motive CSV export.
-
-        The second row of the file is blank, and the next five rows contain the asset header, which has five rows of information for each
-        asset in the export. The five rows are: ``Type``, ``Name``, ``ID``, measurement_type, and axis. The measurement_type row
-        contains the type of measurement_type for each column (e.g., position, rotation, marker), and the axis row begins with
-        ``Frame``and contains the axis for each column (e.g., X, Y, Z). Format version 1.25 adds a sixth row, ``Parent``,
-        after ``ID``.
-        """
-        if self._motion_capture_data is not None:
-            return self._motion_capture_data
-
-        with open(self.file_path, encoding="utf-8") as file:
-            next(file)  # the export settings line
-            num_header_rows = 0
-            for line in file:
-                if line.strip():
-                    num_header_rows += 1
-                if line.startswith("Frame,"):
-                    break
-        header_levels = (
-            _MOTIVE_HEADER_LEVELS_WITH_PARENT
-            if num_header_rows == len(_MOTIVE_HEADER_LEVELS_WITH_PARENT)
-            else _MOTIVE_HEADER_LEVELS
-        )
-        self._motion_capture_data = pd.read_csv(
-            self.file_path, skiprows=1, header=list(range(len(header_levels))), index_col=[0, 1]
-        )
-        self._motion_capture_data.columns.names = header_levels
-        self._motion_capture_data.index.names = ["frame", "time"]
+    def _read_motion_capture_data(self):
+        """The export's frames, read once, as a DataFrame with the asset header as column levels."""
+        if self._motion_capture_data is None:
+            self._motion_capture_data = read_motion_capture_data(self._file_path)
         return self._motion_capture_data
-
-    def _get_assets(self) -> dict[tuple[str, str], dict[str, dict[str, np.ndarray]]]:
-        """Every column of the export, as ``{(marker_type, label): {measurement_type: {axis: values}}}``, in file order.
-
-        For example ``assets[("Rigid Body", "RigidBody")]["Position"]["X"]``.
-        """
-        motion_capture_data = self._read_motion_capture_data()
-        assets = {}
-        for column, values in motion_capture_data.items():
-            levels = dict(zip(motion_capture_data.columns.names, column))
-            asset = assets.setdefault((levels["marker_type"], levels["label"]), {})
-            asset.setdefault(levels["measurement_type"], {})[levels["axis"]] = values.to_numpy(dtype=np.float64)
-        return assets
 
     def _get_tracked_assets(self) -> dict[str, dict]:
         """Sort the assets that were tracked into rigid bodies, labeled points and bone orientations, in file order.
@@ -257,10 +191,10 @@ class OptiTrackInterface(BasePoseEstimationInterface):
         labeled_points = {}
         bone_orientations = {}
         never_tracked = []
-        for (asset_type, label), measurements in self._get_assets().items():
+        for (asset_type, label), measurements in get_assets(self._read_motion_capture_data()).items():
             if asset_type == "Bone" and self._header.get("Coordinate Space") == "Local":
                 raise ValueError(
-                    f"'{self.file_path}' was exported with local coordinates, where each bone's position and "
+                    f"'{self._file_path}' was exported with local coordinates, where each bone's position and "
                     "rotation are relative to its parent bone, which is not supported. Export the take again from "
                     "Motive with global coordinates."
                 )
@@ -292,7 +226,7 @@ class OptiTrackInterface(BasePoseEstimationInterface):
             points = labeled_points.setdefault(owner, {})
             if point in points:
                 raise ValueError(
-                    f"'{label}' in '{self.file_path}' is both a {points[point][0]} and a {asset_type}, so the two "
+                    f"'{label}' in '{self._file_path}' is both a {points[point][0]} and a {asset_type}, so the two "
                     "cannot be told apart as nodes of one skeleton."
                 )
             points[point] = (asset_type, positions)
@@ -302,12 +236,12 @@ class OptiTrackInterface(BasePoseEstimationInterface):
 
         if never_tracked:
             warnings.warn(
-                f"Not tracked in any frame of '{self.file_path}', so not written: {', '.join(never_tracked)}.",
+                f"Not tracked in any frame of '{self._file_path}', so not written: {', '.join(never_tracked)}.",
                 UserWarning,
                 stacklevel=3,
             )
         if not rigid_bodies and not labeled_points:
-            raise ValueError(f"No asset in '{self.file_path}' was tracked in any frame, so there is nothing to write.")
+            raise ValueError(f"No asset in '{self._file_path}' was tracked in any frame, so there is nothing to write.")
         self._tracked_assets = dict(
             rigid_bodies=rigid_bodies, labeled_points=labeled_points, bone_orientations=bone_orientations
         )
@@ -326,9 +260,11 @@ class OptiTrackInterface(BasePoseEstimationInterface):
         return self._get_tracked_assets()["bone_orientations"]
 
     def _get_number_of_samples(self) -> int:
-        # One per frame, for every asset; the base class reads it off the keypoints, which an export of rigid
-        # bodies alone does not have.
+        """One sample per frame, shared by every asset."""
         return len(self._read_motion_capture_data())
+
+    def _get_timestamps(self) -> np.ndarray:
+        return self.temporal_alignment[self.metadata_key].get_times()
 
     def get_original_timestamps(self) -> np.ndarray:
         """The time of each frame, ``Frame / Export Frame Rate``, in seconds from the start of the take.
@@ -370,13 +306,6 @@ class OptiTrackInterface(BasePoseEstimationInterface):
             unit = "degrees"
         return dict(name=name, description=description, unit=unit)
 
-    def _get_keypoint_names(self, owner: str) -> list[str]:
-        return list(self._get_labeled_points()[owner])
-
-    def _get_keypoint_data(self, owner: str) -> dict[str, tuple[np.ndarray, np.ndarray | None]]:
-        # Motive records no confidence for a position.
-        return {point: (positions, None) for point, (_, positions) in self._get_labeled_points()[owner].items()}
-
     def _get_session_start_time(self) -> datetime | None:
         capture_start_time = self._header.get("Capture Start Time", "")
         if not capture_start_time:
@@ -395,7 +324,7 @@ class OptiTrackInterface(BasePoseEstimationInterface):
 
     def get_metadata(self) -> DeepDict:
         """One position and orientation per rigid body, and one container and skeleton per skeleton or marker set."""
-        metadata = self._get_base_metadata()
+        metadata = super().get_metadata()
 
         session_start_time = self._get_session_start_time()
         if session_start_time is not None:
@@ -456,7 +385,7 @@ class OptiTrackInterface(BasePoseEstimationInterface):
     def get_metadata_template(self) -> DeepDict:
         """Return the containers and skeletons this interface can write, with the blanks marked.
 
-        The multi-camera counterpart of :meth:`BasePoseEstimationInterface.get_metadata_template`: one
+        The multi-camera counterpart of the pose estimation interfaces' ``get_metadata_template``: one
         ``MultiCameraPoseEstimation`` container and one skeleton per skeleton or marker set, each keyed
         ``f"{metadata_key}_{owner}"`` and already cross-referenced, plus the rigid bodies' series as
         :meth:`get_metadata` returns them. Fill in the blanks and pass the result to ``add_to_nwbfile`` or
@@ -470,9 +399,9 @@ class OptiTrackInterface(BasePoseEstimationInterface):
         """
         skeleton_entries = {}
         container_entries = {}
-        for owner in self._get_labeled_points():
+        for owner, points in self._get_labeled_points().items():
             metadata_key = self._get_container_metadata_key(owner)
-            keypoint_names = self._get_keypoint_names(owner)
+            keypoint_names = list(points)
             skeleton_entries[metadata_key] = _get_skeleton_template_entry(keypoint_names=keypoint_names)
             container_entries[metadata_key] = dict(
                 name=None,
@@ -488,7 +417,6 @@ class OptiTrackInterface(BasePoseEstimationInterface):
 
         template = DeepDict(dict(Pose=dict(Skeletons=skeleton_entries, MultiCameraPoseEstimations=container_entries)))
 
-        # Whatever the source recorded wins over the template, as in the base class.
         template.deep_update(self.get_metadata())
         return template
 
@@ -497,7 +425,7 @@ class OptiTrackInterface(BasePoseEstimationInterface):
         the bones' orientations.
 
         Everything goes to the file's behavior module. The caller's metadata reaches the writer as they
-        wrote it, as in the base class. An object whose entry is not in the metadata is not written, so
+        wrote it. An object whose entry is not in the metadata is not written, so
         deleting an entry is how to leave it out.
         """
         metadata = metadata if metadata is not None else self.get_metadata()
@@ -506,14 +434,12 @@ class OptiTrackInterface(BasePoseEstimationInterface):
         timestamps = self._get_timestamps()[:end_frame]
 
         containers_metadata = metadata.get("Pose", {}).get("MultiCameraPoseEstimations", {})
-        for owner in self._get_labeled_points():
+        for owner, points in self._get_labeled_points().items():
             container_metadata_key = self._get_container_metadata_key(owner)
             if container_metadata_key not in containers_metadata:
                 continue
-            keypoint_data = {
-                name: (positions[:end_frame], confidence)
-                for name, (positions, confidence) in self._get_keypoint_data(owner).items()
-            }
+            # Motive records no confidence for a position.
+            keypoint_data = {point: (positions[:end_frame], None) for point, (_, positions) in points.items()}
             _add_multi_camera_pose_estimation_to_nwbfile(
                 nwbfile=nwbfile,
                 keypoint_data=keypoint_data,
