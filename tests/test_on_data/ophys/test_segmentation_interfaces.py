@@ -607,14 +607,25 @@ class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTes
     interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "cellset.isxd"))
     save_directory = OUTPUT_PATH
 
+    # TODO: remove these three skips once a roiextractors release includes
+    # https://github.com/catalystneuro/roiextractors/pull/639 or an equivalent fix.
     def test_temporal_alignment_shift_times_reaches_the_nwbfile(self):
-        pytest.skip("This fixture has no traces, so the interface writes nothing that carries a time.")
+        pytest.skip(
+            "roiextractors' InscopixSegmentationExtractor does not fill get_traces_dict(), so no traces are written "
+            "and nothing carries a time: https://github.com/catalystneuro/roiextractors/pull/639"
+        )
 
     def test_temporal_alignment_set_times_reaches_the_nwbfile(self):
-        pytest.skip("This fixture has no traces, so the interface writes nothing that carries a time.")
+        pytest.skip(
+            "roiextractors' InscopixSegmentationExtractor does not fill get_traces_dict(), so no traces are written "
+            "and nothing carries a time: https://github.com/catalystneuro/roiextractors/pull/639"
+        )
 
     def test_temporal_alignment_remap_times_reaches_the_nwbfile(self):
-        pytest.skip("This fixture has no traces, so the interface writes nothing that carries a time.")
+        pytest.skip(
+            "roiextractors' InscopixSegmentationExtractor does not fill get_traces_dict(), so no traces are written "
+            "and nothing carries a time: https://github.com/catalystneuro/roiextractors/pull/639"
+        )
 
     def check_extracted_metadata(self, metadata):
         """Check the new dict-based metadata format."""
@@ -733,14 +744,25 @@ class TestInscopixSegmentationInterfaceCellSetPart1(SegmentationExtractorInterfa
     )
     save_directory = OUTPUT_PATH
 
+    # TODO: remove these three skips once a roiextractors release includes
+    # https://github.com/catalystneuro/roiextractors/pull/639 or an equivalent fix.
     def test_temporal_alignment_shift_times_reaches_the_nwbfile(self):
-        pytest.skip("This fixture has no traces, so the interface writes nothing that carries a time.")
+        pytest.skip(
+            "roiextractors' InscopixSegmentationExtractor does not fill get_traces_dict(), so no traces are written "
+            "and nothing carries a time: https://github.com/catalystneuro/roiextractors/pull/639"
+        )
 
     def test_temporal_alignment_set_times_reaches_the_nwbfile(self):
-        pytest.skip("This fixture has no traces, so the interface writes nothing that carries a time.")
+        pytest.skip(
+            "roiextractors' InscopixSegmentationExtractor does not fill get_traces_dict(), so no traces are written "
+            "and nothing carries a time: https://github.com/catalystneuro/roiextractors/pull/639"
+        )
 
     def test_temporal_alignment_remap_times_reaches_the_nwbfile(self):
-        pytest.skip("This fixture has no traces, so the interface writes nothing that carries a time.")
+        pytest.skip(
+            "roiextractors' InscopixSegmentationExtractor does not fill get_traces_dict(), so no traces are written "
+            "and nothing carries a time: https://github.com/catalystneuro/roiextractors/pull/639"
+        )
 
     def check_extracted_metadata(self, metadata):
         """Check the new dict-based metadata format on a fixture without rich device metadata."""
