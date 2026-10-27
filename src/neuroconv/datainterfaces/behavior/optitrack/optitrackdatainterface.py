@@ -51,8 +51,6 @@ class OptiTrackInterface(BaseDataInterface):
 
     def get_metadata_schema(self) -> dict:
         metadata_schema = super().get_metadata_schema()
-        # `unit` is not required: exports before format version 1.2 record no length units, and the series is
-        # then written with "n.a.".
         series_schema = {
             "type": "object",
             "properties": {
@@ -104,7 +102,6 @@ class OptiTrackInterface(BaseDataInterface):
             Path to the .csv file exported by Motive.
         verbose : bool, default: False
             Controls verbosity.
-
         metadata_key : str, optional
             Key addressing this interface's entries in the dict-based metadata. Defaults to
             ``"optitrack"`` when not provided.
@@ -124,21 +121,29 @@ class OptiTrackInterface(BaseDataInterface):
 
             metadata = {
                 "NWBFile": {
-                    # From `Capture Start Time` in the export settings, without a time zone
+                    # From `Capture Start Time` in the export settings, without a time zone; left out with a
+                    # warning when it cannot be read
                     "session_start_time": datetime(2023, 2, 20, 10, 10, 13, 343000),
                 },
                 "SpatialSeries": {
                     "optitrack_rigid_body": {
                         "name": "PositionRigidBody",
                         "description": "Position (x, y, z) of the pivot point of Rigid Body 'RigidBody', ...",
-                        "unit": "meters",  # from `Length Units` in the export settings, left out if not there
+                        # From `Length Units` in the export settings. Left out when the export does not
+                        # record it, and then written as "n.a."
+                        "unit": "meters",
                     },
                 },
                 "TimeSeries": {
                     "optitrack_rigid_body_orientation": {
                         "name": "OrientationRigidBody",
                         "description": "Orientation of Rigid Body 'RigidBody' as intrinsic Euler angles ...",
-                        "unit": "degrees",
+                        "unit": "degrees",  # "n.a." for a quaternion
+                    },
+                    "optitrack_rigid_body_mean_marker_error": {  # when the export has it
+                        "name": "MeanMarkerErrorRigidBody",
+                        "description": "Mean marker error of Rigid Body 'RigidBody' as reported by Motive: ...",
+                        "unit": "meters",
                     },
                 },
                 "Pose": {
@@ -203,8 +208,9 @@ class OptiTrackInterface(BaseDataInterface):
         """Sort the assets that were tracked into rigid bodies, labeled points and bone orientations, in file order.
 
         Returns a dict with ``"rigid_bodies"``, ``{label: {"position": (num_frames, 3) array, "orientation":
-        {axis: values} or None, "mean_marker_error": (num_frames,) array or None}}``, ``"labeled_points"``, ``{owner: {point: (asset_type, (num_frames, 3)
-        array)}}``, and ``"bone_orientations"``, ``{owner: {bone: {axis: values}}}``. Labeled points with no
+        {axis: values} or None, "mean_marker_error": (num_frames,) array or None}}``, ``"labeled_points"``,
+        ``{owner: {point: (asset_type, (num_frames, 3) array)}}``, and ``"bone_orientations"``,
+        ``{owner: {bone: {axis: values}}}``. Labeled points with no
         owner in their label, as in exports in format versions 1.1 and 1.2, have the owner ``""``. A frame
         where an asset was not tracked, empty or at the origin, is ``np.nan``; assets never tracked in any
         frame are left out with a warning.
@@ -282,7 +288,8 @@ class OptiTrackInterface(BaseDataInterface):
         return self._tracked_assets
 
     def _get_rigid_bodies(self) -> dict[str, dict]:
-        """The position and orientation of every rigid body, ``{label: {"position": ..., "orientation": ...}}``."""
+        """The position, orientation and mean marker error of every rigid body, ``{label: {"position": ...,
+        "orientation": ..., "mean_marker_error": ...}}``."""
         return self._get_tracked_assets()["rigid_bodies"]
 
     def _get_labeled_points(self) -> dict[str, dict[str, tuple[str, np.ndarray]]]:
@@ -313,7 +320,8 @@ class OptiTrackInterface(BaseDataInterface):
     def _get_rigid_body_metadata_key(self, label: str) -> str:
         """The key of one rigid body's position in ``metadata["SpatialSeries"]``, e.g. ``"optitrack_transmitter"``.
 
-        Its orientation in ``metadata["TimeSeries"]`` is keyed the same, with ``"_orientation"`` appended.
+        Its orientation and mean marker error in ``metadata["TimeSeries"]`` are keyed the same, with
+        ``"_orientation"`` and ``"_mean_marker_error"`` appended.
         """
         return f"{self.metadata_key}_{to_snake_case(label)}"
 
@@ -469,12 +477,24 @@ class OptiTrackInterface(BaseDataInterface):
         return template
 
     def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict | None = None, *, stub_test: bool = False) -> None:
-        """Write the rigid bodies' series, one ``MultiCameraPoseEstimation`` per skeleton or marker set, and
-        the bones' orientations.
+        """
+        Add the rigid bodies, skeletons and marker sets of the Motive export to an NWB file.
 
-        Everything goes to the file's behavior module. The caller's metadata reaches the writer as they
-        wrote it. An object whose entry is not in the metadata is not written, so
-        deleting an entry is how to leave it out.
+        Everything is written to the behavior module. Each rigid body is written as a ``SpatialSeries`` for
+        its position, a ``TimeSeries`` for its orientation and, when the export has it, a ``TimeSeries`` for
+        its mean marker error. The labeled bones and markers of each skeleton or marker set are written as one
+        ``MultiCameraPoseEstimation`` container, and the orientation of each bone as a ``TimeSeries``. All
+        series share the export's frame times.
+
+        Parameters
+        ----------
+        nwbfile : NWBFile
+            The NWB file to add the motion capture data to.
+        metadata : dict, optional
+            Metadata dictionary. When ``None``, ``get_metadata()`` is used. A series entry with no ``unit``
+            is written with the unit ``"n.a."``.
+        stub_test : bool, default: False
+            If True, write only the first ``_STUB_SAMPLES`` (100) frames to the NWB file for quick testing.
         """
         metadata = metadata if metadata is not None else self.get_metadata()
         metadata = deepcopy(metadata)
