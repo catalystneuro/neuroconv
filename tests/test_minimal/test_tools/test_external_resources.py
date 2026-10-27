@@ -13,9 +13,7 @@ from pynwb.file import Subject
 from neuroconv.tools.external_resources import (
     HBA_TERMS,
     MBA_TERMS,
-    add_brain_region_external_resources,
     add_external_resources_to_nwbfile,
-    add_species_external_resource,
     get_brain_region_term,
     get_species_suggestion,
     get_species_term,
@@ -402,13 +400,13 @@ class TestSpeciesExternalResource:
     )
     def test_noop_cases(self, kwargs, metadata):
         nwbfile = _make_nwbfile(**kwargs)
-        assert add_species_external_resource(nwbfile, metadata=metadata) is False
+        assert add_external_resources_to_nwbfile(nwbfile, metadata=metadata) == 0
         assert nwbfile.external_resources is None
 
     def test_species_term_from_metadata_is_annotated(self):
         nwbfile = _make_nwbfile(species="Mus musculus")
         metadata = {"ExternalResources": {"species": {"Mus musculus": MOUSE_SPECIES_TERM}}}
-        assert add_species_external_resource(nwbfile, metadata=metadata) is True
+        assert add_external_resources_to_nwbfile(nwbfile, metadata=metadata) == 1
 
         dataframe = nwbfile.external_resources.to_dataframe()
         assert dataframe["key"].tolist() == ["Mus musculus"]
@@ -417,6 +415,16 @@ class TestSpeciesExternalResource:
         objects = nwbfile.external_resources.objects.to_dataframe()
         assert objects["object_id"].tolist() == [nwbfile.subject.object_id]
         assert objects["relative_path"].tolist() == ["species"]
+
+    def test_several_terms_share_one_key(self):
+        nwbfile = _make_nwbfile(species="Mus musculus")
+        second_term = {"id": "EXAMPLE:1", "uri": "https://example.org/1"}
+        metadata = {"ExternalResources": {"species": {"Mus musculus": [MOUSE_SPECIES_TERM, second_term]}}}
+        assert add_external_resources_to_nwbfile(nwbfile, metadata=metadata) == 2
+
+        herd = nwbfile.external_resources
+        assert sorted(herd.to_dataframe()["entity_id"]) == ["EXAMPLE:1", "NCBITaxon:10090"]
+        assert len(herd.keys[:]) == 1
 
 
 # ---------------------------------------------------------------------------
@@ -433,7 +441,7 @@ class TestBrainRegionExternalResources:
     def test_noop_cases(self, metadata):
         nwbfile = _make_nwbfile()
         _add_electrodes(nwbfile, ["CA1"])
-        assert add_brain_region_external_resources(nwbfile, metadata=metadata) == 0
+        assert add_external_resources_to_nwbfile(nwbfile, metadata=metadata) == 0
         assert nwbfile.external_resources is None
 
     def test_every_core_location_field_is_annotated(self, tmp_path):
@@ -453,7 +461,7 @@ class TestBrainRegionExternalResources:
             }
         )
 
-        assert add_brain_region_external_resources(nwbfile, metadata=metadata) == 5
+        assert add_external_resources_to_nwbfile(nwbfile, metadata=metadata) == 5
         # HERD records the electrodes reference against the ``location`` column, not the table.
         objects = nwbfile.external_resources.objects.to_dataframe()
         assert nwbfile.electrodes["location"].object_id in objects["object_id"].tolist()
@@ -483,7 +491,7 @@ class TestBrainRegionExternalResources:
             }
         )
 
-        assert add_brain_region_external_resources(nwbfile, metadata=metadata) == 2
+        assert add_external_resources_to_nwbfile(nwbfile, metadata=metadata) == 2
         dataframe = nwbfile.external_resources.to_dataframe()
         assert sorted(dataframe["entity_id"].tolist()) == ["MBA:382", "UBERON:0003881"]
 
@@ -495,7 +503,7 @@ class TestBrainRegionExternalResources:
             {"my region": {"id": "UBERON:0002436", "uri": "http://purl.obolibrary.org/obo/UBERON_0002436"}}
         )
 
-        assert add_brain_region_external_resources(nwbfile, metadata=metadata) == 1
+        assert add_external_resources_to_nwbfile(nwbfile, metadata=metadata) == 1
         dataframe = nwbfile.external_resources.to_dataframe()
         assert dataframe["key"].tolist() == ["my region"]
 
@@ -508,7 +516,7 @@ class TestBrainRegionExternalResources:
         _add_electrodes(nwbfile, ["area"])
         metadata = _brain_regions_metadata({"area": bad_value})
         with pytest.raises((TypeError, ValueError)):
-            add_brain_region_external_resources(nwbfile, metadata=metadata)
+            add_external_resources_to_nwbfile(nwbfile, metadata=metadata)
 
 
 # ---------------------------------------------------------------------------
@@ -781,11 +789,9 @@ class TestTypeConfigCompatibility:
             }
         }
 
-        assert add_species_external_resource(nwbfile, metadata=metadata) is True
-        assert add_brain_region_external_resources(nwbfile, metadata=metadata) == 1
+        assert add_external_resources_to_nwbfile(nwbfile, metadata=metadata) == 2
         # Idempotent on wrapped values too.
-        assert add_species_external_resource(nwbfile, metadata=metadata) is False
-        assert add_brain_region_external_resources(nwbfile, metadata=metadata) == 0
+        assert add_external_resources_to_nwbfile(nwbfile, metadata=metadata) == 0
 
         # Before the fix, the wrapper object itself became the HERD key and the write failed.
         path = tmp_path / "wrapped.nwb"
