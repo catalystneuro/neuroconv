@@ -1,7 +1,9 @@
 import os
 from datetime import datetime
 
+import numpy as np
 import pandas as pd
+import pytest
 from numpy.testing import assert_array_equal
 from pynwb import NWBHDF5IO
 
@@ -110,6 +112,50 @@ def test_csv_round_trip_rename(tmp_path):
     with NWBHDF5IO(tmp_path / "test.nwb", "r") as io:
         nwb_read = io.read()
         assert nwb_read.intervals["custom_name"].description == "custom description"
+
+
+def test_csv_start_and_stop_time_columns(tmp_path):
+    file_path = tmp_path / "intervals.csv"
+    pd.DataFrame(dict(begin=[0.1, 0.5], end=[0.3, 0.9], condition=[1, 2])).to_csv(file_path, index=False)
+    interface = CsvTimeIntervalsInterface(file_path, start_time_column="begin", stop_time_column="end")
+    metadata = interface.get_metadata()
+    metadata["NWBFile"] = dict(session_start_time=datetime.now().astimezone())
+    nwbfile = make_nwbfile_from_metadata(metadata)
+    interface.add_to_nwbfile(nwbfile, metadata=metadata)
+
+    trials = nwbfile.intervals["trials"]
+    assert trials.colnames == ("start_time", "stop_time", "condition")
+    assert_array_equal(trials["start_time"][:], [0.1, 0.5])
+    assert_array_equal(trials["stop_time"][:], [0.3, 0.9])
+    assert_array_equal(interface.get_original_timestamps(column="start_time"), [0.1, 0.5])
+
+
+def test_csv_start_time_column_missing_from_the_file():
+    with pytest.raises(ValueError, match="'begin'"):
+        CsvTimeIntervalsInterface(trials_csv_path, start_time_column="begin")
+
+
+def test_csv_stop_time_from_next_start():
+    interface = CsvTimeIntervalsInterface(trials_csv_path2, start_time_column="start", stop_time_from_next_start=True)
+    metadata = interface.get_metadata()
+    metadata["NWBFile"] = dict(session_start_time=datetime.now().astimezone())
+    nwbfile = make_nwbfile_from_metadata(metadata)
+    interface.add_to_nwbfile(nwbfile, metadata=metadata)
+
+    start_times = nwbfile.intervals["trials"]["start_time"][:]
+    stop_times = nwbfile.intervals["trials"]["stop_time"][:]
+    assert_array_equal(stop_times[:-1], start_times[1:])
+    assert np.isnan(stop_times[-1])
+
+
+def test_csv_stop_time_from_next_start_with_a_stop_column():
+    with pytest.raises(ValueError, match="has a stop column"):
+        CsvTimeIntervalsInterface(trials_csv_path, stop_time_from_next_start=True)
+
+
+def test_csv_without_a_start_time_column():
+    with pytest.raises(ValueError, match=r"no `start_time` column.*\['start', 'condition'\]"):
+        CsvTimeIntervalsInterface(trials_csv_path2)
 
 
 def test_get_metadata_schema():
