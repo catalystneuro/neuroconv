@@ -526,8 +526,6 @@ class OptiTrackInterface(BaseDataInterface):
         timing = dict(rate=rate, starting_time=float(timestamps[0])) if rate else dict(timestamps=timestamps)
         spatial_series_metadata = metadata.get("SpatialSeries", {})
         time_series_metadata = metadata.get("TimeSeries", {})
-        # Written directly to the behavior module without a `Position` container, following
-        # NeurodataWithoutBorders/nwb-schema#616, as EthoVisionTrackInterface does.
         behavior_module = get_module(nwbfile=nwbfile, name="behavior", description="processed behavioral data")
         for label, rigid_body in self._get_rigid_bodies().items():
             metadata_key = self._get_rigid_body_metadata_key(label)
