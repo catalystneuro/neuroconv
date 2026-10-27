@@ -28,7 +28,7 @@ _POSE_ASSET_TYPES = ("Bone", "Marker")
 # exports in format versions 1.1 and 1.2.
 _UNOWNED_MARKERS_OWNER = "Markers"
 
-# The column of a rigid body's fit error, named `Error Per Marker` in exports before format version 1.23.
+# The column of a rigid body's fit error, named `Error Per Marker` in exports in format versions 1.1 and 1.21.
 _MEAN_MARKER_ERROR_MEASUREMENTS = ("Mean Marker Error", "Error Per Marker")
 
 # How many samples ``add_to_nwbfile(stub_test=True)`` writes.
@@ -82,8 +82,8 @@ class OptiTrackInterface(BaseDataInterface):
         behavior module as a ``SpatialSeries``, and its orientation as a ``TimeSeries``, Euler angles in
         degrees with columns x, y, z and the export's rotation order in the description, or a unit quaternion
         with columns w, x, y, z. When the export has the rigid body's ``Mean Marker Error`` (``Error Per
-        Marker`` before format version 1.23), how well Motive fit the rigid body in each frame, it is written
-        as a third ``TimeSeries``.
+        Marker`` in format versions 1.1 and 1.21), how well Motive fit the rigid body in each frame, it is
+        written as a third ``TimeSeries``.
 
         The labeled points of each skeleton or marker set, the bones and the labeled markers named
         ``"{owner}:{point}"`` in the export, are written as one ``ndx-pose`` ``MultiCameraPoseEstimation``
