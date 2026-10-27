@@ -1884,6 +1884,7 @@ class TestOptiTrackInterfaceFileVariants:
     local_coordinates_file_path = (
         OPTITRACK_DATA_PATH / "version_1_25" / "quaternions_meters_local_coordinates" / "Take_001.csv"
     )
+    skeleton_file_path = OPTITRACK_DATA_PATH / "version_1_24" / "euler_angles_xyz_meters" / "PID 5 LIGHT EXPECTED.csv"
 
     def test_millimeters_are_the_unit(self):
         interface = OptiTrackInterface(file_path=self.euler_file_path)
@@ -1953,3 +1954,52 @@ class TestOptiTrackInterfaceFileVariants:
         for registry in ("SpatialSeries", "TimeSeries"):
             series_schema = metadata_schema["properties"][registry]["additionalProperties"]
             assert series_schema["required"] == ["name", "description"]
+
+    @pytest.mark.filterwarnings("ignore:Not tracked in any frame:UserWarning")
+    def test_metadata_template(self):
+        interface = OptiTrackInterface(file_path=self.skeleton_file_path)
+        template = interface.get_metadata_template()
+
+        skeleton = template["Pose"]["Skeletons"]["optitrack_skeleton_001"]
+        assert skeleton["name"] == "SkeletonSkeleton001"
+        assert skeleton["subject"] is None
+        container = template["Pose"]["MultiCameraPoseEstimations"]["optitrack_skeleton_001"]
+        assert container["name"] == "PoseEstimationSkeleton001"
+        assert container["description"] is None
+        assert container["source_software"] == "Motive"
+        assert container["source_software_version"] is None
+        assert list(container["PoseEstimationSeries"]) == skeleton["nodes"]
+        for series in container["PoseEstimationSeries"].values():
+            assert series["unit"] == "meters"
+            assert series["reference_frame"] is None
+
+    @pytest.mark.filterwarnings("ignore:Not tracked in any frame:UserWarning")
+    def test_metadata_template_writes(self):
+        """The template, with its reference frames filled, writes a file."""
+        interface = OptiTrackInterface(file_path=self.skeleton_file_path)
+        template = interface.get_metadata_template()
+        container = template["Pose"]["MultiCameraPoseEstimations"]["optitrack_skeleton_001"]
+        for series in container["PoseEstimationSeries"].values():
+            series.update(reference_frame="Origin at the center of the capture volume.")
+
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=template)
+
+        pose_estimation = nwbfile.processing["behavior"]["PoseEstimationSkeleton001"]
+        for series in pose_estimation.pose_estimation_series.values():
+            assert series.reference_frame == "Origin at the center of the capture volume."
+
+    @pytest.mark.filterwarnings("ignore:Not tracked in any frame:UserWarning")
+    def test_deleting_an_entry_leaves_the_object_out(self):
+        interface = OptiTrackInterface(file_path=self.skeleton_file_path)
+        metadata = interface.get_metadata()
+        del metadata["Pose"]["MultiCameraPoseEstimations"]["optitrack_skeleton_001"]
+        del metadata["TimeSeries"]["optitrack_skeleton_001_l_thigh_orientation"]
+
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+        data_interfaces = nwbfile.processing["behavior"].data_interfaces
+        assert "PoseEstimationSkeleton001" not in data_interfaces
+        assert "OrientationSkeleton001LThigh" not in data_interfaces
+        assert len(data_interfaces) == 8
