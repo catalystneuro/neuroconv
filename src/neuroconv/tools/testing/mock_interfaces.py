@@ -741,7 +741,10 @@ class MockSignalEncodedEventsInterface(BaseEventsInterface):
                 conditioned = _condition_signal(signal, spec["signal_conditioning"])
                 onset_samples, offset_samples = _detect_events(conditioned, spec["detection"])
                 onsets, durations = _samples_to_seconds(
-                    onset_samples=onset_samples, offset_samples=offset_samples, timestamps=timestamps
+                    onset_samples=onset_samples,
+                    offset_samples=offset_samples,
+                    timestamps=timestamps,
+                    event_time_convention=spec.get("event_time_convention", "sample_after_transition"),
                 )
                 events_data_dict[event_type_source_id] = _EventsData(
                     event_type_source_id=event_type_source_id,
