@@ -245,9 +245,10 @@ class OptiTrackInterface(BasePoseEstimationInterface):
 
         Returns a dict with ``"rigid_bodies"``, ``{label: {"position": (num_frames, 3) array, "orientation":
         {axis: values} or None}}``, ``"labeled_points"``, ``{owner: {point: (asset_type, (num_frames, 3)
-        array)}}``, and ``"bone_orientations"``, ``{owner: {bone: {axis: values}}}``. Labeled points with no owner in their
-        label, as in exports from Motive 2, have the owner ``""``. A frame where an asset was not tracked,
-        empty or at the origin, is ``np.nan``; assets never tracked in any frame are left out with a warning.
+        array)}}``, and ``"bone_orientations"``, ``{owner: {bone: {axis: values}}}``. Labeled points with no
+        owner in their label, as in exports in format versions 1.1 and 1.2, have the owner ``""``. A frame
+        where an asset was not tracked, empty or at the origin, is ``np.nan``; assets never tracked in any
+        frame are left out with a warning.
         """
         if self._tracked_assets is not None:
             return self._tracked_assets
