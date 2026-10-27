@@ -58,6 +58,7 @@ class TestLightningPoseDataInterface(PoseEstimationInterfaceTestMixin):
     @pytest.fixture(scope="class", autouse=True)
     @classmethod
     def setup_metadata(cls):
+
         cls.pose_estimation_name = "PoseEstimation"
         cls.original_video_height = 406
         cls.original_video_width = 396
