@@ -10,6 +10,8 @@ string it annotates (HERD links a term to an object through that string):
 
 - ``metadata["ExternalResources"]["species"]`` -> ``{species string: term-or-list}`` for ``Subject.species``;
 - ``metadata["ExternalResources"]["strain"]`` -> ``{strain string: term-or-list}`` for ``Subject.strain``;
+- ``metadata["ExternalResources"]["genotype"]`` -> ``{genotype string: term-or-list}`` for ``Subject.genotype``
+  (a list annotates each line of a cross);
 - ``metadata["ExternalResources"]["brain_regions"]`` -> ``{location string: term-or-list}`` for every
   anatomical ``location`` field on the file (the electrodes table and electrode groups, imaging
   planes, intracellular electrodes, optogenetic stimulus sites, viral vector injections, and the
@@ -172,6 +174,7 @@ def _brain_region_targets(nwbfile: NWBFile) -> list:
 _TARGET_FINDERS = {
     "species": partial(_subject_attribute_targets, attribute="species"),
     "strain": partial(_subject_attribute_targets, attribute="strain"),
+    "genotype": partial(_subject_attribute_targets, attribute="genotype"),
     "brain_regions": _brain_region_targets,
 }
 
@@ -199,8 +202,8 @@ def add_external_resources_to_nwbfile(nwbfile: NWBFile, metadata: dict | None = 
     """
     Write every term stated in ``metadata["ExternalResources"]`` into the file as HERD references.
 
-    For each map of the block (``species``, ``strain``, ``brain_regions``), every value on the file that the map
-    covers gets a reference to its term(s), stored in-file under ``/general/external_resources``.
+    For each map of the block (``species``, ``strain``, ``genotype``, ``brain_regions``), every value on the
+    file that the map covers gets a reference to its term(s), stored in-file under ``/general/external_resources``.
     ``run_conversion`` calls this just before writing, so objects added to an in-memory file after it
     was created are annotated too. Call it yourself right before writing when you build the file with
     ``create_nwbfile`` and write it with ``configure_and_write_nwbfile``.
