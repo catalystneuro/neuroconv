@@ -1891,6 +1891,9 @@ def add_recording_as_time_series_to_nwbfile(
         ``"TimeSeries"`` block, and the key must be present in it: an unresolvable key raises rather
         than silently writing defaults over the caller's edits. Pass no metadata at all to write the
         recording from its own properties with default naming.
+        On a recording with several segments the entry applies to all of them, and an optional entry keyed
+        ``{metadata_key}_{segment_index}`` overrides it field by field for that segment only, its ``name``
+        used as given.
     iterator_type: {"v2",  None}, default: 'v2'
         The type of DataChunkIterator to use.
         'v2' is the locally developed SpikeInterfaceRecordingDataChunkIterator, which offers full control over chunking.
@@ -2056,6 +2059,13 @@ def _add_time_series_segment_to_nwbfile(
     if recording.get_num_segments() > 1 and "name" in tseries_kwargs:
         tseries_kwargs["name"] += f"Segment{segment_index}"
 
+    # An entry keyed ``{metadata_key}_{segment_index}`` is optional and overrides the shared entry for this
+    # segment only, its name used as given.
+    segment_metadata_key = f"{metadata_key}_{segment_index}"
+    has_segment_override = metadata_key is not None and segment_metadata_key in metadata.get("TimeSeries", {})
+    if has_segment_override:
+        tseries_kwargs.update(metadata["TimeSeries"][segment_metadata_key])
+
     # Fill in required fields with defaults if missing
     required_fields = ["name", "description", "unit"]
     default_metadata = _get_default_time_series_metadata()
@@ -2133,6 +2143,9 @@ def add_recording_as_spatial_series_to_nwbfile(
         Where the metadata_key is used to look up metadata in the metadata dictionary.
     metadata_key : str, default: 'SpatialSeries'
         The entry in SpatialSeries metadata to use.
+        On a recording with several segments the entry applies to all of them, and an optional entry keyed
+        ``{metadata_key}_{segment_index}`` overrides it field by field for that segment only, its ``name``
+        used as given.
     parent_container : {'acquisition', 'processing'}, default: 'acquisition'
         Where to save the spatial series data:
         - 'acquisition': Save in nwbfile.acquisition
@@ -2251,6 +2264,12 @@ def _add_spatial_series_segment_to_nwbfile(
     # Handle multi-segment naming
     if recording.get_num_segments() > 1 and "name" in series_kwargs:
         series_kwargs["name"] += f"Segment{segment_index}"
+
+    # An entry keyed ``{metadata_key}_{segment_index}`` is optional and overrides the shared entry for this
+    # segment only, its name used as given.
+    segment_metadata_key = f"{metadata_key}_{segment_index}"
+    if segment_metadata_key in metadata.get("SpatialSeries", {}):
+        series_kwargs.update(metadata["SpatialSeries"][segment_metadata_key])
 
     # Fill in missing required fields with defaults
     # Note: 'description' has default='no description' and 'unit' has default='meters' in the schema
