@@ -1,6 +1,5 @@
-"""Tests for neuroconv.tools.external_resources: term resolution, metadata inference, and HERD annotation."""
+"""Tests for neuroconv.tools.external_resources: writing the terms stated in metadata into the file as HERD."""
 
-import sys
 from datetime import datetime
 from pathlib import Path
 
@@ -10,20 +9,8 @@ from jsonschema import ValidationError
 from pynwb import NWBFile
 from pynwb.file import Subject
 
-from neuroconv.tools.external_resources import (
-    HBA_TERMS,
-    MBA_TERMS,
-    add_brain_region_external_resources,
-    add_external_resources_to_nwbfile,
-    add_species_external_resource,
-    get_brain_region_term,
-    get_species_suggestion,
-    get_species_term,
-    infer_brain_region_external_resources,
-    infer_species_external_resources,
-    validate_species,
-)
-from neuroconv.utils import dict_deep_update, load_dict_from_file
+from neuroconv.tools.external_resources import add_external_resources_to_nwbfile
+from neuroconv.utils import load_dict_from_file
 from neuroconv.utils.json_schema import validate_metadata
 
 MOUSE_SPECIES_TERM = {"id": "NCBITaxon:10090", "uri": "http://purl.obolibrary.org/obo/NCBITaxon_10090"}
@@ -82,309 +69,6 @@ def _brain_regions_metadata(mapping: dict) -> dict:
     return {"ExternalResources": {"brain_regions": mapping}}
 
 
-def _infer_external_resources(nwbfile: NWBFile) -> dict:
-    """Both inferences for ``nwbfile``, combined into one ``{"ExternalResources": {...}}`` block."""
-    return dict_deep_update(infer_species_external_resources(nwbfile), infer_brain_region_external_resources(nwbfile))
-
-
-# ---------------------------------------------------------------------------
-# Optional upstream term sets (neuro-termsets)
-# ---------------------------------------------------------------------------
-
-
-class TestUpstreamTermSets:
-    """``neuro-termsets`` is not installed in this environment (and not yet on PyPI), so these tests
-    fake the package via ``sys.modules`` rather than requiring it."""
-
-    def setup_method(self):
-        from neuroconv.tools.external_resources._term_sets import load_term_set, load_upstream_term_set
-
-        load_term_set.cache_clear()
-        load_upstream_term_set.cache_clear()
-
-    teardown_method = setup_method
-
-    @pytest.mark.parametrize("broken", [False, True], ids=["not_installed", "lookup_fails"])
-    def test_unavailable_package_falls_back_to_bundled(self, monkeypatch, broken):
-        class _BrokenNeuroTermsets:
-            @staticmethod
-            def get_termset_path(name):
-                raise FileNotFoundError("term set renamed upstream")
-
-        # ``None`` in ``sys.modules`` makes ``import neuro_termsets`` fail.
-        monkeypatch.setitem(sys.modules, "neuro_termsets", _BrokenNeuroTermsets() if broken else None)
-
-        from neuroconv.tools.external_resources._term_sets import load_term_set, load_upstream_term_set
-
-        assert load_upstream_term_set("species.yaml") is None
-        assert load_term_set("species.yaml")["Mus musculus"].curie == "NCBITaxon:10090"
-
-    def test_brain_region_term_sets_are_never_looked_up_upstream(self, monkeypatch):
-        # neuro-termsets keys its brain-region files by full name, not acronym, so merging them
-        # would corrupt the acronym-keyed atlases.
-        requested = []
-
-        class _RecordingNeuroTermsets:
-            @staticmethod
-            def get_termset_path(name):
-                requested.append(name)
-                raise FileNotFoundError(name)
-
-        monkeypatch.setitem(sys.modules, "neuro_termsets", _RecordingNeuroTermsets())
-
-        from neuroconv.tools.external_resources._term_sets import load_upstream_term_set
-
-        for file_name in ["mouse_brain_atlas.yaml", "human_brain_atlas.yaml", "uberon_common_regions.yaml"]:
-            assert load_upstream_term_set(file_name) is None
-        assert requested == []
-
-    def test_real_neuro_termsets_species_merge_keeps_bundled_terms_and_aliases(self):
-        pytest.importorskip("neuro_termsets")
-
-        from neuroconv.tools.external_resources._term_sets import (
-            _UPSTREAM_TERM_SET_NAMES,
-            load_term_set,
-            load_upstream_term_set,
-        )
-
-        for bundled_name in _UPSTREAM_TERM_SET_NAMES:
-            assert load_upstream_term_set(bundled_name) is not None, bundled_name  # the mapped name resolves
-        merged = load_term_set("species.yaml")
-        assert merged["Mus musculus"].curie == "NCBITaxon:10090"
-        assert "mouse" in merged["Mus musculus"].aliases  # ours survive an upstream entry without aliases
-        assert "Xenopus laevis" in merged  # bundled-only values are kept
-
-    def test_upstream_terms_are_preferred_and_merged(self, monkeypatch, tmp_path):
-        upstream_yaml = tmp_path / "upstream_species.yaml"
-        upstream_yaml.write_text(
-            "prefixes:\n"
-            "  NCBITaxon: http://purl.obolibrary.org/obo/NCBITaxon_\n"
-            "enums:\n"
-            "  Species:\n"
-            "    permissible_values:\n"
-            "      Mus musculus:\n"
-            "        meaning: NCBITaxon:10090\n"
-            "        description: upstream mouse\n"
-            "        aliases:\n"
-            "          - murine\n"
-            "          - mouse\n"
-            "      Rattus norvegicus:\n"
-            "        meaning: NCBITaxon:10116\n"
-            "        description: upstream rat\n",
-            encoding="utf-8",
-        )
-
-        class _FakeNeuroTermsets:
-            @staticmethod
-            def get_termset_path(name):
-                assert name == "subject_species_ncbitaxon_termset.yaml"
-                return str(upstream_yaml)
-
-        monkeypatch.setitem(sys.modules, "neuro_termsets", _FakeNeuroTermsets())
-
-        from neuroconv.tools.external_resources._term_sets import load_term_set, load_upstream_term_set
-
-        upstream = load_upstream_term_set("species.yaml")
-        assert upstream["Mus musculus"].description == "upstream mouse"
-        assert "Rattus norvegicus" in upstream
-
-        merged = load_term_set("species.yaml")
-        assert merged["Mus musculus"].description == "upstream mouse"  # upstream wins on overlap
-        assert "Homo sapiens" in merged  # bundled-only values are kept
-        aliases = merged["Mus musculus"].aliases
-        assert "murine" in aliases and "house mouse" in aliases  # the aliases of both sources are combined
-        assert aliases.count("mouse") == 1  # a name both sources list appears once
-
-
-# ---------------------------------------------------------------------------
-# Species term resolution
-# ---------------------------------------------------------------------------
-
-
-class TestSpeciesTerms:
-    def test_canonical_name_resolves_without_a_suggestion(self):
-        assert get_species_term("Mus musculus").ncbitaxon_id == "NCBITaxon:10090"
-        assert get_species_suggestion("Mus musculus") is None
-
-    @pytest.mark.parametrize(
-        "species, expected_species, reason",
-        [
-            ("  Rhesus Macaque  ", "Macaca mulatta", "common name"),  # case-insensitive and stripped
-            ("Homo sapien", "Homo sapiens", "closely matches"),
-        ],
-    )
-    def test_common_names_and_typos_are_suggested(self, species, expected_species, reason):
-        term, suggestion_reason = get_species_suggestion(species)
-        assert term.canonical_name == expected_species
-        assert reason in suggestion_reason
-        assert get_species_term(species) == term
-
-    @pytest.mark.parametrize(
-        "species",
-        ["Octodon degus", "", None, 42],  # valid-but-uncommon binomial, empty, non-string
-    )
-    def test_unrecognized_returns_none(self, species):
-        assert get_species_suggestion(species) is None
-        assert get_species_term(species) is None
-
-    def test_validate_species_warns_for_common_name(self):
-        with pytest.warns(UserWarning, match="'Mus musculus'.*bioregistry.io/NCBITaxon:10090"):
-            term = validate_species("mouse")
-        assert term.canonical_name == "Mus musculus"
-
-
-# ---------------------------------------------------------------------------
-# Brain-region term resolution
-# ---------------------------------------------------------------------------
-
-
-class TestBrainRegionTerms:
-    @pytest.mark.parametrize("terms, prefix", [(MBA_TERMS, "MBA"), (HBA_TERMS, "HBA")])
-    def test_atlas_curies_are_unique_and_prefixed(self, terms, prefix):
-        curies = [term.curie for term in terms.values()]
-        assert all(curie.startswith(f"{prefix}:") for curie in curies)
-        assert len(curies) == len(set(curies))
-
-    def test_atlas_rejects_an_alias_already_used_by_another_term(self, monkeypatch):
-        # The bundled term sets go through this check when the module is imported.
-        from neuroconv.tools.external_resources import _brain_regions
-        from neuroconv.tools.external_resources._term_sets import TermInfo
-
-        fake_term_set = {
-            "A": TermInfo("A", "X:1", "https://example.org/1", "first", ("shared",)),
-            "B": TermInfo("B", "X:2", "https://example.org/2", "second", ("shared",)),
-        }
-        monkeypatch.setattr(_brain_regions, "load_term_set", lambda file_name: fake_term_set)
-        with pytest.raises(ValueError, match="already used"):
-            _brain_regions._build_atlas("unused.yaml")
-
-    @pytest.mark.parametrize(
-        "location, expected_acronym",
-        [
-            ("CA1", "CA1"),  # exact acronym
-            ("SSp-bfd", "SSp-bfd"),  # acronym with a hyphen
-            ("caudoputamen", "CP"),  # canonical name, case-insensitive
-            ("hippocampus", "HIP"),  # informal alias
-            ("V1", "VISp"),  # abbreviation alias
-        ],
-    )
-    def test_mouse_lookup(self, location, expected_acronym):
-        term = get_brain_region_term(location)  # default species is mouse
-        assert term.acronym == expected_acronym
-        assert term.curie.startswith("MBA:")
-
-    @pytest.mark.parametrize("location", ["not a region", "ca1", None, 382])  # case-sensitive, non-string
-    def test_mouse_unrecognized_returns_none(self, location):
-        assert get_brain_region_term(location) is None
-
-    @pytest.mark.parametrize(
-        "location, expected_curie",
-        [
-            ("CA1", "HBA:12892"),  # same acronym as mouse, different atlas/id
-            ("cerebral cortex", "HBA:4008"),  # canonical name
-            ("hippocampus", "HBA:4249"),  # alias
-        ],
-    )
-    def test_human_lookup(self, location, expected_curie):
-        assert get_brain_region_term(location, species="Homo sapiens").curie == expected_curie
-
-    def test_common_species_name_is_accepted(self):
-        assert get_brain_region_term("cerebral cortex", species="human").curie == "HBA:4008"
-
-    def test_uberon_fallback_for_species_without_dedicated_atlas(self):
-        # Rat has no dedicated Allen atlas; common region names still resolve via the
-        # species-agnostic UBERON fallback vocabulary.
-        term = get_brain_region_term("hippocampus", species="Rattus norvegicus")
-        assert term.curie == "UBERON:0002421"
-        # Mouse-specific acronyms are not in the generic fallback vocabulary.
-        assert get_brain_region_term("CA1", species="Rattus norvegicus") is None
-
-    def test_unrecognized_species_returns_none(self):
-        assert get_brain_region_term("CA1", species=None) is None
-        assert get_brain_region_term("CA1", species="not a species") is None
-
-
-# ---------------------------------------------------------------------------
-# Species inference (file -> ExternalResources metadata)
-# ---------------------------------------------------------------------------
-
-
-class TestInferSpeciesExternalResources:
-    def test_recognized_species_returns_term(self):
-        nwbfile = _make_nwbfile(species="Mus musculus")
-        assert infer_species_external_resources(nwbfile) == {
-            "ExternalResources": {"species": {"Mus musculus": MOUSE_SPECIES_TERM}}
-        }
-
-    def test_common_name_is_the_key(self):
-        nwbfile = _make_nwbfile(species="mouse")
-        with pytest.warns(UserWarning):
-            inferred = infer_species_external_resources(nwbfile)
-        # Keyed by the value as written: HERD links the term to Subject.species through that string.
-        assert inferred == {"ExternalResources": {"species": {"mouse": MOUSE_SPECIES_TERM}}}
-
-    @pytest.mark.parametrize("kwargs", [dict(species="Octodon degus"), dict(with_subject=False)])
-    def test_unrecognized_species_or_no_subject_returns_empty(self, kwargs):
-        assert infer_species_external_resources(_make_nwbfile(**kwargs)) == {}
-
-
-# ---------------------------------------------------------------------------
-# Brain-region inference (file -> ExternalResources metadata)
-# ---------------------------------------------------------------------------
-
-
-class TestInferBrainRegionExternalResources:
-    def test_locations_of_every_modality_are_resolved(self):
-        nwbfile = _make_nwbfile(species="Mus musculus")
-        _add_electrodes(nwbfile, ["CA1", "unknown"])  # the electrode group's location is "unknown" too
-        _add_icephys_and_ogen(nwbfile, icephys_location="VISp", ogen_location="MOp")
-        _add_imaging_plane(nwbfile, location="SSp")
-
-        brain_regions = infer_brain_region_external_resources(nwbfile)["ExternalResources"]["brain_regions"]
-        assert brain_regions["CA1"] == CA1_TERM
-        # "unknown" does not resolve and is skipped.
-        assert {location: term["id"] for location, term in brain_regions.items()} == {
-            "CA1": "MBA:382",
-            "VISp": "MBA:385",
-            "MOp": "MBA:985",
-            "SSp": "MBA:322",
-        }
-
-    def test_species_selects_the_atlas(self):
-        nwbfile = _make_nwbfile(species="Homo sapiens")
-        _add_electrodes(nwbfile, ["CA1"])
-
-        assert (
-            infer_brain_region_external_resources(nwbfile)["ExternalResources"]["brain_regions"]["CA1"]["id"]
-            == "HBA:12892"
-        )
-
-    @pytest.mark.parametrize("kwargs", [dict(species="Octodon degus"), dict(with_subject=False)])
-    def test_unrecognized_species_or_no_subject_returns_empty(self, kwargs):
-        nwbfile = _make_nwbfile(**kwargs)
-        _add_electrodes(nwbfile, ["CA1"])
-        assert infer_brain_region_external_resources(nwbfile) == {}
-
-
-class TestMergeInferredExternalResources:
-    """The documented merge, ``dict_deep_update(inferred, metadata, append_list=False)``."""
-
-    def test_user_terms_win_and_inferred_terms_fill_the_rest(self):
-        nwbfile = _make_nwbfile(species="Mus musculus")
-        _add_electrodes(nwbfile, ["CA1", "VISp"])
-        # A list of terms the user wrote is kept whole, not merged item by item with the inferred term.
-        curated = [
-            {"id": "MBA:999", "uri": "https://example.org/custom"},
-            {"id": "UBERON:0003881", "uri": "http://purl.obolibrary.org/obo/UBERON_0003881"},
-        ]
-        metadata = _brain_regions_metadata({"CA1": curated})
-
-        merged = dict_deep_update(_infer_external_resources(nwbfile), metadata, append_list=False)
-        assert merged["ExternalResources"]["brain_regions"]["CA1"] == curated
-        assert merged["ExternalResources"]["brain_regions"]["VISp"]["id"] == "MBA:385"
-        assert merged["ExternalResources"]["species"] == {"Mus musculus": MOUSE_SPECIES_TERM}
-
-
 # ---------------------------------------------------------------------------
 # Species HERD annotation (metadata -> file)
 # ---------------------------------------------------------------------------
@@ -402,13 +86,13 @@ class TestSpeciesExternalResource:
     )
     def test_noop_cases(self, kwargs, metadata):
         nwbfile = _make_nwbfile(**kwargs)
-        assert add_species_external_resource(nwbfile, metadata=metadata) is False
+        assert add_external_resources_to_nwbfile(nwbfile, metadata=metadata) == 0
         assert nwbfile.external_resources is None
 
     def test_species_term_from_metadata_is_annotated(self):
         nwbfile = _make_nwbfile(species="Mus musculus")
         metadata = {"ExternalResources": {"species": {"Mus musculus": MOUSE_SPECIES_TERM}}}
-        assert add_species_external_resource(nwbfile, metadata=metadata) is True
+        assert add_external_resources_to_nwbfile(nwbfile, metadata=metadata) == 1
 
         dataframe = nwbfile.external_resources.to_dataframe()
         assert dataframe["key"].tolist() == ["Mus musculus"]
@@ -417,6 +101,16 @@ class TestSpeciesExternalResource:
         objects = nwbfile.external_resources.objects.to_dataframe()
         assert objects["object_id"].tolist() == [nwbfile.subject.object_id]
         assert objects["relative_path"].tolist() == ["species"]
+
+    def test_several_terms_share_one_key(self):
+        nwbfile = _make_nwbfile(species="Mus musculus")
+        second_term = {"id": "EXAMPLE:1", "uri": "https://example.org/1"}
+        metadata = {"ExternalResources": {"species": {"Mus musculus": [MOUSE_SPECIES_TERM, second_term]}}}
+        assert add_external_resources_to_nwbfile(nwbfile, metadata=metadata) == 2
+
+        herd = nwbfile.external_resources
+        assert sorted(herd.to_dataframe()["entity_id"]) == ["EXAMPLE:1", "NCBITaxon:10090"]
+        assert len(herd.keys[:]) == 1
 
 
 # ---------------------------------------------------------------------------
@@ -433,7 +127,7 @@ class TestBrainRegionExternalResources:
     def test_noop_cases(self, metadata):
         nwbfile = _make_nwbfile()
         _add_electrodes(nwbfile, ["CA1"])
-        assert add_brain_region_external_resources(nwbfile, metadata=metadata) == 0
+        assert add_external_resources_to_nwbfile(nwbfile, metadata=metadata) == 0
         assert nwbfile.external_resources is None
 
     def test_every_core_location_field_is_annotated(self, tmp_path):
@@ -453,7 +147,7 @@ class TestBrainRegionExternalResources:
             }
         )
 
-        assert add_brain_region_external_resources(nwbfile, metadata=metadata) == 5
+        assert add_external_resources_to_nwbfile(nwbfile, metadata=metadata) == 5
         # HERD records the electrodes reference against the ``location`` column, not the table.
         objects = nwbfile.external_resources.objects.to_dataframe()
         assert nwbfile.electrodes["location"].object_id in objects["object_id"].tolist()
@@ -483,7 +177,7 @@ class TestBrainRegionExternalResources:
             }
         )
 
-        assert add_brain_region_external_resources(nwbfile, metadata=metadata) == 2
+        assert add_external_resources_to_nwbfile(nwbfile, metadata=metadata) == 2
         dataframe = nwbfile.external_resources.to_dataframe()
         assert sorted(dataframe["entity_id"].tolist()) == ["MBA:382", "UBERON:0003881"]
 
@@ -495,7 +189,7 @@ class TestBrainRegionExternalResources:
             {"my region": {"id": "UBERON:0002436", "uri": "http://purl.obolibrary.org/obo/UBERON_0002436"}}
         )
 
-        assert add_brain_region_external_resources(nwbfile, metadata=metadata) == 1
+        assert add_external_resources_to_nwbfile(nwbfile, metadata=metadata) == 1
         dataframe = nwbfile.external_resources.to_dataframe()
         assert dataframe["key"].tolist() == ["my region"]
 
@@ -508,7 +202,7 @@ class TestBrainRegionExternalResources:
         _add_electrodes(nwbfile, ["area"])
         metadata = _brain_regions_metadata({"area": bad_value})
         with pytest.raises((TypeError, ValueError)):
-            add_brain_region_external_resources(nwbfile, metadata=metadata)
+            add_external_resources_to_nwbfile(nwbfile, metadata=metadata)
 
 
 # ---------------------------------------------------------------------------
@@ -781,11 +475,9 @@ class TestTypeConfigCompatibility:
             }
         }
 
-        assert add_species_external_resource(nwbfile, metadata=metadata) is True
-        assert add_brain_region_external_resources(nwbfile, metadata=metadata) == 1
+        assert add_external_resources_to_nwbfile(nwbfile, metadata=metadata) == 2
         # Idempotent on wrapped values too.
-        assert add_species_external_resource(nwbfile, metadata=metadata) is False
-        assert add_brain_region_external_resources(nwbfile, metadata=metadata) == 0
+        assert add_external_resources_to_nwbfile(nwbfile, metadata=metadata) == 0
 
         # Before the fix, the wrapper object itself became the HERD key and the write failed.
         path = tmp_path / "wrapped.nwb"
@@ -798,14 +490,3 @@ class TestTypeConfigCompatibility:
             ("Subject", "Mus musculus", "NCBITaxon:10090"),
             ("ElectrodeGroup", self.UBERON_CA1, "UBERON:0003881"),
         }
-
-    def test_inference_reads_wrapped_values(self):
-        nwbfile = self._make_wrapped_nwbfile()
-        # The electrodes table column is not in the config, so it can carry an atlas acronym; the
-        # atlas is still chosen from the wrapped Subject.species.
-        nwbfile.add_electrode(location="CA1", group=nwbfile.electrode_groups["group0"], id=0)
-
-        inferred = _infer_external_resources(nwbfile)
-
-        assert inferred["ExternalResources"]["species"] == {"Mus musculus": MOUSE_SPECIES_TERM}
-        assert inferred["ExternalResources"]["brain_regions"]["CA1"]["id"] == "MBA:382"
