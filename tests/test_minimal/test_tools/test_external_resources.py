@@ -283,8 +283,9 @@ class TestExternalResourcesMetadataSchema:
             {"strain": {"C57BL/6J": C57BL6J_STRAIN_TERM}},
             {"brain_regions": {"CA1": [BRAIN_REGION_TERM, {"id": "UBERON:0003881", "uri": "https://example.org/U"}]}},
             {"brain_regions": {"CA1": {**BRAIN_REGION_TERM, "label": "Field CA1"}}},  # extra keys are allowed
+            {"anatomy": {"Snout": {"id": "UBERON:0006333", "uri": "http://purl.obolibrary.org/obo/UBERON_0006333"}}},
         ],
-        ids=["empty", "species", "strain", "list_of_terms", "term_with_label"],
+        ids=["empty", "species", "strain", "list_of_terms", "term_with_label", "anatomy"],
     )
     def test_valid_blocks_pass(self, block, base_metadata_schema):
         self._validate(block, base_metadata_schema)
