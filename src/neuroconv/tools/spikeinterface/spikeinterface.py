@@ -2055,6 +2055,13 @@ def _add_time_series_segment_to_nwbfile(
     # Update with user-provided metadata
     tseries_kwargs.update(user_metadata)
 
+    # Fill in required fields with defaults if missing, before the segment suffix so a default name gets it too
+    required_fields = ["name", "description", "unit"]
+    default_metadata = _get_default_time_series_metadata()
+    for field in required_fields:
+        if field not in tseries_kwargs:
+            tseries_kwargs[field] = default_metadata[field]
+
     # Handle multi-segment naming
     if recording.get_num_segments() > 1 and "name" in tseries_kwargs:
         tseries_kwargs["name"] += f"Segment{segment_index}"
@@ -2065,13 +2072,6 @@ def _add_time_series_segment_to_nwbfile(
     has_segment_override = metadata_key is not None and segment_metadata_key in metadata.get("TimeSeries", {})
     if has_segment_override:
         tseries_kwargs.update(metadata["TimeSeries"][segment_metadata_key])
-
-    # Fill in required fields with defaults if missing
-    required_fields = ["name", "description", "unit"]
-    default_metadata = _get_default_time_series_metadata()
-    for field in required_fields:
-        if field not in tseries_kwargs:
-            tseries_kwargs[field] = default_metadata[field]
 
     # Create TimeSeries object and add it to nwbfile
     time_series = pynwb.base.TimeSeries(**tseries_kwargs)
@@ -2261,6 +2261,12 @@ def _add_spatial_series_segment_to_nwbfile(
     # Update with user-provided metadata
     series_kwargs.update(user_metadata)
 
+    # Fill in missing required fields with defaults, before the segment suffix so a default name gets it too
+    # Note: 'description' has default='no description' and 'unit' has default='meters' in the schema
+    if "name" not in series_kwargs:
+        default_metadata = _get_default_spatial_series_metadata()
+        series_kwargs["name"] = default_metadata["SpatialSeries"]["name"]
+
     # Handle multi-segment naming
     if recording.get_num_segments() > 1 and "name" in series_kwargs:
         series_kwargs["name"] += f"Segment{segment_index}"
@@ -2270,12 +2276,6 @@ def _add_spatial_series_segment_to_nwbfile(
     segment_metadata_key = f"{metadata_key}_{segment_index}"
     if segment_metadata_key in metadata.get("SpatialSeries", {}):
         series_kwargs.update(metadata["SpatialSeries"][segment_metadata_key])
-
-    # Fill in missing required fields with defaults
-    # Note: 'description' has default='no description' and 'unit' has default='meters' in the schema
-    if "name" not in series_kwargs:
-        default_metadata = _get_default_spatial_series_metadata()
-        series_kwargs["name"] = default_metadata["SpatialSeries"]["name"]
 
     # Create the SpatialSeries instance
     spatial_series = pynwb.behavior.SpatialSeries(**series_kwargs)
