@@ -180,6 +180,10 @@
         "brain_regions": {
           "description": "Terms for anatomical location fields (electrodes, electrode groups, imaging planes, intracellular electrodes, optogenetic stimulus sites, viral vector injections, fiber photometry), keyed by the location value.",
           "$ref": "#/definitions/TermMap"
+        },
+        "anatomy": {
+          "description": "Terms for ndx-pose Skeleton node names (pose-estimation keypoints), keyed by the node name.",
+          "$ref": "#/definitions/TermMap"
         }
       }
     },
