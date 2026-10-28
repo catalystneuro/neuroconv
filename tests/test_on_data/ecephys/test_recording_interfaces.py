@@ -175,6 +175,14 @@ class TestAxonaRecordingInterface(RecordingExtractorInterfaceTestMixin):
         for electrode_group in metadata["Ecephys"]["ElectrodeGroup"]:
             assert electrode_group["device"] == "Axona"
 
+    def test_get_metadata_after_remove_channels(self):
+        interface = AxonaRecordingInterface(**self.interface_kwargs)
+        session_start_time = interface.get_metadata()["NWBFile"]["session_start_time"]
+
+        interface.remove_channels(channel_ids=[interface.channel_ids[-1]])
+
+        assert interface.get_metadata()["NWBFile"]["session_start_time"] == session_start_time
+
 
 class TestAxonaLFPDataInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = AxonaLFPDataInterface
