@@ -20,7 +20,9 @@ These values can be annotated:
 - anatomical **brain regions**, usually with a term from the
   `Allen Mouse Brain Atlas <https://bioregistry.io/registry/mba>`_ (MBA), the
   `Allen Human Brain Atlas <https://bioregistry.io/registry/hba>`_ (HBA) or
-  `UBERON <https://bioregistry.io/registry/uberon>`_.
+  `UBERON <https://bioregistry.io/registry/uberon>`_;
+- **body parts** named by the nodes of an ``ndx-pose`` ``Skeleton`` (pose-estimation keypoints), usually
+  with a UBERON term.
 
 Brain-region annotation covers every free-text ``location`` field in the NWB core schema and the
 extensions NeuroConv writes:
@@ -66,10 +68,10 @@ terms:
         {"id": "UBERON:0003881", "uri": "http://purl.obolibrary.org/obo/UBERON_0003881"},
     ]
 
-The ``ExternalResources`` block is part of the metadata schema: only the ``species``, ``strain`` and ``brain_regions``
-maps are accepted, and every term needs a non-empty ``id`` and ``uri``. A misspelled map name such as
-``metadata["ExternalResources"]["brain_region"]`` therefore fails metadata validation instead of silently
-annotating nothing.
+The ``ExternalResources`` block is part of the metadata schema: only the ``species``, ``strain``,
+``brain_regions`` and ``anatomy`` maps are accepted, and every term needs a non-empty ``id`` and ``uri``.
+A misspelled map name such as ``metadata["ExternalResources"]["brain_region"]`` therefore fails metadata
+validation instead of silently annotating nothing.
 
 Finding a term
 ~~~~~~~~~~~~~~
@@ -97,6 +99,21 @@ Charles River (``RRID:IMSR_CRL:027``) and from Taconic (``RRID:IMSR_TAC:b6``) ha
 
 The RRID of a mouse strain from a repository such as JAX or MMRRC appears on the strain's page there, and
 ``https://scicrunch.org/resolver/<RRID>`` resolves any RRID.
+
+Pose-estimation body parts
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The ``anatomy`` map annotates the node names of every ``ndx-pose`` ``Skeleton`` on the file, wherever
+the skeleton sits. Keypoint names are often lab conventions (``"EarL"``, ``"ShoulderLeft"``), so map
+each name you want annotated to the structure it marks, and leave out names that have no matching
+term:
+
+.. code-block:: python
+
+    metadata["ExternalResources"]["anatomy"] = {
+        "Snout": {"id": "UBERON:0006333", "uri": "http://purl.obolibrary.org/obo/UBERON_0006333"},
+        "ShoulderLeft": {"id": "UBERON:0001467", "uri": "http://purl.obolibrary.org/obo/UBERON_0001467"},
+    }
 
 Writing the references
 ----------------------
