@@ -1,5 +1,6 @@
 import json
 import re
+import warnings
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -8,12 +9,13 @@ from pydantic import FilePath, validate_call
 from pynwb.behavior import Position, SpatialSeries
 from pynwb.file import NWBFile
 
-from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
+from ...._temporal_alignment import _TemporalAlignment
+from ....basedatainterface import BaseDataInterface
 from ....tools import get_module
 from ....utils import DeepDict, calculate_regular_series_rate
 
 
-class FicTracDataInterface(BaseTemporalAlignmentInterface):
+class FicTracDataInterface(BaseDataInterface):
     """Data interface for FicTrac datasets."""
 
     display_name = "FicTrac"
@@ -191,8 +193,13 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
         if self.configuration_file_path is not None:
             self.configuration_metadata = parse_fictrac_config(file_path=self.configuration_file_path)
 
-        self._timestamps = None
-        self._starting_time = None
+        # Every series FicTrac writes shares one timeline, so the interface has one time-bearing object
+        self.temporal_alignment = _TemporalAlignment()
+        self.temporal_alignment._register(
+            key="fictrac",
+            get_native_times=self.get_original_timestamps,
+            get_number_of_samples=lambda: len(self.get_original_timestamps()),
+        )
 
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
@@ -224,7 +231,7 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
         fictrac_data_df = pd.read_csv(self.file_path, sep=",", header=None, names=self.columns_in_dat_file)
 
         # Get the timestamps
-        timestamps = self.get_timestamps()
+        timestamps = self.temporal_alignment["fictrac"].get_times()
         starting_time = timestamps[0]
 
         # Note: Returns the timestamps from the sources in FicTrac (.e.g OpenCV videos, PGR or Basler). The most common  is OpenCV with all the caveats that come with it.
@@ -335,17 +342,42 @@ class FicTracDataInterface(BaseTemporalAlignmentInterface):
         return timestamps
 
     def get_timestamps(self):
-        timestamps = self._timestamps if self._timestamps is not None else self.get_original_timestamps()
-        if self._starting_time is not None:
-            timestamps = timestamps + self._starting_time
-
-        return timestamps
+        warnings.warn(
+            "`get_timestamps` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment['fictrac'].get_times()` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        return self.temporal_alignment["fictrac"].get_times()
 
     def set_aligned_timestamps(self, aligned_timestamps):
-        self._timestamps = aligned_timestamps
+        warnings.warn(
+            "`set_aligned_timestamps` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment['fictrac'].set_times(times)` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        self.temporal_alignment["fictrac"].set_times(aligned_timestamps)
 
     def set_aligned_starting_time(self, aligned_starting_time):
-        self._starting_time = aligned_starting_time
+        warnings.warn(
+            "`set_aligned_starting_time` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment.shift_times(delta)` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        self.temporal_alignment.shift_times(aligned_starting_time)
+
+    def align_by_interpolation(self, unaligned_timestamps: np.ndarray, aligned_timestamps: np.ndarray):
+        warnings.warn(
+            "`align_by_interpolation` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment.remap_times(local_sync_times=..., reference_sync_times=...)` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        self.temporal_alignment.remap_times(
+            local_sync_times=unaligned_timestamps, reference_sync_times=aligned_timestamps
+        )
 
 
 def extract_session_start_time(

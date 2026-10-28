@@ -1,20 +1,55 @@
 import os
 from datetime import datetime
 
+import numpy as np
 import pandas as pd
+import pytest
 from numpy.testing import assert_array_equal
-from pynwb import NWBHDF5IO
+from pynwb import NWBHDF5IO, read_nwb
 
 from neuroconv.datainterfaces import (
     CsvTimeIntervalsInterface,
     ExcelTimeIntervalsInterface,
 )
 from neuroconv.tools.nwb_helpers import make_nwbfile_from_metadata
+from neuroconv.tools.testing.data_interface_mixins import DataInterfaceTestMixin
 from neuroconv.tools.text import convert_df_to_time_intervals
 
 trials_xls_path = os.path.join(os.path.dirname(__file__), "trials.xlsx")
 trials_csv_path = os.path.join(os.path.dirname(__file__), "trials.csv")
 trials_csv_path2 = os.path.join(os.path.dirname(__file__), "trials_no_start_time.csv")
+trials_with_response_time_csv_path = os.path.join(os.path.dirname(__file__), "trials_with_response_time.csv")
+
+
+class TestCsvTimeIntervalsInterface(DataInterfaceTestMixin):
+    data_interface_cls = CsvTimeIntervalsInterface
+    interface_kwargs = dict(
+        file_path=trials_with_response_time_csv_path, start_time_column="begin", stop_time_column="end"
+    )
+    expected_temporal_alignment_keys = ("start_time", "stop_time", "response_time")
+
+    def check_read_nwb(self, nwbfile_path: str):
+        nwbfile = read_nwb(nwbfile_path)
+        trials = nwbfile.trials
+        assert trials.colnames == ("start_time", "stop_time", "response_time", "condition")
+        assert_array_equal(trials["start_time"][:], [0.1, 0.2, 0.3])
+        assert_array_equal(trials["stop_time"][:], [0.2, 0.3, 0.4])
+        assert_array_equal(trials["response_time"][:], [0.15, 0.25, 0.35])
+        nwbfile.read_io.close()
+
+
+class TestCsvTimeIntervalsInterfaceWithStopsFromTheNextStart(DataInterfaceTestMixin):
+    data_interface_cls = CsvTimeIntervalsInterface
+    interface_kwargs = dict(file_path=trials_csv_path2, start_time_column="start", stop_time_from_next_start=True)
+    expected_temporal_alignment_keys = ("start_time",)
+
+    def check_read_nwb(self, nwbfile_path: str):
+        nwbfile = read_nwb(nwbfile_path)
+        start_times = nwbfile.trials["start_time"][:]
+        stop_times = nwbfile.trials["stop_time"][:]
+        assert_array_equal(stop_times[:-1], start_times[1:])
+        assert np.isnan(stop_times[-1])
+        nwbfile.read_io.close()
 
 
 def test_convert_df_to_time_intervals():
@@ -110,6 +145,21 @@ def test_csv_round_trip_rename(tmp_path):
     with NWBHDF5IO(tmp_path / "test.nwb", "r") as io:
         nwb_read = io.read()
         assert nwb_read.intervals["custom_name"].description == "custom description"
+
+
+def test_csv_start_time_column_missing_from_the_file():
+    with pytest.raises(ValueError, match="'begin'"):
+        CsvTimeIntervalsInterface(trials_csv_path, start_time_column="begin")
+
+
+def test_csv_stop_time_from_next_start_with_a_stop_column():
+    with pytest.raises(ValueError, match="has a stop column"):
+        CsvTimeIntervalsInterface(trials_csv_path, stop_time_from_next_start=True)
+
+
+def test_csv_without_a_start_time_column():
+    with pytest.raises(ValueError, match=r"no `start_time` column.*\['start', 'condition'\]"):
+        CsvTimeIntervalsInterface(trials_csv_path2)
 
 
 def test_get_metadata_schema():

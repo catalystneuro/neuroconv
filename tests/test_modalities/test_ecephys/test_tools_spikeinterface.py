@@ -1542,6 +1542,34 @@ class TestAddTimeSeries:
         assert time_series.conversion == 3.0
         assert time_series.offset == 1.5
 
+    def test_segment_entry_overrides_only_its_segment(self):
+        recording = generate_recording(sampling_frequency=1.0, num_channels=2, durations=[3.0, 3.0, 3.0])
+        metadata = {
+            "TimeSeries": {
+                "analog": {"name": "Analog", "description": "Shared description.", "unit": "V"},
+                "analog_1": {"name": "SecondSegment"},
+            }
+        }
+        nwbfile = mock_NWBFile()
+
+        add_recording_as_time_series_to_nwbfile(
+            recording=recording, nwbfile=nwbfile, metadata=metadata, metadata_key="analog", iterator_type=None
+        )
+
+        assert set(nwbfile.acquisition) == {"AnalogSegment0", "SecondSegment", "AnalogSegment2"}
+        assert {series.description for series in nwbfile.acquisition.values()} == {"Shared description."}
+
+    def test_multiple_segments_without_a_name(self):
+        recording = generate_recording(sampling_frequency=1.0, num_channels=2, durations=[3.0, 3.0])
+        recording.set_property("physical_unit", values=["uV"] * 2)
+        recording.set_property("gain_to_physical_unit", values=[1.0] * 2)
+        recording.set_property("offset_to_physical_unit", values=[0.0] * 2)
+        nwbfile = mock_NWBFile()
+
+        add_recording_as_time_series_to_nwbfile(recording=recording, nwbfile=nwbfile, iterator_type=None)
+
+        assert set(nwbfile.acquisition) == {"TimeSeriesSegment0", "TimeSeriesSegment1"}
+
 
 class TestAddTimeSeriesMetadataKeyResolution:
     """``metadata_key`` addresses an entry, so it is required exactly when there is one to address."""
@@ -1815,6 +1843,31 @@ class TestAddSpatialSeries:
                 metadata=metadata,
                 iterator_type=None,
             )
+
+    def test_segment_entry_overrides_only_its_segment(self):
+        recording = generate_recording(sampling_frequency=30.0, num_channels=2, durations=[0.1, 0.1, 0.1])
+        metadata = {
+            "SpatialSeries": {
+                "SpatialSeries": {"name": "Position", "description": "Shared description.", "reference_frame": "test"},
+                "SpatialSeries_1": {"name": "SecondSegment"},
+            }
+        }
+        nwbfile = mock_NWBFile()
+
+        add_recording_as_spatial_series_to_nwbfile(
+            recording=recording, nwbfile=nwbfile, metadata=metadata, iterator_type=None
+        )
+
+        assert set(nwbfile.acquisition) == {"PositionSegment0", "SecondSegment", "PositionSegment2"}
+        assert {series.description for series in nwbfile.acquisition.values()} == {"Shared description."}
+
+    def test_multiple_segments_without_a_name(self):
+        recording = generate_recording(sampling_frequency=30.0, num_channels=2, durations=[0.1, 0.1])
+        nwbfile = mock_NWBFile()
+
+        add_recording_as_spatial_series_to_nwbfile(recording=recording, nwbfile=nwbfile, iterator_type=None)
+
+        assert set(nwbfile.acquisition) == {"SpatialSeriesSegment0", "SpatialSeriesSegment1"}
 
 
 def _probe_naming(**probe_fields):

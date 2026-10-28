@@ -236,6 +236,23 @@ class TestTimebase:
         onsets = interface._get_events_data_dict()["word"].timestamps
         assert onsets[-1] > 1.0  # the last pulse sits beyond the one-second gap
 
+    def test_event_time_convention_reaches_the_events(self):
+        """The spec's ``event_time_convention`` is passed through: each onset moves back one sampling period."""
+        spec = {"signal_conditioning": {"bits": [0]}, "detection": "high_period"}
+        default = MockSignalEncodedEventsInterface(
+            digital_line_waveforms={0: "pulses"}, sampling_frequency=500.0, detection_configuration={"word": [spec]}
+        )
+        sample_before = MockSignalEncodedEventsInterface(
+            digital_line_waveforms={0: "pulses"},
+            sampling_frequency=500.0,
+            detection_configuration={"word": [{**spec, "event_time_convention": "sample_before_transition"}]},
+        )
+
+        default_events = default._get_events_data_dict()["word"]
+        sample_before_events = sample_before._get_events_data_dict()["word"]
+        np.testing.assert_allclose(sample_before_events.timestamps, default_events.timestamps - 1 / 500.0)
+        np.testing.assert_allclose(sample_before_events.durations, default_events.durations)
+
 
 class TestMetadata:
     """Metadata is derived from the configuration, so it lists exactly what will be written."""
