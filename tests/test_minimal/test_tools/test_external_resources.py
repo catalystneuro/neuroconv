@@ -15,16 +15,17 @@ from neuroconv.utils.json_schema import validate_metadata
 
 MOUSE_SPECIES_TERM = {"id": "NCBITaxon:10090", "uri": "http://purl.obolibrary.org/obo/NCBITaxon_10090"}
 CA1_TERM = {"id": "MBA:382", "uri": "https://purl.brain-bican.org/ontology/mbao/MBA_382"}
+C57BL6J_STRAIN_TERM = {"id": "RRID:IMSR_JAX:000664", "uri": "https://scicrunch.org/resolver/RRID:IMSR_JAX:000664"}
 
 
-def _make_nwbfile(species="Mus musculus", with_subject=True) -> NWBFile:
+def _make_nwbfile(species="Mus musculus", with_subject=True, **subject_kwargs) -> NWBFile:
     nwbfile = NWBFile(
         session_description="d",
         identifier="id",
         session_start_time=datetime(2020, 1, 1, tzinfo=tzutc()),
     )
     if with_subject:
-        nwbfile.subject = Subject(subject_id="s1", species=species)
+        nwbfile.subject = Subject(subject_id="s1", species=species, **subject_kwargs)
     return nwbfile
 
 
@@ -111,6 +112,57 @@ class TestSpeciesExternalResource:
         herd = nwbfile.external_resources
         assert sorted(herd.to_dataframe()["entity_id"]) == ["EXAMPLE:1", "NCBITaxon:10090"]
         assert len(herd.keys[:]) == 1
+
+
+# ---------------------------------------------------------------------------
+# Strain HERD annotation (metadata -> file)
+# ---------------------------------------------------------------------------
+
+
+class TestStrainExternalResource:
+    @pytest.mark.parametrize(
+        "subject_kwargs, metadata",
+        [
+            (dict(), {"ExternalResources": {"strain": {"C57BL/6J": C57BL6J_STRAIN_TERM}}}),  # no strain on the subject
+            (dict(strain="C57BL/6J"), {"Subject": {"strain": "C57BL/6J"}}),  # metadata but no ontology term
+            (dict(strain="C57BL/6J"), {"ExternalResources": {"strain": {"B6": C57BL6J_STRAIN_TERM}}}),  # another value
+        ],
+        ids=["no_strain", "no_term", "term_for_another_value"],
+    )
+    def test_noop_cases(self, subject_kwargs, metadata):
+        nwbfile = _make_nwbfile(**subject_kwargs)
+        assert add_external_resources_to_nwbfile(nwbfile, metadata=metadata) == 0
+        assert nwbfile.external_resources is None
+
+    def test_strain_term_from_metadata_is_annotated(self):
+        nwbfile = _make_nwbfile(strain="C57BL/6J")
+        metadata = {"ExternalResources": {"strain": {"C57BL/6J": C57BL6J_STRAIN_TERM}}}
+        assert add_external_resources_to_nwbfile(nwbfile, metadata=metadata) == 1
+
+        dataframe = nwbfile.external_resources.to_dataframe()
+        assert dataframe["key"].tolist() == ["C57BL/6J"]
+        assert dataframe["entity_id"].tolist() == ["RRID:IMSR_JAX:000664"]
+        objects = nwbfile.external_resources.objects.to_dataframe()
+        assert objects["relative_path"].tolist() == ["strain"]
+        # Idempotent.
+        assert add_external_resources_to_nwbfile(nwbfile, metadata=metadata) == 0
+
+    def test_species_and_strain_share_one_herd(self, tmp_path):
+        from pynwb import NWBHDF5IO
+
+        nwbfile = _make_nwbfile(species="Mus musculus", strain="C57BL/6J")
+        metadata = {
+            "ExternalResources": {
+                "species": {"Mus musculus": MOUSE_SPECIES_TERM},
+                "strain": {"C57BL/6J": C57BL6J_STRAIN_TERM},
+            }
+        }
+        assert add_external_resources_to_nwbfile(nwbfile, metadata=metadata) == 2
+
+        path = tmp_path / "strain.nwb"
+        with NWBHDF5IO(path, "w") as io:
+            io.write(nwbfile)
+        assert _written_references(path) == {MOUSE_REFERENCE, ("Subject", "C57BL/6J", "RRID:IMSR_JAX:000664")}
 
 
 # ---------------------------------------------------------------------------
@@ -228,10 +280,11 @@ class TestExternalResourcesMetadataSchema:
         [
             {},
             {"species": {"Mus musculus": MOUSE_SPECIES_TERM}},
+            {"strain": {"C57BL/6J": C57BL6J_STRAIN_TERM}},
             {"brain_regions": {"CA1": [BRAIN_REGION_TERM, {"id": "UBERON:0003881", "uri": "https://example.org/U"}]}},
             {"brain_regions": {"CA1": {**BRAIN_REGION_TERM, "label": "Field CA1"}}},  # extra keys are allowed
         ],
-        ids=["empty", "species", "list_of_terms", "term_with_label"],
+        ids=["empty", "species", "strain", "list_of_terms", "term_with_label"],
     )
     def test_valid_blocks_pass(self, block, base_metadata_schema):
         self._validate(block, base_metadata_schema)
