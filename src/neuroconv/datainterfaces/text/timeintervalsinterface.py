@@ -1,11 +1,13 @@
 import warnings
 from abc import abstractmethod
+from functools import partial
 from pathlib import Path
 
 import numpy as np
 from pydantic import FilePath, validate_call
 from pynwb import NWBFile
 
+from ..._temporal_alignment import _TemporalAlignment
 from ...basedatainterface import BaseDataInterface
 from ...tools.text import convert_df_to_time_intervals
 from ...utils.dict import DeepDict, load_dict_from_file
@@ -78,6 +80,22 @@ class TimeIntervalsInterface(BaseDataInterface):
                 stacklevel=2,
             )
 
+        # One time-bearing object per time column, keyed by its name after the start and stop renaming. A stop
+        # generated from the starts has none: it is built from the aligned starts when the table is written
+        self.temporal_alignment = _TemporalAlignment()
+        for column in self.dataframe.columns:
+            if column.endswith("_time"):
+                self.temporal_alignment._register(
+                    key=column,
+                    get_native_times=partial(self._get_native_times, column=column),
+                    get_number_of_samples=lambda: len(self.dataframe),
+                )
+
+    def _get_native_times(self, column: str) -> np.ndarray:
+        # Explicitly convert to numpy for HDMF compatibility with pandas 3.0+
+        # See https://github.com/hdmf-dev/hdmf/issues/1384
+        return self.dataframe[column].to_numpy(dtype="float64")
+
     def _read_dataframe(self):
         """Read the file, with the start and stop columns renamed to ``start_time`` and ``stop_time``."""
         dataframe = self._read_file(**self.source_data, **self._read_kwargs)
@@ -138,6 +156,12 @@ class TimeIntervalsInterface(BaseDataInterface):
         ValueError
             If the column name does not end with '_time'.
         """
+        warnings.warn(
+            "`get_original_timestamps` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment[column].get_times()` before aligning instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
         if not column.endswith("_time"):
             raise ValueError("Timing columns on a TimeIntervals table need to end with '_time'!")
 
@@ -164,12 +188,16 @@ class TimeIntervalsInterface(BaseDataInterface):
         ValueError
             If the column name does not end with '_time'.
         """
+        warnings.warn(
+            "`get_timestamps` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment[column].get_times()` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
         if not column.endswith("_time"):
             raise ValueError("Timing columns on a TimeIntervals table need to end with '_time'!")
 
-        # Explicitly convert to numpy for HDMF compatibility with pandas 3.0+
-        # See https://github.com/hdmf-dev/hdmf/issues/1384
-        return self.dataframe[column].to_numpy(dtype="float64")
+        return self.temporal_alignment[column].get_times()
 
     def set_aligned_starting_time(self, aligned_starting_time: float):
         """
@@ -180,10 +208,13 @@ class TimeIntervalsInterface(BaseDataInterface):
         aligned_starting_time : float
             The aligned starting time to shift all timestamps by.
         """
-        timing_columns = [column for column in self.dataframe.columns if column.endswith("_time")]
-
-        for column in timing_columns:
-            self.dataframe[column] += aligned_starting_time
+        warnings.warn(
+            "`set_aligned_starting_time` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment.shift_times(delta)` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        self.temporal_alignment.shift_times(aligned_starting_time)
 
     def set_aligned_timestamps(
         self, aligned_timestamps: np.ndarray, column: str, interpolate_other_columns: bool = False
@@ -205,19 +236,24 @@ class TimeIntervalsInterface(BaseDataInterface):
         ValueError
             If the column name does not end with '_time'.
         """
+        warnings.warn(
+            "`set_aligned_timestamps` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment[column].set_times(times)` instead, and "
+            "`interface.temporal_alignment[other_column].remap_times(...)` for `interpolate_other_columns=True`.",
+            FutureWarning,
+            stacklevel=2,
+        )
         if not column.endswith("_time"):
             raise ValueError("Timing columns on a TimeIntervals table need to end with '_time'!")
 
-        unaligned_timestamps = np.array(self.dataframe[column])
-        self.dataframe[column] = aligned_timestamps
+        unaligned_timestamps = self.temporal_alignment[column].get_times()
+        self.temporal_alignment[column].set_times(aligned_timestamps)
 
         if not interpolate_other_columns:
             return
 
         other_timing_columns = [
-            other_column
-            for other_column in self.dataframe.columns
-            if other_column.endswith("_time") and other_column != column
+            other_column for other_column in self.temporal_alignment.keys() if other_column != column
         ]
         for other_timing_column in other_timing_columns:
             self.align_by_interpolation(
@@ -239,7 +275,13 @@ class TimeIntervalsInterface(BaseDataInterface):
         column : str
             The name of the column containing the timestamps to be aligned.
         """
-        current_timestamps = self.get_timestamps(column=column)
+        warnings.warn(
+            "`align_by_interpolation` is deprecated and will be removed in v0.13.0. Use "
+            "`interface.temporal_alignment.remap_times(local_sync_times=..., reference_sync_times=...)` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        current_timestamps = self.temporal_alignment[column].get_times()
         assert (
             current_timestamps[1] >= unaligned_timestamps[0]
         ), "All current timestamps except for the first must be strictly within the unaligned mapping."
@@ -248,15 +290,14 @@ class TimeIntervalsInterface(BaseDataInterface):
         ), "All current timestamps except for the last must be strictly within the unaligned mapping."
         # Assume timing column is ascending otherwise
 
-        self.set_aligned_timestamps(
-            aligned_timestamps=np.interp(
+        self.temporal_alignment[column].set_times(
+            np.interp(
                 x=current_timestamps,
                 xp=unaligned_timestamps,
                 fp=aligned_timestamps,
                 left=2 * aligned_timestamps[0] - aligned_timestamps[1],  # If first or last values are outside alignment
                 right=2 * aligned_timestamps[-1] - aligned_timestamps[-2],  # then use the most recent diff to regress
-            ),
-            column=column,
+            )
         )
 
     def add_to_nwbfile(
@@ -336,8 +377,13 @@ class TimeIntervalsInterface(BaseDataInterface):
                 FutureWarning,
                 stacklevel=2,
             )
+        # The aligned times are written, never set on the interface's dataframe. A missing stop is generated by
+        # `convert_df_to_time_intervals` from the aligned starts, so it follows them
+        dataframe = self.dataframe.copy()
+        for column in self.temporal_alignment.keys():
+            dataframe[column] = self.temporal_alignment[column].get_times()
         self.time_intervals = convert_df_to_time_intervals(
-            self.dataframe,
+            dataframe,
             column_name_mapping=column_name_mapping,
             column_descriptions=column_descriptions,
             **metadata["TimeIntervals"][tag],
