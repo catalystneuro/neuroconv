@@ -97,8 +97,6 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
     def temporal_alignment(self) -> _TemporalAlignment:
         return self._alignment
 
-    # The native times are read from the format and never from `get_timestamps`, which returns the times
-    # `_set_aligned_times_on_extractor` stored, so an aligned write does not change the times the next one starts from
     def _get_native_times(self) -> np.ndarray:
         native_timestamps = self.imaging_extractor.get_native_timestamps()
         if native_timestamps is not None:
@@ -112,16 +110,14 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         times = self.imaging_extractor.get_native_timestamps(start_sample=0, end_sample=1)
         return float(times[0]) if times is not None else 0.0
 
-    def _set_aligned_times_on_extractor(self) -> None:
-        series = self.temporal_alignment[self._alignment_key]
-        # A zero standing in for the native times reads back as the shift alignment applied
-        time_shift = float(series._get_times(get_default_times=lambda: np.zeros(1))[0])
-        is_aligned = series._times is not None or time_shift != 0.0
-        # TODO: once roiextractors has a start time for extractors without a time vector, set it from `time_shift`
-        # when the times were only shifted, instead of building the full times array
-        # Times left by an earlier aligned write are replaced too, so undoing the alignment reaches the file
-        if is_aligned or self.imaging_extractor.has_time_vector():
-            self.imaging_extractor.set_times(times=series.get_times())
+    # TODO: once the minimum roiextractors version includes https://github.com/catalystneuro/roiextractors/pull/632,
+    # `has_time_vector()` answers this without reading timestamps; replace the body with
+    # `self.imaging_extractor.has_time_vector()`, which is also True for times set directly on the extractor
+    def _has_native_timestamps(self) -> bool:
+        """Whether the format records one time per sample, read from the first sample alone."""
+        if self.imaging_extractor.get_num_samples() == 0:
+            return False
+        return self.imaging_extractor.get_native_timestamps(start_sample=0, end_sample=1) is not None
 
     def get_metadata_schema(self) -> dict:
         """
@@ -397,10 +393,8 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
             The number of samples (frames) to use for testing.
         """
 
-        from ...tools.roiextractors import add_imaging_to_nwbfile
+        from ...tools.roiextractors.roiextractors import _add_photon_series_to_nwbfile
 
-        # Set before slicing, since a slice copies its parent's times
-        self._set_aligned_times_on_extractor()
         if stub_test:
             stub_samples = min([stub_samples, self.imaging_extractor.get_num_samples()])
             imaging_extractor = self.imaging_extractor.slice_samples(start_sample=0, end_sample=stub_samples)
@@ -410,7 +404,18 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         # TODO: change to self.get_metadata(use_new_metadata_format=True) when all imaging interfaces are migrated
         metadata = metadata or self._get_metadata_for_writing()
 
-        add_imaging_to_nwbfile(
+        # The aligned times are handed to the writer, never set on the extractor. Timestamps when the times were
+        # replaced or the format records one per sample, otherwise the aligned start at the sampling frequency, so a
+        # shifted regular series is written as a start and a rate without building its times
+        series = self.temporal_alignment[self._alignment_key]
+        if series._times is not None or self._has_native_timestamps():
+            timestamps = series.get_times()[: imaging_extractor.get_num_samples()]
+            starting_time = None
+        else:
+            timestamps = None
+            starting_time = series._get_start_time()
+
+        _add_photon_series_to_nwbfile(
             imaging=imaging_extractor,
             nwbfile=nwbfile,
             metadata=metadata,
@@ -421,4 +426,6 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
             iterator_type=iterator_type,
             iterator_options=iterator_options,
             metadata_key=self.metadata_key,
+            timestamps=timestamps,
+            starting_time=starting_time,
         )

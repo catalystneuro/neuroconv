@@ -11,6 +11,7 @@ from ._metadata_template import (
     _get_imaging_plane_template_entry,
     _resolve_device_metadata_key,
 )
+from ..._temporal_alignment import _TemporalAlignment
 from ...baseextractorinterface import BaseExtractorInterface
 from ...tools.nwb_helpers._metadata_and_file_helpers import (
     _get_device_model_template_entry,
@@ -34,6 +35,40 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         self.verbose = verbose
         self.segmentation_extractor = self._extractor_instance
         self.metadata_key = metadata_key
+        self._alignment_key = metadata_key or "default_metadata_key"
+        self._alignment = _TemporalAlignment()
+        self._alignment._register(
+            key=self._alignment_key,
+            get_native_times=self._get_native_times,
+            default_start_time=self._get_native_start_time,
+            get_number_of_samples=self.segmentation_extractor.get_num_samples,
+        )
+
+    @property
+    def temporal_alignment(self) -> _TemporalAlignment:
+        return self._alignment
+
+    def _get_native_times(self) -> np.ndarray:
+        native_timestamps = self.segmentation_extractor.get_native_timestamps()
+        if native_timestamps is not None:
+            return native_timestamps
+        num_samples = self.segmentation_extractor.get_num_samples()
+        return np.arange(num_samples) / self.segmentation_extractor.get_sampling_frequency()
+
+    def _get_native_start_time(self) -> float:
+        if self.segmentation_extractor.get_num_samples() == 0:
+            return np.nan
+        times = self.segmentation_extractor.get_native_timestamps(start_sample=0, end_sample=1)
+        return float(times[0]) if times is not None else 0.0
+
+    # TODO: once the minimum roiextractors version includes https://github.com/catalystneuro/roiextractors/pull/632,
+    # `has_time_vector()` answers this without reading timestamps; replace the body with
+    # `self.segmentation_extractor.has_time_vector()`, which is also True for times set directly on the extractor
+    def _has_native_timestamps(self) -> bool:
+        """Whether the format records one time per sample, read from the first sample alone."""
+        if self.segmentation_extractor.get_num_samples() == 0:
+            return False
+        return self.segmentation_extractor.get_native_timestamps(start_sample=0, end_sample=1) is not None
 
     @property
     def roi_ids(self):
@@ -260,10 +295,43 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         return reinitialized_extractor.get_timestamps()
 
     def get_timestamps(self) -> np.ndarray:
-        return self.segmentation_extractor.get_timestamps()
+        warnings.warn(
+            "`get_timestamps` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment[key].get_times()` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        return self.temporal_alignment[self._alignment_key].get_times()
 
     def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
-        self.segmentation_extractor.set_times(times=aligned_timestamps)
+        warnings.warn(
+            "`set_aligned_timestamps` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment[key].set_times(times)` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        self.temporal_alignment[self._alignment_key].set_times(aligned_timestamps)
+
+    def set_aligned_starting_time(self, aligned_starting_time: float) -> None:
+        warnings.warn(
+            "`set_aligned_starting_time` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment.shift_times(delta)` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        self.temporal_alignment.shift_times(aligned_starting_time)
+
+    def align_by_interpolation(self, unaligned_timestamps: np.ndarray, aligned_timestamps: np.ndarray) -> None:
+        warnings.warn(
+            "`align_by_interpolation` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment.remap_times(local_sync_times=..., reference_sync_times=...)` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        self.temporal_alignment.remap_times(
+            local_sync_times=unaligned_timestamps,
+            reference_sync_times=aligned_timestamps,
+        )
 
     def add_to_nwbfile(
         self,
@@ -313,7 +381,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         -------
 
         """
-        from ...tools.roiextractors import add_segmentation_to_nwbfile
+        from ...tools.roiextractors.roiextractors import _add_segmentation_to_nwbfile
 
         if include_roi_acceptance is not None:
             warnings.warn(
@@ -336,11 +404,24 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
 
         metadata = metadata or self._get_metadata_for_writing()
 
-        add_segmentation_to_nwbfile(
+        # The aligned times are handed to the writer. Timestamps when the times were replaced or the format records
+        # one per sample, otherwise the aligned start at the sampling frequency, so shifted regular traces are written
+        # as a start and a rate without building their times
+        series = self.temporal_alignment[self._alignment_key]
+        if series._times is not None or self._has_native_timestamps():
+            timestamps = series.get_times()[: segmentation_extractor.get_num_samples()]
+            starting_time = None
+        else:
+            timestamps = None
+            starting_time = series._get_start_time()
+
+        _add_segmentation_to_nwbfile(
             segmentation_extractor=segmentation_extractor,
             nwbfile=nwbfile,
             metadata=metadata,
             plane_segmentation_name=plane_segmentation_name,
             iterator_options=iterator_options,
             metadata_key=self.metadata_key,
+            timestamps=timestamps,
+            starting_time=starting_time,
         )

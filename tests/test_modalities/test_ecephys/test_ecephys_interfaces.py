@@ -207,6 +207,7 @@ class TestSortingInterface(SortingExtractorInterfaceTestMixin):
 class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = MockRecordingInterface
     interface_kwargs = dict(num_channels=4, durations=[0.100], calibration="uniform")
+    expected_temporal_alignment_keys = ("ElectricalSeries_0",)
 
     def check_extracted_metadata(self, metadata: dict):
         # New dict-based format: the interface emits only the ElectricalSeries entry keyed by
@@ -227,14 +228,14 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
         # Dict-based metadata routes metadata_key through to the pipeline.
         new_metadata = interface.get_metadata(use_new_metadata_format=True)
-        with patch("neuroconv.tools.spikeinterface.add_recording_to_nwbfile") as mock_add:
+        with patch("neuroconv.tools.spikeinterface.spikeinterface._add_recording_to_nwbfile") as mock_add:
             interface.add_to_nwbfile(nwbfile=mock_NWBFile(), metadata=new_metadata)
             assert mock_add.call_args.kwargs["metadata_key"] == "probeA"
 
         # Old list-based metadata must pass metadata_key=None so the pipeline routes through es_key
         # (the two are mutually exclusive downstream).
         old_metadata = interface.get_metadata(use_new_metadata_format=False)
-        with patch("neuroconv.tools.spikeinterface.add_recording_to_nwbfile") as mock_add:
+        with patch("neuroconv.tools.spikeinterface.spikeinterface._add_recording_to_nwbfile") as mock_add:
             interface.add_to_nwbfile(nwbfile=mock_NWBFile(), metadata=old_metadata)
             assert mock_add.call_args.kwargs["metadata_key"] is None
 
@@ -250,9 +251,9 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
             "The channels of this recording have heterogeneous offsets, which a single NWB "
             "ElectricalSeries cannot represent.\n"
             "Multiple offsets were found per channel IDs:\n"
-            "  Offset 0: Channel IDs ['0', '1']\n"
-            "  Offset 1: Channel IDs ['2', '3']\n"
-            "  Offset 2: Channel IDs ['4']\n"
+            "  Offset 0: Channel IDs ['channel_a', 'channel_b']\n"
+            "  Offset 1: Channel IDs ['channel_c', 'channel_d']\n"
+            "  Offset 2: Channel IDs ['channel_e']\n"
             "\n"
             "If these channels are all the same kind of signal and the offsets come from "
             "per-channel scaling, pass data_representation='physical_units' as a conversion "
@@ -270,10 +271,10 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
         the reduced one, so everything downstream of the interface sees only the channels that are left."""
         interface = MockRecordingInterface(num_channels=5, durations=[0.100])
 
-        returned_interface = interface.remove_channels(channel_ids=["1", "3"])
+        returned_interface = interface.remove_channels(channel_ids=["channel_b", "channel_d"])
 
         assert returned_interface is interface  # returns self so the call can be chained
-        assert list(interface.channel_ids) == ["0", "2", "4"]
+        assert list(interface.channel_ids) == ["channel_a", "channel_c", "channel_e"]
 
     def test_stub(self, setup_interface):
         interface = self.interface
@@ -289,11 +290,49 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
         interface.create_nwbfile(stub_test=True)
 
+    def test_stub_multi_segment_with_timestamps(self):
+        interface = MockRecordingInterface(durations=[0.1, 0.1], calibration="uniform")
+        recording = interface.recording_extractor
+        random_number_generator = np.random.default_rng(seed=0)
+        all_segment_times = []
+        for segment_index in range(2):
+            native_times = recording.get_times(segment_index=segment_index)
+            # The segments start 10 s apart, so times written on the wrong segment fail the check
+            irregular_times = (
+                native_times + 10.0 * segment_index + random_number_generator.random(size=native_times.size) * 1e-5
+            )
+            recording.set_times(times=irregular_times, segment_index=segment_index)
+            all_segment_times.append(irregular_times)
+
+        nwbfile = interface.create_nwbfile(stub_test=True)
+
+        for segment_index, segment_times in enumerate(all_segment_times):
+            electrical_series = nwbfile.acquisition[f"ElectricalSeriesSegment{segment_index}"]
+            number_of_written_samples = electrical_series.data.maxshape[0]
+            assert number_of_written_samples < segment_times.size
+            np.testing.assert_array_equal(electrical_series.timestamps, segment_times[:number_of_written_samples])
+
     def test_stub_multi_segment(self):
 
         interface = MockRecordingInterface(durations=[0.100, 0.100], calibration="uniform")
         metadata = interface.get_metadata()
         interface.create_nwbfile(stub_test=True, metadata=metadata)
+
+    def test_segment_entry_overrides_only_its_segment(self):
+        interface = MockRecordingInterface(durations=[0.100, 0.100, 0.100], calibration="uniform")
+        metadata = interface.get_metadata()
+        electrical_series_metadata = metadata["Ecephys"]["ElectricalSeries"]
+        electrical_series_metadata[interface.metadata_key]["description"] = "Shared description."
+        electrical_series_metadata[f"{interface.metadata_key}_1"] = dict(name="SecondSegment")
+
+        nwbfile = interface.create_nwbfile(metadata=metadata)
+
+        descriptions = {name: series.description for name, series in nwbfile.acquisition.items()}
+        assert descriptions == {
+            "ElectricalSeriesSegment0": "Shared description. Segment 0 of 3.",
+            "SecondSegment": "Shared description. Segment 1 of 3.",
+            "ElectricalSeriesSegment2": "Shared description. Segment 2 of 3.",
+        }
 
     def test_always_write_timestamps(self, setup_interface):
 

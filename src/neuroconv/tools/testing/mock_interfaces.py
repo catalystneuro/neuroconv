@@ -46,7 +46,7 @@ from ...tools.icephys import _RESPONSE_CLASS, _add_intracellular_electrode_to_nw
 from ...tools.signal_processing import (
     _condition_signal,
     _detect_events,
-    _frames_to_seconds,
+    _samples_to_seconds,
 )
 from ...utils import (
     ArrayType,
@@ -739,8 +739,13 @@ class MockSignalEncodedEventsInterface(BaseEventsInterface):
             signal = self._get_signal(signal_source_id)
             for event_type_source_id, spec in detection_specs:
                 conditioned = _condition_signal(signal, spec["signal_conditioning"])
-                onset_frames, offset_frames = _detect_events(conditioned, spec["detection"])
-                onsets, durations = _frames_to_seconds(onset_frames, offset_frames, timestamps)
+                onset_samples, offset_samples = _detect_events(conditioned, spec["detection"])
+                onsets, durations = _samples_to_seconds(
+                    onset_samples=onset_samples,
+                    offset_samples=offset_samples,
+                    timestamps=timestamps,
+                    event_time_convention=spec.get("event_time_convention", "sample_after_transition"),
+                )
                 events_data_dict[event_type_source_id] = _EventsData(
                     event_type_source_id=event_type_source_id,
                     timestamps=onsets,
@@ -1007,6 +1012,18 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
             contact_ids = [f"e{i}" for i in range(num_channels)]
             probe.set_contact_ids(contact_ids)
             self.recording_extractor.set_probe(probe, group_mode="by_probe")
+
+        def _letters(index):
+            name = ""
+            index += 1
+            while index:
+                index, remainder = divmod(index - 1, 26)
+                name = chr(97 + remainder) + name
+            return name
+
+        self.recording_extractor = self.recording_extractor.rename_channels(
+            new_channel_ids=[f"channel_{_letters(index)}" for index in range(number_of_channels)]
+        )
 
     def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         """

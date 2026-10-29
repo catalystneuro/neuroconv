@@ -72,8 +72,8 @@
                 "name": null,
                 "description": null,
                 "channel_id_to_electrode_metadata_key": {
-                    "0": "shank_0_e0",
-                    "1": "shank_1_e0"
+                    "channel_a": "shank_0_e0",
+                    "channel_b": "shank_1_e0"
                 }
             }
         }

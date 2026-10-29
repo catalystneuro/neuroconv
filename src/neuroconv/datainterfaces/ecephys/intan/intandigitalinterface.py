@@ -13,7 +13,7 @@ from ....tools.events import (
 from ....tools.signal_processing import (
     _condition_signal,
     _detect_events,
-    _frames_to_seconds,
+    _samples_to_seconds,
 )
 
 # The two digital words an Intan controller records. A file carries either, both, or neither, and the
@@ -237,8 +237,13 @@ class IntanDigitalInterface(BaseEventsInterface):
                 # An Intan digital line arrives already demultiplexed into a 0/1 trace, so no conditioning
                 # applies and the reading is taken from the line's own values, with no cut anywhere.
                 conditioned = _condition_signal(trace, spec["signal_conditioning"])
-                onset_frames, offset_frames = _detect_events(conditioned, spec["detection"])
-                onsets, durations = _frames_to_seconds(onset_frames, offset_frames, read_clock)
+                onset_samples, offset_samples = _detect_events(conditioned, spec["detection"])
+                onsets, durations = _samples_to_seconds(
+                    onset_samples=onset_samples,
+                    offset_samples=offset_samples,
+                    timestamps=read_clock,
+                    event_time_convention=spec.get("event_time_convention", "sample_after_transition"),
+                )
                 events_data_dict[event_type_source_id] = _EventsData(
                     event_type_source_id=event_type_source_id,
                     timestamps=onsets,

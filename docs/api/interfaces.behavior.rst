@@ -9,6 +9,12 @@ BORIS
 -----
 .. autoclass:: neuroconv.datainterfaces.behavior.boris.borisdatainterface.BORISInterface
 
+DANNCE
+------
+.. autoclass:: neuroconv.datainterfaces.behavior.dannce.danncedatainterface.DANNCEInterface
+
+.. autoclass:: neuroconv.datainterfaces.behavior.dannce.dannceconverter.DANNCEConverter
+
 DeepLabCut
 ----------
 .. automodule:: neuroconv.datainterfaces.behavior.deeplabcut.deeplabcutdatainterface
@@ -30,6 +36,10 @@ LightningPose
 Neuralynx NVT
 -------------
 .. automodule:: neuroconv.datainterfaces.behavior.neuralynx.neuralynx_nvt_interface
+
+OptiTrack
+---------
+.. autoclass:: neuroconv.datainterfaces.behavior.optitrack.optitrackdatainterface.OptiTrackInterface
 
 SLEAP
 -----

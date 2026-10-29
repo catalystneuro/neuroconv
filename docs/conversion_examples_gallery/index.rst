@@ -122,6 +122,7 @@ Keypoint estimation
 .. toctree::
     :maxdepth: 1
 
+    DANNCE <behavior/dannce>
     DeepLabCut <behavior/deeplabcut>
     LightningPose <behavior/lightningpose>
     SLEAP <behavior/sleap>
@@ -142,11 +143,11 @@ Behavior
     :maxdepth: 1
 
     Audio <behavior/audio>
-    DANNCE <behavior/dannce>
     BORIS <behavior/boris>
     EthoVision <behavior/ethovision>
     FicTrac <behavior/fictrac>
     Neuralynx NVT <behavior/neuralynx_nvt>
+    OptiTrack <behavior/optitrack>
     Videos <behavior/video>
     MedPC <behavior/medpc>
 

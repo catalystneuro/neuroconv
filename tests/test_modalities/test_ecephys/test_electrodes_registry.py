@@ -71,9 +71,14 @@ class TestTemplate:
         interface = _interface(num_channels=4, groups=[0, 0, 1, 1])
         metadata = _without_blanks(interface.get_metadata_template())
 
-        assert list(metadata["Ecephys"]["ElectrodesTable"]["rows"]) == ["0_0", "0_1", "1_2", "1_3"]
+        assert list(metadata["Ecephys"]["ElectrodesTable"]["rows"]) == [
+            "0_channel_a",
+            "0_channel_b",
+            "1_channel_c",
+            "1_channel_d",
+        ]
         assert list(metadata["Ecephys"]["ElectrodeGroups"]) == ["0", "1"]
-        first_entry = metadata["Ecephys"]["ElectrodesTable"]["rows"]["0_0"]
+        first_entry = metadata["Ecephys"]["ElectrodesTable"]["rows"]["0_channel_a"]
         assert first_entry["electrode_group_metadata_key"] == "0"
         # No probe, so no contact to name: the channel carries the identity and the row says nothing
         # about an electrode it cannot name.
@@ -133,7 +138,7 @@ class TestTemplate:
         }
         # What the recording carries is filled; ``location``, which NWB requires, and the other columns
         # the schema defines are offered blank.
-        assert ecephys["ElectrodesTable"]["rows"]["ElectrodeGroup_0"] == {
+        assert ecephys["ElectrodesTable"]["rows"]["ElectrodeGroup_channel_a"] == {
             "electrode_group_metadata_key": "ElectrodeGroup",
             "imp": 1.0,
             "quality": "good",
@@ -162,7 +167,7 @@ class TestTemplate:
             interface.validate_metadata(metadata=metadata)
 
         metadata = _without_blanks(interface.get_metadata_template())
-        metadata["Ecephys"]["ElectrodesTable"]["rows"]["ElectrodeGroup_0"]["location"] = None
+        metadata["Ecephys"]["ElectrodesTable"]["rows"]["ElectrodeGroup_channel_a"]["location"] = None
         with pytest.raises(ValueError, match="leaves 'location' blank"):
             interface.create_nwbfile(metadata=metadata)
 
@@ -323,7 +328,7 @@ class TestRegistryWrites:
 
         nwbfile = interface.create_nwbfile(metadata=metadata)
 
-        assert list(nwbfile.electrodes["channel_name"][:]) == ["0", "1", "2", "3", ""]
+        assert list(nwbfile.electrodes["channel_name"][:]) == ["channel_a", "channel_b", "channel_c", "channel_d", ""]
         assert nwbfile.acquisition["ElectricalSeries"].electrodes.data[:] == [0, 1, 2, 3]
 
     def test_a_row_states_one_column_and_the_recording_supplies_the_rest(self):
@@ -335,7 +340,7 @@ class TestRegistryWrites:
             "channel_id_to_electrode_metadata_key"
         ] = mapping
         metadata["Ecephys"]["ElectrodesTable"] = {"rows": {key: {} for key in mapping.values()}}
-        metadata["Ecephys"]["ElectrodesTable"]["rows"]["electrode_2"]["brain_area"] = "CA1"
+        metadata["Ecephys"]["ElectrodesTable"]["rows"]["electrode_channel_c"]["brain_area"] = "CA1"
 
         nwbfile = interface.create_nwbfile(metadata=metadata)
 
@@ -345,7 +350,7 @@ class TestRegistryWrites:
     def test_a_mapping_to_an_undeclared_row_is_refused(self):
         interface = _interface(num_channels=4, properties={"imp": [1.0, 2.0, 3.0, 4.0]})
         metadata = _without_blanks(interface.get_metadata_template())
-        del metadata["Ecephys"]["ElectrodesTable"]["rows"]["ElectrodeGroup_2"]
+        del metadata["Ecephys"]["ElectrodesTable"]["rows"]["ElectrodeGroup_channel_c"]
 
         with pytest.raises(ValueError, match="does not declare"):
             interface.create_nwbfile(metadata=metadata)
@@ -360,7 +365,7 @@ class TestRegistryWrites:
         assert len(nwbfile.electrodes) == 4
         assert nwbfile.acquisition["ElectricalSeries"].electrodes.data[:] == [0, 1]
         # Nothing supplied a channel name for the rows this recording does not reach.
-        assert list(nwbfile.electrodes["channel_name"][:]) == ["0", "1", "", ""]
+        assert list(nwbfile.electrodes["channel_name"][:]) == ["channel_a", "channel_b", "", ""]
 
     def test_channel_to_electrode_decides_which_row_a_channel_reaches(self):
         interface = _interface(num_channels=4)
@@ -385,7 +390,7 @@ class TestRegistryWrites:
         metadata = _without_blanks(interface.get_metadata_template())
         # Stated rather than deleted: a row that says nothing about a column inherits the recording's value,
         # so stating the null is how a row says it has none.
-        metadata["Ecephys"]["ElectrodesTable"]["rows"]["ElectrodeGroup_2"]["imp"] = None
+        metadata["Ecephys"]["ElectrodesTable"]["rows"]["ElectrodeGroup_channel_c"]["imp"] = None
 
         nwbfile = interface.create_nwbfile(metadata=metadata)
 
@@ -398,7 +403,7 @@ class TestRegistryWrites:
         interface = _interface(num_channels=4)
         interface.recording_extractor.set_property("coords", np.arange(8, dtype="float64").reshape(4, 2))
         metadata = _without_blanks(interface.get_metadata_template())
-        assert metadata["Ecephys"]["ElectrodesTable"]["rows"]["ElectrodeGroup_0"]["coords"] == [0.0, 1.0]
+        assert metadata["Ecephys"]["ElectrodesTable"]["rows"]["ElectrodeGroup_channel_a"]["coords"] == [0.0, 1.0]
 
         nwbfile = interface.create_nwbfile(metadata=metadata)
 
@@ -442,8 +447,8 @@ class TestPersistentAssociations:
         interface = _interface(num_channels=2)
         metadata = _without_blanks(interface.get_metadata_template())
         rows = metadata["Ecephys"]["ElectrodesTable"]["rows"]
-        rows["ElectrodeGroup_0"]["location"] = "CA1"
-        rows["ElectrodeGroup_1"]["location"] = "CA3"
+        rows["ElectrodeGroup_channel_a"]["location"] = "CA1"
+        rows["ElectrodeGroup_channel_b"]["location"] = "CA3"
         rows["unrecorded"] = {"electrode_group_metadata_key": "ElectrodeGroup", "location": "CA2"}
         if restore_metadata:
             metadata = json.loads(json.dumps(metadata, default=str))
@@ -471,8 +476,8 @@ class TestPersistentAssociations:
         metadata = interface.get_metadata()
         metadata["Ecephys"]["ElectrodesTable"] = {"rows": {"a": {"location": "CA1"}, "b": {"location": "CA3"}}}
         metadata["Ecephys"]["ElectricalSeries"][interface.metadata_key]["channel_id_to_electrode_metadata_key"] = {
-            "0": "b",
-            "1": "a",
+            "channel_a": "b",
+            "channel_b": "a",
         }
         self.attach_probe(interface)
 
@@ -508,8 +513,8 @@ class TestPersistentAssociations:
         metadata = interface.get_metadata()
         metadata["Ecephys"]["ElectrodesTable"] = {"rows": {"a": {"location": "CA1"}}}
         metadata["Ecephys"]["ElectricalSeries"][interface.metadata_key]["channel_id_to_electrode_metadata_key"] = {
-            "0": "a",
-            "1": "a",
+            "channel_a": "a",
+            "channel_b": "a",
         }
 
         with pytest.raises(ValueError, match="conflicting source contact or group identities"):
@@ -734,7 +739,7 @@ class TestOtherWritersFindTheRows:
         converter = SortedRecordingConverter(
             recording_interface=recording_interface,
             sorting_interface=sorting_interface,
-            unit_ids_to_channel_ids={"a": ["0"], "b": ["1", "2"], "c": ["3"]},
+            unit_ids_to_channel_ids={"a": ["channel_a"], "b": ["channel_b", "channel_c"], "c": ["channel_d"]},
         )
 
         metadata = converter.get_metadata()
@@ -833,7 +838,7 @@ class TestRegistryValidation:
         """Silently dropping it is the failure: a user who set ``group_name`` believes the row moved."""
         interface = _interface(num_channels=4)
         metadata = _without_blanks(interface.get_metadata_template())
-        metadata["Ecephys"]["ElectrodesTable"]["rows"]["ElectrodeGroup_0"][field] = "elsewhere"
+        metadata["Ecephys"]["ElectrodesTable"]["rows"]["ElectrodeGroup_channel_a"][field] = "elsewhere"
 
         with pytest.raises(ValueError, match="which the writer derives"):
             interface.create_nwbfile(metadata=metadata)
@@ -849,7 +854,9 @@ class TestRegistryValidation:
     def test_an_electrode_pointing_at_a_group_nobody_declared(self):
         interface = _interface(num_channels=4)
         metadata = _without_blanks(interface.get_metadata_template())
-        metadata["Ecephys"]["ElectrodesTable"]["rows"]["ElectrodeGroup_0"]["electrode_group_metadata_key"] = "absent"
+        metadata["Ecephys"]["ElectrodesTable"]["rows"]["ElectrodeGroup_channel_a"][
+            "electrode_group_metadata_key"
+        ] = "absent"
 
         with pytest.raises(ValueError, match="does not declare the keys"):
             interface.create_nwbfile(metadata=metadata)
@@ -857,8 +864,8 @@ class TestRegistryValidation:
     def test_two_electrodes_describing_one_contact(self):
         interface = _interface(num_channels=4)
         metadata = _without_blanks(interface.get_metadata_template())
-        metadata["Ecephys"]["ElectrodesTable"]["rows"]["ElectrodeGroup_0"]["electrode_name"] = "0"
-        metadata["Ecephys"]["ElectrodesTable"]["rows"]["ElectrodeGroup_1"]["electrode_name"] = "0"
+        metadata["Ecephys"]["ElectrodesTable"]["rows"]["ElectrodeGroup_channel_a"]["electrode_name"] = "0"
+        metadata["Ecephys"]["ElectrodesTable"]["rows"]["ElectrodeGroup_channel_b"]["electrode_name"] = "0"
 
         with pytest.raises(ValueError, match="both describe the electrode named"):
             interface.create_nwbfile(metadata=metadata)
@@ -867,7 +874,9 @@ class TestRegistryValidation:
         interface = _interface(num_channels=4)
         metadata = _without_blanks(interface.get_metadata_template())
         metadata["Ecephys"]["ElectrodeGroups"]["duplicate"] = {"name": "ElectrodeGroup"}
-        metadata["Ecephys"]["ElectrodesTable"]["rows"]["ElectrodeGroup_0"]["electrode_group_metadata_key"] = "duplicate"
+        metadata["Ecephys"]["ElectrodesTable"]["rows"]["ElectrodeGroup_channel_a"][
+            "electrode_group_metadata_key"
+        ] = "duplicate"
 
         with pytest.raises(ValueError, match="Use 1 key to share an electrode group"):
             interface.create_nwbfile(metadata=metadata)
@@ -911,6 +920,6 @@ def test_the_registry_survives_a_file_round_trip(tmp_path):
         read_nwbfile = io.read()
         table = read_nwbfile.electrodes.to_dataframe()
         assert table["impedance"].tolist() == [1.0, 2.0, 3.0, 4.0]
-        assert table["channel_name"].tolist() == ["0", "1", "2", "3"]
+        assert table["channel_name"].tolist() == ["channel_a", "channel_b", "channel_c", "channel_d"]
         assert table["group_name"].tolist() == ["0", "0", "1", "1"]
         assert read_nwbfile.acquisition["ElectricalSeries"].electrodes.data[:].tolist() == [0, 1, 2, 3]

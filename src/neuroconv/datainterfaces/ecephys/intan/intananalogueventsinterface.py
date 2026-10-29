@@ -8,7 +8,7 @@ from pydantic import FilePath, validate_call
 from ._utils import _warn_if_split_siblings_detected
 from ...events.baseeventsinterface import BaseEventsInterface, _EventsData
 from ....tools.events import _get_event_type_source_ids, _resolve_detection_plan, _validate_detection_configuration
-from ....tools.signal_processing import _condition_signal, _detect_events, _frames_to_seconds
+from ....tools.signal_processing import _condition_signal, _detect_events, _samples_to_seconds
 
 _ADC_STREAM_NAMES = ("USB board ADC input channel", "USB board ADC output channel")
 
@@ -125,8 +125,13 @@ class IntanAnalogEventsInterface(BaseEventsInterface):
             read_clock = partial(recording.sample_index_to_time, segment_index=0)
             for event_type_source_id, spec in detection_specs:
                 conditioned = _condition_signal(trace, spec["signal_conditioning"])
-                onset_frames, offset_frames = _detect_events(conditioned, spec["detection"])
-                onsets, durations = _frames_to_seconds(onset_frames, offset_frames, read_clock)
+                onset_samples, offset_samples = _detect_events(conditioned, spec["detection"])
+                onsets, durations = _samples_to_seconds(
+                    onset_samples=onset_samples,
+                    offset_samples=offset_samples,
+                    timestamps=read_clock,
+                    event_time_convention=spec.get("event_time_convention", "sample_after_transition"),
+                )
                 events_data_dict[event_type_source_id] = _EventsData(
                     event_type_source_id=event_type_source_id, timestamps=onsets, durations=durations
                 )

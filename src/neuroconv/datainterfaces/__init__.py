@@ -16,6 +16,7 @@ from .behavior.miniscope.miniscopedatainterface import MiniscopeBehaviorInterfac
 from .behavior.miniscope.miniscopeheadorientationinterface import MiniscopeHeadOrientationInterface
 from .behavior.moseq.moseqkeypointsinterface import MoseqKeyPointsInterface
 from .behavior.neuralynx.neuralynx_nvt_interface import NeuralynxNvtInterface
+from .behavior.optitrack.optitrackdatainterface import OptiTrackInterface
 from .behavior.sleap.sleapdatainterface import SLEAPInterface
 from .behavior.vame.vamedatainterface import VameInterface
 from .behavior.video.externalvideointerface import ExternalVideoInterface
@@ -255,6 +256,7 @@ interface_list = [
     MedPCInterface,
     VameInterface,
     MoseqKeyPointsInterface,
+    OptiTrackInterface,
     # Text
     CsvTimeIntervalsInterface,
     ExcelTimeIntervalsInterface,
@@ -327,6 +329,7 @@ interfaces_by_category = dict(
         BORIS=BORISInterface,
         EthoVisionManualScoring=EthoVisionManualScoringInterface,
         MoseqKeyPoints=MoseqKeyPointsInterface,
+        OptiTrack=OptiTrackInterface,
         # Text
         CsvTimeIntervals=CsvTimeIntervalsInterface,
         ExcelTimeIntervals=ExcelTimeIntervalsInterface,

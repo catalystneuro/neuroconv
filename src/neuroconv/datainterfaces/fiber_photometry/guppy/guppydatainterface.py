@@ -20,16 +20,13 @@ from neuroconv.tools.nwb_helpers import get_module
 from neuroconv.utils import DeepDict, calculate_regular_series_rate
 from neuroconv.utils.json_schema import get_base_schema
 
+from ._legacy_results import (
+    LEGACY_TABLE_SUFFIX,
+    is_legacy_results_folder,
+    split_legacy_event_matrix,
+    split_legacy_peak_auc,
+)
 from .nwb_linking import resolve_acquisition_store_rows
-
-
-def _column_parses_as_float(column: str) -> bool:
-    try:
-        float(column)
-    except ValueError:
-        return False
-    return True
-
 
 # GuPPy derived-trace prefix -> ndx-guppy trace_type controlled value.
 _PREFIX_TO_TRACE_TYPE = dict(cntrl_sig_fit="control_fit", dff="dff", z_score="z_score")
@@ -39,8 +36,8 @@ _PREFIX_TO_UNIT = dict(cntrl_sig_fit="n.a.", dff="a.u.", z_score="a.u.")
 _TRANSIENT_EVENT_PREFIX = "transients_"
 # GuPPy store-label prefix marking a behavioral covariate (e.g. 'covariate_akinesia').
 _COVARIATE_PREFIX = "covariate_"
-# ndx-guppy trace_type -> the column holding its mean, in both binned_metrics_<recording_site>.h5
-# (per bin) and tonic_<recording_site>.h5 (per epoch).
+# ndx-guppy trace_type -> the column holding its mean, in both binned_metrics_<recording_site>.csv
+# (per bin) and tonic_means_<recording_site>.csv (per epoch).
 _TRACE_TYPE_TO_MEAN_COLUMN = dict(z_score="mean_zscore", dff="mean_dff")
 # A binned-metrics column name -> the (trace_type, metric) pair it stands for. GuPPy spells the two
 # families differently ('mean_zscore' but 'transient_count_z_score'), so the mapping is written out.
@@ -50,8 +47,10 @@ _BINNED_METRIC_COLUMN_TO_TRACE_TYPE_AND_METRIC = {
     "transient_count_z_score": ("z_score", "transient_count"),
     "transient_count_dff": ("dff", "transient_count"),
 }
-# Per-window peak/area metric row prefixes in the peak_AUC_*.h5 DataFrame index.
-_BIN_COLUMN_PATTERN = re.compile(r"bin_\((\d+(?:\.\d+)?)-(\d+(?:\.\d+)?)\)$")
+# A trial-bin label, ``bin_(<start>-<stop>)``: integer edges for "# of trials" binning, decimal for "Time (min)".
+_BIN_LABEL_PATTERN = re.compile(r"bin_\((\d+(?:\.\d+)?)-(\d+(?:\.\d+)?)\)")
+# The PSTH and cross-correlation columns that are not trials: the x-axis and the across-trial summary.
+_PSTH_NON_TRIAL_COLUMNS = ("timestamps", "mean", "err")
 # The two registry tables every GuPPy product references. The recording sites table is shared with
 # ``GuppyConverter``, which may author it instead of this interface.
 _RECORDING_SITES_TABLE_NAME = "recording_sites"
@@ -81,6 +80,9 @@ class GuppyInterface(BaseDataInterface):
     plus the GuPPy parameters (``GuppyParameters``), the ``GuppyValidSignalIntervals`` object, and the two
     registry tables (``GuppyRecordingSitesTable``, ``GuppyEventsTable``) that give each recording_site and
     event a single structured identity referenced by every product.
+
+    GuPPy writes its results tables as CSV; the ``.h5`` tables of a run from before that change are read
+    as well.
 
     :meth:`add_to_nwbfile` takes **no linkage arguments** -- it writes only what the GuPPy output defines.
     The events registry's ``events`` DynamicTableRegion references an ``EventsTable`` of GuPPy's own
@@ -199,24 +201,36 @@ class GuppyInterface(BaseDataInterface):
         transient_event_names = sorted({event_name for event_name, _ in transient_events})
         product_event_names = event_names + transient_event_names
 
-        cross_correlations = self._discover_cross_correlations(folder_path=folder_path, recording_sites=recording_sites)
+        table_suffix = LEGACY_TABLE_SUFFIX if is_legacy_results_folder(folder_path) else ".csv"
+        cross_correlations = self._discover_cross_correlations(
+            folder_path=folder_path, recording_sites=recording_sites, table_suffix=table_suffix
+        )
         psths = self._discover_psths(
-            folder_path=folder_path, event_names=product_event_names, recording_sites=recording_sites
+            folder_path=folder_path,
+            event_names=product_event_names,
+            recording_sites=recording_sites,
+            table_suffix=table_suffix,
         )
         peak_aucs = self._discover_peak_aucs(
-            folder_path=folder_path, event_names=product_event_names, recording_sites=recording_sites
+            folder_path=folder_path,
+            event_names=product_event_names,
+            recording_sites=recording_sites,
+            table_suffix=table_suffix,
         )
         psth_significance = self._discover_psth_significance(
-            folder_path=folder_path, event_names=product_event_names, recording_sites=recording_sites
+            folder_path=folder_path,
+            event_names=product_event_names,
+            recording_sites=recording_sites,
+            table_suffix=table_suffix,
         )
         valid_signal_intervals_by_recording_site = self._discover_valid_signal_intervals(
             folder_path=folder_path, recording_sites=recording_sites
         )
         binned_tables_by_recording_site = self._discover_binned_tables(
-            folder_path=folder_path, recording_sites=recording_sites
+            folder_path=folder_path, recording_sites=recording_sites, table_suffix=table_suffix
         )
         tonic_epochs_by_recording_site = self._discover_tonic_epochs(
-            folder_path=folder_path, recording_sites=recording_sites
+            folder_path=folder_path, recording_sites=recording_sites, table_suffix=table_suffix
         )
         analyzed_event_onsets = self._discover_analyzed_event_onsets(
             folder_path=folder_path, event_names=event_names, recording_sites=recording_sites
@@ -236,6 +250,7 @@ class GuppyInterface(BaseDataInterface):
             )
 
         self._folder_path = folder_path
+        self._table_suffix = table_suffix
         self._recording_sites = recording_sites
         self._recording_site_to_store_ids = recording_site_to_store_ids
         self._event_store_to_event_name = event_store_to_event_name
@@ -372,13 +387,15 @@ class GuppyInterface(BaseDataInterface):
         }
 
     @classmethod
-    def _discover_cross_correlations(cls, folder_path: Path, recording_sites: list[str]) -> list[dict]:
+    def _discover_cross_correlations(
+        cls, folder_path: Path, recording_sites: list[str], table_suffix: str
+    ) -> list[dict]:
         cross_correlation_folder = folder_path / "cross_correlation_output"
         if not cross_correlation_folder.is_dir():
             return []
 
         entries = []
-        for cross_correlation_path in sorted(cross_correlation_folder.glob("corr_*.h5")):
+        for cross_correlation_path in sorted(cross_correlation_folder.glob(f"corr_*{table_suffix}")):
             stem = cross_correlation_path.stem
             assert stem.startswith("corr_"), f"Unexpected cross-correlation filename: {cross_correlation_path.name}."
             remainder = stem[len("corr_") :]
@@ -412,6 +429,7 @@ class GuppyInterface(BaseDataInterface):
             entries.append(
                 dict(
                     path=cross_correlation_path,
+                    binned_path=cls._binned_path(cross_correlation_path),
                     event=event,
                     feature=feature,
                     recording_site_1=recording_site_1,
@@ -421,11 +439,14 @@ class GuppyInterface(BaseDataInterface):
         return entries
 
     @classmethod
-    def _discover_psths(cls, folder_path: Path, event_names: list[str], recording_sites: list[str]) -> list[dict]:
+    def _discover_psths(
+        cls, folder_path: Path, event_names: list[str], recording_sites: list[str], table_suffix: str
+    ) -> list[dict]:
         """Discover GuPPy peri-event PSTH files for each (event, recording_site, feature).
 
-        GuPPy names PSTH files ``<event>_<recording_site>_<feature>_<recording_site>.h5`` (baseline-corrected) and
-        ``<event>_<recording_site>_baselineUncorrected_<feature>_<recording_site>.h5`` (uncorrected). Expected names
+        GuPPy names PSTH files ``<event>_<recording_site>_<feature>_<recording_site><table_suffix>`` (baseline-corrected)
+        and ``<event>_<recording_site>_baselineUncorrected_<feature>_<recording_site><table_suffix>`` (uncorrected),
+        where ``table_suffix`` is ``.csv``, or ``.h5`` for a run from before GuPPy wrote CSV. Expected names
         are constructed from the discovered events/recording_sites/features and checked on disk, which avoids
         fragile filename parsing (event and recording_site names both contain underscores).
         """
@@ -433,11 +454,12 @@ class GuppyInterface(BaseDataInterface):
         for event in event_names:
             for recording_site in recording_sites:
                 for feature in cls._TRANSIENT_FEATURES:
-                    corrected = folder_path / f"{event}_{recording_site}_{feature}_{recording_site}.h5"
+                    corrected = folder_path / f"{event}_{recording_site}_{feature}_{recording_site}{table_suffix}"
                     if corrected.is_file():
                         entries.append(
                             dict(
                                 path=corrected,
+                                binned_path=cls._binned_path(corrected),
                                 event=event,
                                 recording_site=recording_site,
                                 feature=feature,
@@ -445,12 +467,14 @@ class GuppyInterface(BaseDataInterface):
                             )
                         )
                     uncorrected = (
-                        folder_path / f"{event}_{recording_site}_baselineUncorrected_{feature}_{recording_site}.h5"
+                        folder_path
+                        / f"{event}_{recording_site}_baselineUncorrected_{feature}_{recording_site}{table_suffix}"
                     )
                     if uncorrected.is_file():
                         entries.append(
                             dict(
                                 path=uncorrected,
+                                binned_path=cls._binned_path(uncorrected),
                                 event=event,
                                 recording_site=recording_site,
                                 feature=feature,
@@ -460,26 +484,42 @@ class GuppyInterface(BaseDataInterface):
         return entries
 
     @classmethod
-    def _discover_peak_aucs(cls, folder_path: Path, event_names: list[str], recording_sites: list[str]) -> list[dict]:
-        """Discover GuPPy peak/AUC files (``peak_AUC_<event>_<recording_site>_<feature>_<recording_site>.h5``)."""
+    def _discover_peak_aucs(
+        cls, folder_path: Path, event_names: list[str], recording_sites: list[str], table_suffix: str
+    ) -> list[dict]:
+        """Discover GuPPy peak/AUC files (``peak_AUC_<event>_<recording_site>_<feature>_<recording_site><table_suffix>``)."""
         entries = []
         for event in event_names:
             for recording_site in recording_sites:
                 for feature in cls._TRANSIENT_FEATURES:
-                    path = folder_path / f"peak_AUC_{event}_{recording_site}_{feature}_{recording_site}.h5"
+                    path = folder_path / f"peak_AUC_{event}_{recording_site}_{feature}_{recording_site}{table_suffix}"
                     if path.is_file():
-                        entries.append(dict(path=path, event=event, recording_site=recording_site, feature=feature))
+                        entries.append(
+                            dict(
+                                path=path,
+                                binned_path=cls._binned_path(path),
+                                event=event,
+                                recording_site=recording_site,
+                                feature=feature,
+                            )
+                        )
         return entries
+
+    @staticmethod
+    def _binned_path(path: Path) -> Path | None:
+        """Return the ``binned_`` companion GuPPy writes beside a PSTH-shaped table when it bins trials, or None."""
+        binned_path = path.with_name(f"binned_{path.name}")
+        return binned_path if binned_path.is_file() else None
 
     @classmethod
     def _discover_psth_significance(
-        cls, folder_path: Path, event_names: list[str], recording_sites: list[str]
+        cls, folder_path: Path, event_names: list[str], recording_sites: list[str], table_suffix: str
     ) -> list[dict]:
         """Discover GuPPy PSTH significance files, absent unless the optional step ran.
 
         GuPPy writes one table per comparison into ``psth_significance_output/``, named
-        ``significance_<event>_<recording_site>_<feature>_<recording_site>.h5`` for a test against zero
-        and ``significance_<event_a>_vs_<event_b>_<recording_site>_<feature>_<recording_site>.h5`` for a
+        ``significance_<event>_<recording_site>_<feature>_<recording_site><table_suffix>`` for a test against zero
+        and ``significance_<event_a>_vs_<event_b>_<recording_site>_<feature>_<recording_site><table_suffix>`` for a
         comparison between two events. Expected names are constructed and checked on disk rather than
         parsed, for the same reason the PSTHs are: event and recording_site names both contain
         underscores, so ``_vs_`` is not a safe delimiter.
@@ -495,7 +535,7 @@ class GuppyInterface(BaseDataInterface):
         entries = []
         for recording_site in recording_sites:
             for feature in cls._TRANSIENT_FEATURES:
-                suffix = f"{recording_site}_{feature}_{recording_site}.h5"
+                suffix = f"{recording_site}_{feature}_{recording_site}{table_suffix}"
                 for event in event_names:
                     path = directory / f"significance_{event}_{suffix}"
                     if path.is_file():
@@ -576,26 +616,28 @@ class GuppyInterface(BaseDataInterface):
         return transient_events
 
     @classmethod
-    def _discover_binned_tables(cls, folder_path: Path, recording_sites: list[str]) -> dict[str, dict]:
+    def _discover_binned_tables(
+        cls, folder_path: Path, recording_sites: list[str], table_suffix: str
+    ) -> dict[str, dict]:
         """Return ``{recording_site: {"metrics": ..., "covariates": ..., "correlations": ...}}``.
 
-        GuPPy's optional whole-session binning writes ``binned_metrics_<recording_site>.h5``: one row per
-        fixed-width bin, indexed by bin number, with ``bin_start``, ``bin_end``, ``n_samples``,
+        GuPPy's optional whole-session binning writes ``binned_metrics_<recording_site>.csv``: one row per
+        fixed-width bin, indexed by bin number in its ``bin`` column, with ``bin_start``, ``bin_end``, ``n_samples``,
         ``mean_zscore``, ``mean_dff`` and a ``transient_count_<metric>`` column per metric the transient
         detector ran on. When the session also carries a behavioral covariate, two more tables are written
-        on the same bins: ``binned_covariates_<recording_site>.h5`` (``bin_start``, ``bin_end``, a
+        on the same bins: ``binned_covariates_<recording_site>.csv`` (``bin_start``, ``bin_end``, a
         ``<covariate>`` mean column and an ``n_samples_<covariate>`` column per covariate) and
-        ``covariate_correlations_<recording_site>.h5`` (one row per (metric, covariate) pair, with
-        ``metric``, ``covariate``, ``pearson_r``, ``spearman_rho`` and ``n_bins``).
+        ``covariate_correlations_<recording_site>.csv`` (one row per (metric, covariate) pair, indexed by
+        its ``pair`` column, with ``metric``, ``covariate``, ``pearson_r``, ``spearman_rho`` and ``n_bins``).
 
-        The ``.csv`` twin of each table holds the same frame and is not read. The covariate tables are
+        A run from before GuPPy wrote CSV writes the same tables as ``.h5`` files. The covariate tables are
         computed from the metrics table's own bins, so they never appear without it.
         """
         result: dict[str, dict] = {}
         for recording_site in recording_sites:
-            metrics_path = folder_path / f"binned_metrics_{recording_site}.h5"
-            covariates_path = folder_path / f"binned_covariates_{recording_site}.h5"
-            correlations_path = folder_path / f"covariate_correlations_{recording_site}.h5"
+            metrics_path = folder_path / f"binned_metrics_{recording_site}{table_suffix}"
+            covariates_path = folder_path / f"binned_covariates_{recording_site}{table_suffix}"
+            correlations_path = folder_path / f"covariate_correlations_{recording_site}{table_suffix}"
             if not metrics_path.is_file():
                 assert not covariates_path.is_file() and not correlations_path.is_file(), (
                     f"{folder_path} holds covariate tables for recording site '{recording_site}' but no "
@@ -608,22 +650,26 @@ class GuppyInterface(BaseDataInterface):
                 f"of them is in {folder_path}; the covariate outputs for recording site "
                 f"'{recording_site}' are incomplete."
             )
-            tables = dict(metrics=pandas.read_hdf(metrics_path), covariates=None, correlations=None)
+            tables = dict(metrics=cls._read_table(metrics_path, index_col="bin"), covariates=None, correlations=None)
             if covariates_path.is_file():
-                tables["covariates"] = pandas.read_hdf(covariates_path)
-                tables["correlations"] = pandas.read_hdf(correlations_path)
+                tables["covariates"] = cls._read_table(covariates_path, index_col="bin")
+                tables["correlations"] = cls._read_table(
+                    correlations_path, index_col="pair", dtype=dict(metric=str, covariate=str)
+                )
             result[recording_site] = tables
         return result
 
     @classmethod
-    def _discover_tonic_epochs(cls, folder_path: Path, recording_sites: list[str]) -> dict[str, pandas.DataFrame]:
+    def _discover_tonic_epochs(
+        cls, folder_path: Path, recording_sites: list[str], table_suffix: str
+    ) -> dict[str, pandas.DataFrame]:
         """Return ``{recording_site: epochs_dataframe}`` for each recording_site with tonic outputs.
 
         GuPPy's optional tonic analysis writes a recording site's epoch windows to
         ``tonic_epochs_<recording_site>.csv`` (columns ``label``, ``start``, ``end``, in seconds on the
-        emitted timebase) and the mean of each trace over each window to ``tonic_<recording_site>.h5``
-        (a DataFrame under key ``df``, indexed by the epoch label, columns ``mean_zscore`` and
-        ``mean_dff``). The two are written and deleted together, so a site with one and not the other is
+        emitted timebase) and the mean of each trace over each window to ``tonic_means_<recording_site>.csv``
+        (indexed by the epoch label in its ``epoch`` column, columns ``mean_zscore`` and ``mean_dff``), or to
+        ``tonic_<recording_site>.h5`` for a run from before GuPPy wrote CSV. The two are written and deleted together, so a site with one and not the other is
         an incomplete output rather than a site without tonic analysis.
 
         ``epochs_dataframe`` is the join of the two on the epoch label, with columns ``label``,
@@ -632,15 +678,18 @@ class GuppyInterface(BaseDataInterface):
         result = {}
         for recording_site in recording_sites:
             epochs_path = folder_path / f"tonic_epochs_{recording_site}.csv"
-            means_path = folder_path / f"tonic_{recording_site}.h5"
+            if table_suffix == LEGACY_TABLE_SUFFIX:
+                means_path = folder_path / f"tonic_{recording_site}{table_suffix}"
+            else:
+                means_path = folder_path / f"tonic_means_{recording_site}{table_suffix}"
             if not epochs_path.is_file() and not means_path.is_file():
                 continue
             assert epochs_path.is_file() and means_path.is_file(), (
                 f"GuPPy writes {epochs_path.name} and {means_path.name} together, but only one of them is in "
                 f"{folder_path}; the tonic outputs for recording site '{recording_site}' are incomplete."
             )
-            epochs = pandas.read_csv(epochs_path)
-            means = pandas.read_hdf(means_path)
+            epochs = pandas.read_csv(epochs_path, dtype=dict(label=str))
+            means = cls._read_table(means_path, index_col="epoch", dtype=dict(epoch=str))
             assert list(epochs["label"]) == list(means.index), (
                 f"The epoch labels in {epochs_path.name} ({list(epochs['label'])}) do not match those in "
                 f"{means_path.name} ({list(means.index)}) for recording site '{recording_site}'."
@@ -1264,7 +1313,7 @@ class GuppyInterface(BaseDataInterface):
             event_b_names: list[str] = []
 
             for entry in entries:
-                dataframe = pandas.read_hdf(entry["path"])
+                dataframe = self._read_table(entry["path"])
 
                 comparison_axis = dataframe["timestamps"].to_numpy(dtype=np.float64)
                 if axis is None:
@@ -1888,7 +1937,7 @@ class GuppyInterface(BaseDataInterface):
                 continue
             for row in tables["correlations"].itertuples(index=False):
                 assert row.metric in _BINNED_METRIC_COLUMN_TO_TRACE_TYPE_AND_METRIC, (
-                    f"covariate_correlations_{recording_site}.h5 correlates the covariate "
+                    f"covariate_correlations_{recording_site}{self._table_suffix} correlates the covariate "
                     f"'{row.covariate}' against '{row.metric}', which is not a binned-metrics column this "
                     f"interface knows: expected one of "
                     f"{sorted(_BINNED_METRIC_COLUMN_TO_TRACE_TYPE_AND_METRIC)}."
@@ -2041,10 +2090,10 @@ class GuppyInterface(BaseDataInterface):
         summary_amplitudes: list[float] = []
         for recording_site in self._recording_sites:
             for feature in self._transients_by_recording_site[recording_site]:
-                freq_amp_path = self._folder_path / f"freqAndAmp_{feature}_{recording_site}.h5"
+                freq_amp_path = self._folder_path / f"freqAndAmp_{feature}_{recording_site}{self._table_suffix}"
                 if not freq_amp_path.is_file():
                     continue
-                freq_amp_dataframe = pandas.read_hdf(freq_amp_path)
+                freq_amp_dataframe = self._read_table(freq_amp_path, index_col=0)
                 summary_recording_site_indices.append(recording_site_to_row_index[recording_site])
                 summary_trace_types.append(feature)
                 summary_frequencies.append(float(freq_amp_dataframe["freq (events/min)"].iloc[0]))
@@ -2100,12 +2149,13 @@ class GuppyInterface(BaseDataInterface):
         return groups
 
     def _concatenate_event_matrices(self, entries: list[dict], stub_test: bool) -> dict:
-        """Read each event's PSTH/cross-correlation dataframe and concatenate across events.
+        """Read each event's PSTH/cross-correlation table and concatenate across events.
 
-        PSTH and cross-correlation files share a layout: an x-axis column ``timestamps``, one
-        float-named column per trial, an across-trial ``mean``/``err``, and optional
-        ``bin_(a-b)``/``bin_err_(a-b)`` columns. Trials and bins are concatenated across events (each
-        column labeled by its event); the per-event ``mean``/``err`` become one column per event.
+        PSTH and cross-correlation files share a layout: an x-axis column ``timestamps``, one column
+        per trial labeled by its onset time, and an across-trial ``mean``/``err``. When GuPPy bins
+        trials, a ``binned_`` file beside each one holds the same ``timestamps`` followed by a
+        ``bin_(a-b)``/``bin_err_(a-b)`` pair per bin. Trials and bins are concatenated across events
+        (each column labeled by its event); the per-event ``mean``/``err`` become one column per event.
         """
         axis = None
         traces_blocks: list[np.ndarray] = []
@@ -2121,7 +2171,7 @@ class GuppyInterface(BaseDataInterface):
 
         for entry in entries:
             event_name = entry["event"]
-            dataframe = pandas.read_hdf(entry["path"])
+            dataframe, binned_dataframe = self._read_event_matrix(entry)
             if stub_test:
                 dataframe = dataframe.iloc[: min(len(dataframe), 100)]
 
@@ -2134,7 +2184,7 @@ class GuppyInterface(BaseDataInterface):
                     f"concatenated across events, but '{entry['path'].name}' differs."
                 )
 
-            trial_columns = [column for column in dataframe.columns if _column_parses_as_float(column)]
+            trial_columns = [column for column in dataframe.columns if column not in _PSTH_NON_TRIAL_COLUMNS]
             traces_blocks.append(dataframe[trial_columns].to_numpy(dtype=np.float64))
             trial_onset_times.extend(float(column) for column in trial_columns)
             trial_event_names.extend([event_name] * len(trial_columns))
@@ -2143,12 +2193,14 @@ class GuppyInterface(BaseDataInterface):
             error_columns.append(dataframe["err"].to_numpy(dtype=np.float64))
             summary_event_names.append(event_name)
 
-            binned = self._extract_bins(dataframe)
-            if binned is not None:
-                bin_edges_blocks.append(binned["bin_edges"])
-                binned_value_blocks.append(binned["binned_value"])
-                binned_error_blocks.append(binned["binned_error"])
-                bin_event_names.extend([event_name] * binned["bin_edges"].shape[0])
+            if binned_dataframe is not None:
+                binned_dataframe = binned_dataframe.iloc[: len(dataframe)]
+                bin_labels = [column for column in binned_dataframe.columns if column.startswith("bin_(")]
+                bin_edges_blocks.append(self._bin_edges(bin_labels))
+                binned_value_blocks.append(binned_dataframe[bin_labels].to_numpy(dtype=np.float64))
+                error_labels = [label.replace("bin_(", "bin_err_(", 1) for label in bin_labels]
+                binned_error_blocks.append(binned_dataframe[error_labels].to_numpy(dtype=np.float64))
+                bin_event_names.extend([event_name] * len(bin_labels))
 
         concatenated = dict(
             axis=axis,
@@ -2169,58 +2221,41 @@ class GuppyInterface(BaseDataInterface):
         return concatenated
 
     @staticmethod
-    def _extract_bins(dataframe: pandas.DataFrame):
-        """Return stacked ``(num_x, num_bins)`` binned value/error arrays + ``(num_bins, 2)`` edges, or None.
+    def _read_table(path: Path, **csv_options) -> pandas.DataFrame:
+        """Read one GuPPy results table, from its CSV or, for a run from before GuPPy wrote CSV, its ``.h5``.
 
-        Bin value columns match ``bin_(<start>-<stop>)`` (integer ``bin_(0-3)`` for "# of trials" binning
-        or decimal ``bin_(0.0-2.0)`` for "Time (min)" binning) and their errors ``bin_err_(<start>-<stop>)``.
-        Bin edges are assumed non-negative.
+        ``csv_options`` are passed to ``pandas.read_csv``; a ``.h5`` table stores its index and dtypes.
         """
-        bin_columns = sorted(
-            (float(match.group(1)), float(match.group(2)), match.string)
-            for match in (_BIN_COLUMN_PATTERN.search(column) for column in dataframe.columns)
-            if match is not None
-        )
-        if not bin_columns:
-            return None
-        bin_edges = np.array([[start, stop] for start, stop, _ in bin_columns], dtype=np.float64)
-        binned_value = np.stack(
-            [dataframe[column].to_numpy(dtype=np.float64) for _, _, column in bin_columns],
-            axis=1,
-        )
-        binned_error = np.stack(
-            [
-                dataframe[column.replace("bin_(", "bin_err_(", 1)].to_numpy(dtype=np.float64)
-                for _, _, column in bin_columns
-            ],
-            axis=1,
-        )
-        return dict(bin_edges=bin_edges, binned_value=binned_value, binned_error=binned_error)
+        if path.suffix == LEGACY_TABLE_SUFFIX:
+            return pandas.read_hdf(path)
+        return pandas.read_csv(path, **csv_options)
 
     @staticmethod
-    def _partition_peak_auc_index(index):
-        """Split a peak_AUC_*.h5 DataFrame index into ``(trial_rows, bin_rows, mean_row)``.
+    def _read_event_matrix(entry: dict) -> tuple[pandas.DataFrame, pandas.DataFrame | None]:
+        """Read a PSTH or cross-correlation table and its ``binned_`` table, None when GuPPy did not bin trials."""
+        if entry["path"].suffix == LEGACY_TABLE_SUFFIX:
+            return split_legacy_event_matrix(pandas.read_hdf(entry["path"]))
+        dataframe = pandas.read_csv(entry["path"])
+        binned_dataframe = None if entry["binned_path"] is None else pandas.read_csv(entry["binned_path"])
+        return dataframe, binned_dataframe
 
-        ``trial_rows`` is a sorted list of ``(onset_time: float, row_label)``; ``bin_rows`` a sorted list
-        of ``(start: float, stop: float, row_label)``; ``mean_row`` the single ``..._mean`` label. Bin rows
-        are session-id-prefixed labels like ``..._bin_(0-3)`` (integer "# of trials" binning) or
-        ``..._bin_(0.0-2.0)`` (decimal "Time (min)" binning). Bin edges are assumed non-negative.
-        """
-        mean_row = None
-        trial_rows: list[tuple[float, str]] = []
-        bin_rows: list[tuple[float, float, str]] = []
-        for index_value in index:
-            row = str(index_value)
-            bin_match = _BIN_COLUMN_PATTERN.search(row)
-            if bin_match is not None:
-                bin_rows.append((float(bin_match.group(1)), float(bin_match.group(2)), row))
-            elif row.endswith("mean"):
-                mean_row = row
-            else:
-                trial_rows.append((float(row.rsplit("_", 1)[-1]), row))
-        trial_rows.sort()
-        bin_rows.sort()
-        return trial_rows, bin_rows, mean_row
+    @staticmethod
+    def _read_peak_auc(entry: dict) -> tuple[pandas.DataFrame, pandas.DataFrame | None]:
+        """Read a peak/AUC table and its ``binned_`` table, None when GuPPy did not bin trials."""
+        if entry["path"].suffix == LEGACY_TABLE_SUFFIX:
+            return split_legacy_peak_auc(pandas.read_hdf(entry["path"]))
+        dataframe = pandas.read_csv(entry["path"], dtype=dict(session=str, trial=str))
+        if entry["binned_path"] is None:
+            return dataframe, None
+        return dataframe, pandas.read_csv(entry["binned_path"], dtype=dict(session=str, bin=str))
+
+    @staticmethod
+    def _bin_edges(bin_labels: list[str]) -> np.ndarray:
+        """Return the ``(num_bins, 2)`` edges of GuPPy trial-bin labels ``bin_(<start>-<stop>)``."""
+        return np.array(
+            [[float(edge) for edge in _BIN_LABEL_PATTERN.fullmatch(label).groups()] for label in bin_labels],
+            dtype=np.float64,
+        )
 
     def _build_peak_auc(
         self,
@@ -2237,14 +2272,20 @@ class GuppyInterface(BaseDataInterface):
     ):
         """Build a full-fidelity GuppyPeakAUC for one (recording_site, trace_type) condition, concatenated across events.
 
-        Each event's peak_AUC_*.h5 is a DataFrame whose columns are the per-window metric names
-        (``peak_pos_<w>`` / ``peak_neg_<w>`` / ``area_<w>``) and whose index rows are the
-        session-id-prefixed per-trial onsets, per-bin labels (``..._bin_(a-b)``), and the across-trial
-        mean (``..._mean``). Per-trial and per-bin columns are concatenated across events (each labeled
-        by its event); each event's mean becomes one column of the mean_* metrics.
+        Each event's ``peak_AUC_*.csv`` has a ``session`` and a ``trial`` column identifying the row
+        (the trial's onset time, or ``mean`` for the row computed on the mean PSTH), then the
+        per-window metrics ``peak_pos_<w>`` / ``peak_neg_<w>`` / ``area_<w>``. When GuPPy bins trials,
+        ``binned_peak_AUC_*.csv`` holds the same metrics with a ``bin`` column (``bin_(a-b)``) in place
+        of ``trial``. Per-trial and per-bin columns are concatenated across events (each labeled by its
+        event); each event's mean becomes one column of the mean_* metrics.
         """
         window_start, window_stop = self._peak_windows()
         window_count = window_start.shape[0]
+
+        def matrix(metric_prefix: str, rows: pandas.DataFrame) -> np.ndarray:
+            """Return the ``(num_windows, num_rows)`` values of one metric."""
+            columns = [f"{metric_prefix}_{window + 1}" for window in range(window_count)]
+            return rows[columns].to_numpy(dtype=np.float64).T
 
         peak_positive_blocks: list[np.ndarray] = []
         peak_negative_blocks: list[np.ndarray] = []
@@ -2263,37 +2304,27 @@ class GuppyInterface(BaseDataInterface):
 
         for entry in entries:
             event_name = entry["event"]
-            dataframe = pandas.read_hdf(entry["path"])
+            dataframe, bin_rows = self._read_peak_auc(entry)
+            is_mean_row = dataframe["trial"] == "mean"
+            trial_rows = dataframe[~is_mean_row]
+            mean_rows = dataframe[is_mean_row]
 
-            trial_rows, bin_rows, mean_row = self._partition_peak_auc_index(dataframe.index)
-
-            def matrix(metric_prefix: str, rows: list[str]) -> np.ndarray:
-                return np.array(
-                    [
-                        [float(dataframe.loc[row, f"{metric_prefix}_{window + 1}"]) for row in rows]
-                        for window in range(window_count)
-                    ],
-                    dtype=np.float64,
-                )
-
-            trial_row_names = [row for _, row in trial_rows]
-            peak_positive_blocks.append(matrix("peak_pos", trial_row_names))
-            peak_negative_blocks.append(matrix("peak_neg", trial_row_names))
-            area_blocks.append(matrix("area", trial_row_names))
-            trial_onset_times.extend(onset for onset, _ in trial_rows)
+            peak_positive_blocks.append(matrix("peak_pos", trial_rows))
+            peak_negative_blocks.append(matrix("peak_neg", trial_rows))
+            area_blocks.append(matrix("area", trial_rows))
+            trial_onset_times.extend(float(trial) for trial in trial_rows["trial"])
             trial_event_names.extend([event_name] * len(trial_rows))
 
-            mean_peak_positive_columns.append(matrix("peak_pos", [mean_row]).reshape(-1))
-            mean_peak_negative_columns.append(matrix("peak_neg", [mean_row]).reshape(-1))
-            mean_area_columns.append(matrix("area", [mean_row]).reshape(-1))
+            mean_peak_positive_columns.append(matrix("peak_pos", mean_rows).reshape(-1))
+            mean_peak_negative_columns.append(matrix("peak_neg", mean_rows).reshape(-1))
+            mean_area_columns.append(matrix("area", mean_rows).reshape(-1))
             summary_event_names.append(event_name)
 
-            if bin_rows:
-                bin_row_names = [row for _, _, row in bin_rows]
-                bin_edges_blocks.append(np.array([[start, stop] for start, stop, _ in bin_rows], dtype=np.float64))
-                binned_peak_positive_blocks.append(matrix("peak_pos", bin_row_names))
-                binned_peak_negative_blocks.append(matrix("peak_neg", bin_row_names))
-                binned_area_blocks.append(matrix("area", bin_row_names))
+            if bin_rows is not None:
+                bin_edges_blocks.append(self._bin_edges(list(bin_rows["bin"])))
+                binned_peak_positive_blocks.append(matrix("peak_pos", bin_rows))
+                binned_peak_negative_blocks.append(matrix("peak_neg", bin_rows))
+                binned_area_blocks.append(matrix("area", bin_rows))
                 bin_event_names.extend([event_name] * len(bin_rows))
 
         kwargs = dict(

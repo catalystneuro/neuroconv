@@ -116,10 +116,10 @@ electrode each of its channels recorded:
     }
     ecephys["ElectrodesTable"] = {"rows": rows}
     ecephys["ElectricalSeries"][metadata_key]["channel_id_to_electrode_metadata_key"] = {
-        "0": "electrode_0",
-        "1": "electrode_1",
-        "2": "electrode_2",
-        "3": "electrode_3",
+        "channel_a": "electrode_0",
+        "channel_b": "electrode_1",
+        "channel_c": "electrode_2",
+        "channel_d": "electrode_3",
     }
 
     # Microns from bregma, on the schema's axes: +x posterior, +y inferior, +z right.
@@ -133,7 +133,7 @@ annotations. You choose them, so pick whatever is memorable to you. The metadata
 each key points to; the key does not appear in the file. The series references rows by these keys in
 ``channel_id_to_electrode_metadata_key``, a dictionary from each channel id to the row of the electrode
 that channel recorded. The channel ids are the recording's own, which ``interface.channel_ids`` lists:
-the mock numbers its channels ``"0"`` to ``"3"``, while a SpikeGLX recording's look like
+the mock names its channels ``"channel_a"`` to ``"channel_d"``, while a SpikeGLX recording's look like
 ``"imec0.ap#AP0"``. Here each channel recorded its own electrode, so the pairing is one to one. The
 section on :ref:`mapping channels to electrodes <ecephys_channel_to_electrode>` covers electrodes that no
 channel recorded, and channels from two streams that share an electrode.
@@ -214,10 +214,10 @@ means. Put the value on the rows and describe it under ``ElectrodesTable["column
     }
     ecephys["ElectrodesTable"] = {"rows": rows}
     ecephys["ElectricalSeries"][metadata_key]["channel_id_to_electrode_metadata_key"] = {
-        "0": "electrode_0",
-        "1": "electrode_1",
-        "2": "electrode_2",
-        "3": "electrode_3",
+        "channel_a": "electrode_0",
+        "channel_b": "electrode_1",
+        "channel_c": "electrode_2",
+        "channel_d": "electrode_3",
     }
 
     # Microns from bregma, on the schema's axes: +x posterior, +y inferior, +z right.
@@ -316,10 +316,10 @@ at it with ``electrode_group_metadata_key``:
     }
     ecephys["ElectrodesTable"] = {"rows": rows}
     ecephys["ElectricalSeries"][metadata_key]["channel_id_to_electrode_metadata_key"] = {
-        "0": "electrode_0",
-        "1": "electrode_1",
-        "2": "electrode_2",
-        "3": "electrode_3",
+        "channel_a": "electrode_0",
+        "channel_b": "electrode_1",
+        "channel_c": "electrode_2",
+        "channel_d": "electrode_3",
     }
 
     # Microns from bregma, on the schema's axes: +x posterior, +y inferior, +z right.
@@ -415,10 +415,10 @@ deprecated in pynwb:
     }
     ecephys["ElectrodesTable"] = {"rows": rows}
     ecephys["ElectricalSeries"][metadata_key]["channel_id_to_electrode_metadata_key"] = {
-        "0": "electrode_0",
-        "1": "electrode_1",
-        "2": "electrode_2",
-        "3": "electrode_3",
+        "channel_a": "electrode_0",
+        "channel_b": "electrode_1",
+        "channel_c": "electrode_2",
+        "channel_d": "electrode_3",
     }
 
     # Microns from bregma, on the schema's axes: +x posterior, +y inferior, +z right.
@@ -656,10 +656,10 @@ visible together in the electrode-row metadata.
         },
     }
     ecephys["ElectricalSeries"]["two_shanks"]["channel_id_to_electrode_metadata_key"] = {
-        "0": "electrode_0",
-        "1": "electrode_1",
-        "2": "electrode_2",
-        "3": "electrode_3",
+        "channel_a": "electrode_0",
+        "channel_b": "electrode_1",
+        "channel_c": "electrode_2",
+        "channel_d": "electrode_3",
     }
 
     nwbfile = interface.create_nwbfile(metadata=metadata)
@@ -722,10 +722,10 @@ within one probe: the groups now point to distinct devices.
         },
     }
     ecephys["ElectricalSeries"]["two_probes"]["channel_id_to_electrode_metadata_key"] = {
-        "0": "electrode_0",
-        "1": "electrode_1",
-        "2": "electrode_2",
-        "3": "electrode_3",
+        "channel_a": "electrode_0",
+        "channel_b": "electrode_1",
+        "channel_c": "electrode_2",
+        "channel_d": "electrode_3",
     }
 
     nwbfile = interface.create_nwbfile(metadata=metadata)
@@ -818,7 +818,7 @@ supply the connections explicitly because only two of the four electrodes were r
     nwbfile = interface.create_nwbfile(metadata=metadata)
     assert len(nwbfile.electrodes) == 4
     assert list(nwbfile.acquisition["ElectricalSeries"].electrodes.data[:]) == [0, 1]
-    assert list(nwbfile.electrodes["channel_name"][:]) == ["0", "1", "", ""]
+    assert list(nwbfile.electrodes["channel_name"][:]) == ["channel_a", "channel_b", "", ""]
 
 A declared ``ElectrodesTable`` requires the saved mapping; omitting it raises rather than guessing from
 row names. Every currently recorded channel must map to a declared row. Entries for channels removed
@@ -862,8 +862,8 @@ relationships, not Plexon or Neuralynx reader behavior.
     probe = Probe(ndim=2, si_units="um")
     probe.set_contacts(positions=[[0, 0], [0, 20]], shapes="circle", shape_params={"radius": 5})
     probe.set_contact_ids(["e0", "e1"])
-    raw.set_probe(probe, channel_id_to_contact_id={"0": "e0", "1": "e1"})
-    field.set_probe(probe, channel_id_to_contact_id={"0": "e1", "1": "e0"})
+    raw.set_probe(probe, channel_id_to_contact_id={"channel_a": "e0", "channel_b": "e1"})
+    field.set_probe(probe, channel_id_to_contact_id={"channel_a": "e1", "channel_b": "e0"})
 
     converter = ConverterPipe(data_interfaces={"Raw": raw, "Field": field})
     metadata = converter.get_metadata()
@@ -881,12 +881,12 @@ relationships, not Plexon or Neuralynx reader behavior.
     ecephys["ElectricalSeries"][raw_key].update(
         name="ElectricalSeriesRaw",
         description="Synthetic example of a wideband recording stream.",
-        channel_id_to_electrode_metadata_key={"0": "electrode_a", "1": "electrode_b"},
+        channel_id_to_electrode_metadata_key={"channel_a": "electrode_a", "channel_b": "electrode_b"},
     )
     ecephys["ElectricalSeries"][field_key].update(
         name="ElectricalSeriesField",
         description="Synthetic example of a field-potential recording stream.",
-        channel_id_to_electrode_metadata_key={"0": "electrode_b", "1": "electrode_a"},
+        channel_id_to_electrode_metadata_key={"channel_a": "electrode_b", "channel_b": "electrode_a"},
     )
 
     nwbfile = converter.create_nwbfile(metadata=metadata)
