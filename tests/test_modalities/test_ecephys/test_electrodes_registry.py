@@ -436,11 +436,8 @@ class TestPersistentAssociations:
         probe = Probe(ndim=2, si_units="um")
         probe.set_contacts(positions=[[0, 0], [0, 20]], shapes="circle", shape_params={"radius": 5})
         probe.set_contact_ids(contact_ids)
-        interface.set_probe(
-            probe,
-            group_mode="by_probe",
-            channel_id_to_contact_id=dict(zip(interface.channel_ids, contact_ids)),
-        )
+        probe.set_device_channel_indices([0, 1])
+        interface.set_probe(probe, group_mode="by_probe")
 
     @pytest.mark.parametrize("restore_metadata", [False, True])
     def test_annotations_survive_later_probe_attachment(self, restore_metadata, tmp_path):

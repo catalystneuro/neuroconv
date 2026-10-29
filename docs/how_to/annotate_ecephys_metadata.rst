@@ -514,10 +514,9 @@ attach a catalogue probe instead of entering each contact's position yourself. T
 `probeinterface library <https://spikeinterface.github.io/probeinterface_library/>`_ provides layouts
 for supported models.
 
-This example loads a catalogue layout and uses ``zip`` to pair the mock recording's channels with
-the probe's contacts in list order. For your data, replace this example wiring with the actual
-channel-to-contact connections. The contact positions describe the probe's geometry, not its
-placement in the brain:
+This example loads a catalogue layout and wires the mock recording's channels to the probe's contacts
+in list order. For your data, replace this example wiring with the actual channel-to-contact
+connections. The contact positions describe the probe's geometry, not its placement in the brain:
 
 .. code-block:: python
 
@@ -528,23 +527,19 @@ placement in the brain:
     interface = MockRecordingInterface(num_channels=32, durations=[0.1], metadata_key="probe0")
 
     probe = probeinterface.get_probe(manufacturer="neuronexus", probe_name="A1x32-Poly3-10mm-50-177")
-    wiring = dict(zip(interface.channel_ids, probe.contact_ids))
-    interface.set_probe(probe=probe, channel_id_to_contact_id=wiring)
+    probe.set_device_channel_indices(list(range(32)))
+    interface.set_probe(probe=probe, group_mode="by_probe")
 
     metadata = interface.get_metadata()
     nwbfile = interface.create_nwbfile(metadata=metadata)
     nwbfile.electrodes.to_dataframe()[["electrode_name", "rel_x", "rel_y"]].head()
     list(nwbfile.devices)
 
-``channel_id_to_contact_id`` takes **channel ids as keys** and **probe contact ids as values**.
-Contacts absent from the values are not recorded by this interface. This differs from
-``channel_id_to_electrode_metadata_key``, whose values are electrode-row metadata keys (see
-:ref:`ecephys_channel_to_electrode`). If you already wired the probe with
-``probe.set_device_channel_indices``, omit ``channel_id_to_contact_id``.
-
-Electrode groups follow the probe's organization automatically: one per probe, subdivided by shank
-and then contact side when that information is present. No subdivisions are inferred from contact
-positions. For grouping options, see :ref:`ecephys_electrode_grouping`.
+``set_device_channel_indices`` takes one channel index per contact, in the probe's contact order, with
+``-1`` for a contact this recording did not record. The `ProbeInterface wiring guide
+<https://probeinterface.readthedocs.io/en/main/examples/ex_11_automatic_wiring.html>`_ covers wiring
+from a headstage or adapter. ``group_mode`` decides the electrode groups from the probe's structure; for
+the options, see :ref:`ecephys_electrode_grouping`.
 
 Attaching the probe supplies three things when the file is written:
 
@@ -570,16 +565,10 @@ First check whether the recording already carries the grouping you need. If it d
 groups rather than rebuilding their membership. Acquisition ports or headstage labels alone do not
 establish which electrodes form a tetrode or belong to a shank; use your experimental arrangement.
 
-Automatic grouping and overrides
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Grouping from the probe
+~~~~~~~~~~~~~~~~~~~~~~~
 
-By default, ``set_probe`` uses SpikeInterface's ``group_mode="auto"``. Each probe gets its own group,
-subdivided by ``shank_ids`` and then ``contact_sides`` when provided. For example, two probes with two
-shanks each produce four groups; if each shank has recorded contacts on its front and back sides,
-they produce eight. A probe without either subdivision produces one group. Positions alone do not
-establish shanks or sides.
-
-You can override this when your experiment calls for a different grouping:
+``set_probe`` takes a ``group_mode`` that decides the groups from the probe's own structure:
 
 .. list-table::
    :header-rows: 1
@@ -587,24 +576,14 @@ You can override this when your experiment calls for a different grouping:
 
    * - ``group_mode``
      - Electrode groups
-   * - ``"auto"`` (default)
-     - Each probe, subdivided by shank and contact side when present.
    * - ``"by_probe"``
-     - One per probe, ignoring shanks and sides.
+     - One per probe.
    * - ``"by_shank"``
-     - One per shank within each probe, ignoring sides. Requires shank ids.
-   * - ``"by_side"``
-     - One per side within each probe and shank, if present. Requires contact sides.
+     - One per shank within each probe. Requires shank ids.
 
-For example, pass ``group_mode="by_probe"`` to keep all contacts of each probe together.
 Attaching a probe replaces the recording's channel groups with this grouping. Explicit electrode-group
-assignments in your electrode-row metadata still take precedence when writing NWB.
-
-If a probe you are attaching already carries a per-contact grouping annotation, you can use it with
-``group_property``, for example ``interface.set_probe(probe, group_property="tetrode")`` for an
-already-wired probe with a ``tetrode`` annotation. This further subdivides the groups selected by
-``group_mode``; identical labels on separate probes do not combine their contacts. To describe group
-membership yourself, use electrode-row metadata as shown below.
+assignments in your electrode-row metadata still take precedence when writing NWB. Any other grouping,
+such as tetrodes, is stated in the electrode-row metadata as shown below.
 
 Assigning groups in electrode-row metadata
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -862,8 +841,10 @@ relationships, not Plexon or Neuralynx reader behavior.
     probe = Probe(ndim=2, si_units="um")
     probe.set_contacts(positions=[[0, 0], [0, 20]], shapes="circle", shape_params={"radius": 5})
     probe.set_contact_ids(["e0", "e1"])
-    raw.set_probe(probe, channel_id_to_contact_id={"channel_a": "e0", "channel_b": "e1"})
-    field.set_probe(probe, channel_id_to_contact_id={"channel_a": "e1", "channel_b": "e0"})
+    probe.set_device_channel_indices([0, 1])
+    raw.set_probe(probe, group_mode="by_probe")
+    probe.set_device_channel_indices([1, 0])
+    field.set_probe(probe, group_mode="by_probe")
 
     converter = ConverterPipe(data_interfaces={"Raw": raw, "Field": field})
     metadata = converter.get_metadata()
