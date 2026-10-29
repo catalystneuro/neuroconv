@@ -69,8 +69,11 @@ class AlphaOmegaRecordingInterface(BaseRecordingExtractorInterface):
 
         super().__init__(folder_path=folder_path, verbose=verbose, es_key=es_key, metadata_key=metadata_key)
 
+        # Read the start time while the recording is still the neo-based extractor, as `remove_channels`
+        # replaces it with a channel slice that does not carry the `neo_reader`
+        self._session_start_time = self.recording_extractor.neo_reader.raw_annotations["blocks"][0]["rec_datetime"]
+
     def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
-        annotation = self.recording_extractor.neo_reader.raw_annotations
-        metadata["NWBFile"].update(session_start_time=annotation["blocks"][0]["rec_datetime"])
+        metadata["NWBFile"].update(session_start_time=self._session_start_time)
         return metadata

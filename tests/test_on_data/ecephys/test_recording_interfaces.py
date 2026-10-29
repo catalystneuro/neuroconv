@@ -68,6 +68,14 @@ class TestAlphaOmegaRecordingInterface(RecordingExtractorInterfaceTestMixin):
     def check_extracted_metadata_old_list_format(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2021, 11, 19, 15, 23, 15)
 
+    def test_get_metadata_after_remove_channels(self):
+        interface = AlphaOmegaRecordingInterface(**self.interface_kwargs)
+        session_start_time = interface.get_metadata()["NWBFile"]["session_start_time"]
+
+        interface.remove_channels(channel_ids=[interface.channel_ids[-1]])
+
+        assert interface.get_metadata()["NWBFile"]["session_start_time"] == session_start_time
+
 
 class TestAxonRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = AxonRecordingInterface
