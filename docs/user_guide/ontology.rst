@@ -11,10 +11,12 @@ version.
 You state the terms in metadata and NeuroConv writes them. NeuroConv does not look terms up or guess
 them from free text, so what lands in the file is exactly what the metadata says.
 
-Two kinds of value can be annotated:
+These values can be annotated:
 
 - the subject's **species** (:py:attr:`Subject.species <pynwb.file.Subject.species>`), usually with
   an `NCBITaxon <https://bioregistry.io/registry/ncbitaxon>`_ term;
+- the subject's **strain** (:py:attr:`Subject.strain <pynwb.file.Subject.strain>`), usually with an
+  `RRID <https://bioregistry.io/registry/rrid>`_;
 - anatomical **brain regions**, usually with a term from the
   `Allen Mouse Brain Atlas <https://bioregistry.io/registry/mba>`_ (MBA), the
   `Allen Human Brain Atlas <https://bioregistry.io/registry/hba>`_ (HBA) or
@@ -64,8 +66,8 @@ terms:
         {"id": "UBERON:0003881", "uri": "http://purl.obolibrary.org/obo/UBERON_0003881"},
     ]
 
-The ``ExternalResources`` block is part of the metadata schema: only the ``species`` and ``brain_regions`` maps
-are accepted, and every term needs a non-empty ``id`` and ``uri``. A misspelled map name such as
+The ``ExternalResources`` block is part of the metadata schema: only the ``species``, ``strain`` and ``brain_regions``
+maps are accepted, and every term needs a non-empty ``id`` and ``uri``. A misspelled map name such as
 ``metadata["ExternalResources"]["brain_region"]`` therefore fails metadata validation instead of silently
 annotating nothing.
 
@@ -78,6 +80,23 @@ Look up the ``id`` and ``uri`` in the ontology itself, for example on the
 Use the most specific term that is true for your data, and use the atlas that matches your subject's
 species: the same acronym can name different structures in different atlases (``MB`` is the mouse
 midbrain but the human mammillary body).
+
+Strain
+~~~~~~
+
+Annotate ``Subject.strain`` with the RRID of the exact colony, which names the vendor: C57BL/6N from
+Charles River (``RRID:IMSR_CRL:027``) and from Taconic (``RRID:IMSR_TAC:b6``) have different RRIDs.
+
+.. code-block:: python
+
+    metadata["Subject"]["strain"] = "C57BL/6J"
+
+    metadata["ExternalResources"]["strain"] = {
+        "C57BL/6J": {"id": "RRID:IMSR_JAX:000664", "uri": "https://scicrunch.org/resolver/RRID:IMSR_JAX:000664"},
+    }
+
+The RRID of a mouse strain from a repository such as JAX or MMRRC appears on the strain's page there, and
+``https://scicrunch.org/resolver/<RRID>`` resolves any RRID.
 
 Writing the references
 ----------------------
