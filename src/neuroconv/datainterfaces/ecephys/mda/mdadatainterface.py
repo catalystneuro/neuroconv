@@ -50,6 +50,7 @@ class MdaSortingInterface(BaseSortingExtractorInterface):
         file_path: FilePath,
         sampling_frequency: int,
         verbose: bool = True,
+        metadata_key: str | None = None,
     ):
         """
         Load and prepare sorting data for MountainSort
@@ -61,7 +62,10 @@ class MdaSortingInterface(BaseSortingExtractorInterface):
         sampling_frequency : int
             The sampling frequency in Hz.
         verbose: bool, default: True
+        metadata_key : str, optional
+            Key of this sorting's entry in ``metadata["Ecephys"]["Sortings"]``. Defaults to ``"mda_sorting"``.
         """
+        self.metadata_key = metadata_key or "mda_sorting"
         super().__init__(file_path=file_path, sampling_frequency=sampling_frequency, verbose=verbose)
 
         # Rename the extractor's "max_channel" property to avoid neuroconv's

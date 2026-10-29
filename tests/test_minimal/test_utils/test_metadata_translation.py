@@ -195,6 +195,34 @@ class TestTranslationContract:
 
         assert _translate_old_metadata(metadata) == expected_translated_metadata
 
+    def test_the_units_blocks_survive_an_old_block_beside_them(self):
+        # A converter holding an old-format recording and a sorting annotated in the dict format. The units
+        # blocks exist only in the dict format, so building the block out of the old keys alone drops them,
+        # and the sortings write to the default table with the default description without raising.
+        metadata = _old_format_metadata()
+        metadata["Ecephys"]["UnitsTables"] = {"processed": {"name": "ProcessedUnits", "description": "Curated."}}
+        metadata["Ecephys"]["Sortings"] = {"kilosort_sorting": {"units_table_metadata_key": "processed"}}
+        expected_translated_metadata = {
+            "Devices": {"MyAcquisitionSystem": {"name": "MyAcquisitionSystem", "description": "A system I described"}},
+            "Ecephys": {
+                "ElectrodeGroups": {
+                    "s1": {
+                        "name": "s1",
+                        "description": "Shank 1",
+                        "location": "CA1",
+                        "device_metadata_key": "MyAcquisitionSystem",
+                    }
+                },
+                "ElectricalSeries": {
+                    "ElectricalSeries": {"name": "ElectricalSeriesRaw", "description": "Raw traces I described"}
+                },
+                "UnitsTables": {"processed": {"name": "ProcessedUnits", "description": "Curated."}},
+                "Sortings": {"kilosort_sorting": {"units_table_metadata_key": "processed"}},
+            },
+        }
+
+        assert _translate_old_metadata(metadata) == expected_translated_metadata
+
     def test_a_stray_field_beside_real_entries_is_left_for_the_schema_to_reject(self):
         # An old-format edit written onto dict-format metadata. Converting it would guess at what the
         # user meant; leaving it lets validation say so.

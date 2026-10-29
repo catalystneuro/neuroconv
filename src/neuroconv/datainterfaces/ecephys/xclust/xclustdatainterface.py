@@ -47,6 +47,7 @@ class XClustSortingInterface(BaseSortingExtractorInterface):
         file_path_list: Optional[list[FilePath]] = None,
         sampling_frequency: float,
         verbose: bool = False,
+        metadata_key: str | None = None,
     ):
         """
         Initialize the XClust sorting interface.
@@ -61,12 +62,15 @@ class XClustSortingInterface(BaseSortingExtractorInterface):
             Sampling frequency of the original recording in Hz.
         verbose : bool, default: False
             Whether to print verbose output.
+        metadata_key : str, optional
+            Key of this sorting's entry in ``metadata["Ecephys"]["Sortings"]``. Defaults to ``"xclust_sorting"``.
         """
         if folder_path is not None and file_path_list is not None:
             raise ValueError("Specify either 'folder_path' or 'file_path_list', not both.")
         if folder_path is None and file_path_list is None:
             raise ValueError("Must specify either 'folder_path' or 'file_path_list'.")
 
+        self.metadata_key = metadata_key or "xclust_sorting"
         super().__init__(
             verbose=verbose,
             folder_path=folder_path,

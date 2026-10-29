@@ -508,7 +508,7 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
         extractor_instance = extractor_class(**self.extractor_kwargs)
         return extractor_instance
 
-    def __init__(self, file_path: FilePath, *, verbose: bool = False):
+    def __init__(self, file_path: FilePath, *, verbose: bool = False, metadata_key: str | None = None):
         """
         Initialize read of Cell Explorer file.
 
@@ -517,7 +517,10 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
         file_path: FilePath
             Path to .spikes.cellinfo.mat file.
         verbose: bool, default: True
+        metadata_key : str, optional
+            Key of this sorting's entry in ``metadata["Ecephys"]["Sortings"]``. Defaults to ``"cell_explorer_sorting"``.
         """
+        self.metadata_key = metadata_key or "cell_explorer_sorting"
 
         # Triggers import error at initialization
         pymatreader = get_package(

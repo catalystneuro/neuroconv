@@ -31,6 +31,7 @@ class KiloSortSortingInterface(BaseSortingExtractorInterface):
         *,
         keep_good_only: bool = False,
         verbose: bool = False,
+        metadata_key: str | None = None,
     ):
         """
         Load and prepare sorting data for kilosort
@@ -42,8 +43,10 @@ class KiloSortSortingInterface(BaseSortingExtractorInterface):
         keep_good_only: bool, default: False
             If True, only Kilosort-labeled 'good' units are returned
         verbose: bool, default: True
+        metadata_key : str, optional
+            Key of this sorting's entry in ``metadata["Ecephys"]["Sortings"]``. Defaults to ``"kilosort_sorting"``.
         """
-
+        self.metadata_key = metadata_key or "kilosort_sorting"
         super().__init__(folder_path=folder_path, keep_good_only=keep_good_only, verbose=verbose)
 
     def get_metadata(self) -> DeepDict:
