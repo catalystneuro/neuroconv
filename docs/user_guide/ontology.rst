@@ -15,8 +15,7 @@ These values can be annotated:
 
 - the subject's **species** (:py:attr:`Subject.species <pynwb.file.Subject.species>`), usually with
   an `NCBITaxon <https://bioregistry.io/registry/ncbitaxon>`_ term;
-- the subject's **strain** and **genotype** (:py:attr:`Subject.strain <pynwb.file.Subject.strain>`,
-  :py:attr:`Subject.genotype <pynwb.file.Subject.genotype>`), usually with an
+- the subject's **strain** (:py:attr:`Subject.strain <pynwb.file.Subject.strain>`), usually with an
   `RRID <https://bioregistry.io/registry/rrid>`_;
 - anatomical **brain regions**, usually with a term from the
   `Allen Mouse Brain Atlas <https://bioregistry.io/registry/mba>`_ (MBA), the
@@ -67,8 +66,8 @@ terms:
         {"id": "UBERON:0003881", "uri": "http://purl.obolibrary.org/obo/UBERON_0003881"},
     ]
 
-The ``ExternalResources`` block is part of the metadata schema: only the ``species``, ``strain``, ``genotype``
-and ``brain_regions`` maps are accepted, and every term needs a non-empty ``id`` and ``uri``. A misspelled map name such as
+The ``ExternalResources`` block is part of the metadata schema: only the ``species``, ``strain`` and ``brain_regions``
+maps are accepted, and every term needs a non-empty ``id`` and ``uri``. A misspelled map name such as
 ``metadata["ExternalResources"]["brain_region"]`` therefore fails metadata validation instead of silently
 annotating nothing.
 
@@ -82,30 +81,21 @@ Use the most specific term that is true for your data, and use the atlas that ma
 species: the same acronym can name different structures in different atlases (``MB`` is the mouse
 midbrain but the human mammillary body).
 
-Strain and genotype
-~~~~~~~~~~~~~~~~~~~
+Strain
+~~~~~~
 
-``Subject.strain`` holds the background strain and ``Subject.genotype`` the genetic lines, for example a
-Cre driver crossed with a reporter. Annotate each with the RRID of the exact line or colony, which names
-the vendor: C57BL/6N from Charles River (``RRID:IMSR_CRL:027``) and from Taconic (``RRID:IMSR_TAC:b6``)
-have different RRIDs. A genotype that crosses several lines maps to a list of terms, one per line:
+Annotate ``Subject.strain`` with the RRID of the exact colony, which names the vendor: C57BL/6N from
+Charles River (``RRID:IMSR_CRL:027``) and from Taconic (``RRID:IMSR_TAC:b6``) have different RRIDs.
 
 .. code-block:: python
 
     metadata["Subject"]["strain"] = "C57BL/6J"
-    metadata["Subject"]["genotype"] = "Slc17a6-IRES-Cre/wt;Ai32(RCL-ChR2(H134R)_EYFP)/wt"
 
     metadata["ExternalResources"]["strain"] = {
         "C57BL/6J": {"id": "RRID:IMSR_JAX:000664", "uri": "https://scicrunch.org/resolver/RRID:IMSR_JAX:000664"},
     }
-    metadata["ExternalResources"]["genotype"] = {
-        "Slc17a6-IRES-Cre/wt;Ai32(RCL-ChR2(H134R)_EYFP)/wt": [
-            {"id": "RRID:IMSR_JAX:016963", "uri": "https://scicrunch.org/resolver/RRID:IMSR_JAX:016963"},
-            {"id": "RRID:IMSR_JAX:024109", "uri": "https://scicrunch.org/resolver/RRID:IMSR_JAX:024109"},
-        ],
-    }
 
-The RRID of a mouse line from a repository such as JAX or MMRRC appears on the line's page there, and
+The RRID of a mouse strain from a repository such as JAX or MMRRC appears on the strain's page there, and
 ``https://scicrunch.org/resolver/<RRID>`` resolves any RRID.
 
 Writing the references

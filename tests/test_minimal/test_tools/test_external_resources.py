@@ -166,56 +166,6 @@ class TestStrainExternalResource:
 
 
 # ---------------------------------------------------------------------------
-# Genotype HERD annotation (metadata -> file)
-# ---------------------------------------------------------------------------
-
-# A cross of two lines, each with its own RRID: Slc17a6-IRES-Cre (VGLUT2-Cre) and Ai32.
-CROSS_GENOTYPE = "Slc17a6-IRES-Cre/wt;Ai32(RCL-ChR2(H134R)_EYFP)/wt"
-VGLUT2_CRE_TERM = {"id": "RRID:IMSR_JAX:016963", "uri": "https://scicrunch.org/resolver/RRID:IMSR_JAX:016963"}
-AI32_TERM = {"id": "RRID:IMSR_JAX:024109", "uri": "https://scicrunch.org/resolver/RRID:IMSR_JAX:024109"}
-
-
-class TestGenotypeExternalResource:
-    @pytest.mark.parametrize(
-        "subject_kwargs, metadata",
-        [
-            (dict(), {"ExternalResources": {"genotype": {CROSS_GENOTYPE: VGLUT2_CRE_TERM}}}),  # no genotype
-            (dict(genotype=CROSS_GENOTYPE), {"Subject": {"genotype": CROSS_GENOTYPE}}),  # no ontology term
-        ],
-        ids=["no_genotype", "no_term"],
-    )
-    def test_noop_cases(self, subject_kwargs, metadata):
-        nwbfile = _make_nwbfile(**subject_kwargs)
-        assert add_external_resources_to_nwbfile(nwbfile, metadata=metadata) == 0
-        assert nwbfile.external_resources is None
-
-    def test_each_line_of_a_cross_is_annotated_under_one_key(self, tmp_path):
-        from pynwb import NWBHDF5IO
-
-        nwbfile = _make_nwbfile(strain="C57BL/6J", genotype=CROSS_GENOTYPE)
-        metadata = {
-            "ExternalResources": {
-                "strain": {"C57BL/6J": C57BL6J_STRAIN_TERM},
-                "genotype": {CROSS_GENOTYPE: [VGLUT2_CRE_TERM, AI32_TERM]},
-            }
-        }
-        assert add_external_resources_to_nwbfile(nwbfile, metadata=metadata) == 3
-        objects = nwbfile.external_resources.objects.to_dataframe()
-        assert sorted(objects["relative_path"]) == ["genotype", "strain"]
-        # Idempotent.
-        assert add_external_resources_to_nwbfile(nwbfile, metadata=metadata) == 0
-
-        path = tmp_path / "genotype.nwb"
-        with NWBHDF5IO(path, "w") as io:
-            io.write(nwbfile)
-        assert _written_references(path) == {
-            ("Subject", "C57BL/6J", "RRID:IMSR_JAX:000664"),
-            ("Subject", CROSS_GENOTYPE, "RRID:IMSR_JAX:016963"),
-            ("Subject", CROSS_GENOTYPE, "RRID:IMSR_JAX:024109"),
-        }
-
-
-# ---------------------------------------------------------------------------
 # Brain-region HERD annotation (metadata -> file)
 # ---------------------------------------------------------------------------
 
@@ -331,11 +281,10 @@ class TestExternalResourcesMetadataSchema:
             {},
             {"species": {"Mus musculus": MOUSE_SPECIES_TERM}},
             {"strain": {"C57BL/6J": C57BL6J_STRAIN_TERM}},
-            {"genotype": {"Slc17a6-IRES-Cre/wt": {"id": "RRID:IMSR_JAX:016963", "uri": "https://example.org/G"}}},
             {"brain_regions": {"CA1": [BRAIN_REGION_TERM, {"id": "UBERON:0003881", "uri": "https://example.org/U"}]}},
             {"brain_regions": {"CA1": {**BRAIN_REGION_TERM, "label": "Field CA1"}}},  # extra keys are allowed
         ],
-        ids=["empty", "species", "strain", "genotype", "list_of_terms", "term_with_label"],
+        ids=["empty", "species", "strain", "list_of_terms", "term_with_label"],
     )
     def test_valid_blocks_pass(self, block, base_metadata_schema):
         self._validate(block, base_metadata_schema)
