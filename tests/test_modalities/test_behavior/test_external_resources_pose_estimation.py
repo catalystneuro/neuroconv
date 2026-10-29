@@ -82,6 +82,31 @@ class TestAnatomyExternalResources:
         dataframe = nwbfile.external_resources.to_dataframe()
         assert sorted(dataframe["key"].tolist()) == ["Snout", "Tail"]
 
+    def test_skeletons_sharing_node_names_are_each_annotated(self, tmp_path):
+        # Several animals tracked with the same skeleton: each Skeleton gets its own reference per node.
+        from pynwb import NWBHDF5IO
+
+        nwbfile = _make_nwbfile()
+        skeleton_mouse1 = _add_skeleton(nwbfile, ["Snout", "Tail"], name="skeleton_mouse1")
+        skeleton_mouse2 = _add_skeleton(nwbfile, ["Snout", "Tail"], name="skeleton_mouse2")
+        metadata = _anatomy_metadata({"Snout": SNOUT_TERM, "Tail": TAIL_TERM})
+
+        assert add_external_resources_to_nwbfile(nwbfile, metadata=metadata) == 4
+        # Idempotent.
+        assert add_external_resources_to_nwbfile(nwbfile, metadata=metadata) == 0
+
+        path = tmp_path / "shared_nodes.nwb"
+        with NWBHDF5IO(path, "w") as io:
+            io.write(nwbfile)
+        with NWBHDF5IO(path, "r") as io:
+            dataframe = io.read().external_resources.to_dataframe()
+        assert set(zip(dataframe["object_id"], dataframe["key"], dataframe["entity_id"])) == {
+            (skeleton_mouse1.object_id, "Snout", "UBERON:0006333"),
+            (skeleton_mouse1.object_id, "Tail", "UBERON:0002415"),
+            (skeleton_mouse2.object_id, "Snout", "UBERON:0006333"),
+            (skeleton_mouse2.object_id, "Tail", "UBERON:0002415"),
+        }
+
     def test_several_terms_share_one_key(self):
         nwbfile = _make_nwbfile()
         _add_skeleton(nwbfile, ["Snout"])
