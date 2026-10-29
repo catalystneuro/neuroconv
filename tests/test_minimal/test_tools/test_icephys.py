@@ -6,14 +6,17 @@ icephys interface writes. No acquisition file is read. Format behaviour lives in
 on real data.
 """
 
+import numpy as np
 import pytest
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv import ConverterPipe
 from neuroconv.tools.icephys import (
+    _add_patch_clamp_series_to_nwbfile,
     _add_sweep_time_intervals_to_nwbfile,
     _build_icephys_hierarchical_tables,
+    _IcephysSeriesData,
 )
 from neuroconv.tools.testing.mock_interfaces import MockIcephysInterface
 
@@ -314,3 +317,38 @@ class TestElectrodeSharingThroughMetadata:
         # The invariant this test owns: merging electrodes does not merge runs. Run grouping follows the `sequence`
         # column, not electrode identity, so each run is still its own sequential recording.
         assert len(nwbfile.icephys_sequential_recordings) == len(interfaces)
+
+
+# TODO: move these into the generic icephys interface tests once they exist, so they run through
+# BaseIcephysInterface.add_to_nwbfile() instead of calling the writer directly.
+class TestMetadataEntryFields:
+    """Any NWB field set in a series entry reaches the file, and a key in an electrode entry that is not one raises
+    instead of being dropped."""
+
+    def test_series_entry_sets_clamp_settings(self):
+        nwbfile = mock_NWBFile()
+        device = nwbfile.create_device(name="Amplifier")
+        electrode = nwbfile.create_icephys_electrode(name="IntracellularElectrode", description="", device=device)
+        series_entry = {"name": "CurrentClampSeries", "electrode_metadata_key": "cell1", "bias_current": -5e-11}
+        metadata = {"Icephys": {"PatchClampSeries": {"cell1": series_entry}}}
+        series_data = _IcephysSeriesData(data=np.zeros(10), timestamps=np.arange(10) / 10.0, conversion=1.0)
+
+        series = _add_patch_clamp_series_to_nwbfile(
+            nwbfile=nwbfile,
+            metadata=metadata,
+            series_metadata_key="cell1",
+            series_data=series_data,
+            electrode=electrode,
+            mode="current_clamp",
+            is_stimulus=False,
+        )
+
+        assert series.bias_current == -5e-11
+
+    def test_electrode_entry_rejects_a_key_that_is_not_a_field(self):
+        interface = MockIcephysInterface(num_sweeps=2, metadata_key="cell1")
+        metadata = interface.get_metadata()
+        metadata["Icephys"]["IntracellularElectrodes"]["cell1"]["targeted_layer"] = "L5"
+
+        with pytest.raises(TypeError, match="targeted_layer"):
+            interface.create_nwbfile(metadata=metadata)
