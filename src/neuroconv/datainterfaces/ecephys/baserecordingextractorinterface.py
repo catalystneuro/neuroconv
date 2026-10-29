@@ -154,12 +154,30 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
                 type="object",
                 additionalProperties={"$ref": "#/properties/Ecephys/definitions/ElectricalSeriesEntry"},
             ),
-            # The electrode table's column descriptions are still a list in both formats.
+            # The column descriptions annotating a table derived from the recording. Superseded by
+            # ``ElectrodesTable`` below, which states the table instead, and kept until that block goes.
             Electrodes=dict(
                 type="array",
                 minItems=0,
                 renderForm=False,
                 items={"$ref": "#/properties/Ecephys/definitions/Electrodes"},
+            ),
+            # The table stated outright: ``rows`` is one entry per electrode, ``columns`` describes them.
+            # It does not render as a form, since a row per contact is 384 of them for a Neuropixels probe.
+            ElectrodesTable=dict(
+                type="object",
+                renderForm=False,
+                additionalProperties=False,
+                properties=dict(
+                    rows=dict(
+                        type="object",
+                        additionalProperties={"$ref": "#/properties/Ecephys/definitions/ElectrodeEntry"},
+                    ),
+                    columns=dict(
+                        type="object",
+                        additionalProperties={"$ref": "#/properties/Ecephys/definitions/ElectrodeColumnEntry"},
+                    ),
+                ),
             ),
         )
         metadata_schema["properties"]["Ecephys"]["definitions"] = dict(
@@ -182,6 +200,14 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
                 properties=dict(
                     name=dict(type="string", pattern="^[^/]*$"),
                     description=dict(type="string"),
+                    channel_id_to_electrode_metadata_key=dict(
+                        type="object",
+                        additionalProperties=dict(type="string"),
+                        description=(
+                            "Maps each channel id of this recording to the key of the electrode it is "
+                            "recorded by in metadata['Ecephys']['ElectrodesTable']['rows']."
+                        ),
+                    ),
                 ),
             ),
             Electrodes=dict(
@@ -191,6 +217,41 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
                 properties=dict(
                     name=dict(type="string", description="name of this electrodes column"),
                     description=dict(type="string", description="description of this electrodes column"),
+                ),
+            ),
+            # An entry is a row of the electrodes table, so it may carry any column the table holds and
+            # stays permissive. What is pinned is the group link, which is the one field the writer
+            # requires of every row.
+            ElectrodeEntry=dict(
+                type="object",
+                additionalProperties=True,
+                required=["electrode_group_metadata_key"],
+                properties=dict(
+                    electrode_group_metadata_key=dict(
+                        type="string",
+                        description="Key of this electrode's group in metadata['Ecephys']['ElectrodeGroups'].",
+                    ),
+                    # ``null`` is a row with no contact identity, which is what a format naming no contacts
+                    # has, and not a blank to fill.
+                    electrode_name=dict(
+                        type=["string", "null"],
+                        description="This electrode's identity within its group, written to the table.",
+                    ),
+                    location=dict(type="string", description="The brain region the electrode sits in."),
+                ),
+            ),
+            ElectrodeColumnEntry=dict(
+                type="object",
+                additionalProperties=False,
+                properties=dict(
+                    column_name=dict(type="string", description="The header this column is written under."),
+                    description=dict(type="string", description="description of this electrodes column"),
+                    dtype=dict(type="string", description="The dtype the column's values are written as."),
+                    column_categories=dict(
+                        type="object",
+                        properties=dict(labels=dict(type="object"), meanings=dict(type="object")),
+                        description="Display label and meaning per raw value, written as a MeaningsTable.",
+                    ),
                 ),
             ),
         )
@@ -276,6 +337,159 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             metadata["Ecephys"][self.es_key] = dict(
                 name=self.es_key, description=f"Acquisition traces for the {self.es_key}."
             )
+
+        return metadata
+
+    def get_metadata_template(self) -> DeepDict:
+        """Return the electrodes table this interface writes, stated row by row.
+
+        The counterpart to :meth:`get_metadata`, which reports only what the source recorded and leaves
+        the electrodes table to be derived from the recording at write time. This states that table
+        outright, as ``metadata["Ecephys"]["ElectrodesTable"]``: ``rows`` holds one entry per electrode,
+        each carrying its column values and pointing at its group, ``columns`` describes those columns,
+        and the channel-to-electrode mapping sits on the series entry. Around it sit the electrode groups
+        and the device they hang off, filled from the attached probe where it names its model.
+
+        What only the experimenter can supply is left ``None``: the series' description, a group's
+        description and location, the device where no probe names one, each row's ``location`` where the
+        format records no brain area, and the columns NWB defines that the recording did not carry. Fill
+        in what applies and delete what does not, then pass the result to ``add_to_nwbfile`` or
+        ``run_conversion``. A required blank still ``None`` at write time is refused rather than guessed
+        at, and a deleted field falls back to what the recording says, which for ``location`` is
+        ``"unknown"``.
+
+        What a row states wins over the recording for the fields it states, so a column value is changed
+        by editing the row rather than by calling ``set_property`` on the extractor, and a channel is
+        moved to another group by editing its ``electrode_group_metadata_key`` rather than by regrouping
+        the recording. Anything a row leaves out still comes from the recording, which is why editing one
+        field of one row is a complete statement. ``channel_name`` stays the recording's throughout,
+        being the acquisition system's own label and having no metadata to be restated from.
+
+        The electrode keys are derived from the physical identity of each contact, ``(group, contact)``
+        where the recording carries contact identifiers and ``(group, channel)`` otherwise, so two
+        interfaces over the same contacts (the AP and LF bands of one probe) independently produce the
+        same keys and their rows merge rather than doubling. The generated mapping saves each channel's
+        association to its row. Keep it with the rows if probe attachment later supplies more information:
+        source properties are routed through that mapping rather than matched by regenerated key names.
+        Rename keys only together with their mapping entries. Known contact identity conflicts raise;
+        delete an optional blank field to inherit newly available source values instead of stating a null.
+        """
+        from ...tools.spikeinterface._electrodes import _build_electrodes_metadata
+        from ...tools.spikeinterface.spikeinterface import (
+            _get_group_name,
+            _get_nwb_electrode_column_descriptions,
+            _get_probe_device_metadata,
+        )
+
+        metadata = self.get_metadata()
+        recording = self.recording_extractor
+
+        # One group per channel group the recording reports. A group the interface already describes,
+        # with its device link and its description, is kept under the key the interface gave it, matched
+        # by name the way the writer matches it. The rest are keyed by their own name so that two
+        # interfaces over one probe file their groups under the same key and the rows they point at
+        # resolve to one group rather than two. What the interface did not say is left ``None``.
+        group_names = list(dict.fromkeys(_get_group_name(recording=recording).tolist()))
+        declared_groups = metadata["Ecephys"].get("ElectrodeGroups") or {}
+        group_key_by_name = {
+            entry["name"]: key for key, entry in declared_groups.items() if isinstance(entry, dict) and "name" in entry
+        }
+        electrode_groups = {key: dict(entry) for key, entry in declared_groups.items()}
+        group_metadata_key_by_name = {}
+        for group_name in group_names:
+            key = group_key_by_name.get(group_name)
+            if key is None:
+                key = group_name
+                electrode_groups[key] = {"name": group_name}
+            for field in ("description", "location"):
+                electrode_groups[key].setdefault(field, None)
+            group_metadata_key_by_name[group_name] = key
+
+        # The device behind the groups that name none. It is filled from the attached probe where the
+        # probe names its model, which is what the writer falls to on its own, and offered blank
+        # otherwise, so that the hardware is a field to fill and not a placeholder to notice. One entry
+        # serves all of them, since the common case is one probe wired as several groups.
+        groups_without_device = [
+            key
+            for key in dict.fromkeys(group_metadata_key_by_name.values())
+            if "device_metadata_key" not in electrode_groups[key]
+        ]
+        if groups_without_device:
+            devices = dict(metadata.get("Devices") or {})
+            device_models = dict(metadata.get("DeviceModels") or {})
+            device_key = "probe" if "probe" not in devices else f"{self.metadata_key}_probe"
+            probes = recording.get_probegroup().probes if recording.has_probe() else []
+            probe_metadata = _get_probe_device_metadata(probe=probes[0]) if len(probes) == 1 else None
+            if probe_metadata is not None:
+                device_model = dict(probe_metadata["device_model"])
+                device_model_key = f"{device_model.get('manufacturer')}_{device_model['model_number']}"
+                device = dict(probe_metadata["device"])
+                device.setdefault("name", f"Probe{device.get('serial_number') or device_model['model_number']}")
+                device["device_model_metadata_key"] = device_model_key
+            else:
+                device_model_key = f"{device_key}_model"
+                device_model = {"name": None, "manufacturer": None, "model_number": None, "description": None}
+                device = {
+                    "name": None,
+                    "description": None,
+                    "serial_number": None,
+                    "device_model_metadata_key": device_model_key,
+                }
+            devices[device_key] = device
+            device_models[device_model_key] = device_model
+            metadata["Devices"] = devices
+            metadata["DeviceModels"] = device_models
+            for key in groups_without_device:
+                electrode_groups[key]["device_metadata_key"] = device_key
+        metadata["Ecephys"]["ElectrodeGroups"] = electrode_groups
+
+        # The interface names the series; what the signal is, only the experimenter can say.
+        metadata["Ecephys"]["ElectricalSeries"][self.metadata_key].setdefault("description", None)
+
+        # What this interface already says about its columns, which it emits as the column-description
+        # list under the older ``Electrodes`` key. Carried over so that stating the table does not lose a
+        # description the interface was supplying; SpikeGLX describes five of its columns this way.
+        column_descriptions = metadata["Ecephys"].get("Electrodes")
+        property_descriptions = (
+            {entry["name"]: entry["description"] for entry in column_descriptions if "description" in entry}
+            if isinstance(column_descriptions, list)
+            else {}
+        )
+
+        electrodes_metadata = _build_electrodes_metadata(
+            recording=recording,
+            group_metadata_key_by_name=group_metadata_key_by_name,
+            property_descriptions=property_descriptions,
+        )
+        electrodes_table = electrodes_metadata["ElectrodesTable"]
+
+        # ``location`` is the one column NWB requires of every electrode. Where the recording carries no
+        # brain area it is left ``None`` rather than stated as the placeholder the derived table writes,
+        # and the other columns the NWB schema defines are offered blank wherever the recording did not
+        # supply them. A blank ``location`` at write time is refused; a blank optional column is left out.
+        recording_has_location = "brain_area" in recording.get_property_keys()
+        offered_columns = ("location", "x", "y", "z", "rel_x", "rel_y", "rel_z", "imp", "filtering")
+        for entry in electrodes_table["rows"].values():
+            if not recording_has_location:
+                entry["location"] = None
+            for column_name in offered_columns:
+                entry.setdefault(column_name, None)
+
+        # A column the interface did not describe has no description here, rather than the "no
+        # description" the derived table would write for it. The columns the NWB schema predefines are
+        # the exception: they carry pynwb's own description, so there is nothing for a user to say.
+        nwb_predefined_columns = set(_get_nwb_electrode_column_descriptions())
+        for column_name, specification in electrodes_table["columns"].items():
+            if column_name not in property_descriptions and column_name not in nwb_predefined_columns:
+                specification["description"] = None
+
+        metadata["Ecephys"]["ElectrodesTable"] = electrodes_table
+        metadata["Ecephys"]["ElectricalSeries"][self.metadata_key]["channel_id_to_electrode_metadata_key"] = (
+            electrodes_metadata["channel_id_to_electrode_metadata_key"]
+        )
+        # The column-description list said the same thing in the weaker form and its descriptions have
+        # been carried across, so leaving it would describe the table twice.
+        metadata["Ecephys"].pop("Electrodes", None)
 
         return metadata
 
@@ -457,13 +671,10 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         # Set the probe to the recording extractor. SpikeInterface 0.105 removed the private
         # `_set_probes`, which took either a Probe or a ProbeGroup; the public entry points are split
         # by type, so dispatch here.
-        # TODO: drop `in_place=True` once spikeinterface>=0.105.0 is the minimum pin, where these calls
-        # are always in place and the argument is deprecated. It is required on 0.104, which otherwise
-        # returns a new recording and leaves this one unchanged.
         if isinstance(probe, ProbeGroup):
-            self.recording_extractor.set_probegroup(probe, group_mode=group_mode, in_place=True)
+            self.recording_extractor.set_probegroup(probe, group_mode=group_mode)
         else:
-            self.recording_extractor.set_probe(probe, group_mode=group_mode, in_place=True)
+            self.recording_extractor.set_probe(probe, group_mode=group_mode)
 
         # Spike interface sets the "group" property
         # But neuroconv allows "group_name" property to override spike interface "group" value

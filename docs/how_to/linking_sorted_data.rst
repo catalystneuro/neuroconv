@@ -12,7 +12,7 @@ For this linkage to be useful, the `electrodes` table itself must be **well anno
 including accurate information on brain area, anatomical coordinates, electrode geometry,
 and any probe-specific metadata. Without this detail, the benefits of unit-electrode
 linking are severely limited. For guidance on electrode table annotation, see
-:doc:`annotate_ecephys_data`.
+:ref:`annotate_ecephys_metadata`.
 
 Why Link Units to Electrodes?
 -----------------------------

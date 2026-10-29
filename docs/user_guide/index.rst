@@ -27,7 +27,6 @@ and synchronize data across multiple sources.
   expand_path
   ontology
   backend_configuration
-  linking_sorted_data
   yaml
   converting_multiple_sessions
   docker_demo
