@@ -131,16 +131,14 @@ just before writing, in both write and append mode, for an interface or a conver
 
 Annotation happens at write time, on the file as it is then, so anything added to the in-memory file
 after it was created is annotated too. When you build the file with ``create_nwbfile`` and write it
-yourself, call the function right before writing:
+yourself, pass the metadata to ``configure_and_write_nwbfile``, which makes the same call before writing:
 
 .. code-block:: python
 
-    from neuroconv.tools.external_resources import add_external_resources_to_nwbfile
     from neuroconv.tools.nwb_helpers import configure_and_write_nwbfile
 
     nwbfile = interface.create_nwbfile(metadata=metadata)
-    add_external_resources_to_nwbfile(nwbfile, metadata=metadata)  # returns the number of references added
-    configure_and_write_nwbfile(nwbfile=nwbfile, nwbfile_path="out.nwb", backend="hdf5")
+    configure_and_write_nwbfile(nwbfile=nwbfile, nwbfile_path="out.nwb", backend="hdf5", metadata=metadata)
 
 Values the metadata does not name are left untouched. The call is a no-op when the metadata has no
 ``ExternalResources`` block, and it is idempotent: an in-memory ``external_resources`` HERD is extended

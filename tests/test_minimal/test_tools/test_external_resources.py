@@ -170,7 +170,7 @@ class TestStrainExternalResource:
 # ---------------------------------------------------------------------------
 
 
-class TestBrainRegionExternalResources:
+class TestAnatomicalStructureExternalResources:
     @pytest.mark.parametrize(
         "metadata",
         [None, _anatomical_structures_metadata({"some other area": {"id": "MBA:1", "uri": "https://example.org/1"}})],
@@ -442,6 +442,17 @@ class TestConversionPipelineAnnotation:
         path = tmp_path / "in_memory.nwb"
         interface.run_conversion(nwbfile_path=path, nwbfile=nwbfile, metadata=metadata)
         assert _written_references(path) == {CA1_ELECTRODE_REFERENCE, ("OptogeneticStimulusSite", "VISp", "MBA:385")}
+
+    def test_configure_and_write_nwbfile_writes_references(self, tmp_path):
+        from neuroconv.tools.nwb_helpers import configure_and_write_nwbfile
+
+        interface, metadata = self._mouse_icephys_interface(
+            herd={"species": {"Mus musculus": MOUSE_SPECIES_TERM}, "anatomical_structures": {"CA1": CA1_TERM}}
+        )
+        nwbfile = interface.create_nwbfile(metadata=metadata)
+        path = tmp_path / "configure_and_write.nwb"
+        configure_and_write_nwbfile(nwbfile=nwbfile, nwbfile_path=path, backend="hdf5", metadata=metadata)
+        assert _written_references(path) == {MOUSE_REFERENCE, CA1_ELECTRODE_REFERENCE}
 
 
 class TestAppendModeAnnotation:

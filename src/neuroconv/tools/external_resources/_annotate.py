@@ -224,9 +224,8 @@ def add_external_resources_to_nwbfile(nwbfile: NWBFile, metadata: dict | None = 
 
     For each map of the block (``species``, ``strain``, ``anatomical_structures``), every value on the file
     that the map covers gets a reference to its term(s), stored in-file under
-    ``/general/external_resources``. ``run_conversion`` calls this just before writing, so objects added
-    to an in-memory file after it was created are annotated too. Call it yourself right before writing
-    when you build the file with ``create_nwbfile`` and write it with ``configure_and_write_nwbfile``.
+    ``/general/external_resources``. ``run_conversion`` and ``configure_and_write_nwbfile`` call this just
+    before writing, so objects added to an in-memory file after it was created are annotated too.
 
     Nothing is inferred, and it is a no-op (returns ``0``) when ``metadata`` carries no ``ExternalResources``
     block. It is idempotent: an existing ``external_resources`` HERD is extended in place, and
