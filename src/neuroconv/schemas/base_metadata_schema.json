@@ -177,8 +177,8 @@
           "description": "Terms for Subject.strain, keyed by the strain value.",
           "$ref": "#/definitions/TermMap"
         },
-        "brain_regions": {
-          "description": "Terms for anatomical location fields (electrodes, electrode groups, imaging planes, intracellular electrodes, optogenetic stimulus sites, viral vector injections, fiber photometry), keyed by the location value.",
+        "anatomical_structures": {
+          "description": "Terms for anatomical location fields (electrodes, electrode groups, imaging planes, intracellular electrodes, optogenetic stimulus sites, viral vector injections, fiber photometry) and ndx-pose Skeleton node names (pose-estimation keypoints), keyed by the location or node name.",
           "$ref": "#/definitions/TermMap"
         }
       }
