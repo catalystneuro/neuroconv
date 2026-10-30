@@ -20,7 +20,9 @@ These values can be annotated:
 - **anatomical structures**, such as brain areas, other tissues, and body parts, usually with a term from the
   `Allen Mouse Brain Atlas <https://bioregistry.io/registry/mba>`_ (MBA), the
   `Allen Human Brain Atlas <https://bioregistry.io/registry/hba>`_ (HBA) or
-  `UBERON <https://bioregistry.io/registry/uberon>`_.
+  `UBERON <https://bioregistry.io/registry/uberon>`_;
+- the file's **institution** (:py:attr:`NWBFile.institution <pynwb.file.NWBFile.institution>`), with its
+  `ROR <https://bioregistry.io/registry/ror>`_ ID.
 
 Anatomical-structure annotation covers every free-text ``location`` field in the NWB core schema and the
 extensions NeuroConv writes, and the node names of pose-estimation skeletons:
@@ -67,10 +69,10 @@ of terms:
         {"id": "UBERON:0003881", "uri": "http://purl.obolibrary.org/obo/UBERON_0003881"},
     ]
 
-The ``ExternalResources`` block is part of the metadata schema: only the ``species``, ``strain`` and
-``anatomical_structures`` maps are accepted, and every term needs a non-empty ``id`` and ``uri``. A misspelled
-map name such as ``metadata["ExternalResources"]["anatomical_structure"]`` therefore fails metadata
-validation instead of silently annotating nothing.
+The ``ExternalResources`` block is part of the metadata schema: only the ``species``, ``strain``,
+``anatomical_structures`` and ``institution`` maps are accepted, and every term needs a non-empty
+``id`` and ``uri``. A misspelled map name such as ``metadata["ExternalResources"]["anatomical_structure"]``
+therefore fails metadata validation instead of silently annotating nothing.
 
 Finding a term
 ~~~~~~~~~~~~~~
@@ -113,6 +115,22 @@ that have no matching term, such as keypoints on a lever or a headstage:
         "Snout": {"id": "UBERON:0006333", "uri": "http://purl.obolibrary.org/obo/UBERON_0006333"},
         "ShoulderLeft": {"id": "UBERON:0001467", "uri": "http://purl.obolibrary.org/obo/UBERON_0001467"},
     }
+
+Institution
+~~~~~~~~~~~
+
+Annotate ``NWBFile.institution`` with the ROR (Research Organization Registry) ID of the organization:
+
+.. code-block:: python
+
+    metadata["NWBFile"]["institution"] = "Allen Institute"
+
+    metadata["ExternalResources"]["institution"] = {
+        "Allen Institute": {"id": "ror:03cpe7c52", "uri": "https://ror.org/03cpe7c52"},
+    }
+
+The `ROR search <https://ror.org/search>`_ gives the ID of an organization, and ``https://ror.org/<ID>``
+resolves it.
 
 Writing the references
 ----------------------
