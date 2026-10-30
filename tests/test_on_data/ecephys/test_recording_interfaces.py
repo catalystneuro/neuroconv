@@ -10,6 +10,7 @@ from packaging import version
 from pynwb import read_nwb
 from pynwb.testing.mock.file import mock_NWBFile
 
+from neuroconv import ConverterPipe
 from neuroconv.datainterfaces import (
     AlphaOmegaRecordingInterface,
     AxonaLFPDataInterface,
@@ -1045,7 +1046,9 @@ class TestOpenEphysBinaryRecordingInterfaceNeuropixelsProbe(RecordingExtractorIn
         }
         expected_ecephys_metadata = {
             "ElectricalSeries": {"open_ephys_recording": dict(name="ElectricalSeries")},
-            "ElectrodeGroups": {"0": dict(name="0", device_metadata_key="neuropixels_22112107161")},
+            "ElectrodeGroups": {
+                "NeuropixelsProbeA": dict(name="NeuropixelsProbeA", device_metadata_key="neuropixels_22112107161")
+            },
         }
 
         assert metadata["Devices"] == expected_devices
@@ -1086,7 +1089,13 @@ class TestOpenEphysBinaryRecordingInterfaceProbeWithoutSerialNumber(RecordingExt
             )
         }
         expected_electrode_groups = {
-            shank: dict(name=shank, device_metadata_key="my_probe_probe") for shank in ("0", "1", "2", "3")
+            shank: dict(name=shank, device_metadata_key="my_probe_probe")
+            for shank in (
+                "NeuropixelsProbeAShank0",
+                "NeuropixelsProbeAShank1",
+                "NeuropixelsProbeAShank2",
+                "NeuropixelsProbeAShank3",
+            )
         }
 
         assert metadata["Devices"] == expected_devices
@@ -1105,6 +1114,42 @@ class TestOpenEphysBinaryRecordingInterfaceProbeWithoutSerialNumber(RecordingExt
         nwbfile = interface.create_nwbfile(metadata=interface.get_metadata(use_new_metadata_format=True))
 
         assert nwbfile.devices["NeuropixelsProbeA"].serial_number is None
+
+
+def test_open_ephys_binary_two_probes_keep_their_own_electrodes():
+    """Two probes from one session each write their own electrode group, device and electrodes.
+
+    SpikeInterface numbers the groups within each stream, so both probes used to arrive as group "0" and
+    the second probe's channels were written against the first probe's electrode rows."""
+    folder_path = ECEPHY_DATA_PATH / "openephysbinary" / "v0.6.x_neuropixels_multiexp_multistream" / "Record Node 101"
+    probe_b = OpenEphysBinaryRecordingInterface(
+        folder_path=folder_path,
+        stream_name="Record Node 101#Neuropix-PXI-100.ProbeB",
+        block_index=0,
+        metadata_key="probe_b",
+    )
+    probe_c = OpenEphysBinaryRecordingInterface(
+        folder_path=folder_path,
+        stream_name="Record Node 101#Neuropix-PXI-100.ProbeC",
+        block_index=0,
+        metadata_key="probe_c",
+    )
+    converter = ConverterPipe(data_interfaces={"ProbeB": probe_b, "ProbeC": probe_c})
+    metadata = converter.get_metadata()
+    metadata["Ecephys"]["ElectricalSeries"]["probe_b"]["name"] = "ElectricalSeriesProbeB"
+    metadata["Ecephys"]["ElectricalSeries"]["probe_c"]["name"] = "ElectricalSeriesProbeC"
+
+    nwbfile = converter.create_nwbfile(
+        metadata=metadata, conversion_options={"ProbeB": dict(stub_test=True), "ProbeC": dict(stub_test=True)}
+    )
+
+    assert {name: group.device.name for name, group in nwbfile.electrode_groups.items()} == {
+        "NeuropixelsProbeB": "NeuropixelsProbeB",
+        "NeuropixelsProbeC": "NeuropixelsProbeC",
+    }
+    assert len(nwbfile.electrodes) == 768
+    assert list(nwbfile.acquisition["ElectricalSeriesProbeB"].electrodes.data[:]) == list(range(384))
+    assert list(nwbfile.acquisition["ElectricalSeriesProbeC"].electrodes.data[:]) == list(range(384, 768))
 
 
 class TestOpenEphysBinaryRecordingInterfaceNonNeuralDataExcluded(RecordingExtractorInterfaceTestMixin):
