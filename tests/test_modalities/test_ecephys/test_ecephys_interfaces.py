@@ -56,68 +56,15 @@ class TestSortingInterface(SortingExtractorInterfaceTestMixin):
         assert MockSortingInterface().metadata_key == "mock_sorting"
         assert MockSortingInterface(metadata_key="probe_0_sorting").metadata_key == "probe_0_sorting"
 
-    def test_units_table_description_from_metadata(self):
-        interface = MockSortingInterface()
-        metadata = interface.get_metadata()
-        metadata["Ecephys"]["UnitsTables"] = {"units": {"description": "Kilosort 4, curated in Phy."}}
+    def test_metadata_key_passed_to_add_sorting(self):
+        from unittest.mock import patch
 
-        nwbfile = interface.create_nwbfile(metadata=metadata)
+        from pynwb.testing.mock.file import mock_NWBFile
 
-        assert nwbfile.units.name == "units"
-        assert nwbfile.units.description == "Kilosort 4, curated in Phy."
-
-    def test_sorting_writes_into_the_units_table_its_entry_names(self):
-        interface = MockSortingInterface()
-        metadata = interface.get_metadata()
-        metadata["Ecephys"]["UnitsTables"] = {
-            "processed": {"name": "ProcessedUnits", "description": "Units after manual curation."}
-        }
-        metadata["Ecephys"]["Sortings"] = {"mock_sorting": {"units_table_metadata_key": "processed"}}
-
-        nwbfile = interface.create_nwbfile(metadata=metadata, parent_container="processing")
-
-        units_table = get_module(nwbfile, "ecephys")["ProcessedUnits"]
-        assert nwbfile.units is None
-        assert units_table.description == "Units after manual curation."
-
-    def test_two_sortings_write_into_one_units_table(self):
-        probe_0_sorting = MockSortingInterface(metadata_key="probe_0_sorting")
-        probe_1_sorting = MockSortingInterface(metadata_key="probe_1_sorting")
-        probe_1_sorting.rename_unit_ids({unit_id: f"probe_1_{unit_id}" for unit_id in probe_1_sorting.units_ids})
-        converter = ConverterPipe(data_interfaces=dict(probe_0=probe_0_sorting, probe_1=probe_1_sorting))
-        metadata = converter.get_metadata()
-        metadata["Ecephys"]["UnitsTables"] = {
-            "all_probes": {"name": "AllProbes", "description": "Units of both probes."}
-        }
-        metadata["Ecephys"]["Sortings"] = {
-            "probe_0_sorting": {"units_table_metadata_key": "all_probes"},
-            "probe_1_sorting": {"units_table_metadata_key": "all_probes"},
-        }
-        conversion_options = dict(
-            probe_0=dict(parent_container="processing"), probe_1=dict(parent_container="processing")
-        )
-
-        nwbfile = converter.create_nwbfile(metadata=metadata, conversion_options=conversion_options)
-
-        units_table = get_module(nwbfile, "ecephys")["AllProbes"]
-        assert len(units_table) == len(probe_0_sorting.units_ids) + len(probe_1_sorting.units_ids)
-        assert units_table.description == "Units of both probes."
-
-    def test_undeclared_units_table_raises(self):
-        interface = MockSortingInterface()
-        metadata = interface.get_metadata()
-        metadata["Ecephys"]["Sortings"] = {"mock_sorting": {"units_table_metadata_key": "processed"}}
-
-        with pytest.raises(ValueError, match="'processed', which metadata\\['Ecephys'\\]\\['UnitsTables'\\]"):
-            interface.create_nwbfile(metadata=metadata, parent_container="processing")
-
-    def test_nwbfile_units_cannot_be_given_another_name(self):
-        interface = MockSortingInterface()
-        metadata = interface.get_metadata()
-        metadata["Ecephys"]["UnitsTables"] = {"units": {"name": "KilosortUnits"}}
-
-        with pytest.raises(ValueError, match="nwbfile.units, which is always named 'units'"):
-            interface.create_nwbfile(metadata=metadata)
+        interface = MockSortingInterface(metadata_key="probe_0_sorting")
+        with patch("neuroconv.tools.spikeinterface.add_sorting_to_nwbfile") as mock_add:
+            interface.add_to_nwbfile(nwbfile=mock_NWBFile(), metadata=interface.get_metadata())
+            assert mock_add.call_args.kwargs["metadata_key"] == "probe_0_sorting"
 
     def test_stub(self):
 
