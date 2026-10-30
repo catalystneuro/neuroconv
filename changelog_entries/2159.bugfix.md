@@ -1,0 +1,1 @@
+`AxonaRecordingInterface.get_metadata` no longer throws `AttributeError: 'ChannelSliceRecording' object has no attribute 'neo_reader'` after `remove_channels`, so an Axona session can be converted after dropping channels.
