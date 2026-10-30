@@ -4,6 +4,7 @@ import pytest
 from pynwb import NWBHDF5IO
 
 from neuroconv.datainterfaces import EDFAnalogInterface
+from neuroconv.tools.testing.data_interface_mixins import TimeSeriesInterfaceTestMixin
 
 try:
     from ..setup_paths import ECEPHY_DATA_PATH
@@ -17,8 +18,19 @@ except ImportError:
 pytestmark = pytest.mark.filterwarnings("ignore:Found a mix of voltage and non-voltage units:UserWarning")
 
 
-class TestEDFAnalogInterface:
+class TestEDFAnalogInterface(TimeSeriesInterfaceTestMixin):
     """Test suite for EDFAnalogInterface."""
+
+    data_interface_cls = EDFAnalogInterface
+    # One unit per interface: OSAT is the oxygen saturation, in %.
+    interface_kwargs = dict(
+        file_path=ECEPHY_DATA_PATH / "edf" / "electrode_and_analog_data" / "electrode_and_analog_data.edf",
+        channels_to_include=["OSAT"],
+    )
+    expected_time_series_names = ("TimeSeriesAnalogEDF",)
+
+    def check_extracted_metadata(self, metadata):
+        assert set(metadata["TimeSeries"]) == {"edf_analog"}
 
     def test_interface_initialization_with_specific_channels(self):
         """
@@ -147,17 +159,3 @@ class TestEDFAnalogInterfaceStreamSelection:
 
         assert list(interface.channel_ids) == ["Temp rectal"]
         assert interface.recording_extractor.get_sampling_frequency() == 1.0
-
-
-def test_metadata_key_does_not_rename_series():
-    """The key addresses the entry; the TimeSeries name lives inside it and is unaffected."""
-    file_path = ECEPHY_DATA_PATH / "edf" / "electrode_and_analog_data" / "electrode_and_analog_data.edf"
-
-    default_interface = EDFAnalogInterface(file_path=file_path, channels_to_include=["TRIG"])
-    assert default_interface.metadata_key == "edf_analog"
-    assert default_interface.get_metadata()["TimeSeries"]["edf_analog"]["name"] == "TimeSeriesAnalogEDF"
-
-    custom_interface = EDFAnalogInterface(file_path=file_path, channels_to_include=["TRIG"], metadata_key="my_analog")
-    time_series_metadata = custom_interface.get_metadata()["TimeSeries"]
-    assert set(time_series_metadata) == {"my_analog"}
-    assert time_series_metadata["my_analog"]["name"] == "TimeSeriesAnalogEDF"

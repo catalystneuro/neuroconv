@@ -4,6 +4,7 @@ import pytest
 from pynwb import NWBHDF5IO
 
 from neuroconv.datainterfaces import SpikeGLXSyncChannelInterface
+from neuroconv.tools.testing.data_interface_mixins import TimeSeriesInterfaceTestMixin
 
 from ..setup_paths import ECEPHY_DATA_PATH
 
@@ -30,10 +31,16 @@ class TestSpikeGLXSyncChannelInterfaceValidation:
             )
 
 
-class TestSpikeGLXSyncChannelInterface:
+class TestSpikeGLXSyncChannelInterface(TimeSeriesInterfaceTestMixin):
     """Tests for SpikeGLXSyncChannelInterface with sync channel data."""
 
     test_folder = SPIKEGLX_PATH / "Noise4Sam_g0"
+    data_interface_cls = SpikeGLXSyncChannelInterface
+    interface_kwargs = dict(folder_path=test_folder, stream_id="imec0.ap-SYNC")
+    expected_time_series_names = ("TimeSeriesImec0Sync",)
+
+    def check_extracted_metadata(self, metadata):
+        assert set(metadata["TimeSeries"]) == {"spikeglx_sync"}
 
     def test_get_metadata(self):
         """Test that metadata is generated correctly, including session start time."""
@@ -162,22 +169,6 @@ class TestSpikeGLXSyncChannelInterface:
         import numpy as np
 
         np.testing.assert_array_equal(timeseries.data[:], expected_traces)
-
-
-def test_metadata_key_does_not_rename_series():
-    """The key addresses the entry; the TimeSeries name is derived from the probe and is unaffected."""
-    folder_path = SPIKEGLX_PATH / "Noise4Sam_g0"
-
-    default_interface = SpikeGLXSyncChannelInterface(folder_path=folder_path, stream_id="imec0.ap-SYNC")
-    assert default_interface.metadata_key == "spikeglx_sync"
-    assert default_interface.get_metadata()["TimeSeries"]["spikeglx_sync"]["name"] == "TimeSeriesImec0Sync"
-
-    custom_interface = SpikeGLXSyncChannelInterface(
-        folder_path=folder_path, stream_id="imec0.ap-SYNC", metadata_key="my_sync"
-    )
-    time_series_metadata = custom_interface.get_metadata()["TimeSeries"]
-    assert set(time_series_metadata) == {"my_sync"}
-    assert time_series_metadata["my_sync"]["name"] == "TimeSeriesImec0Sync"
 
 
 if __name__ == "__main__":
