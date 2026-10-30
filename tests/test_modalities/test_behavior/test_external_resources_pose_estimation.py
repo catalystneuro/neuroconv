@@ -1,4 +1,4 @@
-"""External-resource annotation of ``ndx-pose`` skeleton node names (anatomy).
+"""External-resource annotation of ``ndx-pose`` skeleton node names (anatomical structures).
 
 These live here rather than in ``tests/test_minimal`` because they need ``ndx-pose``, which the behavior
 test job installs.
@@ -36,15 +36,15 @@ def _add_skeleton(nwbfile: NWBFile, node_names, name="skeleton0", module_name="b
     return skeleton
 
 
-def _anatomy_metadata(mapping: dict) -> dict:
-    """A metadata dict carrying a file-wide ``ExternalResources.anatomy`` map."""
-    return {"ExternalResources": {"anatomy": mapping}}
+def _anatomical_structures_metadata(mapping: dict) -> dict:
+    """A metadata dict carrying a file-wide ``ExternalResources.anatomical_structures`` map."""
+    return {"ExternalResources": {"anatomical_structures": mapping}}
 
 
-class TestAnatomyExternalResources:
+class TestSkeletonNodeExternalResources:
     @pytest.mark.parametrize(
         "metadata",
-        [None, _anatomy_metadata({"some other node": TAIL_TERM})],
+        [None, _anatomical_structures_metadata({"some other node": TAIL_TERM})],
         ids=["no_metadata", "no_present_node"],
     )
     def test_noop_cases(self, metadata):
@@ -56,7 +56,7 @@ class TestAnatomyExternalResources:
     def test_skeleton_nodes_are_annotated(self):
         nwbfile = _make_nwbfile()
         skeleton = _add_skeleton(nwbfile, ["Snout", "Snout", "EarL", "Shoulder"])  # duplicates collapse
-        metadata = _anatomy_metadata({"Snout": SNOUT_TERM, "Shoulder": SHOULDER_TERM})
+        metadata = _anatomical_structures_metadata({"Snout": SNOUT_TERM, "Shoulder": SHOULDER_TERM})
 
         assert add_external_resources_to_nwbfile(nwbfile, metadata=metadata) == 2
         dataframe = nwbfile.external_resources.to_dataframe()
@@ -76,7 +76,7 @@ class TestAnatomyExternalResources:
         nwbfile = _make_nwbfile()
         _add_skeleton(nwbfile, ["Snout"], name="skeleton_rat1")
         _add_skeleton(nwbfile, ["Tail"], name="skeleton_rat2")
-        metadata = _anatomy_metadata({"Snout": SNOUT_TERM, "Tail": TAIL_TERM})
+        metadata = _anatomical_structures_metadata({"Snout": SNOUT_TERM, "Tail": TAIL_TERM})
 
         assert add_external_resources_to_nwbfile(nwbfile, metadata=metadata) == 2
         dataframe = nwbfile.external_resources.to_dataframe()
@@ -89,7 +89,7 @@ class TestAnatomyExternalResources:
         nwbfile = _make_nwbfile()
         skeleton_mouse1 = _add_skeleton(nwbfile, ["Snout", "Tail"], name="skeleton_mouse1")
         skeleton_mouse2 = _add_skeleton(nwbfile, ["Snout", "Tail"], name="skeleton_mouse2")
-        metadata = _anatomy_metadata({"Snout": SNOUT_TERM, "Tail": TAIL_TERM})
+        metadata = _anatomical_structures_metadata({"Snout": SNOUT_TERM, "Tail": TAIL_TERM})
 
         assert add_external_resources_to_nwbfile(nwbfile, metadata=metadata) == 4
         # Idempotent.
@@ -110,7 +110,7 @@ class TestAnatomyExternalResources:
     def test_several_terms_share_one_key(self):
         nwbfile = _make_nwbfile()
         _add_skeleton(nwbfile, ["Snout"])
-        metadata = _anatomy_metadata({"Snout": [SNOUT_TERM, NOSE_TIP_TERM]})
+        metadata = _anatomical_structures_metadata({"Snout": [SNOUT_TERM, NOSE_TIP_TERM]})
 
         assert add_external_resources_to_nwbfile(nwbfile, metadata=metadata) == 2
         herd = nwbfile.external_resources
@@ -120,21 +120,39 @@ class TestAnatomyExternalResources:
     def test_skeleton_outside_the_behavior_module_is_annotated(self):
         nwbfile = _make_nwbfile()
         skeleton = _add_skeleton(nwbfile, ["Snout"], module_name="pose")
-        metadata = _anatomy_metadata({"Snout": SNOUT_TERM})
+        metadata = _anatomical_structures_metadata({"Snout": SNOUT_TERM})
 
         assert add_external_resources_to_nwbfile(nwbfile, metadata=metadata) == 1
         objects = nwbfile.external_resources.objects.to_dataframe()
         assert objects["object_id"].tolist() == [skeleton.object_id]
 
+    def test_one_map_annotates_locations_and_skeleton_nodes(self):
+        nwbfile = _make_nwbfile()
+        device = nwbfile.create_device(name="probe")
+        # e.g. an EMG electrode on the shoulder
+        electrode_group = nwbfile.create_electrode_group(
+            name="group0", description="d", location="Shoulder", device=device
+        )
+        skeleton = _add_skeleton(nwbfile, ["Shoulder", "Snout"])
+        metadata = _anatomical_structures_metadata({"Shoulder": SHOULDER_TERM, "Snout": SNOUT_TERM})
 
-class TestAnatomyConversionPipeline:
-    def test_run_conversion_writes_anatomy_references(self, tmp_path):
+        assert add_external_resources_to_nwbfile(nwbfile, metadata=metadata) == 3
+        dataframe = nwbfile.external_resources.to_dataframe()
+        assert set(zip(dataframe["object_id"], dataframe["key"], dataframe["entity_id"])) == {
+            (electrode_group.object_id, "Shoulder", "UBERON:0001467"),
+            (skeleton.object_id, "Shoulder", "UBERON:0001467"),
+            (skeleton.object_id, "Snout", "UBERON:0006333"),
+        }
+
+
+class TestSkeletonNodeConversionPipeline:
+    def test_run_conversion_writes_skeleton_node_references(self, tmp_path):
         from pynwb import NWBHDF5IO
 
         interface = MockPoseEstimationInterface(num_nodes=3)  # nodes: head, neck, left_shoulder
         metadata = interface.get_metadata()
         metadata["ExternalResources"] = {
-            "anatomy": {
+            "anatomical_structures": {
                 "head": {"id": "UBERON:0000033", "uri": "http://purl.obolibrary.org/obo/UBERON_0000033"},
                 "neck": {"id": "UBERON:0000974", "uri": "http://purl.obolibrary.org/obo/UBERON_0000974"},
             }

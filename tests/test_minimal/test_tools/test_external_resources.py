@@ -65,9 +65,9 @@ def _add_icephys_and_ogen(nwbfile: NWBFile, icephys_location, ogen_location) -> 
     )
 
 
-def _brain_regions_metadata(mapping: dict) -> dict:
-    """A metadata dict carrying a file-wide ``ExternalResources.brain_regions`` map."""
-    return {"ExternalResources": {"brain_regions": mapping}}
+def _anatomical_structures_metadata(mapping: dict) -> dict:
+    """A metadata dict carrying a file-wide ``ExternalResources.anatomical_structures`` map."""
+    return {"ExternalResources": {"anatomical_structures": mapping}}
 
 
 # ---------------------------------------------------------------------------
@@ -166,14 +166,14 @@ class TestStrainExternalResource:
 
 
 # ---------------------------------------------------------------------------
-# Brain-region HERD annotation (metadata -> file)
+# Anatomical-structure HERD annotation (metadata -> file)
 # ---------------------------------------------------------------------------
 
 
 class TestBrainRegionExternalResources:
     @pytest.mark.parametrize(
         "metadata",
-        [None, _brain_regions_metadata({"some other area": {"id": "MBA:1", "uri": "https://example.org/1"}})],
+        [None, _anatomical_structures_metadata({"some other area": {"id": "MBA:1", "uri": "https://example.org/1"}})],
         ids=["no_metadata", "no_present_location"],
     )
     def test_noop_cases(self, metadata):
@@ -190,7 +190,7 @@ class TestBrainRegionExternalResources:
         nwbfile.create_electrode_group(name="g0", description="d", location="MOp", device=nwbfile.devices["probe"])
         _add_imaging_plane(nwbfile, location="SSp")
         _add_icephys_and_ogen(nwbfile, icephys_location="CA1", ogen_location="VISp")
-        metadata = _brain_regions_metadata(
+        metadata = _anatomical_structures_metadata(
             {
                 "CA1": {"id": "MBA:382", "uri": "https://example.org/MBA_382"},
                 "VISp": {"id": "MBA:385", "uri": "https://example.org/MBA_385"},
@@ -220,7 +220,7 @@ class TestBrainRegionExternalResources:
     def test_maps_one_area_to_multiple_ontology_terms(self):
         nwbfile = _make_nwbfile()
         _add_electrodes(nwbfile, ["CA1"])
-        metadata = _brain_regions_metadata(
+        metadata = _anatomical_structures_metadata(
             {
                 "CA1": [
                     {"id": "MBA:382", "uri": "https://purl.brain-bican.org/ontology/mbao/MBA_382"},
@@ -237,7 +237,7 @@ class TestBrainRegionExternalResources:
         # The writer never looks at the subject; a rat file is annotated from metadata alone.
         nwbfile = _make_nwbfile(species="Rattus norvegicus")
         _add_electrodes(nwbfile, ["my region", "CA1"])
-        metadata = _brain_regions_metadata(
+        metadata = _anatomical_structures_metadata(
             {"my region": {"id": "UBERON:0002436", "uri": "http://purl.obolibrary.org/obo/UBERON_0002436"}}
         )
 
@@ -252,7 +252,7 @@ class TestBrainRegionExternalResources:
     def test_malformed_metadata_term_raises(self, bad_value):
         nwbfile = _make_nwbfile()
         _add_electrodes(nwbfile, ["area"])
-        metadata = _brain_regions_metadata({"area": bad_value})
+        metadata = _anatomical_structures_metadata({"area": bad_value})
         with pytest.raises((TypeError, ValueError)):
             add_external_resources_to_nwbfile(nwbfile, metadata=metadata)
 
@@ -281,11 +281,14 @@ class TestExternalResourcesMetadataSchema:
             {},
             {"species": {"Mus musculus": MOUSE_SPECIES_TERM}},
             {"strain": {"C57BL/6J": C57BL6J_STRAIN_TERM}},
-            {"brain_regions": {"CA1": [BRAIN_REGION_TERM, {"id": "UBERON:0003881", "uri": "https://example.org/U"}]}},
-            {"brain_regions": {"CA1": {**BRAIN_REGION_TERM, "label": "Field CA1"}}},  # extra keys are allowed
-            {"anatomy": {"Snout": {"id": "UBERON:0006333", "uri": "http://purl.obolibrary.org/obo/UBERON_0006333"}}},
+            {
+                "anatomical_structures": {
+                    "CA1": [BRAIN_REGION_TERM, {"id": "UBERON:0003881", "uri": "https://example.org/U"}]
+                }
+            },
+            {"anatomical_structures": {"CA1": {**BRAIN_REGION_TERM, "label": "Field CA1"}}},  # extra keys are allowed
         ],
-        ids=["empty", "species", "strain", "list_of_terms", "term_with_label", "anatomy"],
+        ids=["empty", "species", "strain", "list_of_terms", "term_with_label"],
     )
     def test_valid_blocks_pass(self, block, base_metadata_schema):
         self._validate(block, base_metadata_schema)
@@ -293,11 +296,13 @@ class TestExternalResourcesMetadataSchema:
     @pytest.mark.parametrize(
         "block",
         [
-            {"brain_region": {"CA1": BRAIN_REGION_TERM}},  # typo in the map name
-            {"brain_regions": {"CA1": {"id": "MBA:382", "url": "https://example.org/MBA_382"}}},  # misspelled uri
-            {"brain_regions": {"CA1": {"id": "", "uri": "https://example.org/MBA_382"}}},  # empty id
-            {"brain_regions": {"CA1": "MBA:382"}},  # a bare CURIE, not a term
-            {"brain_regions": {"CA1": []}},  # empty list
+            {"anatomical_structure": {"CA1": BRAIN_REGION_TERM}},  # typo in the map name
+            {
+                "anatomical_structures": {"CA1": {"id": "MBA:382", "url": "https://example.org/MBA_382"}}
+            },  # misspelled uri
+            {"anatomical_structures": {"CA1": {"id": "", "uri": "https://example.org/MBA_382"}}},  # empty id
+            {"anatomical_structures": {"CA1": "MBA:382"}},  # a bare CURIE, not a term
+            {"anatomical_structures": {"CA1": []}},  # empty list
         ],
         ids=["unknown_map", "misspelled_uri", "empty_id", "bare_string", "empty_list"],
     )
@@ -312,8 +317,8 @@ class TestExternalResourcesMetadataSchema:
 
         interface = MockIcephysInterface(num_sweeps=1, sweep_duration=0.01)
         metadata = interface.get_metadata()
-        metadata["ExternalResources"] = {"brain_region": {"CA1": self.BRAIN_REGION_TERM}}
-        with pytest.raises(ValidationError, match="brain_region"):
+        metadata["ExternalResources"] = {"anatomical_structure": {"CA1": self.BRAIN_REGION_TERM}}
+        with pytest.raises(ValidationError, match="anatomical_structure"):
             interface.validate_metadata(metadata=metadata)
 
 
@@ -327,7 +332,10 @@ class TestAddExternalResourcesToNWBFile:
         nwbfile = _make_nwbfile(species="Mus musculus")
         _add_electrodes(nwbfile, ["CA1"])
         metadata = {
-            "ExternalResources": {"species": {"Mus musculus": MOUSE_SPECIES_TERM}, "brain_regions": {"CA1": CA1_TERM}}
+            "ExternalResources": {
+                "species": {"Mus musculus": MOUSE_SPECIES_TERM},
+                "anatomical_structures": {"CA1": CA1_TERM},
+            }
         }
 
         assert add_external_resources_to_nwbfile(nwbfile, metadata=metadata) == 2
@@ -402,7 +410,7 @@ class TestConversionPipelineAnnotation:
         from neuroconv import ConverterPipe
 
         interface, metadata = self._mouse_icephys_interface(
-            herd={"species": {"Mus musculus": MOUSE_SPECIES_TERM}, "brain_regions": {"CA1": CA1_TERM}}
+            herd={"species": {"Mus musculus": MOUSE_SPECIES_TERM}, "anatomical_structures": {"CA1": CA1_TERM}}
         )
         runner = ConverterPipe(data_interfaces={"icephys": interface}) if converter else interface
         path = tmp_path / "run_conversion.nwb"
@@ -416,7 +424,12 @@ class TestConversionPipelineAnnotation:
         from neuroconv.tools.nwb_helpers import make_nwbfile_from_metadata
 
         interface, metadata = self._mouse_icephys_interface(
-            herd={"brain_regions": {"CA1": CA1_TERM, "VISp": {"id": "MBA:385", "uri": "https://example.org/MBA_385"}}}
+            herd={
+                "anatomical_structures": {
+                    "CA1": CA1_TERM,
+                    "VISp": {"id": "MBA:385", "uri": "https://example.org/MBA_385"},
+                }
+            }
         )
         nwbfile = make_nwbfile_from_metadata(metadata=metadata)
         device = nwbfile.create_device(name="laser")
@@ -434,7 +447,10 @@ class TestConversionPipelineAnnotation:
 class TestAppendModeAnnotation:
     """``run_conversion(append_on_disk_nwbfile=True)`` annotates the file read back from disk."""
 
-    FULL_EXTERNAL_RESOURCES = {"species": {"Mus musculus": MOUSE_SPECIES_TERM}, "brain_regions": {"CA1": CA1_TERM}}
+    FULL_EXTERNAL_RESOURCES = {
+        "species": {"Mus musculus": MOUSE_SPECIES_TERM},
+        "anatomical_structures": {"CA1": CA1_TERM},
+    }
 
     def _write_icephys_file(self, path, herd=None):
         interface, metadata = TestConversionPipelineAnnotation()._mouse_icephys_interface(herd=herd)
@@ -525,7 +541,7 @@ class TestTypeConfigCompatibility:
         metadata = {
             "ExternalResources": {
                 "species": {"Mus musculus": MOUSE_SPECIES_TERM},
-                "brain_regions": {self.UBERON_CA1: self.UBERON_CA1_TERM},
+                "anatomical_structures": {self.UBERON_CA1: self.UBERON_CA1_TERM},
             }
         }
 
