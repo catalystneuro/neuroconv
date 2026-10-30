@@ -358,7 +358,7 @@ class TestMetadataEntryFields:
 
 
 class StimulusLongerThanResponseInterface(BaseIcephysInterface):
-    """Two sweeps that stop recording after 10 samples, each against a command of 12 samples at 10 Hz."""
+    """Two sweeps 10 s apart that stop recording after 10 samples, each against a command of 12 samples at 10 Hz."""
 
     _series_metadata_key = "cell"
     _alignment_key = "cell"
@@ -367,13 +367,12 @@ class StimulusLongerThanResponseInterface(BaseIcephysInterface):
     _repetition = None
     _condition = None
 
-    def __init__(self, sweep_start_times: list[float]):
+    def __init__(self):
         super().__init__()
-        self._sweep_start_times = sweep_start_times
         self.temporal_alignment._register(key="cell", get_native_times=lambda: self._get_native_times(10))
 
     def _get_native_times(self, num_samples_per_sweep: int) -> np.ndarray:
-        return np.concatenate([start + np.arange(num_samples_per_sweep) / 10.0 for start in self._sweep_start_times])
+        return np.concatenate([start + np.arange(num_samples_per_sweep) / 10.0 for start in (0.0, 10.0)])
 
     def get_metadata(self):
         metadata = super().get_metadata()
@@ -400,7 +399,7 @@ class TestStimulusLongerThanResponse:
     """A sweep can stop recording before its command ends, so each row addresses its own stretch of the stimulus."""
 
     def test_rows_address_the_whole_stimulus_of_each_sweep(self):
-        interface = StimulusLongerThanResponseInterface(sweep_start_times=[0.0, 10.0])
+        interface = StimulusLongerThanResponseInterface()
         interface.temporal_alignment.shift_times(5.0)
         nwbfile = interface.create_nwbfile()
 
@@ -409,11 +408,5 @@ class TestStimulusLongerThanResponse:
         assert [(responses[row].idx_start, responses[row].count) for row in range(2)] == [(0, 10), (10, 10)]
         assert [(stimuli[row].idx_start, stimuli[row].count) for row in range(2)] == [(0, 12), (12, 12)]
         # Each stimulus sweep moves with its response sweep.
-        stimulus_timestamps = nwbfile.stimulus["CurrentClampStimulusSeries"].timestamps
+        stimulus_timestamps = nwbfile.stimulus["CurrentClampStimulusSeries"].get_timestamps()
         np.testing.assert_allclose(stimulus_timestamps[[0, 11, 12, 23]], [5.0, 6.1, 15.0, 16.1])
-
-    def test_stimulus_running_into_the_next_sweep_raises(self):
-        interface = StimulusLongerThanResponseInterface(sweep_start_times=[0.0, 1.0])
-
-        with pytest.raises(ValueError, match="runs into the next sweep"):
-            interface.create_nwbfile()

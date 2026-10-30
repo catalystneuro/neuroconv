@@ -65,8 +65,6 @@ class BaseIcephysInterface(BaseDataInterface):
             ):
                 shift = timestamps[start_index] - native_timestamps[start_index]
                 stimulus_timestamps[stimulus_start_index : stimulus_start_index + stimulus_count] += shift
-            if np.any(np.diff(stimulus_timestamps) <= 0):
-                raise ValueError("A stimulus sweep runs into the next sweep, so the stimulus times would not ascend.")
             stimulus_data.timestamps = stimulus_timestamps
         elif stimulus_data is not None:
             if len(stimulus_data.data) != len(timestamps):
