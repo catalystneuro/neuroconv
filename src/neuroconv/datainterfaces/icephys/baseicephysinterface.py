@@ -60,10 +60,10 @@ class BaseIcephysInterface(BaseDataInterface):
             # A stimulus with its own sweep ranges keeps its own times, each sweep moved with its response sweep.
             stimulus_sweep_sample_ranges = stimulus_data.sweep_sample_ranges
             stimulus_timestamps = np.array(stimulus_data.timestamps, dtype="float64")
-            for (start_index, _), (stimulus_start_index, stimulus_count) in zip(
+            for (response_start_index, _), (stimulus_start_index, stimulus_count) in zip(
                 sweep_sample_ranges, stimulus_sweep_sample_ranges, strict=True
             ):
-                shift = timestamps[start_index] - native_timestamps[start_index]
+                shift = timestamps[response_start_index] - native_timestamps[response_start_index]
                 stimulus_timestamps[stimulus_start_index : stimulus_start_index + stimulus_count] += shift
             stimulus_data.timestamps = stimulus_timestamps
         elif stimulus_data is not None:

@@ -304,14 +304,14 @@ def _add_intracellular_recordings_to_nwbfile(
 
     if stimulus_sweep_sample_ranges is None:
         stimulus_sweep_sample_ranges = sweep_sample_ranges
-    for (start_index, count), (stimulus_start_index, stimulus_count) in zip(
+    for (response_start_index, response_count), (stimulus_start_index, stimulus_count) in zip(
         sweep_sample_ranges, stimulus_sweep_sample_ranges, strict=True
     ):
         keyword_arguments = dict(
             electrode=electrode,
             response=response_series,
-            response_start_index=start_index,
-            response_index_count=count,
+            response_start_index=response_start_index,
+            response_index_count=response_count,
         )
         if stimulus_series is not None:
             keyword_arguments.update(
