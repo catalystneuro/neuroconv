@@ -20,7 +20,10 @@ These values can be annotated:
 - **anatomical structures**, such as brain areas, other tissues, and body parts, usually with a term from the
   `Allen Mouse Brain Atlas <https://bioregistry.io/registry/mba>`_ (MBA), the
   `Allen Human Brain Atlas <https://bioregistry.io/registry/hba>`_ (HBA) or
-  `UBERON <https://bioregistry.io/registry/uberon>`_.
+  `UBERON <https://bioregistry.io/registry/uberon>`_;
+- the names in the file's **experimenter** list
+  (:py:attr:`NWBFile.experimenter <pynwb.file.NWBFile.experimenter>`), each with its
+  `ORCID <https://bioregistry.io/registry/orcid>`_ iD.
 
 Anatomical-structure annotation covers every free-text ``location`` field in the NWB core schema and the
 extensions NeuroConv writes, and the node names of pose-estimation skeletons:
@@ -67,10 +70,10 @@ of terms:
         {"id": "UBERON:0003881", "uri": "http://purl.obolibrary.org/obo/UBERON_0003881"},
     ]
 
-The ``ExternalResources`` block is part of the metadata schema: only the ``species``, ``strain`` and
-``anatomical_structures`` maps are accepted, and every term needs a non-empty ``id`` and ``uri``. A misspelled
-map name such as ``metadata["ExternalResources"]["anatomical_structure"]`` therefore fails metadata
-validation instead of silently annotating nothing.
+The ``ExternalResources`` block is part of the metadata schema: only the ``species``, ``strain``,
+``anatomical_structures`` and ``experimenter`` maps are accepted, and every term needs a non-empty
+``id`` and ``uri``. A misspelled map name such as ``metadata["ExternalResources"]["anatomical_structure"]``
+therefore fails metadata validation instead of silently annotating nothing.
 
 Finding a term
 ~~~~~~~~~~~~~~
@@ -113,6 +116,23 @@ that have no matching term, such as keypoints on a lever or a headstage:
         "Snout": {"id": "UBERON:0006333", "uri": "http://purl.obolibrary.org/obo/UBERON_0006333"},
         "ShoulderLeft": {"id": "UBERON:0001467", "uri": "http://purl.obolibrary.org/obo/UBERON_0001467"},
     }
+
+Experimenters
+~~~~~~~~~~~~~
+
+Annotate each name in ``NWBFile.experimenter`` with that person's ORCID iD. Each name is annotated on its
+own, so a name without an iD is left out:
+
+.. code-block:: python
+
+    metadata["NWBFile"]["experimenter"] = ["Carberry, Josiah", "Doe, Jane"]
+
+    metadata["ExternalResources"]["experimenter"] = {
+        "Carberry, Josiah": {"id": "orcid:0000-0002-1825-0097", "uri": "https://orcid.org/0000-0002-1825-0097"},
+    }
+
+The `ORCID search <https://orcid.org/orcid-search/search>`_ gives the iD of a person, and
+``https://orcid.org/<iD>`` resolves it.
 
 Writing the references
 ----------------------

@@ -16,6 +16,8 @@ from neuroconv.utils.json_schema import validate_metadata
 MOUSE_SPECIES_TERM = {"id": "NCBITaxon:10090", "uri": "http://purl.obolibrary.org/obo/NCBITaxon_10090"}
 CA1_TERM = {"id": "MBA:382", "uri": "https://purl.brain-bican.org/ontology/mbao/MBA_382"}
 C57BL6J_STRAIN_TERM = {"id": "RRID:IMSR_JAX:000664", "uri": "https://scicrunch.org/resolver/RRID:IMSR_JAX:000664"}
+# ORCID's demonstration record, for the fictitious Josiah Carberry.
+CARBERRY_ORCID_TERM = {"id": "orcid:0000-0002-1825-0097", "uri": "https://orcid.org/0000-0002-1825-0097"}
 
 
 def _make_nwbfile(species="Mus musculus", with_subject=True, **subject_kwargs) -> NWBFile:
@@ -258,6 +260,37 @@ class TestBrainRegionExternalResources:
 
 
 # ---------------------------------------------------------------------------
+# Experimenter HERD annotation (metadata -> file)
+# ---------------------------------------------------------------------------
+
+
+class TestExperimenterExternalResource:
+    def test_two_of_three_experimenters_are_annotated(self, tmp_path):
+        from pynwb import NWBHDF5IO
+
+        nwbfile = _make_nwbfile()
+        nwbfile.experimenter = ["Carberry, Josiah", "Doe, Jane", "Roe, Richard"]
+        roe_term = {"id": "EXAMPLE:1", "uri": "https://example.org/1"}
+        metadata = {
+            "ExternalResources": {"experimenter": {"Carberry, Josiah": CARBERRY_ORCID_TERM, "Roe, Richard": roe_term}}
+        }
+        assert add_external_resources_to_nwbfile(nwbfile, metadata=metadata) == 2
+
+        # Both names are keys on the same object, the experimenter list of the file.
+        objects = nwbfile.external_resources.objects.to_dataframe()
+        assert objects["object_id"].tolist() == [nwbfile.object_id]
+        assert objects["relative_path"].tolist() == ["general/experimenter"]
+
+        path = tmp_path / "experimenter.nwb"
+        with NWBHDF5IO(path, "w") as io:
+            io.write(nwbfile)
+        assert _written_references(path) == {
+            ("NWBFile", "Carberry, Josiah", "orcid:0000-0002-1825-0097"),
+            ("NWBFile", "Roe, Richard", "EXAMPLE:1"),
+        }
+
+
+# ---------------------------------------------------------------------------
 # The ExternalResources block of the base metadata schema
 # ---------------------------------------------------------------------------
 
@@ -281,6 +314,7 @@ class TestExternalResourcesMetadataSchema:
             {},
             {"species": {"Mus musculus": MOUSE_SPECIES_TERM}},
             {"strain": {"C57BL/6J": C57BL6J_STRAIN_TERM}},
+            {"experimenter": {"Carberry, Josiah": CARBERRY_ORCID_TERM}},
             {
                 "anatomical_structures": {
                     "CA1": [BRAIN_REGION_TERM, {"id": "UBERON:0003881", "uri": "https://example.org/U"}]
@@ -288,7 +322,7 @@ class TestExternalResourcesMetadataSchema:
             },
             {"anatomical_structures": {"CA1": {**BRAIN_REGION_TERM, "label": "Field CA1"}}},  # extra keys are allowed
         ],
-        ids=["empty", "species", "strain", "list_of_terms", "term_with_label"],
+        ids=["empty", "species", "strain", "experimenter", "list_of_terms", "term_with_label"],
     )
     def test_valid_blocks_pass(self, block, base_metadata_schema):
         self._validate(block, base_metadata_schema)
