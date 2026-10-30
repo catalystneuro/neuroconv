@@ -6,12 +6,15 @@ icephys interface writes. No acquisition file is read. Format behaviour lives in
 on real data.
 """
 
+from datetime import datetime
+
 import numpy as np
 import pytest
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv import ConverterPipe
+from neuroconv.datainterfaces.icephys.baseicephysinterface import BaseIcephysInterface
 from neuroconv.tools.icephys import (
     _add_patch_clamp_series_to_nwbfile,
     _add_sweep_time_intervals_to_nwbfile,
@@ -352,3 +355,58 @@ class TestMetadataEntryFields:
 
         with pytest.raises(TypeError, match="targeted_layer"):
             interface.create_nwbfile(metadata=metadata)
+
+
+class StimulusLongerThanResponseInterface(BaseIcephysInterface):
+    """Two sweeps 10 s apart that stop recording after 10 samples, each against a command of 12 samples at 10 Hz."""
+
+    _series_metadata_key = "cell"
+    _alignment_key = "cell"
+    _mode = "current_clamp"
+    _run_identity = "run"
+    _repetition = None
+    _condition = None
+
+    def __init__(self):
+        super().__init__()
+        self.temporal_alignment._register(key="cell", get_native_times=lambda: self._get_native_times(10))
+
+    def _get_native_times(self, num_samples_per_sweep: int) -> np.ndarray:
+        return np.concatenate([start + np.arange(num_samples_per_sweep) / 10.0 for start in (0.0, 10.0)])
+
+    def get_metadata(self):
+        metadata = super().get_metadata()
+        metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
+        metadata["Icephys"]["IntracellularElectrodes"] = {"cell": {"name": "IntracellularElectrode"}}
+        metadata["Icephys"]["PatchClampSeries"] = {
+            "cell": {"name": "CurrentClampSeries", "electrode_metadata_key": "cell"}
+        }
+        metadata["Icephys"]["PatchClampStimulusSeries"] = {"cell": {"name": "CurrentClampStimulusSeries"}}
+        return metadata
+
+    def _get_icephys_series_data(self):
+        response_data = _IcephysSeriesData(data=np.zeros(20), timestamps=self._get_native_times(10), conversion=1.0)
+        stimulus_data = _IcephysSeriesData(
+            data=np.ones(24),
+            timestamps=self._get_native_times(12),
+            conversion=1.0,
+            sweep_sample_ranges=[(0, 12), (12, 12)],
+        )
+        return response_data, stimulus_data, [(0, 10), (10, 10)]
+
+
+class TestStimulusLongerThanResponse:
+    """A sweep can stop recording before its command ends, so each row addresses its own stretch of the stimulus."""
+
+    def test_rows_address_the_whole_stimulus_of_each_sweep(self):
+        interface = StimulusLongerThanResponseInterface()
+        interface.temporal_alignment.shift_times(5.0)
+        nwbfile = interface.create_nwbfile()
+
+        responses = nwbfile.intracellular_recordings["responses"]["response"]
+        stimuli = nwbfile.intracellular_recordings["stimuli"]["stimulus"]
+        assert [(responses[row].idx_start, responses[row].count) for row in range(2)] == [(0, 10), (10, 10)]
+        assert [(stimuli[row].idx_start, stimuli[row].count) for row in range(2)] == [(0, 12), (12, 12)]
+        # Each stimulus sweep moves with its response sweep.
+        stimulus_timestamps = nwbfile.stimulus["CurrentClampStimulusSeries"].get_timestamps()
+        np.testing.assert_allclose(stimulus_timestamps[[0, 11, 12, 23]], [5.0, 6.1, 15.0, 16.1])
