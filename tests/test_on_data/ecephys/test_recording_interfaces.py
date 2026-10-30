@@ -1486,6 +1486,14 @@ class TestPlexonRecordingInterface(RecordingExtractorInterfaceTestMixin):
     def check_extracted_metadata_old_list_format(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2013, 11, 19, 13, 48, 13)
 
+    def test_get_metadata_after_remove_channels(self):
+        interface = PlexonRecordingInterface(**self.interface_kwargs)
+        session_start_time = interface.get_metadata()["NWBFile"]["session_start_time"]
+
+        interface.remove_channels(channel_ids=[interface.channel_ids[-1]])
+
+        assert interface.get_metadata()["NWBFile"]["session_start_time"] == session_start_time
+
 
 class TestCellExplorerLFPInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = CellExplorerLFPInterface
@@ -1521,6 +1529,14 @@ class TestPlexonLFPInterface(RecordingExtractorInterfaceTestMixin):
         assert self.interface.metadata_key == expected_metadata_key
         assert metadata["Ecephys"]["ElectricalSeries"] == expected_electrical_series
 
+    def test_get_metadata_after_remove_channels(self):
+        interface = PlexonLFPInterface(**self.interface_kwargs)
+        session_start_time = interface.get_metadata()["NWBFile"]["session_start_time"]
+
+        interface.remove_channels(channel_ids=[interface.channel_ids[-1]])
+
+        assert interface.get_metadata()["NWBFile"]["session_start_time"] == session_start_time
+
 
 @pytest.mark.skipif(
     platform != "win32",
@@ -1543,6 +1559,14 @@ class TestPlexon2RecordingInterface(RecordingExtractorInterfaceTestMixin):
 
     def check_extracted_metadata_old_list_format(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2013, 11, 20, 15, 59, 39)
+
+    def test_get_metadata_after_remove_channels(self):
+        interface = Plexon2RecordingInterface(**self.interface_kwargs)
+        session_start_time = interface.get_metadata()["NWBFile"]["session_start_time"]
+
+        interface.remove_channels(channel_ids=[interface.channel_ids[-1]])
+
+        assert interface.get_metadata()["NWBFile"]["session_start_time"] == session_start_time
 
 
 class TestWhiteMatterRecordingInterface(RecordingExtractorInterfaceTestMixin):

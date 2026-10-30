@@ -1,0 +1,1 @@
+`PlexonRecordingInterface`, `PlexonLFPInterface` and `Plexon2RecordingInterface` no longer throw `AttributeError: 'ChannelSliceRecording' object has no attribute 'neo_reader'` in `get_metadata` after `remove_channels`, so a Plexon session can be converted after dropping channels.
