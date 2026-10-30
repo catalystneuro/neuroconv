@@ -4,6 +4,7 @@ import pytest
 from pynwb import NWBHDF5IO
 
 from neuroconv.datainterfaces import IntanAnalogInterface
+from neuroconv.tools.testing.data_interface_mixins import TimeSeriesInterfaceTestMixin
 
 try:
     from ..setup_paths import ECEPHY_DATA_PATH
@@ -11,8 +12,18 @@ except ImportError:
     from setup_paths import ECEPHY_DATA_PATH
 
 
-class TestIntanAnalogInterface:
+class TestIntanAnalogInterface(TimeSeriesInterfaceTestMixin):
     """Test suite for IntanAnalogInterface."""
+
+    data_interface_cls = IntanAnalogInterface
+    interface_kwargs = dict(
+        file_path=ECEPHY_DATA_PATH / "intan" / "rhs_stim_data_single_file_format" / "intanTestFile.rhs",
+        stream_name="USB board ADC input channel",
+    )
+    expected_time_series_names = ("TimeSeriesIntanADCInput",)
+
+    def check_extracted_metadata(self, metadata):
+        assert set(metadata["TimeSeries"]) == {"intan_analog"}
 
     def test_interface_initialization_adc_stream_rhs_stim_data(self):
         """
@@ -190,18 +201,3 @@ class TestIntanAnalogInterface:
             assert time_series.data.shape[0] > 0  # Should have some time points
             assert time_series.data.shape[1] == len(interface.get_channel_names())
             assert "DC amplifier channels" in time_series.description
-
-
-def test_metadata_key_does_not_rename_series():
-    """The key addresses the entry; the TimeSeries name comes from the stream and is unaffected."""
-    file_path = ECEPHY_DATA_PATH / "intan" / "rhs_stim_data_single_file_format" / "intanTestFile.rhs"
-    stream_name = "USB board ADC input channel"
-
-    default_interface = IntanAnalogInterface(file_path=file_path, stream_name=stream_name)
-    assert default_interface.metadata_key == "intan_analog"
-    assert default_interface.get_metadata()["TimeSeries"]["intan_analog"]["name"] == "TimeSeriesIntanADCInput"
-
-    custom_interface = IntanAnalogInterface(file_path=file_path, stream_name=stream_name, metadata_key="my_analog")
-    time_series_metadata = custom_interface.get_metadata()["TimeSeries"]
-    assert set(time_series_metadata) == {"my_analog"}
-    assert time_series_metadata["my_analog"]["name"] == "TimeSeriesIntanADCInput"

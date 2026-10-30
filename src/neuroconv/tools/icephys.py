@@ -58,17 +58,25 @@ def _add_patch_clamp_series_to_nwbfile(
         metadata_path=("Icephys", metadata_registry),
         metadata_key=series_metadata_key,
     )
-    series_metadata = metadata["Icephys"][metadata_registry][series_metadata_key]
+    series_metadata = {
+        **_get_icephys_metadata_placeholders()["Icephys"][metadata_registry][DEFAULT_METADATA_KEY],
+        **metadata["Icephys"][metadata_registry][series_metadata_key],
+    }
+    # The electrode link is resolved by the caller; a stimulus reuses its response's electrode and has no link.
+    if not is_stimulus:
+        series_metadata.pop("electrode_metadata_key")
     series_class = _STIMULUS_CLASS[mode] if is_stimulus else _RESPONSE_CLASS[mode]
-    series_kwargs = dict(
-        name=series_metadata["name"],
-        data=series_data.data,
-        electrode=electrode,
-        conversion=series_data.conversion,
-        offset=series_data.offset,
-        gain=np.nan,
-        description=series_metadata["description"],
-    )
+    # The entry sits over the defaults and under what the source provides, so it can set any argument of the
+    # series class except the data, its scaling, the electrode and the timing, and pynwb rejects a key that is
+    # not an argument at all.
+    series_kwargs = {
+        "gain": np.nan,
+        **series_metadata,
+        "data": series_data.data,
+        "electrode": electrode,
+        "conversion": series_data.conversion,
+        "offset": series_data.offset,
+    }
     rate = calculate_regular_series_rate(series=series_data.timestamps)
     if rate is not None:
         series_kwargs.update(starting_time=float(series_data.timestamps[0]), rate=rate)
@@ -185,7 +193,7 @@ def _add_intracellular_electrode_to_nwbfile(nwbfile: NWBFile, metadata: dict, el
     # An electrode naming no device gets the placeholder: a plain Device carrying the one field NWB
     # requires, built here rather than through the registry writer, since there is no registry entry to
     # key it against. Reused by name, so several electrodes naming no device land on one device.
-    device_metadata_key = electrode_metadata.get("device_metadata_key")
+    device_metadata_key = electrode_metadata.pop("device_metadata_key", None)
     if device_metadata_key is None:
         placeholder_device_metadata = placeholders["Devices"][DEFAULT_METADATA_KEY]
         placeholder_device_name = placeholder_device_metadata["name"]
@@ -194,15 +202,8 @@ def _add_intracellular_electrode_to_nwbfile(nwbfile: NWBFile, metadata: dict, el
         device = nwbfile.devices[placeholder_device_name]
     else:
         device = _add_device_to_nwbfile(nwbfile=nwbfile, metadata=metadata, metadata_key=device_metadata_key)
-    # Optional IntracellularElectrode fields passed through from metadata if present.
-    electrode_fields = ("cell_id", "location", "slice", "resistance", "seal", "filtering", "initial_access_resistance")
-    extra_fields = {field: electrode_metadata[field] for field in electrode_fields if field in electrode_metadata}
-    return nwbfile.create_icephys_electrode(
-        name=name,
-        description=electrode_metadata["description"],
-        device=device,
-        **extra_fields,
-    )
+    # Every other field of the entry is an IntracellularElectrode argument, so pynwb rejects a key that is not one.
+    return nwbfile.create_icephys_electrode(device=device, **electrode_metadata)
 
 
 def _validate_grouping_levels(repetitions: list, conditions: list) -> None:
