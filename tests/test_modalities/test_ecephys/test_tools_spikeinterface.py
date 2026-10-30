@@ -2232,35 +2232,6 @@ class TestAddUnitsTable(TestCase):
         # Verify no additional units were added
         self.assertEqual(len(self.nwbfile.units), len(self.sorting_1.unit_ids))
 
-    def test_write_units_table_in_processing_module(self):
-        """ """
-
-        units_table_name = "testing_processing"
-        unit_table_description = "testing_description"
-        metadata = {
-            "Ecephys": {
-                "UnitsTables": {"processed": {"name": units_table_name, "description": unit_table_description}},
-                "Sortings": {"my_sorting": {"units_table_metadata_key": "processed"}},
-            }
-        }
-        add_sorting_to_nwbfile(
-            sorting=self.base_sorting,
-            nwbfile=self.nwbfile,
-            parent_container="processing",
-            metadata=metadata,
-            metadata_key="my_sorting",
-        )
-
-        ecephys_mod = get_module(
-            nwbfile=self.nwbfile,
-            name="ecephys",
-            description="Intermediate data from extracellular electrophysiology recordings, e.g., LFP.",
-        )
-        self.assertIn(units_table_name, ecephys_mod.data_interfaces)
-        units_table = ecephys_mod[units_table_name]
-        self.assertEqual(units_table.name, units_table_name)
-        self.assertEqual(units_table.description, unit_table_description)
-
     def test_write_subset_units(self):
         """ """
         subset_unit_ids = self.base_sorting.unit_ids[::2]

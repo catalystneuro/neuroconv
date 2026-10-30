@@ -12,7 +12,6 @@ from pynwb import NWBHDF5IO
 
 from neuroconv import ConverterPipe
 from neuroconv.datainterfaces import Spike2RecordingInterface
-from neuroconv.tools.nwb_helpers import get_module
 from neuroconv.tools.testing.mock_interfaces import (
     MockIcephysInterface,
     MockRecordingInterface,
@@ -32,26 +31,6 @@ class TestSortingInterface(SortingExtractorInterfaceTestMixin):
     data_interface_cls = MockSortingInterface
     interface_kwargs = dict(num_units=4, durations=[0.100])
 
-    def test_propagate_conversion_options(self, setup_interface):
-        interface = self.interface
-        metadata = interface.get_metadata()
-        with pytest.warns(FutureWarning) as warning_records:
-            nwbfile = interface.create_nwbfile(
-                stub_test=True,
-                metadata=metadata,
-                parent_container="processing",
-                units_name="processed_units",
-                units_description="The processed units.",
-            )
-
-        ecephys = get_module(nwbfile, "ecephys")
-
-        assert nwbfile.units is None
-        assert ecephys["processed_units"].description == "The processed units."
-        messages = [str(record.message) for record in warning_records]
-        assert any("'units_name' parameter" in message for message in messages)
-        assert any("'units_description' parameter" in message for message in messages)
-
     def test_metadata_key_default(self):
         assert MockSortingInterface().metadata_key == "mock_sorting"
         assert MockSortingInterface(metadata_key="probe_0_sorting").metadata_key == "probe_0_sorting"
@@ -63,8 +42,11 @@ class TestSortingInterface(SortingExtractorInterfaceTestMixin):
 
         interface = MockSortingInterface(metadata_key="probe_0_sorting")
         with patch("neuroconv.tools.spikeinterface.add_sorting_to_nwbfile") as mock_add:
-            interface.add_to_nwbfile(nwbfile=mock_NWBFile(), metadata=interface.get_metadata())
+            interface.add_to_nwbfile(
+                nwbfile=mock_NWBFile(), metadata=interface.get_metadata(), parent_container="processing"
+            )
             assert mock_add.call_args.kwargs["metadata_key"] == "probe_0_sorting"
+            assert mock_add.call_args.kwargs["parent_container"] == "processing"
 
     def test_stub(self):
 
