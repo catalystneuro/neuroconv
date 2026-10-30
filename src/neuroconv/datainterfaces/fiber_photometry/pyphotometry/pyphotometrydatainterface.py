@@ -156,9 +156,9 @@ class PyPhotometryFiberPhotometryInterface(BaseFiberPhotometryInterface):
         was measured against. The response series carries their difference, which is what earlier
         firmware wrote itself, and both measurements are written beside it.
 
-        ``RawLEDOn`` references the same ``FiberPhotometryTable`` row as the difference. ``RawBaseline``
-        references none, since a row states an excitation source and wavelength and a measurement taken
-        in the dark had neither.
+        ``RawLEDOn`` references the same ``FiberPhotometryTable`` rows as the difference. ``RawBaseline``
+        references a copy of each of those rows with ``excitation_wavelength_in_nm`` set to NaN, which is
+        how ndx-fiber-photometry marks a row recorded with no excitation.
         """
         super().add_to_nwbfile(
             nwbfile=nwbfile,
@@ -212,9 +212,26 @@ class PyPhotometryFiberPhotometryInterface(BaseFiberPhotometryInterface):
             )
         )
 
-        # The dark measurement was taken with no excitation at all, and a row requires an excitation
-        # source and an excitation wavelength, so any row written for it would name one that was never
-        # applied. It goes in unlinked, saying in its description what it is.
+        # The dark measurement came off the same fiber, detector and slot as the LED-on one, with the
+        # source off. Its rows copy the LED-on rows and store NaN for the excitation wavelength, which
+        # ndx-fiber-photometry documents as the mark of a row recorded with no excitation. They are
+        # appended after every row the metadata declares, so the positions other series resolve their
+        # row keys to are unchanged.
+        baseline_region = None
+        if table_region is not None:
+            fiber_photometry_table = table_region.table
+            baseline_row_indices = []
+            for row_index in table_region.data:
+                row = {
+                    column_name: fiber_photometry_table[column_name].data[row_index]
+                    for column_name in fiber_photometry_table.colnames
+                }
+                row["excitation_wavelength_in_nm"] = np.nan
+                fiber_photometry_table.add_row(**row)
+                baseline_row_indices.append(len(fiber_photometry_table) - 1)
+            baseline_region = fiber_photometry_table.create_fiber_photometry_table_region(
+                description=table_region.description, region=baseline_row_indices
+            )
         nwbfile.add_acquisition(
             FiberPhotometryResponseSeries(
                 name=f"{series_name}RawBaseline",
@@ -222,11 +239,9 @@ class PyPhotometryFiberPhotometryInterface(BaseFiberPhotometryInterface):
                 unit="volts",
                 description=(
                     "The measurement taken with the excitation LED off, which the LED-on sample is "
-                    "corrected against. It measures ambient light and detector offset at that instant. "
-                    "It references no FiberPhotometryTable row because a row states an excitation source "
-                    "and wavelength, and neither applies to a measurement taken in the dark."
+                    "corrected against. It measures ambient light and detector offset at that instant."
                 ),
-                fiber_photometry_table_region=None,
+                fiber_photometry_table_region=baseline_region,
                 **timing_kwargs,
             )
         )
