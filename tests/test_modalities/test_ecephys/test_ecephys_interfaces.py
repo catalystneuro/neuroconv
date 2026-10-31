@@ -31,7 +31,7 @@ class TestSortingInterface(SortingExtractorInterfaceTestMixin):
     data_interface_cls = MockSortingInterface
     interface_kwargs = dict(num_units=4, durations=[0.100])
 
-    def test_canonical_units_table_metadata_propagation(self):
+    def test_canonical_units_table_description_from_metadata(self):
         """A sorting naming no table writes into the canonical one ("units") and gets
         the table description from the metadata"""
         interface = MockSortingInterface(num_units=3)
