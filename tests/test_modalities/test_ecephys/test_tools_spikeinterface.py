@@ -2909,8 +2909,14 @@ class TestWriteSortingAnalyzer(TestCase):
 
     def test_units_table_name(self):
         """This tests the units naming exception"""
-        metadata = {"Ecephys": {"UnitsTables": {"units": {"name": "units1"}}}}
-        with self.assertRaises(Exception) as context:
+        units_table_metadata_key = "units"
+        metadata = {"Ecephys": {"UnitsTables": {units_table_metadata_key: {"name": "units1"}}}}
+        expected_error = re.escape(
+            f"metadata['Ecephys']['UnitsTables']['{units_table_metadata_key}'] names the table 'units1', but the "
+            "table written with parent_container='units' is nwbfile.units, which is always named 'units'. Use "
+            "parent_container='processing' for a table with another name."
+        )
+        with pytest.raises(ValueError, match=expected_error):
             add_sorting_analyzer_to_nwbfile(
                 sorting_analyzer=self.single_segment_analyzer,
                 nwbfile=self.nwbfile,
