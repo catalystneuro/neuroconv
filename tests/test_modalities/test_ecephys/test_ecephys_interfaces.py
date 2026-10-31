@@ -31,7 +31,7 @@ class TestSortingInterface(SortingExtractorInterfaceTestMixin):
     data_interface_cls = MockSortingInterface
     interface_kwargs = dict(num_units=4, durations=[0.100])
 
-    def test_default_units_table_metadata_propagation(self):
+    def test_canonical_units_table_metadata_propagation(self):
         """A sorting naming no table writes into the canonical one ("units") and gets
         the table description from the metadata"""
         interface = MockSortingInterface(num_units=3)
@@ -62,7 +62,7 @@ class TestSortingInterface(SortingExtractorInterfaceTestMixin):
         assert units_table.description == "Units after manual curation."
         assert len(units_table) == 3
 
-    def test_two_sortings_write_into_the_default_units_table(self):
+    def test_two_sortings_write_into_the_canonical_units_table(self):
         """Two sortings with no entry both write their units into the default table, nwbfile.units."""
         probe_0_interface = MockSortingInterface(num_units=3, metadata_key="probe_0_sorting")
         probe_1_interface = MockSortingInterface(num_units=2, metadata_key="probe_1_sorting")
