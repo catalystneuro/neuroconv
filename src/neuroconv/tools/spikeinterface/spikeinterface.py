@@ -574,7 +574,9 @@ def _get_units_table_name_and_description(
     The sorting's entry in ``metadata["Ecephys"]["Sortings"]`` names its table through
     ``units_table_metadata_key``, and that table's entry in ``metadata["Ecephys"]["UnitsTables"]`` gives the name
     and description. A sorting naming no table writes into the one keyed ``"canonical_units_table"``, which needs no
-    entry.
+    entry. Only that table is ``nwbfile.units``: a sorting pointing at another table writes it with
+    ``parent_container='processing'``, and ``parent_container='processing'`` with metadata stating the canonical table
+    raises.
     """
     ecephys_metadata = (metadata or {}).get("Ecephys", {})
     sortings = ecephys_metadata.get("Sortings", {})
@@ -593,6 +595,23 @@ def _get_units_table_name_and_description(
             f"Declared: {sorted(units_tables)}."
         )
     units_table_entry = units_tables.get(units_table_metadata_key, {})
+    if units_table_metadata_key != "canonical_units_table" and parent_container == "units":
+        raise ValueError(
+            f"metadata['Ecephys']['Sortings']['{metadata_key}'] writes into the units table "
+            f"'{units_table_metadata_key}' with parent_container='units', but only 'canonical_units_table' is "
+            "written as nwbfile.units. Use parent_container='processing' for this table."
+        )
+    states_the_canonical_table = "units_table_metadata_key" in sorting_entry or "canonical_units_table" in units_tables
+    if (
+        units_table_metadata_key == "canonical_units_table"
+        and parent_container == "processing"
+        and states_the_canonical_table
+    ):
+        raise ValueError(
+            "The metadata writes this sorting into the units table 'canonical_units_table', which is nwbfile.units, "
+            "but parent_container='processing'. To write into processing, declare another table in "
+            "metadata['Ecephys']['UnitsTables'] and point the sorting's entry in metadata['Ecephys']['Sortings'] at it."
+        )
     if parent_container == "units" and units_table_entry.get("name", "units") != "units":
         raise ValueError(
             f"metadata['Ecephys']['UnitsTables']['{units_table_metadata_key}'] names the table "
