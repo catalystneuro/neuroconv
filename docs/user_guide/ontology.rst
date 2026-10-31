@@ -17,13 +17,13 @@ These values can be annotated:
   an `NCBITaxon <https://bioregistry.io/registry/ncbitaxon>`_ term;
 - the subject's **strain** (:py:attr:`Subject.strain <pynwb.file.Subject.strain>`), usually with an
   `RRID <https://bioregistry.io/registry/rrid>`_;
-- anatomical **brain regions**, usually with a term from the
+- **anatomical structures**, such as brain areas, other tissues, and body parts, usually with a term from the
   `Allen Mouse Brain Atlas <https://bioregistry.io/registry/mba>`_ (MBA), the
   `Allen Human Brain Atlas <https://bioregistry.io/registry/hba>`_ (HBA) or
   `UBERON <https://bioregistry.io/registry/uberon>`_.
 
-Brain-region annotation covers every free-text ``location`` field in the NWB core schema and the
-extensions NeuroConv writes:
+Anatomical-structure annotation covers every free-text ``location`` field in the NWB core schema and the
+extensions NeuroConv writes, and the node names of pose-estimation skeletons:
 
 - the electrodes table ``location`` column and ``ElectrodeGroup.location`` (ecephys);
 - ``ImagingPlane.location`` (ophys);
@@ -31,7 +31,8 @@ extensions NeuroConv writes:
 - ``OptogeneticStimulusSite.location`` (optogenetics);
 - the ``FiberPhotometryTable`` ``location`` column (fiber photometry);
 - ``ViralVectorInjection.location``, the targeted region of a virus injection (``ndx-ophys-devices``,
-  used by both fiber photometry and ``ndx-optogenetics``).
+  used by both fiber photometry and ``ndx-optogenetics``);
+- ``Skeleton.nodes``, the keypoints of an ``ndx-pose`` skeleton (pose estimation).
 
 Where the terms live in metadata
 --------------------------------
@@ -49,27 +50,27 @@ takes effect where the file carries the same value:
         "species": {
             "Mus musculus": {"id": "NCBITaxon:10090", "uri": "http://purl.obolibrary.org/obo/NCBITaxon_10090"},
         },
-        "brain_regions": {
+        "anatomical_structures": {
             "CA1": {"id": "MBA:382", "uri": "https://purl.brain-bican.org/ontology/mbao/MBA_382"},
         },
     }
 
-Brain-region terms are keyed by the free-text ``location`` string, whether that string labels an
-electrode, an imaging plane, or a fiber-photometry site: the same string means the same place across
-modalities in a single file. To annotate one value with **several** ontologies, map it to a list of
-terms:
+Anatomical-structure terms are keyed by the free-text string, whether that string labels an electrode, an
+imaging plane, a fiber-photometry site, or a skeleton node: the same string means the same structure
+across modalities in a single file. To annotate one value with **several** ontologies, map it to a list
+of terms:
 
 .. code-block:: python
 
-    metadata["ExternalResources"]["brain_regions"]["CA1"] = [
+    metadata["ExternalResources"]["anatomical_structures"]["CA1"] = [
         {"id": "MBA:382", "uri": "https://purl.brain-bican.org/ontology/mbao/MBA_382"},
         {"id": "UBERON:0003881", "uri": "http://purl.obolibrary.org/obo/UBERON_0003881"},
     ]
 
-The ``ExternalResources`` block is part of the metadata schema: only the ``species``, ``strain`` and ``brain_regions``
-maps are accepted, and every term needs a non-empty ``id`` and ``uri``. A misspelled map name such as
-``metadata["ExternalResources"]["brain_region"]`` therefore fails metadata validation instead of silently
-annotating nothing.
+The ``ExternalResources`` block is part of the metadata schema: only the ``species``, ``strain`` and
+``anatomical_structures`` maps are accepted, and every term needs a non-empty ``id`` and ``uri``. A misspelled
+map name such as ``metadata["ExternalResources"]["anatomical_structure"]`` therefore fails metadata
+validation instead of silently annotating nothing.
 
 Finding a term
 ~~~~~~~~~~~~~~
@@ -97,6 +98,21 @@ Charles River (``RRID:IMSR_CRL:027``) and from Taconic (``RRID:IMSR_TAC:b6``) ha
 
 The RRID of a mouse strain from a repository such as JAX or MMRRC appears on the strain's page there, and
 ``https://scicrunch.org/resolver/<RRID>`` resolves any RRID.
+
+Pose-estimation body parts
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The ``anatomical_structures`` map also annotates the node names of every ``ndx-pose`` ``Skeleton`` on the
+file, wherever the skeleton sits. Keypoint names are often lab conventions (``"EarL"``,
+``"ShoulderLeft"``), so map each name you want annotated to the structure it marks, and leave out names
+that have no matching term, such as keypoints on a lever or a headstage:
+
+.. code-block:: python
+
+    metadata["ExternalResources"]["anatomical_structures"] = {
+        "Snout": {"id": "UBERON:0006333", "uri": "http://purl.obolibrary.org/obo/UBERON_0006333"},
+        "ShoulderLeft": {"id": "UBERON:0001467", "uri": "http://purl.obolibrary.org/obo/UBERON_0001467"},
+    }
 
 Writing the references
 ----------------------

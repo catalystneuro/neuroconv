@@ -10,10 +10,11 @@ string it annotates (HERD links a term to an object through that string):
 
 - ``metadata["ExternalResources"]["species"]`` -> ``{species string: term-or-list}`` for ``Subject.species``;
 - ``metadata["ExternalResources"]["strain"]`` -> ``{strain string: term-or-list}`` for ``Subject.strain``;
-- ``metadata["ExternalResources"]["brain_regions"]`` -> ``{location string: term-or-list}`` for every
+- ``metadata["ExternalResources"]["anatomical_structures"]`` -> ``{name: term-or-list}`` for every
   anatomical ``location`` field on the file (the electrodes table and electrode groups, imaging
   planes, intracellular electrodes, optogenetic stimulus sites, viral vector injections, and the
-  ``FiberPhotometryTable``), regardless of which modality it belongs to.
+  ``FiberPhotometryTable``), regardless of which modality it belongs to, and for ``ndx-pose``
+  ``Skeleton.nodes`` entries (pose-estimation keypoints).
 
 Each term is an explicit ``{"id": <CURIE>, "uri": <resolvable URI>}`` dict; a list of them annotates
 one value with several ontologies (e.g. both MBA and UBERON). This representation is
@@ -112,7 +113,7 @@ def _subject_attribute_targets(nwbfile: NWBFile, attribute: str) -> list:
 
 
 def _location_containers(nwbfile: NWBFile) -> list:
-    """Every object on the file that carries a scalar ``location`` attribute naming a brain region.
+    """Every object on the file that carries a scalar ``location`` attribute naming an anatomical structure.
 
     Covers ``ElectrodeGroup`` (ecephys), ``ImagingPlane`` (ophys), ``IntracellularElectrode``
     (icephys), ``OptogeneticStimulusSite`` (ogen), and every ``ndx-ophys-devices``
@@ -131,8 +132,8 @@ def _location_containers(nwbfile: NWBFile) -> list:
     return [container for container in containers if _unwrapped(getattr(container, "location", None)) is not None]
 
 
-def _brain_region_targets(nwbfile: NWBFile) -> list:
-    """Collect ``(container, attribute, relative_path, location string)`` targets for brain regions.
+def _location_targets(nwbfile: NWBFile) -> list:
+    """Collect ``(container, attribute, relative_path, location string)`` targets for anatomical locations.
 
     Covers the electrodes table ``location`` column (ecephys) and the ``FiberPhotometryTable``
     ``location`` column (fiber photometry), if present, plus every object with a scalar ``location``
@@ -164,6 +165,28 @@ def _brain_region_targets(nwbfile: NWBFile) -> list:
     return targets
 
 
+def _skeleton_node_targets(nwbfile: NWBFile) -> list:
+    """Collect ``(container, attribute, relative_path, node name)`` targets for ``ndx-pose`` skeleton nodes.
+
+    ``Skeleton`` objects are found by type wherever they sit (NeuroConv's pose-estimation interfaces
+    write them to ``processing["behavior"]["Skeletons"]``, other tools may not), so ``ndx-pose`` does not
+    have to be installed for the rest of the file to work. ``nodes`` is a plain array attribute of the
+    ``Skeleton``, so the ``Skeleton`` is the HERD container and ``"nodes"`` is both the attribute and the
+    relative path. Each node name gets one target per ``Skeleton``.
+    """
+    skeletons = [obj for obj in nwbfile.objects.values() if getattr(obj, "neurodata_type", None) == "Skeleton"]
+    return [
+        (skeleton, "nodes", "nodes", node_name)
+        for skeleton in skeletons
+        for node_name in dict.fromkeys(_unwrapped(skeleton.nodes))  # unique, order-preserving
+    ]
+
+
+def _anatomical_structure_targets(nwbfile: NWBFile) -> list:
+    """Collect the targets of every field that names an anatomical structure: locations and skeleton nodes."""
+    return [*_location_targets(nwbfile), *_skeleton_node_targets(nwbfile)]
+
+
 # One finder per map of ``metadata["ExternalResources"]``. A finder returns the
 # ``(container, attribute, relative_path, value)`` targets on the file: ``container`` is the object HERD
 # records the reference against (the column, a ``VectorData``, for a table value; the object itself
@@ -172,7 +195,7 @@ def _brain_region_targets(nwbfile: NWBFile) -> list:
 _TARGET_FINDERS = {
     "species": partial(_subject_attribute_targets, attribute="species"),
     "strain": partial(_subject_attribute_targets, attribute="strain"),
-    "brain_regions": _brain_region_targets,
+    "anatomical_structures": _anatomical_structure_targets,
 }
 
 
@@ -199,11 +222,11 @@ def add_external_resources_to_nwbfile(nwbfile: NWBFile, metadata: dict | None = 
     """
     Write every term stated in ``metadata["ExternalResources"]`` into the file as HERD references.
 
-    For each map of the block (``species``, ``strain``, ``brain_regions``), every value on the file that
-    the map covers gets a reference to its term(s), stored in-file under ``/general/external_resources``.
-    ``run_conversion`` calls this just before writing, so objects added to an in-memory file after it
-    was created are annotated too. Call it yourself right before writing when you build the file with
-    ``create_nwbfile`` and write it with ``configure_and_write_nwbfile``.
+    For each map of the block (``species``, ``strain``, ``anatomical_structures``), every value on the file
+    that the map covers gets a reference to its term(s), stored in-file under
+    ``/general/external_resources``. ``run_conversion`` calls this just before writing, so objects added
+    to an in-memory file after it was created are annotated too. Call it yourself right before writing
+    when you build the file with ``create_nwbfile`` and write it with ``configure_and_write_nwbfile``.
 
     Nothing is inferred, and it is a no-op (returns ``0``) when ``metadata`` carries no ``ExternalResources``
     block. It is idempotent: an existing ``external_resources`` HERD is extended in place, and
