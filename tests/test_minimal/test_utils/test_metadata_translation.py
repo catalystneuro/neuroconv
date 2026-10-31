@@ -205,10 +205,15 @@ class TestTranslationContract:
         assert _translate_old_metadata(metadata) == expected_translated_metadata
 
     # TODO: remove in v0.13.0, when the old list-based metadata format is removed
-    def test_the_units_blocks_survive_an_old_block_beside_them(self):
-        # A converter holding an old-format recording and a sorting annotated in the dict format. The units
-        # blocks exist only in the dict format, so building the block out of the old keys alone drops them,
-        # and the sortings write to the default table with the default description without raising.
+    def test_units_tables_and_sortings_are_kept_when_combined_with_old_ecephys_metadata_format(self):
+        """`UnitsTables` and `Sortings` come through unchanged when the rest of `Ecephys` is in the old format.
+
+        Translation rebuilds an old `Ecephys` block from the keys it knows, and these two exist only in the dict
+        format, so without an explicit copy they are dropped and the units table is written with its default name
+        and description, without an error. A user gets such a block by adding `UnitsTables` to metadata that is
+        otherwise old: the output of `NeuroScopeSortingInterface.get_metadata()`, which still returns an
+        `ElectrodeGroup` list, or a script that still writes `ElectrodeGroup` as a list.
+        """
         metadata = _old_format_metadata()
         metadata["Ecephys"]["UnitsTables"] = {"processed": {"name": "ProcessedUnits", "description": "Curated."}}
         metadata["Ecephys"]["Sortings"] = {"kilosort_sorting": {"units_table_metadata_key": "processed"}}
