@@ -2515,17 +2515,17 @@ class TestAddUnitsTable(TestCase):
 class TestAddSorting:
     """Tests for the units table a sorting writes into, read from ``metadata["Ecephys"]`` by ``add_sorting_to_nwbfile``."""
 
-    def test_nwbfile_units_cannot_be_given_another_name(self):
-        """nwbfile.units is always named "units", so a table entry giving it another name raises instead of being
-        ignored."""
+    def test_canonical_units_table_entry_cannot_have_a_name(self):
+        """The canonical units table is nwbfile.units, always named "units", so its entry raises on any name, "units"
+        included."""
         sorting = generate_sorting(num_units=3, durations=[1.0])
-        units_table_metadata_key = "canonical_units_table"
-        metadata = {"Ecephys": {"UnitsTables": {units_table_metadata_key: {"name": "KilosortUnits"}}}}
+        metadata = {"Ecephys": {"UnitsTables": {"canonical_units_table": {"name": "units"}}}}
 
         expected_error = re.escape(
-            f"metadata['Ecephys']['UnitsTables']['{units_table_metadata_key}'] names the table 'KilosortUnits', but "
-            "the table written with parent_container='units' is nwbfile.units, which is always named 'units'. Use "
-            "parent_container='processing' for a table with another name."
+            "metadata['Ecephys']['UnitsTables']['canonical_units_table'] names the table 'units', but the canonical "
+            "units table is nwbfile.units, which is always named 'units'. Remove 'name' from the entry, or declare "
+            "another table in metadata['Ecephys']['UnitsTables'] and use parent_container='processing' for a table "
+            "with another name."
         )
         with pytest.raises(ValueError, match=expected_error):
             add_sorting_to_nwbfile(
@@ -2993,8 +2993,9 @@ class TestWriteSortingAnalyzer(TestCase):
         metadata = {"Ecephys": {"UnitsTables": {units_table_metadata_key: {"name": "units1"}}}}
         expected_error = re.escape(
             f"metadata['Ecephys']['UnitsTables']['{units_table_metadata_key}'] names the table 'units1', but the "
-            "table written with parent_container='units' is nwbfile.units, which is always named 'units'. Use "
-            "parent_container='processing' for a table with another name."
+            "canonical units table is nwbfile.units, which is always named 'units'. Remove 'name' from the entry, or "
+            "declare another table in metadata['Ecephys']['UnitsTables'] and use parent_container='processing' for "
+            "a table with another name."
         )
         with pytest.raises(ValueError, match=expected_error):
             add_sorting_analyzer_to_nwbfile(
