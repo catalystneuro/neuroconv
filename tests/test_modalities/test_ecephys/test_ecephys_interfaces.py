@@ -40,8 +40,9 @@ class TestSortingInterface(SortingExtractorInterfaceTestMixin):
         """A sorting naming no table writes into the canonical one ("units") and gets
         the table description from the metadata"""
         interface = MockSortingInterface(num_units=3)
+        units_table_metadata_key = "default_units_table"
         metadata = interface.get_metadata()
-        metadata["Ecephys"]["UnitsTables"] = {"units": {"description": "Kilosort 4, curated in Phy."}}
+        metadata["Ecephys"]["UnitsTables"] = {units_table_metadata_key: {"description": "Kilosort 4, curated in Phy."}}
 
         nwbfile = interface.create_nwbfile(metadata=metadata)
 

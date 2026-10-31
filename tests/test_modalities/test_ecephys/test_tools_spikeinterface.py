@@ -2519,7 +2519,7 @@ class TestAddSorting:
         """nwbfile.units is always named "units", so a table entry giving it another name raises instead of being
         ignored."""
         sorting = generate_sorting(num_units=3, durations=[1.0])
-        units_table_metadata_key = "units"
+        units_table_metadata_key = "default_units_table"
         metadata = {"Ecephys": {"UnitsTables": {units_table_metadata_key: {"name": "KilosortUnits"}}}}
 
         expected_error = re.escape(
@@ -2536,7 +2536,7 @@ class TestAddSorting:
         """``metadata_key`` selects which Sortings entry describes this sorting, so it is required whenever the
         metadata carries any."""
         sorting = generate_sorting(num_units=3, durations=[1.0])
-        metadata = {"Ecephys": {"Sortings": {"kilosort_sorting": {"units_table_metadata_key": "units"}}}}
+        metadata = {"Ecephys": {"Sortings": {"kilosort_sorting": {"units_table_metadata_key": "default_units_table"}}}}
 
         expected_error = re.escape(
             "Metadata with entries in metadata['Ecephys']['Sortings'] was passed but no `metadata_key` was "
@@ -2909,7 +2909,7 @@ class TestWriteSortingAnalyzer(TestCase):
 
     def test_units_table_name(self):
         """This tests the units naming exception"""
-        units_table_metadata_key = "units"
+        units_table_metadata_key = "default_units_table"
         metadata = {"Ecephys": {"UnitsTables": {units_table_metadata_key: {"name": "units1"}}}}
         expected_error = re.escape(
             f"metadata['Ecephys']['UnitsTables']['{units_table_metadata_key}'] names the table 'units1', but the "
