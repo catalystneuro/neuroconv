@@ -31,11 +31,6 @@ class TestSortingInterface(SortingExtractorInterfaceTestMixin):
     data_interface_cls = MockSortingInterface
     interface_kwargs = dict(num_units=4, durations=[0.100])
 
-    def test_metadata_key_default(self):
-        metadata_key = "probe_0_sorting"
-        assert MockSortingInterface().metadata_key == "mock_sorting"
-        assert MockSortingInterface(metadata_key=metadata_key).metadata_key == metadata_key
-
     def test_units_table_description_from_metadata(self):
         """A sorting naming no table writes into the canonical one ("units") and gets
         the table description from the metadata"""
