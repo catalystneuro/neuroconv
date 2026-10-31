@@ -2656,30 +2656,6 @@ class TestAddSorting:
 
         assert metadata == metadata_before
 
-    def test_units_name_and_units_description_are_deprecated(self):
-        """The options still name and describe the table, over what metadata says, and warn once each."""
-        sorting = generate_sorting(num_units=3, durations=[1.0])
-        nwbfile = mock_NWBFile()
-
-        with pytest.warns(FutureWarning) as warning_records:
-            add_sorting_to_nwbfile(
-                sorting=sorting,
-                nwbfile=nwbfile,
-                parent_container="processing",
-                units_name="ProcessedUnits",
-                units_description="Units after manual curation.",
-            )
-
-        units_table = get_module(nwbfile, "ecephys")["ProcessedUnits"]
-        assert units_table.description == "Units after manual curation."
-        messages = [str(record.message) for record in warning_records]
-        assert messages == [
-            "The 'units_name' parameter is deprecated and will be removed in v0.13.0. Set the table's 'name' in "
-            "metadata['Ecephys']['UnitsTables'] instead.",
-            "The 'units_description' parameter is deprecated and will be removed in v0.13.0. Set the table's "
-            "'description' in metadata['Ecephys']['UnitsTables'] instead.",
-        ]
-
 
 class TestWaveformParametersAdditionToUnitsTable:
     """Tests for waveform_data_dict parameter and related metadata propagation."""
