@@ -2517,7 +2517,8 @@ class TestAddSorting:
     """Tests for the units table a sorting writes into, read from ``metadata["Ecephys"]`` by ``add_sorting_to_nwbfile``."""
 
     def test_units_table_description_from_metadata(self):
-        """A sorting naming no table writes into the one keyed "units", which takes its description from its entry."""
+        """A sorting naming no table writes into the canonical one ("units") and gets
+        the table description from the metadata"""
         sorting = generate_sorting(num_units=3, durations=[1.0])
         nwbfile = mock_NWBFile()
         metadata = {"Ecephys": {"UnitsTables": {"units": {"description": "Kilosort 4, curated in Phy."}}}}
