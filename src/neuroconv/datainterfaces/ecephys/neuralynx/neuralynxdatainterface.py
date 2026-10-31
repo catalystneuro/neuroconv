@@ -178,6 +178,7 @@ class NeuralynxSortingInterface(BaseSortingExtractorInterface):
         sampling_frequency: float | None = None,
         verbose: bool = False,
         stream_id: str | None = None,
+        metadata_key: str | None = None,
     ):
         """_summary_
 
@@ -192,8 +193,10 @@ class NeuralynxSortingInterface(BaseSortingExtractorInterface):
         stream_id: str, optional
             Used by Spikeinterface and neo to calculate the t_start, if not provided and the stream is unique
             it will be chosen automatically
+        metadata_key : str, optional
+            Key of this sorting's entry in ``metadata["Ecephys"]["Sortings"]``. Defaults to ``"neuralynx_sorting"``.
         """
-
+        self.metadata_key = metadata_key or "neuralynx_sorting"
         super().__init__(
             folder_path=folder_path, sampling_frequency=sampling_frequency, stream_id=stream_id, verbose=verbose
         )

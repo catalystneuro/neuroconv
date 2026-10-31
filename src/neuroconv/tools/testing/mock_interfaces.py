@@ -1067,6 +1067,7 @@ class MockSortingInterface(BaseSortingExtractorInterface):
         durations: tuple[float, ...] = (1.0,),
         seed: int = 0,
         verbose: bool = False,
+        metadata_key: str | None = None,
     ):
         """
         Parameters
@@ -1081,9 +1082,11 @@ class MockSortingInterface(BaseSortingExtractorInterface):
             Seed for the random number generator, by default 0.
         verbose : bool, optional
             Control whether to display verbose messages during writing, by default True.
+        metadata_key : str, optional
+            Key of this sorting's entry in ``metadata["Ecephys"]["Sortings"]``. Defaults to ``"mock_sorting"``.
 
         """
-
+        self.metadata_key = metadata_key or "mock_sorting"
         super().__init__(
             num_units=num_units,
             sampling_frequency=sampling_frequency,

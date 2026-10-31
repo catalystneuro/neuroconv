@@ -278,7 +278,7 @@ class PlexonSortingInterface(BaseSortingExtractorInterface):
         return PlexonSortingExtractor
 
     @validate_call
-    def __init__(self, file_path: FilePath, *, verbose: bool = False):
+    def __init__(self, file_path: FilePath, *, verbose: bool = False, metadata_key: str | None = None):
         """
         Load and prepare data for Plexon.
 
@@ -288,8 +288,10 @@ class PlexonSortingInterface(BaseSortingExtractorInterface):
             Path to the plexon spiking data (.plx file).
         verbose: bool, default: True
             Allows verbosity.
+        metadata_key : str, optional
+            Key of this sorting's entry in ``metadata["Ecephys"]["Sortings"]``. Defaults to ``"plexon_sorting"``.
         """
-
+        self.metadata_key = metadata_key or "plexon_sorting"
         super().__init__(file_path=file_path, verbose=verbose)
 
     def get_metadata(self) -> DeepDict:

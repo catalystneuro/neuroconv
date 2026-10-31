@@ -127,6 +127,7 @@ class BlackrockSortingInterface(BaseSortingExtractorInterface):
         sampling_frequency: Optional[float] = None,
         nsx_to_load: Optional[int | list | str] = None,
         verbose: bool = False,
+        metadata_key: str | None = None,
     ):
         """
         Parameters
@@ -142,8 +143,10 @@ class BlackrockSortingInterface(BaseSortingExtractorInterface):
             If 'all', then all nsX will be loaded. If None, all nsX files will be loaded. If empty list, no nsX files will be loaded.
         verbose : bool, default: False
             Enables verbosity
+        metadata_key : str, optional
+            Key of this sorting's entry in ``metadata["Ecephys"]["Sortings"]``. Defaults to ``"blackrock_sorting"``.
         """
-
+        self.metadata_key = metadata_key or "blackrock_sorting"
         super().__init__(
             file_path=file_path,
             sampling_frequency=sampling_frequency,
