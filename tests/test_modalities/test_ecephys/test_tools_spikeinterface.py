@@ -2555,7 +2555,9 @@ class TestAddSorting:
         units_table_metadata_key = "processed"
         metadata = {
             "Ecephys": {
-                "UnitsTables": {units_table_metadata_key: {"description": "Units after manual curation."}},
+                "UnitsTables": {
+                    units_table_metadata_key: {"name": "ProcessedUnits", "description": "Units after manual curation."}
+                },
                 "Sortings": {metadata_key: {"units_table_metadata_key": units_table_metadata_key}},
             }
         }
@@ -2570,6 +2572,33 @@ class TestAddSorting:
                 sorting=sorting,
                 nwbfile=mock_NWBFile(),
                 parent_container="units",
+                metadata=metadata,
+                metadata_key=metadata_key,
+            )
+
+    def test_processed_units_table_entry_without_name_raises(self):
+        """A table other than the canonical one is written in processing under its entry's name, so an entry without
+        one raises instead of writing a table named "units" that another nameless entry would also write into."""
+        sorting = generate_sorting(num_units=3, durations=[1.0])
+        metadata_key = "kilosort_sorting"
+        units_table_metadata_key = "processed"
+        metadata = {
+            "Ecephys": {
+                "UnitsTables": {units_table_metadata_key: {"description": "Units after manual curation."}},
+                "Sortings": {metadata_key: {"units_table_metadata_key": units_table_metadata_key}},
+            }
+        }
+
+        expected_error = re.escape(
+            f"metadata['Ecephys']['UnitsTables']['{units_table_metadata_key}'] gives no 'name'. A table other than "
+            "'canonical_units_table' is written in processing and needs a name of its own, so that two tables "
+            "never share one."
+        )
+        with pytest.raises(ValueError, match=expected_error):
+            add_sorting_to_nwbfile(
+                sorting=sorting,
+                nwbfile=mock_NWBFile(),
+                parent_container="processing",
                 metadata=metadata,
                 metadata_key=metadata_key,
             )

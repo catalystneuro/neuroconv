@@ -575,8 +575,8 @@ def _get_units_table_name_and_description(
     ``units_table_metadata_key``, and that table's entry in ``metadata["Ecephys"]["UnitsTables"]`` gives the name
     and description. A sorting naming no table writes into the one keyed ``"canonical_units_table"``, which needs no
     entry. That table is ``nwbfile.units``, so its entry takes no ``name``, and it is the only one: a sorting
-    pointing at another table writes it with ``parent_container='processing'``, and ``parent_container='processing'``
-    with metadata stating the canonical table raises.
+    pointing at another table writes it with ``parent_container='processing'`` under the ``name`` its entry must give,
+    and ``parent_container='processing'`` with metadata stating the canonical table raises.
     """
     ecephys_metadata = (metadata or {}).get("Ecephys", {})
     sortings = ecephys_metadata.get("Sortings", {})
@@ -607,6 +607,12 @@ def _get_units_table_name_and_description(
             f"metadata['Ecephys']['Sortings']['{metadata_key}'] writes into the units table "
             f"'{units_table_metadata_key}' with parent_container='units', but only 'canonical_units_table' is "
             "written as nwbfile.units. Use parent_container='processing' for this table."
+        )
+    if units_table_metadata_key != "canonical_units_table" and "name" not in units_table_entry:
+        raise ValueError(
+            f"metadata['Ecephys']['UnitsTables']['{units_table_metadata_key}'] gives no 'name'. A table other than "
+            "'canonical_units_table' is written in processing and needs a name of its own, so that two tables "
+            "never share one."
         )
     states_the_canonical_table = "units_table_metadata_key" in sorting_entry or "canonical_units_table" in units_tables
     if (
