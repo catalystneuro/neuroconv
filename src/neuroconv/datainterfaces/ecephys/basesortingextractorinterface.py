@@ -13,10 +13,7 @@ from ...utils import DeepDict, get_base_schema, get_schema_from_hdmf_class
 
 
 class BaseSortingExtractorInterface(BaseExtractorInterface):
-    """Primary class for all SortingExtractor interfaces.
-
-    Subclasses must set ``self.metadata_key`` before calling ``super().__init__``.
-    """
+    """Primary class for all SortingExtractor interfaces."""
 
     keywords = ("extracellular electrophysiology", "spike sorting")
 
