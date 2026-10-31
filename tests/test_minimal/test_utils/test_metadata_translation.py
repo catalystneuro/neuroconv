@@ -214,9 +214,13 @@ class TestTranslationContract:
         otherwise old: the output of `NeuroScopeSortingInterface.get_metadata()`, which still returns an
         `ElectrodeGroup` list, or a script that still writes `ElectrodeGroup` as a list.
         """
+        metadata_key = "kilosort_sorting"
+        units_table_metadata_key = "processed"
         metadata = _old_format_metadata()
-        metadata["Ecephys"]["UnitsTables"] = {"processed": {"name": "ProcessedUnits", "description": "Curated."}}
-        metadata["Ecephys"]["Sortings"] = {"kilosort_sorting": {"units_table_metadata_key": "processed"}}
+        metadata["Ecephys"]["UnitsTables"] = {
+            units_table_metadata_key: {"name": "ProcessedUnits", "description": "Curated."}
+        }
+        metadata["Ecephys"]["Sortings"] = {metadata_key: {"units_table_metadata_key": units_table_metadata_key}}
         expected_translated_metadata = {
             "Devices": {"MyAcquisitionSystem": {"name": "MyAcquisitionSystem", "description": "A system I described"}},
             "Ecephys": {
@@ -231,8 +235,8 @@ class TestTranslationContract:
                 "ElectricalSeries": {
                     "ElectricalSeries": {"name": "ElectricalSeriesRaw", "description": "Raw traces I described"}
                 },
-                "UnitsTables": {"processed": {"name": "ProcessedUnits", "description": "Curated."}},
-                "Sortings": {"kilosort_sorting": {"units_table_metadata_key": "processed"}},
+                "UnitsTables": {units_table_metadata_key: {"name": "ProcessedUnits", "description": "Curated."}},
+                "Sortings": {metadata_key: {"units_table_metadata_key": units_table_metadata_key}},
             },
         }
 

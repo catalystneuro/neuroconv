@@ -2519,11 +2519,12 @@ class TestAddSorting:
         """nwbfile.units is always named "units", so a table entry giving it another name raises instead of being
         ignored."""
         sorting = generate_sorting(num_units=3, durations=[1.0])
-        metadata = {"Ecephys": {"UnitsTables": {"units": {"name": "KilosortUnits"}}}}
+        units_table_metadata_key = "units"
+        metadata = {"Ecephys": {"UnitsTables": {units_table_metadata_key: {"name": "KilosortUnits"}}}}
 
         expected_error = re.escape(
-            "metadata['Ecephys']['UnitsTables']['units'] names the table 'KilosortUnits', but the table written "
-            "with parent_container='units' is nwbfile.units, which is always named 'units'. Use "
+            f"metadata['Ecephys']['UnitsTables']['{units_table_metadata_key}'] names the table 'KilosortUnits', but "
+            "the table written with parent_container='units' is nwbfile.units, which is always named 'units'. Use "
             "parent_container='processing' for a table with another name."
         )
         with pytest.raises(ValueError, match=expected_error):
@@ -2547,10 +2548,12 @@ class TestAddSorting:
     def test_caller_metadata_is_not_mutated(self):
         """The write path reads the caller's metadata and never writes back into it."""
         sorting = generate_sorting(num_units=3, durations=[1.0])
+        metadata_key = "kilosort_sorting"
+        units_table_metadata_key = "processed"
         metadata = {
             "Ecephys": {
-                "UnitsTables": {"processed": {"name": "ProcessedUnits"}},
-                "Sortings": {"kilosort_sorting": {"units_table_metadata_key": "processed"}},
+                "UnitsTables": {units_table_metadata_key: {"name": "ProcessedUnits"}},
+                "Sortings": {metadata_key: {"units_table_metadata_key": units_table_metadata_key}},
             }
         }
         metadata_before = deepcopy(metadata)
@@ -2560,7 +2563,7 @@ class TestAddSorting:
             nwbfile=mock_NWBFile(),
             parent_container="processing",
             metadata=metadata,
-            metadata_key="kilosort_sorting",
+            metadata_key=metadata_key,
         )
 
         assert metadata == metadata_before
