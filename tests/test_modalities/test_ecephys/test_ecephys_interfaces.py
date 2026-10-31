@@ -65,8 +65,10 @@ class TestSortingInterface(SortingExtractorInterfaceTestMixin):
 
     def test_two_sortings_write_into_one_units_table(self):
         """Two sortings pointing at one table write their units into it, described once in its entry."""
-        probe_0_interface = MockSortingInterface(num_units=3, metadata_key="probe_0_sorting")
-        probe_1_interface = MockSortingInterface(num_units=2, metadata_key="probe_1_sorting")
+        probe_0_metadata_key = "probe_0_sorting"
+        probe_1_metadata_key = "probe_1_sorting"
+        probe_0_interface = MockSortingInterface(num_units=3, metadata_key=probe_0_metadata_key)
+        probe_1_interface = MockSortingInterface(num_units=2, metadata_key=probe_1_metadata_key)
         probe_1_interface.rename_unit_ids({unit_id: f"probe_1_{unit_id}" for unit_id in probe_1_interface.units_ids})
         converter = ConverterPipe(data_interfaces={"probe_0": probe_0_interface, "probe_1": probe_1_interface})
         units_table_metadata_key = "all_probes"
@@ -75,8 +77,8 @@ class TestSortingInterface(SortingExtractorInterfaceTestMixin):
             units_table_metadata_key: {"name": "AllProbes", "description": "Units of both probes."}
         }
         metadata["Ecephys"]["Sortings"] = {
-            probe_0_interface.metadata_key: {"units_table_metadata_key": units_table_metadata_key},
-            probe_1_interface.metadata_key: {"units_table_metadata_key": units_table_metadata_key},
+            probe_0_metadata_key: {"units_table_metadata_key": units_table_metadata_key},
+            probe_1_metadata_key: {"units_table_metadata_key": units_table_metadata_key},
         }
         conversion_options = {name: {"parent_container": "processing"} for name in ("probe_0", "probe_1")}
 
