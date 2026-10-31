@@ -725,6 +725,14 @@ class TestMEArecRecordingInterface(RecordingExtractorInterfaceTestMixin):
             '"sync_jitt": 1, "sync_rate": null, "t_start_drift": 0}'
         )
 
+    def test_get_metadata_after_remove_channels(self):
+        interface = MEArecRecordingInterface(**self.interface_kwargs)
+        devices = interface.get_metadata()["Devices"]
+
+        interface.remove_channels(channel_ids=[interface.channel_ids[-1]])
+
+        assert interface.get_metadata()["Devices"] == devices
+
 
 class TestNeuralynxRecordingInterfaceV574:
     data_interface_cls = NeuralynxRecordingInterface
