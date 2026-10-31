@@ -46,15 +46,14 @@ class TestSortingInterface(SortingExtractorInterfaceTestMixin):
 
     def test_units_table_metadata_key_selects_the_units_table(self):
         """The sorting's entry names its table, and that table's entry gives the name and description written."""
-        interface = MockSortingInterface(num_units=3)
+        metadata_key = "kilosort_sorting"
+        interface = MockSortingInterface(num_units=3, metadata_key=metadata_key)
         units_table_metadata_key = "processed"
         metadata = interface.get_metadata()
         metadata["Ecephys"]["UnitsTables"] = {
             units_table_metadata_key: {"name": "ProcessedUnits", "description": "Units after manual curation."}
         }
-        metadata["Ecephys"]["Sortings"] = {
-            interface.metadata_key: {"units_table_metadata_key": units_table_metadata_key}
-        }
+        metadata["Ecephys"]["Sortings"] = {metadata_key: {"units_table_metadata_key": units_table_metadata_key}}
 
         nwbfile = interface.create_nwbfile(metadata=metadata, parent_container="processing")
 
