@@ -35,18 +35,70 @@ class TestSortingInterface(SortingExtractorInterfaceTestMixin):
         assert MockSortingInterface().metadata_key == "mock_sorting"
         assert MockSortingInterface(metadata_key="probe_0_sorting").metadata_key == "probe_0_sorting"
 
-    def test_metadata_key_passed_to_add_sorting(self):
-        from unittest.mock import patch
+    def test_units_table_description_from_metadata(self):
+        """A sorting naming no table writes into the canonical one ("units") and gets
+        the table description from the metadata"""
+        interface = MockSortingInterface(num_units=3)
+        metadata = interface.get_metadata()
+        metadata["Ecephys"]["UnitsTables"] = {"units": {"description": "Kilosort 4, curated in Phy."}}
 
-        from pynwb.testing.mock.file import mock_NWBFile
+        nwbfile = interface.create_nwbfile(metadata=metadata)
 
-        interface = MockSortingInterface(metadata_key="probe_0_sorting")
-        with patch("neuroconv.tools.spikeinterface.add_sorting_to_nwbfile") as mock_add:
-            interface.add_to_nwbfile(
-                nwbfile=mock_NWBFile(), metadata=interface.get_metadata(), parent_container="processing"
-            )
-            assert mock_add.call_args.kwargs["metadata_key"] == "probe_0_sorting"
-            assert mock_add.call_args.kwargs["parent_container"] == "processing"
+        assert nwbfile.units.name == "units"
+        assert nwbfile.units.description == "Kilosort 4, curated in Phy."
+
+    def test_sorting_writes_into_the_units_table_its_entry_names(self):
+        """The sorting's entry names its table, and that table's entry gives the name and description written."""
+        interface = MockSortingInterface(num_units=3)
+        metadata = interface.get_metadata()
+        metadata["Ecephys"]["UnitsTables"] = {
+            "processed": {"name": "ProcessedUnits", "description": "Units after manual curation."}
+        }
+        metadata["Ecephys"]["Sortings"] = {interface.metadata_key: {"units_table_metadata_key": "processed"}}
+
+        nwbfile = interface.create_nwbfile(metadata=metadata, parent_container="processing")
+
+        units_table = nwbfile.processing["ecephys"]["ProcessedUnits"]
+        assert nwbfile.units is None
+        assert units_table.description == "Units after manual curation."
+        assert len(units_table) == 3
+
+    def test_two_sortings_write_into_one_units_table(self):
+        """Two sortings pointing at one table write their units into it, described once in its entry."""
+        probe_0_interface = MockSortingInterface(num_units=3, metadata_key="probe_0_sorting")
+        probe_1_interface = MockSortingInterface(num_units=2, metadata_key="probe_1_sorting")
+        probe_1_interface.rename_unit_ids({unit_id: f"probe_1_{unit_id}" for unit_id in probe_1_interface.units_ids})
+        converter = ConverterPipe(data_interfaces={"probe_0": probe_0_interface, "probe_1": probe_1_interface})
+        units_table_metadata_key = "all_probes"
+        metadata = converter.get_metadata()
+        metadata["Ecephys"]["UnitsTables"] = {
+            units_table_metadata_key: {"name": "AllProbes", "description": "Units of both probes."}
+        }
+        metadata["Ecephys"]["Sortings"] = {
+            probe_0_interface.metadata_key: {"units_table_metadata_key": units_table_metadata_key},
+            probe_1_interface.metadata_key: {"units_table_metadata_key": units_table_metadata_key},
+        }
+        conversion_options = {name: {"parent_container": "processing"} for name in ("probe_0", "probe_1")}
+
+        nwbfile = converter.create_nwbfile(metadata=metadata, conversion_options=conversion_options)
+
+        units_table = nwbfile.processing["ecephys"]["AllProbes"]
+        assert len(units_table) == 5
+        assert units_table.description == "Units of both probes."
+
+    def test_undeclared_units_table_raises(self):
+        """A sorting entry naming a table that UnitsTables does not declare raises, listing the declared ones."""
+        interface = MockSortingInterface(num_units=3)
+        metadata = interface.get_metadata()
+        metadata["Ecephys"]["UnitsTables"] = {"curated": {"name": "CuratedUnits"}}
+        metadata["Ecephys"]["Sortings"] = {interface.metadata_key: {"units_table_metadata_key": "processed"}}
+
+        expected_error = re.escape(
+            "metadata['Ecephys']['Sortings']['mock_sorting'] writes into the units table 'processed', which "
+            "metadata['Ecephys']['UnitsTables'] does not declare. Declared: ['curated']."
+        )
+        with pytest.raises(ValueError, match=expected_error):
+            interface.create_nwbfile(metadata=metadata, parent_container="processing")
 
     def test_stub(self):
 
