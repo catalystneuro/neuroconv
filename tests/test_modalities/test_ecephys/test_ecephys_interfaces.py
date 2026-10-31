@@ -31,7 +31,7 @@ class TestSortingInterface(SortingExtractorInterfaceTestMixin):
     data_interface_cls = MockSortingInterface
     interface_kwargs = dict(num_units=4, durations=[0.100])
 
-    def test_units_table_description_from_metadata(self):
+    def test_default_units_table_metadata_propagation(self):
         """A sorting naming no table writes into the canonical one ("units") and gets
         the table description from the metadata"""
         interface = MockSortingInterface(num_units=3)
@@ -44,7 +44,7 @@ class TestSortingInterface(SortingExtractorInterfaceTestMixin):
         assert nwbfile.units.name == "units"
         assert nwbfile.units.description == "Kilosort 4, curated in Phy."
 
-    def test_sorting_writes_into_the_units_table_its_entry_names(self):
+    def test_units_table_metadata_key_selects_the_units_table(self):
         """The sorting's entry names its table, and that table's entry gives the name and description written."""
         interface = MockSortingInterface(num_units=3)
         units_table_metadata_key = "processed"
