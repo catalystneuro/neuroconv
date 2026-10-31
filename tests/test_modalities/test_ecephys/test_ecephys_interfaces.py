@@ -62,6 +62,18 @@ class TestSortingInterface(SortingExtractorInterfaceTestMixin):
         assert units_table.description == "Units after manual curation."
         assert len(units_table) == 3
 
+    def test_two_sortings_write_into_the_default_units_table(self):
+        """Two sortings with no entry both write their units into the default table, nwbfile.units."""
+        probe_0_interface = MockSortingInterface(num_units=3, metadata_key="probe_0_sorting")
+        probe_1_interface = MockSortingInterface(num_units=2, metadata_key="probe_1_sorting")
+        probe_1_interface.rename_unit_ids({unit_id: f"probe_1_{unit_id}" for unit_id in probe_1_interface.units_ids})
+        converter = ConverterPipe(data_interfaces={"probe_0": probe_0_interface, "probe_1": probe_1_interface})
+
+        nwbfile = converter.create_nwbfile()
+
+        assert len(nwbfile.units) == 5
+        assert "ecephys" not in nwbfile.processing
+
     def test_two_sortings_write_into_one_processed_units_table(self):
         """Two sortings pointing at one table write their units into it, described once in its entry."""
         probe_0_metadata_key = "probe_0_sorting"
