@@ -62,7 +62,7 @@ class TestSortingInterface(SortingExtractorInterfaceTestMixin):
         assert units_table.description == "Units after manual curation."
         assert len(units_table) == 3
 
-    def test_two_sortings_write_into_one_units_table(self):
+    def test_two_sortings_write_into_one_processed_units_table(self):
         """Two sortings pointing at one table write their units into it, described once in its entry."""
         probe_0_metadata_key = "probe_0_sorting"
         probe_1_metadata_key = "probe_1_sorting"
