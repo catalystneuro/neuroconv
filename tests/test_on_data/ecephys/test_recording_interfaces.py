@@ -774,6 +774,15 @@ class TestNeuralynxRecordingInterfaceV574:
             assert len(extracted_value) == n_channels
             assert exp_value == extracted_value[0]
 
+    def test_get_metadata_after_remove_channels(self):
+        folder_path = ECEPHY_DATA_PATH / "neuralynx" / "Cheetah_v5.7.4" / "original_data"
+        interface = NeuralynxRecordingInterface(folder_path=folder_path)
+        session_start_time = interface.get_metadata()["NWBFile"]["session_start_time"]
+
+        interface.remove_channels(channel_ids=[interface.channel_ids[-1]])
+
+        assert interface.get_metadata()["NWBFile"]["session_start_time"] == session_start_time
+
 
 class TestNeuralynxRecordingInterfaceV563:
     data_interface_cls = NeuralynxRecordingInterface
