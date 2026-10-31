@@ -573,7 +573,7 @@ def _get_units_table_name_and_description(
 
     The sorting's entry in ``metadata["Ecephys"]["Sortings"]`` names its table through
     ``units_table_metadata_key``, and that table's entry in ``metadata["Ecephys"]["UnitsTables"]`` gives the name
-    and description. A sorting naming no table writes into the one keyed ``"default_units_table"``, which needs no
+    and description. A sorting naming no table writes into the one keyed ``"canonical_units_table"``, which needs no
     entry.
     """
     ecephys_metadata = (metadata or {}).get("Ecephys", {})
@@ -584,9 +584,9 @@ def _get_units_table_name_and_description(
             "provided. `metadata_key` selects which entry describes this sorting."
         )
     sorting_entry = sortings.get(metadata_key, {})
-    units_table_metadata_key = sorting_entry.get("units_table_metadata_key", "default_units_table")
+    units_table_metadata_key = sorting_entry.get("units_table_metadata_key", "canonical_units_table")
     units_tables = ecephys_metadata.get("UnitsTables", {})
-    if units_table_metadata_key != "default_units_table" and units_table_metadata_key not in units_tables:
+    if units_table_metadata_key != "canonical_units_table" and units_table_metadata_key not in units_tables:
         raise ValueError(
             f"metadata['Ecephys']['Sortings']['{metadata_key}'] writes into the units table "
             f"'{units_table_metadata_key}', which metadata['Ecephys']['UnitsTables'] does not declare. "
@@ -671,7 +671,7 @@ def add_sorting_to_nwbfile(
     metadata : dict, optional
         The units table this sorting writes into is read from ``metadata["Ecephys"]``: the sorting's entry in
         ``Sortings`` names it through ``units_table_metadata_key``, and its entry in ``UnitsTables`` gives the
-        ``name`` and ``description``. A sorting naming no table writes into the one keyed ``"default_units_table"``.
+        ``name`` and ``description``. A sorting naming no table writes into the one keyed ``"canonical_units_table"``.
     metadata_key : str, optional
         Key of this sorting's entry in ``metadata["Ecephys"]["Sortings"]``.
     write_as : {'units', 'processing'}, optional
