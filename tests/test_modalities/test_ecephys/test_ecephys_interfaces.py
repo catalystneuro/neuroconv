@@ -99,6 +99,35 @@ class TestSortingInterface(SortingExtractorInterfaceTestMixin):
         assert len(units_table) == 5
         assert units_table.description == "Units of both probes."
 
+    def test_two_sortings_write_into_their_own_processed_units_tables(self):
+        """Two sortings pointing at different tables each write their units into their own, described by its entry."""
+        probe_0_metadata_key = "probe_0_sorting"
+        probe_1_metadata_key = "probe_1_sorting"
+        probe_0_interface = MockSortingInterface(num_units=3, metadata_key=probe_0_metadata_key)
+        probe_1_interface = MockSortingInterface(num_units=2, metadata_key=probe_1_metadata_key)
+        converter = ConverterPipe(data_interfaces={"probe_0": probe_0_interface, "probe_1": probe_1_interface})
+        probe_0_units_table_metadata_key = "probe_0_units_table"
+        probe_1_units_table_metadata_key = "probe_1_units_table"
+        metadata = converter.get_metadata()
+        metadata["Ecephys"]["UnitsTables"] = {
+            probe_0_units_table_metadata_key: {"name": "Probe0Units", "description": "Units of probe 0."},
+            probe_1_units_table_metadata_key: {"name": "Probe1Units", "description": "Units of probe 1."},
+        }
+        metadata["Ecephys"]["Sortings"] = {
+            probe_0_metadata_key: {"units_table_metadata_key": probe_0_units_table_metadata_key},
+            probe_1_metadata_key: {"units_table_metadata_key": probe_1_units_table_metadata_key},
+        }
+        conversion_options = {name: {"parent_container": "processing"} for name in ("probe_0", "probe_1")}
+
+        nwbfile = converter.create_nwbfile(metadata=metadata, conversion_options=conversion_options)
+
+        probe_0_units_table = nwbfile.processing["ecephys"]["Probe0Units"]
+        probe_1_units_table = nwbfile.processing["ecephys"]["Probe1Units"]
+        assert len(probe_0_units_table) == 3
+        assert len(probe_1_units_table) == 2
+        assert probe_0_units_table.description == "Units of probe 0."
+        assert probe_1_units_table.description == "Units of probe 1."
+
     def test_undeclared_units_table_raises(self):
         """A sorting entry naming a table that UnitsTables does not declare raises, listing the declared ones."""
         metadata_key = "probe_0_sorting"
