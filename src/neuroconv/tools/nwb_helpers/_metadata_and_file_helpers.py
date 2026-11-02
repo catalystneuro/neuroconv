@@ -721,7 +721,7 @@ def configure_and_write_nwbfile(
         Specifies the backend type and the chunking and compression parameters of each dataset. If no
         ``backend_configuration`` is specified, the default configuration for the specified ``backend`` is used.
     metadata: dict, optional
-        Conversion metadata. The terms in ``metadata["ExternalResources"]`` are written into the file as HERD
+        Conversion metadata.  Only ``metadata["ExternalResources"]`` is read: its terms are written into the file as HERD
         references before the backend is configured, see
         :py:func:`~neuroconv.tools.external_resources.add_external_resources_to_nwbfile`.
     """
