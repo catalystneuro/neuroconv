@@ -94,7 +94,7 @@ def configure_backend(
                 data_chunk_iterator_kwargs=data_chunk_iterator_kwargs,
             )
         # Skip the setting of a DataIO when target dataset is a link (assume it will be found in parent)
-        elif isinstance(neurodata_object, TimeSeries) and is_dataset_linked:
+        elif isinstance(neurodata_object, NWBContainer) and is_dataset_linked:
             continue
         # Strictly speaking, it would be odd if a `backend_configuration` got to this line, but might as well be safe
         else:
