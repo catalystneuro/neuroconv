@@ -5,7 +5,7 @@ import pytest
 from hdmf.build import BuildManager
 from hdmf_zarr import NWBZarrIO
 from pynwb import NWBHDF5IO, TimeSeries, get_type_map, read_nwb
-from pynwb.spec import NWBGroupSpec, NWBNamespaceBuilder
+from pynwb.spec import NWBAttributeSpec, NWBDatasetSpec, NWBGroupSpec, NWBNamespaceBuilder
 from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.tools.nwb_helpers import configure_and_write_nwbfile
@@ -78,3 +78,152 @@ def test_configure_and_write_nwbfile_with_unimported_extension(
             from zarr.codecs import GzipCodec
 
             assert written_data.compressors == (GzipCodec(level=4),)
+
+
+@pytest.fixture
+def unimported_extension_datasets_nwbfile_path(tmp_path) -> str:
+    """
+    Path to an NWB file holding an extension container that is not a `TimeSeries` but has `data` and `timestamps`.
+
+    The container is written with a local type map, so reading the file back builds its class from the cached spec.
+    """
+    namespace_builder = NWBNamespaceBuilder(
+        name=NAMESPACE_NAME,
+        version="0.1.0",
+        doc="Namespace of an extension used to write a test file.",
+        author=["CatalystNeuro"],
+        contact=["conversions@catalystneuro.com"],
+    )
+    namespace_builder.include_type("NWBDataInterface", namespace="core")
+    namespace_builder.add_spec(
+        source=f"{NAMESPACE_NAME}.extensions.yaml",
+        spec=NWBGroupSpec(
+            neurodata_type_def="ExtensionRecording",
+            neurodata_type_inc="NWBDataInterface",
+            doc="A container defined by an extension, holding its own data and timestamps.",
+            datasets=[
+                NWBDatasetSpec(name="data", dtype="float64", dims=["num_samples"], shape=[None], doc="The data."),
+                NWBDatasetSpec(
+                    name="timestamps", dtype="float64", dims=["num_samples"], shape=[None], doc="The timestamps."
+                ),
+            ],
+        ),
+    )
+    namespace_builder.export(path=f"{NAMESPACE_NAME}.namespace.yaml", outdir=str(tmp_path))
+
+    type_map = get_type_map()  # A deep copy of the global type map
+    type_map.load_namespaces(str(tmp_path / f"{NAMESPACE_NAME}.namespace.yaml"))
+    extension_recording_class = type_map.get_dt_container_cls(namespace=NAMESPACE_NAME, data_type="ExtensionRecording")
+
+    nwbfile = mock_NWBFile()
+    nwbfile.add_acquisition(
+        extension_recording_class(
+            name="extension_recording",
+            data=np.arange(10, dtype="float64"),
+            timestamps=np.arange(10, dtype="float64") / 10.0,
+        )
+    )
+
+    nwbfile_path = tmp_path / "unimported_extension_datasets.nwb"
+    with NWBHDF5IO(str(nwbfile_path), mode="w", manager=BuildManager(type_map)) as io:
+        io.write(nwbfile)
+
+    return str(nwbfile_path)
+
+
+@pytest.mark.parametrize("backend", ["hdf5", "zarr"])
+def test_configure_and_write_nwbfile_with_unimported_extension_datasets(
+    tmp_path, unimported_extension_datasets_nwbfile_path: str, backend: str
+):
+    nwbfile = read_nwb(path=unimported_extension_datasets_nwbfile_path)
+
+    export_path = str(tmp_path / f"exported_{backend}.nwb")
+    configure_and_write_nwbfile(nwbfile=nwbfile, nwbfile_path=export_path, backend=backend)
+    nwbfile.read_io.close()
+
+    io_class = NWBHDF5IO if backend == "hdf5" else NWBZarrIO
+    with io_class(export_path, mode="r") as io:
+        written_nwbfile = io.read()
+        written_recording = written_nwbfile.acquisition["extension_recording"]
+        np.testing.assert_array_equal(written_recording.data[:], np.arange(10, dtype="float64"))
+        np.testing.assert_array_equal(
+            written_recording.timestamps[:],
+            np.array([0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]),
+        )
+        for written_dataset in (written_recording.data, written_recording.timestamps):
+            if backend == "hdf5":
+                assert written_dataset.compression == "gzip"
+            else:
+                from zarr.codecs import GzipCodec
+
+                assert written_dataset.compressors == (GzipCodec(level=4),)
+
+
+@pytest.fixture
+def legacy_ndx_events_nwbfile_path(tmp_path) -> str:
+    """
+    Path to an NWB file holding an ndx-events 0.2 `Events` container, written without ndx-events installed.
+
+    The namespace reproduces the name and the `Events` layout of ndx-events 0.2, so reading the file back builds
+    `Events` from the cached spec, as it is for every reader that does not import the installed ndx-events classes.
+    """
+    namespace_builder = NWBNamespaceBuilder(
+        name="ndx-events",
+        version="0.2.0",
+        doc="The ndx-events 0.2 `Events` type, reproduced to write a test file.",
+        author=["CatalystNeuro"],
+        contact=["conversions@catalystneuro.com"],
+    )
+    namespace_builder.include_type("NWBDataInterface", namespace="core")
+    namespace_builder.add_spec(
+        source="ndx-events.extensions.yaml",
+        spec=NWBGroupSpec(
+            neurodata_type_def="Events",
+            neurodata_type_inc="NWBDataInterface",
+            doc="A list of timestamps, stored in seconds, of an event.",
+            attributes=[NWBAttributeSpec(name="description", dtype="text", doc="Description of the event.")],
+            datasets=[
+                NWBDatasetSpec(
+                    name="timestamps", dtype="float32", dims=["num_events"], shape=[None], doc="Event timestamps."
+                )
+            ],
+        ),
+    )
+    namespace_builder.export(path="ndx-events.namespace.yaml", outdir=str(tmp_path))
+
+    type_map = get_type_map()  # A deep copy of the global type map
+    type_map.load_namespaces(str(tmp_path / "ndx-events.namespace.yaml"))
+    events_class = type_map.get_dt_container_cls(namespace="ndx-events", data_type="Events")
+
+    nwbfile = mock_NWBFile()
+    timestamps = np.array([0.5, 1.5, 2.5], dtype="float32")
+    nwbfile.add_acquisition(events_class(name="reward_times", description="Reward times.", timestamps=timestamps))
+
+    nwbfile_path = tmp_path / "legacy_ndx_events.nwb"
+    with NWBHDF5IO(str(nwbfile_path), mode="w", manager=BuildManager(type_map)) as io:
+        io.write(nwbfile)
+
+    return str(nwbfile_path)
+
+
+@pytest.mark.parametrize("backend", ["hdf5", "zarr"])
+def test_configure_and_write_nwbfile_with_legacy_ndx_events(
+    tmp_path, legacy_ndx_events_nwbfile_path: str, backend: str
+):
+    nwbfile = read_nwb(path=legacy_ndx_events_nwbfile_path)
+
+    export_path = str(tmp_path / f"exported_{backend}.nwb")
+    configure_and_write_nwbfile(nwbfile=nwbfile, nwbfile_path=export_path, backend=backend)
+    nwbfile.read_io.close()
+
+    io_class = NWBHDF5IO if backend == "hdf5" else NWBZarrIO
+    with io_class(export_path, mode="r") as io:
+        written_nwbfile = io.read()
+        written_timestamps = written_nwbfile.acquisition["reward_times"].timestamps
+        np.testing.assert_array_equal(written_timestamps[:], np.array([0.5, 1.5, 2.5], dtype="float32"))
+        if backend == "hdf5":
+            assert written_timestamps.compression == "gzip"
+        else:
+            from zarr.codecs import GzipCodec
+
+            assert written_timestamps.compressors == (GzipCodec(level=4),)
