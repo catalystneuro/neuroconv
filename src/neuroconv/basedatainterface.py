@@ -324,13 +324,12 @@ class BaseDataInterface(ABC):
         else:
             nwbfile = self.create_nwbfile(metadata=metadata, **conversion_options)
 
-        add_external_resources_to_nwbfile(nwbfile, metadata=metadata)
-
         configure_and_write_nwbfile(
             nwbfile=nwbfile,
             nwbfile_path=nwbfile_path,
             backend=backend,
             backend_configuration=backend_configuration,
+            metadata=metadata,
         )
 
     def _append_nwbfile(
