@@ -21,6 +21,9 @@ These values can be annotated:
   `Allen Mouse Brain Atlas <https://bioregistry.io/registry/mba>`_ (MBA), the
   `Allen Human Brain Atlas <https://bioregistry.io/registry/hba>`_ (HBA) or
   `UBERON <https://bioregistry.io/registry/uberon>`_;
+- the names in the file's **experimenter** list
+  (:py:attr:`NWBFile.experimenter <pynwb.file.NWBFile.experimenter>`), each with its
+  `ORCID <https://bioregistry.io/registry/orcid>`_ iD;
 - the file's **institution** (:py:attr:`NWBFile.institution <pynwb.file.NWBFile.institution>`), with its
   `ROR <https://bioregistry.io/registry/ror>`_ ID.
 
@@ -70,7 +73,7 @@ of terms:
     ]
 
 The ``ExternalResources`` block is part of the metadata schema: only the ``species``, ``strain``,
-``anatomical_structures`` and ``institution`` maps are accepted, and every term needs a non-empty
+``anatomical_structures``, ``experimenter`` and ``institution`` maps are accepted, and every term needs a non-empty
 ``id`` and ``uri``. A misspelled map name such as ``metadata["ExternalResources"]["anatomical_structure"]``
 therefore fails metadata validation instead of silently annotating nothing.
 
@@ -116,6 +119,23 @@ that have no matching term, such as keypoints on a lever or a headstage:
         "ShoulderLeft": {"id": "UBERON:0001467", "uri": "http://purl.obolibrary.org/obo/UBERON_0001467"},
     }
 
+Experimenters
+~~~~~~~~~~~~~
+
+Annotate each name in ``NWBFile.experimenter`` with that person's ORCID iD. Each name is annotated on its
+own, so a name without an iD is left out:
+
+.. code-block:: python
+
+    metadata["NWBFile"]["experimenter"] = ["Carberry, Josiah", "Doe, Jane"]
+
+    metadata["ExternalResources"]["experimenter"] = {
+        "Carberry, Josiah": {"id": "orcid:0000-0002-1825-0097", "uri": "https://orcid.org/0000-0002-1825-0097"},
+    }
+
+The `ORCID search <https://orcid.org/orcid-search/search>`_ gives the iD of a person, and
+``https://orcid.org/<iD>`` resolves it.
+
 Institution
 ~~~~~~~~~~~
 
@@ -149,16 +169,14 @@ just before writing, in both write and append mode, for an interface or a conver
 
 Annotation happens at write time, on the file as it is then, so anything added to the in-memory file
 after it was created is annotated too. When you build the file with ``create_nwbfile`` and write it
-yourself, call the function right before writing:
+yourself, pass the metadata to ``configure_and_write_nwbfile``, which makes the same call before writing:
 
 .. code-block:: python
 
-    from neuroconv.tools.external_resources import add_external_resources_to_nwbfile
     from neuroconv.tools.nwb_helpers import configure_and_write_nwbfile
 
     nwbfile = interface.create_nwbfile(metadata=metadata)
-    add_external_resources_to_nwbfile(nwbfile, metadata=metadata)  # returns the number of references added
-    configure_and_write_nwbfile(nwbfile=nwbfile, nwbfile_path="out.nwb", backend="hdf5")
+    configure_and_write_nwbfile(nwbfile=nwbfile, nwbfile_path="out.nwb", backend="hdf5", metadata=metadata)
 
 Values the metadata does not name are left untouched. The call is a no-op when the metadata has no
 ``ExternalResources`` block, and it is idempotent: an in-memory ``external_resources`` HERD is extended
