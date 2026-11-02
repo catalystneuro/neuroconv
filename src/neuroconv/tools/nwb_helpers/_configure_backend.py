@@ -1,11 +1,9 @@
 """Collection of helper functions related to configuration of datasets dependent on backend."""
 
-import importlib
 import math
 
 from hdmf.common import Data
 from hdmf.data_utils import AbstractDataChunkIterator, DataChunkIterator
-from packaging import version
 from pynwb import NWBFile, TimeSeries
 from pynwb.core import NWBData
 
@@ -13,7 +11,6 @@ from ._configuration_models._base_dataset_io import _find_location_in_memory_nwb
 from ._configuration_models._hdf5_backend import HDF5BackendConfiguration
 from ._configuration_models._zarr_backend import ZarrBackendConfiguration
 from ..hdmf import _get_nwbfile_builder, has_compound_dtype
-from ..importing import get_package_version, is_package_installed
 
 
 def configure_backend(
@@ -29,9 +26,6 @@ def configure_backend(
     backend_configuration : HDF5BackendConfiguration or ZarrBackendConfiguration
         The configuration model to use when configuring the datasets for this backend.
     """
-    is_ndx_events_installed = is_package_installed(package_name="ndx_events")
-    ndx_events = importlib.import_module("ndx_events") if is_ndx_events_installed else None
-
     nwbfile_is_on_disk = nwbfile.read_io is not None
 
     # A remapping of the object IDs in the backend configuration might necessary
@@ -99,19 +93,10 @@ def configure_backend(
                 data_chunk_iterator_class=data_chunk_iterator_class,
                 data_chunk_iterator_kwargs=data_chunk_iterator_kwargs,
             )
-        # Special ndx-events v0.2.x types (v0.2.0, v0.2.1, v0.2.2 — not yet integrated into NWB core)
-        elif is_ndx_events_installed and (get_package_version("ndx-events") < version.parse("0.3.0")):
-            # Temporarily skipping LabeledEvents
-            if isinstance(neurodata_object, ndx_events.LabeledEvents):
-                continue
-            elif isinstance(neurodata_object, ndx_events.Events):
-                neurodata_object.set_data_io(
-                    dataset_name=dataset_name,
-                    data_io_class=data_io_class,
-                    data_io_kwargs=data_io_kwargs,
-                    data_chunk_iterator_class=data_chunk_iterator_class,
-                    data_chunk_iterator_kwargs=data_chunk_iterator_kwargs,
-                )
+        # Legacy ndx-events containers, superseded by the core EventsTable, are not configured. Matching on the
+        # namespace catches a class built from a file's cached spec as well as one imported from ndx-events.
+        elif neurodata_object.namespace == "ndx-events":
+            continue
         # Skip the setting of a DataIO when target dataset is a link (assume it will be found in parent)
         elif isinstance(neurodata_object, TimeSeries) and is_dataset_linked:
             continue
