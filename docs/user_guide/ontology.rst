@@ -23,7 +23,9 @@ These values can be annotated:
   `UBERON <https://bioregistry.io/registry/uberon>`_;
 - the names in the file's **experimenter** list
   (:py:attr:`NWBFile.experimenter <pynwb.file.NWBFile.experimenter>`), each with its
-  `ORCID <https://bioregistry.io/registry/orcid>`_ iD.
+  `ORCID <https://bioregistry.io/registry/orcid>`_ iD;
+- the file's **institution** (:py:attr:`NWBFile.institution <pynwb.file.NWBFile.institution>`), with its
+  `ROR <https://bioregistry.io/registry/ror>`_ ID.
 
 Anatomical-structure annotation covers every free-text ``location`` field in the NWB core schema and the
 extensions NeuroConv writes, and the node names of pose-estimation skeletons:
@@ -71,7 +73,7 @@ of terms:
     ]
 
 The ``ExternalResources`` block is part of the metadata schema: only the ``species``, ``strain``,
-``anatomical_structures`` and ``experimenter`` maps are accepted, and every term needs a non-empty
+``anatomical_structures``, ``experimenter`` and ``institution`` maps are accepted, and every term needs a non-empty
 ``id`` and ``uri``. A misspelled map name such as ``metadata["ExternalResources"]["anatomical_structure"]``
 therefore fails metadata validation instead of silently annotating nothing.
 
@@ -133,6 +135,22 @@ own, so a name without an iD is left out:
 
 The `ORCID search <https://orcid.org/orcid-search/search>`_ gives the iD of a person, and
 ``https://orcid.org/<iD>`` resolves it.
+
+Institution
+~~~~~~~~~~~
+
+Annotate ``NWBFile.institution`` with the ROR (Research Organization Registry) ID of the organization:
+
+.. code-block:: python
+
+    metadata["NWBFile"]["institution"] = "Allen Institute"
+
+    metadata["ExternalResources"]["institution"] = {
+        "Allen Institute": {"id": "ror:03cpe7c52", "uri": "https://ror.org/03cpe7c52"},
+    }
+
+The `ROR search <https://ror.org/search>`_ gives the ID of an organization, and ``https://ror.org/<ID>``
+resolves it.
 
 Writing the references
 ----------------------

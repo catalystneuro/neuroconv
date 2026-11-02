@@ -184,6 +184,10 @@
         "experimenter": {
           "description": "Terms for the names in NWBFile.experimenter, keyed by the name.",
           "$ref": "#/definitions/TermMap"
+        },
+        "institution": {
+          "description": "Terms for NWBFile.institution, keyed by the institution value.",
+          "$ref": "#/definitions/TermMap"
         }
       }
     },

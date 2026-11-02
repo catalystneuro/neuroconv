@@ -16,7 +16,9 @@ string it annotates (HERD links a term to an object through that string):
   ``FiberPhotometryTable``), regardless of which modality it belongs to, and for ``ndx-pose``
   ``Skeleton.nodes`` entries (pose-estimation keypoints);
 - ``metadata["ExternalResources"]["experimenter"]`` -> ``{name: term-or-list}`` for each name in
-  ``NWBFile.experimenter``.
+  ``NWBFile.experimenter``;
+- ``metadata["ExternalResources"]["institution"]`` -> ``{institution string: term-or-list}`` for
+  ``NWBFile.institution``.
 
 Each term is an explicit ``{"id": <CURIE>, "uri": <resolvable URI>}`` dict; a list of them annotates
 one value with several ontologies (e.g. both MBA and UBERON). This representation is
@@ -123,6 +125,11 @@ def _experimenter_targets(nwbfile: NWBFile) -> list:
     return [(nwbfile, "experimenter", "general/experimenter", name) for name in dict.fromkeys(names)]
 
 
+def _institution_targets(nwbfile: NWBFile) -> list:
+    """The file's ``institution`` as a ``(container, attribute, relative_path, value)`` target."""
+    return [(nwbfile, "institution", "general/institution", _unwrapped(nwbfile.institution))]
+
+
 def _location_containers(nwbfile: NWBFile) -> list:
     """Every object on the file that carries a scalar ``location`` attribute naming an anatomical structure.
 
@@ -208,6 +215,7 @@ _TARGET_FINDERS = {
     "strain": partial(_subject_attribute_targets, attribute="strain"),
     "anatomical_structures": _anatomical_structure_targets,
     "experimenter": _experimenter_targets,
+    "institution": _institution_targets,
 }
 
 
@@ -234,9 +242,9 @@ def add_external_resources_to_nwbfile(nwbfile: NWBFile, metadata: dict | None = 
     """
     Write every term stated in ``metadata["ExternalResources"]`` into the file as HERD references.
 
-    For each map of the block (``species``, ``strain``, ``anatomical_structures``, ``experimenter``), every
-    value on the file that the map covers gets a reference to its term(s), stored in-file under
-    ``/general/external_resources``. ``run_conversion`` and ``configure_and_write_nwbfile`` call this just
+    For each map of the block (``species``, ``strain``, ``anatomical_structures``, ``experimenter``,
+    ``institution``), every value on the file that the map covers gets a reference to its term(s), stored in-file
+    under ``/general/external_resources``. ``run_conversion`` and ``configure_and_write_nwbfile`` call this just
     before writing, so objects added to an in-memory file after it was created are annotated too.
 
     Nothing is inferred, and it is a no-op (returns ``0``) when ``metadata`` carries no ``ExternalResources``
