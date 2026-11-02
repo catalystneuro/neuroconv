@@ -180,6 +180,10 @@
         "anatomical_structures": {
           "description": "Terms for anatomical location fields (electrodes, electrode groups, imaging planes, intracellular electrodes, optogenetic stimulus sites, viral vector injections, fiber photometry) and ndx-pose Skeleton node names (pose-estimation keypoints), keyed by the location or node name.",
           "$ref": "#/definitions/TermMap"
+        },
+        "experimenter": {
+          "description": "Terms for the names in NWBFile.experimenter, keyed by the name.",
+          "$ref": "#/definitions/TermMap"
         }
       }
     },

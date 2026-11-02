@@ -40,6 +40,9 @@ class _IcephysSeriesData:
     timestamps: np.ndarray
     conversion: float
     offset: float = 0.0
+    # A stimulus's own `(start_index, count)` per sweep, for a source whose stimulus and response sweeps differ in
+    # length. None addresses the stimulus by the response's ranges.
+    sweep_sample_ranges: list[tuple[int, int]] | None = None
 
 
 def _add_patch_clamp_series_to_nwbfile(
@@ -228,6 +231,7 @@ def _add_intracellular_recordings_to_nwbfile(
     sweep_sample_ranges: list,
     sequence: str,
     stimulus_series=None,
+    stimulus_sweep_sample_ranges: list | None = None,
     stimulus_type: str | None = None,
     repetition: str | None = None,
     condition: str | None = None,
@@ -268,7 +272,11 @@ def _add_intracellular_recordings_to_nwbfile(
     sequence : str
         The run identity shared by these sweeps, grouped on to build a ``SequentialRecordings`` entry.
     stimulus_series : PatchClampStimulusSeries, optional
-        The run's stimulus, addressed by the same ranges, when the source carries one.
+        The run's stimulus, when the source carries one, addressed by ``stimulus_sweep_sample_ranges`` or else by
+        the same ranges.
+    stimulus_sweep_sample_ranges : list of tuple of int, optional
+        One ``(start_index, count)`` per sweep, into ``stimulus_series``, when its sweeps differ in length from
+        the response's.
     stimulus_type : str, optional
         What kind of run this was. Omitted rather than given a placeholder when the source stated none.
     repetition : str, optional
@@ -294,16 +302,20 @@ def _add_intracellular_recordings_to_nwbfile(
                 data=[_UNSTATED_RUN_LEVEL_VALUE] * len(table),
             )
 
-    for start_index, count in sweep_sample_ranges:
+    if stimulus_sweep_sample_ranges is None:
+        stimulus_sweep_sample_ranges = sweep_sample_ranges
+    for (response_start_index, response_count), (stimulus_start_index, stimulus_count) in zip(
+        sweep_sample_ranges, stimulus_sweep_sample_ranges, strict=True
+    ):
         keyword_arguments = dict(
             electrode=electrode,
             response=response_series,
-            response_start_index=start_index,
-            response_index_count=count,
+            response_start_index=response_start_index,
+            response_index_count=response_count,
         )
         if stimulus_series is not None:
             keyword_arguments.update(
-                stimulus=stimulus_series, stimulus_start_index=start_index, stimulus_index_count=count
+                stimulus=stimulus_series, stimulus_start_index=stimulus_start_index, stimulus_index_count=stimulus_count
             )
         keyword_arguments.update(columns)
         nwbfile.add_intracellular_recording(**keyword_arguments)
