@@ -17,13 +17,18 @@ These values can be annotated:
   an `NCBITaxon <https://bioregistry.io/registry/ncbitaxon>`_ term;
 - the subject's **strain** (:py:attr:`Subject.strain <pynwb.file.Subject.strain>`), usually with an
   `RRID <https://bioregistry.io/registry/rrid>`_;
-- anatomical **brain regions**, usually with a term from the
+- **anatomical structures**, such as brain areas, other tissues, and body parts, usually with a term from the
   `Allen Mouse Brain Atlas <https://bioregistry.io/registry/mba>`_ (MBA), the
   `Allen Human Brain Atlas <https://bioregistry.io/registry/hba>`_ (HBA) or
-  `UBERON <https://bioregistry.io/registry/uberon>`_.
+  `UBERON <https://bioregistry.io/registry/uberon>`_;
+- the names in the file's **experimenter** list
+  (:py:attr:`NWBFile.experimenter <pynwb.file.NWBFile.experimenter>`), each with its
+  `ORCID <https://bioregistry.io/registry/orcid>`_ iD;
+- the file's **institution** (:py:attr:`NWBFile.institution <pynwb.file.NWBFile.institution>`), with its
+  `ROR <https://bioregistry.io/registry/ror>`_ ID.
 
-Brain-region annotation covers every free-text ``location`` field in the NWB core schema and the
-extensions NeuroConv writes:
+Anatomical-structure annotation covers every free-text ``location`` field in the NWB core schema and the
+extensions NeuroConv writes, and the node names of pose-estimation skeletons:
 
 - the electrodes table ``location`` column and ``ElectrodeGroup.location`` (ecephys);
 - ``ImagingPlane.location`` (ophys);
@@ -31,7 +36,8 @@ extensions NeuroConv writes:
 - ``OptogeneticStimulusSite.location`` (optogenetics);
 - the ``FiberPhotometryTable`` ``location`` column (fiber photometry);
 - ``ViralVectorInjection.location``, the targeted region of a virus injection (``ndx-ophys-devices``,
-  used by both fiber photometry and ``ndx-optogenetics``).
+  used by both fiber photometry and ``ndx-optogenetics``);
+- ``Skeleton.nodes``, the keypoints of an ``ndx-pose`` skeleton (pose estimation).
 
 Where the terms live in metadata
 --------------------------------
@@ -49,27 +55,27 @@ takes effect where the file carries the same value:
         "species": {
             "Mus musculus": {"id": "NCBITaxon:10090", "uri": "http://purl.obolibrary.org/obo/NCBITaxon_10090"},
         },
-        "brain_regions": {
+        "anatomical_structures": {
             "CA1": {"id": "MBA:382", "uri": "https://purl.brain-bican.org/ontology/mbao/MBA_382"},
         },
     }
 
-Brain-region terms are keyed by the free-text ``location`` string, whether that string labels an
-electrode, an imaging plane, or a fiber-photometry site: the same string means the same place across
-modalities in a single file. To annotate one value with **several** ontologies, map it to a list of
-terms:
+Anatomical-structure terms are keyed by the free-text string, whether that string labels an electrode, an
+imaging plane, a fiber-photometry site, or a skeleton node: the same string means the same structure
+across modalities in a single file. To annotate one value with **several** ontologies, map it to a list
+of terms:
 
 .. code-block:: python
 
-    metadata["ExternalResources"]["brain_regions"]["CA1"] = [
+    metadata["ExternalResources"]["anatomical_structures"]["CA1"] = [
         {"id": "MBA:382", "uri": "https://purl.brain-bican.org/ontology/mbao/MBA_382"},
         {"id": "UBERON:0003881", "uri": "http://purl.obolibrary.org/obo/UBERON_0003881"},
     ]
 
-The ``ExternalResources`` block is part of the metadata schema: only the ``species``, ``strain`` and ``brain_regions``
-maps are accepted, and every term needs a non-empty ``id`` and ``uri``. A misspelled map name such as
-``metadata["ExternalResources"]["brain_region"]`` therefore fails metadata validation instead of silently
-annotating nothing.
+The ``ExternalResources`` block is part of the metadata schema: only the ``species``, ``strain``,
+``anatomical_structures``, ``experimenter`` and ``institution`` maps are accepted, and every term needs a non-empty
+``id`` and ``uri``. A misspelled map name such as ``metadata["ExternalResources"]["anatomical_structure"]``
+therefore fails metadata validation instead of silently annotating nothing.
 
 Finding a term
 ~~~~~~~~~~~~~~
@@ -98,6 +104,54 @@ Charles River (``RRID:IMSR_CRL:027``) and from Taconic (``RRID:IMSR_TAC:b6``) ha
 The RRID of a mouse strain from a repository such as JAX or MMRRC appears on the strain's page there, and
 ``https://scicrunch.org/resolver/<RRID>`` resolves any RRID.
 
+Pose-estimation body parts
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The ``anatomical_structures`` map also annotates the node names of every ``ndx-pose`` ``Skeleton`` on the
+file, wherever the skeleton sits. Keypoint names are often lab conventions (``"EarL"``,
+``"ShoulderLeft"``), so map each name you want annotated to the structure it marks, and leave out names
+that have no matching term, such as keypoints on a lever or a headstage:
+
+.. code-block:: python
+
+    metadata["ExternalResources"]["anatomical_structures"] = {
+        "Snout": {"id": "UBERON:0006333", "uri": "http://purl.obolibrary.org/obo/UBERON_0006333"},
+        "ShoulderLeft": {"id": "UBERON:0001467", "uri": "http://purl.obolibrary.org/obo/UBERON_0001467"},
+    }
+
+Experimenters
+~~~~~~~~~~~~~
+
+Annotate each name in ``NWBFile.experimenter`` with that person's ORCID iD. Each name is annotated on its
+own, so a name without an iD is left out:
+
+.. code-block:: python
+
+    metadata["NWBFile"]["experimenter"] = ["Carberry, Josiah", "Doe, Jane"]
+
+    metadata["ExternalResources"]["experimenter"] = {
+        "Carberry, Josiah": {"id": "orcid:0000-0002-1825-0097", "uri": "https://orcid.org/0000-0002-1825-0097"},
+    }
+
+The `ORCID search <https://orcid.org/orcid-search/search>`_ gives the iD of a person, and
+``https://orcid.org/<iD>`` resolves it.
+
+Institution
+~~~~~~~~~~~
+
+Annotate ``NWBFile.institution`` with the ROR (Research Organization Registry) ID of the organization:
+
+.. code-block:: python
+
+    metadata["NWBFile"]["institution"] = "Allen Institute"
+
+    metadata["ExternalResources"]["institution"] = {
+        "Allen Institute": {"id": "ror:03cpe7c52", "uri": "https://ror.org/03cpe7c52"},
+    }
+
+The `ROR search <https://ror.org/search>`_ gives the ID of an organization, and ``https://ror.org/<ID>``
+resolves it.
+
 Writing the references
 ----------------------
 
@@ -115,16 +169,14 @@ just before writing, in both write and append mode, for an interface or a conver
 
 Annotation happens at write time, on the file as it is then, so anything added to the in-memory file
 after it was created is annotated too. When you build the file with ``create_nwbfile`` and write it
-yourself, call the function right before writing:
+yourself, pass the metadata to ``configure_and_write_nwbfile``, which makes the same call before writing:
 
 .. code-block:: python
 
-    from neuroconv.tools.external_resources import add_external_resources_to_nwbfile
     from neuroconv.tools.nwb_helpers import configure_and_write_nwbfile
 
     nwbfile = interface.create_nwbfile(metadata=metadata)
-    add_external_resources_to_nwbfile(nwbfile, metadata=metadata)  # returns the number of references added
-    configure_and_write_nwbfile(nwbfile=nwbfile, nwbfile_path="out.nwb", backend="hdf5")
+    configure_and_write_nwbfile(nwbfile=nwbfile, nwbfile_path="out.nwb", backend="hdf5", metadata=metadata)
 
 Values the metadata does not name are left untouched. The call is a no-op when the metadata has no
 ``ExternalResources`` block, and it is idempotent: an in-memory ``external_resources`` HERD is extended

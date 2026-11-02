@@ -31,6 +31,7 @@ from ...datainterfaces.events.baseeventsinterface import (
 from ...datainterfaces.fiber_photometry.basefiberphotometryinterface import (
     BaseFiberPhotometryInterface,
 )
+from ...datainterfaces.icephys.baseicephysinterface import BaseIcephysInterface
 from ...datainterfaces.ophys.baseimagingextractorinterface import (
     BaseImagingExtractorInterface,
 )
@@ -42,7 +43,7 @@ from ...tools.events import (
     _resolve_detection_plan,
     _validate_detection_configuration,
 )
-from ...tools.icephys import _RESPONSE_CLASS, _add_intracellular_electrode_to_nwbfile
+from ...tools.icephys import _IcephysSeriesData
 from ...tools.signal_processing import (
     _condition_signal,
     _detect_events,
@@ -50,7 +51,6 @@ from ...tools.signal_processing import (
 )
 from ...utils import (
     ArrayType,
-    calculate_regular_series_rate,
     get_json_schema_from_method_signature,
     to_camel_case,
 )
@@ -1011,10 +1011,7 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
             probe = self.recording_extractor.get_probe()
             contact_ids = [f"e{i}" for i in range(num_channels)]
             probe.set_contact_ids(contact_ids)
-            # TODO: drop `in_place=True` once spikeinterface>=0.105.0 is the minimum pin, where the call
-            # is always in place, returns None and the argument is deprecated. It is required on 0.104,
-            # which otherwise returns a new recording and leaves this one unchanged.
-            self.recording_extractor.set_probe(probe, group_mode="by_probe", in_place=True)
+            self.recording_extractor.set_probe(probe, group_mode="by_probe")
 
         def _letters(index):
             name = ""
@@ -1619,12 +1616,13 @@ class MockExternalVideoInterface(ExternalVideoInterface):
         return 0.0
 
 
-class MockIcephysInterface(BaseDataInterface):
+class MockIcephysInterface(BaseIcephysInterface):
     """
     A mock intracellular electrophysiology interface for testing purposes.
 
-    Writes one electrode's synthetic response as a single continuous response series (the class chosen by the
-    clamp ``mode``, as a real interface does) plus one
+    Writes one electrode's synthetic response, and optionally a paired stimulus, through
+    :class:`BaseIcephysInterface` the way a real interface does: a single continuous response series (the class
+    chosen by the clamp ``mode``) plus one
     intracellular-recordings row per sweep, each addressing the sweep's ``(start_index, count)`` sample range.
     That is the contract every icephys interface emits, so this exercises the format-independent machinery in
     :mod:`neuroconv.tools.icephys` (which reads those rows back to build the hierarchy tables and the sweep
@@ -1647,6 +1645,7 @@ class MockIcephysInterface(BaseDataInterface):
         repetition: str | None = None,
         condition: str | None = None,
         metadata_key: str = "mock",
+        stimulus_duration: float | None = None,
         seed: int = 0,
         verbose: bool = False,
     ):
@@ -1684,24 +1683,40 @@ class MockIcephysInterface(BaseDataInterface):
         metadata_key : str, default: "mock"
             Identity of this interface's electrode and response series in the metadata dict. Give combined
             instances distinct keys so each writes its own electrode and series.
+        stimulus_duration : float, optional
+            Duration of every sweep's paired stimulus, in seconds. None writes no stimulus. A duration other than
+            ``sweep_duration`` gives the stimulus its own sweep ranges, as for a sweep that stops recording before
+            its command ends.
         seed : int, default: 0
             Seed for the random number generator.
         verbose : bool, default: False
             Control verbosity.
         """
         super().__init__(verbose=verbose)
-        self.mode = mode
+        self._mode = mode
         self.num_sweeps = num_sweeps
         self.sweep_duration = sweep_duration
         self.sampling_frequency = sampling_frequency
         self.inter_sweep_interval = inter_sweep_interval
         self.starting_time = starting_time
-        self.sequence = sequence
+        self._run_identity = sequence
         self.stimulus_type = stimulus_type
-        self.repetition = repetition
-        self.condition = condition
+        self._repetition = repetition
+        self._condition = condition
         self.metadata_key = metadata_key
+        self.stimulus_duration = stimulus_duration
         self.seed = seed
+
+        # The base writer reads these. The series key doubles as the alignment key, as in the real interfaces.
+        self._series_metadata_key = metadata_key
+        self._alignment_key = metadata_key
+        samples_per_sweep = round(sweep_duration * sampling_frequency)
+        self.temporal_alignment._register(
+            key=self._alignment_key,
+            get_native_times=partial(self._get_sweep_times, samples_per_sweep),
+            default_start_time=starting_time,
+            get_number_of_samples=lambda: num_sweeps * samples_per_sweep,
+        )
 
     def get_metadata(self) -> DeepDict:
         """
@@ -1739,98 +1754,64 @@ class MockIcephysInterface(BaseDataInterface):
             "voltage_clamp": "VoltageClampSeries",
             "current_clamp": "CurrentClampSeries",
             "izero": "IZeroClampSeries",
-        }[self.mode]
+        }[self._mode]
         metadata["Icephys"]["PatchClampSeries"] = {
             self.metadata_key: {
                 "name": f"{response_type_name}{name_suffix}",
-                "description": f"Mock intracellular response ({self.mode}).",
+                "description": f"Mock intracellular response ({self._mode}).",
                 "electrode_metadata_key": self.metadata_key,
             }
         }
+        # The stimulus sits in its own registry at the same key as its response and reuses its electrode.
+        if self.stimulus_duration is not None:
+            stimulus_type_name = {
+                "voltage_clamp": "VoltageClampStimulusSeries",
+                "current_clamp": "CurrentClampStimulusSeries",
+            }[self._mode]
+            metadata["Icephys"]["PatchClampStimulusSeries"] = {
+                self.metadata_key: {
+                    "name": f"{stimulus_type_name}{name_suffix}",
+                    "description": f"Mock intracellular stimulus ({self._mode}).",
+                }
+            }
         return metadata
 
-    def add_to_nwbfile(
-        self,
-        nwbfile: NWBFile,
-        metadata: dict | None = None,
-    ):
-        """
-        Add the mock response series and its per-sweep intracellular-recordings rows to an NWB file.
-
-        Parameters
-        ----------
-        nwbfile : NWBFile
-            The NWB file the series and rows are added to.
-        metadata : dict, optional
-            Metadata dictionary. If None, uses default metadata.
-        """
-        if metadata is None:
-            metadata = self.get_metadata()
-
-        response_metadata = metadata["Icephys"]["PatchClampSeries"][self.metadata_key]
-        electrode = _add_intracellular_electrode_to_nwbfile(
-            nwbfile, metadata, response_metadata["electrode_metadata_key"]
-        )
-
+    def _get_icephys_series_data(self):
+        """Return the synthetic response, the optional stimulus and the sweep ranges for the base writer."""
         samples_per_sweep = round(self.sweep_duration * self.sampling_frequency)
         rng = np.random.default_rng(self.seed)
-        total_samples = self.num_sweeps * samples_per_sweep
-        data = rng.standard_normal(total_samples).astype("float32")
-
-        # The sweeps are laid end to end in one continuous series, each starting an inter-sweep interval after
-        # the previous one ended; the ranges are the (start_index, count) pairs the recordings rows address.
+        data = rng.standard_normal(self.num_sweeps * samples_per_sweep).astype("float32")
+        response_data = _IcephysSeriesData(
+            data=data, timestamps=self._get_sweep_times(samples_per_sweep), conversion=1.0
+        )
+        # The sweeps are laid end to end in one continuous series; the ranges are the (start_index, count) pairs
+        # the recordings rows address.
         sweep_sample_ranges = [
             (sweep_index * samples_per_sweep, samples_per_sweep) for sweep_index in range(self.num_sweeps)
         ]
-        timestamps = np.empty(total_samples, dtype="float64")
-        for sweep_index, (start_index, count) in enumerate(sweep_sample_ranges):
-            sweep_start_time = self.starting_time + sweep_index * (self.sweep_duration + self.inter_sweep_interval)
-            timestamps[start_index : start_index + count] = (
-                sweep_start_time + np.arange(count) / self.sampling_frequency
-            )
 
-        series_kwargs = dict(
-            name=response_metadata["name"],
-            description=response_metadata["description"],
-            data=data,
-            electrode=electrode,
-            gain=np.nan,
+        stimulus_data = None
+        if self.stimulus_duration is not None:
+            stimulus_samples_per_sweep = round(self.stimulus_duration * self.sampling_frequency)
+            stimulus_data = _IcephysSeriesData(
+                data=np.ones(self.num_sweeps * stimulus_samples_per_sweep, dtype="float32"),
+                timestamps=self._get_sweep_times(stimulus_samples_per_sweep),
+                conversion=1.0,
+            )
+            if stimulus_samples_per_sweep != samples_per_sweep:
+                stimulus_data.sweep_sample_ranges = [
+                    (sweep_index * stimulus_samples_per_sweep, stimulus_samples_per_sweep)
+                    for sweep_index in range(self.num_sweeps)
+                ]
+        return response_data, stimulus_data, sweep_sample_ranges
+
+    def _get_stimulus_type(self) -> str | None:
+        return self.stimulus_type
+
+    def _get_sweep_times(self, samples_per_sweep: int) -> np.ndarray:
+        """Times of ``samples_per_sweep`` samples from the start of every sweep, the sweeps laid end to end."""
+        # Each sweep starts an inter-sweep interval after the previous one ended.
+        sweep_start_times = self.starting_time + np.arange(self.num_sweeps) * (
+            self.sweep_duration + self.inter_sweep_interval
         )
-        # Same timing rule as a real interface: a uniform rate while the samples stay regular, explicit
-        # timestamps once the inter-sweep gaps make them irregular.
-        rate = calculate_regular_series_rate(series=timestamps)
-        if rate is not None:
-            series_kwargs.update(starting_time=float(timestamps[0]), rate=rate)
-        else:
-            series_kwargs.update(timestamps=timestamps)
-        response_series = _RESPONSE_CLASS[self.mode](**series_kwargs)
-        nwbfile.add_acquisition(response_series)
-
-        # The run-level columns, denormalized onto every row exactly as a real interface writes them: the
-        # always-present run identity, plus the optional ones only when the caller asked for them.
-        columns = {"sequence": self.sequence}
-        if self.stimulus_type is not None:
-            columns["stimulus_type"] = self.stimulus_type
-        if self.repetition is not None:
-            columns["repetition"] = self.repetition
-        if self.condition is not None:
-            columns["condition"] = self.condition
-        column_descriptions = {
-            "sequence": "Run identity grouping rows into a sequential recording.",
-            "stimulus_type": "Stimulus type of the run, carried up to its sequential recording when aggregated.",
-            "repetition": "Repetition label grouping sequential recordings into a repetition.",
-            "condition": "Experimental condition label grouping repetitions.",
-        }
-        table = nwbfile.get_intracellular_recordings()
-        for column_name in columns:
-            if column_name not in table.colnames:
-                table.add_column(name=column_name, description=column_descriptions[column_name])
-
-        for start_index, count in sweep_sample_ranges:
-            nwbfile.add_intracellular_recording(
-                electrode=electrode,
-                response=response_series,
-                response_start_index=start_index,
-                response_index_count=count,
-                **columns,
-            )
+        return (sweep_start_times[:, np.newaxis] + np.arange(samples_per_sweep) / self.sampling_frequency).ravel()

@@ -1192,7 +1192,10 @@ class TestMicroManagerTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
             location="unknown",
             device=cls.device_metadata["name"],
             optical_channel=[cls.optical_channel_metadata],
-            imaging_rate=20.0,
+            # TODO: expect exactly 1 / 0.04995 once roiextractors is released with
+            # https://github.com/catalystneuro/roiextractors/pull/649, which takes the rate from the frame times
+            # (20.02 Hz) instead of PlaybackFPS (20.0 Hz). Until then the release and roiextractors main differ.
+            imaging_rate=pytest.approx(20.0, abs=0.05),
         )
         cls.two_photon_series_metadata = dict(
             name="TwoPhotonSeries",
@@ -1222,7 +1225,8 @@ class TestMicroManagerTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
         assert "Devices" not in metadata
         assert metadata["Ophys"] == {
             "ImagingPlanes": {
-                metadata_key: {"imaging_rate": 20.0},
+                # TODO: expect exactly 1 / 0.04995, see the imaging_rate in setup_metadata
+                metadata_key: {"imaging_rate": pytest.approx(20.0, abs=0.05)},
             },
             "MicroscopySeries": {
                 metadata_key: {
