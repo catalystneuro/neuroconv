@@ -18,6 +18,7 @@ CA1_TERM = {"id": "MBA:382", "uri": "https://purl.brain-bican.org/ontology/mbao/
 C57BL6J_STRAIN_TERM = {"id": "RRID:IMSR_JAX:000664", "uri": "https://scicrunch.org/resolver/RRID:IMSR_JAX:000664"}
 # ORCID's demonstration record, for the fictitious Josiah Carberry.
 CARBERRY_ORCID_TERM = {"id": "orcid:0000-0002-1825-0097", "uri": "https://orcid.org/0000-0002-1825-0097"}
+ALLEN_INSTITUTE_TERM = {"id": "ror:03cpe7c52", "uri": "https://ror.org/03cpe7c52"}
 
 
 def _make_nwbfile(species="Mus musculus", with_subject=True, **subject_kwargs) -> NWBFile:
@@ -291,6 +292,30 @@ class TestExperimenterExternalResource:
 
 
 # ---------------------------------------------------------------------------
+# Institution HERD annotation (metadata -> file)
+# ---------------------------------------------------------------------------
+
+
+class TestInstitutionExternalResource:
+    def test_institution_term_from_metadata_is_annotated(self, tmp_path):
+        from pynwb import NWBHDF5IO
+
+        nwbfile = _make_nwbfile()
+        nwbfile.institution = "Allen Institute"
+        metadata = {"ExternalResources": {"institution": {"Allen Institute": ALLEN_INSTITUTE_TERM}}}
+        assert add_external_resources_to_nwbfile(nwbfile, metadata=metadata) == 1
+
+        objects = nwbfile.external_resources.objects.to_dataframe()
+        assert objects["object_id"].tolist() == [nwbfile.object_id]
+        assert objects["relative_path"].tolist() == ["general/institution"]
+
+        path = tmp_path / "institution.nwb"
+        with NWBHDF5IO(path, "w") as io:
+            io.write(nwbfile)
+        assert _written_references(path) == {("NWBFile", "Allen Institute", "ror:03cpe7c52")}
+
+
+# ---------------------------------------------------------------------------
 # The ExternalResources block of the base metadata schema
 # ---------------------------------------------------------------------------
 
@@ -315,6 +340,7 @@ class TestExternalResourcesMetadataSchema:
             {"species": {"Mus musculus": MOUSE_SPECIES_TERM}},
             {"strain": {"C57BL/6J": C57BL6J_STRAIN_TERM}},
             {"experimenter": {"Carberry, Josiah": CARBERRY_ORCID_TERM}},
+            {"institution": {"Allen Institute": ALLEN_INSTITUTE_TERM}},
             {
                 "anatomical_structures": {
                     "CA1": [BRAIN_REGION_TERM, {"id": "UBERON:0003881", "uri": "https://example.org/U"}]
@@ -322,7 +348,7 @@ class TestExternalResourcesMetadataSchema:
             },
             {"anatomical_structures": {"CA1": {**BRAIN_REGION_TERM, "label": "Field CA1"}}},  # extra keys are allowed
         ],
-        ids=["empty", "species", "strain", "experimenter", "list_of_terms", "term_with_label"],
+        ids=["empty", "species", "strain", "experimenter", "institution", "list_of_terms", "term_with_label"],
     )
     def test_valid_blocks_pass(self, block, base_metadata_schema):
         self._validate(block, base_metadata_schema)
