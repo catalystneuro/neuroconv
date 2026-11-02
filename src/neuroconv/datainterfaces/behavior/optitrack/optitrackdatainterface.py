@@ -9,7 +9,7 @@ from pynwb import TimeSeries
 from pynwb.behavior import SpatialSeries
 from pynwb.file import NWBFile
 
-from ._optitrack_reader import get_assets, read_header, read_motion_capture_data
+from ._optitrack_reader import get_assets, read_asset_types, read_header, read_motion_capture_data
 from .._pose_metadata_template import _get_skeleton_template_entry
 from ...._temporal_alignment import _TemporalAlignment
 from ....basedatainterface import BaseDataInterface
@@ -178,12 +178,14 @@ class OptiTrackInterface(BaseDataInterface):
         :meth:`get_metadata_template` returns the same structure with the fields the export does not record
         marked as blanks.
         """
-        # This import is to assure that the ndx_pose is in the global namespace when an pynwb.io object is created
-        # For more detail, see https://github.com/rly/ndx-pose/issues/36
-        import ndx_pose  # noqa: F401
-
         self._file_path = Path(file_path)
         self._header = read_header(self._file_path)
+
+        # Only a take with bones or markers writes ndx-pose types, no need to import otherwise.
+        # The import puts ndx_pose in the global namespace before a pynwb.io object is created
+        # (https://github.com/rly/ndx-pose/issues/36).
+        if read_asset_types(self._file_path) & set(_POSE_ASSET_TYPES):
+            import ndx_pose  # noqa: F401
 
         self.metadata_key = metadata_key or "optitrack"
         self._motion_capture_data = None

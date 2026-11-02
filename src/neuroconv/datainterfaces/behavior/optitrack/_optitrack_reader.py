@@ -40,6 +40,20 @@ def read_header(file_path: Path) -> dict[str, str]:
     return header
 
 
+def read_asset_types(file_path: Path) -> set[str]:
+    """Read the asset types in the ``Type`` row of a Motive CSV export, such as ``"Rigid Body"`` and ``"Marker"``.
+
+    The ``Type`` row is the first non-blank row after the export settings line.
+    """
+    with open(file_path, encoding="utf-8") as file:
+        next(file)  # the export settings line
+        for line in file:
+            if line.strip():
+                # The first two columns are the `Frame` and `Time` columns.
+                return set(line.strip().split(",")[2:])
+    return set()
+
+
 def read_motion_capture_data(file_path: Path) -> pd.DataFrame:
     """Read the data from a Motive CSV export.
 
