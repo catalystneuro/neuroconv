@@ -9,7 +9,13 @@ from pynwb import TimeSeries
 from pynwb.behavior import SpatialSeries
 from pynwb.file import NWBFile
 
-from ._optitrack_reader import get_assets, read_asset_types, read_header, read_motion_capture_data
+from ._optitrack_reader import (
+    _POSE_ASSET_TYPES,
+    _has_pose_estimation_assets,
+    get_assets,
+    read_header,
+    read_motion_capture_data,
+)
 from .._pose_metadata_template import _get_skeleton_template_entry
 from ...._temporal_alignment import _TemporalAlignment
 from ....basedatainterface import BaseDataInterface
@@ -18,11 +24,6 @@ from ....tools.pose_estimation import _add_multi_camera_pose_estimation_to_nwbfi
 from ....utils import DeepDict, calculate_regular_series_rate, to_camel_case, to_snake_case
 
 _MOTIVE_CAPTURE_START_TIME_FORMATS = ("%Y-%m-%d %I.%M.%S.%f %p", "%Y-%m-%d %I.%M.%S %p")
-
-# The asset types whose labeled points are written as pose estimation, grouped by the skeleton or marker set
-# that owns them. `Rigid Body Marker` columns are not among them: they are where Motive's model puts each
-# marker, computed from the rigid body's pose rather than measured.
-_POSE_ASSET_TYPES = ("Bone", "Marker")
 
 # Used in place of an owner to name the container of labeled markers with no owner in their label, as written by
 # exports in format versions 1.1 and 1.2.
@@ -184,7 +185,7 @@ class OptiTrackInterface(BaseDataInterface):
         # Only a take with bones or markers writes ndx-pose types, no need to import otherwise.
         # The import puts ndx_pose in the global namespace before a pynwb.io object is created
         # (https://github.com/rly/ndx-pose/issues/36).
-        if read_asset_types(self._file_path) & set(_POSE_ASSET_TYPES):
+        if _has_pose_estimation_assets(self._file_path):
             import ndx_pose  # noqa: F401
 
         self.metadata_key = metadata_key or "optitrack"
