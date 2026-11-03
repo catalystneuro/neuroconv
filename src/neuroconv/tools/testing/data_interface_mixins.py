@@ -11,7 +11,7 @@ import numpy as np
 import pytest
 from jsonschema.validators import Draft7Validator, validate
 from numpy.testing import assert_allclose, assert_array_equal
-from pynwb import read_nwb
+from pynwb import TimeSeries, read_nwb
 from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv import BaseDataInterface, NWBConverter
@@ -1713,3 +1713,45 @@ class EventsInterfaceTestMixin(DataInterfaceTestMixin):
             sample_before_times = sample_before_interface.get_event_times(event_type_source_id)
             assert len(sample_before_times) == len(default_times)
             assert np.all(sample_before_times < default_times)
+
+
+class TimeSeriesInterfaceTestMixin(DataInterfaceTestMixin):
+    """Shared tests for the interfaces that write their channels as ``TimeSeries``.
+
+    A subclass sets ``data_interface_cls``, ``interface_kwargs`` and ``expected_time_series_names`` and inherits the
+    schema, metadata and round-trip tests of ``DataInterfaceTestMixin``, with ``check_read_nwb`` asserting what is
+    true of every such interface whatever it reads from: the series it writes carry the stated names, sit in the
+    container the interface writes to, and hold data whose timing matches it. Nothing here reads the source, so a
+    subclass that wants to pin the values of its fixture states them in its own ``check_read_nwb``, calling
+    ``super().check_read_nwb`` first.
+    """
+
+    # Stated by each test class as a literal tuple. The names are what a user finds in the file, so the expected
+    # value is never derived from the interface under test, which could not fail.
+    expected_time_series_names: tuple[str, ...]
+
+    def check_read_nwb(self, nwbfile_path: str):
+        """The written series carry the expected names, in the interface's container, with data and timing."""
+        nwbfile = read_nwb(nwbfile_path)
+
+        # An interface that does not say where it writes writes to acquisition.
+        parent_container = getattr(self.interface, "parent_container", "acquisition")
+        container = getattr(nwbfile, parent_container)
+        written_names = [
+            name for name, neurodata_object in container.items() if isinstance(neurodata_object, TimeSeries)
+        ]
+        expected_names = sorted(self.expected_time_series_names)
+        assert (
+            sorted(written_names) == expected_names
+        ), f"Wrote {sorted(written_names)} to {parent_container}, expected {expected_names}."
+
+        for name in self.expected_time_series_names:
+            time_series = container[name]
+            number_of_samples = time_series.data.shape[0]
+            assert number_of_samples > 0, f"{name} was written without data."
+            if time_series.timestamps is not None:
+                assert len(time_series.timestamps) == number_of_samples
+            else:
+                assert time_series.rate is not None, f"{name} has neither timestamps nor a rate."
+
+        nwbfile.read_io.close()

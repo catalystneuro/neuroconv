@@ -457,13 +457,10 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         # Set the probe to the recording extractor. SpikeInterface 0.105 removed the private
         # `_set_probes`, which took either a Probe or a ProbeGroup; the public entry points are split
         # by type, so dispatch here.
-        # TODO: drop `in_place=True` once spikeinterface>=0.105.0 is the minimum pin, where these calls
-        # are always in place and the argument is deprecated. It is required on 0.104, which otherwise
-        # returns a new recording and leaves this one unchanged.
         if isinstance(probe, ProbeGroup):
-            self.recording_extractor.set_probegroup(probe, group_mode=group_mode, in_place=True)
+            self.recording_extractor.set_probegroup(probe, group_mode=group_mode)
         else:
-            self.recording_extractor.set_probe(probe, group_mode=group_mode, in_place=True)
+            self.recording_extractor.set_probe(probe, group_mode=group_mode)
 
         # Spike interface sets the "group" property
         # But neuroconv allows "group_name" property to override spike interface "group" value

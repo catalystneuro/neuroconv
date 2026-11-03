@@ -175,6 +175,14 @@ class TestAxonaRecordingInterface(RecordingExtractorInterfaceTestMixin):
         for electrode_group in metadata["Ecephys"]["ElectrodeGroup"]:
             assert electrode_group["device"] == "Axona"
 
+    def test_get_metadata_after_remove_channels(self):
+        interface = AxonaRecordingInterface(**self.interface_kwargs)
+        session_start_time = interface.get_metadata()["NWBFile"]["session_start_time"]
+
+        interface.remove_channels(channel_ids=[interface.channel_ids[-1]])
+
+        assert interface.get_metadata()["NWBFile"]["session_start_time"] == session_start_time
+
 
 class TestAxonaLFPDataInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = AxonaLFPDataInterface
@@ -725,6 +733,14 @@ class TestMEArecRecordingInterface(RecordingExtractorInterfaceTestMixin):
             '"sync_jitt": 1, "sync_rate": null, "t_start_drift": 0}'
         )
 
+    def test_get_metadata_after_remove_channels(self):
+        interface = MEArecRecordingInterface(**self.interface_kwargs)
+        devices = interface.get_metadata()["Devices"]
+
+        interface.remove_channels(channel_ids=[interface.channel_ids[-1]])
+
+        assert interface.get_metadata()["Devices"] == devices
+
 
 class TestNeuralynxRecordingInterfaceV574:
     data_interface_cls = NeuralynxRecordingInterface
@@ -765,6 +781,15 @@ class TestNeuralynxRecordingInterfaceV574:
             extracted_value = self.interface.recording_extractor.get_property(key)
             assert len(extracted_value) == n_channels
             assert exp_value == extracted_value[0]
+
+    def test_get_metadata_after_remove_channels(self):
+        folder_path = ECEPHY_DATA_PATH / "neuralynx" / "Cheetah_v5.7.4" / "original_data"
+        interface = NeuralynxRecordingInterface(folder_path=folder_path)
+        session_start_time = interface.get_metadata()["NWBFile"]["session_start_time"]
+
+        interface.remove_channels(channel_ids=[interface.channel_ids[-1]])
+
+        assert interface.get_metadata()["NWBFile"]["session_start_time"] == session_start_time
 
 
 class TestNeuralynxRecordingInterfaceV563:

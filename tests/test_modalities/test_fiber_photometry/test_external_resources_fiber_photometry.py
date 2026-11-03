@@ -79,7 +79,7 @@ from neuroconv.tools.external_resources import add_external_resources_to_nwbfile
 metadata = {{
     "ExternalResources": {{
         "species": {{"Mus musculus": {{"id": "NCBITaxon:10090", "uri": "http://purl.obolibrary.org/obo/NCBITaxon_10090"}}}},
-        "brain_regions": {{"VTA": {{"id": "MBA:749", "uri": "https://purl.brain-bican.org/ontology/mbao/MBA_749"}}}},
+        "anatomical_structures": {{"VTA": {{"id": "MBA:749", "uri": "https://purl.brain-bican.org/ontology/mbao/MBA_749"}}}},
     }}
 }}
 with NWBHDF5IO({str(path)!r}, "r+", load_namespaces=True) as io:
@@ -152,7 +152,7 @@ assert not any(module.startswith("ndx_") for module in sys.modules), "an extensi
             ),
         )
         metadata["ExternalResources"] = dict(
-            brain_regions={"CA1": {"id": "MBA:382", "uri": "https://example.org/MBA_382"}}
+            anatomical_structures={"CA1": {"id": "MBA:382", "uri": "https://example.org/MBA_382"}}
         )
         series_metadata = fiber_photometry_metadata[interface.metadata_key]
         series_metadata["fiber_photometry_table_region"] = ["row0"]
