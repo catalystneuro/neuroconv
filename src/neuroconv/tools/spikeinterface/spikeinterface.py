@@ -588,6 +588,17 @@ def _get_units_table_name_and_description(
     sorting_entry = sortings.get(metadata_key, {})
     units_table_metadata_key = sorting_entry.get("units_table_metadata_key", "canonical_units_table")
     units_tables = ecephys_metadata.get("UnitsTables", {})
+    units_table_metadata_keys_by_name = {}
+    for key, entry in units_tables.items():
+        name = entry.get("name")
+        if name is None:
+            continue
+        if name in units_table_metadata_keys_by_name:
+            raise ValueError(
+                f"metadata['Ecephys']['UnitsTables'] keys '{units_table_metadata_keys_by_name[name]}' and '{key}' "
+                f"use name '{name}'. Use 1 key to share a units table."
+            )
+        units_table_metadata_keys_by_name[name] = key
     if units_table_metadata_key != "canonical_units_table" and units_table_metadata_key not in units_tables:
         raise ValueError(
             f"metadata['Ecephys']['Sortings']['{metadata_key}'] writes into the units table "

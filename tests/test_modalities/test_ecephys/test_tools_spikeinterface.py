@@ -2603,6 +2603,39 @@ class TestAddSorting:
                 metadata_key=metadata_key,
             )
 
+    def test_two_units_table_entries_with_the_same_name_raise(self):
+        """Two UnitsTables entries with one name would be written as one table, so the first write raises before
+        anything is written."""
+        sorting = generate_sorting(num_units=3, durations=[1.0])
+        nwbfile = mock_NWBFile()
+        metadata_key = "phy_sorting"
+        curated_units_table_metadata_key = "curated"
+        raw_units_table_metadata_key = "raw"
+        units_table_name = "ProcessedUnits"
+        metadata = {
+            "Ecephys": {
+                "UnitsTables": {
+                    curated_units_table_metadata_key: {"name": units_table_name, "description": "Curated in Phy."},
+                    raw_units_table_metadata_key: {"name": units_table_name, "description": "Raw Kilosort output."},
+                },
+                "Sortings": {metadata_key: {"units_table_metadata_key": curated_units_table_metadata_key}},
+            }
+        }
+
+        expected_error = re.escape(
+            f"metadata['Ecephys']['UnitsTables'] keys '{curated_units_table_metadata_key}' and "
+            f"'{raw_units_table_metadata_key}' use name '{units_table_name}'. Use 1 key to share a units table."
+        )
+        with pytest.raises(ValueError, match=expected_error):
+            add_sorting_to_nwbfile(
+                sorting=sorting,
+                nwbfile=nwbfile,
+                parent_container="processing",
+                metadata=metadata,
+                metadata_key=metadata_key,
+            )
+        assert "ecephys" not in nwbfile.processing
+
     def test_canonical_units_table_entry_with_parent_container_processing_raises(self):
         """An entry for the canonical units table describes nwbfile.units, so writing the sorting into processing
         raises."""
