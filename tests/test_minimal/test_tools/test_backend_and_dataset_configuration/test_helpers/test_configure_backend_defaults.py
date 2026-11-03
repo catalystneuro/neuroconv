@@ -15,8 +15,8 @@ from pynwb.ophys import PlaneSegmentation
 from pynwb.testing.mock.base import mock_TimeSeries
 from pynwb.testing.mock.file import mock_NWBFile
 from pynwb.testing.mock.ophys import mock_ImagingPlane
-from zarr.abc.codec import BytesBytesCodec
 from zarr.codecs import GzipCodec
+from zarr.codecs.numcodecs import Shuffle
 
 from neuroconv.tools.hdmf import SliceableDataChunkIterator
 from neuroconv.tools.nwb_helpers import (
@@ -87,8 +87,7 @@ def test_simple_time_series(
         assert written_data.compression == "gzip"
         assert written_data.compression_opts == 4
     elif backend == "zarr":
-        assert len(written_data.compressors) > 0
-        assert isinstance(written_data.compressors[0], BytesBytesCodec)
+        assert written_data.compressors == (GzipCodec(level=4),)
 
     assert_array_equal(integer_array, written_data[:])
     written_nwbfile.read_io.close()
@@ -122,8 +121,7 @@ def test_simple_dynamic_table(tmpdir: Path, integer_array: np.ndarray, backend: 
         assert written_data.compression == "gzip"
         assert written_data.compression_opts == 4
     elif backend == "zarr":
-        assert len(written_data.compressors) > 0
-        assert isinstance(written_data.compressors[0], BytesBytesCodec)
+        assert written_data.compressors == (GzipCodec(level=4),)
 
     assert_array_equal(integer_array, written_data[:])
     written_nwbfile.read_io.close()
@@ -159,7 +157,7 @@ def test_simple_image(tmpdir: Path, backend: Literal["hdf5", "zarr"]):
         assert written_data.compression == "gzip"
         assert written_data.compression_opts == 4
     elif backend == "zarr":
-        assert written_data.compressors[0] == GzipCodec(level=4)
+        assert written_data.compressors == (GzipCodec(level=4),)
 
     assert_array_equal(array, written_data[:])
     written_nwbfile.read_io.close()
@@ -224,8 +222,7 @@ def test_time_series_timestamps_linkage(
         assert written_data_1.compression == "gzip"
         assert written_data_1.compression_opts == 4
     elif backend == "zarr":
-        assert len(written_data_1.compressors) > 0
-        assert isinstance(written_data_1.compressors[0], BytesBytesCodec)
+        assert written_data_1.compressors == (GzipCodec(level=4),)
     assert_array_equal(integer_array, written_data_1[:])
 
     written_data_2 = written_nwbfile.acquisition["TestTimeSeries2"].data
@@ -234,8 +231,7 @@ def test_time_series_timestamps_linkage(
         assert written_data_2.compression == "gzip"
         assert written_data_2.compression_opts == 4
     elif backend == "zarr":
-        assert len(written_data_2.compressors) > 0
-        assert isinstance(written_data_2.compressors[0], BytesBytesCodec)
+        assert written_data_2.compressors == (GzipCodec(level=4),)
     assert_array_equal(integer_array, written_data_2[:])
 
     written_timestamps_1 = written_nwbfile.acquisition["TestTimeSeries1"].timestamps
@@ -244,8 +240,8 @@ def test_time_series_timestamps_linkage(
         assert written_timestamps_1.compression == "gzip"
         assert written_timestamps_1.compression_opts == 4
     elif backend == "zarr":
-        assert len(written_timestamps_1.compressors) > 0
-        assert isinstance(written_timestamps_1.compressors[0], BytesBytesCodec)
+        itemsize = timestamps_array.dtype.itemsize
+        assert written_timestamps_1.compressors == (Shuffle(elementsize=itemsize), GzipCodec(level=4))
     assert_array_equal(timestamps_array, written_timestamps_1[:])
 
     written_timestamps_2 = written_nwbfile.acquisition["TestTimeSeries2"].timestamps
@@ -299,6 +295,5 @@ def test_plane_segmentation_pixel_mask(
         assert written_dataset.compression == "gzip"
         assert written_dataset.compression_opts == 4
     elif backend == "zarr":
-        assert len(written_dataset.compressors) > 0
-        assert isinstance(written_dataset.compressors[0], BytesBytesCodec)
+        assert written_dataset.compressors == (GzipCodec(level=4),)
     assert_array_equal(written_dataset[:], expected_pixel_mask)

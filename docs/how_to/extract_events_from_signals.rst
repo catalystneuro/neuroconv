@@ -118,6 +118,40 @@ A spec states exactly one of the two. A signal with more than two levels is read
 distinction, on the same signal, which is also how one digital word becomes many event types, one spec
 per bit.
 
+.. _events_event_time_convention:
+
+Each event is timed at one of the two samples around its transition, or halfway between them. A sampled
+line changes level between two consecutive samples, and the true edge falls somewhere in the gap between
+them, so the optional ``event_time_convention`` says where in that gap the event is timed:
+
+- ``"sample_after_transition"``, the default, is the time of the first sample at the new level, the
+  earliest sample where the change can be seen.
+- ``"sample_before_transition"`` is the time of the last sample still at the old level.
+- ``"halfway_between_samples"`` is the middle of the gap. It is off from the true edge by at most half a
+  sample, where the other two can be off by up to a whole one, but it falls between samples and never
+  equals one of the signal's timestamps.
+
+.. image:: ../_static/images/events_event_time_convention.png
+   :width: 700px
+   :align: center
+   :alt: Two panels sharing one time axis. The top panel shows one edge of a two-valued line drawn with its
+         samples as dots: the line steps up between two samples, at a dashed line marking the true edge as
+         not recorded. Below it, one event row holds three markers: sample_before_transition on the last
+         sample before the edge, halfway_between_samples in the middle of the gap, and
+         sample_after_transition on the first sample after it. A legend beside the panel names the three in
+         their colours and says what each means. The bottom panel reads a line with three edges five ways.
+         For rising, falling and value_change, each edge gets the same three markers. For high_period and
+         low_period, each event is drawn three times as spans of the same length, shifted by half a sample
+         from one convention to the next.
+
+The setting applies to every transition a reading uses, so a durative reading moves both ends of each event
+by the same amount and, on a regular clock, its duration does not change. On a source that stores one
+timestamp per sample, ``"halfway_between_samples"`` is the mean of the two samples' timestamps.
+
+Leave the default unless the events have to line up with times another pipeline already produced. A
+constant offset of exactly one sample against that pipeline is the sign that it assigned its edges to the
+other sample.
+
 The ``detection_configuration`` argument
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -131,6 +165,7 @@ signal, and each signal holds a **list** of specs, one per event type you want d
             {
                 "signal_conditioning": {...},            # stage one: how this signal becomes a line
                 "detection": "<reading>",                # stage two: which transitions become events
+                "event_time_convention": "<convention>", # optional: which time each event gets
                 "event_name": "<your name>",             # optional
             },
             # more specs on the same signal, one per event type derived from it
@@ -158,6 +193,13 @@ one spec, because one signal may yield several event types.
 - ``"value_change"``, both directions pooled into one table
 - ``"high_period"``, each rising edge to the next falling one, with a duration
 - ``"low_period"``, each falling edge to the next rising one, with a duration
+
+``event_time_convention`` is optional, and controls which time each event gets
+(:ref:`illustrated above <events_event_time_convention>`). It is one of:
+
+- ``"sample_after_transition"``, the first sample at the new level (the default)
+- ``"sample_before_transition"``, the last sample at the old level
+- ``"halfway_between_samples"``, halfway between the two
 
 ``event_name`` is optional. It is the handle the events metadata is keyed by, so it is what you address
 to name an event type, describe it, or route it into a shared table. See

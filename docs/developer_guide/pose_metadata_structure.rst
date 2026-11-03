@@ -100,7 +100,7 @@ The reason is the NWB data model and not a preference. An NWB file holds one ``S
 keypoints belong to whom. A format that carries several tracks or several views therefore names one of
 each. That is what ``SLEAPInterface``'s ``track_name`` and ``video_name`` arguments are for, with
 ``get_available_tracks`` and ``get_available_videos`` to list them. The old behaviour still runs behind
-a ``FutureWarning`` until August 2027, delegating to the interface kept verbatim in ``_sleap_legacy.py``.
+a ``FutureWarning`` until v0.12.0, delegating to the interface kept verbatim in ``_sleap_legacy.py``.
 
 A consequence worth knowing when writing a new interface: skeletons are reused by NWB name, so two
 containers pointing at entries with the same ``name`` link one ``Skeleton`` object. That is how two

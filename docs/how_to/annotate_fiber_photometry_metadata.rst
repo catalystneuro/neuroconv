@@ -131,16 +131,19 @@ file, and every series points into it:
 How to Annotate a Single Fiber at a Single Wavelength
 -----------------------------------------------------
 
-The simplest case is one fiber at one excitation wavelength: one trace, one table row, and one series
-pointing at it. We build it in four steps, the row, the indicator it read, the hardware that recorded
-it, and that hardware's models, then write the file. Each step below shows the **whole script so far**
-with the new lines highlighted, so the last block is the complete, runnable script.
+Suppose you expressed GCaMP6s in the VTA, implanted an optical fiber there, and recorded with 465 nm
+excitation. That is one fiber at one wavelength, so the conversion writes a single trace, and the file
+cannot yet say where it was recorded, which indicator it reports, or what hardware produced it. In this
+section we give the trace its row in the table and fill that row in until it can.
 
-**Create the row and point the series at it.** Start from the interface, passing an explicit
-``metadata_key`` to name the response-series entry (the key under ``metadata["FiberPhotometry"]`` where
-this series' metadata lives). A table row then describes one trace, one fiber at one excitation
-wavelength: fill in the values it holds itself, its location and wavelengths, and point the series at
-the row through ``fiber_photometry_table_region``:
+Each code block repeats the script from the top with the new lines highlighted, so you can copy any
+block and run it as it is, and the last block is the complete script.
+
+**Create the row and point the series at it.** Start from the interface. The ``metadata_key`` you pass
+it is the key of this series' entry under ``metadata["FiberPhotometry"]``, which is where you describe
+the series. Then add a ``FiberPhotometryTable`` with one row for the trace, holding the values that
+belong to the trace itself: where it was recorded and at which wavelengths. Finally, point the series
+at that row through ``fiber_photometry_table_region``:
 
 .. code-block:: python
    :emphasize-lines: 15-19, 22

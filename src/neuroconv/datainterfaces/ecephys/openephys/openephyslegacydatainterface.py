@@ -1,4 +1,3 @@
-import warnings
 from datetime import datetime
 from warnings import warn
 
@@ -72,7 +71,7 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
     def __init__(
         self,
         folder_path: DirectoryPath,
-        *args,  # TODO: change to * (keyword only) on or after August 2026
+        *,
         stream_name: str | None = None,
         block_index: int | None = None,
         verbose: bool = False,
@@ -97,36 +96,6 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
             Key that indexes this interface's entries in the dict-based metadata. Defaults to
             ``"open_ephys_recording"``.
         """
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "stream_name",
-                "block_index",
-                "verbose",
-                "es_key",
-            ]
-            num_positional_args_before_args = 1  # folder_path
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args + 1} were given. "
-                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
-                    "Please use keyword arguments."
-                )
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to OpenEphysLegacyRecordingInterface.__init__() is deprecated "
-                f"and will be removed on or after August 2026. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            stream_name = positional_values.get("stream_name", stream_name)
-            block_index = positional_values.get("block_index", block_index)
-            verbose = positional_values.get("verbose", verbose)
-            es_key = positional_values.get("es_key", es_key)
 
         available_streams = self.get_stream_names(folder_path=folder_path)
         if len(available_streams) > 1 and stream_name is None:
@@ -141,6 +110,11 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
                 f"The selected stream '{stream_name}' is not in the available streams '{available_streams}'!"
             )
 
+        # ``metadata_key`` is a snake_case dict handle, not the series name. A session is a single Open Ephys
+        # recording, so the default is a constant; conversions that combine several streams pass their own.
+        if metadata_key is None:
+            metadata_key = "open_ephys_recording"
+
         super().__init__(
             folder_path=folder_path,
             stream_name=stream_name,
@@ -150,10 +124,9 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
             metadata_key=metadata_key,
         )
 
-        # ``metadata_key`` is a snake_case dict handle, not the series name. A session is a single Open Ephys
-        # recording, so the default is a constant; conversions that combine several streams pass their own.
-        if metadata_key is None:
-            self.metadata_key = "open_ephys_recording"
+        # Keep the reader while the recording is still the neo-based extractor, as `remove_channels`
+        # replaces it with a channel slice that does not carry the `neo_reader`
+        self._neo_reader = self.recording_extractor.neo_reader
 
     def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
@@ -165,8 +138,7 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
             # pipeline synthesizes its defaults from the channel-group properties.
             metadata["Ecephys"]["ElectricalSeries"][self.metadata_key]["name"] = "ElectricalSeries"
 
-        neo_reader = self.recording_extractor.neo_reader
-        block_annotations = neo_reader.raw_annotations.get("blocks", [])
+        block_annotations = self._neo_reader.raw_annotations.get("blocks", [])
         if block_annotations:
             segment_annotations = block_annotations[0].get("segments", [])
             if segment_annotations:

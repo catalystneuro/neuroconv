@@ -83,10 +83,7 @@ def test_configure_backend_equivalency(
         assert written_data.compression == "gzip"
         assert written_data.compression_opts == 2
     elif backend == "zarr":
-        assert len(written_data.compressors) > 0
-        compressor = written_data.compressors[0]
-        assert isinstance(compressor, GzipCodec)
-        assert compressor.level == 2
+        assert written_data.compressors == (GzipCodec(level=2),)
 
     assert_array_equal(array_1, written_data[:])
     written_nwbfile.read_io.close()

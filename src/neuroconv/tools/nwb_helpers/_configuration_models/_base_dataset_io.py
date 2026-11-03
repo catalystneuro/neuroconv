@@ -13,6 +13,7 @@ from hdmf.build.builders import (
     BaseBuilder,
 )
 from hdmf.data_utils import GenericDataChunkIterator as HDMFGenericDataChunkIterator
+from packaging.version import Version
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -24,8 +25,15 @@ from pydantic import (
 from pynwb import NWBFile
 from pynwb.ecephys import ElectricalSeries
 from pynwb.image import ImageSeries
+from pynwb.misc import Units
 from typing_extensions import Self
 from zarr.abc.codec import BytesBytesCodec
+
+# zarr 3 only. Under zarr 2, which Python 3.13 and older resolve, it stands in as `object` (see `_zarr_dataset_io.py`).
+if Version(zarr.__version__).major >= 3:
+    from zarr.abc.codec import BytesBytesCodec
+else:
+    BytesBytesCodec = object
 
 from neuroconv.tools.hdmf import get_full_data_shape
 from neuroconv.tools.iterative_write import get_electrical_series_chunk_shape
@@ -357,6 +365,25 @@ class DatasetIOConfiguration(BaseModel, ABC):
                 num_samples=num_samples,
                 sample_shape=sample_shape,
                 dtype=dtype,
+            )
+            buffer_shape = full_shape
+            compression_method = "gzip"
+
+        elif (
+            isinstance(neurodata_object.parent, Units)
+            and neurodata_object.name in ("waveform_mean", "waveform_sd")
+            and len(full_shape) in (2, 3)
+        ):
+            from ....tools.iterative_write import get_unit_waveform_chunk_shape
+
+            num_units, num_samples = full_shape[:2]
+            num_electrodes = full_shape[2] if len(full_shape) == 3 else None
+
+            chunk_shape = get_unit_waveform_chunk_shape(
+                num_units=num_units,
+                num_samples=num_samples,
+                num_electrodes=num_electrodes,
+                dtype=np.dtype(dtype),
             )
             buffer_shape = full_shape
             compression_method = "gzip"

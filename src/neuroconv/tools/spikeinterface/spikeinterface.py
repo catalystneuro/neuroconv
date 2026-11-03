@@ -28,6 +28,7 @@ from ..nwb_helpers import (
 from ..nwb_helpers._metadata_and_file_helpers import (
     _add_device_to_nwbfile,
     _fetch_backend_from_nwbfile_on_disk,
+    _validate_metadata_key,
     configure_and_write_nwbfile,
 )
 from ...utils import (
@@ -368,7 +369,7 @@ def add_recording_to_nwbfile(
         - 'processing/FilteredEphys': a ``FilteredEphys`` container in the ecephys processing module.
     write_as : {'raw', 'processed', 'lfp'}, optional
         Deprecated. Use ``parent_container`` instead ('raw' -> 'acquisition', 'lfp' -> 'processing/LFP',
-        'processed' -> 'processing/FilteredEphys'). Will be removed on or after February 2027.
+        'processed' -> 'processing/FilteredEphys'). Will be removed in v0.12.0.
     data_representation : {'digital_counts', 'physical_units'}, default: 'digital_counts'
         How the trace values are materialized in the stored data array.
         - 'digital_counts': store the raw integer samples and carry the per-channel gain in
@@ -402,6 +403,9 @@ def add_recording_to_nwbfile(
         When provided, uses the dict-based metadata format and ``es_key`` is ignored.
         When omitted, the series name and description come from the per-``parent_container`` defaults
         in :func:`_add_recording_segment_to_nwbfile`.
+        On a recording with several segments the entry applies to all of them, and an optional entry keyed
+        ``{metadata_key}_{segment_index}`` overrides it field by field for that segment only, its ``name``
+        used as given.
 
     Notes
     -----
@@ -411,7 +415,7 @@ def add_recording_to_nwbfile(
     if write_as is not None:
         warnings.warn(
             "The 'write_as' parameter of add_recording_to_nwbfile is deprecated and will be removed "
-            "on or after February 2027. Use 'parent_container' instead "
+            "in v0.12.0. Use 'parent_container' instead "
             "('raw' -> 'acquisition', 'lfp' -> 'processing/LFP', 'processed' -> 'processing/FilteredEphys').",
             FutureWarning,
             stacklevel=2,
@@ -419,6 +423,56 @@ def add_recording_to_nwbfile(
         parent_container = {"raw": "acquisition", "lfp": "processing/LFP", "processed": "processing/FilteredEphys"}[
             write_as
         ]
+
+    # Each segment's set time vector where it has one, otherwise its start at the sampling frequency
+    segment_timestamps, segment_starting_times = [], []
+    for segment_index in range(recording.get_num_segments()):
+        if recording.has_time_vector(segment_index=segment_index):
+            segment_timestamps.append(recording.get_times(segment_index=segment_index))
+            segment_starting_times.append(None)
+        else:
+            segment_timestamps.append(None)
+            segment_starting_times.append(recording.get_start_time(segment_index=segment_index))
+
+    _add_recording_to_nwbfile(
+        recording=recording,
+        nwbfile=nwbfile,
+        metadata=metadata,
+        segment_timestamps=segment_timestamps,
+        segment_starting_times=segment_starting_times,
+        parent_container=parent_container,
+        data_representation=data_representation,
+        es_key=es_key,
+        iterator_type=iterator_type,
+        iterator_options=iterator_options,
+        always_write_timestamps=always_write_timestamps,
+        null_values_for_properties=null_values_for_properties,
+        metadata_key=metadata_key,
+    )
+
+
+def _add_recording_to_nwbfile(
+    *,
+    recording: BaseRecording,
+    nwbfile: pynwb.NWBFile,
+    metadata: dict | None,
+    segment_timestamps: list[np.ndarray | None],
+    segment_starting_times: list[float | None],
+    parent_container: Literal["acquisition", "processing/LFP", "processing/FilteredEphys"],
+    data_representation: Literal["digital_counts", "physical_units"],
+    es_key: str | None,
+    iterator_type: str | None,
+    iterator_options: dict | None,
+    always_write_timestamps: bool,
+    metadata_key: str | None,
+    null_values_for_properties: dict | None = None,
+):
+    """``add_recording_to_nwbfile`` with each segment's times given instead of read from the recording.
+
+    For an interface, which holds the aligned times itself. A segment's times are its entry in
+    ``segment_timestamps``, one time per sample, or, where that entry is None, its entry in
+    ``segment_starting_times`` at the recording's sampling frequency.
+    """
     if parent_container not in ("acquisition", "processing/LFP", "processing/FilteredEphys"):
         raise ValueError(
             f"Argument parent_container ({parent_container}) should be one of "
@@ -463,6 +517,12 @@ def add_recording_to_nwbfile(
 
     if metadata is None:
         metadata = _get_ecephys_metadata_placeholders()
+    if metadata_key is not None:
+        _validate_metadata_key(
+            metadata,
+            metadata_path=("Ecephys", "ElectricalSeries"),
+            metadata_key=metadata_key,
+        )
 
     add_recording_metadata_to_nwbfile(
         recording=recording, nwbfile=nwbfile, metadata=metadata, null_values_for_properties=null_values_for_properties
@@ -483,6 +543,8 @@ def add_recording_to_nwbfile(
             always_write_timestamps=always_write_timestamps,
             null_values_for_properties=null_values_for_properties,
             metadata_key=metadata_key,
+            timestamps=segment_timestamps[segment_index],
+            starting_time=segment_starting_times[segment_index],
         )
 
 
@@ -547,13 +609,14 @@ def add_sorting_to_nwbfile(
             - "sds": np.ndarray of shape (num_units, num_samples, num_channels), optional
             - "sampling_rate": float, the sampling rate of the waveforms in Hz
             - "unit": str, the unit of measurement (default: "volts")
+            - "time_before_peak_in_ms": float, the time from the start of each waveform to the spike peak, optional
     write_as : {'units', 'processing'}, optional
-        Deprecated. Use ``parent_container`` instead. Will be removed on or after February 2027.
+        Deprecated. Use ``parent_container`` instead. Will be removed in v0.12.0.
     """
     if write_as is not None:
         warnings.warn(
             "The 'write_as' parameter of add_sorting_to_nwbfile is deprecated and will be removed "
-            "on or after February 2027. Use 'parent_container' instead.",
+            "in v0.12.0. Use 'parent_container' instead.",
             FutureWarning,
             stacklevel=2,
         )
@@ -565,6 +628,7 @@ def add_sorting_to_nwbfile(
         _waveform_sds = waveform_data_dict.get("sds")
         _waveform_rate = waveform_data_dict.get("sampling_rate")
         _waveform_unit = waveform_data_dict.get("unit", "volts")
+        _waveform_time_before_peak_in_ms = waveform_data_dict.get("time_before_peak_in_ms")
     elif waveform_means is not None:
         # Deprecated path - emit FutureWarning for gradual migration
         warnings.warn(
@@ -577,11 +641,13 @@ def add_sorting_to_nwbfile(
         _waveform_sds = waveform_sds
         _waveform_rate = None
         _waveform_unit = "volts"
+        _waveform_time_before_peak_in_ms = None
     else:
         _waveform_means = None
         _waveform_sds = None
         _waveform_rate = None
         _waveform_unit = "volts"
+        _waveform_time_before_peak_in_ms = None
 
     # Resolution from sorting's sampling frequency
     _resolution = 1.0 / sorting.get_sampling_frequency()
@@ -607,6 +673,7 @@ def add_sorting_to_nwbfile(
         null_values_for_properties=null_values_for_properties,
         waveform_rate=_waveform_rate,
         waveform_unit=_waveform_unit,
+        waveform_time_before_peak_in_ms=_waveform_time_before_peak_in_ms,
         resolution=_resolution,
     )
 
@@ -625,9 +692,12 @@ def _add_recording_segment_to_nwbfile(
     *,
     null_values_for_properties: dict | None = None,
     metadata_key: str | None = None,
+    timestamps: np.ndarray | None,
+    starting_time: float | None,
 ):
     """
-    See add_recording_to_nwbfile for details.
+    See add_recording_to_nwbfile for details. The segment's times are ``timestamps``, one per sample, or, when they
+    are None, ``starting_time`` at the recording's sampling frequency.
     """
 
     assert parent_container in [
@@ -639,17 +709,18 @@ def _add_recording_segment_to_nwbfile(
         f"but instead received value {parent_container}"
     )
 
-    modality_signature = {"acquisition": "Raw", "processing/LFP": "LFP", "processing/FilteredEphys": "Processed"}[
-        parent_container
-    ]
-    default_name = f"ElectricalSeries{modality_signature}"
+    default_name = {
+        "acquisition": "ElectricalSeries",
+        "processing/LFP": "ElectricalSeriesLFP",
+        "processing/FilteredEphys": "ElectricalSeries",
+    }
     default_description = {
         "acquisition": "Raw acquired data",
         "processing/LFP": "Processed data - LFP",
         "processing/FilteredEphys": "Processed data",
     }
 
-    eseries_kwargs = dict(name=default_name, description=default_description[parent_container])
+    eseries_kwargs = dict(name=default_name[parent_container], description=default_description[parent_container])
 
     # Select and/or create module if lfp or processed data is to be stored.
     if parent_container in ["processing/LFP", "processing/FilteredEphys"]:
@@ -726,18 +797,18 @@ def _add_recording_segment_to_nwbfile(
     eseries_kwargs["data"] = ephys_data_iterator
 
     if always_write_timestamps:
-        timestamps = recording.get_times(segment_index=segment_index)
+        if timestamps is None:
+            number_of_samples = recording.get_num_samples(segment_index=segment_index)
+            timestamps = starting_time + np.arange(number_of_samples) / recording.get_sampling_frequency()
         eseries_kwargs["timestamps"] = timestamps
     else:
         # By default we write the rate if the timestamps are regular
-        recording_has_timestamps = recording.has_time_vector(segment_index=segment_index)
-        if recording_has_timestamps:
-            timestamps = recording.get_times(segment_index=segment_index)
+        if timestamps is not None:
             rate = calculate_regular_series_rate(series=timestamps)  # Returns None if it is not regular
             recording_t_start = timestamps[0]
         else:
             rate = recording.get_sampling_frequency()
-            recording_t_start = recording.get_start_time(segment_index=segment_index)
+            recording_t_start = starting_time
 
         if rate:
             starting_time = float(recording_t_start)
@@ -747,23 +818,25 @@ def _add_recording_segment_to_nwbfile(
 
     # Update with user metadata - allows override of all fields including name, description, data, timestamps, etc.
     if metadata_key is not None:
-        electrical_series_metadata_dict = metadata.get("Ecephys", {}).get("ElectricalSeries", {})
-        if metadata_key not in electrical_series_metadata_dict:
-            raise ValueError(
-                f"metadata['Ecephys']['ElectricalSeries'] does not contain key '{metadata_key}'. "
-                f"Available keys: {sorted(electrical_series_metadata_dict)}"
-            )
-        eseries_kwargs.update(electrical_series_metadata_dict[metadata_key])
+        eseries_kwargs.update(metadata["Ecephys"]["ElectricalSeries"][metadata_key])
     elif metadata is not None and "Ecephys" in metadata and es_key is not None:
         assert es_key in metadata["Ecephys"], f"metadata['Ecephys'] dictionary does not contain key '{es_key}'"
         eseries_kwargs.update(metadata["Ecephys"][es_key])
 
-    # If the recording extractor has more than 1 segment, append numbers to the names so that the names are unique.
-    # 0-pad these names based on the number of segments.
-    # If there are 10 segments use 2 digits, if there are 100 segments use 3 digits, etc.
-    if recording.get_num_segments() > 1 and "name" in eseries_kwargs:
-        width = int(np.ceil(np.log10((recording.get_num_segments()))))
-        eseries_kwargs["name"] += f"{segment_index:0{width}}"
+    # If the recording extractor has more than 1 segment, append the unpadded segment index to the name so that the
+    # names are unique and match the ``{metadata_key}_{segment_index}`` keys, and state the segment in the description.
+    number_of_segments = recording.get_num_segments()
+    if number_of_segments > 1 and "name" in eseries_kwargs:
+        eseries_kwargs["name"] += f"Segment{segment_index}"
+        separator = "" if eseries_kwargs["description"].endswith(".") else "."
+        eseries_kwargs["description"] += f"{separator} Segment {segment_index} of {number_of_segments}."
+
+    # An entry keyed ``{metadata_key}_{segment_index}`` is optional and overrides the shared entry for this
+    # segment only, its name used as given.
+    segment_metadata_key = f"{metadata_key}_{segment_index}"
+    has_segment_override = metadata_key is not None and segment_metadata_key in metadata["Ecephys"]["ElectricalSeries"]
+    if has_segment_override:
+        eseries_kwargs.update(metadata["Ecephys"]["ElectricalSeries"][segment_metadata_key])
 
     # Create ElectricalSeries object and add it to nwbfile
     es = pynwb.ecephys.ElectricalSeries(**eseries_kwargs)
@@ -835,7 +908,7 @@ def add_devices_to_nwbfile(nwbfile: pynwb.NWBFile, metadata: DeepDict | None = N
     devices within the metadata list will also be created.
 
     .. deprecated::
-        ``add_devices_to_nwbfile`` is deprecated and will be removed on or after February 2027.
+        ``add_devices_to_nwbfile`` is deprecated and will be removed in v0.12.0.
         Use the dict-based metadata format (``metadata["Devices"]``) with
         :func:`add_recording_to_nwbfile` instead, or call
         :func:`~neuroconv.tools.nwb_helpers._add_device_to_nwbfile` directly for a single device.
@@ -859,7 +932,7 @@ def add_devices_to_nwbfile(nwbfile: pynwb.NWBFile, metadata: DeepDict | None = N
         Missing keys in an element of metadata['Ecephys']['Device'] will be auto-populated with defaults.
     """
     warnings.warn(
-        "add_devices_to_nwbfile is deprecated and will be removed on or after February 2027. "
+        "add_devices_to_nwbfile is deprecated and will be removed in v0.12.0. "
         "Use _add_device_to_nwbfile with the new dict-based metadata format (metadata['Devices']) instead.",
         FutureWarning,
         stacklevel=2,
@@ -1417,13 +1490,21 @@ def _add_electrodes_to_nwbfile(
     data_to_add["group_name"] = dict(description="group_name", data=group_names, index=False)
 
     # Location in spikeinterface is equivalent to rel_x, rel_y, rel_z in the nwb standard
-    if "location" in data_to_add:
-        data = data_to_add["location"]["data"]
-        column_number_to_property = {0: "rel_x", 1: "rel_y", 2: "rel_z"}
-        for column_number in range(data.shape[1]):
-            property = column_number_to_property[column_number]
-            data_to_add[property] = dict(description=property, data=data[:, column_number], index=False)
+    # The "location" property is removed in SpikeInterface v0.105.0. Use the get_channel_locations
+    # function instead
+    locations_data = None
+    if recording.has_probe():
+        locations_data = recording.get_channel_locations()
+    elif "location" in data_to_add:
+        # Some Interfaces set the 'location' property instead of the probe to
+        # prevent modifying groups (e.g. CellExplorer)
+        locations_data = data_to_add["location"]["data"]
         data_to_add.pop("location")
+    if locations_data is not None:
+        column_number_to_property = {0: "rel_x", 1: "rel_y", 2: "rel_z"}
+        for column_number in range(locations_data.shape[1]):
+            property = column_number_to_property[column_number]
+            data_to_add[property] = dict(description=property, data=locations_data[:, column_number], index=False)
 
     # In the electrode table location is the brain area of spikeinterface
     if "brain_area" in data_to_add:
@@ -1589,10 +1670,10 @@ def add_electrodes_to_nwbfile(
     orchestrates devices, electrode groups, and electrodes together and should be
     used to ensure all recording metadata is properly added.
 
-    This function will be removed on or after February 2027.
+    This function will be removed in v0.12.0.
     """
     warnings.warn(
-        "add_electrodes_to_nwbfile is deprecated and will be removed on or after February 2027. "
+        "add_electrodes_to_nwbfile is deprecated and will be removed in v0.12.0. "
         "Use add_recording_metadata_to_nwbfile to ensure all recording metadata "
         "(devices, electrode groups, and electrodes) is properly added.",
         FutureWarning,
@@ -1810,6 +1891,9 @@ def add_recording_as_time_series_to_nwbfile(
         ``"TimeSeries"`` block, and the key must be present in it: an unresolvable key raises rather
         than silently writing defaults over the caller's edits. Pass no metadata at all to write the
         recording from its own properties with default naming.
+        On a recording with several segments the entry applies to all of them, and an optional entry keyed
+        ``{metadata_key}_{segment_index}`` overrides it field by field for that segment only, its ``name``
+        used as given.
     iterator_type: {"v2",  None}, default: 'v2'
         The type of DataChunkIterator to use.
         'v2' is the locally developed SpikeInterfaceRecordingDataChunkIterator, which offers full control over chunking.
@@ -1839,11 +1923,8 @@ def add_recording_as_time_series_to_nwbfile(
                 "whenever that block is present. To write the recording with default metadata, pass no "
                 "metadata at all."
             )
-        if metadata_key not in metadata["TimeSeries"]:
-            raise ValueError(
-                f"metadata['TimeSeries'] does not contain key '{metadata_key}'. "
-                f"Available keys: {list(metadata['TimeSeries'])}."
-            )
+    if metadata_key is not None:
+        _validate_metadata_key(metadata or {}, metadata_path=("TimeSeries",), metadata_key=metadata_key)
 
     num_segments = recording.get_num_segments()
     for segment_index in range(num_segments):
@@ -1974,17 +2055,23 @@ def _add_time_series_segment_to_nwbfile(
     # Update with user-provided metadata
     tseries_kwargs.update(user_metadata)
 
-    # Handle multi-segment naming
-    if recording.get_num_segments() > 1 and "name" in tseries_kwargs:
-        width = int(np.ceil(np.log10((recording.get_num_segments()))))
-        tseries_kwargs["name"] += f"{segment_index:0{width}}"
-
-    # Fill in required fields with defaults if missing
+    # Fill in required fields with defaults if missing, before the segment suffix so a default name gets it too
     required_fields = ["name", "description", "unit"]
     default_metadata = _get_default_time_series_metadata()
     for field in required_fields:
         if field not in tseries_kwargs:
             tseries_kwargs[field] = default_metadata[field]
+
+    # Handle multi-segment naming
+    if recording.get_num_segments() > 1 and "name" in tseries_kwargs:
+        tseries_kwargs["name"] += f"Segment{segment_index}"
+
+    # An entry keyed ``{metadata_key}_{segment_index}`` is optional and overrides the shared entry for this
+    # segment only, its name used as given.
+    segment_metadata_key = f"{metadata_key}_{segment_index}"
+    has_segment_override = metadata_key is not None and segment_metadata_key in metadata.get("TimeSeries", {})
+    if has_segment_override:
+        tseries_kwargs.update(metadata["TimeSeries"][segment_metadata_key])
 
     # Create TimeSeries object and add it to nwbfile
     time_series = pynwb.base.TimeSeries(**tseries_kwargs)
@@ -2056,6 +2143,9 @@ def add_recording_as_spatial_series_to_nwbfile(
         Where the metadata_key is used to look up metadata in the metadata dictionary.
     metadata_key : str, default: 'SpatialSeries'
         The entry in SpatialSeries metadata to use.
+        On a recording with several segments the entry applies to all of them, and an optional entry keyed
+        ``{metadata_key}_{segment_index}`` overrides it field by field for that segment only, its ``name``
+        used as given.
     parent_container : {'acquisition', 'processing'}, default: 'acquisition'
         Where to save the spatial series data:
         - 'acquisition': Save in nwbfile.acquisition
@@ -2071,14 +2161,14 @@ def add_recording_as_spatial_series_to_nwbfile(
         By default (False), the function checks if timestamps are uniformly sampled,
         and if so, stores data using a regular sampling rate.
     write_as : {'acquisition', 'processing'}, optional
-        Deprecated. Use ``parent_container`` instead. Will be removed on or after February 2027.
+        Deprecated. Use ``parent_container`` instead. Will be removed in v0.12.0.
 
 
     """
     if write_as is not None:
         warnings.warn(
             "The 'write_as' parameter of add_recording_as_spatial_series_to_nwbfile is deprecated and will be "
-            "removed on or after February 2027. Use 'parent_container' instead.",
+            "removed in v0.12.0. Use 'parent_container' instead.",
             FutureWarning,
             stacklevel=2,
         )
@@ -2171,16 +2261,21 @@ def _add_spatial_series_segment_to_nwbfile(
     # Update with user-provided metadata
     series_kwargs.update(user_metadata)
 
-    # Handle multi-segment naming
-    if recording.get_num_segments() > 1 and "name" in series_kwargs:
-        width = int(np.ceil(np.log10(recording.get_num_segments())))
-        series_kwargs["name"] += f"{segment_index:0{width}}"
-
-    # Fill in missing required fields with defaults
+    # Fill in missing required fields with defaults, before the segment suffix so a default name gets it too
     # Note: 'description' has default='no description' and 'unit' has default='meters' in the schema
     if "name" not in series_kwargs:
         default_metadata = _get_default_spatial_series_metadata()
         series_kwargs["name"] = default_metadata["SpatialSeries"]["name"]
+
+    # Handle multi-segment naming
+    if recording.get_num_segments() > 1 and "name" in series_kwargs:
+        series_kwargs["name"] += f"Segment{segment_index}"
+
+    # An entry keyed ``{metadata_key}_{segment_index}`` is optional and overrides the shared entry for this
+    # segment only, its name used as given.
+    segment_metadata_key = f"{metadata_key}_{segment_index}"
+    if segment_metadata_key in metadata.get("SpatialSeries", {}):
+        series_kwargs.update(metadata["SpatialSeries"][segment_metadata_key])
 
     # Create the SpatialSeries instance
     spatial_series = pynwb.behavior.SpatialSeries(**series_kwargs)
@@ -2350,7 +2445,7 @@ def write_recording_to_nwbfile(
         - 'processing/FilteredEphys' writes a ``FilteredEphys`` container in the ecephys processing module
     write_as: {'raw', 'processed', 'lfp'}, optional
         Deprecated. Use ``parent_container`` instead ('raw' -> 'acquisition', 'lfp' -> 'processing/LFP',
-        'processed' -> 'processing/FilteredEphys'). Will be removed on or after February 2027.
+        'processed' -> 'processing/FilteredEphys'). Will be removed in v0.12.0.
     es_key: str, optional
         Key in metadata dictionary containing metadata info for the specific electrical series
     iterator_type: {"v2",  None}
@@ -2440,7 +2535,7 @@ def write_recording_to_nwbfile(
         if write_as is not None:
             warnings.warn(
                 "The 'write_as' parameter of write_recording_to_nwbfile is deprecated and will be removed "
-                "on or after February 2027. Use 'parent_container' instead "
+                "in v0.12.0. Use 'parent_container' instead "
                 "('raw' -> 'acquisition', 'lfp' -> 'processing/LFP', 'processed' -> 'processing/FilteredEphys').",
                 FutureWarning,
                 stacklevel=2,
@@ -2481,7 +2576,7 @@ def write_recording_to_nwbfile(
             if write_as is not None:
                 warnings.warn(
                     "The 'write_as' parameter of write_recording_to_nwbfile is deprecated and will be removed "
-                    "on or after February 2027. Use 'parent_container' instead "
+                    "in v0.12.0. Use 'parent_container' instead "
                     "('raw' -> 'acquisition', 'lfp' -> 'processing/LFP', 'processed' -> 'processing/FilteredEphys').",
                     FutureWarning,
                     stacklevel=2,
@@ -2529,6 +2624,7 @@ def _add_units_table_to_nwbfile(
     *,
     waveform_rate: float | None = None,
     waveform_unit: str = "volts",
+    waveform_time_before_peak_in_ms: float | None = None,
     resolution: float | None = None,
     null_values_for_properties: dict | None = None,
 ):
@@ -2650,6 +2746,9 @@ def _add_units_table_to_nwbfile(
         Sampling rate of the waveform data in Hz. Sets Units.waveform_rate attribute.
     waveform_unit : str, default: "volts"
         Unit of measurement for waveform data. Sets Units.waveform_unit attribute.
+    waveform_time_before_peak_in_ms : float, optional
+        Time from the start of each waveform to the spike peak in milliseconds, which is the alignment
+        point used during sorting. Sets Units.waveform_time_before_peak_in_ms attribute.
     resolution : float, optional
         The smallest possible difference between two spike times in seconds.
         Sets Units.resolution attribute.
@@ -2692,6 +2791,7 @@ def _add_units_table_to_nwbfile(
         description=unit_table_description,
         waveform_rate=waveform_rate,
         waveform_unit=waveform_unit,
+        waveform_time_before_peak_in_ms=waveform_time_before_peak_in_ms,
         resolution=resolution,
     )
     if unit_electrode_indices is not None:
@@ -3054,7 +3154,7 @@ def write_sorting_to_nwbfile(
         A dictionary mapping properties to their respective default values. If a property is not found in this
         dictionary, a sensible default value based on the type of `sample_data` will be used.
     write_as : {'units', 'processing'}, optional
-        Deprecated. Use ``parent_container`` instead. Will be removed on or after February 2027.
+        Deprecated. Use ``parent_container`` instead. Will be removed in v0.12.0.
 
     Returns
     -------
@@ -3065,7 +3165,7 @@ def write_sorting_to_nwbfile(
     if write_as is not None:
         warnings.warn(
             "The 'write_as' parameter of write_sorting_to_nwbfile is deprecated and will be removed "
-            "on or after February 2027. Use 'parent_container' instead.",
+            "in v0.12.0. Use 'parent_container' instead.",
             FutureWarning,
             stacklevel=2,
         )
@@ -3228,12 +3328,12 @@ def add_sorting_analyzer_to_nwbfile(
         A dictionary mapping properties to their respective default values. If a property is not found in this
         dictionary, a sensible default value based on the type of `sample_data` will be used.
     write_as : {'units', 'processing'}, optional
-        Deprecated. Use ``parent_container`` instead. Will be removed on or after February 2027.
+        Deprecated. Use ``parent_container`` instead. Will be removed in v0.12.0.
     """
     if write_as is not None:
         warnings.warn(
             "The 'write_as' parameter of add_sorting_analyzer_to_nwbfile is deprecated and will be removed "
-            "on or after February 2027. Use 'parent_container' instead.",
+            "in v0.12.0. Use 'parent_container' instead.",
             FutureWarning,
             stacklevel=2,
         )
@@ -3254,6 +3354,16 @@ def add_sorting_analyzer_to_nwbfile(
         raise ValueError("No templates found in the sorting analyzer.")
     template_means = template_extension.get_templates()
     template_stds = template_extension.get_templates(operator="std")
+
+    # The analyzer knows the rate the templates were sampled at and where the spike peak sits inside each
+    # of them. `ms_before` is backfilled from `nbefore` by the templates extension, so it is there even on
+    # an analyzer computed before it was a parameter.
+    waveform_rate = sorting_analyzer.sampling_frequency
+    waveform_time_before_peak_in_ms = template_extension.params["ms_before"]
+    # Scaled traces in spikeinterface are microvolts. An analyzer whose recording has no gains keeps the
+    # digital counts, which carry no physical unit.
+    waveform_unit = "microvolts" if sorting_analyzer.return_in_uV else "a.u."
+
     sorting = sorting_analyzer.sorting
     if unit_ids is not None:
         unit_indices = sorting.ids_to_indices(unit_ids)
@@ -3311,6 +3421,9 @@ def add_sorting_analyzer_to_nwbfile(
         unit_table_description=units_description,
         waveform_means=template_means,
         waveform_sds=template_stds,
+        waveform_rate=waveform_rate,
+        waveform_unit=waveform_unit,
+        waveform_time_before_peak_in_ms=waveform_time_before_peak_in_ms,
         unit_electrode_indices=unit_electrode_indices,
         null_values_for_properties=null_values_for_properties,
     )
@@ -3406,7 +3519,7 @@ def write_sorting_analyzer_to_nwbfile(
         A dictionary mapping properties to their respective default values. If a property is not found in this
         dictionary, a sensible default value based on the type of `sample_data` will be used.
     write_as : {'units', 'processing'}, optional
-        Deprecated. Use ``parent_container`` instead. Will be removed on or after February 2027.
+        Deprecated. Use ``parent_container`` instead. Will be removed in v0.12.0.
 
     Returns
     -------
@@ -3417,7 +3530,7 @@ def write_sorting_analyzer_to_nwbfile(
     if write_as is not None:
         warnings.warn(
             "The 'write_as' parameter of write_sorting_analyzer_to_nwbfile is deprecated and will be removed "
-            "on or after February 2027. Use 'parent_container' instead.",
+            "in v0.12.0. Use 'parent_container' instead.",
             FutureWarning,
             stacklevel=2,
         )
@@ -3591,5 +3704,10 @@ def _stub_recording(recording: BaseRecording, *, stub_samples: int = 100) -> Bas
         for segment, end_frame in zip(recording_segments, end_frame_list)
     ]
     recording_stubbed = AppendSegmentRecording(recording_list=recording_segments_stubbed)
+
+    # Appending keeps each segment's start but drops its time vector, so a segment that has one gets its cut times back
+    for segment_index, segment in enumerate(recording_segments_stubbed):
+        if segment.has_time_vector():
+            recording_stubbed.set_times(times=segment.get_times(), segment_index=segment_index)
 
     return recording_stubbed

@@ -272,9 +272,9 @@ class TestGlobalCompressionZarr:
         dataset1 = zarr_group["acquisition/TestTimeSeries1/data"]
         dataset2 = zarr_group["acquisition/TestTimeSeries2/data"]
 
-        # Verify that compression is applied (zarr v3: .compressors is a tuple)
-        assert len(dataset1.compressors) > 0
-        assert len(dataset2.compressors) > 0
+        # Verify that compression is applied
+        assert dataset1.compressors[0] is not None
+        assert dataset2.compressors[0] is not None
         # Check that the compressor name matches the expected compression method
         assert expected_compression in str(dataset1.compressors[0]).lower()
         assert expected_compression in str(dataset2.compressors[0]).lower()
@@ -310,19 +310,17 @@ class TestGlobalCompressionZarr:
         dataset1 = zarr_group["acquisition/TestTimeSeries1/data"]
         dataset2 = zarr_group["acquisition/TestTimeSeries2/data"]
 
-        # Verify that compression is applied (zarr v3: .compressors is a tuple)
-        assert len(dataset1.compressors) > 0
-        assert len(dataset2.compressors) > 0
+        # Verify that compression is applied
+        assert dataset1.compressors[0] is not None
+        assert dataset2.compressors[0] is not None
         # Check that the compressor name matches the expected compression method
         assert "gzip" in str(dataset1.compressors[0]).lower()
         assert "gzip" in str(dataset2.compressors[0]).lower()
         # Check that compression level is applied (for gzip compressor)
-        compressor1 = dataset1.compressors[0]
-        compressor2 = dataset2.compressors[0]
-        if hasattr(compressor1, "level"):
-            assert compressor1.level == 6
-        if hasattr(compressor2, "level"):
-            assert compressor2.level == 6
+        if hasattr(dataset1.compressors[0], "level"):
+            assert dataset1.compressors[0].level == 6
+        if hasattr(dataset2.compressors[0], "level"):
+            assert dataset2.compressors[0].level == 6
         read_nwbfile.read_io.close()
 
     def test_global_compression_invalid_method(self, tmp_path):

@@ -12,6 +12,7 @@ from pynwb.icephys import (
 )
 
 from .nwb_helpers import _add_device_to_nwbfile
+from .nwb_helpers._metadata_and_file_helpers import _validate_metadata_key
 from ..utils import DeepDict, calculate_regular_series_rate
 
 # The key under which the default (placeholder) entries are registered. An interface re-keys these to its own
@@ -39,6 +40,9 @@ class _IcephysSeriesData:
     timestamps: np.ndarray
     conversion: float
     offset: float = 0.0
+    # A stimulus's own `(start_index, count)` per sweep, for a source whose stimulus and response sweeps differ in
+    # length. None addresses the stimulus by the response's ranges.
+    sweep_sample_ranges: list[tuple[int, int]] | None = None
 
 
 def _add_patch_clamp_series_to_nwbfile(
@@ -52,17 +56,30 @@ def _add_patch_clamp_series_to_nwbfile(
 ):
     """Construct and add one response or stimulus series from an icephys data record."""
     metadata_registry = "PatchClampStimulusSeries" if is_stimulus else "PatchClampSeries"
-    series_metadata = metadata["Icephys"][metadata_registry][series_metadata_key]
-    series_class = _STIMULUS_CLASS[mode] if is_stimulus else _RESPONSE_CLASS[mode]
-    series_kwargs = dict(
-        name=series_metadata["name"],
-        data=series_data.data,
-        electrode=electrode,
-        conversion=series_data.conversion,
-        offset=series_data.offset,
-        gain=np.nan,
-        description=series_metadata["description"],
+    _validate_metadata_key(
+        metadata,
+        metadata_path=("Icephys", metadata_registry),
+        metadata_key=series_metadata_key,
     )
+    series_metadata = {
+        **_get_icephys_metadata_placeholders()["Icephys"][metadata_registry][DEFAULT_METADATA_KEY],
+        **metadata["Icephys"][metadata_registry][series_metadata_key],
+    }
+    # The electrode link is resolved by the caller; a stimulus reuses its response's electrode and has no link.
+    if not is_stimulus:
+        series_metadata.pop("electrode_metadata_key")
+    series_class = _STIMULUS_CLASS[mode] if is_stimulus else _RESPONSE_CLASS[mode]
+    # The entry sits over the defaults and under what the source provides, so it can set any argument of the
+    # series class except the data, its scaling, the electrode and the timing, and pynwb rejects a key that is
+    # not an argument at all.
+    series_kwargs = {
+        "gain": np.nan,
+        **series_metadata,
+        "data": series_data.data,
+        "electrode": electrode,
+        "conversion": series_data.conversion,
+        "offset": series_data.offset,
+    }
     rate = calculate_regular_series_rate(series=series_data.timestamps)
     if rate is not None:
         series_kwargs.update(starting_time=float(series_data.timestamps[0]), rate=rate)
@@ -162,6 +179,11 @@ def _add_intracellular_electrode_to_nwbfile(nwbfile: NWBFile, metadata: dict, el
     dedups by ``name``, and so does the device, so several interfaces pointing at one entry share a single object.
     """
     placeholders = _get_icephys_metadata_placeholders()
+    _validate_metadata_key(
+        metadata,
+        metadata_path=("Icephys", "IntracellularElectrodes"),
+        metadata_key=electrode_metadata_key,
+    )
     electrode_metadata = {
         **placeholders["Icephys"]["IntracellularElectrodes"][DEFAULT_METADATA_KEY],
         **metadata["Icephys"]["IntracellularElectrodes"][electrode_metadata_key],
@@ -174,7 +196,7 @@ def _add_intracellular_electrode_to_nwbfile(nwbfile: NWBFile, metadata: dict, el
     # An electrode naming no device gets the placeholder: a plain Device carrying the one field NWB
     # requires, built here rather than through the registry writer, since there is no registry entry to
     # key it against. Reused by name, so several electrodes naming no device land on one device.
-    device_metadata_key = electrode_metadata.get("device_metadata_key")
+    device_metadata_key = electrode_metadata.pop("device_metadata_key", None)
     if device_metadata_key is None:
         placeholder_device_metadata = placeholders["Devices"][DEFAULT_METADATA_KEY]
         placeholder_device_name = placeholder_device_metadata["name"]
@@ -183,15 +205,8 @@ def _add_intracellular_electrode_to_nwbfile(nwbfile: NWBFile, metadata: dict, el
         device = nwbfile.devices[placeholder_device_name]
     else:
         device = _add_device_to_nwbfile(nwbfile=nwbfile, metadata=metadata, metadata_key=device_metadata_key)
-    # Optional IntracellularElectrode fields passed through from metadata if present.
-    electrode_fields = ("cell_id", "location", "slice", "resistance", "seal", "filtering", "initial_access_resistance")
-    extra_fields = {field: electrode_metadata[field] for field in electrode_fields if field in electrode_metadata}
-    return nwbfile.create_icephys_electrode(
-        name=name,
-        description=electrode_metadata["description"],
-        device=device,
-        **extra_fields,
-    )
+    # Every other field of the entry is an IntracellularElectrode argument, so pynwb rejects a key that is not one.
+    return nwbfile.create_icephys_electrode(device=device, **electrode_metadata)
 
 
 def _validate_grouping_levels(repetitions: list, conditions: list) -> None:
@@ -216,6 +231,7 @@ def _add_intracellular_recordings_to_nwbfile(
     sweep_sample_ranges: list,
     sequence: str,
     stimulus_series=None,
+    stimulus_sweep_sample_ranges: list | None = None,
     stimulus_type: str | None = None,
     repetition: str | None = None,
     condition: str | None = None,
@@ -256,7 +272,11 @@ def _add_intracellular_recordings_to_nwbfile(
     sequence : str
         The run identity shared by these sweeps, grouped on to build a ``SequentialRecordings`` entry.
     stimulus_series : PatchClampStimulusSeries, optional
-        The run's stimulus, addressed by the same ranges, when the source carries one.
+        The run's stimulus, when the source carries one, addressed by ``stimulus_sweep_sample_ranges`` or else by
+        the same ranges.
+    stimulus_sweep_sample_ranges : list of tuple of int, optional
+        One ``(start_index, count)`` per sweep, into ``stimulus_series``, when its sweeps differ in length from
+        the response's.
     stimulus_type : str, optional
         What kind of run this was. Omitted rather than given a placeholder when the source stated none.
     repetition : str, optional
@@ -282,16 +302,20 @@ def _add_intracellular_recordings_to_nwbfile(
                 data=[_UNSTATED_RUN_LEVEL_VALUE] * len(table),
             )
 
-    for start_index, count in sweep_sample_ranges:
+    if stimulus_sweep_sample_ranges is None:
+        stimulus_sweep_sample_ranges = sweep_sample_ranges
+    for (response_start_index, response_count), (stimulus_start_index, stimulus_count) in zip(
+        sweep_sample_ranges, stimulus_sweep_sample_ranges, strict=True
+    ):
         keyword_arguments = dict(
             electrode=electrode,
             response=response_series,
-            response_start_index=start_index,
-            response_index_count=count,
+            response_start_index=response_start_index,
+            response_index_count=response_count,
         )
         if stimulus_series is not None:
             keyword_arguments.update(
-                stimulus=stimulus_series, stimulus_start_index=start_index, stimulus_index_count=count
+                stimulus=stimulus_series, stimulus_start_index=stimulus_start_index, stimulus_index_count=stimulus_count
             )
         keyword_arguments.update(columns)
         nwbfile.add_intracellular_recording(**keyword_arguments)

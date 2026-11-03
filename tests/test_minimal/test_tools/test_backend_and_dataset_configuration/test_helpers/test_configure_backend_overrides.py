@@ -73,9 +73,7 @@ def test_simple_time_series_override(
         assert written_data.compression == "gzip"
         assert written_data.compression_opts == higher_gzip_level
     elif backend == "zarr":
-        assert len(written_data.compressors) > 0
-        assert isinstance(written_data.compressors[0], GzipCodec)
-        assert written_data.compressors[0].level == 5
+        assert written_data.compressors == (GzipCodec(level=5),)
     written_nwbfile.read_io.close()
 
 

@@ -725,7 +725,7 @@ class TestVameInterfaceStrictKeyResolution:
         nwbfile = mock_NWBFile()
         metadata = interface.get_metadata()
         metadata["Behavior"]["Vame"]["VameProjects"]["VAMEProject"]["pose_estimation_metadata_key"] = "not_a_key"
-        with pytest.raises(ValueError, match="pose_estimation_metadata_key 'not_a_key' was not found"):
+        with pytest.raises(ValueError, match="metadata_key 'not_a_key' was not found"):
             interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, stub_test=True)
 
     def test_unregistered_video_key_raises(self):

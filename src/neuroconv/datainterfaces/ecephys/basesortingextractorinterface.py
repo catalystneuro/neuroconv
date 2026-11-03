@@ -200,7 +200,7 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         ), "This recording has multiple segments; please use 'set_aligned_segment_timestamps' instead."
 
         if self._number_of_segments == 1:
-            self.sorting_extractor._recording.set_times(times=aligned_timestamps, with_warning=False)
+            self.sorting_extractor._recording.set_times(times=aligned_timestamps)
         else:
             assert isinstance(
                 aligned_timestamps, list
@@ -213,7 +213,6 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
                 self.sorting_extractor._recording.set_times(
                     times=aligned_timestamps[segment_index],
                     segment_index=segment_index,
-                    with_warning=False,
                 )
 
     def set_aligned_segment_timestamps(self, aligned_segment_timestamps: list[np.ndarray]):
@@ -244,7 +243,6 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
             self.sorting_extractor._recording.set_times(
                 times=aligned_segment_timestamps[segment_index],
                 segment_index=segment_index,
-                with_warning=False,
             )
 
     def set_aligned_starting_time(self, aligned_starting_time: float):
@@ -407,15 +405,16 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
                 - "sds": np.ndarray of shape (num_units, num_samples, num_channels), optional
                 - "sampling_rate": float, the sampling rate of the waveforms in Hz
                 - "unit": str, the unit of measurement (default: "volts")
+                - "time_before_peak_in_ms": float, the time from the start of each waveform to the spike peak, optional
         write_as : {'units', 'processing'}, optional
-            Deprecated. Use ``parent_container`` instead. Will be removed on or after February 2027.
+            Deprecated. Use ``parent_container`` instead. Will be removed in v0.12.0.
         """
         from ...tools.spikeinterface import add_sorting_to_nwbfile
 
         if write_as is not None:
             warnings.warn(
                 "The 'write_as' parameter of BaseSortingExtractorInterface.add_to_nwbfile() is deprecated and will "
-                "be removed on or after February 2027. Use 'parent_container' instead.",
+                "be removed in v0.12.0. Use 'parent_container' instead.",
                 FutureWarning,
                 stacklevel=2,
             )

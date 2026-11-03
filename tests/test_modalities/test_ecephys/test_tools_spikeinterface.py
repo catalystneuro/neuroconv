@@ -12,7 +12,7 @@ import psutil
 import pynwb.ecephys
 import pytest
 from hdmf.testing import TestCase
-from pynwb import NWBHDF5IO, NWBFile
+from pynwb import NWBHDF5IO, NWBFile, read_nwb
 from pynwb.testing.mock.file import mock_NWBFile
 from spikeinterface.core import NumpySorting
 from spikeinterface.core.generate import (
@@ -22,6 +22,7 @@ from spikeinterface.core.generate import (
 )
 from spikeinterface.extractors import NumpyRecording
 
+from neuroconv.tools.iterative_write import get_electrical_series_chunk_shape
 from neuroconv.tools.nwb_helpers import get_module
 from neuroconv.tools.spikeinterface import (
     _add_electrode_groups_to_nwbfile,
@@ -70,8 +71,8 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
         add_recording_to_nwbfile(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
 
         acquisition_module = self.nwbfile.acquisition
-        assert "ElectricalSeriesRaw" in acquisition_module
-        electrical_series = acquisition_module["ElectricalSeriesRaw"]
+        assert "ElectricalSeries" in acquisition_module
+        electrical_series = acquisition_module["ElectricalSeries"]
 
         extracted_data = electrical_series.data[:]
         expected_data = self.test_recording_extractor.get_traces(segment_index=0)
@@ -90,7 +91,7 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
 
         add_recording_to_nwbfile(recording=recording, nwbfile=self.nwbfile, iterator_type=None)
 
-        electrical_series = self.nwbfile.acquisition["ElectricalSeriesRaw"]
+        electrical_series = self.nwbfile.acquisition["ElectricalSeries"]
         assert electrical_series.starting_time == 2.0
         assert electrical_series.rate == self.sampling_frequency
 
@@ -135,9 +136,9 @@ class TestAddElectricalSeriesWriting(unittest.TestCase):
 
         filtered_ephys_container = ecephys_module.data_interfaces["Processed"]
         assert isinstance(filtered_ephys_container, pynwb.ecephys.FilteredEphys)
-        assert "ElectricalSeriesProcessed" in filtered_ephys_container.electrical_series
+        assert "ElectricalSeries" in filtered_ephys_container.electrical_series
 
-        electrical_series = filtered_ephys_container.electrical_series["ElectricalSeriesProcessed"]
+        electrical_series = filtered_ephys_container.electrical_series["ElectricalSeries"]
         extracted_data = electrical_series.data[:]
         expected_data = self.test_recording_extractor.get_traces(segment_index=0)
         np.testing.assert_array_almost_equal(expected_data, extracted_data)
@@ -253,7 +254,7 @@ class TestAddElectricalSeriesSavingTimestampsVsRates(unittest.TestCase):
         add_recording_to_nwbfile(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
 
         acquisition_module = self.nwbfile.acquisition
-        electrical_series = acquisition_module["ElectricalSeriesRaw"]
+        electrical_series = acquisition_module["ElectricalSeries"]
 
         expected_rate = self.sampling_frequency
         extracted_rate = electrical_series.rate
@@ -262,11 +263,11 @@ class TestAddElectricalSeriesSavingTimestampsVsRates(unittest.TestCase):
 
     def test_non_uniform_timestamps(self):
         expected_timestamps = np.array([0.0, 2.0, 10.0])
-        self.test_recording_extractor.set_times(times=expected_timestamps, with_warning=False)
+        self.test_recording_extractor.set_times(times=expected_timestamps)
         add_recording_to_nwbfile(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
 
         acquisition_module = self.nwbfile.acquisition
-        electrical_series = acquisition_module["ElectricalSeriesRaw"]
+        electrical_series = acquisition_module["ElectricalSeries"]
 
         assert electrical_series.rate is None
 
@@ -278,11 +279,11 @@ class TestAddElectricalSeriesSavingTimestampsVsRates(unittest.TestCase):
         number_of_samples = self.test_recording_extractor.get_num_samples()
         measured_sampling_frequency = self.sampling_frequency * (1 + 100e-6)  # a 100 ppm faster clock
         timestamps = np.arange(number_of_samples) / measured_sampling_frequency
-        self.test_recording_extractor.set_times(times=timestamps, with_warning=False)
+        self.test_recording_extractor.set_times(times=timestamps)
 
         add_recording_to_nwbfile(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
 
-        electrical_series = self.nwbfile.acquisition["ElectricalSeriesRaw"]
+        electrical_series = self.nwbfile.acquisition["ElectricalSeries"]
         assert electrical_series.rate == pytest.approx(measured_sampling_frequency, rel=1e-12)
         assert electrical_series.rate != self.test_recording_extractor.get_sampling_frequency()
 
@@ -325,7 +326,7 @@ class TestAddElectricalSeriesVoltsScaling(unittest.TestCase):
         add_recording_to_nwbfile(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
 
         acquisition_module = self.nwbfile.acquisition
-        electrical_series = acquisition_module["ElectricalSeriesRaw"]
+        electrical_series = acquisition_module["ElectricalSeries"]
 
         # Test conversion factor
         conversion_factor_scalar = electrical_series.conversion
@@ -350,7 +351,7 @@ class TestAddElectricalSeriesVoltsScaling(unittest.TestCase):
         add_recording_to_nwbfile(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
 
         acquisition_module = self.nwbfile.acquisition
-        electrical_series = acquisition_module["ElectricalSeriesRaw"]
+        electrical_series = acquisition_module["ElectricalSeries"]
 
         # Test conversion factor
         conversion_factor_scalar = electrical_series.conversion
@@ -375,7 +376,7 @@ class TestAddElectricalSeriesVoltsScaling(unittest.TestCase):
         add_recording_to_nwbfile(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
 
         acquisition_module = self.nwbfile.acquisition
-        electrical_series = acquisition_module["ElectricalSeriesRaw"]
+        electrical_series = acquisition_module["ElectricalSeries"]
 
         # Test offset scalar
         offset_scalar = electrical_series.offset
@@ -467,7 +468,7 @@ class TestAddElectricalSeriesChunking(unittest.TestCase):
         add_recording_to_nwbfile(recording=self.test_recording_extractor, nwbfile=self.nwbfile)
 
         acquisition_module = self.nwbfile.acquisition
-        electrical_series = acquisition_module["ElectricalSeriesRaw"]
+        electrical_series = acquisition_module["ElectricalSeries"]
         electrical_series_data_iterator = electrical_series.data
 
         assert isinstance(electrical_series_data_iterator, SpikeInterfaceRecordingDataChunkIterator)
@@ -483,7 +484,7 @@ class TestAddElectricalSeriesChunking(unittest.TestCase):
         )
 
         acquisition_module = self.nwbfile.acquisition
-        electrical_series = acquisition_module["ElectricalSeriesRaw"]
+        electrical_series = acquisition_module["ElectricalSeries"]
         electrical_series_data_iterator = electrical_series.data
 
         assert electrical_series_data_iterator.chunk_shape == iterator_options["chunk_shape"]
@@ -492,7 +493,7 @@ class TestAddElectricalSeriesChunking(unittest.TestCase):
         add_recording_to_nwbfile(recording=self.test_recording_extractor, nwbfile=self.nwbfile, iterator_type=None)
 
         acquisition_module = self.nwbfile.acquisition
-        electrical_series = acquisition_module["ElectricalSeriesRaw"]
+        electrical_series = acquisition_module["ElectricalSeries"]
         isinstance(electrical_series.data, np.ndarray)
 
     def test_non_iterative_write_assertion(self):
@@ -565,15 +566,16 @@ class TestWriteRecording(unittest.TestCase):
         acquisition_module = self.nwbfile.acquisition
         assert len(acquisition_module) == 2
 
-        assert "ElectricalSeriesRaw0" in acquisition_module
-        assert "ElectricalSeriesRaw1" in acquisition_module
+        assert "ElectricalSeriesSegment0" in acquisition_module
+        assert "ElectricalSeriesSegment1" in acquisition_module
 
-        electrical_series0 = acquisition_module["ElectricalSeriesRaw0"]
+        electrical_series0 = acquisition_module["ElectricalSeriesSegment0"]
         extracted_data = electrical_series0.data[:]
         expected_data = self.multiple_segment_recording_extractor.get_traces(segment_index=0)
         np.testing.assert_array_almost_equal(expected_data, extracted_data)
 
-        electrical_series1 = acquisition_module["ElectricalSeriesRaw1"]
+        electrical_series1 = acquisition_module["ElectricalSeriesSegment1"]
+        assert electrical_series1.description == "Raw acquired data. Segment 1 of 2."
         extracted_data = electrical_series1.data[:]
         expected_data = self.multiple_segment_recording_extractor.get_traces(segment_index=1)
         np.testing.assert_array_almost_equal(expected_data, extracted_data)
@@ -1122,10 +1124,7 @@ class TestAddElectrodes(TestCase):
         contact_ids = ["e0", "e1", "e2", "e3"]
         probe.set_contact_ids(contact_ids)
 
-        # TODO: drop `in_place=True` once spikeinterface>=0.105.0 is the minimum pin, where the call
-        # is always in place, returns None and the argument is deprecated. It is required on 0.104,
-        # which otherwise returns a new recording and leaves this one unchanged.
-        recording.set_probe(probe, group_mode="by_probe", in_place=True)
+        recording.set_probe(probe, group_mode="by_probe")
 
         # Add electrodes to nwbfile
         _add_electrodes_to_nwbfile(recording=recording, nwbfile=self.nwbfile)
@@ -1160,8 +1159,7 @@ class TestAddElectrodes(TestCase):
         # Scenario 1: Add first recording with channel names ch0, ch1, ch2
         recording1 = generate_recording(num_channels=3)
         recording1 = recording1.rename_channels(new_channel_ids=["ch0", "ch1", "ch2"])
-        # `in_place=True` for the same reason as in test_electrode_name_column_added_with_probe above.
-        recording1.set_probe(probe, group_mode="by_probe", in_place=True)
+        recording1.set_probe(probe, group_mode="by_probe")
 
         _add_electrodes_to_nwbfile(recording=recording1, nwbfile=self.nwbfile)
 
@@ -1184,7 +1182,7 @@ class TestAddElectrodes(TestCase):
         # This creates new rows to store channel-specific properties
         recording2 = generate_recording(num_channels=3)
         recording2 = recording2.rename_channels(new_channel_ids=["AP0", "AP1", "AP2"])
-        recording2.set_probe(probe, group_mode="by_probe", in_place=True)
+        recording2.set_probe(probe, group_mode="by_probe")
 
         _add_electrodes_to_nwbfile(recording=recording2, nwbfile=self.nwbfile)
 
@@ -1206,7 +1204,7 @@ class TestAddElectrodes(TestCase):
 
         recording3 = generate_recording(num_channels=2)
         recording3 = recording3.rename_channels(new_channel_ids=["probe2_ch0", "probe2_ch1"])
-        recording3.set_probe(probe2, group_mode="by_probe", in_place=True)
+        recording3.set_probe(probe2, group_mode="by_probe")
         # Manually set different group name to represent a second probe
         recording3.set_property(key="group_name", values=["ProbeB", "ProbeB"])
 
@@ -1540,6 +1538,34 @@ class TestAddTimeSeries:
         assert time_series.conversion == 3.0
         assert time_series.offset == 1.5
 
+    def test_segment_entry_overrides_only_its_segment(self):
+        recording = generate_recording(sampling_frequency=1.0, num_channels=2, durations=[3.0, 3.0, 3.0])
+        metadata = {
+            "TimeSeries": {
+                "analog": {"name": "Analog", "description": "Shared description.", "unit": "V"},
+                "analog_1": {"name": "SecondSegment"},
+            }
+        }
+        nwbfile = mock_NWBFile()
+
+        add_recording_as_time_series_to_nwbfile(
+            recording=recording, nwbfile=nwbfile, metadata=metadata, metadata_key="analog", iterator_type=None
+        )
+
+        assert set(nwbfile.acquisition) == {"AnalogSegment0", "SecondSegment", "AnalogSegment2"}
+        assert {series.description for series in nwbfile.acquisition.values()} == {"Shared description."}
+
+    def test_multiple_segments_without_a_name(self):
+        recording = generate_recording(sampling_frequency=1.0, num_channels=2, durations=[3.0, 3.0])
+        recording.set_property("physical_unit", values=["uV"] * 2)
+        recording.set_property("gain_to_physical_unit", values=[1.0] * 2)
+        recording.set_property("offset_to_physical_unit", values=[0.0] * 2)
+        nwbfile = mock_NWBFile()
+
+        add_recording_as_time_series_to_nwbfile(recording=recording, nwbfile=nwbfile, iterator_type=None)
+
+        assert set(nwbfile.acquisition) == {"TimeSeriesSegment0", "TimeSeriesSegment1"}
+
 
 class TestAddTimeSeriesMetadataKeyResolution:
     """``metadata_key`` addresses an entry, so it is required exactly when there is one to address."""
@@ -1597,7 +1623,11 @@ class TestAddTimeSeriesMetadataKeyResolution:
         nwbfile = mock_NWBFile()
         metadata = {"TimeSeries": {"my_time_series": {"unit": "custom_unit"}}}
 
-        with pytest.raises(ValueError, match="does not contain key 'stale_key'"):
+        expected = (
+            "metadata_key 'stale_key' was not found in metadata['TimeSeries']. Available keys are:\n"
+            "['my_time_series']"
+        )
+        with pytest.raises(ValueError, match=re.escape(expected)):
             add_recording_as_time_series_to_nwbfile(
                 recording=self._recording(),
                 nwbfile=nwbfile,
@@ -1605,6 +1635,25 @@ class TestAddTimeSeriesMetadataKeyResolution:
                 metadata_key="stale_key",
                 iterator_type=None,
             )
+
+    def test_explicit_key_without_a_time_series_block_raises(self):
+        metadata = {"NWBFile": {}}
+        original = deepcopy(metadata)
+        expected = (
+            "metadata_key 'my_metadata_key' was not found in metadata['TimeSeries']. metadata has no 'TimeSeries'. "
+            "Available keys are:\n['NWBFile']"
+        )
+
+        with pytest.raises(ValueError, match=re.escape(expected)):
+            add_recording_as_time_series_to_nwbfile(
+                recording=self._recording(),
+                nwbfile=mock_NWBFile(),
+                metadata=metadata,
+                metadata_key="my_metadata_key",
+                iterator_type=None,
+            )
+
+        assert metadata == original
 
 
 class TestAddSpatialSeries:
@@ -1791,6 +1840,31 @@ class TestAddSpatialSeries:
                 iterator_type=None,
             )
 
+    def test_segment_entry_overrides_only_its_segment(self):
+        recording = generate_recording(sampling_frequency=30.0, num_channels=2, durations=[0.1, 0.1, 0.1])
+        metadata = {
+            "SpatialSeries": {
+                "SpatialSeries": {"name": "Position", "description": "Shared description.", "reference_frame": "test"},
+                "SpatialSeries_1": {"name": "SecondSegment"},
+            }
+        }
+        nwbfile = mock_NWBFile()
+
+        add_recording_as_spatial_series_to_nwbfile(
+            recording=recording, nwbfile=nwbfile, metadata=metadata, iterator_type=None
+        )
+
+        assert set(nwbfile.acquisition) == {"PositionSegment0", "SecondSegment", "PositionSegment2"}
+        assert {series.description for series in nwbfile.acquisition.values()} == {"Shared description."}
+
+    def test_multiple_segments_without_a_name(self):
+        recording = generate_recording(sampling_frequency=30.0, num_channels=2, durations=[0.1, 0.1])
+        nwbfile = mock_NWBFile()
+
+        add_recording_as_spatial_series_to_nwbfile(recording=recording, nwbfile=nwbfile, iterator_type=None)
+
+        assert set(nwbfile.acquisition) == {"SpatialSeriesSegment0", "SpatialSeriesSegment1"}
+
 
 def _probe_naming(**probe_fields):
     """A four-contact probe with whatever identity fields the test needs set on it."""
@@ -1805,9 +1879,7 @@ def _probe_naming(**probe_fields):
 
 def _recording_with_probe(**probe_fields):
     recording = generate_recording(num_channels=4, durations=[1.0])
-    # TODO: drop ``in_place=True`` once spikeinterface>=0.105.0 is the minimum pin, where the call is
-    # always in place and the argument is deprecated.
-    recording.set_probe(_probe_naming(**probe_fields), in_place=True)
+    recording.set_probe(_probe_naming(**probe_fields))
     return recording
 
 
@@ -2627,7 +2699,7 @@ class TestWriteSortingAnalyzer(TestCase):
             nwbfile=self.nwbfile,
         )
         self._test_analyzer_write(self.single_segment_analyzer, self.nwbfile)
-        self.assertIn("ElectricalSeriesRaw", self.nwbfile.acquisition)
+        self.assertIn("ElectricalSeries", self.nwbfile.acquisition)
 
     def test_analyzer_single_segment_sparse(self):
         """This tests that the analyzer is written appropriately for the single segment case"""
@@ -2640,7 +2712,7 @@ class TestWriteSortingAnalyzer(TestCase):
             nwbfile=self.nwbfile,
         )
         self._test_analyzer_write(self.single_segment_analyzer_sparse, self.nwbfile)
-        self.assertIn("ElectricalSeriesRaw", self.nwbfile.acquisition)
+        self.assertIn("ElectricalSeries", self.nwbfile.acquisition)
 
     def test_analyzer_multiple_segments(self):
         """This tests that the analyzer is written appropriately for the multi segment case"""
@@ -2833,7 +2905,41 @@ class TestWriteSortingAnalyzer(TestCase):
             electrode_channels = self.nwbfile.electrodes[electrode_indices]["channel_name"].tolist()
             for ch_name in electrode_channels:
                 self.assertIn(ch_name, self.analyzer_rec_sliced.channel_ids)
-        self.assertIn("ElectricalSeriesRaw", self.nwbfile.acquisition)
+        self.assertIn("ElectricalSeries", self.nwbfile.acquisition)
+
+
+@pytest.mark.parametrize("return_in_uV, expected_unit", [(True, "microvolts"), (False, "a.u.")])
+def test_sorting_analyzer_waveform_metadata(tmp_path, return_in_uV, expected_unit):
+    """The rate, unit and alignment point of the analyzer's templates reach the file."""
+    from spikeinterface import create_sorting_analyzer
+
+    recording, sorting = generate_ground_truth_recording(num_channels=4, durations=[3.0])
+    recording.annotate(is_filtered=True)
+    sorting.delete_property("gt_unit_locations")
+    if "main_channel_id" in sorting.get_property_keys():
+        sorting.delete_property("main_channel_id")
+
+    analyzer = create_sorting_analyzer(sorting, recording, sparse=False, return_in_uV=return_in_uV)
+    analyzer.compute("random_spikes")
+    # 0.6 rather than the 1.0 default, so an alignment point that is not read off the analyzer cannot pass.
+    analyzer.compute("templates", ms_before=0.6, ms_after=1.4)
+
+    nwbfile = NWBFile(
+        session_description="session_description1", identifier="file_id1", session_start_time=testing_session_time
+    )
+    add_sorting_analyzer_to_nwbfile(sorting_analyzer=analyzer, nwbfile=nwbfile)
+
+    assert nwbfile.units.waveform_rate == analyzer.sampling_frequency
+    assert nwbfile.units.waveform_unit == expected_unit
+    assert nwbfile.units.waveform_time_before_peak_in_ms == 0.6
+
+    nwbfile_path = tmp_path / "analyzer_waveform_metadata.nwb"
+    with NWBHDF5IO(nwbfile_path, mode="w") as io:
+        io.write(nwbfile)
+    read_units_table = read_nwb(nwbfile_path).units
+    assert read_units_table.waveform_rate == analyzer.sampling_frequency
+    assert read_units_table.waveform_unit == expected_unit
+    assert read_units_table.waveform_time_before_peak_in_ms == 0.6
 
 
 def test_stub_recording_with_t_start():
@@ -2878,7 +2984,7 @@ class TestAddRecording:
 
         # The ElectricalSeries name comes from ``_add_recording_segment_to_nwbfile``'s
         # per-``write_as`` defaults, not the placeholder factory.
-        assert "ElectricalSeriesRaw" in nwbfile.acquisition
+        assert "ElectricalSeries" in nwbfile.acquisition
         assert len(nwbfile.electrodes) == recording.get_num_channels()
 
     def test_physical_units_writes_single_series_with_heterogeneous_offset(self):
@@ -2896,7 +3002,7 @@ class TestAddRecording:
             recording=recording, nwbfile=nwbfile, iterator_type=None, data_representation="physical_units"
         )
 
-        electrical_series = nwbfile.acquisition["ElectricalSeriesRaw"]
+        electrical_series = nwbfile.acquisition["ElectricalSeries"]
         # The heterogeneous offsets are folded into the data: one series, scalar offset 0, only the
         # microvolt-to-volt conversion, and no per-channel channel_conversion.
         assert electrical_series.offset == 0.0
@@ -2968,10 +3074,9 @@ class TestAddRecording:
         with NWBHDF5IO(path=nwbfile_path, mode="w") as io:
             io.write(nwbfile)
 
-        with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
-            stored_data = io.read().acquisition["ElectricalSeriesRaw"].data
-            assert stored_data.dtype == np.dtype("float32")
-            np.testing.assert_array_equal(stored_data[:], traces * np.float32(0.195))
+        stored_data = read_nwb(nwbfile_path).acquisition["ElectricalSeries"].data
+        assert stored_data.dtype == np.dtype("float32")
+        np.testing.assert_array_equal(stored_data[:], traces * np.float32(0.195))
 
     def test_scaled_chunk_shape_is_sized_on_the_dtype_written(self):
         """The chunk budget is in bytes, so sizing it on the recording's int16 while writing float32
@@ -2986,6 +3091,13 @@ class TestAddRecording:
 
         chunk_bytes = np.prod(iterator.chunk_shape) * iterator._get_dtype().itemsize
         assert chunk_bytes <= chunk_mb * 1e6
+
+    def test_electrical_series_chunk_shape_is_integers_when_the_budget_is_smaller_than_the_recording(self):
+        chunk_shape = get_electrical_series_chunk_shape(
+            number_of_channels=384, number_of_frames=30_000 * 3_600, dtype=np.dtype("int16"), chunk_mb=10.0
+        )
+        assert chunk_shape == (78_125, 64)
+        assert all(type(size) is int for size in chunk_shape)
 
     def test_full_metadata_specification(self):
         """User-supplied fields land on every created object and the cross-links resolve.
@@ -3290,8 +3402,8 @@ class TestAddRecording:
         metadata["Ecephys"]["ElectricalSeries"] = {"known_key": {"name": "ElectricalSeries"}}
 
         expected_error = re.escape(
-            "metadata['Ecephys']['ElectricalSeries'] does not contain key 'missing_key'. "
-            "Available keys: ['known_key']"
+            "metadata_key 'missing_key' was not found in metadata['Ecephys']['ElectricalSeries']. Available keys "
+            "are:\n['known_key']"
         )
         with pytest.raises(ValueError, match=expected_error):
             add_recording_to_nwbfile(
@@ -3619,8 +3731,6 @@ if __name__ == "__main__":
 @pytest.mark.parametrize("backend", ["hdf5", "zarr"])
 def test_write_recording_to_nwbfile_append_on_disk(tmp_path, backend):
     """The append branch reads the backend off the file, so it is reached without naming one."""
-    from pynwb import read_nwb
-
     from neuroconv.tools.spikeinterface import write_recording_to_nwbfile
 
     nwbfile_path = tmp_path / ("recording.nwb" if backend == "hdf5" else "recording.nwb.zarr")
@@ -3641,7 +3751,7 @@ def test_write_recording_to_nwbfile_append_on_disk(tmp_path, backend):
     expected_io_class = "NWBHDF5IO" if backend == "hdf5" else "NWBZarrIO"
     nwbfile = read_nwb(nwbfile_path)
     assert type(nwbfile.read_io).__name__ == expected_io_class
-    assert "ElectricalSeriesRaw" in nwbfile.acquisition
+    assert "ElectricalSeries" in nwbfile.acquisition
     assert "LFP" in nwbfile.processing["ecephys"].data_interfaces
     nwbfile.read_io.close()
 

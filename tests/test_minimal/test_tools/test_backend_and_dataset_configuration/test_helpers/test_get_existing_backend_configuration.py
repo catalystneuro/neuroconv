@@ -12,6 +12,7 @@ from pynwb import NWBHDF5IO, H5DataIO, NWBFile
 from pynwb.testing.mock.base import mock_TimeSeries
 from pynwb.testing.mock.file import mock_NWBFile
 from zarr.codecs import BloscCodec
+from zarr.codecs.numcodecs import Delta
 
 from neuroconv.tools.nwb_helpers import (
     HDF5BackendConfiguration,
@@ -82,21 +83,21 @@ def hdf5_nwbfile_path(tmp_path_factory):
 
 @pytest.fixture(scope="session")
 def zarr_nwbfile_path(tmp_path_factory):
-    compressor = BloscCodec(cname="lz4", clevel=5)
+    compressors = [BloscCodec(cname="lz4", clevel=5, shuffle="shuffle")]
 
     nwbfile_path = tmp_path_factory.mktemp("data") / "test_default_backend_configuration_hdf5_nwbfile.nwb.zarr"
     nwbfile = generate_complex_nwbfile()
 
     # Add a ZarrDataIO-compressed time series
     raw_array = np.array([[11, 21, 31], [41, 51, 61]], dtype="int32")
-    data = ZarrDataIO(data=raw_array, chunks=(1, 3), compressors=compressor)
+    data = ZarrDataIO(data=raw_array, chunks=(1, 3), compressors=compressors, filters=[Delta(dtype="int32")])
     raw_time_series = mock_TimeSeries(name="CompressedRawTimeSeries", data=data)
     nwbfile.add_acquisition(raw_time_series)
 
     # Add ZarrDataIO-compressed trials column
     number_of_trials = 10
     start_time = np.linspace(start=0.0, stop=10.0, num=number_of_trials)
-    data = ZarrDataIO(data=start_time, chunks=(5,), compressors=compressor)
+    data = ZarrDataIO(data=start_time, chunks=(5,), compressors=compressors, filters=[Delta(dtype="float64")])
     nwbfile.add_trial_column(
         name="compressed_start_time",
         description="start time of epoch",
@@ -270,6 +271,8 @@ intervals/trials/compressed_start_time/data
 
   compressors : [BloscCodec(_tunable_attrs=set(), typesize=8, cname='lz4', clevel=5, shuffle='shuffle', blocksize=0)]
 
+  filters : [Delta(codec_name='numcodecs.delta', codec_config={'dtype': 'float64'})]
+
 
 processing/ecephys/ProcessedTimeSeries/data
 -------------------------------------------
@@ -314,6 +317,8 @@ acquisition/CompressedRawTimeSeries/data
   disk space usage per chunk : 12 B
 
   compressors : [BloscCodec(_tunable_attrs=set(), typesize=4, cname='lz4', clevel=5, shuffle='shuffle', blocksize=0)]
+
+  filters : [Delta(codec_name='numcodecs.delta', codec_config={'dtype': 'int32'})]
 
 """
     assert _normalize_blosc_repr(stdout.getvalue()) == expected_print

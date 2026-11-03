@@ -1,4 +1,3 @@
-import warnings
 from pathlib import Path
 
 from pydantic import FilePath, validate_call
@@ -36,7 +35,7 @@ class PlexonRecordingInterface(BaseRecordingExtractorInterface):
     def __init__(
         self,
         file_path: FilePath,
-        *args,  # TODO: change to * (keyword only) on or after August 2026
+        *,
         verbose: bool = False,
         es_key: str | None = None,
         metadata_key: str | None = None,
@@ -59,51 +58,28 @@ class PlexonRecordingInterface(BaseRecordingExtractorInterface):
             Only pass a stream if you modified the channel prefixes in the Plexon file and you know the prefix of
             the wideband data.
         """
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "verbose",
-                "es_key",
-                "stream_name",
-            ]
-            num_positional_args_before_args = 1  # file_path
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args + 1} were given. "
-                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
-                    "Please use keyword arguments."
-                )
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to PlexonRecordingInterface.__init__() is deprecated "
-                f"and will be removed on or after August 2026. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            verbose = positional_values.get("verbose", verbose)
-            es_key = positional_values.get("es_key", es_key)
-            stream_name = positional_values.get("stream_name", stream_name)
 
         invalid_stream_names = ["FPl-Low Pass Filtered", "SPKC-High Pass Filtered", "AI-Auxiliary Input"]
         assert stream_name not in invalid_stream_names, f"Invalid stream name: {stream_name}"
+
+        if metadata_key is None:
+            metadata_key = "plexon_recording"
 
         super().__init__(
             file_path=file_path, verbose=verbose, es_key=es_key, metadata_key=metadata_key, stream_name=stream_name
         )
 
-        if metadata_key is None:
-            self.metadata_key = "plexon_recording"
+        # Keep the reader while the recording is still the neo-based extractor, as `remove_channels`
+        # replaces it with a channel slice that does not carry the `neo_reader` or the `block_index`
+        self._neo_reader = self.recording_extractor.neo_reader
+        self._block_index = self.recording_extractor.block_index
 
     def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
-        neo_reader = self.recording_extractor.neo_reader
+        neo_reader = self._neo_reader
 
         if hasattr(neo_reader, "raw_annotations"):
-            block_ind = self.recording_extractor.block_index
+            block_ind = self._block_index
             neo_metadata = neo_reader.raw_annotations["blocks"][block_ind]
             if "rec_datetime" in neo_metadata:
                 metadata["NWBFile"].update(session_start_time=neo_metadata["rec_datetime"])
@@ -121,7 +97,6 @@ class PlexonLFPInterface(BaseLFPExtractorInterface):
     display_name = "Plexon LFP Recording"
     associated_suffixes = (".plx",)
     info = "Interface for Plexon low pass filtered data."
-    _default_es_key = "ElectricalSeriesLF"
 
     @classmethod
     def get_extractor_class(cls):
@@ -139,7 +114,7 @@ class PlexonLFPInterface(BaseLFPExtractorInterface):
     def __init__(
         self,
         file_path: FilePath,
-        *args,  # TODO: change to * (keyword only) on or after August 2026
+        *,
         verbose: bool = False,
         es_key: str | None = None,
         metadata_key: str | None = None,
@@ -162,34 +137,6 @@ class PlexonLFPInterface(BaseLFPExtractorInterface):
             Only pass a stream if you modified the channel prefixes in the Plexon file and you know the prefix of
             the FPllow pass filtered data.
         """
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "verbose",
-                "es_key",
-                "stream_name",
-            ]
-            num_positional_args_before_args = 1  # file_path
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args + 1} were given. "
-                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
-                    "Please use keyword arguments."
-                )
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to PlexonLFPInterface.__init__() is deprecated "
-                f"and will be removed on or after August 2026. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            verbose = positional_values.get("verbose", verbose)
-            es_key = positional_values.get("es_key", es_key)
-            stream_name = positional_values.get("stream_name", stream_name)
 
         # By default, the stream name of Plexon LFP data is "FPl-Low Pass Filter"
         # But the user might modify it. For that case, we exclude the default stream names
@@ -198,25 +145,25 @@ class PlexonLFPInterface(BaseLFPExtractorInterface):
         invalid_stream_names = ["WB-Wideband", "SPKC-High Pass Filtered", "AI-Auxiliary Input"]
         assert stream_name not in invalid_stream_names, f"Invalid stream name: {stream_name}"
 
+        if metadata_key is None:
+            metadata_key = "plexon_lfp"
+
         super().__init__(
             file_path=file_path, verbose=verbose, es_key=es_key, metadata_key=metadata_key, stream_name=stream_name
         )
 
-        if metadata_key is None:
-            self.metadata_key = "plexon_lfp"
+        # Keep the reader while the recording is still the neo-based extractor, as `remove_channels`
+        # replaces it with a channel slice that does not carry the `neo_reader` or the `block_index`
+        self._neo_reader = self.recording_extractor.neo_reader
+        self._block_index = self.recording_extractor.block_index
 
     def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
 
-        if use_new_metadata_format:
-            # The base emits the NWB-conventional "ElectricalSeries" name. This interface writes the
-            # low-pass filtered stream, so it states its own name here, matching the old list-based format.
-            metadata["Ecephys"]["ElectricalSeries"][self.metadata_key]["name"] = "ElectricalSeriesLF"
-
-        neo_reader = self.recording_extractor.neo_reader
+        neo_reader = self._neo_reader
 
         if hasattr(neo_reader, "raw_annotations"):
-            block_ind = self.recording_extractor.block_index
+            block_ind = self._block_index
             neo_metadata = neo_reader.raw_annotations["blocks"][block_ind]
             if "rec_datetime" in neo_metadata:
                 metadata["NWBFile"].update(session_start_time=neo_metadata["rec_datetime"])
@@ -265,7 +212,7 @@ class Plexon2RecordingInterface(BaseRecordingExtractorInterface):
     def __init__(
         self,
         file_path: FilePath,
-        *args,  # TODO: change to * (keyword only) on or after August 2026
+        *,
         verbose: bool = False,
         es_key: str | None = None,
         metadata_key: str | None = None,
@@ -284,32 +231,6 @@ class Plexon2RecordingInterface(BaseRecordingExtractorInterface):
             Key that indexes this interface's entries in the dict-based metadata. Defaults to
             ``"plexon2_recording"``.
         """
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "verbose",
-                "es_key",
-            ]
-            num_positional_args_before_args = 1  # file_path
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args + 1} were given. "
-                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
-                    "Please use keyword arguments."
-                )
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to Plexon2RecordingInterface.__init__() is deprecated "
-                f"and will be removed on or after August 2026. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            verbose = positional_values.get("verbose", verbose)
-            es_key = positional_values.get("es_key", es_key)
 
         # TODO: when neo version 0.14.4 is out or higher change this to stream_name for clarify
         import neo
@@ -321,6 +242,9 @@ class Plexon2RecordingInterface(BaseRecordingExtractorInterface):
         else:
             self.stream_id = "WB"
         assert Path(file_path).is_file(), f"Plexon file not found in: {file_path}"
+        if metadata_key is None:
+            metadata_key = "plexon2_recording"
+
         super().__init__(
             file_path=file_path,
             verbose=verbose,
@@ -328,15 +252,17 @@ class Plexon2RecordingInterface(BaseRecordingExtractorInterface):
             metadata_key=metadata_key,
         )
 
-        if metadata_key is None:
-            self.metadata_key = "plexon2_recording"
+        # Keep the reader while the recording is still the neo-based extractor, as `remove_channels`
+        # replaces it with a channel slice that does not carry the `neo_reader` or the `block_index`
+        self._neo_reader = self.recording_extractor.neo_reader
+        self._block_index = self.recording_extractor.block_index
 
     def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
 
-        neo_reader = self.recording_extractor.neo_reader
+        neo_reader = self._neo_reader
 
-        block_ind = self.recording_extractor.block_index
+        block_ind = self._block_index
         neo_metadata = neo_reader.raw_annotations["blocks"][block_ind]
         metadata["NWBFile"].update(session_start_time=neo_metadata["m_CreatorDateTime"])
 
@@ -367,9 +293,7 @@ class PlexonSortingInterface(BaseSortingExtractorInterface):
         return PlexonSortingExtractor
 
     @validate_call
-    def __init__(
-        self, file_path: FilePath, *args, verbose: bool = False
-    ):  # TODO: change to * (keyword only) on or after August 2026
+    def __init__(self, file_path: FilePath, *, verbose: bool = False):
         """
         Load and prepare data for Plexon.
 
@@ -380,30 +304,6 @@ class PlexonSortingInterface(BaseSortingExtractorInterface):
         verbose: bool, default: True
             Allows verbosity.
         """
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "verbose",
-            ]
-            num_positional_args_before_args = 1  # file_path
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args + 1} were given. "
-                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
-                    "Please use keyword arguments."
-                )
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to PlexonSortingInterface.__init__() is deprecated "
-                f"and will be removed on or after August 2026. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            verbose = positional_values.get("verbose", verbose)
 
         super().__init__(file_path=file_path, verbose=verbose)
 

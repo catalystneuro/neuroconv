@@ -60,31 +60,6 @@ class BackendConfiguration(BaseModel):
         return super().model_json_schema(mode="validation", schema_generator=PureJSONSchemaGenerator, **kwargs)
 
     @classmethod
-    def from_nwbfile(cls, nwbfile: NWBFile) -> Self:
-        """
-        Create a backend configuration from an NWBFile with default chunking and compression settings.
-
-        .. deprecated:: 0.8.4
-            The `from_nwbfile` method is deprecated and will be removed on or after June 2026.
-            Use `from_nwbfile_with_defaults` or `from_nwbfile_with_existing` instead.
-        """
-        import warnings
-
-        warnings.warn(
-            "The 'from_nwbfile' method is deprecated and will be removed on or after June 2026. "
-            "Use 'from_nwbfile_with_defaults' or 'from_nwbfile_with_existing' instead.",
-            FutureWarning,
-            stacklevel=2,
-        )
-        default_dataset_configurations = get_default_dataset_io_configurations(nwbfile=nwbfile, backend=cls.backend)
-        dataset_configurations = {
-            default_dataset_configuration.location_in_file: default_dataset_configuration
-            for default_dataset_configuration in default_dataset_configurations
-        }
-
-        return cls(dataset_configurations=dataset_configurations)
-
-    @classmethod
     def from_nwbfile_with_defaults(cls, nwbfile: NWBFile) -> Self:
         """
         Create a backend configuration from an NWBFile with default chunking and compression settings.
@@ -264,7 +239,7 @@ class BackendConfiguration(BaseModel):
         """
         # Import here to avoid circular imports
         from ._hdf5_dataset_io import AVAILABLE_HDF5_COMPRESSION_METHODS, HDF5DatasetIOConfiguration
-        from ._zarr_dataset_io import AVAILABLE_ZARR_COMPRESSION_METHODS, ZarrDatasetIOConfiguration
+        from ._zarr_dataset_io import _ZARR_CODECS_ACCEPTED_UNTIL_V0_12, ZarrDatasetIOConfiguration
 
         deprecated_message = (
             "Naming a single compression method and options for `apply_global_compression` is deprecated and will "
@@ -296,7 +271,9 @@ class BackendConfiguration(BaseModel):
             available_methods = AVAILABLE_HDF5_COMPRESSION_METHODS
             pure_filter_names = HDF5DatasetIOConfiguration._pure_filter_names
         elif self.backend == "zarr":
-            available_methods = AVAILABLE_ZARR_COMPRESSION_METHODS
+            # The model warns on a name outside AVAILABLE_ZARR_COMPRESSION_METHODS until v0.12.0, when this check
+            # moves to that map.
+            available_methods = _ZARR_CODECS_ACCEPTED_UNTIL_V0_12
             pure_filter_names = ZarrDatasetIOConfiguration._pure_filter_names
         else:
             raise ValueError(f"Unknown backend: {self.backend}")

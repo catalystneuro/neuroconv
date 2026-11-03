@@ -3,6 +3,7 @@ from datetime import datetime
 from pynwb import read_nwb
 
 from neuroconv.datainterfaces import IntanStimInterface
+from neuroconv.tools.testing.data_interface_mixins import TimeSeriesInterfaceTestMixin
 
 try:
     from ..setup_paths import ECEPHY_DATA_PATH
@@ -10,10 +11,16 @@ except ImportError:
     from setup_paths import ECEPHY_DATA_PATH
 
 
-class TestIntanStimInterfaceSingleFile:
+class TestIntanStimInterfaceSingleFile(TimeSeriesInterfaceTestMixin):
     """Single .rhs file format."""
 
     file_path = ECEPHY_DATA_PATH / "intan" / "rhs_stim_data_single_file_format" / "intanTestFile.rhs"
+    data_interface_cls = IntanStimInterface
+    interface_kwargs = dict(file_path=file_path)
+    expected_time_series_names = ("TimeSeriesIntanStim",)
+
+    def check_extracted_metadata(self, metadata):
+        assert set(metadata["TimeSeries"]) == {"intan_stim"}
 
     def test_conversion(self, tmp_path):
         interface = IntanStimInterface(file_path=self.file_path)
@@ -188,17 +195,3 @@ def test_stub_conversion(tmp_path):
     ts = nwbfile.stimulus["TimeSeriesIntanStim"]
     assert ts.data.shape[0] <= 100
     assert ts.data.shape[1] == 128
-
-
-def test_metadata_key_does_not_rename_series():
-    """The key addresses the entry; the TimeSeries name lives inside it and is unaffected."""
-    file_path = ECEPHY_DATA_PATH / "intan" / "rhs_stim_data_single_file_format" / "intanTestFile.rhs"
-
-    default_interface = IntanStimInterface(file_path=file_path)
-    assert default_interface.metadata_key == "intan_stim"
-    assert default_interface.get_metadata()["TimeSeries"]["intan_stim"]["name"] == "TimeSeriesIntanStim"
-
-    custom_interface = IntanStimInterface(file_path=file_path, metadata_key="my_stim")
-    time_series_metadata = custom_interface.get_metadata()["TimeSeries"]
-    assert set(time_series_metadata) == {"my_stim"}
-    assert time_series_metadata["my_stim"]["name"] == "TimeSeriesIntanStim"

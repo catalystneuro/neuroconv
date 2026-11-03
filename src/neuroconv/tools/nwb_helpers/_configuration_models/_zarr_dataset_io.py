@@ -7,7 +7,7 @@ from hdmf import Container
 from pydantic import Field, InstanceOf, PositiveInt, model_validator
 from typing_extensions import Self
 from zarr.abc.codec import ArrayArrayCodec, BytesBytesCodec
-from zarr.codecs import BZ2, LZ4, LZMA, BloscCodec, GzipCodec, Shuffle, Zlib, ZstdCodec
+from zarr.codecs import BZ2, LZ4, LZMA, BloscCodec, Delta, GzipCodec, Shuffle, Zlib, ZstdCodec
 
 from ._base_dataset_io import _DEFAULT_GZIP_LEVEL, DatasetIOConfiguration
 
@@ -27,6 +27,31 @@ AVAILABLE_ZARR_COMPRESSION_METHODS: dict[str, type[BytesBytesCodec]] = {
 AVAILABLE_ZARR_FILTER_METHODS: dict[str, type[ArrayArrayCodec]] = {
     "delta": __import__("zarr.codecs.numcodecs", fromlist=["Delta"]).Delta,
 }
+
+AVAILABLE_ZARR_FILTER_METHODS = {
+    "delta": Delta,
+}
+
+# ======================================================================================================
+# Deprecated in v0.11.0, to be removed in v0.12.0.
+#
+# Every codec name used to be accepted in both `compressors` and `filters`, including the value transform
+# `packbits` and the checksums `fletcher32` and `jenkins_lookup3`, which are neither. Until v0.12.0 both
+# fields still accept them, with a FutureWarning for a name in the wrong one, and `get_data_io_kwargs()`
+# places each codec in the stage its class belongs to. `categorize` has no zarr 3 codec and is gone. At
+# v0.12.0 delete this map, type `compressors` against AVAILABLE_ZARR_COMPRESSION_METHODS and `filters`
+# against AVAILABLE_ZARR_FILTER_METHODS, and resolve each through its own map.
+# ======================================================================================================
+_ZARR_CODECS_ACCEPTED_UNTIL_V0_12 = {
+    **AVAILABLE_ZARR_COMPRESSION_METHODS,
+    **AVAILABLE_ZARR_FILTER_METHODS,
+    "fletcher32": Fletcher32,
+    "jenkins_lookup3": JenkinsLookup3,
+    "packbits": PackBits,
+}
+# ======================================================================================================
+# End of the block deprecated in v0.11.0, to be removed in v0.12.0.
+# ======================================================================================================
 
 
 class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
@@ -211,7 +236,7 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
         if not self.filters:
             return self
 
-        if any(filter_method == "shuffle" or isinstance(filter_method, Shuffle) for filter_method in self.filters):
+        if any(filter_method == "shuffle" for filter_method in self.filters):
             warnings.warn(
                 "Naming 'shuffle' in `filters` is deprecated and will be removed in v0.12.0. It rearranges "
                 "the serialized bytes rather than the values, so it belongs in `compressors`, as in "
@@ -224,6 +249,50 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
 
     # ==================================================================================================
     # End of the block deprecated in v0.10.2, to be removed in v0.12.0.
+    # ==================================================================================================
+
+    # ==================================================================================================
+    # Deprecated in v0.11.0, to be removed in v0.12.0. See `_ZARR_CODECS_ACCEPTED_UNTIL_V0_12`.
+    # ==================================================================================================
+
+    @model_validator(mode="after")
+    def warn_on_codecs_outside_their_map(self) -> Self:
+        """Accept a codec name in the field it does not belong to for one release cycle."""
+        misplaced_compressors = [
+            compressor
+            for compressor in self.compressors or []
+            if isinstance(compressor, str)
+            and compressor not in (*self._pure_filter_names, *AVAILABLE_ZARR_COMPRESSION_METHODS)
+        ]
+        if misplaced_compressors:
+            warnings.warn(
+                f"Naming {misplaced_compressors} in `compressors` is deprecated and will be removed in v0.12.0. "
+                f"The compression methods are {list(AVAILABLE_ZARR_COMPRESSION_METHODS)}, and the filter methods, "
+                f"which belong in `filters`, are {list(AVAILABLE_ZARR_FILTER_METHODS)}.",
+                FutureWarning,
+                stacklevel=2,
+            )
+
+        # 'shuffle' in `filters` has its own deprecation above.
+        misplaced_filters = [
+            filter_method
+            for filter_method in self.filters or []
+            if isinstance(filter_method, str)
+            and filter_method not in (*self._pure_filter_names, *AVAILABLE_ZARR_FILTER_METHODS)
+        ]
+        if misplaced_filters:
+            warnings.warn(
+                f"Naming {misplaced_filters} in `filters` is deprecated and will be removed in v0.12.0. "
+                f"The filter methods are {list(AVAILABLE_ZARR_FILTER_METHODS)}, and the compression methods, "
+                f"which belong in `compressors`, are {list(AVAILABLE_ZARR_COMPRESSION_METHODS)}.",
+                FutureWarning,
+                stacklevel=2,
+            )
+
+        return self
+
+    # ==================================================================================================
+    # End of the block deprecated in v0.11.0, to be removed in v0.12.0.
     # ==================================================================================================
 
     def _instantiate_codec(self, codec, codec_options: dict[str, Any] | None):

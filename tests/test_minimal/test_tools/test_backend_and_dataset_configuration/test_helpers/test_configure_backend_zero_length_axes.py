@@ -15,7 +15,6 @@ from numpy.testing import assert_array_equal
 from pynwb import read_nwb
 from pynwb.testing.mock.base import mock_TimeSeries
 from pynwb.testing.mock.file import mock_NWBFile
-from zarr.abc.codec import BytesBytesCodec
 
 from neuroconv.tools.nwb_helpers import (
     BACKEND_NWB_IO,
@@ -128,8 +127,7 @@ def test_dynamic_table_skip_zero_length_axis(
     if backend == "hdf5":
         assert written_data.compression == "gzip"
     elif backend == "zarr":
-        assert len(written_data.compressors) > 0
-        assert isinstance(written_data.compressors[0], BytesBytesCodec)
+        assert written_data.compressors == (GzipCodec(level=4),)
 
     assert_array_equal(integer_array, written_data[:])
     written_nwbfile.read_io.close()

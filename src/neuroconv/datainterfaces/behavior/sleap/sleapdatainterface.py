@@ -73,7 +73,7 @@ class SLEAPInterface(BasePoseEstimationInterface):
     def __init__(
         self,
         file_path: FilePath,
-        *args,  # TODO: change to * (keyword only) on or after August 2026
+        *,
         video_file_path: FilePath | None = None,
         verbose: bool = False,
         frames_per_second: float | None = None,
@@ -110,34 +110,6 @@ class SLEAPInterface(BasePoseEstimationInterface):
             when not given (``"sleap_track_0"``), so one interface per track of the same file gets a
             distinct key and a converter can merge them.
         """
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "video_file_path",
-                "verbose",
-                "frames_per_second",
-            ]
-            num_positional_args_before_args = 1  # file_path
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args + 1} were given. "
-                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
-                    "Please use keyword arguments."
-                )
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to SLEAPInterface.__init__() is deprecated "
-                f"and will be removed on or after August 2026. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            video_file_path = positional_values.get("video_file_path", video_file_path)
-            verbose = positional_values.get("verbose", verbose)
-            frames_per_second = positional_values.get("frames_per_second", frames_per_second)
 
         # This import is to assure that the ndx_pose is in the global namespace when an pynwb.io object is created
         # For more detail, see https://github.com/rly/ndx-pose/issues/36
@@ -147,7 +119,6 @@ class SLEAPInterface(BasePoseEstimationInterface):
         self.video_file_path = video_file_path
         self.video_sample_rate = frames_per_second
         self.verbose = verbose
-        self._timestamps = None
         self._labels = None
 
         track_names = self.get_available_tracks(file_path=file_path)
@@ -221,6 +192,15 @@ class SLEAPInterface(BasePoseEstimationInterface):
             )
 
         super().__init__(file_path=file_path)
+
+    @property
+    def temporal_alignment(self):
+        if self._legacy_interface is not None:
+            raise NotImplementedError(
+                "Alignment is not supported by the deprecated whole-file SLEAP writer. "
+                "Select one individual with 'track_name' to align its pose container."
+            )
+        return super().temporal_alignment
 
     def _get_labels(self):
         """Read the .slp file once and cache it."""
@@ -324,7 +304,14 @@ class SLEAPInterface(BasePoseEstimationInterface):
         """
         frame_indices = self._get_frame_indices()
         if self.video_file_path is not None:
-            return np.asarray(extract_timestamps(self.video_file_path))[frame_indices]
+            video_timestamps = np.asarray(extract_timestamps(self.video_file_path))
+            if frame_indices.max() >= len(video_timestamps):
+                raise ValueError(
+                    f"The video '{self.video_file_path}' has {len(video_timestamps)} frames, but this track is "
+                    f"labeled up to frame index {frame_indices.max()}. Check that 'video_file_path' is the video "
+                    "the .slp file was labeled on."
+                )
+            return video_timestamps[frame_indices]
         if self.video_sample_rate is not None:
             return frame_indices / self.video_sample_rate
         raise ValueError(
@@ -335,15 +322,22 @@ class SLEAPInterface(BasePoseEstimationInterface):
     def get_timestamps(self) -> np.ndarray:
         if self._legacy_interface is not None:
             return self._legacy_interface.get_timestamps()
-        return self._get_timestamps()
-
-    def _get_timestamps(self) -> np.ndarray:
-        return self._timestamps if self._timestamps is not None else self._get_original_timestamps()
+        return super().get_timestamps()
 
     def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
         if self._legacy_interface is not None:
             return self._legacy_interface.set_aligned_timestamps(aligned_timestamps=aligned_timestamps)
-        self._timestamps = aligned_timestamps
+        super().set_aligned_timestamps(aligned_timestamps=aligned_timestamps)
+
+    def set_aligned_starting_time(self, aligned_starting_time: float) -> None:
+        if self._legacy_interface is not None:
+            return self._legacy_interface.set_aligned_starting_time(aligned_starting_time)
+        super().set_aligned_starting_time(aligned_starting_time)
+
+    def align_by_interpolation(self, unaligned_timestamps: np.ndarray, aligned_timestamps: np.ndarray) -> None:
+        if self._legacy_interface is not None:
+            return self._legacy_interface.align_by_interpolation(unaligned_timestamps, aligned_timestamps)
+        super().align_by_interpolation(unaligned_timestamps, aligned_timestamps)
 
     def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict | None = None, **conversion_options) -> None:
         """Write the named track's ``PoseEstimation`` container to the file's behavior module."""

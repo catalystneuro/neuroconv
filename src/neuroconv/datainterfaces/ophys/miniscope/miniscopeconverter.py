@@ -373,12 +373,11 @@ class MiniscopeConverter(ConverterPipe):
                     )
                     timestamps = _get_device_folder_timestamps(folder_path=str(camera_folder_path))
                     segment_boundaries = list(starting_frames) + [len(timestamps)]
-                    interface.set_aligned_timestamps(
-                        aligned_timestamps=[
-                            timestamps[segment_start:segment_stop]
-                            for segment_start, segment_stop in zip(segment_boundaries[:-1], segment_boundaries[1:])
-                        ]
-                    )
+                    segment_ranges = zip(segment_boundaries[:-1], segment_boundaries[1:])
+                    for segment_key, (segment_start, segment_stop) in zip(
+                        interface.temporal_alignment.keys(), segment_ranges, strict=True
+                    ):
+                        interface.temporal_alignment[segment_key].set_times(timestamps[segment_start:segment_stop])
 
                     data_interfaces[interface_name] = interface
                     self._behavior_video_interfaces[interface_name] = dict(
@@ -395,7 +394,7 @@ class MiniscopeConverter(ConverterPipe):
             # Legacy mode: use _MiniscopeMultiRecordingInterface for backwards compatibility
             warnings.warn(
                 "Not passing 'user_configuration_file_path' to MiniscopeConverter is deprecated "
-                "and will be removed on or after February 2027. "
+                "and will be removed in v0.12.0. "
                 "The legacy folder discovery mode assumes all recordings are back-to-back, "
                 "which does not hold in general and can produce silently incorrect results. "
                 "Please pass the 'user_configuration_file_path' argument, which points to the "
@@ -509,7 +508,7 @@ class MiniscopeConverter(ConverterPipe):
         for interface_name, session_start_time in session_start_times.items():
             interface = self.data_interface_objects[interface_name]
             time_offset = (session_start_time - min_session_start_time).total_seconds()
-            interface.set_aligned_starting_time(aligned_starting_time=time_offset)
+            interface.temporal_alignment.shift_times(time_offset)
 
         # Align the behavior cameras with the session they were recorded in
         for video_interface_name in self._get_behavior_video_interface_names():
@@ -518,9 +517,7 @@ class MiniscopeConverter(ConverterPipe):
             if session_start_time is None:
                 continue
             time_offset = (session_start_time - min_session_start_time).total_seconds()
-            self.data_interface_objects[video_interface_name].set_aligned_starting_time(
-                aligned_starting_time=time_offset
-            )
+            self.data_interface_objects[video_interface_name].temporal_alignment.shift_times(time_offset)
 
         # Align head orientation interfaces with their paired imaging interfaces
         for ho_interface_name in self._get_head_orientation_interface_names():

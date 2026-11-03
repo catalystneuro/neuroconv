@@ -1,6 +1,5 @@
 """Unit tests for the ZarrDatasetIOConfiguration Pydantic model."""
 
-import numpy as np
 import pytest
 from pydantic import ValidationError
 from zarr.codecs import GzipCodec
@@ -78,7 +77,7 @@ def test_get_data_io_kwargs_with_shuffle():
 
 
 def test_get_data_io_kwargs_with_shuffle_and_a_filter_method():
-    """ArrayArrayCodec filters stay in `filters`; shuffle (BytesBytesCodec) stays in `compressors`."""
+    """An array-to-array filter method stays in `filters`, apart from the bytes-to-bytes codecs."""
     zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration(
         compressors=["shuffle", "gzip"], filters=["delta"], filter_options=[dict(dtype="int16")]
     )
@@ -108,14 +107,23 @@ def test_deprecated_compression_method_property():
     assert zarr_dataset_configuration.compressors == ["shuffle", "zstd"]
 
 
-def test_shuffle_elementsize_follows_the_dtype():
-    """`numcodecs.Shuffle` defaults `elementsize` to 4, which is wrong for anything else."""
+def test_deprecated_shuffle_in_filters_runs_in_compressors():
+    """Shuffle is a bytes-to-bytes codec, so the deprecated `filters` spelling still places it in `compressors`."""
+    with pytest.warns(FutureWarning, match="'shuffle' in `filters` is deprecated"):
+        zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration(filters=["shuffle"])
+
+    assert zarr_dataset_configuration.get_data_io_kwargs()["compressors"] == [Shuffle(), GzipCodec(level=4)]
+
+
+def test_shuffle_elementsize_is_kept_when_stated():
     zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration(
-        compressors=["shuffle", "gzip"], dtype=np.dtype("float64")
+        compressors=["shuffle", "gzip"], compressor_options=[dict(elementsize=2), None]
     )
 
-    result = zarr_dataset_configuration.get_data_io_kwargs()
-    assert result["compressors"][0] == Shuffle(elementsize=8)
+    assert zarr_dataset_configuration.get_data_io_kwargs()["compressors"] == [
+        Shuffle(elementsize=2),
+        GzipCodec(level=4),
+    ]
 
 
 def test_shuffle_elementsize_follows_the_dtype_on_the_deprecated_path():

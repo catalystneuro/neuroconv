@@ -13,6 +13,7 @@ from ...nwb_helpers import (
     ZarrBackendConfiguration,
     ZarrDatasetIOConfiguration,
 )
+from ...nwb_helpers._configuration_models._zarr_dataset_io import ArrayArrayCodec, BytesBytesCodec
 
 
 def mock_HDF5DatasetIOConfiguration(

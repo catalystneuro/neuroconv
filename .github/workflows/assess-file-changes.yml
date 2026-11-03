@@ -49,7 +49,7 @@ jobs:
           echo "CHANGELOG_ENTRY_ADDED=false" >> $GITHUB_OUTPUT
           PYPROJECT_TOUCHED=false
           GALLERY_PAGES=""
-          for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
+          for file in ${{ steps.changed-files.outputs.all_modified_files }}; do
             echo $file
             if [[ $file == "src/"* || $file == "tests/"* || $file == "pyproject.toml"   || $file == "setup.py" || $file == ".github/"* ]]
             then

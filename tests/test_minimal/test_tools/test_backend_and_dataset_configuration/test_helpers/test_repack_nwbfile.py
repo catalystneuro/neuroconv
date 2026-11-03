@@ -9,7 +9,8 @@ from pynwb.ophys import PlaneSegmentation
 from pynwb.testing.mock.base import mock_TimeSeries
 from pynwb.testing.mock.file import mock_NWBFile
 from pynwb.testing.mock.ophys import mock_ImagingPlane
-from zarr.codecs import BloscCodec
+from zarr.codecs import BloscCodec, GzipCodec
+from zarr.codecs.numcodecs import Delta
 
 from neuroconv.tools.nwb_helpers import (
     get_module,
@@ -85,7 +86,7 @@ def hdf5_nwbfile_path(tmpdir_factory):
 
 @pytest.fixture(scope="session")
 def zarr_nwbfile_path(tmpdir_factory):
-    compressor = BloscCodec(cname="lz4", clevel=5)
+    compressors = [BloscCodec(cname="lz4", clevel=5, shuffle="shuffle")]
 
     nwbfile_path = tmpdir_factory.mktemp("data").join("test_default_backend_configuration_hdf5_nwbfile.nwb.zarr")
     if not Path(nwbfile_path).exists():
@@ -93,14 +94,14 @@ def zarr_nwbfile_path(tmpdir_factory):
 
         # Add a ZarrDataIO-compressed time series
         raw_array = np.array([[11, 21, 31], [41, 51, 61]], dtype="int32")
-        data = ZarrDataIO(data=raw_array, chunks=(1, 3), compressors=compressor)
+        data = ZarrDataIO(data=raw_array, chunks=(1, 3), compressors=compressors, filters=[Delta(dtype="int32")])
         raw_time_series = mock_TimeSeries(name="CompressedRawTimeSeries", data=data)
         nwbfile.add_acquisition(raw_time_series)
 
         # Add ZarrDataIO-compressed trials column
         number_of_trials = 10
         start_time = np.linspace(start=0.0, stop=10.0, num=number_of_trials)
-        data = ZarrDataIO(data=start_time, chunks=(5,), compressors=compressor)
+        data = ZarrDataIO(data=start_time, chunks=(5,), compressors=compressors, filters=[Delta(dtype="float64")])
         nwbfile.add_trial_column(
             name="compressed_start_time",
             description="start time of epoch",
@@ -115,9 +116,6 @@ def zarr_nwbfile_path(tmpdir_factory):
 
 @pytest.mark.parametrize("backend", ["hdf5", "zarr"])
 def test_repack_nwbfile(hdf5_nwbfile_path, zarr_nwbfile_path, backend):
-    if backend == "zarr":
-        pytest.xfail("Zarr v3 Array does not support __iter__, which is needed by hdmf-zarr export")
-
     if backend == "hdf5":
         nwbfile_path = hdf5_nwbfile_path
         export_path = Path(hdf5_nwbfile_path).parent / "repacked_test_repack_nwbfile.nwb"
@@ -140,15 +138,16 @@ def test_repack_nwbfile(hdf5_nwbfile_path, zarr_nwbfile_path, backend):
             assert nwbfile.intervals["trials"].compressed_start_time.data.compression_opts == 4
             assert nwbfile.processing["ophys"]["PlaneSegmentation"].pixel_mask.data.dataset.compression_opts == 4
         elif backend == "zarr":
-            assert len(nwbfile.acquisition["RawTimeSeries"].data.compressors) > 0
+            default_compressors = (GzipCodec(level=4),)
+            assert nwbfile.acquisition["RawTimeSeries"].data.compressors == default_compressors
             assert nwbfile.acquisition["RawTimeSeries"].data.filters == ()
-            assert len(nwbfile.intervals["trials"].start_time.data.compressors) > 0
+            assert nwbfile.intervals["trials"].start_time.data.compressors == default_compressors
             assert nwbfile.intervals["trials"].start_time.data.filters == ()
-            assert len(nwbfile.processing["ecephys"]["ProcessedTimeSeries"].data.compressors) > 0
+            assert nwbfile.processing["ecephys"]["ProcessedTimeSeries"].data.compressors == default_compressors
             assert nwbfile.processing["ecephys"]["ProcessedTimeSeries"].data.filters == ()
-            assert len(nwbfile.acquisition["CompressedRawTimeSeries"].data.compressors) > 0
+            assert nwbfile.acquisition["CompressedRawTimeSeries"].data.compressors == default_compressors
             assert nwbfile.acquisition["CompressedRawTimeSeries"].data.filters == ()
-            assert len(nwbfile.processing["ophys"]["PlaneSegmentation"].pixel_mask.data.compressors) > 0
+            assert nwbfile.processing["ophys"]["PlaneSegmentation"].pixel_mask.data.compressors == default_compressors
             assert nwbfile.processing["ophys"]["PlaneSegmentation"].pixel_mask.data.filters == ()
 
 
@@ -158,6 +157,7 @@ def test_repack_nwbfile(hdf5_nwbfile_path, zarr_nwbfile_path, backend):
 def test_repack_nwbfile_hdf5_to_zarr(hdf5_nwbfile_path: str, tmp_path: Path):
     """Test repackaging an NWB file from HDF5 to Zarr."""
     export_nwbfile_path = tmp_path / "repacked_hdf5_to_zarr.nwb.zarr"
+    default_compressors = (GzipCodec(level=4),)
 
     repack_nwbfile(
         nwbfile_path=Path(hdf5_nwbfile_path),
@@ -200,12 +200,14 @@ def test_repack_nwbfile_hdf5_to_zarr(hdf5_nwbfile_path: str, tmp_path: Path):
             )
 
             # Check that compression is applied properly in zarr format
-            assert len(nwbfile_zarr.acquisition["RawTimeSeries"].data.compressors) > 0
-            assert len(nwbfile_zarr.acquisition["CompressedRawTimeSeries"].data.compressors) > 0
-            assert len(nwbfile_zarr.intervals["trials"].start_time.data.compressors) > 0
-            assert len(nwbfile_zarr.intervals["trials"].compressed_start_time.data.compressors) > 0
-            assert len(nwbfile_zarr.processing["ecephys"]["ProcessedTimeSeries"].data.compressors) > 0
-            assert len(nwbfile_zarr.processing["ophys"]["PlaneSegmentation"].pixel_mask.data.compressors) > 0
+            assert nwbfile_zarr.acquisition["RawTimeSeries"].data.compressors == default_compressors
+            assert nwbfile_zarr.acquisition["CompressedRawTimeSeries"].data.compressors == default_compressors
+            assert nwbfile_zarr.intervals["trials"].start_time.data.compressors == default_compressors
+            assert nwbfile_zarr.intervals["trials"].compressed_start_time.data.compressors == default_compressors
+            assert nwbfile_zarr.processing["ecephys"]["ProcessedTimeSeries"].data.compressors == default_compressors
+            assert (
+                nwbfile_zarr.processing["ophys"]["PlaneSegmentation"].pixel_mask.data.compressors == default_compressors
+            )
 
 
 @pytest.mark.xfail(reason="Zarr v3 Array is not accepted by H5DataIO (not Iterable)")

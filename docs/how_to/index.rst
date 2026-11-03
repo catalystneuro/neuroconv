@@ -17,6 +17,7 @@ This section contains practical guides for using NeuroConv effectively.
    annotate_pose_metadata
    extract_events_from_signals
    linking_sorted_data
+   align_external_video
    convert_video_formats_with_ffmpeg
    adding_multiple_sorting_interfaces
    selecting_rois_for_conversion
