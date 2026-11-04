@@ -127,6 +127,8 @@ def test_dynamic_table_skip_zero_length_axis(
     if backend == "hdf5":
         assert written_data.compression == "gzip"
     elif backend == "zarr":
+        from zarr.codecs import GzipCodec
+
         assert written_data.compressors == (GzipCodec(level=4),)
 
     assert_array_equal(integer_array, written_data[:])
