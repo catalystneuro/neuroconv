@@ -247,6 +247,12 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         return self.sorting_extractor.get_unit_ids()
 
     def register_recording(self, recording_interface: BaseRecordingExtractorInterface):
+        warnings.warn(
+            "`register_recording` is deprecated and will be removed in v0.13.0. "
+            "Align the sorting with `interface.temporal_alignment` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
         self.sorting_extractor.register_recording(recording=recording_interface.recording_extractor)
 
     def get_original_timestamps(self) -> np.ndarray:
@@ -255,6 +261,12 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         )
 
     def get_timestamps(self) -> np.ndarray | list[np.ndarray]:
+        warnings.warn(
+            "`get_timestamps` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment[key].get_times()` for a segment's spike times instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
         if not self.sorting_extractor.has_recording():
             raise NotImplementedError(
                 "In order to align timestamps for a SortingInterface, it must have a recording "
@@ -285,6 +297,13 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
             The synchronized timestamps for data in this interface.
             If there is more than one segment in the sorting/recording pair, then
         """
+        warnings.warn(
+            "`set_aligned_timestamps` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment.remap_times(local_sync_times=..., reference_sync_times=...)` "
+            "instead, from the recording's timestamps to the aligned ones.",
+            FutureWarning,
+            stacklevel=2,
+        )
         if not self.sorting_extractor.has_recording():
             raise NotImplementedError(
                 "In order to align timestamps for a SortingInterface, it must have a recording "
@@ -322,6 +341,13 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         aligned_segment_timestamps : list of numpy.ndarray
             The synchronized timestamps for segment of data in this interface.
         """
+        warnings.warn(
+            "`set_aligned_segment_timestamps` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment[key].remap_times(local_sync_times=..., reference_sync_times=...)` "
+            "on each segment instead, from the recording's timestamps to the aligned ones.",
+            FutureWarning,
+            stacklevel=2,
+        )
         if not self.sorting_extractor.has_recording():
             raise NotImplementedError(
                 "In order to align timestamps for a SortingInterface, it must have a recording "
@@ -341,13 +367,18 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
             )
 
     def set_aligned_starting_time(self, aligned_starting_time: float):
+        warnings.warn(
+            "`set_aligned_starting_time` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment.shift_times(delta)` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
         if self.sorting_extractor.has_recording():
-            if self._number_of_segments == 1:
-                self.set_aligned_timestamps(aligned_timestamps=self.get_timestamps() + aligned_starting_time)
-            else:
-                self.set_aligned_segment_timestamps(
-                    [segment_timestamps + aligned_starting_time for segment_timestamps in self.get_timestamps()]
-                )
+            # The recording is read and set directly, so a call warns once and not for every deprecated method it used
+            recording = self.sorting_extractor._recording
+            for segment_index in range(self._number_of_segments):
+                segment_timestamps = recording.get_times(segment_index=segment_index)
+                recording.set_times(times=segment_timestamps + aligned_starting_time, segment_index=segment_index)
         else:
             for sorting_segment in self.sorting_extractor._sorting_segments:
                 if sorting_segment._t_start is None:
@@ -366,27 +397,50 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         aligned_segment_starting_times : list of floats
             The starting time for each segment of data in this interface.
         """
+        warnings.warn(
+            "`set_aligned_segment_starting_times` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment[key].shift_times(delta)` on each segment instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
         assert len(aligned_segment_starting_times) == self._number_of_segments, (
             f"The length of the starting_times ({len(aligned_segment_starting_times)}) does not match the number "
             f"of segments ({self._number_of_segments})!"
         )
 
         if self.sorting_extractor.has_recording():
-            if self._number_of_segments == 1:
-                self.set_aligned_starting_time(aligned_starting_time=aligned_segment_starting_times[0])
-            else:
-                aligned_segment_timestamps = [
-                    segment_timestamps + aligned_segment_starting_time
-                    for segment_timestamps, aligned_segment_starting_time in zip(
-                        self.get_timestamps(), aligned_segment_starting_times
-                    )
-                ]
-                self.set_aligned_segment_timestamps(aligned_segment_timestamps=aligned_segment_timestamps)
+            # The recording is read and set directly, so a call warns once and not for every deprecated method it used
+            recording = self.sorting_extractor._recording
+            for segment_index, aligned_segment_starting_time in enumerate(aligned_segment_starting_times):
+                segment_timestamps = recording.get_times(segment_index=segment_index)
+                recording.set_times(
+                    times=segment_timestamps + aligned_segment_starting_time, segment_index=segment_index
+                )
         else:
             for sorting_segment, aligned_segment_starting_time in zip(
                 self.sorting_extractor._sorting_segments, aligned_segment_starting_times
             ):
                 sorting_segment._t_start = aligned_segment_starting_time
+
+    def align_by_interpolation(self, unaligned_timestamps: np.ndarray, aligned_timestamps: np.ndarray) -> None:
+        warnings.warn(
+            "`align_by_interpolation` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment.remap_times(local_sync_times=..., reference_sync_times=...)` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        if not self.sorting_extractor.has_recording():
+            raise NotImplementedError(
+                "In order to align timestamps for a SortingInterface, it must have a recording "
+                "object attached to it! Please attach one by calling `.register_recording(recording_interface=...)`."
+            )
+        assert (
+            self._number_of_segments == 1
+        ), "This recording has multiple segments; please use 'set_aligned_segment_timestamps' instead."
+
+        # The recording is read and set directly, so a call warns once and not for every deprecated method it used
+        recording = self.sorting_extractor._recording
+        recording.set_times(times=np.interp(x=recording.get_times(), xp=unaligned_timestamps, fp=aligned_timestamps))
 
     def subset_sorting(self):
         """
