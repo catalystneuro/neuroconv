@@ -7,7 +7,8 @@ from hdmf import Container
 from pydantic import Field, InstanceOf, PositiveInt, model_validator
 from typing_extensions import Self
 from zarr.abc.codec import ArrayArrayCodec, BytesBytesCodec
-from zarr.codecs import BZ2, LZ4, LZMA, BloscCodec, Delta, GzipCodec, Shuffle, Zlib, ZstdCodec
+from zarr.codecs import BloscCodec, GzipCodec, ZstdCodec
+from zarr.codecs.numcodecs import BZ2, LZ4, LZMA, Delta, Fletcher32, JenkinsLookup3, PackBits, Shuffle, Zlib
 
 from ._base_dataset_io import _DEFAULT_GZIP_LEVEL, DatasetIOConfiguration
 
@@ -24,13 +25,7 @@ AVAILABLE_ZARR_COMPRESSION_METHODS: dict[str, type[BytesBytesCodec]] = {
 }
 
 # Curated mapping of string names to zarr v3 ArrayArrayCodec classes for filters.
-AVAILABLE_ZARR_FILTER_METHODS: dict[str, type[ArrayArrayCodec]] = {
-    "delta": __import__("zarr.codecs.numcodecs", fromlist=["Delta"]).Delta,
-}
-
-AVAILABLE_ZARR_FILTER_METHODS = {
-    "delta": Delta,
-}
+AVAILABLE_ZARR_FILTER_METHODS: dict[str, type[ArrayArrayCodec]] = {"delta": Delta}
 
 # ======================================================================================================
 # Deprecated in v0.11.0, to be removed in v0.12.0.
