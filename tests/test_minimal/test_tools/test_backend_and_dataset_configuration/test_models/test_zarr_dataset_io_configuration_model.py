@@ -1,5 +1,6 @@
 """Unit tests for the ZarrDatasetIOConfiguration Pydantic model."""
 
+import numpy as np
 import pytest
 from pydantic import ValidationError
 from zarr.codecs import GzipCodec
@@ -112,7 +113,10 @@ def test_deprecated_shuffle_in_filters_runs_in_compressors():
     with pytest.warns(FutureWarning, match="'shuffle' in `filters` is deprecated"):
         zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration(filters=["shuffle"])
 
-    assert zarr_dataset_configuration.get_data_io_kwargs()["compressors"] == [Shuffle(), GzipCodec(level=4)]
+    assert zarr_dataset_configuration.get_data_io_kwargs()["compressors"] == [
+        Shuffle(elementsize=2),
+        GzipCodec(level=4),
+    ]
 
 
 def test_shuffle_elementsize_is_kept_when_stated():

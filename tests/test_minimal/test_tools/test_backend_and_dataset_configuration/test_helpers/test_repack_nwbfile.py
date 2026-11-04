@@ -151,9 +151,6 @@ def test_repack_nwbfile(hdf5_nwbfile_path, zarr_nwbfile_path, backend):
             assert nwbfile.processing["ophys"]["PlaneSegmentation"].pixel_mask.data.filters == ()
 
 
-@pytest.mark.xfail(
-    reason="hdmf-zarr get_io_params() returns 'compressors' but ZarrDataIO.__init__ expects 'compressor'"
-)
 def test_repack_nwbfile_hdf5_to_zarr(hdf5_nwbfile_path: str, tmp_path: Path):
     """Test repackaging an NWB file from HDF5 to Zarr."""
     export_nwbfile_path = tmp_path / "repacked_hdf5_to_zarr.nwb.zarr"
@@ -210,7 +207,6 @@ def test_repack_nwbfile_hdf5_to_zarr(hdf5_nwbfile_path: str, tmp_path: Path):
             )
 
 
-@pytest.mark.xfail(reason="Zarr v3 Array is not accepted by H5DataIO (not Iterable)")
 def test_repack_nwbfile_zarr_to_hdf5(zarr_nwbfile_path: str, tmp_path: Path):
     """Test repackaging an NWB file from Zarr to HDF5."""
     export_nwbfile_path = tmp_path / "repacked_zarr_to_hdf5.nwb"

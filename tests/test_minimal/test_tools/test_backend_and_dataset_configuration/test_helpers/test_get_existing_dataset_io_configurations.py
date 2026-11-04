@@ -29,13 +29,6 @@ from neuroconv.tools.nwb_helpers import (
 _ZARR_DEFAULT_COMPRESSOR = ZstdCodec(level=0, checksum=False)
 
 
-def _assert_blosc_codec_equal(actual, expected):
-    """Compare BloscCodec instances by key attributes, ignoring _tunable_attrs differences after round-trip."""
-    assert type(actual) is type(expected), f"Type mismatch: {type(actual)} != {type(expected)}"
-    assert actual.cname == expected.cname
-    assert actual.clevel == expected.clevel
-
-
 @pytest.mark.parametrize("backend", ["hdf5", "zarr"])
 def test_configuration_on_time_series(tmp_path, backend: Literal["hdf5", "zarr"]):
     data = np.array([[1, 2, 3], [4, 5, 6]])
@@ -104,7 +97,7 @@ def test_configuration_on_time_series(tmp_path, backend: Literal["hdf5", "zarr"]
 
         elif backend == "zarr":
             assert len(dataset_configuration.compressors) == 1
-            _assert_blosc_codec_equal(dataset_configuration.compressors[0], compressor)
+            assert dataset_configuration.compressors[0] == compressor
             assert dataset_configuration.compressor_options is None
             assert dataset_configuration.filters == filters
             assert dataset_configuration.filter_options is None
@@ -195,7 +188,7 @@ def test_configuration_on_dynamic_table(tmp_path, backend: Literal["hdf5", "zarr
             assert dataset_configuration.compressor_options == [dict(compression_opts=2)]
         elif backend == "zarr":
             assert len(dataset_configuration.compressors) == 1
-            _assert_blosc_codec_equal(dataset_configuration.compressors[0], compressor)
+            assert dataset_configuration.compressors[0] == compressor
             assert dataset_configuration.compressor_options is None
             assert dataset_configuration.filters == filters
             assert dataset_configuration.filter_options is None
@@ -356,7 +349,7 @@ def test_configuration_on_ragged_units_table(tmp_path, backend: Literal["hdf5", 
             assert dataset_configuration.compressor_options == [dict(compression_opts=2)]
         elif backend == "zarr":
             assert len(dataset_configuration.compressors) == 1
-            _assert_blosc_codec_equal(dataset_configuration.compressors[0], compressor)
+            assert dataset_configuration.compressors[0] == compressor
             assert dataset_configuration.compressor_options is None
             assert dataset_configuration.filters == spike_times_filters
             assert dataset_configuration.filter_options is None
@@ -396,7 +389,7 @@ def test_configuration_on_ragged_units_table(tmp_path, backend: Literal["hdf5", 
             assert dataset_configuration.compressor_options == [dict(compression_opts=2)]
         elif backend == "zarr":
             assert len(dataset_configuration.compressors) == 1
-            _assert_blosc_codec_equal(dataset_configuration.compressors[0], compressor)
+            assert dataset_configuration.compressors[0] == compressor
             assert dataset_configuration.compressor_options is None
             assert dataset_configuration.filters == waveforms_filters
             assert dataset_configuration.filter_options is None
@@ -494,7 +487,7 @@ def test_configuration_on_compass_direction(tmp_path, backend: Literal["hdf5", "
             assert dataset_configuration.compressor_options == [dict(compression_opts=2)]
         elif backend == "zarr":
             assert len(dataset_configuration.compressors) == 1
-            _assert_blosc_codec_equal(dataset_configuration.compressors[0], compressor)
+            assert dataset_configuration.compressors[0] == compressor
             assert dataset_configuration.compressor_options is None
             assert dataset_configuration.filters == filters
             assert dataset_configuration.filter_options is None
@@ -614,7 +607,7 @@ def test_configuration_on_ndx_events(tmp_path, backend: Literal["hdf5", "zarr"])
             assert data_dataset_configuration.compressor_options == [dict(compression_opts=2)]
         elif backend == "zarr":
             assert len(data_dataset_configuration.compressors) == 1
-            _assert_blosc_codec_equal(data_dataset_configuration.compressors[0], compressor)
+            assert data_dataset_configuration.compressors[0] == compressor
             assert data_dataset_configuration.compressor_options is None
             assert data_dataset_configuration.filters == data_filters
             assert data_dataset_configuration.filter_options is None
@@ -635,7 +628,7 @@ def test_configuration_on_ndx_events(tmp_path, backend: Literal["hdf5", "zarr"])
             assert timestamps_dataset_configuration.compressor_options == [dict(compression_opts=2)]
         elif backend == "zarr":
             assert len(timestamps_dataset_configuration.compressors) == 1
-            _assert_blosc_codec_equal(timestamps_dataset_configuration.compressors[0], compressor)
+            assert timestamps_dataset_configuration.compressors[0] == compressor
             assert timestamps_dataset_configuration.compressor_options is None
             assert timestamps_dataset_configuration.filters == timestamps_filters
             assert timestamps_dataset_configuration.filter_options is None
@@ -709,7 +702,7 @@ def test_configuration_on_time_series_automatic_backend(tmp_path, backend: Liter
 
         elif backend == "zarr":
             assert len(dataset_configuration.compressors) == 1
-            _assert_blosc_codec_equal(dataset_configuration.compressors[0], compressor)
+            assert dataset_configuration.compressors[0] == compressor
             assert dataset_configuration.compressor_options is None
             assert dataset_configuration.filters == filters
             assert dataset_configuration.filter_options is None
@@ -891,7 +884,7 @@ def test_zarr_shuffle_is_read_back_into_compressors(tmp_path):
 
     # The configuration read back reproduces the settings it was read from
     assert dataset_configuration.get_data_io_kwargs() == dict(
-        chunks=(100,), filters=None, compressors=[Shuffle(elementsize=8), GzipCodec(level=1)]
+        chunks=(100,), filters=None, compressors=[Shuffle(elementsize=8), GzipCodec(level=1)], shards=None
     )
 
 
