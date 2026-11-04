@@ -610,8 +610,8 @@ def _get_units_table_name_and_description(
         raise ValueError(
             "metadata['Ecephys']['UnitsTables']['canonical_units_table'] names the table "
             f"'{units_table_entry['name']}', but the canonical units table is nwbfile.units, which is always named "
-            "'units'. Remove 'name' from the entry, or declare another table in metadata['Ecephys']['UnitsTables'] "
-            "and use parent_container='processing' for a table with another name."
+            "'units'. Remove 'name' from the entry, or declare a table with another name under another key in "
+            "metadata['Ecephys']['UnitsTables']."
         )
     if units_table_metadata_key != "canonical_units_table" and parent_container == "units":
         raise ValueError(

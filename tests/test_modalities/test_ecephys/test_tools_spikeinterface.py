@@ -2523,9 +2523,8 @@ class TestAddSorting:
 
         expected_error = re.escape(
             "metadata['Ecephys']['UnitsTables']['canonical_units_table'] names the table 'units', but the canonical "
-            "units table is nwbfile.units, which is always named 'units'. Remove 'name' from the entry, or declare "
-            "another table in metadata['Ecephys']['UnitsTables'] and use parent_container='processing' for a table "
-            "with another name."
+            "units table is nwbfile.units, which is always named 'units'. Remove 'name' from the entry, or declare a "
+            "table with another name under another key in metadata['Ecephys']['UnitsTables']."
         )
         with pytest.raises(ValueError, match=expected_error):
             add_sorting_to_nwbfile(
@@ -3056,8 +3055,7 @@ class TestWriteSortingAnalyzer(TestCase):
         expected_error = re.escape(
             f"metadata['Ecephys']['UnitsTables']['{units_table_metadata_key}'] names the table 'units1', but the "
             "canonical units table is nwbfile.units, which is always named 'units'. Remove 'name' from the entry, or "
-            "declare another table in metadata['Ecephys']['UnitsTables'] and use parent_container='processing' for "
-            "a table with another name."
+            "declare a table with another name under another key in metadata['Ecephys']['UnitsTables']."
         )
         with pytest.raises(ValueError, match=expected_error):
             add_sorting_analyzer_to_nwbfile(
