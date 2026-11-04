@@ -263,6 +263,7 @@ class _TemporalAlignment:
         default_start_time=None,
         get_number_of_samples=None,
         get_native_durations=None,
+        time_bearing_object_class=_TimeBearingObject,
     ) -> _TimeBearingObject:
         """Name one time-bearing object. Called by the interface, not by a user.
 
@@ -271,8 +272,9 @@ class _TemporalAlignment:
         no array to learn it. Without it the first default time is read from the array.
         ``get_number_of_samples`` returns how many times ``set_times`` has to be given, and without it the count
         is not checked. ``get_native_durations`` returns one duration per time, or ``None``, for an event type.
+        ``time_bearing_object_class`` is a subclass for an interface whose objects refuse some operations.
         """
-        time_bearing_object = _TimeBearingObject(
+        time_bearing_object = time_bearing_object_class(
             get_native_times=get_native_times,
             default_start_time=default_start_time,
             get_number_of_samples=get_number_of_samples,

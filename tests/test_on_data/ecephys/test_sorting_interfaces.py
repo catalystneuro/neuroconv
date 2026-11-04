@@ -30,6 +30,7 @@ except ImportError:
 
 class TestBlackrockSortingInterface(SortingExtractorInterfaceTestMixin):
     data_interface_cls = BlackrockSortingInterface
+    expected_temporal_alignment_keys = ("blackrock_sorting_0",)
     interface_kwargs = dict(file_path=str(DATA_PATH / "blackrock" / "FileSpec2.3001.nev"), sampling_frequency=30_000.0)
 
     associated_recording_cls = BlackrockRecordingInterface
@@ -45,6 +46,7 @@ class TestCellExplorerSortingInterfaceBuzCode(SortingExtractorInterfaceTestMixin
     """This corresponds to the Buzsaki old CellExplorerFormat or Buzcode format."""
 
     data_interface_cls = CellExplorerSortingInterface
+    expected_temporal_alignment_keys = ("cell_explorer_sorting_0",)
     save_directory = OUTPUT_PATH
 
     @pytest.fixture(
@@ -78,6 +80,7 @@ class TestCellExplorerSortingInterface(SortingExtractorInterfaceTestMixin):
     """This corresponds to the Buzsaki new CellExplorerFormat where a session.mat file with rich metadata is provided."""
 
     data_interface_cls = CellExplorerSortingInterface
+    expected_temporal_alignment_keys = ("cell_explorer_sorting_0",)
     save_directory = OUTPUT_PATH
 
     @pytest.fixture(
@@ -159,6 +162,7 @@ class TestCellExplorerSortingInterface(SortingExtractorInterfaceTestMixin):
 
 class TestNeuralynxSortingInterfaceCheetahV551(SortingExtractorInterfaceTestMixin):
     data_interface_cls = NeuralynxSortingInterface
+    expected_temporal_alignment_keys = ("neuralynx_sorting_0", "neuralynx_sorting_1")
     interface_kwargs = dict(
         folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v5.5.1" / "original_data"), stream_id="0"
     )
@@ -167,6 +171,7 @@ class TestNeuralynxSortingInterfaceCheetahV551(SortingExtractorInterfaceTestMixi
 
 class TestNeuralynxSortingInterfaceCheetah563(SortingExtractorInterfaceTestMixin):
     data_interface_cls = NeuralynxSortingInterface
+    expected_temporal_alignment_keys = ("neuralynx_sorting_0", "neuralynx_sorting_1")
     interface_kwargs = dict(
         folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v5.6.3" / "original_data"), stream_id="0"
     )
@@ -176,6 +181,7 @@ class TestNeuralynxSortingInterfaceCheetah563(SortingExtractorInterfaceTestMixin
 
 class TestNeuroScopeSortingInterface(SortingExtractorInterfaceTestMixin):
     data_interface_cls = NeuroScopeSortingInterface
+    expected_temporal_alignment_keys = ("neuroscope_sorting_0",)
     interface_kwargs = dict(
         folder_path=str(DATA_PATH / "neuroscope" / "dataset_1"),
         xml_file_path=str(DATA_PATH / "neuroscope" / "dataset_1" / "YutaMouse42-151117.xml"),
@@ -190,6 +196,7 @@ class TestNeuroScopeSortingInterfaceNoXMLSpecified(SortingExtractorInterfaceTest
     """Corresponding to issue https://github.com/NeurodataWithoutBorders/nwb-guide/issues/881."""
 
     data_interface_cls = NeuroScopeSortingInterface
+    expected_temporal_alignment_keys = ("neuroscope_sorting_0",)
     interface_kwargs = dict(folder_path=str(DATA_PATH / "neuroscope" / "dataset_1"))
     save_directory = OUTPUT_PATH
 
@@ -200,6 +207,7 @@ class TestNeuroScopeSortingInterfaceNoXMLSpecified(SortingExtractorInterfaceTest
 
 class TestPhySortingInterface(SortingExtractorInterfaceTestMixin):
     data_interface_cls = PhySortingInterface
+    expected_temporal_alignment_keys = ("phy_sorting_0",)
     interface_kwargs = dict(folder_path=str(DATA_PATH / "phy" / "phy_example_0"))
     save_directory = OUTPUT_PATH
 
@@ -267,6 +275,7 @@ class TestPhySortingInterface(SortingExtractorInterfaceTestMixin):
 
 class TestKilosortSortingInterface(SortingExtractorInterfaceTestMixin):
     data_interface_cls = KiloSortSortingInterface
+    expected_temporal_alignment_keys = ("kilosort_sorting_0",)
     interface_kwargs = dict(folder_path=str(DATA_PATH / "phy" / "phy_example_0"))
     save_directory = OUTPUT_PATH
 
@@ -320,6 +329,7 @@ class TestKilosortSortingInterface(SortingExtractorInterfaceTestMixin):
 
 class TestPlexonSortingInterface(SortingExtractorInterfaceTestMixin):
     data_interface_cls = PlexonSortingInterface
+    expected_temporal_alignment_keys = ("plexon_sorting_0",)
     interface_kwargs = dict(file_path=str(DATA_PATH / "plexon" / "File_plexon_2.plx"))
     save_directory = OUTPUT_PATH
 
@@ -331,6 +341,7 @@ class TestXClustSortingInterfaceSingleCluster(SortingExtractorInterfaceTestMixin
     """TT2: 3 files, all cluster 1 (same neuron across session types). Tests duplicate cluster ID handling."""
 
     data_interface_cls = XClustSortingInterface
+    expected_temporal_alignment_keys = ("xclust_sorting_0",)
     interface_kwargs = dict(
         folder_path=str(DATA_PATH / "xclust" / "TT2"),
         sampling_frequency=30_000.0,
@@ -342,6 +353,7 @@ class TestXClustSortingInterfaceMultiUnit(SortingExtractorInterfaceTestMixin):
     """TT6: 8 files, 2 clusters across 4 session types. Tests multi-unit loading."""
 
     data_interface_cls = XClustSortingInterface
+    expected_temporal_alignment_keys = ("xclust_sorting_0",)
     interface_kwargs = dict(
         folder_path=str(DATA_PATH / "xclust" / "TT6"),
         sampling_frequency=30_000.0,
