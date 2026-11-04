@@ -594,9 +594,21 @@ def _get_units_table_name_and_description(
         if name is None:
             continue
         if name in units_table_metadata_keys_by_name:
+            first_key = units_table_metadata_keys_by_name[name]
             raise ValueError(
-                f"metadata['Ecephys']['UnitsTables'] keys '{units_table_metadata_keys_by_name[name]}' and '{key}' "
-                f"use name '{name}'. Use 1 key to share a units table."
+                f"metadata['Ecephys']['UnitsTables'] keys '{first_key}' and '{key}' both use the name '{name}'.\n"
+                "For two tables, give each its own name:\n"
+                "    metadata['Ecephys']['UnitsTables'] = {\n"
+                f"        '{first_key}': {{'name': '{name}'}},\n"
+                f"        '{key}': {{'name': '<another name>'}},\n"
+                "    }\n"
+                "For one table shared by several sortings, declare it under one key and point each sorting at "
+                "that key:\n"
+                f"    metadata['Ecephys']['UnitsTables'] = {{'{first_key}': {{'name': '{name}'}}}}\n"
+                "    metadata['Ecephys']['Sortings'] = {\n"
+                f"        '<sorting key>': {{'units_table_metadata_key': '{first_key}'}},\n"
+                f"        '<other sorting key>': {{'units_table_metadata_key': '{first_key}'}},\n"
+                "    }"
             )
         units_table_metadata_keys_by_name[name] = key
     if units_table_metadata_key != "canonical_units_table" and units_table_metadata_key not in units_tables:

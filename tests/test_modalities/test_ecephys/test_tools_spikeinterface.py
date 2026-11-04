@@ -2600,16 +2600,23 @@ class TestAddSorting:
 
         expected_error = re.escape(
             f"metadata['Ecephys']['UnitsTables'] keys '{curated_units_table_metadata_key}' and "
-            f"'{raw_units_table_metadata_key}' use name '{units_table_name}'. Use 1 key to share a units table."
+            f"'{raw_units_table_metadata_key}' both use the name '{units_table_name}'.\n"
+            "For two tables, give each its own name:\n"
+            "    metadata['Ecephys']['UnitsTables'] = {\n"
+            f"        '{curated_units_table_metadata_key}': {{'name': '{units_table_name}'}},\n"
+            f"        '{raw_units_table_metadata_key}': {{'name': '<another name>'}},\n"
+            "    }\n"
+            "For one table shared by several sortings, declare it under one key and point each sorting at that "
+            "key:\n"
+            f"    metadata['Ecephys']['UnitsTables'] = {{'{curated_units_table_metadata_key}': "
+            f"{{'name': '{units_table_name}'}}}}\n"
+            "    metadata['Ecephys']['Sortings'] = {\n"
+            f"        '<sorting key>': {{'units_table_metadata_key': '{curated_units_table_metadata_key}'}},\n"
+            f"        '<other sorting key>': {{'units_table_metadata_key': '{curated_units_table_metadata_key}'}},\n"
+            "    }"
         )
         with pytest.raises(ValueError, match=expected_error):
-            add_sorting_to_nwbfile(
-                sorting=sorting,
-                nwbfile=nwbfile,
-                parent_container="processing",
-                metadata=metadata,
-                metadata_key=metadata_key,
-            )
+            add_sorting_to_nwbfile(sorting=sorting, nwbfile=nwbfile, metadata=metadata, metadata_key=metadata_key)
         assert "ecephys" not in nwbfile.processing
 
     def test_caller_metadata_is_not_mutated(self):
