@@ -396,7 +396,7 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         units_description: str | None = None,
         unit_electrode_indices: list[list[int]] | None = None,
         *,
-        parent_container: Literal["units", "processing"] = "units",
+        parent_container: Literal["units", "processing"] | None = None,
         waveform_data_dict: dict | None = None,
     ):
         """
@@ -415,10 +415,10 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
             If True, will truncate the data to run the conversion faster and take up less memory.
         write_ecephys_metadata : bool, default: False
             Write electrode information contained in the metadata.
-        parent_container : {'units', 'processing'}, default: 'units'
-            Where to save the units table in the nwb file. Options:
-            - 'units' will save it to the official NWBFile.units position; recommended only for the final form of the data.
-            - 'processing' will save it to the processing module to serve as a historical provenance for the official table.
+        parent_container : {'units', 'processing'}, optional
+            Deprecated. The units table's key in ``metadata["Ecephys"]["UnitsTables"]`` decides where it is written:
+            ``"canonical_units_table"`` is ``nwbfile.units``, and any other key is a table in processing. Will be
+            removed in v0.13.0.
         units_name : str, optional
             Deprecated. Set ``name`` in ``metadata["Ecephys"]["UnitsTables"]`` instead. Will be removed in v0.13.0.
         units_description : str, optional
@@ -435,14 +435,16 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
                 - "unit": str, the unit of measurement (default: "volts")
                 - "time_before_peak_in_ms": float, the time from the start of each waveform to the spike peak, optional
         write_as : {'units', 'processing'}, optional
-            Deprecated. Use ``parent_container`` instead. Will be removed in v0.12.0.
+            Deprecated. The units table's key in ``metadata["Ecephys"]["UnitsTables"]`` decides where it is
+            written. Will be removed in v0.12.0.
         """
         from ...tools.spikeinterface import add_sorting_to_nwbfile
 
         if write_as is not None:
             warnings.warn(
                 "The 'write_as' parameter of BaseSortingExtractorInterface.add_to_nwbfile() is deprecated and will "
-                "be removed in v0.12.0. Use 'parent_container' instead.",
+                "be removed in v0.12.0. The units table's key in metadata['Ecephys']['UnitsTables'] decides where "
+                "it is written.",
                 FutureWarning,
                 stacklevel=2,
             )

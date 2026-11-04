@@ -55,7 +55,7 @@ class TestSortingInterface(SortingExtractorInterfaceTestMixin):
         }
         metadata["Ecephys"]["Sortings"] = {metadata_key: {"units_table_metadata_key": units_table_metadata_key}}
 
-        nwbfile = interface.create_nwbfile(metadata=metadata, parent_container="processing")
+        nwbfile = interface.create_nwbfile(metadata=metadata)
 
         units_table = nwbfile.processing["ecephys"]["ProcessedUnits"]
         assert nwbfile.units is None
@@ -91,9 +91,8 @@ class TestSortingInterface(SortingExtractorInterfaceTestMixin):
             probe_0_metadata_key: {"units_table_metadata_key": units_table_metadata_key},
             probe_1_metadata_key: {"units_table_metadata_key": units_table_metadata_key},
         }
-        conversion_options = {name: {"parent_container": "processing"} for name in ("probe_0", "probe_1")}
 
-        nwbfile = converter.create_nwbfile(metadata=metadata, conversion_options=conversion_options)
+        nwbfile = converter.create_nwbfile(metadata=metadata)
 
         units_table = nwbfile.processing["ecephys"]["AllProbes"]
         assert len(units_table) == 5
@@ -117,9 +116,8 @@ class TestSortingInterface(SortingExtractorInterfaceTestMixin):
             probe_0_metadata_key: {"units_table_metadata_key": probe_0_units_table_metadata_key},
             probe_1_metadata_key: {"units_table_metadata_key": probe_1_units_table_metadata_key},
         }
-        conversion_options = {name: {"parent_container": "processing"} for name in ("probe_0", "probe_1")}
 
-        nwbfile = converter.create_nwbfile(metadata=metadata, conversion_options=conversion_options)
+        nwbfile = converter.create_nwbfile(metadata=metadata)
 
         probe_0_units_table = nwbfile.processing["ecephys"]["Probe0Units"]
         probe_1_units_table = nwbfile.processing["ecephys"]["Probe1Units"]
@@ -146,7 +144,7 @@ class TestSortingInterface(SortingExtractorInterfaceTestMixin):
             f"Declared: ['{declared_units_table_metadata_key}']."
         )
         with pytest.raises(ValueError, match=expected_error):
-            interface.create_nwbfile(metadata=metadata, parent_container="processing")
+            interface.create_nwbfile(metadata=metadata)
 
     def test_stub(self):
 
