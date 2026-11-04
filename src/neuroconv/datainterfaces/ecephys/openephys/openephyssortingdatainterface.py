@@ -40,6 +40,13 @@ class OpenEphysSortingInterface(BaseSortingExtractorInterface):
         return OpenEphysSortingExtractor
 
     @validate_call
-    def __init__(self, folder_path: DirectoryPath, *, experiment_id: int = 0, recording_id: int = 0):
-
+    def __init__(
+        self,
+        folder_path: DirectoryPath,
+        *,
+        experiment_id: int = 0,
+        recording_id: int = 0,
+        metadata_key: str | None = None,
+    ):
+        self.metadata_key = metadata_key or "open_ephys_sorting"
         super().__init__(folder_path=str(folder_path), experiment_id=experiment_id, recording_id=recording_id)
