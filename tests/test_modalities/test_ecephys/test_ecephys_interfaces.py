@@ -29,6 +29,7 @@ from neuroconv.tools.testing.data_interface_mixins import (
 class TestSortingInterface(SortingExtractorInterfaceTestMixin):
 
     data_interface_cls = MockSortingInterface
+    expected_temporal_alignment_keys = ("mock_sorting_0",)
     interface_kwargs = dict(num_units=4, durations=[0.100])
 
     def test_canonical_units_table_description_from_metadata(self):
@@ -147,6 +148,62 @@ class TestSortingInterface(SortingExtractorInterfaceTestMixin):
         )
         with pytest.raises(ValueError, match=expected_error):
             interface.create_nwbfile(metadata=metadata, parent_container="processing")
+
+    def test_shifting_one_segment_moves_only_its_spikes(self):
+        """Each segment is its own time-bearing object, so shifting one moves only that segment's spikes."""
+        metadata_key = "mock_sorting"
+        shift = 100.0
+        interface = MockSortingInterface(num_units=3, durations=[1.0, 1.0], metadata_key=metadata_key)
+        sorting = interface.sorting_extractor
+
+        interface.temporal_alignment[f"{metadata_key}_1"].shift_times(shift)
+        nwbfile = interface.create_nwbfile()
+
+        for row_index, unit_id in enumerate(sorting.unit_ids):
+            segment_0_spike_times = sorting.get_unit_spike_train(unit_id=unit_id, segment_index=0, return_times=True)
+            segment_1_spike_times = sorting.get_unit_spike_train(unit_id=unit_id, segment_index=1, return_times=True)
+            expected_spike_times = np.concatenate([segment_0_spike_times, segment_1_spike_times + shift])
+            np.testing.assert_array_equal(nwbfile.units["spike_times"][row_index], expected_spike_times)
+
+    def test_stub_writes_the_aligned_spikes_it_keeps(self):
+        """The stub keeps each unit's first spikes, and those are written with the alignment applied."""
+        shift = 100.0
+        interface = MockSortingInterface(num_units=3, durations=[1.0])
+        stub_sorting = interface.subset_sorting()
+
+        interface.temporal_alignment.shift_times(shift)
+        nwbfile = interface.create_nwbfile(stub_test=True)
+
+        for row_index, unit_id in enumerate(stub_sorting.unit_ids):
+            expected_spike_times = stub_sorting.get_unit_spike_train(unit_id=unit_id, return_times=True) + shift
+            np.testing.assert_array_equal(nwbfile.units["spike_times"][row_index], expected_spike_times)
+
+    def test_set_times_raises(self):
+        """A segment's times are its units' spikes flattened in unit order, which replacement times cannot address."""
+        metadata_key = "mock_sorting"
+        interface = MockSortingInterface(num_units=3, durations=[1.0], metadata_key=metadata_key)
+        segment = interface.temporal_alignment[f"{metadata_key}_0"]
+
+        expected_error = re.escape(
+            "A sorting's times are its units' spikes flattened in unit order, so `set_times` cannot say which "
+            "spike is which. Use `shift_times` or `remap_times`."
+        )
+        with pytest.raises(NotImplementedError, match=expected_error):
+            segment.set_times(segment.get_times())
+
+    def test_move_start_to_raises(self):
+        """A sorting's first spike is not where it starts, so neither a segment nor the interface can be placed."""
+        metadata_key = "mock_sorting"
+        interface = MockSortingInterface(num_units=3, durations=[1.0], metadata_key=metadata_key)
+
+        expected_error = re.escape(
+            "A sorting has no start to place: its first spike is not when its recording began. Use `shift_times` "
+            "to move it."
+        )
+        with pytest.raises(NotImplementedError, match=expected_error):
+            interface.temporal_alignment[f"{metadata_key}_0"].move_start_to(100.0)
+        with pytest.raises(NotImplementedError, match=expected_error):
+            interface.temporal_alignment.move_start_to(100.0)
 
     def test_stub(self):
 

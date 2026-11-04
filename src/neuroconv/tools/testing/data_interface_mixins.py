@@ -783,6 +783,9 @@ class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
         recording_interface = self.associated_recording_cls(**self.associated_recording_kwargs)
         self.interface.register_recording(recording_interface=recording_interface)
 
+    def test_temporal_alignment_set_times_reaches_the_nwbfile(self, setup_interface):
+        pytest.skip("Sortings refuse `set_times`, which `TestSortingInterface` checks on the mock.")
+
     def check_read_nwb(self, nwbfile_path: str):
         from spikeinterface.core.testing import check_sortings_equal
         from spikeinterface.extractors.extractor_classes import NwbSortingExtractor
