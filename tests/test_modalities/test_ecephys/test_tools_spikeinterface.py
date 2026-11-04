@@ -2572,11 +2572,7 @@ class TestAddSorting:
         )
         with pytest.raises(ValueError, match=expected_error):
             add_sorting_to_nwbfile(
-                sorting=sorting,
-                nwbfile=mock_NWBFile(),
-                parent_container="processing",
-                metadata=metadata,
-                metadata_key=metadata_key,
+                sorting=sorting, nwbfile=mock_NWBFile(), metadata=metadata, metadata_key=metadata_key
             )
 
     def test_two_units_table_entries_with_the_same_name_raise(self):
@@ -2632,13 +2628,7 @@ class TestAddSorting:
         }
         metadata_before = deepcopy(metadata)
 
-        add_sorting_to_nwbfile(
-            sorting=sorting,
-            nwbfile=mock_NWBFile(),
-            parent_container="processing",
-            metadata=metadata,
-            metadata_key=metadata_key,
-        )
+        add_sorting_to_nwbfile(sorting=sorting, nwbfile=mock_NWBFile(), metadata=metadata, metadata_key=metadata_key)
 
         assert metadata == metadata_before
 
@@ -2994,7 +2984,6 @@ class TestWriteSortingAnalyzer(TestCase):
             add_sorting_analyzer_to_nwbfile(
                 sorting_analyzer=self.single_segment_analyzer,
                 nwbfile=self.nwbfile,
-                parent_container="units",
                 metadata=metadata,
             )
 

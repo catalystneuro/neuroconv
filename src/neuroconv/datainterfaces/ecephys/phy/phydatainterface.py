@@ -111,7 +111,7 @@ class PhySortingInterface(BaseSortingExtractorInterface):
         units_name: str | None = None,
         units_description: str | None = None,
         unit_electrode_indices: list[list[int]] | None = None,
-        parent_container: Literal["units", "processing"] = "units",
+        parent_container: Literal["units", "processing"] | None = None,
         waveform_data_dict: dict | None = None,
         include_max_channel: bool = True,
     ):
