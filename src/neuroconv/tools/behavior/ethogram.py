@@ -162,7 +162,6 @@ def _get_bouts_and_behaviors_from_labels(
     *,
     labels: np.ndarray,
     timestamps: np.ndarray,
-    frame_period: float | None = None,
     class_ids=None,
     class_definition: str = "",
     category_labels: np.ndarray | None = None,
@@ -178,9 +177,8 @@ def _get_bouts_and_behaviors_from_labels(
     labels : np.ndarray
         1D per-frame integer labels.
     timestamps : np.ndarray
-        Frame times in seconds, same length as ``labels``.
-    frame_period : float, optional
-        Frame duration in seconds; defaults to the median inter-frame interval.
+        Frame times in seconds, same length as ``labels``. A bout ends one frame after its last frame, with
+        the frame duration taken from these times.
     class_ids : iterable of int, optional
         Full label space to enumerate in the catalogue (e.g. ``range(n_clusters)`` to include ids
         absent this session). Defaults to the unique labels present.
@@ -220,7 +218,7 @@ def _get_bouts_and_behaviors_from_labels(
             row["category"] = "" if category_value is None else str(category_value)
         behaviors.append(row)
 
-    runs = _run_length_encode_labels(labels, timestamps, frame_period)
+    runs = _run_length_encode_labels(labels, timestamps)
     return dict(
         start_times=[start_time for start_time, _, _ in runs],
         stop_times=[stop_time for _, stop_time, _ in runs],
