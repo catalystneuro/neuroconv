@@ -69,12 +69,17 @@ class PlexonRecordingInterface(BaseRecordingExtractorInterface):
             file_path=file_path, verbose=verbose, es_key=es_key, metadata_key=metadata_key, stream_name=stream_name
         )
 
+        # Keep the reader while the recording is still the neo-based extractor, as `remove_channels`
+        # replaces it with a channel slice that does not carry the `neo_reader` or the `block_index`
+        self._neo_reader = self.recording_extractor.neo_reader
+        self._block_index = self.recording_extractor.block_index
+
     def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
-        neo_reader = self.recording_extractor.neo_reader
+        neo_reader = self._neo_reader
 
         if hasattr(neo_reader, "raw_annotations"):
-            block_ind = self.recording_extractor.block_index
+            block_ind = self._block_index
             neo_metadata = neo_reader.raw_annotations["blocks"][block_ind]
             if "rec_datetime" in neo_metadata:
                 metadata["NWBFile"].update(session_start_time=neo_metadata["rec_datetime"])
@@ -147,13 +152,18 @@ class PlexonLFPInterface(BaseLFPExtractorInterface):
             file_path=file_path, verbose=verbose, es_key=es_key, metadata_key=metadata_key, stream_name=stream_name
         )
 
+        # Keep the reader while the recording is still the neo-based extractor, as `remove_channels`
+        # replaces it with a channel slice that does not carry the `neo_reader` or the `block_index`
+        self._neo_reader = self.recording_extractor.neo_reader
+        self._block_index = self.recording_extractor.block_index
+
     def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
 
-        neo_reader = self.recording_extractor.neo_reader
+        neo_reader = self._neo_reader
 
         if hasattr(neo_reader, "raw_annotations"):
-            block_ind = self.recording_extractor.block_index
+            block_ind = self._block_index
             neo_metadata = neo_reader.raw_annotations["blocks"][block_ind]
             if "rec_datetime" in neo_metadata:
                 metadata["NWBFile"].update(session_start_time=neo_metadata["rec_datetime"])
@@ -242,12 +252,17 @@ class Plexon2RecordingInterface(BaseRecordingExtractorInterface):
             metadata_key=metadata_key,
         )
 
+        # Keep the reader while the recording is still the neo-based extractor, as `remove_channels`
+        # replaces it with a channel slice that does not carry the `neo_reader` or the `block_index`
+        self._neo_reader = self.recording_extractor.neo_reader
+        self._block_index = self.recording_extractor.block_index
+
     def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
 
-        neo_reader = self.recording_extractor.neo_reader
+        neo_reader = self._neo_reader
 
-        block_ind = self.recording_extractor.block_index
+        block_ind = self._block_index
         neo_metadata = neo_reader.raw_annotations["blocks"][block_ind]
         metadata["NWBFile"].update(session_start_time=neo_metadata["m_CreatorDateTime"])
 
