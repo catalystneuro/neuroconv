@@ -1,5 +1,6 @@
 import warnings
 from copy import deepcopy
+from functools import partial
 from typing import Literal
 
 import numpy as np
@@ -8,8 +9,34 @@ from pynwb.device import Device
 from pynwb.ecephys import ElectrodeGroup
 
 from .baserecordingextractorinterface import BaseRecordingExtractorInterface
+from ..._temporal_alignment import _TemporalAlignment, _TimeBearingObject
 from ...baseextractorinterface import BaseExtractorInterface
 from ...utils import DeepDict, get_base_schema, get_schema_from_hdmf_class
+
+_NO_SORTING_START_MESSAGE = (
+    "A sorting has no start to place: its first spike is not when its recording began. Use `shift_times` to move " "it."
+)
+
+
+class _SortingTimeBearingObject(_TimeBearingObject):
+    """One segment of a sorting: every unit's spikes in that segment, flattened in unit order.
+
+    A shift or a remap acts on each spike, so both work. What would need the flat vector to mean more is
+    refused: replacement times cannot say which spike belongs to which unit, and the first spike is not where
+    the segment starts.
+    """
+
+    def set_times(self, times) -> None:
+        raise NotImplementedError(
+            "A sorting's times are its units' spikes flattened in unit order, so `set_times` cannot say which "
+            "spike is which. Use `shift_times` or `remap_times`."
+        )
+
+    def move_start_to(self, starting_time: float) -> None:
+        raise NotImplementedError(_NO_SORTING_START_MESSAGE)
+
+    def _get_start_time(self) -> float:
+        raise NotImplementedError(_NO_SORTING_START_MESSAGE)
 
 
 class BaseSortingExtractorInterface(BaseExtractorInterface):
@@ -23,6 +50,48 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         self.sorting_extractor = self._extractor_instance
         self.verbose = verbose
         self._number_of_segments = self.sorting_extractor.get_num_segments()
+        self._register_segments()
+
+    def _register_segments(self) -> None:
+        """Name every segment as a time-bearing object, keyed ``{metadata_key}_{segment_index}`` as for recordings.
+
+        The keys are for alignment only. The segments are joined in one units table, so there is no segment-level
+        metadata for them to address. Registering reads nothing.
+        """
+        self._alignment = _TemporalAlignment()
+        for segment_index in range(self._number_of_segments):
+            self._alignment._register(
+                key=f"{self.metadata_key}_{segment_index}",
+                get_native_times=partial(self._get_segment_native_spike_times, segment_index=segment_index),
+                time_bearing_object_class=_SortingTimeBearingObject,
+            )
+
+    @property
+    def temporal_alignment(self) -> _TemporalAlignment:
+        return self._alignment
+
+    # The sorting is read on every call because an interface replaces it when it renames its units
+    def _get_segment_native_spike_times(self, segment_index: int) -> np.ndarray:
+        spike_trains = [
+            self.sorting_extractor.get_unit_spike_train(unit_id=unit_id, segment_index=segment_index, return_times=True)
+            for unit_id in self.sorting_extractor.unit_ids
+        ]
+        return np.concatenate(spike_trains) if spike_trains else np.empty(0)
+
+    def _get_aligned_unit_spike_times(self) -> dict:
+        """Each unit's spike times as they will be written, keyed by unit id, with the segments joined in order."""
+        unit_ids = self.sorting_extractor.unit_ids
+        segments_by_unit = {unit_id: [] for unit_id in unit_ids}
+        for segment_index in range(self._number_of_segments):
+            aligned_spike_times = self._alignment[f"{self.metadata_key}_{segment_index}"].get_times()
+            spike_counts = [
+                self.sorting_extractor.get_unit_spike_train(unit_id=unit_id, segment_index=segment_index).size
+                for unit_id in unit_ids
+            ]
+            unit_segments = np.split(aligned_spike_times, np.cumsum(spike_counts)[:-1])
+            for unit_id, segment_spike_times in zip(unit_ids, unit_segments):
+                segments_by_unit[unit_id].append(segment_spike_times)
+        return {unit_id: np.concatenate(segments) for unit_id, segments in segments_by_unit.items()}
 
     def get_metadata_schema(self) -> dict:
         """
@@ -437,7 +506,7 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         write_as : {'units', 'processing'}, optional
             Deprecated. Use ``parent_container`` instead. Will be removed in v0.12.0.
         """
-        from ...tools.spikeinterface import add_sorting_to_nwbfile
+        from ...tools.spikeinterface.spikeinterface import _add_sorting_to_nwbfile
 
         if write_as is not None:
             warnings.warn(
@@ -455,8 +524,14 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         if write_ecephys_metadata:
             self.add_channel_metadata_to_nwb(nwbfile=nwbfile, metadata=metadata_copy)
 
+        unit_spike_times = self._get_aligned_unit_spike_times()
         if stub_test:
             sorting_extractor = self.subset_sorting()
+            # The stub keeps each unit's first spikes, and aligned spike `i` is native spike `i` aligned
+            unit_spike_times = {
+                unit_id: spike_times[: sorting_extractor.get_unit_spike_train(unit_id=unit_id).size]
+                for unit_id, spike_times in unit_spike_times.items()
+            }
         else:
             sorting_extractor = self.sorting_extractor
 
@@ -475,14 +550,18 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
                         value=value,
                     )
 
-        add_sorting_to_nwbfile(
-            sorting_extractor,
+        _add_sorting_to_nwbfile(
+            sorting=sorting_extractor,
             nwbfile=nwbfile,
+            unit_ids=None,
+            unit_spike_times=unit_spike_times,
             property_descriptions=property_descriptions,
-            parent_container=parent_container,
+            skip_properties=None,
             units_name=units_name,
             units_description=units_description,
+            parent_container=parent_container,
             unit_electrode_indices=unit_electrode_indices,
+            null_values_for_properties=None,
             waveform_data_dict=waveform_data_dict,
             metadata=metadata_copy,
             metadata_key=self.metadata_key,

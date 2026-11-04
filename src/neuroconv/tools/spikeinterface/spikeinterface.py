@@ -548,21 +548,24 @@ def _add_recording_to_nwbfile(
         )
 
 
-def _warn_about_units_table_options(units_name: str | None, units_description: str | None) -> None:
-    """Warn for the conversion options that name and describe the units table, which metadata does now."""
+def _warn_about_units_table_options(units_name: str | None, units_description: str | None, stacklevel: int) -> None:
+    """Warn for the conversion options that name and describe the units table, which metadata does now.
+
+    ``stacklevel`` is passed to ``warnings.warn``, so each caller points the warning at the user's call.
+    """
     if units_name is not None:
         warnings.warn(
             "The 'units_name' parameter is deprecated and will be removed in v0.13.0. Set the table's 'name' in "
             "metadata['Ecephys']['UnitsTables'] instead.",
             FutureWarning,
-            stacklevel=3,
+            stacklevel=stacklevel,
         )
     if units_description is not None:
         warnings.warn(
             "The 'units_description' parameter is deprecated and will be removed in v0.13.0. Set the table's "
             "'description' in metadata['Ecephys']['UnitsTables'] instead.",
             FutureWarning,
-            stacklevel=3,
+            stacklevel=stacklevel,
         )
 
 
@@ -733,16 +736,9 @@ def add_sorting_to_nwbfile(
             stacklevel=2,
         )
         parent_container = write_as
-    _warn_about_units_table_options(units_name=units_name, units_description=units_description)
 
     # Handle backwards compatibility for waveform parameters
-    if waveform_data_dict is not None:
-        _waveform_means = waveform_data_dict.get("means")
-        _waveform_sds = waveform_data_dict.get("sds")
-        _waveform_rate = waveform_data_dict.get("sampling_rate")
-        _waveform_unit = waveform_data_dict.get("unit", "volts")
-        _waveform_time_before_peak_in_ms = waveform_data_dict.get("time_before_peak_in_ms")
-    elif waveform_means is not None:
+    if waveform_data_dict is None and waveform_means is not None:
         # Deprecated path - emit FutureWarning for gradual migration
         warnings.warn(
             "waveform_means and waveform_sds parameters are deprecated and will be removed in a future release. "
@@ -750,17 +746,66 @@ def add_sorting_to_nwbfile(
             FutureWarning,
             stacklevel=2,
         )
-        _waveform_means = waveform_means
-        _waveform_sds = waveform_sds
-        _waveform_rate = None
-        _waveform_unit = "volts"
-        _waveform_time_before_peak_in_ms = None
-    else:
-        _waveform_means = None
-        _waveform_sds = None
-        _waveform_rate = None
-        _waveform_unit = "volts"
-        _waveform_time_before_peak_in_ms = None
+        waveform_data_dict = dict(means=waveform_means, sds=waveform_sds)
+
+    unit_ids_to_write = sorting.unit_ids if unit_ids is None else unit_ids
+    _add_sorting_to_nwbfile(
+        sorting=sorting,
+        nwbfile=nwbfile,
+        unit_ids=unit_ids,
+        unit_spike_times=_get_unit_spike_times(sorting=sorting, unit_ids=unit_ids_to_write),
+        property_descriptions=property_descriptions,
+        skip_properties=skip_properties,
+        units_name=units_name,
+        units_description=units_description,
+        parent_container=parent_container,
+        unit_electrode_indices=unit_electrode_indices,
+        null_values_for_properties=null_values_for_properties,
+        waveform_data_dict=waveform_data_dict,
+        metadata=metadata,
+        metadata_key=metadata_key,
+    )
+
+
+def _get_unit_spike_times(*, sorting: BaseSorting, unit_ids) -> dict:
+    """Each unit's spike times in seconds, keyed by unit id, with the segments joined in segment order."""
+    return {
+        unit_id: np.concatenate(
+            [
+                sorting.get_unit_spike_train(unit_id=unit_id, segment_index=segment_index, return_times=True)
+                for segment_index in range(sorting.get_num_segments())
+            ]
+        )
+        for unit_id in unit_ids
+    }
+
+
+def _add_sorting_to_nwbfile(
+    *,
+    sorting: BaseSorting,
+    nwbfile: pynwb.NWBFile,
+    unit_ids: list[str] | list[int] | None,
+    unit_spike_times: dict,
+    property_descriptions: dict | None,
+    skip_properties: list[str] | None,
+    units_name: str | None,
+    units_description: str | None,
+    parent_container: Literal["units", "processing"],
+    unit_electrode_indices: list[list[int]] | None,
+    null_values_for_properties: dict | None,
+    waveform_data_dict: dict | None,
+    metadata: dict | None,
+    metadata_key: str | None,
+):
+    """``add_sorting_to_nwbfile`` with each unit's spike times given instead of read from the sorting.
+
+    For an interface, which holds the aligned times itself. ``unit_spike_times`` maps every unit written to its
+    spike times, with the segments joined. The deprecated ``units_name`` and ``units_description`` are warned
+    about here, so a call through an interface and a call through ``add_sorting_to_nwbfile`` are both warned.
+    """
+    _warn_about_units_table_options(units_name=units_name, units_description=units_description, stacklevel=4)
+
+    waveform_data_dict = waveform_data_dict or dict()
 
     # Resolution from sorting's sampling frequency
     _resolution = 1.0 / sorting.get_sampling_frequency()
@@ -786,13 +831,14 @@ def add_sorting_to_nwbfile(
         write_in_processing_module=write_in_processing_module,
         units_table_name=units_name,
         unit_table_description=units_description,
-        waveform_means=_waveform_means,
-        waveform_sds=_waveform_sds,
+        waveform_means=waveform_data_dict.get("means"),
+        waveform_sds=waveform_data_dict.get("sds"),
         unit_electrode_indices=unit_electrode_indices,
+        unit_spike_times=unit_spike_times,
         null_values_for_properties=null_values_for_properties,
-        waveform_rate=_waveform_rate,
-        waveform_unit=_waveform_unit,
-        waveform_time_before_peak_in_ms=_waveform_time_before_peak_in_ms,
+        waveform_rate=waveform_data_dict.get("sampling_rate"),
+        waveform_unit=waveform_data_dict.get("unit", "volts"),
+        waveform_time_before_peak_in_ms=waveform_data_dict.get("time_before_peak_in_ms"),
         resolution=_resolution,
     )
 
@@ -2741,6 +2787,7 @@ def _add_units_table_to_nwbfile(
     waveform_sds: np.ndarray | None = None,
     unit_electrode_indices: list[list[int]] | None = None,
     *,
+    unit_spike_times: dict,
     waveform_rate: float | None = None,
     waveform_unit: str = "volts",
     waveform_time_before_peak_in_ms: float | None = None,
@@ -2861,6 +2908,9 @@ def _add_units_table_to_nwbfile(
     unit_electrode_indices : list of lists of int, optional
         A list of lists of integers indicating the indices of the electrodes that each unit is associated with.
         The length of the list must match the number of units in the sorting extractor.
+    unit_spike_times : dict
+        The spike times of every unit written, keyed by unit id, with the segments joined. The units table writes
+        these and does not read spike times from ``sorting``.
     waveform_rate : float, optional
         Sampling rate of the waveform data in Hz. Sets Units.waveform_rate attribute.
     waveform_unit : str, default: "volts"
@@ -3002,23 +3052,10 @@ def _add_units_table_to_nwbfile(
         unit_name_array = unit_ids.astype("str", copy=False)
         data_to_add["unit_name"].update(description="Unique reference for each unit.", data=unit_name_array)
 
-    # Precompute spike times for all units and add to data_to_add alongside waveforms and electrodes.
+    # Add spike times to data_to_add alongside waveforms and electrodes.
     # This lets the shared column-adding loop below handle all data uniformly.
     num_units = sorting.get_num_units()
-    num_segments = sorting.get_num_segments()
-    all_spike_times = []
-    for row_index in range(num_units):
-        spike_times = np.concatenate(
-            [
-                sorting.get_unit_spike_train(
-                    unit_id=unit_ids[row_index],
-                    segment_index=segment_index,
-                    return_times=True,
-                )
-                for segment_index in range(num_segments)
-            ]
-        )
-        all_spike_times.append(spike_times)
+    all_spike_times = [unit_spike_times[unit_id] for unit_id in unit_ids]
     data_to_add["spike_times"].update(
         description="the spike times for each unit in seconds",
         data=all_spike_times,
@@ -3473,7 +3510,7 @@ def add_sorting_analyzer_to_nwbfile(
             stacklevel=2,
         )
         parent_container = write_as
-    _warn_about_units_table_options(units_name=units_name, units_description=units_description)
+    _warn_about_units_table_options(units_name=units_name, units_description=units_description, stacklevel=3)
 
     # TODO: move into add_units
     assert parent_container in [
@@ -3566,6 +3603,7 @@ def add_sorting_analyzer_to_nwbfile(
         waveform_unit=waveform_unit,
         waveform_time_before_peak_in_ms=waveform_time_before_peak_in_ms,
         unit_electrode_indices=unit_electrode_indices,
+        unit_spike_times=_get_unit_spike_times(sorting=sorting, unit_ids=unit_ids),
         null_values_for_properties=null_values_for_properties,
     )
 
