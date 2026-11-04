@@ -2535,8 +2535,14 @@ class TestAddSorting:
         """``metadata_key`` selects which Sortings entry describes this sorting, so it is required whenever the
         metadata carries any."""
         sorting = generate_sorting(num_units=3, durations=[1.0])
+        units_table_metadata_key = "curated"
         metadata = {
-            "Ecephys": {"Sortings": {"kilosort_sorting": {"units_table_metadata_key": "canonical_units_table"}}}
+            "Ecephys": {
+                "UnitsTables": {
+                    units_table_metadata_key: {"name": "CuratedUnits", "description": "Units after manual curation."}
+                },
+                "Sortings": {"kilosort_sorting": {"units_table_metadata_key": units_table_metadata_key}},
+            }
         }
 
         expected_error = re.escape(
