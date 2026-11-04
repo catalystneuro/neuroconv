@@ -82,6 +82,7 @@ class PhySortingInterface(BaseSortingExtractorInterface):
         *,
         exclude_cluster_groups: list[str] | None = None,
         verbose: bool = False,
+        metadata_key: str | None = None,
     ):
         """
         Initialize a PhySortingInterface.
@@ -93,8 +94,10 @@ class PhySortingInterface(BaseSortingExtractorInterface):
         exclude_cluster_groups : str or list of str, optional
             Cluster groups to exclude (e.g. "noise" or ["noise", "mua"]).
         verbose : bool, default: False
+        metadata_key : str, optional
+            Key of this sorting's entry in ``metadata["Ecephys"]["Sortings"]``. Defaults to ``"phy_sorting"``.
         """
-
+        self.metadata_key = metadata_key or "phy_sorting"
         super().__init__(folder_path=folder_path, exclude_cluster_groups=exclude_cluster_groups, verbose=verbose)
 
     def add_to_nwbfile(
@@ -105,8 +108,8 @@ class PhySortingInterface(BaseSortingExtractorInterface):
         stub_test: bool = False,
         write_ecephys_metadata: bool = False,
         write_as: Literal["units", "processing"] | None = None,
-        units_name: str = "units",
-        units_description: str = "Imported from Phy",
+        units_name: str | None = None,
+        units_description: str | None = None,
         unit_electrode_indices: list[list[int]] | None = None,
         parent_container: Literal["units", "processing"] = "units",
         waveform_data_dict: dict | None = None,

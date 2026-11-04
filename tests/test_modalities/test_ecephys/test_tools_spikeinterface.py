@@ -23,7 +23,6 @@ from spikeinterface.core.generate import (
 from spikeinterface.extractors import NumpyRecording
 
 from neuroconv.tools.iterative_write import get_electrical_series_chunk_shape
-from neuroconv.tools.nwb_helpers import get_module
 from neuroconv.tools.spikeinterface import (
     _add_electrode_groups_to_nwbfile,
     _add_electrodes_to_nwbfile,
@@ -2226,29 +2225,6 @@ class TestAddUnitsTable(TestCase):
         # Verify no additional units were added
         self.assertEqual(len(self.nwbfile.units), len(self.sorting_1.unit_ids))
 
-    def test_write_units_table_in_processing_module(self):
-        """ """
-
-        units_table_name = "testing_processing"
-        unit_table_description = "testing_description"
-        add_sorting_to_nwbfile(
-            sorting=self.base_sorting,
-            nwbfile=self.nwbfile,
-            units_name=units_table_name,
-            units_description=unit_table_description,
-            parent_container="processing",
-        )
-
-        ecephys_mod = get_module(
-            nwbfile=self.nwbfile,
-            name="ecephys",
-            description="Intermediate data from extracellular electrophysiology recordings, e.g., LFP.",
-        )
-        self.assertIn(units_table_name, ecephys_mod.data_interfaces)
-        units_table = ecephys_mod[units_table_name]
-        self.assertEqual(units_table.name, units_table_name)
-        self.assertEqual(units_table.description, unit_table_description)
-
     def test_write_subset_units(self):
         """ """
         subset_unit_ids = self.base_sorting.unit_ids[::2]
@@ -2534,6 +2510,137 @@ class TestAddUnitsTable(TestCase):
         assert list(units_table["ragged_property"][0]) == [1.0, 1.0]
         assert list(units_table["ragged_property"][4]) == []
         assert list(units_table["ragged_property"][5]) == []
+
+
+class TestAddSorting:
+    """Tests for the units table a sorting writes into, read from ``metadata["Ecephys"]`` by ``add_sorting_to_nwbfile``."""
+
+    def test_canonical_units_table_entry_cannot_have_a_name(self):
+        """The canonical units table is nwbfile.units, always named "units", so its entry raises on any name, "units"
+        included."""
+        sorting = generate_sorting(num_units=3, durations=[1.0])
+        metadata = {"Ecephys": {"UnitsTables": {"canonical_units_table": {"name": "units"}}}}
+
+        expected_error = re.escape(
+            "metadata['Ecephys']['UnitsTables']['canonical_units_table'] names the table 'units', but the canonical "
+            "units table is nwbfile.units, which is always named 'units'. Remove 'name' from the entry, or declare a "
+            "table with another name under another key in metadata['Ecephys']['UnitsTables']."
+        )
+        with pytest.raises(ValueError, match=expected_error):
+            add_sorting_to_nwbfile(
+                sorting=sorting, nwbfile=mock_NWBFile(), metadata=metadata, metadata_key="kilosort_sorting"
+            )
+
+    def test_metadata_with_sortings_passed_without_metadata_key_raises(self):
+        """``metadata_key`` selects which Sortings entry describes this sorting, so it is required whenever the
+        metadata carries any."""
+        sorting = generate_sorting(num_units=3, durations=[1.0])
+        units_table_metadata_key = "curated"
+        metadata = {
+            "Ecephys": {
+                "UnitsTables": {
+                    units_table_metadata_key: {"name": "CuratedUnits", "description": "Units after manual curation."}
+                },
+                "Sortings": {"kilosort_sorting": {"units_table_metadata_key": units_table_metadata_key}},
+            }
+        }
+
+        expected_error = re.escape(
+            "Metadata with entries in metadata['Ecephys']['Sortings'] was passed but no `metadata_key` was "
+            "provided. `metadata_key` selects which entry describes this sorting."
+        )
+        with pytest.raises(ValueError, match=expected_error):
+            add_sorting_to_nwbfile(sorting=sorting, nwbfile=mock_NWBFile(), metadata=metadata)
+
+    def test_processed_units_table_entry_without_name_raises(self):
+        """A table other than the canonical one is written in processing under its entry's name, so an entry without
+        one raises instead of writing a table named "units" that another nameless entry would also write into."""
+        sorting = generate_sorting(num_units=3, durations=[1.0])
+        metadata_key = "kilosort_sorting"
+        units_table_metadata_key = "processed"
+        metadata = {
+            "Ecephys": {
+                "UnitsTables": {units_table_metadata_key: {"description": "Units after manual curation."}},
+                "Sortings": {metadata_key: {"units_table_metadata_key": units_table_metadata_key}},
+            }
+        }
+
+        expected_error = re.escape(
+            f"metadata['Ecephys']['UnitsTables']['{units_table_metadata_key}'] gives no 'name'. A table other than "
+            "'canonical_units_table' is written in processing and needs a name of its own, so that two tables "
+            "never share one."
+        )
+        with pytest.raises(ValueError, match=expected_error):
+            add_sorting_to_nwbfile(
+                sorting=sorting,
+                nwbfile=mock_NWBFile(),
+                parent_container="processing",
+                metadata=metadata,
+                metadata_key=metadata_key,
+            )
+
+    def test_two_units_table_entries_with_the_same_name_raise(self):
+        """Two UnitsTables entries with one name would be written as one table, so the first write raises before
+        anything is written."""
+        sorting = generate_sorting(num_units=3, durations=[1.0])
+        nwbfile = mock_NWBFile()
+        metadata_key = "phy_sorting"
+        curated_units_table_metadata_key = "curated"
+        raw_units_table_metadata_key = "raw"
+        units_table_name = "ProcessedUnits"
+        metadata = {
+            "Ecephys": {
+                "UnitsTables": {
+                    curated_units_table_metadata_key: {"name": units_table_name, "description": "Curated in Phy."},
+                    raw_units_table_metadata_key: {"name": units_table_name, "description": "Raw Kilosort output."},
+                },
+                "Sortings": {metadata_key: {"units_table_metadata_key": curated_units_table_metadata_key}},
+            }
+        }
+
+        expected_error = re.escape(
+            f"metadata['Ecephys']['UnitsTables'] keys '{curated_units_table_metadata_key}' and "
+            f"'{raw_units_table_metadata_key}' both use the name '{units_table_name}'.\n"
+            "For two tables, give each its own name:\n"
+            "    metadata['Ecephys']['UnitsTables'] = {\n"
+            f"        '{curated_units_table_metadata_key}': {{'name': '{units_table_name}'}},\n"
+            f"        '{raw_units_table_metadata_key}': {{'name': '<another name>'}},\n"
+            "    }\n"
+            "For one table shared by several sortings, declare it under one key and point each sorting at that "
+            "key:\n"
+            f"    metadata['Ecephys']['UnitsTables'] = {{'{curated_units_table_metadata_key}': "
+            f"{{'name': '{units_table_name}'}}}}\n"
+            "    metadata['Ecephys']['Sortings'] = {\n"
+            f"        '<sorting key>': {{'units_table_metadata_key': '{curated_units_table_metadata_key}'}},\n"
+            f"        '<other sorting key>': {{'units_table_metadata_key': '{curated_units_table_metadata_key}'}},\n"
+            "    }"
+        )
+        with pytest.raises(ValueError, match=expected_error):
+            add_sorting_to_nwbfile(sorting=sorting, nwbfile=nwbfile, metadata=metadata, metadata_key=metadata_key)
+        assert "ecephys" not in nwbfile.processing
+
+    def test_caller_metadata_is_not_mutated(self):
+        """The write path reads the caller's metadata and never writes back into it."""
+        sorting = generate_sorting(num_units=3, durations=[1.0])
+        metadata_key = "kilosort_sorting"
+        units_table_metadata_key = "processed"
+        metadata = {
+            "Ecephys": {
+                "UnitsTables": {units_table_metadata_key: {"name": "ProcessedUnits"}},
+                "Sortings": {metadata_key: {"units_table_metadata_key": units_table_metadata_key}},
+            }
+        }
+        metadata_before = deepcopy(metadata)
+
+        add_sorting_to_nwbfile(
+            sorting=sorting,
+            nwbfile=mock_NWBFile(),
+            parent_container="processing",
+            metadata=metadata,
+            metadata_key=metadata_key,
+        )
+
+        assert metadata == metadata_before
 
 
 class TestWaveformParametersAdditionToUnitsTable:
@@ -2876,12 +2983,19 @@ class TestWriteSortingAnalyzer(TestCase):
 
     def test_units_table_name(self):
         """This tests the units naming exception"""
-        with self.assertRaises(Exception) as context:
+        units_table_metadata_key = "canonical_units_table"
+        metadata = {"Ecephys": {"UnitsTables": {units_table_metadata_key: {"name": "units1"}}}}
+        expected_error = re.escape(
+            f"metadata['Ecephys']['UnitsTables']['{units_table_metadata_key}'] names the table 'units1', but the "
+            "canonical units table is nwbfile.units, which is always named 'units'. Remove 'name' from the entry, or "
+            "declare a table with another name under another key in metadata['Ecephys']['UnitsTables']."
+        )
+        with pytest.raises(ValueError, match=expected_error):
             add_sorting_analyzer_to_nwbfile(
                 sorting_analyzer=self.single_segment_analyzer,
                 nwbfile=self.nwbfile,
                 parent_container="units",
-                units_name="units1",
+                metadata=metadata,
             )
 
     @pytest.mark.filterwarnings("ignore::UserWarning:spikeinterface\\..*")

@@ -382,6 +382,7 @@ class NeuroScopeSortingInterface(BaseSortingExtractorInterface):
         exclude_shanks: list[int] | None = None,
         xml_file_path: FilePath | None = None,
         verbose: bool = False,
+        metadata_key: str | None = None,
     ):
         """
         Load and prepare spike sorted data and corresponding metadata from the Neuroscope format (.res/.clu files).
@@ -399,10 +400,13 @@ class NeuroScopeSortingInterface(BaseSortingExtractorInterface):
             Path to .xml file containing device and electrode configuration.
             If unspecified, it will be automatically set as the only .xml file in the same folder as the .dat file.
             The default is None.
+        metadata_key : str, optional
+            Key of this sorting's entry in ``metadata["Ecephys"]["Sortings"]``. Defaults to ``"neuroscope_sorting"``.
         """
 
         get_package(package_name="lxml")
 
+        self.metadata_key = metadata_key or "neuroscope_sorting"
         super().__init__(
             folder_path=folder_path,
             keep_mua_units=keep_mua_units,
