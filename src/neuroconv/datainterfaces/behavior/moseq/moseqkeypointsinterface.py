@@ -453,7 +453,6 @@ class MoseqKeyPointsInterface(BaseDataInterface):
             **_get_bouts_and_behaviors_from_labels(
                 labels=self._read_dataset("syllable"),
                 timestamps=timestamps,
-                frame_period=frame_period,
                 class_definition=(
                     "keypoint-MoSeq unsupervised syllable; the id is specific to the run that produced it and "
                     "carries no meaning outside it."

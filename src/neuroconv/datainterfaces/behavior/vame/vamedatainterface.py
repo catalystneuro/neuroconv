@@ -621,7 +621,6 @@ class VameInterface(BaseTemporalAlignmentInterface):
         motif_data: np.ndarray,
         community_data: np.ndarray | None,
         timestamps: np.ndarray,
-        frame_period: float,
         pose_estimation,
         source_video,
         bouts_metadata: dict | None,
@@ -651,7 +650,6 @@ class VameInterface(BaseTemporalAlignmentInterface):
             **_get_bouts_and_behaviors_from_labels(
                 labels=motif_data,
                 timestamps=timestamps,
-                frame_period=frame_period,
                 class_ids=range(int(n_clusters)) if n_clusters is not None else None,
                 class_definition="VAME unsupervised motif; the cluster id has no a-priori meaning.",
                 category_labels=community_data,
@@ -861,7 +859,6 @@ class VameInterface(BaseTemporalAlignmentInterface):
         # f"{metadata_key}_{run_key}". The source MotifSeries is wired directly (this interface holds
         # the object), so no source_metadata_key resolution is needed.
         if write_curated and motif_series_objects:
-            frame_period = 1.0 / rate if rate is not None else float(np.median(np.diff(timestamps)))
             ethograms_metadata = default_metadata["Behavior"].get("Ethograms", {})
             for run_key in self._motif_labels_file_paths:
                 # Drop the source back-link to the faithful MotifSeries when it is not being written,
@@ -876,7 +873,6 @@ class VameInterface(BaseTemporalAlignmentInterface):
                     motif_data=motif_data_by_run[run_key],
                     community_data=community_data_by_run.get(run_key),
                     timestamps=timestamps,
-                    frame_period=frame_period,
                     pose_estimation=pose_estimation,
                     source_video=source_video,
                     bouts_metadata=ethogram_metadata.get("EthogramBouts") if ethogram_metadata else None,
