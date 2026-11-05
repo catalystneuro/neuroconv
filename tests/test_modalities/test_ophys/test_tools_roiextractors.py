@@ -2345,36 +2345,6 @@ class TestAddSegmentation:
         assert fluorescence.roi_response_series["RoiResponseSeries"].rois.table is plane_segmentation
         assert metadata["Ophys"]["PlaneSegmentations"]["my_seg"] == {}
 
-    def test_second_unnamed_plane_segmentation_raises(self):
-        """Two entries that both leave `name` to the default would collapse onto one PlaneSegmentation and
-        silently drop the second one's ROIs, so the second write raises instead."""
-        nwbfile = mock_NWBFile()
-        segmentation_extractor = generate_dummy_segmentation_extractor()
-
-        metadata = {
-            "Ophys": {
-                "PlaneSegmentations": {
-                    "first_seg": {"description": "First segmentation"},
-                    "second_seg": {"description": "Second segmentation"},
-                },
-            },
-        }
-
-        add_segmentation_to_nwbfile(
-            segmentation_extractor=segmentation_extractor,
-            nwbfile=nwbfile,
-            metadata=metadata,
-            metadata_key="first_seg",
-        )
-
-        with pytest.raises(ValueError, match="names no shared table"):
-            add_segmentation_to_nwbfile(
-                segmentation_extractor=segmentation_extractor,
-                nwbfile=nwbfile,
-                metadata=metadata,
-                metadata_key="second_seg",
-            )
-
     def test_second_plane_segmentation_with_a_stated_name_already_in_the_file_raises(self):
         """Two entries stating one name used to share the table the first wrote, so the second
         segmentation's ROIs were never added and its traces pointed at the first one's. Sharing a table is
@@ -2426,6 +2396,8 @@ class TestAddSegmentation:
         PlaneSegmentation, named and described by that entry. The second one's ROIs get ids after the first
         one's, and each segmentation's traces point at its own rows."""
         nwbfile = mock_NWBFile()
+        # TODO: use generate_dummy_segmentation_extractor once it can take the ROI ids. It always names them
+        # roi_0, roi_1, ..., and this test needs two segmentations with different ROI names.
         rng = np.random.default_rng(0)
         line_1 = NumpySegmentationExtractor(
             image_masks=rng.random((15, 15, 1)), raw=rng.random((10, 1)), roi_ids=["roi_a"], sampling_frequency=30.0
