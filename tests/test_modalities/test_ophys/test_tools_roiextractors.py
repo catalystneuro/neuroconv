@@ -2495,10 +2495,6 @@ class TestAddSegmentation:
                     "first": {"segmentation_table_metadata_key": "cells"},
                     "second": {"segmentation_table_metadata_key": "cells"},
                 },
-                "RoiResponses": {
-                    "first": {"raw": {"name": "RoiResponseSeriesFirst"}},
-                    "second": {"raw": {"name": "RoiResponseSeriesSecond"}},
-                },
             },
         }
 
@@ -2530,10 +2526,6 @@ class TestAddSegmentation:
                 "PlaneSegmentations": {
                     "first": {"segmentation_table_metadata_key": "cells"},
                     "second": {"segmentation_table_metadata_key": "cells"},
-                },
-                "RoiResponses": {
-                    "first": {"raw": {"name": "RoiResponseSeriesFirst"}},
-                    "second": {"raw": {"name": "RoiResponseSeriesSecond"}},
                 },
             },
         }
@@ -2611,9 +2603,14 @@ class TestAddSegmentation:
 
         expected_message = (
             "metadata['Ophys']['SegmentationTables'] keys 'dye_a' and 'dye_b' both use the name "
-            "'PlaneSegmentationDye'. For two tables, give each its own name. For one table shared by several "
-            "segmentations, declare it under one key and point each segmentation's entry in "
-            "metadata['Ophys']['PlaneSegmentations'] at that key with 'segmentation_table_metadata_key'."
+            "'PlaneSegmentationDye'.\n"
+            "For two tables, give each its own name:\n"
+            "    metadata['Ophys']['SegmentationTables']['dye_b']['name'] = '<another name>'\n"
+            "For one table shared by several segmentations, declare it under one key and point each "
+            "segmentation's entry at that key:\n"
+            "    metadata['Ophys']['SegmentationTables'] = {'dye_a': {'name': 'PlaneSegmentationDye'}}\n"
+            "    metadata['Ophys']['PlaneSegmentations']['<segmentation key>']['segmentation_table_metadata_key'] "
+            "= 'dye_a'"
         )
         with pytest.raises(ValueError, match=re.escape(expected_message)):
             add_segmentation_to_nwbfile(

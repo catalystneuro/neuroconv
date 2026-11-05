@@ -544,9 +544,14 @@ def _get_segmentation_table_entry(*, metadata: dict, metadata_key: str) -> dict 
             first_key = table_metadata_keys_by_name[name]
             raise ValueError(
                 f"metadata['Ophys']['SegmentationTables'] keys '{first_key}' and '{key}' both use the name "
-                f"'{name}'. For two tables, give each its own name. For one table shared by several "
-                "segmentations, declare it under one key and point each segmentation's entry in "
-                "metadata['Ophys']['PlaneSegmentations'] at that key with 'segmentation_table_metadata_key'."
+                f"'{name}'.\n"
+                "For two tables, give each its own name:\n"
+                f"    metadata['Ophys']['SegmentationTables']['{key}']['name'] = '<another name>'\n"
+                "For one table shared by several segmentations, declare it under one key and point each "
+                "segmentation's entry at that key:\n"
+                f"    metadata['Ophys']['SegmentationTables'] = {{'{first_key}': {{'name': '{name}'}}}}\n"
+                "    metadata['Ophys']['PlaneSegmentations']['<segmentation key>']['segmentation_table_metadata_key'] "
+                f"= '{first_key}'"
             )
         table_metadata_keys_by_name[name] = key
 
