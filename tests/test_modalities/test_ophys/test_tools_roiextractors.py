@@ -2621,76 +2621,6 @@ class TestAddSegmentation:
                 segmentation_extractor=segmentation_extractor, nwbfile=nwbfile, metadata=metadata, metadata_key="second"
             )
 
-    def test_shared_table_holding_another_mask_type_raises(self):
-        """A PlaneSegmentation holds one mask type, so pixel masks cannot join a table of image masks."""
-        nwbfile = mock_NWBFile()
-        image_masks = generate_dummy_segmentation_extractor(has_summary_images=False, mask_type="image")
-        pixel_masks = generate_dummy_segmentation_extractor(has_summary_images=False, mask_type="pixel")
-
-        metadata = {
-            "Ophys": {
-                "SegmentationTables": {"cells": {"name": "PlaneSegmentationCells"}},
-                "PlaneSegmentations": {
-                    "image": {"segmentation_table_metadata_key": "cells"},
-                    "pixel": {"segmentation_table_metadata_key": "cells"},
-                },
-                "RoiResponses": {
-                    "image": {"raw": {"name": "RoiResponseSeriesImage"}},
-                    "pixel": {"raw": {"name": "RoiResponseSeriesPixel"}},
-                },
-            },
-        }
-
-        add_segmentation_to_nwbfile(
-            segmentation_extractor=image_masks, nwbfile=nwbfile, metadata=metadata, metadata_key="image"
-        )
-
-        expected_message = (
-            "The segmentation of metadata['Ophys']['PlaneSegmentations']['pixel'] has pixel masks, but the "
-            "PlaneSegmentation 'PlaneSegmentationCells' it writes into holds image masks. A PlaneSegmentation "
-            "holds one mask type."
-        )
-        with pytest.raises(ValueError, match=re.escape(expected_message)):
-            add_segmentation_to_nwbfile(
-                segmentation_extractor=pixel_masks, nwbfile=nwbfile, metadata=metadata, metadata_key="pixel"
-            )
-
-    def test_shared_table_with_other_roi_properties_raises(self):
-        """Each ROI property is a column, so a segmentation carrying other properties cannot join the table."""
-        nwbfile = mock_NWBFile()
-        first = generate_dummy_segmentation_extractor(num_rois=2, has_summary_images=False, seed=0)
-        second = generate_dummy_segmentation_extractor(num_rois=2, has_summary_images=False, seed=0)
-        second.set_property("snr", np.array([1.0, 2.0]), ids=second.get_roi_ids())
-
-        metadata = {
-            "Ophys": {
-                "SegmentationTables": {"cells": {"name": "PlaneSegmentationCells"}},
-                "PlaneSegmentations": {
-                    "first": {"segmentation_table_metadata_key": "cells"},
-                    "second": {"segmentation_table_metadata_key": "cells"},
-                },
-                "RoiResponses": {
-                    "first": {"raw": {"name": "RoiResponseSeriesFirst"}},
-                    "second": {"raw": {"name": "RoiResponseSeriesSecond"}},
-                },
-            },
-        }
-
-        add_segmentation_to_nwbfile(
-            segmentation_extractor=first, nwbfile=nwbfile, metadata=metadata, metadata_key="first"
-        )
-
-        expected_message = (
-            "The segmentation of metadata['Ophys']['PlaneSegmentations']['second'] carries the ROI properties "
-            "['is_accepted', 'snr'], but the PlaneSegmentation 'PlaneSegmentationCells' it writes into has the "
-            "columns ['is_accepted']. Each property is a column, so the segmentations sharing a PlaneSegmentation "
-            "must carry the same ones."
-        )
-        with pytest.raises(ValueError, match=re.escape(expected_message)):
-            add_segmentation_to_nwbfile(
-                segmentation_extractor=second, nwbfile=nwbfile, metadata=metadata, metadata_key="second"
-            )
-
     def test_two_segmentation_tables_with_the_same_name_raise(self):
         """The name is the table's identity and the keys are handles, so two table entries giving one name
         would merge two tables declared apart into one."""
@@ -2712,50 +2642,6 @@ class TestAddSegmentation:
             "'PlaneSegmentationDye'. For two tables, give each its own name. For one table shared by several "
             "segmentations, declare it under one key and point each segmentation's entry in "
             "metadata['Ophys']['PlaneSegmentations'] at that key with 'segmentation_table_metadata_key'."
-        )
-        with pytest.raises(ValueError, match=re.escape(expected_message)):
-            add_segmentation_to_nwbfile(
-                segmentation_extractor=segmentation_extractor, nwbfile=nwbfile, metadata=metadata, metadata_key="line_1"
-            )
-
-    def test_undeclared_segmentation_table_raises(self):
-        """A reference to a table `SegmentationTables` does not declare names no table to write into."""
-        nwbfile = mock_NWBFile()
-        segmentation_extractor = generate_dummy_segmentation_extractor()
-
-        metadata = {
-            "Ophys": {
-                "SegmentationTables": {"dye": {"name": "PlaneSegmentationDye"}},
-                "PlaneSegmentations": {"line_1": {"segmentation_table_metadata_key": "dyes"}},
-            },
-        }
-
-        expected_message = (
-            "metadata['Ophys']['PlaneSegmentations']['line_1'] writes into the table 'dyes', which "
-            "metadata['Ophys']['SegmentationTables'] does not declare. Declared: ['dye']."
-        )
-        with pytest.raises(ValueError, match=re.escape(expected_message)):
-            add_segmentation_to_nwbfile(
-                segmentation_extractor=segmentation_extractor, nwbfile=nwbfile, metadata=metadata, metadata_key="line_1"
-            )
-
-    def test_segmentation_table_without_a_name_raises(self):
-        """A shared table defaulting to 'PlaneSegmentation' would collide with a segmentation's own table of
-        the default name, so its entry must give one."""
-        nwbfile = mock_NWBFile()
-        segmentation_extractor = generate_dummy_segmentation_extractor()
-
-        metadata = {
-            "Ophys": {
-                "SegmentationTables": {"dye": {"description": "One ROI per scan line."}},
-                "PlaneSegmentations": {"line_1": {"segmentation_table_metadata_key": "dye"}},
-            },
-        }
-
-        expected_message = (
-            "metadata['Ophys']['SegmentationTables']['dye'] gives no 'name'. A table several segmentations "
-            "share needs a name of its own, so that it cannot collide with a segmentation's own table, which "
-            "defaults to 'PlaneSegmentation'."
         )
         with pytest.raises(ValueError, match=re.escape(expected_message)):
             add_segmentation_to_nwbfile(

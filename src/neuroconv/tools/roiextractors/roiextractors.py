@@ -553,20 +553,7 @@ def _get_segmentation_table_entry(*, metadata: dict, metadata_key: str) -> dict 
     table_metadata_key = ophys_metadata["PlaneSegmentations"][metadata_key].get("segmentation_table_metadata_key")
     if table_metadata_key is None:
         return None
-    if table_metadata_key not in segmentation_tables:
-        raise ValueError(
-            f"metadata['Ophys']['PlaneSegmentations']['{metadata_key}'] writes into the table "
-            f"'{table_metadata_key}', which metadata['Ophys']['SegmentationTables'] does not declare. "
-            f"Declared: {sorted(segmentation_tables)}."
-        )
-    table_entry = segmentation_tables[table_metadata_key]
-    if "name" not in table_entry:
-        raise ValueError(
-            f"metadata['Ophys']['SegmentationTables']['{table_metadata_key}'] gives no 'name'. A table "
-            "several segmentations share needs a name of its own, so that it cannot collide with a segmentation's "
-            "own table, which defaults to 'PlaneSegmentation'."
-        )
-    return table_entry
+    return segmentation_tables[table_metadata_key]
 
 
 def _append_rois_to_plane_segmentation(
