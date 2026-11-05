@@ -96,6 +96,7 @@ class BaseSegmentationExtractorInterface(BaseExtractorInterface):
         metadata_schema["properties"]["Ophys"]["properties"] = dict(
             ImagingPlanes=_keyed_registry("#/properties/Ophys/definitions/ImagingPlaneEntry"),
             PlaneSegmentations=_keyed_registry("#/properties/Ophys/definitions/PlaneSegmentationEntry"),
+            SegmentationTables=_keyed_registry("#/properties/Ophys/definitions/SegmentationTableEntry"),
             RoiResponses=_keyed_registry("#/properties/Ophys/definitions/RoiResponsesEntry"),
             SegmentationImages=_keyed_registry("#/properties/Ophys/definitions/SegmentationImagesEntry"),
         )

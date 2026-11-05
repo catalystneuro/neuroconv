@@ -525,6 +525,139 @@ def _add_photon_series_to_nwbfile(
     return nwbfile
 
 
+def _get_segmentation_table_entry(*, metadata: dict, metadata_key: str) -> dict | None:
+    """Return the shared table a segmentation writes into, or None when it writes a table of its own.
+
+    A segmentation joins a table that several segmentations share by naming its key in
+    ``metadata["Ophys"]["SegmentationTables"]`` through ``segmentation_table_metadata_key`` in its
+    ``PlaneSegmentations`` entry. The table's entry gives the name and description. The name is the table's
+    identity and the keys are handles, so two table entries giving one name raise.
+    """
+    ophys_metadata = metadata["Ophys"]
+    segmentation_tables = ophys_metadata.get("SegmentationTables", {})
+    table_metadata_keys_by_name = {}
+    for key, entry in segmentation_tables.items():
+        name = entry.get("name")
+        if name is None:
+            continue
+        if name in table_metadata_keys_by_name:
+            first_key = table_metadata_keys_by_name[name]
+            raise ValueError(
+                f"metadata['Ophys']['SegmentationTables'] keys '{first_key}' and '{key}' both use the name "
+                f"'{name}'. For two tables, give each its own name. For one table shared by several "
+                "segmentations, declare it under one key and point each segmentation's entry in "
+                "metadata['Ophys']['PlaneSegmentations'] at that key with 'segmentation_table_metadata_key'."
+            )
+        table_metadata_keys_by_name[name] = key
+
+    table_metadata_key = ophys_metadata["PlaneSegmentations"][metadata_key].get("segmentation_table_metadata_key")
+    if table_metadata_key is None:
+        return None
+    if table_metadata_key not in segmentation_tables:
+        raise ValueError(
+            f"metadata['Ophys']['PlaneSegmentations']['{metadata_key}'] writes into the table "
+            f"'{table_metadata_key}', which metadata['Ophys']['SegmentationTables'] does not declare. "
+            f"Declared: {sorted(segmentation_tables)}."
+        )
+    table_entry = segmentation_tables[table_metadata_key]
+    if "name" not in table_entry:
+        raise ValueError(
+            f"metadata['Ophys']['SegmentationTables']['{table_metadata_key}'] gives no 'name'. A table "
+            "several segmentations share needs a name of its own, so that it cannot collide with a segmentation's "
+            "own table, which defaults to 'PlaneSegmentation'."
+        )
+    return table_entry
+
+
+def _append_rois_to_plane_segmentation(
+    *,
+    segmentation_extractor: SegmentationExtractor,
+    plane_segmentation: PlaneSegmentation,
+    imaging_plane: ImagingPlane,
+    mask_type: str,
+    image_or_pixel_masks,
+    metadata_key: str,
+) -> None:
+    """Append a segmentation's ROIs to a PlaneSegmentation that another segmentation already wrote.
+
+    ROIs are matched to the rows already in the table by name. A new name is appended with an id after the
+    table's last one. A name already in the table reuses that row when the mask and the ROI properties are
+    equal, which is how segmentations of the same ROIs, such as two channels, write their traces against one
+    table, and raises when either differs.
+    """
+    entry_reference = f"metadata['Ophys']['PlaneSegmentations']['{metadata_key}']"
+    table_name = plane_segmentation.name
+
+    if plane_segmentation.imaging_plane is not imaging_plane:
+        raise ValueError(
+            f"{entry_reference} links the imaging plane '{imaging_plane.name}', but the PlaneSegmentation "
+            f"'{table_name}' it writes into links '{plane_segmentation.imaging_plane.name}'. A PlaneSegmentation "
+            "links one imaging plane, so the segmentations sharing it must link the same one."
+        )
+
+    mask_column_names = ("image_mask", "pixel_mask", "voxel_mask")
+    mask_column = f"{mask_type}_mask"
+    if mask_column not in plane_segmentation.colnames:
+        table_mask_column = next(name for name in mask_column_names if name in plane_segmentation.colnames)
+        raise ValueError(
+            f"The segmentation of {entry_reference} has {mask_type} masks, but the PlaneSegmentation "
+            f"'{table_name}' it writes into holds {table_mask_column.replace('_', ' ')}s. A PlaneSegmentation "
+            "holds one mask type."
+        )
+
+    # TODO: null-fill the columns a segmentation lacks, as the electrodes and units tables do, instead of raising.
+    property_keys = list(segmentation_extractor.get_property_keys())
+    table_property_columns = [
+        name for name in plane_segmentation.colnames if name != "roi_name" and name not in mask_column_names
+    ]
+    if set(property_keys) != set(table_property_columns):
+        raise ValueError(
+            f"The segmentation of {entry_reference} carries the ROI properties {sorted(property_keys)}, but the "
+            f"PlaneSegmentation '{table_name}' it writes into has the columns {sorted(table_property_columns)}. "
+            "Each property is a column, so the segmentations sharing a PlaneSegmentation must carry the same ones."
+        )
+
+    roi_ids = segmentation_extractor.get_roi_ids()
+    property_values = {key: segmentation_extractor.get_property(key=key, ids=roi_ids) for key in property_keys}
+    row_by_roi_name = {roi_name: row for row, roi_name in enumerate(plane_segmentation["roi_name"].data)}
+    next_id = max(plane_segmentation.id.data) + 1
+    image_mask_array = image_or_pixel_masks.T if mask_type == "image" else None
+
+    for roi_index, roi_id in enumerate(roi_ids):
+        roi_name = str(roi_id)
+        if mask_type == "image":
+            roi_mask = image_mask_array[roi_index]
+        else:
+            roi_mask = [tuple(x) for x in image_or_pixel_masks[roi_index]]
+
+        if roi_name in row_by_roi_name:
+            row = row_by_roi_name[roi_name]
+            table_roi_mask = plane_segmentation[mask_column][row]
+            if not np.array_equal(np.asarray(table_roi_mask), np.asarray(roi_mask)):
+                raise ValueError(
+                    f"The ROI '{roi_name}' of {entry_reference} has a different mask from the ROI of that name "
+                    f"already in the PlaneSegmentation '{table_name}'. An ROI name already in the table is "
+                    "reused only for an equal mask, so different ROIs sharing a table need different names."
+                )
+            for key, values in property_values.items():
+                table_value = np.asarray(plane_segmentation[key][row])
+                value = np.asarray(values[roi_index])
+                equal_nan = table_value.dtype.kind in "fc" and value.dtype.kind in "fc"
+                if not np.array_equal(table_value, value, equal_nan=equal_nan):
+                    raise ValueError(
+                        f"The ROI '{roi_name}' of {entry_reference} has the '{key}' value {value}, but the ROI of "
+                        f"that name already in the PlaneSegmentation '{table_name}' has {table_value}. A reused row "
+                        "holds one value per column, so the segmentations sharing it must agree on its ROI "
+                        "properties. Write this segmentation into a PlaneSegmentation of its own, or make its ROI "
+                        "properties agree with the table's."
+                    )
+            continue
+
+        row_properties = {key: values[roi_index] for key, values in property_values.items()}
+        plane_segmentation.add_roi(id=next_id, roi_name=roi_name, **{mask_column: roi_mask}, **row_properties)
+        next_id += 1
+
+
 def _add_plane_segmentation_to_nwbfile(
     *,
     segmentation_extractor: SegmentationExtractor,
@@ -558,6 +691,8 @@ def _add_plane_segmentation_to_nwbfile(
     """
     _validate_metadata_key(metadata, metadata_path=("Ophys", "PlaneSegmentations"), metadata_key=metadata_key)
     plane_seg_metadata = metadata["Ophys"]["PlaneSegmentations"][metadata_key].copy()
+    segmentation_table_entry = _get_segmentation_table_entry(metadata=metadata, metadata_key=metadata_key)
+    plane_seg_metadata.pop("segmentation_table_metadata_key", None)
 
     # Required by the NWB ``PlaneSegmentation`` object; default any the interface did not supply from the
     # central placeholder template. ``name`` is defaulted where the segmentation is built, which is also
@@ -565,6 +700,13 @@ def _add_plane_segmentation_to_nwbfile(
     # See ``_add_imaging_plane_to_nwbfile``.
     required_fields = ["description"]
     default_plane_seg = _get_ophys_metadata_placeholders()["Ophys"]["PlaneSegmentations"]["default_metadata_key"]
+    # A table several segmentations share takes its name and description from its own entry, so they do not
+    # depend on which segmentation writes first.
+    if segmentation_table_entry is not None:
+        plane_seg_metadata["name"] = segmentation_table_entry["name"]
+        plane_seg_metadata["description"] = segmentation_table_entry.get(
+            "description", default_plane_seg["description"]
+        )
     for field in required_fields:
         plane_seg_metadata.setdefault(field, default_plane_seg[field])
 
@@ -595,22 +737,24 @@ def _add_plane_segmentation_to_nwbfile(
         image_segmentation = ImageSegmentation(name=image_segmentation_name)
         ophys_module.add(image_segmentation)
 
-    # The name defaults to the neurodata type being written, as the photon series does. Reuse by name is
-    # how two interfaces deliberately share one segmentation, so it stays allowed for a name the caller
-    # stated; a name that was defaulted cannot express that intent, and reusing it would silently drop the
-    # second interface's ROIs, so it is an error instead.
-    name_was_defaulted = "name" not in plane_seg_metadata
+    # The name defaults to the neurodata type being written, as the photon series does. A segmentation writes
+    # into a PlaneSegmentation already in the file only when its entry names a shared table; otherwise the
+    # name is taken, and appending would mix two segmentations' ROIs in a table neither declared shared.
     plane_segmentation_name = plane_seg_metadata.setdefault("name", "PlaneSegmentation")
+    plane_segmentation_exists = plane_segmentation_name in image_segmentation.plane_segmentations
 
-    if plane_segmentation_name in image_segmentation.plane_segmentations:
-        if name_was_defaulted:
-            raise ValueError(
-                f"A PlaneSegmentation named '{plane_segmentation_name}' is already in the file, and "
-                f"metadata['Ophys']['PlaneSegmentations']['{metadata_key}'] does not name its own. Give it "
-                "a 'name' to write a second segmentation, or use 1 metadata key to share one."
-            )
-        # If PlaneSegmentation already exists, return early
-        return nwbfile
+    if plane_segmentation_exists and segmentation_table_entry is None:
+        raise ValueError(
+            f"A PlaneSegmentation named '{plane_segmentation_name}' is already in the file, and "
+            f"metadata['Ophys']['PlaneSegmentations']['{metadata_key}'] names no shared table.\n"
+            "For a table of its own, give the entry another name:\n"
+            f"    metadata['Ophys']['PlaneSegmentations']['{metadata_key}']['name'] = '<another name>'\n"
+            "For one table shared by several segmentations, declare it once and point each segmentation's entry "
+            "at its key:\n"
+            f"    metadata['Ophys']['SegmentationTables'] = {{'<table key>': {{'name': '{plane_segmentation_name}'}}}}\n"
+            "    metadata['Ophys']['PlaneSegmentations']['<segmentation key>']['segmentation_table_metadata_key'] "
+            "= '<table key>'"
+        )
 
     # Extract ROI data
     roi_ids = segmentation_extractor.get_roi_ids()
@@ -624,6 +768,17 @@ def _add_plane_segmentation_to_nwbfile(
         image_or_pixel_masks = segmentation_extractor.get_roi_image_masks()
     else:
         image_or_pixel_masks = segmentation_extractor.get_roi_pixel_masks()
+
+    if plane_segmentation_exists:
+        _append_rois_to_plane_segmentation(
+            segmentation_extractor=segmentation_extractor,
+            plane_segmentation=image_segmentation.plane_segmentations[plane_segmentation_name],
+            imaging_plane=imaging_plane,
+            mask_type=mask_type,
+            image_or_pixel_masks=image_or_pixel_masks,
+            metadata_key=metadata_key,
+        )
+        return nwbfile
 
     # Build PlaneSegmentation object
     plane_seg_metadata["imaging_plane"] = imaging_plane
@@ -792,11 +947,15 @@ def _add_roi_response_traces_to_nwbfile(
     if not traces_to_add:
         return nwbfile
 
-    # Resolve PlaneSegmentation via the same metadata_key, defaulting its name the same way the
-    # segmentation writer does.
+    # Resolve PlaneSegmentation via the same metadata_key, through its shared table when it names one, and
+    # defaulting its name the same way the segmentation writer does.
     _validate_metadata_key(metadata, metadata_path=("Ophys", "PlaneSegmentations"), metadata_key=metadata_key)
     plane_segmentation_metadata = metadata["Ophys"]["PlaneSegmentations"][metadata_key]
-    plane_segmentation_name = plane_segmentation_metadata.get("name", "PlaneSegmentation")
+    segmentation_table_entry = _get_segmentation_table_entry(metadata=metadata, metadata_key=metadata_key)
+    if segmentation_table_entry is not None:
+        plane_segmentation_name = segmentation_table_entry["name"]
+    else:
+        plane_segmentation_name = plane_segmentation_metadata.get("name", "PlaneSegmentation")
     ophys_module = get_module(nwbfile, "ophys", description="contains optical physiology processed data")
     image_segmentation = ophys_module["ImageSegmentation"]
     plane_segmentation = image_segmentation.plane_segmentations[plane_segmentation_name]
