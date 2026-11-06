@@ -557,23 +557,27 @@ def _warn_about_units_table_options(
     """
     if parent_container is not None:
         warnings.warn(
-            "The 'parent_container' parameter is deprecated and will be removed in v0.13.0. The units table's key "
-            "in metadata['Ecephys']['UnitsTables'] decides where it is written: 'canonical_units_table' is "
-            "nwbfile.units, and any other key is a table in processing.",
+            "The 'parent_container' parameter is deprecated and will be removed in v0.13.0. A sorting whose entry "
+            "in metadata['Ecephys']['Sortings'] gives a 'name' writes a table of its own in processing. Otherwise it "
+            "writes nwbfile.units, or the shared table its 'units_table_metadata_key' names in "
+            "metadata['Ecephys']['UnitsTables'], which is in processing for any key but 'canonical_units_table'.",
             FutureWarning,
             stacklevel=stacklevel,
         )
     if units_name is not None:
         warnings.warn(
-            "The 'units_name' parameter is deprecated and will be removed in v0.13.0. Set the table's 'name' in "
-            "metadata['Ecephys']['UnitsTables'] instead.",
+            "The 'units_name' parameter is deprecated and will be removed in v0.13.0. Set 'name' in the sorting's "
+            "entry in metadata['Ecephys']['Sortings'] instead, which writes the sorting into a table of its own in "
+            "processing.",
             FutureWarning,
             stacklevel=stacklevel,
         )
     if units_description is not None:
         warnings.warn(
-            "The 'units_description' parameter is deprecated and will be removed in v0.13.0. Set the table's "
-            "'description' in metadata['Ecephys']['UnitsTables'] instead.",
+            "The 'units_description' parameter is deprecated and will be removed in v0.13.0. Set 'description' in "
+            "the sorting's entry in metadata['Ecephys']['Sortings'] for a table of its own, in "
+            "metadata['Ecephys']['UnitsTables']['canonical_units_table'] for nwbfile.units, or in the shared "
+            "table's entry in metadata['Ecephys']['UnitsTables'].",
             FutureWarning,
             stacklevel=stacklevel,
         )
@@ -584,12 +588,14 @@ def _get_units_table_placement_name_and_description(
 ) -> tuple[str, str, str]:
     """Where the units table a sorting writes into goes, and its name and description.
 
-    The sorting's entry in ``metadata["Ecephys"]["Sortings"]`` names its table through
-    ``units_table_metadata_key``, and that table's entry in ``metadata["Ecephys"]["UnitsTables"]`` gives the name
-    and description. A sorting naming no table writes into the one keyed ``"canonical_units_table"``, which needs no
-    entry. The key decides where the table goes: ``"canonical_units_table"`` is ``nwbfile.units``, so its entry takes
-    no ``name``, and any other key is a table in processing under the ``name`` its entry must give. The deprecated
-    ``parent_container`` contradicting the key raises, and passed without metadata stating a table it is used.
+    A sorting writes ``nwbfile.units`` unless its entry in ``metadata["Ecephys"]["Sortings"]`` says otherwise. An
+    entry giving a ``name`` writes a table of its own in processing, named and described by the entry. An entry
+    giving ``units_table_metadata_key`` writes the table that key declares in ``metadata["Ecephys"]["UnitsTables"]``,
+    which several sortings can share, so that table's entry gives the name and description and the sorting entry's
+    own are ignored. ``"canonical_units_table"`` is the key of ``nwbfile.units``, which needs no entry, takes no
+    ``name``, and is described only by its ``UnitsTables`` entry. Any other key is a table in processing under the
+    ``name`` its entry must give. A name is a table's identity, so two entries giving one name raise. The deprecated
+    ``parent_container`` contradicting the metadata raises, and passed without metadata stating a table it is used.
     """
     ecephys_metadata = (metadata or {}).get("Ecephys", {})
     sortings = ecephys_metadata.get("Sortings", {})
@@ -599,31 +605,48 @@ def _get_units_table_placement_name_and_description(
             "provided. `metadata_key` selects which entry describes this sorting."
         )
     sorting_entry = sortings.get(metadata_key, {})
-    units_table_metadata_key = sorting_entry.get("units_table_metadata_key", "canonical_units_table")
     units_tables = ecephys_metadata.get("UnitsTables", {})
-    units_table_metadata_keys_by_name = {}
-    for key, entry in units_tables.items():
+    named_entries = [(f"metadata['Ecephys']['UnitsTables']['{key}']", entry) for key, entry in units_tables.items()]
+    named_entries += [
+        (f"metadata['Ecephys']['Sortings']['{key}']", entry)
+        for key, entry in sortings.items()
+        if "units_table_metadata_key" not in entry
+    ]
+    entry_references_by_name = {}
+    for entry_reference, entry in named_entries:
         name = entry.get("name")
         if name is None:
             continue
-        if name in units_table_metadata_keys_by_name:
-            first_key = units_table_metadata_keys_by_name[name]
+        if name in entry_references_by_name:
             raise ValueError(
-                f"metadata['Ecephys']['UnitsTables'] keys '{first_key}' and '{key}' both use the name '{name}'.\n"
+                f"{entry_references_by_name[name]} and {entry_reference} both use the name '{name}'.\n"
                 "For two tables, give each its own name:\n"
-                "    metadata['Ecephys']['UnitsTables'] = {\n"
-                f"        '{first_key}': {{'name': '{name}'}},\n"
-                f"        '{key}': {{'name': '<another name>'}},\n"
-                "    }\n"
-                "For one table shared by several sortings, declare it under one key and point each sorting at "
-                "that key:\n"
-                f"    metadata['Ecephys']['UnitsTables'] = {{'{first_key}': {{'name': '{name}'}}}}\n"
-                "    metadata['Ecephys']['Sortings'] = {\n"
-                f"        '<sorting key>': {{'units_table_metadata_key': '{first_key}'}},\n"
-                f"        '<other sorting key>': {{'units_table_metadata_key': '{first_key}'}},\n"
-                "    }"
+                f"    {entry_reference}['name'] = '<another name>'\n"
+                "For one table shared by several sortings, declare it once and point each sorting's entry at its "
+                "key:\n"
+                f"    metadata['Ecephys']['UnitsTables'] = {{'<table key>': {{'name': '{name}'}}}}\n"
+                "    metadata['Ecephys']['Sortings']['<sorting key>']['units_table_metadata_key'] = '<table key>'"
             )
-        units_table_metadata_keys_by_name[name] = key
+        entry_references_by_name[name] = entry_reference
+    if "units_table_metadata_key" not in sorting_entry and "name" in sorting_entry:
+        if parent_container == "units":
+            raise ValueError(
+                f"metadata['Ecephys']['Sortings']['{metadata_key}'] gives a 'name', so the sorting writes a table of "
+                "its own in processing, but parent_container='units'. Remove parent_container, which is deprecated."
+            )
+        description = sorting_entry.get("description", "Autogenerated by neuroconv.")
+        return "processing", sorting_entry["name"], description
+    if "units_table_metadata_key" not in sorting_entry and "description" in sorting_entry:
+        raise ValueError(
+            f"metadata['Ecephys']['Sortings']['{metadata_key}'] gives a 'description' but no 'name', so the sorting "
+            "writes nwbfile.units, which only metadata['Ecephys']['UnitsTables']['canonical_units_table'] "
+            "describes.\n"
+            "To describe nwbfile.units:\n"
+            "    metadata['Ecephys']['UnitsTables']['canonical_units_table'] = {'description': '<description>'}\n"
+            "To write the sorting into a table of its own in processing, give its entry a name:\n"
+            f"    metadata['Ecephys']['Sortings']['{metadata_key}']['name'] = '<table name>'"
+        )
+    units_table_metadata_key = sorting_entry.get("units_table_metadata_key", "canonical_units_table")
     if units_table_metadata_key != "canonical_units_table" and units_table_metadata_key not in units_tables:
         raise ValueError(
             f"metadata['Ecephys']['Sortings']['{metadata_key}'] writes into the units table "
@@ -659,9 +682,9 @@ def _get_units_table_placement_name_and_description(
         if states_the_canonical_table:
             raise ValueError(
                 "The metadata writes this sorting into the units table 'canonical_units_table', which is "
-                "nwbfile.units, but parent_container='processing'. To write into processing, declare another table "
-                "in metadata['Ecephys']['UnitsTables'], point the sorting's entry in metadata['Ecephys']['Sortings'] "
-                "at it, and remove parent_container, which is deprecated."
+                "nwbfile.units, but parent_container='processing'. To write the sorting into a table of its own in "
+                "processing, give its entry in metadata['Ecephys']['Sortings'] a 'name' and no "
+                "'units_table_metadata_key', and remove parent_container, which is deprecated."
             )
         placement = "processing"
     name = units_table_entry.get("name", "units")
@@ -707,14 +730,16 @@ def add_sorting_to_nwbfile(
     skip_properties : list of str, optional
         Unit properties to exclude from writing.
     parent_container : {'units', 'processing'}, optional
-        Deprecated. The units table's key in ``metadata["Ecephys"]["UnitsTables"]`` decides where it is written:
-        ``"canonical_units_table"`` is ``nwbfile.units``, and any other key is a table in processing. Will be
-        removed in v0.13.0.
+        Deprecated. A sorting whose entry in ``metadata["Ecephys"]["Sortings"]`` gives a ``name`` writes a table of its
+        own in processing. Otherwise it writes ``nwbfile.units``, or the shared table its ``units_table_metadata_key``
+        names in ``metadata["Ecephys"]["UnitsTables"]``. Will be removed in v0.13.0.
     units_name : str, optional
-        Deprecated. Set ``name`` in ``metadata["Ecephys"]["UnitsTables"]`` instead. Will be removed in v0.13.0.
+        Deprecated. Set ``name`` in the sorting's entry in ``metadata["Ecephys"]["Sortings"]`` instead, which writes the
+        sorting into a table of its own in processing. Will be removed in v0.13.0.
     units_description : str, optional
-        Deprecated. Set ``description`` in ``metadata["Ecephys"]["UnitsTables"]`` instead. Will be removed in
-        v0.13.0.
+        Deprecated. Set ``description`` in the sorting's entry in ``metadata["Ecephys"]["Sortings"]`` for a table of its
+        own, or in ``metadata["Ecephys"]["UnitsTables"]`` for ``nwbfile.units`` and for a shared table. Will be removed
+        in v0.13.0.
     waveform_means : np.ndarray, optional
         Deprecated. Use `waveform_data_dict` instead.
         Waveform mean (template) for each unit. Shape: (num_units, num_samples, num_channels).
@@ -735,20 +760,24 @@ def add_sorting_to_nwbfile(
             - "unit": str, the unit of measurement (default: "volts")
             - "time_before_peak_in_ms": float, the time from the start of each waveform to the spike peak, optional
     metadata : dict, optional
-        The units table this sorting writes into is read from ``metadata["Ecephys"]``: the sorting's entry in
-        ``Sortings`` names it through ``units_table_metadata_key``, and its entry in ``UnitsTables`` gives the
-        ``name`` and ``description``. A sorting naming no table writes into the one keyed ``"canonical_units_table"``,
-        which is ``nwbfile.units``. Any other key is a table in processing.
+        The units table this sorting writes into is read from ``metadata["Ecephys"]``. A sorting writes
+        ``nwbfile.units``, described by ``UnitsTables["canonical_units_table"]``, unless its entry in ``Sortings``
+        says otherwise. An entry giving a ``name`` writes a table of its own in processing, named and described by
+        the entry. An entry giving ``units_table_metadata_key`` writes the table under that key in ``UnitsTables``,
+        which several sortings can share and whose entry gives the ``name`` and ``description``.
     metadata_key : str, optional
         Key of this sorting's entry in ``metadata["Ecephys"]["Sortings"]``.
     write_as : {'units', 'processing'}, optional
-        Deprecated. The units table's key in ``metadata["Ecephys"]["UnitsTables"]`` decides where it is written.
-        Will be removed in v0.12.0.
+        Deprecated. A sorting whose entry in ``metadata["Ecephys"]["Sortings"]`` gives a ``name`` writes a table of its
+        own in processing. Otherwise it writes ``nwbfile.units``, or the shared table its ``units_table_metadata_key``
+        names in ``metadata["Ecephys"]["UnitsTables"]``. Will be removed in v0.12.0.
     """
     if write_as is not None:
         warnings.warn(
             "The 'write_as' parameter of add_sorting_to_nwbfile is deprecated and will be removed "
-            "in v0.12.0. The units table's key in metadata['Ecephys']['UnitsTables'] decides where it is written.",
+            "in v0.12.0. A sorting whose entry in metadata['Ecephys']['Sortings'] gives a 'name' writes a table of its "
+            "own in processing. Otherwise it writes nwbfile.units, or the shared table its 'units_table_metadata_key' "
+            "names in metadata['Ecephys']['UnitsTables'].",
             FutureWarning,
             stacklevel=2,
         )
@@ -3307,14 +3336,16 @@ def write_sorting_to_nwbfile(
     skip_properties : list of str, optional
         Each string in this list that matches a unit property will not be written to the NWBFile.
     parent_container : {'units', 'processing'}, optional
-        Deprecated. The units table's key in ``metadata["Ecephys"]["UnitsTables"]`` decides where it is written:
-        ``"canonical_units_table"`` is ``nwbfile.units``, and any other key is a table in processing. Will be
-        removed in v0.13.0.
+        Deprecated. A sorting whose entry in ``metadata["Ecephys"]["Sortings"]`` gives a ``name`` writes a table of its
+        own in processing. Otherwise it writes ``nwbfile.units``, or the shared table its ``units_table_metadata_key``
+        names in ``metadata["Ecephys"]["UnitsTables"]``. Will be removed in v0.13.0.
     units_name : str, optional
-        Deprecated. Set ``name`` in ``metadata["Ecephys"]["UnitsTables"]`` instead. Will be removed in v0.13.0.
+        Deprecated. Set ``name`` in the sorting's entry in ``metadata["Ecephys"]["Sortings"]`` instead, which writes the
+        sorting into a table of its own in processing. Will be removed in v0.13.0.
     units_description : str, optional
-        Deprecated. Set ``description`` in ``metadata["Ecephys"]["UnitsTables"]`` instead. Will be removed in
-        v0.13.0.
+        Deprecated. Set ``description`` in the sorting's entry in ``metadata["Ecephys"]["Sortings"]`` for a table of its
+        own, or in ``metadata["Ecephys"]["UnitsTables"]`` for ``nwbfile.units`` and for a shared table. Will be removed
+        in v0.13.0.
     waveform_means : np.ndarray, optional
         Waveform mean (template) for each unit. Shape: (num_units, num_samples, num_channels).
     waveform_sds : np.ndarray, optional
@@ -3340,8 +3371,9 @@ def write_sorting_to_nwbfile(
         Key of this sorting's entry in ``metadata["Ecephys"]["Sortings"]``, which names the units table it writes
         into. See :func:`add_sorting_to_nwbfile`.
     write_as : {'units', 'processing'}, optional
-        Deprecated. The units table's key in ``metadata["Ecephys"]["UnitsTables"]`` decides where it is written.
-        Will be removed in v0.12.0.
+        Deprecated. A sorting whose entry in ``metadata["Ecephys"]["Sortings"]`` gives a ``name`` writes a table of its
+        own in processing. Otherwise it writes ``nwbfile.units``, or the shared table its ``units_table_metadata_key``
+        names in ``metadata["Ecephys"]["UnitsTables"]``. Will be removed in v0.12.0.
 
     Returns
     -------
@@ -3352,7 +3384,9 @@ def write_sorting_to_nwbfile(
     if write_as is not None:
         warnings.warn(
             "The 'write_as' parameter of write_sorting_to_nwbfile is deprecated and will be removed "
-            "in v0.12.0. The units table's key in metadata['Ecephys']['UnitsTables'] decides where it is written.",
+            "in v0.12.0. A sorting whose entry in metadata['Ecephys']['Sortings'] gives a 'name' writes a table of its "
+            "own in processing. Otherwise it writes nwbfile.units, or the shared table its 'units_table_metadata_key' "
+            "names in metadata['Ecephys']['UnitsTables'].",
             FutureWarning,
             stacklevel=2,
         )
@@ -3510,14 +3544,16 @@ def add_sorting_analyzer_to_nwbfile(
     skip_properties : list of str, optional
         Each string in this list that matches a unit property will not be written to the NWBFile.
     parent_container : {'units', 'processing'}, optional
-        Deprecated. The units table's key in ``metadata["Ecephys"]["UnitsTables"]`` decides where it is written:
-        ``"canonical_units_table"`` is ``nwbfile.units``, and any other key is a table in processing. Will be
-        removed in v0.13.0.
+        Deprecated. A sorting whose entry in ``metadata["Ecephys"]["Sortings"]`` gives a ``name`` writes a table of its
+        own in processing. Otherwise it writes ``nwbfile.units``, or the shared table its ``units_table_metadata_key``
+        names in ``metadata["Ecephys"]["UnitsTables"]``. Will be removed in v0.13.0.
     units_name : str, optional
-        Deprecated. Set ``name`` in ``metadata["Ecephys"]["UnitsTables"]`` instead. Will be removed in v0.13.0.
+        Deprecated. Set ``name`` in the sorting's entry in ``metadata["Ecephys"]["Sortings"]`` instead, which writes the
+        sorting into a table of its own in processing. Will be removed in v0.13.0.
     units_description : str, optional
-        Deprecated. Set ``description`` in ``metadata["Ecephys"]["UnitsTables"]`` instead. Will be removed in
-        v0.13.0.
+        Deprecated. Set ``description`` in the sorting's entry in ``metadata["Ecephys"]["Sortings"]`` for a table of its
+        own, or in ``metadata["Ecephys"]["UnitsTables"]`` for ``nwbfile.units`` and for a shared table. Will be removed
+        in v0.13.0.
     null_values_for_properties : dict of str to Any, optional
         A dictionary mapping properties to their respective default values. If a property is not found in this
         dictionary, a sensible default value based on the type of `sample_data` will be used.
@@ -3525,8 +3561,9 @@ def add_sorting_analyzer_to_nwbfile(
         Key of this sorting's entry in ``metadata["Ecephys"]["Sortings"]``, which names the units table it writes
         into. See :func:`add_sorting_to_nwbfile`.
     write_as : {'units', 'processing'}, optional
-        Deprecated. The units table's key in ``metadata["Ecephys"]["UnitsTables"]`` decides where it is written.
-        Will be removed in v0.12.0.
+        Deprecated. A sorting whose entry in ``metadata["Ecephys"]["Sortings"]`` gives a ``name`` writes a table of its
+        own in processing. Otherwise it writes ``nwbfile.units``, or the shared table its ``units_table_metadata_key``
+        names in ``metadata["Ecephys"]["UnitsTables"]``. Will be removed in v0.12.0.
     """
     _warn_about_units_table_options(
         units_name=units_name,
@@ -3537,7 +3574,9 @@ def add_sorting_analyzer_to_nwbfile(
     if write_as is not None:
         warnings.warn(
             "The 'write_as' parameter of add_sorting_analyzer_to_nwbfile is deprecated and will be removed "
-            "in v0.12.0. The units table's key in metadata['Ecephys']['UnitsTables'] decides where it is written.",
+            "in v0.12.0. A sorting whose entry in metadata['Ecephys']['Sortings'] gives a 'name' writes a table of its "
+            "own in processing. Otherwise it writes nwbfile.units, or the shared table its 'units_table_metadata_key' "
+            "names in metadata['Ecephys']['UnitsTables'].",
             FutureWarning,
             stacklevel=2,
         )
@@ -3709,14 +3748,16 @@ def write_sorting_analyzer_to_nwbfile(
     skip_properties: list of str, optional
         Each string in this list that matches a unit property will not be written to the NWBFile.
     parent_container : {'units', 'processing'}, optional
-        Deprecated. The units table's key in ``metadata["Ecephys"]["UnitsTables"]`` decides where it is written:
-        ``"canonical_units_table"`` is ``nwbfile.units``, and any other key is a table in processing. Will be
-        removed in v0.13.0.
+        Deprecated. A sorting whose entry in ``metadata["Ecephys"]["Sortings"]`` gives a ``name`` writes a table of its
+        own in processing. Otherwise it writes ``nwbfile.units``, or the shared table its ``units_table_metadata_key``
+        names in ``metadata["Ecephys"]["UnitsTables"]``. Will be removed in v0.13.0.
     units_name : str, optional
-        Deprecated. Set ``name`` in ``metadata["Ecephys"]["UnitsTables"]`` instead. Will be removed in v0.13.0.
+        Deprecated. Set ``name`` in the sorting's entry in ``metadata["Ecephys"]["Sortings"]`` instead, which writes the
+        sorting into a table of its own in processing. Will be removed in v0.13.0.
     units_description : str, optional
-        Deprecated. Set ``description`` in ``metadata["Ecephys"]["UnitsTables"]`` instead. Will be removed in
-        v0.13.0.
+        Deprecated. Set ``description`` in the sorting's entry in ``metadata["Ecephys"]["Sortings"]`` for a table of its
+        own, or in ``metadata["Ecephys"]["UnitsTables"]`` for ``nwbfile.units`` and for a shared table. Will be removed
+        in v0.13.0.
     backend : {"hdf5", "zarr"}, optional
         The type of backend to use when writing the file.
         If a `backend_configuration` is not specified, the default type will be "hdf5".
@@ -3736,8 +3777,9 @@ def write_sorting_analyzer_to_nwbfile(
         Key of this sorting's entry in ``metadata["Ecephys"]["Sortings"]``, which names the units table it writes
         into. See :func:`add_sorting_to_nwbfile`.
     write_as : {'units', 'processing'}, optional
-        Deprecated. The units table's key in ``metadata["Ecephys"]["UnitsTables"]`` decides where it is written.
-        Will be removed in v0.12.0.
+        Deprecated. A sorting whose entry in ``metadata["Ecephys"]["Sortings"]`` gives a ``name`` writes a table of its
+        own in processing. Otherwise it writes ``nwbfile.units``, or the shared table its ``units_table_metadata_key``
+        names in ``metadata["Ecephys"]["UnitsTables"]``. Will be removed in v0.12.0.
 
     Returns
     -------
@@ -3748,7 +3790,9 @@ def write_sorting_analyzer_to_nwbfile(
     if write_as is not None:
         warnings.warn(
             "The 'write_as' parameter of write_sorting_analyzer_to_nwbfile is deprecated and will be removed "
-            "in v0.12.0. The units table's key in metadata['Ecephys']['UnitsTables'] decides where it is written.",
+            "in v0.12.0. A sorting whose entry in metadata['Ecephys']['Sortings'] gives a 'name' writes a table of its "
+            "own in processing. Otherwise it writes nwbfile.units, or the shared table its 'units_table_metadata_key' "
+            "names in metadata['Ecephys']['UnitsTables'].",
             FutureWarning,
             stacklevel=2,
         )
