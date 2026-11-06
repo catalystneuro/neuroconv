@@ -14,6 +14,9 @@ from ..datainterfaces.icephys.axon.axonintracellularconverter import AxonIntrace
 from ..datainterfaces.icephys.brukervoltagerecording.brukervoltagerecordingconverter import (
     BrukerVoltageRecordingConverter,
 )
+from ..datainterfaces.icephys.wavesurfer.wavesurferintracellularconverter import (
+    WaveSurferIntracellularConverter,
+)
 from ..datainterfaces.ecephys.sortedrecordinginterface import SortedRecordingConverter
 from ..datainterfaces.ecephys.spikeglx.sorted_spikeglx_converter import SortedSpikeGLXConverter
 from ..datainterfaces.ecephys.intan.intanconverter import IntanConverter
@@ -34,6 +37,7 @@ from ..datainterfaces.ophys.thor.thorconverter import ThorConverter
 converter_list = [
     AxonIntracellularConverter,
     BrukerVoltageRecordingConverter,
+    WaveSurferIntracellularConverter,
     DANNCEConverter,
     IntanConverter,
     LightningPoseConverter,

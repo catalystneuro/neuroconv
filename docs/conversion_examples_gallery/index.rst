@@ -60,6 +60,7 @@ Intracellular electrophysiology
 
     Axon Binary Format (ABF) <recording/abf>
     Bruker VoltageRecording <recording/brukervoltagerecording>
+    WaveSurfer <recording/wavesurfer>
 
 Optical physiology
 ------------------
