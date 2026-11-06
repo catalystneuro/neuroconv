@@ -1863,7 +1863,7 @@ class TestInscopixImagingInterfaceDualColorMovieWithDroppedFrames(ImagingExtract
         assert "Focus: 30" in imaging_plane["description"]
 
         ops = metadata["Ophys"]["OnePhotonSeries"][0]
-        assert ops["dimension"] == [288, 480]
+        assert ops["dimension"] == [480, 288]
 
     def check_extracted_metadata(self, metadata: dict):
         metadata_key = self.interface.metadata_key
@@ -1952,7 +1952,7 @@ class TestInscopixImagingInterfaceMovieU8(ImagingExtractorInterfaceTestMixin):
         assert (
             ops["imaging_plane"] == "ImagingPlane"
         )  # Default metadata because this was not included in the source metadata
-        assert ops["dimension"] == [3, 4]
+        assert ops["dimension"] == [4, 3]
 
     def check_extracted_metadata(self, metadata: dict):
         """Test new dict-based metadata for uint8 file with minimal acquisition info."""

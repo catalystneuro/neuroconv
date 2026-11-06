@@ -480,7 +480,11 @@ def _add_photon_series_to_nwbfile(
 
     # Add dimension if not in metadata
     if "dimension" not in photon_series_kwargs:
-        photon_series_kwargs["dimension"] = imaging.get_sample_shape()
+        # roiextractors sample shapes are (rows, columns[, planes]); NWB lists them (columns, rows[, planes])
+        # TODO: write rows first if core adopts that order, see
+        # https://github.com/NeurodataWithoutBorders/nwb-schema/issues/660
+        num_rows, num_columns, *num_planes = imaging.get_sample_shape()
+        photon_series_kwargs["dimension"] = [num_columns, num_rows, *num_planes]
 
     # Add data iterator
     imaging_extractor_iterator = _imaging_frames_to_hdmf_iterator(
