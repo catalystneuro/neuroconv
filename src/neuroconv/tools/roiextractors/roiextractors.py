@@ -613,6 +613,9 @@ def _append_rois_to_plane_segmentation(
     property_values = {key: segmentation_extractor.get_property(key=key, ids=roi_ids) for key in property_keys}
     row_by_roi_name = {roi_name: row for row, roi_name in enumerate(plane_segmentation["roi_name"].data)}
     next_id = max(plane_segmentation.id.data) + 1
+    # roiextractors image masks are (rows, columns, rois); NWB lists them (rois, columns, rows)
+    # TODO: write rows first if core adopts that order, see
+    # https://github.com/NeurodataWithoutBorders/nwb-schema/issues/660
     image_mask_array = image_or_pixel_masks.T if mask_type == "image" else None
 
     for roi_index, roi_id in enumerate(roi_ids):
@@ -620,7 +623,10 @@ def _append_rois_to_plane_segmentation(
         if mask_type == "image":
             roi_mask = image_mask_array[roi_index]
         else:
-            roi_mask = [tuple(x) for x in image_or_pixel_masks[roi_index]]
+            # roiextractors lists [row, column, ...]; NWB lists [column, row, ...]
+            # TODO: write rows first if core adopts that order, see
+            # https://github.com/NeurodataWithoutBorders/nwb-schema/issues/660
+            roi_mask = [(column, row, *rest) for row, column, *rest in image_or_pixel_masks[roi_index]]
 
         if roi_name in row_by_roi_name:
             row = row_by_roi_name[roi_name]
@@ -782,6 +788,9 @@ def _add_plane_segmentation_to_nwbfile(
     plane_segmentation.add_column(name="roi_name", description="The unique identifier for each ROI.")
 
     if mask_type == "image":
+        # roiextractors image masks are (rows, columns, rois); NWB lists them (rois, columns, rows)
+        # TODO: write rows first if core adopts that order, see
+        # https://github.com/NeurodataWithoutBorders/nwb-schema/issues/660
         image_mask_array = image_or_pixel_masks.T
         for roi_index, roi_name in zip(roi_indices, roi_names):
             image_mask = image_mask_array[roi_index]
@@ -791,7 +800,10 @@ def _add_plane_segmentation_to_nwbfile(
         pixel_masks = image_or_pixel_masks
         for roi_index, roi_name in zip(roi_indices, roi_names):
             pixel_mask = pixel_masks[roi_index]
-            pixel_mask_to_write = [tuple(x) for x in pixel_mask]
+            # roiextractors lists [row, column, ...]; NWB lists [column, row, ...]
+            # TODO: write rows first if core adopts that order, see
+            # https://github.com/NeurodataWithoutBorders/nwb-schema/issues/660
+            pixel_mask_to_write = [(column, row, *rest) for row, column, *rest in pixel_mask]
             plane_segmentation.add_roi(id=roi_index, roi_name=roi_name, **{mask_type_kwarg: pixel_mask_to_write})
 
     # Add all extractor properties as columns (acceptance, quality metrics, etc.). The quality metrics
@@ -1113,7 +1125,9 @@ def _add_summary_images_to_nwbfile(
         if image_name in image_collection.images:
             continue
 
-        # NWB uses width x height (columns, rows); roiextractors uses height x width (rows, columns)
+        # roiextractors images are (rows, columns); NWB lists them (columns, rows)
+        # TODO: write rows first if core adopts that order, see
+        # https://github.com/NeurodataWithoutBorders/nwb-schema/issues/660
         image_collection.add_image(GrayscaleImage(name=image_name, data=img_data.T, description=image_description))
 
     return nwbfile
@@ -1302,8 +1316,11 @@ def _imaging_frames_to_hdmf_iterator(
     if iterator_type is None:
         _check_if_imaging_fits_into_memory(imaging=imaging)
         series = imaging.get_series()
-        # (samples, height, width) planar, (samples, height, width, planes) volumetric. The same rule
-        # the v2 iterator applies in ImagingExtractorDataChunkIterator._get_data.
+        # roiextractors series are (samples, rows, columns[, planes]); NWB lists them
+        # (samples, columns, rows[, planes]). The same rule the v2 iterator applies in
+        # ImagingExtractorDataChunkIterator._get_data.
+        # TODO: write rows first if core adopts that order, see
+        # https://github.com/NeurodataWithoutBorders/nwb-schema/issues/660
         transpose_axes = (0, 2, 1) if series.ndim == 3 else (0, 2, 1, 3)
         return series.transpose(transpose_axes)
 
