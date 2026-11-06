@@ -146,16 +146,25 @@ def _align_paired_series(
 ) -> list[tuple[int, int]] | None:
     """Move a stimulus or stimulus template onto its response's aligned times, and return its own sweep ranges.
 
-    A paired series with its own sweep ranges keeps its own times, each sweep moved with its response sweep. One
-    without them shares the response's samples, so it takes the response's times.
+    A paired series with its own sweep ranges keeps its own times, each sweep mapped the way its response sweep
+    was: the same shift, and the same stretch from the sweep's first to last sample. One without them shares the
+    response's samples, so it takes the response's times.
     """
     if paired_data.sweep_sample_ranges is not None:
-        paired_timestamps = np.array(paired_data.timestamps, dtype="float64")
-        for (response_start_index, _), (paired_start_index, paired_count) in zip(
+        native_paired_timestamps = np.asarray(paired_data.timestamps, dtype="float64")
+        paired_timestamps = native_paired_timestamps.copy()
+        for (response_start_index, response_count), (paired_start_index, paired_count) in zip(
             sweep_sample_ranges, paired_data.sweep_sample_ranges, strict=True
         ):
-            shift = timestamps[response_start_index] - native_timestamps[response_start_index]
-            paired_timestamps[paired_start_index : paired_start_index + paired_count] += shift
+            response_stop_index = response_start_index + response_count - 1
+            native_start = native_timestamps[response_start_index]
+            native_span = native_timestamps[response_stop_index] - native_start
+            aligned_span = timestamps[response_stop_index] - timestamps[response_start_index]
+            stretch = aligned_span / native_span if native_span > 0 else 1.0
+            paired_window = slice(paired_start_index, paired_start_index + paired_count)
+            paired_timestamps[paired_window] = timestamps[response_start_index] + stretch * (
+                native_paired_timestamps[paired_window] - native_start
+            )
         paired_data.timestamps = paired_timestamps
         return paired_data.sweep_sample_ranges
     if len(paired_data.data) != len(timestamps):

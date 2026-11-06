@@ -469,6 +469,23 @@ class TestStimulusTemplate:
         template_timestamps = nwbfile.stimulus_template["CurrentClampStimulusSeriesTemplateMock"].get_timestamps()
         np.testing.assert_allclose(template_timestamps[[0, 11, 12, 23]], [5.0, 6.1, 15.0, 16.1])
 
+    def test_template_with_its_own_sweeps_follows_a_stretch(self):
+        # Doubling the response's times and adding 5 s maps each template sweep the same way.
+        interface = MockIcephysInterface(
+            num_sweeps=2,
+            sweep_duration=1.0,
+            sampling_frequency=10.0,
+            inter_sweep_interval=9.0,
+            stimulus_template_duration=1.2,
+        )
+        alignment = interface.temporal_alignment[interface._alignment_key]
+        alignment.set_times(alignment.get_times() * 2.0 + 5.0)
+        nwbfile = interface.create_nwbfile()
+
+        template_timestamps = nwbfile.stimulus_template["CurrentClampStimulusSeriesTemplateMock"].get_timestamps()
+        # Native template samples at 0.0, 1.1, 10.0 and 11.1 s.
+        np.testing.assert_allclose(template_timestamps[[0, 11, 12, 23]], [5.0, 7.2, 25.0, 27.2])
+
     def test_missing_template_entry_raises(self):
         interface = MockIcephysInterface(num_sweeps=1, metadata_key="cell1", stimulus_template_duration=1.0)
         metadata = interface.get_metadata()
