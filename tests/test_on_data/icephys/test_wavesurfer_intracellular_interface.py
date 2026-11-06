@@ -261,6 +261,15 @@ class TestWaveSurferIntracellularInterface:
         with pytest.raises(ValueError, match="'Electrode 1 Voltage' is in 'mV', which is not a unit of the quantity"):
             WaveSurferIntracellularInterface(file_path=file_path, stimulus_channel_name="Electrode 1 Voltage")
 
+    def test_channel_names_and_clamp_mode_before_construction(self, write_wavesurfer_file):
+        file_path = write_wavesurfer_file(electrodes=[electrode(mode="i_equals_zero")])
+
+        assert WaveSurferIntracellularInterface.get_channel_names(file_path) == [
+            "Electrode 1 Voltage",
+            "Current Injection",
+        ]
+        assert WaveSurferIntracellularInterface.get_clamp_mode(file_path) == "izero"
+
     def test_stimulus_type_is_the_protocol_file_name(self, write_wavesurfer_file):
         file_path = write_wavesurfer_file(protocol_file=r"R:\Lab\protocols\CC excitability 20 pA steps.cfg")
         interface = WaveSurferIntracellularInterface(file_path=file_path)

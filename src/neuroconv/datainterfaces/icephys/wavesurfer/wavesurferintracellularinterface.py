@@ -107,6 +107,45 @@ class WaveSurferIntracellularInterface(BaseIcephysInterface):
             get_number_of_samples=lambda: sum(self._file.sweep_sample_counts),
         )
 
+    @classmethod
+    def get_channel_names(cls, file_path: FilePath, electrode_name: str | None = None) -> list[str]:
+        """
+        Names of the active analog inputs in a WaveSurfer file: the options for ``stimulus_channel_name``. Call this
+        before constructing the interface to see what is available.
+
+        Parameters
+        ----------
+        file_path : FilePath
+            Path to the WaveSurfer .h5 file.
+        electrode_name : str, optional
+            The WaveSurfer electrode, required when the file has more than one.
+
+        Returns
+        -------
+        list of str
+            The active analog input names, in the order of the rows of each sweep's ``analogScans``.
+        """
+        return WaveSurferFile(file_path=file_path, electrode_name=electrode_name).input_channel_names
+
+    @classmethod
+    def get_clamp_mode(cls, file_path: FilePath, electrode_name: str | None = None) -> str:
+        """
+        The clamp mode of an electrode in a WaveSurfer file, which decides whether a stimulus can be requested.
+
+        Parameters
+        ----------
+        file_path : FilePath
+            Path to the WaveSurfer .h5 file.
+        electrode_name : str, optional
+            The WaveSurfer electrode, required when the file has more than one.
+
+        Returns
+        -------
+        str
+            ``"voltage_clamp"``, ``"current_clamp"`` or ``"izero"``.
+        """
+        return WaveSurferFile(file_path=file_path, electrode_name=electrode_name).mode
+
     @property
     def _device_metadata_key(self) -> str | None:
         # Keyed by the amplifier type, which runs share. A Manual electrode names no amplifier.
