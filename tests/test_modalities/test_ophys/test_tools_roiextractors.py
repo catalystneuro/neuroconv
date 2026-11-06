@@ -16,6 +16,7 @@ from pynwb import NWBHDF5IO, NWBFile
 from pynwb.ophys import OnePhotonSeries
 from pynwb.testing.mock.file import mock_NWBFile
 from roiextractors import NumpySegmentationExtractor
+from roiextractors.segmentationextractor import _ROIMasks
 from roiextractors.testing import (
     generate_dummy_imaging_extractor,
     generate_dummy_segmentation_extractor,
@@ -2871,6 +2872,38 @@ class TestAddSegmentation:
         image_masks = segmentation_extractor.get_roi_image_masks().T
         for index in range(num_rois):
             assert_array_equal(plane_seg["image_mask"][index], image_masks[index])
+
+    def test_pixel_masks_written_column_first(self):
+        """A pixel mask entry is written (x, y, weight) with x the column, the order the core schema names."""
+        nwbfile = mock_NWBFile()
+        segmentation_extractor = generate_dummy_segmentation_extractor(
+            num_rois=3, num_rows=20, num_columns=30, mask_type="pixel", has_summary_images=False
+        )
+
+        add_segmentation_to_nwbfile(segmentation_extractor=segmentation_extractor, nwbfile=nwbfile)
+
+        (plane_segmentation,) = nwbfile.processing["ophys"]["ImageSegmentation"].plane_segmentations.values()
+        image_masks = segmentation_extractor.get_roi_image_masks()  # (rows, columns, rois)
+        for roi_index in range(3):
+            for x, y, weight in plane_segmentation["pixel_mask"][roi_index]:
+                assert image_masks[int(y), int(x), roi_index] == pytest.approx(weight)
+
+    def test_voxel_masks_written_column_first(self):
+        """A voxel at row 2, column 15 and depth 1 is written (x, y, z, weight) as (15, 2, 1, weight)."""
+        nwbfile = mock_NWBFile()
+        segmentation_extractor = generate_dummy_segmentation_extractor(num_rois=1, has_summary_images=False)
+        (roi_id,) = segmentation_extractor.get_roi_ids()
+        segmentation_extractor._roi_masks = _ROIMasks(
+            data=[np.array([[2, 15, 1, 0.5]])],
+            mask_tpe="nwb-voxel_mask",
+            field_of_view_shape=(25, 25, 3),
+            roi_id_map={roi_id: 0},
+        )
+
+        add_segmentation_to_nwbfile(segmentation_extractor=segmentation_extractor, nwbfile=nwbfile)
+
+        (plane_segmentation,) = nwbfile.processing["ophys"]["ImageSegmentation"].plane_segmentations.values()
+        assert plane_segmentation["voxel_mask"][0] == [(15, 2, 1, 0.5)]
 
     def test_roi_properties_written_as_columns(self):
         """Custom properties added via set_property() appear as PlaneSegmentation columns."""
