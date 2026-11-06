@@ -148,6 +148,10 @@
     "extra": null,
     "note": "Converts on a base install, so there is no extra to name"
   },
+  "recording/wavesurfer.rst": {
+    "extra": null,
+    "note": "Converts on a base install, so there is no extra to name"
+  },
   "recording/edf.rst": {
     "extra": "edf",
     "skip": "Does not allow parallel read, so the gallery is not tested because of a race condition"
