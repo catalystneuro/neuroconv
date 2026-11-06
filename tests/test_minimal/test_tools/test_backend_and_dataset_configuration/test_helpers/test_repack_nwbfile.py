@@ -9,6 +9,8 @@ from pynwb.ophys import PlaneSegmentation
 from pynwb.testing.mock.base import mock_TimeSeries
 from pynwb.testing.mock.file import mock_NWBFile
 from pynwb.testing.mock.ophys import mock_ImagingPlane
+from zarr.codecs import BloscCodec, GzipCodec
+from zarr.codecs.numcodecs import Delta
 
 from neuroconv.tools.nwb_helpers import (
     get_module,
@@ -84,9 +86,6 @@ def hdf5_nwbfile_path(tmpdir_factory):
 
 @pytest.fixture(scope="session")
 def zarr_nwbfile_path(tmpdir_factory):
-    from zarr.codecs import BloscCodec
-    from zarr.codecs.numcodecs import Delta
-
     compressors = [BloscCodec(cname="lz4", clevel=5, shuffle="shuffle")]
 
     nwbfile_path = tmpdir_factory.mktemp("data").join("test_default_backend_configuration_hdf5_nwbfile.nwb.zarr")
@@ -139,8 +138,6 @@ def test_repack_nwbfile(hdf5_nwbfile_path, zarr_nwbfile_path, backend):
             assert nwbfile.intervals["trials"].compressed_start_time.data.compression_opts == 4
             assert nwbfile.processing["ophys"]["PlaneSegmentation"].pixel_mask.data.dataset.compression_opts == 4
         elif backend == "zarr":
-            from zarr.codecs import GzipCodec
-
             default_compressors = (GzipCodec(level=4),)
             assert nwbfile.acquisition["RawTimeSeries"].data.compressors == default_compressors
             assert nwbfile.acquisition["RawTimeSeries"].data.filters == ()
@@ -156,8 +153,6 @@ def test_repack_nwbfile(hdf5_nwbfile_path, zarr_nwbfile_path, backend):
 
 def test_repack_nwbfile_hdf5_to_zarr(hdf5_nwbfile_path: str, tmp_path: Path):
     """Test repackaging an NWB file from HDF5 to Zarr."""
-    from zarr.codecs import GzipCodec
-
     export_nwbfile_path = tmp_path / "repacked_hdf5_to_zarr.nwb.zarr"
     default_compressors = (GzipCodec(level=4),)
 

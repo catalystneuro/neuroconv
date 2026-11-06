@@ -47,6 +47,7 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
     def __init__(
         self,
         folder_path: DirectoryPath,
+        gap_tolerance_ms: float | None = None,
         *,
         stream_name: str | None = None,
         verbose: bool = False,
@@ -54,12 +55,17 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
         metadata_key: str | None = None,
     ):
         """
-        Initialize reading of OpenEphys binary recording.
+        Initialize reading of Neuralynx recording.
 
         Parameters
         ----------
         folder_path: DirectoryPath
             Path to Neuralynx directory.
+        gap_tolerance_ms : float | None, default: None
+            Controls how timestamp gaps in NCS files are handled.
+            If None (default), a ValueError is raised when gaps are detected, with a
+            detailed gap report. If a float value is provided, gaps smaller than this
+            threshold (in milliseconds) are ignored, and gaps larger create new segments.
         stream_name : str, optional
             The name of the recording stream to load; only required if there is more than one stream detected.
             Call `NeuralynxRecordingInterface.get_stream_names(folder_path=...)` to see what streams are available.
@@ -75,6 +81,7 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
 
         super().__init__(
             folder_path=folder_path,
+            gap_tolerance_ms=gap_tolerance_ms,
             stream_name=stream_name,
             verbose=verbose,
             es_key=es_key,
@@ -174,6 +181,7 @@ class NeuralynxSortingInterface(BaseSortingExtractorInterface):
     def __init__(
         self,
         folder_path: DirectoryPath,
+        gap_tolerance_ms: float | None = None,
         *,
         sampling_frequency: float | None = None,
         verbose: bool = False,
@@ -186,6 +194,11 @@ class NeuralynxSortingInterface(BaseSortingExtractorInterface):
         ----------
         folder_path : str, Path
             The path to the folder/directory containing the data files for the session (nse, ntt, nse, nev)
+        gap_tolerance_ms : float, optional
+            Controls how timestamp gaps in NCS files are handled.
+            If None (default), a ValueError is raised when gaps are detected, with a
+            detailed gap report. If a float value is provided, gaps smaller than this
+            threshold (in milliseconds) are ignored, and gaps larger create new segments.
         sampling_frequency : float, optional
             If a specific sampling_frequency is desired it can be set with this argument.
         verbose : bool, default: False
@@ -198,7 +211,11 @@ class NeuralynxSortingInterface(BaseSortingExtractorInterface):
         """
         self.metadata_key = metadata_key or "neuralynx_sorting"
         super().__init__(
-            folder_path=folder_path, sampling_frequency=sampling_frequency, stream_id=stream_id, verbose=verbose
+            folder_path=folder_path,
+            sampling_frequency=sampling_frequency,
+            stream_id=stream_id,
+            verbose=verbose,
+            gap_tolerance_ms=gap_tolerance_ms,
         )
 
 

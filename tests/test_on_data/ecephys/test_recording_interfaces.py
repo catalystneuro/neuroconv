@@ -784,7 +784,7 @@ class TestNeuralynxRecordingInterfaceV574:
 
     def test_get_metadata_after_remove_channels(self):
         folder_path = ECEPHY_DATA_PATH / "neuralynx" / "Cheetah_v5.7.4" / "original_data"
-        interface = NeuralynxRecordingInterface(folder_path=folder_path)
+        interface = NeuralynxRecordingInterface(folder_path=folder_path, gap_tolerance_ms=1.0)
         session_start_time = interface.get_metadata()["NWBFile"]["session_start_time"]
 
         interface.remove_channels(channel_ids=[interface.channel_ids[-1]])

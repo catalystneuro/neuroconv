@@ -1,18 +1,16 @@
 """Unit tests for the ZarrDatasetIOConfiguration Pydantic model."""
 
+import numpy as np
 import pytest
 from pydantic import ValidationError
+from zarr.codecs import GzipCodec
+from zarr.codecs.numcodecs import Delta, Shuffle
 
 from neuroconv.tools.nwb_helpers import (
     AVAILABLE_ZARR_COMPRESSION_METHODS,
     ZarrDatasetIOConfiguration,
 )
 from neuroconv.tools.testing import mock_ZarrDatasetIOConfiguration
-
-# The Zarr backend requires zarr 3, which only installs on Python 3.14 and newer.
-pytest.importorskip("zarr", minversion="3")
-from zarr.codecs import GzipCodec
-from zarr.codecs.numcodecs import Delta, Shuffle
 
 
 def test_validator_filter_options_has_methods():
@@ -58,9 +56,10 @@ def test_default_compression_is_always_available():
 def test_get_data_io_kwargs():
     zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration()
 
-    assert zarr_dataset_configuration.get_data_io_kwargs() == dict(
-        chunks=(78125, 64), filters=None, compressors=[GzipCodec(level=4)]
-    )
+    result = zarr_dataset_configuration.get_data_io_kwargs()
+    assert result["chunks"] == (78125, 64)
+    assert result["filters"] is None
+    assert result["compressors"] == [GzipCodec(level=4)]
 
 
 def test_zarr_dataset_io_configuration_schema():
@@ -70,11 +69,11 @@ def test_zarr_dataset_io_configuration_schema():
 
 
 def test_get_data_io_kwargs_with_shuffle():
-    """Shuffle is a bytes-to-bytes codec, so it runs in `compressors` ahead of the compression method."""
+    """Shuffle is a BytesBytesCodec and lives in compressors alongside the compression method."""
     zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration(compressors=["shuffle", "gzip"])
 
     assert zarr_dataset_configuration.get_data_io_kwargs() == dict(
-        chunks=(78125, 64), filters=None, compressors=[Shuffle(), GzipCodec(level=4)]
+        chunks=(78125, 64), compressors=[Shuffle(elementsize=2), GzipCodec(level=4)], filters=None, shards=None
     )
 
 
@@ -85,7 +84,10 @@ def test_get_data_io_kwargs_with_shuffle_and_a_filter_method():
     )
 
     assert zarr_dataset_configuration.get_data_io_kwargs() == dict(
-        chunks=(78125, 64), filters=[Delta(dtype="int16")], compressors=[Shuffle(), GzipCodec(level=4)]
+        chunks=(78125, 64),
+        compressors=[Shuffle(elementsize=2), GzipCodec(level=4)],
+        filters=[Delta(dtype="int16")],
+        shards=None,
     )
 
 
@@ -111,7 +113,10 @@ def test_deprecated_shuffle_in_filters_runs_in_compressors():
     with pytest.warns(FutureWarning, match="'shuffle' in `filters` is deprecated"):
         zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration(filters=["shuffle"])
 
-    assert zarr_dataset_configuration.get_data_io_kwargs()["compressors"] == [Shuffle(), GzipCodec(level=4)]
+    assert zarr_dataset_configuration.get_data_io_kwargs()["compressors"] == [
+        Shuffle(elementsize=2),
+        GzipCodec(level=4),
+    ]
 
 
 def test_shuffle_elementsize_is_kept_when_stated():
@@ -123,3 +128,78 @@ def test_shuffle_elementsize_is_kept_when_stated():
         Shuffle(elementsize=2),
         GzipCodec(level=4),
     ]
+
+
+def test_shuffle_elementsize_follows_the_dtype_on_the_deprecated_path():
+    """The deprecated `filters=["shuffle"]` spelling routes through the same elementsize helper."""
+    zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration(filters=["shuffle"], dtype=np.dtype("float64"))
+
+    result = zarr_dataset_configuration.get_data_io_kwargs()
+    # shuffle is a BytesBytesCodec so it ends up in compressors, ahead of the default gzip
+    assert result["compressors"][0] == Shuffle(elementsize=8)
+
+
+def test_shuffle_elementsize_is_not_overridden_when_stated():
+    zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration(
+        compressors=["shuffle", "gzip"], compressor_options=[dict(elementsize=2), None], dtype=np.dtype("float64")
+    )
+
+    result = zarr_dataset_configuration.get_data_io_kwargs()
+    assert result["compressors"][0] == Shuffle(elementsize=2)
+
+
+# ==================================================================================================
+# Shard shape tests
+# ==================================================================================================
+
+
+def test_shard_shape_valid():
+    # chunk_shape default is (78_125, 64); shard must be >= and evenly divisible
+    config = mock_ZarrDatasetIOConfiguration(shard_shape=(78_125 * 2, 64 * 2))
+    assert config.shard_shape == (156_250, 128)
+
+
+def test_shard_shape_none_is_default():
+    config = mock_ZarrDatasetIOConfiguration()
+    assert config.shard_shape is None
+
+
+def test_shard_shape_in_str():
+    config = mock_ZarrDatasetIOConfiguration(shard_shape=(78_125 * 2, 64 * 2))
+    assert "shard shape : (156250, 128)" in str(config)
+
+
+def test_shard_shape_absent_from_str_when_none():
+    config = mock_ZarrDatasetIOConfiguration()
+    assert "shard shape" not in str(config)
+
+
+def test_shard_shape_dimension_mismatch_raises():
+    with pytest.raises(ValidationError, match="Length of shard_shape"):
+        # chunk_shape is 2D, shard_shape is 1D
+        mock_ZarrDatasetIOConfiguration(shard_shape=(156_250,))
+
+
+def test_shard_shape_smaller_than_chunk_raises():
+    with pytest.raises(ValidationError, match="smaller than the chunk_shape"):
+        # 78_124 < 78_125 on the first axis
+        mock_ZarrDatasetIOConfiguration(shard_shape=(78_124, 128))
+
+
+def test_shard_shape_not_divisible_raises():
+    with pytest.raises(ValidationError, match="do not evenly divide"):
+        # 78_126 is not divisible by 78_125
+        mock_ZarrDatasetIOConfiguration(shard_shape=(78_126, 128))
+
+
+def test_shard_shape_in_get_data_io_kwargs():
+    config = mock_ZarrDatasetIOConfiguration(shard_shape=(78_125 * 2, 64 * 2))
+    result = config.get_data_io_kwargs()
+    # hdmf-zarr ZarrDataIO uses the key "shards" (not "shard_shape")
+    assert result["shards"] == (156_250, 128)
+
+
+def test_no_shard_shape_passes_none():
+    config = mock_ZarrDatasetIOConfiguration()
+    result = config.get_data_io_kwargs()
+    assert result["shards"] is None

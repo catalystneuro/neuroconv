@@ -27,6 +27,7 @@ from pynwb.ecephys import ElectricalSeries
 from pynwb.image import ImageSeries
 from pynwb.misc import Units
 from typing_extensions import Self
+from zarr.abc.codec import BytesBytesCodec
 
 # zarr 3 only. Under zarr 2, which Python 3.13 and older resolve, it stands in as `object` (see `_zarr_dataset_io.py`).
 if Version(zarr.__version__).major >= 3:
