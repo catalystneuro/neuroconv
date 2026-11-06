@@ -249,6 +249,12 @@ class TestBlackrockRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
         return self.interface, self.test_name
 
+    def test_session_start_time_is_utc(self):
+        interface = BlackrockRecordingInterface(file_path=str(ECEPHY_DATA_PATH / "blackrock" / "FileSpec2.3001.ns5"))
+        metadata = interface.get_metadata()
+
+        assert metadata["NWBFile"]["session_start_time"] == "2014-01-06T20:23:05.559000+00:00"
+
 
 @pytest.mark.skipif(
     platform == "darwin" or this_python_version > version.parse("3.9"),
