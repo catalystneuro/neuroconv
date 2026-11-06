@@ -363,6 +363,15 @@ class TestAddPhotonSeries(TestCase):
         assert self.imaging_plane_name in imaging_planes_in_file
         assert len(imaging_planes_in_file) == 1
 
+    def test_dimension_written_column_first(self):
+        """NWB lists `dimension` columns first, the order of the data it describes."""
+        _add_photon_series_to_nwbfile_old_list_format(
+            imaging=self.imaging_extractor, nwbfile=self.nwbfile, metadata=self.two_photon_series_metadata
+        )
+
+        two_photon_series = self.nwbfile.acquisition[self.two_photon_series_name]
+        assert list(two_photon_series.dimension) == [self.num_columns, self.num_rows]
+
     def test_invalid_iterator_type_raises_error(self):
         """Test error is raised when adding two photon series with invalid iterator type."""
         with self.assertRaisesWith(
@@ -1504,6 +1513,26 @@ class TestAddImaging:
         assert not isinstance(series.data, ImagingExtractorDataChunkIterator)
         # The planes axis stays last, which is the layout the v2 iterator advertises.
         assert series.data.shape == (num_samples, num_columns, num_rows, num_planes)
+
+    def test_dimension_written_column_first(self):
+        """NWB lists `dimension` columns first, the order of the data it describes."""
+        nwbfile = mock_NWBFile()
+        imaging = generate_dummy_imaging_extractor(num_samples=10, num_rows=5, num_columns=4)
+
+        add_imaging_to_nwbfile(imaging=imaging, nwbfile=nwbfile)
+
+        series = nwbfile.acquisition["MicroscopySeries"]
+        assert list(series.dimension) == [4, 5]
+
+    def test_dimension_of_volumetric_data_written_column_first(self):
+        """The planes stay last, as in the data."""
+        nwbfile = mock_NWBFile()
+        imaging = generate_dummy_imaging_extractor(num_samples=10, num_rows=5, num_columns=4, num_planes=3)
+
+        add_imaging_to_nwbfile(imaging=imaging, nwbfile=nwbfile)
+
+        series = nwbfile.acquisition["MicroscopySeries"]
+        assert list(series.dimension) == [4, 5, 3]
 
     def test_metadata_not_mutated(self):
         """Dict-based metadata is not mutated by add_imaging_to_nwbfile."""

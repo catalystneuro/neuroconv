@@ -179,7 +179,11 @@ def get_nwb_imaging_metadata(
 
     # Add photon series with dimension from extractor
     photon_series_metadata = metadata["Ophys"][photon_series_type][0].copy()
-    photon_series_metadata["dimension"] = list(imgextractor.get_sample_shape())
+    # roiextractors sample shapes are (rows, columns[, planes]); NWB lists them (columns, rows[, planes])
+    # TODO: write rows first if core adopts that order, see
+    # https://github.com/NeurodataWithoutBorders/nwb-schema/issues/660
+    num_rows, num_columns, *num_planes = imgextractor.get_sample_shape()
+    photon_series_metadata["dimension"] = [num_columns, num_rows, *num_planes]
     metadata["Ophys"][photon_series_type] = [photon_series_metadata]
 
     # Keep only Device, ImagingPlane, and the specific photon series type
@@ -410,7 +414,11 @@ def _add_photon_series_to_nwbfile_old_list_format(
 
     # Add dimension: respect user-provided metadata, else derive from extractor
     if "dimension" not in user_photon_series_metadata:
-        photon_series_kwargs["dimension"] = imaging.get_sample_shape()
+        # roiextractors sample shapes are (rows, columns[, planes]); NWB lists them (columns, rows[, planes])
+        # TODO: write rows first if core adopts that order, see
+        # https://github.com/NeurodataWithoutBorders/nwb-schema/issues/660
+        num_rows, num_columns, *num_planes = imaging.get_sample_shape()
+        photon_series_kwargs["dimension"] = [num_columns, num_rows, *num_planes]
 
     # This adds the data in way that is memory efficient
     imaging_extractor_iterator = _imaging_frames_to_hdmf_iterator(
