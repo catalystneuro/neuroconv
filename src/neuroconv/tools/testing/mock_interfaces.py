@@ -1649,6 +1649,7 @@ class MockIcephysInterface(BaseIcephysInterface):
         condition: str | None = None,
         metadata_key: str = "mock",
         stimulus_duration: float | None = None,
+        stimulus_template_duration: float | None = None,
         seed: int = 0,
         verbose: bool = False,
     ):
@@ -1690,6 +1691,10 @@ class MockIcephysInterface(BaseIcephysInterface):
             Duration of every sweep's paired stimulus, in seconds. None writes no stimulus. A duration other than
             ``sweep_duration`` gives the stimulus its own sweep ranges, as for a sweep that stops recording before
             its command ends.
+        stimulus_template_duration : float, optional
+            Duration of every sweep's stimulus template, in seconds. None writes no template. A duration other than
+            ``sweep_duration`` gives the template its own sweep ranges. The template's samples are all 2.0, so it
+            can be told apart from the stimulus's 1.0.
         seed : int, default: 0
             Seed for the random number generator.
         verbose : bool, default: False
@@ -1708,6 +1713,7 @@ class MockIcephysInterface(BaseIcephysInterface):
         self._condition = condition
         self.metadata_key = metadata_key
         self.stimulus_duration = stimulus_duration
+        self.stimulus_template_duration = stimulus_template_duration
         self.seed = seed
 
         # The base writer reads these. The series key doubles as the alignment key, as in the real interfaces.
@@ -1777,6 +1783,18 @@ class MockIcephysInterface(BaseIcephysInterface):
                     "description": f"Mock intracellular stimulus ({self._mode}).",
                 }
             }
+        # The template sits in a third registry at the same key, reusing the response's electrode the same way.
+        if self.stimulus_template_duration is not None:
+            stimulus_type_name = {
+                "voltage_clamp": "VoltageClampStimulusSeries",
+                "current_clamp": "CurrentClampStimulusSeries",
+            }[self._mode]
+            metadata["Icephys"]["PatchClampStimulusTemplateSeries"] = {
+                self.metadata_key: {
+                    "name": f"{stimulus_type_name}Template{name_suffix}",
+                    "description": f"Mock intracellular stimulus template ({self._mode}).",
+                }
+            }
         return metadata
 
     def _get_icephys_series_data(self):
@@ -1807,6 +1825,24 @@ class MockIcephysInterface(BaseIcephysInterface):
                     for sweep_index in range(self.num_sweeps)
                 ]
         return response_data, stimulus_data, sweep_sample_ranges
+
+    def _get_icephys_stimulus_template_data(self):
+        """Return the synthetic stimulus template, all 2.0, when a template duration was given."""
+        if self.stimulus_template_duration is None:
+            return None
+        samples_per_sweep = round(self.sweep_duration * self.sampling_frequency)
+        template_samples_per_sweep = round(self.stimulus_template_duration * self.sampling_frequency)
+        template_data = _IcephysSeriesData(
+            data=np.full(self.num_sweeps * template_samples_per_sweep, 2.0, dtype="float32"),
+            timestamps=self._get_sweep_times(template_samples_per_sweep),
+            conversion=1.0,
+        )
+        if template_samples_per_sweep != samples_per_sweep:
+            template_data.sweep_sample_ranges = [
+                (sweep_index * template_samples_per_sweep, template_samples_per_sweep)
+                for sweep_index in range(self.num_sweeps)
+            ]
+        return template_data
 
     def _get_stimulus_type(self) -> str | None:
         return self.stimulus_type
