@@ -23,7 +23,8 @@ Convert Blackrock sorting data to NWB using
     >>>
     >>> # Extract what metadata we can from the source files
     >>> metadata = interface.get_metadata()
-    >>> # For data provenance we add the time zone information to the conversion
+    >>> # File spec 2.3 .nev files can hold local time, so we add the time zone of the recording.
+    >>> # Skip this for file spec 3.0 files, whose session_start_time is already in UTC.
     >>> session_start_time = datetime.fromisoformat(metadata["NWBFile"]["session_start_time"])
     >>> session_start_time = session_start_time.replace(tzinfo=ZoneInfo("Asia/Tokyo"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)

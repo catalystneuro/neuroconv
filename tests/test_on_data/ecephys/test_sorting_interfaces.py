@@ -38,6 +38,13 @@ class TestBlackrockSortingInterface(SortingExtractorInterfaceTestMixin):
 
     save_directory = OUTPUT_PATH
 
+    def test_session_start_time_is_utc_for_file_spec_3_0(self):
+        file_path = DATA_PATH / "blackrock" / "blackrock_3_0_ptp" / "20231027-125608-001.nev"
+        interface = BlackrockSortingInterface(file_path=str(file_path), sampling_frequency=30_000.0)
+        metadata = interface.get_metadata()
+
+        assert metadata["NWBFile"]["session_start_time"] == "2023-10-27T16:56:08.165000+00:00"
+
 
 import pytest
 

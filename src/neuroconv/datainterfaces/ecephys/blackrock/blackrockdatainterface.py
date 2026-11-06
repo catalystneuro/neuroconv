@@ -1,3 +1,4 @@
+from datetime import timezone
 from pathlib import Path
 from typing import Optional
 
@@ -91,7 +92,8 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
         # Open file and extract headers
         basic_header = _parse_nsx_basic_header(self.source_data["file_path"])
         if "TimeOrigin" in basic_header:
-            metadata["NWBFile"].update(session_start_time=basic_header["TimeOrigin"].isoformat())
+            session_start_time = basic_header["TimeOrigin"].replace(tzinfo=timezone.utc)
+            metadata["NWBFile"].update(session_start_time=session_start_time.isoformat())
         if "Comment" in basic_header:
             metadata["NWBFile"].update(session_description=basic_header["Comment"])
 
@@ -160,6 +162,8 @@ class BlackrockSortingInterface(BaseSortingExtractorInterface):
         basic_header = _parse_nev_basic_header(self.source_data["file_path"])
         if "TimeOrigin" in basic_header:
             session_start_time = basic_header["TimeOrigin"]
+            if basic_header["FileSpec"] == "3.0":
+                session_start_time = session_start_time.replace(tzinfo=timezone.utc)
             metadata["NWBFile"].update(session_start_time=session_start_time.isoformat())
         if "Comment" in basic_header:
             metadata["NWBFile"].update(session_description=basic_header["Comment"])
