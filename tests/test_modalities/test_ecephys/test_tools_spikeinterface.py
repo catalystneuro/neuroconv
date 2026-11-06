@@ -2595,25 +2595,71 @@ class TestAddSorting:
         }
 
         expected_error = re.escape(
-            f"metadata['Ecephys']['UnitsTables'] keys '{curated_units_table_metadata_key}' and "
-            f"'{raw_units_table_metadata_key}' both use the name '{units_table_name}'.\n"
+            f"metadata['Ecephys']['UnitsTables']['{curated_units_table_metadata_key}'] and "
+            f"metadata['Ecephys']['UnitsTables']['{raw_units_table_metadata_key}'] both use the name "
+            f"'{units_table_name}'.\n"
             "For two tables, give each its own name:\n"
-            "    metadata['Ecephys']['UnitsTables'] = {\n"
-            f"        '{curated_units_table_metadata_key}': {{'name': '{units_table_name}'}},\n"
-            f"        '{raw_units_table_metadata_key}': {{'name': '<another name>'}},\n"
-            "    }\n"
-            "For one table shared by several sortings, declare it under one key and point each sorting at that "
-            "key:\n"
-            f"    metadata['Ecephys']['UnitsTables'] = {{'{curated_units_table_metadata_key}': "
-            f"{{'name': '{units_table_name}'}}}}\n"
-            "    metadata['Ecephys']['Sortings'] = {\n"
-            f"        '<sorting key>': {{'units_table_metadata_key': '{curated_units_table_metadata_key}'}},\n"
-            f"        '<other sorting key>': {{'units_table_metadata_key': '{curated_units_table_metadata_key}'}},\n"
-            "    }"
+            f"    metadata['Ecephys']['UnitsTables']['{raw_units_table_metadata_key}']['name'] = '<another name>'\n"
+            "For one table shared by several sortings, declare it once and point each sorting's entry at its key:\n"
+            f"    metadata['Ecephys']['UnitsTables'] = {{'<table key>': {{'name': '{units_table_name}'}}}}\n"
+            "    metadata['Ecephys']['Sortings']['<sorting key>']['units_table_metadata_key'] = '<table key>'"
         )
         with pytest.raises(ValueError, match=expected_error):
             add_sorting_to_nwbfile(sorting=sorting, nwbfile=nwbfile, metadata=metadata, metadata_key=metadata_key)
         assert "ecephys" not in nwbfile.processing
+
+    def test_two_sorting_entries_with_the_same_name_raise(self):
+        """Two sorting entries giving one name would write one table that neither declared shared, so the first
+        write raises before anything is written."""
+        sorting = generate_sorting(num_units=3, durations=[1.0])
+        nwbfile = mock_NWBFile()
+        probe_0_metadata_key = "probe_0_sorting"
+        probe_1_metadata_key = "probe_1_sorting"
+        units_table_name = "ProcessedUnits"
+        metadata = {
+            "Ecephys": {
+                "Sortings": {
+                    probe_0_metadata_key: {"name": units_table_name},
+                    probe_1_metadata_key: {"name": units_table_name},
+                }
+            }
+        }
+
+        expected_error = re.escape(
+            f"metadata['Ecephys']['Sortings']['{probe_0_metadata_key}'] and "
+            f"metadata['Ecephys']['Sortings']['{probe_1_metadata_key}'] both use the name '{units_table_name}'.\n"
+            "For two tables, give each its own name:\n"
+            f"    metadata['Ecephys']['Sortings']['{probe_1_metadata_key}']['name'] = '<another name>'\n"
+            "For one table shared by several sortings, declare it once and point each sorting's entry at its key:\n"
+            f"    metadata['Ecephys']['UnitsTables'] = {{'<table key>': {{'name': '{units_table_name}'}}}}\n"
+            "    metadata['Ecephys']['Sortings']['<sorting key>']['units_table_metadata_key'] = '<table key>'"
+        )
+        with pytest.raises(ValueError, match=expected_error):
+            add_sorting_to_nwbfile(
+                sorting=sorting, nwbfile=nwbfile, metadata=metadata, metadata_key=probe_0_metadata_key
+            )
+        assert "ecephys" not in nwbfile.processing
+
+    def test_sorting_entry_description_without_name_raises(self):
+        """A sorting entry without a name writes nwbfile.units, which only its UnitsTables entry describes, so a
+        description on the sorting entry raises instead of being dropped."""
+        sorting = generate_sorting(num_units=3, durations=[1.0])
+        metadata_key = "kilosort_sorting"
+        metadata = {"Ecephys": {"Sortings": {metadata_key: {"description": "Kilosort 4, curated in Phy."}}}}
+
+        expected_error = re.escape(
+            f"metadata['Ecephys']['Sortings']['{metadata_key}'] gives a 'description' but no 'name', so the sorting "
+            "writes nwbfile.units, which only metadata['Ecephys']['UnitsTables']['canonical_units_table'] "
+            "describes.\n"
+            "To describe nwbfile.units:\n"
+            "    metadata['Ecephys']['UnitsTables']['canonical_units_table'] = {'description': '<description>'}\n"
+            "To write the sorting into a table of its own in processing, give its entry a name:\n"
+            f"    metadata['Ecephys']['Sortings']['{metadata_key}']['name'] = '<table name>'"
+        )
+        with pytest.raises(ValueError, match=expected_error):
+            add_sorting_to_nwbfile(
+                sorting=sorting, nwbfile=mock_NWBFile(), metadata=metadata, metadata_key=metadata_key
+            )
 
     def test_caller_metadata_is_not_mutated(self):
         """The write path reads the caller's metadata and never writes back into it."""

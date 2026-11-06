@@ -63,6 +63,47 @@ class TestSortingInterface(SortingExtractorInterfaceTestMixin):
         assert units_table.description == "Units after manual curation."
         assert len(units_table) == 3
 
+    def test_sorting_entry_name_writes_a_table_of_its_own(self):
+        """A sorting entry giving a name writes a table of its own in processing, named and described by the entry,
+        with no UnitsTables entry."""
+        metadata_key = "kilosort_sorting"
+        interface = MockSortingInterface(num_units=3, metadata_key=metadata_key)
+        metadata = interface.get_metadata()
+        metadata["Ecephys"]["Sortings"] = {
+            metadata_key: {"name": "CuratedUnits", "description": "Units after manual curation."}
+        }
+        interface.validate_metadata(metadata=metadata)
+
+        nwbfile = interface.create_nwbfile(metadata=metadata)
+
+        units_table = nwbfile.processing["ecephys"]["CuratedUnits"]
+        assert nwbfile.units is None
+        assert units_table.description == "Units after manual curation."
+        assert len(units_table) == 3
+
+    def test_sorting_entry_name_and_description_are_ignored_in_a_shared_table(self):
+        """A sorting writing a shared table takes the name and description of the table's entry, and the name and
+        description on its own entry are ignored."""
+        metadata_key = "probe_0_sorting"
+        interface = MockSortingInterface(num_units=3, metadata_key=metadata_key)
+        units_table_metadata_key = "all_probes"
+        metadata = interface.get_metadata()
+        metadata["Ecephys"]["UnitsTables"] = {
+            units_table_metadata_key: {"name": "AllProbes", "description": "Units of both probes."}
+        }
+        metadata["Ecephys"]["Sortings"] = {
+            metadata_key: {
+                "units_table_metadata_key": units_table_metadata_key,
+                "name": "Probe0Units",
+                "description": "Units of probe 0.",
+            }
+        }
+
+        nwbfile = interface.create_nwbfile(metadata=metadata)
+
+        assert list(nwbfile.processing["ecephys"].data_interfaces) == ["AllProbes"]
+        assert nwbfile.processing["ecephys"]["AllProbes"].description == "Units of both probes."
+
     def test_two_sortings_write_into_the_canonical_units_table(self):
         """Two sortings with no entry both write their units into the default table, nwbfile.units."""
         probe_0_interface = MockSortingInterface(num_units=3, metadata_key="probe_0_sorting")

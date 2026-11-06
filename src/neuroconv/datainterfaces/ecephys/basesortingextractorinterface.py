@@ -151,6 +151,15 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
                 type="object",
                 additionalProperties=False,
                 properties=dict(
+                    name=dict(
+                        type="string",
+                        pattern="^[^/]*$",
+                        description="Name of a units table of this sorting's own, written in processing.",
+                    ),
+                    description=dict(
+                        type="string",
+                        description="Description of the units table of this sorting's own, which needs a 'name'.",
+                    ),
                     units_table_metadata_key=dict(
                         type="string",
                         description="Key of the units table this sorting writes into in metadata['Ecephys']['UnitsTables'].",
@@ -539,14 +548,16 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         write_ecephys_metadata : bool, default: False
             Write electrode information contained in the metadata.
         parent_container : {'units', 'processing'}, optional
-            Deprecated. The units table's key in ``metadata["Ecephys"]["UnitsTables"]`` decides where it is written:
-            ``"canonical_units_table"`` is ``nwbfile.units``, and any other key is a table in processing. Will be
-            removed in v0.13.0.
+            Deprecated. A sorting whose entry in ``metadata["Ecephys"]["Sortings"]`` gives a ``name`` writes a table of
+            its own in processing. Otherwise it writes ``nwbfile.units``, or the shared table its
+            ``units_table_metadata_key`` names in ``metadata["Ecephys"]["UnitsTables"]``. Will be removed in v0.13.0.
         units_name : str, optional
-            Deprecated. Set ``name`` in ``metadata["Ecephys"]["UnitsTables"]`` instead. Will be removed in v0.13.0.
+            Deprecated. Set ``name`` in the sorting's entry in ``metadata["Ecephys"]["Sortings"]`` instead, which writes
+            the sorting into a table of its own in processing. Will be removed in v0.13.0.
         units_description : str, optional
-            Deprecated. Set ``description`` in ``metadata["Ecephys"]["UnitsTables"]`` instead. Will be removed in
-            v0.13.0.
+            Deprecated. Set ``description`` in the sorting's entry in ``metadata["Ecephys"]["Sortings"]`` for a table of
+            its own, or in ``metadata["Ecephys"]["UnitsTables"]`` for ``nwbfile.units`` and for a shared table. Will be
+            removed in v0.13.0.
         unit_electrode_indices : list of lists of int, optional
             A list of lists of integers indicating the indices of the electrodes that each unit is associated with.
             The length of the list must match the number of units in the sorting extractor.
@@ -558,16 +569,18 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
                 - "unit": str, the unit of measurement (default: "volts")
                 - "time_before_peak_in_ms": float, the time from the start of each waveform to the spike peak, optional
         write_as : {'units', 'processing'}, optional
-            Deprecated. The units table's key in ``metadata["Ecephys"]["UnitsTables"]`` decides where it is
-            written. Will be removed in v0.12.0.
+            Deprecated. A sorting whose entry in ``metadata["Ecephys"]["Sortings"]`` gives a ``name`` writes a table of
+            its own in processing. Otherwise it writes ``nwbfile.units``, or the shared table its
+            ``units_table_metadata_key`` names in ``metadata["Ecephys"]["UnitsTables"]``. Will be removed in v0.12.0.
         """
         from ...tools.spikeinterface.spikeinterface import _add_sorting_to_nwbfile
 
         if write_as is not None:
             warnings.warn(
                 "The 'write_as' parameter of BaseSortingExtractorInterface.add_to_nwbfile() is deprecated and will "
-                "be removed in v0.12.0. The units table's key in metadata['Ecephys']['UnitsTables'] decides where "
-                "it is written.",
+                "be removed in v0.12.0. A sorting whose entry in metadata['Ecephys']['Sortings'] gives a 'name' "
+                "writes a table of its own in processing. Otherwise it writes nwbfile.units, or the shared table its "
+                "'units_table_metadata_key' names in metadata['Ecephys']['UnitsTables'].",
                 FutureWarning,
                 stacklevel=2,
             )
