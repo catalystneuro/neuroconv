@@ -339,7 +339,7 @@ class TestMetadataEntryFields:
             series_data=series_data,
             electrode=electrode,
             mode="current_clamp",
-            is_stimulus=False,
+            role="response",
         )
 
         assert series.bias_current == -5e-11
@@ -371,6 +371,132 @@ class TestStimulusLongerThanResponse:
         # Each stimulus sweep moves with its response sweep.
         stimulus_timestamps = nwbfile.stimulus["CurrentClampStimulusSeriesMock"].get_timestamps()
         np.testing.assert_allclose(stimulus_timestamps[[0, 11, 12, 23]], [5.0, 6.1, 15.0, 16.1])
+
+
+class TestStimulusTemplate:
+    """A stimulus template, the command the protocol specified, is written beside the response and any recorded
+    stimulus, and each row addresses its stretch of it."""
+
+    def test_rows_address_the_stimulus_and_the_template(self):
+        interface = MockIcephysInterface(
+            num_sweeps=2, sampling_frequency=10.0, stimulus_duration=1.0, stimulus_template_duration=1.0
+        )
+        nwbfile = interface.create_nwbfile()
+
+        stimuli = nwbfile.intracellular_recordings["stimuli"]
+        stimulus_references = [(stimuli["stimulus"][row].idx_start, stimuli["stimulus"][row].count) for row in range(2)]
+        template_references = [
+            (stimuli["stimulus_template"][row].idx_start, stimuli["stimulus_template"][row].count) for row in range(2)
+        ]
+        assert stimulus_references == [(0, 10), (10, 10)]
+        assert template_references == [(0, 10), (10, 10)]
+        template = nwbfile.stimulus_template["CurrentClampStimulusSeriesTemplateMock"]
+        assert stimuli["stimulus_template"][0].timeseries is template
+        np.testing.assert_array_equal(template.data, np.full(20, 2.0, dtype="float32"))
+
+    def test_template_without_a_recorded_stimulus(self):
+        interface = MockIcephysInterface(num_sweeps=2, sampling_frequency=10.0, stimulus_template_duration=1.0)
+        nwbfile = interface.create_nwbfile()
+
+        stimuli = nwbfile.intracellular_recordings["stimuli"]
+        assert [(stimuli["stimulus"][row].idx_start, stimuli["stimulus"][row].count) for row in range(2)] == [
+            (None, None),
+            (None, None),
+        ]
+        assert [
+            (stimuli["stimulus_template"][row].idx_start, stimuli["stimulus_template"][row].count) for row in range(2)
+        ] == [(0, 10), (10, 10)]
+        assert len(nwbfile.stimulus) == 0
+
+    def test_runs_without_a_template_before_and_after_one_with_a_template(self, tmp_path):
+        # An I=0 run, a run with a template, then a run without one: the column appears with the second run, and
+        # the first and third runs' rows hold empty references.
+        interfaces = [
+            MockIcephysInterface(
+                mode="izero", num_sweeps=2, sampling_frequency=10.0, sequence="izero", metadata_key="izero"
+            ),
+            MockIcephysInterface(
+                num_sweeps=2,
+                sampling_frequency=10.0,
+                starting_time=10.0,
+                sequence="steps",
+                metadata_key="steps",
+                stimulus_template_duration=1.0,
+            ),
+            MockIcephysInterface(
+                num_sweeps=2,
+                sampling_frequency=10.0,
+                starting_time=20.0,
+                sequence="spontaneous",
+                metadata_key="spontaneous",
+            ),
+        ]
+        nwbfile = create_finalized_nwbfile(interfaces)
+        file_path = tmp_path / "templates.nwb"
+        with NWBHDF5IO(file_path, mode="w") as io:
+            io.write(nwbfile)
+
+        with NWBHDF5IO(file_path, mode="r") as io:
+            read_nwbfile = io.read()
+            template_column = read_nwbfile.intracellular_recordings["stimuli"]["stimulus_template"]
+            references = [
+                (reference.idx_start, reference.count, getattr(reference.timeseries, "name", None))
+                for reference in template_column[:]
+            ]
+        assert references == [
+            (None, None, None),
+            (None, None, None),
+            (0, 10, "CurrentClampStimulusSeriesTemplateSteps"),
+            (10, 10, "CurrentClampStimulusSeriesTemplateSteps"),
+            (None, None, None),
+            (None, None, None),
+        ]
+
+    def test_template_longer_than_the_response_moves_with_its_sweeps(self):
+        # Two sweeps 10 s apart that stop recording after 10 samples, each against a template of 12 samples.
+        interface = MockIcephysInterface(
+            num_sweeps=2,
+            sweep_duration=1.0,
+            sampling_frequency=10.0,
+            inter_sweep_interval=9.0,
+            stimulus_template_duration=1.2,
+        )
+        interface.temporal_alignment.shift_times(5.0)
+        nwbfile = interface.create_nwbfile()
+
+        templates = nwbfile.intracellular_recordings["stimuli"]["stimulus_template"]
+        assert [(templates[row].idx_start, templates[row].count) for row in range(2)] == [(0, 12), (12, 12)]
+        template_timestamps = nwbfile.stimulus_template["CurrentClampStimulusSeriesTemplateMock"].get_timestamps()
+        np.testing.assert_allclose(template_timestamps[[0, 11, 12, 23]], [5.0, 6.1, 15.0, 16.1])
+
+    def test_template_with_its_own_sweeps_follows_a_stretch(self):
+        # Doubling the response's times and adding 5 s maps each template sweep the same way.
+        interface = MockIcephysInterface(
+            num_sweeps=2,
+            sweep_duration=1.0,
+            sampling_frequency=10.0,
+            inter_sweep_interval=9.0,
+            stimulus_template_duration=1.2,
+        )
+        alignment = interface.temporal_alignment[interface._alignment_key]
+        alignment.set_times(alignment.get_times() * 2.0 + 5.0)
+        nwbfile = interface.create_nwbfile()
+
+        template_timestamps = nwbfile.stimulus_template["CurrentClampStimulusSeriesTemplateMock"].get_timestamps()
+        # Native template samples at 0.0, 1.1, 10.0 and 11.1 s.
+        np.testing.assert_allclose(template_timestamps[[0, 11, 12, 23]], [5.0, 7.2, 25.0, 27.2])
+
+    def test_missing_template_entry_raises(self):
+        interface = MockIcephysInterface(num_sweeps=1, metadata_key="cell1", stimulus_template_duration=1.0)
+        metadata = interface.get_metadata()
+        del metadata["Icephys"]["PatchClampStimulusTemplateSeries"]["cell1"]
+
+        expected_message = (
+            "metadata_key 'cell1' was not found in metadata['Icephys']['PatchClampStimulusTemplateSeries']. "
+            "Available keys are:\n[]"
+        )
+        with pytest.raises(ValueError, match=re.escape(expected_message)):
+            interface.create_nwbfile(metadata=metadata)
 
 
 class TestMissingMetadataEntries:
