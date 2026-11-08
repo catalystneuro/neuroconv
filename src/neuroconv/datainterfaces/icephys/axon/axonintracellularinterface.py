@@ -170,6 +170,16 @@ class AxonIntracellularInterface(BaseIcephysInterface):
             default_start_time=self._get_native_start_time,
             get_number_of_samples=lambda: len(self._get_native_times()),
         )
+        # The stimulus has the response's samples, and a key of its own like every paired stimulus. Alignment keys
+        # share one namespace, so it takes a suffix, unlike its metadata key in the stimulus registry.
+        if self._has_stimulus:
+            self._stimulus_alignment_key = f"{self._alignment_key}_stimulus"
+            self.temporal_alignment._register(
+                key=self._stimulus_alignment_key,
+                get_native_times=self._get_native_times,
+                default_start_time=self._get_native_start_time,
+                get_number_of_samples=lambda: len(self._get_native_times()),
+            )
 
     # Registry keys derive from the run identity so a converter that overrides `_run_identity` propagates to all
     # of them. The electrode is per response channel and the series key is the user's `metadata_key` if given,

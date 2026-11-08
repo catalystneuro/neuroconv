@@ -46,7 +46,7 @@ class TestAxonMultiSweepVoltageClampCommand(DataInterfaceTestMixin):
     the core single-series + table path with the irregular-timing (timestamps) branch."""
 
     data_interface_cls = AxonIntracellularInterface
-    expected_temporal_alignment_keys = ("user_list_IN0",)
+    expected_temporal_alignment_keys = ("user_list_IN0", "user_list_IN0_stimulus")
     file_path = ICEPHYS_DATA_PATH / "read_raw_protocol" / "user_list.abf"
     response_channel_name = "IN0"
     interface_kwargs = dict(
@@ -225,7 +225,7 @@ class TestAxonVoltageClampCommand(DataInterfaceTestMixin):
     VoltageClampSeries + VoltageClampStimulusSeries with the regular-timing (rate) branch."""
 
     data_interface_cls = AxonIntracellularInterface
-    expected_temporal_alignment_keys = ("step_IN0",)
+    expected_temporal_alignment_keys = ("step_IN0", "step_IN0_stimulus")
     file_path = ICEPHYS_DATA_PATH / "read_raw_protocol" / "step.abf"
     response_channel_name = "IN0"
     interface_kwargs = dict(
@@ -369,7 +369,7 @@ class TestAxonRecordedMonitorStimulus(DataInterfaceTestMixin):
     reconstructed command: CurrentClampSeries + CurrentClampStimulusSeries from a recorded channel."""
 
     data_interface_cls = AxonIntracellularInterface
-    expected_temporal_alignment_keys = ("current_clamp_IN0",)
+    expected_temporal_alignment_keys = ("current_clamp_IN0", "current_clamp_IN0_stimulus")
     file_path = ICEPHYS_DATA_PATH / "dual_patch_pairs" / "current_clamp.abf"
     response_channel_name = "IN0"
     interface_kwargs = dict(
