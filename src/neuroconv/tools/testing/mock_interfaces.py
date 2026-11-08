@@ -1720,6 +1720,15 @@ class MockIcephysInterface(BaseIcephysInterface):
             default_start_time=starting_time,
             get_number_of_samples=lambda: num_sweeps * samples_per_sweep,
         )
+        if stimulus_duration is not None:
+            self._stimulus_alignment_key = f"{self._alignment_key}_stimulus"
+            stimulus_samples_per_sweep = round(stimulus_duration * sampling_frequency)
+            self.temporal_alignment._register(
+                key=self._stimulus_alignment_key,
+                get_native_times=partial(self._get_sweep_times, stimulus_samples_per_sweep),
+                default_start_time=starting_time,
+                get_number_of_samples=lambda: num_sweeps * stimulus_samples_per_sweep,
+            )
 
     def get_metadata(self) -> DeepDict:
         """

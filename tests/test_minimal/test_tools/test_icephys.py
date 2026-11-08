@@ -10,7 +10,7 @@ import re
 
 import numpy as np
 import pytest
-from pynwb import NWBHDF5IO, NWBFile
+from pynwb import NWBHDF5IO, NWBFile, read_nwb
 from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv import ConverterPipe
@@ -20,6 +20,7 @@ from neuroconv.tools.icephys import (
     _build_icephys_hierarchical_tables,
     _IcephysSeriesData,
 )
+from neuroconv.tools.testing.data_interface_mixins import DataInterfaceTestMixin
 from neuroconv.tools.testing.mock_interfaces import MockIcephysInterface
 
 SAMPLING_FREQUENCY = 10_000.0
@@ -51,6 +52,23 @@ def create_runs(repetitions: list | None = None, conditions: list | None = None,
         )
         for index, (repetition, condition) in enumerate(zip(repetitions, conditions))
     ]
+
+
+class TestMockIcephysInterfaceWithALongerStimulus(DataInterfaceTestMixin):
+    """Two sweeps 10 s apart that stop recording after 10 samples, each against a command of 12 samples. The
+    stimulus has times of its own, so the shared alignment tests replace and remap them as well."""
+
+    data_interface_cls = MockIcephysInterface
+    interface_kwargs = dict(
+        num_sweeps=2, sweep_duration=1.0, sampling_frequency=10.0, inter_sweep_interval=9.0, stimulus_duration=1.2
+    )
+    expected_temporal_alignment_keys = ("mock", "mock_stimulus")
+
+    def check_read_nwb(self, nwbfile_path: str):
+        nwbfile = read_nwb(nwbfile_path)
+        stimulus_timestamps = nwbfile.stimulus["CurrentClampStimulusSeriesMock"].get_timestamps()
+        np.testing.assert_allclose(stimulus_timestamps[[0, 11, 12, 23]], [0.0, 1.1, 10.0, 11.1])
+        nwbfile.read_io.close()
 
 
 class TestSweepTimeIntervals:
