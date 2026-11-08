@@ -166,6 +166,28 @@ class TestBrukerVoltageClamp(DataInterfaceTestMixin):
         nwbfile.read_io.close()
 
 
+class TestBrukerPVScanXml(DataInterfaceTestMixin):
+    """A current-clamp cycle with the acquisition's PVScan XML beside it, whose ``DateTime`` (18:43:42.504) is
+    5.3 s before the ``Sequence`` time the PVScan XML gives it (18:43:47.805). The start is the ``Sequence``
+    time, on the date of the PVScan XML and in the zone of ``DateTime``."""
+
+    data_interface_cls = BrukerVoltageRecordingInterface
+    expected_temporal_alignment_keys = ("cell2-001_Primary",)
+    file_path = cycle_csv_path("current_clamp/pvscan_xml_with_date_time_before_sequence_time")
+    interface_kwargs = dict(file_paths=[file_path])
+    save_directory = OUTPUT_PATH
+
+    expected_session_start_time = datetime(2016, 5, 27, 18, 43, 47, 805118, tzinfo=timezone(timedelta(hours=-5)))
+
+    def check_extracted_metadata(self, metadata: dict):
+        assert metadata["NWBFile"]["session_start_time"] == self.expected_session_start_time
+
+    def check_read_nwb(self, nwbfile_path: str):
+        nwbfile = read_nwb(nwbfile_path)
+        assert nwbfile.session_start_time == self.expected_session_start_time
+        nwbfile.read_io.close()
+
+
 @pytest.mark.parametrize(
     "folder_name, expected_mode, expected_conversion",
     [
@@ -210,6 +232,18 @@ def test_fractional_seconds_are_normalized_to_six_digits(folder_name, expected_m
     interface = BrukerVoltageRecordingInterface(file_paths=[cycle_csv_path(folder_name)])
 
     assert interface.get_metadata()["NWBFile"]["session_start_time"].microsecond == expected_microsecond
+
+
+def test_a_cycle_without_its_pvscan_xml_warns_that_its_start_time_is_date_time():
+    """Without the acquisition's PVScan XML the start falls back to the cycle's ``DateTime``, which can be
+    seconds early. No fixture but one keeps its PVScan XML, so any of the others shows the fallback."""
+    expected = (
+        "1 of 1 cycles have no PVScan XML beside them (looked up as 'cell1-001.xml'), so their start times come "
+        "from the DateTime of their VoltageRecording XML, which can be seconds early. Keep the acquisition's "
+        "PVScan XML beside the cycle files to read the start times from it."
+    )
+    with pytest.warns(UserWarning, match=re.escape(expected)):
+        BrukerVoltageRecordingInterface(file_paths=[cycle_csv_path("current_clamp/divisor_0_01")])
 
 
 def test_explicit_mode_overrides_the_derived_one():

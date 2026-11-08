@@ -44,8 +44,10 @@ Everything else is read from the XML that sits beside each CSV:
   signal other than ``Primary``, whose unit does not identify the mode.
 - The **scaling** comes from ``Multiplier`` and ``Divisor``. The samples are stored exactly as the CSV holds
   them and the whole chain lives in the series' ``conversion``, so what you read back is what PrairieView wrote.
-- The **amplifier** comes from ``PatchclampDevice``, and the **session start time** from the cycle's
-  ``DateTime``, which carries the rig's UTC offset so no timezone has to be supplied.
+- The **amplifier** comes from ``PatchclampDevice``, and the **session start time** from the ``Sequence``
+  time in the acquisition's PVScan XML (``<stem>.xml``), in the timezone of the cycle's ``DateTime``, so no
+  timezone has to be supplied. Keep the PVScan XML beside the cycles: without it the interface uses
+  ``DateTime``, which can be seconds early, and warns.
 
 If a cycle recorded more than one signal, name the one that is this electrode's response with
 ``response_signal_name``. Which signals were recorded, and which column each occupies, comes from the XML's
@@ -65,7 +67,7 @@ trace, the photodiode channels, the wavelength channels such as ``720nm``) carry
 are recorded in volts; they are analog monitors rather than intracellular data, and the interface refuses them.
 
 The interface writes one continuous ``PatchClampSeries`` per electrode, with each cycle placed at its own
-``DateTime`` so the dead time between cycles survives as a gap, and records each cycle through the NWB
+start time so the dead time between cycles survives as a gap, and records each cycle through the NWB
 ``IntracellularRecordings`` table. It stops there: the upper icephys hierarchy tables and the per-sweep time
 intervals are written only once the full set of electrodes is known. If this interface is your whole
 conversion, wrap it in the converter below with that one interface, which finalizes those tables for you.

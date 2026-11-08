@@ -3,7 +3,7 @@
 import re
 import xml.etree.ElementTree as ElementTree
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, time, timedelta
 from pathlib import Path
 
 import numpy as np
@@ -37,6 +37,8 @@ class _CycleHeader:
     stem: str
     rate: float
     start_datetime: datetime
+    # The acquisition's PVScan XML the start was read from, or None when it was missing and the start is `DateTime`.
+    pvscan_xml_file_path: Path | None
     recorded_signals: list[_VRecSignal]
     header_names: list[str]
     signals: dict[str, _VRecSignal]
@@ -116,6 +118,11 @@ def _read_cycle_header(file_path: Path) -> _CycleHeader:
 
     nominal_rate = _required_float(root, ".//Rate", xml_file_path)
     start_datetime = _parse_prairie_view_datetime(_required_text(root, "DateTime", xml_file_path))
+    pvscan_xml_file_path = _find_pvscan_xml(file_path)
+    if pvscan_xml_file_path is not None:
+        start_datetime = _read_sequence_start_datetime(
+            pvscan_xml_file_path=pvscan_xml_file_path, file_path=file_path, date_time=start_datetime
+        )
     stem = _CYCLE_SUFFIX.sub("", _required_text(root, "DataFile", xml_file_path))
 
     header_names, sampling_interval_ms = _read_csv_header(file_path)
@@ -136,9 +143,52 @@ def _read_cycle_header(file_path: Path) -> _CycleHeader:
         stem=stem,
         rate=rate,
         start_datetime=start_datetime,
+        pvscan_xml_file_path=pvscan_xml_file_path,
         recorded_signals=recorded_signals,
         header_names=header_names,
         signals=signals,
+    )
+
+
+def _find_pvscan_xml(file_path: Path) -> Path | None:
+    """
+    Return the acquisition's PVScan XML beside a cycle CSV, or None when it is not there.
+
+    PrairieView names it after the acquisition, the cycle file name before ``_Cycle``, so it is looked up by
+    that stem and not by the folder name, which deposits often rename.
+    """
+    acquisition_stem, match_count = _CYCLE_SUFFIX.subn("", file_path.stem)
+    pvscan_xml_file_path = file_path.with_name(f"{acquisition_stem}.xml")
+    if match_count == 0 or not pvscan_xml_file_path.is_file():
+        return None
+    return pvscan_xml_file_path
+
+
+def _read_sequence_start_datetime(pvscan_xml_file_path: Path, file_path: Path, date_time: datetime) -> datetime:
+    """
+    Read a cycle's start from the ``Sequence`` the PVScan XML lists it under.
+
+    The cycle's own ``DateTime`` can be seconds early (24.9 s at most on the Zhai et al. 2025 deposit), while
+    the ``Sequence`` time agrees with the PVScan XML's ``date`` and with the files' modification times. The
+    recording starts at the ``Sequence`` time plus the ``absoluteTime`` the PVScan XML gives the cycle's
+    ``VoltageRecording``. The ``Sequence`` time has no date and no zone, so the date comes from the PVScan
+    XML's ``date`` and the zone from ``date_time``, the cycle's ``DateTime``.
+    """
+    root = ElementTree.parse(pvscan_xml_file_path).getroot()
+    for sequence in root.findall("Sequence"):
+        for voltage_recording in sequence.findall("VoltageRecording"):
+            if voltage_recording.get("dataFile") == file_path.name:
+                # `date` reads "5/27/2016 6:43:47 PM", and only its date is needed.
+                date = datetime.strptime(root.get("date").split(" ")[0], "%m/%d/%Y").date()
+                sequence_time = time.fromisoformat(
+                    _NORMALIZE_FRACTIONAL_SECONDS.sub(_pad_fractional_seconds, sequence.get("time"))
+                )
+                sequence_start = datetime.combine(date, sequence_time, tzinfo=date_time.tzinfo)
+                return sequence_start + timedelta(seconds=float(voltage_recording.get("absoluteTime")))
+
+    raise ValueError(
+        f"'{pvscan_xml_file_path}' lists no VoltageRecording with dataFile '{file_path.name}', so the start of "
+        "that cycle cannot be read from it."
     )
 
 
