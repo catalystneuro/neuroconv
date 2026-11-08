@@ -1,5 +1,6 @@
 """Interface for intracellular electrophysiology recorded by Bruker PrairieView's VoltageRecording."""
 
+import warnings
 from pathlib import Path
 from typing import Literal
 
@@ -37,7 +38,7 @@ class BrukerVoltageRecordingInterface(BaseIcephysInterface):
     sweep. One interface instance corresponds to one electrode's cycles, given as an explicit list: nothing in
     the format states which cycles belong to which cell, so the list is the caller's assertion rather than
     something inferred from a folder layout. Those cycles are concatenated into a single continuous
-    ``PatchClampSeries``, placed on one timeline by each cycle's ``DateTime``, and each is recorded through the
+    ``PatchClampSeries``, placed on one timeline by each cycle's start time, and each is recorded through the
     NWB ``IntracellularRecordings`` table via a ``(start_index, count)`` range.
 
     Like the other icephys interfaces it stops there: the upper hierarchy tables (``SimultaneousRecordings`` and
@@ -68,8 +69,10 @@ class BrukerVoltageRecordingInterface(BaseIcephysInterface):
         ----------
         file_paths : list of FilePath
             The cycle CSV files of one electrode, in acquisition order. Each must have its ``VoltageRecording``
-            XML beside it, as PrairieView writes it. The list is explicit because nothing in the format states
-            which cycles belong together; globbing a session folder belongs in the conversion script.
+            XML beside it, as PrairieView writes it, and should have the acquisition's PVScan XML
+            (``<stem>.xml``) there too, since it holds the cycle's start time. The list is explicit because
+            nothing in the format states which cycles belong together; globbing a session folder belongs in the
+            conversion script.
         response_signal_name : str, optional
             Which recorded signal is this electrode's response, given as its name in the CSV header and the
             XML ``SignalList`` (for example ``"Primary"``). Optional while only one signal was recorded, which
@@ -117,13 +120,14 @@ class BrukerVoltageRecordingInterface(BaseIcephysInterface):
             raise ValueError("file_paths is empty; give at least one cycle CSV.")
 
         # Sorted by acquisition time, not by the order given. The samples are concatenated in this order and
-        # timestamped from each cycle's DateTime, so the two would otherwise diverge whenever the caller's
+        # timestamped from each cycle's start time, so the two would otherwise diverge whenever the caller's
         # list is not chronological, silently producing a non-monotonic timestamps array. `Path.glob` returns
         # filesystem order, so that is the ordinary case rather than a pathological one.
         self._cycle_headers = sorted(
             (_read_cycle_header(file_path) for file_path in self._file_paths),
             key=lambda header: header.start_datetime,
         )
+        self._warn_about_cycles_without_pvscan_xml()
         self._response_signal_name = self._resolve_response_signal_name(self._cycle_headers[0], response_signal_name)
         self._check_cycles_agree()
 
@@ -225,6 +229,17 @@ class BrukerVoltageRecordingInterface(BaseIcephysInterface):
                 "'mV' (current clamp) or 'pA' (voltage clamp). Pass mode= explicitly."
             )
         return _UNIT_TO_MODE[signal.unit_name]
+
+    def _warn_about_cycles_without_pvscan_xml(self) -> None:
+        """Warn once when any cycle's start fell back to its ``DateTime``, which can be seconds early."""
+        missing = [header for header in self._cycle_headers if header.pvscan_xml_file_path is None]
+        if missing:
+            warnings.warn(
+                f"{len(missing)} of {len(self._cycle_headers)} cycles have no PVScan XML beside them (looked up "
+                f"as '{missing[0].stem}.xml'), so their start times come from the DateTime of their "
+                "VoltageRecording XML, which can be seconds early. Keep the acquisition's PVScan XML beside the "
+                "cycle files to read the start times from it."
+            )
 
     def _check_cycles_agree(self) -> None:
         """
@@ -363,7 +378,7 @@ class BrukerVoltageRecordingInterface(BaseIcephysInterface):
         """Read the response signal across every cycle and lay them end to end on one timeline; return
         ``(data, timestamps, [(start_index, count), ...])``.
 
-        Each cycle is placed at its own ``DateTime``, the earliest being this electrode's origin, which is the
+        Each cycle is placed at its own start time, the earliest being this electrode's origin, which is the
         direct analogue of reading each segment's start time out of an ABF file: the intervals between cycles
         are real dead time, so they show up as gaps in the timestamps rather than being closed up.
         """
