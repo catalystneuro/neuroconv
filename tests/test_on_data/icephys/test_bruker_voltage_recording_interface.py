@@ -2,9 +2,9 @@
 
 The fixtures live in the gin ``ephy_testing_data`` repo under ``bruker/voltage_recording``: seven stubbed
 sessions from DANDI 001538 (Zhai et al.), in a folder per clamp mode and named after what each adds, each the
-``VoltageRecording`` XML plus its CSV truncated to 100 samples. Between them they carry the format variation
-that reaches the writer: both clamp modes (``mV`` and ``pA`` on ``Primary``), the three ``Divisor`` values,
-and the two spellings of the amplifier name. See that folder's README.
+``VoltageRecording`` XML and ``VoltageOutput`` protocol plus its CSV truncated to 100 samples. Between them they
+carry the format variation that reaches the writer: both clamp modes (``mV`` and ``pA`` on ``Primary``), the
+three ``Divisor`` values, and the two spellings of the amplifier name. See that folder's README.
 
 Each folder holds a single cycle, so the fixtures cannot exercise sweep assembly. The cycles of one run, and
 the cases that need more than one recorded signal, are covered here on pairs derived from a real fixture (its
@@ -16,16 +16,23 @@ enabled signals would be the better home for them. The format-independent machin
 import re
 from datetime import datetime, timedelta, timezone
 
+import numpy as np
 import pytest
 from pynwb import read_nwb
-from pynwb.icephys import CurrentClampSeries, IZeroClampSeries, VoltageClampSeries
+from pynwb.icephys import (
+    CurrentClampSeries,
+    CurrentClampStimulusSeries,
+    IZeroClampSeries,
+    VoltageClampSeries,
+    VoltageClampStimulusSeries,
+)
 from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.converters import BrukerVoltageRecordingConverter
 from neuroconv.datainterfaces import BrukerVoltageRecordingInterface
 from neuroconv.tools.testing.data_interface_mixins import DataInterfaceTestMixin
 
-from ..setup_paths import ECEPHY_DATA_PATH, OUTPUT_PATH
+from ..setup_paths import ECEPHY_DATA_PATH, OPHYS_DATA_PATH, OUTPUT_PATH
 
 BRUKER_DATA_PATH = ECEPHY_DATA_PATH / "bruker" / "voltage_recording"
 
@@ -77,12 +84,13 @@ def write_derived_cycle(
 
 class TestBrukerCurrentClamp(DataInterfaceTestMixin):
     """A current-clamp cycle (``Primary`` in mV, ``Divisor`` 0.01): the core single-series path, the mode read
-    off the unit, and the ``Multiclamp700B Ch1`` spelling of the amplifier name."""
+    off the unit, and the ``Multiclamp700B Ch1`` spelling of the amplifier name. Its ``700B`` command, a -120 pA
+    step from 200 to 700 ms in the cycle's ``VoltageOutput`` protocol, is written as the stimulus."""
 
     data_interface_cls = BrukerVoltageRecordingInterface
-    expected_temporal_alignment_keys = ("cell1-001_Primary",)
+    expected_temporal_alignment_keys = ("cell1-001_Primary", "cell1-001_Primary_stimulus")
     file_path = cycle_csv_path("current_clamp/divisor_0_01")
-    interface_kwargs = dict(file_paths=[file_path])
+    interface_kwargs = dict(file_paths=[file_path], stimulus_command="700B")
     save_directory = OUTPUT_PATH
 
     def check_extracted_metadata(self, metadata: dict):
@@ -131,11 +139,29 @@ class TestBrukerCurrentClamp(DataInterfaceTestMixin):
         assert response.conversion == pytest.approx(0.1)
         assert response.data[0] * response.conversion == pytest.approx(-0.081695556640625)
 
-        # One row per cycle, addressing the whole series, with no stimulus half and no placeholder column.
+        stimulus = nwbfile.stimulus["CurrentClampStimulusSeriesCell1001Primary"]
+        assert isinstance(stimulus, CurrentClampStimulusSeries)
+        assert stimulus.electrode.name == "IntracellularElectrodeCell1001"
+
+        # Two components played back to back, 900 ms in all at the protocol's 10 kHz. The step is the first
+        # one's single pulse, 200 ms in and 500 ms wide, at -0.3 V times 400 pA/V.
+        assert stimulus.rate == 10_000.0
+        assert stimulus.starting_time == 0.0
+        assert stimulus.conversion == 1e-12
+        expected = np.zeros(9_000)
+        expected[2_000:7_000] = -120.0
+        np.testing.assert_array_equal(stimulus.data[:], expected)
+
+        # One row per cycle with no placeholder column. The command spans its protocol, so it outlasts the stub's
+        # 100 recorded samples and the row addresses each series by its own range.
         recordings = nwbfile.intracellular_recordings
         assert len(recordings) == 1
         assert recordings.colnames == ("sequence",)
         assert recordings["sequence"][0] == "cell1-001"
+        response_reference = recordings["responses"]["response"][0]
+        stimulus_reference = recordings["stimuli"]["stimulus"][0]
+        assert (response_reference.idx_start, response_reference.count) == (0, 100)
+        assert (stimulus_reference.idx_start, stimulus_reference.count) == (0, 9_000)
         nwbfile.read_io.close()
 
     def test_signal_names_lists_the_recorded_columns(self):
@@ -144,12 +170,13 @@ class TestBrukerCurrentClamp(DataInterfaceTestMixin):
 
 class TestBrukerVoltageClamp(DataInterfaceTestMixin):
     """A voltage-clamp cycle (``Primary`` in pA, ``Divisor`` 0.005): the other series class, the other unit
-    factor, and the ``Multiclamp700B`` spelling with no channel suffix."""
+    factor, and the ``Multiclamp700B`` spelling with no channel suffix. Its ``700B`` command, a -5 mV step
+    (-0.25 V at 20 mV/V) 920 ms in, where the protocol ends, is written as the stimulus."""
 
     data_interface_cls = BrukerVoltageRecordingInterface
-    expected_temporal_alignment_keys = ("cell1_LED12-018_Primary",)
+    expected_temporal_alignment_keys = ("cell1_LED12-018_Primary", "cell1_LED12-018_Primary_stimulus")
     file_path = cycle_csv_path("voltage_clamp/device_name_without_channel")
-    interface_kwargs = dict(file_paths=[file_path])
+    interface_kwargs = dict(file_paths=[file_path], stimulus_command="700B")
     save_directory = OUTPUT_PATH
 
     def check_extracted_metadata(self, metadata: dict):
@@ -163,7 +190,19 @@ class TestBrukerVoltageClamp(DataInterfaceTestMixin):
         assert response.rate == 20_000.0
         # pA through a 0.005 divisor: (1 / 0.005) * 1e-12 amperes per stored unit.
         assert response.conversion == pytest.approx(2e-10)
+
+        # The command is drawn at the protocol's 10 kHz, not at the recording's 20 kHz.
+        stimulus = nwbfile.stimulus["VoltageClampStimulusSeriesCell1LED12018Primary"]
+        assert isinstance(stimulus, VoltageClampStimulusSeries)
+        assert stimulus.rate == 10_000.0
+        assert stimulus.conversion == 1e-3
+        expected = np.zeros(9_700)
+        expected[9_200:] = -5.0
+        np.testing.assert_array_equal(stimulus.data[:], expected)
         nwbfile.read_io.close()
+
+    def test_command_names_lists_the_enabled_waveforms(self):
+        assert BrukerVoltageRecordingInterface.get_command_names(file_path=self.file_path) == ["700B", "LED"]
 
 
 class TestBrukerPVScanXml(DataInterfaceTestMixin):
@@ -185,6 +224,38 @@ class TestBrukerPVScanXml(DataInterfaceTestMixin):
     def check_read_nwb(self, nwbfile_path: str):
         nwbfile = read_nwb(nwbfile_path)
         assert nwbfile.session_start_time == self.expected_session_start_time
+        nwbfile.read_io.close()
+
+
+class TestBrukerThreeComponentCommand(DataInterfaceTestMixin):
+    """A dendritic cycle from the line-scan fixtures whose ``700B`` waveform has three components: 100 ms at 0 pA,
+    then three 2 ms pulses of 2000 pA 18 ms apart, 900 ms into the second, then 10 ms at 0 pA, 100 ms into the
+    third. Each component starts where the previous one's last pulse ends, which puts the pulses at 1000, 1020 and
+    1040 ms, when the cell fires in the full recording."""
+
+    data_interface_cls = BrukerVoltageRecordingInterface
+    expected_temporal_alignment_keys = (
+        "07072017_Cell2_dist2_trio-001_Primary",
+        "07072017_Cell2_dist2_trio-001_Primary_stimulus",
+    )
+    file_path = (
+        OPHYS_DATA_PATH
+        / "segmentation_datasets"
+        / "bruker"
+        / "line_scan"
+        / "07072017_Cell2_dist2_trio-001"
+        / "07072017_Cell2_dist2_trio-001_Cycle00001_VoltageRecording_001.csv"
+    )
+    interface_kwargs = dict(file_paths=[file_path], stimulus_command="700B")
+    save_directory = OUTPUT_PATH
+
+    def check_read_nwb(self, nwbfile_path: str):
+        nwbfile = read_nwb(nwbfile_path)
+        (stimulus,) = nwbfile.stimulus.values()
+        expected = np.zeros(11_520)
+        for pulse_start in (10_000, 10_200, 10_400):
+            expected[pulse_start : pulse_start + 20] = 2_000.0
+        np.testing.assert_array_equal(stimulus.data[:], expected)
         nwbfile.read_io.close()
 
 

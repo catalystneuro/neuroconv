@@ -9,7 +9,9 @@ from pydantic import FilePath, validate_call
 
 from ._bruker_voltage_recording_readers import (
     _CycleHeader,
+    _read_command_waveform,
     _read_cycle_header,
+    _read_enabled_waveforms,
     _read_signal_column,
 )
 from ..baseicephysinterface import BaseIcephysInterface
@@ -28,6 +30,10 @@ _MODE_BEARING_SIGNAL_NAME = "Primary"
 # What `Primary`'s unit says about the clamp mode. NWB's own definitions make this a reading rather than a
 # guess: a CurrentClampSeries holds a recorded voltage and a VoltageClampSeries a recorded current.
 _UNIT_TO_MODE = {"mV": "current_clamp", "pA": "voltage_clamp"}
+
+# The mode whose stimulus a command in this unit is: a current command drives current clamp and a voltage
+# command voltage clamp.
+_COMMAND_UNIT_TO_MODE = {"pA": "current_clamp", "mV": "voltage_clamp"}
 
 
 class BrukerVoltageRecordingInterface(BaseIcephysInterface):
@@ -58,6 +64,7 @@ class BrukerVoltageRecordingInterface(BaseIcephysInterface):
         *,
         response_signal_name: str | None = None,
         mode: Literal["voltage_clamp", "current_clamp", "izero"] | None = None,
+        stimulus_command: str | None = None,
         stimulus_type: str | None = None,
         repetition: str | None = None,
         condition: str | None = None,
@@ -82,9 +89,13 @@ class BrukerVoltageRecordingInterface(BaseIcephysInterface):
             (``mV`` for current clamp, ``pA`` for voltage clamp), so this is needed only to record an
             ``izero`` run, which is indistinguishable from ordinary current clamp in the file, or when the
             response is a signal other than ``Primary``.
+        stimulus_command : str, optional
+            The name of the output waveform that drives the amplifier in each cycle's ``VoltageOutput`` XML (for
+            example ``"700B"``), whose command is drawn from the protocol and written as the stimulus. Its unit
+            must match the mode: ``pA`` for current clamp, ``mV`` for voltage clamp. See ``get_command_names``.
         stimulus_type : str, optional
             What kind of run this was, written to the ``stimulus_type`` column and carried up to the sequential
-            recording. PrairieView records no protocol section, so there is nothing to derive it from; when no
+            recording. PrairieView names no protocol, so there is nothing to derive it from; when no
             run in the file states one the column is omitted rather than filled with a placeholder, and when
             a sibling run states one this run's rows are left empty.
         repetition : str, optional
@@ -109,6 +120,7 @@ class BrukerVoltageRecordingInterface(BaseIcephysInterface):
             file_paths=file_paths,
             response_signal_name=response_signal_name,
             mode=mode,
+            stimulus_command=stimulus_command,
             stimulus_type=stimulus_type,
             repetition=repetition,
             condition=condition,
@@ -134,6 +146,21 @@ class BrukerVoltageRecordingInterface(BaseIcephysInterface):
         self._response_signal = self._cycle_headers[0].signals[self._response_signal_name]
         self._mode = mode if mode is not None else self._derive_mode(self._response_signal)
 
+        # Drawn now, so a cycle without the command, or with one this reader cannot draw, fails at construction.
+        self._stimulus_command = stimulus_command
+        self._command_waveforms = None
+        if stimulus_command is not None:
+            self._command_waveforms = [
+                _read_command_waveform(header, stimulus_command) for header in self._cycle_headers
+            ]
+            for header, waveform in zip(self._cycle_headers, self._command_waveforms):
+                if _COMMAND_UNIT_TO_MODE.get(waveform.unit_name) != self._mode:
+                    raise ValueError(
+                        f"Command '{stimulus_command}' of '{header.file_path.name}' is in '{waveform.unit_name}', "
+                        f"so it is not the stimulus of a {self._mode} run (pA for current clamp, mV for voltage "
+                        "clamp)."
+                    )
+
         # The earliest cycle is this electrode's own origin, and the session's when it converts alone. A
         # converter combining electrodes reads it to place them all against the earliest of the set.
         self._recording_start_datetime = min(header.start_datetime for header in self._cycle_headers)
@@ -150,6 +177,17 @@ class BrukerVoltageRecordingInterface(BaseIcephysInterface):
             default_start_time=0.0,
             get_number_of_samples=lambda: len(self._get_native_times()),
         )
+        # The command has samples of its own, at the protocol's rate and over the protocol's span, and a key of its
+        # own like every paired stimulus. Alignment keys share one namespace, so it takes a suffix, unlike its
+        # metadata key in the stimulus registry.
+        if self._command_waveforms is not None:
+            self._stimulus_alignment_key = f"{self._alignment_key}_stimulus"
+            self.temporal_alignment._register(
+                key=self._stimulus_alignment_key,
+                get_native_times=self._get_native_command_times,
+                default_start_time=0.0,
+                get_number_of_samples=lambda: sum(len(waveform.data) for waveform in self._command_waveforms),
+            )
 
     # Registry keys derive from the run identity so a converter that overrides `_run_identity` propagates to
     # all of them. The electrode is per run rather than per signal, because `Primary` and `Secondary` are two
@@ -326,6 +364,23 @@ class BrukerVoltageRecordingInterface(BaseIcephysInterface):
                 "electrode_metadata_key": electrode_metadata_key,
             }
         }
+        # The stimulus sits in the parallel registry at the response's key and reuses its electrode, as in the
+        # Axon interface.
+        if self._stimulus_command is not None:
+            stimulus_type_name = {
+                "voltage_clamp": "VoltageClampStimulusSeries",
+                "current_clamp": "CurrentClampStimulusSeries",
+            }[self._mode]
+            metadata["Icephys"]["PatchClampStimulusSeries"] = {
+                series_metadata_key: {
+                    "name": f"{stimulus_type_name}{to_camel_case(series_metadata_key)}",
+                    "description": (
+                        f"Intracellular stimulus ({self._mode}): the '{self._stimulus_command}' command PrairieView "
+                        "sent to the amplifier, drawn from each cycle's VoltageOutput protocol. It adds to any "
+                        "holding level set on the amplifier, which PrairieView does not record."
+                    ),
+                }
+            }
         return metadata
 
     # ------------------------------------------------------------------ writing
@@ -336,7 +391,8 @@ class BrukerVoltageRecordingInterface(BaseIcephysInterface):
         signal = self._response_signal
         conversion = (signal.multiplier / signal.divisor) * get_conversion_from_unit(signal.unit_name)
         response_data = _IcephysSeriesData(data=data, timestamps=timestamps, conversion=float(conversion))
-        return response_data, None, sweep_sample_ranges
+        stimulus_data = self._concatenate_commands() if self._command_waveforms is not None else None
+        return response_data, stimulus_data, sweep_sample_ranges
 
     def _get_stimulus_type(self) -> str | None:
         return self._stimulus_type
@@ -361,6 +417,25 @@ class BrukerVoltageRecordingInterface(BaseIcephysInterface):
             signals rather than the CSV header, whose names are unreliable.
         """
         return [signal.name for signal in _read_cycle_header(Path(file_path)).recorded_signals]
+
+    @classmethod
+    def get_command_names(cls, file_path: FilePath) -> list[str]:
+        """
+        Names of the output waveforms enabled in a cycle's ``VoltageOutput`` protocol: the options for
+        ``stimulus_command``. Call this before constructing the interface to see what is available.
+
+        Parameters
+        ----------
+        file_path : FilePath
+            Path to one cycle's ``VoltageRecording`` CSV. Its ``VoltageOutput`` XML must be beside it.
+
+        Returns
+        -------
+        list of str
+            The enabled waveform names, in the order the protocol lists them.
+        """
+        _, _, waveforms = _read_enabled_waveforms(_read_cycle_header(Path(file_path)))
+        return list(waveforms)
 
     # ------------------------------------------------------------------ writing helpers
 
@@ -400,3 +475,34 @@ class BrukerVoltageRecordingInterface(BaseIcephysInterface):
             timestamps[start_index : start_index + count] = cycle_start_time + np.arange(count) / header.rate
 
         return data, timestamps, sweep_sample_ranges
+
+    def _get_native_command_times(self):
+        """Each cycle's command from its cycle's start time, at the protocol's rate, the cycles laid end to end."""
+        origin = self._recording_start_datetime
+        times = []
+        for header, waveform in zip(self._cycle_headers, self._command_waveforms):
+            cycle_start_time = (header.start_datetime - origin).total_seconds()
+            times.append(cycle_start_time + np.arange(len(waveform.data)) / waveform.rate)
+        return np.concatenate(times)
+
+    def _concatenate_commands(self) -> _IcephysSeriesData:
+        """Lay each cycle's drawn command end to end, each at its cycle's start time as the response is.
+
+        A command spans its protocol and not its recording, so it can be longer or shorter than the cycle's
+        response, and it is sampled at the protocol's rate; it carries its own ``(start_index, count)`` per cycle
+        for that reason.
+        """
+        sweep_sample_ranges = []
+        cursor = 0
+        for waveform in self._command_waveforms:
+            count = len(waveform.data)
+            sweep_sample_ranges.append((cursor, count))
+            cursor += count
+
+        # The mode check at construction leaves one unit for every cycle.
+        return _IcephysSeriesData(
+            data=np.concatenate([waveform.data for waveform in self._command_waveforms]),
+            timestamps=self._get_native_command_times(),
+            conversion=get_conversion_from_unit(self._command_waveforms[0].unit_name),
+            sweep_sample_ranges=sweep_sample_ranges,
+        )
