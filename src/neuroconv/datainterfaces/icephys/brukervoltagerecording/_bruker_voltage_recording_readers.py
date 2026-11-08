@@ -4,6 +4,7 @@ import re
 import xml.etree.ElementTree as ElementTree
 from dataclasses import dataclass
 from datetime import datetime, time, timedelta
+from decimal import Decimal
 from pathlib import Path
 
 import numpy as np
@@ -270,3 +271,103 @@ def _read_signal_column(header: _CycleHeader, signal_name: str) -> np.ndarray:
     column_index = header.column_index(signal_name)
     frame = pd.read_csv(header.file_path, usecols=[column_index], dtype="float64")
     return frame.to_numpy().reshape(-1)
+
+
+@dataclass(frozen=True)
+class _CommandWaveform:
+    """One output line's command during one cycle, drawn sample by sample from the cycle's protocol."""
+
+    unit_name: str
+    rate: float
+    data: np.ndarray
+
+
+# Pulse-train fields this reader does not draw, with the value at which they have no effect. Every enabled
+# waveform of the Zhai et al. 2025 deposit (5,338 protocols) holds these values, so no file is known to show how
+# PrairieView plays the others.
+_UNDRAWN_PULSE_TRAIN_FIELDS = {"Repetitions": 1.0, "PulsePotentialDelta": 0.0, "RestPotential": 0.0}
+
+
+def _read_enabled_waveforms(header: _CycleHeader) -> tuple[Path, ElementTree.Element, dict]:
+    """
+    Read the cycle's ``VoltageOutput`` XML: its path, its root and its enabled waveforms by name.
+
+    PrairieView writes this protocol beside the recording, named from the same stem
+    (``cell1-001_Cycle00001_VoltageOutput_001.xml``), with one ``Waveform`` per analog output line.
+    """
+    file_path = header.xml_file_path.with_name(
+        header.xml_file_path.name.replace("_VoltageRecording_", "_VoltageOutput_")
+    )
+    if not file_path.is_file():
+        raise FileNotFoundError(
+            f"No VoltageOutput XML beside '{header.file_path}'. PrairieView writes '{file_path.name}' next to the "
+            "recording, and the stimulus is drawn from it."
+        )
+    root = ElementTree.parse(file_path).getroot()
+    waveforms = {
+        waveform.findtext("Name"): waveform
+        for waveform in root.findall("Waveform")
+        if waveform.findtext("Enabled", "").strip().lower() == "true"
+    }
+    return file_path, root, waveforms
+
+
+def _read_command_waveform(header: _CycleHeader, command_name: str) -> _CommandWaveform:
+    """
+    Draw the command one output waveform played during a cycle, from the cycle's ``VoltageOutput`` XML.
+
+    A waveform is a sequence of components played back to back. A pulse-train component waits its
+    ``FirstPulseDelay``, gives ``PulseCount`` pulses of ``PulseWidth`` at ``PulsePotentialStart`` separated by
+    ``PulseSpacing``, and ends with its last pulse. Times are in milliseconds and levels in volts on the output
+    line, which ``UnitScaleFactor`` takes into the waveform's ``Units``. On the dendritic runs of the Zhai et al.
+    2025 deposit, a 100 ms component followed by three pulses 900 ms into the next puts the pulses at 1000, 1020
+    and 1040 ms, which is when the recorded spikes occur.
+
+    The command is drawn at the protocol's ``UpdateRate`` over the span of its components, which can end before
+    or after the recording does.
+    """
+    file_path, root, waveforms = _read_enabled_waveforms(header)
+    if command_name not in waveforms:
+        raise ValueError(
+            f"'{file_path.name}' has no enabled waveform named '{command_name}'. Enabled waveforms: "
+            f"{', '.join(waveforms) or 'none'}."
+        )
+    waveform = waveforms[command_name]
+    for field in ("UnitVoltageOffset", "UnitScaleOffset"):
+        if _required_float(waveform, field, file_path) != 0:
+            raise ValueError(
+                f"Waveform '{command_name}' of '{file_path.name}' has a non-zero {field}, which this reader does "
+                "not apply."
+            )
+    scale_factor = Decimal(_required_text(waveform, "UnitScaleFactor", file_path))
+    rate = _required_float(root, "UpdateRate", file_path)
+
+    pulses = []
+    component_start = 0.0
+    for component in waveform:
+        if not component.tag.startswith("WaveformComponent_"):
+            continue
+        if component.tag != "WaveformComponent_PulseTrain":
+            raise ValueError(
+                f"Waveform '{command_name}' of '{file_path.name}' has a {component.tag} component; only pulse "
+                "trains can be drawn."
+            )
+        for field, undrawn_value in _UNDRAWN_PULSE_TRAIN_FIELDS.items():
+            if _required_float(component, field, file_path) != undrawn_value:
+                raise ValueError(
+                    f"Component '{component.findtext('Name')}' of waveform '{command_name}' in '{file_path.name}' "
+                    f"has {field} {component.findtext(field)}, which this reader does not draw."
+                )
+        count = int(_required_float(component, "PulseCount", file_path))
+        width = _required_float(component, "PulseWidth", file_path)
+        spacing = _required_float(component, "PulseSpacing", file_path)
+        first_pulse_start = component_start + _required_float(component, "FirstPulseDelay", file_path)
+        # In decimal, so 0.55 V at 400 pA/V is 220 pA and not 220.00000000000003.
+        level = float(Decimal(_required_text(component, "PulsePotentialStart", file_path)) * scale_factor)
+        pulses.extend((first_pulse_start + number * (width + spacing), width, level) for number in range(count))
+        component_start = first_pulse_start + count * width + (count - 1) * spacing
+
+    data = np.zeros(round(component_start * rate / 1000))
+    for start, width, level in pulses:
+        data[round(start * rate / 1000) : round((start + width) * rate / 1000)] = level
+    return _CommandWaveform(unit_name=_required_text(waveform, "Units", file_path), rate=rate, data=data)

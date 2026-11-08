@@ -66,6 +66,23 @@ Only signals routed through the amplifier can be written here. PrairieView's oth
 trace, the photodiode channels, the wavelength channels such as ``720nm``) carry no ``PatchclampDevice`` and
 are recorded in volts; they are analog monitors rather than intracellular data, and the interface refuses them.
 
+Beside each cycle PrairieView also writes a ``VoltageOutput`` XML, the protocol it played on its output lines.
+Name the waveform that drives the amplifier with ``stimulus_command`` and its command is drawn from that
+protocol and written as the stimulus. To see which waveforms a cycle enabled:
+
+.. code-block:: python
+
+    >>> from neuroconv.datainterfaces import BrukerVoltageRecordingInterface
+    >>>
+    >>> file_path = f"{ECEPHY_DATA_PATH}/bruker/voltage_recording/current_clamp/divisor_0_01/cell1-001_Cycle00001_VoltageRecording_001.csv"
+    >>> BrukerVoltageRecordingInterface.get_command_names(file_path=file_path)
+    ['700B']
+    >>> interface = BrukerVoltageRecordingInterface(file_paths=[file_path], stimulus_command="700B")
+
+The command is drawn at the protocol's update rate over the span of the protocol, so it can end before or after
+the recording. It is what PrairieView sent to the amplifier, which adds it to any holding level set on the
+amplifier itself; PrairieView does not record that level.
+
 The interface writes one continuous ``PatchClampSeries`` per electrode, with each cycle placed at its own
 start time so the dead time between cycles survives as a gap, and records each cycle through the NWB
 ``IntracellularRecordings`` table. It stops there: the upper icephys hierarchy tables and the per-sweep time
@@ -87,9 +104,8 @@ arguments. Runs sharing a ``repetition`` label are grouped into one ``Repetition
 the same protocol), and repetitions sharing a ``condition`` label are grouped into one
 ``ExperimentalConditions`` entry (a drug wash-in versus control, say).
 
-PrairieView records no protocol section, so there is nothing to derive a stimulus from and no stimulus series
-is written. Pass ``stimulus_type`` if you want the run described (``"somatic excitability"``, for instance);
-left out, the column is omitted rather than filled with a placeholder.
+Pass ``stimulus_type`` if you want the run described (``"somatic excitability"``, for instance); left out, the
+column is omitted rather than filled with a placeholder.
 
 .. code-block:: python
 
