@@ -10,7 +10,7 @@ sweep. One interface instance corresponds to one electrode, and you give it that
 
     >>> from neuroconv.datainterfaces import BrukerVoltageRecordingInterface
     >>>
-    >>> folder_path = f"{ECEPHY_DATA_PATH}/bruker/voltage_recording/cc_01_cell1-001"
+    >>> folder_path = f"{ECEPHY_DATA_PATH}/bruker/voltage_recording/current_clamp/divisor_0_01"
     >>> interface = BrukerVoltageRecordingInterface(
     ...     file_paths=[f"{folder_path}/cell1-001_Cycle00001_VoltageRecording_001.csv"],
     ... )
@@ -32,7 +32,7 @@ so gathering the cycles of one cell is left to your conversion script:
     >>> from pathlib import Path
     >>> from neuroconv.datainterfaces import BrukerVoltageRecordingInterface
     >>>
-    >>> folder_path = Path(f"{ECEPHY_DATA_PATH}/bruker/voltage_recording/cc_01_cell1-001")
+    >>> folder_path = Path(f"{ECEPHY_DATA_PATH}/bruker/voltage_recording/current_clamp/divisor_0_01")
     >>> cycles = sorted(folder_path.glob("*_VoltageRecording_*.csv"))
     >>> interface = BrukerVoltageRecordingInterface(file_paths=cycles)
 
@@ -58,7 +58,7 @@ what a cycle recorded:
 
     >>> from neuroconv.datainterfaces import BrukerVoltageRecordingInterface
     >>>
-    >>> file_path = f"{ECEPHY_DATA_PATH}/bruker/voltage_recording/cc_01_cell1-001/cell1-001_Cycle00001_VoltageRecording_001.csv"
+    >>> file_path = f"{ECEPHY_DATA_PATH}/bruker/voltage_recording/current_clamp/divisor_0_01/cell1-001_Cycle00001_VoltageRecording_001.csv"
     >>> BrukerVoltageRecordingInterface.get_signal_names(file_path=file_path)
     ['Primary']
 
@@ -100,11 +100,11 @@ left out, the column is omitted rather than filled with a placeholder.
     >>>
     >>> # One interface per electrode; here two cells, each with its own cycles.
     >>> first_cell = BrukerVoltageRecordingInterface(
-    ...     file_paths=[f"{data_path}/cc_03_cell2-020/cell2-020_Cycle00001_VoltageRecording_001.csv"],
+    ...     file_paths=[f"{data_path}/current_clamp/five_digit_fractional_seconds/cell2-020_Cycle00001_VoltageRecording_001.csv"],
     ...     stimulus_type="somatic excitability",
     ... )
     >>> second_cell = BrukerVoltageRecordingInterface(
-    ...     file_paths=[f"{data_path}/cc_05_cell1-001_2016/cell1-001_Cycle00001_VoltageRecording_001.csv"],
+    ...     file_paths=[f"{data_path}/current_clamp/divisor_0_01/cell1-001_Cycle00001_VoltageRecording_001.csv"],
     ...     stimulus_type="somatic excitability",
     ... )
     >>> converter = BrukerVoltageRecordingConverter(
