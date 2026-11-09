@@ -12,6 +12,7 @@ from .mock_ttl_signals import generate_mock_ttl_signal
 from ...basedatainterface import BaseDataInterface
 from ...basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from ...datainterfaces import SpikeGLXNIDQInterface
+from ...datainterfaces.behavior.audio.audiointerface import AudioInterface
 from ...datainterfaces.behavior.baseposeestimationinterface import (
     BasePoseEstimationInterface,
 )
@@ -1617,6 +1618,66 @@ class MockExternalVideoInterface(ExternalVideoInterface):
     def _get_first_frame_time(self, *, file_index: int) -> float:
         """Return zero, the first frame time of most containers, so placing a file opens nothing."""
         return 0.0
+
+
+class MockAudioInterface(AudioInterface):
+    """
+    A mock audio interface for testing purposes.
+
+    Overrides what the WAV file holds: the sampling rate and the number of samples are constructor arguments and
+    the samples are zeros, so a test can compose audio of any length into a conversion without a file on disk.
+    Everything else runs the real interface's course.
+
+    The path does not have to exist and deliberately does not resolve.
+    """
+
+    display_name = "Mock Audio"
+    keywords = ("sound", "microphone", "mock")
+    associated_suffixes = ()
+    info = "Mock interface for audio data testing."
+
+    def __init__(
+        self,
+        file_path: str | None = None,
+        *,
+        num_samples: int = 1000,
+        sampling_rate: float = 1000.0,
+        metadata_key: str | None = None,
+        verbose: bool = False,
+    ):
+        """
+        Initialize a mock audio interface.
+
+        Parameters
+        ----------
+        file_path : str, optional
+            The path the interface is given; it does not have to exist. Defaults to ``"mock_audio.wav"``.
+        num_samples : int, default: 1000
+            The number of samples the file holds.
+        sampling_rate : float, default: 1000.0
+            The sampling rate of the file, in Hz.
+        metadata_key : str, optional
+            Snake_case key identifying this recording's entry under ``metadata["Audio"]["AcousticWaveformSeries"]``.
+            Defaults to the stem-based key of the parent interface.
+        verbose : bool, default: False
+            If True, display verbose output.
+        """
+        file_path = Path(file_path or "mock_audio.wav")
+        # AudioInterface.__init__ is wrapped by pydantic's validate_call, whose FilePath refuses a path that does
+        # not exist; the undecorated function kept at __wrapped__ lets this interface stand up with nothing behind
+        # its path.
+        AudioInterface.__init__.__wrapped__(self, file_path=file_path, metadata_key=metadata_key, verbose=verbose)
+        self._num_samples = num_samples
+        self._sampling_rate = sampling_rate
+
+    def get_metadata(self) -> DeepDict:
+        metadata = super().get_metadata()
+        metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
+        return metadata
+
+    def _read_acoustic_series(self, file_path) -> tuple[float, np.ndarray]:
+        """Return zeros of the mock's length in place of the file's samples."""
+        return self._sampling_rate, np.zeros(self._num_samples, dtype="int16")
 
 
 class MockIcephysInterface(BaseIcephysInterface):
