@@ -1643,7 +1643,7 @@ class MockIcephysInterface(BaseIcephysInterface):
         sampling_frequency: float = 10_000.0,
         inter_sweep_interval: float = 0.0,
         starting_time: float = 0.0,
-        sequence: str = "run",
+        protocol_run: str = "run",
         stimulus_type: str | None = "mock protocol",
         repetition: str | None = None,
         condition: str | None = None,
@@ -1671,9 +1671,9 @@ class MockIcephysInterface(BaseIcephysInterface):
             them irregular, so it is written with explicit timestamps instead (the rule a real interface uses).
         starting_time : float, default: 0.0
             Time of the first sample, in seconds.
-        sequence : str, default: "run"
-            Run identity written to the ``sequence`` column of every row, the label that groups the rows into
-            one sequential recording.
+        protocol_run : str, default: "run"
+            Label written to the ``protocol_run`` column of every row, which groups the rows into one sequential
+            recording.
         stimulus_type : str, optional, default: "mock protocol"
             Value of the ``stimulus_type`` column, carried up to the sequential recording when aggregated. Pass
             ``None`` to omit the column, as an interface whose format describes no stimulus does.
@@ -1702,7 +1702,7 @@ class MockIcephysInterface(BaseIcephysInterface):
         self.sampling_frequency = sampling_frequency
         self.inter_sweep_interval = inter_sweep_interval
         self.starting_time = starting_time
-        self._run_identity = sequence
+        self._run_identity = protocol_run
         self.stimulus_type = stimulus_type
         self._repetition = repetition
         self._condition = condition

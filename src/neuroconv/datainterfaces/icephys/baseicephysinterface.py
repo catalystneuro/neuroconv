@@ -86,7 +86,7 @@ class BaseIcephysInterface(BaseDataInterface):
             stimulus_series=stimulus_series,
             stimulus_sweep_sample_ranges=stimulus_sweep_sample_ranges,
             sweep_sample_ranges=sweep_sample_ranges,
-            sequence=self._run_identity,
+            protocol_run=self._run_identity,
             stimulus_type=self._get_stimulus_type(),
             repetition=self._repetition,
             condition=self._condition,

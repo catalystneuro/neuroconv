@@ -165,7 +165,7 @@ class BrukerVoltageRecordingInterface(BaseIcephysInterface):
         # converter combining electrodes reads it to place them all against the earliest of the set.
         self._recording_start_datetime = min(header.start_datetime for header in self._cycle_headers)
 
-        # The run identity: the handle `sequence` and the electrode / series keys derive from. Defaults to the
+        # The run identity: the handle `protocol_run` and the electrode / series keys derive from. Defaults to the
         # acquisition stem the cycles share, which PrairieView writes into the XML's `DataFile`; a converter
         # combining electrodes overrides it with a disambiguated label, since that stem collides across
         # session folders. It is a label, not a claim about which cell this is.
