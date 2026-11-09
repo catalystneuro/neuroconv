@@ -350,3 +350,30 @@ class _TemporalAlignment:
                 reference_sync_times=reference_sync_times,
                 interpolation_function=interpolation_function,
             )
+
+
+class _ConverterTemporalAlignment:
+    """The alignment surface of a converter, exposed as ``converter.temporal_alignment``.
+
+    Names the converter's children by their names in ``data_interface_objects``. ``temporal_alignment[name]`` is
+    the child's own ``temporal_alignment``, so indexing again reaches a time-bearing object of an interface or a
+    child of a nested converter. It holds no timing state of its own.
+    """
+
+    def __init__(self, *, data_interface_objects: dict):
+        self._data_interface_objects = data_interface_objects
+
+    def keys(self) -> tuple[str, ...]:
+        """The children of this converter that have temporal alignment."""
+        return tuple(
+            name for name, child in self._data_interface_objects.items() if hasattr(child, "temporal_alignment")
+        )
+
+    def __getitem__(self, name: str) -> "_TemporalAlignment | _ConverterTemporalAlignment":
+        if name not in self._data_interface_objects:
+            named = ", ".join(repr(child_name) for child_name in self._data_interface_objects) or "nothing"
+            raise KeyError(f"{name!r} is not a child of this converter. It holds {named}.")
+        child = self._data_interface_objects[name]
+        if not hasattr(child, "temporal_alignment"):
+            raise KeyError(f"{name!r} is a {type(child).__name__}, which has no temporal alignment.")
+        return child.temporal_alignment

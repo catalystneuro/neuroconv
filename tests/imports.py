@@ -35,6 +35,7 @@ class TestImportStructure(TestCase):
             "basetemporalalignmentinterface",
             "baseextractorinterface",
             "nwbconverter",
+            "_temporal_alignment",  # Attached to namespace by NWBConverter import
             "tools",  # Attached to namespace by NWBConverter import
             "utils",  # Attached to namespace by NWBconverter import
             # Exposed attributes
