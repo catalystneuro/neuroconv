@@ -218,6 +218,7 @@ For an imaging interface with ``metadata_key="visual_cortex"``:
 For a segmentation interface with ``metadata_key="suite2p_analysis"``:
 
 - ``metadata["Ophys"]["PlaneSegmentations"]["suite2p_analysis"]`` - Direct lookup via ``metadata_key``
+- ``metadata["Ophys"]["SegmentationTables"][segmentation_table_metadata_key]`` - Optional, resolved via ``segmentation_table_metadata_key`` inside the PlaneSegmentation entry when several segmentations share one table
 - ``metadata["Ophys"]["RoiResponses"]["suite2p_analysis"]`` - Direct lookup via the same ``metadata_key``
 - ``metadata["Ophys"]["ImagingPlanes"][imaging_plane_metadata_key]`` - Resolved via ``imaging_plane_metadata_key`` inside the PlaneSegmentation entry
 - ``metadata["Devices"][device_metadata_key]`` - Resolved via ``device_metadata_key`` inside the ImagingPlane entry
@@ -228,6 +229,38 @@ which is what ``get_metadata()`` produces by default. But the indirection throug
 fields allows different components to reference shared resources. For example, two segmentation
 pipelines can point their ``imaging_plane_metadata_key`` to the same ImagingPlane entry, and two
 imaging planes can point their ``device_metadata_key`` to the same Device entry.
+
+
+Several Segmentations in One PlaneSegmentation
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Each segmentation interface writes its own PlaneSegmentation by default, named by its
+``PlaneSegmentations`` entry. When the ROIs of several interfaces belong in one table, for example one
+line-scan interface per scan line and one table per indicator, the table is declared once in
+``metadata["Ophys"]["SegmentationTables"]`` and each interface's ``PlaneSegmentations`` entry points
+at it with ``segmentation_table_metadata_key``. Units tables (``units_table_metadata_key`` and
+``UnitsTables``) and events tables (``table_metadata_key`` and ``EventTables``) are shared the same way.
+
+.. code-block:: python
+
+    metadata["Ophys"]["SegmentationTables"] = {
+        "alexa_568": {"name": "PlaneSegmentationAlexa568", "description": "One ROI per scan line."},
+    }
+    metadata["Ophys"]["PlaneSegmentations"]["line_1"]["segmentation_table_metadata_key"] = "alexa_568"
+    metadata["Ophys"]["PlaneSegmentations"]["line_2"]["segmentation_table_metadata_key"] = "alexa_568"
+
+The table entry gives the name and description, so they do not depend on which interface writes first. It
+must give a name, and two table entries with the same name raise. A ``PlaneSegmentations`` entry that
+names no table writes a table of its own, and its write raises when a PlaneSegmentation of that name is
+already in the file.
+
+The first interface creates the table and the others append to it. An ROI whose name is not in the table
+yet is appended with an id after the table's last one. An ROI whose name is already there reuses that row
+when its mask and its ROI properties are equal to the row's, which lets interfaces with the same ROIs, such
+as two channels, write their traces against one table, and raises when either differs, since a reused row
+holds one value per column. The interfaces sharing a table must link the
+same imaging plane, hold the same mask type, and carry the same ROI properties, since each property is a
+column.
 
 
 Single ImageSegmentation Container

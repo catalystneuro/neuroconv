@@ -17,6 +17,7 @@ from neuroconv.tools.testing import (
 )
 
 
+# TODO: remove in v0.13.0, when the deprecated `CsvTimeIntervalsInterface` alignment methods these tests use are removed
 class TestNIDQInterfacePulseTimesAlignment(TestCase):
     @classmethod
     def setUpClass(cls):
@@ -225,6 +226,7 @@ class TestNIDQInterfacePulseTimesAlignment(TestCase):
         self.assertNWBFileTimesAligned(nwbfile_path=nwbfile_path)
 
 
+# TODO: remove in v0.13.0, when the deprecated `CsvTimeIntervalsInterface` alignment methods these tests use are removed
 class TestExternalPulseTimesAlignment(TestNIDQInterfacePulseTimesAlignment):
     """
     This test case is less about ensuring the functionality (which is identical to above) and more about depicting
@@ -394,6 +396,7 @@ class TestExternalPulseTimesAlignment(TestNIDQInterfacePulseTimesAlignment):
         self.assertNWBFileTimesAligned(nwbfile_path=nwbfile_path)
 
 
+# TODO: remove in v0.13.0, when the deprecated `CsvTimeIntervalsInterface` alignment methods these tests use are removed
 class TestNIDQInterfaceOnSignalAlignment(TestNIDQInterfacePulseTimesAlignment):
     @classmethod
     def setUpClass(cls):

@@ -100,6 +100,11 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
         if not saved_files_are_split:
             _warn_if_split_siblings_detected(self.file_path, interface_name="IntanRecordingInterface")
 
+        # ``metadata_key`` is a snake_case dict handle, not the series name. Intan is single-stream, so the
+        # default is a constant; conversions that combine several sources pass their own.
+        if metadata_key is None:
+            metadata_key = "intan_recording"
+
         init_kwargs = dict(
             file_path=self.file_path,
             verbose=verbose,
@@ -109,11 +114,6 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
         )
 
         super().__init__(**init_kwargs)
-
-        # ``metadata_key`` is a snake_case dict handle, not the series name. Intan is single-stream, so the
-        # default is a constant; conversions that combine several sources pass their own.
-        if metadata_key is None:
-            self.metadata_key = "intan_recording"
 
         self._name_channel_groups_after_their_port()
 

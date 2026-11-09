@@ -28,7 +28,7 @@ from ._device_types import (
     _resolve_type,
 )
 from ._provenance import describe_source_script
-from ..external_resources import validate_species
+from ..external_resources import add_external_resources_to_nwbfile
 from ...utils.dict import DeepDict, load_dict_from_file
 from ...utils.json_schema import _validate_device_registry_names, validate_metadata
 
@@ -197,12 +197,6 @@ def make_nwbfile_from_metadata(metadata: dict) -> NWBFile:
     schema_path = Path(__file__).resolve().parent.parent.parent / "schemas" / "base_metadata_schema.json"
     base_metadata_schema = load_dict_from_file(file_path=schema_path)
     assert metadata is not None, "Metadata is required to create an NWBFile but metadata=None was passed."
-
-    # Recommend a standardized species term (non-blocking). Runs before schema validation so
-    # that common names (e.g. "mouse") surface a helpful suggestion even though the schema's
-    # binomial pattern will subsequently reject them.
-    if isinstance(metadata.get("Subject"), dict):
-        validate_species(metadata["Subject"].get("species"))
 
     validate_metadata(metadata=metadata, schema=base_metadata_schema)
 
@@ -703,6 +697,7 @@ def configure_and_write_nwbfile(
     nwbfile_path: FilePath | None = None,
     backend: Literal["hdf5", "zarr"] | None = None,
     backend_configuration: BackendConfiguration | None = None,
+    metadata: dict | None = None,
 ) -> None:
     """
     Write an NWB file using a specific backend or backend configuration.
@@ -725,6 +720,10 @@ def configure_and_write_nwbfile(
     backend_configuration: BackendConfiguration, optional
         Specifies the backend type and the chunking and compression parameters of each dataset. If no
         ``backend_configuration`` is specified, the default configuration for the specified ``backend`` is used.
+    metadata: dict, optional
+        Conversion metadata.  Only ``metadata["ExternalResources"]`` is read: its terms are written into the file as HERD
+        references before the backend is configured, see
+        :py:func:`~neuroconv.tools.external_resources.add_external_resources_to_nwbfile`.
     """
 
     if nwbfile_path is None:
@@ -735,6 +734,9 @@ def configure_and_write_nwbfile(
             "Both `backend` and `backend_configuration` were specified and are conflicting. "
             f"{backend=}, {backend_configuration.backend=}."
         )
+
+    # Before the backend configuration, so the HERD tables are configured like everything else.
+    add_external_resources_to_nwbfile(nwbfile, metadata=metadata)
 
     if backend_configuration is None:
         backend_configuration = get_default_backend_configuration(nwbfile, backend=backend or "hdf5")

@@ -24,7 +24,7 @@ class TestEthoVisionTrackAndManualScoring(DataInterfaceTestMixin):
     file_path = ETHOVISION_FOLDER_PATH / "excel/single_arena_single_subject/track_and_manual_scoring/two_c57.xlsx"
     interface_kwargs = dict(file_path=file_path)
     data_interface_cls = EthoVisionTrackInterface
-    expected_alignment_keys = ("ethovision_arena_1_subject_1",)
+    expected_temporal_alignment_keys = ("ethovision_arena_1_subject_1",)
     save_directory = OUTPUT_PATH
 
     expected_session_start_time = datetime(2022, 1, 25, 19, 38, 10)
@@ -96,7 +96,7 @@ class TestEthoVisionMissingSamples(DataInterfaceTestMixin):
         subject_name="Subject 1",
     )
     data_interface_cls = EthoVisionTrackInterface
-    expected_alignment_keys = ("ethovision_rat_arena_1a_subject_1",)
+    expected_temporal_alignment_keys = ("ethovision_rat_arena_1a_subject_1",)
     save_directory = OUTPUT_PATH
 
     expected_session_start_time = datetime(2023, 3, 22, 14, 30, 22, 300000)
@@ -152,7 +152,7 @@ class TestEthoVisionCommaDelimitedTxt(DataInterfaceTestMixin):
     file_path = ETHOVISION_FOLDER_PATH / "txt/single_arena_single_subject/comma_delimited/morris_water_maze.txt"
     interface_kwargs = dict(file_path=file_path)
     data_interface_cls = EthoVisionTrackInterface
-    expected_alignment_keys = ("ethovision_arena_1_subject_1",)
+    expected_temporal_alignment_keys = ("ethovision_arena_1_subject_1",)
     save_directory = OUTPUT_PATH
 
     expected_session_start_time = datetime(2016, 2, 8, 11, 3, 52, 355000)
@@ -206,7 +206,7 @@ class TestEthoVisionUtf16Txt(DataInterfaceTestMixin):
     file_path = ETHOVISION_FOLDER_PATH / "txt/single_arena_single_subject/utf16_encoded/track.txt"
     interface_kwargs = dict(file_path=file_path)
     data_interface_cls = EthoVisionTrackInterface
-    expected_alignment_keys = ("ethovision_arena_1_subject_1",)
+    expected_temporal_alignment_keys = ("ethovision_arena_1_subject_1",)
     save_directory = OUTPUT_PATH
 
     expected_session_start_time = datetime(2017, 4, 11, 16, 22, 36, 333000)
@@ -243,7 +243,7 @@ class TestEthoVisionDecimalCommaHeaderTxt(DataInterfaceTestMixin):
     file_path = ETHOVISION_FOLDER_PATH / "txt/single_arena_single_subject/track_only/termites.txt"
     interface_kwargs = dict(file_path=file_path)
     data_interface_cls = EthoVisionTrackInterface
-    expected_alignment_keys = ("ethovision_arena_2_subject_1",)
+    expected_temporal_alignment_keys = ("ethovision_arena_2_subject_1",)
     save_directory = OUTPUT_PATH
 
     expected_session_start_time = datetime(2015, 3, 17, 18, 52, 43, 200000)
@@ -295,7 +295,7 @@ class TestEthoVisionCustomMissingValueMarker(DataInterfaceTestMixin):
     )
     interface_kwargs = dict(file_path=file_path, missing_value_representation="NA")
     data_interface_cls = EthoVisionTrackInterface
-    expected_alignment_keys = ("ethovision_arena_1_subject_1",)
+    expected_temporal_alignment_keys = ("ethovision_arena_1_subject_1",)
     save_directory = OUTPUT_PATH
 
     expected_session_start_time = datetime(2022, 9, 3, 16, 30, 44, 40000)
@@ -356,7 +356,7 @@ class TestEthoVisionUndetectedSubject(DataInterfaceTestMixin):
     )
     interface_kwargs = dict(file_path=file_path, arena_name="Arena 1", subject_name="Subject 2")
     data_interface_cls = EthoVisionTrackInterface
-    expected_alignment_keys = ("ethovision_arena_1_subject_2",)
+    expected_temporal_alignment_keys = ("ethovision_arena_1_subject_2",)
     save_directory = OUTPUT_PATH
 
     expected_session_start_time = datetime(2020, 2, 18, 13, 58, 19, 640000)
@@ -399,7 +399,7 @@ class TestEthoVisionMultipleArenasOneSubjectEach(DataInterfaceTestMixin):
     )
     interface_kwargs = dict(file_path=file_path, arena_name="Arena 2", subject_name="Subject 1")
     data_interface_cls = EthoVisionTrackInterface
-    expected_alignment_keys = ("ethovision_arena_2_subject_1",)
+    expected_temporal_alignment_keys = ("ethovision_arena_2_subject_1",)
     save_directory = OUTPUT_PATH
 
     expected_session_start_time = datetime(2017, 10, 19, 13, 35, 57, 494000)
@@ -433,7 +433,7 @@ class TestEthoVisionMultipleArenasMultipleSubjects(DataInterfaceTestMixin):
     )
     interface_kwargs = dict(file_path=file_path, arena_name="Arena 2", subject_name="Subject 4")
     data_interface_cls = EthoVisionTrackInterface
-    expected_alignment_keys = ("ethovision_arena_2_subject_4",)
+    expected_temporal_alignment_keys = ("ethovision_arena_2_subject_4",)
     save_directory = OUTPUT_PATH
 
     expected_session_start_time = datetime(2017, 9, 14, 10, 36, 33)

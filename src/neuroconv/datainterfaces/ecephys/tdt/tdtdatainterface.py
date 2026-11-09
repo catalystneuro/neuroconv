@@ -58,6 +58,9 @@ class TdtRecordingInterface(BaseRecordingExtractorInterface):
         if stream_name is None:
             stream_names, _ = self.get_extractor_class().get_streams(folder_path=folder_path)
             stream_name = stream_names[0]
+        if metadata_key is None:
+            metadata_key = "tdt_recording"
+
         super().__init__(
             folder_path=folder_path,
             stream_name=stream_name,
@@ -66,9 +69,6 @@ class TdtRecordingInterface(BaseRecordingExtractorInterface):
             metadata_key=metadata_key,
             gain=gain,
         )
-
-        if metadata_key is None:
-            self.metadata_key = "tdt_recording"
 
         # Fix channel name format
         channel_names = self.recording_extractor.get_property("channel_name")

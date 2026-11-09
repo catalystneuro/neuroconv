@@ -89,12 +89,12 @@ class Spike2RecordingInterface(BaseRecordingExtractorInterface):
         _test_sonpy_installation()
 
         stream_id = "1" if Path(file_path).suffix == ".smr" else None
+        if metadata_key is None:
+            metadata_key = "spike2_recording"
+
         super().__init__(
             file_path=file_path, stream_id=stream_id, verbose=verbose, es_key=es_key, metadata_key=metadata_key
         )
-
-        if metadata_key is None:
-            self.metadata_key = "spike2_recording"
 
         # Subset raw channel properties
         signal_channels = self.recording_extractor.neo_reader.header["signal_channels"]

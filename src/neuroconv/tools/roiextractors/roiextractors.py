@@ -357,9 +357,12 @@ def _add_photon_series_to_nwbfile(
     *,
     imaging: ImagingExtractor,
     nwbfile: NWBFile,
-    metadata: dict,
+    metadata: dict | None,
     photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"],
-    metadata_key: str,
+    metadata_key: str | None,
+    photon_series_index: int,
+    timestamps: np.ndarray | None,
+    starting_time: float | None,
     parent_container: Literal["acquisition", "processing/ophys"] = "acquisition",
     iterator_type: str | None = "v2",
     iterator_options: dict | None = None,
@@ -378,12 +381,16 @@ def _add_photon_series_to_nwbfile(
         The imaging extractor to get the data from.
     nwbfile : NWBFile
         The NWB file to add the photon series to.
-    metadata : dict
-        The full metadata dictionary with dict-based format.
+    metadata : dict or None
+        The full metadata dictionary. Old list-based metadata is translated, and None writes default metadata.
     photon_series_type : {'OnePhotonSeries', 'TwoPhotonSeries'}
         The NWB type of photon series to create.
-    metadata_key : str
+    metadata_key : str or None
         The key in ``metadata["Ophys"]["MicroscopySeries"]`` identifying the series.
+    timestamps : numpy.ndarray or None
+        One time per sample, or None when the times are ``starting_time`` at the sampling frequency.
+    starting_time : float or None
+        The time of the first sample when ``timestamps`` is None.
     parent_container : {'acquisition', 'processing/ophys'}, optional
         The container where the photon series is added, default is nwbfile.acquisition.
     iterator_type : str, default: 'v2'
@@ -397,6 +404,44 @@ def _add_photon_series_to_nwbfile(
     NWBFile
         The NWBFile passed as an input with the photon series added.
     """
+    metadata_was_passed = metadata is not None
+    if metadata is None:
+        metadata = _get_ophys_metadata_placeholders()
+
+    # Old-shaped metadata is converted here, before the series is built, so everything below sees one format.
+    # The old format addresses a series by position in ``Ophys[photon_series_type]`` and the new one by key, so
+    # the entry this call writes is named here and handed to the translator; when the caller gave no key, the
+    # series' own name becomes it.
+    ophys_metadata = metadata.get("Ophys", {})
+    if isinstance(ophys_metadata, dict) and _ophys_block_is_old(ophys_metadata):
+        series_list = ophys_metadata.get(photon_series_type, [])
+        if metadata_key is None and photon_series_index < len(series_list):
+            metadata_key = series_list[photon_series_index].get("name")
+        metadata = _translate_old_metadata(
+            metadata,
+            metadata_key=metadata_key,
+            photon_series_type=photon_series_type,
+            photon_series_index=photon_series_index,
+        )
+
+    # Ask whether the caller's metadata carries keyed ``MicroscopySeries`` entries rather than whether it looks
+    # dict-based anywhere, as ``add_recording_to_nwbfile`` does: a converter hands every interface one
+    # dictionary, and another interface's block says nothing about this one.
+    registry_metadata = metadata.get("Ophys", {}).get("MicroscopySeries", {})
+    has_keyed_entries = isinstance(registry_metadata, dict) and any(
+        isinstance(entry, dict) for entry in registry_metadata.values()
+    )
+    if metadata_was_passed and metadata_key is None and has_keyed_entries:
+        warnings.warn(
+            "Metadata was passed but no `metadata_key` was provided. `metadata_key` selects which "
+            "`metadata['Ophys']['MicroscopySeries']` entry to write, and it will be required whenever metadata "
+            "is passed starting in v0.13.0. Pass it explicitly, for example `metadata_key='my_metadata_key'`, "
+            "or pass no metadata at all to write with default metadata.",
+            FutureWarning,
+            stacklevel=3,
+        )
+    metadata_key = metadata_key or "default_metadata_key"
+
     iterator_options = iterator_options or dict()
 
     _validate_metadata_key(metadata, metadata_path=("Ophys", "MicroscopySeries"), metadata_key=metadata_key)
@@ -435,7 +480,11 @@ def _add_photon_series_to_nwbfile(
 
     # Add dimension if not in metadata
     if "dimension" not in photon_series_kwargs:
-        photon_series_kwargs["dimension"] = imaging.get_sample_shape()
+        # roiextractors sample shapes are (rows, columns[, planes]); NWB lists them (columns, rows[, planes])
+        # TODO: write rows first if core adopts that order, see
+        # https://github.com/NeurodataWithoutBorders/nwb-schema/issues/660
+        num_rows, num_columns, *num_planes = imaging.get_sample_shape()
+        photon_series_kwargs["dimension"] = [num_columns, num_rows, *num_planes]
 
     # Add data iterator
     imaging_extractor_iterator = _imaging_frames_to_hdmf_iterator(
@@ -446,16 +495,11 @@ def _add_photon_series_to_nwbfile(
     photon_series_kwargs["data"] = imaging_extractor_iterator
 
     if always_write_timestamps:
-        timestamps = imaging.get_timestamps()
+        # Built from the given start and not from the extractor, whose own times carry no alignment
+        if timestamps is None:
+            timestamps = starting_time + np.arange(imaging.get_num_samples()) / imaging.get_sampling_frequency()
         photon_series_kwargs.update(timestamps=timestamps)
     else:
-        # Resolve timestamps: user-set > native hardware > none
-        timestamps_were_set = imaging.has_time_vector()
-        if timestamps_were_set:
-            timestamps = imaging.get_timestamps()
-        else:
-            timestamps = imaging.get_native_timestamps()
-
         timestamps_are_available = timestamps is not None
 
         if timestamps_are_available:
@@ -465,7 +509,6 @@ def _add_photon_series_to_nwbfile(
         else:
             rate = float(imaging.get_sampling_frequency())
             timestamps_are_regular = True
-            starting_time = 0.0
 
         if timestamps_are_regular:
             photon_series_kwargs.update(rate=rate, starting_time=starting_time)
@@ -484,6 +527,137 @@ def _add_photon_series_to_nwbfile(
         ophys_module.add(photon_series)
 
     return nwbfile
+
+
+def _get_segmentation_table_entry(*, metadata: dict, metadata_key: str) -> dict | None:
+    """Return the shared table a segmentation writes into, or None when it writes a table of its own.
+
+    A segmentation joins a table that several segmentations share by naming its key in
+    ``metadata["Ophys"]["SegmentationTables"]`` through ``segmentation_table_metadata_key`` in its
+    ``PlaneSegmentations`` entry. The table's entry gives the name and description. The name is the table's
+    identity and the keys are handles, so two table entries giving one name raise.
+    """
+    ophys_metadata = metadata["Ophys"]
+    segmentation_tables = ophys_metadata.get("SegmentationTables", {})
+    table_metadata_keys_by_name = {}
+    for key, entry in segmentation_tables.items():
+        name = entry.get("name")
+        if name is None:
+            continue
+        if name in table_metadata_keys_by_name:
+            first_key = table_metadata_keys_by_name[name]
+            raise ValueError(
+                f"metadata['Ophys']['SegmentationTables'] keys '{first_key}' and '{key}' both use the name "
+                f"'{name}'.\n"
+                "For two tables, give each its own name:\n"
+                f"    metadata['Ophys']['SegmentationTables']['{key}']['name'] = '<another name>'\n"
+                "For one table shared by several segmentations, declare it under one key and point each "
+                "segmentation's entry at that key:\n"
+                f"    metadata['Ophys']['SegmentationTables'] = {{'{first_key}': {{'name': '{name}'}}}}\n"
+                "    metadata['Ophys']['PlaneSegmentations']['<segmentation key>']['segmentation_table_metadata_key'] "
+                f"= '{first_key}'"
+            )
+        table_metadata_keys_by_name[name] = key
+
+    table_metadata_key = ophys_metadata["PlaneSegmentations"][metadata_key].get("segmentation_table_metadata_key")
+    if table_metadata_key is None:
+        return None
+    return segmentation_tables[table_metadata_key]
+
+
+def _append_rois_to_plane_segmentation(
+    *,
+    segmentation_extractor: SegmentationExtractor,
+    plane_segmentation: PlaneSegmentation,
+    imaging_plane: ImagingPlane,
+    mask_type: str,
+    image_or_pixel_masks,
+    metadata_key: str,
+) -> None:
+    """Append a segmentation's ROIs to a PlaneSegmentation that another segmentation already wrote.
+
+    ROIs are matched to the rows already in the table by name. A new name is appended with an id after the
+    table's last one. A name already in the table reuses that row when the mask and the ROI properties are
+    equal, which is how segmentations of the same ROIs, such as two channels, write their traces against one
+    table, and raises when either differs.
+    """
+    entry_reference = f"metadata['Ophys']['PlaneSegmentations']['{metadata_key}']"
+    table_name = plane_segmentation.name
+
+    if plane_segmentation.imaging_plane is not imaging_plane:
+        raise ValueError(
+            f"{entry_reference} links the imaging plane '{imaging_plane.name}', but the PlaneSegmentation "
+            f"'{table_name}' it writes into links '{plane_segmentation.imaging_plane.name}'. A PlaneSegmentation "
+            "links one imaging plane, so the segmentations sharing it must link the same one."
+        )
+
+    mask_column_names = ("image_mask", "pixel_mask", "voxel_mask")
+    mask_column = f"{mask_type}_mask"
+    if mask_column not in plane_segmentation.colnames:
+        table_mask_column = next(name for name in mask_column_names if name in plane_segmentation.colnames)
+        raise ValueError(
+            f"The segmentation of {entry_reference} has {mask_type} masks, but the PlaneSegmentation "
+            f"'{table_name}' it writes into holds {table_mask_column.replace('_', ' ')}s. A PlaneSegmentation "
+            "holds one mask type."
+        )
+
+    # TODO: null-fill the columns a segmentation lacks, as the electrodes and units tables do, instead of raising.
+    property_keys = list(segmentation_extractor.get_property_keys())
+    table_property_columns = [
+        name for name in plane_segmentation.colnames if name != "roi_name" and name not in mask_column_names
+    ]
+    if set(property_keys) != set(table_property_columns):
+        raise ValueError(
+            f"The segmentation of {entry_reference} carries the ROI properties {sorted(property_keys)}, but the "
+            f"PlaneSegmentation '{table_name}' it writes into has the columns {sorted(table_property_columns)}. "
+            "Each property is a column, so the segmentations sharing a PlaneSegmentation must carry the same ones."
+        )
+
+    roi_ids = segmentation_extractor.get_roi_ids()
+    property_values = {key: segmentation_extractor.get_property(key=key, ids=roi_ids) for key in property_keys}
+    row_by_roi_name = {roi_name: row for row, roi_name in enumerate(plane_segmentation["roi_name"].data)}
+    next_id = max(plane_segmentation.id.data) + 1
+    # roiextractors image masks are (rows, columns, rois); NWB lists them (rois, columns, rows)
+    # TODO: write rows first if core adopts that order, see
+    # https://github.com/NeurodataWithoutBorders/nwb-schema/issues/660
+    image_mask_array = image_or_pixel_masks.T if mask_type == "image" else None
+
+    for roi_index, roi_id in enumerate(roi_ids):
+        roi_name = str(roi_id)
+        if mask_type == "image":
+            roi_mask = image_mask_array[roi_index]
+        else:
+            # roiextractors lists [row, column, ...]; NWB lists [column, row, ...]
+            # TODO: write rows first if core adopts that order, see
+            # https://github.com/NeurodataWithoutBorders/nwb-schema/issues/660
+            roi_mask = [(column, row, *rest) for row, column, *rest in image_or_pixel_masks[roi_index]]
+
+        if roi_name in row_by_roi_name:
+            row = row_by_roi_name[roi_name]
+            table_roi_mask = plane_segmentation[mask_column][row]
+            if not np.array_equal(np.asarray(table_roi_mask), np.asarray(roi_mask)):
+                raise ValueError(
+                    f"The ROI '{roi_name}' of {entry_reference} has a different mask from the ROI of that name "
+                    f"already in the PlaneSegmentation '{table_name}'. An ROI name already in the table is "
+                    "reused only for an equal mask, so different ROIs sharing a table need different names."
+                )
+            for key, values in property_values.items():
+                table_value = np.asarray(plane_segmentation[key][row])
+                value = np.asarray(values[roi_index])
+                equal_nan = table_value.dtype.kind in "fc" and value.dtype.kind in "fc"
+                if not np.array_equal(table_value, value, equal_nan=equal_nan):
+                    raise ValueError(
+                        f"The ROI '{roi_name}' of {entry_reference} has the '{key}' value {value}, but the ROI of "
+                        f"that name already in the PlaneSegmentation '{table_name}' has {table_value}. A reused row "
+                        "holds one value per column, so the segmentations sharing it must agree on its ROI "
+                        "properties. Write this segmentation into a PlaneSegmentation of its own, or make its ROI "
+                        "properties agree with the table's."
+                    )
+            continue
+
+        row_properties = {key: values[roi_index] for key, values in property_values.items()}
+        plane_segmentation.add_roi(id=next_id, roi_name=roi_name, **{mask_column: roi_mask}, **row_properties)
+        next_id += 1
 
 
 def _add_plane_segmentation_to_nwbfile(
@@ -519,6 +693,8 @@ def _add_plane_segmentation_to_nwbfile(
     """
     _validate_metadata_key(metadata, metadata_path=("Ophys", "PlaneSegmentations"), metadata_key=metadata_key)
     plane_seg_metadata = metadata["Ophys"]["PlaneSegmentations"][metadata_key].copy()
+    segmentation_table_entry = _get_segmentation_table_entry(metadata=metadata, metadata_key=metadata_key)
+    plane_seg_metadata.pop("segmentation_table_metadata_key", None)
 
     # Required by the NWB ``PlaneSegmentation`` object; default any the interface did not supply from the
     # central placeholder template. ``name`` is defaulted where the segmentation is built, which is also
@@ -526,6 +702,13 @@ def _add_plane_segmentation_to_nwbfile(
     # See ``_add_imaging_plane_to_nwbfile``.
     required_fields = ["description"]
     default_plane_seg = _get_ophys_metadata_placeholders()["Ophys"]["PlaneSegmentations"]["default_metadata_key"]
+    # A table several segmentations share takes its name and description from its own entry, so they do not
+    # depend on which segmentation writes first.
+    if segmentation_table_entry is not None:
+        plane_seg_metadata["name"] = segmentation_table_entry["name"]
+        plane_seg_metadata["description"] = segmentation_table_entry.get(
+            "description", default_plane_seg["description"]
+        )
     for field in required_fields:
         plane_seg_metadata.setdefault(field, default_plane_seg[field])
 
@@ -556,22 +739,24 @@ def _add_plane_segmentation_to_nwbfile(
         image_segmentation = ImageSegmentation(name=image_segmentation_name)
         ophys_module.add(image_segmentation)
 
-    # The name defaults to the neurodata type being written, as the photon series does. Reuse by name is
-    # how two interfaces deliberately share one segmentation, so it stays allowed for a name the caller
-    # stated; a name that was defaulted cannot express that intent, and reusing it would silently drop the
-    # second interface's ROIs, so it is an error instead.
-    name_was_defaulted = "name" not in plane_seg_metadata
+    # The name defaults to the neurodata type being written, as the photon series does. A segmentation writes
+    # into a PlaneSegmentation already in the file only when its entry names a shared table; otherwise the
+    # name is taken, and appending would mix two segmentations' ROIs in a table neither declared shared.
     plane_segmentation_name = plane_seg_metadata.setdefault("name", "PlaneSegmentation")
+    plane_segmentation_exists = plane_segmentation_name in image_segmentation.plane_segmentations
 
-    if plane_segmentation_name in image_segmentation.plane_segmentations:
-        if name_was_defaulted:
-            raise ValueError(
-                f"A PlaneSegmentation named '{plane_segmentation_name}' is already in the file, and "
-                f"metadata['Ophys']['PlaneSegmentations']['{metadata_key}'] does not name its own. Give it "
-                "a 'name' to write a second segmentation, or use 1 metadata key to share one."
-            )
-        # If PlaneSegmentation already exists, return early
-        return nwbfile
+    if plane_segmentation_exists and segmentation_table_entry is None:
+        raise ValueError(
+            f"A PlaneSegmentation named '{plane_segmentation_name}' is already in the file, and "
+            f"metadata['Ophys']['PlaneSegmentations']['{metadata_key}'] names no shared table.\n"
+            "For a table of its own, give the entry another name:\n"
+            f"    metadata['Ophys']['PlaneSegmentations']['{metadata_key}']['name'] = '<another name>'\n"
+            "For one table shared by several segmentations, declare it once and point each segmentation's entry "
+            "at its key:\n"
+            f"    metadata['Ophys']['SegmentationTables'] = {{'<table key>': {{'name': '{plane_segmentation_name}'}}}}\n"
+            "    metadata['Ophys']['PlaneSegmentations']['<segmentation key>']['segmentation_table_metadata_key'] "
+            "= '<table key>'"
+        )
 
     # Extract ROI data
     roi_ids = segmentation_extractor.get_roi_ids()
@@ -586,6 +771,17 @@ def _add_plane_segmentation_to_nwbfile(
     else:
         image_or_pixel_masks = segmentation_extractor.get_roi_pixel_masks()
 
+    if plane_segmentation_exists:
+        _append_rois_to_plane_segmentation(
+            segmentation_extractor=segmentation_extractor,
+            plane_segmentation=image_segmentation.plane_segmentations[plane_segmentation_name],
+            imaging_plane=imaging_plane,
+            mask_type=mask_type,
+            image_or_pixel_masks=image_or_pixel_masks,
+            metadata_key=metadata_key,
+        )
+        return nwbfile
+
     # Build PlaneSegmentation object
     plane_seg_metadata["imaging_plane"] = imaging_plane
     plane_segmentation = PlaneSegmentation(**plane_seg_metadata)
@@ -596,6 +792,9 @@ def _add_plane_segmentation_to_nwbfile(
     plane_segmentation.add_column(name="roi_name", description="The unique identifier for each ROI.")
 
     if mask_type == "image":
+        # roiextractors image masks are (rows, columns, rois); NWB lists them (rois, columns, rows)
+        # TODO: write rows first if core adopts that order, see
+        # https://github.com/NeurodataWithoutBorders/nwb-schema/issues/660
         image_mask_array = image_or_pixel_masks.T
         for roi_index, roi_name in zip(roi_indices, roi_names):
             image_mask = image_mask_array[roi_index]
@@ -605,7 +804,10 @@ def _add_plane_segmentation_to_nwbfile(
         pixel_masks = image_or_pixel_masks
         for roi_index, roi_name in zip(roi_indices, roi_names):
             pixel_mask = pixel_masks[roi_index]
-            pixel_mask_to_write = [tuple(x) for x in pixel_mask]
+            # roiextractors lists [row, column, ...]; NWB lists [column, row, ...]
+            # TODO: write rows first if core adopts that order, see
+            # https://github.com/NeurodataWithoutBorders/nwb-schema/issues/660
+            pixel_mask_to_write = [(column, row, *rest) for row, column, *rest in pixel_mask]
             plane_segmentation.add_roi(id=roi_index, roi_name=roi_name, **{mask_type_kwarg: pixel_mask_to_write})
 
     # Add all extractor properties as columns (acceptance, quality metrics, etc.). The quality metrics
@@ -648,6 +850,8 @@ def _add_roi_response_traces_to_nwbfile(
     nwbfile: NWBFile,
     metadata: dict,
     metadata_key: str,
+    timestamps: np.ndarray | None,
+    starting_time: float | None,
     iterator_options: dict | None = None,
 ) -> NWBFile:
     """
@@ -677,6 +881,10 @@ def _add_roi_response_traces_to_nwbfile(
     metadata_key : str
         The key used to look up both ``metadata["Ophys"]["RoiResponses"]`` and
         ``metadata["Ophys"]["PlaneSegmentations"]``.
+    timestamps : numpy.ndarray or None
+        One time per sample, or None when the times are ``starting_time`` at the sampling frequency.
+    starting_time : float or None
+        The time of the first sample when ``timestamps`` is None.
     iterator_options : dict, optional
         Options for the data chunk iterator.
 
@@ -747,11 +955,15 @@ def _add_roi_response_traces_to_nwbfile(
     if not traces_to_add:
         return nwbfile
 
-    # Resolve PlaneSegmentation via the same metadata_key, defaulting its name the same way the
-    # segmentation writer does.
+    # Resolve PlaneSegmentation via the same metadata_key, through its shared table when it names one, and
+    # defaulting its name the same way the segmentation writer does.
     _validate_metadata_key(metadata, metadata_path=("Ophys", "PlaneSegmentations"), metadata_key=metadata_key)
     plane_segmentation_metadata = metadata["Ophys"]["PlaneSegmentations"][metadata_key]
-    plane_segmentation_name = plane_segmentation_metadata.get("name", "PlaneSegmentation")
+    segmentation_table_entry = _get_segmentation_table_entry(metadata=metadata, metadata_key=metadata_key)
+    if segmentation_table_entry is not None:
+        plane_segmentation_name = segmentation_table_entry["name"]
+    else:
+        plane_segmentation_name = plane_segmentation_metadata.get("name", "PlaneSegmentation")
     ophys_module = get_module(nwbfile, "ophys", description="contains optical physiology processed data")
     image_segmentation = ophys_module["ImageSegmentation"]
     plane_segmentation = image_segmentation.plane_segmentations[plane_segmentation_name]
@@ -767,13 +979,6 @@ def _add_roi_response_traces_to_nwbfile(
         description=f"The ROIs for {imaging_plane_name}.",
     )
 
-    # Resolve timestamps
-    timestamps_were_set = segmentation_extractor.has_time_vector()
-    if timestamps_were_set:
-        timestamps = segmentation_extractor.get_timestamps()
-    else:
-        timestamps = segmentation_extractor.get_native_timestamps()
-
     timestamps_are_available = timestamps is not None
 
     if timestamps_are_available:
@@ -783,7 +988,6 @@ def _add_roi_response_traces_to_nwbfile(
     else:
         rate = float(segmentation_extractor.get_sampling_frequency())
         timestamps_are_regular = True
-        starting_time = 0.0
 
     # All traces go into a single Fluorescence container, matching the pattern from
     # ndx-microscopy (single MicroscopyResponseSeriesContainer) and avoiding the
@@ -925,7 +1129,9 @@ def _add_summary_images_to_nwbfile(
         if image_name in image_collection.images:
             continue
 
-        # NWB uses width x height (columns, rows); roiextractors uses height x width (rows, columns)
+        # roiextractors images are (rows, columns); NWB lists them (columns, rows)
+        # TODO: write rows first if core adopts that order, see
+        # https://github.com/NeurodataWithoutBorders/nwb-schema/issues/660
         image_collection.add_image(GrayscaleImage(name=image_name, data=img_data.T, description=image_description))
 
     return nwbfile
@@ -935,8 +1141,11 @@ def _add_segmentation_to_nwbfile(
     *,
     segmentation_extractor: SegmentationExtractor,
     nwbfile: NWBFile,
-    metadata: dict,
-    metadata_key: str,
+    metadata: dict | None,
+    metadata_key: str | None,
+    plane_segmentation_name: str | None,
+    timestamps: np.ndarray | None,
+    starting_time: float | None,
     iterator_options: dict | None = None,
 ) -> NWBFile:
     """
@@ -950,10 +1159,14 @@ def _add_segmentation_to_nwbfile(
         The segmentation extractor containing all segmentation data.
     nwbfile : NWBFile
         The NWB file to add segmentation data to.
-    metadata : dict
-        The full metadata dictionary with dict-based format.
-    metadata_key : str
+    metadata : dict or None
+        The full metadata dictionary. Old list-based metadata is translated, and None writes default metadata.
+    metadata_key : str or None
         The key used across ``PlaneSegmentations`` and ``RoiResponses``.
+    timestamps : numpy.ndarray or None
+        One time per sample of the traces, or None when the times are ``starting_time`` at the sampling frequency.
+    starting_time : float or None
+        The time of the first sample when ``timestamps`` is None.
     iterator_options : dict, optional
         Options for the data chunk iterator.
 
@@ -962,6 +1175,62 @@ def _add_segmentation_to_nwbfile(
     NWBFile
         The NWBFile with the added segmentation data.
     """
+    # Without this the writer either fails inside the mask handling with an AttributeError naming a
+    # private attribute or, where masks are absent, writes an imaging plane and an empty table that read
+    # as a successful conversion. See https://github.com/catalystneuro/neuroconv/issues/1401.
+    if not _segmentation_extractor_has_data(segmentation_extractor=segmentation_extractor):
+        raise ValueError(
+            f"{type(segmentation_extractor).__name__} contains no segmentation data: it reports 0 ROIs, "
+            "no traces and no summary images. This is usually an empty result from the segmentation "
+            "pipeline, or a file whose data is not where the format expected it. Writing it would produce "
+            "an NWB file holding an imaging plane, a device and an empty ROI table and nothing else, which "
+            "is indistinguishable from a successful conversion."
+        )
+
+    metadata_was_passed = metadata is not None
+    if metadata is None:
+        metadata = _get_ophys_metadata_placeholders()
+
+    # As in ``add_imaging_to_nwbfile``: the old format addresses a plane segmentation by name and the new
+    # one by key, so the entry this call writes is named here. Traces and summary images are keyed by the
+    # same handle, which is why the translator needs to know which name it is.
+    ophys_metadata = metadata.get("Ophys", {})
+    if isinstance(ophys_metadata, dict) and _ophys_block_is_old(ophys_metadata):
+        segmentation_list = ophys_metadata.get("ImageSegmentation", {}).get("plane_segmentations", [])
+        addressed_name = plane_segmentation_name
+        if addressed_name is None and segmentation_list:
+            addressed_name = segmentation_list[0].get("name")
+        if metadata_key is None:
+            metadata_key = addressed_name
+        metadata = _translate_old_metadata(metadata, metadata_key=metadata_key, plane_segmentation_name=addressed_name)
+        # The old format's defaults declare six trace roles on every segmentation, so a translated block
+        # asks for traces from extractors that expose none, `InscopixSegmentationInterface` among them (a
+        # roiextractors bug: `InscopixSegmentationExtractor` does not fill `get_traces_dict()`).
+        # That is boilerplate rather than a request, and the old writer answered it by writing nothing, so
+        # the block goes here rather than letting the writer reject metadata the caller never wrote.
+        traces = segmentation_extractor.get_traces_dict().values()
+        if not any(trace is not None and math.prod(trace.shape) != 0 for trace in traces):
+            metadata["Ophys"] = {key: value for key, value in metadata["Ophys"].items() if key != "RoiResponses"}
+
+    # Ask whether the caller's metadata carries keyed ``PlaneSegmentations`` entries rather than whether it looks
+    # dict-based anywhere, as ``add_recording_to_nwbfile`` does: a converter hands every interface one
+    # dictionary, and another interface's block says nothing about this one.
+    registry_metadata = metadata.get("Ophys", {}).get("PlaneSegmentations", {})
+    has_keyed_entries = isinstance(registry_metadata, dict) and any(
+        isinstance(entry, dict) for entry in registry_metadata.values()
+    )
+    if metadata_was_passed and metadata_key is None and has_keyed_entries:
+        warnings.warn(
+            "Metadata was passed but no `metadata_key` was provided. `metadata_key` selects which "
+            "`metadata['Ophys']['PlaneSegmentations']` entry to write, and it will be required whenever metadata "
+            "is passed starting in v0.13.0. Pass it explicitly, for example `metadata_key='my_metadata_key'`, "
+            "or pass no metadata at all to write with default metadata.",
+            FutureWarning,
+            stacklevel=3,
+        )
+
+    metadata_key = metadata_key or "default_metadata_key"
+
     _add_plane_segmentation_to_nwbfile(
         segmentation_extractor=segmentation_extractor,
         nwbfile=nwbfile,
@@ -974,6 +1243,8 @@ def _add_segmentation_to_nwbfile(
         nwbfile=nwbfile,
         metadata=metadata,
         metadata_key=metadata_key,
+        timestamps=timestamps,
+        starting_time=starting_time,
         iterator_options=iterator_options,
     )
 
@@ -1049,8 +1320,11 @@ def _imaging_frames_to_hdmf_iterator(
     if iterator_type is None:
         _check_if_imaging_fits_into_memory(imaging=imaging)
         series = imaging.get_series()
-        # (samples, height, width) planar, (samples, height, width, planes) volumetric. The same rule
-        # the v2 iterator applies in ImagingExtractorDataChunkIterator._get_data.
+        # roiextractors series are (samples, rows, columns[, planes]); NWB lists them
+        # (samples, columns, rows[, planes]). The same rule the v2 iterator applies in
+        # ImagingExtractorDataChunkIterator._get_data.
+        # TODO: write rows first if core adopts that order, see
+        # https://github.com/NeurodataWithoutBorders/nwb-schema/issues/660
         transpose_axes = (0, 2, 1) if series.ndim == 3 else (0, 2, 1, 3)
         return series.transpose(transpose_axes)
 
@@ -1113,51 +1387,19 @@ def add_imaging_to_nwbfile(
         The NWB file with the imaging data added
 
     """
+    # The extractor's set timestamps, else its native ones, else a start of zero at its sampling frequency
+    timestamps = imaging.get_timestamps() if imaging.has_time_vector() else imaging.get_native_timestamps()
+    starting_time = 0.0 if timestamps is None else None
 
-    metadata_was_passed = metadata is not None
-    if metadata is None:
-        metadata = _get_ophys_metadata_placeholders()
-
-    # Old-shaped metadata is converted here, the last public function before the private writers, so
-    # everything below sees one format. The old format addresses a series by position in
-    # ``Ophys[photon_series_type]`` and the new one by key, so the entry this call writes is named here
-    # and handed to the translator; when the caller gave no key, the series' own name becomes it.
-    ophys_metadata = metadata.get("Ophys", {})
-    if isinstance(ophys_metadata, dict) and _ophys_block_is_old(ophys_metadata):
-        series_list = ophys_metadata.get(photon_series_type, [])
-        if metadata_key is None and photon_series_index < len(series_list):
-            metadata_key = series_list[photon_series_index].get("name")
-        metadata = _translate_old_metadata(
-            metadata,
-            metadata_key=metadata_key,
-            photon_series_type=photon_series_type,
-            photon_series_index=photon_series_index,
-        )
-
-    # Ask whether the caller's metadata carries keyed ``MicroscopySeries`` entries rather than whether it looks
-    # dict-based anywhere, as ``add_recording_to_nwbfile`` does: a converter hands every interface one
-    # dictionary, and another interface's block says nothing about this one.
-    registry_metadata = metadata.get("Ophys", {}).get("MicroscopySeries", {})
-    has_keyed_entries = isinstance(registry_metadata, dict) and any(
-        isinstance(entry, dict) for entry in registry_metadata.values()
-    )
-    if metadata_was_passed and metadata_key is None and has_keyed_entries:
-        warnings.warn(
-            "Metadata was passed but no `metadata_key` was provided. `metadata_key` selects which "
-            "`metadata['Ophys']['MicroscopySeries']` entry to write, and it will be required whenever metadata "
-            "is passed starting in v0.13.0. Pass it explicitly, for example `metadata_key='my_metadata_key'`, "
-            "or pass no metadata at all to write with default metadata.",
-            FutureWarning,
-            stacklevel=2,
-        )
-
-    metadata_key = metadata_key or "default_metadata_key"
     nwbfile = _add_photon_series_to_nwbfile(
         imaging=imaging,
         nwbfile=nwbfile,
         metadata=metadata,
         photon_series_type=photon_series_type,
         metadata_key=metadata_key,
+        photon_series_index=photon_series_index,
+        timestamps=timestamps,
+        starting_time=starting_time,
         iterator_type=iterator_type,
         iterator_options=iterator_options,
         parent_container=parent_container,
@@ -1400,65 +1642,22 @@ def add_segmentation_to_nwbfile(
             stacklevel=2,
         )
 
-    # Without this the writer either fails inside the mask handling with an AttributeError naming a
-    # private attribute or, where masks are absent, writes an imaging plane and an empty table that read
-    # as a successful conversion. See https://github.com/catalystneuro/neuroconv/issues/1401.
-    if not _segmentation_extractor_has_data(segmentation_extractor=segmentation_extractor):
-        raise ValueError(
-            f"{type(segmentation_extractor).__name__} contains no segmentation data: it reports 0 ROIs, "
-            "no traces and no summary images. This is usually an empty result from the segmentation "
-            "pipeline, or a file whose data is not where the format expected it. Writing it would produce "
-            "an NWB file holding an imaging plane, a device and an empty ROI table and nothing else, which "
-            "is indistinguishable from a successful conversion."
-        )
-
-    metadata_was_passed = metadata is not None
-    if metadata is None:
-        metadata = _get_ophys_metadata_placeholders()
-
-    # As in ``add_imaging_to_nwbfile``: the old format addresses a plane segmentation by name and the new
-    # one by key, so the entry this call writes is named here. Traces and summary images are keyed by the
-    # same handle, which is why the translator needs to know which name it is.
-    ophys_metadata = metadata.get("Ophys", {})
-    if isinstance(ophys_metadata, dict) and _ophys_block_is_old(ophys_metadata):
-        segmentation_list = ophys_metadata.get("ImageSegmentation", {}).get("plane_segmentations", [])
-        addressed_name = plane_segmentation_name
-        if addressed_name is None and segmentation_list:
-            addressed_name = segmentation_list[0].get("name")
-        if metadata_key is None:
-            metadata_key = addressed_name
-        metadata = _translate_old_metadata(metadata, metadata_key=metadata_key, plane_segmentation_name=addressed_name)
-        # The old format's defaults declare six trace roles on every segmentation, so a translated block
-        # asks for traces from extractors that expose none, `InscopixSegmentationInterface` among them.
-        # That is boilerplate rather than a request, and the old writer answered it by writing nothing, so
-        # the block goes here rather than letting the writer reject metadata the caller never wrote.
-        traces = segmentation_extractor.get_traces_dict().values()
-        if not any(trace is not None and math.prod(trace.shape) != 0 for trace in traces):
-            metadata["Ophys"] = {key: value for key, value in metadata["Ophys"].items() if key != "RoiResponses"}
-
-    # Ask whether the caller's metadata carries keyed ``PlaneSegmentations`` entries rather than whether it looks
-    # dict-based anywhere, as ``add_recording_to_nwbfile`` does: a converter hands every interface one
-    # dictionary, and another interface's block says nothing about this one.
-    registry_metadata = metadata.get("Ophys", {}).get("PlaneSegmentations", {})
-    has_keyed_entries = isinstance(registry_metadata, dict) and any(
-        isinstance(entry, dict) for entry in registry_metadata.values()
+    # The extractor's set timestamps, else its native ones, else a start of zero at its sampling frequency
+    timestamps = (
+        segmentation_extractor.get_timestamps()
+        if segmentation_extractor.has_time_vector()
+        else segmentation_extractor.get_native_timestamps()
     )
-    if metadata_was_passed and metadata_key is None and has_keyed_entries:
-        warnings.warn(
-            "Metadata was passed but no `metadata_key` was provided. `metadata_key` selects which "
-            "`metadata['Ophys']['PlaneSegmentations']` entry to write, and it will be required whenever metadata "
-            "is passed starting in v0.13.0. Pass it explicitly, for example `metadata_key='my_metadata_key'`, "
-            "or pass no metadata at all to write with default metadata.",
-            FutureWarning,
-            stacklevel=2,
-        )
+    starting_time = 0.0 if timestamps is None else None
 
-    metadata_key = metadata_key or "default_metadata_key"
     nwbfile = _add_segmentation_to_nwbfile(
         segmentation_extractor=segmentation_extractor,
         nwbfile=nwbfile,
         metadata=metadata,
         metadata_key=metadata_key,
+        plane_segmentation_name=plane_segmentation_name,
+        timestamps=timestamps,
+        starting_time=starting_time,
         iterator_options=iterator_options,
     )
 

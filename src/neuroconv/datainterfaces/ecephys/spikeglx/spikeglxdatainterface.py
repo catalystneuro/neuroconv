@@ -92,6 +92,16 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         self.stream_id = stream_id
         self.folder_path = Path(folder_path)
 
+        # ``metadata_key`` is the dict key, a snake_case handle rather than the CamelCase series name. SpikeGLX
+        # yields several streams per session (one per probe and band), so it is derived from the stream handle
+        # the format itself provides. It is derived before the base constructor, so the constructor holds the final
+        # key from the start.
+        # TODO: this repeats Neo's reading of a stream id as `{device}.{stream_kind}`, revisit it if another
+        # interface needs a key from its extractor before the base constructor
+        if metadata_key is None:
+            device, stream_kind = stream_id.split(".")
+            metadata_key = f"spikeglx_{device}_{stream_kind}"  # e.g. spikeglx_imec0_ap
+
         super().__init__(
             folder_path=folder_path,
             verbose=verbose,
@@ -125,13 +135,6 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         else:
             # A user-supplied ``es_key`` (legacy) is still honored as the name override until it is removed.
             self._series_name = es_key
-
-        # ``metadata_key`` is the dict key, a snake_case handle rather than the CamelCase series name. SpikeGLX
-        # yields several streams per session (one per probe and band), so it is derived from the stream handle
-        # the format itself provides. The base seeded it from the (None) ``es_key``, so set it here unless the
-        # user passed one explicitly.
-        if metadata_key is None:
-            self.metadata_key = f"spikeglx_{probe_id}_{stream_kind}"  # e.g. spikeglx_imec0_ap
 
         # Set electrode properties from probe information
         probe = self.recording_extractor.get_probe()

@@ -13,7 +13,7 @@ from ....tools.events import (
 from ....tools.signal_processing import (
     _condition_signal,
     _detect_events,
-    _frames_to_seconds,
+    _samples_to_seconds,
 )
 from ....utils import DeepDict
 
@@ -294,9 +294,12 @@ class _SpikeGLXNIDQEventsInterface(BaseEventsInterface):
             trace = np.ravel(self.recording_extractor.get_traces(channel_ids=[channel_id]))
             for event_type_source_id, spec in detection_specs:
                 conditioned = _condition_signal(trace, spec["signal_conditioning"])
-                onset_frames, offset_frames = _detect_events(conditioned, spec["detection"])
-                onsets, durations = _frames_to_seconds(
-                    onset_frames, offset_frames, self.recording_extractor.sample_index_to_time
+                onset_samples, offset_samples = _detect_events(conditioned, spec["detection"])
+                onsets, durations = _samples_to_seconds(
+                    onset_samples=onset_samples,
+                    offset_samples=offset_samples,
+                    timestamps=self.recording_extractor.sample_index_to_time,
+                    event_time_convention=spec.get("event_time_convention", "sample_after_transition"),
                 )
                 events_data_dict[event_type_source_id] = _EventsData(
                     event_type_source_id=event_type_source_id,

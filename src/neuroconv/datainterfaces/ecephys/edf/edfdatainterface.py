@@ -185,6 +185,9 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
             excluded_platforms_and_python_versions=dict(darwin=dict(arm=["3.9"])),
         )
 
+        if metadata_key is None:
+            metadata_key = "edf_recording"
+
         super().__init__(
             file_path=file_path,
             verbose=verbose,
@@ -193,9 +196,6 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
             channels_to_skip=channels_to_skip,
             stream_name=stream_name,
         )
-
-        if metadata_key is None:
-            self.metadata_key = "edf_recording"
 
         self.edf_header = self.recording_extractor.neo_reader.edf_header
 

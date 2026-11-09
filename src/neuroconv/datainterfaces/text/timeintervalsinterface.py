@@ -1,10 +1,13 @@
+import warnings
 from abc import abstractmethod
+from functools import partial
 from pathlib import Path
 
 import numpy as np
 from pydantic import FilePath, validate_call
 from pynwb import NWBFile
 
+from ..._temporal_alignment import _TemporalAlignment
 from ...basedatainterface import BaseDataInterface
 from ...tools.text import convert_df_to_time_intervals
 from ...utils.dict import DeepDict, load_dict_from_file
@@ -20,6 +23,9 @@ class TimeIntervalsInterface(BaseDataInterface):
         self,
         file_path: FilePath,
         *,
+        start_time_column: str | None = None,
+        stop_time_column: str | None = None,
+        stop_time_from_next_start: bool = False,
         read_kwargs: dict | None = None,
         verbose: bool = False,
     ):
@@ -30,6 +36,15 @@ class TimeIntervalsInterface(BaseDataInterface):
         ----------
         file_path : FilePath
             The path to the file containing time intervals data (CSV, Excel, etc.).
+        start_time_column : str, optional
+            The column of the file holding the start time of each interval, written as ``start_time``.
+            By default the file's own ``start_time`` column.
+        stop_time_column : str, optional
+            The column of the file holding the stop time of each interval, written as ``stop_time``.
+            By default the file's own ``stop_time`` column.
+        stop_time_from_next_start : bool, default: False
+            For a file without stop times: each interval stops at the next interval's start, and the last
+            one's stop is NaN. Only for a file with no stop column.
         read_kwargs : dict, optional
             Additional keyword arguments passed to the file reading function.
             For CSV files, these are passed to pandas.read_csv().
@@ -44,8 +59,60 @@ class TimeIntervalsInterface(BaseDataInterface):
         super().__init__(file_path=file_path)
         self.verbose = verbose
         self._read_kwargs = read_kwargs
-        self.dataframe = self._read_file(file_path, **read_kwargs)
+        self._start_time_column = start_time_column
+        self._stop_time_column = stop_time_column
+        self.dataframe = self._read_dataframe()
         self.time_intervals = None
+
+        has_stop_column = "stop_time" in self.dataframe.columns
+        if stop_time_from_next_start and has_stop_column:
+            raise ValueError(
+                "`stop_time_from_next_start=True` is for a file without stop times, but this file has a stop column. "
+                "Pass it as `stop_time_column` instead, or leave it out when it is named `stop_time`."
+            )
+        if not stop_time_from_next_start and not has_stop_column:
+            warnings.warn(
+                "The file has no `stop_time` column, so each interval stops at the next interval's start. Doing so "
+                "without asking is deprecated and will raise an error in v0.13.0. Pass the column holding the stop "
+                "times as `stop_time_column`, or `stop_time_from_next_start=True` to keep this. "
+                f"Its columns are {self.dataframe.columns.to_list()}.",
+                FutureWarning,
+                stacklevel=2,
+            )
+
+        # One time-bearing object per time column, keyed by its name after the start and stop renaming. A stop
+        # generated from the starts has none: it is built from the aligned starts when the table is written
+        self.temporal_alignment = _TemporalAlignment()
+        for column in self.dataframe.columns:
+            if column.endswith("_time"):
+                self.temporal_alignment._register(
+                    key=column,
+                    get_native_times=partial(self._get_native_times, column=column),
+                    get_number_of_samples=lambda: len(self.dataframe),
+                )
+
+    def _get_native_times(self, column: str) -> np.ndarray:
+        # Explicitly convert to numpy for HDMF compatibility with pandas 3.0+
+        # See https://github.com/hdmf-dev/hdmf/issues/1384
+        return self.dataframe[column].to_numpy(dtype="float64")
+
+    def _read_dataframe(self):
+        """Read the file, with the start and stop columns renamed to ``start_time`` and ``stop_time``."""
+        dataframe = self._read_file(**self.source_data, **self._read_kwargs)
+        role_to_column = dict(start_time=self._start_time_column, stop_time=self._stop_time_column)
+        column_to_role = {column: role for role, column in role_to_column.items() if column is not None}
+        missing_columns = [column for column in column_to_role if column not in dataframe.columns]
+        if missing_columns:
+            raise ValueError(
+                f"The columns {missing_columns} are not in the file. Its columns are {dataframe.columns.to_list()}."
+            )
+        dataframe = dataframe.rename(columns=column_to_role)
+        if "start_time" not in dataframe.columns:
+            raise ValueError(
+                "The file has no `start_time` column. Pass the column holding the start times as "
+                f"`start_time_column`. Its columns are {dataframe.columns.to_list()}."
+            )
+        return dataframe
 
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
@@ -89,12 +156,18 @@ class TimeIntervalsInterface(BaseDataInterface):
         ValueError
             If the column name does not end with '_time'.
         """
+        warnings.warn(
+            "`get_original_timestamps` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment[column].get_times()` before aligning instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
         if not column.endswith("_time"):
             raise ValueError("Timing columns on a TimeIntervals table need to end with '_time'!")
 
         # Explicitly convert to numpy for HDMF compatibility with pandas 3.0+
         # See https://github.com/hdmf-dev/hdmf/issues/1384
-        return self._read_file(**self.source_data, **self._read_kwargs)[column].to_numpy(dtype="float64")
+        return self._read_dataframe()[column].to_numpy(dtype="float64")
 
     def get_timestamps(self, column: str) -> np.ndarray:
         """
@@ -115,12 +188,16 @@ class TimeIntervalsInterface(BaseDataInterface):
         ValueError
             If the column name does not end with '_time'.
         """
+        warnings.warn(
+            "`get_timestamps` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment[column].get_times()` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
         if not column.endswith("_time"):
             raise ValueError("Timing columns on a TimeIntervals table need to end with '_time'!")
 
-        # Explicitly convert to numpy for HDMF compatibility with pandas 3.0+
-        # See https://github.com/hdmf-dev/hdmf/issues/1384
-        return self.dataframe[column].to_numpy(dtype="float64")
+        return self.temporal_alignment[column].get_times()
 
     def set_aligned_starting_time(self, aligned_starting_time: float):
         """
@@ -131,10 +208,13 @@ class TimeIntervalsInterface(BaseDataInterface):
         aligned_starting_time : float
             The aligned starting time to shift all timestamps by.
         """
-        timing_columns = [column for column in self.dataframe.columns if column.endswith("_time")]
-
-        for column in timing_columns:
-            self.dataframe[column] += aligned_starting_time
+        warnings.warn(
+            "`set_aligned_starting_time` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment.shift_times(delta)` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        self.temporal_alignment.shift_times(aligned_starting_time)
 
     def set_aligned_timestamps(
         self, aligned_timestamps: np.ndarray, column: str, interpolate_other_columns: bool = False
@@ -156,19 +236,24 @@ class TimeIntervalsInterface(BaseDataInterface):
         ValueError
             If the column name does not end with '_time'.
         """
+        warnings.warn(
+            "`set_aligned_timestamps` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment[column].set_times(times)` instead, and "
+            "`interface.temporal_alignment[other_column].remap_times(...)` for `interpolate_other_columns=True`.",
+            FutureWarning,
+            stacklevel=2,
+        )
         if not column.endswith("_time"):
             raise ValueError("Timing columns on a TimeIntervals table need to end with '_time'!")
 
-        unaligned_timestamps = np.array(self.dataframe[column])
-        self.dataframe[column] = aligned_timestamps
+        unaligned_timestamps = self.temporal_alignment[column].get_times()
+        self.temporal_alignment[column].set_times(aligned_timestamps)
 
         if not interpolate_other_columns:
             return
 
         other_timing_columns = [
-            other_column
-            for other_column in self.dataframe.columns
-            if other_column.endswith("_time") and other_column != column
+            other_column for other_column in self.temporal_alignment.keys() if other_column != column
         ]
         for other_timing_column in other_timing_columns:
             self.align_by_interpolation(
@@ -190,7 +275,13 @@ class TimeIntervalsInterface(BaseDataInterface):
         column : str
             The name of the column containing the timestamps to be aligned.
         """
-        current_timestamps = self.get_timestamps(column=column)
+        warnings.warn(
+            "`align_by_interpolation` is deprecated and will be removed in v0.13.0. Use "
+            "`interface.temporal_alignment.remap_times(local_sync_times=..., reference_sync_times=...)` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        current_timestamps = self.temporal_alignment[column].get_times()
         assert (
             current_timestamps[1] >= unaligned_timestamps[0]
         ), "All current timestamps except for the first must be strictly within the unaligned mapping."
@@ -199,15 +290,14 @@ class TimeIntervalsInterface(BaseDataInterface):
         ), "All current timestamps except for the last must be strictly within the unaligned mapping."
         # Assume timing column is ascending otherwise
 
-        self.set_aligned_timestamps(
-            aligned_timestamps=np.interp(
+        self.temporal_alignment[column].set_times(
+            np.interp(
                 x=current_timestamps,
                 xp=unaligned_timestamps,
                 fp=aligned_timestamps,
                 left=2 * aligned_timestamps[0] - aligned_timestamps[1],  # If first or last values are outside alignment
                 right=2 * aligned_timestamps[-1] - aligned_timestamps[-2],  # then use the most recent diff to regress
-            ),
-            column=column,
+            )
         )
 
     def add_to_nwbfile(
@@ -280,8 +370,20 @@ class TimeIntervalsInterface(BaseDataInterface):
 
         """
         metadata = metadata or self.get_metadata()
+        if column_name_mapping is not None and {"start_time", "stop_time"} & set(column_name_mapping.values()):
+            warnings.warn(
+                "Renaming a column to `start_time` or `stop_time` with `column_name_mapping` is deprecated and will "
+                "be removed in v0.13.0. Pass `start_time_column` or `stop_time_column` to the interface instead.",
+                FutureWarning,
+                stacklevel=2,
+            )
+        # The aligned times are written, never set on the interface's dataframe. A missing stop is generated by
+        # `convert_df_to_time_intervals` from the aligned starts, so it follows them
+        dataframe = self.dataframe.copy()
+        for column in self.temporal_alignment.keys():
+            dataframe[column] = self.temporal_alignment[column].get_times()
         self.time_intervals = convert_df_to_time_intervals(
-            self.dataframe,
+            dataframe,
             column_name_mapping=column_name_mapping,
             column_descriptions=column_descriptions,
             **metadata["TimeIntervals"][tag],

@@ -53,10 +53,14 @@ class MEArecRecordingInterface(BaseRecordingExtractorInterface):
             ``"mearec_recording"``.
         """
 
+        if metadata_key is None:
+            metadata_key = "mearec_recording"
+
         super().__init__(file_path=file_path, verbose=verbose, es_key=es_key, metadata_key=metadata_key)
 
-        if metadata_key is None:
-            self.metadata_key = "mearec_recording"
+        # Read the simulation info while the recording is still the neo-based extractor, as `remove_channels`
+        # replaces it with a channel slice that does not carry the `neo_reader`
+        self._mearec_info = self.recording_extractor.neo_reader.raw_annotations["blocks"][0]["mearec_info"]
 
     def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
@@ -66,7 +70,7 @@ class MEArecRecordingInterface(BaseRecordingExtractorInterface):
 
         # There is a lot of device/electrode/waveform/sorting configuration information...
         # But no session start time...
-        mearec_info = self.recording_extractor.neo_reader.raw_annotations["blocks"][0]["mearec_info"]
+        mearec_info = self._mearec_info
 
         electrode_metadata = dict(mearec_info["electrodes"])
         device_name = electrode_metadata.pop(

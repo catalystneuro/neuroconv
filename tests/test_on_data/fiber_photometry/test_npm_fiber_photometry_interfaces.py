@@ -65,7 +65,7 @@ class TestNPMHeaderAndStateColumnIsosbestic(FiberPhotometryInterfaceTestMixin):
     """Round-trip the 415 nm (isosbestic) channel of the headered, ``Flags``-labeled recording."""
 
     data_interface_cls = NPMFiberPhotometryInterface
-    expected_alignment_keys = ("isosbestic_region0",)
+    expected_temporal_alignment_keys = ("isosbestic_region0",)
     interface_kwargs = dict(
         file_path=HEADER_AND_STATE_COLUMN_FILE,
         excitation_wavelength_in_nm=415,
@@ -134,7 +134,7 @@ class TestNPMHeaderAndStateColumnSignal(FiberPhotometryInterfaceTestMixin):
     selecting the Flags==18 rows."""
 
     data_interface_cls = NPMFiberPhotometryInterface
-    expected_alignment_keys = ("signal_region0",)
+    expected_temporal_alignment_keys = ("signal_region0",)
     interface_kwargs = dict(
         file_path=HEADER_AND_STATE_COLUMN_FILE,
         excitation_wavelength_in_nm=470,
@@ -198,7 +198,7 @@ class TestNPMHeaderAndStateColumnMultiRegion(FiberPhotometryInterfaceTestMixin):
     """Round-trip all three region columns of one channel column-stacked into one multi-channel series."""
 
     data_interface_cls = NPMFiberPhotometryInterface
-    expected_alignment_keys = ("isosbestic_all_regions",)
+    expected_temporal_alignment_keys = ("isosbestic_all_regions",)
     interface_kwargs = dict(
         file_path=HEADER_AND_STATE_COLUMN_FILE,
         excitation_wavelength_in_nm=415,
@@ -265,7 +265,7 @@ class TestNPMMultiTimestampSystemClock(FiberPhotometryInterfaceTestMixin):
     ``timestamps_column`` selection this file requires (it has no default ``Timestamp`` column)."""
 
     data_interface_cls = NPMFiberPhotometryInterface
-    expected_alignment_keys = ("isosbestic_g0",)
+    expected_temporal_alignment_keys = ("isosbestic_g0",)
     interface_kwargs = dict(
         file_path=MULTI_TIMESTAMP_FILE,
         excitation_wavelength_in_nm=415,
@@ -382,7 +382,7 @@ class TestNPMMultiLedStatePerWavelength(FiberPhotometryInterfaceTestMixin):
     channel, and no single value returns all of it."""
 
     data_interface_cls = NPMFiberPhotometryInterface
-    expected_alignment_keys = ("isosbestic_region0",)
+    expected_temporal_alignment_keys = ("isosbestic_region0",)
     interface_kwargs = dict(
         file_path=MULTI_LED_STATE_PER_WAVELENGTH_FILE,
         excitation_wavelength_in_nm=415,
@@ -469,7 +469,7 @@ class TestNPMRedAndGreenEmissionRed(FiberPhotometryInterfaceTestMixin):
     the excitation has to be masked off here too."""
 
     data_interface_cls = NPMFiberPhotometryInterface
-    expected_alignment_keys = ("red_signal",)
+    expected_temporal_alignment_keys = ("red_signal",)
     interface_kwargs = dict(
         file_path=RED_AND_GREEN_EMISSION_FILE,
         excitation_wavelength_in_nm=560,
@@ -533,7 +533,7 @@ class TestNPMRedAndGreenEmissionGreen(FiberPhotometryInterfaceTestMixin):
     """Round-trip the 470 nm channel's green region columns of the same three-excitation recording."""
 
     data_interface_cls = NPMFiberPhotometryInterface
-    expected_alignment_keys = ("green_signal",)
+    expected_temporal_alignment_keys = ("green_signal",)
     interface_kwargs = dict(
         file_path=RED_AND_GREEN_EMISSION_FILE,
         excitation_wavelength_in_nm=470,
@@ -608,7 +608,7 @@ class TestNPMStartupStateZeroRed(FiberPhotometryInterfaceTestMixin):
     rather than on the excitation bits fails on at least one recording."""
 
     data_interface_cls = NPMFiberPhotometryInterface
-    expected_alignment_keys = ("red_signal",)
+    expected_temporal_alignment_keys = ("red_signal",)
     interface_kwargs = dict(
         file_path=STARTUP_STATE_ZERO_FILE,
         excitation_wavelength_in_nm=560,
@@ -676,7 +676,7 @@ class TestNPMStartupStateZeroGreen(FiberPhotometryInterfaceTestMixin):
     """Round-trip the 415 nm channel of the same recording, whose excitations cycle 2, 1, 4."""
 
     data_interface_cls = NPMFiberPhotometryInterface
-    expected_alignment_keys = ("green_isosbestic",)
+    expected_temporal_alignment_keys = ("green_isosbestic",)
     interface_kwargs = dict(
         file_path=STARTUP_STATE_ZERO_FILE,
         excitation_wavelength_in_nm=415,
@@ -743,7 +743,7 @@ class TestNPMMultiplexedByFile415(FiberPhotometryInterfaceTestMixin):
     plus the shared startup frame (7), which is dropped."""
 
     data_interface_cls = NPMFiberPhotometryInterface
-    expected_alignment_keys = ("isosbestic",)
+    expected_temporal_alignment_keys = ("isosbestic",)
     interface_kwargs = dict(
         file_path=MULTIPLEXED_BY_FILE_415,
         excitation_wavelength_in_nm=415,
@@ -856,7 +856,7 @@ class TestNPMMultiplexedByFile470(FiberPhotometryInterfaceTestMixin):
     frame despite identical row counts."""
 
     data_interface_cls = NPMFiberPhotometryInterface
-    expected_alignment_keys = ("signal",)
+    expected_temporal_alignment_keys = ("signal",)
     interface_kwargs = dict(
         file_path=MULTIPLEXED_BY_FILE_470,
         excitation_wavelength_in_nm=470,
@@ -966,7 +966,7 @@ class TestNPMSimultaneousExcitation470(FiberPhotometryInterfaceTestMixin):
     would find no 470 nm rows at all here, since 6 equals neither 2 nor 4."""
 
     data_interface_cls = NPMFiberPhotometryInterface
-    expected_alignment_keys = ("green_signal",)
+    expected_temporal_alignment_keys = ("green_signal",)
     interface_kwargs = dict(
         file_path=MULTI_WAVELENGTH_PER_LED_STATE_FILE,
         excitation_wavelength_in_nm=470,
@@ -1054,7 +1054,7 @@ class TestNPMSimultaneousExcitation560(FiberPhotometryInterfaceTestMixin):
     which is what "one frame, two excitations" means."""
 
     data_interface_cls = NPMFiberPhotometryInterface
-    expected_alignment_keys = ("red_signal",)
+    expected_temporal_alignment_keys = ("red_signal",)
     interface_kwargs = dict(
         file_path=MULTI_WAVELENGTH_PER_LED_STATE_FILE,
         excitation_wavelength_in_nm=560,

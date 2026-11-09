@@ -39,6 +39,7 @@ class TestFicTracDataInterface(DataInterfaceTestMixin):
         file_path=str(BEHAVIOR_DATA_PATH / "FicTrac" / "sample" / "sample-20230724_113055.dat"),
         configuration_file_path=str(BEHAVIOR_DATA_PATH / "FicTrac" / "sample" / "config.txt"),
     )
+    expected_temporal_alignment_keys = ("fictrac",)
 
     save_directory = OUTPUT_PATH
 
@@ -107,6 +108,7 @@ class TestFicTracDataInterfaceWithRadius(DataInterfaceTestMixin):
     interface_kwargs = dict(
         file_path=str(BEHAVIOR_DATA_PATH / "FicTrac" / "sample" / "sample-20230724_113055.dat"), radius=1.0
     )
+    expected_temporal_alignment_keys = ("fictrac",)
 
     save_directory = OUTPUT_PATH
 
@@ -170,6 +172,7 @@ class TestFicTracDataInterfaceWithRadius(DataInterfaceTestMixin):
         nwbfile.read_io.close()
 
 
+# TODO: remove in v0.13.0, when the deprecated alignment methods this class tests are removed
 class TestFicTracDataInterfaceTiming(TemporalAlignmentMixin):
     data_interface_cls = FicTracDataInterface
     interface_kwargs = dict(file_path=str(BEHAVIOR_DATA_PATH / "FicTrac" / "sample" / "sample-20230724_113055.dat"))

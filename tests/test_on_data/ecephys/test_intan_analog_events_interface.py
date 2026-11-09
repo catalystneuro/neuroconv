@@ -36,7 +36,7 @@ class TestIntanAnalogEventsInterface(EventsInterfaceTestMixin):
     CONFIGURATION = {"ANALOG-IN-1": [{"signal_conditioning": {"binarize": "midpoint"}, "detection": "rising"}]}
     METADATA_KEY = "intan_analog_events"
     data_interface_cls = IntanAnalogEventsInterface
-    expected_alignment_keys = ("ANALOG-IN-1",)
+    expected_temporal_alignment_keys = ("ANALOG-IN-1",)
     interface_kwargs = dict(
         file_path=FILE_PATH,
         detection_configuration=CONFIGURATION,

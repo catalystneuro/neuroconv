@@ -71,6 +71,9 @@ class WhiteMatterRecordingInterface(BaseRecordingExtractorInterface):
             ``"white_matter_recording"``.
         """
 
+        if metadata_key is None:
+            metadata_key = "white_matter_recording"
+
         super().__init__(
             file_path=file_path,
             sampling_frequency=sampling_frequency,
@@ -81,6 +84,3 @@ class WhiteMatterRecordingInterface(BaseRecordingExtractorInterface):
             es_key=es_key,
             metadata_key=metadata_key,
         )
-
-        if metadata_key is None:
-            self.metadata_key = "white_matter_recording"

@@ -24,7 +24,7 @@ class TestDoricEventsSingleLine(EventsInterfaceTestMixin):
 
     FILE_PATH = OPHYS_DATA_PATH / "events_datasets" / "doric" / "root_is_data_acquisition" / "single_line.doric"
     data_interface_cls = DoricEventsInterface
-    expected_alignment_keys = ("Camera1", "DigitalCh1")
+    expected_temporal_alignment_keys = ("Camera1", "DigitalCh1")
     interface_kwargs = dict(file_path=FILE_PATH)
 
     @pytest.fixture
@@ -124,7 +124,7 @@ class TestDoricEventsMultiLine(EventsInterfaceTestMixin):
 
     FILE_PATH = OPHYS_DATA_PATH / "events_datasets" / "doric" / "root_is_data_acquisition" / "multi_line.doric"
     data_interface_cls = DoricEventsInterface
-    expected_alignment_keys = ("CAM1", "EXC1", "EXC2")
+    expected_temporal_alignment_keys = ("CAM1", "EXC1", "EXC2")
     interface_kwargs = dict(file_path=FILE_PATH)
 
     @pytest.fixture
@@ -251,7 +251,7 @@ class TestDoricEventsLegacyTraces(EventsInterfaceTestMixin):
 
     FILE_PATH = OPHYS_DATA_PATH / "events_datasets" / "doric" / "root_is_traces" / "varied_intervals.doric"
     data_interface_cls = DoricEventsInterface
-    expected_alignment_keys = ("DI--O-1",)
+    expected_temporal_alignment_keys = ("DI--O-1",)
     interface_kwargs = dict(file_path=FILE_PATH)
 
     @pytest.fixture

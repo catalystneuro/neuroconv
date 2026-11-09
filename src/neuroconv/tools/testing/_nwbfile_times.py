@@ -10,8 +10,9 @@ def _get_nwbfile_times(nwbfile: NWBFile) -> dict[str, np.ndarray]:
 
     Which fields count as times is decided per neurodata type: a ``TimeSeries`` contributes its timestamps,
     computed from ``starting_time`` and ``rate`` when they are not stored, and a table contributes the columns
-    named ``timestamp`` or ending in ``_time``. Durations are not times and are left out because a shift never
-    changes them.
+    named ``timestamp`` or ending in ``_time``. A units table's ``spike_times`` is ragged, one list per unit, so it
+    contributes its flat data, every unit's spikes in row order. Durations are not times and are left out because
+    a shift never changes them.
 
     Returns
     -------
@@ -29,6 +30,8 @@ def _get_nwbfile_times(nwbfile: NWBFile) -> dict[str, np.ndarray]:
                 is_time_column = column_name == "timestamp" or column_name.endswith("_time")
                 if is_time_column and not isinstance(container[column_name], VectorIndex):
                     times[f"{path}/{column_name}"] = np.asarray(container[column_name].data)
+                elif column_name == "spike_times":
+                    times[f"{path}/{column_name}"] = np.asarray(container[column_name].target.data)
     return times
 
 

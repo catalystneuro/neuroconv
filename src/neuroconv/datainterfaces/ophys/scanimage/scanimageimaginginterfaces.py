@@ -134,7 +134,7 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
         )
 
         # Make sure the timestamps are available, the extractor caches them
-        times = self.imaging_extractor.get_times()
+        times = self.imaging_extractor.get_timestamps()
         self.imaging_extractor.set_times(times=times)
 
     @classmethod

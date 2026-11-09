@@ -18,7 +18,7 @@ TWO_TYPE_ROWS = [(1.0, "a"), (2.0, "b"), (3.0, "a"), (4.0, "b"), (5.0, "a")]
 
 class TestCSVEventsInterface(EventsInterfaceTestMixin):
     data_interface_cls = CSVEventsInterface
-    expected_alignment_keys = ("ttl",)
+    expected_temporal_alignment_keys = ("ttl",)
 
     @pytest.fixture(scope="class", autouse=True)
     @classmethod

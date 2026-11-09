@@ -59,25 +59,28 @@ class AxonaRecordingInterface(BaseRecordingExtractorInterface):
             ``"axona_recording"``.
         """
 
+        if metadata_key is None:
+            metadata_key = "axona_recording"
+
         super().__init__(file_path=file_path, verbose=verbose, es_key=es_key, metadata_key=metadata_key)
 
-        if metadata_key is None:
-            self.metadata_key = "axona_recording"
-
         self.metadata_in_set_file = self.recording_extractor.neo_reader.file_parameters["set"]["file_header"]
+
+        # Read the start time while the recording is still the neo-based extractor, as `remove_channels`
+        # replaces it with a channel slice that does not carry the `neo_reader`
+        raw_annotations = self.recording_extractor.neo_reader.raw_annotations
+        self._session_start_time = raw_annotations["blocks"][0]["segments"][0]["rec_datetime"]
 
         # Set the channel groups
         tetrode_id = self.recording_extractor.get_property("tetrode_id")
         self.recording_extractor.set_channel_groups(tetrode_id)
 
     def extract_nwb_file_metadata(self) -> dict:
-        raw_annotations = self.recording_extractor.neo_reader.raw_annotations
-        session_start_time = raw_annotations["blocks"][0]["segments"][0]["rec_datetime"]
         session_description = self.metadata_in_set_file["comments"]
         experimenter = self.metadata_in_set_file["experimenter"]
 
         nwbfile_metadata = dict(
-            session_start_time=session_start_time,
+            session_start_time=self._session_start_time,
             session_description=session_description,
             experimenter=[experimenter] if experimenter else None,  # The schema expects an array of strings
         )
@@ -260,7 +263,7 @@ class AxonaPositionDataInterface(BaseDataInterface):
         nwbfile : NWBFile
         metadata : dict
         """
-        file_path = self.interface_kwargs["file_path"]
+        file_path = self.source_data["file_path"]
 
         # Create or update processing module for behavioral data
         behavior_module = get_module(nwbfile=nwbfile, name="behavior", description="processed behavioral data")

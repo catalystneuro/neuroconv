@@ -153,7 +153,7 @@ class AxonIntracellularInterface(BaseIcephysInterface):
         self._response_channel_name = self._channel_names[self._response_channel_index]
         self._metadata_key = metadata_key
 
-        # The run identity: the per-file grouping handle that `sequence` and the device/electrode/series keys all
+        # The run identity: the per-file grouping handle that `protocol_run` and the device/electrode/series keys all
         # derive from (see the properties below). Defaults to the file stem; a converter combining several files
         # overrides it with a unique, disambiguated label, because the stem collides across folders (Clampex names
         # files per folder, e.g. 0000.abf). A lone interface keeps the stem, so single-file output is unchanged.
@@ -170,6 +170,16 @@ class AxonIntracellularInterface(BaseIcephysInterface):
             default_start_time=self._get_native_start_time,
             get_number_of_samples=lambda: len(self._get_native_times()),
         )
+        # The stimulus has the response's samples, and a key of its own like every paired stimulus. Alignment keys
+        # share one namespace, so it takes a suffix, unlike its metadata key in the stimulus registry.
+        if self._has_stimulus:
+            self._stimulus_alignment_key = f"{self._alignment_key}_stimulus"
+            self.temporal_alignment._register(
+                key=self._stimulus_alignment_key,
+                get_native_times=self._get_native_times,
+                default_start_time=self._get_native_start_time,
+                get_number_of_samples=lambda: len(self._get_native_times()),
+            )
 
     # Registry keys derive from the run identity so a converter that overrides `_run_identity` propagates to all
     # of them. The electrode is per response channel and the series key is the user's `metadata_key` if given,

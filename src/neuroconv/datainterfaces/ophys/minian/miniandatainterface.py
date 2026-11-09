@@ -107,7 +107,13 @@ class MinianSegmentationInterface(BaseSegmentationExtractorInterface):
         return self.segmentation_extractor.get_native_timestamps(start_sample=start_sample, end_sample=end_sample)
 
     def get_timestamps(self, start_sample: Optional[int] = None, end_sample: Optional[int] = None) -> ndarray:
-        return self.segmentation_extractor.get_timestamps(start_sample=start_sample, end_sample=end_sample)
+        warnings.warn(
+            "`get_timestamps` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment[key].get_times()` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        return self.temporal_alignment[self._alignment_key].get_times()[start_sample:end_sample]
 
     def add_to_nwbfile(
         self,

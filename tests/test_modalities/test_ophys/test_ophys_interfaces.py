@@ -14,6 +14,7 @@ from neuroconv.tools.testing.mock_interfaces import (
 
 class TestMockImagingInterface(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = MockImagingInterface
+    expected_temporal_alignment_keys = ("mock_imaging",)
     interface_kwargs = dict()
     # The mock reads no imaging modality from its source, so it keeps the base's generic series name.
     optical_series_name = "MicroscopySeries"
@@ -52,7 +53,7 @@ class TestMockImagingInterface(ImagingExtractorInterfaceTestMixin):
         metadata = interface.get_metadata()
         nwbfile = mock_NWBFile()
 
-        with patch("neuroconv.tools.roiextractors.add_imaging_to_nwbfile") as mock_add:
+        with patch("neuroconv.tools.roiextractors.roiextractors._add_photon_series_to_nwbfile") as mock_add:
             interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
             mock_add.assert_called_once()
             call_kwargs = mock_add.call_args[1]
@@ -62,6 +63,7 @@ class TestMockImagingInterface(ImagingExtractorInterfaceTestMixin):
 class TestMockSegmentationInterface(SegmentationExtractorInterfaceTestMixin):
 
     data_interface_cls = MockSegmentationInterface
+    expected_temporal_alignment_keys = ("mock_segmentation",)
     interface_kwargs = dict()
 
     def check_extracted_metadata(self, metadata: dict):
@@ -84,7 +86,7 @@ class TestMockSegmentationInterface(SegmentationExtractorInterfaceTestMixin):
         metadata = interface.get_metadata()
         nwbfile = mock_NWBFile()
 
-        with patch("neuroconv.tools.roiextractors.add_segmentation_to_nwbfile") as mock_add:
+        with patch("neuroconv.tools.roiextractors.roiextractors._add_segmentation_to_nwbfile") as mock_add:
             interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
             mock_add.assert_called_once()
             call_kwargs = mock_add.call_args[1]

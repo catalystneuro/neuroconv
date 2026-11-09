@@ -172,7 +172,7 @@ def test_aligned_timestamps(nwb_converter, nwbfile_path, metadata):
     """Test that aligned timestamps are correctly applied."""
     aligned_timestamps = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 20.0])
     interface = nwb_converter.data_interface_objects["Video1"]
-    interface.set_aligned_timestamps(aligned_timestamps=aligned_timestamps)
+    interface.temporal_alignment["video_test1"].set_times(aligned_timestamps)
 
     conversion_options = dict(Video1=dict(stub_test=True))
     nwb_converter.run_conversion(
@@ -191,7 +191,7 @@ def test_always_write_timestamps(nwb_converter, nwbfile_path, metadata):
     interface = nwb_converter.data_interface_objects["Video1"]
     # Set regular timestamps
     aligned_timestamps = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0])
-    interface.set_aligned_timestamps(aligned_timestamps=aligned_timestamps)
+    interface.temporal_alignment["video_test1"].set_times(aligned_timestamps)
 
     # Run conversion with always_write_timestamps=True
     conversion_options = dict(Video1=dict(stub_test=True, always_write_timestamps=True))
@@ -214,7 +214,7 @@ def test_always_write_timestamps(nwb_converter, nwbfile_path, metadata):
 def test_aligned_starting_time(nwb_converter, nwbfile_path, metadata, aligned_starting_time):
     """Test that aligned starting time is correctly applied."""
     interface = nwb_converter.data_interface_objects["Video1"]
-    interface.set_aligned_starting_time(aligned_starting_time=aligned_starting_time)
+    interface.temporal_alignment["video_test1"].move_start_to(aligned_starting_time)
 
     conversion_options = dict(Video1=dict(stub_test=True))
     nwb_converter.run_conversion(
@@ -233,27 +233,22 @@ def test_timestamp_shifting(nwb_converter):
     """Test that timestamps are correctly shifted when setting aligned starting time."""
     interface = nwb_converter.data_interface_objects["Video1"]
     original_timestamps = np.array([1.0, 2.0, 3.0])
-    interface.set_aligned_timestamps(aligned_timestamps=original_timestamps)
+    interface.temporal_alignment["video_test1"].set_times(original_timestamps)
 
     # Add a starting time offset
     offset = 5.0
-    interface.set_aligned_starting_time(aligned_starting_time=offset)
+    interface.temporal_alignment.shift_times(offset)
 
     # Verify timestamps are shifted
     expected_timestamps = original_timestamps + offset
-    np.testing.assert_array_equal(interface.get_timestamps(), expected_timestamps)
+    np.testing.assert_array_equal(interface.temporal_alignment["video_test1"].get_times(), expected_timestamps)
 
 
-def test_set_aligned_timestamps_after_starting_time_error(nwb_converter):
-    """Test that setting timestamps after starting time raises an error."""
+def test_default_times_follow_the_header_rate(nwb_converter):
     interface = nwb_converter.data_interface_objects["Video1"]
-
-    # First set starting time
-    interface.set_aligned_starting_time(aligned_starting_time=10.0)
-
-    # Now try to set timestamps - should raise an assertion error
-    with pytest.raises(AssertionError):
-        interface.set_aligned_timestamps(aligned_timestamps=np.array([1.0, 2.0, 3.0]))
+    number_of_frames = test_video_parameters["number_of_frames"]
+    expected_times = np.arange(number_of_frames) / test_video_parameters["fps"]
+    np.testing.assert_allclose(interface.temporal_alignment["video_test1"].get_times(), expected_times)
 
 
 def test_get_original_timestamps_stub(nwb_converter):
