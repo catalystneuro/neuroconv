@@ -104,10 +104,11 @@ Specifying Metadata
 VAME metadata lives in flat registries under ``metadata["Behavior"]["Vame"]``: a
 ``VameProjects`` registry for the container, plus ``MotifSeries``, ``CommunitySeries``, and
 ``LatentSpaceSeries`` registries for the series, each linking back to its project via
-``vame_project_metadata_key``. ``metadata_key`` defaults to ``"VAMEProject"`` and sets both the
-``VameProjects`` entry key and the default ``VAMEProject`` group name written to the NWB file.
+``vame_project_metadata_key``. ``metadata_key`` defaults to ``"vame_project"`` and sets the
+``VameProjects`` entry key. The group written to the NWB file is named ``VAMEProject``, or after the
+``metadata_key`` when you pass one.
 
-Series keys are project-prefixed and type-distinct (for example ``"VAMEProject_motif_kmeans"``)
+Series keys are project-prefixed and type-distinct (for example ``"vame_project_motif_kmeans"``)
 so that several projects can share one NWB file without colliding.
 
 Call :py:meth:`~neuroconv.datainterfaces.behavior.vame.vamedatainterface.VameInterface.get_metadata`
@@ -127,10 +128,10 @@ to retrieve the auto-populated defaults, then use
     ...     "Behavior": {
     ...         "Vame": {
     ...             "VameProjects": {
-    ...                 "VAMEProject": {"name": "VAMEKmeans15"},
+    ...                 "vame_project": {"name": "VAMEKmeans15"},
     ...             },
     ...             "MotifSeries": {
-    ...                 "VAMEProject_motif_kmeans": {
+    ...                 "vame_project_motif_kmeans": {
     ...                     "description": "k-means motif labels (15 clusters) for the open-field test session.",
     ...                 },
     ...             },
@@ -197,7 +198,7 @@ or :py:class:`~neuroconv.datainterfaces.behavior.sleap.sleapdatainterface.SLEAPI
     ...     )
     ... )
     >>> metadata = converter.get_metadata()  # doctest: +SKIP
-    >>> metadata["Behavior"]["Vame"]["VameProjects"]["VAMEProject"]["pose_estimation_metadata_key"] = (  # doctest: +SKIP
+    >>> metadata["Behavior"]["Vame"]["VameProjects"]["vame_project"]["pose_estimation_metadata_key"] = (  # doctest: +SKIP
     ...     "PoseEstimationDeepLabCut"
     ... )
     >>> converter.run_conversion(nwbfile_path=path_to_save_nwbfile, metadata=metadata)  # doctest: +SKIP
