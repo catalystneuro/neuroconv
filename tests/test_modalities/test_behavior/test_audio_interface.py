@@ -41,6 +41,7 @@ def create_audio_files(
 
 class TestAudioInterface(AudioInterfaceTestMixin):
     data_interface_cls = AudioInterface
+    conversion_options = dict(parent_container="acquisition")
 
     @pytest.fixture(scope="class", autouse=True)
     @classmethod
@@ -113,6 +114,15 @@ class TestAudioInterface(AudioInterfaceTestMixin):
                 assert audio_interface_name in container
                 assert audio_interface_name not in nwbfile.stimulus
 
+    # TODO: the default becomes "acquisition" in v0.13.0. Then remove the filter and expect the series in acquisition.
+    @pytest.mark.filterwarnings("ignore:The default 'parent_container':FutureWarning")
+    def test_default_parent_container(self):
+        nwbfile = mock_NWBFile()
+        self.interface.add_to_nwbfile(nwbfile=nwbfile, metadata=self.metadata, stub_test=True)
+
+        audio_name = self.metadata["Behavior"]["Audio"][0]["name"]
+        assert audio_name in nwbfile.stimulus
+
     def test_incomplete_metadata(self):
         metadata = deepcopy(self.metadata)
         metadata["Behavior"].update(Audio=[dict(name="Audio", description="Acoustic waveform series.")])
@@ -120,16 +130,26 @@ class TestAudioInterface(AudioInterfaceTestMixin):
             "The Audio metadata is incomplete (1 entry)! Expected 3 (one for each entry of 'file_paths')."
         )
         with pytest.raises(AssertionError, match=re.escape(expected_error_message)):
-            self.nwb_converter.run_conversion(nwbfile_path=self.nwbfile_path, metadata=metadata, overwrite=True)
+            self.nwb_converter.run_conversion(
+                nwbfile_path=self.nwbfile_path,
+                metadata=metadata,
+                conversion_options=dict(Audio=dict(parent_container="acquisition")),
+                overwrite=True,
+            )
 
     def test_metadata_update(self):
         metadata = deepcopy(self.metadata)
         metadata["Behavior"]["Audio"][0].update(description="New description for Acoustic waveform series.")
         nwbfile_path = str(self.test_dir / "audio_with_updated_metadata.nwb")
-        self.nwb_converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
+        self.nwb_converter.run_conversion(
+            nwbfile_path=nwbfile_path,
+            metadata=metadata,
+            conversion_options=dict(Audio=dict(parent_container="acquisition")),
+            overwrite=True,
+        )
         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
             nwbfile = io.read()
-            container = nwbfile.stimulus
+            container = nwbfile.acquisition
             audio_name = metadata["Behavior"]["Audio"][0]["name"]
             assert container[audio_name].description == "New description for Acoustic waveform series."
 
@@ -144,7 +164,9 @@ class TestAudioInterface(AudioInterfaceTestMixin):
         )
         expected_error_message = "Some of the names for Audio metadata are not unique."
         with pytest.raises(AssertionError, match=re.escape(expected_error_message)):
-            self.interface.run_conversion(nwbfile_path=self.nwbfile_path, metadata=metadata, overwrite=True)
+            self.interface.run_conversion(
+                nwbfile_path=self.nwbfile_path, metadata=metadata, overwrite=True, parent_container="acquisition"
+            )
 
     def test_segment_starting_times_are_floats(self):
         with pytest.raises(AssertionError, match="Argument 'aligned_segment_starting_times' must be a list of floats."):
@@ -207,9 +229,10 @@ class TestAudioInterface(AudioInterfaceTestMixin):
             metadata=self.metadata,
             conversion_options=dict(
                 Audio=dict(
+                    parent_container="acquisition",
                     iterator_options=dict(
                         buffer_gb=1e7 / 1e9,
-                    )
+                    ),
                 )
             ),  # use a low buffer_gb, so we can test the full GenericDataChunkIterator
             overwrite=True,
@@ -217,7 +240,7 @@ class TestAudioInterface(AudioInterfaceTestMixin):
 
         with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
             nwbfile = io.read()
-            container = nwbfile.stimulus
+            container = nwbfile.acquisition
             metadata = self.nwb_converter.get_metadata()
             assert len(container) == 3
             for audio_ind, audio_metadata in enumerate(metadata["Behavior"]["Audio"]):
@@ -261,7 +284,12 @@ class TestAudioInterface(AudioInterfaceTestMixin):
             nwbfile_path = str(self.test_dir / "audio_24bit_test.nwb")
 
             # This will fail if the AudioInterface doesn't handle 24-bit WAV files correctly
-            nwb_converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
+            nwb_converter.run_conversion(
+                nwbfile_path=nwbfile_path,
+                metadata=metadata,
+                conversion_options=dict(Audio=dict(parent_container="acquisition")),
+                overwrite=True,
+            )
 
             # Verify the file was created and can be read
             with NWBHDF5IO(path=nwbfile_path, mode="r") as io:
@@ -269,10 +297,10 @@ class TestAudioInterface(AudioInterfaceTestMixin):
 
                 # Check that the acoustic waveform series exists
                 audio_name = metadata["Behavior"]["Audio"][0]["name"]
-                assert audio_name in nwbfile.stimulus
+                assert audio_name in nwbfile.acquisition
 
                 # Try to read the data
-                acoustic_series = nwbfile.stimulus[audio_name].data[:]
+                acoustic_series = nwbfile.acquisition[audio_name].data[:]
                 assert len(acoustic_series) > 0
 
     def test_multiple_dots_in_filename(self):
@@ -290,8 +318,8 @@ class TestAudioInterface(AudioInterfaceTestMixin):
 
             # Test add to NWBFile
             nwbfile = mock_NWBFile()
-            interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, stub_test=True)
+            interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, stub_test=True, parent_container="acquisition")
 
             # Check that the acoustic waveform series exists
             audio_name = metadata["Behavior"]["Audio"][0]["name"]
-            assert audio_name in nwbfile.stimulus
+            assert audio_name in nwbfile.acquisition
