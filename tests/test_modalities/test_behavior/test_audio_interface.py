@@ -40,9 +40,11 @@ def create_audio_files(
     return audio_file_names
 
 
-# TODO: 'file_paths' is removed in v0.13.0. Then delete the filter and the tests that build the interface from
-# several files, and move the rest to 'file_path'.
+# TODO: 'file_paths' and the segment starting time methods are removed in v0.13.0. Then delete the filters and the
+# tests that build the interface from several files, and move the rest to 'file_path'.
 @pytest.mark.filterwarnings("ignore:The 'file_paths' parameter of AudioInterface:FutureWarning")
+@pytest.mark.filterwarnings("ignore:`set_aligned_segment_starting_times` is deprecated:FutureWarning")
+@pytest.mark.filterwarnings("ignore:`set_aligned_starting_time` is deprecated:FutureWarning")
 class TestAudioInterface(AudioInterfaceTestMixin):
     data_interface_cls = AudioInterface
     conversion_options = dict(parent_container="acquisition")

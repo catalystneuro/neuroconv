@@ -111,7 +111,7 @@ class AudioInterface(BaseTemporalAlignmentInterface):
             self.temporal_alignment._register(
                 key=self.metadata_key,
                 get_native_times=self._get_native_times,
-                default_start_time=self._get_native_start_time,
+                default_start_time=0.0,
                 get_number_of_samples=lambda: self._read_acoustic_series(file_path)[1].shape[0],
             )
 
@@ -180,10 +180,26 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         raise NotImplementedError("The AudioInterface does not yet support timestamps.")
 
     def get_timestamps(self) -> np.ndarray | None:
-        raise NotImplementedError("The AudioInterface does not yet support timestamps.")
+        if self.metadata_key is None:
+            raise NotImplementedError("The AudioInterface does not yet support timestamps.")
+        warnings.warn(
+            "`get_timestamps` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment[key].get_times()` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        return self.temporal_alignment[self.metadata_key].get_times()
 
     def set_aligned_timestamps(self, aligned_timestamps: list[np.ndarray]):
-        raise NotImplementedError("The AudioInterface does not yet support timestamps.")
+        if self.metadata_key is None:
+            raise NotImplementedError("The AudioInterface does not yet support timestamps.")
+        warnings.warn(
+            "`set_aligned_timestamps` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment[key].set_times(times)` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        self.temporal_alignment[self.metadata_key].set_times(aligned_timestamps)
 
     def set_aligned_starting_time(self, aligned_starting_time: float):
         """
@@ -197,6 +213,17 @@ class AudioInterface(BaseTemporalAlignmentInterface):
             The common starting time for all temporal data in this interface.
             Applies to all segments if there are multiple file paths used by the interface.
         """
+        warnings.warn(
+            "`set_aligned_starting_time` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment.shift_times(delta)` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        if self.metadata_key is not None:
+            # The recording starts at zero, so the old first call placing it and later calls shifting it are one shift
+            self.temporal_alignment.shift_times(aligned_starting_time)
+            return
+
         # A shift, so it accumulates: whatever starting times are already set move together. Only a
         # single file can start from nothing, since the shift then places that one file; several files
         # need their relative starting times first.
@@ -223,6 +250,12 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         aligned_segment_starting_times : list of floats
             The relative starting times of each audio file (segment).
         """
+        warnings.warn(
+            "`set_aligned_segment_starting_times` is deprecated and will be removed in v0.13.0. Use one "
+            "AudioInterface per file and `interface.temporal_alignment[key].move_start_to(starting_time)` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
         aligned_segment_starting_times_length = len(aligned_segment_starting_times)
         assert isinstance(aligned_segment_starting_times, list) and all(
             [isinstance(x, float) for x in aligned_segment_starting_times]
@@ -232,10 +265,24 @@ class AudioInterface(BaseTemporalAlignmentInterface):
             f"must be equal to the number of audio file paths ({self._number_of_audio_files})."
         )
 
+        if self.metadata_key is not None:
+            self.temporal_alignment[self.metadata_key].move_start_to(aligned_segment_starting_times[0])
+            return
+
         self._segment_starting_times = aligned_segment_starting_times
 
     def align_by_interpolation(self, unaligned_timestamps: np.ndarray, aligned_timestamps: np.ndarray):
-        raise NotImplementedError("The AudioInterface does not yet support timestamps.")
+        if self.metadata_key is None:
+            raise NotImplementedError("The AudioInterface does not yet support timestamps.")
+        warnings.warn(
+            "`align_by_interpolation` is deprecated and will be removed in v0.13.0. Use "
+            "`interface.temporal_alignment.remap_times(local_sync_times=..., reference_sync_times=...)` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        self.temporal_alignment.remap_times(
+            local_sync_times=unaligned_timestamps, reference_sync_times=aligned_timestamps
+        )
 
     def add_to_nwbfile(
         self,
@@ -350,14 +397,10 @@ class AudioInterface(BaseTemporalAlignmentInterface):
 
         return nwbfile
 
-    def _get_native_start_time(self) -> float:
-        """Return zero, since a WAV file records no start, unless the old starting time methods placed the recording."""
-        return (self._segment_starting_times or [0.0])[0]
-
     def _get_native_times(self) -> np.ndarray:
-        """Return the time of every sample, spaced by the sampling rate from the recording's start."""
+        """Return the time of every sample, spaced by the sampling rate from zero, since a WAV file records no start."""
         sampling_rate, acoustic_series = self._read_acoustic_series(self.source_data["file_path"])
-        return self._get_native_start_time() + np.arange(acoustic_series.shape[0]) / sampling_rate
+        return np.arange(acoustic_series.shape[0]) / sampling_rate
 
     def _read_acoustic_series(self, file_path: FilePath) -> tuple[int, np.ndarray]:
         """Read the sampling rate and the samples of a WAV file."""
