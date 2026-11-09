@@ -153,7 +153,7 @@ class AxonIntracellularInterface(BaseIcephysInterface):
         self._response_channel_name = self._channel_names[self._response_channel_index]
         self._metadata_key = metadata_key
 
-        # The run identity: the per-file grouping handle that `sequence` and the device/electrode/series keys all
+        # The run identity: the per-file grouping handle that `protocol_run` and the device/electrode/series keys all
         # derive from (see the properties below). Defaults to the file stem; a converter combining several files
         # overrides it with a unique, disambiguated label, because the stem collides across folders (Clampex names
         # files per folder, e.g. 0000.abf). A lone interface keeps the stem, so single-file output is unchanged.

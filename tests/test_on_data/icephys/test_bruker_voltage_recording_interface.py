@@ -156,8 +156,8 @@ class TestBrukerCurrentClamp(DataInterfaceTestMixin):
         # 100 recorded samples and the row addresses each series by its own range.
         recordings = nwbfile.intracellular_recordings
         assert len(recordings) == 1
-        assert recordings.colnames == ("sequence",)
-        assert recordings["sequence"][0] == "cell1-001"
+        assert recordings.colnames == ("protocol_run",)
+        assert recordings["protocol_run"][0] == "cell1-001"
         response_reference = recordings["responses"]["response"][0]
         stimulus_reference = recordings["stimuli"]["stimulus"][0]
         assert (response_reference.idx_start, response_reference.count) == (0, 100)
@@ -360,8 +360,8 @@ class TestCycleAssembly:
         assert len(recordings) == 3
         responses = recordings["responses"]["response"]
         assert [(reference.idx_start, reference.count) for reference in responses] == [(0, 100), (100, 100), (200, 100)]
-        # One run, so every row carries the same sequence and they aggregate into a single sequential recording.
-        assert set(recordings["sequence"][:]) == {"cell1-001"}
+        # One protocol run, so every row carries the same label and they aggregate into one sequential recording.
+        assert set(recordings["protocol_run"][:]) == {"cell1-001"}
 
     def test_cycles_are_sorted_by_acquisition_time(self, tmp_path):
         """The samples are concatenated in one order and timestamped from each cycle's ``DateTime``, so a
@@ -525,7 +525,7 @@ class TestBrukerVoltageRecordingConverter:
 
         # Distinct runs keep distinct identities, so nothing is merged across cells.
         assert len(nwbfile.icephys_electrodes) == 2
-        assert set(nwbfile.intracellular_recordings["sequence"][:]) == {"cell2-020", "cell1-001"}
+        assert set(nwbfile.intracellular_recordings["protocol_run"][:]) == {"cell2-020", "cell1-001"}
 
         # The tables the interfaces deliberately leave unbuilt.
         assert len(nwbfile.icephys_sequential_recordings) == 2
@@ -627,5 +627,8 @@ class TestBrukerVoltageRecordingConverter:
         metadata["NWBFile"]["identifier"] = "test"
         nwbfile = converter.create_nwbfile(metadata=metadata)
 
-        assert set(nwbfile.intracellular_recordings["sequence"][:]) == {"session_a_cell1-001", "session_b_cell1-001"}
+        assert set(nwbfile.intracellular_recordings["protocol_run"][:]) == {
+            "session_a_cell1-001",
+            "session_b_cell1-001",
+        }
         assert len(nwbfile.icephys_electrodes) == 2

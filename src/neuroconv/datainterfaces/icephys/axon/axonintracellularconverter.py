@@ -17,7 +17,7 @@ class AxonIntracellularConverter(ConverterPipe):
     Combine one or more :class:`AxonIntracellularInterface` instances into a single NWB icephys table.
 
     Each interface writes its own electrode's continuous ``PatchClampSeries`` and one intracellular-recordings
-    row per sweep, tagging each row with the run-level grouping columns (``sequence``, ``stimulus_type``, and the
+    row per sweep, tagging each row with the run-level grouping columns (``protocol_run``, ``stimulus_type``, and the
     optional ``repetition`` / ``condition``). This converter aligns the files on one timeline, then hands off to
     :func:`~neuroconv.tools.icephys._build_icephys_hierarchical_tables`, which reads those columns back and
     builds the ``SimultaneousRecordings`` / ``SequentialRecordings`` / ``Repetitions`` / ``ExperimentalConditions``
@@ -84,7 +84,7 @@ class AxonIntracellularConverter(ConverterPipe):
 
         Interfaces sharing a file path (dual patch) keep one identity; distinct files get the shortest path-suffix
         that's unique (the bare stem unless it collides across folders, which Clampex's per-folder ``0000.abf``
-        naming makes common). This overrides the interface's stem default so ``sequence`` and the device/electrode/
+        naming makes common). This overrides the interface's stem default so ``protocol_run`` and the device/electrode/
         series keys are unique per file, no silent cross-cell merge, no duplicate-name clash.
         """
         paths = list(dict.fromkeys(interface._file_path for interface in interfaces))
