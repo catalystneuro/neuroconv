@@ -17,6 +17,7 @@ def add_acoustic_waveform_series(
     iterator_options: dict | None = None,
     *,
     parent_container: Literal["stimulus", "acquisition"] = "stimulus",
+    timestamps: ArrayType | None = None,
 ) -> NWBFile:
     """
 
@@ -44,6 +45,9 @@ def add_acoustic_waveform_series(
         Dictionary of options for the SliceableDataChunkIterator.
     write_as : {'stimulus', 'acquisition'}, optional
         Deprecated. Use ``parent_container`` instead. Will be removed in v0.12.0.
+    timestamps : ArrayType, optional
+        One time per sample, in seconds relative to the start of the session. When given, the series is
+        written with these timestamps instead of ``rate`` and ``starting_time``.
 
     Returns
     -------
@@ -73,10 +77,13 @@ def add_acoustic_waveform_series(
         warn(f"{metadata['name']} already in nwbfile")
         return nwbfile
 
+    if timestamps is not None:
+        timing_kwargs = dict(timestamps=timestamps)
+    else:
+        timing_kwargs = dict(rate=float(rate), starting_time=starting_time)
     acoustic_waveform_series_kwargs = dict(
-        rate=float(rate),
-        starting_time=starting_time,
         data=SliceableDataChunkIterator(data=acoustic_series, **iterator_options),
+        **timing_kwargs,
     )
 
     # Add metadata
