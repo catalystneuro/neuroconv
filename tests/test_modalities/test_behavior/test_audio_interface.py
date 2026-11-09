@@ -18,6 +18,7 @@ from neuroconv import NWBConverter
 from neuroconv.datainterfaces.behavior.audio.audiointerface import AudioInterface
 from neuroconv.tools.testing.audio import create_24bit_wav_file
 from neuroconv.tools.testing.data_interface_mixins import AudioInterfaceTestMixin
+from neuroconv.tools.testing.mock_interfaces import MockAudioInterface
 
 
 def create_audio_files(
@@ -39,6 +40,9 @@ def create_audio_files(
     return audio_file_names
 
 
+# TODO: 'file_paths' is removed in v0.13.0. Then delete the filter and the tests that build the interface from
+# several files, and move the rest to 'file_path'.
+@pytest.mark.filterwarnings("ignore:The 'file_paths' parameter of AudioInterface:FutureWarning")
 class TestAudioInterface(AudioInterfaceTestMixin):
     data_interface_cls = AudioInterface
     conversion_options = dict(parent_container="acquisition")
@@ -61,7 +65,7 @@ class TestAudioInterface(AudioInterfaceTestMixin):
             sampling_rate=cls.sampling_rate,
             num_frames=cls.num_frames,
         )
-        cls.interface_kwargs = dict(file_paths=[cls.file_paths[0]])
+        cls.interface_kwargs = dict(file_path=cls.file_paths[0])
 
     @pytest.fixture(scope="function", autouse=True)
     def setup_converter(self):
@@ -250,6 +254,23 @@ class TestAudioInterface(AudioInterfaceTestMixin):
                 assert self.sampling_rate == container[audio_interface_name].rate
                 assert_array_equal(audio_test_data[audio_ind], container[audio_interface_name].data)
 
+    def test_single_file_metadata_defaults(self):
+        interface = AudioInterface(file_path=self.file_paths[0])
+
+        assert interface.metadata_key == "audio_test_audio_file_0"
+        series_metadata = interface.get_metadata()["Audio"]["AcousticWaveformSeries"]["audio_test_audio_file_0"]
+        assert series_metadata["name"] == "AcousticWaveformSeries"
+
+    def test_single_file_metadata_reaches_the_file(self):
+        interface = AudioInterface(file_path=self.file_paths[0], metadata_key="microphone")
+        metadata = interface.get_metadata()
+        metadata["Audio"]["AcousticWaveformSeries"]["microphone"].update(name="Microphone", description="Edited.")
+
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, stub_test=True, parent_container="acquisition")
+
+        assert nwbfile.acquisition["Microphone"].description == "Edited."
+
     def test_get_wav_bit_depth(self):
         """Test that _get_wav_bit_depth correctly identifies the bit depth of WAV files."""
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -273,7 +294,7 @@ class TestAudioInterface(AudioInterfaceTestMixin):
                 data_interface_classes = dict(Audio=AudioInterface)
 
             # Initialize the converter with the 24-bit WAV file
-            source_data = dict(Audio=dict(file_paths=[file_path]))
+            source_data = dict(Audio=dict(file_path=file_path))
             nwb_converter = AudioTestNWBConverter(source_data)
 
             # Get metadata
@@ -296,7 +317,7 @@ class TestAudioInterface(AudioInterfaceTestMixin):
                 nwbfile = io.read()
 
                 # Check that the acoustic waveform series exists
-                audio_name = metadata["Behavior"]["Audio"][0]["name"]
+                audio_name = metadata["Audio"]["AcousticWaveformSeries"]["audio_test_24bit"]["name"]
                 assert audio_name in nwbfile.acquisition
 
                 # Try to read the data
@@ -311,7 +332,7 @@ class TestAudioInterface(AudioInterfaceTestMixin):
             create_24bit_wav_file(file_path)
 
             # Initialize a fresh AudioInterface with the file
-            interface = AudioInterface(file_paths=[file_path])
+            interface = AudioInterface(file_path=file_path)
             # Get metadata
             metadata = interface.get_metadata()
             metadata["NWBFile"].update(session_start_time=self.session_start_time)
@@ -321,5 +342,25 @@ class TestAudioInterface(AudioInterfaceTestMixin):
             interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, stub_test=True, parent_container="acquisition")
 
             # Check that the acoustic waveform series exists
-            audio_name = metadata["Behavior"]["Audio"][0]["name"]
+            audio_name = metadata["Audio"]["AcousticWaveformSeries"][interface.metadata_key]["name"]
             assert audio_name in nwbfile.acquisition
+
+
+class TestMockAudioInterface(AudioInterfaceTestMixin):
+    """Whether the mock stands in for ``AudioInterface`` with no file behind its path."""
+
+    data_interface_cls = MockAudioInterface
+    interface_kwargs = dict()
+    conversion_options = dict(parent_container="acquisition")
+
+    def test_add_to_nwbfile(self, tmp_path):
+        file_path = tmp_path / "never_written.wav"
+        interface = MockAudioInterface(file_path=file_path, num_samples=500, sampling_rate=2000.0)
+
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile, parent_container="acquisition")
+
+        acoustic_waveform_series = nwbfile.acquisition["AcousticWaveformSeries"]
+        assert acoustic_waveform_series.rate == 2000.0
+        assert acoustic_waveform_series.data.maxshape == (500,)
+        assert not file_path.exists()

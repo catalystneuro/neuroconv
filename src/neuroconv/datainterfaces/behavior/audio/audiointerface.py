@@ -10,6 +10,7 @@ from pynwb import NWBFile
 
 from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from ....tools.audio import add_acoustic_waveform_series
+from ....tools.nwb_helpers._metadata_and_file_helpers import _validate_metadata_key
 from ....utils import (
     DeepDict,
     get_base_schema,
@@ -31,7 +32,14 @@ class AudioInterface(BaseTemporalAlignmentInterface):
     info = "Interface for writing audio recordings to an NWB file."
 
     @validate_call
-    def __init__(self, file_paths: list[FilePath], *, verbose: bool = False):
+    def __init__(
+        self,
+        file_path: FilePath | None = None,
+        *,
+        file_paths: list[FilePath] | None = None,
+        metadata_key: str | None = None,
+        verbose: bool = False,
+    ):
         """
         Data interface for writing acoustic recordings to an NWB file.
 
@@ -39,19 +47,41 @@ class AudioInterface(BaseTemporalAlignmentInterface):
 
         Parameters
         ----------
-        file_paths : list of FilePaths
+        file_path : FilePath, optional
+            The path to the audio recording. For several recordings, use one interface per file.
+        file_paths : list of FilePaths, optional
+            Deprecated. Use ``file_path`` with one interface per file instead. Will be removed in v0.13.0.
             The file paths to the audio recordings in sorted, consecutive order.
             We recommend using ``natsort`` to ensure the files are in consecutive order::
 
                 from natsort import natsorted
                 natsorted(file_paths)
 
+        metadata_key : str, optional
+            Snake_case key that identifies this recording's entry under
+            ``metadata["Audio"]["AcousticWaveformSeries"]``. Defaults to ``f"audio_{file_path.stem}"``.
+            The series name is the entry's ``name`` field, which defaults to ``"AcousticWaveformSeries"``.
+            Not used with ``file_paths``, whose metadata is the ``metadata["Behavior"]["Audio"]`` list.
         verbose : bool, default: False
         """
 
         # This import is to assure that ndx_sound is in the global namespace when an pynwb.io object is created.
         # For more detail, see https://github.com/rly/ndx-pose/issues/36
         import ndx_sound  # noqa: F401
+
+        if (file_path is None) == (file_paths is None):
+            raise ValueError("AudioInterface takes exactly one of 'file_path' or the deprecated 'file_paths'.")
+        if file_paths is not None:
+            warnings.warn(
+                "The 'file_paths' parameter of AudioInterface is deprecated and will be removed in v0.13.0. "
+                "Use 'file_path' with one AudioInterface per file instead.",
+                FutureWarning,
+                stacklevel=4,  # __init__, two validate_call frames, caller
+            )
+            self.metadata_key = None
+        else:
+            self.metadata_key = metadata_key or f"audio_{Path(file_path).stem}"
+            file_paths = [file_path]
 
         # Only check the last suffix of each file path
         suffixes = [Path(file_path).suffix for file_path in file_paths]
@@ -66,7 +96,10 @@ class AudioInterface(BaseTemporalAlignmentInterface):
 
         self._number_of_audio_files = len(file_paths)
         self.verbose = verbose
-        super().__init__(file_paths=file_paths)
+        if self.metadata_key is None:
+            super().__init__(file_paths=file_paths)
+        else:
+            super().__init__(file_path=file_path)
         self._segment_starting_times = None
 
     def get_metadata_schema(self) -> dict:
@@ -78,6 +111,20 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         with open(file=time_series_metadata_schema_path, encoding="utf-8") as fp:
             time_series_metadata_schema = json.load(fp=fp)
         time_series_metadata_schema.update(required=["name"])
+
+        if self.metadata_key is not None:
+            metadata_schema["properties"]["Audio"] = get_base_schema(tag="Audio")
+            metadata_schema["properties"]["Audio"].update(
+                required=["AcousticWaveformSeries"],
+                properties=dict(
+                    AcousticWaveformSeries=dict(
+                        type="object",
+                        properties={self.metadata_key: time_series_metadata_schema},
+                        required=[self.metadata_key],
+                    )
+                ),
+            )
+            return metadata_schema
 
         metadata_schema["properties"]["Behavior"] = get_base_schema(tag="Behavior")
         metadata_schema["properties"]["Behavior"].update(
@@ -93,6 +140,14 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         return metadata_schema
 
     def get_metadata(self) -> DeepDict:
+        if self.metadata_key is not None:
+            metadata = super().get_metadata()
+            metadata["Audio"]["AcousticWaveformSeries"][self.metadata_key] = dict(
+                name="AcousticWaveformSeries",
+                description="Acoustic waveform series.",
+            )
+            return metadata
+
         default_name = "AcousticWaveformSeries"
         is_multiple_file_path = len(self.source_data["file_paths"]) > 1
         audio_metadata = [
@@ -220,22 +275,26 @@ class AudioInterface(BaseTemporalAlignmentInterface):
             )
             parent_container = "stimulus"
 
-        import scipy
-
         metadata = metadata or self.get_metadata()
 
-        file_paths = self.source_data["file_paths"]
-        audio_metadata = metadata["Behavior"]["Audio"]
-        _check_audio_names_are_unique(metadata=audio_metadata)
-        assert len(audio_metadata) == self._number_of_audio_files, (
-            f"The Audio metadata is incomplete ({len(audio_metadata)} entry)! "
-            f"Expected {self._number_of_audio_files} (one for each entry of 'file_paths')."
-        )
+        if self.metadata_key is not None:
+            metadata_path = ("Audio", "AcousticWaveformSeries")
+            _validate_metadata_key(metadata, metadata_path=metadata_path, metadata_key=self.metadata_key)
+            file_paths = [self.source_data["file_path"]]
+            audio_metadata = [metadata["Audio"]["AcousticWaveformSeries"][self.metadata_key]]
+        else:
+            file_paths = self.source_data["file_paths"]
+            audio_metadata = metadata["Behavior"]["Audio"]
+            _check_audio_names_are_unique(metadata=audio_metadata)
+            assert len(audio_metadata) == self._number_of_audio_files, (
+                f"The Audio metadata is incomplete ({len(audio_metadata)} entry)! "
+                f"Expected {self._number_of_audio_files} (one for each entry of 'file_paths')."
+            )
 
-        audio_name_list = [audio["name"] for audio in audio_metadata]
-        any_duplicated_audio_names = len(set(audio_name_list)) < len(file_paths)
-        if any_duplicated_audio_names:
-            raise ValueError("There are duplicated file names in the metadata!")
+            audio_name_list = [audio["name"] for audio in audio_metadata]
+            any_duplicated_audio_names = len(set(audio_name_list)) < len(file_paths)
+            if any_duplicated_audio_names:
+                raise ValueError("There are duplicated file names in the metadata!")
 
         if self._number_of_audio_files > 1 and self._segment_starting_times is None:
             raise ValueError(
@@ -245,13 +304,7 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         starting_times = self._segment_starting_times or [0.0]
 
         for file_index, (acoustic_waveform_series_metadata, file_path) in enumerate(zip(audio_metadata, file_paths)):
-            # Check if the WAV file is 24-bit (3 bytes per sample)
-            bit_depth = self._get_wav_bit_depth(file_path)
-
-            # Memory mapping is not compatible with 24-bit WAV files
-            use_mmap = bit_depth != 24
-
-            sampling_rate, acoustic_series = scipy.io.wavfile.read(filename=file_path, mmap=use_mmap)
+            sampling_rate, acoustic_series = self._read_acoustic_series(file_path)
 
             if stub_test:
                 acoustic_series = acoustic_series[:stub_frames]
@@ -267,6 +320,18 @@ class AudioInterface(BaseTemporalAlignmentInterface):
             )
 
         return nwbfile
+
+    def _read_acoustic_series(self, file_path: FilePath) -> tuple[int, np.ndarray]:
+        """Read the sampling rate and the samples of a WAV file."""
+        import scipy
+
+        # Check if the WAV file is 24-bit (3 bytes per sample)
+        bit_depth = self._get_wav_bit_depth(file_path)
+
+        # Memory mapping is not compatible with 24-bit WAV files
+        use_mmap = bit_depth != 24
+
+        return scipy.io.wavfile.read(filename=file_path, mmap=use_mmap)
 
     @staticmethod
     def _get_wav_bit_depth(file_path: FilePath) -> int:
