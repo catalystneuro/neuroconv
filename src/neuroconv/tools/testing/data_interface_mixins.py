@@ -893,17 +893,13 @@ class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
         self.check_nwbfile_temporal_alignment()
 
 
-class AudioInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
+class AudioInterfaceTestMixin(DataInterfaceTestMixin):
     """
     A mixin for testing Audio interfaces.
     """
 
     # Currently asserted in the downstream testing suite; could be refactored in future PR
     def check_read_nwb(self, nwbfile_path: str):
-        pass
-
-    # Currently asserted in the downstream testing suite
-    def test_interface_alignment(self):
         pass
 
 
