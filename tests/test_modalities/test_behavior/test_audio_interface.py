@@ -46,6 +46,7 @@ def create_audio_files(
 class TestAudioInterface(AudioInterfaceTestMixin):
     data_interface_cls = AudioInterface
     conversion_options = dict(parent_container="acquisition")
+    expected_temporal_alignment_keys = ("audio_test_audio_file_0",)
 
     @pytest.fixture(scope="class", autouse=True)
     @classmethod
@@ -352,6 +353,7 @@ class TestMockAudioInterface(AudioInterfaceTestMixin):
     data_interface_cls = MockAudioInterface
     interface_kwargs = dict()
     conversion_options = dict(parent_container="acquisition")
+    expected_temporal_alignment_keys = ("audio_mock_audio",)
 
     def test_add_to_nwbfile(self, tmp_path):
         file_path = tmp_path / "never_written.wav"
@@ -364,3 +366,41 @@ class TestMockAudioInterface(AudioInterfaceTestMixin):
         assert acoustic_waveform_series.rate == 2000.0
         assert acoustic_waveform_series.data.maxshape == (500,)
         assert not file_path.exists()
+
+    def test_move_start_to_writes_a_starting_time_and_the_rate(self):
+        interface = MockAudioInterface(num_samples=500, sampling_rate=2000.0)
+        interface.temporal_alignment["audio_mock_audio"].move_start_to(12.5)
+
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile, parent_container="acquisition")
+
+        acoustic_waveform_series = nwbfile.acquisition["AcousticWaveformSeries"]
+        assert acoustic_waveform_series.starting_time == 12.5
+        assert acoustic_waveform_series.rate == 2000.0
+        assert acoustic_waveform_series.timestamps is None
+
+    def test_irregular_times_are_written_as_timestamps(self):
+        interface = MockAudioInterface(num_samples=500, sampling_rate=2000.0)
+        # A one second gap halfway through, which no rate and starting time can express
+        times = np.arange(500) / 2000.0
+        times[250:] += 1.0
+        interface.temporal_alignment["audio_mock_audio"].set_times(times)
+
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile, parent_container="acquisition")
+
+        acoustic_waveform_series = nwbfile.acquisition["AcousticWaveformSeries"]
+        assert_array_equal(acoustic_waveform_series.timestamps, times)
+        assert acoustic_waveform_series.rate is None
+
+    def test_stub_test_cuts_the_timestamps_with_the_data(self):
+        interface = MockAudioInterface(num_samples=500, sampling_rate=2000.0)
+        times = np.arange(500) / 2000.0
+        times[250:] += 1.0
+        interface.temporal_alignment["audio_mock_audio"].set_times(times)
+
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile, parent_container="acquisition", stub_test=True, stub_frames=100)
+
+        acoustic_waveform_series = nwbfile.acquisition["AcousticWaveformSeries"]
+        assert_array_equal(acoustic_waveform_series.timestamps, times[:100])

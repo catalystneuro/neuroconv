@@ -8,11 +8,13 @@ import numpy as np
 from pydantic import FilePath, validate_call
 from pynwb import NWBFile
 
+from ...._temporal_alignment import _TemporalAlignment
 from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from ....tools.audio import add_acoustic_waveform_series
 from ....tools.nwb_helpers._metadata_and_file_helpers import _validate_metadata_key
 from ....utils import (
     DeepDict,
+    calculate_regular_series_rate,
     get_base_schema,
 )
 
@@ -73,8 +75,8 @@ class AudioInterface(BaseTemporalAlignmentInterface):
             raise ValueError("AudioInterface takes exactly one of 'file_path' or the deprecated 'file_paths'.")
         if file_paths is not None:
             warnings.warn(
-                "The 'file_paths' parameter of AudioInterface is deprecated and will be removed in v0.13.0. "
-                "Use 'file_path' with one AudioInterface per file instead.",
+                "The 'file_paths' parameter of AudioInterface is deprecated and will be removed in v0.13.0, and it does "
+                "not support 'temporal_alignment'. Use 'file_path' with one AudioInterface per file instead.",
                 FutureWarning,
                 stacklevel=4,  # __init__, two validate_call frames, caller
             )
@@ -101,6 +103,17 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         else:
             super().__init__(file_path=file_path)
         self._segment_starting_times = None
+
+        # Alignment by composition, with the one recording keyed by `metadata_key`. See neuroconv/_temporal_alignment.py.
+        # The deprecated `file_paths` keeps its own starting times and registers nothing.
+        self.temporal_alignment = _TemporalAlignment()
+        if self.metadata_key is not None:
+            self.temporal_alignment._register(
+                key=self.metadata_key,
+                get_native_times=self._get_native_times,
+                default_start_time=self._get_native_start_time,
+                get_number_of_samples=lambda: self._read_acoustic_series(file_path)[1].shape[0],
+            )
 
     def get_metadata_schema(self) -> dict:
         metadata_schema = super().get_metadata_schema()
@@ -282,6 +295,18 @@ class AudioInterface(BaseTemporalAlignmentInterface):
             _validate_metadata_key(metadata, metadata_path=metadata_path, metadata_key=self.metadata_key)
             file_paths = [self.source_data["file_path"]]
             audio_metadata = [metadata["Audio"]["AcousticWaveformSeries"][self.metadata_key]]
+
+            time_bearing_object = self.temporal_alignment[self.metadata_key]
+            if time_bearing_object._times is None:
+                # Times nobody set run at the file's sampling rate, so the start is all the alignment changes
+                file_timings = [dict(starting_time=time_bearing_object._get_start_time())]
+            else:
+                timestamps = time_bearing_object.get_times()
+                rate = calculate_regular_series_rate(series=timestamps)
+                if rate is not None:
+                    file_timings = [dict(starting_time=timestamps[0], rate=rate)]
+                else:
+                    file_timings = [dict(timestamps=timestamps)]
         else:
             file_paths = self.source_data["file_paths"]
             audio_metadata = metadata["Behavior"]["Audio"]
@@ -296,30 +321,43 @@ class AudioInterface(BaseTemporalAlignmentInterface):
             if any_duplicated_audio_names:
                 raise ValueError("There are duplicated file names in the metadata!")
 
-        if self._number_of_audio_files > 1 and self._segment_starting_times is None:
-            raise ValueError(
-                "If you have multiple audio files, then you must specify each starting time by calling "
-                "'.set_aligned_segment_starting_times(...)'!"
-            )
-        starting_times = self._segment_starting_times or [0.0]
+            if self._number_of_audio_files > 1 and self._segment_starting_times is None:
+                raise ValueError(
+                    "If you have multiple audio files, then you must specify each starting time by calling "
+                    "'.set_aligned_segment_starting_times(...)'!"
+                )
+            starting_times = self._segment_starting_times or [0.0]
+            file_timings = [dict(starting_time=starting_time) for starting_time in starting_times]
 
-        for file_index, (acoustic_waveform_series_metadata, file_path) in enumerate(zip(audio_metadata, file_paths)):
+        for acoustic_waveform_series_metadata, file_path, file_timing in zip(audio_metadata, file_paths, file_timings):
             sampling_rate, acoustic_series = self._read_acoustic_series(file_path)
+            # The file's sampling rate unless the alignment gave times with a rate of their own
+            timing = dict(rate=sampling_rate) | file_timing
 
             if stub_test:
                 acoustic_series = acoustic_series[:stub_frames]
+                if "timestamps" in timing:
+                    timing["timestamps"] = timing["timestamps"][:stub_frames]
 
             add_acoustic_waveform_series(
                 acoustic_series=acoustic_series,
                 nwbfile=nwbfile,
-                rate=sampling_rate,
                 metadata=acoustic_waveform_series_metadata,
                 parent_container=parent_container,
-                starting_time=starting_times[file_index],
                 iterator_options=iterator_options,
+                **timing,
             )
 
         return nwbfile
+
+    def _get_native_start_time(self) -> float:
+        """Return zero, since a WAV file records no start, unless the old starting time methods placed the recording."""
+        return (self._segment_starting_times or [0.0])[0]
+
+    def _get_native_times(self) -> np.ndarray:
+        """Return the time of every sample, spaced by the sampling rate from the recording's start."""
+        sampling_rate, acoustic_series = self._read_acoustic_series(self.source_data["file_path"])
+        return self._get_native_start_time() + np.arange(acoustic_series.shape[0]) / sampling_rate
 
     def _read_acoustic_series(self, file_path: FilePath) -> tuple[int, np.ndarray]:
         """Read the sampling rate and the samples of a WAV file."""
