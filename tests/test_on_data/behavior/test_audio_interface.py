@@ -14,9 +14,10 @@ except ImportError:
 class TestAudioInterfaceWavIEEEFloat(DataInterfaceTestMixin):
     data_interface_cls = AudioInterface
     interface_kwargs = dict(
-        file_paths=[str(BEHAVIOR_DATA_PATH / "audio" / "generated_audio_files" / "Stereo_32bit_Float_PCM.wav")]
+        file_path=str(BEHAVIOR_DATA_PATH / "audio" / "generated_audio_files" / "Stereo_32bit_Float_PCM.wav")
     )
     save_directory = OUTPUT_PATH
+    expected_temporal_alignment_keys = ("audio_Stereo_32bit_Float_PCM",)
 
     def check_read_nwb(self, nwbfile_path: str):
         nwbfile = read_nwb(nwbfile_path)
