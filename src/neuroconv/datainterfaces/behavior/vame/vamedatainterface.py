@@ -110,8 +110,6 @@ class VameInterface(BaseTemporalAlignmentInterface):
     associated_suffixes = (".npy", ".yaml")
     info = "Interface for adding data from VAME (Variational Animal Motion Encoding)."
 
-    _timestamps = None
-
     @classmethod
     def get_source_schema(cls) -> dict:
         source_schema = super().get_source_schema()
@@ -197,7 +195,7 @@ class VameInterface(BaseTemporalAlignmentInterface):
                 {"kmeans": "path/to/cohort_community_label.npy"}
         sampling_frequency_hz : float, optional
             Video acquisition rate in Hz (frames per second). Required when not providing aligned
-            timestamps via :meth:`set_aligned_timestamps`.
+            timestamps via ``interface.temporal_alignment[metadata_key].set_times(times)``.
         metadata_key : str, default "vame_project"
             Key of this interface's ``VAMEProject`` entry in
             ``metadata["Behavior"]["Vame"]["VameProjects"]`` (also the prefix of its series keys).
@@ -580,7 +578,8 @@ class VameInterface(BaseTemporalAlignmentInterface):
         if self._sampling_frequency_hz is None:
             raise ValueError(
                 "VameInterface cannot generate original timestamps without a sampling_frequency_hz. "
-                "Provide sampling_frequency_hz at construction or call set_aligned_timestamps()."
+                "Provide sampling_frequency_hz at construction or give the times with "
+                f"`interface.temporal_alignment['{self._metadata_key}'].set_times(times)`."
             )
         num_frames = self._get_number_of_frames()
         time_window = self._vame_config.get("time_window", 0)
@@ -599,22 +598,50 @@ class VameInterface(BaseTemporalAlignmentInterface):
             raise ValueError(
                 "VameInterface cannot generate original timestamps without any data file. "
                 "Provide at least one of motif_labels_file_paths, latent_vectors_file_path, or "
-                "community_labels_file_paths, or call set_aligned_timestamps()."
+                "community_labels_file_paths."
             )
         return np.load(reference_file).shape[0]
 
     def _get_native_times(self) -> np.ndarray:
-        # The times the old `set_aligned_timestamps` stored stand in for the native ones until it is deprecated
-        if self._timestamps is not None:
-            return self._timestamps
         return self.get_original_timestamps()
 
     def get_timestamps(self) -> np.ndarray:
-        timestamps = self._timestamps if self._timestamps is not None else self.get_original_timestamps()
-        return timestamps
+        warnings.warn(
+            "`get_timestamps` is deprecated and will be removed in v0.13.0. "
+            f"Use `interface.temporal_alignment['{self._metadata_key}'].get_times()` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        return self.temporal_alignment[self._metadata_key].get_times()
 
     def set_aligned_timestamps(self, aligned_timestamps: np.ndarray) -> None:
-        self._timestamps = np.asarray(aligned_timestamps)
+        warnings.warn(
+            "`set_aligned_timestamps` is deprecated and will be removed in v0.13.0. "
+            f"Use `interface.temporal_alignment['{self._metadata_key}'].set_times(times)` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        self.temporal_alignment[self._metadata_key].set_times(aligned_timestamps)
+
+    def set_aligned_starting_time(self, aligned_starting_time: float) -> None:
+        warnings.warn(
+            "`set_aligned_starting_time` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment.shift_times(delta)` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        self.temporal_alignment.shift_times(aligned_starting_time)
+
+    def align_by_interpolation(self, unaligned_timestamps: np.ndarray, aligned_timestamps: np.ndarray) -> None:
+        warnings.warn(
+            "`align_by_interpolation` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment.remap_times(local_sync_times=..., reference_sync_times=...)` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        self.temporal_alignment.remap_times(
+            local_sync_times=unaligned_timestamps, reference_sync_times=aligned_timestamps
+        )
 
     @staticmethod
     def get_available_sessions(file_path: FilePath) -> list[str]:

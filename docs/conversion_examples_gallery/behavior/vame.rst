@@ -145,9 +145,8 @@ to retrieve the auto-populated defaults, then use
 Temporal alignment
 ~~~~~~~~~~~~~~~~~~
 
-When the VAME outputs need to be aligned to another data stream, use
-:py:meth:`~neuroconv.datainterfaces.behavior.vame.vamedatainterface.VameInterface.set_aligned_timestamps`
-instead of ``sampling_frequency_hz``:
+When the VAME outputs need to be aligned to another data stream, give their times with
+``interface.temporal_alignment["vame_project"].set_times`` instead of ``sampling_frequency_hz``:
 
 .. code-block:: python
 
@@ -158,7 +157,7 @@ instead of ``sampling_frequency_hz``:
     ...     file_path=project / "config.yaml",
     ...     motif_labels_file_paths={"kmeans": motif_labels_file_path},
     ... )
-    >>> interface.set_aligned_timestamps(aligned_timestamps)
+    >>> interface.temporal_alignment["vame_project"].set_times(aligned_timestamps)
     >>> metadata = interface.get_metadata()
     >>> metadata["NWBFile"].update(
     ...     session_start_time=datetime(2024, 1, 1, 12, 0, 0, tzinfo=ZoneInfo("Asia/Tokyo")),

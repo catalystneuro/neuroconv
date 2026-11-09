@@ -14,10 +14,7 @@ from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv import NWBConverter
 from neuroconv.datainterfaces import VameInterface
-from neuroconv.tools.testing.data_interface_mixins import (
-    DataInterfaceTestMixin,
-    TemporalAlignmentMixin,
-)
+from neuroconv.tools.testing.data_interface_mixins import DataInterfaceTestMixin
 from neuroconv.tools.testing.mock_interfaces import MockPoseEstimationInterface
 
 try:
@@ -88,7 +85,7 @@ class TestVameInterfaceMinimal(DataInterfaceTestMixin):
         nwbfile.read_io.close()
 
 
-class TestVameInterfaceFull(DataInterfaceTestMixin, TemporalAlignmentMixin):
+class TestVameInterfaceFull(DataInterfaceTestMixin):
     """VameInterface with all optional inputs: latent vectors, community labels, config."""
 
     data_interface_cls = VameInterface
@@ -133,7 +130,7 @@ class TestVameInterfaceFull(DataInterfaceTestMixin, TemporalAlignmentMixin):
         nwbfile.read_io.close()
 
 
-class TestVameInterfaceWithStubTest(DataInterfaceTestMixin, TemporalAlignmentMixin):
+class TestVameInterfaceWithStubTest(DataInterfaceTestMixin):
     """VameInterface with stub_test=True to verify frame truncation."""
 
     data_interface_cls = VameInterface
@@ -536,17 +533,6 @@ class TestVameInterfaceGetOriginalTimestamps:
         with pytest.raises(ValueError, match="without any data file"):
             interface.get_original_timestamps()
 
-    def test_get_timestamps_returns_aligned_when_set(self):
-        """get_timestamps() returns the aligned timestamps set via set_aligned_timestamps()."""
-        interface = VameInterface(
-            file_path=str(CONFIG_PATH),
-            motif_labels_file_paths={"kmeans": str(MOTIF_LABELS_PATH)},
-            sampling_frequency_hz=30.0,
-        )
-        aligned = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
-        interface.set_aligned_timestamps(aligned)
-        assert_array_equal(interface.get_timestamps(), aligned)
-
 
 class TestVameInterfaceIrregularTimestamps:
     """When aligned timestamps are non-uniform, the NWB file stores explicit timestamps (not rate)."""
@@ -557,8 +543,8 @@ class TestVameInterfaceIrregularTimestamps:
             motif_labels_file_paths={"kmeans": str(MOTIF_LABELS_PATH)},
         )
         # Non-uniform spacing -> calculate_regular_series_rate returns None
-        irregular_timestamps = np.array([0.0, 0.1, 0.25, 0.4, 0.6])
-        interface.set_aligned_timestamps(irregular_timestamps)
+        irregular_timestamps = np.cumsum(np.linspace(0.1, 0.2, 100))
+        interface.temporal_alignment["vame_project"].set_times(irregular_timestamps)
 
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata(), stub_test=True)
@@ -600,8 +586,8 @@ class TestVameInterfacePoseEstimationLink:
             file_path=str(CONFIG_PATH),
             motif_labels_file_paths={"kmeans": str(MOTIF_LABELS_PATH)},
         )
+        interface.temporal_alignment["vame_project"].set_times(np.arange(100, dtype=float))
         aligned_timestamps = np.arange(10, dtype=float)
-        interface.set_aligned_timestamps(aligned_timestamps)
 
         # Build NWB file with a PoseEstimation container already present
         pose_estimation_interface = MockPoseEstimationInterface(num_samples=10, num_nodes=3, seed=0)
@@ -630,8 +616,8 @@ class TestVameInterfacePoseEstimationLink:
             file_path=str(CONFIG_PATH),
             motif_labels_file_paths={"kmeans": str(MOTIF_LABELS_PATH)},
         )
+        interface.temporal_alignment["vame_project"].set_times(np.arange(100, dtype=float))
         aligned_timestamps = np.arange(10, dtype=float)
-        interface.set_aligned_timestamps(aligned_timestamps)
 
         pose_interface = MockPoseEstimationInterface(num_samples=10, num_nodes=3, seed=0, metadata_key="DLC")
         pose_interface.set_aligned_timestamps(aligned_timestamps)
@@ -657,8 +643,8 @@ class TestVameInterfacePoseEstimationLink:
             file_path=str(CONFIG_PATH),
             motif_labels_file_paths={"kmeans": str(MOTIF_LABELS_PATH)},
         )
+        interface.temporal_alignment["vame_project"].set_times(np.arange(100, dtype=float))
         aligned_timestamps = np.arange(10, dtype=float)
-        interface.set_aligned_timestamps(aligned_timestamps)
 
         pose_interface = MockPoseEstimationInterface(num_samples=10, num_nodes=3, seed=0)
         pose_interface.set_aligned_timestamps(aligned_timestamps)
@@ -690,7 +676,7 @@ class TestVameInterfaceVideoLink:
             file_path=str(CONFIG_PATH),
             motif_labels_file_paths={"kmeans": str(MOTIF_LABELS_PATH)},
         )
-        interface.set_aligned_timestamps(np.arange(10, dtype=float))
+        interface.temporal_alignment["vame_project"].set_times(np.arange(100, dtype=float))
 
         # An ImageSeries whose name differs from its registry key must already be in the file.
         nwbfile = mock_NWBFile()
@@ -722,7 +708,7 @@ class TestVameInterfaceStrictKeyResolution:
             file_path=str(CONFIG_PATH),
             motif_labels_file_paths={"kmeans": str(MOTIF_LABELS_PATH)},
         )
-        interface.set_aligned_timestamps(np.arange(10, dtype=float))
+        interface.temporal_alignment["vame_project"].set_times(np.arange(100, dtype=float))
         return interface
 
     def test_unregistered_pose_key_raises(self):
@@ -747,7 +733,7 @@ class TestVameInterfaceStrictKeyResolution:
             motif_labels_file_paths={"kmeans": str(MOTIF_LABELS_PATH)},
             community_labels_file_paths={"kmeans": str(COMMUNITY_LABELS_PATH)},
         )
-        interface.set_aligned_timestamps(np.arange(10, dtype=float))
+        interface.temporal_alignment["vame_project"].set_times(np.arange(100, dtype=float))
         nwbfile = mock_NWBFile()
         metadata = interface.get_metadata()
         community_key = next(iter(metadata["Behavior"]["Vame"]["CommunitySeries"]))
