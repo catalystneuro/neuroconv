@@ -16,7 +16,7 @@ def add_acoustic_waveform_series(
     write_as: Literal["stimulus", "acquisition"] | None = None,
     iterator_options: dict | None = None,
     *,
-    parent_container: Literal["stimulus", "acquisition"] = "stimulus",
+    parent_container: Literal["stimulus", "acquisition"] | None = None,
     timestamps: ArrayType | None = None,
 ) -> NWBFile:
     """
@@ -38,9 +38,10 @@ def add_acoustic_waveform_series(
     starting_time : float, default: 0.0
         The starting time in seconds for this acoustic series relative to the
         start time of the session.
-    parent_container : {'stimulus', 'acquisition'}
+    parent_container : {'stimulus', 'acquisition'}, optional
         The acoustic waveform series can be added to the NWB file either as
-        "stimulus" or as "acquisition".
+        "stimulus" or as "acquisition". When not passed, it is added as "stimulus" with a
+        ``FutureWarning``, and the default becomes "acquisition" in v0.13.0.
     iterator_options : dict, optional
         Dictionary of options for the SliceableDataChunkIterator.
     write_as : {'stimulus', 'acquisition'}, optional
@@ -63,6 +64,16 @@ def add_acoustic_waveform_series(
             stacklevel=2,
         )
         parent_container = write_as
+
+    if parent_container is None:
+        warn(
+            "The default 'parent_container' of add_acoustic_waveform_series will change from 'stimulus' to "
+            "'acquisition' in v0.13.0. Pass parent_container='stimulus' to keep the current behavior or "
+            "parent_container='acquisition' to adopt the new default.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        parent_container = "stimulus"
 
     assert parent_container in [
         "stimulus",

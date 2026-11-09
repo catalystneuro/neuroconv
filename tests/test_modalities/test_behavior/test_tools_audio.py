@@ -14,6 +14,8 @@ class TestAddAcousticWaveformSeries:
     audio_metadata = dict(name="AcousticWaveformSeries", description="test")
     data = np.random.randint(size=(num_frames,), low=np.iinfo("int16").min, high=np.iinfo("int16").max, dtype="int16")
 
+    # TODO: the default becomes "acquisition" in v0.13.0. Then remove the filter and expect the series in acquisition.
+    @pytest.mark.filterwarnings("ignore:The default 'parent_container':FutureWarning")
     def test_add_series_with_default_parent_container(self):
         nwbfile = mock_NWBFile()
         returned_nwbfile = add_acoustic_waveform_series(
@@ -58,9 +60,10 @@ class TestAddAcousticWaveformSeries:
             rate=self.sampling_rate,
             nwbfile=nwbfile,
             metadata=self.audio_metadata,
+            parent_container="acquisition",
         )
 
-        assert self.audio_metadata["name"] in nwbfile.stimulus
+        assert self.audio_metadata["name"] in nwbfile.acquisition
 
         with pytest.warns(UserWarning, match="AcousticWaveformSeries already in nwbfile"):
             add_acoustic_waveform_series(
@@ -68,9 +71,10 @@ class TestAddAcousticWaveformSeries:
                 rate=self.sampling_rate,
                 nwbfile=nwbfile,
                 metadata=self.audio_metadata,
+                parent_container="acquisition",
             )
 
-        assert len(nwbfile.stimulus) == 1
+        assert len(nwbfile.acquisition) == 1
 
     def test_add_two_acoustic_waveform_series(self):
         nwbfile = mock_NWBFile()
@@ -79,6 +83,7 @@ class TestAddAcousticWaveformSeries:
             rate=self.sampling_rate,
             nwbfile=nwbfile,
             metadata=self.audio_metadata,
+            parent_container="acquisition",
         )
         audio_metadata = dict(name="AcousticWaveformSeries1", description="Test")
         add_acoustic_waveform_series(
@@ -86,11 +91,12 @@ class TestAddAcousticWaveformSeries:
             rate=self.sampling_rate,
             nwbfile=nwbfile,
             metadata=audio_metadata,
+            parent_container="acquisition",
         )
 
-        assert len(nwbfile.stimulus) == 2
-        assert self.audio_metadata["name"] in nwbfile.stimulus
-        assert audio_metadata["name"] in nwbfile.stimulus
+        assert len(nwbfile.acquisition) == 2
+        assert self.audio_metadata["name"] in nwbfile.acquisition
+        assert audio_metadata["name"] in nwbfile.acquisition
 
     def test_add_series_with_different_starting_time(self):
         nwbfile = mock_NWBFile()
@@ -100,10 +106,11 @@ class TestAddAcousticWaveformSeries:
             rate=self.sampling_rate,
             nwbfile=nwbfile,
             metadata=self.audio_metadata,
+            parent_container="acquisition",
             starting_time=starting_time,
         )
 
-        acoustic_waveform_series = nwbfile.stimulus[self.audio_metadata["name"]]
+        acoustic_waveform_series = nwbfile.acquisition[self.audio_metadata["name"]]
         assert acoustic_waveform_series.starting_time == starting_time
 
     def test_add_series_with_timestamps(self):
@@ -116,10 +123,11 @@ class TestAddAcousticWaveformSeries:
             rate=self.sampling_rate,
             nwbfile=nwbfile,
             metadata=self.audio_metadata,
+            parent_container="acquisition",
             timestamps=timestamps,
         )
 
-        acoustic_waveform_series = nwbfile.stimulus[self.audio_metadata["name"]]
+        acoustic_waveform_series = nwbfile.acquisition[self.audio_metadata["name"]]
         assert_array_equal(acoustic_waveform_series.timestamps, timestamps)
         assert acoustic_waveform_series.rate is None
         assert acoustic_waveform_series.starting_time is None
@@ -131,8 +139,9 @@ class TestAddAcousticWaveformSeries:
             rate=self.sampling_rate,
             nwbfile=nwbfile,
             metadata=self.audio_metadata,
+            parent_container="acquisition",
         )
-        acoustic_waveform_series = nwbfile.stimulus[self.audio_metadata["name"]]
+        acoustic_waveform_series = nwbfile.acquisition[self.audio_metadata["name"]]
 
         data_chunks = np.zeros(self.num_frames)
         for data_chunk in acoustic_waveform_series.data:

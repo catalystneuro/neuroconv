@@ -176,7 +176,7 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         *,
         stub_test: bool = False,
         stub_frames: int = 1000,
-        parent_container: Literal["stimulus", "acquisition"] = "stimulus",
+        parent_container: Literal["stimulus", "acquisition"] | None = None,
         iterator_options: dict | None = None,
         write_as: Literal["stimulus", "acquisition"] | None = None,
     ):
@@ -188,9 +188,10 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         metadata : dict, optional
         stub_test : bool, default: False
         stub_frames : int, default: 1000
-        parent_container : {'stimulus', 'acquisition'}
+        parent_container : {'stimulus', 'acquisition'}, optional
             The acoustic waveform series can be added to the NWB file either as
-            "stimulus" or as "acquisition".
+            "stimulus" or as "acquisition". When not passed, it is added as "stimulus" with a
+            ``FutureWarning``, and the default becomes "acquisition" in v0.13.0.
         iterator_options : dict, optional
             Dictionary of options for the SliceableDataChunkIterator.
         write_as : {'stimulus', 'acquisition'}, optional
@@ -208,6 +209,16 @@ class AudioInterface(BaseTemporalAlignmentInterface):
                 stacklevel=2,
             )
             parent_container = write_as
+
+        if parent_container is None:
+            warnings.warn(
+                "The default 'parent_container' of AudioInterface.add_to_nwbfile() will change from 'stimulus' to "
+                "'acquisition' in v0.13.0. Pass parent_container='stimulus' to keep the current behavior or "
+                "parent_container='acquisition' to adopt the new default.",
+                FutureWarning,
+                stacklevel=2,
+            )
+            parent_container = "stimulus"
 
         import scipy
 
