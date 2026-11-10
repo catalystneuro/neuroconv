@@ -46,7 +46,7 @@ class BrukerVoltageRecordingConverter(ConverterPipe):
         if interfaces:
             _, starting_times = self._compute_alignment(interfaces)
             for interface, starting_time in starting_times.items():
-                interface.temporal_alignment.move_start_to(starting_time)
+                interface.temporal_alignment.move_earliest_observation_to(starting_time)
 
     def get_metadata(self) -> dict:
         interfaces = list(self.data_interface_objects.values())

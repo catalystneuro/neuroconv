@@ -241,7 +241,7 @@ class TestSortingInterface(SortingExtractorInterfaceTestMixin):
         with pytest.raises(NotImplementedError, match=expected_error):
             segment.set_times(segment.get_times())
 
-    def test_move_start_to_raises(self):
+    def test_move_earliest_observation_to_raises(self):
         """A sorting's first spike is not where it starts, so neither a segment nor the interface can be placed."""
         metadata_key = "mock_sorting"
         interface = MockSortingInterface(num_units=3, durations=[1.0], metadata_key=metadata_key)
@@ -251,9 +251,9 @@ class TestSortingInterface(SortingExtractorInterfaceTestMixin):
             "to move it."
         )
         with pytest.raises(NotImplementedError, match=expected_error):
-            interface.temporal_alignment[f"{metadata_key}_0"].move_start_to(100.0)
+            interface.temporal_alignment[f"{metadata_key}_0"].move_earliest_observation_to(100.0)
         with pytest.raises(NotImplementedError, match=expected_error):
-            interface.temporal_alignment.move_start_to(100.0)
+            interface.temporal_alignment.move_earliest_observation_to(100.0)
 
     def test_stub(self):
 

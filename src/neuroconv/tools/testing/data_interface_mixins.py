@@ -224,7 +224,7 @@ class DataInterfaceTestMixin:
                 err_msg=f"{identifier} was written but did not move with the alignment",
             )
 
-    def test_temporal_alignment_move_start_to_reaches_the_nwbfile(self, setup_interface):
+    def test_temporal_alignment_move_earliest_observation_to_reaches_the_nwbfile(self, setup_interface):
         if not hasattr(self.interface, "temporal_alignment"):
             pytest.skip("The interface does not support temporal alignment.")
 
@@ -237,7 +237,7 @@ class DataInterfaceTestMixin:
         assert original_times, "The interface wrote no time-bearing object, so there is nothing to align."
         earliest_time = min(np.min(times) for times in original_times.values() if times.size)
 
-        self.interface.temporal_alignment.move_start_to(starting_time)
+        self.interface.temporal_alignment.move_earliest_observation_to(starting_time)
         placed_times = _get_nwbfile_times(self.interface.create_nwbfile(metadata=metadata, **self.conversion_options))
 
         assert placed_times.keys() == original_times.keys()
@@ -801,8 +801,8 @@ class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
         recording_interface = self.associated_recording_cls(**self.associated_recording_kwargs)
         self.interface.register_recording(recording_interface=recording_interface)
 
-    def test_temporal_alignment_move_start_to_reaches_the_nwbfile(self, setup_interface):
-        pytest.skip("Sortings refuse `move_start_to`, which `TestSortingInterface` checks on the mock.")
+    def test_temporal_alignment_move_earliest_observation_to_reaches_the_nwbfile(self, setup_interface):
+        pytest.skip("Sortings refuse `move_earliest_observation_to`, which `TestSortingInterface` checks on the mock.")
 
     def test_temporal_alignment_set_times_reaches_the_nwbfile(self, setup_interface):
         pytest.skip("Sortings refuse `set_times`, which `TestSortingInterface` checks on the mock.")
@@ -1009,7 +1009,7 @@ class MedPCInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
     def test_temporal_alignment_shift_times_reaches_the_nwbfile(self):
         pass
 
-    def test_temporal_alignment_move_start_to_reaches_the_nwbfile(self):
+    def test_temporal_alignment_move_earliest_observation_to_reaches_the_nwbfile(self):
         pass
 
     def test_temporal_alignment_set_times_reaches_the_nwbfile(self):
@@ -1257,7 +1257,7 @@ class TDTFiberPhotometryInterfaceMixin(DataInterfaceTestMixin, TemporalAlignment
     def test_temporal_alignment_shift_times_reaches_the_nwbfile(self):
         pass
 
-    def test_temporal_alignment_move_start_to_reaches_the_nwbfile(self):
+    def test_temporal_alignment_move_earliest_observation_to_reaches_the_nwbfile(self):
         pass
 
     def test_temporal_alignment_set_times_reaches_the_nwbfile(self):
