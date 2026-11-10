@@ -12,6 +12,7 @@ from .mock_ttl_signals import generate_mock_ttl_signal
 from ...basedatainterface import BaseDataInterface
 from ...basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from ...datainterfaces import SpikeGLXNIDQInterface
+from ...datainterfaces.behavior.audio.audiointerface import AudioInterface
 from ...datainterfaces.behavior.baseposeestimationinterface import (
     BasePoseEstimationInterface,
 )
@@ -1067,6 +1068,7 @@ class MockSortingInterface(BaseSortingExtractorInterface):
         durations: tuple[float, ...] = (1.0,),
         seed: int = 0,
         verbose: bool = False,
+        metadata_key: str | None = None,
     ):
         """
         Parameters
@@ -1081,9 +1083,11 @@ class MockSortingInterface(BaseSortingExtractorInterface):
             Seed for the random number generator, by default 0.
         verbose : bool, optional
             Control whether to display verbose messages during writing, by default True.
+        metadata_key : str, optional
+            Key of this sorting's entry in ``metadata["Ecephys"]["Sortings"]``. Defaults to ``"mock_sorting"``.
 
         """
-
+        self.metadata_key = metadata_key or "mock_sorting"
         super().__init__(
             num_units=num_units,
             sampling_frequency=sampling_frequency,
@@ -1616,6 +1620,66 @@ class MockExternalVideoInterface(ExternalVideoInterface):
         return 0.0
 
 
+class MockAudioInterface(AudioInterface):
+    """
+    A mock audio interface for testing purposes.
+
+    Overrides what the WAV file holds: the sampling rate and the number of samples are constructor arguments and
+    the samples are zeros, so a test can compose audio of any length into a conversion without a file on disk.
+    Everything else runs the real interface's course.
+
+    The path does not have to exist and deliberately does not resolve.
+    """
+
+    display_name = "Mock Audio"
+    keywords = ("sound", "microphone", "mock")
+    associated_suffixes = ()
+    info = "Mock interface for audio data testing."
+
+    def __init__(
+        self,
+        file_path: str | None = None,
+        *,
+        num_samples: int = 1000,
+        sampling_rate: float = 1000.0,
+        metadata_key: str | None = None,
+        verbose: bool = False,
+    ):
+        """
+        Initialize a mock audio interface.
+
+        Parameters
+        ----------
+        file_path : str, optional
+            The path the interface is given; it does not have to exist. Defaults to ``"mock_audio.wav"``.
+        num_samples : int, default: 1000
+            The number of samples the file holds.
+        sampling_rate : float, default: 1000.0
+            The sampling rate of the file, in Hz.
+        metadata_key : str, optional
+            Snake_case key identifying this recording's entry under ``metadata["Audio"]["AcousticWaveformSeries"]``.
+            Defaults to the stem-based key of the parent interface.
+        verbose : bool, default: False
+            If True, display verbose output.
+        """
+        file_path = Path(file_path or "mock_audio.wav")
+        # AudioInterface.__init__ is wrapped by pydantic's validate_call, whose FilePath refuses a path that does
+        # not exist; the undecorated function kept at __wrapped__ lets this interface stand up with nothing behind
+        # its path.
+        AudioInterface.__init__.__wrapped__(self, file_path=file_path, metadata_key=metadata_key, verbose=verbose)
+        self._num_samples = num_samples
+        self._sampling_rate = sampling_rate
+
+    def get_metadata(self) -> DeepDict:
+        metadata = super().get_metadata()
+        metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
+        return metadata
+
+    def _read_acoustic_series(self, file_path) -> tuple[float, np.ndarray]:
+        """Return zeros of the mock's length in place of the file's samples."""
+        return self._sampling_rate, np.zeros(self._num_samples, dtype="int16")
+
+
 class MockIcephysInterface(BaseIcephysInterface):
     """
     A mock intracellular electrophysiology interface for testing purposes.
@@ -1640,7 +1704,7 @@ class MockIcephysInterface(BaseIcephysInterface):
         sampling_frequency: float = 10_000.0,
         inter_sweep_interval: float = 0.0,
         starting_time: float = 0.0,
-        sequence: str = "run",
+        protocol_run: str = "run",
         stimulus_type: str | None = "mock protocol",
         repetition: str | None = None,
         condition: str | None = None,
@@ -1668,9 +1732,9 @@ class MockIcephysInterface(BaseIcephysInterface):
             them irregular, so it is written with explicit timestamps instead (the rule a real interface uses).
         starting_time : float, default: 0.0
             Time of the first sample, in seconds.
-        sequence : str, default: "run"
-            Run identity written to the ``sequence`` column of every row, the label that groups the rows into
-            one sequential recording.
+        protocol_run : str, default: "run"
+            Label written to the ``protocol_run`` column of every row, which groups the rows into one sequential
+            recording.
         stimulus_type : str, optional, default: "mock protocol"
             Value of the ``stimulus_type`` column, carried up to the sequential recording when aggregated. Pass
             ``None`` to omit the column, as an interface whose format describes no stimulus does.
@@ -1699,7 +1763,7 @@ class MockIcephysInterface(BaseIcephysInterface):
         self.sampling_frequency = sampling_frequency
         self.inter_sweep_interval = inter_sweep_interval
         self.starting_time = starting_time
-        self._run_identity = sequence
+        self._run_identity = protocol_run
         self.stimulus_type = stimulus_type
         self._repetition = repetition
         self._condition = condition
@@ -1717,6 +1781,15 @@ class MockIcephysInterface(BaseIcephysInterface):
             default_start_time=starting_time,
             get_number_of_samples=lambda: num_sweeps * samples_per_sweep,
         )
+        if stimulus_duration is not None:
+            self._stimulus_alignment_key = f"{self._alignment_key}_stimulus"
+            stimulus_samples_per_sweep = round(stimulus_duration * sampling_frequency)
+            self.temporal_alignment._register(
+                key=self._stimulus_alignment_key,
+                get_native_times=partial(self._get_sweep_times, stimulus_samples_per_sweep),
+                default_start_time=starting_time,
+                get_number_of_samples=lambda: num_sweeps * stimulus_samples_per_sweep,
+            )
 
     def get_metadata(self) -> DeepDict:
         """

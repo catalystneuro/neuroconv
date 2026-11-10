@@ -112,8 +112,8 @@
       "properties": {
         "age": {
           "type": "string",
-          "description": "The age of the subject. The ISO 8601 Duration format is recommended, e.g., 'P90D' for 90 days old, 'P2W' for 2 weeks old, 'P18Y' for 18 years old.",
-          "pattern": "^P((\\d+Y)?(\\d+M)?(\\d+D)?(T(\\d+H)?(\\d+M)?(\\d+S)?))|(\\d+W)?$"
+          "description": "The age of the subject, as an ISO 8601 duration, e.g., 'P90D' for 90 days old, 'P2W' for 2 weeks old, 'P18Y' for 18 years old, or as a range of two durations with either bound left out, e.g., 'P3M/P6M' for 3 to 6 months old, 'P8W/' for at least 8 weeks old, or '/' when the age is not known.",
+          "pattern": "^(?:P(?!$|/)(?:\\d+(?:\\.\\d+)?Y)?(?:\\d+(?:\\.\\d+)?M)?(?:\\d+(?:\\.\\d+)?W)?(?:\\d+(?:\\.\\d+)?D)?(?:T(?=\\d)(?:\\d+(?:\\.\\d+)?H)?(?:\\d+(?:\\.\\d+)?M)?(?:\\d+(?:\\.\\d+)?S)?)?|(?:P(?!$|/)(?:\\d+(?:\\.\\d+)?Y)?(?:\\d+(?:\\.\\d+)?M)?(?:\\d+(?:\\.\\d+)?W)?(?:\\d+(?:\\.\\d+)?D)?(?:T(?=\\d)(?:\\d+(?:\\.\\d+)?H)?(?:\\d+(?:\\.\\d+)?M)?(?:\\d+(?:\\.\\d+)?S)?)?)?/(?:P(?!$|/)(?:\\d+(?:\\.\\d+)?Y)?(?:\\d+(?:\\.\\d+)?M)?(?:\\d+(?:\\.\\d+)?W)?(?:\\d+(?:\\.\\d+)?D)?(?:T(?=\\d)(?:\\d+(?:\\.\\d+)?H)?(?:\\d+(?:\\.\\d+)?M)?(?:\\d+(?:\\.\\d+)?S)?)?)?)$"
         },
         "age__reference": {
           "type": "string",

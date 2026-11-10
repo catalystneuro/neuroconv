@@ -66,6 +66,21 @@ def _get_ophys_registry_entry_definitions() -> dict:
                     type="string",
                     description="Key of this segmentation's imaging plane in metadata['Ophys']['ImagingPlanes'].",
                 ),
+                segmentation_table_metadata_key=dict(
+                    type="string",
+                    description=(
+                        "Key of the table this segmentation writes into in "
+                        "metadata['Ophys']['SegmentationTables'], for a table several segmentations share."
+                    ),
+                ),
+            ),
+        ),
+        SegmentationTableEntry=dict(
+            type="object",
+            additionalProperties=False,
+            properties=dict(
+                name=dict(type="string", pattern="^[^/]*$"),
+                description=dict(type="string"),
             ),
         ),
         # Traces and summary images are keyed twice: by the plane segmentation they belong to, and then by

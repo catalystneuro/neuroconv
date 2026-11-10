@@ -275,3 +275,40 @@ def test_converter_pipe_rejects_other_types_up_front():
 
     with pytest.raises(TypeError, match="`data_interfaces` must be a list of interfaces, or a dict.*not set"):
         ConverterPipe(data_interfaces={MockBehaviorEventInterface()})
+
+
+def test_converter_temporal_alignment_is_the_alignment_of_each_child():
+    from neuroconv.tools.testing.mock_interfaces import MockIcephysInterface
+
+    icephys_interface = MockIcephysInterface()
+    converter = ConverterPipe(data_interfaces=dict(Icephys=icephys_interface, Static=MockInterface()))
+
+    assert converter.temporal_alignment.keys() == ("Icephys",)
+    assert converter.temporal_alignment["Icephys"] is icephys_interface.temporal_alignment
+
+
+def test_converter_temporal_alignment_reaches_an_object_through_a_nested_converter():
+    from neuroconv.tools.testing.mock_interfaces import MockIcephysInterface
+
+    icephys_interface = MockIcephysInterface(metadata_key="cell")
+    inner_converter = ConverterPipe(data_interfaces=dict(Icephys=icephys_interface))
+    outer_converter = ConverterPipe(data_interfaces=dict(Inner=inner_converter))
+
+    assert outer_converter.temporal_alignment.keys() == ("Inner",)
+    assert outer_converter.temporal_alignment["Inner"].keys() == ("Icephys",)
+    time_bearing_object = outer_converter.temporal_alignment["Inner"]["Icephys"]["cell"]
+    assert time_bearing_object is icephys_interface.temporal_alignment["cell"]
+
+
+def test_converter_temporal_alignment_names_a_child_without_alignment():
+    converter = ConverterPipe(data_interfaces=dict(Static=MockInterface()))
+
+    with pytest.raises(KeyError, match="'Static' is a MockInterface, which has no temporal alignment"):
+        converter.temporal_alignment["Static"]
+
+
+def test_converter_temporal_alignment_lists_the_children_for_an_unknown_name():
+    converter = ConverterPipe(data_interfaces=dict(Static=MockInterface()))
+
+    with pytest.raises(KeyError, match="'Missing' is not a child of this converter. It holds 'Static'"):
+        converter.temporal_alignment["Missing"]

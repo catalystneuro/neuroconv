@@ -32,6 +32,7 @@ def _old_format_metadata() -> dict:
 
 
 class TestTranslationContract:
+    # TODO: remove in v0.13.0, when the old list-based metadata format is removed
     def test_the_callers_dictionary_is_not_modified(self):
         metadata = _old_format_metadata()
 
@@ -39,6 +40,7 @@ class TestTranslationContract:
 
         assert metadata == _old_format_metadata()
 
+    # TODO: remove in v0.13.0, when the old list-based metadata format is removed
     def test_old_format_metadata_becomes_the_dict_format(self):
         # The devices move to the top-level registry and the group's link by name becomes a link by key.
         # The old blocks do not survive: the modality blocks are declared with `additionalProperties: False`,
@@ -62,6 +64,7 @@ class TestTranslationContract:
 
         assert _translate_old_metadata(_old_format_metadata()) == expected_translated_metadata
 
+    # TODO: remove in v0.13.0, when the old list-based metadata format is removed
     def test_a_group_naming_a_device_the_metadata_does_not_describe_gets_one(self):
         # Legal in the old format, where the writer generated the device rather than failing.
         metadata = {"Ecephys": {"ElectrodeGroup": [{"name": "s1", "device": "AnUndescribedSystem"}]}}
@@ -72,6 +75,7 @@ class TestTranslationContract:
 
         assert _translate_old_metadata(metadata) == expected_translated_metadata
 
+    # TODO: remove in v0.13.0, when the old list-based metadata format is removed
     def test_a_device_described_in_both_shapes_becomes_one_entry(self):
         # What a converter produces today: a dict-shaped registry entry carrying fields the list entry
         # lacks, beside the list entry for the same physical device. Keying the list entry by its own
@@ -96,6 +100,7 @@ class TestTranslationContract:
 
         assert _translate_old_metadata(metadata) == expected_translated_metadata
 
+    # TODO: remove in v0.13.0, when the old list-based metadata format is removed
     def test_translating_twice_changes_nothing(self):
         # The entry points nest, so a dictionary reaches the translator two or three times per conversion.
         expected_translated_metadata = {
@@ -121,6 +126,7 @@ class TestTranslationContract:
         assert once == expected_translated_metadata
         assert twice == expected_translated_metadata
 
+    # TODO: remove in v0.13.0, when the old list-based metadata format is removed
     def test_dict_format_metadata_is_returned_unchanged(self):
         metadata = {
             "Devices": {"my_device": {"name": "MyAcquisitionSystem"}},
@@ -132,6 +138,7 @@ class TestTranslationContract:
 
         assert _translate_old_metadata(metadata) is metadata
 
+    # TODO: remove in v0.13.0, when the old list-based metadata format is removed
     def test_an_es_key_entry_is_filed_under_the_metadata_key(self):
         metadata = {
             "Ecephys": {
@@ -148,6 +155,7 @@ class TestTranslationContract:
 
         assert translated == expected_translated_metadata
 
+    # TODO: remove in v0.13.0, when the old list-based metadata format is removed
     def test_an_es_key_entry_keeps_its_key_when_no_label_is_given(self):
         # What validation does, and what a direct caller who passed only `es_key` gets.
         metadata = {
@@ -163,6 +171,7 @@ class TestTranslationContract:
 
         assert _translate_old_metadata(metadata) == expected_translated_metadata
 
+    # TODO: remove in v0.13.0, when the old list-based metadata format is removed
     def test_dict_shaped_entries_survive_an_old_block_beside_them(self):
         # The upgrade edit, and what the switch release's guard promises to convert rather than ignore: an
         # old-format `Device` line written onto dict-format metadata. The groups the interface read out of
@@ -195,6 +204,45 @@ class TestTranslationContract:
 
         assert _translate_old_metadata(metadata) == expected_translated_metadata
 
+    # TODO: remove in v0.13.0, when the old list-based metadata format is removed
+    def test_units_tables_and_sortings_are_kept_when_combined_with_old_ecephys_metadata_format(self):
+        """`UnitsTables` and `Sortings` come through unchanged when the rest of `Ecephys` is in the old format.
+
+        Translation rebuilds an old `Ecephys` block from the keys it knows, and these two exist only in the dict
+        format, so without an explicit copy they are dropped and the units table is written with its default name
+        and description, without an error. A user gets such a block by adding `UnitsTables` to metadata that is
+        otherwise old: the output of `NeuroScopeSortingInterface.get_metadata()`, which still returns an
+        `ElectrodeGroup` list, or a script that still writes `ElectrodeGroup` as a list.
+        """
+        metadata_key = "kilosort_sorting"
+        units_table_metadata_key = "processed"
+        metadata = _old_format_metadata()
+        metadata["Ecephys"]["UnitsTables"] = {
+            units_table_metadata_key: {"name": "ProcessedUnits", "description": "Curated."}
+        }
+        metadata["Ecephys"]["Sortings"] = {metadata_key: {"units_table_metadata_key": units_table_metadata_key}}
+        expected_translated_metadata = {
+            "Devices": {"MyAcquisitionSystem": {"name": "MyAcquisitionSystem", "description": "A system I described"}},
+            "Ecephys": {
+                "ElectrodeGroups": {
+                    "s1": {
+                        "name": "s1",
+                        "description": "Shank 1",
+                        "location": "CA1",
+                        "device_metadata_key": "MyAcquisitionSystem",
+                    }
+                },
+                "ElectricalSeries": {
+                    "ElectricalSeries": {"name": "ElectricalSeriesRaw", "description": "Raw traces I described"}
+                },
+                "UnitsTables": {units_table_metadata_key: {"name": "ProcessedUnits", "description": "Curated."}},
+                "Sortings": {metadata_key: {"units_table_metadata_key": units_table_metadata_key}},
+            },
+        }
+
+        assert _translate_old_metadata(metadata) == expected_translated_metadata
+
+    # TODO: remove in v0.13.0, when the old list-based metadata format is removed
     def test_a_stray_field_beside_real_entries_is_left_for_the_schema_to_reject(self):
         # An old-format edit written onto dict-format metadata. Converting it would guess at what the
         # user meant; leaving it lets validation say so.
@@ -206,11 +254,13 @@ class TestTranslationContract:
 
         assert _translate_old_metadata(metadata) is metadata
 
+    # TODO: remove in v0.13.0, when the old list-based metadata format is removed
     def test_a_deep_dict_stays_a_deep_dict(self):
         translated = _translate_old_metadata(DeepDict(_old_format_metadata()))
 
         assert isinstance(translated, DeepDict)
 
+    # TODO: remove in v0.13.0, when the old list-based metadata format is removed
     def test_the_legacy_list_valued_registry_becomes_keyed(self):
         metadata = {"Devices": [{"name": "MyAcquisitionSystem", "description": "A system I described"}]}
         expected_translated_metadata = {
@@ -251,6 +301,7 @@ def _old_format_ophys_metadata() -> dict:
 
 
 class TestOphysTranslationContract:
+    # TODO: remove in v0.13.0, when the old list-based metadata format is removed
     def test_the_callers_dictionary_is_not_modified(self):
         metadata = _old_format_ophys_metadata()
 
@@ -258,6 +309,7 @@ class TestOphysTranslationContract:
 
         assert metadata == _old_format_ophys_metadata()
 
+    # TODO: remove in v0.13.0, when the old list-based metadata format is removed
     def test_old_format_ophys_metadata_becomes_the_dict_format(self):
         expected_translated_metadata = {
             "Devices": {"MyMicroscope": {"name": "MyMicroscope", "description": "A microscope I described"}},
@@ -307,6 +359,7 @@ class TestOphysTranslationContract:
 
         assert _translate_old_metadata(_old_format_ophys_metadata()) == expected_translated_metadata
 
+    # TODO: remove in v0.13.0, when the old list-based metadata format is removed
     def test_tuples_are_translated_like_lists(self):
         """Nothing but the shape of `Device` and `ImagingPlane` marks this block as old."""
         metadata = {
@@ -330,6 +383,7 @@ class TestOphysTranslationContract:
 
         assert _translate_old_metadata(metadata) == expected_translated_metadata
 
+    # TODO: remove in v0.13.0, when the old list-based metadata format is removed
     def test_the_addressed_photon_series_is_filed_under_the_metadata_key(self):
         expected_translated_metadata = {
             "Devices": {"MyMicroscope": {"name": "MyMicroscope", "description": "A microscope I described"}},
@@ -376,6 +430,7 @@ class TestOphysTranslationContract:
 
         assert translated == expected_translated_metadata
 
+    # TODO: remove in v0.13.0, when the old list-based metadata format is removed
     def test_the_addressed_plane_segmentation_rekeys_its_traces_and_images(self):
         # Traces and summary images are keyed by the plane segmentation's key, so re-keying it has to
         # carry them along or they are looked up under a key that no longer exists.
@@ -424,6 +479,7 @@ class TestOphysTranslationContract:
 
         assert translated == expected_translated_metadata
 
+    # TODO: remove in v0.13.0, when the old list-based metadata format is removed
     def test_dict_format_ophys_metadata_is_returned_unchanged(self):
         metadata = {
             "Devices": {"my_microscope": {"name": "MyMicroscope"}},
@@ -437,6 +493,7 @@ class TestOphysTranslationContract:
 
         assert _translate_old_metadata(metadata) is metadata
 
+    # TODO: remove in v0.13.0, when the old list-based metadata format is removed
     def test_dict_shaped_entries_survive_an_old_block_beside_them(self):
         # What a converter hands every interface today when a dict-only one (`BrukerTiffImagingInterface`)
         # shares a dictionary with a dual-mode one: a single `Ophys` block holding both shapes. Building
@@ -481,6 +538,7 @@ class TestOphysTranslationContract:
 
         assert _translate_old_metadata(metadata) == expected_translated_metadata
 
+    # TODO: remove in v0.13.0, when the old list-based metadata format is removed
     def test_translating_twice_changes_nothing(self):
         once = _translate_old_metadata(_old_format_ophys_metadata())
         twice = _translate_old_metadata(once)
@@ -491,6 +549,7 @@ class TestOphysTranslationContract:
 class TestCrossModalityTranslationContract:
     """One dictionary carrying both modalities, which is what a converter always hands its interfaces."""
 
+    # TODO: remove in v0.13.0, when the old list-based metadata format is removed
     def test_one_modality_being_old_leaves_the_other_alone(self):
         # A converter pairing a dual-mode ecephys interface, old at today's default, with a dict-only
         # imaging one. The registry is shared, so translating the ecephys block writes into the same place
@@ -524,6 +583,7 @@ class TestCrossModalityTranslationContract:
 
         assert _translate_old_metadata(metadata) == expected_translated_metadata
 
+    # TODO: remove in v0.13.0, when the old list-based metadata format is removed
     def test_a_device_both_modalities_name_becomes_one_entry(self):
         # `nwbfile.devices` is one namespace, so the two old lists naming the same acquisition system
         # described one device and have to keep describing one after translation. Two entries sharing a

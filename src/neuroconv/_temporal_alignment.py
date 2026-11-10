@@ -263,6 +263,7 @@ class _TemporalAlignment:
         default_start_time=None,
         get_number_of_samples=None,
         get_native_durations=None,
+        time_bearing_object_class=_TimeBearingObject,
     ) -> _TimeBearingObject:
         """Name one time-bearing object. Called by the interface, not by a user.
 
@@ -271,8 +272,9 @@ class _TemporalAlignment:
         no array to learn it. Without it the first default time is read from the array.
         ``get_number_of_samples`` returns how many times ``set_times`` has to be given, and without it the count
         is not checked. ``get_native_durations`` returns one duration per time, or ``None``, for an event type.
+        ``time_bearing_object_class`` is a subclass for an interface whose objects refuse some operations.
         """
-        time_bearing_object = _TimeBearingObject(
+        time_bearing_object = time_bearing_object_class(
             get_native_times=get_native_times,
             default_start_time=default_start_time,
             get_number_of_samples=get_number_of_samples,
@@ -348,3 +350,30 @@ class _TemporalAlignment:
                 reference_sync_times=reference_sync_times,
                 interpolation_function=interpolation_function,
             )
+
+
+class _ConverterTemporalAlignment:
+    """The alignment surface of a converter, exposed as ``converter.temporal_alignment``.
+
+    Names the converter's children by their names in ``data_interface_objects``. ``temporal_alignment[name]`` is
+    the child's own ``temporal_alignment``, so indexing again reaches a time-bearing object of an interface or a
+    child of a nested converter. It holds no timing state of its own.
+    """
+
+    def __init__(self, *, data_interface_objects: dict):
+        self._data_interface_objects = data_interface_objects
+
+    def keys(self) -> tuple[str, ...]:
+        """The children of this converter that have temporal alignment."""
+        return tuple(
+            name for name, child in self._data_interface_objects.items() if hasattr(child, "temporal_alignment")
+        )
+
+    def __getitem__(self, name: str) -> "_TemporalAlignment | _ConverterTemporalAlignment":
+        if name not in self._data_interface_objects:
+            named = ", ".join(repr(child_name) for child_name in self._data_interface_objects) or "nothing"
+            raise KeyError(f"{name!r} is not a child of this converter. It holds {named}.")
+        child = self._data_interface_objects[name]
+        if not hasattr(child, "temporal_alignment"):
+            raise KeyError(f"{name!r} is a {type(child).__name__}, which has no temporal alignment.")
+        return child.temporal_alignment

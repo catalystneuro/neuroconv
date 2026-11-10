@@ -1,3 +1,4 @@
+from datetime import timezone
 from pathlib import Path
 from typing import Optional
 
@@ -91,7 +92,8 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
         # Open file and extract headers
         basic_header = _parse_nsx_basic_header(self.source_data["file_path"])
         if "TimeOrigin" in basic_header:
-            metadata["NWBFile"].update(session_start_time=basic_header["TimeOrigin"].isoformat())
+            session_start_time = basic_header["TimeOrigin"].replace(tzinfo=timezone.utc)
+            metadata["NWBFile"].update(session_start_time=session_start_time.isoformat())
         if "Comment" in basic_header:
             metadata["NWBFile"].update(session_description=basic_header["Comment"])
 
@@ -127,6 +129,7 @@ class BlackrockSortingInterface(BaseSortingExtractorInterface):
         sampling_frequency: Optional[float] = None,
         nsx_to_load: Optional[int | list | str] = None,
         verbose: bool = False,
+        metadata_key: str | None = None,
     ):
         """
         Parameters
@@ -142,8 +145,10 @@ class BlackrockSortingInterface(BaseSortingExtractorInterface):
             If 'all', then all nsX will be loaded. If None, all nsX files will be loaded. If empty list, no nsX files will be loaded.
         verbose : bool, default: False
             Enables verbosity
+        metadata_key : str, optional
+            Key of this sorting's entry in ``metadata["Ecephys"]["Sortings"]``. Defaults to ``"blackrock_sorting"``.
         """
-
+        self.metadata_key = metadata_key or "blackrock_sorting"
         super().__init__(
             file_path=file_path,
             sampling_frequency=sampling_frequency,
@@ -157,6 +162,8 @@ class BlackrockSortingInterface(BaseSortingExtractorInterface):
         basic_header = _parse_nev_basic_header(self.source_data["file_path"])
         if "TimeOrigin" in basic_header:
             session_start_time = basic_header["TimeOrigin"]
+            if basic_header["FileSpec"] == "3.0":
+                session_start_time = session_start_time.replace(tzinfo=timezone.utc)
             metadata["NWBFile"].update(session_start_time=session_start_time.isoformat())
         if "Comment" in basic_header:
             metadata["NWBFile"].update(session_description=basic_header["Comment"])

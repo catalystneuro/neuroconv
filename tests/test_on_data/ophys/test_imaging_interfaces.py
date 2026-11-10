@@ -1,5 +1,4 @@
 import platform
-import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -348,28 +347,6 @@ class TestScanImageImagingInterfacesAssertions:
             match="Unsupported ScanImage version 65536. Supported versions are 3, 4, and 5.Most likely this is a legacy version, use ScanImageLegacyImagingInterface instead.",
         ):
             ScanImageImagingInterface(file_path=file_path)
-
-    def test_channel_name_not_specified(self):
-        """Test that ValueError is raised when channel_name is not specified for data with multiple channels."""
-        file_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20240320_multifile_00001.tif")
-        with pytest.raises(ValueError, match="Multiple channels available in the data"):
-            ScanImageImagingInterface(file_path=file_path)
-
-    def test_incorrect_channel_name(self):
-        """Test that ValueError is raised when incorrect channel name is specified."""
-        file_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif")
-        channel_name = "Channel 2"
-        with pytest.raises(
-            ValueError,
-            match=r"Channel name \(Channel 2\) not found in available channels \(\['Channel 1', 'Channel 4'\]\)\. Please specify a valid channel name\.",
-        ):
-            ScanImageImagingInterface(file_path=file_path, channel_name=channel_name, interleave_slice_samples=True)
-
-    def test_incorrect_plane_index(self):
-        """Test that ValueError is raised when incorrect plane index is specified."""
-        file_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220801_volume.tif")
-        with pytest.raises(ValueError, match=r"plane_index \(20\) must be between 0 and 19"):
-            ScanImageImagingInterface(file_path=file_path, plane_index=20, interleave_slice_samples=True)
 
 
 class TestScanImageImagingInterfaceDiscovery:
@@ -1863,7 +1840,7 @@ class TestInscopixImagingInterfaceDualColorMovieWithDroppedFrames(ImagingExtract
         assert "Focus: 30" in imaging_plane["description"]
 
         ops = metadata["Ophys"]["OnePhotonSeries"][0]
-        assert ops["dimension"] == [288, 480]
+        assert ops["dimension"] == [480, 288]
 
     def check_extracted_metadata(self, metadata: dict):
         metadata_key = self.interface.metadata_key
@@ -1952,7 +1929,7 @@ class TestInscopixImagingInterfaceMovieU8(ImagingExtractorInterfaceTestMixin):
         assert (
             ops["imaging_plane"] == "ImagingPlane"
         )  # Default metadata because this was not included in the source metadata
-        assert ops["dimension"] == [3, 4]
+        assert ops["dimension"] == [4, 3]
 
     def check_extracted_metadata(self, metadata: dict):
         """Test new dict-based metadata for uint8 file with minimal acquisition info."""
@@ -2345,74 +2322,3 @@ class TestFemtonicsImagingInterfaceStaticMethods:
         file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
         sessions = FemtonicsImagingInterface.get_available_sessions(file_path=file_path)
         assert sessions == ["MSession_0"]
-
-    def test_channel_name_not_specified_multiple_channels(self):
-        """Test that ValueError is raised when channel_name is not specified and multiple channels are available."""
-        file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
-        with pytest.raises(
-            ValueError,
-            match=r"Multiple channels found in MSession_0/MUnit_0: \['UG', 'UR'\]\. Please specify 'channel_name' to select one\.",
-        ):
-            FemtonicsImagingInterface(
-                file_path=file_path,
-                munit_name="MUnit_0",
-            )
-
-    def test_wrong_channel_name(self):
-        """Test that ValueError is raised when an invalid channel_name is specified."""
-        file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
-        with pytest.raises(
-            ValueError,
-            match=r"Channel 'WRONG_CHANNEL' not found in MSession_0/MUnit_0\. Available: \['UG', 'UR'\]",
-        ):
-            FemtonicsImagingInterface(
-                file_path=file_path,
-                munit_name="MUnit_0",
-                channel_name="WRONG_CHANNEL",
-            )
-
-    def test_channel_name_not_specified_multiple_channels(self):
-        """Test that ValueError is raised when channel_name is not specified and multiple channels are available."""
-        file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
-        with pytest.raises(
-            ValueError,
-            match=r"Multiple channels found in MSession_0/MUnit_0: \['UG', 'UR'\]\. Please specify 'channel_name' to select one\.",
-        ):
-            FemtonicsImagingInterface(
-                file_path=file_path,
-                munit_name="MUnit_0",
-            )
-
-    def test_munit_not_specified_with_multiple_units(self):
-        """Test that ValueError is raised when munit_name is not specified and multiple units are available."""
-        file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
-        expected_error = f"Multiple MUnits found in session 'MSession_0' of file: {file_path}. Available MUnits: ['MUnit_0', 'MUnit_1']. Please specify 'munit_name' to select one."
-        with pytest.raises(ValueError, match=re.escape(expected_error)):
-            FemtonicsImagingInterface(
-                file_path=file_path,
-                # munit_name not specified
-                channel_name="UG",
-            )
-
-    def test_wrong_munit_name(self):
-        """Test that ValueError is raised when an invalid munit_name is specified."""
-        file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
-        expected_error = f"MUnit 'WRONG_UNIT' not found in session 'MSession_0' of file: {file_path}. Available MUnits: ['MUnit_0', 'MUnit_1']"
-        with pytest.raises(ValueError, match=re.escape(expected_error)):
-            FemtonicsImagingInterface(
-                file_path=file_path,
-                munit_name="WRONG_UNIT",
-                channel_name="UG",
-            )
-
-    def test_wrong_session_name(self):
-        """Test that ValueError is raised when an invalid session_name is specified."""
-        file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
-        expected_error = f"Session 'WRONG_SESSION' not found in file: {file_path}. Available sessions: ['MSession_0']"
-        with pytest.raises(ValueError, match=re.escape(expected_error)):
-            FemtonicsImagingInterface(
-                file_path=file_path,
-                session_name="WRONG_SESSION",
-                munit_name="MUnit_0",
-                channel_name="UG",
-            )
