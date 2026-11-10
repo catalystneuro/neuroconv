@@ -2001,6 +2001,40 @@ class TestAddUnitsTable(TestCase):
 
         self.common_unit_row_kwargs = dict(spike_times=[1, 1, 1])
 
+    def test_sorting_name_metadata_overrides_annotation(self):
+        self.sorting_1.annotate(sorting_name="source_sorting")
+        metadata_key = "selected_sorting"
+        metadata = {
+            "Ecephys": {
+                "Sortings": {
+                    "other_sorting": {"sorting_name": "other"},
+                    metadata_key: {"sorting_name": "curated"},
+                }
+            }
+        }
+        original_metadata = deepcopy(metadata)
+
+        add_sorting_to_nwbfile(
+            sorting=self.sorting_1, nwbfile=self.nwbfile, metadata=metadata, metadata_key=metadata_key
+        )
+
+        assert list(self.nwbfile.units["sorting_name"][:]) == ["curated"] * self.num_units
+        assert metadata == original_metadata
+        assert self.sorting_1.get_annotation("sorting_name") == "source_sorting"
+
+    def test_sorting_name_from_annotation(self):
+        self.sorting_1.annotate(sorting_name="source_sorting")
+
+        add_sorting_to_nwbfile(sorting=self.sorting_1, nwbfile=self.nwbfile)
+
+        assert list(self.nwbfile.units["sorting_name"][:]) == ["source_sorting"] * self.num_units
+
+    def test_sorting_name_defaults_to_sorting(self):
+        add_sorting_to_nwbfile(sorting=self.sorting_1, nwbfile=self.nwbfile)
+
+        assert list(self.nwbfile.units["sorting_name"][:]) == ["sorting"] * self.num_units
+        assert "sorting_name" not in self.sorting_1.get_annotation_keys()
+
     def test_units_column_order_is_naturally_sorted(self):
         """The units table had the same set iteration problem as the electrodes table.
 
@@ -2012,7 +2046,15 @@ class TestAddUnitsTable(TestCase):
 
         add_sorting_to_nwbfile(sorting=self.sorting_1, nwbfile=self.nwbfile)
 
-        expected_unit_column_names = ["unit_name", "amplitude_cutoff", "quality", "snr_2", "snr_10", "spike_times"]
+        expected_unit_column_names = [
+            "unit_name",
+            "amplitude_cutoff",
+            "quality",
+            "snr_2",
+            "snr_10",
+            "sorting_name",
+            "spike_times",
+        ]
         self.assertListEqual(list(self.nwbfile.units.colnames), expected_unit_column_names)
 
     def test_integer_unit_names(self):
@@ -2131,6 +2173,7 @@ class TestAddUnitsTable(TestCase):
         """Add some units to the units table after using the add_sorting_to_nwbfile function"""
 
         add_sorting_to_nwbfile(sorting=self.sorting_1, nwbfile=self.nwbfile)
+        self.common_unit_row_kwargs["sorting_name"] = "manual_sorting"
 
         # Previous properties
         self.nwbfile.units.add_unit(**self.common_unit_row_kwargs, id=123, unit_name="123")

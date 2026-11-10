@@ -151,6 +151,14 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
                 type="object",
                 additionalProperties=False,
                 properties=dict(
+                    sorting_name=dict(
+                        type="string",
+                        description=(
+                            "Name identifying one sorting output: the set of units produced by a particular "
+                            "spike-sorting run or curation step. All units from that output share this value. "
+                            "Assign distinct names to different outputs written to the same units table."
+                        ),
+                    ),
                     name=dict(
                         type="string",
                         pattern="^[^/]*$",
