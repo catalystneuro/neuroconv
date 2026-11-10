@@ -369,9 +369,9 @@ class TestMockAudioInterface(AudioInterfaceTestMixin):
         assert acoustic_waveform_series.data.maxshape == (500,)
         assert not file_path.exists()
 
-    def test_move_start_to_writes_a_starting_time_and_the_rate(self):
+    def test_move_earliest_observation_to_writes_a_starting_time_and_the_rate(self):
         interface = MockAudioInterface(num_samples=500, sampling_rate=2000.0)
-        interface.temporal_alignment["audio_mock_audio"].move_start_to(12.5)
+        interface.temporal_alignment["audio_mock_audio"].move_earliest_observation_to(12.5)
 
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile, parent_container="acquisition")

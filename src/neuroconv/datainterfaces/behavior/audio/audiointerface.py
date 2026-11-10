@@ -252,7 +252,8 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         """
         warnings.warn(
             "`set_aligned_segment_starting_times` is deprecated and will be removed in v0.13.0. Use one "
-            "AudioInterface per file and `interface.temporal_alignment[key].move_start_to(starting_time)` instead.",
+            "AudioInterface per file and "
+            "`interface.temporal_alignment[key].move_earliest_observation_to(starting_time)` instead.",
             FutureWarning,
             stacklevel=2,
         )
@@ -266,7 +267,7 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         )
 
         if self.metadata_key is not None:
-            self.temporal_alignment[self.metadata_key].move_start_to(aligned_segment_starting_times[0])
+            self.temporal_alignment[self.metadata_key].move_earliest_observation_to(aligned_segment_starting_times[0])
             return
 
         self._segment_starting_times = aligned_segment_starting_times

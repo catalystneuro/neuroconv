@@ -260,7 +260,7 @@ class InternalVideoInterface(BaseDataInterface):
         Set the starting time of the video, or shift the timestamps set on it by this amount.
 
         .. deprecated::
-            Use ``interface.temporal_alignment[key].move_start_to(starting_time)`` to place the video, or
+            Use ``interface.temporal_alignment[key].move_earliest_observation_to(starting_time)`` to place the video, or
             ``interface.temporal_alignment.shift_times(delta)`` to move it. Removed in v0.13.0.
 
         Parameters
@@ -272,7 +272,7 @@ class InternalVideoInterface(BaseDataInterface):
         """
         warnings.warn(
             "`set_aligned_starting_time` is deprecated and will be removed in v0.13.0. Use "
-            "`interface.temporal_alignment[key].move_start_to(starting_time)` to place the video, or "
+            "`interface.temporal_alignment[key].move_earliest_observation_to(starting_time)` to place the video, or "
             "`interface.temporal_alignment.shift_times(delta)` to move it.",
             FutureWarning,
             stacklevel=2,
@@ -282,7 +282,7 @@ class InternalVideoInterface(BaseDataInterface):
         if time_bearing_object._times is not None:
             time_bearing_object.shift_times(aligned_starting_time)
         else:
-            time_bearing_object.move_start_to(aligned_starting_time)
+            time_bearing_object.move_earliest_observation_to(aligned_starting_time)
 
     def align_by_interpolation(self, unaligned_timestamps: np.ndarray, aligned_timestamps: np.ndarray):
         """

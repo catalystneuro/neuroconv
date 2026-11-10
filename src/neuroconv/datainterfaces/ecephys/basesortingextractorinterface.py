@@ -32,7 +32,7 @@ class _SortingTimeBearingObject(_TimeBearingObject):
             "spike is which. Use `shift_times` or `remap_times`."
         )
 
-    def move_start_to(self, starting_time: float) -> None:
+    def move_earliest_observation_to(self, starting_time: float) -> None:
         raise NotImplementedError(_NO_SORTING_START_MESSAGE)
 
     def _get_earliest_time(self) -> float:
