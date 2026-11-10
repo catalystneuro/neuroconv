@@ -1,8 +1,7 @@
 Timing Model
 ============
 
-For alignment workflows and examples, see the :doc:`../user_guide/temporal_alignment`. The converter alignment surface
-described here is not yet implemented.
+For alignment workflows and examples, see the :doc:`../user_guide/temporal_alignment`.
 
 Objects and state
 -----------------
@@ -73,10 +72,10 @@ access to its native times through a reader instead of loading them during regis
 recordings, where a timing correction should not require reading or allocating an array with one entry per sample.
 
 The separation between base times and an offset makes this possible for translations. ``shift_times`` updates the
-offset without reading timestamps. ``move_start_to`` needs the current start, so it can use a scalar start accessor
-when one is available. Otherwise finding that start may require reading timestamps, even though the placement itself
-still changes only the offset. Laziness therefore depends on what information the operation needs and what the
-interface can supply without a full array.
+offset without reading timestamps. ``move_earliest_observation_to`` needs the earliest observation, so it can use a
+scalar start accessor when that identifies the earliest observation. Otherwise finding the minimum may require
+reading timestamps, even though the placement itself still changes only the offset. Laziness therefore depends on
+what information the operation needs and what the interface can supply without a full array.
 
 Operations that need the timestamp values evaluate them at that point. ``get_times`` returns the output array, and
 ``remap_times`` evaluates the current times and stores the remapped result. They read through the native-time
@@ -99,22 +98,23 @@ times, an existing offset would be added to the supplied values. The caller woul
 predict what the file receives, even when a converter applied it elsewhere. With the selected semantics, the values
 passed to the setter are sufficient to know the result.
 
-The other operations follow the same convention. For one nonempty series, their effects can be expressed directly on
+The other operations follow the same convention. For one nonempty object, their effects can be expressed directly on
 ``T``, its current output times:
 
 .. code-block:: text
 
-    shift_times(d):      T' = T + d
-    move_start_to(t):    T' = T + (t - T[0])
-    set_times(A):        T' = A
-    remap_times(L, R):   T' = interp(T, L, R)
+    shift_times(d):                    T' = T + d
+    move_earliest_observation_to(t):    T' = T + (t - min(T))
+    set_times(A):                      T' = A
+    remap_times(L, R):                  T' = interp(T, L, R)
 
 The first two operations translate the times, so they change only the offset and preserve sample spacing and
 durations. Their difference is how the translation is determined: ``shift_times`` adds a correction, while
-``move_start_to`` computes the correction needed to reach a destination. For a series, that destination refers to
-the first sample. For an events table, it refers to the earliest onset. An object with base start ``s`` therefore
-receives ``offset = t - s`` when placed at ``t``. Repeating the same placement leaves it in place, while repeating a
-shift accumulates.
+``move_earliest_observation_to`` computes the correction needed to place the earliest actual observation at a
+destination. This is the minimum timestamp regardless of storage order, not the recording clock's origin. An
+object with earliest base time ``s`` therefore receives ``offset = t - s`` when placed at ``t``. Observation order
+and associations with sample values or event labels are preserved. Repeating the same placement leaves it in
+place, while repeating a shift accumulates.
 
 ``set_times`` and ``remap_times`` store their resulting output times directly as new base times and reset the offset
 to zero. Retaining the offset could satisfy the same output-time contract, but would require subtracting it from the
@@ -134,8 +134,9 @@ At the moment, the only time-bearing object that does not implement ``set_times`
 interface. Replacement would take a dictionary mapping units to timestamp arrays instead of a single array, and we
 have not identified a reasonable use case for implementing this.
 
-In the same vein, sorting does not implement object-level ``move_start_to`` because its first spike reflects neural
-activity, not the start of the recording.
+Placement for sorting is not yet implemented. Once supported, ``move_earliest_observation_to`` will place the
+earliest spike across the selected units using one common shift, preserving their relative timing. The earliest
+spike reflects neural activity, not the start of the recording.
 
 Collection operations
 ---------------------
@@ -146,10 +147,10 @@ calling ``converter.temporal_alignment["SpikeGLX"].shift_times(delta)`` shifts i
 action-potential and low-frequency bands of a Neuropixels 1.0 recording. This lets users correct the acquisition's
 timing without separately adjusting each stream.
 
-When using ``move_start_to``, the earliest timestamp across the selected objects determines one shared shift. We
-choose this behavior because the correction should preserve the timing relationships within the acquisition.
-Calling ``move_start_to`` independently on each child would instead force every stream to begin at the same time,
-erasing any existing differences between their starts.
+When using ``move_earliest_observation_to``, the earliest observation across the selected objects determines one
+shared shift. We choose this behavior because the correction should preserve the timing relationships within the acquisition.
+Calling ``move_earliest_observation_to`` independently on each child would instead place every child's earliest
+observation at the same time, erasing any existing differences between those times.
 
 ``set_times`` requires an explicit key because an object's components may need different timestamps. For example,
 the ``start_time`` and ``stop_time`` columns of a ``TimeIntervals`` table cannot generally accept the same replacement

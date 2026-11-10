@@ -10,9 +10,9 @@ Produces six figures:
 - ``time_alignment_concatenate.png``     - gross alignment: separate trial files tiled onto one session clock.
 - ``time_alignment_interpolation.png``   - fine alignment: sample timestamps remapped onto the reference clock via shared pulses.
 - ``time_alignment_coarse.png``          - one time-bearing object moved by ``shift_times`` and by
-  ``move_start_to``.
+  ``move_earliest_observation_to``.
 - ``time_alignment_moves_together.png`` - an interface's time-bearing objects moved together by ``shift_times``
-  and by ``move_start_to``, with the gaps between them preserved.
+  and by ``move_earliest_observation_to``, with the gaps between them preserved.
 - ``time_alignment_remap_together.png`` - one pulse mapping applied to every video file in an interface.
 """
 
@@ -279,10 +279,10 @@ def build_interpolation():
 
 
 def build_coarse():
-    """One time-bearing object moved by ``shift_times`` and by ``move_start_to``.
+    """One time-bearing object moved by ``shift_times`` and by ``move_earliest_observation_to``.
 
     The one-object counterpart of ``build_moves_together``. Both calls keep the spacing between samples; they differ in
-    what the number is measured from, ``shift_times`` from where the object was and ``move_start_to`` from session
+    what the number is measured from, ``shift_times`` from where the object was and ``move_earliest_observation_to`` from session
     start. The moved panels show the as-loaded object faintly below the moved one.
     """
     loaded_ticks = np.arange(0.5, 6.5, 1.0)
@@ -321,7 +321,7 @@ def build_coarse():
     panel(
         axes[2],
         shift=5.0 - loaded_ticks[0],
-        title="temporal_alignment[key].move_start_to(5.0): measured from session start",
+        title="temporal_alignment[key].move_earliest_observation_to(5.0):\nmeasured from session start",
         arrow_from=0.0,
         arrow_to=5.0,
         arrow_label="t = 5.0",
@@ -331,11 +331,11 @@ def build_coarse():
 
 
 def build_moves_together():
-    """An interface's time-bearing objects moved together by ``shift_times`` and by ``move_start_to``.
+    """An interface's time-bearing objects moved together by ``shift_times`` and by ``move_earliest_observation_to``.
 
     Both calls move every object by one amount and keep the gaps between them. They differ in what the number is
-    measured from: ``shift_times`` from where the objects were, ``move_start_to`` from session start to the earliest
-    object start. The moved panels show the as-loaded objects faintly behind the moved ones.
+    measured from: ``shift_times`` from where the objects were, ``move_earliest_observation_to`` from session start
+    to the earliest observation. The moved panels show the as-loaded objects faintly behind the moved ones.
     """
     loaded_starts = np.array([0.5, 1.5, 3.0])  # three objects at fixed internal gaps
 
@@ -389,7 +389,7 @@ def build_moves_together():
     panel(
         axes[2],
         shift=5.0 - loaded_starts[0],
-        title="temporal_alignment.move_start_to(5.0): measured from session start to the earliest start",
+        title="temporal_alignment.move_earliest_observation_to(5.0):\nmeasured from session start to the earliest observation",
         arrow_from=0.0,
         arrow_to=5.0,
         arrow_label="t = 5.0",

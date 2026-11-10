@@ -84,19 +84,19 @@ There are two operations for it, and which one you reach for depends on what you
 
 * ``shift_times(delta)``, when you know how far the object is off. It moves the object by ``delta`` seconds from
   wherever it sits now.
-* ``move_start_to(t)``, when you know where the object should begin. It moves the object so that its start sits at
-  ``t`` seconds after ``session_start_time``.
+* ``move_earliest_observation_to(t)``, when you know when the object's earliest observation occurred. It moves the
+  object so that its earliest frame, sample or event sits at ``t`` seconds after ``session_start_time``.
 
 Both are rigid moves: the spacing between samples, the gaps between events and all durations are preserved, and only
 the object's position on the session clock changes. They differ when repeated: ``shift_times`` is relative, so repeated
-calls add up, while ``move_start_to`` is absolute, so repeating it changes nothing.
+calls add up, while ``move_earliest_observation_to`` is absolute, so repeating it changes nothing.
 
 .. image:: ../_static/images/time_alignment_coarse.png
    :width: 600px
    :align: center
    :alt: Three panels of one time-bearing object. As loaded; after shift_times(3.0), the object 3.0 seconds from
-         where it was; after move_start_to(5.0), its start at 5.0 seconds from session start. In both moved panels
-         the spacing between its samples is unchanged.
+         where it was; after move_earliest_observation_to(5.0), its earliest observation at 5.0 seconds from session start.
+         In both moved panels the spacing between its samples is unchanged.
 
 The canonical case for ``shift_times`` is a secondary system that sends a single pulse to the primary system as it
 starts: that pulse tells you the offset, and one call moves the whole stream onto the shared clock:
@@ -105,15 +105,16 @@ starts: that pulse tells you the offset, and one call moves the whole stream ont
 
     imaging_interface.temporal_alignment["two_photon_series"].shift_times(3.0)   # every sample now sits 3.0 seconds later
 
-When what you know is where the stream began rather than how far it is off, for instance that imaging started 4.2
-seconds into the session, give that position to ``move_start_to``:
+When you know when the earliest observation occurred, for instance that the first imaging sample was acquired 4.2
+seconds into the session, give that position to ``move_earliest_observation_to``:
 
 .. code-block:: python
 
-    imaging_interface.temporal_alignment["two_photon_series"].move_start_to(4.2)   # the first sample now sits at 4.2 seconds
+    imaging_interface.temporal_alignment["two_photon_series"].move_earliest_observation_to(4.2)   # the first sample now sits at 4.2 seconds
 
-A series starts at its first sample, and an events table starts at its earliest event. A later ``shift_times`` moves
-the object from that position.
+The reference is the earliest timestamp, even when observations are stored out of chronological order. It is an
+actual observation, not the origin of the recording clock. The call preserves observation order and associations
+with sample values or event labels. A later ``shift_times`` moves the object from that position.
 
 Fine alignment
 ~~~~~~~~~~~~~~
@@ -251,13 +252,13 @@ qualifiers) allow access to the specific time-bearing objects:
     video_interface.temporal_alignment["trial_01"].remap_times(local_sync_times=pulses_local, reference_sync_times=pulses_reference)
 
 A session recorded as separate trial files may have each file's clock starting near zero. When you know the time each
-file began on the session clock, place each object with ``move_start_to``:
+file's first frame was acquired on the session clock, place each object with ``move_earliest_observation_to``:
 
 .. code-block:: python
 
-    video_interface.temporal_alignment["trial_01"].move_start_to(0.0)
-    video_interface.temporal_alignment["trial_02"].move_start_to(65.0)
-    video_interface.temporal_alignment["trial_03"].move_start_to(130.0)
+    video_interface.temporal_alignment["trial_01"].move_earliest_observation_to(0.0)
+    video_interface.temporal_alignment["trial_02"].move_earliest_observation_to(65.0)
+    video_interface.temporal_alignment["trial_03"].move_earliest_observation_to(130.0)
 
 Each call places one file and leaves its siblings where they are.
 
@@ -269,7 +270,7 @@ A correction can also belong to one object. If a synchronization check finds one
     video_interface.temporal_alignment["trial_02"].shift_times(-0.040)
 
 As a convenience, we allow some of the methods to work on all the items of the ``temporal_alignment``. Calling
-``shift_times``, ``move_start_to`` and ``remap_times`` without a key will operate on all the time-bearing objects.
+``shift_times``, ``move_earliest_observation_to`` and ``remap_times`` without a key will operate on all the time-bearing objects.
 
 ``temporal_alignment.shift_times(delta)`` moves every object of the interface by ``delta``, so their relationships stay intact:
 they slide together by the same amount. Use it when their relative timing is already correct and the whole group needs
@@ -283,18 +284,19 @@ You can also move an entire interface to a known position:
 
 .. code-block:: python
 
-    video_interface.temporal_alignment.move_start_to(100.0)
+    video_interface.temporal_alignment.move_earliest_observation_to(100.0)
 
-The interface uses the earliest start among its objects and moves every object by the same amount. The three trials
+The interface uses the earliest observation across its objects and moves every object by the same amount. The three trials
 above now start at 100, 164.96 and 230 seconds, preserving the correction to the second trial. Their relative timing
 stays intact.
-Calling ``move_start_to(100.0)`` separately on each trial would instead put all three starts at 100 seconds.
+Calling ``move_earliest_observation_to(100.0)`` separately on each trial would instead put each trial's earliest
+observation at 100 seconds.
 
 .. image:: ../_static/images/time_alignment_moves_together.png
    :width: 600px
    :align: center
    :alt: Three panels of one interface's three time-bearing objects. As loaded; after temporal_alignment.shift_times(3.0),
-         every object 3.0 seconds from where it was; after temporal_alignment.move_start_to(5.0), the earliest start at
+         every object 3.0 seconds from where it was; after temporal_alignment.move_earliest_observation_to(5.0), the earliest observation at
          5.0 seconds from session start. In both moved panels the gaps between the objects are unchanged.
 
 Calling ``temporal_alignment.remap_times`` uses one set of synchronization-pulse pairs to transform every object's
@@ -331,7 +333,7 @@ own objects as before:
     converter.temporal_alignment["Video"].keys()      # e.g. ("trial_01", "trial_02", "trial_03")
     converter.temporal_alignment["Video"]["trial_02"].shift_times(-0.040)   # one file of the video interface
 
-Called on the converter's ``temporal_alignment`` itself, ``shift_times`` and ``move_start_to`` move every interface it holds by
+Called on the converter's ``temporal_alignment`` itself, ``shift_times`` and ``move_earliest_observation_to`` move every interface it holds by
 one common amount, just as an interface moves its objects, as long as each of them exposes a ``temporal_alignment``. Calling
 ``remap_times`` there applies one map to every interface, which is right only when all of them run on one clock. Each
 interface usually has its own clock and its own correction, so most alignment is one call per interface.
@@ -375,10 +377,10 @@ A subclass of :py:class:`.NWBConverter` packages a conversion you run repeatedly
             behavior_delay = ...  # how far the behavior box starts after the recording, however you obtain it
             self.temporal_alignment["Behavior"].shift_times(behavior_delay)
 
-Inside this method you apply whatever each stream needs: ``shift_times`` for a correction, ``move_start_to`` for a
+Inside this method you apply whatever each stream needs: ``shift_times`` for a correction, ``move_earliest_observation_to`` for a
 destination, or ``remap_times`` to re-time a drifting stream against the reference, on ``self.temporal_alignment[name]`` for a
 whole interface or on ``self.temporal_alignment[name][key]`` for one of its objects.
 
 One caveat applies to both: the calls mutate the live interfaces, so a step that runs twice compounds unless it states
 a result. A ``shift_times`` shifts twice and a ``remap_times`` remaps times that were already remapped, while
-``move_start_to`` and ``set_times`` can be repeated. Build the converter fresh per conversion.
+``move_earliest_observation_to`` and ``set_times`` can be repeated. Build the converter fresh per conversion.
