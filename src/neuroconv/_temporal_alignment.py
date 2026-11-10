@@ -9,7 +9,7 @@ things it writes that carry a time coordinate, so that a single one can be reach
     interface.temporal_alignment["response"].get_times()                # the times this object will be written on
     interface.temporal_alignment["response"].set_times(times)           # this object's times outright
     interface.temporal_alignment["response"].shift_times(-0.040)        # this object alone, rigid, accumulates
-    interface.temporal_alignment["response"].move_start_to(12.5)        # this object's first sample at 12.5 s, one number
+    interface.temporal_alignment["response"].move_start_to(12.5)        # this object's earliest observation at 12.5 s
     interface.temporal_alignment["response"].remap_times(...)           # this object's clock against a reference
 
 What an operation is called on is what it applies to. ``shift_times`` and ``move_start_to`` work at both
@@ -107,6 +107,16 @@ class _TimeBearingObject:
             base_start_time = default_times[0] if default_times.size else np.nan
         return float(base_start_time)
 
+    def _get_earliest_time(self) -> float:
+        """The earliest observation's current time, independently of storage order."""
+        return self._get_base_earliest_time() + self._object_offset
+
+    def _get_base_earliest_time(self) -> float:
+        if self._times is None and self._default_start_time is not None:
+            return self._get_base_start_time()
+        times = self._times if self._times is not None else np.asarray(self._get_native_times())
+        return float(np.min(times)) if times.size else np.nan
+
     def _is_empty(self) -> bool:
         """Whether this object has no samples, which leaves it no start to place or to be placed by."""
         if self._times is not None:
@@ -123,12 +133,13 @@ class _TimeBearingObject:
         self._object_offset += float(delta)
 
     def move_start_to(self, starting_time: float) -> None:
-        """Place this object so that its first sample sits at ``starting_time`` seconds on the session clock.
+        """Place this object's earliest observation at ``starting_time`` seconds on the session clock.
 
         For a file that was triggered on its own and records nothing about where it sits, a video or an audio
-        file written once per trial: the one number you know about it is when it began. This stores that
-        number and reads nothing, so it costs the same for an hour of audio as for a second, and the object
-        keeps its regular spacing and can still be written as a rate.
+        file written once per trial: the one number you know about it is when its first frame or sample was
+        acquired. A known native start avoids building regular timestamps; otherwise placement finds the
+        minimum timestamp without reordering observations. All observations move by the same amount, and a
+        regular series keeps its spacing and can still be written as a rate.
 
         It states a position rather than adding to one, so calling it twice with the same value changes
         nothing, and a ``shift_times`` applied earlier is superseded for this object while one applied
@@ -139,13 +150,13 @@ class _TimeBearingObject:
         starting_time = float(starting_time)
         if not np.isfinite(starting_time):
             raise ValueError(f"`move_start_to` needs a finite time in seconds, not {starting_time}.")
-        base_start_time = self._get_base_start_time()
-        if not np.isfinite(base_start_time):
+        earliest_time = self._get_base_earliest_time()
+        if not np.isfinite(earliest_time):
             raise ValueError(
-                "This object has no finite first time to place: it is empty, or a remap marked its first "
-                "sample as outside the pulses."
+                "This object has no finite earliest time to place: it is empty, or a remap marked "
+                "timestamps as outside the pulses."
             )
-        self._object_offset = starting_time - base_start_time
+        self._object_offset = starting_time - earliest_time
 
     def set_times(self, times) -> None:
         """Write these times for this object, exactly as given, one per sample.
@@ -268,8 +279,9 @@ class _TemporalAlignment:
         """Name one time-bearing object. Called by the interface, not by a user.
 
         ``get_native_times`` returns the times the object has when nothing has been said. ``default_start_time``
-        is their first value, a number or a callable, given so that ``move_start_to`` and the compact write build
-        no array to learn it. Without it the first default time is read from the array.
+        is their first and earliest value for chronologically ordered native times, a number or a callable,
+        given so that ``move_start_to`` and the compact write build no array to learn it. Without it placement
+        reads the minimum native time from the array.
         ``get_number_of_samples`` returns how many times ``set_times`` has to be given, and without it the count
         is not checked. ``get_native_durations`` returns one duration per time, or ``None``, for an event type.
         ``time_bearing_object_class`` is a subclass for an interface whose objects refuse some operations.
@@ -303,12 +315,12 @@ class _TemporalAlignment:
             time_bearing_object.shift_times(delta)
 
     def move_start_to(self, starting_time: float) -> None:
-        """Move every time-bearing object by one amount, so that the earliest of their starts sits at ``starting_time``.
+        """Move every time-bearing object by one amount, placing the earliest observation at ``starting_time``.
 
         The relative placement of the objects is kept: starts at 10 and 15 seconds become 100 and 105 after
-        ``move_start_to(100.0)``, where placing each object at 100 would put both there. A series starts at its
-        first sample, as it currently stands, earlier alignment included. Each object takes the common shift
-        and nothing else is stored, so calling it twice with the same value changes nothing.
+        ``move_start_to(100.0)``, where placing each object at 100 would put both there. Each object's start is
+        its earliest observation, as it currently stands, earlier alignment included. Each object takes the
+        common shift and nothing else is stored, so calling it twice with the same value changes nothing.
 
         Empty objects have no start and are left out of the earliest one. All starts are read and checked
         before anything moves, so a failure leaves every object where it was.
@@ -322,13 +334,12 @@ class _TemporalAlignment:
             )
         starts = []
         for key, time_bearing_object in self._name_to_time_bearing_object.items():
-            start = time_bearing_object._get_start_time()
+            start = time_bearing_object._get_earliest_time()
             if np.isfinite(start):
                 starts.append(start)
             elif not time_bearing_object._is_empty():
                 raise ValueError(
-                    f"{key!r} has no finite first time to place by: a remap marked its first sample as outside "
-                    "the pulses."
+                    f"{key!r} has no finite earliest time to place by: a remap marked timestamps as outside the pulses."
                 )
         if not starts:
             raise ValueError("Every time-bearing object of this interface is empty, so there is no start to move.")
@@ -350,3 +361,30 @@ class _TemporalAlignment:
                 reference_sync_times=reference_sync_times,
                 interpolation_function=interpolation_function,
             )
+
+
+class _ConverterTemporalAlignment:
+    """The alignment surface of a converter, exposed as ``converter.temporal_alignment``.
+
+    Names the converter's children by their names in ``data_interface_objects``. ``temporal_alignment[name]`` is
+    the child's own ``temporal_alignment``, so indexing again reaches a time-bearing object of an interface or a
+    child of a nested converter. It holds no timing state of its own.
+    """
+
+    def __init__(self, *, data_interface_objects: dict):
+        self._data_interface_objects = data_interface_objects
+
+    def keys(self) -> tuple[str, ...]:
+        """The children of this converter that have temporal alignment."""
+        return tuple(
+            name for name, child in self._data_interface_objects.items() if hasattr(child, "temporal_alignment")
+        )
+
+    def __getitem__(self, name: str) -> "_TemporalAlignment | _ConverterTemporalAlignment":
+        if name not in self._data_interface_objects:
+            named = ", ".join(repr(child_name) for child_name in self._data_interface_objects) or "nothing"
+            raise KeyError(f"{name!r} is not a child of this converter. It holds {named}.")
+        child = self._data_interface_objects[name]
+        if not hasattr(child, "temporal_alignment"):
+            raise KeyError(f"{name!r} is a {type(child).__name__}, which has no temporal alignment.")
+        return child.temporal_alignment

@@ -35,7 +35,7 @@ class _SortingTimeBearingObject(_TimeBearingObject):
     def move_start_to(self, starting_time: float) -> None:
         raise NotImplementedError(_NO_SORTING_START_MESSAGE)
 
-    def _get_start_time(self) -> float:
+    def _get_earliest_time(self) -> float:
         raise NotImplementedError(_NO_SORTING_START_MESSAGE)
 
 

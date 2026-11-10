@@ -10,6 +10,7 @@ from packaging.version import Version
 from pydantic import FilePath, validate_call
 from pynwb import NWBFile
 
+from ...._temporal_alignment import _TemporalAlignment
 from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from ....tools import get_module
 from ....tools.nwb_helpers import _get_container_by_name
@@ -42,34 +43,34 @@ class VameInterface(BaseTemporalAlignmentInterface):
             "Behavior": {
                 "Vame": {
                     "VameProjects": {
-                        "VAMEProject": {                       # keyed by metadata_key (default "VAMEProject")
+                        "vame_project": {                      # keyed by metadata_key (default "vame_project")
                             "name": "VAMEProject",
                             "pose_estimation_metadata_key": "DLC",  # optional, -> Pose/PoseEstimations
                             "video_metadata_key": "video_0",   # optional, -> Behavior/InternalVideos|ExternalVideos
                         }
                     },
                     "MotifSeries": {
-                        "VAMEProject_motif_kmeans": {
+                        "vame_project_motif_kmeans": {
                             "name": "MotifSeriesKmeans",
                             "description": "VAME behavioral motif labels.",
                             "algorithm": "kmeans",
-                            "vame_project_metadata_key": "VAMEProject",
-                            "latent_space_metadata_key": "VAMEProject_latent_space",  # optional
+                            "vame_project_metadata_key": "vame_project",
+                            "latent_space_metadata_key": "vame_project_latent_space",  # optional
                         },
                     },
                     "CommunitySeries": {
-                        "VAMEProject_community_kmeans": {
+                        "vame_project_community_kmeans": {
                             "name": "CommunitySeriesKmeans",
                             "description": "VAME community labels ...",
-                            "vame_project_metadata_key": "VAMEProject",
-                            "motif_series_metadata_key": "VAMEProject_motif_kmeans",  # -> MotifSeries
+                            "vame_project_metadata_key": "vame_project",
+                            "motif_series_metadata_key": "vame_project_motif_kmeans",  # -> MotifSeries
                         },
                     },
                     "LatentSpaceSeries": {                     # optional — one per project, shared across runs
-                        "VAMEProject_latent_space": {
+                        "vame_project_latent_space": {
                             "name": "LatentSpaceSeries",
                             "description": "VAME latent-space embeddings (30 dimensions per frame).",
-                            "vame_project_metadata_key": "VAMEProject",
+                            "vame_project_metadata_key": "vame_project",
                         },
                     },
                 }
@@ -108,8 +109,6 @@ class VameInterface(BaseTemporalAlignmentInterface):
     keywords = ("VAME", "behavioral motifs", "pose segmentation")
     associated_suffixes = (".npy", ".yaml")
     info = "Interface for adding data from VAME (Variational Animal Motion Encoding)."
-
-    _timestamps = None
 
     @classmethod
     def get_source_schema(cls) -> dict:
@@ -154,7 +153,7 @@ class VameInterface(BaseTemporalAlignmentInterface):
         motif_labels_file_paths: dict[str, FilePath] | None = None,
         community_labels_file_paths: dict[str, FilePath] | None = None,
         sampling_frequency_hz: float | None = None,
-        metadata_key: str = "VAMEProject",
+        metadata_key: str | None = None,
         verbose: bool = False,
     ):
         """Initialize VameInterface.
@@ -196,8 +195,8 @@ class VameInterface(BaseTemporalAlignmentInterface):
                 {"kmeans": "path/to/cohort_community_label.npy"}
         sampling_frequency_hz : float, optional
             Video acquisition rate in Hz (frames per second). Required when not providing aligned
-            timestamps via :meth:`set_aligned_timestamps`.
-        metadata_key : str, default "VAMEProject"
+            timestamps via ``interface.temporal_alignment[metadata_key].set_times(times)``.
+        metadata_key : str, default "vame_project"
             Key of this interface's ``VAMEProject`` entry in
             ``metadata["Behavior"]["Vame"]["VameProjects"]`` (also the prefix of its series keys).
             Change this when storing
@@ -231,7 +230,10 @@ class VameInterface(BaseTemporalAlignmentInterface):
             {k: Path(v) for k, v in community_labels_file_paths.items()} if community_labels_file_paths else None
         )
         self._sampling_frequency_hz = sampling_frequency_hz
-        self._metadata_key = metadata_key
+        # The key is a snake_case handle and the written names keep the prefix the old default key gave them. A key
+        # passed here still names them, so two projects in one file stay apart.
+        self._metadata_key = metadata_key or "vame_project"
+        self._name_prefix = metadata_key or "VAMEProject"
 
         super().__init__(
             file_path=file_path,
@@ -240,6 +242,15 @@ class VameInterface(BaseTemporalAlignmentInterface):
             latent_vectors_file_path=latent_vectors_file_path,
             community_labels_file_paths=community_labels_file_paths,
             verbose=verbose,
+        )
+
+        # Alignment by composition. Every series of the project is written on one time axis, keyed by `metadata_key`.
+        # See neuroconv/_temporal_alignment.py.
+        self.temporal_alignment = _TemporalAlignment()
+        self.temporal_alignment._register(
+            key=self._metadata_key,
+            get_native_times=self._get_native_times,
+            get_number_of_samples=self._get_number_of_frames,
         )
 
     # Oldest VAME version whose results layout (segmentation_algorithms list + per-algorithm
@@ -494,7 +505,7 @@ class VameInterface(BaseTemporalAlignmentInterface):
 
         # The container and its series live in separate, flat registries under Behavior/Vame; each
         # series links UP to its project via vame_project_metadata_key (the unified metadata pattern).
-        vame_metadata: dict = {"VameProjects": {self._metadata_key: dict(name=self._metadata_key)}}
+        vame_metadata: dict = {"VameProjects": {self._metadata_key: dict(name=self._name_prefix)}}
 
         latent_key = None
         if self._latent_vectors_file_path is not None:
@@ -550,11 +561,11 @@ class VameInterface(BaseTemporalAlignmentInterface):
             metadata["Behavior"]["Ethograms"] = {
                 f"{self._metadata_key}_{run_key}": dict(
                     EthogramBouts=dict(
-                        name=f"{self._metadata_key}EthogramBouts{run_key.capitalize()}",
+                        name=f"{self._name_prefix}EthogramBouts{run_key.capitalize()}",
                         description="VAME behavioral motifs as run-length-encoded bouts.",
                     ),
                     Ethogram=dict(
-                        name=f"{self._metadata_key}Ethogram{run_key.capitalize()}",
+                        name=f"{self._name_prefix}Ethogram{run_key.capitalize()}",
                         description="VAME motif catalogue (coding scheme): one row per motif id.",
                     ),
                 )
@@ -567,8 +578,16 @@ class VameInterface(BaseTemporalAlignmentInterface):
         if self._sampling_frequency_hz is None:
             raise ValueError(
                 "VameInterface cannot generate original timestamps without a sampling_frequency_hz. "
-                "Provide sampling_frequency_hz at construction or call set_aligned_timestamps()."
+                "Provide sampling_frequency_hz at construction or give the times with "
+                f"`interface.temporal_alignment['{self._metadata_key}'].set_times(times)`."
             )
+        num_frames = self._get_number_of_frames()
+        time_window = self._vame_config.get("time_window", 0)
+        offset_frames = int(time_window // 2)
+        starting_time = offset_frames / self._sampling_frequency_hz
+        return starting_time + np.arange(num_frames) / self._sampling_frequency_hz
+
+    def _get_number_of_frames(self) -> int:
         if self._motif_labels_file_paths:
             reference_file = next(iter(self._motif_labels_file_paths.values()))
         elif self._latent_vectors_file_path:
@@ -579,20 +598,50 @@ class VameInterface(BaseTemporalAlignmentInterface):
             raise ValueError(
                 "VameInterface cannot generate original timestamps without any data file. "
                 "Provide at least one of motif_labels_file_paths, latent_vectors_file_path, or "
-                "community_labels_file_paths, or call set_aligned_timestamps()."
+                "community_labels_file_paths."
             )
-        num_frames = np.load(reference_file).shape[0]
-        time_window = self._vame_config.get("time_window", 0)
-        offset_frames = int(time_window // 2)
-        starting_time = offset_frames / self._sampling_frequency_hz
-        return starting_time + np.arange(num_frames) / self._sampling_frequency_hz
+        return np.load(reference_file).shape[0]
+
+    def _get_native_times(self) -> np.ndarray:
+        return self.get_original_timestamps()
 
     def get_timestamps(self) -> np.ndarray:
-        timestamps = self._timestamps if self._timestamps is not None else self.get_original_timestamps()
-        return timestamps
+        warnings.warn(
+            "`get_timestamps` is deprecated and will be removed in v0.13.0. "
+            f"Use `interface.temporal_alignment['{self._metadata_key}'].get_times()` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        return self.temporal_alignment[self._metadata_key].get_times()
 
     def set_aligned_timestamps(self, aligned_timestamps: np.ndarray) -> None:
-        self._timestamps = np.asarray(aligned_timestamps)
+        warnings.warn(
+            "`set_aligned_timestamps` is deprecated and will be removed in v0.13.0. "
+            f"Use `interface.temporal_alignment['{self._metadata_key}'].set_times(times)` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        self.temporal_alignment[self._metadata_key].set_times(aligned_timestamps)
+
+    def set_aligned_starting_time(self, aligned_starting_time: float) -> None:
+        warnings.warn(
+            "`set_aligned_starting_time` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment.shift_times(delta)` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        self.temporal_alignment.shift_times(aligned_starting_time)
+
+    def align_by_interpolation(self, unaligned_timestamps: np.ndarray, aligned_timestamps: np.ndarray) -> None:
+        warnings.warn(
+            "`align_by_interpolation` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment.remap_times(local_sync_times=..., reference_sync_times=...)` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        self.temporal_alignment.remap_times(
+            local_sync_times=unaligned_timestamps, reference_sync_times=aligned_timestamps
+        )
 
     @staticmethod
     def get_available_sessions(file_path: FilePath) -> list[str]:
@@ -734,9 +783,9 @@ class VameInterface(BaseTemporalAlignmentInterface):
         project_metadata = vame_metadata["VameProjects"][self._metadata_key]
         project_name = project_metadata["name"]
 
-        n_frames = min(100, len(self.get_timestamps())) if stub_test else None
+        n_frames = min(100, len(self.temporal_alignment[self._metadata_key].get_times())) if stub_test else None
 
-        timestamps = self.get_timestamps()[:n_frames]
+        timestamps = self.temporal_alignment[self._metadata_key].get_times()[:n_frames]
         rate = calculate_regular_series_rate(series=timestamps)
 
         timing_kwargs = {}
