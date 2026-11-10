@@ -3,11 +3,9 @@
 import h5py
 import numpy as np
 import pytest
-from packaging.version import Version
 from pynwb.testing.mock.file import mock_NWBFile
 from spikeinterface.core.generate import generate_ground_truth_recording
 
-from neuroconv.tools.importing import get_package_version
 from neuroconv.tools.spikeinterface import (
     add_recording_to_nwbfile,
     add_sorting_analyzer_to_nwbfile,
@@ -42,7 +40,9 @@ def test_default_writes_the_extension_and_round_trips(analyzer, tmp_path):
     )
 
     container = nwbfile.processing["ecephys"]["spike_sorting"]
-    assert container.source_electrical_series is not None
+    # The ElectricalSeries written by `write_electrical_series=True` is the one linked.
+    (written_series,) = nwbfile.acquisition.values()
+    assert container.source_electrical_series is written_series
     assert container.units_region.table is nwbfile.units
     # The units table keeps spike times, templates and every metric, the ones the extension types (firing_rate,
     # num_spikes) as its typed columns; the extension also holds the run-dependent metrics.
@@ -79,10 +79,6 @@ def test_default_writes_the_extension_and_round_trips(analyzer, tmp_path):
         )
 
 
-@pytest.mark.skipif(
-    get_package_version("ndx-spikesorting") < Version("0.1.2"),
-    reason="Reading a container without an ElectricalSeries needs ndx-spikesorting>=0.1.2",
-)
 def test_default_without_electrical_series_round_trips(analyzer, tmp_path):
     """The default call writes no ElectricalSeries, so the file reads back as a recordingless analyzer."""
     nwbfile_path = tmp_path / "analyzer.nwb"
@@ -144,17 +140,19 @@ def test_multi_segment_falls_back_with_a_warning_or_raises():
         add_sorting_analyzer_to_nwbfile(sorting_analyzer=analyzer, nwbfile=mock_NWBFile(), use_ndx_spikesorting=True)
 
 
-def test_several_electrical_series_need_a_name(analyzer):
-    nwbfile = mock_NWBFile()
-    add_recording_to_nwbfile(recording=analyzer.recording, nwbfile=nwbfile, iterator_type=None)
+def test_electrical_series_is_linked_only_when_named(analyzer):
+    def nwbfile_with_series():
+        nwbfile = mock_NWBFile()
+        add_recording_to_nwbfile(recording=analyzer.recording, nwbfile=nwbfile, iterator_type=None)
+        return nwbfile
+
+    nwbfile = nwbfile_with_series()
+    add_sorting_analyzer_to_nwbfile(sorting_analyzer=analyzer, nwbfile=nwbfile)
+    assert nwbfile.processing["ecephys"]["spike_sorting"].source_electrical_series is None
+
+    nwbfile = nwbfile_with_series()
     (series_name,) = nwbfile.acquisition
-    series = nwbfile.acquisition[series_name]
-    nwbfile.add_acquisition(
-        type(series)(name="OtherSeries", data=np.zeros((10, 4)), electrodes=series.electrodes, rate=series.rate)
+    add_sorting_analyzer_to_nwbfile(
+        sorting_analyzer=analyzer, nwbfile=nwbfile, electrical_series_name=f"acquisition/{series_name}"
     )
-
-    with pytest.raises(ValueError, match="electrical_series_name"):
-        add_sorting_analyzer_to_nwbfile(sorting_analyzer=analyzer, nwbfile=nwbfile, use_ndx_spikesorting=True)
-
-    add_sorting_analyzer_to_nwbfile(sorting_analyzer=analyzer, nwbfile=nwbfile, electrical_series_name=series_name)
-    assert nwbfile.processing["ecephys"]["spike_sorting"].source_electrical_series is series
+    assert nwbfile.processing["ecephys"]["spike_sorting"].source_electrical_series is nwbfile.acquisition[series_name]
