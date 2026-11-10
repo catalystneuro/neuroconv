@@ -63,15 +63,24 @@ class TestSortingInterface(SortingExtractorInterfaceTestMixin):
         assert units_table.description == "Units after manual curation."
         assert len(units_table) == 3
 
-    def test_sorting_entry_name_writes_a_table_of_its_own(self):
-        """A sorting entry giving a name writes a table of its own in processing, named and described by the entry,
-        with no UnitsTables entry."""
+    def test_metadata_propagation(self):
+        """Check sorting metadata propagation from the mock interface to the written units table.
+
+        Add future sorting metadata fields and their written-value assertions to this test.
+        """
         metadata_key = "kilosort_sorting"
-        interface = MockSortingInterface(num_units=3, metadata_key=metadata_key)
+        interface = MockSortingInterface(num_units=3, durations=[0.100], metadata_key=metadata_key)
         metadata = interface.get_metadata()
         metadata["Ecephys"]["Sortings"] = {
-            metadata_key: {"name": "CuratedUnits", "description": "Units after manual curation."}
+            metadata_key: {
+                "name": "CuratedUnits",
+                "description": "Units after manual curation.",
+                "sorting_name": "probe_0_kilosort",
+            }
         }
+        metadata["Ecephys"]["UnitProperties"] = [
+            {"name": "sorting_name", "description": "Sorting output for each unit."}
+        ]
         interface.validate_metadata(metadata=metadata)
 
         nwbfile = interface.create_nwbfile(metadata=metadata)
@@ -80,6 +89,8 @@ class TestSortingInterface(SortingExtractorInterfaceTestMixin):
         assert nwbfile.units is None
         assert units_table.description == "Units after manual curation."
         assert len(units_table) == 3
+        assert list(units_table["sorting_name"][:]) == ["probe_0_kilosort"] * 3
+        assert units_table["sorting_name"].description == "Sorting output for each unit."
 
     def test_sorting_entry_name_and_description_are_ignored_in_a_shared_table(self):
         """A sorting writing a shared table takes the name and description of the table's entry, and the name and

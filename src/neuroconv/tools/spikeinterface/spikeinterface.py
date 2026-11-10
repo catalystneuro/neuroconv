@@ -1,5 +1,6 @@
 import warnings
 from collections import defaultdict
+from copy import deepcopy
 from typing import Any, Literal
 
 import numpy as np
@@ -888,6 +889,8 @@ def _add_sorting_to_nwbfile(
         waveform_sds=waveform_data_dict.get("sds"),
         unit_electrode_indices=unit_electrode_indices,
         unit_spike_times=unit_spike_times,
+        metadata=metadata,
+        metadata_key=metadata_key,
         null_values_for_properties=null_values_for_properties,
         waveform_rate=waveform_data_dict.get("sampling_rate"),
         waveform_unit=waveform_data_dict.get("unit", "volts"),
@@ -2841,6 +2844,8 @@ def _add_units_table_to_nwbfile(
     unit_electrode_indices: list[list[int]] | None = None,
     *,
     unit_spike_times: dict,
+    metadata: dict | None = None,
+    metadata_key: str | None = None,
     waveform_rate: float | None = None,
     waveform_unit: str = "volts",
     waveform_time_before_peak_in_ms: float | None = None,
@@ -2964,6 +2969,10 @@ def _add_units_table_to_nwbfile(
     unit_spike_times : dict
         The spike times of every unit written, keyed by unit id, with the segments joined. The units table writes
         these and does not read spike times from ``sorting``.
+    metadata : dict, optional
+        Metadata containing the sorting name in ``metadata["Ecephys"]["Sortings"][metadata_key]["sorting_name"]``.
+    metadata_key : str, optional
+        Key selecting this sorting's entry in ``metadata["Ecephys"]["Sortings"]``.
     waveform_rate : float, optional
         Sampling rate of the waveform data in Hz. Sets Units.waveform_rate attribute.
     waveform_unit : str, default: "volts"
@@ -3052,6 +3061,10 @@ def _add_units_table_to_nwbfile(
         spike_amplitude="Average amplitude of peaks detected on the channel.",
         spike_rate="Average rate of peaks detected on the channel.",
         unit_name="Unique reference for each unit.",
+        sorting_name=(
+            "Name identifying the sorting output that contains this unit: the set of units produced by a "
+            "particular spike-sorting run or curation step. All units from that output share this value."
+        ),
     )
     if property_descriptions is None:
         property_descriptions = dict()
@@ -3105,9 +3118,21 @@ def _add_units_table_to_nwbfile(
         unit_name_array = unit_ids.astype("str", copy=False)
         data_to_add["unit_name"].update(description="Unique reference for each unit.", data=unit_name_array)
 
+    num_units = sorting.get_num_units()
+    sorting_metadata = (metadata or {}).get("Ecephys", {}).get("Sortings", {}).get(metadata_key, {})
+    sorting_name = sorting_metadata.get("sorting_name")
+    if sorting_name is None:
+        sorting_name = sorting.get_annotation("sorting_name")
+    if sorting_name is None:
+        sorting_name = "sorting"
+    data_to_add["sorting_name"] = dict(
+        description=property_descriptions["sorting_name"],
+        data=np.full(num_units, sorting_name),
+        index=False,
+    )
+
     # Add spike times to data_to_add alongside waveforms and electrodes.
     # This lets the shared column-adding loop below handle all data uniformly.
-    num_units = sorting.get_num_units()
     all_spike_times = [unit_spike_times[unit_id] for unit_id in unit_ids]
     data_to_add["spike_times"].update(
         description="the spike times for each unit in seconds",
@@ -3651,7 +3676,7 @@ def add_sorting_analyzer_to_nwbfile(
         recording = sorting_analyzer.recording
 
     add_recording_metadata_to_nwbfile(
-        recording, nwbfile=nwbfile, metadata=metadata, null_values_for_properties=null_values_for_properties
+        recording, nwbfile=nwbfile, metadata=deepcopy(metadata), null_values_for_properties=null_values_for_properties
     )
     electrode_group_indices = _get_electrode_group_indices(recording, nwbfile=nwbfile)
     unit_electrode_indices = (
@@ -3675,6 +3700,8 @@ def add_sorting_analyzer_to_nwbfile(
         waveform_time_before_peak_in_ms=waveform_time_before_peak_in_ms,
         unit_electrode_indices=unit_electrode_indices,
         unit_spike_times=_get_unit_spike_times(sorting=sorting, unit_ids=unit_ids),
+        metadata=metadata,
+        metadata_key=metadata_key,
         null_values_for_properties=null_values_for_properties,
     )
 
