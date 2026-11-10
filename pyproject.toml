@@ -643,6 +643,7 @@ test = [
 ]
 sorting_analyzer = [   # These dependencies are for testing the sorting analyzer tool
     "scipy",
+    "ndx-spikesorting>=0.1.1",  # writes the analyzer's extensions; 0.1.1 matches the analyzer's units and channels by id
     "numba; sys_platform != 'darwin' or platform_machine != 'x86_64'"
 ]
 
