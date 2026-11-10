@@ -656,7 +656,12 @@ class TestWaveSurferVoltageClampTestPulse(DataInterfaceTestMixin):
 
 class TestWaveSurferRealFileConfigurations:
     def test_second_input_in_voltage_units_is_not_a_current_clamp_stimulus(self):
-        file_path = WAVESURFER_DATA_PATH / "current_clamp" / "second_input_in_voltage_units" / "m114_0433-0435.h5"
+        file_path = (
+            WAVESURFER_DATA_PATH
+            / "current_clamp"
+            / "voltage_clamp_protocol_recorded_in_current_clamp"
+            / "m114_0433-0435.h5"
+        )
 
         with pytest.raises(ValueError, match="'Voltage Cmd' is in 'mV', which is not a unit of the quantity commanded"):
             WaveSurferIntracellularInterface(file_path=file_path, stimulus_channel_name="Voltage Cmd")
