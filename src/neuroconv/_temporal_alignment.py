@@ -28,6 +28,8 @@ vector standing in for one scalar, and it would open every source a caller had m
 means nothing is read until someone asks for times.
 """
 
+import warnings
+
 import numpy as np
 
 
@@ -377,15 +379,81 @@ class _ConverterTemporalAlignment:
 
     def keys(self) -> tuple[str, ...]:
         """The children of this converter that have temporal alignment."""
-        return tuple(
-            name for name, child in self._data_interface_objects.items() if hasattr(child, "temporal_alignment")
-        )
+        keys = []
+        for name, child in self._data_interface_objects.items():
+            is_alignment_undeclared = not hasattr(child, "temporal_alignment")
+            is_explicitly_unalignable = not is_alignment_undeclared and child.temporal_alignment is None
+            if is_alignment_undeclared or is_explicitly_unalignable:
+                continue
+            keys.append(name)
+        return tuple(keys)
 
     def __getitem__(self, name: str) -> "_TemporalAlignment | _ConverterTemporalAlignment":
         if name not in self._data_interface_objects:
             named = ", ".join(repr(child_name) for child_name in self._data_interface_objects) or "nothing"
             raise KeyError(f"{name!r} is not a child of this converter. It holds {named}.")
         child = self._data_interface_objects[name]
-        if not hasattr(child, "temporal_alignment"):
+        is_alignment_undeclared = not hasattr(child, "temporal_alignment")
+        is_explicitly_unalignable = not is_alignment_undeclared and child.temporal_alignment is None
+        if is_alignment_undeclared or is_explicitly_unalignable:
             raise KeyError(f"{name!r} is a {type(child).__name__}, which has no temporal alignment.")
         return child.temporal_alignment
+
+    @staticmethod
+    def _check_unique_membership(member, path, seen_paths):
+        identity = id(member)
+        if identity in seen_paths:
+            raise ValueError(
+                f"The same object is registered at both {seen_paths[identity]!r} and {path!r}. "
+                "Each member must occur only once within the selected converter."
+            )
+        seen_paths[identity] = path
+
+    def _iter_time_bearing_objects(self, *, seen_paths, skipped_children, path=""):
+        for name, child in self._data_interface_objects.items():
+            child_path = f"{path}/{name}" if path else name
+            self._check_unique_membership(child, child_path, seen_paths)
+            is_alignment_undeclared = not hasattr(child, "temporal_alignment")
+            if is_alignment_undeclared:
+                skipped_children.append(
+                    f"Skipping {child_path!r} ({type(child).__name__}) because it has no `temporal_alignment` "
+                    "attribute. It is unclear whether alignment is inapplicable or support was omitted. "
+                    "Provide `temporal_alignment` for timed data, or set `temporal_alignment = None` "
+                    "if alignment is inapplicable by design."
+                )
+                continue
+            child_alignment = child.temporal_alignment
+            is_explicitly_unalignable = child_alignment is None
+            if is_explicitly_unalignable:
+                continue
+            if isinstance(child_alignment, _ConverterTemporalAlignment):
+                yield from child_alignment._iter_time_bearing_objects(
+                    seen_paths=seen_paths, skipped_children=skipped_children, path=child_path
+                )
+                continue
+            keys = child_alignment.keys()
+            for key in keys:
+                time_bearing_object = child_alignment[key]
+                self._check_unique_membership(time_bearing_object, f"{child_path}/{key}", seen_paths)
+                yield time_bearing_object
+
+    def _collect_time_bearing_objects(self) -> list[_TimeBearingObject]:
+        seen_paths = {}
+        skipped_children = []
+        time_bearing_objects = list(
+            self._iter_time_bearing_objects(seen_paths=seen_paths, skipped_children=skipped_children)
+        )
+        for message in skipped_children:
+            warnings.warn(message, UserWarning, stacklevel=3)
+        return time_bearing_objects
+
+    def shift_times(self, delta: float) -> None:
+        """Shift every descendant time-bearing object by ``delta`` seconds; repeated calls accumulate.
+
+        Children declaring ``temporal_alignment = None`` are skipped silently. A missing attribute warns and
+        skips that child. Repeated membership raises before any times change.
+        """
+        delta = float(delta)
+        time_bearing_objects = self._collect_time_bearing_objects()
+        for time_bearing_object in time_bearing_objects:
+            time_bearing_object.shift_times(delta)
