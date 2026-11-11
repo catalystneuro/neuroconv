@@ -13,17 +13,12 @@ from ..._temporal_alignment import _TemporalAlignment, _TimeBearingObject
 from ...baseextractorinterface import BaseExtractorInterface
 from ...utils import DeepDict, get_base_schema, get_schema_from_hdmf_class
 
-_NO_SORTING_START_MESSAGE = (
-    "A sorting has no start to place: its first spike is not when its recording began. Use `shift_times` to move " "it."
-)
-
 
 class _SortingTimeBearingObject(_TimeBearingObject):
     """One segment of a sorting: every unit's spikes in that segment, flattened in unit order.
 
-    A shift or a remap acts on each spike, so both work. What would need the flat vector to mean more is
-    refused: replacement times cannot say which spike belongs to which unit, and the first spike is not where
-    the segment starts.
+    Shifting, placement, and remapping preserve spike order and unit associations. Replacement times are
+    refused because a flat vector cannot say which spike belongs to which unit.
     """
 
     def set_times(self, times) -> None:
@@ -31,12 +26,6 @@ class _SortingTimeBearingObject(_TimeBearingObject):
             "A sorting's times are its units' spikes flattened in unit order, so `set_times` cannot say which "
             "spike is which. Use `shift_times` or `remap_times`."
         )
-
-    def move_earliest_observation_to(self, starting_time: float) -> None:
-        raise NotImplementedError(_NO_SORTING_START_MESSAGE)
-
-    def _get_earliest_time(self) -> float:
-        raise NotImplementedError(_NO_SORTING_START_MESSAGE)
 
 
 class BaseSortingExtractorInterface(BaseExtractorInterface):
