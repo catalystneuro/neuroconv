@@ -801,9 +801,6 @@ class SortingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignme
         recording_interface = self.associated_recording_cls(**self.associated_recording_kwargs)
         self.interface.register_recording(recording_interface=recording_interface)
 
-    def test_temporal_alignment_move_earliest_observation_to_reaches_the_nwbfile(self, setup_interface):
-        pytest.skip("Sortings refuse `move_earliest_observation_to`, which `TestSortingInterface` checks on the mock.")
-
     def test_temporal_alignment_set_times_reaches_the_nwbfile(self, setup_interface):
         pytest.skip("Sortings refuse `set_times`, which `TestSortingInterface` checks on the mock.")
 
