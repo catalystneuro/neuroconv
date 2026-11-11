@@ -599,7 +599,7 @@ class TestWaveSurferCurrentClampSteps(DataInterfaceTestMixin):
     """Current-clamp steps of 20*(i-1) pA from 0.5 s to 1 s, with the delivered command recorded on a second input."""
 
     data_interface_cls = WaveSurferIntracellularInterface
-    file_path = WAVESURFER_DATA_PATH / "current_clamp" / "square_pulse_steps" / "m114_0279-0281.h5"
+    file_path = WAVESURFER_DATA_PATH / "current_clamp" / "current_steps" / "m114_0279-0281.h5"
     interface_kwargs = dict(file_path=file_path, stimulus_channel_name="Current Injection", reconstruct_stimulus=True)
     expected_temporal_alignment_keys = ("m114_0279-0281_Electrode_1",)
     save_directory = OUTPUT_PATH
@@ -629,7 +629,7 @@ class TestWaveSurferVoltageClampTestPulse(DataInterfaceTestMixin):
     """A -5 mV test pulse with stimulation at 20 kHz and acquisition at 10 kHz."""
 
     data_interface_cls = WaveSurferIntracellularInterface
-    file_path = WAVESURFER_DATA_PATH / "voltage_clamp" / "stimulation_rate_above_acquisition_rate" / "m114_0275-0277.h5"
+    file_path = WAVESURFER_DATA_PATH / "voltage_clamp" / "test_pulse" / "m114_0275-0277.h5"
     interface_kwargs = dict(file_path=file_path, stimulus_channel_name="Voltage Cmd", reconstruct_stimulus=True)
     expected_temporal_alignment_keys = ("m114_0275-0277_Electrode_1",)
     save_directory = OUTPUT_PATH

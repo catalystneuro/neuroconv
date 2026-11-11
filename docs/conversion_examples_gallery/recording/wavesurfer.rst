@@ -11,7 +11,7 @@ an error.
 
     >>> from neuroconv.datainterfaces import WaveSurferIntracellularInterface
     >>>
-    >>> file_path = f"{ECEPHY_DATA_PATH}/wavesurfer/version_0_945/current_clamp/square_pulse_steps/m114_0279-0281.h5"
+    >>> file_path = f"{ECEPHY_DATA_PATH}/wavesurfer/version_0_945/current_clamp/current_steps/m114_0279-0281.h5"
     >>> interface = WaveSurferIntracellularInterface(file_path=file_path, reconstruct_stimulus=True)
     >>>
     >>> # Extract what metadata we can from the source files (session_start_time is the run's start, in local time)
@@ -80,11 +80,11 @@ electrode entry in the metadata:
     >>>
     >>> data_path = f"{ECEPHY_DATA_PATH}/wavesurfer/version_0_945"
     >>> test_pulse = WaveSurferIntracellularInterface(
-    ...     file_path=f"{data_path}/voltage_clamp/stimulation_rate_above_acquisition_rate/m114_0275-0277.h5",
+    ...     file_path=f"{data_path}/voltage_clamp/test_pulse/m114_0275-0277.h5",
     ...     reconstruct_stimulus=True,
     ... )
     >>> steps = WaveSurferIntracellularInterface(
-    ...     file_path=f"{data_path}/current_clamp/square_pulse_steps/m114_0279-0281.h5",
+    ...     file_path=f"{data_path}/current_clamp/current_steps/m114_0279-0281.h5",
     ...     stimulus_channel_name="Current Injection",
     ...     reconstruct_stimulus=True,
     ... )
