@@ -2921,11 +2921,13 @@ def _add_units_table_to_nwbfile(
     only present in the new units, so previously existing rows are backfilled with
     null values.
 
-    Deduplication is handled by ``unit_name``: units whose name already exists in
-    the table are skipped. When the table has an ``electrodes`` column and a unit's
-    electrode indices differ from the previously stored ones, the unit is re-added
-    as a new row (resulting in duplicate unit names with different electrode
-    mappings). See ``_add_electrodes_to_nwbfile`` for how the electrode table itself
+    Deduplication is handled by ``(sorting_name, unit_name)``: a unit whose pair already
+    exists in the table reuses that row and keeps its existing values. When
+    ``unit_electrode_indices`` is given and the table has an ``electrodes`` column, a
+    unit whose electrode indices differ from those of every matching row is added as a
+    new row. A pair matching several rows raises when ``unit_electrode_indices`` is not
+    given. Appending to a table without a ``sorting_name`` column raises. See
+    ``_add_electrodes_to_nwbfile`` for how the electrode table itself
     handles deduplication via ``(group_name, electrode_name, channel_name)``.
 
     .. note::
@@ -3047,6 +3049,12 @@ def _add_units_table_to_nwbfile(
         if write_table_first_time:
             nwbfile.units = pynwb.misc.Units(name="units", **units_table_kwargs)
         units_table = nwbfile.units
+
+    if not write_table_first_time and "sorting_name" not in units_table.colnames:
+        raise ValueError(
+            f"Cannot append to units table '{units_table.name}' because it has no 'sorting_name' column. "
+            "Write to a new units table instead."
+        )
 
     default_descriptions = dict(
         isi_violation="Quality metric that measures the ISI violation ratio as a proxy for the purity of the unit.",
@@ -3175,32 +3183,36 @@ def _add_units_table_to_nwbfile(
     # This is only needed when there are pre-existing columns (since add_unit() must provide
     # values for all existing columns). For new tables there are no pre-existing columns,
     # so all data is added as columns and no per-row insertion is needed.
-    rows_to_add = []
-    if units_table_previous_columns:
-        # Filter out units whose unit_name already exists (deduplication).
-        unit_names_used_previously = []
-        if "unit_name" in units_table_previous_columns:
-            unit_names_used_previously = units_table["unit_name"].data
-        # Electrodes are only used to discriminate between units with the same name when the
-        # current call actually provides them; otherwise there is nothing to compare against.
-        has_electrodes_column = "electrodes" in units_table.colnames and unit_electrode_indices is not None
+    unit_identities = [(sorting_name, unit_name) for unit_name in unit_name_array]
+    unit_identity_to_rows = defaultdict(list)
+    if "unit_name" in units_table_previous_columns:
+        for index, identity in enumerate(zip(units_table["sorting_name"][:], units_table["unit_name"][:])):
+            unit_identity_to_rows[identity].append(index)
 
-        rows_in_data = [index for index in range(num_units)]
-        if not has_electrodes_column:
-            rows_to_add = [index for index in rows_in_data if unit_name_array[index] not in unit_names_used_previously]
-        else:
-            rows_to_add = []
-            for index in rows_in_data:
-                if unit_name_array[index] not in unit_names_used_previously:
-                    rows_to_add.append(index)
-                else:
-                    unit_name = unit_name_array[index]
-                    # `index=True` returns the electrode indices of the row as they are stored,
-                    # without dereferencing them into a DataFrame of the electrodes table.
-                    matching_rows = np.where(units_table["unit_name"][:] == unit_name)[0]
-                    previous_electrodes = units_table["electrodes"].get(matching_rows[0], index=True)
-                    if list(previous_electrodes) != list(unit_electrode_indices[index]):
-                        rows_to_add.append(index)
+    rows_to_add = []
+    indices_for_new_data = list(range(num_units))
+    has_electrodes_column = "electrodes" in units_table_previous_columns and unit_electrode_indices is not None
+    if units_table_previous_columns:
+        for index, identity in enumerate(unit_identities):
+            matching_rows = unit_identity_to_rows.get(identity, [])
+            if has_electrodes_column:
+                matching_rows = [
+                    row
+                    for row in matching_rows
+                    if list(units_table["electrodes"].get(row, index=True)) == list(unit_electrode_indices[index])
+                ]
+            elif unit_electrode_indices is None and len(matching_rows) > 1:
+                raise ValueError(
+                    f"Multiple rows in units table '{units_table.name}' match "
+                    f"sorting_name={sorting_name!r} and unit_name={str(unit_name_array[index])!r}. "
+                    "Supply 'unit_electrode_indices' to identify the unit."
+                )
+
+            if matching_rows:
+                indices_for_new_data[index] = matching_rows[0]
+            else:
+                indices_for_new_data[index] = len(units_table) + len(rows_to_add)
+                rows_to_add.append(index)
 
     # Add rows for pre-existing columns. Each row needs values for all existing columns;
     # properties not present in the new data get null values.
@@ -3247,15 +3259,6 @@ def _add_units_table_to_nwbfile(
         cols_args["data"] = extended_data
         units_table.add_column("unit_name", **cols_args)
 
-    # Build a unit_name to units table row index map directly from the table column.
-    # This avoids materializing a pandas DataFrame and query parsing/casting pitfalls.
-    unit_names_in_table = units_table["unit_name"][:]
-    unit_name_to_electrode_index = {}
-    for index, unit_name in enumerate(unit_names_in_table):
-        if unit_name not in unit_name_to_electrode_index:
-            unit_name_to_electrode_index[unit_name] = index
-
-    indices_for_new_data = [unit_name_to_electrode_index[unit_name] for unit_name in unit_name_array]
     new_indices_set = set(indices_for_new_data)
     indices_for_null_values = [index for index in range(unit_table_size) if index not in new_indices_set]
     extending_column = len(indices_for_null_values) > 0
@@ -3268,7 +3271,7 @@ def _add_units_table_to_nwbfile(
         data = cols_args["data"]
 
         # This is the simple case, early return
-        if not extending_column:
+        if indices_for_new_data == list(range(unit_table_size)):
             units_table.add_column(property, **cols_args)
             continue
 
@@ -3281,12 +3284,13 @@ def _add_units_table_to_nwbfile(
             extended_data = np.empty(shape=(unit_table_size, *data.shape[1:]), dtype=dtype)
             extended_data[indices_for_new_data] = data
 
-            null_value = _get_null_value_for_property(
-                property=property,
-                sample_data=sample_data,
-                null_values_for_properties=null_values_for_properties,
-            )
-            extended_data[indices_for_null_values] = null_value
+            if extending_column:
+                null_value = _get_null_value_for_property(
+                    property=property,
+                    sample_data=sample_data,
+                    null_values_for_properties=null_values_for_properties,
+                )
+                extended_data[indices_for_null_values] = null_value
         else:
 
             dtype = np.ndarray
