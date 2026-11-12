@@ -394,3 +394,30 @@ class TestConverterTemporalAlignment:
         assert images_converter.temporal_alignment.keys() == ()
         with pytest.raises(KeyError, match="'Images' is an? ImageInterface, which has no temporal alignment"):
             converter.temporal_alignment["Images"]
+
+    def test_move_earliest_observation_to_keeps_gaps_between_descendants(self):
+        from neuroconv.tools.testing.mock_interfaces import MockIcephysInterface
+
+        first_interface = MockIcephysInterface(metadata_key="first", num_sweeps=1, sampling_frequency=4.0)
+        second_interface = MockIcephysInterface(metadata_key="second", num_sweeps=1, sampling_frequency=4.0)
+        inner_converter = ConverterPipe(data_interfaces=dict(Second=second_interface))
+        converter = ConverterPipe(data_interfaces=dict(First=first_interface, Inner=inner_converter))
+        first_response = first_interface.temporal_alignment["first"]
+        second_response = second_interface.temporal_alignment["second"]
+        first_original_times = np.array([2.0, 2.25, 2.5, 2.75])
+        second_original_times = np.array([10.0, 10.25, 10.5, 10.75])
+        first_response.set_times(first_original_times)
+        second_response.set_times(second_original_times)
+
+        starting_time = 100.0
+        earliest_observation = first_original_times[0]
+        expected_shift = starting_time - earliest_observation
+        converter.temporal_alignment.move_earliest_observation_to(starting_time)
+        converter.temporal_alignment.move_earliest_observation_to(starting_time)
+
+        first_times = first_response.get_times()
+        second_times = second_response.get_times()
+        first_expected_times = first_original_times + expected_shift
+        second_expected_times = second_original_times + expected_shift
+        np.testing.assert_array_equal(first_times, first_expected_times)
+        np.testing.assert_array_equal(second_times, second_expected_times)
