@@ -2159,6 +2159,49 @@ def add_recording_as_time_series_to_nwbfile(
         applied to the system (e.g., electrical stimulation current).
     """
 
+    # Each segment's set time vector where it has one, otherwise its start at the sampling frequency
+    segment_timestamps, segment_starting_times = [], []
+    for segment_index in range(recording.get_num_segments()):
+        if recording.has_time_vector(segment_index=segment_index):
+            segment_timestamps.append(recording.get_times(segment_index=segment_index))
+            segment_starting_times.append(None)
+        else:
+            segment_timestamps.append(None)
+            segment_starting_times.append(recording.get_start_time(segment_index=segment_index))
+
+    _add_recording_as_time_series_to_nwbfile(
+        recording=recording,
+        nwbfile=nwbfile,
+        metadata=metadata,
+        segment_timestamps=segment_timestamps,
+        segment_starting_times=segment_starting_times,
+        iterator_type=iterator_type,
+        iterator_options=iterator_options,
+        always_write_timestamps=always_write_timestamps,
+        metadata_key=metadata_key,
+        parent_container=parent_container,
+    )
+
+
+def _add_recording_as_time_series_to_nwbfile(
+    *,
+    recording: BaseRecording,
+    nwbfile: pynwb.NWBFile,
+    metadata: dict | None,
+    segment_timestamps: list[np.ndarray | None],
+    segment_starting_times: list[float | None],
+    iterator_type: str | None,
+    iterator_options: dict | None,
+    always_write_timestamps: bool,
+    metadata_key: str | None,
+    parent_container: Literal["acquisition", "stimulus"],
+):
+    """``add_recording_as_time_series_to_nwbfile`` with each segment's times given instead of read from the recording.
+
+    For an interface, which holds the aligned times itself. A segment's times are its entry in
+    ``segment_timestamps``, one time per sample, or, where that entry is None, its entry in
+    ``segment_starting_times`` at the recording's sampling frequency.
+    """
     # ``metadata_key`` addresses an entry, so it is only meaningful when there is a block to address.
     # Checked with ``in`` rather than ``[]`` because ``metadata`` is routinely a ``DeepDict``, whose
     # ``__getitem__`` would auto-create the block and make this guard pass on a dict that never had one.
@@ -2185,6 +2228,8 @@ def add_recording_as_time_series_to_nwbfile(
             always_write_timestamps=always_write_timestamps,
             metadata_key=metadata_key,
             parent_container=parent_container,
+            timestamps=segment_timestamps[segment_index],
+            starting_time=segment_starting_times[segment_index],
         )
 
 
@@ -2198,13 +2243,17 @@ def _add_time_series_segment_to_nwbfile(
     always_write_timestamps: bool = False,
     metadata_key: str | None = None,
     parent_container: Literal["acquisition", "stimulus"] = "acquisition",
+    *,
+    timestamps: np.ndarray | None,
+    starting_time: float | None,
 ):
     """
     Internal function to add a single recording segment as a TimeSeries to an NWBFile.
 
     See `add_recording_as_time_series_to_nwbfile` for public API details.
     All backward compatibility handling and metadata filtering should be done
-    in the public function before calling this.
+    in the public function before calling this. The segment's times are ``timestamps``, one per sample, or, when
+    they are None, ``starting_time`` at the recording's sampling frequency.
     """
 
     metadata = DeepDict() if metadata is None else metadata
@@ -2280,17 +2329,18 @@ def _add_time_series_segment_to_nwbfile(
 
     # Add timestamps or rate
     if always_write_timestamps:
-        timestamps = recording.get_times(segment_index=segment_index)
+        if timestamps is None:
+            number_of_samples = recording.get_num_samples(segment_index=segment_index)
+            timestamps = starting_time + np.arange(number_of_samples) / recording.get_sampling_frequency()
         tseries_kwargs["timestamps"] = timestamps
     else:
-        recording_has_timestamps = recording.has_time_vector(segment_index=segment_index)
-        if recording_has_timestamps:
-            timestamps = recording.get_times(segment_index=segment_index)
-            rate = calculate_regular_series_rate(series=timestamps)
+        # By default we write the rate if the timestamps are regular
+        if timestamps is not None:
+            rate = calculate_regular_series_rate(series=timestamps)  # Returns None if it is not regular
             recording_t_start = timestamps[0]
         else:
             rate = recording.get_sampling_frequency()
-            recording_t_start = recording.get_start_time(segment_index=segment_index)
+            recording_t_start = starting_time
 
         if rate:
             starting_time = float(recording_t_start)
