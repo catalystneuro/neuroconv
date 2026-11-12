@@ -150,7 +150,8 @@ class ExternalVideoInterface(BaseDataInterface):
 
         # Alignment by composition, the component the fiber photometry and events interfaces hold. Each
         # video file is triggered on its own, so each is separately addressable, keyed by its stem and, where
-        # stems collide, by its parent folder names too: `temporal_alignment[key].move_start_to(t)` places one file,
+        # stems collide, by its parent folder names too:
+        # `temporal_alignment[key].move_earliest_observation_to(t)` places one file,
         # `temporal_alignment[key].set_times(times)` re-times one file and `temporal_alignment.shift_times(delta)` moves them
         # all. See neuroconv/_temporal_alignment.py.
         self._segment_keys = _compute_segment_keys(file_paths)
@@ -336,8 +337,8 @@ class ExternalVideoInterface(BaseDataInterface):
         files, and the header rate spaces the rest. Several files do not say among themselves how they
         relate: a recorder that rotated its output and a camera triggered once per trial produce the same
         files, one segment running on from the last and the other separated by gaps. So nothing is assumed,
-        and each file is placed with ``temporal_alignment[key].move_start_to(...)``; files left unplaced overlap,
-        which the write refuses.
+        and each file is placed with ``temporal_alignment[key].move_earliest_observation_to(...)``;
+        files left unplaced overlap, which the write refuses.
         """
         frame_counts = self.get_header_frame_counts()
         frame_rates = self.get_header_frame_rates()
@@ -370,7 +371,7 @@ class ExternalVideoInterface(BaseDataInterface):
         :meth:`_get_default_times` builds. Used only by :meth:`_get_aligned_timestamps` when
         ``always_write_timestamps=True`` and the file has no times set, in place of that default. Slow: it
         opens the file and reads every frame. They start at :meth:`_get_first_frame_time`, the start the
-        default times share, so an offset stored by ``move_start_to`` places them the same way.
+        default times share, so an offset stored by ``move_earliest_observation_to`` places them the same way.
         """
         file_path = self.source_data["file_paths"][file_index]
         with VideoCaptureContext(file_path=str(file_path)) as video:
@@ -450,7 +451,8 @@ class ExternalVideoInterface(BaseDataInterface):
                     "single timeline, so each file has to begin after the previous one ends. Until it is "
                     "placed, every file starts where its container puts its first frame, usually zero: say "
                     "where each begins with "
-                    "`temporal_alignment[key].move_start_to(starting_time)`, or give it the times a pulse recorded for "
+                    "`temporal_alignment[key].move_earliest_observation_to(starting_time)`, "
+                    "or give it the times a pulse recorded for "
                     "every frame with `temporal_alignment[key].set_times(times)`. For one recording split into several "
                     "files, place each where the one before it ended."
                 )
@@ -555,7 +557,7 @@ class ExternalVideoInterface(BaseDataInterface):
         ``aligned_starting_time``, as this method has always done; otherwise every file is shifted by it.
 
         .. deprecated::
-            Use ``interface.temporal_alignment[key].move_start_to(starting_time)`` to place each file, or
+            Use ``interface.temporal_alignment[key].move_earliest_observation_to(starting_time)`` to place each file, or
             ``interface.temporal_alignment.shift_times(delta)`` to move files already placed. Removed in v0.13.0.
 
         Parameters
@@ -565,7 +567,7 @@ class ExternalVideoInterface(BaseDataInterface):
         """
         warnings.warn(
             "`set_aligned_starting_time` is deprecated and will be removed in v0.13.0. Use "
-            "`interface.temporal_alignment[key].move_start_to(starting_time)` to place each file, or "
+            "`interface.temporal_alignment[key].move_earliest_observation_to(starting_time)` to place each file, or "
             "`interface.temporal_alignment.shift_times(delta)` to move files already placed.",
             FutureWarning,
             stacklevel=2,
@@ -591,15 +593,16 @@ class ExternalVideoInterface(BaseDataInterface):
         durations = np.array(frame_counts) / np.array(frame_rates)
         starting_times = aligned_starting_time + np.concatenate([[0.0], np.cumsum(durations)[:-1]])
         for segment_key, starting_time in zip(self._segment_keys, starting_times):
-            self.temporal_alignment[segment_key].move_start_to(starting_time)
+            self.temporal_alignment[segment_key].move_earliest_observation_to(starting_time)
 
     def set_aligned_segment_starting_times(self, aligned_segment_starting_times: list[float], stub_test: bool = False):
         """
         Align the individual starting time for each video (segment) in this interface relative to the common session start time.
 
         .. deprecated::
-            Use ``interface.temporal_alignment[key].move_start_to(starting_time)`` per file, which states where the file
-            begins instead of adding an offset to whatever it currently carries, so calling it twice does not
+            Use ``interface.temporal_alignment[key].move_earliest_observation_to(starting_time)`` per file,
+            which states where the file begins instead of adding an offset to whatever it currently carries,
+            so calling it twice does not
             shift twice. Removed in v0.13.0.
 
         Parameters
@@ -613,7 +616,8 @@ class ExternalVideoInterface(BaseDataInterface):
         """
         warnings.warn(
             "`set_aligned_segment_starting_times` is deprecated and will be removed in v0.13.0. "
-            "Use `interface.temporal_alignment[key].move_start_to(starting_time)` instead, which is absolute rather than "
+            "Use `interface.temporal_alignment[key].move_earliest_observation_to(starting_time)` instead, "
+            "which is absolute rather than "
             "relative and so does not accumulate when called twice.",
             FutureWarning,
             stacklevel=2,
@@ -732,8 +736,9 @@ class ExternalVideoInterface(BaseDataInterface):
             If set to True, timestamps will be written explicitly, regardless of whether they were set directly or need
             to be retrieved from the video file. A file with no times set (via ``temporal_alignment[key].set_times(...)``,
             ``remap_times``, or a deprecated setter) is then written with the timestamps stored in its video
-            container, read frame by frame (slow on long videos), with any placement (``move_start_to``) or
-            shift (``shift_times``) applied; a file with times set is written with those times, unchanged.
+            container, read frame by frame (slow on long videos), with any placement
+            (``move_earliest_observation_to``) or shift (``shift_times``) applied; a file with times set is written
+            with those times, unchanged.
         """
         if parent_container not in {"acquisition", "processing/behavior"}:
             raise ValueError(

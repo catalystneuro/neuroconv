@@ -1,4 +1,5 @@
 import json
+import warnings
 
 import numpy as np
 from pydantic import FilePath, validate_call
@@ -6,13 +7,14 @@ from pynwb import NWBFile
 from pynwb.behavior import CompassDirection, Position, SpatialSeries
 
 from .nvt_utils import read_data, read_header
-from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
+from ...._temporal_alignment import _TemporalAlignment
+from ....basedatainterface import BaseDataInterface
 from ....utils import DeepDict, get_base_schema
 from ....utils.json_schema import _NWBMetaDataEncoder
 from ....utils.path import infer_path
 
 
-class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
+class NeuralynxNvtInterface(BaseDataInterface):
     """Data interface for Neuralynx NVT files. NVT files store position tracking information."""
 
     display_name = "Neuralynx NVT"
@@ -35,11 +37,18 @@ class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
 
         self.file_path = file_path
         self.verbose = verbose
-        self._timestamps = self.get_original_timestamps()
         self.header = read_header(self.file_path)
         self.nvt_filename = infer_path(self.header["OriginalFileName"]).name
 
         super().__init__(file_path=file_path)
+
+        # The position and the angle share one timeline, so the interface has one time-bearing object
+        self.temporal_alignment = _TemporalAlignment()
+        self.temporal_alignment._register(
+            key="neuralynx_nvt",
+            get_native_times=self.get_original_timestamps,
+            get_number_of_samples=lambda: len(self.get_original_timestamps()),
+        )
 
     def get_original_timestamps(self) -> np.ndarray:
         data = read_data(self.file_path)
@@ -50,10 +59,42 @@ class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
         return times
 
     def get_timestamps(self) -> np.ndarray:
-        return self._timestamps
+        warnings.warn(
+            "`get_timestamps` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment['neuralynx_nvt'].get_times()` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        return self.temporal_alignment["neuralynx_nvt"].get_times()
 
     def set_aligned_timestamps(self, aligned_timestamps: np.ndarray) -> None:
-        self._timestamps = aligned_timestamps
+        warnings.warn(
+            "`set_aligned_timestamps` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment['neuralynx_nvt'].set_times(times)` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        self.temporal_alignment["neuralynx_nvt"].set_times(aligned_timestamps)
+
+    def set_aligned_starting_time(self, aligned_starting_time: float) -> None:
+        warnings.warn(
+            "`set_aligned_starting_time` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment.shift_times(delta)` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        self.temporal_alignment.shift_times(aligned_starting_time)
+
+    def align_by_interpolation(self, unaligned_timestamps: np.ndarray, aligned_timestamps: np.ndarray) -> None:
+        warnings.warn(
+            "`align_by_interpolation` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment.remap_times(local_sync_times=..., reference_sync_times=...)` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        self.temporal_alignment.remap_times(
+            local_sync_times=unaligned_timestamps, reference_sync_times=aligned_timestamps
+        )
 
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
@@ -120,6 +161,7 @@ class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
             metadata = metadata.to_dict()
 
         data = read_data(self.file_path)
+        timestamps = self.temporal_alignment["neuralynx_nvt"].get_times()
 
         if add_position:
             # convert to float and change <= 0 (null) to NaN
@@ -137,7 +179,7 @@ class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
                 reference_frame=metadata["Behavior"][self.nvt_filename]["position_reference_frame"],
                 unit="pixels",
                 conversion=1.0,
-                timestamps=self.get_timestamps(),
+                timestamps=timestamps,
                 description=f"Pixel x and y coordinates from the .nvt file with header data: {json.dumps(self.header, cls=_NWBMetaDataEncoder)}",
             )
 
@@ -152,7 +194,7 @@ class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
                         reference_frame=metadata["Behavior"][self.nvt_filename]["angle_reference_frame"],
                         unit="degrees",
                         conversion=1.0,
-                        timestamps=spatial_series if add_position else self.get_timestamps(),
+                        timestamps=spatial_series if add_position else timestamps,
                         description=f"Angle from the .nvt file with header data: {json.dumps(self.header, cls=_NWBMetaDataEncoder)}",
                     ),
                     name="NvtCompassDirection",

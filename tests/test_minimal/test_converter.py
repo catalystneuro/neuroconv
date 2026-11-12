@@ -1,4 +1,5 @@
 import unittest
+import warnings
 from datetime import datetime
 from pathlib import Path
 from shutil import rmtree
@@ -277,38 +278,119 @@ def test_converter_pipe_rejects_other_types_up_front():
         ConverterPipe(data_interfaces={MockBehaviorEventInterface()})
 
 
-def test_converter_temporal_alignment_is_the_alignment_of_each_child():
-    from neuroconv.tools.testing.mock_interfaces import MockIcephysInterface
+class TestConverterTemporalAlignment:
+    def test_child_access(self):
+        from neuroconv.tools.testing.mock_interfaces import MockIcephysInterface
 
-    icephys_interface = MockIcephysInterface()
-    converter = ConverterPipe(data_interfaces=dict(Icephys=icephys_interface, Static=MockInterface()))
+        icephys_interface = MockIcephysInterface()
+        converter = ConverterPipe(data_interfaces=dict(Icephys=icephys_interface, Static=MockInterface()))
 
-    assert converter.temporal_alignment.keys() == ("Icephys",)
-    assert converter.temporal_alignment["Icephys"] is icephys_interface.temporal_alignment
+        assert converter.temporal_alignment.keys() == ("Icephys",)
+        assert converter.temporal_alignment["Icephys"] is icephys_interface.temporal_alignment
 
+    def test_nested_access(self):
+        from neuroconv.tools.testing.mock_interfaces import MockIcephysInterface
 
-def test_converter_temporal_alignment_reaches_an_object_through_a_nested_converter():
-    from neuroconv.tools.testing.mock_interfaces import MockIcephysInterface
+        icephys_interface = MockIcephysInterface(metadata_key="cell")
+        inner_converter = ConverterPipe(data_interfaces=dict(Icephys=icephys_interface))
+        outer_converter = ConverterPipe(data_interfaces=dict(Inner=inner_converter))
 
-    icephys_interface = MockIcephysInterface(metadata_key="cell")
-    inner_converter = ConverterPipe(data_interfaces=dict(Icephys=icephys_interface))
-    outer_converter = ConverterPipe(data_interfaces=dict(Inner=inner_converter))
+        assert outer_converter.temporal_alignment.keys() == ("Inner",)
+        assert outer_converter.temporal_alignment["Inner"].keys() == ("Icephys",)
+        time_bearing_object = outer_converter.temporal_alignment["Inner"]["Icephys"]["cell"]
+        assert time_bearing_object is icephys_interface.temporal_alignment["cell"]
 
-    assert outer_converter.temporal_alignment.keys() == ("Inner",)
-    assert outer_converter.temporal_alignment["Inner"].keys() == ("Icephys",)
-    time_bearing_object = outer_converter.temporal_alignment["Inner"]["Icephys"]["cell"]
-    assert time_bearing_object is icephys_interface.temporal_alignment["cell"]
+    def test_access_rejects_undeclared_alignment(self):
+        converter = ConverterPipe(data_interfaces=dict(Static=MockInterface()))
 
+        with pytest.raises(KeyError, match="'Static' is a MockInterface, which has no temporal alignment"):
+            converter.temporal_alignment["Static"]
 
-def test_converter_temporal_alignment_names_a_child_without_alignment():
-    converter = ConverterPipe(data_interfaces=dict(Static=MockInterface()))
+    def test_unknown_child_lists_available_names(self):
+        converter = ConverterPipe(data_interfaces=dict(Static=MockInterface()))
 
-    with pytest.raises(KeyError, match="'Static' is a MockInterface, which has no temporal alignment"):
-        converter.temporal_alignment["Static"]
+        with pytest.raises(KeyError, match="'Missing' is not a child of this converter. It holds 'Static'"):
+            converter.temporal_alignment["Missing"]
 
+    def test_shift_times_reaches_every_descendant(self):
+        from neuroconv.tools.testing.mock_interfaces import MockIcephysInterface
 
-def test_converter_temporal_alignment_lists_the_children_for_an_unknown_name():
-    converter = ConverterPipe(data_interfaces=dict(Static=MockInterface()))
+        first_interface = MockIcephysInterface(
+            metadata_key="first", num_sweeps=1, sampling_frequency=4.0, stimulus_duration=0.5
+        )
+        second_interface = MockIcephysInterface(
+            metadata_key="second", num_sweeps=1, sampling_frequency=4.0, starting_time=10.0
+        )
+        inner_converter = ConverterPipe(data_interfaces=dict(Second=second_interface))
+        converter = ConverterPipe(data_interfaces=dict(First=first_interface, Inner=inner_converter))
+        first_response = first_interface.temporal_alignment["first"]
+        first_stimulus = first_interface.temporal_alignment["first_stimulus"]
+        second_response = second_interface.temporal_alignment["second"]
+        first_times = first_response.get_times().copy()
+        stimulus_times = first_stimulus.get_times().copy()
+        second_times = second_response.get_times().copy()
 
-    with pytest.raises(KeyError, match="'Missing' is not a child of this converter. It holds 'Static'"):
-        converter.temporal_alignment["Missing"]
+        converter.temporal_alignment.shift_times(5.0)
+
+        np.testing.assert_allclose(first_response.get_times(), first_times + 5.0)
+        np.testing.assert_allclose(first_stimulus.get_times(), stimulus_times + 5.0)
+        np.testing.assert_allclose(second_response.get_times(), second_times + 5.0)
+
+    def test_shift_times_only_moves_selected_subtree(self):
+        from neuroconv.tools.testing.mock_interfaces import MockIcephysInterface
+
+        first_interface = MockIcephysInterface(metadata_key="first", num_sweeps=1, sampling_frequency=4.0)
+        second_interface = MockIcephysInterface(metadata_key="second", num_sweeps=1, sampling_frequency=4.0)
+        inner_converter = ConverterPipe(data_interfaces=dict(Second=second_interface))
+        converter = ConverterPipe(
+            data_interfaces=dict(First=first_interface, Inner=inner_converter, Unsupported=MockInterface())
+        )
+        first_response = first_interface.temporal_alignment["first"]
+        second_response = second_interface.temporal_alignment["second"]
+        first_times = first_response.get_times().copy()
+        second_times = second_response.get_times().copy()
+
+        converter.temporal_alignment["Inner"].shift_times(5.0)
+
+        np.testing.assert_array_equal(first_response.get_times(), first_times)
+        np.testing.assert_allclose(second_response.get_times(), second_times + 5.0)
+
+    def test_shift_times_warns_when_alignment_is_undeclared(self):
+        from neuroconv.tools.testing.mock_interfaces import MockIcephysInterface
+
+        interface = MockIcephysInterface(metadata_key="cell", num_sweeps=1, sampling_frequency=4.0)
+        inner_converter = ConverterPipe(data_interfaces=dict(Unsupported=MockInterface()))
+        converter = ConverterPipe(data_interfaces=dict(Icephys=interface, Inner=inner_converter))
+        response = interface.temporal_alignment["cell"]
+        response.shift_times(2.0)
+        original_times = response.get_times().copy()
+
+        with pytest.warns(UserWarning, match="Skipping 'Inner/Unsupported'.*temporal_alignment = None"):
+            converter.temporal_alignment.shift_times(5.0)
+
+        np.testing.assert_allclose(response.get_times(), original_times + 5.0)
+
+    def test_shift_times_skips_explicitly_unalignable_children(self):
+        from neuroconv.datainterfaces import ExternalImageInterface, ImageInterface
+        from neuroconv.tools.testing.mock_interfaces import MockIcephysInterface
+
+        interface = MockIcephysInterface(metadata_key="cell", num_sweeps=1, sampling_frequency=4.0)
+        image_interface = ImageInterface(file_paths=[])
+        external_image_interface = ExternalImageInterface(file_paths=[])
+        images_converter = ConverterPipe(data_interfaces=dict(ExternalImages=external_image_interface))
+        converter = ConverterPipe(
+            data_interfaces=dict(Icephys=interface, Images=image_interface, Nested=images_converter)
+        )
+        response = interface.temporal_alignment["cell"]
+        original_times = response.get_times().copy()
+
+        with warnings.catch_warnings(record=True) as recorded_warnings:
+            warnings.simplefilter("always")
+            converter.temporal_alignment.shift_times(5.0)
+
+        assert not recorded_warnings
+        np.testing.assert_allclose(response.get_times(), original_times + 5.0)
+        assert converter.temporal_alignment.keys() == ("Icephys", "Nested")
+        assert images_converter.temporal_alignment.keys() == ()
+        with pytest.raises(KeyError, match="'Images' is an? ImageInterface, which has no temporal alignment"):
+            converter.temporal_alignment["Images"]

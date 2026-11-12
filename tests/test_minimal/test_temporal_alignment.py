@@ -21,12 +21,12 @@ def alignment():
 
 
 class TestObjectAlignment:
-    def test_move_start_to_places_the_earliest_remapped_time(self):
+    def test_move_earliest_observation_to_places_the_earliest_remapped_time(self):
         alignment = _TemporalAlignment()
         alignment._register(key="a", get_native_times=lambda: np.array([5.0, 2.0, 8.0]))
         alignment["a"].remap_times(local_sync_times=[0.0, 10.0], reference_sync_times=[20.0, 40.0])
 
-        alignment["a"].move_start_to(10.0)
+        alignment["a"].move_earliest_observation_to(10.0)
 
         assert_allclose(alignment["a"].get_times(), [16.0, 10.0, 22.0])
 
@@ -50,7 +50,7 @@ class TestObjectAlignment:
         assert_allclose(alignment["a"].get_times(), [11, 12, 13, 14, 15])
         assert_allclose(alignment["b"].get_times(), [8.0, 8.1, 8.2])
 
-    def test_object_move_start_to_is_absolute_and_idempotent(self):
+    def test_object_move_earliest_observation_to_is_absolute_and_idempotent(self):
         """Check that placement overrides an earlier shift and repeating it changes nothing. Later shifts still apply."""
         native_times = np.array([5.0, 2.0, 8.0])
         alignment = _TemporalAlignment()
@@ -58,14 +58,14 @@ class TestObjectAlignment:
         alignment._register(key="b", get_native_times=lambda: np.array([2.0, 2.1, 2.2]))
 
         alignment["a"].shift_times(3.0)
-        alignment["a"].move_start_to(100.0)
+        alignment["a"].move_earliest_observation_to(100.0)
 
         assert_allclose(alignment["a"].get_times(), [103.0, 100.0, 106.0])
         assert_allclose(alignment["b"].get_times(), [2.0, 2.1, 2.2])
         assert_array_equal(native_times, [5.0, 2.0, 8.0])
         assert alignment["a"]._get_start_time() == 103.0
 
-        alignment["a"].move_start_to(100.0)
+        alignment["a"].move_earliest_observation_to(100.0)
 
         assert_allclose(alignment["a"].get_times(), [103.0, 100.0, 106.0])
 
@@ -73,17 +73,17 @@ class TestObjectAlignment:
 
         assert_allclose(alignment["a"].get_times(), [104.0, 101.0, 107.0])
 
-    def test_move_start_to_and_set_times_respect_operation_order(self):
+    def test_move_earliest_observation_to_and_set_times_respect_operation_order(self):
         """Check that replacement overrides placement and a later placement preserves replacement spacing."""
         alignment = _TemporalAlignment()
         alignment._register(key="a", get_native_times=lambda: np.array([0.0, 1.0, 2.0]), default_start_time=0.0)
 
-        alignment["a"].move_start_to(100.0)
+        alignment["a"].move_earliest_observation_to(100.0)
         alignment["a"].set_times([5.0, 2.0, 8.0])
 
         assert_allclose(alignment["a"].get_times(), [5.0, 2.0, 8.0])
 
-        alignment["a"].move_start_to(100.0)
+        alignment["a"].move_earliest_observation_to(100.0)
 
         assert_allclose(alignment["a"].get_times(), [103.0, 100.0, 106.0])
         assert alignment["a"]._get_start_time() == 103.0
@@ -135,7 +135,7 @@ class TestObjectAlignment:
         alignment["a"].get_times()
         assert_array_equal(native_times, original_times)
 
-        alignment["a"].move_start_to(10.0)
+        alignment["a"].move_earliest_observation_to(10.0)
         alignment["a"].get_times()
         assert_array_equal(native_times, original_times)
 
@@ -171,19 +171,19 @@ class TestInterfaceAlignment:
         assert_allclose(alignment["a"].get_times(), [1.5, 1.6, 1.7, 1.8, 1.9])
         assert_allclose(alignment["b"].get_times(), [3.5, 3.6, 3.7])
 
-    def test_interface_move_start_to_preserves_current_relative_placement(self):
+    def test_interface_move_earliest_observation_to_preserves_current_relative_placement(self):
         """Check that placement preserves current relative times and is unchanged when repeated."""
         alignment = _TemporalAlignment()
         alignment._register(key="a", get_native_times=lambda: np.array([4.0, 1.0, 6.0]))
         alignment._register(key="b", get_native_times=lambda: np.array([5.0, 2.0, 8.0]))
 
         alignment["a"].shift_times(3.0)
-        alignment.move_start_to(100.0)
+        alignment.move_earliest_observation_to(100.0)
 
         assert_allclose(alignment["a"].get_times(), [105.0, 102.0, 107.0])
         assert_allclose(alignment["b"].get_times(), [103.0, 100.0, 106.0])
 
-        alignment.move_start_to(100.0)
+        alignment.move_earliest_observation_to(100.0)
 
         assert_allclose(alignment["a"].get_times(), [105.0, 102.0, 107.0])
         assert_allclose(alignment["b"].get_times(), [103.0, 100.0, 106.0])
@@ -210,7 +210,7 @@ class TestAlignmentEdgeCases:
             NotImplementedError,
             match="This interface has registered no time-bearing objects, so it has no start to move",
         ):
-            alignment.move_start_to(0.0)
+            alignment.move_earliest_observation_to(0.0)
 
         with pytest.raises(
             NotImplementedError,
@@ -220,14 +220,14 @@ class TestAlignmentEdgeCases:
 
     @pytest.mark.parametrize("starting_time", [np.nan, np.inf, -np.inf])
     @pytest.mark.parametrize("scope", ["object", "interface"])
-    def test_move_start_to_needs_a_finite_time(self, alignment, starting_time, scope):
+    def test_move_earliest_observation_to_needs_a_finite_time(self, alignment, starting_time, scope):
         """Check that nonfinite placement targets are rejected at both object and interface scopes."""
         target = alignment["a"] if scope == "object" else alignment
-        message = f"`move_start_to` needs a finite time in seconds, not {starting_time}."
+        message = f"`move_earliest_observation_to` needs a finite time in seconds, not {starting_time}."
         with pytest.raises(ValueError, match=re.escape(message)):
-            target.move_start_to(starting_time)
+            target.move_earliest_observation_to(starting_time)
 
-    def test_interface_move_start_to_rejects_a_nonfinite_start_without_moving_objects(self, alignment):
+    def test_interface_move_earliest_observation_to_rejects_a_nonfinite_start_without_moving_objects(self, alignment):
         """Check that a start remapped to NaN is rejected before any object's timestamps change."""
         alignment["b"].remap_times(
             local_sync_times=[2.1, 2.2],
@@ -237,7 +237,7 @@ class TestAlignmentEdgeCases:
 
         message = "'b' has no finite earliest time to place by: a remap marked timestamps as outside the pulses."
         with pytest.raises(ValueError, match=re.escape(message)):
-            alignment.move_start_to(100.0)
+            alignment.move_earliest_observation_to(100.0)
 
         assert_allclose(alignment["a"].get_times(), [0.0, 0.1, 0.2, 0.3, 0.4])
         assert_allclose(alignment["b"].get_times(), [np.nan, 2.1, 2.2])

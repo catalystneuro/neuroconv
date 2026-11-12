@@ -4,15 +4,15 @@ An interface's alignment surface is a container. It names the interface's **time
 things it writes that carry a time coordinate, so that a single one can be reached and re-timed on its own::
 
     interface.temporal_alignment.shift_times(3.0)                       # every object, rigid, accumulates
-    interface.temporal_alignment.move_start_to(100.0)                   # every object, the earliest start at 100 s
+    interface.temporal_alignment.move_earliest_observation_to(100.0)   # every object, the earliest start at 100 s
     interface.temporal_alignment.keys()                                 # the objects this interface can name
     interface.temporal_alignment["response"].get_times()                # the times this object will be written on
     interface.temporal_alignment["response"].set_times(times)           # this object's times outright
     interface.temporal_alignment["response"].shift_times(-0.040)        # this object alone, rigid, accumulates
-    interface.temporal_alignment["response"].move_start_to(12.5)        # this object's earliest observation at 12.5 s
+    interface.temporal_alignment["response"].move_earliest_observation_to(12.5)  # this object's earliest observation at 12.5 s
     interface.temporal_alignment["response"].remap_times(...)           # this object's clock against a reference
 
-What an operation is called on is what it applies to. ``shift_times`` and ``move_start_to`` work at both
+What an operation is called on is what it applies to. ``shift_times`` and ``move_earliest_observation_to`` work at both
 scopes: on one object they move that object, on the interface they move every object by one common amount.
 Literal times belong to one object and so cannot be given without one. Each object holds its own offset, and
 the interface holds none, so an interface that names nothing has nothing to move and every operation on it
@@ -27,6 +27,8 @@ object's times just to add a number to them, which for a three-hour recording at
 vector standing in for one scalar, and it would open every source a caller had merely named. Holding it
 means nothing is read until someone asks for times.
 """
+
+import warnings
 
 import numpy as np
 
@@ -132,7 +134,7 @@ class _TimeBearingObject:
         """
         self._object_offset += float(delta)
 
-    def move_start_to(self, starting_time: float) -> None:
+    def move_earliest_observation_to(self, starting_time: float) -> None:
         """Place this object's earliest observation at ``starting_time`` seconds on the session clock.
 
         For a file that was triggered on its own and records nothing about where it sits, a video or an audio
@@ -144,12 +146,12 @@ class _TimeBearingObject:
         It states a position rather than adding to one, so calling it twice with the same value changes
         nothing, and a ``shift_times`` applied earlier is superseded for this object while one applied
         afterwards still moves it. ``set_times`` and ``remap_times`` define the object's times outright and
-        so supersede an earlier ``move_start_to``; called after them, ``move_start_to`` moves the given times
-        rigidly.
+        so supersede an earlier ``move_earliest_observation_to``; called after them,
+        ``move_earliest_observation_to`` moves the given times rigidly.
         """
         starting_time = float(starting_time)
         if not np.isfinite(starting_time):
-            raise ValueError(f"`move_start_to` needs a finite time in seconds, not {starting_time}.")
+            raise ValueError(f"`move_earliest_observation_to` needs a finite time in seconds, not {starting_time}.")
         earliest_time = self._get_base_earliest_time()
         if not np.isfinite(earliest_time):
             raise ValueError(
@@ -162,9 +164,9 @@ class _TimeBearingObject:
         """Write these times for this object, exactly as given, one per sample.
 
         For per-sample times you already trust, from a synchronization signal or a computation of your own.
-        They are the times the file will carry, so a shift or a ``move_start_to`` applied earlier is superseded
-        for this object; a shift applied afterwards still moves it, the way any later correction would. For an
-        event type they are the timestamps, and the durations are left as they are.
+        They are the times the file will carry, so a shift or a ``move_earliest_observation_to`` applied earlier
+        is superseded for this object; a shift applied afterwards still moves it, the way any later correction
+        would. For an event type they are the timestamps, and the durations are left as they are.
         """
         times = np.asarray(times)
         if self._get_number_of_samples is not None:
@@ -257,10 +259,10 @@ class _TemporalAlignment:
 
     Names the objects the interface registered, each holding its own offset, ``output = default + offset``,
     ``0.0`` by default (identity). ``shift_times``,
-    ``move_start_to`` and ``remap_times`` called here act on every object: the first two move them all by one
-    common amount, and ``remap_times`` is one clock's correction. Called on ``temporal_alignment[key]`` they act on that
-    object alone, and times for one object are given only through the object itself,
-    ``temporal_alignment[key].set_times(times)``.
+    ``move_earliest_observation_to`` and ``remap_times`` called here act on every object: the first two move them
+    all by one common amount, and ``remap_times`` is one clock's correction. Called on
+    ``temporal_alignment[key]`` they act on that object alone, and times for one object are given only through
+    the object itself, ``temporal_alignment[key].set_times(times)``.
     """
 
     def __init__(self):
@@ -280,8 +282,8 @@ class _TemporalAlignment:
 
         ``get_native_times`` returns the times the object has when nothing has been said. ``default_start_time``
         is their first and earliest value for chronologically ordered native times, a number or a callable,
-        given so that ``move_start_to`` and the compact write build no array to learn it. Without it placement
-        reads the minimum native time from the array.
+        given so that ``move_earliest_observation_to`` and the compact write build no array to learn it.
+        Without it placement reads the minimum native time from the array.
         ``get_number_of_samples`` returns how many times ``set_times`` has to be given, and without it the count
         is not checked. ``get_native_durations`` returns one duration per time, or ``None``, for an event type.
         ``time_bearing_object_class`` is a subclass for an interface whose objects refuse some operations.
@@ -314,20 +316,21 @@ class _TemporalAlignment:
         for time_bearing_object in self._name_to_time_bearing_object.values():
             time_bearing_object.shift_times(delta)
 
-    def move_start_to(self, starting_time: float) -> None:
+    def move_earliest_observation_to(self, starting_time: float) -> None:
         """Move every time-bearing object by one amount, placing the earliest observation at ``starting_time``.
 
         The relative placement of the objects is kept: starts at 10 and 15 seconds become 100 and 105 after
-        ``move_start_to(100.0)``, where placing each object at 100 would put both there. Each object's start is
-        its earliest observation, as it currently stands, earlier alignment included. Each object takes the
-        common shift and nothing else is stored, so calling it twice with the same value changes nothing.
+        ``move_earliest_observation_to(100.0)``, where placing each object at 100 would put both there. Each
+        object's start is its earliest observation, as it currently stands, earlier alignment included.
+        Each object takes the common shift and nothing else is stored, so calling it twice with the same
+        value changes nothing.
 
         Empty objects have no start and are left out of the earliest one. All starts are read and checked
         before anything moves, so a failure leaves every object where it was.
         """
         starting_time = float(starting_time)
         if not np.isfinite(starting_time):
-            raise ValueError(f"`move_start_to` needs a finite time in seconds, not {starting_time}.")
+            raise ValueError(f"`move_earliest_observation_to` needs a finite time in seconds, not {starting_time}.")
         if not self._name_to_time_bearing_object:
             raise NotImplementedError(
                 "This interface has registered no time-bearing objects, so it has no start to move."
@@ -376,15 +379,81 @@ class _ConverterTemporalAlignment:
 
     def keys(self) -> tuple[str, ...]:
         """The children of this converter that have temporal alignment."""
-        return tuple(
-            name for name, child in self._data_interface_objects.items() if hasattr(child, "temporal_alignment")
-        )
+        keys = []
+        for name, child in self._data_interface_objects.items():
+            is_alignment_undeclared = not hasattr(child, "temporal_alignment")
+            is_explicitly_unalignable = not is_alignment_undeclared and child.temporal_alignment is None
+            if is_alignment_undeclared or is_explicitly_unalignable:
+                continue
+            keys.append(name)
+        return tuple(keys)
 
     def __getitem__(self, name: str) -> "_TemporalAlignment | _ConverterTemporalAlignment":
         if name not in self._data_interface_objects:
             named = ", ".join(repr(child_name) for child_name in self._data_interface_objects) or "nothing"
             raise KeyError(f"{name!r} is not a child of this converter. It holds {named}.")
         child = self._data_interface_objects[name]
-        if not hasattr(child, "temporal_alignment"):
+        is_alignment_undeclared = not hasattr(child, "temporal_alignment")
+        is_explicitly_unalignable = not is_alignment_undeclared and child.temporal_alignment is None
+        if is_alignment_undeclared or is_explicitly_unalignable:
             raise KeyError(f"{name!r} is a {type(child).__name__}, which has no temporal alignment.")
         return child.temporal_alignment
+
+    @staticmethod
+    def _check_unique_membership(member, path, seen_paths):
+        identity = id(member)
+        if identity in seen_paths:
+            raise ValueError(
+                f"The same object is registered at both {seen_paths[identity]!r} and {path!r}. "
+                "Each member must occur only once within the selected converter."
+            )
+        seen_paths[identity] = path
+
+    def _iter_time_bearing_objects(self, *, seen_paths, skipped_children, path=""):
+        for name, child in self._data_interface_objects.items():
+            child_path = f"{path}/{name}" if path else name
+            self._check_unique_membership(child, child_path, seen_paths)
+            is_alignment_undeclared = not hasattr(child, "temporal_alignment")
+            if is_alignment_undeclared:
+                skipped_children.append(
+                    f"Skipping {child_path!r} ({type(child).__name__}) because it has no `temporal_alignment` "
+                    "attribute. It is unclear whether alignment is inapplicable or support was omitted. "
+                    "Provide `temporal_alignment` for timed data, or set `temporal_alignment = None` "
+                    "if alignment is inapplicable by design."
+                )
+                continue
+            child_alignment = child.temporal_alignment
+            is_explicitly_unalignable = child_alignment is None
+            if is_explicitly_unalignable:
+                continue
+            if isinstance(child_alignment, _ConverterTemporalAlignment):
+                yield from child_alignment._iter_time_bearing_objects(
+                    seen_paths=seen_paths, skipped_children=skipped_children, path=child_path
+                )
+                continue
+            keys = child_alignment.keys()
+            for key in keys:
+                time_bearing_object = child_alignment[key]
+                self._check_unique_membership(time_bearing_object, f"{child_path}/{key}", seen_paths)
+                yield time_bearing_object
+
+    def _collect_time_bearing_objects(self) -> list[_TimeBearingObject]:
+        seen_paths = {}
+        skipped_children = []
+        time_bearing_objects = list(
+            self._iter_time_bearing_objects(seen_paths=seen_paths, skipped_children=skipped_children)
+        )
+        for message in skipped_children:
+            warnings.warn(message, UserWarning, stacklevel=3)
+        return time_bearing_objects
+
+    def shift_times(self, delta: float) -> None:
+        """Shift every descendant time-bearing object by ``delta`` seconds; repeated calls accumulate.
+
+        Children declaring ``temporal_alignment = None`` are skipped silently. A missing attribute warns and
+        skips that child. Repeated membership raises before any times change.
+        """
+        delta = float(delta)
+        time_bearing_objects = self._collect_time_bearing_objects()
+        for time_bearing_object in time_bearing_objects:
+            time_bearing_object.shift_times(delta)
