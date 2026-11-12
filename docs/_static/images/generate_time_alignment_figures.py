@@ -4,7 +4,7 @@ Run from the repository root::
 
     python docs/_static/images/generate_time_alignment_figures.py
 
-Produces six figures:
+Produces seven figures:
 
 - ``time_alignment_gross_vs_fine.png``   - the concept figure: a constant offset (gross) beside a growing drift (fine).
 - ``time_alignment_concatenate.png``     - gross alignment: separate trial files tiled onto one session clock.
@@ -14,6 +14,8 @@ Produces six figures:
 - ``time_alignment_moves_together.png`` - an interface's time-bearing objects moved together by ``shift_times``
   and by ``move_earliest_observation_to``, with the gaps between them preserved.
 - ``time_alignment_remap_together.png`` - one pulse mapping applied to every video file in an interface.
+- ``time_alignment_converter_remap.png`` - ``remap_times`` called on interfaces of a converter: one call remaps
+  every object its interface holds.
 """
 
 from pathlib import Path
@@ -514,6 +516,145 @@ def build_remap_together():
         plt.close(fig)
 
 
+def build_converter_remap():
+    """``remap_times`` called on interfaces of a converter: one call remaps every object its interface holds.
+
+    The converter is the outer box and each dashed box inside it is one interface around its time-bearing
+    objects: a recording (one object, no call), a video with three trial files on one continuous camera clock,
+    and a behavior stream (one object). Each remapped box shows its objects as recorded and after the call, with
+    an arrow from every sample to where it lands. The landing times are the real result of ``numpy.interp`` with
+    that interface's own pulse pairs, so the single call on the video interface moves all three files.
+    """
+    pale = "#a8c4da"  # the sample arrows, as in ``build_remap_together``
+    mono = "DejaVu Sans Mono"
+
+    # the camera's pulses, on the clock they are remapped onto and on the camera clock, which runs fast
+    camera_reference = np.array([0.0, 2.3, 4.6, 7.0])
+    camera_local = camera_reference * 1.12 + np.array([0.0, 0.1, -0.08, 0.0])
+    # the behavior system's pulses, the same way; its clock starts late and runs slow
+    behavior_reference = np.array([0.6, 3.0, 5.2, 7.3])
+    behavior_local = 0.9 + behavior_reference * 0.94 + np.array([0.0, -0.08, 0.06, 0.0])
+
+    recording_ticks = np.arange(0, 8, 1.0)
+    # three trial files on the camera clock, which keeps running between files
+    trial_ticks = [start + 0.5 * np.arange(4) for start in (0.6, 3.1, 5.8)]
+    behavior_ticks = np.linspace(behavior_local[0] + 0.5, behavior_local[-1] - 0.5, 6)
+
+    x_lo, x_hi = -2.4, 8.7
+    label_x = -0.35
+    row_gap = 1.3  # between the as-recorded row and the row after the call
+
+    def interface_box(ax, *, y_low, y_high, description, call):
+        ax.add_patch(
+            mpatches.FancyBboxPatch(
+                (x_lo, y_low),
+                x_hi - x_lo,
+                y_high - y_low,
+                boxstyle="round,pad=0.0,rounding_size=0.15",
+                linewidth=1.2,
+                edgecolor="0.5",
+                facecolor="none",
+                linestyle="--",
+            )
+        )
+        ax.text(x_lo, y_high + 0.1, description, ha="left", va="bottom", fontsize=10.5, color="0.35")
+        is_call = call.startswith("converter")
+        ax.text(
+            x_hi,
+            y_high + 0.1,
+            call,
+            ha="right",
+            va="bottom",
+            fontsize=10 if is_call else 10.5,
+            color="0.15" if is_call else "0.35",
+            family=mono if is_call else None,
+        )
+
+    def remapped_interface(ax, *, y_before, objects, local_pulses, reference_pulses, description, call, object_labels=()):
+        """One box: the objects as recorded, the same objects after the call, and an arrow for every sample."""
+        y_after = y_before - row_gap
+        y_high = y_before + (0.85 if object_labels else 0.55)  # room for the object labels
+        interface_box(ax, y_low=y_after - 0.5, y_high=y_high, description=description, call=call)
+        for y, row_label in [(y_before, "as recorded"), (y_after, "after the call")]:
+            ax.text(label_x, y + TICK_H / 2, row_label, ha="right", va="center", fontsize=10, color="0.45")
+
+        for index, ticks in enumerate(objects):
+            remapped_ticks = np.interp(ticks, local_pulses, reference_pulses)
+            timeline(ax, y=y_before, ticks=ticks, label="", color=REF, show_time=False)
+            timeline(ax, y=y_after, ticks=remapped_ticks, label="", color=REF, show_time=False)
+            if object_labels:
+                ax.text(
+                    (ticks[0] + ticks[-1] + 0.4) / 2,
+                    y_before + TICK_H + 0.1,
+                    object_labels[index],
+                    ha="center",
+                    va="bottom",
+                    fontsize=10,
+                    color=REF,
+                    family=mono,
+                )
+            for before, after in zip(ticks, remapped_ticks):
+                ax.annotate(
+                    "",
+                    xy=(after, y_after + TICK_H + 0.08),
+                    xytext=(before, y_before - 0.1),
+                    arrowprops={"arrowstyle": "->", "color": pale, "lw": 1.1},
+                    zorder=2,
+                )
+
+    fig, ax = plt.subplots(figsize=(9, 7.9))
+
+    # the converter holds the three interfaces
+    ax.add_patch(
+        mpatches.FancyBboxPatch(
+            (x_lo - 0.3, 0.0),
+            x_hi - x_lo + 0.6,
+            9.25,
+            boxstyle="round,pad=0.0,rounding_size=0.2",
+            linewidth=1.0,
+            edgecolor="0.72",
+            facecolor="none",
+        )
+    )
+    ax.text(x_lo - 0.3, 9.33, "converter.temporal_alignment", ha="left", va="bottom", fontsize=10, color="0.35", family=mono)
+
+    y_recording = 8.0
+    interface_box(
+        ax,
+        y_low=y_recording - 0.45,
+        y_high=y_recording + 0.5,
+        description="Recording interface: one object",
+        call="no call",
+    )
+    timeline(ax, y=y_recording, ticks=recording_ticks, label="", color=BLACK, show_time=False)
+
+    remapped_interface(
+        ax,
+        y_before=5.7,
+        objects=trial_ticks,
+        local_pulses=camera_local,
+        reference_pulses=camera_reference,
+        description="Video interface: three objects",
+        call='converter.temporal_alignment["Video"].remap_times(...)',
+        object_labels=("trial_01", "trial_02", "trial_03"),
+    )
+    remapped_interface(
+        ax,
+        y_before=2.3,
+        objects=[behavior_ticks],
+        local_pulses=behavior_local,
+        reference_pulses=behavior_reference,
+        description="Behavior interface: one object",
+        call='converter.temporal_alignment["Behavior"].remap_times(...)',
+    )
+
+    clean(ax, xlim=(x_lo - 0.5, x_hi + 0.5), ylim=(-0.2, 9.8), title="")
+    fig.suptitle("One call remaps every object of its interface", fontsize=14, weight="bold")
+    fig.tight_layout(rect=(0, 0, 1, 0.985))
+    fig.savefig(OUTDIR / "time_alignment_converter_remap.png", dpi=200, bbox_inches="tight")
+    plt.close(fig)
+
+
 def main():
     """Generate all temporal-alignment figures into this directory."""
     build_gross_vs_fine()
@@ -522,9 +663,11 @@ def main():
     build_coarse()
     build_moves_together()
     build_remap_together()
+    build_converter_remap()
     print(
         "wrote time_alignment_gross_vs_fine.png, time_alignment_interpolation.png, "
-        "time_alignment_coarse.png, time_alignment_moves_together.png and time_alignment_remap_together.png"
+        "time_alignment_coarse.png, time_alignment_moves_together.png, time_alignment_remap_together.png "
+        "and time_alignment_converter_remap.png"
     )
 
 

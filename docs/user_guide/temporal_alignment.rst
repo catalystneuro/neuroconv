@@ -322,7 +322,7 @@ through its key.
 Alignment in a converter
 ------------------------
 
-A converter is where alignment usually happens, since that is where several interfaces meet. A converter has an
+A converter is where alignment usually happens, since that is where several interfaces meet. A converter has a
 ``temporal_alignment`` of its own, and its keys nest: the first key is the name of an interface the converter holds, and
 ``converter.temporal_alignment[name]`` is that interface's ``temporal_alignment``. From there, indexing continues into the interface's
 own objects as before:
@@ -334,9 +334,10 @@ own objects as before:
     converter.temporal_alignment["Video"]["trial_02"].shift_times(-0.040)   # one file of the video interface
 
 Called on the converter's ``temporal_alignment`` itself, ``shift_times`` and ``move_earliest_observation_to`` move every interface it holds by
-one common amount, just as an interface moves its objects, as long as each of them exposes a ``temporal_alignment``. Calling
-``remap_times`` there applies one map to every interface, which is right only when all of them run on one clock. Each
-interface usually has its own clock and its own correction, so most alignment is one call per interface.
+one common amount, just as an interface moves its objects. An interface without a ``temporal_alignment`` is skipped with
+a warning. Calling ``remap_times`` there applies one map to every interface, which is right only when all of them run
+on one clock. Each interface usually has its own clock and its own correction, so most alignment is one call per
+interface.
 
 With a ``ConverterPipe``
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -388,3 +389,55 @@ reference, on ``converter.temporal_alignment[name]`` for a whole interface or on
 One caveat applies to both: the calls mutate the live interfaces, so a step that runs twice compounds unless it states
 a result. A ``shift_times`` shifts twice and a ``remap_times`` remaps times that were already remapped, while
 ``move_earliest_observation_to`` and ``set_times`` can be repeated. Build the converter fresh per conversion.
+
+Remapping in a converter
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+``remap_times`` on ``converter.temporal_alignment[name]`` remaps every object of that interface with the pulse pairs
+you pass. Interfaces on different clocks each get their own call, with their own pulses:
+
+.. code-block:: python
+
+    converter.temporal_alignment["Video"].remap_times(
+        local_sync_times=camera_pulses_local,
+        reference_sync_times=camera_pulses_reference,
+    )
+    converter.temporal_alignment["Behavior"].remap_times(
+        local_sync_times=behavior_pulses_local,
+        reference_sync_times=behavior_pulses_reference,
+    )
+
+.. figure:: ../_static/images/time_alignment_converter_remap.png
+   :width: 600px
+   :align: center
+   :alt: A converter drawn as a box holding three interfaces. The recording has one time-bearing object and gets
+         no call. The video has three trial files, shown as recorded and after one remap_times call on the Video
+         interface, with an arrow from every frame of the three files to its new time. The behavior stream has one
+         object, shown the same way after its own call.
+
+   Each dashed box is one interface of the converter. The call on ``converter.temporal_alignment["Video"]`` remaps
+   its three files together, the call on ``converter.temporal_alignment["Behavior"]`` remaps its one object, and
+   the recording, which gets no call, keeps its times.
+
+``remap_times`` on the converter itself, or on a nested converter inside it, applies one set of pulse pairs to every
+interface under it. Use it where all of those interfaces were recorded on one clock, for example a nested converter
+that holds the interfaces of a single acquisition system:
+
+.. code-block:: python
+
+    converter = ConverterPipe(data_interfaces=dict(Rig=rig_converter, Video=video_interface))
+
+    # Right: every interface under "Rig" runs on the rig's clock.
+    converter.temporal_alignment["Rig"].remap_times(
+        local_sync_times=rig_pulses,
+        reference_sync_times=reference_pulses,
+    )
+
+    # Wrong: the video runs on the camera's clock and is remapped with the rig's pulses.
+    converter.temporal_alignment.remap_times(
+        local_sync_times=rig_pulses,
+        reference_sync_times=reference_pulses,
+    )
+
+NeuroConv does not know which clock an interface runs on, so the second call raises no error and writes wrong video
+times.

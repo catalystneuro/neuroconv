@@ -134,9 +134,9 @@ At the moment, the only time-bearing object that does not implement ``set_times`
 interface. Replacement would take a dictionary mapping units to timestamp arrays instead of a single array, and we
 have not identified a reasonable use case for implementing this.
 
-Placement for sorting is not yet implemented. Once supported, ``move_earliest_observation_to`` will place the
-earliest spike across the selected units using one common shift, preserving their relative timing. The earliest
-spike reflects neural activity, not the start of the recording.
+For a sorting, ``move_earliest_observation_to`` places the earliest spike across the units of a segment using one
+common shift, preserving their relative timing. The earliest spike reflects neural activity, not the start of the
+recording.
 
 Collection operations
 ---------------------
