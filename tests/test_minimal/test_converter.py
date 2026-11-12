@@ -16,6 +16,7 @@ from neuroconv import (
     ConverterPipe,
     NWBConverter,
 )
+from neuroconv._temporal_alignment import _TemporalAlignment
 from neuroconv.tools.testing.mock_interfaces import MockInterface
 from neuroconv.utils import DeepDict
 
@@ -278,6 +279,24 @@ def test_converter_pipe_rejects_other_types_up_front():
         ConverterPipe(data_interfaces={MockBehaviorEventInterface()})
 
 
+class MockTimedInterface(BaseDataInterface):
+    """An interface with one time-bearing object per key of ``times_by_key``, whose native times are given directly."""
+
+    def __init__(self, times_by_key: dict):
+        super().__init__()
+        self.temporal_alignment = _TemporalAlignment()
+        for key, times in times_by_key.items():
+            native_times = np.array(times, dtype="float64")
+            self.temporal_alignment._register(
+                key=key,
+                get_native_times=lambda native_times=native_times: native_times,
+                get_number_of_samples=lambda native_times=native_times: len(native_times),
+            )
+
+    def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict | None, **conversion_options):
+        pass
+
+
 class TestConverterTemporalAlignment:
     def test_child_access(self):
         from neuroconv.tools.testing.mock_interfaces import MockIcephysInterface
@@ -313,47 +332,46 @@ class TestConverterTemporalAlignment:
             converter.temporal_alignment["Missing"]
 
     def test_shift_times_reaches_every_descendant(self):
-        from neuroconv.tools.testing.mock_interfaces import MockIcephysInterface
-
-        first_interface = MockIcephysInterface(
-            metadata_key="first", num_sweeps=1, sampling_frequency=4.0, stimulus_duration=0.5
+        first_original_times = np.array([2.0, 2.25, 2.5])
+        stimulus_original_times = np.array([2.0, 2.5])
+        second_original_times = np.array([10.0, 10.25, 10.5])
+        first_interface = MockTimedInterface(
+            times_by_key=dict(times=first_original_times, stimulus=stimulus_original_times)
         )
-        second_interface = MockIcephysInterface(
-            metadata_key="second", num_sweeps=1, sampling_frequency=4.0, starting_time=10.0
-        )
+        second_interface = MockTimedInterface(times_by_key=dict(times=second_original_times))
         inner_converter = ConverterPipe(data_interfaces=dict(Second=second_interface))
         converter = ConverterPipe(data_interfaces=dict(First=first_interface, Inner=inner_converter))
-        first_response = first_interface.temporal_alignment["first"]
-        first_stimulus = first_interface.temporal_alignment["first_stimulus"]
-        second_response = second_interface.temporal_alignment["second"]
-        first_times = first_response.get_times().copy()
-        stimulus_times = first_stimulus.get_times().copy()
-        second_times = second_response.get_times().copy()
 
-        converter.temporal_alignment.shift_times(5.0)
+        delta = 5.0
+        converter.temporal_alignment.shift_times(delta)
 
-        np.testing.assert_allclose(first_response.get_times(), first_times + 5.0)
-        np.testing.assert_allclose(first_stimulus.get_times(), stimulus_times + 5.0)
-        np.testing.assert_allclose(second_response.get_times(), second_times + 5.0)
+        first_times = first_interface.temporal_alignment["times"].get_times()
+        stimulus_times = first_interface.temporal_alignment["stimulus"].get_times()
+        second_times = second_interface.temporal_alignment["times"].get_times()
+        first_expected_times = first_original_times + delta
+        stimulus_expected_times = stimulus_original_times + delta
+        second_expected_times = second_original_times + delta
+        np.testing.assert_array_equal(first_times, first_expected_times)
+        np.testing.assert_array_equal(stimulus_times, stimulus_expected_times)
+        np.testing.assert_array_equal(second_times, second_expected_times)
 
     def test_shift_times_only_moves_selected_subtree(self):
-        from neuroconv.tools.testing.mock_interfaces import MockIcephysInterface
-
-        first_interface = MockIcephysInterface(metadata_key="first", num_sweeps=1, sampling_frequency=4.0)
-        second_interface = MockIcephysInterface(metadata_key="second", num_sweeps=1, sampling_frequency=4.0)
+        first_original_times = np.array([2.0, 2.25, 2.5])
+        second_original_times = np.array([10.0, 10.25, 10.5])
+        first_interface = MockTimedInterface(times_by_key=dict(times=first_original_times))
+        second_interface = MockTimedInterface(times_by_key=dict(times=second_original_times))
         inner_converter = ConverterPipe(data_interfaces=dict(Second=second_interface))
-        converter = ConverterPipe(
-            data_interfaces=dict(First=first_interface, Inner=inner_converter, Unsupported=MockInterface())
-        )
-        first_response = first_interface.temporal_alignment["first"]
-        second_response = second_interface.temporal_alignment["second"]
-        first_times = first_response.get_times().copy()
-        second_times = second_response.get_times().copy()
+        converter = ConverterPipe(data_interfaces=dict(First=first_interface, Inner=inner_converter))
 
-        converter.temporal_alignment["Inner"].shift_times(5.0)
+        delta = 5.0
+        converter.temporal_alignment["Inner"].shift_times(delta)
 
-        np.testing.assert_array_equal(first_response.get_times(), first_times)
-        np.testing.assert_allclose(second_response.get_times(), second_times + 5.0)
+        first_times = first_interface.temporal_alignment["times"].get_times()
+        second_times = second_interface.temporal_alignment["times"].get_times()
+        first_expected_times = first_original_times
+        second_expected_times = second_original_times + delta
+        np.testing.assert_array_equal(first_times, first_expected_times)
+        np.testing.assert_array_equal(second_times, second_expected_times)
 
     def test_shift_times_warns_when_alignment_is_undeclared(self):
         from neuroconv.tools.testing.mock_interfaces import MockIcephysInterface
@@ -396,18 +414,12 @@ class TestConverterTemporalAlignment:
             converter.temporal_alignment["Images"]
 
     def test_move_earliest_observation_to_keeps_gaps_between_descendants(self):
-        from neuroconv.tools.testing.mock_interfaces import MockIcephysInterface
-
-        first_interface = MockIcephysInterface(metadata_key="first", num_sweeps=1, sampling_frequency=4.0)
-        second_interface = MockIcephysInterface(metadata_key="second", num_sweeps=1, sampling_frequency=4.0)
+        first_original_times = np.array([2.0, 2.25, 2.5])
+        second_original_times = np.array([10.0, 10.25, 10.5])
+        first_interface = MockTimedInterface(times_by_key=dict(times=first_original_times))
+        second_interface = MockTimedInterface(times_by_key=dict(times=second_original_times))
         inner_converter = ConverterPipe(data_interfaces=dict(Second=second_interface))
         converter = ConverterPipe(data_interfaces=dict(First=first_interface, Inner=inner_converter))
-        first_response = first_interface.temporal_alignment["first"]
-        second_response = second_interface.temporal_alignment["second"]
-        first_original_times = np.array([2.0, 2.25, 2.5, 2.75])
-        second_original_times = np.array([10.0, 10.25, 10.5, 10.75])
-        first_response.set_times(first_original_times)
-        second_response.set_times(second_original_times)
 
         starting_time = 100.0
         earliest_observation = first_original_times[0]
@@ -415,8 +427,8 @@ class TestConverterTemporalAlignment:
         converter.temporal_alignment.move_earliest_observation_to(starting_time)
         converter.temporal_alignment.move_earliest_observation_to(starting_time)
 
-        first_times = first_response.get_times()
-        second_times = second_response.get_times()
+        first_times = first_interface.temporal_alignment["times"].get_times()
+        second_times = second_interface.temporal_alignment["times"].get_times()
         first_expected_times = first_original_times + expected_shift
         second_expected_times = second_original_times + expected_shift
         np.testing.assert_array_equal(first_times, first_expected_times)
