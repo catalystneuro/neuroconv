@@ -40,6 +40,7 @@ class AxonRecordingInterface(BaseRecordingExtractorInterface):
         verbose: bool = False,
         es_key: str | None = None,
         metadata_key: str | None = None,
+        channels_to_exclude: list | None = None,
     ):
         """
         Load and prepare raw data and corresponding metadata from the Axon Binary Format (.abf files).
@@ -55,6 +56,9 @@ class AxonRecordingInterface(BaseRecordingExtractorInterface):
             Key that indexes this interface's entries in the dict-based metadata. Defaults to
             ``"axon_recording"``.
             The key for the ElectricalSeries in the metadata
+        channels_to_exclude : list, optional
+            Channels to leave out, by the ids in ``channel_ids``. Every other channel is converted. A name that
+            is not one of the interface's channels raises.
         """
 
         self.file_path = Path(file_path)
@@ -67,6 +71,8 @@ class AxonRecordingInterface(BaseRecordingExtractorInterface):
         # Read the start time while the recording is still the neo-based extractor, as `remove_channels`
         # replaces it with a channel slice that does not carry the `neo_reader`
         self._session_start_time = self._get_start_datetime(self.recording_extractor.neo_reader)
+
+        self._exclude_channels(channels_to_exclude)
 
     def _get_start_datetime(self, neo_reader):
         """

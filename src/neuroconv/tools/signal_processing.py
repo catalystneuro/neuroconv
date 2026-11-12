@@ -382,15 +382,16 @@ def _samples_to_seconds(
 def _run_length_encode_labels(
     labels: np.ndarray,
     timestamps: np.ndarray,
-    frame_period: float | None = None,
 ) -> list[tuple[float, float, int]]:
     """
     Run-length-encode a per-frame integer label array into labeled time intervals.
 
-    A label at frame ``k`` occupies ``[timestamps[k], timestamps[k] + frame_period)``, so a maximal
-    run of identical labels over frames ``[i, j]`` becomes one interval
-    ``[timestamps[i], timestamps[j] + frame_period]``. For a regular series the stop time of one
-    interval equals the start time of the next, giving a gapless single-label partition.
+    A label at frame ``k`` occupies ``[timestamps[k], timestamps[k] + frame_period)``, where
+    ``frame_period`` is the median interval between ``timestamps``, so a maximal run of identical
+    labels over frames ``[i, j]`` becomes one interval ``[timestamps[i], timestamps[j] + frame_period]``.
+    For a regular series the stop time of one interval equals the start time of the next, giving a
+    gapless single-label partition. The frame duration comes from the times given, so after an
+    alignment it is the aligned one.
 
     Parameters
     ----------
@@ -398,9 +399,6 @@ def _run_length_encode_labels(
         1D array of per-frame integer labels (e.g. behavioral motif/syllable ids, threshold states).
     timestamps : numpy.ndarray
         1D array of frame times in seconds, the same length as ``labels``.
-    frame_period : float, optional
-        Duration of a single frame in seconds. Defaults to the median inter-frame interval of
-        ``timestamps``.
 
     Returns
     -------
@@ -409,8 +407,7 @@ def _run_length_encode_labels(
     """
     labels = np.asarray(labels)
     timestamps = np.asarray(timestamps)
-    if frame_period is None:
-        frame_period = float(np.median(np.diff(timestamps)))
+    frame_period = float(np.median(np.diff(timestamps)))
 
     boundaries = np.flatnonzero(np.diff(labels)) + 1
     run_starts = np.concatenate(([0], boundaries))

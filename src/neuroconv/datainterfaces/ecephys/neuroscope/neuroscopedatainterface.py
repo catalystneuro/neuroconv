@@ -179,6 +179,7 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
         verbose: bool = False,
         es_key: str | None = None,
         metadata_key: str | None = None,
+        channels_to_exclude: list | None = None,
     ):
         """
         Load and prepare raw acquisition data and corresponding metadata from the Neuroscope format (.dat files).
@@ -199,6 +200,9 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
         metadata_key : str, optional
             Key that indexes this interface's entries in the dict-based metadata. Defaults to
             ``"neuroscope_recording"``.
+        channels_to_exclude : list, optional
+            Channels to leave out, by the ids in ``channel_ids``. Every other channel is converted. A name that
+            is not one of the interface's channels raises.
         """
 
         get_package(package_name="lxml")
@@ -218,6 +222,8 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
         self.recording_extractor = filter_non_neural_channels(
             recording_extractor=self.recording_extractor, xml_file_path=xml_file_path
         )
+
+        self._exclude_channels(channels_to_exclude)
 
     def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         session_path = Path(self.source_data["file_path"]).parent
@@ -285,6 +291,7 @@ class NeuroScopeLFPInterface(BaseLFPExtractorInterface):
         verbose: bool = False,
         es_key: str | None = None,
         metadata_key: str | None = None,
+        channels_to_exclude: list | None = None,
     ):
         """
         Load and prepare lfp data and corresponding metadata from the Neuroscope format (.eeg or .lfp files).
@@ -307,6 +314,9 @@ class NeuroScopeLFPInterface(BaseLFPExtractorInterface):
         metadata_key : str, optional
             Key that indexes this interface's entries in the dict-based metadata. Defaults to
             ``"neuroscope_lfp"``.
+        channels_to_exclude : list, optional
+            Channels to leave out, by the ids in ``channel_ids``. Every other channel is converted. A name that
+            is not one of the interface's channels raises.
         """
 
         get_package(package_name="lxml")
@@ -326,6 +336,8 @@ class NeuroScopeLFPInterface(BaseLFPExtractorInterface):
         self.recording_extractor = filter_non_neural_channels(
             recording_extractor=self.recording_extractor, xml_file_path=xml_file_path
         )
+
+        self._exclude_channels(channels_to_exclude)
 
     def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         session_path = Path(self.source_data["file_path"]).parent
@@ -382,6 +394,7 @@ class NeuroScopeSortingInterface(BaseSortingExtractorInterface):
         exclude_shanks: list[int] | None = None,
         xml_file_path: FilePath | None = None,
         verbose: bool = False,
+        metadata_key: str | None = None,
     ):
         """
         Load and prepare spike sorted data and corresponding metadata from the Neuroscope format (.res/.clu files).
@@ -399,10 +412,13 @@ class NeuroScopeSortingInterface(BaseSortingExtractorInterface):
             Path to .xml file containing device and electrode configuration.
             If unspecified, it will be automatically set as the only .xml file in the same folder as the .dat file.
             The default is None.
+        metadata_key : str, optional
+            Key of this sorting's entry in ``metadata["Ecephys"]["Sortings"]``. Defaults to ``"neuroscope_sorting"``.
         """
 
         get_package(package_name="lxml")
 
+        self.metadata_key = metadata_key or "neuroscope_sorting"
         super().__init__(
             folder_path=folder_path,
             keep_mua_units=keep_mua_units,

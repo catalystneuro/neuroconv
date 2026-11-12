@@ -10,6 +10,7 @@ from jsonschema import validate
 from pydantic import FilePath, validate_call
 from pynwb import NWBFile
 
+from ._temporal_alignment import _ConverterTemporalAlignment
 from .basedatainterface import BaseDataInterface
 from .tools.external_resources import add_external_resources_to_nwbfile
 from .tools.nwb_helpers import (
@@ -123,6 +124,16 @@ class NWBConverter:
 
             interface_instance = interface_class(**interface_kwargs)
             self.data_interface_objects[interface_name] = interface_instance
+
+    @property
+    def temporal_alignment(self) -> _ConverterTemporalAlignment:
+        """The temporal alignment of this converter's children, indexed by their names in ``data_interface_objects``.
+
+        ``converter.temporal_alignment[name]`` is that child's own ``temporal_alignment``, so indexing again reaches
+        one time-bearing object of an interface, or a child of a nested converter. Children without temporal
+        alignment are left out of ``keys()``.
+        """
+        return _ConverterTemporalAlignment(data_interface_objects=self.data_interface_objects)
 
     def get_metadata_schema(self) -> dict:
         """
@@ -444,13 +455,12 @@ class NWBConverter:
         else:
             nwbfile = self.create_nwbfile(metadata=metadata, conversion_options=conversion_options)
 
-        add_external_resources_to_nwbfile(nwbfile, metadata=metadata)
-
         configure_and_write_nwbfile(
             nwbfile=nwbfile,
             nwbfile_path=nwbfile_path,
             backend=backend,
             backend_configuration=backend_configuration,
+            metadata=metadata,
         )
 
     def _append_nwbfile(

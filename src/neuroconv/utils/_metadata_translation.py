@@ -19,6 +19,8 @@ from .dict import DeepDict
 _ECEPHYS_LIST_BLOCKS = ("Electrodes", "UnitProperties")
 # Keys the translator consumes or produces, so they are never mistaken for an ``es_key`` entry.
 _ECEPHYS_STRUCTURAL_KEYS = ("Device", "ElectrodeGroup", "ElectrodeGroups", "ElectricalSeries")
+# Blocks that exist only in the dict format, carried across untouched when the rest of the block is old.
+_ECEPHYS_DICT_FORMAT_ONLY_BLOCKS = ("UnitsTables", "Sortings")
 # Ophys blocks whose names exist only in the old format, so their presence settles the shape.
 _OLD_OPHYS_ONLY_BLOCKS = ("TwoPhotonSeries", "OnePhotonSeries", "ImageSegmentation", "Fluorescence", "DfOverF")
 # The dict format's own names per trace role and per summary image, which are collision-free across roles
@@ -102,7 +104,7 @@ def _ecephys_block_is_old(ecephys_metadata: dict) -> bool:
         return True
 
     for key, value in ecephys_metadata.items():
-        if key in _ECEPHYS_LIST_BLOCKS:
+        if key in _ECEPHYS_LIST_BLOCKS or key in _ECEPHYS_DICT_FORMAT_ONLY_BLOCKS:
             continue
         if key == "ElectricalSeries" or key not in _ECEPHYS_STRUCTURAL_KEYS:
             # ``ElectricalSeries`` exists in both formats; any other key is an ``es_key``-addressed entry.
@@ -145,7 +147,7 @@ def _translate_ecephys_block(
             electrical_series.update({key: dict(entry) for key, entry in existing.items()})
 
     for key, value in ecephys_metadata.items():
-        if key in _ECEPHYS_STRUCTURAL_KEYS or key in _ECEPHYS_LIST_BLOCKS:
+        if key in _ECEPHYS_STRUCTURAL_KEYS or key in _ECEPHYS_LIST_BLOCKS or key in _ECEPHYS_DICT_FORMAT_ONLY_BLOCKS:
             continue
         if _is_old_style_entry(value):
             # An ``es_key``-addressed entry. Its label is ``metadata_key`` when this call knows which
@@ -159,6 +161,10 @@ def _translate_ecephys_block(
     for key in _ECEPHYS_LIST_BLOCKS:
         if key in ecephys_metadata:
             translated[key] = ecephys_metadata[key]
+
+    for key in _ECEPHYS_DICT_FORMAT_ONLY_BLOCKS:
+        if key in ecephys_metadata:
+            translated[key] = _entries_already_in_the_dict_format(ecephys_metadata[key])
 
     return translated
 

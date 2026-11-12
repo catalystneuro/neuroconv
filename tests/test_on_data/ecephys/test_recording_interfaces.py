@@ -69,14 +69,6 @@ class TestAlphaOmegaRecordingInterface(RecordingExtractorInterfaceTestMixin):
     def check_extracted_metadata_old_list_format(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2021, 11, 19, 15, 23, 15)
 
-    def test_get_metadata_after_remove_channels(self):
-        interface = AlphaOmegaRecordingInterface(**self.interface_kwargs)
-        session_start_time = interface.get_metadata()["NWBFile"]["session_start_time"]
-
-        interface.remove_channels(channel_ids=[interface.channel_ids[-1]])
-
-        assert interface.get_metadata()["NWBFile"]["session_start_time"] == session_start_time
-
 
 class TestAxonRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = AxonRecordingInterface
@@ -242,6 +234,12 @@ class TestBlackrockRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
         return self.interface, self.test_name
 
+    def test_session_start_time_is_utc(self):
+        interface = BlackrockRecordingInterface(file_path=str(ECEPHY_DATA_PATH / "blackrock" / "FileSpec2.3001.ns5"))
+        metadata = interface.get_metadata()
+
+        assert metadata["NWBFile"]["session_start_time"] == "2014-01-06T20:23:05.559000+00:00"
+
 
 @pytest.mark.skipif(
     platform == "darwin" or this_python_version > version.parse("3.9"),
@@ -341,18 +339,12 @@ class TestCellExplorerRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
 
 # The file holds two electrode channels next to a current, a temperature and an unitless channel, so
-# SpikeInterface warns about the mix while building the recording. The three are excluded below, which
-# is what the warning asks for, but it is emitted before the interface can drop them.
+# SpikeInterface warns about the mix while building the recording.
 @pytest.mark.filterwarnings("ignore:Found a mix of voltage and non-voltage units:UserWarning")
 class TestEDFRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = EDFRecordingInterface
     expected_temporal_alignment_keys = ("edf_recording_0",)
-    # ch3 is in pA, ch5 in Celsius and ch4 states no unit, so none of the three belongs in an
-    # ElectricalSeries. Only ch1 and ch2 are electrode channels.
-    interface_kwargs = dict(
-        file_path=str(ECEPHY_DATA_PATH / "edf" / "edf+C.edf"),
-        channels_to_skip=["ch3", "ch4", "ch5"],
-    )
+    interface_kwargs = dict(file_path=str(ECEPHY_DATA_PATH / "edf" / "edf+C.edf"))
     save_directory = OUTPUT_PATH
 
     def check_extracted_metadata(self, metadata: dict):
@@ -766,6 +758,15 @@ class TestNeuralynxRecordingInterfaceV574:
             extracted_value = self.interface.recording_extractor.get_property(key)
             assert len(extracted_value) == n_channels
             assert exp_value == extracted_value[0]
+
+    def test_get_metadata_after_remove_channels(self):
+        folder_path = ECEPHY_DATA_PATH / "neuralynx" / "Cheetah_v5.7.4" / "original_data"
+        interface = NeuralynxRecordingInterface(folder_path=folder_path)
+        session_start_time = interface.get_metadata()["NWBFile"]["session_start_time"]
+
+        interface.remove_channels(channel_ids=[interface.channel_ids[-1]])
+
+        assert interface.get_metadata()["NWBFile"]["session_start_time"] == session_start_time
 
 
 class TestNeuralynxRecordingInterfaceV563:

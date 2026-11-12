@@ -40,6 +40,7 @@ class PlexonRecordingInterface(BaseRecordingExtractorInterface):
         es_key: str | None = None,
         metadata_key: str | None = None,
         stream_name: str = "WB-Wideband",
+        channels_to_exclude: list | None = None,
     ):
         """
         Load and prepare data for Plexon.
@@ -57,6 +58,9 @@ class PlexonRecordingInterface(BaseRecordingExtractorInterface):
         stream_name: str, optional
             Only pass a stream if you modified the channel prefixes in the Plexon file and you know the prefix of
             the wideband data.
+        channels_to_exclude : list, optional
+            Channels to leave out, by the ids in ``channel_ids``. Every other channel is converted. A name that
+            is not one of the interface's channels raises.
         """
 
         invalid_stream_names = ["FPl-Low Pass Filtered", "SPKC-High Pass Filtered", "AI-Auxiliary Input"]
@@ -69,12 +73,19 @@ class PlexonRecordingInterface(BaseRecordingExtractorInterface):
             file_path=file_path, verbose=verbose, es_key=es_key, metadata_key=metadata_key, stream_name=stream_name
         )
 
+        # Keep the reader while the recording is still the neo-based extractor, as `remove_channels`
+        # replaces it with a channel slice that does not carry the `neo_reader` or the `block_index`
+        self._neo_reader = self.recording_extractor.neo_reader
+        self._block_index = self.recording_extractor.block_index
+
+        self._exclude_channels(channels_to_exclude)
+
     def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
-        neo_reader = self.recording_extractor.neo_reader
+        neo_reader = self._neo_reader
 
         if hasattr(neo_reader, "raw_annotations"):
-            block_ind = self.recording_extractor.block_index
+            block_ind = self._block_index
             neo_metadata = neo_reader.raw_annotations["blocks"][block_ind]
             if "rec_datetime" in neo_metadata:
                 metadata["NWBFile"].update(session_start_time=neo_metadata["rec_datetime"])
@@ -114,6 +125,7 @@ class PlexonLFPInterface(BaseLFPExtractorInterface):
         es_key: str | None = None,
         metadata_key: str | None = None,
         stream_name: str = "FPl-Low Pass Filtered",
+        channels_to_exclude: list | None = None,
     ):
         """
         Load and prepare data for Plexon.
@@ -131,6 +143,9 @@ class PlexonLFPInterface(BaseLFPExtractorInterface):
         stream_name: str, default: "FPl-Low Pass Filtered""
             Only pass a stream if you modified the channel prefixes in the Plexon file and you know the prefix of
             the FPllow pass filtered data.
+        channels_to_exclude : list, optional
+            Channels to leave out, by the ids in ``channel_ids``. Every other channel is converted. A name that
+            is not one of the interface's channels raises.
         """
 
         # By default, the stream name of Plexon LFP data is "FPl-Low Pass Filter"
@@ -147,13 +162,20 @@ class PlexonLFPInterface(BaseLFPExtractorInterface):
             file_path=file_path, verbose=verbose, es_key=es_key, metadata_key=metadata_key, stream_name=stream_name
         )
 
+        # Keep the reader while the recording is still the neo-based extractor, as `remove_channels`
+        # replaces it with a channel slice that does not carry the `neo_reader` or the `block_index`
+        self._neo_reader = self.recording_extractor.neo_reader
+        self._block_index = self.recording_extractor.block_index
+
+        self._exclude_channels(channels_to_exclude)
+
     def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
 
-        neo_reader = self.recording_extractor.neo_reader
+        neo_reader = self._neo_reader
 
         if hasattr(neo_reader, "raw_annotations"):
-            block_ind = self.recording_extractor.block_index
+            block_ind = self._block_index
             neo_metadata = neo_reader.raw_annotations["blocks"][block_ind]
             if "rec_datetime" in neo_metadata:
                 metadata["NWBFile"].update(session_start_time=neo_metadata["rec_datetime"])
@@ -206,6 +228,7 @@ class Plexon2RecordingInterface(BaseRecordingExtractorInterface):
         verbose: bool = False,
         es_key: str | None = None,
         metadata_key: str | None = None,
+        channels_to_exclude: list | None = None,
     ):
         """
         Load and prepare data for Plexon.
@@ -220,6 +243,9 @@ class Plexon2RecordingInterface(BaseRecordingExtractorInterface):
         metadata_key : str, optional
             Key that indexes this interface's entries in the dict-based metadata. Defaults to
             ``"plexon2_recording"``.
+        channels_to_exclude : list, optional
+            Channels to leave out, by the ids in ``channel_ids``. Every other channel is converted. A name that
+            is not one of the interface's channels raises.
         """
 
         # TODO: when neo version 0.14.4 is out or higher change this to stream_name for clarify
@@ -242,12 +268,19 @@ class Plexon2RecordingInterface(BaseRecordingExtractorInterface):
             metadata_key=metadata_key,
         )
 
+        # Keep the reader while the recording is still the neo-based extractor, as `remove_channels`
+        # replaces it with a channel slice that does not carry the `neo_reader` or the `block_index`
+        self._neo_reader = self.recording_extractor.neo_reader
+        self._block_index = self.recording_extractor.block_index
+
+        self._exclude_channels(channels_to_exclude)
+
     def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
 
-        neo_reader = self.recording_extractor.neo_reader
+        neo_reader = self._neo_reader
 
-        block_ind = self.recording_extractor.block_index
+        block_ind = self._block_index
         neo_metadata = neo_reader.raw_annotations["blocks"][block_ind]
         metadata["NWBFile"].update(session_start_time=neo_metadata["m_CreatorDateTime"])
 
@@ -278,7 +311,7 @@ class PlexonSortingInterface(BaseSortingExtractorInterface):
         return PlexonSortingExtractor
 
     @validate_call
-    def __init__(self, file_path: FilePath, *, verbose: bool = False):
+    def __init__(self, file_path: FilePath, *, verbose: bool = False, metadata_key: str | None = None):
         """
         Load and prepare data for Plexon.
 
@@ -288,8 +321,10 @@ class PlexonSortingInterface(BaseSortingExtractorInterface):
             Path to the plexon spiking data (.plx file).
         verbose: bool, default: True
             Allows verbosity.
+        metadata_key : str, optional
+            Key of this sorting's entry in ``metadata["Ecephys"]["Sortings"]``. Defaults to ``"plexon_sorting"``.
         """
-
+        self.metadata_key = metadata_key or "plexon_sorting"
         super().__init__(file_path=file_path, verbose=verbose)
 
     def get_metadata(self) -> DeepDict:

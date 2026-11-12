@@ -52,6 +52,7 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
         verbose: bool = False,
         es_key: str | None = None,
         metadata_key: str | None = None,
+        channels_to_exclude: list | None = None,
     ):
         """
         Initialize reading of OpenEphys binary recording.
@@ -68,6 +69,9 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
         metadata_key : str, optional
             Key that indexes this interface's entries in the dict-based metadata. Defaults to
             ``"neuralynx_recording"``.
+        channels_to_exclude : list, optional
+            Channels to leave out, by the ids in ``channel_ids``. Every other channel is converted. A name that
+            is not one of the interface's channels raises.
         """
 
         if metadata_key is None:
@@ -81,15 +85,21 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
             metadata_key=metadata_key,
         )
 
+        # Read the header while the recording is still the neo-based extractor, as `remove_channels`
+        # replaces it with a channel slice that does not carry the `neo_reader`
+        self._neo_header_metadata = extract_neo_header_metadata(self.recording_extractor.neo_reader)
+
         # convert properties of object dtype (e.g. datetime) and bool as these are not supported by nwb
         for key in self.recording_extractor.get_property_keys():
             value = self.recording_extractor.get_property(key)
             if value.dtype == object or value.dtype == np.bool_:
                 self.recording_extractor.set_property(key, np.asarray(value, dtype=str))
 
+        self._exclude_channels(channels_to_exclude)
+
     def _extract_header_metadata(self) -> tuple[dict, dict | None]:
         """Read the Neuralynx header into NWBFile fields and, when the header names one, a device."""
-        neo_metadata = extract_neo_header_metadata(self.recording_extractor.neo_reader)
+        neo_metadata = self._neo_header_metadata
 
         # remove filter related entries already covered by `add_recording_extractor_properties`
         neo_metadata = {k: v for k, v in neo_metadata.items() if not k.lower().startswith("dsp")}
@@ -174,6 +184,7 @@ class NeuralynxSortingInterface(BaseSortingExtractorInterface):
         sampling_frequency: float | None = None,
         verbose: bool = False,
         stream_id: str | None = None,
+        metadata_key: str | None = None,
     ):
         """_summary_
 
@@ -188,8 +199,10 @@ class NeuralynxSortingInterface(BaseSortingExtractorInterface):
         stream_id: str, optional
             Used by Spikeinterface and neo to calculate the t_start, if not provided and the stream is unique
             it will be chosen automatically
+        metadata_key : str, optional
+            Key of this sorting's entry in ``metadata["Ecephys"]["Sortings"]``. Defaults to ``"neuralynx_sorting"``.
         """
-
+        self.metadata_key = metadata_key or "neuralynx_sorting"
         super().__init__(
             folder_path=folder_path, sampling_frequency=sampling_frequency, stream_id=stream_id, verbose=verbose
         )

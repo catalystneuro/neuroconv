@@ -10,9 +10,11 @@ from datetime import datetime
 
 import numpy as np
 import pytest
+from pynwb import NWBHDF5IO
 from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.datainterfaces import PyPhotometryFiberPhotometryInterface
+from neuroconv.utils import dict_deep_update
 
 
 def write_ppd_file(tmp_path, header_overrides: dict | None = None, header_bytes: bytes | None = None, repeats: int = 1):
@@ -169,3 +171,67 @@ def test_the_raw_pair_is_cut_and_timed_like_the_difference_it_came_from(tmp_path
     timings = {(len(series.data), series.starting_time) for series in nwbfile.acquisition.values()}
     assert len(timings) == 1
     assert timings.pop() == (3, 7.5)
+
+
+def test_the_raw_baseline_references_a_row_with_no_excitation_wavelength(tmp_path):
+    """The dark measurement gets its own copy of the LED-on row, with NaN for the excitation wavelength.
+
+    That is how ndx-fiber-photometry marks a row recorded with no excitation, so everything else about the
+    row, from the fiber to the notes, is that of the slot it was measured in.
+    """
+    file_path = write_ppd_file(tmp_path)
+    interface = PyPhotometryFiberPhotometryInterface(file_path=file_path)
+    metadata = dict_deep_update(
+        interface.get_metadata(),
+        dict(
+            Devices=dict(
+                optical_fiber=dict(type="OpticalFiber", name="optical_fiber", fiber_insertion=dict(depth_in_mm=4.5)),
+                excitation_source=dict(type="ExcitationSource", name="excitation_source"),
+                photodetector=dict(type="Photodetector", name="photodetector"),
+            ),
+            FiberPhotometry=dict(
+                FiberPhotometryIndicators=dict(indicator=dict(name="indicator", label="GCaMP6f")),
+                FiberPhotometryTable=dict(
+                    name="fiber_photometry_table",
+                    description="One row per trace.",
+                    rows=dict(
+                        trace_0=dict(
+                            location="VTA",
+                            excitation_wavelength_in_nm=470.0,
+                            emission_wavelength_in_nm=525.0,
+                            indicator_metadata_key="indicator",
+                            optical_fiber_metadata_key="optical_fiber",
+                            excitation_source_metadata_key="excitation_source",
+                            photodetector_metadata_key="photodetector",
+                            notes="Left hemisphere.",
+                        )
+                    ),
+                ),
+                fiber_photometry_detector_1_excitation_1=dict(fiber_photometry_table_region=["trace_0"]),
+            ),
+        ),
+    )
+    nwbfile_path = tmp_path / "dark_row.nwb"
+
+    interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+
+    with NWBHDF5IO(nwbfile_path, mode="r") as io:
+        nwbfile = io.read()
+        table = nwbfile.lab_meta_data["fiber_photometry"].fiber_photometry_table
+        np.testing.assert_array_equal(table["excitation_wavelength_in_nm"][:], [470.0, np.nan])
+        assert list(table["location"][:]) == ["VTA", "VTA"]
+        assert list(table["emission_wavelength_in_nm"][:]) == [525.0, 525.0]
+        assert list(table["notes"][:]) == ["Left hemisphere.", "Left hemisphere."]
+        assert [device.name for device in table["optical_fiber"][:]] == ["optical_fiber", "optical_fiber"]
+        assert [device.name for device in table["excitation_source"][:]] == ["excitation_source"] * 2
+        assert [device.name for device in table["photodetector"][:]] == ["photodetector", "photodetector"]
+        assert [indicator.name for indicator in table["indicator"][:]] == ["indicator", "indicator"]
+
+        region_rows = {
+            name: list(series.fiber_photometry_table_region.data[:]) for name, series in nwbfile.acquisition.items()
+        }
+        assert region_rows == {
+            "FiberPhotometryResponseSeries": [0],
+            "FiberPhotometryResponseSeriesRawLEDOn": [0],
+            "FiberPhotometryResponseSeriesRawBaseline": [1],
+        }

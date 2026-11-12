@@ -1,5 +1,6 @@
 import warnings
 from collections import defaultdict
+from copy import deepcopy
 from typing import Any, Literal
 
 import numpy as np
@@ -548,6 +549,150 @@ def _add_recording_to_nwbfile(
         )
 
 
+def _warn_about_units_table_options(
+    units_name: str | None, units_description: str | None, parent_container: str | None, stacklevel: int
+) -> None:
+    """Warn for the conversion options that name, describe and place the units table, which metadata does now.
+
+    ``stacklevel`` is passed to ``warnings.warn``, so each caller points the warning at the user's call.
+    """
+    if parent_container is not None:
+        warnings.warn(
+            "The 'parent_container' parameter is deprecated and will be removed in v0.13.0. A sorting whose entry "
+            "in metadata['Ecephys']['Sortings'] gives a 'name' writes a table of its own in processing. Otherwise it "
+            "writes nwbfile.units, or the shared table its 'units_table_metadata_key' names in "
+            "metadata['Ecephys']['UnitsTables'], which is in processing for any key but 'canonical_units_table'.",
+            FutureWarning,
+            stacklevel=stacklevel,
+        )
+    if units_name is not None:
+        warnings.warn(
+            "The 'units_name' parameter is deprecated and will be removed in v0.13.0. Set 'name' in the sorting's "
+            "entry in metadata['Ecephys']['Sortings'] instead, which writes the sorting into a table of its own in "
+            "processing.",
+            FutureWarning,
+            stacklevel=stacklevel,
+        )
+    if units_description is not None:
+        warnings.warn(
+            "The 'units_description' parameter is deprecated and will be removed in v0.13.0. Set 'description' in "
+            "the sorting's entry in metadata['Ecephys']['Sortings'] for a table of its own, in "
+            "metadata['Ecephys']['UnitsTables']['canonical_units_table'] for nwbfile.units, or in the shared "
+            "table's entry in metadata['Ecephys']['UnitsTables'].",
+            FutureWarning,
+            stacklevel=stacklevel,
+        )
+
+
+def _get_units_table_placement_name_and_description(
+    *, metadata: dict | None, metadata_key: str | None, parent_container: str | None
+) -> tuple[str, str, str]:
+    """Where the units table a sorting writes into goes, and its name and description.
+
+    A sorting writes ``nwbfile.units`` unless its entry in ``metadata["Ecephys"]["Sortings"]`` says otherwise. An
+    entry giving a ``name`` writes a table of its own in processing, named and described by the entry. An entry
+    giving ``units_table_metadata_key`` writes the table that key declares in ``metadata["Ecephys"]["UnitsTables"]``,
+    which several sortings can share, so that table's entry gives the name and description and the sorting entry's
+    own are ignored. ``"canonical_units_table"`` is the key of ``nwbfile.units``, which needs no entry, takes no
+    ``name``, and is described only by its ``UnitsTables`` entry. Any other key is a table in processing under the
+    ``name`` its entry must give. A name is a table's identity, so two entries giving one name raise. The deprecated
+    ``parent_container`` contradicting the metadata raises, and passed without metadata stating a table it is used.
+    """
+    ecephys_metadata = (metadata or {}).get("Ecephys", {})
+    sortings = ecephys_metadata.get("Sortings", {})
+    if metadata_key is None and sortings:
+        raise ValueError(
+            "Metadata with entries in metadata['Ecephys']['Sortings'] was passed but no `metadata_key` was "
+            "provided. `metadata_key` selects which entry describes this sorting."
+        )
+    sorting_entry = sortings.get(metadata_key, {})
+    units_tables = ecephys_metadata.get("UnitsTables", {})
+    named_entries = [(f"metadata['Ecephys']['UnitsTables']['{key}']", entry) for key, entry in units_tables.items()]
+    named_entries += [
+        (f"metadata['Ecephys']['Sortings']['{key}']", entry)
+        for key, entry in sortings.items()
+        if "units_table_metadata_key" not in entry
+    ]
+    entry_references_by_name = {}
+    for entry_reference, entry in named_entries:
+        name = entry.get("name")
+        if name is None:
+            continue
+        if name in entry_references_by_name:
+            raise ValueError(
+                f"{entry_references_by_name[name]} and {entry_reference} both use the name '{name}'.\n"
+                "For two tables, give each its own name:\n"
+                f"    {entry_reference}['name'] = '<another name>'\n"
+                "For one table shared by several sortings, declare it once and point each sorting's entry at its "
+                "key:\n"
+                f"    metadata['Ecephys']['UnitsTables'] = {{'<table key>': {{'name': '{name}'}}}}\n"
+                "    metadata['Ecephys']['Sortings']['<sorting key>']['units_table_metadata_key'] = '<table key>'"
+            )
+        entry_references_by_name[name] = entry_reference
+    if "units_table_metadata_key" not in sorting_entry and "name" in sorting_entry:
+        if parent_container == "units":
+            raise ValueError(
+                f"metadata['Ecephys']['Sortings']['{metadata_key}'] gives a 'name', so the sorting writes a table of "
+                "its own in processing, but parent_container='units'. Remove parent_container, which is deprecated."
+            )
+        description = sorting_entry.get("description", "Autogenerated by neuroconv.")
+        return "processing", sorting_entry["name"], description
+    if "units_table_metadata_key" not in sorting_entry and "description" in sorting_entry:
+        raise ValueError(
+            f"metadata['Ecephys']['Sortings']['{metadata_key}'] gives a 'description' but no 'name', so the sorting "
+            "writes nwbfile.units, which only metadata['Ecephys']['UnitsTables']['canonical_units_table'] "
+            "describes.\n"
+            "To describe nwbfile.units:\n"
+            "    metadata['Ecephys']['UnitsTables']['canonical_units_table'] = {'description': '<description>'}\n"
+            "To write the sorting into a table of its own in processing, give its entry a name:\n"
+            f"    metadata['Ecephys']['Sortings']['{metadata_key}']['name'] = '<table name>'"
+        )
+    units_table_metadata_key = sorting_entry.get("units_table_metadata_key", "canonical_units_table")
+    if units_table_metadata_key != "canonical_units_table" and units_table_metadata_key not in units_tables:
+        raise ValueError(
+            f"metadata['Ecephys']['Sortings']['{metadata_key}'] writes into the units table "
+            f"'{units_table_metadata_key}', which metadata['Ecephys']['UnitsTables'] does not declare. "
+            f"Declared: {sorted(units_tables)}."
+        )
+    units_table_entry = units_tables.get(units_table_metadata_key, {})
+    if units_table_metadata_key == "canonical_units_table" and "name" in units_table_entry:
+        raise ValueError(
+            "metadata['Ecephys']['UnitsTables']['canonical_units_table'] names the table "
+            f"'{units_table_entry['name']}', but the canonical units table is nwbfile.units, which is always named "
+            "'units'. Remove 'name' from the entry, or declare a table with another name under another key in "
+            "metadata['Ecephys']['UnitsTables']."
+        )
+    placement = "units" if units_table_metadata_key == "canonical_units_table" else "processing"
+    if placement == "processing" and parent_container == "units":
+        raise ValueError(
+            f"metadata['Ecephys']['Sortings']['{metadata_key}'] writes into the units table "
+            f"'{units_table_metadata_key}', which goes in processing, but parent_container='units'. Only "
+            "'canonical_units_table' is nwbfile.units. Remove parent_container, which is deprecated: the table's key "
+            "decides where it goes."
+        )
+    if placement == "processing" and "name" not in units_table_entry:
+        raise ValueError(
+            f"metadata['Ecephys']['UnitsTables']['{units_table_metadata_key}'] gives no 'name'. A table other than "
+            "'canonical_units_table' is written in processing and needs a name of its own, so that two tables "
+            "never share one."
+        )
+    if placement == "units" and parent_container == "processing":
+        states_the_canonical_table = (
+            "units_table_metadata_key" in sorting_entry or "canonical_units_table" in units_tables
+        )
+        if states_the_canonical_table:
+            raise ValueError(
+                "The metadata writes this sorting into the units table 'canonical_units_table', which is "
+                "nwbfile.units, but parent_container='processing'. To write the sorting into a table of its own in "
+                "processing, give its entry in metadata['Ecephys']['Sortings'] a 'name' and no "
+                "'units_table_metadata_key', and remove parent_container, which is deprecated."
+            )
+        placement = "processing"
+    name = units_table_entry.get("name", "units")
+    description = units_table_entry.get("description", "Autogenerated by neuroconv.")
+    return placement, name, description
+
+
 def add_sorting_to_nwbfile(
     sorting: BaseSorting,
     nwbfile: pynwb.NWBFile | None = None,
@@ -555,15 +700,17 @@ def add_sorting_to_nwbfile(
     property_descriptions: dict | None = None,
     skip_properties: list[str] | None = None,
     write_as: Literal["units", "processing"] | None = None,
-    units_name: str = "units",
-    units_description: str = "Autogenerated by neuroconv.",
+    units_name: str | None = None,
+    units_description: str | None = None,
     waveform_means: np.ndarray | None = None,
     waveform_sds: np.ndarray | None = None,
     unit_electrode_indices: list[list[int]] | None = None,
     *,
-    parent_container: Literal["units", "processing"] = "units",
+    parent_container: Literal["units", "processing"] | None = None,
     null_values_for_properties: dict | None = None,
     waveform_data_dict: dict | None = None,
+    metadata: dict | None = None,
+    metadata_key: str | None = None,
 ):
     """Add sorting data (units and their properties) to an NWBFile.
 
@@ -583,14 +730,17 @@ def add_sorting_to_nwbfile(
         and values will be used as descriptions in the Units table.
     skip_properties : list of str, optional
         Unit properties to exclude from writing.
-    parent_container : {'units', 'processing'}, default: 'units'
-        Where to save the units table in the nwb file. Options:
-        - 'units' will save it to the official NWBFile.units position; recommended only for the final form of the data.
-        - 'processing' will save it to the processing module to serve as a historical provenance for the official table.
-    units_name : str, default: 'units'
-        The name of the units table. If parent_container == 'units', then units_name must also be 'units'.
+    parent_container : {'units', 'processing'}, optional
+        Deprecated. A sorting whose entry in ``metadata["Ecephys"]["Sortings"]`` gives a ``name`` writes a table of its
+        own in processing. Otherwise it writes ``nwbfile.units``, or the shared table its ``units_table_metadata_key``
+        names in ``metadata["Ecephys"]["UnitsTables"]``. Will be removed in v0.13.0.
+    units_name : str, optional
+        Deprecated. Set ``name`` in the sorting's entry in ``metadata["Ecephys"]["Sortings"]`` instead, which writes the
+        sorting into a table of its own in processing. Will be removed in v0.13.0.
     units_description : str, optional
-        Description for the Units table (e.g., sorting method, curation details).
+        Deprecated. Set ``description`` in the sorting's entry in ``metadata["Ecephys"]["Sortings"]`` for a table of its
+        own, or in ``metadata["Ecephys"]["UnitsTables"]`` for ``nwbfile.units`` and for a shared table. Will be removed
+        in v0.13.0.
     waveform_means : np.ndarray, optional
         Deprecated. Use `waveform_data_dict` instead.
         Waveform mean (template) for each unit. Shape: (num_units, num_samples, num_channels).
@@ -610,26 +760,32 @@ def add_sorting_to_nwbfile(
             - "sampling_rate": float, the sampling rate of the waveforms in Hz
             - "unit": str, the unit of measurement (default: "volts")
             - "time_before_peak_in_ms": float, the time from the start of each waveform to the spike peak, optional
+    metadata : dict, optional
+        The units table this sorting writes into is read from ``metadata["Ecephys"]``. A sorting writes
+        ``nwbfile.units``, described by ``UnitsTables["canonical_units_table"]``, unless its entry in ``Sortings``
+        says otherwise. An entry giving a ``name`` writes a table of its own in processing, named and described by
+        the entry. An entry giving ``units_table_metadata_key`` writes the table under that key in ``UnitsTables``,
+        which several sortings can share and whose entry gives the ``name`` and ``description``.
+    metadata_key : str, optional
+        Key of this sorting's entry in ``metadata["Ecephys"]["Sortings"]``.
     write_as : {'units', 'processing'}, optional
-        Deprecated. Use ``parent_container`` instead. Will be removed in v0.12.0.
+        Deprecated. A sorting whose entry in ``metadata["Ecephys"]["Sortings"]`` gives a ``name`` writes a table of its
+        own in processing. Otherwise it writes ``nwbfile.units``, or the shared table its ``units_table_metadata_key``
+        names in ``metadata["Ecephys"]["UnitsTables"]``. Will be removed in v0.12.0.
     """
     if write_as is not None:
         warnings.warn(
             "The 'write_as' parameter of add_sorting_to_nwbfile is deprecated and will be removed "
-            "in v0.12.0. Use 'parent_container' instead.",
+            "in v0.12.0. A sorting whose entry in metadata['Ecephys']['Sortings'] gives a 'name' writes a table of its "
+            "own in processing. Otherwise it writes nwbfile.units, or the shared table its 'units_table_metadata_key' "
+            "names in metadata['Ecephys']['UnitsTables'].",
             FutureWarning,
             stacklevel=2,
         )
         parent_container = write_as
 
     # Handle backwards compatibility for waveform parameters
-    if waveform_data_dict is not None:
-        _waveform_means = waveform_data_dict.get("means")
-        _waveform_sds = waveform_data_dict.get("sds")
-        _waveform_rate = waveform_data_dict.get("sampling_rate")
-        _waveform_unit = waveform_data_dict.get("unit", "volts")
-        _waveform_time_before_peak_in_ms = waveform_data_dict.get("time_before_peak_in_ms")
-    elif waveform_means is not None:
+    if waveform_data_dict is None and waveform_means is not None:
         # Deprecated path - emit FutureWarning for gradual migration
         warnings.warn(
             "waveform_means and waveform_sds parameters are deprecated and will be removed in a future release. "
@@ -637,26 +793,88 @@ def add_sorting_to_nwbfile(
             FutureWarning,
             stacklevel=2,
         )
-        _waveform_means = waveform_means
-        _waveform_sds = waveform_sds
-        _waveform_rate = None
-        _waveform_unit = "volts"
-        _waveform_time_before_peak_in_ms = None
-    else:
-        _waveform_means = None
-        _waveform_sds = None
-        _waveform_rate = None
-        _waveform_unit = "volts"
-        _waveform_time_before_peak_in_ms = None
+        waveform_data_dict = dict(means=waveform_means, sds=waveform_sds)
+
+    unit_ids_to_write = sorting.unit_ids if unit_ids is None else unit_ids
+    _add_sorting_to_nwbfile(
+        sorting=sorting,
+        nwbfile=nwbfile,
+        unit_ids=unit_ids,
+        unit_spike_times=_get_unit_spike_times(sorting=sorting, unit_ids=unit_ids_to_write),
+        property_descriptions=property_descriptions,
+        skip_properties=skip_properties,
+        units_name=units_name,
+        units_description=units_description,
+        parent_container=parent_container,
+        unit_electrode_indices=unit_electrode_indices,
+        null_values_for_properties=null_values_for_properties,
+        waveform_data_dict=waveform_data_dict,
+        metadata=metadata,
+        metadata_key=metadata_key,
+    )
+
+
+def _get_unit_spike_times(*, sorting: BaseSorting, unit_ids) -> dict:
+    """Each unit's spike times in seconds, keyed by unit id, with the segments joined in segment order."""
+    return {
+        unit_id: np.concatenate(
+            [
+                sorting.get_unit_spike_train(unit_id=unit_id, segment_index=segment_index, return_times=True)
+                for segment_index in range(sorting.get_num_segments())
+            ]
+        )
+        for unit_id in unit_ids
+    }
+
+
+def _add_sorting_to_nwbfile(
+    *,
+    sorting: BaseSorting,
+    nwbfile: pynwb.NWBFile,
+    unit_ids: list[str] | list[int] | None,
+    unit_spike_times: dict,
+    property_descriptions: dict | None,
+    skip_properties: list[str] | None,
+    units_name: str | None,
+    units_description: str | None,
+    parent_container: Literal["units", "processing"] | None,
+    unit_electrode_indices: list[list[int]] | None,
+    null_values_for_properties: dict | None,
+    waveform_data_dict: dict | None,
+    metadata: dict | None,
+    metadata_key: str | None,
+):
+    """``add_sorting_to_nwbfile`` with each unit's spike times given instead of read from the sorting.
+
+    For an interface, which holds the aligned times itself. ``unit_spike_times`` maps every unit written to its
+    spike times, with the segments joined. The deprecated ``units_name``, ``units_description`` and
+    ``parent_container`` are warned about here, so a call through an interface and a call through
+    ``add_sorting_to_nwbfile`` are both warned.
+    """
+    _warn_about_units_table_options(
+        units_name=units_name,
+        units_description=units_description,
+        parent_container=parent_container,
+        stacklevel=4,
+    )
+
+    waveform_data_dict = waveform_data_dict or dict()
 
     # Resolution from sorting's sampling frequency
     _resolution = 1.0 / sorting.get_sampling_frequency()
 
     assert parent_container in [
+        None,
         "units",
         "processing",
     ], f"Argument parent_container ({parent_container}) should be one of 'units' or 'processing'!"
-    write_in_processing_module = False if parent_container == "units" else True
+
+    placement, metadata_units_name, metadata_units_description = _get_units_table_placement_name_and_description(
+        metadata=metadata, metadata_key=metadata_key, parent_container=parent_container
+    )
+    write_in_processing_module = placement == "processing"
+    units_name = units_name if units_name is not None else metadata_units_name
+    units_description = units_description if units_description is not None else metadata_units_description
 
     _add_units_table_to_nwbfile(
         sorting=sorting,
@@ -667,15 +885,31 @@ def add_sorting_to_nwbfile(
         write_in_processing_module=write_in_processing_module,
         units_table_name=units_name,
         unit_table_description=units_description,
-        waveform_means=_waveform_means,
-        waveform_sds=_waveform_sds,
+        waveform_means=waveform_data_dict.get("means"),
+        waveform_sds=waveform_data_dict.get("sds"),
         unit_electrode_indices=unit_electrode_indices,
+        unit_spike_times=unit_spike_times,
+        metadata=metadata,
+        metadata_key=metadata_key,
         null_values_for_properties=null_values_for_properties,
-        waveform_rate=_waveform_rate,
-        waveform_unit=_waveform_unit,
-        waveform_time_before_peak_in_ms=_waveform_time_before_peak_in_ms,
+        waveform_rate=waveform_data_dict.get("sampling_rate"),
+        waveform_unit=waveform_data_dict.get("unit", "volts"),
+        waveform_time_before_peak_in_ms=waveform_data_dict.get("time_before_peak_in_ms"),
         resolution=_resolution,
     )
+
+
+def _warn_on_computed_fields_in_series_entry(entry: dict, metadata_location: str):
+    """Warn when a series metadata entry sets the data or the timing, which the writer computes from the recording."""
+    computed_fields = [field for field in ("data", "starting_time", "rate", "timestamps") if field in entry]
+    if computed_fields:
+        warnings.warn(
+            f"{metadata_location} sets {computed_fields}, which the writer computes from the recording. Setting the "
+            "data or the timing of a series in its metadata entry is deprecated and will raise in v0.13.0. To change "
+            "the times, use the interface's `temporal_alignment`, or set the times on the recording.",
+            FutureWarning,
+            stacklevel=2,
+        )
 
 
 def _add_recording_segment_to_nwbfile(
@@ -816,11 +1050,19 @@ def _add_recording_segment_to_nwbfile(
         else:
             eseries_kwargs["timestamps"] = timestamps
 
-    # Update with user metadata - allows override of all fields including name, description, data, timestamps, etc.
+    # Update with user metadata. An entry that sets the data or the timing still overrides them, with a deprecation
+    # warning, until v0.13.0.
     if metadata_key is not None:
-        eseries_kwargs.update(metadata["Ecephys"]["ElectricalSeries"][metadata_key])
+        series_entry = metadata["Ecephys"]["ElectricalSeries"][metadata_key]
+        _warn_on_computed_fields_in_series_entry(
+            entry=series_entry, metadata_location=f"metadata['Ecephys']['ElectricalSeries']['{metadata_key}']"
+        )
+        eseries_kwargs.update(series_entry)
     elif metadata is not None and "Ecephys" in metadata and es_key is not None:
         assert es_key in metadata["Ecephys"], f"metadata['Ecephys'] dictionary does not contain key '{es_key}'"
+        _warn_on_computed_fields_in_series_entry(
+            entry=metadata["Ecephys"][es_key], metadata_location=f"metadata['Ecephys']['{es_key}']"
+        )
         eseries_kwargs.update(metadata["Ecephys"][es_key])
 
     # If the recording extractor has more than 1 segment, append the unpadded segment index to the name so that the
@@ -836,7 +1078,12 @@ def _add_recording_segment_to_nwbfile(
     segment_metadata_key = f"{metadata_key}_{segment_index}"
     has_segment_override = metadata_key is not None and segment_metadata_key in metadata["Ecephys"]["ElectricalSeries"]
     if has_segment_override:
-        eseries_kwargs.update(metadata["Ecephys"]["ElectricalSeries"][segment_metadata_key])
+        segment_entry = metadata["Ecephys"]["ElectricalSeries"][segment_metadata_key]
+        _warn_on_computed_fields_in_series_entry(
+            entry=segment_entry,
+            metadata_location=f"metadata['Ecephys']['ElectricalSeries']['{segment_metadata_key}']",
+        )
+        eseries_kwargs.update(segment_entry)
 
     # Create ElectricalSeries object and add it to nwbfile
     es = pynwb.ecephys.ElectricalSeries(**eseries_kwargs)
@@ -1912,6 +2159,49 @@ def add_recording_as_time_series_to_nwbfile(
         applied to the system (e.g., electrical stimulation current).
     """
 
+    # Each segment's set time vector where it has one, otherwise its start at the sampling frequency
+    segment_timestamps, segment_starting_times = [], []
+    for segment_index in range(recording.get_num_segments()):
+        if recording.has_time_vector(segment_index=segment_index):
+            segment_timestamps.append(recording.get_times(segment_index=segment_index))
+            segment_starting_times.append(None)
+        else:
+            segment_timestamps.append(None)
+            segment_starting_times.append(recording.get_start_time(segment_index=segment_index))
+
+    _add_recording_as_time_series_to_nwbfile(
+        recording=recording,
+        nwbfile=nwbfile,
+        metadata=metadata,
+        segment_timestamps=segment_timestamps,
+        segment_starting_times=segment_starting_times,
+        iterator_type=iterator_type,
+        iterator_options=iterator_options,
+        always_write_timestamps=always_write_timestamps,
+        metadata_key=metadata_key,
+        parent_container=parent_container,
+    )
+
+
+def _add_recording_as_time_series_to_nwbfile(
+    *,
+    recording: BaseRecording,
+    nwbfile: pynwb.NWBFile,
+    metadata: dict | None,
+    segment_timestamps: list[np.ndarray | None],
+    segment_starting_times: list[float | None],
+    iterator_type: str | None,
+    iterator_options: dict | None,
+    always_write_timestamps: bool,
+    metadata_key: str | None,
+    parent_container: Literal["acquisition", "stimulus"],
+):
+    """``add_recording_as_time_series_to_nwbfile`` with each segment's times given instead of read from the recording.
+
+    For an interface, which holds the aligned times itself. A segment's times are its entry in
+    ``segment_timestamps``, one time per sample, or, where that entry is None, its entry in
+    ``segment_starting_times`` at the recording's sampling frequency.
+    """
     # ``metadata_key`` addresses an entry, so it is only meaningful when there is a block to address.
     # Checked with ``in`` rather than ``[]`` because ``metadata`` is routinely a ``DeepDict``, whose
     # ``__getitem__`` would auto-create the block and make this guard pass on a dict that never had one.
@@ -1938,6 +2228,8 @@ def add_recording_as_time_series_to_nwbfile(
             always_write_timestamps=always_write_timestamps,
             metadata_key=metadata_key,
             parent_container=parent_container,
+            timestamps=segment_timestamps[segment_index],
+            starting_time=segment_starting_times[segment_index],
         )
 
 
@@ -1951,13 +2243,17 @@ def _add_time_series_segment_to_nwbfile(
     always_write_timestamps: bool = False,
     metadata_key: str | None = None,
     parent_container: Literal["acquisition", "stimulus"] = "acquisition",
+    *,
+    timestamps: np.ndarray | None,
+    starting_time: float | None,
 ):
     """
     Internal function to add a single recording segment as a TimeSeries to an NWBFile.
 
     See `add_recording_as_time_series_to_nwbfile` for public API details.
     All backward compatibility handling and metadata filtering should be done
-    in the public function before calling this.
+    in the public function before calling this. The segment's times are ``timestamps``, one per sample, or, when
+    they are None, ``starting_time`` at the recording's sampling frequency.
     """
 
     metadata = DeepDict() if metadata is None else metadata
@@ -2033,17 +2329,18 @@ def _add_time_series_segment_to_nwbfile(
 
     # Add timestamps or rate
     if always_write_timestamps:
-        timestamps = recording.get_times(segment_index=segment_index)
+        if timestamps is None:
+            number_of_samples = recording.get_num_samples(segment_index=segment_index)
+            timestamps = starting_time + np.arange(number_of_samples) / recording.get_sampling_frequency()
         tseries_kwargs["timestamps"] = timestamps
     else:
-        recording_has_timestamps = recording.has_time_vector(segment_index=segment_index)
-        if recording_has_timestamps:
-            timestamps = recording.get_times(segment_index=segment_index)
-            rate = calculate_regular_series_rate(series=timestamps)
+        # By default we write the rate if the timestamps are regular
+        if timestamps is not None:
+            rate = calculate_regular_series_rate(series=timestamps)  # Returns None if it is not regular
             recording_t_start = timestamps[0]
         else:
             rate = recording.get_sampling_frequency()
-            recording_t_start = recording.get_start_time(segment_index=segment_index)
+            recording_t_start = starting_time
 
         if rate:
             starting_time = float(recording_t_start)
@@ -2052,7 +2349,11 @@ def _add_time_series_segment_to_nwbfile(
         else:
             tseries_kwargs["timestamps"] = timestamps
 
-    # Update with user-provided metadata
+    # Update with user-provided metadata. An entry that sets the data or the timing still overrides them, with a
+    # deprecation warning, until v0.13.0.
+    _warn_on_computed_fields_in_series_entry(
+        entry=user_metadata, metadata_location=f"metadata['TimeSeries']['{metadata_key}']"
+    )
     tseries_kwargs.update(user_metadata)
 
     # Fill in required fields with defaults if missing, before the segment suffix so a default name gets it too
@@ -2071,7 +2372,11 @@ def _add_time_series_segment_to_nwbfile(
     segment_metadata_key = f"{metadata_key}_{segment_index}"
     has_segment_override = metadata_key is not None and segment_metadata_key in metadata.get("TimeSeries", {})
     if has_segment_override:
-        tseries_kwargs.update(metadata["TimeSeries"][segment_metadata_key])
+        segment_entry = metadata["TimeSeries"][segment_metadata_key]
+        _warn_on_computed_fields_in_series_entry(
+            entry=segment_entry, metadata_location=f"metadata['TimeSeries']['{segment_metadata_key}']"
+        )
+        tseries_kwargs.update(segment_entry)
 
     # Create TimeSeries object and add it to nwbfile
     time_series = pynwb.base.TimeSeries(**tseries_kwargs)
@@ -2258,7 +2563,11 @@ def _add_spatial_series_segment_to_nwbfile(
         else:
             series_kwargs["timestamps"] = timestamps
 
-    # Update with user-provided metadata
+    # Update with user-provided metadata. An entry that sets the data or the timing still overrides them, with a
+    # deprecation warning, until v0.13.0.
+    _warn_on_computed_fields_in_series_entry(
+        entry=user_metadata, metadata_location=f"metadata['SpatialSeries']['{metadata_key}']"
+    )
     series_kwargs.update(user_metadata)
 
     # Fill in missing required fields with defaults, before the segment suffix so a default name gets it too
@@ -2275,7 +2584,11 @@ def _add_spatial_series_segment_to_nwbfile(
     # segment only, its name used as given.
     segment_metadata_key = f"{metadata_key}_{segment_index}"
     if segment_metadata_key in metadata.get("SpatialSeries", {}):
-        series_kwargs.update(metadata["SpatialSeries"][segment_metadata_key])
+        segment_entry = metadata["SpatialSeries"][segment_metadata_key]
+        _warn_on_computed_fields_in_series_entry(
+            entry=segment_entry, metadata_location=f"metadata['SpatialSeries']['{segment_metadata_key}']"
+        )
+        series_kwargs.update(segment_entry)
 
     # Create the SpatialSeries instance
     spatial_series = pynwb.behavior.SpatialSeries(**series_kwargs)
@@ -2622,6 +2935,9 @@ def _add_units_table_to_nwbfile(
     waveform_sds: np.ndarray | None = None,
     unit_electrode_indices: list[list[int]] | None = None,
     *,
+    unit_spike_times: dict,
+    metadata: dict | None = None,
+    metadata_key: str | None = None,
     waveform_rate: float | None = None,
     waveform_unit: str = "volts",
     waveform_time_before_peak_in_ms: float | None = None,
@@ -2697,11 +3013,13 @@ def _add_units_table_to_nwbfile(
     only present in the new units, so previously existing rows are backfilled with
     null values.
 
-    Deduplication is handled by ``unit_name``: units whose name already exists in
-    the table are skipped. When the table has an ``electrodes`` column and a unit's
-    electrode indices differ from the previously stored ones, the unit is re-added
-    as a new row (resulting in duplicate unit names with different electrode
-    mappings). See ``_add_electrodes_to_nwbfile`` for how the electrode table itself
+    Deduplication is handled by ``(sorting_name, unit_name)``: a unit whose pair already
+    exists in the table reuses that row and keeps its existing values. When
+    ``unit_electrode_indices`` is given and the table has an ``electrodes`` column, a
+    unit whose electrode indices differ from those of every matching row is added as a
+    new row. A pair matching several rows raises when ``unit_electrode_indices`` is not
+    given. Appending to a table without a ``sorting_name`` column raises. See
+    ``_add_electrodes_to_nwbfile`` for how the electrode table itself
     handles deduplication via ``(group_name, electrode_name, channel_name)``.
 
     .. note::
@@ -2742,6 +3060,13 @@ def _add_units_table_to_nwbfile(
     unit_electrode_indices : list of lists of int, optional
         A list of lists of integers indicating the indices of the electrodes that each unit is associated with.
         The length of the list must match the number of units in the sorting extractor.
+    unit_spike_times : dict
+        The spike times of every unit written, keyed by unit id, with the segments joined. The units table writes
+        these and does not read spike times from ``sorting``.
+    metadata : dict, optional
+        Metadata containing the sorting name in ``metadata["Ecephys"]["Sortings"][metadata_key]["sorting_name"]``.
+    metadata_key : str, optional
+        Key selecting this sorting's entry in ``metadata["Ecephys"]["Sortings"]``.
     waveform_rate : float, optional
         Sampling rate of the waveform data in Hz. Sets Units.waveform_rate attribute.
     waveform_unit : str, default: "volts"
@@ -2817,6 +3142,12 @@ def _add_units_table_to_nwbfile(
             nwbfile.units = pynwb.misc.Units(name="units", **units_table_kwargs)
         units_table = nwbfile.units
 
+    if not write_table_first_time and "sorting_name" not in units_table.colnames:
+        raise ValueError(
+            f"Cannot append to units table '{units_table.name}' because it has no 'sorting_name' column. "
+            "Write to a new units table instead."
+        )
+
     default_descriptions = dict(
         isi_violation="Quality metric that measures the ISI violation ratio as a proxy for the purity of the unit.",
         firing_rate="Number of spikes per unit of time.",
@@ -2830,6 +3161,10 @@ def _add_units_table_to_nwbfile(
         spike_amplitude="Average amplitude of peaks detected on the channel.",
         spike_rate="Average rate of peaks detected on the channel.",
         unit_name="Unique reference for each unit.",
+        sorting_name=(
+            "Name identifying the sorting output that contains this unit: the set of units produced by a "
+            "particular spike-sorting run or curation step. All units from that output share this value."
+        ),
     )
     if property_descriptions is None:
         property_descriptions = dict()
@@ -2883,23 +3218,22 @@ def _add_units_table_to_nwbfile(
         unit_name_array = unit_ids.astype("str", copy=False)
         data_to_add["unit_name"].update(description="Unique reference for each unit.", data=unit_name_array)
 
-    # Precompute spike times for all units and add to data_to_add alongside waveforms and electrodes.
-    # This lets the shared column-adding loop below handle all data uniformly.
     num_units = sorting.get_num_units()
-    num_segments = sorting.get_num_segments()
-    all_spike_times = []
-    for row_index in range(num_units):
-        spike_times = np.concatenate(
-            [
-                sorting.get_unit_spike_train(
-                    unit_id=unit_ids[row_index],
-                    segment_index=segment_index,
-                    return_times=True,
-                )
-                for segment_index in range(num_segments)
-            ]
-        )
-        all_spike_times.append(spike_times)
+    sorting_metadata = (metadata or {}).get("Ecephys", {}).get("Sortings", {}).get(metadata_key, {})
+    sorting_name = sorting_metadata.get("sorting_name")
+    if sorting_name is None:
+        sorting_name = sorting.get_annotation("sorting_name")
+    if sorting_name is None:
+        sorting_name = "sorting"
+    data_to_add["sorting_name"] = dict(
+        description=property_descriptions["sorting_name"],
+        data=np.full(num_units, sorting_name),
+        index=False,
+    )
+
+    # Add spike times to data_to_add alongside waveforms and electrodes.
+    # This lets the shared column-adding loop below handle all data uniformly.
+    all_spike_times = [unit_spike_times[unit_id] for unit_id in unit_ids]
     data_to_add["spike_times"].update(
         description="the spike times for each unit in seconds",
         data=all_spike_times,
@@ -2941,32 +3275,36 @@ def _add_units_table_to_nwbfile(
     # This is only needed when there are pre-existing columns (since add_unit() must provide
     # values for all existing columns). For new tables there are no pre-existing columns,
     # so all data is added as columns and no per-row insertion is needed.
-    rows_to_add = []
-    if units_table_previous_columns:
-        # Filter out units whose unit_name already exists (deduplication).
-        unit_names_used_previously = []
-        if "unit_name" in units_table_previous_columns:
-            unit_names_used_previously = units_table["unit_name"].data
-        # Electrodes are only used to discriminate between units with the same name when the
-        # current call actually provides them; otherwise there is nothing to compare against.
-        has_electrodes_column = "electrodes" in units_table.colnames and unit_electrode_indices is not None
+    unit_identities = [(sorting_name, unit_name) for unit_name in unit_name_array]
+    unit_identity_to_rows = defaultdict(list)
+    if "unit_name" in units_table_previous_columns:
+        for index, identity in enumerate(zip(units_table["sorting_name"][:], units_table["unit_name"][:])):
+            unit_identity_to_rows[identity].append(index)
 
-        rows_in_data = [index for index in range(num_units)]
-        if not has_electrodes_column:
-            rows_to_add = [index for index in rows_in_data if unit_name_array[index] not in unit_names_used_previously]
-        else:
-            rows_to_add = []
-            for index in rows_in_data:
-                if unit_name_array[index] not in unit_names_used_previously:
-                    rows_to_add.append(index)
-                else:
-                    unit_name = unit_name_array[index]
-                    # `index=True` returns the electrode indices of the row as they are stored,
-                    # without dereferencing them into a DataFrame of the electrodes table.
-                    matching_rows = np.where(units_table["unit_name"][:] == unit_name)[0]
-                    previous_electrodes = units_table["electrodes"].get(matching_rows[0], index=True)
-                    if list(previous_electrodes) != list(unit_electrode_indices[index]):
-                        rows_to_add.append(index)
+    rows_to_add = []
+    indices_for_new_data = list(range(num_units))
+    has_electrodes_column = "electrodes" in units_table_previous_columns and unit_electrode_indices is not None
+    if units_table_previous_columns:
+        for index, identity in enumerate(unit_identities):
+            matching_rows = unit_identity_to_rows.get(identity, [])
+            if has_electrodes_column:
+                matching_rows = [
+                    row
+                    for row in matching_rows
+                    if list(units_table["electrodes"].get(row, index=True)) == list(unit_electrode_indices[index])
+                ]
+            elif unit_electrode_indices is None and len(matching_rows) > 1:
+                raise ValueError(
+                    f"Multiple rows in units table '{units_table.name}' match "
+                    f"sorting_name={sorting_name!r} and unit_name={str(unit_name_array[index])!r}. "
+                    "Supply 'unit_electrode_indices' to identify the unit."
+                )
+
+            if matching_rows:
+                indices_for_new_data[index] = matching_rows[0]
+            else:
+                indices_for_new_data[index] = len(units_table) + len(rows_to_add)
+                rows_to_add.append(index)
 
     # Add rows for pre-existing columns. Each row needs values for all existing columns;
     # properties not present in the new data get null values.
@@ -3013,15 +3351,6 @@ def _add_units_table_to_nwbfile(
         cols_args["data"] = extended_data
         units_table.add_column("unit_name", **cols_args)
 
-    # Build a unit_name to units table row index map directly from the table column.
-    # This avoids materializing a pandas DataFrame and query parsing/casting pitfalls.
-    unit_names_in_table = units_table["unit_name"][:]
-    unit_name_to_electrode_index = {}
-    for index, unit_name in enumerate(unit_names_in_table):
-        if unit_name not in unit_name_to_electrode_index:
-            unit_name_to_electrode_index[unit_name] = index
-
-    indices_for_new_data = [unit_name_to_electrode_index[unit_name] for unit_name in unit_name_array]
     new_indices_set = set(indices_for_new_data)
     indices_for_null_values = [index for index in range(unit_table_size) if index not in new_indices_set]
     extending_column = len(indices_for_null_values) > 0
@@ -3034,7 +3363,7 @@ def _add_units_table_to_nwbfile(
         data = cols_args["data"]
 
         # This is the simple case, early return
-        if not extending_column:
+        if indices_for_new_data == list(range(unit_table_size)):
             units_table.add_column(property, **cols_args)
             continue
 
@@ -3047,12 +3376,13 @@ def _add_units_table_to_nwbfile(
             extended_data = np.empty(shape=(unit_table_size, *data.shape[1:]), dtype=dtype)
             extended_data[indices_for_new_data] = data
 
-            null_value = _get_null_value_for_property(
-                property=property,
-                sample_data=sample_data,
-                null_values_for_properties=null_values_for_properties,
-            )
-            extended_data[indices_for_null_values] = null_value
+            if extending_column:
+                null_value = _get_null_value_for_property(
+                    property=property,
+                    sample_data=sample_data,
+                    null_values_for_properties=null_values_for_properties,
+                )
+                extended_data[indices_for_null_values] = null_value
         else:
 
             dtype = np.ndarray
@@ -3081,17 +3411,18 @@ def write_sorting_to_nwbfile(
     property_descriptions: dict | None = None,
     skip_properties: list[str] | None = None,
     write_as: Literal["units", "processing"] | None = None,
-    units_name: str = "units",
-    units_description: str = "Autogenerated by neuroconv.",
+    units_name: str | None = None,
+    units_description: str | None = None,
     waveform_means: np.ndarray | None = None,
     waveform_sds: np.ndarray | None = None,
     unit_electrode_indices=None,
     *,
-    parent_container: Literal["units", "processing"] = "units",
+    parent_container: Literal["units", "processing"] | None = None,
     backend: Literal["hdf5", "zarr"] | None = None,
     backend_configuration: HDF5BackendConfiguration | ZarrBackendConfiguration | None = None,
     append_on_disk_nwbfile: bool = False,
     null_values_for_properties: dict | None = None,
+    metadata_key: str | None = None,
 ) -> pynwb.NWBFile | None:
     """
     Primary method for writing a SortingExtractor object to an NWBFile.
@@ -3125,13 +3456,17 @@ def write_sorting_to_nwbfile(
         custom unit column.
     skip_properties : list of str, optional
         Each string in this list that matches a unit property will not be written to the NWBFile.
-    parent_container : {'units', 'processing'}, default: 'units'
-        Where to save the units table in the nwb file. Options:
-        - 'units' will save it to the official NWBFile.units position; recommended only for the final form of the data.
-        - 'processing' will save it to the processing module to serve as a historical provenance for the official table.
-    units_name : str, default: 'units'
-        The name of the units table. If parent_container == 'units', then units_name must also be 'units'.
-    units_description : str, default: 'Autogenerated by neuroconv.'
+    parent_container : {'units', 'processing'}, optional
+        Deprecated. A sorting whose entry in ``metadata["Ecephys"]["Sortings"]`` gives a ``name`` writes a table of its
+        own in processing. Otherwise it writes ``nwbfile.units``, or the shared table its ``units_table_metadata_key``
+        names in ``metadata["Ecephys"]["UnitsTables"]``. Will be removed in v0.13.0.
+    units_name : str, optional
+        Deprecated. Set ``name`` in the sorting's entry in ``metadata["Ecephys"]["Sortings"]`` instead, which writes the
+        sorting into a table of its own in processing. Will be removed in v0.13.0.
+    units_description : str, optional
+        Deprecated. Set ``description`` in the sorting's entry in ``metadata["Ecephys"]["Sortings"]`` for a table of its
+        own, or in ``metadata["Ecephys"]["UnitsTables"]`` for ``nwbfile.units`` and for a shared table. Will be removed
+        in v0.13.0.
     waveform_means : np.ndarray, optional
         Waveform mean (template) for each unit. Shape: (num_units, num_samples, num_channels).
     waveform_sds : np.ndarray, optional
@@ -3153,8 +3488,13 @@ def write_sorting_to_nwbfile(
     null_values_for_properties : dict of str to Any, optional
         A dictionary mapping properties to their respective default values. If a property is not found in this
         dictionary, a sensible default value based on the type of `sample_data` will be used.
+    metadata_key : str, optional
+        Key of this sorting's entry in ``metadata["Ecephys"]["Sortings"]``, which names the units table it writes
+        into. See :func:`add_sorting_to_nwbfile`.
     write_as : {'units', 'processing'}, optional
-        Deprecated. Use ``parent_container`` instead. Will be removed in v0.12.0.
+        Deprecated. A sorting whose entry in ``metadata["Ecephys"]["Sortings"]`` gives a ``name`` writes a table of its
+        own in processing. Otherwise it writes ``nwbfile.units``, or the shared table its ``units_table_metadata_key``
+        names in ``metadata["Ecephys"]["UnitsTables"]``. Will be removed in v0.12.0.
 
     Returns
     -------
@@ -3165,7 +3505,9 @@ def write_sorting_to_nwbfile(
     if write_as is not None:
         warnings.warn(
             "The 'write_as' parameter of write_sorting_to_nwbfile is deprecated and will be removed "
-            "in v0.12.0. Use 'parent_container' instead.",
+            "in v0.12.0. A sorting whose entry in metadata['Ecephys']['Sortings'] gives a 'name' writes a table of its "
+            "own in processing. Otherwise it writes nwbfile.units, or the shared table its 'units_table_metadata_key' "
+            "names in metadata['Ecephys']['UnitsTables'].",
             FutureWarning,
             stacklevel=2,
         )
@@ -3220,6 +3562,8 @@ def write_sorting_to_nwbfile(
             waveform_sds=waveform_sds,
             unit_electrode_indices=unit_electrode_indices,
             null_values_for_properties=null_values_for_properties,
+            metadata=metadata,
+            metadata_key=metadata_key,
         )
 
         configure_and_write_nwbfile(
@@ -3253,6 +3597,8 @@ def write_sorting_to_nwbfile(
                 waveform_means=waveform_means,
                 waveform_sds=waveform_sds,
                 unit_electrode_indices=unit_electrode_indices,
+                metadata=metadata,
+                metadata_key=metadata_key,
             )
 
             if backend_configuration is None:
@@ -3275,11 +3621,12 @@ def add_sorting_analyzer_to_nwbfile(
     skip_properties: list[str] | None = None,
     property_descriptions: dict | None = None,
     write_as: Literal["units", "processing"] | None = None,
-    units_name: str = "units",
-    units_description: str = "Autogenerated by neuroconv.",
+    units_name: str | None = None,
+    units_description: str | None = None,
     *,
-    parent_container: Literal["units", "processing"] = "units",
+    parent_container: Literal["units", "processing"] | None = None,
     null_values_for_properties: dict | None = None,
+    metadata_key: str | None = None,
 ):
     """
     Convenience function to write directly a sorting analyzer object to an nwbfile.
@@ -3317,23 +3664,40 @@ def add_sorting_analyzer_to_nwbfile(
         custom unit column.
     skip_properties : list of str, optional
         Each string in this list that matches a unit property will not be written to the NWBFile.
-    parent_container : {'units', 'processing'}, default: 'units'
-        Where to save the units table in the nwb file. Options:
-        - 'units' will save it to the official NWBFile.units position; recommended only for the final form of the data.
-        - 'processing' will save it to the processing module to serve as a historical provenance for the official table.
-    units_name : str, optional, default: 'units'
-        The name of the units table. If parent_container == 'units', then units_name must also be 'units'.
-    units_description : str, default: 'Autogenerated by neuroconv.'
+    parent_container : {'units', 'processing'}, optional
+        Deprecated. A sorting whose entry in ``metadata["Ecephys"]["Sortings"]`` gives a ``name`` writes a table of its
+        own in processing. Otherwise it writes ``nwbfile.units``, or the shared table its ``units_table_metadata_key``
+        names in ``metadata["Ecephys"]["UnitsTables"]``. Will be removed in v0.13.0.
+    units_name : str, optional
+        Deprecated. Set ``name`` in the sorting's entry in ``metadata["Ecephys"]["Sortings"]`` instead, which writes the
+        sorting into a table of its own in processing. Will be removed in v0.13.0.
+    units_description : str, optional
+        Deprecated. Set ``description`` in the sorting's entry in ``metadata["Ecephys"]["Sortings"]`` for a table of its
+        own, or in ``metadata["Ecephys"]["UnitsTables"]`` for ``nwbfile.units`` and for a shared table. Will be removed
+        in v0.13.0.
     null_values_for_properties : dict of str to Any, optional
         A dictionary mapping properties to their respective default values. If a property is not found in this
         dictionary, a sensible default value based on the type of `sample_data` will be used.
+    metadata_key : str, optional
+        Key of this sorting's entry in ``metadata["Ecephys"]["Sortings"]``, which names the units table it writes
+        into. See :func:`add_sorting_to_nwbfile`.
     write_as : {'units', 'processing'}, optional
-        Deprecated. Use ``parent_container`` instead. Will be removed in v0.12.0.
+        Deprecated. A sorting whose entry in ``metadata["Ecephys"]["Sortings"]`` gives a ``name`` writes a table of its
+        own in processing. Otherwise it writes ``nwbfile.units``, or the shared table its ``units_table_metadata_key``
+        names in ``metadata["Ecephys"]["UnitsTables"]``. Will be removed in v0.12.0.
     """
+    _warn_about_units_table_options(
+        units_name=units_name,
+        units_description=units_description,
+        parent_container=parent_container,
+        stacklevel=3,
+    )
     if write_as is not None:
         warnings.warn(
             "The 'write_as' parameter of add_sorting_analyzer_to_nwbfile is deprecated and will be removed "
-            "in v0.12.0. Use 'parent_container' instead.",
+            "in v0.12.0. A sorting whose entry in metadata['Ecephys']['Sortings'] gives a 'name' writes a table of its "
+            "own in processing. Otherwise it writes nwbfile.units, or the shared table its 'units_table_metadata_key' "
+            "names in metadata['Ecephys']['UnitsTables'].",
             FutureWarning,
             stacklevel=2,
         )
@@ -3341,12 +3705,18 @@ def add_sorting_analyzer_to_nwbfile(
 
     # TODO: move into add_units
     assert parent_container in [
+        None,
         "units",
         "processing",
     ], f"Argument parent_container ({parent_container}) should be one of 'units' or 'processing'!"
-    if parent_container == "units":
+    placement, metadata_units_name, metadata_units_description = _get_units_table_placement_name_and_description(
+        metadata=metadata, metadata_key=metadata_key, parent_container=parent_container
+    )
+    units_name = units_name if units_name is not None else metadata_units_name
+    units_description = units_description if units_description is not None else metadata_units_description
+    if placement == "units":
         assert units_name == "units", "When writing to the nwbfile.units table, the name of the table must be 'units'!"
-    write_in_processing_module = False if parent_container == "units" else True
+    write_in_processing_module = placement == "processing"
 
     # retrieve templates and stds
     template_extension = sorting_analyzer.get_extension("templates")
@@ -3402,7 +3772,7 @@ def add_sorting_analyzer_to_nwbfile(
         recording = sorting_analyzer.recording
 
     add_recording_metadata_to_nwbfile(
-        recording, nwbfile=nwbfile, metadata=metadata, null_values_for_properties=null_values_for_properties
+        recording, nwbfile=nwbfile, metadata=deepcopy(metadata), null_values_for_properties=null_values_for_properties
     )
     electrode_group_indices = _get_electrode_group_indices(recording, nwbfile=nwbfile)
     unit_electrode_indices = (
@@ -3425,6 +3795,9 @@ def add_sorting_analyzer_to_nwbfile(
         waveform_unit=waveform_unit,
         waveform_time_before_peak_in_ms=waveform_time_before_peak_in_ms,
         unit_electrode_indices=unit_electrode_indices,
+        unit_spike_times=_get_unit_spike_times(sorting=sorting, unit_ids=unit_ids),
+        metadata=metadata,
+        metadata_key=metadata_key,
         null_values_for_properties=null_values_for_properties,
     )
 
@@ -3443,14 +3816,15 @@ def write_sorting_analyzer_to_nwbfile(
     skip_properties: list[str] | None = None,
     property_descriptions: dict | None = None,
     write_as: Literal["units", "processing"] | None = None,
-    units_name: str = "units",
-    units_description: str = "Autogenerated by neuroconv.",
+    units_name: str | None = None,
+    units_description: str | None = None,
     *,
-    parent_container: Literal["units", "processing"] = "units",
+    parent_container: Literal["units", "processing"] | None = None,
     backend: Literal["hdf5", "zarr"] | None = None,
     backend_configuration: HDF5BackendConfiguration | ZarrBackendConfiguration | None = None,
     append_on_disk_nwbfile: bool = False,
     null_values_for_properties: dict | None = None,
+    metadata_key: str | None = None,
 ) -> pynwb.NWBFile | None:
     """
     Convenience function to write directly a sorting analyzer object to an nwbfile.
@@ -3496,13 +3870,17 @@ def write_sorting_analyzer_to_nwbfile(
         custom unit column.
     skip_properties: list of str, optional
         Each string in this list that matches a unit property will not be written to the NWBFile.
-    parent_container : {'units', 'processing'}, default: 'units'
-        Where to save the units table in the nwb file. Options:
-        - 'units' will save it to the official NWBFile.units position; recommended only for the final form of the data.
-        - 'processing' will save it to the processing module to serve as a historical provenance for the official table.
-    units_name : str, default: 'units'
-        The name of the units table. If parent_container == 'units', then units_name must also be 'units'.
-    units_description : str, default: 'Autogenerated by neuroconv.'
+    parent_container : {'units', 'processing'}, optional
+        Deprecated. A sorting whose entry in ``metadata["Ecephys"]["Sortings"]`` gives a ``name`` writes a table of its
+        own in processing. Otherwise it writes ``nwbfile.units``, or the shared table its ``units_table_metadata_key``
+        names in ``metadata["Ecephys"]["UnitsTables"]``. Will be removed in v0.13.0.
+    units_name : str, optional
+        Deprecated. Set ``name`` in the sorting's entry in ``metadata["Ecephys"]["Sortings"]`` instead, which writes the
+        sorting into a table of its own in processing. Will be removed in v0.13.0.
+    units_description : str, optional
+        Deprecated. Set ``description`` in the sorting's entry in ``metadata["Ecephys"]["Sortings"]`` for a table of its
+        own, or in ``metadata["Ecephys"]["UnitsTables"]`` for ``nwbfile.units`` and for a shared table. Will be removed
+        in v0.13.0.
     backend : {"hdf5", "zarr"}, optional
         The type of backend to use when writing the file.
         If a `backend_configuration` is not specified, the default type will be "hdf5".
@@ -3518,8 +3896,13 @@ def write_sorting_analyzer_to_nwbfile(
     null_values_for_properties : dict of str to Any, optional
         A dictionary mapping properties to their respective default values. If a property is not found in this
         dictionary, a sensible default value based on the type of `sample_data` will be used.
+    metadata_key : str, optional
+        Key of this sorting's entry in ``metadata["Ecephys"]["Sortings"]``, which names the units table it writes
+        into. See :func:`add_sorting_to_nwbfile`.
     write_as : {'units', 'processing'}, optional
-        Deprecated. Use ``parent_container`` instead. Will be removed in v0.12.0.
+        Deprecated. A sorting whose entry in ``metadata["Ecephys"]["Sortings"]`` gives a ``name`` writes a table of its
+        own in processing. Otherwise it writes ``nwbfile.units``, or the shared table its ``units_table_metadata_key``
+        names in ``metadata["Ecephys"]["UnitsTables"]``. Will be removed in v0.12.0.
 
     Returns
     -------
@@ -3530,7 +3913,9 @@ def write_sorting_analyzer_to_nwbfile(
     if write_as is not None:
         warnings.warn(
             "The 'write_as' parameter of write_sorting_analyzer_to_nwbfile is deprecated and will be removed "
-            "in v0.12.0. Use 'parent_container' instead.",
+            "in v0.12.0. A sorting whose entry in metadata['Ecephys']['Sortings'] gives a 'name' writes a table of its "
+            "own in processing. Otherwise it writes nwbfile.units, or the shared table its 'units_table_metadata_key' "
+            "names in metadata['Ecephys']['UnitsTables'].",
             FutureWarning,
             stacklevel=2,
         )
@@ -3606,6 +3991,7 @@ def write_sorting_analyzer_to_nwbfile(
             units_name=units_name,
             units_description=units_description,
             null_values_for_properties=null_values_for_properties,
+            metadata_key=metadata_key,
         )
 
         configure_and_write_nwbfile(
@@ -3649,6 +4035,7 @@ def write_sorting_analyzer_to_nwbfile(
                 units_name=units_name,
                 units_description=units_description,
                 null_values_for_properties=null_values_for_properties,
+                metadata_key=metadata_key,
             )
 
             if backend_configuration is None:

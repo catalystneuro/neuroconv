@@ -77,6 +77,7 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
         verbose: bool = False,
         es_key: str | None = None,
         metadata_key: str | None = None,
+        channels_to_exclude: list | None = None,
     ):
         """
         Initialize reading of OpenEphys legacy recording (.continuous files).
@@ -95,6 +96,9 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
         metadata_key : str, optional
             Key that indexes this interface's entries in the dict-based metadata. Defaults to
             ``"open_ephys_recording"``.
+        channels_to_exclude : list, optional
+            Channels to leave out, by the ids in ``channel_ids``. Every other channel is converted. A name that
+            is not one of the interface's channels raises.
         """
 
         available_streams = self.get_stream_names(folder_path=folder_path)
@@ -127,6 +131,8 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
         # Keep the reader while the recording is still the neo-based extractor, as `remove_channels`
         # replaces it with a channel slice that does not carry the `neo_reader`
         self._neo_reader = self.recording_extractor.neo_reader
+
+        self._exclude_channels(channels_to_exclude)
 
     def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)

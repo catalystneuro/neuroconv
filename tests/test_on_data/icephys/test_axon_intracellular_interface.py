@@ -5,7 +5,7 @@ of small ABF files, each shrunk by structure-preserving truncation so the header
 are intact while the samples are cut). See that folder's READMEs for what each file exercises.
 
 The interface is single-electrode: one instance writes one electrode's response (and an optional paired
-stimulus) plus one intracellular-recordings row per sweep, each row tagged with the run's ``sequence`` and
+stimulus) plus one intracellular-recordings row per sweep, each row tagged with the run's ``protocol_run`` and
 ``stimulus_type`` (the run information in denormalized form). Each ``DataInterfaceTestMixin`` subclass below
 targets a distinct code path (timing model, clamp-mode series type, the two stimulus sources). The interface
 deliberately stops at the per-sweep rows; the upper icephys hierarchy (simultaneous / sequential recordings)
@@ -46,7 +46,7 @@ class TestAxonMultiSweepVoltageClampCommand(DataInterfaceTestMixin):
     the core single-series + table path with the irregular-timing (timestamps) branch."""
 
     data_interface_cls = AxonIntracellularInterface
-    expected_temporal_alignment_keys = ("user_list_IN0",)
+    expected_temporal_alignment_keys = ("user_list_IN0", "user_list_IN0_stimulus")
     file_path = ICEPHYS_DATA_PATH / "read_raw_protocol" / "user_list.abf"
     response_channel_name = "IN0"
     interface_kwargs = dict(
@@ -140,9 +140,9 @@ class TestAxonMultiSweepVoltageClampCommand(DataInterfaceTestMixin):
         assert sweep_start_sample_indices == [stimuli[i].idx_start for i in range(len(intracellular_recordings))]
         assert samples_per_sweep == [stimuli[i].count for i in range(len(intracellular_recordings))]
 
-        # Every row carries the run's `sequence` (the file stem; one run per file, so all rows share it) and
+        # Every row carries the run's `protocol_run` (the file stem; one run per file, so all rows share it) and
         # `stimulus_type` (here the protocol name from the header) -- the run information in denormalized form.
-        sequences = [intracellular_recordings["sequence"][i] for i in range(len(intracellular_recordings))]
+        sequences = [intracellular_recordings["protocol_run"][i] for i in range(len(intracellular_recordings))]
         assert set(sequences) == {"user_list"}
         stimulus_types = [intracellular_recordings["stimulus_type"][i] for i in range(len(intracellular_recordings))]
         assert set(stimulus_types) == {"WT_act with ramp_reversed_env"}
@@ -225,7 +225,7 @@ class TestAxonVoltageClampCommand(DataInterfaceTestMixin):
     VoltageClampSeries + VoltageClampStimulusSeries with the regular-timing (rate) branch."""
 
     data_interface_cls = AxonIntracellularInterface
-    expected_temporal_alignment_keys = ("step_IN0",)
+    expected_temporal_alignment_keys = ("step_IN0", "step_IN0_stimulus")
     file_path = ICEPHYS_DATA_PATH / "read_raw_protocol" / "step.abf"
     response_channel_name = "IN0"
     interface_kwargs = dict(
@@ -289,7 +289,7 @@ class TestAxonVoltageClampCommand(DataInterfaceTestMixin):
         responses = intracellular_recordings["responses"]["response"]
         assert sweep_start_sample_indices == [responses[i].idx_start for i in range(len(intracellular_recordings))]
         assert samples_per_sweep == [responses[i].count for i in range(len(intracellular_recordings))]
-        sequences = [intracellular_recordings["sequence"][i] for i in range(len(intracellular_recordings))]
+        sequences = [intracellular_recordings["protocol_run"][i] for i in range(len(intracellular_recordings))]
         assert set(sequences) == {"step"}
         stimulus_types = [intracellular_recordings["stimulus_type"][i] for i in range(len(intracellular_recordings))]
         assert set(stimulus_types) == {"0201 memtest"}
@@ -357,7 +357,7 @@ class TestAxonIZero(DataInterfaceTestMixin):
         responses = intracellular_recordings["responses"]["response"]
         assert sweep_start_sample_indices == [responses[i].idx_start for i in range(len(intracellular_recordings))]
         assert samples_per_sweep == [responses[i].count for i in range(len(intracellular_recordings))]
-        sequences = [intracellular_recordings["sequence"][i] for i in range(len(intracellular_recordings))]
+        sequences = [intracellular_recordings["protocol_run"][i] for i in range(len(intracellular_recordings))]
         assert set(sequences) == {"abf2_zero_current_clamp"}
         stimulus_types = [intracellular_recordings["stimulus_type"][i] for i in range(len(intracellular_recordings))]
         assert set(stimulus_types) == {"Simple Voltage Clamp Protocol"}
@@ -369,7 +369,7 @@ class TestAxonRecordedMonitorStimulus(DataInterfaceTestMixin):
     reconstructed command: CurrentClampSeries + CurrentClampStimulusSeries from a recorded channel."""
 
     data_interface_cls = AxonIntracellularInterface
-    expected_temporal_alignment_keys = ("current_clamp_IN0",)
+    expected_temporal_alignment_keys = ("current_clamp_IN0", "current_clamp_IN0_stimulus")
     file_path = ICEPHYS_DATA_PATH / "dual_patch_pairs" / "current_clamp.abf"
     response_channel_name = "IN0"
     interface_kwargs = dict(

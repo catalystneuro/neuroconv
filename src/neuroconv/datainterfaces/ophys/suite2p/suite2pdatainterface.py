@@ -1,5 +1,6 @@
 import warnings
 from copy import deepcopy
+from pathlib import Path
 
 from pydantic import DirectoryPath, validate_call
 from pynwb import NWBFile
@@ -169,6 +170,25 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
         )
         available_planes = self.get_available_planes(folder_path=self.source_data["folder_path"])
         available_channels = self.get_available_channels(folder_path=self.source_data["folder_path"])
+
+        # TODO: remove once neuroconv requires a roiextractors release with
+        # https://github.com/catalystneuro/roiextractors/pull/654, which reads `iscell` from `iscell.npy` on both
+        # channels and adds `redcell.npy` as a `redcell` property.
+        extractor = self.segmentation_extractor
+        plane_folder_path = Path(self.source_data["folder_path"]) / extractor.plane_name
+        if (
+            extractor.channel_name == "chan2"
+            and (plane_folder_path / "redcell.npy").is_file()
+            and "redcell" not in extractor.get_property_keys()
+        ):
+            warnings.warn(
+                "With roiextractors 0.10.0 and earlier, the Suite2p 'chan2' segmentation reads its 'iscell' "
+                "property from 'redcell.npy', the red-cell labels, instead of 'iscell.npy'. Its 'iscell' column holds "
+                "those labels, and writing it into the PlaneSegmentation of 'chan1' raises because the two 'iscell' "
+                "columns differ. A roiextractors release after 0.10.0 fixes this.",
+                UserWarning,
+                stacklevel=4,
+            )
 
         if plane_segmentation_name is None:
             plane_segmentation_name = (

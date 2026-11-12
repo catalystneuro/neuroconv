@@ -301,6 +301,24 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         self.recording_extractor = self.recording_extractor.remove_channels(remove_channel_ids=channel_ids)
         return self
 
+    def _exclude_channels(self, channels_to_exclude: list | None) -> None:
+        """Drop the channels named by the ``channels_to_exclude`` constructor argument.
+
+        Called last in each interface's ``__init__``, after the interface's own routing, so the names are the
+        ``channel_ids`` the interface ends up holding.
+        """
+        if not channels_to_exclude:
+            return
+
+        channel_ids = self.channel_ids.tolist()
+        missing_channels = [channel for channel in channels_to_exclude if channel not in channel_ids]
+        if missing_channels:
+            raise ValueError(
+                f"`channels_to_exclude` names {missing_channels}, which are not channels of this "
+                f"{type(self).__name__}. Its channels are {channel_ids}."
+            )
+        self.remove_channels(channel_ids=channels_to_exclude)
+
     def get_original_timestamps(self) -> np.ndarray | list[np.ndarray]:
         """
         Retrieve the original unaltered timestamps for the data in this interface.

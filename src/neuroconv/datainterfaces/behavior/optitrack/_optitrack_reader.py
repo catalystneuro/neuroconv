@@ -10,6 +10,11 @@ import pandas as pd
 _MOTIVE_HEADER_LEVELS = ("marker_type", "label", "id", "measurement_type", "axis")
 _MOTIVE_HEADER_LEVELS_WITH_PARENT = ("marker_type", "label", "id", "parent", "measurement_type", "axis")
 
+# The asset types whose labeled points are written as pose estimation, grouped by the skeleton or marker set
+# that owns them. `Rigid Body Marker` columns are not among them: they are where Motive's model puts each
+# marker, computed from the rigid body's pose rather than measured.
+_POSE_ASSET_TYPES = ("Bone", "Marker")
+
 
 def read_header(file_path: Path) -> dict[str, str]:
     """Read the header line from a Motive CSV export.
@@ -40,14 +45,38 @@ def read_header(file_path: Path) -> dict[str, str]:
     return header
 
 
-def read_motion_capture_data(file_path: Path) -> pd.DataFrame:
+def _has_pose_estimation_assets(file_path: Path) -> bool:
+    """Whether a Motive CSV export has labeled points written as pose estimation, that is ``Bone`` or ``Marker``
+    columns whose name does not start with ``Unlabeled``.
+    """
+    columns = read_motion_capture_data(file_path, nrows=0).columns
+    return any(
+        asset_type in _POSE_ASSET_TYPES and not label.startswith("Unlabeled")
+        for asset_type, label in zip(columns.get_level_values("marker_type"), columns.get_level_values("label"))
+    )
+
+
+def read_motion_capture_data(file_path: Path, nrows: int | None = None) -> pd.DataFrame:
     """Read the data from a Motive CSV export.
 
     The second row of the file is blank, and the next five rows contain the asset header, which has five rows of information for each
     asset in the export. The five rows are: ``Type``, ``Name``, ``ID``, measurement_type, and axis. The measurement_type row
     contains the type of measurement_type for each column (e.g., position, rotation, marker), and the axis row begins with
-    ``Frame``and contains the axis for each column (e.g., X, Y, Z). Format version 1.25 adds a sixth row, ``Parent``,
+    ``Frame`` and contains the axis for each column (e.g., X, Y, Z). Format version 1.25 adds a sixth row, ``Parent``,
     after ``ID``.
+
+    Parameters
+    ----------
+    file_path : Path
+        The path to the Motive CSV export.
+    nrows : int | None, optional
+        The number of rows to read
+
+    Returns
+    -------
+    pd.DataFrame
+        One row per frame, indexed by ``frame`` and ``time``, with one column per value and the asset header rows as
+        the column levels (``marker_type``, ``label``, ``id``, optionally ``parent``, ``measurement_type``, ``axis``).
     """
     with open(file_path, encoding="utf-8") as file:
         next(file)  # the export settings line
@@ -62,7 +91,9 @@ def read_motion_capture_data(file_path: Path) -> pd.DataFrame:
         if num_header_rows == len(_MOTIVE_HEADER_LEVELS_WITH_PARENT)
         else _MOTIVE_HEADER_LEVELS
     )
-    motion_capture_data = pd.read_csv(file_path, skiprows=1, header=list(range(len(header_levels))), index_col=[0, 1])
+    motion_capture_data = pd.read_csv(
+        file_path, skiprows=1, header=list(range(len(header_levels))), index_col=[0, 1], nrows=nrows
+    )
     motion_capture_data.columns.names = header_levels
     motion_capture_data.index.names = ["frame", "time"]
     return motion_capture_data

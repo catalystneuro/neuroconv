@@ -88,6 +88,7 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
         verbose: bool = False,
         es_key: str | None = None,
         metadata_key: str | None = None,
+        channels_to_exclude: list | None = None,
     ):
         """
         Initialize reading of OpenEphys binary recording.
@@ -107,6 +108,9 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
         metadata_key : str, optional
             Key that indexes this interface's entries in the dict-based metadata. Defaults to
             ``"open_ephys_recording"``.
+        channels_to_exclude : list, optional
+            Channels to leave out, by the ids in ``channel_ids``. Every other channel is converted. A name that
+            is not one of the interface's channels raises.
         """
 
         from ._openephys_utils import _read_settings_xml
@@ -191,6 +195,8 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
                         channel_names.append(channel_name)
 
                     self.recording_extractor.set_property(key="channel_name", ids=channel_ids, values=channel_names)
+
+        self._exclude_channels(channels_to_exclude)
 
     def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         from ._openephys_utils import _get_session_start_time

@@ -237,3 +237,22 @@ def test_ophys_plane_fix():
     validator = jsonschema.Draft7Validator(metadata_schema)
     errors = [error.message for error in validator.iter_errors(metadata)]
     assert len(errors) == 0
+
+
+def test_subject_age_pattern():
+    base_metadata_schema = load_dict_from_file(
+        Path(__file__).parent.parent.parent / "src" / "neuroconv" / "schemas" / "base_metadata_schema.json"
+    )
+    age_schema = base_metadata_schema["properties"]["Subject"]["properties"]["age"]
+
+    valid_ages = ["P90D", "P2W", "P18Y", "P1Y2M3D", "PT12H", "P0.5Y", "P3M/P6M", "P8W/", "/P6M", "/"]
+    for age in valid_ages:
+        jsonschema.validate(instance=age, schema=age_schema)
+
+    invalid_ages = ["", "P", "PT", "P/", "/P", "90D", "3 months", "not an age", "P3M/P6M/P9M", "P3M /P6M"]
+    for age in invalid_ages:
+        try:
+            jsonschema.validate(instance=age, schema=age_schema)
+        except jsonschema.ValidationError:
+            continue
+        raise AssertionError(f"The age pattern accepted {age!r}")

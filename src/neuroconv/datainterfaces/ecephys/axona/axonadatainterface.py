@@ -45,6 +45,7 @@ class AxonaRecordingInterface(BaseRecordingExtractorInterface):
         verbose: bool = False,
         es_key: str | None = None,
         metadata_key: str | None = None,
+        channels_to_exclude: list | None = None,
     ):
         """
 
@@ -57,6 +58,9 @@ class AxonaRecordingInterface(BaseRecordingExtractorInterface):
         metadata_key : str, optional
             Key that indexes this interface's entries in the dict-based metadata. Defaults to
             ``"axona_recording"``.
+        channels_to_exclude : list, optional
+            Channels to leave out, by the ids in ``channel_ids``. Every other channel is converted. A name that
+            is not one of the interface's channels raises.
         """
 
         if metadata_key is None:
@@ -66,18 +70,23 @@ class AxonaRecordingInterface(BaseRecordingExtractorInterface):
 
         self.metadata_in_set_file = self.recording_extractor.neo_reader.file_parameters["set"]["file_header"]
 
+        # Read the start time while the recording is still the neo-based extractor, as `remove_channels`
+        # replaces it with a channel slice that does not carry the `neo_reader`
+        raw_annotations = self.recording_extractor.neo_reader.raw_annotations
+        self._session_start_time = raw_annotations["blocks"][0]["segments"][0]["rec_datetime"]
+
         # Set the channel groups
         tetrode_id = self.recording_extractor.get_property("tetrode_id")
         self.recording_extractor.set_channel_groups(tetrode_id)
 
+        self._exclude_channels(channels_to_exclude)
+
     def extract_nwb_file_metadata(self) -> dict:
-        raw_annotations = self.recording_extractor.neo_reader.raw_annotations
-        session_start_time = raw_annotations["blocks"][0]["segments"][0]["rec_datetime"]
         session_description = self.metadata_in_set_file["comments"]
         experimenter = self.metadata_in_set_file["experimenter"]
 
         nwbfile_metadata = dict(
-            session_start_time=session_start_time,
+            session_start_time=self._session_start_time,
             session_description=session_description,
             experimenter=[experimenter] if experimenter else None,  # The schema expects an array of strings
         )
@@ -214,18 +223,36 @@ class AxonaLFPDataInterface(BaseLFPExtractorInterface):
     def get_source_schema(cls) -> dict:
         return dict(
             required=["file_path"],
-            properties=dict(file_path=dict(type="string")),
+            properties=dict(
+                file_path=dict(type="string"),
+                channels_to_exclude=dict(
+                    anyOf=[dict(type="array", items=dict()), dict(type="null")],
+                    default=None,
+                    description="Channels to leave out, by the ids in ``channel_ids``.",
+                ),
+            ),
             type="object",
             additionalProperties=False,
         )
 
-    def __init__(self, file_path: FilePath):
+    def __init__(self, file_path: FilePath, *, channels_to_exclude: list | None = None):
+        """
+        Parameters
+        ----------
+        file_path : FilePath
+            Path to the .eeg file.
+        channels_to_exclude : list, optional
+            Channels to leave out, by the ids in ``channel_ids``. Every other channel is converted. A name that
+            is not one of the interface's channels raises.
+        """
         data = read_all_eeg_file_lfp_data(file_path).T
         self.traces_list = [data]
         self.sampling_frequency = get_eeg_sampling_frequency(file_path)
         super().__init__(file_path=file_path)
 
         self.source_data = dict(file_path=file_path)
+
+        self._exclude_channels(channels_to_exclude)
 
 
 class AxonaPositionDataInterface(BaseDataInterface):

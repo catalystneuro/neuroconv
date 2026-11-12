@@ -327,6 +327,7 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
         verbose: bool = False,
         es_key: str | None = None,
         metadata_key: str | None = None,
+        channels_to_exclude: list | None = None,
     ):
         """
 
@@ -339,6 +340,9 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
         metadata_key : str, optional
             Key that indexes this interface's entries in the dict-based metadata. Defaults to
             ``"cell_explorer_recording"``.
+        channels_to_exclude : list, optional
+            Channels to leave out, by the ids in ``channel_ids``. Every other channel is converted. A name that
+            is not one of the interface's channels raises.
         """
 
         self.session_path = Path(folder_path)
@@ -392,6 +396,8 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
 
         self._register_segments()
 
+        self._exclude_channels(channels_to_exclude)
+
     def get_original_timestamps(self):
         num_frames = self.recording_extractor.get_num_samples()
         sampling_frequency = self.recording_extractor.get_sampling_frequency()
@@ -430,12 +436,19 @@ class CellExplorerLFPInterface(CellExplorerRecordingInterface):
         verbose: bool = False,
         es_key: str | None = None,
         metadata_key: str | None = None,
+        channels_to_exclude: list | None = None,
     ):
 
         if metadata_key is None:
             metadata_key = "cell_explorer_lfp"
 
-        super().__init__(folder_path, verbose=verbose, es_key=es_key, metadata_key=metadata_key)
+        super().__init__(
+            folder_path,
+            verbose=verbose,
+            es_key=es_key,
+            metadata_key=metadata_key,
+            channels_to_exclude=channels_to_exclude,
+        )
 
     def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
@@ -508,7 +521,7 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
         extractor_instance = extractor_class(**self.extractor_kwargs)
         return extractor_instance
 
-    def __init__(self, file_path: FilePath, *, verbose: bool = False):
+    def __init__(self, file_path: FilePath, *, verbose: bool = False, metadata_key: str | None = None):
         """
         Initialize read of Cell Explorer file.
 
@@ -517,7 +530,10 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
         file_path: FilePath
             Path to .spikes.cellinfo.mat file.
         verbose: bool, default: True
+        metadata_key : str, optional
+            Key of this sorting's entry in ``metadata["Ecephys"]["Sortings"]``. Defaults to ``"cell_explorer_sorting"``.
         """
+        self.metadata_key = metadata_key or "cell_explorer_sorting"
 
         # Triggers import error at initialization
         pymatreader = get_package(

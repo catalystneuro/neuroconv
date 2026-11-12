@@ -48,7 +48,7 @@ Its :ref:`section on templates <how_to_annotate_ophys_from_a_template>` starts f
 
 A volumetric session can be written two ways, chosen with ``plane_separation_type``. The default,
 ``"contiguous"``, keeps the volume together: the extractor returns a 4D series
-``(samples, height, width, planes)`` and it is written as a single ``TwoPhotonSeries`` per channel
+``(samples, rows, columns, planes)`` and it is written as a single ``TwoPhotonSeries`` per channel
 with the per-volume sampling rate.
 
 Passing ``"disjoint"`` splits the volume instead, writing each z-plane as its own 2D
