@@ -1146,7 +1146,15 @@ class TestMicroManagerTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = MicroManagerTiffImagingInterface
     expected_temporal_alignment_keys = ("micromanager_imaging",)
     interface_kwargs = dict(
-        folder_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "MicroManagerTif" / "TS12_20220407_20hz_noteasy_1")
+        folder_path=str(
+            OPHYS_DATA_PATH
+            / "imaging_datasets"
+            / "MicroManagerTif"
+            / "mmstack"
+            / "micromanager_version_2_0_0"
+            / "binary_data_layout"
+            / "split_files"
+        )
     )
     save_directory = OUTPUT_PATH
     # Micro-Manager states no series name, so the generic one is written.
@@ -1169,16 +1177,16 @@ class TestMicroManagerTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
             location="unknown",
             device=cls.device_metadata["name"],
             optical_channel=[cls.optical_channel_metadata],
-            # TODO: expect exactly 1 / 0.04995 once roiextractors is released with
+            # TODO: expect exactly 1 / 0.04992 once roiextractors is released with
             # https://github.com/catalystneuro/roiextractors/pull/649, which takes the rate from the frame times
-            # (20.02 Hz) instead of PlaybackFPS (20.0 Hz). Until then the release and roiextractors main differ.
+            # (20.03 Hz) instead of PlaybackFPS (20.0 Hz). Until then the release and roiextractors main differ.
             imaging_rate=pytest.approx(20.0, abs=0.05),
         )
         cls.two_photon_series_metadata = dict(
             name="TwoPhotonSeries",
             description="Imaging data from two-photon excitation microscopy.",
             unit="px",
-            dimension=[1024, 1024],
+            dimension=[64, 64],
             format="tiff",
             imaging_plane=cls.imaging_plane_metadata["name"],
         )
@@ -1202,7 +1210,7 @@ class TestMicroManagerTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
         assert "Devices" not in metadata
         assert metadata["Ophys"] == {
             "ImagingPlanes": {
-                # TODO: expect exactly 1 / 0.04995, see the imaging_rate in setup_metadata
+                # TODO: expect exactly 1 / 0.04992, see the imaging_rate in setup_metadata
                 metadata_key: {"imaging_rate": pytest.approx(20.0, abs=0.05)},
             },
             "MicroscopySeries": {
