@@ -475,3 +475,18 @@ class _ConverterTemporalAlignment:
         delta = starting_time - min(starts)
         for time_bearing_object in time_bearing_objects:
             time_bearing_object.shift_times(delta)
+
+    def remap_times(self, *, local_sync_times, reference_sync_times, interpolation_function=None) -> None:
+        """Re-express every descendant time-bearing object on a reference clock through one set of synchronization pulses.
+
+        The same pulse pairs apply to every descendant, so this is right only when every interface under the
+        selection runs on one clock. Children are skipped as in ``shift_times``. See
+        :meth:`_TimeBearingObject.remap_times`.
+        """
+        time_bearing_objects = self._collect_time_bearing_objects()
+        for time_bearing_object in time_bearing_objects:
+            time_bearing_object.remap_times(
+                local_sync_times=local_sync_times,
+                reference_sync_times=reference_sync_times,
+                interpolation_function=interpolation_function,
+            )
