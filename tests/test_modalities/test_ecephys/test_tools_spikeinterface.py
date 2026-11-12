@@ -1566,6 +1566,19 @@ class TestAddTimeSeries:
 
         assert set(nwbfile.acquisition) == {"TimeSeriesSegment0", "TimeSeriesSegment1"}
 
+    def test_timing_in_the_entry_is_deprecated(self):
+        recording = generate_recording(sampling_frequency=1.0, num_channels=2, durations=[3.0])
+        metadata = {"TimeSeries": {"analog": {"name": "Analog", "unit": "V", "starting_time": 5.0}}}
+        nwbfile = mock_NWBFile()
+
+        expected_warning = re.escape(
+            "metadata['TimeSeries']['analog'] sets ['starting_time'], which the writer computes from the recording."
+        )
+        with pytest.warns(FutureWarning, match=expected_warning):
+            add_recording_as_time_series_to_nwbfile(
+                recording=recording, nwbfile=nwbfile, metadata=metadata, metadata_key="analog", iterator_type=None
+            )
+
 
 class TestAddTimeSeriesMetadataKeyResolution:
     """``metadata_key`` addresses an entry, so it is required exactly when there is one to address."""
@@ -1864,6 +1877,20 @@ class TestAddSpatialSeries:
         add_recording_as_spatial_series_to_nwbfile(recording=recording, nwbfile=nwbfile, iterator_type=None)
 
         assert set(nwbfile.acquisition) == {"SpatialSeriesSegment0", "SpatialSeriesSegment1"}
+
+    def test_timing_in_the_entry_is_deprecated(self):
+        recording = generate_recording(sampling_frequency=30.0, num_channels=2, durations=[0.1])
+        metadata = {"SpatialSeries": {"SpatialSeries": {"reference_frame": "test", "starting_time": 5.0}}}
+        nwbfile = mock_NWBFile()
+
+        expected_warning = re.escape(
+            "metadata['SpatialSeries']['SpatialSeries'] sets ['starting_time'], which the writer computes from the "
+            "recording."
+        )
+        with pytest.warns(FutureWarning, match=expected_warning):
+            add_recording_as_spatial_series_to_nwbfile(
+                recording=recording, nwbfile=nwbfile, metadata=metadata, iterator_type=None
+            )
 
 
 def _probe_naming(**probe_fields):
@@ -3715,6 +3742,24 @@ class TestAddRecording:
         )
         with pytest.raises(ValueError, match=expected_error):
             add_recording_to_nwbfile(recording=recording, nwbfile=nwbfile, metadata=metadata)
+
+    def test_timing_in_the_entry_is_deprecated(self):
+        recording = generate_recording(sampling_frequency=1.0, num_channels=3, durations=[3.0])
+        recording.set_channel_gains(gains=[1.0] * recording.get_num_channels())
+        recording.set_channel_offsets(offsets=[0.0] * recording.get_num_channels())
+        nwbfile = mock_NWBFile()
+
+        metadata = _get_ecephys_metadata_placeholders()
+        metadata["Ecephys"]["ElectricalSeries"] = {"series": {"name": "ElectricalSeries", "starting_time": 5.0}}
+
+        expected_warning = re.escape(
+            "metadata['Ecephys']['ElectricalSeries']['series'] sets ['starting_time'], which the writer computes "
+            "from the recording."
+        )
+        with pytest.warns(FutureWarning, match=expected_warning):
+            add_recording_to_nwbfile(
+                recording=recording, nwbfile=nwbfile, metadata=metadata, metadata_key="series", iterator_type=None
+            )
 
     def test_metadata_not_mutated(self):
         """add_recording_to_nwbfile does not mutate the input metadata dict."""

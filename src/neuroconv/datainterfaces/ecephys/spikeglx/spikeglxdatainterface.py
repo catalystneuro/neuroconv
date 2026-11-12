@@ -60,6 +60,7 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         verbose: bool = False,
         es_key: str | None = None,
         metadata_key: str | None = None,
+        channels_to_exclude: list | None = None,
     ):
         """
         Parameters
@@ -76,6 +77,9 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         metadata_key : str, optional
             Key that indexes this interface's entries in the dict-based metadata. Defaults to
             ``"spikeglx_{probe}_{band}"`` (e.g. ``"spikeglx_imec0_ap"``).
+        channels_to_exclude : list, optional
+            Channels to leave out, by the ids in ``channel_ids``. Every other channel is converted. A name that
+            is not one of the interface's channels raises.
         """
 
         if stream_id == "nidq":
@@ -200,6 +204,8 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         # Remove inter_sample_shift property - internal spikeinterface property not relevant for NWB
         if "inter_sample_shift" in self.recording_extractor.get_property_keys():
             self.recording_extractor.delete_property(key="inter_sample_shift")
+
+        self._exclude_channels(channels_to_exclude)
 
     def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         from ....tools.spikeinterface.spikeinterface import _get_probe_device_metadata
