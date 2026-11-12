@@ -38,6 +38,7 @@ class TestSpikeGLXSyncChannelInterface(TimeSeriesInterfaceTestMixin):
     data_interface_cls = SpikeGLXSyncChannelInterface
     interface_kwargs = dict(folder_path=test_folder, stream_id="imec0.ap-SYNC")
     expected_time_series_names = ("TimeSeriesImec0Sync",)
+    expected_temporal_alignment_keys = ("spikeglx_sync_0",)
 
     def check_extracted_metadata(self, metadata):
         assert set(metadata["TimeSeries"]) == {"spikeglx_sync"}
