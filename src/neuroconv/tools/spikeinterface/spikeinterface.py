@@ -899,6 +899,19 @@ def _add_sorting_to_nwbfile(
     )
 
 
+def _warn_on_computed_fields_in_series_entry(entry: dict, metadata_location: str):
+    """Warn when a series metadata entry sets the data or the timing, which the writer computes from the recording."""
+    computed_fields = [field for field in ("data", "starting_time", "rate", "timestamps") if field in entry]
+    if computed_fields:
+        warnings.warn(
+            f"{metadata_location} sets {computed_fields}, which the writer computes from the recording. Setting the "
+            "data or the timing of a series in its metadata entry is deprecated and will raise in v0.13.0. To change "
+            "the times, use the interface's `temporal_alignment`, or set the times on the recording.",
+            FutureWarning,
+            stacklevel=2,
+        )
+
+
 def _add_recording_segment_to_nwbfile(
     recording: BaseRecording,
     nwbfile: pynwb.NWBFile,
@@ -1037,11 +1050,19 @@ def _add_recording_segment_to_nwbfile(
         else:
             eseries_kwargs["timestamps"] = timestamps
 
-    # Update with user metadata - allows override of all fields including name, description, data, timestamps, etc.
+    # Update with user metadata. An entry that sets the data or the timing still overrides them, with a deprecation
+    # warning, until v0.13.0.
     if metadata_key is not None:
-        eseries_kwargs.update(metadata["Ecephys"]["ElectricalSeries"][metadata_key])
+        series_entry = metadata["Ecephys"]["ElectricalSeries"][metadata_key]
+        _warn_on_computed_fields_in_series_entry(
+            entry=series_entry, metadata_location=f"metadata['Ecephys']['ElectricalSeries']['{metadata_key}']"
+        )
+        eseries_kwargs.update(series_entry)
     elif metadata is not None and "Ecephys" in metadata and es_key is not None:
         assert es_key in metadata["Ecephys"], f"metadata['Ecephys'] dictionary does not contain key '{es_key}'"
+        _warn_on_computed_fields_in_series_entry(
+            entry=metadata["Ecephys"][es_key], metadata_location=f"metadata['Ecephys']['{es_key}']"
+        )
         eseries_kwargs.update(metadata["Ecephys"][es_key])
 
     # If the recording extractor has more than 1 segment, append the unpadded segment index to the name so that the
@@ -1057,7 +1078,12 @@ def _add_recording_segment_to_nwbfile(
     segment_metadata_key = f"{metadata_key}_{segment_index}"
     has_segment_override = metadata_key is not None and segment_metadata_key in metadata["Ecephys"]["ElectricalSeries"]
     if has_segment_override:
-        eseries_kwargs.update(metadata["Ecephys"]["ElectricalSeries"][segment_metadata_key])
+        segment_entry = metadata["Ecephys"]["ElectricalSeries"][segment_metadata_key]
+        _warn_on_computed_fields_in_series_entry(
+            entry=segment_entry,
+            metadata_location=f"metadata['Ecephys']['ElectricalSeries']['{segment_metadata_key}']",
+        )
+        eseries_kwargs.update(segment_entry)
 
     # Create ElectricalSeries object and add it to nwbfile
     es = pynwb.ecephys.ElectricalSeries(**eseries_kwargs)
@@ -2273,7 +2299,11 @@ def _add_time_series_segment_to_nwbfile(
         else:
             tseries_kwargs["timestamps"] = timestamps
 
-    # Update with user-provided metadata
+    # Update with user-provided metadata. An entry that sets the data or the timing still overrides them, with a
+    # deprecation warning, until v0.13.0.
+    _warn_on_computed_fields_in_series_entry(
+        entry=user_metadata, metadata_location=f"metadata['TimeSeries']['{metadata_key}']"
+    )
     tseries_kwargs.update(user_metadata)
 
     # Fill in required fields with defaults if missing, before the segment suffix so a default name gets it too
@@ -2292,7 +2322,11 @@ def _add_time_series_segment_to_nwbfile(
     segment_metadata_key = f"{metadata_key}_{segment_index}"
     has_segment_override = metadata_key is not None and segment_metadata_key in metadata.get("TimeSeries", {})
     if has_segment_override:
-        tseries_kwargs.update(metadata["TimeSeries"][segment_metadata_key])
+        segment_entry = metadata["TimeSeries"][segment_metadata_key]
+        _warn_on_computed_fields_in_series_entry(
+            entry=segment_entry, metadata_location=f"metadata['TimeSeries']['{segment_metadata_key}']"
+        )
+        tseries_kwargs.update(segment_entry)
 
     # Create TimeSeries object and add it to nwbfile
     time_series = pynwb.base.TimeSeries(**tseries_kwargs)
@@ -2479,7 +2513,11 @@ def _add_spatial_series_segment_to_nwbfile(
         else:
             series_kwargs["timestamps"] = timestamps
 
-    # Update with user-provided metadata
+    # Update with user-provided metadata. An entry that sets the data or the timing still overrides them, with a
+    # deprecation warning, until v0.13.0.
+    _warn_on_computed_fields_in_series_entry(
+        entry=user_metadata, metadata_location=f"metadata['SpatialSeries']['{metadata_key}']"
+    )
     series_kwargs.update(user_metadata)
 
     # Fill in missing required fields with defaults, before the segment suffix so a default name gets it too
@@ -2496,7 +2534,11 @@ def _add_spatial_series_segment_to_nwbfile(
     # segment only, its name used as given.
     segment_metadata_key = f"{metadata_key}_{segment_index}"
     if segment_metadata_key in metadata.get("SpatialSeries", {}):
-        series_kwargs.update(metadata["SpatialSeries"][segment_metadata_key])
+        segment_entry = metadata["SpatialSeries"][segment_metadata_key]
+        _warn_on_computed_fields_in_series_entry(
+            entry=segment_entry, metadata_location=f"metadata['SpatialSeries']['{segment_metadata_key}']"
+        )
+        series_kwargs.update(segment_entry)
 
     # Create the SpatialSeries instance
     spatial_series = pynwb.behavior.SpatialSeries(**series_kwargs)
