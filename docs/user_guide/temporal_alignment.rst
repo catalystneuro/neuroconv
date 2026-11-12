@@ -360,8 +360,8 @@ With an ``NWBConverter``
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
 A subclass of :py:class:`.NWBConverter` packages a conversion you run repeatedly. Its interface names are the keys of
-``data_interface_classes``, and the alignment goes in :py:meth:`.NWBConverter.temporally_align_data_interfaces`, which
-``run_conversion`` calls before writing:
+``data_interface_classes``, and the alignment goes in the same place, after building the converter and before running
+the conversion:
 
 .. code-block:: python
 
@@ -373,13 +373,17 @@ A subclass of :py:class:`.NWBConverter` packages a conversion you run repeatedly
             Behavior=TDTEventsInterface,
         )
 
-        def temporally_align_data_interfaces(self, metadata=None, conversion_options=None):
-            behavior_delay = ...  # how far the behavior box starts after the recording, however you obtain it
-            self.temporal_alignment["Behavior"].shift_times(behavior_delay)
+    converter = ExampleNWBConverter(source_data=source_data)
 
-Inside this method you apply whatever each stream needs: ``shift_times`` for a correction, ``move_earliest_observation_to`` for a
-destination, or ``remap_times`` to re-time a drifting stream against the reference, on ``self.temporal_alignment[name]`` for a
-whole interface or on ``self.temporal_alignment[name][key]`` for one of its objects.
+    behavior_delay = ...  # how far the behavior box starts after the recording, however you obtain it
+    converter.temporal_alignment["Behavior"].shift_times(behavior_delay)
+
+    converter.run_conversion(nwbfile_path="session.nwb")
+
+With either converter you apply whatever each stream needs: ``shift_times`` for a correction,
+``move_earliest_observation_to`` for a destination, or ``remap_times`` to re-time a drifting stream against the
+reference, on ``converter.temporal_alignment[name]`` for a whole interface or on
+``converter.temporal_alignment[name][key]`` for one of its objects.
 
 One caveat applies to both: the calls mutate the live interfaces, so a step that runs twice compounds unless it states
 a result. A ``shift_times`` shifts twice and a ``remap_times`` remaps times that were already remapped, while
