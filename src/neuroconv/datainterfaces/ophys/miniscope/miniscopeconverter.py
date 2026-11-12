@@ -527,8 +527,7 @@ class MiniscopeConverter(ConverterPipe):
                 ho_interface = self.data_interface_objects[ho_interface_name]
                 session_start_time = session_start_times[paired_interface_name]
                 time_offset = (session_start_time - min_session_start_time).total_seconds()
-                aligned_timestamps = ho_interface.get_timestamps() + time_offset
-                ho_interface.set_aligned_timestamps(aligned_timestamps)
+                ho_interface.temporal_alignment.shift_times(time_offset)
 
     def get_metadata(self) -> DeepDict:
         if self._user_configuration_file_path is None:

@@ -2,7 +2,53 @@ import numpy as np
 from pynwb import read_nwb
 
 from neuroconv.datainterfaces import MiniscopeHeadOrientationInterface
-from tests.test_on_data.setup_paths import OPHYS_DATA_PATH
+from neuroconv.tools.testing.data_interface_mixins import DataInterfaceTestMixin
+from tests.test_on_data.setup_paths import OPHYS_DATA_PATH, OUTPUT_PATH
+
+HEAD_ORIENTATION_FILE_PATH = (
+    OPHYS_DATA_PATH
+    / "imaging_datasets"
+    / "Miniscope"
+    / "dual_miniscope_with_config"
+    / "researcher_name/experiment_name/animal_name"
+    / "2025_06_12/15_26_31/HPC_miniscope1/headOrientation.csv"
+)
+
+
+class TestMiniscopeHeadOrientationInterfaceConversion(DataInterfaceTestMixin):
+    data_interface_cls = MiniscopeHeadOrientationInterface
+    interface_kwargs = dict(file_path=str(HEAD_ORIENTATION_FILE_PATH))
+    expected_temporal_alignment_keys = ("TimeSeriesMiniscopeHeadOrientation",)
+    save_directory = OUTPUT_PATH
+
+    def check_read_nwb(self, nwbfile_path: str):
+        nwbfile = read_nwb(nwbfile_path)
+        timeseries = nwbfile.processing["behavior"].data_interfaces["TimeSeriesMiniscopeHeadOrientation"]
+        np.testing.assert_array_equal(timeseries.data[:], self.interface._quaternion_data)
+        nwbfile.read_io.close()
+
+
+class TestSingleMiniscopeHeadOrientationInterfaceConversion(DataInterfaceTestMixin):
+    """The only single-scope head orientation file, and the only one whose first timestamp is negative."""
+
+    data_interface_cls = MiniscopeHeadOrientationInterface
+    interface_kwargs = dict(
+        file_path=str(
+            OPHYS_DATA_PATH
+            / "imaging_datasets"
+            / "Miniscope"
+            / "single_miniscope_with_head_orientation"
+            / "Dr_Miniscope/Linear_Track_Test/ID42/2025_05_23/09_53_05/Miniscope/headOrientation.csv"
+        )
+    )
+    expected_temporal_alignment_keys = ("TimeSeriesMiniscopeHeadOrientation",)
+    save_directory = OUTPUT_PATH
+
+    def check_read_nwb(self, nwbfile_path: str):
+        nwbfile = read_nwb(nwbfile_path)
+        timeseries = nwbfile.processing["behavior"].data_interfaces["TimeSeriesMiniscopeHeadOrientation"]
+        np.testing.assert_array_equal(timeseries.timestamps[:], [-0.025, 0.010, 0.042])
+        nwbfile.read_io.close()
 
 
 class TestMiniscopeHeadOrientationInterface:
@@ -70,8 +116,8 @@ class TestMiniscopeHeadOrientationInterface:
         interface = MiniscopeHeadOrientationInterface(file_path=self.headOrientation_file_path)
 
         original_timestamps = interface.get_original_timestamps()
-        interface.set_aligned_starting_time(aligned_starting_time=10.0)
-        aligned_timestamps = interface.get_timestamps()
+        interface.temporal_alignment.shift_times(10.0)
+        aligned_timestamps = interface.temporal_alignment["TimeSeriesMiniscopeHeadOrientation"].get_times()
 
         # All timestamps should be shifted by 10 seconds
         assert np.allclose(aligned_timestamps, original_timestamps + 10.0)
@@ -108,7 +154,7 @@ class TestMiniscopeHeadOrientationInterface:
         # Set uniform timestamps at 30 Hz (consistent with Miniscope frame rate)
         num_samples = len(interface._quaternion_data)
         uniform_timestamps = np.arange(num_samples) / 30.0
-        interface.set_aligned_timestamps(uniform_timestamps)
+        interface.temporal_alignment["TimeSeriesMiniscopeHeadOrientation"].set_times(uniform_timestamps)
 
         # Test default behavior with uniform timestamps (should use rate)
         nwbfile_path_default = tmp_path / "test_default_timestamps.nwb"
