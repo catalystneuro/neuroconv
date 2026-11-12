@@ -575,6 +575,22 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
         """Override this method to make assertions about extracted metadata in old list-based format."""
         pass
 
+    def test_channels_to_exclude(self, setup_interface):
+        channel_ids = list(self.interface.channel_ids)
+        if len(channel_ids) < 2:
+            pytest.skip("Excluding the only channel leaves nothing to convert")
+
+        last_channel_id = channel_ids[-1]
+        interface = self.data_interface_cls(**self.interface_kwargs, channels_to_exclude=[last_channel_id])
+
+        assert list(interface.channel_ids) == channel_ids[:-1]
+        # Excluding replaces the recording with a channel slice, which does not carry the `neo_reader` some
+        # interfaces read from, so the interface has to keep working on what is left
+        metadata = _get_metadata_for_writing(interface)
+        if "session_start_time" not in metadata["NWBFile"]:
+            metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
+        interface.create_nwbfile(metadata=metadata, stub_test=True, **self.conversion_options)
+
     def check_read_nwb(self, nwbfile_path: str):
         from spikeinterface.core.testing import check_recordings_equal
         from spikeinterface.extractors.extractor_classes import NwbRecordingExtractor

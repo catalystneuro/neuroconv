@@ -970,6 +970,7 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
         metadata_key: str | None = None,
         set_probe: bool = False,
         calibration: Literal["unknown", "uniform", "heterogeneous_gains", "heterogeneous_offsets"] = "uniform",
+        channels_to_exclude: list | None = None,
     ):
 
         super().__init__(
@@ -1025,6 +1026,8 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
         self.recording_extractor = self.recording_extractor.rename_channels(
             new_channel_ids=[f"channel_{_letters(index)}" for index in range(number_of_channels)]
         )
+
+        self._exclude_channels(channels_to_exclude)
 
     def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         """

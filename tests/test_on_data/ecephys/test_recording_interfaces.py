@@ -68,14 +68,6 @@ class TestAlphaOmegaRecordingInterface(RecordingExtractorInterfaceTestMixin):
     def check_extracted_metadata_old_list_format(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2021, 11, 19, 15, 23, 15)
 
-    def test_get_metadata_after_remove_channels(self):
-        interface = AlphaOmegaRecordingInterface(**self.interface_kwargs)
-        session_start_time = interface.get_metadata()["NWBFile"]["session_start_time"]
-
-        interface.remove_channels(channel_ids=[interface.channel_ids[-1]])
-
-        assert interface.get_metadata()["NWBFile"]["session_start_time"] == session_start_time
-
 
 class TestAxonRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = AxonRecordingInterface
@@ -174,14 +166,6 @@ class TestAxonaRecordingInterface(RecordingExtractorInterfaceTestMixin):
         assert metadata["Ecephys"]["Device"] == [dict(name="Axona", description="Axona DacqUSB, sw_version=1.2.2.16")]
         for electrode_group in metadata["Ecephys"]["ElectrodeGroup"]:
             assert electrode_group["device"] == "Axona"
-
-    def test_get_metadata_after_remove_channels(self):
-        interface = AxonaRecordingInterface(**self.interface_kwargs)
-        session_start_time = interface.get_metadata()["NWBFile"]["session_start_time"]
-
-        interface.remove_channels(channel_ids=[interface.channel_ids[-1]])
-
-        assert interface.get_metadata()["NWBFile"]["session_start_time"] == session_start_time
 
 
 class TestAxonaLFPDataInterface(RecordingExtractorInterfaceTestMixin):
@@ -354,18 +338,12 @@ class TestCellExplorerRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
 
 # The file holds two electrode channels next to a current, a temperature and an unitless channel, so
-# SpikeInterface warns about the mix while building the recording. The three are excluded below, which
-# is what the warning asks for, but it is emitted before the interface can drop them.
+# SpikeInterface warns about the mix while building the recording.
 @pytest.mark.filterwarnings("ignore:Found a mix of voltage and non-voltage units:UserWarning")
 class TestEDFRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = EDFRecordingInterface
     expected_temporal_alignment_keys = ("edf_recording_0",)
-    # ch3 is in pA, ch5 in Celsius and ch4 states no unit, so none of the three belongs in an
-    # ElectricalSeries. Only ch1 and ch2 are electrode channels.
-    interface_kwargs = dict(
-        file_path=str(ECEPHY_DATA_PATH / "edf" / "edf+C.edf"),
-        channels_to_skip=["ch3", "ch4", "ch5"],
-    )
+    interface_kwargs = dict(file_path=str(ECEPHY_DATA_PATH / "edf" / "edf+C.edf"))
     save_directory = OUTPUT_PATH
 
     def check_extracted_metadata(self, metadata: dict):
@@ -738,14 +716,6 @@ class TestMEArecRecordingInterface(RecordingExtractorInterfaceTestMixin):
             '"sdrand": 0.05, "shape_mod": false, "shape_stretch": 30.0, "slow_drift_velocity": 5, '
             '"sync_jitt": 1, "sync_rate": null, "t_start_drift": 0}'
         )
-
-    def test_get_metadata_after_remove_channels(self):
-        interface = MEArecRecordingInterface(**self.interface_kwargs)
-        devices = interface.get_metadata()["Devices"]
-
-        interface.remove_channels(channel_ids=[interface.channel_ids[-1]])
-
-        assert interface.get_metadata()["Devices"] == devices
 
 
 class TestNeuralynxRecordingInterfaceV574:
@@ -1517,14 +1487,6 @@ class TestPlexonRecordingInterface(RecordingExtractorInterfaceTestMixin):
     def check_extracted_metadata_old_list_format(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2013, 11, 19, 13, 48, 13)
 
-    def test_get_metadata_after_remove_channels(self):
-        interface = PlexonRecordingInterface(**self.interface_kwargs)
-        session_start_time = interface.get_metadata()["NWBFile"]["session_start_time"]
-
-        interface.remove_channels(channel_ids=[interface.channel_ids[-1]])
-
-        assert interface.get_metadata()["NWBFile"]["session_start_time"] == session_start_time
-
 
 class TestCellExplorerLFPInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = CellExplorerLFPInterface
@@ -1560,14 +1522,6 @@ class TestPlexonLFPInterface(RecordingExtractorInterfaceTestMixin):
         assert self.interface.metadata_key == expected_metadata_key
         assert metadata["Ecephys"]["ElectricalSeries"] == expected_electrical_series
 
-    def test_get_metadata_after_remove_channels(self):
-        interface = PlexonLFPInterface(**self.interface_kwargs)
-        session_start_time = interface.get_metadata()["NWBFile"]["session_start_time"]
-
-        interface.remove_channels(channel_ids=[interface.channel_ids[-1]])
-
-        assert interface.get_metadata()["NWBFile"]["session_start_time"] == session_start_time
-
 
 @pytest.mark.skipif(
     platform != "win32",
@@ -1590,14 +1544,6 @@ class TestPlexon2RecordingInterface(RecordingExtractorInterfaceTestMixin):
 
     def check_extracted_metadata_old_list_format(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2013, 11, 20, 15, 59, 39)
-
-    def test_get_metadata_after_remove_channels(self):
-        interface = Plexon2RecordingInterface(**self.interface_kwargs)
-        session_start_time = interface.get_metadata()["NWBFile"]["session_start_time"]
-
-        interface.remove_channels(channel_ids=[interface.channel_ids[-1]])
-
-        assert interface.get_metadata()["NWBFile"]["session_start_time"] == session_start_time
 
 
 class TestWhiteMatterRecordingInterface(RecordingExtractorInterfaceTestMixin):

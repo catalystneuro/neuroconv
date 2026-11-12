@@ -35,6 +35,7 @@ class TdtRecordingInterface(BaseRecordingExtractorInterface):
         es_key: str | None = None,
         stream_name: str | None = None,
         metadata_key: str | None = None,
+        channels_to_exclude: list | None = None,
     ):
         """
         Initialize reading of a TDT recording.
@@ -53,6 +54,9 @@ class TdtRecordingInterface(BaseRecordingExtractorInterface):
         metadata_key : str, optional
             Key that indexes this interface's entries in the dict-based metadata. Defaults to
             ``"tdt_recording"``.
+        channels_to_exclude : list, optional
+            Channels to leave out, by the ids in ``channel_ids``. Every other channel is converted. A name that
+            is not one of the interface's channels raises.
         """
 
         if stream_name is None:
@@ -76,3 +80,5 @@ class TdtRecordingInterface(BaseRecordingExtractorInterface):
         self.recording_extractor.set_property(key="channel_name", values=channel_names)
 
         self.recording_extractor.set_channel_gains(gain)
+
+        self._exclude_channels(channels_to_exclude)

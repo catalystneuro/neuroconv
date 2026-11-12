@@ -70,6 +70,7 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
         metadata_key: str | None = None,
         ignore_integrity_checks: bool = False,
         saved_files_are_split: bool = False,
+        channels_to_exclude: list | None = None,
     ):
         """
         Load and prepare raw data and corresponding metadata from the Intan format (.rhd or .rhs files).
@@ -92,6 +93,9 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
             option, producing several rotated ``.rhd``/``.rhs`` files in one session folder. All sibling
             files in ``file_path.parent`` are concatenated in filename order (Intan's default
             ``{prefix}_YYMMDD_HHMMSS`` naming makes lexicographic order match chronological order).
+        channels_to_exclude : list, optional
+            Channels to leave out, by the ids in ``channel_ids``. Every other channel is converted. A name that
+            is not one of the interface's channels raises.
         """
 
         self.file_path = Path(file_path)
@@ -116,6 +120,8 @@ class IntanRecordingInterface(BaseRecordingExtractorInterface):
         super().__init__(**init_kwargs)
 
         self._name_channel_groups_after_their_port()
+
+        self._exclude_channels(channels_to_exclude)
 
     def _name_channel_groups_after_their_port(self) -> None:
         """
