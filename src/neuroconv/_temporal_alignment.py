@@ -457,3 +457,21 @@ class _ConverterTemporalAlignment:
         time_bearing_objects = self._collect_time_bearing_objects()
         for time_bearing_object in time_bearing_objects:
             time_bearing_object.shift_times(delta)
+
+    def move_earliest_observation_to(self, starting_time: float) -> None:
+        """Move every descendant time-bearing object by one amount, placing the earliest observation at ``starting_time``.
+
+        The earliest observation across the whole selection sets a single shift, so the gaps between children are
+        kept. Calling it twice with the same value changes nothing. Empty objects are left out of the earliest
+        observation, and children are skipped as in ``shift_times``. All starts are read before anything moves.
+        """
+        starting_time = float(starting_time)
+        time_bearing_objects = self._collect_time_bearing_objects()
+        starts = [
+            time_bearing_object._get_earliest_time()
+            for time_bearing_object in time_bearing_objects
+            if not time_bearing_object._is_empty()
+        ]
+        delta = starting_time - min(starts)
+        for time_bearing_object in time_bearing_objects:
+            time_bearing_object.shift_times(delta)
