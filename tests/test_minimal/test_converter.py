@@ -433,3 +433,31 @@ class TestConverterTemporalAlignment:
         second_expected_times = second_original_times + expected_shift
         np.testing.assert_array_equal(first_times, first_expected_times)
         np.testing.assert_array_equal(second_times, second_expected_times)
+
+    def test_remap_times_reaches_every_descendant(self):
+        first_original_times = np.array([2.0, 2.25, 2.5])
+        stimulus_original_times = np.array([2.0, 2.5])
+        second_original_times = np.array([10.0, 10.25, 10.5])
+        first_interface = MockTimedInterface(
+            times_by_key=dict(times=first_original_times, stimulus=stimulus_original_times)
+        )
+        second_interface = MockTimedInterface(times_by_key=dict(times=second_original_times))
+        inner_converter = ConverterPipe(data_interfaces=dict(Second=second_interface))
+        converter = ConverterPipe(data_interfaces=dict(First=first_interface, Inner=inner_converter))
+
+        # These pulses map a local time t to 100 + 2 * t on the reference clock.
+        local_sync_times = np.array([0.0, 20.0])
+        reference_sync_times = np.array([100.0, 140.0])
+        converter.temporal_alignment.remap_times(
+            local_sync_times=local_sync_times, reference_sync_times=reference_sync_times
+        )
+
+        first_times = first_interface.temporal_alignment["times"].get_times()
+        stimulus_times = first_interface.temporal_alignment["stimulus"].get_times()
+        second_times = second_interface.temporal_alignment["times"].get_times()
+        first_expected_times = np.array([104.0, 104.5, 105.0])
+        stimulus_expected_times = np.array([104.0, 105.0])
+        second_expected_times = np.array([120.0, 120.5, 121.0])
+        np.testing.assert_array_equal(first_times, first_expected_times)
+        np.testing.assert_array_equal(stimulus_times, stimulus_expected_times)
+        np.testing.assert_array_equal(second_times, second_expected_times)
