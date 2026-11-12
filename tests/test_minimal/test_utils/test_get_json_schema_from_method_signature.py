@@ -236,6 +236,14 @@ def test_get_json_schema_from_example_data_interface():
                     '``"alpha_omega_recording"``.'
                 ),
             },
+            "channels_to_exclude": {
+                "anyOf": [{"items": {}, "type": "array"}, {"type": "null"}],
+                "default": None,
+                "description": (
+                    "Channels to leave out, by the ids in ``channel_ids``. Every other channel is converted. A name "
+                    "that\nis not one of the interface's channels raises."
+                ),
+            },
         },
         "required": ["folder_path"],
         "type": "object",

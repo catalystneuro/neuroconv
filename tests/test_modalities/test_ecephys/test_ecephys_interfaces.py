@@ -557,6 +557,14 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
         assert returned_interface is interface  # returns self so the call can be chained
         assert list(interface.channel_ids) == ["channel_a", "channel_c", "channel_e"]
 
+    def test_channels_to_exclude_names_a_channel_the_interface_does_not_have(self):
+        expected_error_msg = (
+            "`channels_to_exclude` names ['channel_z'], which are not channels of this MockRecordingInterface. "
+            "Its channels are ['channel_a', 'channel_b', 'channel_c']."
+        )
+        with pytest.raises(ValueError, match=re.escape(expected_error_msg)):
+            MockRecordingInterface(num_channels=3, durations=[0.100], channels_to_exclude=["channel_b", "channel_z"])
+
     def test_stub(self, setup_interface):
         interface = self.interface
         metadata = interface.get_metadata()
