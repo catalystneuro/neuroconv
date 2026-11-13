@@ -17,6 +17,7 @@ from .danncedatainterface import (
 )
 from ..video.externalvideointerface import ExternalVideoInterface
 from ..video.video_utils import VideoCaptureContext
+from ...._temporal_alignment import _TemporalAlignment
 from ....basedatainterface import BaseDataInterface
 from ....utils import DeepDict, dict_deep_update
 
@@ -43,6 +44,9 @@ class DANNCEConverter(BaseDataInterface):
     The DANNCE pose estimation is timed by the first camera's frametimes, read at the video frame the
     sync table (``sync_path``) gives for each prediction's ``sampleID``. Without frametimes or without
     a sync table it uses ``sampling_rate`` instead (see :class:`~neuroconv.datainterfaces.DANNCEInterface`).
+    Each camera's frametimes are stamped by that camera's own clock, so a ``remap_times`` on the whole
+    converter treats the cameras as one clock and is off by their drift, about 10 ms after 30 minutes on
+    the public sDANNCE data.
 
     The videos and the pose share one ``Device`` per camera, a ``CalibratedCamera`` when calibration is
     available, and each camera's per-camera ``PoseEstimation`` links its video as ``source_video``.
@@ -277,6 +281,18 @@ class DANNCEConverter(BaseDataInterface):
             **{f"Video{camera_name}": interface for camera_name, interface in self._video_interfaces.items()},
         }
 
+        self.temporal_alignment = _TemporalAlignment()
+        self.temporal_alignment._link_time_bearing_object(
+            key=self._dannce_interface.metadata_key,
+            time_bearing_object=self._dannce_interface.temporal_alignment[self._dannce_interface.metadata_key],
+        )
+        for video_interface in self._video_interfaces.values():
+            for file_index, file_key in enumerate(video_interface.temporal_alignment.keys()):
+                self.temporal_alignment._link_time_bearing_object(
+                    key=f"{video_interface.metadata_key}_{file_index}",
+                    time_bearing_object=video_interface.temporal_alignment[file_key],
+                )
+
     def _set_pose_times(self, *, camera_name: str, frametimes: np.ndarray | None, sampling_rate: float | None) -> None:
         """Time the pose estimation from the reference camera's frametimes, read at the frames the sync table
         gives for each prediction.
@@ -311,7 +327,8 @@ class DANNCEConverter(BaseDataInterface):
             warnings.warn(
                 f"No timing information is available for the DANNCE pose estimation: {what_is_missing}, and no "
                 "'sampling_rate' was given. Pass 'sampling_rate', or call "
-                "'converter.data_interface_objects[\"DANNCE\"].temporal_alignment[key].set_times(times)' before writing.",
+                f"'converter.temporal_alignment[{self._dannce_interface.metadata_key!r}].set_times(times)' before "
+                "writing.",
                 _NoTimingInformationWarning,
                 stacklevel=5,  # _set_pose_times, __init__, two validate_call frames, caller
             )

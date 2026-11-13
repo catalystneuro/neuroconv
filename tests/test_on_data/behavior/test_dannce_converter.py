@@ -1,5 +1,6 @@
 import shutil
 import tempfile
+import warnings
 from datetime import datetime, timezone
 from importlib.metadata import version as importlib_version
 from pathlib import Path
@@ -13,6 +14,7 @@ from pynwb import NWBHDF5IO, NWBFile, read_nwb
 from pynwb.file import Subject
 from pynwb.image import ImageSeries
 
+from neuroconv import ConverterPipe
 from neuroconv.converters import DANNCEConverter
 from neuroconv.datainterfaces import DANNCEInterface
 from neuroconv.datainterfaces.behavior.dannce.danncedatainterface import _SamplingRateFallbackWarning
@@ -71,6 +73,15 @@ class TestDANNCEConverterSingleSubject(DataInterfaceTestMixin):
         metadata_key="PoseEstimationDANNCE",
     )
     conversion_options = dict(stub_test=True)
+    expected_temporal_alignment_keys = (
+        "PoseEstimationDANNCE",
+        "video_Camera1_0",
+        "video_Camera2_0",
+        "video_Camera3_0",
+        "video_Camera4_0",
+        "video_Camera5_0",
+        "video_Camera6_0",
+    )
 
     camera_names = [f"Camera{i}" for i in range(1, 7)]
     expected_serial_numbers = {"Camera1": "40054255", "Camera2": "40068500"}
@@ -165,6 +176,21 @@ class TestDANNCEConverterClassicDannceNoFrametimes(DataInterfaceTestMixin):
         sampling_rate=100.0,
         metadata_key="PoseEstimationDANNCE",
     )
+    expected_temporal_alignment_keys = (
+        "PoseEstimationDANNCE",
+        "video_Camera1_0",
+        "video_Camera1_1",
+        "video_Camera2_0",
+        "video_Camera2_1",
+        "video_Camera3_0",
+        "video_Camera3_1",
+        "video_Camera4_0",
+        "video_Camera4_1",
+        "video_Camera5_0",
+        "video_Camera5_1",
+        "video_Camera6_0",
+        "video_Camera6_1",
+    )
 
     camera_names = [f"Camera{i}" for i in range(1, 7)]
 
@@ -212,6 +238,15 @@ class TestDANNCEConverterPredictionsSplitAcrossJobs(DataInterfaceTestMixin):
         sync_path=str(run_path / "sampleCAL_BG_dannce.mat"),
         animal_index=0,
         metadata_key="PoseEstimationDANNCE",
+    )
+    expected_temporal_alignment_keys = (
+        "PoseEstimationDANNCE",
+        "video_Camera1_0",
+        "video_Camera2_0",
+        "video_Camera3_0",
+        "video_Camera4_0",
+        "video_Camera5_0",
+        "video_Camera6_0",
     )
 
     def test_concatenated_into_one_continuous_session(self, setup_interface):
@@ -570,6 +605,15 @@ class TestDANNCEConverterSyncLongerThanVideo(DataInterfaceTestMixin):
         calibration_path=str(run_path / "calibration"),
         metadata_key="PoseEstimationDANNCE",
     )
+    expected_temporal_alignment_keys = (
+        "PoseEstimationDANNCE",
+        "video_Camera1_0",
+        "video_Camera2_0",
+        "video_Camera3_0",
+        "video_Camera4_0",
+        "video_Camera5_0",
+        "video_Camera6_0",
+    )
 
     def test_animal_index_auto_defaulted(self, setup_interface):
         assert self.interface._dannce_interface._animal_index == 0
@@ -663,6 +707,21 @@ class TestDANNCEConverterSdannceChunkedVideosWithFrametimes(DataInterfaceTestMix
         calibration_path=str(run_path / "calibration"),
         metadata_key="PoseEstimationDANNCE",
     )
+    expected_temporal_alignment_keys = (
+        "PoseEstimationDANNCE",
+        "video_Camera1_0",
+        "video_Camera1_1",
+        "video_Camera2_0",
+        "video_Camera2_1",
+        "video_Camera3_0",
+        "video_Camera3_1",
+        "video_Camera4_0",
+        "video_Camera4_1",
+        "video_Camera5_0",
+        "video_Camera5_1",
+        "video_Camera6_0",
+        "video_Camera6_1",
+    )
 
     camera_names = [f"Camera{i}" for i in range(1, 7)]
 
@@ -678,3 +737,17 @@ class TestDANNCEConverterSdannceChunkedVideosWithFrametimes(DataInterfaceTestMix
         assert isinstance(pe, MultiCameraPoseEstimation)
         for series in pe.pose_estimation_series.values():
             assert series.data.shape[0] == 50
+
+    def test_converter_pipe_shift_times_reaches_the_converter(self, setup_interface):
+        unshifted_times = {
+            key: self.interface.temporal_alignment[key].get_times() for key in self.interface.temporal_alignment.keys()
+        }
+        converter_pipe = ConverterPipe(data_interfaces=[self.interface])
+
+        time_shift = 5.0
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            converter_pipe.temporal_alignment.shift_times(time_shift)
+
+        for key, times in unshifted_times.items():
+            np.testing.assert_allclose(self.interface.temporal_alignment[key].get_times(), times + time_shift)
