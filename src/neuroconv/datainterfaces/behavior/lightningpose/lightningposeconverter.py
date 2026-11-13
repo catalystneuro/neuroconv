@@ -3,6 +3,7 @@ from copy import deepcopy
 from pydantic import FilePath, validate_call
 from pynwb import NWBFile
 
+from neuroconv._temporal_alignment import _TemporalAlignment
 from neuroconv.basedatainterface import BaseDataInterface
 from neuroconv.datainterfaces import LightningPoseDataInterface
 from neuroconv.datainterfaces.behavior.video.externalvideointerface import (
@@ -75,6 +76,22 @@ class LightningPoseConverter(BaseDataInterface):
                 file_paths=[labeled_video_file_path],
                 metadata_key="labeled_video",
                 video_name=self.labeled_video_name,
+            )
+
+        self.temporal_alignment = _TemporalAlignment()
+        pose_estimation_interface = self.data_interface_objects["PoseEstimation"]
+        self.temporal_alignment._link_time_bearing_object(
+            key=pose_estimation_interface.metadata_key,
+            time_bearing_object=pose_estimation_interface.temporal_alignment[pose_estimation_interface.metadata_key],
+        )
+        for video_interface_name in ("OriginalVideo", "LabeledVideo"):
+            if video_interface_name not in self.data_interface_objects:
+                continue
+            video_interface = self.data_interface_objects[video_interface_name]
+            (file_key,) = video_interface.temporal_alignment.keys()
+            self.temporal_alignment._link_time_bearing_object(
+                key=video_interface.metadata_key,
+                time_bearing_object=video_interface.temporal_alignment[file_key],
             )
 
     def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:

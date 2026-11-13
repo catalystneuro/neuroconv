@@ -1,7 +1,9 @@
 import os
+import warnings
 from datetime import datetime
 from pathlib import Path
 
+from numpy.testing import assert_allclose
 from pynwb import read_nwb
 from pynwb.image import ImageSeries
 
@@ -25,6 +27,7 @@ class TestLightningPoseConverter(DataInterfaceTestMixin):
         image_series_original_video_name="original_video_name",
         image_series_labeled_video_name="labeled_video_name",
     )
+    expected_temporal_alignment_keys = ("lightning_pose", "original_video", "labeled_video")
 
     file_path = interface_kwargs["file_path"]
     original_video_file_path = interface_kwargs["original_video_file_path"]
@@ -224,3 +227,16 @@ class TestLightningPoseConverter(DataInterfaceTestMixin):
         converter_pipe.run_conversion(nwbfile_path=nwbfile_path, conversion_options=conversion_options)
 
         self.assertNWBFileStructure(nwbfile_path=nwbfile_path, **self.stub_conversion_options)
+
+    def test_converter_pipe_shift_times_reaches_the_converter(self, setup_interface):
+        unshifted_times = {
+            key: self.interface.temporal_alignment[key].get_times() for key in self.interface.temporal_alignment.keys()
+        }
+        converter_pipe = ConverterPipe(data_interfaces=[self.interface])
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            converter_pipe.temporal_alignment.shift_times(5.0)
+
+        for key, times in unshifted_times.items():
+            assert_allclose(self.interface.temporal_alignment[key].get_times(), times + 5.0)
