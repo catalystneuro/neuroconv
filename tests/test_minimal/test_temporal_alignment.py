@@ -195,6 +195,17 @@ class TestInterfaceAlignment:
         assert_allclose(alignment["a"].get_times(), [10.0, 10.2, 10.4, 10.6, 10.8])
         assert_allclose(alignment["b"].get_times(), [12.0, 12.0, 12.0])
 
+    def test_link_time_bearing_object_shares_the_object_with_its_owner(self, alignment):
+        """Check that an object linked under a second key is moved by both alignments."""
+        composite_alignment = _TemporalAlignment()
+        composite_alignment._link_time_bearing_object(key="composite_a", time_bearing_object=alignment["a"])
+
+        composite_alignment.shift_times(1.0)
+        assert_allclose(alignment["a"].get_times(), [1.0, 1.1, 1.2, 1.3, 1.4])
+
+        alignment["a"].shift_times(0.5)
+        assert_allclose(composite_alignment["composite_a"].get_times(), [1.5, 1.6, 1.7, 1.8, 1.9])
+
 
 class TestAlignmentEdgeCases:
     def test_empty_alignment_rejects_operations(self):
