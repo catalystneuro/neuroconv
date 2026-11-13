@@ -65,6 +65,15 @@ class TestMultiStreamWithAnalog:
         electrical_series_metadata = metadata["Ecephys"]["ElectricalSeries"]
         assert {key: entry["name"] for key, entry in electrical_series_metadata.items()} == expected_names_by_key
 
+    def test_metadata_key_per_analog_stream(self):
+        converter = OpenEphysBinaryConverter(folder_path=self.folder_path)
+
+        metadata = converter.get_metadata()
+        time_series_name_by_metadata_key = {key: entry["name"] for key, entry in metadata["TimeSeries"].items()}
+
+        expected_time_series_name_by_metadata_key = {"record_node_104_ni_daqmx_103_pxie_6341": "TimeSeriesPXIe6341"}
+        assert time_series_name_by_metadata_key == expected_time_series_name_by_metadata_key
+
     def test_dict_metadata_conversion(self):
         # Writing every stream from one converter is what the naming above exists for: without it the streams
         # collide on a single "ElectricalSeries" name. This goes through create_nwbfile rather than
