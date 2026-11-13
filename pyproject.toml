@@ -67,8 +67,7 @@ dependencies = [
 neuroconv = "neuroconv.tools.yaml_conversion_specification._yaml_conversion_specification:run_conversion_from_yaml_cli"
 
 [project.optional-dependencies]
-# dandi 0.82.0 is the first release that allows zarr above 3.1.5
-dandi = ["dandi>=0.82.0; python_version < '3.14'"]
+dandi = ["dandi>=0.82.0"]  # 0.82.0 is the first release that allows zarr above 3.1.5
 compressors = ["hdf5plugin"]
 aws = ["boto3"]
 
