@@ -1779,6 +1779,22 @@ class TimeSeriesInterfaceTestMixin(DataInterfaceTestMixin):
     # value is never derived from the interface under test, which could not fail.
     expected_time_series_names: tuple[str, ...]
 
+    def test_channels_to_include(self, setup_interface):
+        channel_names = self.interface.get_channel_names()
+        if len(channel_names) < 2:
+            pytest.skip("An interface holding one channel has nothing to select")
+
+        # Listed out of the source's order, since the written columns follow the list
+        selected_channel_names = [channel_names[-1], channel_names[0]]
+        interface_kwargs = {**self.interface_kwargs, "channels_to_include": selected_channel_names}
+        interface = self.data_interface_cls(**interface_kwargs)
+
+        assert interface.get_channel_names() == selected_channel_names
+        metadata = _get_metadata_for_writing(interface)
+        if "session_start_time" not in metadata["NWBFile"]:
+            metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
+        interface.create_nwbfile(metadata=metadata, stub_test=True, **self.conversion_options)
+
     def check_read_nwb(self, nwbfile_path: str):
         """The written series carry the expected names, in the interface's container, with data and timing."""
         nwbfile = read_nwb(nwbfile_path)

@@ -47,6 +47,24 @@ class BaseRecordingAsTimeSeriesInterface(BaseDataInterface):
                 get_number_of_samples=partial(self._get_segment_number_of_samples, segment_index=segment_index),
             )
 
+    def _include_channels(self, channels_to_include: list[str] | None) -> None:
+        """Keep only the channels named by the ``channels_to_include`` constructor argument, in the order listed.
+
+        Called last in each interface's ``__init__``, after the interface's own routing, so the names are the
+        channel ids the interface ends up holding.
+        """
+        if channels_to_include is None:
+            return
+
+        channel_ids = self.recording_extractor.get_channel_ids().tolist()
+        missing_channels = [channel for channel in channels_to_include if channel not in channel_ids]
+        if missing_channels:
+            raise ValueError(
+                f"`channels_to_include` names {missing_channels}, which are not channels of this "
+                f"{type(self).__name__}. Its channels are {channel_ids}."
+            )
+        self.recording_extractor = self.recording_extractor.select_channels(channel_ids=channels_to_include)
+
     @property
     def temporal_alignment(self) -> _TemporalAlignment:
         return self._alignment

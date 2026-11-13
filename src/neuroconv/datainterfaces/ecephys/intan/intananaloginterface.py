@@ -42,6 +42,7 @@ class IntanAnalogInterface(BaseRecordingAsTimeSeriesInterface):
         verbose: bool = False,
         metadata_key: str = "intan_analog",
         saved_files_are_split: bool = False,
+        channels_to_include: list[str] | None = None,
     ):
         """
         Load and prepare analog data from Intan format (.rhd or .rhs files).
@@ -68,6 +69,10 @@ class IntanAnalogInterface(BaseRecordingAsTimeSeriesInterface):
             option, producing several rotated ``.rhd``/``.rhs`` files in one session folder. All sibling
             files in ``file_path.parent`` are concatenated in filename order (Intan's default
             ``{prefix}_YYMMDD_HHMMSS`` naming makes lexicographic order match chronological order).
+        channels_to_include : list of str, optional
+            Channels to convert, by the names in ``get_channel_names()`` (the built-in names, such as
+            ``"ANALOG-IN-1"``), written in the order listed. Every channel is converted when omitted. A name that is not
+            one of the interface's channels raises.
         """
 
         self._file_path = Path(file_path)
@@ -132,7 +137,10 @@ class IntanAnalogInterface(BaseRecordingAsTimeSeriesInterface):
             file_path=self._file_path,
             stream_name=self._stream_name,
             verbose=verbose,
+            channels_to_include=channels_to_include,
         )
+
+        self._include_channels(channels_to_include)
 
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
