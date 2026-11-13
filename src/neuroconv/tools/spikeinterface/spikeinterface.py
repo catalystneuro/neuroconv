@@ -1521,6 +1521,14 @@ def _build_channel_id_to_electrodes_table_map(
     return dict(channel_to_electrode_row)
 
 
+def _annotation_values_are_equal(written_value: Any, supplied_value: Any) -> bool:
+    """Compare a value already in a table cell with a supplied one, treating two missing (NaN) values as equal."""
+    written_value = np.asarray(written_value)
+    supplied_value = np.asarray(supplied_value)
+    both_numeric = written_value.dtype.kind in "iufc" and supplied_value.dtype.kind in "iufc"
+    return bool(np.array_equal(written_value, supplied_value, equal_nan=both_numeric))
+
+
 def _get_null_value_for_property(property: str, sample_data: Any, null_values_for_properties: dict[str, Any]) -> Any:
     """
     Retrieve the null value for a given property based on its data type or a provided mapping.
@@ -3014,11 +3022,14 @@ def _add_units_table_to_nwbfile(
     null values.
 
     Deduplication is handled by ``(sorting_name, unit_name)``: a unit whose pair already
-    exists in the table reuses that row and keeps its existing values. When
+    exists in the table reuses that row and keeps its existing values. Supplying a value
+    that differs from one already written in an existing column raises. When
     ``unit_electrode_indices`` is given and the table has an ``electrodes`` column, a
     unit whose electrode indices differ from those of every matching row is added as a
     new row. A pair matching several rows raises when ``unit_electrode_indices`` is not
-    given. A sorting with no name is unnamed (``""``), and the ``sorting_name`` column is
+    given. A unit of an unnamed sorting that matches a row raises, since without a name
+    the same sorting written again and a different sorting with the same unit names
+    can't be told apart. A sorting with no name is unnamed (``""``), and the ``sorting_name`` column is
     written only once some unit in the table has a name: a table without it reads as
     unnamed, and naming a sorting later fills the earlier rows with ``""``. See
     ``_add_electrodes_to_nwbfile`` for how the electrode table itself
@@ -3286,6 +3297,13 @@ def _add_units_table_to_nwbfile(
     rows_to_add = []
     indices_for_new_data = list(range(num_units))
     has_electrodes_column = "electrodes" in units_table_previous_columns and unit_electrode_indices is not None
+    # Annotation columns this write supplies that the table already has. Identity and spike data are never compared.
+    columns_not_compared = {"sorting_name", "unit_name", "spike_times", "electrodes", "waveform_mean", "waveform_sd"}
+    annotation_columns_to_compare = [
+        property
+        for property in units_table_previous_columns
+        if property not in columns_not_compared and "data" in data_to_add.get(property, {})
+    ]
     if units_table_previous_columns:
         for index, identity in enumerate(unit_identities):
             matching_rows = unit_identity_to_rows.get(identity, [])
@@ -3303,7 +3321,46 @@ def _add_units_table_to_nwbfile(
                 )
 
             if matching_rows:
-                indices_for_new_data[index] = matching_rows[0]
+                unit_name = str(unit_name_array[index])
+                if sorting_name == "":
+                    raise ValueError(
+                        f"Units of an unnamed sorting match unnamed units already in units table "
+                        f"'{units_table.name}', starting with unit_name={unit_name!r}. Without a sorting name the "
+                        "writer can't tell the same sorting written again from a different sorting with the same "
+                        "unit names. If it is a different sorting, name it with "
+                        "metadata['Ecephys']['Sortings'][metadata_key]['sorting_name'] or the 'sorting_name' "
+                        "annotation of the extractor. If it is the same sorting, give it the same name on both writes."
+                    )
+                row = matching_rows[0]
+                for property in annotation_columns_to_compare:
+                    written_value = units_table[property].get(row, index=True)
+                    supplied_value = data_to_add[property]["data"][index]
+                    if not _annotation_values_are_equal(written_value, supplied_value):
+                        written_value = np.asarray(written_value).tolist()
+                        supplied_value = np.asarray(supplied_value).tolist()
+                        written_value_is_null = written_value in ("", []) or (
+                            isinstance(written_value, float) and np.isnan(written_value)
+                        )
+                        placeholder_note = (
+                            f" {property}={written_value!r} may be the placeholder the table filled in when another "
+                            f"sorting added the {property!r} column."
+                            if written_value_is_null
+                            else ""
+                        )
+                        sorting_description = f"the sorting with sorting_name={sorting_name!r}" + (
+                            f" (metadata key {metadata_key!r})" if metadata_key is not None else ""
+                        )
+                        raise ValueError(
+                            f"Unit with sorting_name={sorting_name!r} and unit_name={unit_name!r} is already in "
+                            f"units table '{units_table.name}' with {property}={written_value!r}, and this write "
+                            f"supplies {property}={supplied_value!r}. When a unit is already in the table, a write "
+                            "adds no new row for it and leaves the values in its existing row unchanged."
+                            f"{placeholder_note} To resolve this, either:\n"
+                            f"- Keep {property}={written_value!r} by passing skip_properties=[{property!r}].\n"
+                            f"- Write {property}={supplied_value!r} by rebuilding the file, giving "
+                            f"{sorting_description} its {property!r} values the first time it is written to the table."
+                        )
+                indices_for_new_data[index] = row
             else:
                 indices_for_new_data[index] = len(units_table) + len(rows_to_add)
                 rows_to_add.append(index)
