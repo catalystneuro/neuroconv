@@ -12,10 +12,6 @@ Install NeuroConv with the additional dependencies necessary for reading Spike2 
     (Python 3.9 to 3.14) and, on Linux and macOS, for Python 3.14 and above. On any other combination the extra
     installs everything except ``sonpy`` and the interface throws an error naming the platform and the Python version.
 
-.. note::
-    Reading is broken right now against ``sonpy>=1.9.12``, which removed the ``sonpy.lib`` namespace that Neo uses.
-    See https://github.com/NeuralEnsemble/python-neo/issues/1890.
-
 Convert Spike2 data to NWB using
 :py:class:`~neuroconv.datainterfaces.ecephys.spike2.spike2datainterface.Spike2RecordingInterface`.
 
