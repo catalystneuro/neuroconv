@@ -297,6 +297,13 @@ class _TemporalAlignment:
         self._name_to_time_bearing_object[key] = time_bearing_object
         return time_bearing_object
 
+    def _link_time_bearing_object(self, *, key: str, time_bearing_object: _TimeBearingObject) -> None:
+        """Name a time-bearing object that another alignment already holds, so both share one state.
+
+        For a composite interface that exposes its children's objects under keys of its own.
+        """
+        self._name_to_time_bearing_object[key] = time_bearing_object
+
     def keys(self) -> tuple[str, ...]:
         """The time-bearing objects this interface can name, empty when it names none."""
         return tuple(self._name_to_time_bearing_object)

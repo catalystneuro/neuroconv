@@ -128,6 +128,23 @@ class TestSortingInterface(SortingExtractorInterfaceTestMixin):
         assert len(nwbfile.units) == 5
         assert "ecephys" not in nwbfile.processing
 
+    def test_named_sorting_appended_on_disk_fills_earlier_unnamed_rows(self, tmp_path):
+        """A named sorting appended to a file whose units table has no `sorting_name` column adds the column,
+        and the units already on disk read as unnamed."""
+        nwbfile_path = tmp_path / "test.nwb"
+        unnamed_interface = MockSortingInterface(num_units=3, metadata_key="probe_0_sorting")
+        unnamed_interface.run_conversion(nwbfile_path=nwbfile_path)
+
+        metadata_key = "probe_1_sorting"
+        named_interface = MockSortingInterface(num_units=2, metadata_key=metadata_key)
+        metadata = named_interface.get_metadata()
+        metadata["Ecephys"]["Sortings"] = {metadata_key: {"sorting_name": "probe_1_kilosort"}}
+        named_interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, append_on_disk_nwbfile=True)
+
+        with NWBHDF5IO(nwbfile_path, mode="r") as io:
+            units_table = io.read().units
+            assert list(units_table["sorting_name"][:]) == ["", "", "", "probe_1_kilosort", "probe_1_kilosort"]
+
     def test_two_sortings_write_into_one_processed_units_table(self):
         """Two sortings pointing at one table write their units into it, described once in its entry."""
         probe_0_metadata_key = "probe_0_sorting"
