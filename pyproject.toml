@@ -196,9 +196,8 @@ events = [
 
 ## Ecephys
 ecephys_minimal = [  # Keeps the minimal versions of ecephys dependencies in the repo
-    # For testing Zarr v3
-    "probeinterface @ git+https://github.com/SpikeInterface/probeinterface.git",
-    "spikeinterface @ git+https://github.com/SpikeInterface/spikeinterface.git",
+    "probeinterface>=0.5.0",
+    "spikeinterface>=0.106.0",
     "neo>=0.14.6",
     "natsort>=7.1.1",
 ]
