@@ -73,6 +73,10 @@ Neuralynx Recording & Sorting
 -----------------------------
 .. automodule:: neuroconv.datainterfaces.ecephys.neuralynx.neuralynxdatainterface
 
+NeuroExplorer Sorting
+---------------------
+.. automodule:: neuroconv.datainterfaces.ecephys.neuroexplorer.neuroexplorerdatainterface
+
 NeuroScope Recording & Sorting
 ------------------------------
 .. automodule:: neuroconv.datainterfaces.ecephys.neuroscope.neuroscopedatainterface
