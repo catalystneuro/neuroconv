@@ -92,6 +92,7 @@ linkcheck_ignore = [
     "https://www.winehq.org/",  # Wine prevents bot access
     r"https://ffmpeg\.org/.*",  # Their host drops connections on 443 under load, so the check times out
     "https://nwb-users.slack.com",  # Slack answers a bot with 403
+    r"https://ror\.org/.*",  # ROR answers the link checker with 429 Too Many Requests
 ]
 
 # --------------------------------------------------

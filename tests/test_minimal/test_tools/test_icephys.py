@@ -6,15 +6,21 @@ icephys interface writes. No acquisition file is read. Format behaviour lives in
 on real data.
 """
 
+import re
+
+import numpy as np
 import pytest
-from pynwb import NWBHDF5IO, NWBFile
+from pynwb import NWBHDF5IO, NWBFile, read_nwb
 from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv import ConverterPipe
 from neuroconv.tools.icephys import (
+    _add_patch_clamp_series_to_nwbfile,
     _add_sweep_time_intervals_to_nwbfile,
     _build_icephys_hierarchical_tables,
+    _IcephysSeriesData,
 )
+from neuroconv.tools.testing.data_interface_mixins import DataInterfaceTestMixin
 from neuroconv.tools.testing.mock_interfaces import MockIcephysInterface
 
 SAMPLING_FREQUENCY = 10_000.0
@@ -32,20 +38,37 @@ def create_finalized_nwbfile(interfaces: list, metadata: dict | None = None) -> 
 
 
 def create_runs(repetitions: list | None = None, conditions: list | None = None, num_runs: int = 4) -> list:
-    """One mock interface per run, each its own sequence and electrode, optionally labelled for grouping."""
+    """One mock interface per run, each its own protocol run and electrode, optionally labelled for grouping."""
     repetitions = repetitions or [None] * num_runs
     conditions = conditions or [None] * num_runs
     return [
         MockIcephysInterface(
             num_sweeps=2,
             starting_time=float(index * 10),
-            sequence=f"run_{index}",
+            protocol_run=f"run_{index}",
             repetition=repetition,
             condition=condition,
             metadata_key=f"run_{index}",
         )
         for index, (repetition, condition) in enumerate(zip(repetitions, conditions))
     ]
+
+
+class TestMockIcephysInterfaceWithALongerStimulus(DataInterfaceTestMixin):
+    """Two sweeps 10 s apart that stop recording after 10 samples, each against a command of 12 samples. The
+    stimulus has times of its own, so the shared alignment tests replace and remap them as well."""
+
+    data_interface_cls = MockIcephysInterface
+    interface_kwargs = dict(
+        num_sweeps=2, sweep_duration=1.0, sampling_frequency=10.0, inter_sweep_interval=9.0, stimulus_duration=1.2
+    )
+    expected_temporal_alignment_keys = ("mock", "mock_stimulus")
+
+    def check_read_nwb(self, nwbfile_path: str):
+        nwbfile = read_nwb(nwbfile_path)
+        stimulus_timestamps = nwbfile.stimulus["CurrentClampStimulusSeriesMock"].get_timestamps()
+        np.testing.assert_allclose(stimulus_timestamps[[0, 11, 12, 23]], [0.0, 1.1, 10.0, 11.1])
+        nwbfile.read_io.close()
 
 
 class TestSweepTimeIntervals:
@@ -104,8 +127,8 @@ class TestSweepTimeIntervals:
 
     def test_rows_are_sorted_and_keep_their_run(self):
         """Runs are written in interface order, so the intervals have to be sorted by time and labelled by run."""
-        later_run = MockIcephysInterface(num_sweeps=2, starting_time=10.0, sequence="run_b", metadata_key="b")
-        earlier_run = MockIcephysInterface(num_sweeps=2, starting_time=0.0, sequence="run_a", metadata_key="a")
+        later_run = MockIcephysInterface(num_sweeps=2, starting_time=10.0, protocol_run="run_b", metadata_key="b")
+        earlier_run = MockIcephysInterface(num_sweeps=2, starting_time=0.0, protocol_run="run_a", metadata_key="a")
         nwbfile = mock_NWBFile()
         # The later run is added first, so a table built in row order would come out unsorted.
         later_run.add_to_nwbfile(nwbfile=nwbfile)
@@ -115,7 +138,7 @@ class TestSweepTimeIntervals:
 
         sweeps = nwbfile.intervals["sweeps"]
         assert list(sweeps.start_time[:]) == pytest.approx([0.0, 1.0, 10.0, 11.0])
-        assert list(sweeps.sequence[:]) == ["run_a", "run_a", "run_b", "run_b"]
+        assert list(sweeps.protocol_run[:]) == ["run_a", "run_a", "run_b", "run_b"]
 
     def test_round_trip(self, tmp_path):
         interface = MockIcephysInterface(num_sweeps=3)
@@ -133,7 +156,7 @@ class TestSweepTimeIntervals:
             expected_starts = [0.0, 1.0, 2.0]
             assert list(sweeps.start_time[:]) == pytest.approx(expected_starts)
             assert list(sweeps.stop_time[:]) == pytest.approx([start + LAST_SAMPLE_OFFSET for start in expected_starts])
-            assert list(sweeps.sequence[:]) == ["run", "run", "run"]
+            assert list(sweeps.protocol_run[:]) == ["run", "run", "run"]
 
     def test_no_table_without_recordings(self):
         """A file with no intracellular recordings gets no table rather than an empty one."""
@@ -152,8 +175,8 @@ class TestSimultaneityIsDecidedOnTime:
 
     def test_electrodes_recorded_together_are_one_entry(self):
         """A dual patch: two electrodes, two series, both sweeps at index 0 and at the same instant."""
-        first = MockIcephysInterface(num_sweeps=1, starting_time=0.0, sequence="cell", metadata_key="a")
-        second = MockIcephysInterface(num_sweeps=1, starting_time=0.0, sequence="cell", metadata_key="b")
+        first = MockIcephysInterface(num_sweeps=1, starting_time=0.0, protocol_run="cell", metadata_key="a")
+        second = MockIcephysInterface(num_sweeps=1, starting_time=0.0, protocol_run="cell", metadata_key="b")
 
         nwbfile = create_finalized_nwbfile([first, second])
 
@@ -166,13 +189,13 @@ class TestSimultaneityIsDecidedOnTime:
         """Successive runs written as a series each, which is what an interface that does not concatenate its
         sweeps produces: both rows read index 0 of their own series, yet they are 47 seconds apart and did not
         happen at once."""
-        first = MockIcephysInterface(num_sweeps=1, starting_time=0.0, sequence="cell", metadata_key="a")
-        second = MockIcephysInterface(num_sweeps=1, starting_time=47.3, sequence="cell", metadata_key="b")
+        first = MockIcephysInterface(num_sweeps=1, starting_time=0.0, protocol_run="cell", metadata_key="a")
+        second = MockIcephysInterface(num_sweeps=1, starting_time=47.3, protocol_run="cell", metadata_key="b")
 
         nwbfile = create_finalized_nwbfile([first, second])
 
         assert len(nwbfile.icephys_simultaneous_recordings) == 2
-        # One sequence, so the two entries still belong to a single sequential recording.
+        # One protocol run, so the two entries still belong to a single sequential recording.
         assert len(nwbfile.icephys_sequential_recordings) == 1
         # The sweeps table has always resolved through the series; the hierarchy now agrees with it rather
         # than describing the same two rows as one moment.
@@ -282,6 +305,14 @@ class TestGroupingLevels:
         assert all(len(conditions["repetitions"][index]) == 1 for index in range(2))
 
 
+def test_sequential_recordings_carry_their_protocol_run_label():
+    """Each sequential recording names its protocol run, so the label on the recordings and sweeps tables can be
+    looked up on the row it refers to."""
+    nwbfile = create_finalized_nwbfile(create_runs())
+
+    assert list(nwbfile.icephys_sequential_recordings["protocol_run"][:]) == ["run_0", "run_1", "run_2", "run_3"]
+
+
 class TestElectrodeSharingThroughMetadata:
     """Several runs of one cell each default to their own electrode, but the user knows they are the same physical
     pipette. Editing the metadata links collapses them onto one electrode without merging the runs. Migrated off
@@ -308,6 +339,100 @@ class TestElectrodeSharingThroughMetadata:
 
         # The link edit took effect: the per-run electrodes collapsed onto the one shared electrode.
         assert len(nwbfile.icephys_electrodes) == 1
-        # The invariant this test owns: merging electrodes does not merge runs. Run grouping follows the `sequence`
+        # The invariant this test owns: merging electrodes does not merge runs. Run grouping follows the `protocol_run`
         # column, not electrode identity, so each run is still its own sequential recording.
         assert len(nwbfile.icephys_sequential_recordings) == len(interfaces)
+
+
+# TODO: move these into the generic icephys interface tests once they exist, so they run through
+# BaseIcephysInterface.add_to_nwbfile() instead of calling the writer directly.
+class TestMetadataEntryFields:
+    """Any NWB field set in a series entry reaches the file, and a key in an electrode entry that is not one raises
+    instead of being dropped."""
+
+    def test_series_entry_sets_clamp_settings(self):
+        nwbfile = mock_NWBFile()
+        device = nwbfile.create_device(name="Amplifier")
+        electrode = nwbfile.create_icephys_electrode(name="IntracellularElectrode", description="", device=device)
+        series_entry = {"name": "CurrentClampSeries", "electrode_metadata_key": "cell1", "bias_current": -5e-11}
+        metadata = {"Icephys": {"PatchClampSeries": {"cell1": series_entry}}}
+        series_data = _IcephysSeriesData(data=np.zeros(10), timestamps=np.arange(10) / 10.0, conversion=1.0)
+
+        series = _add_patch_clamp_series_to_nwbfile(
+            nwbfile=nwbfile,
+            metadata=metadata,
+            series_metadata_key="cell1",
+            series_data=series_data,
+            electrode=electrode,
+            mode="current_clamp",
+            is_stimulus=False,
+        )
+
+        assert series.bias_current == -5e-11
+
+    def test_electrode_entry_rejects_a_key_that_is_not_a_field(self):
+        interface = MockIcephysInterface(num_sweeps=2, metadata_key="cell1")
+        metadata = interface.get_metadata()
+        metadata["Icephys"]["IntracellularElectrodes"]["cell1"]["targeted_layer"] = "L5"
+
+        with pytest.raises(TypeError, match="targeted_layer"):
+            interface.create_nwbfile(metadata=metadata)
+
+
+class TestStimulusLongerThanResponse:
+    """A sweep can stop recording before its command ends, so each row addresses its own stretch of the stimulus."""
+
+    def test_rows_address_the_whole_stimulus_of_each_sweep(self):
+        # Two sweeps 10 s apart that stop recording after 10 samples, each against a command of 12 samples.
+        interface = MockIcephysInterface(
+            num_sweeps=2, sweep_duration=1.0, sampling_frequency=10.0, inter_sweep_interval=9.0, stimulus_duration=1.2
+        )
+        interface.temporal_alignment.shift_times(5.0)
+        nwbfile = interface.create_nwbfile()
+
+        responses = nwbfile.intracellular_recordings["responses"]["response"]
+        stimuli = nwbfile.intracellular_recordings["stimuli"]["stimulus"]
+        assert [(responses[row].idx_start, responses[row].count) for row in range(2)] == [(0, 10), (10, 10)]
+        assert [(stimuli[row].idx_start, stimuli[row].count) for row in range(2)] == [(0, 12), (12, 12)]
+        # Each stimulus sweep moves with its response sweep.
+        stimulus_timestamps = nwbfile.stimulus["CurrentClampStimulusSeriesMock"].get_timestamps()
+        np.testing.assert_allclose(stimulus_timestamps[[0, 11, 12, 23]], [5.0, 6.1, 15.0, 16.1])
+
+
+class TestMissingMetadataEntries:
+    """A response, stimulus or electrode entry the write looks up and cannot find raises, naming its key and registry."""
+
+    def test_missing_response_entry_raises(self):
+        interface = MockIcephysInterface(num_sweeps=1, metadata_key="cell1")
+        metadata = interface.get_metadata()
+        del metadata["Icephys"]["PatchClampSeries"]["cell1"]
+
+        expected_message = (
+            "metadata_key 'cell1' was not found in metadata['Icephys']['PatchClampSeries']. Available keys are:\n[]"
+        )
+        with pytest.raises(ValueError, match=re.escape(expected_message)):
+            interface.create_nwbfile(metadata=metadata)
+
+    def test_missing_stimulus_entry_raises(self):
+        interface = MockIcephysInterface(num_sweeps=1, metadata_key="cell1", stimulus_duration=1.0)
+        metadata = interface.get_metadata()
+        del metadata["Icephys"]["PatchClampStimulusSeries"]["cell1"]
+
+        expected_message = (
+            "metadata_key 'cell1' was not found in metadata['Icephys']['PatchClampStimulusSeries']. "
+            "Available keys are:\n[]"
+        )
+        with pytest.raises(ValueError, match=re.escape(expected_message)):
+            interface.create_nwbfile(metadata=metadata)
+
+    def test_missing_electrode_entry_raises(self):
+        interface = MockIcephysInterface(num_sweeps=1, metadata_key="cell1")
+        metadata = interface.get_metadata()
+        del metadata["Icephys"]["IntracellularElectrodes"]["cell1"]
+
+        expected_message = (
+            "metadata_key 'cell1' was not found in metadata['Icephys']['IntracellularElectrodes']. "
+            "Available keys are:\n[]"
+        )
+        with pytest.raises(ValueError, match=re.escape(expected_message)):
+            interface.create_nwbfile(metadata=metadata)

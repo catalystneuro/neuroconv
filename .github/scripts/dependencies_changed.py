@@ -18,9 +18,8 @@ prevent.
 
 import subprocess
 import sys
-from pathlib import Path
-
 import tomllib
+from pathlib import Path
 
 
 def installation_tables(text: str) -> tuple:

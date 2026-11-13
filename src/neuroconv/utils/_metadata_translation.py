@@ -19,6 +19,8 @@ from .dict import DeepDict
 _ECEPHYS_LIST_BLOCKS = ("Electrodes", "UnitProperties")
 # Keys the translator consumes or produces, so they are never mistaken for an ``es_key`` entry.
 _ECEPHYS_STRUCTURAL_KEYS = ("Device", "ElectrodeGroup", "ElectrodeGroups", "ElectricalSeries")
+# Blocks that exist only in the dict format, carried across untouched when the rest of the block is old.
+_ECEPHYS_DICT_FORMAT_ONLY_BLOCKS = ("UnitsTables", "Sortings")
 # Ophys blocks whose names exist only in the old format, so their presence settles the shape.
 _OLD_OPHYS_ONLY_BLOCKS = ("TwoPhotonSeries", "OnePhotonSeries", "ImageSegmentation", "Fluorescence", "DfOverF")
 # The dict format's own names per trace role and per summary image, which are collision-free across roles
@@ -102,7 +104,7 @@ def _ecephys_block_is_old(ecephys_metadata: dict) -> bool:
         return True
 
     for key, value in ecephys_metadata.items():
-        if key in _ECEPHYS_LIST_BLOCKS:
+        if key in _ECEPHYS_LIST_BLOCKS or key in _ECEPHYS_DICT_FORMAT_ONLY_BLOCKS:
             continue
         if key == "ElectricalSeries" or key not in _ECEPHYS_STRUCTURAL_KEYS:
             # ``ElectricalSeries`` exists in both formats; any other key is an ``es_key``-addressed entry.
@@ -145,7 +147,7 @@ def _translate_ecephys_block(
             electrical_series.update({key: dict(entry) for key, entry in existing.items()})
 
     for key, value in ecephys_metadata.items():
-        if key in _ECEPHYS_STRUCTURAL_KEYS or key in _ECEPHYS_LIST_BLOCKS:
+        if key in _ECEPHYS_STRUCTURAL_KEYS or key in _ECEPHYS_LIST_BLOCKS or key in _ECEPHYS_DICT_FORMAT_ONLY_BLOCKS:
             continue
         if _is_old_style_entry(value):
             # An ``es_key``-addressed entry. Its label is ``metadata_key`` when this call knows which
@@ -160,12 +162,18 @@ def _translate_ecephys_block(
         if key in ecephys_metadata:
             translated[key] = ecephys_metadata[key]
 
+    for key in _ECEPHYS_DICT_FORMAT_ONLY_BLOCKS:
+        if key in ecephys_metadata:
+            translated[key] = _entries_already_in_the_dict_format(ecephys_metadata[key])
+
     return translated
 
 
 def _ophys_block_is_old(ophys_metadata: dict) -> bool:
     """Whether an ``Ophys`` block is written in the old list-based format."""
-    if isinstance(ophys_metadata.get("Device"), list) or isinstance(ophys_metadata.get("ImagingPlane"), list):
+    if isinstance(ophys_metadata.get("Device"), (list, tuple)) or isinstance(
+        ophys_metadata.get("ImagingPlane"), (list, tuple)
+    ):
         return True
 
     # These blocks exist only in the old format: their dict-format counterparts are named differently.
@@ -311,7 +319,7 @@ def _warn_that_the_old_format_is_deprecated() -> None:
     """
     warnings.warn(
         "The metadata passed to NeuroConv is in the old list-based format, which is deprecated and will "
-        "be removed on or after August 2027. It was converted for this conversion, so the file written is "
+        "be removed in v0.13.0. It was converted for this conversion, so the file written is "
         "unaffected. The dict-based format keys each entry by a name you choose instead of by its position "
         "in a list. Call get_metadata() and edit the dictionary it returns to see the shape your interface "
         "expects.",

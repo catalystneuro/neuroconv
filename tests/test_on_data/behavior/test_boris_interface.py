@@ -7,11 +7,16 @@ from pathlib import Path
 
 import pytest
 from hdmf.common import VectorIndex
+from numpy.testing import assert_allclose
 from pynwb import read_nwb
 from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv import ConverterPipe
 from neuroconv.datainterfaces import BORISInterface
+from neuroconv.tools.testing._nwbfile_times import (
+    _get_nwbfile_durations,
+    _get_nwbfile_times,
+)
 from neuroconv.tools.testing.data_interface_mixins import EventsInterfaceTestMixin
 
 try:
@@ -30,6 +35,57 @@ class BORISTestMixin(EventsInterfaceTestMixin):
     them, and a subclass that overrides ``run_custom_checks`` runs them by calling ``super().run_custom_checks``
     before its own.
     """
+
+    def test_temporal_alignment_set_times_reaches_the_nwbfile(self, setup_interface):
+        """Every time BORIS writes is replaced, except that a bout ends its kept duration after its new start.
+
+        Overrides the shared check, which expects every written time to take the replacement. ``set_times``
+        keeps the durations, and the bouts table is derived from the events, so a bout's ``stop_time`` is
+        its replaced ``start_time`` plus the duration it had.
+        """
+        shift = 1.5
+        stretch = 2.0
+
+        metadata = self.interface.get_metadata()
+        metadata["NWBFile"].setdefault("session_start_time", datetime.now().astimezone())
+
+        original_nwbfile = self.interface.create_nwbfile(metadata=metadata, **self.conversion_options)
+        original_times = _get_nwbfile_times(original_nwbfile)
+        original_durations = _get_nwbfile_durations(original_nwbfile)
+
+        replaced_interface = self.data_interface_cls(**self.interface_kwargs)
+        for key in replaced_interface.temporal_alignment.keys():
+            time_bearing_object = replaced_interface.temporal_alignment[key]
+            time_bearing_object.set_times(time_bearing_object.get_times() * stretch + shift)
+        replaced_nwbfile = replaced_interface.create_nwbfile(metadata=metadata, **self.conversion_options)
+        replaced_times = _get_nwbfile_times(replaced_nwbfile)
+        replaced_durations = _get_nwbfile_durations(replaced_nwbfile)
+
+        assert replaced_times.keys() == original_times.keys()
+        for identifier, times in original_times.items():
+            if identifier.endswith("Bouts/stop_time"):
+                start_identifier = identifier.removesuffix("stop_time") + "start_time"
+                bout_durations = times - original_times[start_identifier]
+                expected_times = replaced_times[start_identifier] + bout_durations
+            else:
+                expected_times = times * stretch + shift
+            assert_allclose(
+                replaced_times[identifier],
+                expected_times,
+                rtol=0,
+                atol=1e-9,
+                err_msg=f"{identifier} was written but did not follow `set_times`",
+            )
+
+        assert replaced_durations.keys() == original_durations.keys()
+        for identifier, durations in original_durations.items():
+            assert_allclose(
+                replaced_durations[identifier],
+                durations,
+                rtol=0,
+                atol=1e-9,
+                err_msg=f"{identifier} changed under `set_times`, which keeps the durations",
+            )
 
     def run_custom_checks(self):
         nwbfile = read_nwb(self.nwbfile_path)
@@ -104,6 +160,7 @@ class TestBORISVersion1_6(BORISTestMixin):
     """Format 1.6: no `category` field on a behavior, and `modifiers` a flat comma-separated string."""
 
     data_interface_cls = BORISInterface
+    expected_temporal_alignment_keys = ("forage", "rest", "groom", "call")
     conversion_options = dict()  # what is written is set at construction, not at write
     save_directory = OUTPUT_PATH
 
@@ -164,6 +221,7 @@ class TestBORISVersion4_0(BORISTestMixin):
     """Format 4.0: categories exist, modifiers are still a flat string, and times are in seconds."""
 
     data_interface_cls = BORISInterface
+    expected_temporal_alignment_keys = ("walk", "stand", "drink", "peck", "vigilance")
     conversion_options = dict()  # what is written is set at construction, not at write
     save_directory = OUTPUT_PATH
 
@@ -230,6 +288,19 @@ class TestBORISCategorizedEthogram(BORISTestMixin):
     """The BORIS Android demo project: eleven behaviors, of which this observation scores a few."""
 
     data_interface_cls = BORISInterface
+    expected_temporal_alignment_keys = (
+        "groom",
+        "run",
+        "walk",
+        "attack",
+        "play",
+        "jump",
+        "approach",
+        "drink",
+        "eat",
+        "defecate",
+        "urinate",
+    )
     conversion_options = dict()  # what is written is set at construction, not at write
     save_directory = OUTPUT_PATH
 
@@ -296,6 +367,17 @@ class TestBORISModifierSlots(BORISTestMixin):
     """All three modifier slot types. Every behavior scored here is a point behavior, so no bouts."""
 
     data_interface_cls = BORISInterface
+    expected_temporal_alignment_keys = (
+        "p",
+        "a",
+        "b",
+        "z",
+        "x",
+        "many modifiers",
+        "2 sets",
+        "multiple modif",
+        "numeric",
+    )
     conversion_options = dict()  # what is written is set at construction, not at write
     save_directory = OUTPUT_PATH
 
@@ -422,6 +504,7 @@ class TestBORISMultiSubject(BORISTestMixin):
     """One observation carrying events from two named subjects, which is why subject is a column."""
 
     data_interface_cls = BORISInterface
+    expected_temporal_alignment_keys = ("p", "s", "q", "r", "m")
     conversion_options = dict()  # what is written is set at construction, not at write
     save_directory = OUTPUT_PATH
 
@@ -487,6 +570,7 @@ class TestBORISUntidyModifiers(BORISTestMixin):
     """Untidy declared values and the literal `None` token for a slot nobody answered."""
 
     data_interface_cls = BORISInterface
+    expected_temporal_alignment_keys = ("p", "r")
     conversion_options = dict()  # what is written is set at construction, not at write
     save_directory = OUTPUT_PATH
 
@@ -562,6 +646,14 @@ class TestBORISTimeOffsetAndUndeclaredCodes(BORISTestMixin):
     """
 
     data_interface_cls = BORISInterface
+    expected_temporal_alignment_keys = (
+        "Foraging/Caching",
+        "Exploración",
+        "Burrowing",
+        "Freeze",
+        "Allogroom",
+        "Foraging",
+    )
     conversion_options = dict()  # what is written is set at construction, not at write
     save_directory = OUTPUT_PATH
 
@@ -653,15 +745,15 @@ def test_time_offset_is_read_and_applied():
     forward = BORISInterface(
         file_path=TestBORISTimeOffsetAndUndeclaredCodes.file_path, observation_name="positive offset"
     )
-    assert forward.alignment.offset == pytest.approx(12.5)
+    assert forward.get_event_times("Foraging")[0] == pytest.approx(1.0 + 12.5)
     backward = BORISInterface(
         file_path=TestBORISTimeOffsetAndUndeclaredCodes.file_path, observation_name="negative offset"
     )
-    assert backward.alignment.offset == pytest.approx(-4.0)
+    assert backward.get_event_times("Burrowing")[0] == pytest.approx(6.0 - 4.0)
     media_offsets_only = BORISInterface(file_path=TestBORISMultiSubject.file_path, observation_name="offset positif")
-    assert media_offsets_only.alignment.offset == 0.0
+    assert media_offsets_only._observation.time_offset == 0.0
 
-    # The reader keeps the file's own times; the offset is added at write.
+    # The observation's source offset is included in the native event times.
     nwbfile = mock_NWBFile()
     forward.add_to_nwbfile(nwbfile=nwbfile)
     table = nwbfile.get_events_table("PositiveOffset").to_dataframe()

@@ -1,9 +1,9 @@
 """Unit tests for the ZarrDatasetIOConfiguration Pydantic model."""
 
-import numpy as np
 import pytest
-from numcodecs import Delta, GZip, Shuffle
 from pydantic import ValidationError
+from zarr.codecs import GzipCodec
+from zarr.codecs.numcodecs import Delta, Shuffle
 
 from neuroconv.tools.nwb_helpers import (
     AVAILABLE_ZARR_COMPRESSION_METHODS,
@@ -56,7 +56,7 @@ def test_get_data_io_kwargs():
     zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration()
 
     assert zarr_dataset_configuration.get_data_io_kwargs() == dict(
-        chunks=(78125, 64), compressor=GZip(level=4), filters=None
+        chunks=(78125, 64), filters=None, compressors=[GzipCodec(level=4)]
     )
 
 
@@ -67,22 +67,22 @@ def test_zarr_dataset_io_configuration_schema():
 
 
 def test_get_data_io_kwargs_with_shuffle():
-    """Zarr v2 has a single compressor slot, so every entry of `compressors` but the last rides in `filters`."""
+    """Shuffle is a bytes-to-bytes codec, so it runs in `compressors` ahead of the compression method."""
     zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration(compressors=["shuffle", "gzip"])
 
     assert zarr_dataset_configuration.get_data_io_kwargs() == dict(
-        chunks=(78125, 64), compressor=GZip(level=4), filters=[Shuffle(elementsize=2)]
+        chunks=(78125, 64), filters=None, compressors=[Shuffle(), GzipCodec(level=4)]
     )
 
 
 def test_get_data_io_kwargs_with_shuffle_and_a_filter_method():
-    """An array-to-array filter method stays ahead of the entries moved out of `compressors`."""
+    """An array-to-array filter method stays in `filters`, apart from the bytes-to-bytes codecs."""
     zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration(
         compressors=["shuffle", "gzip"], filters=["delta"], filter_options=[dict(dtype="int16")]
     )
 
     assert zarr_dataset_configuration.get_data_io_kwargs() == dict(
-        chunks=(78125, 64), compressor=GZip(level=4), filters=[Delta(dtype="int16"), Shuffle(elementsize=2)]
+        chunks=(78125, 64), filters=[Delta(dtype="int16")], compressors=[Shuffle(), GzipCodec(level=4)]
     )
 
 
@@ -103,25 +103,20 @@ def test_deprecated_compression_method_property():
     assert zarr_dataset_configuration.compressors == ["shuffle", "zstd"]
 
 
-def test_shuffle_elementsize_follows_the_dtype():
-    """`numcodecs.Shuffle` defaults `elementsize` to 4, which is wrong for anything else."""
+def test_deprecated_shuffle_in_filters_runs_in_compressors():
+    """Shuffle is a bytes-to-bytes codec, so the deprecated `filters` spelling still places it in `compressors`."""
+    with pytest.warns(FutureWarning, match="'shuffle' in `filters` is deprecated"):
+        zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration(filters=["shuffle"])
+
+    assert zarr_dataset_configuration.get_data_io_kwargs()["compressors"] == [Shuffle(), GzipCodec(level=4)]
+
+
+def test_shuffle_elementsize_is_kept_when_stated():
     zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration(
-        compressors=["shuffle", "gzip"], dtype=np.dtype("float64")
+        compressors=["shuffle", "gzip"], compressor_options=[dict(elementsize=2), None]
     )
 
-    assert zarr_dataset_configuration.get_data_io_kwargs()["filters"] == [Shuffle(elementsize=8)]
-
-
-def test_shuffle_elementsize_follows_the_dtype_on_the_deprecated_path():
-    """The deprecated `filters` spelling instantiates through the same helper."""
-    zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration(filters=["shuffle"], dtype=np.dtype("float64"))
-
-    assert zarr_dataset_configuration.get_data_io_kwargs()["filters"] == [Shuffle(elementsize=8)]
-
-
-def test_shuffle_elementsize_is_not_overridden_when_stated():
-    zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration(
-        compressors=["shuffle", "gzip"], compressor_options=[dict(elementsize=2), None], dtype=np.dtype("float64")
-    )
-
-    assert zarr_dataset_configuration.get_data_io_kwargs()["filters"] == [Shuffle(elementsize=2)]
+    assert zarr_dataset_configuration.get_data_io_kwargs()["compressors"] == [
+        Shuffle(elementsize=2),
+        GzipCodec(level=4),
+    ]

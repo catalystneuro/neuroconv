@@ -17,7 +17,7 @@ class BrukerVoltageRecordingConverter(ConverterPipe):
     Combine one or more :class:`BrukerVoltageRecordingInterface` instances into a single NWB icephys table.
 
     Each interface writes one electrode's cycles as a continuous ``PatchClampSeries`` and one
-    intracellular-recordings row per cycle, tagging each row with the run-level grouping columns (``sequence``,
+    intracellular-recordings row per cycle, tagging each row with the run-level grouping columns (``protocol_run``,
     the optional ``stimulus_type``, and the optional ``repetition`` / ``condition``). This converter aligns the
     electrodes on one timeline, then hands off to
     :func:`~neuroconv.tools.icephys._build_icephys_hierarchical_tables`, which reads those columns back and
@@ -46,7 +46,7 @@ class BrukerVoltageRecordingConverter(ConverterPipe):
         if interfaces:
             _, starting_times = self._compute_alignment(interfaces)
             for interface, starting_time in starting_times.items():
-                interface.alignment.move_start_to(starting_time)
+                interface.temporal_alignment.move_earliest_observation_to(starting_time)
 
     def get_metadata(self) -> dict:
         interfaces = list(self.data_interface_objects.values())
@@ -84,7 +84,7 @@ class BrukerVoltageRecordingConverter(ConverterPipe):
         A run is identified by the acquisition stem its cycles share, which PrairieView writes into the XML's
         ``DataFile``. Interfaces over the same run (the ``Primary`` and ``Secondary`` outputs of one electrode,
         say) keep one identity; distinct runs get the shortest path-suffix that is unique, since the stem alone
-        collides across session folders. This overrides the interface's default so ``sequence`` and the
+        collides across session folders. This overrides the interface's default so ``protocol_run`` and the
         electrode key are unique per run, with no silent cross-cell merge.
         """
         run_paths_by_interface = {
@@ -130,7 +130,7 @@ class BrukerVoltageRecordingConverter(ConverterPipe):
         start_datetimes = {interface: interface._recording_start_datetime for interface in interfaces}
         session_start_datetime = min(start_datetimes.values())
         starting_times = {
-            interface: interface.alignment[interface._alignment_key]._get_start_time()
+            interface: interface.temporal_alignment[interface._alignment_key]._get_start_time()
             + (start_datetime - session_start_datetime).total_seconds()
             for interface, start_datetime in start_datetimes.items()
         }

@@ -1,6 +1,7 @@
 # Behavior
 from .behavior.audio.audiointerface import AudioInterface
 from .behavior.boris.borisdatainterface import BORISInterface
+from .behavior.dannce.danncedatainterface import DANNCEInterface
 from .behavior.deeplabcut.deeplabcutdatainterface import DeepLabCutInterface
 from .behavior.ethovision.ethovisionmanualscoringinterface import (
     EthoVisionManualScoringInterface,
@@ -15,6 +16,7 @@ from .behavior.miniscope.miniscopedatainterface import MiniscopeBehaviorInterfac
 from .behavior.miniscope.miniscopeheadorientationinterface import MiniscopeHeadOrientationInterface
 from .behavior.moseq.moseqkeypointsinterface import MoseqKeyPointsInterface
 from .behavior.neuralynx.neuralynx_nvt_interface import NeuralynxNvtInterface
+from .behavior.optitrack.optitrackdatainterface import OptiTrackInterface
 from .behavior.sleap.sleapdatainterface import SLEAPInterface
 from .behavior.vame.vamedatainterface import VameInterface
 from .behavior.video.externalvideointerface import ExternalVideoInterface
@@ -22,6 +24,7 @@ from .behavior.video.internalvideointerface import InternalVideoInterface
 
 # Ecephys
 from .ecephys.alphaomega.alphaomegadatainterface import AlphaOmegaRecordingInterface
+from .ecephys.axon.axonanaloginterface import AxonAnalogInterface
 from .ecephys.axon.axondatainterface import AxonRecordingInterface
 from .ecephys.axona.axonadatainterface import (
     AxonaLFPDataInterface,
@@ -65,6 +68,7 @@ from .ecephys.openephys.openephysbinarydatainterface import (
     OpenEphysBinaryRecordingInterface,
 )
 from .ecephys.openephys.openephysdatainterface import OpenEphysRecordingInterface
+from .ecephys.openephys.openephyslegacyanaloginterface import OpenEphysLegacyAnalogInterface
 from .ecephys.openephys.openephyslegacydatainterface import (
     OpenEphysLegacyRecordingInterface,
 )
@@ -184,6 +188,7 @@ interface_list = [
     OpenEphysLegacyRecordingInterface,
     OpenEphysSortingInterface,
     OpenEphysBinaryAnalogInterface,
+    OpenEphysLegacyAnalogInterface,
     PhySortingInterface,
     KiloSortSortingInterface,
     MdaSortingInterface,
@@ -201,6 +206,7 @@ interface_list = [
     BiocamRecordingInterface,
     AlphaOmegaRecordingInterface,
     AxonRecordingInterface,
+    AxonAnalogInterface,
     MEArecRecordingInterface,
     MCSRawRecordingInterface,
     MaxOneRecordingInterface,
@@ -244,6 +250,7 @@ interface_list = [
     ExternalVideoInterface,
     InternalVideoInterface,
     AudioInterface,
+    DANNCEInterface,
     DeepLabCutInterface,
     SLEAPInterface,
     MiniscopeBehaviorInterface,
@@ -256,6 +263,7 @@ interface_list = [
     MedPCInterface,
     VameInterface,
     MoseqKeyPointsInterface,
+    OptiTrackInterface,
     # Text
     CsvTimeIntervalsInterface,
     ExcelTimeIntervalsInterface,
@@ -305,6 +313,8 @@ interfaces_by_category = dict(
     },
     analog=dict(
         OpenEphysAnalog=OpenEphysBinaryAnalogInterface,
+        OpenEphysLegacyAnalog=OpenEphysLegacyAnalogInterface,
+        AxonAnalog=AxonAnalogInterface,
         SpikeGLXNIDQ=SpikeGLXNIDQInterface,
         SpikeGLXSync=SpikeGLXSyncChannelInterface,
         IntanAnalog=IntanAnalogInterface,
@@ -320,6 +330,7 @@ interfaces_by_category = dict(
     behavior=dict(
         ExternalVideo=ExternalVideoInterface,
         InternalVideo=InternalVideoInterface,
+        DANNCE=DANNCEInterface,
         DeepLabCut=DeepLabCutInterface,
         SLEAP=SLEAPInterface,
         EthoVisionTrack=EthoVisionTrackInterface,
@@ -329,6 +340,7 @@ interfaces_by_category = dict(
         BORIS=BORISInterface,
         EthoVisionManualScoring=EthoVisionManualScoringInterface,
         MoseqKeyPoints=MoseqKeyPointsInterface,
+        OptiTrack=OptiTrackInterface,
         # Text
         CsvTimeIntervals=CsvTimeIntervalsInterface,
         ExcelTimeIntervals=ExcelTimeIntervalsInterface,

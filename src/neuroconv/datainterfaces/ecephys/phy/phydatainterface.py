@@ -79,9 +79,10 @@ class PhySortingInterface(BaseSortingExtractorInterface):
     def __init__(
         self,
         folder_path: DirectoryPath,
-        *args,  # TODO: change to * (keyword only) on or after August 2026
+        *,
         exclude_cluster_groups: list[str] | None = None,
         verbose: bool = False,
+        metadata_key: str | None = None,
     ):
         """
         Initialize a PhySortingInterface.
@@ -93,34 +94,10 @@ class PhySortingInterface(BaseSortingExtractorInterface):
         exclude_cluster_groups : str or list of str, optional
             Cluster groups to exclude (e.g. "noise" or ["noise", "mua"]).
         verbose : bool, default: False
+        metadata_key : str, optional
+            Key of this sorting's entry in ``metadata["Ecephys"]["Sortings"]``. Defaults to ``"phy_sorting"``.
         """
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "exclude_cluster_groups",
-                "verbose",
-            ]
-            num_positional_args_before_args = 1  # folder_path
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args + 1} were given. "
-                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
-                    "Please use keyword arguments."
-                )
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to PhySortingInterface.__init__() is deprecated "
-                f"and will be removed on or after August 2026. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            exclude_cluster_groups = positional_values.get("exclude_cluster_groups", exclude_cluster_groups)
-            verbose = positional_values.get("verbose", verbose)
-
+        self.metadata_key = metadata_key or "phy_sorting"
         super().__init__(folder_path=folder_path, exclude_cluster_groups=exclude_cluster_groups, verbose=verbose)
 
     def add_to_nwbfile(
@@ -131,10 +108,10 @@ class PhySortingInterface(BaseSortingExtractorInterface):
         stub_test: bool = False,
         write_ecephys_metadata: bool = False,
         write_as: Literal["units", "processing"] | None = None,
-        units_name: str = "units",
-        units_description: str = "Imported from Phy",
+        units_name: str | None = None,
+        units_description: str | None = None,
         unit_electrode_indices: list[list[int]] | None = None,
-        parent_container: Literal["units", "processing"] = "units",
+        parent_container: Literal["units", "processing"] | None = None,
         waveform_data_dict: dict | None = None,
         include_max_channel: bool = True,
     ):

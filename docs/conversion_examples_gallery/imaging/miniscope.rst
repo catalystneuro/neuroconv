@@ -102,10 +102,9 @@ The interface expects a folder with the following structure:
 **Alternative Parameters for Custom File Locations:**
 
 If your data is organized differently than the format above (e.g., you have changed the names, or the
-configuration file or timestamps are in another directory), you can specify the structure using the following parameters:
+timestamps are in another directory), you can specify the structure using the following parameters:
 
 - ``file_paths``: List of .avi file paths (must be named 0.avi, 1.avi, 2.avi, ...) from the same acquisition
-- ``configuration_file_path``: Path to the metaData.json configuration file
 - ``timeStamps_file_path``: Path to the timeStamps.csv file. If not provided, the interface looks for ``timeStamps.csv`` in the same directory as the video files
 
 For more information see the

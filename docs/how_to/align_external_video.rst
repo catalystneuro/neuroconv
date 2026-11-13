@@ -183,7 +183,7 @@ writes one ``ImageSeries``. The only question is what timed it.
     from neuroconv.datainterfaces import ExternalVideoInterface
 
     video_interface = ExternalVideoInterface(file_paths=["session.mp4"], video_name="BehaviorCamera")
-    video_interface.alignment.keys()
+    video_interface.temporal_alignment.keys()
     # ('session',)
 
 Each video file is addressed for alignment by the stem of its path, so a single video has one key. A single
@@ -202,7 +202,7 @@ session start, from a note or from the one trigger pulse that started it.
 
 .. code-block:: python
 
-    video_interface.alignment.shift_times(12.5)
+    video_interface.temporal_alignment.shift_times(12.5)
 
 The frame times come from the video's own frame rate, shifted by the offset. This corrects the start and
 nothing else. Two clocks drift apart, so on a long session the error at the end of the video grows and no
@@ -228,10 +228,10 @@ overlap raises an error. Place each file where the previous one ends:
     durations = frame_counts / np.array(video_interface.get_header_frame_rates())
     starting_times = np.concatenate([[0.0], np.cumsum(durations)[:-1]])
 
-    for segment_key, start in zip(video_interface.alignment.keys(), starting_times):
-        video_interface.alignment[segment_key].move_start_to(start)
+    for segment_key, start in zip(video_interface.temporal_alignment.keys(), starting_times):
+        video_interface.temporal_alignment[segment_key].move_earliest_observation_to(start)
 
-``move_start_to`` moves one file so that its first frame sits at the time you give on the session clock. It reads
+``move_earliest_observation_to`` moves one file so that its first frame sits at the time you give on the session clock. It reads
 nothing inside the file. If the camera also started late, shift the interface as in the known-offset case
 and the files keep their layout. Nothing in the files records a gap between them if there was one. If the
 rig has a frame-out line, use it and take each file's times from the pulses instead, as in the trialized
@@ -246,7 +246,7 @@ timestamped each frame directly. This is accurate and corrects drift. Prefer it 
 
     frame_pulse_times = digital_interface.get_event_times("camera_frame")
 
-    video_interface.alignment["session"].set_times(frame_pulse_times)
+    video_interface.temporal_alignment["session"].set_times(frame_pulse_times)
 
 You do not have to count them first. The interface throws an error when the number of times does not match
 the number of frames and says by how much. Many more pulses than frames usually means the line was running
@@ -280,8 +280,8 @@ A shift will not do it because the two clocks drift.
     # The same pulses, as the recording system timestamped them, on the session clock.
     recording_system_sync_times = digital_interface.get_event_times("camera_sync")
 
-    video_interface.alignment["session"].set_times(frame_times)
-    video_interface.alignment["session"].remap_times(
+    video_interface.temporal_alignment["session"].set_times(frame_times)
+    video_interface.temporal_alignment["session"].remap_times(
         local_sync_times=camera_sync_times,
         reference_sync_times=recording_system_sync_times,
     )
@@ -291,16 +291,16 @@ session clock. The two pulse arrays are paired by position, so they have to be t
 same order, and a pulse that only one system recorded has to be dropped from both. Frames between two
 pulses are interpolated. No data is resampled, only the times move.
 
-``remap_times`` can also be called on ``alignment`` with no key, and then it re-times every file of the
+``remap_times`` can also be called on ``temporal_alignment`` with no key, and then it re-times every file of the
 interface at once. The drift belongs to the camera's clock, not to one file, so that is the form for a
-triggered camera on its own clock: place each of its files first, then one ``alignment.remap_times`` call
+triggered camera on its own clock: place each of its files first, then one ``temporal_alignment.remap_times`` call
 corrects all of them.
 
 A triggered camera, one file per trial
 --------------------------------------
 
 One camera again, but a pulse triggers it at the start of each trial, so the session produces one file per
-trial with real gaps between them. Each file has to be placed on its own, with ``alignment[key].move_start_to``.
+trial with real gaps between them. Each file has to be placed on its own, with ``temporal_alignment[key].move_earliest_observation_to``.
 A file left unplaced stays at its own start, usually zero, and the write raises an error when it overlaps the
 file before it: in the
 order given, each file has to begin after the previous one ends. The check is on the times, so a first file
@@ -316,13 +316,13 @@ each file begins within the series. It is computed from the frame counts and nev
 .. code-block:: python
 
     video_interface = ExternalVideoInterface(file_paths=["trial_01.mp4", "trial_02.mp4", "trial_03.mp4"])
-    video_interface.alignment.keys()
+    video_interface.temporal_alignment.keys()
     # ('trial_01', 'trial_02', 'trial_03')
 
 If two trials wrote files with the same name in different folders, the stem alone no longer addresses either
 one. The interface keys each such file by its stem prefixed with its parent folder names, closest first,
 lengthening only as far as needed to tell the files apart: ``file_paths=["day_1/video.avi",
-"day_2/video.avi"]`` gives ``alignment["day_1_video"]`` and ``alignment["day_2_video"]``. A file whose stem is
+"day_2/video.avi"]`` gives ``temporal_alignment["day_1_video"]`` and ``temporal_alignment["day_2_video"]``. A file whose stem is
 already unique is unaffected. Only a collision that survives the files' full paths, such as the same path
 passed twice, raises at construction.
 
@@ -333,17 +333,17 @@ passed twice, raises at construction.
 .. code-block:: python
 
     trial_onsets = digital_interface.get_event_times("camera_trigger")
-    segment_keys = video_interface.alignment.keys()
+    segment_keys = video_interface.temporal_alignment.keys()
     assert len(trial_onsets) == len(segment_keys)
 
     for segment_key, onset in zip(segment_keys, trial_onsets):
-        video_interface.alignment[segment_key].move_start_to(onset)
+        video_interface.temporal_alignment[segment_key].move_earliest_observation_to(onset)
 
 Each file is placed where its trigger fired. Within a file the frame times come from the nominal frame
 rate, so the drift caveat from the known-offset case applies again, per trial instead of once for the
 session. That is usually fine. A trial is short and a camera does not drift far in ten seconds.
 
-``move_start_to`` states where a file begins instead of how far to move it. Running the loop twice leaves the
+``move_earliest_observation_to`` states where a file begins instead of how far to move it. Running the loop twice leaves the
 files where it says instead of moving them twice. A ``shift_times`` on the interface afterwards moves every
 file together.
 
@@ -371,11 +371,11 @@ are the frame times of that file.
     gap_indices = np.flatnonzero(np.diff(frame_pulse_times) > 10 * frame_interval) + 1
     bursts = np.split(frame_pulse_times, gap_indices)
 
-    segment_keys = video_interface.alignment.keys()
+    segment_keys = video_interface.temporal_alignment.keys()
 
     assert len(bursts) == len(segment_keys), f"{len(bursts)} bursts for {len(segment_keys)} files."
     for segment_key, burst in zip(segment_keys, bursts):
-        video_interface.alignment[segment_key].set_times(burst)
+        video_interface.temporal_alignment[segment_key].set_times(burst)
 
     # Each file starts on the first pulse of its burst, which the trials table below can use.
     trial_onsets = np.array([burst[0] for burst in bursts])
@@ -439,7 +439,7 @@ Two setups we know of have no recipe.
 
 **One file per trial and no line.** Nothing in the recording says where the trials sit. The starting times
 have to come from somewhere else, a behavioral log or the modification times of the files, and you place
-each file by hand with ``move_start_to``.
+each file by hand with ``move_earliest_observation_to``.
 
 **A camera that free-runs while only some of its frames are written to disk.** The counts no longer say
 which frames were saved, so neither the gaps nor the onsets can reconstruct the mapping. No alignment recipe

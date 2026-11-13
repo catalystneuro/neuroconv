@@ -1,4 +1,3 @@
-import warnings
 from typing import Literal, Optional
 
 from pydantic import FilePath, validate_call
@@ -12,21 +11,6 @@ class TiffImagingInterface(BaseImagingExtractorInterface):
     display_name = "TIFF Imaging"
     associated_suffixes = (".tif", ".tiff")
     info = "Interface for multi-page TIFF files."
-
-    @classmethod
-    def get_source_schema(cls) -> dict:
-        """
-        Get the source schema for the TIFF imaging interface.
-
-        Returns
-        -------
-        dict
-            The JSON schema for the TIFF imaging interface source data,
-            containing file path and other configuration parameters.
-        """
-        source_schema = super().get_source_schema()
-        source_schema["properties"]["file_path"]["description"] = "Path to Tiff file."
-        return source_schema
 
     @classmethod
     def get_extractor_class(cls):
@@ -45,10 +29,9 @@ class TiffImagingInterface(BaseImagingExtractorInterface):
     @validate_call
     def __init__(
         self,
-        file_path: Optional[FilePath] = None,
-        file_paths: Optional[list[FilePath]] = None,
+        file_paths: list[FilePath],
         sampling_frequency: float = None,
-        *args,  # TODO: change to * (keyword only) on or after August 2026
+        *,
         dimension_order: str = "ZCT",
         num_channels: int = 1,
         channel_name: Optional[str] = None,
@@ -62,11 +45,8 @@ class TiffImagingInterface(BaseImagingExtractorInterface):
 
         Parameters
         ----------
-        file_path : FilePath, optional
-                Use `file_paths` instead. Will be removed in April 2026 or later.
-            Path to a single TIFF file. Either file_path or file_paths must be specified.
-        file_paths : list[FilePath], optional
-            List of paths to TIFF files. Either file_path or file_paths must be specified.
+        file_paths : list[FilePath]
+            List of paths to TIFF files.
         sampling_frequency : float
             The sampling frequency of the imaging data in Hz.
         dimension_order : str, default: "ZCT"
@@ -187,56 +167,6 @@ class TiffImagingInterface(BaseImagingExtractorInterface):
 
             All dimension orders → T: Simple planar time series (all orderings equivalent)
         """
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "dimension_order",
-                "num_channels",
-                "channel_name",
-                "num_planes",
-                "verbose",
-                "photon_series_type",
-            ]
-            num_positional_args_before_args = 3  # file_path, file_paths, sampling_frequency
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args + 1} were given. "
-                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
-                    "Please use keyword arguments."
-                )
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to TiffImagingInterface.__init__() is deprecated "
-                f"and will be removed on or after August 2026. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            dimension_order = positional_values.get("dimension_order", dimension_order)
-            num_channels = positional_values.get("num_channels", num_channels)
-            channel_name = positional_values.get("channel_name", channel_name)
-            num_planes = positional_values.get("num_planes", num_planes)
-            verbose = positional_values.get("verbose", verbose)
-            photon_series_type = positional_values.get("photon_series_type", photon_series_type)
-
-        # Handle both file_path and file_paths
-        if file_path is not None and file_paths is not None:
-            raise ValueError("Cannot specify both 'file_path' and 'file_paths'. Please use one or the other.")
-
-        if file_path is not None:
-            warnings.warn(
-                "The 'file_path' parameter is deprecated and will be removed in April 2026 or later. "
-                "Use 'file_paths' instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            file_paths = [file_path]
-
-        if file_paths is None:
-            raise ValueError("Either 'file_path' or 'file_paths' must be specified.")
 
         if metadata_key is None:
             metadata_key = f"tiff_imaging_channel_{channel_name}" if channel_name is not None else "tiff_imaging"

@@ -1,5 +1,6 @@
 import warnings
 from copy import deepcopy
+from pathlib import Path
 
 from pydantic import DirectoryPath, validate_call
 from pynwb import NWBFile
@@ -117,7 +118,7 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
     def __init__(
         self,
         folder_path: DirectoryPath,
-        *args,  # TODO: change to * (keyword only) on or after August 2026
+        *,
         channel_name: str | None = None,
         plane_name: str | None = None,
         plane_segmentation_name: str | None = None,
@@ -144,36 +145,6 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
             Metadata key for this interface. When None, defaults to
             "suite2p_segmentation_{channel_name}_{plane_name}".
         """
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "channel_name",
-                "plane_name",
-                "plane_segmentation_name",
-                "verbose",
-            ]
-            num_positional_args_before_args = 1  # folder_path
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args + 1} were given. "
-                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
-                    "Please use keyword arguments."
-                )
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to Suite2pSegmentationInterface.__init__() is deprecated "
-                f"and will be removed on or after August 2026. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            channel_name = positional_values.get("channel_name", channel_name)
-            plane_name = positional_values.get("plane_name", plane_name)
-            plane_segmentation_name = positional_values.get("plane_segmentation_name", plane_segmentation_name)
-            verbose = positional_values.get("verbose", verbose)
 
         if plane_segmentation_name is not None:
             warnings.warn(
@@ -199,6 +170,25 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
         )
         available_planes = self.get_available_planes(folder_path=self.source_data["folder_path"])
         available_channels = self.get_available_channels(folder_path=self.source_data["folder_path"])
+
+        # TODO: remove once neuroconv requires a roiextractors release with
+        # https://github.com/catalystneuro/roiextractors/pull/654, which reads `iscell` from `iscell.npy` on both
+        # channels and adds `redcell.npy` as a `redcell` property.
+        extractor = self.segmentation_extractor
+        plane_folder_path = Path(self.source_data["folder_path"]) / extractor.plane_name
+        if (
+            extractor.channel_name == "chan2"
+            and (plane_folder_path / "redcell.npy").is_file()
+            and "redcell" not in extractor.get_property_keys()
+        ):
+            warnings.warn(
+                "With roiextractors 0.10.0 and earlier, the Suite2p 'chan2' segmentation reads its 'iscell' "
+                "property from 'redcell.npy', the red-cell labels, instead of 'iscell.npy'. Its 'iscell' column holds "
+                "those labels, and writing it into the PlaneSegmentation of 'chan1' raises because the two 'iscell' "
+                "columns differ. A roiextractors release after 0.10.0 fixes this.",
+                UserWarning,
+                stacklevel=4,
+            )
 
         if plane_segmentation_name is None:
             plane_segmentation_name = (
@@ -295,12 +285,10 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
         self,
         nwbfile: NWBFile,
         metadata: dict | None = None,
-        *args,  # TODO: change to * (keyword only) on or after August 2026
+        *,
         stub_test: bool = False,
         stub_samples: int = 100,
-        include_roi_centroids: bool = True,
         include_roi_acceptance: bool | None = None,
-        mask_type: str | None = "image",  # Literal["image", "pixel", "voxel"]
         plane_segmentation_name: str | None = None,
         iterator_options: dict | None = None,
     ):
@@ -318,71 +306,22 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
             by default False.
         stub_samples : int, optional
             The number of samples (frames) to include in the subset if `stub_test` is True, by default 100.
-        include_roi_centroids : bool, optional
-            Whether to include the centroids of regions of interest (ROIs) in the data, by default True.
         include_roi_acceptance : bool, optional
             Deprecated and ignored. ROI acceptance is now written automatically as a
             column on the PlaneSegmentation table whenever the segmentation extractor
             exposes acceptance/rejection through its property system.
-        mask_type : str, default: 'image'
-            There are three types of ROI masks in NWB, 'image', 'pixel', and 'voxel'.
-
-            * 'image' masks have the same shape as the reference images the segmentation was applied to, and weight each pixel
-            by its contribution to the ROI (typically boolean, with 0 meaning 'not in the ROI').
-            * 'pixel' masks are instead indexed by ROI, with the data at each index being the shape of the image by the number
-            of pixels in each ROI.
-            * 'voxel' masks are instead indexed by ROI, with the data at each index being the shape of the volume by the number
-            of voxels in each ROI.
-
-            Specify your choice between these two as mask_type='image', 'pixel', 'voxel', or None.
-            plane_segmentation_name : str, optional
+        plane_segmentation_name : str, optional
             The name of the plane segmentation object, by default None.
         iterator_options : dict, optional
             Additional options for iterating over the data, by default None.
         """
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "stub_test",
-                "stub_samples",
-                "include_roi_centroids",
-                "include_roi_acceptance",
-                "mask_type",
-                "plane_segmentation_name",
-                "iterator_options",
-            ]
-            num_positional_args_before_args = 2  # nwbfile, metadata
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"add_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args} were given. "
-                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
-                    "Please use keyword arguments."
-                )
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to Suite2pSegmentationInterface.add_to_nwbfile() is deprecated "
-                f"and will be removed on or after August 2026. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            stub_test = positional_values.get("stub_test", stub_test)
-            stub_samples = positional_values.get("stub_samples", stub_samples)
-            include_roi_centroids = positional_values.get("include_roi_centroids", include_roi_centroids)
-            include_roi_acceptance = positional_values.get("include_roi_acceptance", include_roi_acceptance)
-            mask_type = positional_values.get("mask_type", mask_type)
-            plane_segmentation_name = positional_values.get("plane_segmentation_name", plane_segmentation_name)
-            iterator_options = positional_values.get("iterator_options", iterator_options)
 
         if include_roi_acceptance is not None:
             warnings.warn(
                 "`include_roi_acceptance` is deprecated and has no effect. ROI acceptance is now "
                 "written automatically as a column on the PlaneSegmentation table whenever the "
                 "segmentation extractor exposes acceptance/rejection through its property system. "
-                "This parameter will be removed on or after February 2027.",
+                "This parameter will be removed in v0.12.0.",
                 DeprecationWarning,
                 stacklevel=2,
             )
@@ -403,8 +342,6 @@ class Suite2pSegmentationInterface(BaseSegmentationExtractorInterface):
             metadata=metadata,
             stub_test=stub_test,
             stub_samples=stub_samples,
-            include_roi_centroids=include_roi_centroids,
-            mask_type=mask_type,
             plane_segmentation_name=self.plane_segmentation_name,
             iterator_options=iterator_options,
         )

@@ -44,11 +44,11 @@ NeuroConv correctly assigns them during data conversion.
     # interface.channel_ids
     recording = interface.recording_extractor
     channel_id_to_group_names = {
-        "0": "ElectrodeGroupA",
-        "1": "ElectrodeGroupA",
-        "2": "ElectrodeGroupC",
-        "3": "ElectrodeGroupB",
-        "4": "ElectrodeGroupA",
+        "channel_a": "ElectrodeGroupA",
+        "channel_b": "ElectrodeGroupA",
+        "channel_c": "ElectrodeGroupC",
+        "channel_d": "ElectrodeGroupB",
+        "channel_e": "ElectrodeGroupA",
     }
     recording.set_property(
         key="group",
@@ -95,11 +95,11 @@ Use standard atlas names (e.g. Allen Brain Atlas) for anatomical regions when po
     # Each ID of the recording should be mapped to a specific brain area
     # Note that you can get the channel ids of the interface with: interface.channel_ids
     channel_id_to_brain_area = {
-        "0": "CA1",
-        "1": "CA1",
-        "2": "CA3",
-        "3": "DG",
-        "4": "EC",
+        "channel_a": "CA1",
+        "channel_b": "CA1",
+        "channel_c": "CA3",
+        "channel_d": "DG",
+        "channel_e": "EC",
     }
 
     # Set the brain_area property on the recording extractor using the dictionary
@@ -142,11 +142,11 @@ The following example demonstrates how to add a custom property called "quality"
 
     # Define custom properties for each channel
     channel_id_to_quality = {
-        "0": "good",
-        "1": "excellent",
-        "2": "fair",
-        "3": "good",
-        "4": "excellent",
+        "channel_a": "good",
+        "channel_b": "excellent",
+        "channel_c": "fair",
+        "channel_d": "good",
+        "channel_e": "excellent",
     }
 
     recording_extractor.set_property(

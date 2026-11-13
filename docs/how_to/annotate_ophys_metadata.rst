@@ -208,6 +208,86 @@ use a different ``metadata_key`` for each pipeline. Link them to the same imagin
     )
 
 
+How to Annotate Two Channels That Share Their ROIs
+--------------------------------------------------
+
+Suite2p detects ROIs once per plane and extracts traces from both channels with those ROIs. Each channel
+is read by its own interface, and each interface writes a PlaneSegmentation of its own by default, so the
+file would hold the same masks twice. To write them once, declare one table in
+``metadata["Ophys"]["SegmentationTables"]`` and point both channels' ``PlaneSegmentations`` entries
+at it with ``segmentation_table_metadata_key``. Both entries give the same ``segmentation_name``, which says
+their ROIs are the same ROIs. A PlaneSegmentation links one imaging plane, so both entries also link the same
+plane.
+
+.. TODO: remove this note once neuroconv requires a roiextractors release with
+   https://github.com/catalystneuro/roiextractors/pull/654
+
+.. note::
+
+    This example needs a roiextractors release after 0.10.0. In 0.10.0 the ``chan2`` segmentation reads its
+    ``iscell`` property from ``redcell.npy``, so the two channels disagree on ``iscell`` and writing the
+    red channel raises.
+
+.. code-block:: python
+
+    from neuroconv import ConverterPipe
+    from neuroconv.datainterfaces import Suite2pSegmentationInterface
+
+    green_metadata_key = "green"
+    red_metadata_key = "red"
+
+    green_segmentation = Suite2pSegmentationInterface(
+        folder_path="path/to/suite2p",
+        channel_name="chan1",
+        plane_name="plane0",
+        metadata_key=green_metadata_key,
+    )
+    red_segmentation = Suite2pSegmentationInterface(
+        folder_path="path/to/suite2p",
+        channel_name="chan2",
+        plane_name="plane0",
+        metadata_key=red_metadata_key,
+    )
+
+    converter = ConverterPipe(data_interfaces={"green": green_segmentation, "red": red_segmentation})
+    metadata = converter.get_metadata()
+
+    # Declare the table both channels write into
+    segmentation_table_metadata_key = "plane0_rois"
+    metadata["Ophys"]["SegmentationTables"] = {
+        segmentation_table_metadata_key: {
+            "name": "PlaneSegmentationPlane0",
+            "description": "ROIs detected by Suite2p on plane 0.",
+        }
+    }
+    plane_segmentations = metadata["Ophys"]["PlaneSegmentations"]
+    plane_segmentations[green_metadata_key]["segmentation_table_metadata_key"] = segmentation_table_metadata_key
+    plane_segmentations[red_metadata_key]["segmentation_table_metadata_key"] = segmentation_table_metadata_key
+
+    # Both channels hold the same ROIs
+    plane_segmentations[green_metadata_key]["segmentation_name"] = "suite2p_plane0"
+    plane_segmentations[red_metadata_key]["segmentation_name"] = "suite2p_plane0"
+
+    # Both channels image one plane
+    metadata["Ophys"]["ImagingPlanes"][green_metadata_key]["name"] = "ImagingPlanePlane0"
+    plane_segmentations[red_metadata_key]["imaging_plane_metadata_key"] = green_metadata_key
+
+    converter.run_conversion(nwbfile_path="two_channels.nwb", metadata=metadata)
+
+The table entry gives the name and description, so they do not depend on which interface writes first.
+The file holds one PlaneSegmentation, ``PlaneSegmentationPlane0``, and the traces of both channels
+reference its rows.
+
+The first interface to write creates the table and the next one adds its ROIs to it. Rows are identified
+by ``(segmentation_name, roi_name)``. An ROI whose pair is already in the table reuses that row, which is
+what happens to the red channel here, and raises when one of its ROI properties differs from the row's. An
+ROI whose pair is new is appended as a new row, so the same metadata collects different ROIs from several
+interfaces into one table, for example one interface per scan line, as long as their ROI names or their
+segmentation names differ. A segmentation without a ``segmentation_name`` whose ROI names match unnamed rows
+raises, since it could be the same ROIs or different ones. The interfaces sharing a table must link the same
+imaging plane, hold the same mask type, and carry the same ROI properties, since each property is a column.
+
+
 .. _how_to_annotate_ophys_from_a_template:
 
 How to Annotate from a Template

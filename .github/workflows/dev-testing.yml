@@ -47,18 +47,6 @@ jobs:
           git config --global user.email "CI@example.com"
           git config --global user.name "CI Almighty"
 
-      - name: Install Wine (For Plexon2 Tests)
-        uses: ./.github/actions/install-wine
-        with:
-          os: ${{ runner.os }}
-      # Neo downloads the Plexon reader DLL into the home directory the first time a .pl2 file is
-      # opened, with a bare urlopen that has no timeout. Caching it keeps the test run off the network.
-      - name: Cache the Plexon2 reader DLL
-        uses: actions/cache@v5
-        with:
-          path: ~/.plexon_dlls_for_neo
-          key: plexon-dlls-${{ runner.os }}
-
       - name: Install full requirements
         run: |
           pip install --no-cache-dir .[full]
@@ -72,7 +60,6 @@ jobs:
       - name: Dev gallery - ROIExtractors
         run: pip install --no-cache-dir --force-reinstall --no-deps git+https://github.com/CatalystNeuro/roiextractors@main
       - name: Dev gallery - DANDI
-        if: matrix.python-version != '3.10'  # dandi requires >=3.11
         run: pip install --no-cache-dir --force-reinstall --no-deps git+https://github.com/dandi/dandi-cli@master
       - name: Dev gallery - PyNWB
         run: pip install --no-cache-dir --force-reinstall --no-deps git+https://github.com/NeurodataWithoutBorders/pynwb@dev
@@ -84,7 +71,9 @@ jobs:
         run: pip install --no-cache-dir --force-reinstall --no-deps git+https://github.com/NeuralEnsemble/python-neo@master
       - name: Dev gallery - HDMF
         run: pip install --no-cache-dir --force-reinstall --no-deps git+https://github.com/hdmf-dev/hdmf@dev
+      # hdmf-zarr requires Python 3.12, and neuroconv does not install it on 3.11.
       - name: Dev gallery - HDMF-ZARR
+        if: ${{ matrix.python-version != '3.11' }}
         run : pip install --no-cache-dir --force-reinstall --no-deps git+https://github.com/hdmf-dev/hdmf-zarr@dev
 
       # The dev installs above pass --no-deps, so a dependency that a dev branch newly declared is never

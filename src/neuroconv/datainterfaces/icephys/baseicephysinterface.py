@@ -12,6 +12,7 @@ from ...tools.icephys import (
     _add_patch_clamp_series_to_nwbfile,
     _IcephysSeriesData,
 )
+from ...tools.nwb_helpers._metadata_and_file_helpers import _validate_metadata_key
 
 
 class BaseIcephysInterface(BaseDataInterface):
@@ -27,7 +28,7 @@ class BaseIcephysInterface(BaseDataInterface):
         self._alignment = _TemporalAlignment()
 
     @property
-    def alignment(self):
+    def temporal_alignment(self):
         return self._alignment
 
     def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict | None = None) -> None:
@@ -36,6 +37,11 @@ class BaseIcephysInterface(BaseDataInterface):
             metadata = self.get_metadata()
 
         series_metadata_key = self._series_metadata_key
+        _validate_metadata_key(
+            metadata,
+            metadata_path=("Icephys", "PatchClampSeries"),
+            metadata_key=series_metadata_key,
+        )
         response_metadata = metadata["Icephys"]["PatchClampSeries"][series_metadata_key]
         electrode = _add_intracellular_electrode_to_nwbfile(
             nwbfile=nwbfile,
@@ -43,14 +49,14 @@ class BaseIcephysInterface(BaseDataInterface):
             electrode_metadata_key=response_metadata["electrode_metadata_key"],
         )
         response_data, stimulus_data, sweep_sample_ranges = self._get_icephys_series_data()
-        timestamps = self.alignment[self._alignment_key].get_times()
+        timestamps = self.temporal_alignment[self._alignment_key].get_times()
         if timestamps.ndim != 1 or len(timestamps) != len(response_data.data):
             raise ValueError("Intracellular timestamps must be one-dimensional with one time per response sample.")
         response_data.timestamps = timestamps
+        stimulus_sweep_sample_ranges = None
         if stimulus_data is not None:
-            if len(stimulus_data.data) != len(timestamps):
-                raise ValueError("The paired stimulus must have one sample per response timestamp.")
-            stimulus_data.timestamps = timestamps
+            stimulus_data.timestamps = self.temporal_alignment[self._stimulus_alignment_key].get_times()
+            stimulus_sweep_sample_ranges = stimulus_data.sweep_sample_ranges
         response_series = _add_patch_clamp_series_to_nwbfile(
             nwbfile=nwbfile,
             metadata=metadata,
@@ -78,8 +84,9 @@ class BaseIcephysInterface(BaseDataInterface):
             electrode=electrode,
             response_series=response_series,
             stimulus_series=stimulus_series,
+            stimulus_sweep_sample_ranges=stimulus_sweep_sample_ranges,
             sweep_sample_ranges=sweep_sample_ranges,
-            sequence=self._run_identity,
+            protocol_run=self._run_identity,
             stimulus_type=self._get_stimulus_type(),
             repetition=self._repetition,
             condition=self._condition,

@@ -30,7 +30,3 @@ Removing it
 
 The removal happens at the minor version the warning names, never earlier and never in a patch release.
 Clearing the deprecations that have come due is a step of :ref:`making_a_release`.
-
-Some older warnings still carry a date, worded "on or after <Month Year>". Those are triggered by their
-date rather than by a version, since the date is the promise they shipped under, and they are being
-restated as versions.

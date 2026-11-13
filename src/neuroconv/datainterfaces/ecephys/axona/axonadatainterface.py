@@ -1,7 +1,5 @@
 """Collection of Axona interfaces."""
 
-import warnings
-
 from pydantic import FilePath
 from pynwb import NWBFile
 
@@ -43,10 +41,11 @@ class AxonaRecordingInterface(BaseRecordingExtractorInterface):
     def __init__(
         self,
         file_path: FilePath,
-        *args,  # TODO: change to * (keyword only) on or after August 2026
+        *,
         verbose: bool = False,
         es_key: str | None = None,
         metadata_key: str | None = None,
+        channels_to_exclude: list | None = None,
     ):
         """
 
@@ -59,53 +58,35 @@ class AxonaRecordingInterface(BaseRecordingExtractorInterface):
         metadata_key : str, optional
             Key that indexes this interface's entries in the dict-based metadata. Defaults to
             ``"axona_recording"``.
+        channels_to_exclude : list, optional
+            Channels to leave out, by the ids in ``channel_ids``. Every other channel is converted. A name that
+            is not one of the interface's channels raises.
         """
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "verbose",
-                "es_key",
-            ]
-            num_positional_args_before_args = 1  # file_path
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args + 1} were given. "
-                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
-                    "Please use keyword arguments."
-                )
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to AxonaRecordingInterface.__init__() is deprecated "
-                f"and will be removed on or after August 2026. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            verbose = positional_values.get("verbose", verbose)
-            es_key = positional_values.get("es_key", es_key)
+
+        if metadata_key is None:
+            metadata_key = "axona_recording"
 
         super().__init__(file_path=file_path, verbose=verbose, es_key=es_key, metadata_key=metadata_key)
 
-        if metadata_key is None:
-            self.metadata_key = "axona_recording"
-
         self.metadata_in_set_file = self.recording_extractor.neo_reader.file_parameters["set"]["file_header"]
+
+        # Read the start time while the recording is still the neo-based extractor, as `remove_channels`
+        # replaces it with a channel slice that does not carry the `neo_reader`
+        raw_annotations = self.recording_extractor.neo_reader.raw_annotations
+        self._session_start_time = raw_annotations["blocks"][0]["segments"][0]["rec_datetime"]
 
         # Set the channel groups
         tetrode_id = self.recording_extractor.get_property("tetrode_id")
         self.recording_extractor.set_channel_groups(tetrode_id)
 
+        self._exclude_channels(channels_to_exclude)
+
     def extract_nwb_file_metadata(self) -> dict:
-        raw_annotations = self.recording_extractor.neo_reader.raw_annotations
-        session_start_time = raw_annotations["blocks"][0]["segments"][0]["rec_datetime"]
         session_description = self.metadata_in_set_file["comments"]
         experimenter = self.metadata_in_set_file["experimenter"]
 
         nwbfile_metadata = dict(
-            session_start_time=session_start_time,
+            session_start_time=self._session_start_time,
             session_description=session_description,
             experimenter=[experimenter] if experimenter else None,  # The schema expects an array of strings
         )
@@ -203,33 +184,7 @@ class AxonaUnitRecordingInterface(AxonaRecordingInterface):
             type="object",
         )
 
-    def __init__(
-        self, file_path: FilePath, *args, noise_std: float = 3.5
-    ):  # TODO: change to * (keyword only) on or after August 2026
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "noise_std",
-            ]
-            num_positional_args_before_args = 1  # file_path
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args + 1} were given. "
-                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
-                    "Please use keyword arguments."
-                )
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to AxonaUnitRecordingInterface.__init__() is deprecated "
-                f"and will be removed on or after August 2026. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            noise_std = positional_values.get("noise_std", noise_std)
+    def __init__(self, file_path: FilePath, *, noise_std: float = 3.5):
 
         super().__init__(filename=file_path, noise_std=noise_std)
         self.source_data = dict(file_path=file_path, noise_std=noise_std)
@@ -268,18 +223,36 @@ class AxonaLFPDataInterface(BaseLFPExtractorInterface):
     def get_source_schema(cls) -> dict:
         return dict(
             required=["file_path"],
-            properties=dict(file_path=dict(type="string")),
+            properties=dict(
+                file_path=dict(type="string"),
+                channels_to_exclude=dict(
+                    anyOf=[dict(type="array", items=dict()), dict(type="null")],
+                    default=None,
+                    description="Channels to leave out, by the ids in ``channel_ids``.",
+                ),
+            ),
             type="object",
             additionalProperties=False,
         )
 
-    def __init__(self, file_path: FilePath):
+    def __init__(self, file_path: FilePath, *, channels_to_exclude: list | None = None):
+        """
+        Parameters
+        ----------
+        file_path : FilePath
+            Path to the .eeg file.
+        channels_to_exclude : list, optional
+            Channels to leave out, by the ids in ``channel_ids``. Every other channel is converted. A name that
+            is not one of the interface's channels raises.
+        """
         data = read_all_eeg_file_lfp_data(file_path).T
         self.traces_list = [data]
         self.sampling_frequency = get_eeg_sampling_frequency(file_path)
         super().__init__(file_path=file_path)
 
         self.source_data = dict(file_path=file_path)
+
+        self._exclude_channels(channels_to_exclude)
 
 
 class AxonaPositionDataInterface(BaseDataInterface):
@@ -314,7 +287,7 @@ class AxonaPositionDataInterface(BaseDataInterface):
         nwbfile : NWBFile
         metadata : dict
         """
-        file_path = self.interface_kwargs["file_path"]
+        file_path = self.source_data["file_path"]
 
         # Create or update processing module for behavioral data
         behavior_module = get_module(nwbfile=nwbfile, name="behavior", description="processed behavioral data")

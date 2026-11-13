@@ -1,6 +1,5 @@
 """DataInterfaces for SpikeGLX."""
 
-import warnings
 from datetime import datetime
 from pathlib import Path
 
@@ -56,11 +55,12 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
     def __init__(
         self,
         folder_path: DirectoryPath,
-        *args,  # TODO: change to * (keyword only) on or after August 2026
+        *,
         stream_id: str,
         verbose: bool = False,
         es_key: str | None = None,
         metadata_key: str | None = None,
+        channels_to_exclude: list | None = None,
     ):
         """
         Parameters
@@ -77,35 +77,10 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         metadata_key : str, optional
             Key that indexes this interface's entries in the dict-based metadata. Defaults to
             ``"spikeglx_{probe}_{band}"`` (e.g. ``"spikeglx_imec0_ap"``).
+        channels_to_exclude : list, optional
+            Channels to leave out, by the ids in ``channel_ids``. Every other channel is converted. A name that
+            is not one of the interface's channels raises.
         """
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "stream_id",
-                "verbose",
-                "es_key",
-            ]
-            num_positional_args_before_args = 1  # folder_path
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args + 1} were given. "
-                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
-                    "Please use keyword arguments."
-                )
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to SpikeGLXRecordingInterface.__init__() is deprecated "
-                f"and will be removed on or after August 2026. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            stream_id = positional_values.get("stream_id", stream_id)
-            verbose = positional_values.get("verbose", verbose)
-            es_key = positional_values.get("es_key", es_key)
 
         if stream_id == "nidq":
             raise ValueError(
@@ -120,6 +95,16 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
 
         self.stream_id = stream_id
         self.folder_path = Path(folder_path)
+
+        # ``metadata_key`` is the dict key, a snake_case handle rather than the CamelCase series name. SpikeGLX
+        # yields several streams per session (one per probe and band), so it is derived from the stream handle
+        # the format itself provides. It is derived before the base constructor, so the constructor holds the final
+        # key from the start.
+        # TODO: this repeats Neo's reading of a stream id as `{device}.{stream_kind}`, revisit it if another
+        # interface needs a key from its extractor before the base constructor
+        if metadata_key is None:
+            device, stream_kind = stream_id.split(".")
+            metadata_key = f"spikeglx_{device}_{stream_kind}"  # e.g. spikeglx_imec0_ap
 
         super().__init__(
             folder_path=folder_path,
@@ -154,13 +139,6 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         else:
             # A user-supplied ``es_key`` (legacy) is still honored as the name override until it is removed.
             self._series_name = es_key
-
-        # ``metadata_key`` is the dict key, a snake_case handle rather than the CamelCase series name. SpikeGLX
-        # yields several streams per session (one per probe and band), so it is derived from the stream handle
-        # the format itself provides. The base seeded it from the (None) ``es_key``, so set it here unless the
-        # user passed one explicitly.
-        if metadata_key is None:
-            self.metadata_key = f"spikeglx_{probe_id}_{stream_kind}"  # e.g. spikeglx_imec0_ap
 
         # Set electrode properties from probe information
         probe = self.recording_extractor.get_probe()
@@ -226,6 +204,8 @@ class SpikeGLXRecordingInterface(BaseRecordingExtractorInterface):
         # Remove inter_sample_shift property - internal spikeinterface property not relevant for NWB
         if "inter_sample_shift" in self.recording_extractor.get_property_keys():
             self.recording_extractor.delete_property(key="inter_sample_shift")
+
+        self._exclude_channels(channels_to_exclude)
 
     def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         from ....tools.spikeinterface.spikeinterface import _get_probe_device_metadata

@@ -1,4 +1,5 @@
 import warnings
+from functools import partial
 from typing import Literal
 
 import numpy as np
@@ -6,6 +7,7 @@ from pynwb import NWBFile
 from pynwb.device import Device
 from pynwb.ecephys import ElectricalSeries, ElectrodeGroup
 
+from ..._temporal_alignment import _TemporalAlignment
 from ...baseextractorinterface import BaseExtractorInterface
 from ...utils import (
     DeepDict,
@@ -80,7 +82,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         # construction. Without the sentinel the deprecation warning would fire for everyone.
         if es_key is not None:
             warnings.warn(
-                "The 'es_key' argument is deprecated and will be removed on or after February 2027. "
+                "The 'es_key' argument is deprecated and will be removed in v0.12.0. "
                 "Use 'metadata_key' instead: it is the same concept, the key addressing this interface's "
                 "entry in the metadata, and it is the one the dict-based format uses. The name written to "
                 "the file comes from that entry's 'name' field, not from the key.",
@@ -94,6 +96,36 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         self.es_key = es_key if es_key is not None else self._default_es_key
         self.metadata_key = metadata_key if metadata_key is not None else self.es_key
         self._number_of_segments = self.recording_extractor.get_num_segments()
+        self._register_segments()
+
+    def _register_segments(self) -> None:
+        """Name every segment as a time-bearing object, keyed ``{metadata_key}_{segment_index}``.
+
+        The key is the one a ``{metadata_key}_{segment_index}`` metadata entry uses to override the series of that
+        segment, so one name addresses a segment for both. Registering reads nothing.
+        """
+        self._alignment = _TemporalAlignment()
+        for segment_index in range(self._number_of_segments):
+            self._alignment._register(
+                key=f"{self.metadata_key}_{segment_index}",
+                get_native_times=partial(self._get_segment_native_times, segment_index=segment_index),
+                default_start_time=partial(self._get_segment_native_start_time, segment_index=segment_index),
+                get_number_of_samples=partial(self._get_segment_number_of_samples, segment_index=segment_index),
+            )
+
+    @property
+    def temporal_alignment(self) -> _TemporalAlignment:
+        return self._alignment
+
+    # The recording is read on every call because an interface replaces it when it drops channels
+    def _get_segment_native_times(self, segment_index: int) -> np.ndarray:
+        return self.recording_extractor.get_times(segment_index=segment_index)
+
+    def _get_segment_native_start_time(self, segment_index: int) -> float:
+        return self.recording_extractor.get_start_time(segment_index=segment_index)
+
+    def _get_segment_number_of_samples(self, segment_index: int) -> int:
+        return self.recording_extractor.get_num_samples(segment_index=segment_index)
 
     def get_metadata_schema(self) -> dict:
         """
@@ -269,6 +301,24 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         self.recording_extractor = self.recording_extractor.remove_channels(remove_channel_ids=channel_ids)
         return self
 
+    def _exclude_channels(self, channels_to_exclude: list | None) -> None:
+        """Drop the channels named by the ``channels_to_exclude`` constructor argument.
+
+        Called last in each interface's ``__init__``, after the interface's own routing, so the names are the
+        ``channel_ids`` the interface ends up holding.
+        """
+        if not channels_to_exclude:
+            return
+
+        channel_ids = self.channel_ids.tolist()
+        missing_channels = [channel for channel in channels_to_exclude if channel not in channel_ids]
+        if missing_channels:
+            raise ValueError(
+                f"`channels_to_exclude` names {missing_channels}, which are not channels of this "
+                f"{type(self).__name__}. Its channels are {channel_ids}."
+            )
+        self.remove_channels(channel_ids=channels_to_exclude)
+
     def get_original_timestamps(self) -> np.ndarray | list[np.ndarray]:
         """
         Retrieve the original unaltered timestamps for the data in this interface.
@@ -299,6 +349,12 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         timestamps: numpy.ndarray or list of numpy.ndarray
             The timestamps for the data stream; if the recording has multiple segments, then a list of timestamps is returned.
         """
+        warnings.warn(
+            "`get_timestamps` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment[key].get_times()` instead, one key per segment.",
+            FutureWarning,
+            stacklevel=2,
+        )
         if self._number_of_segments == 1:
             return self.recording_extractor.get_times()
         else:
@@ -308,11 +364,17 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             ]
 
     def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
+        warnings.warn(
+            "`set_aligned_timestamps` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment[key].set_times(times)` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
         assert (
             self._number_of_segments == 1
         ), "This recording has multiple segments; please use 'align_segment_timestamps' instead."
 
-        self.recording_extractor.set_times(times=aligned_timestamps, with_warning=False)
+        self.recording_extractor.set_times(times=aligned_timestamps)
 
     def set_aligned_segment_timestamps(self, aligned_segment_timestamps: list[np.ndarray]):
         """
@@ -325,6 +387,12 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         aligned_segment_timestamps : list of numpy.ndarray
             The synchronized timestamps for segment of data in this interface.
         """
+        warnings.warn(
+            "`set_aligned_segment_timestamps` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment[key].set_times(times)` on each segment instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
         assert isinstance(
             aligned_segment_timestamps, list
         ), "Recording has multiple segment! Please pass a list of timestamps to align each segment."
@@ -336,17 +404,20 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             self.recording_extractor.set_times(
                 times=aligned_segment_timestamps[segment_index],
                 segment_index=segment_index,
-                with_warning=False,
             )
 
     def set_aligned_starting_time(self, aligned_starting_time: float):
-        if self._number_of_segments == 1:
-            self.set_aligned_timestamps(aligned_timestamps=self.get_timestamps() + aligned_starting_time)
-        else:
-            self.set_aligned_segment_timestamps(
-                aligned_segment_timestamps=[
-                    segment_timestamps + aligned_starting_time for segment_timestamps in self.get_timestamps()
-                ]
+        warnings.warn(
+            "`set_aligned_starting_time` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment.shift_times(delta)` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        # The recording is read and set directly, so a call warns once and not for every deprecated method it used
+        for segment_index in range(self._number_of_segments):
+            segment_timestamps = self.recording_extractor.get_times(segment_index=segment_index)
+            self.recording_extractor.set_times(
+                times=segment_timestamps + aligned_starting_time, segment_index=segment_index
             )
 
     def set_aligned_segment_starting_times(self, aligned_segment_starting_times: list[float]):
@@ -360,21 +431,22 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         aligned_segment_starting_times : list of floats
             The starting time for each segment of data in this interface.
         """
+        warnings.warn(
+            "`set_aligned_segment_starting_times` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment[key].shift_times(delta)` on each segment instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
         assert len(aligned_segment_starting_times) == self._number_of_segments, (
             f"The length of the starting_times ({len(aligned_segment_starting_times)}) does not match the "
             "number of segments ({self._number_of_segments})!"
         )
 
-        if self._number_of_segments == 1:
-            self.set_aligned_starting_time(aligned_starting_time=aligned_segment_starting_times[0])
-        else:
-            aligned_segment_timestamps = [
-                segment_timestamps + aligned_segment_starting_time
-                for segment_timestamps, aligned_segment_starting_time in zip(
-                    self.get_timestamps(), aligned_segment_starting_times
-                )
-            ]
-            self.set_aligned_segment_timestamps(aligned_segment_timestamps=aligned_segment_timestamps)
+        for segment_index, aligned_segment_starting_time in enumerate(aligned_segment_starting_times):
+            segment_timestamps = self.recording_extractor.get_times(segment_index=segment_index)
+            self.recording_extractor.set_times(
+                times=segment_timestamps + aligned_segment_starting_time, segment_index=segment_index
+            )
 
     def set_probe(self, probe: "Probe | ProbeGroup", group_mode: Literal["by_shank", "by_probe"]):
         """
@@ -403,13 +475,10 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         # Set the probe to the recording extractor. SpikeInterface 0.105 removed the private
         # `_set_probes`, which took either a Probe or a ProbeGroup; the public entry points are split
         # by type, so dispatch here.
-        # TODO: drop `in_place=True` once spikeinterface>=0.105.0 is the minimum pin, where these calls
-        # are always in place and the argument is deprecated. It is required on 0.104, which otherwise
-        # returns a new recording and leaves this one unchanged.
         if isinstance(probe, ProbeGroup):
-            self.recording_extractor.set_probegroup(probe, group_mode=group_mode, in_place=True)
+            self.recording_extractor.set_probegroup(probe, group_mode=group_mode)
         else:
-            self.recording_extractor.set_probe(probe, group_mode=group_mode, in_place=True)
+            self.recording_extractor.set_probe(probe, group_mode=group_mode)
 
         # Spike interface sets the "group" property
         # But neuroconv allows "group_name" property to override spike interface "group" value
@@ -432,9 +501,16 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         unaligned_timestamps: np.ndarray,
         aligned_timestamps: np.ndarray,
     ):
+        warnings.warn(
+            "`align_by_interpolation` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment.remap_times(local_sync_times=..., reference_sync_times=...)` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
         if self._number_of_segments == 1:
-            self.set_aligned_timestamps(
-                aligned_timestamps=np.interp(x=self.get_timestamps(), xp=unaligned_timestamps, fp=aligned_timestamps)
+            timestamps = self.recording_extractor.get_times()
+            self.recording_extractor.set_times(
+                times=np.interp(x=timestamps, xp=unaligned_timestamps, fp=aligned_timestamps)
             )
         else:
             raise NotImplementedError("Multi-segment support for aligning by interpolation has not been added yet.")
@@ -475,7 +551,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
             - 'processing/FilteredEphys': a ``FilteredEphys`` container in the ecephys processing module.
         write_as : {'raw', 'processed', 'lfp'}, optional
             Deprecated. Use ``parent_container`` instead ('raw' -> 'acquisition', 'lfp' -> 'processing/LFP',
-            'processed' -> 'processing/FilteredEphys'). Will be removed on or after February 2027.
+            'processed' -> 'processing/FilteredEphys'). Will be removed in v0.12.0.
         data_representation : {'digital_counts', 'physical_units'}, default='digital_counts'
             How the trace values are materialized in the stored data array.
             - 'digital_counts': store the raw integer samples and carry the per-channel gain in
@@ -524,7 +600,7 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         if write_as is not None:
             warnings.warn(
                 "The 'write_as' parameter of BaseRecordingExtractorInterface.add_to_nwbfile() is deprecated and "
-                "will be removed on or after February 2027. Use 'parent_container' instead "
+                "will be removed in v0.12.0. Use 'parent_container' instead "
                 "('raw' -> 'acquisition', 'lfp' -> 'processing/LFP', 'processed' -> 'processing/FilteredEphys').",
                 FutureWarning,
                 stacklevel=2,
@@ -536,8 +612,8 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         from ...tools.spikeinterface import (
             _stub_recording,
             add_recording_metadata_to_nwbfile,
-            add_recording_to_nwbfile,
         )
+        from ...tools.spikeinterface.spikeinterface import _add_recording_to_nwbfile
 
         recording = self.recording_extractor
         if stub_test:
@@ -581,10 +657,26 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
                     "interface.remove_channels(channel_ids=[...]) and write them as TimeSeries instead. "
                     "See https://neuroconv.readthedocs.io/en/main/how_to/handle_heterogeneous_offsets.html"
                 )
-            add_recording_to_nwbfile(
+            # The aligned times are handed to the writer, never set on the recording. Timestamps when the times were
+            # replaced or the segment has a time vector, otherwise the aligned start, so a shifted regular segment is
+            # written as a start and a rate without building its times
+            segment_timestamps, segment_starting_times = [], []
+            for segment_index, key in enumerate(self.temporal_alignment.keys()):
+                segment = self.temporal_alignment[key]
+                if segment._times is not None or self.recording_extractor.has_time_vector(segment_index=segment_index):
+                    number_of_samples = recording.get_num_samples(segment_index=segment_index)
+                    segment_timestamps.append(segment.get_times()[:number_of_samples])
+                    segment_starting_times.append(None)
+                else:
+                    segment_timestamps.append(None)
+                    segment_starting_times.append(segment._get_start_time())
+
+            _add_recording_to_nwbfile(
                 recording=recording,
                 nwbfile=nwbfile,
                 metadata=metadata,
+                segment_timestamps=segment_timestamps,
+                segment_starting_times=segment_starting_times,
                 parent_container=parent_container,
                 data_representation=data_representation,
                 es_key=self.es_key,

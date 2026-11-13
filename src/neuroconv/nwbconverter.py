@@ -10,7 +10,9 @@ from jsonschema import validate
 from pydantic import FilePath, validate_call
 from pynwb import NWBFile
 
+from ._temporal_alignment import _ConverterTemporalAlignment
 from .basedatainterface import BaseDataInterface
+from .tools.external_resources import add_external_resources_to_nwbfile
 from .tools.nwb_helpers import (
     BACKEND_NWB_IO,
     HDF5BackendConfiguration,
@@ -23,6 +25,7 @@ from .tools.nwb_helpers import (
 )
 from .tools.nwb_helpers._metadata_and_file_helpers import (
     _fetch_backend_from_nwbfile_on_disk,
+    _make_image_series_paths_relative_to_nwbfile,
 )
 from .utils import (
     dict_deep_update,
@@ -121,6 +124,16 @@ class NWBConverter:
 
             interface_instance = interface_class(**interface_kwargs)
             self.data_interface_objects[interface_name] = interface_instance
+
+    @property
+    def temporal_alignment(self) -> _ConverterTemporalAlignment:
+        """The temporal alignment of this converter's children, indexed by their names in ``data_interface_objects``.
+
+        ``converter.temporal_alignment[name]`` is that child's own ``temporal_alignment``, so indexing again reaches
+        one time-bearing object of an interface, or a child of a nested converter. Children without temporal
+        alignment are left out of ``keys()``.
+        """
+        return _ConverterTemporalAlignment(data_interface_objects=self.data_interface_objects)
 
     def get_metadata_schema(self) -> dict:
         """
@@ -292,6 +305,21 @@ class NWBConverter:
         metadata = metadata or self._get_metadata_for_writing()
 
         conversion_options = conversion_options or dict()
+
+        def add_commanded_voltages(converter, options):
+            for child_name, child in converter.data_interface_objects.items():
+                child_options = options.get(child_name, {})
+                if isinstance(child, NWBConverter):
+                    add_commanded_voltages(child, child_options)
+                elif (write_drives := getattr(child, "_add_commanded_voltage_series", None)) is not None:
+                    drive_options = {
+                        key: child_options[key]
+                        for key in ("stub_test", "stub_samples", "always_write_timestamps")
+                        if key in child_options
+                    }
+                    write_drives(nwbfile=nwbfile, metadata=metadata, **drive_options)
+
+        add_commanded_voltages(self, conversion_options)
         for child_name, child in self.data_interface_objects.items():
             child_options = conversion_options.get(child_name, dict())
             if isinstance(child, NWBConverter):
@@ -419,7 +447,8 @@ class NWBConverter:
         Write NWBFile to a file path on disk.
 
         Private helper method for run_conversion in write mode.
-        Creates a new NWBFile or uses provided one, then writes to disk.
+        Creates a new NWBFile or uses provided one, annotates it with the HERD terms in the metadata,
+        then writes to disk.
         """
         if nwbfile is not None:
             self.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, conversion_options=conversion_options)
@@ -431,6 +460,7 @@ class NWBConverter:
             nwbfile_path=nwbfile_path,
             backend=backend,
             backend_configuration=backend_configuration,
+            metadata=metadata,
         )
 
     def _append_nwbfile(
@@ -445,7 +475,8 @@ class NWBConverter:
         Append data to an existing NWB file.
 
         Private helper method for run_conversion in append mode.
-        Reads existing file, adds interface data, and writes back.
+        Reads existing file, adds interface data, annotates it with the HERD terms in the metadata,
+        and writes back.
         """
         backend = _fetch_backend_from_nwbfile_on_disk(
             nwbfile_path=nwbfile_path, backend=backend, backend_configuration=backend_configuration
@@ -457,10 +488,14 @@ class NWBConverter:
 
             self.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, conversion_options=conversion_options)
 
+            # Before the backend configuration, so the HERD tables are configured like everything else.
+            add_external_resources_to_nwbfile(nwbfile, metadata=metadata)
+
             if backend_configuration is None:
                 backend_configuration = self.get_default_backend_configuration(nwbfile=nwbfile, backend=backend)
 
             configure_backend(nwbfile=nwbfile, backend_configuration=backend_configuration)
+            _make_image_series_paths_relative_to_nwbfile(nwbfile=nwbfile, nwbfile_path=nwbfile_path)
 
             io.write(nwbfile)
 

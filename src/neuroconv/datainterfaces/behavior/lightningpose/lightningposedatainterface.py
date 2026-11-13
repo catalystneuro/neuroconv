@@ -2,6 +2,7 @@ import re
 import warnings
 from copy import deepcopy
 from datetime import datetime
+from functools import partial
 from pathlib import Path
 
 import numpy as np
@@ -9,6 +10,7 @@ from pydantic import FilePath, validate_call
 from pynwb import NWBFile
 
 from ..baseposeestimationinterface import BasePoseEstimationInterface
+from ....tools.nwb_helpers._metadata_and_file_helpers import _validate_metadata_key
 from ....tools.pose_estimation import _add_pose_estimation_to_nwbfile
 from ....utils import (
     DeepDict,
@@ -82,7 +84,7 @@ class LightningPoseDataInterface(BasePoseEstimationInterface):
     def __init__(
         self,
         file_path: FilePath,
-        *args,  # TODO: change to * (keyword only) on or after August 2026
+        *,
         original_video_file_path: FilePath,
         labeled_video_file_path: FilePath | None = None,
         verbose: bool = False,
@@ -109,34 +111,6 @@ class LightningPoseDataInterface(BasePoseEstimationInterface):
             the written file. Only used by the dict-based shape, reachable through
             ``get_metadata(use_new_metadata_format=True)``.
         """
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "original_video_file_path",
-                "labeled_video_file_path",
-                "verbose",
-            ]
-            num_positional_args_before_args = 1  # file_path
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args + 1} were given. "
-                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
-                    "Please use keyword arguments."
-                )
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to LightningPoseDataInterface.__init__() is deprecated "
-                f"and will be removed on or after August 2026. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            original_video_file_path = positional_values.get("original_video_file_path", original_video_file_path)
-            labeled_video_file_path = positional_values.get("labeled_video_file_path", labeled_video_file_path)
-            verbose = positional_values.get("verbose", verbose)
 
         # This import is to assure that the ndx_pose is in the global namespace when an pynwb.io object is created
         # For more detail, see https://github.com/rly/ndx-pose/issues/36
@@ -209,22 +183,19 @@ class LightningPoseDataInterface(BasePoseEstimationInterface):
 
     def get_timestamps(self, stub_test: bool = False) -> np.ndarray:
         warnings.warn(
-            "`get_timestamps` is deprecated and will be removed in v0.12.0. "
-            "Use `interface.alignment[key].get_times()` instead.",
+            "`get_timestamps` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment[key].get_times()` instead.",
             FutureWarning,
             stacklevel=2,
         )
         return self._get_timestamps(stub_test=stub_test)
 
     def _get_timestamps(self, stub_test: bool = False) -> np.ndarray:
-        time_bearing_object = self.alignment[self.metadata_key]
+        time_bearing_object = self.temporal_alignment[self.metadata_key]
         if stub_test:
-            base_times = (
-                self.get_original_timestamps(stub_test=True)
-                if time_bearing_object._times is None
-                else time_bearing_object._times[:10]
-            )
-            return base_times + time_bearing_object._object_offset + self.alignment.offset
+            return time_bearing_object._get_times(
+                get_default_times=partial(self.get_original_timestamps, stub_test=True)
+            )[:10]
         return time_bearing_object.get_times()
 
     def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
@@ -318,7 +289,7 @@ class LightningPoseDataInterface(BasePoseEstimationInterface):
         self,
         nwbfile: NWBFile,
         metadata: dict | None = None,
-        *args,  # TODO: change to * (keyword only) on or after August 2026
+        *,
         reference_frame: str | None = None,
         confidence_definition: str | None = None,
         stub_test: bool | None = False,
@@ -344,34 +315,6 @@ class LightningPoseDataInterface(BasePoseEstimationInterface):
             ``metadata["Pose"]["PoseEstimations"][metadata_key]["PoseEstimationSeries"]`` instead.
         stub_test : bool, default: False
         """
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "reference_frame",
-                "confidence_definition",
-                "stub_test",
-            ]
-            num_positional_args_before_args = 2  # nwbfile, metadata
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"add_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args} were given. "
-                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
-                    "Please use keyword arguments."
-                )
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to LightningPoseDataInterface.add_to_nwbfile() is deprecated "
-                f"and will be removed on or after August 2026. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            reference_frame = positional_values.get("reference_frame", reference_frame)
-            confidence_definition = positional_values.get("confidence_definition", confidence_definition)
-            stub_test = positional_values.get("stub_test", stub_test)
 
         # Dispatch on the legacy block being there rather than on the dict-based one being absent, since
         # metadata that mentions neither is not legacy, it is a caller who said nothing about pose. The
@@ -405,21 +348,18 @@ class LightningPoseDataInterface(BasePoseEstimationInterface):
         if deprecated_options:
             warnings.warn(
                 f"The {list(deprecated_options)} conversion option(s) of "
-                "LightningPoseDataInterface.add_to_nwbfile() are deprecated and will be removed on or after "
-                "August 2027. Set them per series in "
+                "LightningPoseDataInterface.add_to_nwbfile() are deprecated and will be removed in "
+                "v0.13.0. Set them per series in "
                 "metadata['Pose']['PoseEstimations'][metadata_key]['PoseEstimationSeries'] instead.",
                 FutureWarning,
                 stacklevel=2,
             )
-            # Reached with ``.get`` and checked rather than indexed: ``metadata_copy`` is often a
-            # ``DeepDict``, where indexing a key that addresses nothing creates it, which would leave the
-            # writer's own check with an empty entry to find instead of a missing one.
-            containers_metadata = metadata_copy.get("Pose", {}).get("PoseEstimations", {})
-            if self.metadata_key not in containers_metadata:
-                raise ValueError(
-                    f"metadata_key '{self.metadata_key}' was not found in metadata['Pose']['PoseEstimations'] "
-                    f"(available keys: {list(containers_metadata)})."
-                )
+            _validate_metadata_key(
+                metadata_copy,
+                metadata_path=("Pose", "PoseEstimations"),
+                metadata_key=self.metadata_key,
+            )
+            containers_metadata = metadata_copy["Pose"]["PoseEstimations"]
             for series_entry in containers_metadata[self.metadata_key]["PoseEstimationSeries"].values():
                 series_entry.update(deprecated_options)
 

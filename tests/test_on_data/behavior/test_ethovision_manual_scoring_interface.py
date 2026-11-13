@@ -5,6 +5,8 @@ from datetime import datetime
 
 import numpy as np
 import pytest
+from ndx_ethogram import EthogramBouts
+from numpy.testing import assert_allclose
 from pynwb import read_nwb
 
 from neuroconv import ConverterPipe
@@ -12,6 +14,10 @@ from neuroconv.datainterfaces.behavior.ethovision.ethovisionmanualscoringinterfa
     EthoVisionManualScoringInterface,
 )
 from neuroconv.datainterfaces.behavior.ethovision.ethovisiontrackinterface import EthoVisionTrackInterface
+from neuroconv.tools.testing._nwbfile_times import (
+    _get_nwbfile_durations,
+    _get_nwbfile_times,
+)
 from neuroconv.tools.testing.data_interface_mixins import EventsInterfaceTestMixin
 
 try:
@@ -22,12 +28,83 @@ except ImportError:
 ETHOVISION_FOLDER_PATH = BEHAVIOR_DATA_PATH / "ethovision"
 
 
-class TestEthoVisionManualScoring(EventsInterfaceTestMixin):
+class EthoVisionManualScoringTestMixin(EventsInterfaceTestMixin):
+    """The checks every EthoVision Manual Scoring conversion shares."""
+
+    def test_temporal_alignment_set_times_reaches_the_nwbfile(self, setup_interface):
+        """Every time the interface writes is replaced, except that a bout ends its kept duration after its new start.
+
+        Overrides the shared check, which expects every written time to take the replacement. ``set_times`` keeps
+        the durations, and the bouts table is derived from the events, so a bout's ``stop_time`` is its replaced
+        ``start_time`` plus the duration it had.
+        """
+        shift = 1.5
+        stretch = 2.0
+
+        metadata = self.interface.get_metadata()
+        metadata["NWBFile"].setdefault("session_start_time", datetime.now().astimezone())
+
+        original_nwbfile = self.interface.create_nwbfile(metadata=metadata, **self.conversion_options)
+        original_times = _get_nwbfile_times(original_nwbfile)
+        original_durations = _get_nwbfile_durations(original_nwbfile)
+        # Found by type rather than by name, since the bouts table is named after the arena.
+        bouts_stop_time_identifiers = {
+            f"{table.parent.name}/{table.name}/stop_time"
+            for table in original_nwbfile.objects.values()
+            if isinstance(table, EthogramBouts)
+        }
+
+        replaced_interface = self.data_interface_cls(**self.interface_kwargs)
+        for key in replaced_interface.temporal_alignment.keys():
+            time_bearing_object = replaced_interface.temporal_alignment[key]
+            time_bearing_object.set_times(time_bearing_object.get_times() * stretch + shift)
+        replaced_nwbfile = replaced_interface.create_nwbfile(metadata=metadata, **self.conversion_options)
+        replaced_times = _get_nwbfile_times(replaced_nwbfile)
+        replaced_durations = _get_nwbfile_durations(replaced_nwbfile)
+
+        assert replaced_times.keys() == original_times.keys()
+        for identifier, times in original_times.items():
+            if identifier in bouts_stop_time_identifiers:
+                start_identifier = identifier.removesuffix("stop_time") + "start_time"
+                bout_durations = times - original_times[start_identifier]
+                expected_times = replaced_times[start_identifier] + bout_durations
+            else:
+                expected_times = times * stretch + shift
+            assert_allclose(
+                replaced_times[identifier],
+                expected_times,
+                rtol=0,
+                atol=1e-9,
+                err_msg=f"{identifier} was written but did not follow `set_times`",
+            )
+
+        assert replaced_durations.keys() == original_durations.keys()
+        for identifier, durations in original_durations.items():
+            assert_allclose(
+                replaced_durations[identifier],
+                durations,
+                rtol=0,
+                atol=1e-9,
+                err_msg=f"{identifier} changed under `set_times`, which keeps the durations",
+            )
+
+
+class TestEthoVisionManualScoring(EthoVisionManualScoringTestMixin):
     """The `two_c57` stub: a Manual Scoring sheet beside the Track, with point events and state bouts."""
 
     file_path = ETHOVISION_FOLDER_PATH / "excel/single_arena_single_subject/track_and_manual_scoring/two_c57.xlsx"
     interface_kwargs = dict(file_path=file_path)
     data_interface_cls = EthoVisionManualScoringInterface
+    expected_temporal_alignment_keys = (
+        "start",
+        "Sniff",
+        "groom",
+        "attacking",
+        "aggressive groom",
+        "digging",
+        "tail rattle",
+        "carry",
+    )
     save_directory = OUTPUT_PATH
 
     expected_session_start_time = datetime(2022, 1, 25, 19, 38, 10)
@@ -74,12 +151,13 @@ class TestEthoVisionManualScoring(EventsInterfaceTestMixin):
         )
 
 
-class TestEthoVisionManualScoringOnly(EventsInterfaceTestMixin):
+class TestEthoVisionManualScoringOnly(EthoVisionManualScoringTestMixin):
     """A Manual Scoring sheet exported without any Track, so the session start comes from the sheet's own header."""
 
     file_path = ETHOVISION_FOLDER_PATH / "excel/single_arena_single_subject/manual_scoring_only/manual_scoring.xlsx"
     interface_kwargs = dict(file_path=file_path)
     data_interface_cls = EthoVisionManualScoringInterface
+    expected_temporal_alignment_keys = ("Rearing", "Sniffing", "Operant", "Free-air whisking", "Tone")
     save_directory = OUTPUT_PATH
 
     expected_session_start_time = datetime(2023, 12, 13, 12, 58, 24, 71000)
@@ -136,7 +214,7 @@ class TestEthoVisionManualScoringEdgeCases:
 
     def test_remap_times_moves_events_and_bouts(self):
         interface = EthoVisionManualScoringInterface(file_path=TestEthoVisionManualScoring.file_path)
-        interface.alignment.remap_times(
+        interface.temporal_alignment.remap_times(
             local_sync_times=np.array([0.0, 200.0]),
             reference_sync_times=np.array([10.0, 410.0]),
         )
