@@ -9,7 +9,6 @@ import zarr
 from hdmf import Container
 from hdmf.data_utils import DataIO
 from hdmf.utils import get_data_shape
-from hdmf_zarr import NWBZarrIO
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.base import DynamicTable, Image, TimeSeriesReferenceVectorData
 from pynwb.file import NWBContainer
@@ -17,6 +16,13 @@ from pynwb.file import NWBContainer
 from ._configuration_models import DATASET_IO_CONFIGURATIONS
 from ._configuration_models._base_dataset_io import DatasetIOConfiguration
 from ..hdmf import _get_nwbfile_builder
+from ..importing import is_package_installed
+
+# hdmf_zarr installs only on Python 3.12 and newer, where no file can have been read with `NWBZarrIO`.
+if is_package_installed(package_name="hdmf_zarr"):
+    from hdmf_zarr import NWBZarrIO
+else:
+    NWBZarrIO = None
 
 
 def _get_zarr_store_path(zarr_array: zarr.Array) -> str | None:
@@ -96,7 +102,7 @@ def get_default_dataset_io_configurations(
     if isinstance(nwbfile.read_io, NWBHDF5IO) and nwbfile.read_io.mode in ("r+", "a"):
         detected_backend = "hdf5"
         existing_file_path = nwbfile.read_io.source
-    elif isinstance(nwbfile.read_io, NWBZarrIO) and nwbfile.read_io.mode in ("r+", "a"):
+    elif NWBZarrIO is not None and isinstance(nwbfile.read_io, NWBZarrIO) and nwbfile.read_io.mode in ("r+", "a"):
         detected_backend = "zarr"
         existing_file_path = nwbfile.read_io.source
     backend = backend or detected_backend
@@ -239,7 +245,7 @@ def get_existing_dataset_io_configurations(nwbfile: NWBFile) -> Generator[Datase
     backend = None
     if isinstance(nwbfile.read_io, NWBHDF5IO):
         backend = "hdf5"
-    elif isinstance(nwbfile.read_io, NWBZarrIO):
+    elif NWBZarrIO is not None and isinstance(nwbfile.read_io, NWBZarrIO):
         backend = "zarr"
 
     DatasetIOConfigurationClass = DATASET_IO_CONFIGURATIONS[backend]

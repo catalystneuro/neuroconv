@@ -6,8 +6,6 @@ import numpy as np
 import pytest
 import zarr
 from hdmf.common import VectorData
-from hdmf_zarr import ZarrDataIO
-from hdmf_zarr.nwb import NWBZarrIO
 from packaging.version import Version
 from pynwb import NWBHDF5IO, H5DataIO
 from pynwb.base import DynamicTable
@@ -24,6 +22,11 @@ from neuroconv.tools.nwb_helpers import (
     get_existing_dataset_io_configurations,
     get_module,
 )
+
+# hdmf_zarr installs only on Python 3.12 and newer.
+pytest.importorskip("hdmf_zarr")
+from hdmf_zarr import ZarrDataIO
+from hdmf_zarr.nwb import NWBZarrIO
 
 # The Zarr cases need zarr 3, which only installs on Python 3.14 and newer. Under zarr 2 they are skipped, see
 # tests/conftest.py.

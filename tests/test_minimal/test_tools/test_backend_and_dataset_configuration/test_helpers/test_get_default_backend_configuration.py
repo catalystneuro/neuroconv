@@ -6,7 +6,6 @@ from unittest.mock import patch
 
 import numpy as np
 import pytest
-from hdmf_zarr import NWBZarrIO
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.testing.mock.base import mock_TimeSeries
 from pynwb.testing.mock.file import mock_NWBFile
@@ -17,6 +16,10 @@ from neuroconv.tools.nwb_helpers import (
     get_default_backend_configuration,
     get_module,
 )
+
+# hdmf_zarr installs only on Python 3.12 and newer.
+pytest.importorskip("hdmf_zarr")
+from hdmf_zarr import NWBZarrIO
 
 
 def generate_complex_nwbfile() -> NWBFile:
