@@ -3338,12 +3338,27 @@ def _add_units_table_to_nwbfile(
                     if not _annotation_values_are_equal(written_value, supplied_value):
                         written_value = np.asarray(written_value).tolist()
                         supplied_value = np.asarray(supplied_value).tolist()
+                        written_value_is_null = written_value in ("", []) or (
+                            isinstance(written_value, float) and np.isnan(written_value)
+                        )
+                        placeholder_note = (
+                            f" {property}={written_value!r} may be the placeholder the table filled in when another "
+                            f"sorting added the {property!r} column."
+                            if written_value_is_null
+                            else ""
+                        )
+                        sorting_description = f"the sorting with sorting_name={sorting_name!r}" + (
+                            f" (metadata key {metadata_key!r})" if metadata_key is not None else ""
+                        )
                         raise ValueError(
                             f"Unit with sorting_name={sorting_name!r} and unit_name={unit_name!r} is already in "
                             f"units table '{units_table.name}' with {property}={written_value!r}, and this write "
-                            f"supplies {property}={supplied_value!r}. A reused row keeps its written values. Pass "
-                            f"skip_properties=[{property!r}] to keep the written value, or change it in the file "
-                            "as a separate edit."
+                            f"supplies {property}={supplied_value!r}. When a unit is already in the table, a write "
+                            "adds no new row for it and leaves the values in its existing row unchanged."
+                            f"{placeholder_note} To resolve this, either:\n"
+                            f"- Keep {property}={written_value!r} by passing skip_properties=[{property!r}].\n"
+                            f"- Write {property}={supplied_value!r} by rebuilding the file, giving "
+                            f"{sorting_description} its {property!r} values the first time it is written to the table."
                         )
                 indices_for_new_data[index] = row
             else:

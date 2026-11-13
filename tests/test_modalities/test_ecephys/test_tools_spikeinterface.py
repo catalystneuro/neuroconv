@@ -2361,6 +2361,30 @@ class TestAddUnitsTable(TestCase):
         assert "snr" not in self.nwbfile.units.colnames
         assert list(self.nwbfile.units["quality"][:]) == ["good", "mua"]
 
+    def test_placeholder_value_on_reused_row_raises(self):
+        """A column added by another sorting leaves a placeholder in this sorting's rows, which a later write can't fill."""
+        curated_sorting = generate_sorting(num_units=2, durations=[1.0], seed=0)
+        curated_sorting.annotate(sorting_name="curated")
+        add_sorting_to_nwbfile(sorting=curated_sorting, nwbfile=self.nwbfile)
+
+        raw_sorting = generate_sorting(num_units=2, durations=[1.0], seed=1)
+        raw_sorting.annotate(sorting_name="raw")
+        raw_sorting.set_property("snr", [3.0, 4.0])
+        add_sorting_to_nwbfile(sorting=raw_sorting, nwbfile=self.nwbfile)
+
+        curated_sorting.set_property("snr", [1.0, 2.0])
+        message = (
+            "Unit with sorting_name='curated' and unit_name='0' is already in units table 'units' with snr=nan, and "
+            "this write supplies snr=1.0. When a unit is already in the table, a write adds no new row for it and "
+            "leaves the values in its existing row unchanged. snr=nan may be the placeholder the table filled in when "
+            "another sorting added the 'snr' column. To resolve this, either:\n"
+            "- Keep snr=nan by passing skip_properties=['snr'].\n"
+            "- Write snr=1.0 by rebuilding the file, giving the sorting with sorting_name='curated' its 'snr' values "
+            "the first time it is written to the table."
+        )
+        with pytest.raises(ValueError, match=re.escape(message)):
+            add_sorting_to_nwbfile(sorting=curated_sorting, nwbfile=self.nwbfile)
+
     def test_equal_values_on_reused_row_are_accepted(self):
         """Two missing values count as equal, so a NaN written again does not raise."""
         sorting = generate_sorting(num_units=2, durations=[1.0], seed=0)
