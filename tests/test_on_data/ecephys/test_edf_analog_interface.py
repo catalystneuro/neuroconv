@@ -28,6 +28,7 @@ class TestEDFAnalogInterface(TimeSeriesInterfaceTestMixin):
         channels_to_include=["OSAT"],
     )
     expected_time_series_names = ("TimeSeriesAnalogEDF",)
+    expected_temporal_alignment_keys = ("edf_analog_0",)
 
     def check_extracted_metadata(self, metadata):
         assert set(metadata["TimeSeries"]) == {"edf_analog"}

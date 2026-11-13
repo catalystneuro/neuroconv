@@ -63,9 +63,9 @@ number of channels, which channel to extract, and number of planes:
     >>>
     >>> # Multi-file TIFF dataset with 2 channels and 5 z-planes
     >>> file_paths = [
-    ...     OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20240320_multifile_00001.tif",
-    ...     OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20240320_multifile_00002.tif",
-    ...     OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20240320_multifile_00003.tif",
+    ...     OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "tiff_format_version_4" / "time_structure" / "planar_two_channels_loop_version_2023_1" / "planar_00001.tif",
+    ...     OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "tiff_format_version_4" / "time_structure" / "planar_two_channels_loop_version_2023_1" / "planar_00002.tif",
+    ...     OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "tiff_format_version_4" / "time_structure" / "planar_two_channels_loop_version_2023_1" / "planar_00003.tif",
     ... ]
     >>> interface = TiffImagingInterface(
     ...     file_paths=file_paths,

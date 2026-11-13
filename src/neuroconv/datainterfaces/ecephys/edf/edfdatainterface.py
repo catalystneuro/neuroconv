@@ -153,6 +153,7 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
         metadata_key: str | None = None,
         channels_to_skip: list | None = None,
         stream_name: str | None = None,
+        channels_to_exclude: list | None = None,
     ):
         """
         Load and prepare data for EDF.
@@ -171,19 +172,28 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
             Key that indexes this interface's entries in the dict-based metadata. Defaults to
             ``"edf_recording"``.
         channels_to_skip : list, default: None
-            Channels to skip when adding the data to the nwbfile. These parameter can be used to skip non-neural
-            channels that are present in the EDF file.
+            Kept for backwards compatibility. It means the same as ``channels_to_exclude``, which is the
+            argument to use.
         stream_name : str, optional
             Name of the stream to read, as returned by ``get_stream_names``. A file that sampled some
             of its signals at a different rate than the rest carries more than one stream and cannot
             be read without naming one, since a single recording holds a single sampling rate.
-
+        channels_to_exclude : list, optional
+            Channels to leave out, by the ids in ``channel_ids``. Every other channel is converted. A name that
+            is not one of the interface's channels raises.
         """
 
         get_package(
             package_name="pyedflib",
             excluded_platforms_and_python_versions=dict(darwin=dict(arm=["3.9"])),
         )
+
+        # `channels_to_exclude` is the intended argument. `channels_to_skip` is the older name for the same
+        # thing, kept only for backwards compatibility, so it is translated into `channels_to_exclude`.
+        if channels_to_skip and channels_to_exclude:
+            raise ValueError("Pass `channels_to_exclude` only. `channels_to_skip` is its older name.")
+        if channels_to_skip:
+            channels_to_exclude = channels_to_skip
 
         if metadata_key is None:
             metadata_key = "edf_recording"
@@ -199,9 +209,7 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
 
         self.edf_header = self.recording_extractor.neo_reader.edf_header
 
-        # We remove the channels that are not neural
-        if channels_to_skip:
-            self.recording_extractor = self.recording_extractor.remove_channels(remove_channel_ids=channels_to_skip)
+        self._exclude_channels(channels_to_exclude)
 
     def extract_nwb_file_metadata(self) -> dict:
         # The header names a single technician, while experimenter is a list of names.

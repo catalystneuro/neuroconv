@@ -88,6 +88,7 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
         verbose: bool = False,
         es_key: str | None = None,
         metadata_key: str | None = None,
+        channels_to_exclude: list | None = None,
     ):
         """
         Initialize reading of OpenEphys binary recording.
@@ -107,6 +108,9 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
         metadata_key : str, optional
             Key that indexes this interface's entries in the dict-based metadata. Defaults to
             ``"open_ephys_recording"``.
+        channels_to_exclude : list, optional
+            Channels to leave out, by the ids in ``channel_ids``. Every other channel is converted. A name that
+            is not one of the interface's channels raises.
         """
 
         from ._openephys_utils import _read_settings_xml
@@ -147,6 +151,19 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
         if len(neural_channels) < len(channel_ids):
             self.recording_extractor = recording.select_channels(channel_ids=neural_channels)
 
+        # Name the electrode groups after the probe. SpikeInterface numbers the groups within each stream,
+        # so every probe arrives as group "0" and two probes converted together would share one electrode
+        # group and the same electrode rows. The probe name is the one the device takes, so the AP and LFP
+        # streams of one probe still share their groups. This follows the same approach as SpikeGLX.
+        if self.recording_extractor.has_probe():
+            probe = self.recording_extractor.get_probe()
+            probe_group_name = f"Neuropixels{probe.name or 'Probe'}"
+            if probe.get_shank_count() > 1:
+                group_names = [f"{probe_group_name}Shank{shank_id}" for shank_id in probe.shank_ids]
+            else:
+                group_names = [probe_group_name] * self.recording_extractor.get_num_channels()
+            self.recording_extractor.set_property(key="group_name", values=group_names)
+
         # Set composite channel_name for multi-stream electrode deduplication
         # When AP and LFP streams exist for the same probe, they record from the
         # same physical electrodes. Setting composite names (e.g. "AP0,LFP0") on
@@ -178,6 +195,8 @@ class OpenEphysBinaryRecordingInterface(BaseRecordingExtractorInterface):
                         channel_names.append(channel_name)
 
                     self.recording_extractor.set_property(key="channel_name", ids=channel_ids, values=channel_names)
+
+        self._exclude_channels(channels_to_exclude)
 
     def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         from ._openephys_utils import _get_session_start_time

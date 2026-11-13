@@ -1,7 +1,10 @@
+from functools import partial
 from typing import Literal
 
+import numpy as np
 from pynwb import NWBFile
 
+from ..._temporal_alignment import _TemporalAlignment
 from ...basedatainterface import BaseDataInterface
 
 
@@ -24,6 +27,39 @@ class BaseRecordingAsTimeSeriesInterface(BaseDataInterface):
     # Where the series is written. A signal applied to the preparation is stimulus, a recorded one is
     # acquisition, and the writer defaults to acquisition.
     parent_container: Literal["acquisition", "stimulus"] = "acquisition"
+
+    def __init__(self, verbose: bool = False, **source_data):
+        super().__init__(verbose=verbose, **source_data)
+        self._register_segments()
+
+    def _register_segments(self) -> None:
+        """Name every segment as a time-bearing object, keyed ``{metadata_key}_{segment_index}``.
+
+        The key is the one a ``{metadata_key}_{segment_index}`` metadata entry uses to override the series of that
+        segment, so one name addresses a segment for both. Registering reads nothing.
+        """
+        self._alignment = _TemporalAlignment()
+        for segment_index in range(self.recording_extractor.get_num_segments()):
+            self._alignment._register(
+                key=f"{self.metadata_key}_{segment_index}",
+                get_native_times=partial(self._get_segment_native_times, segment_index=segment_index),
+                default_start_time=partial(self._get_segment_native_start_time, segment_index=segment_index),
+                get_number_of_samples=partial(self._get_segment_number_of_samples, segment_index=segment_index),
+            )
+
+    @property
+    def temporal_alignment(self) -> _TemporalAlignment:
+        return self._alignment
+
+    # The recording is read on every call because an interface replaces it when it drops channels
+    def _get_segment_native_times(self, segment_index: int) -> np.ndarray:
+        return self.recording_extractor.get_times(segment_index=segment_index)
+
+    def _get_segment_native_start_time(self, segment_index: int) -> float:
+        return self.recording_extractor.get_start_time(segment_index=segment_index)
+
+    def _get_segment_number_of_samples(self, segment_index: int) -> int:
+        return self.recording_extractor.get_num_samples(segment_index=segment_index)
 
     def get_channel_names(self) -> list[str]:
         """
@@ -64,9 +100,9 @@ class BaseRecordingAsTimeSeriesInterface(BaseDataInterface):
         always_write_timestamps : bool, default: False
             If True, timestamps are always written instead of a sampling rate.
         """
-        from ...tools.spikeinterface import (
-            _stub_recording,
-            add_recording_as_time_series_to_nwbfile,
+        from ...tools.spikeinterface import _stub_recording
+        from ...tools.spikeinterface.spikeinterface import (
+            _add_recording_as_time_series_to_nwbfile,
         )
 
         if metadata is None:
@@ -76,10 +112,26 @@ class BaseRecordingAsTimeSeriesInterface(BaseDataInterface):
         if stub_test:
             recording = _stub_recording(recording=recording)
 
-        add_recording_as_time_series_to_nwbfile(
+        # The aligned times are handed to the writer, never set on the recording. Timestamps when the times were
+        # replaced or the segment has a time vector, otherwise the aligned start, so a shifted regular segment is
+        # written as a start and a rate without building its times
+        segment_timestamps, segment_starting_times = [], []
+        for segment_index, key in enumerate(self.temporal_alignment.keys()):
+            segment = self.temporal_alignment[key]
+            if segment._times is not None or self.recording_extractor.has_time_vector(segment_index=segment_index):
+                number_of_samples = recording.get_num_samples(segment_index=segment_index)
+                segment_timestamps.append(segment.get_times()[:number_of_samples])
+                segment_starting_times.append(None)
+            else:
+                segment_timestamps.append(None)
+                segment_starting_times.append(segment._get_start_time())
+
+        _add_recording_as_time_series_to_nwbfile(
             recording=recording,
             nwbfile=nwbfile,
             metadata=metadata,
+            segment_timestamps=segment_timestamps,
+            segment_starting_times=segment_starting_times,
             iterator_type=iterator_type,
             iterator_options=iterator_options,
             always_write_timestamps=always_write_timestamps,

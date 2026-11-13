@@ -361,7 +361,7 @@ class DANNCEConverter(BaseDataInterface):
         for segment_key, frame_count, frame_rate in zip(
             video_interface.temporal_alignment.keys(), frame_counts, frame_rates, strict=True
         ):
-            video_interface.temporal_alignment[segment_key].move_start_to(starting_time)
+            video_interface.temporal_alignment[segment_key].move_earliest_observation_to(starting_time)
             starting_time += frame_count / frame_rate
 
     def get_metadata(self) -> DeepDict:

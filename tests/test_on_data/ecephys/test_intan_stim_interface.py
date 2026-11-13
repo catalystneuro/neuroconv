@@ -18,6 +18,7 @@ class TestIntanStimInterfaceSingleFile(TimeSeriesInterfaceTestMixin):
     data_interface_cls = IntanStimInterface
     interface_kwargs = dict(file_path=file_path)
     expected_time_series_names = ("TimeSeriesIntanStim",)
+    expected_temporal_alignment_keys = ("intan_stim_0",)
 
     def check_extracted_metadata(self, metadata):
         assert set(metadata["TimeSeries"]) == {"intan_stim"}

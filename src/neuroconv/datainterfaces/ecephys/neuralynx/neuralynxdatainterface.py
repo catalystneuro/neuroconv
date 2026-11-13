@@ -53,6 +53,7 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
         verbose: bool = False,
         es_key: str | None = None,
         metadata_key: str | None = None,
+        channels_to_exclude: list | None = None,
     ):
         """
         Initialize reading of Neuralynx recording.
@@ -74,6 +75,9 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
         metadata_key : str, optional
             Key that indexes this interface's entries in the dict-based metadata. Defaults to
             ``"neuralynx_recording"``.
+        channels_to_exclude : list, optional
+            Channels to leave out, by the ids in ``channel_ids``. Every other channel is converted. A name that
+            is not one of the interface's channels raises.
         """
 
         if metadata_key is None:
@@ -97,6 +101,8 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
             value = self.recording_extractor.get_property(key)
             if value.dtype == object or value.dtype == np.bool_:
                 self.recording_extractor.set_property(key, np.asarray(value, dtype=str))
+
+        self._exclude_channels(channels_to_exclude)
 
     def _extract_header_metadata(self) -> tuple[dict, dict | None]:
         """Read the Neuralynx header into NWBFile fields and, when the header names one, a device."""
