@@ -24,6 +24,7 @@ from .behavior.video.internalvideointerface import InternalVideoInterface
 
 # Ecephys
 from .ecephys.alphaomega.alphaomegadatainterface import AlphaOmegaRecordingInterface
+from .ecephys.axon.axonanaloginterface import AxonAnalogInterface
 from .ecephys.axon.axondatainterface import AxonRecordingInterface
 from .ecephys.axona.axonadatainterface import (
     AxonaLFPDataInterface,
@@ -203,6 +204,7 @@ interface_list = [
     BiocamRecordingInterface,
     AlphaOmegaRecordingInterface,
     AxonRecordingInterface,
+    AxonAnalogInterface,
     MEArecRecordingInterface,
     MCSRawRecordingInterface,
     MaxOneRecordingInterface,
@@ -308,6 +310,7 @@ interfaces_by_category = dict(
     analog=dict(
         OpenEphysAnalog=OpenEphysBinaryAnalogInterface,
         OpenEphysLegacyAnalog=OpenEphysLegacyAnalogInterface,
+        AxonAnalog=AxonAnalogInterface,
         SpikeGLXNIDQ=SpikeGLXNIDQInterface,
         SpikeGLXSync=SpikeGLXSyncChannelInterface,
         IntanAnalog=IntanAnalogInterface,

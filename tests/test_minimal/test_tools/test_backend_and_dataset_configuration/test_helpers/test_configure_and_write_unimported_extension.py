@@ -3,12 +3,15 @@
 import numpy as np
 import pytest
 from hdmf.build import BuildManager
-from hdmf_zarr import NWBZarrIO
 from pynwb import NWBHDF5IO, TimeSeries, get_type_map, read_nwb
 from pynwb.spec import NWBDatasetSpec, NWBGroupSpec, NWBNamespaceBuilder
 from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.tools.nwb_helpers import configure_and_write_nwbfile
+
+# hdmf_zarr installs only on Python 3.12 and newer.
+pytest.importorskip("hdmf_zarr")
+from hdmf_zarr import NWBZarrIO
 
 NAMESPACE_NAME = "ndx-neuroconv-testing"
 

@@ -2,8 +2,6 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from hdmf_zarr import NWBZarrIO, ZarrDataIO
-from hdmf_zarr.nwb import NWBZarrIO
 from pynwb import NWBHDF5IO, H5DataIO, NWBFile
 from pynwb.ophys import PlaneSegmentation
 from pynwb.testing.mock.base import mock_TimeSeries
@@ -14,6 +12,11 @@ from neuroconv.tools.nwb_helpers import (
     get_module,
     repack_nwbfile,
 )
+
+# hdmf_zarr installs only on Python 3.12 and newer.
+pytest.importorskip("hdmf_zarr")
+from hdmf_zarr import NWBZarrIO, ZarrDataIO
+from hdmf_zarr.nwb import NWBZarrIO
 
 
 def generate_complex_nwbfile() -> NWBFile:

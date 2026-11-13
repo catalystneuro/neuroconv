@@ -4,12 +4,19 @@ from typing import Any, ClassVar, Literal
 
 import psutil
 import zarr
-from hdmf_zarr import ZarrDataIO
 from packaging.version import Version
 from pydantic import Field, model_validator
 
 from ._base_backend import BackendConfiguration
 from ._zarr_dataset_io import ZarrDatasetIOConfiguration
+from ...importing import is_package_installed
+
+# hdmf_zarr installs only on Python 3.12 and newer. On 3.11 zarr is 2, so `raise_without_zarr_3` raises before
+# `data_io_class` is used.
+if is_package_installed(package_name="hdmf_zarr"):
+    from hdmf_zarr import ZarrDataIO
+else:
+    ZarrDataIO = None
 
 
 class ZarrBackendConfiguration(BackendConfiguration):
