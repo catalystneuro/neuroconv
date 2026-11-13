@@ -91,7 +91,6 @@ class _SpikeGLXNIDQEventsInterface(BaseEventsInterface):
             SpikeGLXRecordingExtractor,
         )
 
-        super().__init__(folder_path=folder_path, verbose=verbose)
         self.metadata_key = metadata_key
         # Its own reader rather than the parent's, so this stays an ordinary interface: source data is a
         # path, it can be constructed and tested on its own, and nothing in its signature is a live
@@ -158,6 +157,7 @@ class _SpikeGLXNIDQEventsInterface(BaseEventsInterface):
         if detection_configuration:
             _validate_detection_configuration(detection_configuration, self._available_signals)
         self._detection_configuration = detection_configuration
+        super().__init__(folder_path=folder_path, verbose=verbose)
 
     def get_event_type_source_ids(self) -> list[str]:
         """The event types the configuration resolves to, read from nothing; none for the ``{}`` sentinel."""

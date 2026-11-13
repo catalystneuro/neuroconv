@@ -592,6 +592,7 @@ class MedPCPackedEventsInterface(_MedPCEventsInterface):
             Whether to print verbose output, by default False.
         """
         _validate_time_arguments(time_unit=time_unit)
+        self._header_dict = None
         super().__init__(
             file_path=file_path,
             session_header=session_header,
@@ -601,7 +602,6 @@ class MedPCPackedEventsInterface(_MedPCEventsInterface):
             verbose=verbose,
         )
         self.metadata_key = metadata_key or "medpc"
-        self._header_dict = None
 
     def _read_events(self) -> dict[str, _EventsData]:
         """Read the one time array, recover each event's code, and group the times by it."""
