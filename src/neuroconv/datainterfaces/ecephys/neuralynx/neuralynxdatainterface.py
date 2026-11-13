@@ -53,6 +53,7 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
         es_key: str | None = None,
         metadata_key: str | None = None,
         channels_to_exclude: list | None = None,
+        gap_tolerance_ms: float | None = None,
     ):
         """
         Initialize reading of OpenEphys binary recording.
@@ -72,6 +73,9 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
         channels_to_exclude : list, optional
             Channels to leave out, by the ids in ``channel_ids``. Every other channel is converted. A name that
             is not one of the interface's channels raises.
+        gap_tolerance_ms : float, optional
+            Timestamp gaps in the ``.ncs`` files shorter than this, in milliseconds, are ignored, and longer ones start
+            a new segment. By default any gap raises, with a report of where the gaps are.
         """
 
         if metadata_key is None:
@@ -83,6 +87,7 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
             verbose=verbose,
             es_key=es_key,
             metadata_key=metadata_key,
+            gap_tolerance_ms=gap_tolerance_ms,
         )
 
         # Read the header while the recording is still the neo-based extractor, as `remove_channels`
@@ -185,6 +190,7 @@ class NeuralynxSortingInterface(BaseSortingExtractorInterface):
         verbose: bool = False,
         stream_id: str | None = None,
         metadata_key: str | None = None,
+        gap_tolerance_ms: float | None = None,
     ):
         """_summary_
 
@@ -201,10 +207,17 @@ class NeuralynxSortingInterface(BaseSortingExtractorInterface):
             it will be chosen automatically
         metadata_key : str, optional
             Key of this sorting's entry in ``metadata["Ecephys"]["Sortings"]``. Defaults to ``"neuralynx_sorting"``.
+        gap_tolerance_ms : float, optional
+            Timestamp gaps in the ``.ncs`` files shorter than this, in milliseconds, are ignored, and longer ones start
+            a new segment. By default any gap raises, with a report of where the gaps are.
         """
         self.metadata_key = metadata_key or "neuralynx_sorting"
         super().__init__(
-            folder_path=folder_path, sampling_frequency=sampling_frequency, stream_id=stream_id, verbose=verbose
+            folder_path=folder_path,
+            sampling_frequency=sampling_frequency,
+            stream_id=stream_id,
+            verbose=verbose,
+            gap_tolerance_ms=gap_tolerance_ms,
         )
 
 

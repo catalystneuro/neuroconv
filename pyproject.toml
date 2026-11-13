@@ -39,8 +39,7 @@ dependencies = [
     "PyYAML>=5.4",
     "h5py>=3.9.0",
     "hdmf>=6.2.0",
-    "hdmf_zarr>=0.11; python_version >= '3.12'",  # 0.14.0, the only zarr 3 release, needs 3.12
-    "hdmf_zarr>=0.14; python_version >= '3.14'",
+    "hdmf_zarr>=0.14; python_version >= '3.12'",  # 0.14.0, the first zarr 3 release, needs 3.12, so 3.11 has no Zarr backend
     "pynwb>=4.2.0",
     "pydantic>=2.0",
     "typing_extensions>=4.1.0",
@@ -53,10 +52,8 @@ dependencies = [
     "docstring-parser",  # For building json schema from method signatures
     "packaging",  # Issue 903
     "referencing", # for the json schema references
-    "numcodecs<0.16.0; python_version < '3.14'", # 0.16.0 is incompatible with zarr < 3: https://github.com/zarr-developers/numcodecs/issues/721
-    "numcodecs>=0.16.5; python_version >= '3.14'",
-    "zarr<3; python_version < '3.14'",  # dandi and spikeinterface hold zarr 2 here, so the Zarr backend (zarr 3 only) raises
-    "zarr>=3; python_version >= '3.14'",
+    "numcodecs>=0.16.5",
+    "zarr>=3",
 ]
 
 
@@ -198,8 +195,8 @@ events = [
 
 ## Ecephys
 ecephys_minimal = [  # Keeps the minimal versions of ecephys dependencies in the repo
-    "spikeinterface>=0.105.1",
-    "neo>=0.14.5,<0.14.6",  # 0.14.6 raises on Neuralynx gaps, lift after the spikeinterface release with SpikeInterface/spikeinterface#4865
+    "spikeinterface>=0.106.0",
+    "neo>=0.14.6",
     "natsort>=7.1.1",
 ]
 alphaomega = [
@@ -525,7 +522,6 @@ doctest_optionflags = "ELLIPSIS"
 filterwarnings = [
     "ignore:Date is missing timezone information. Updating to local timezone.:UserWarning:pynwb.file",
     "ignore:.*compression may not be available.*:UserWarning:hdmf.container",  # We test compression in the tests, so we ignore this warning
-    "error:Importing classes at __init__ has been deprecated in favor of only importing function-size wrappers and will be removed in 0.105.0.*:UserWarning:spikeinterface.extractors",  # TODO: remove when spikeinterface>=0.105.0
     # `num_samples` is a computed property on pynwb's `TimeSeries` (it returns `len(data)`), so the signed int it
     # hands hdmf for an unsigned spec is not something a caller can influence.
     "ignore:Spec .*num_samples.*is being converted:hdmf.build.warnings.DtypeConversionWarning",
@@ -653,7 +649,7 @@ docs = [
     "sphinx-design==0.7.0; python_version>='3.11'",  # Used by metadata_templates.rst to show the YAML and JSON forms of each template in tabs.
     "pydata_sphinx_theme==0.16.1",  # Latest as of April 2025.
     "roiextractors",  # Needed for the API documentation
-    "spikeinterface>=0.105.1",  # Needed for the API documentation
+    "spikeinterface>=0.106.0",  # Needed for the API documentation
     "natsort>=7.1.1",  # Needed for the API documentation
     "pytest" # used to build the documentation for tools.testing
 ]
