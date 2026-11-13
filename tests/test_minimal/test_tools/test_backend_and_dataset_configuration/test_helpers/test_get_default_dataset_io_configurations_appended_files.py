@@ -8,7 +8,6 @@ from pathlib import Path
 import numpy as np
 import pytest
 from hdmf.common import VectorData
-from hdmf_zarr import NWBZarrIO
 from pynwb import NWBHDF5IO, NWBFile
 from pynwb.base import DynamicTable
 from pynwb.testing.mock.base import mock_TimeSeries
@@ -19,6 +18,10 @@ from neuroconv.tools.nwb_helpers import (
     ZarrDatasetIOConfiguration,
     get_default_dataset_io_configurations,
 )
+
+# hdmf_zarr installs only on Python 3.12 and newer.
+pytest.importorskip("hdmf_zarr")
+from hdmf_zarr import NWBZarrIO
 
 
 def generate_nwbfile_with_existing_time_series() -> NWBFile:
