@@ -208,6 +208,206 @@ use a different ``metadata_key`` for each pipeline. Link them to the same imagin
     )
 
 
+How to Annotate Two Channels That Share Their ROIs
+--------------------------------------------------
+
+Suite2p detects ROIs once per plane and extracts traces from both channels with those ROIs. Each channel
+is read by its own interface, and each interface writes a PlaneSegmentation of its own by default, so the
+file would hold the same masks twice. To write them once, declare one table in
+``metadata["Ophys"]["SegmentationTables"]`` and point both channels' ``PlaneSegmentations`` entries
+at it with ``segmentation_table_metadata_key``. Both entries give the same ``segmentation_name``, which says
+their ROIs are the same ROIs. A PlaneSegmentation links one imaging plane, so both entries also link the same
+plane.
+
+.. TODO: remove this note once neuroconv requires a roiextractors release with
+   https://github.com/catalystneuro/roiextractors/pull/654
+
+.. note::
+
+    This example needs a roiextractors release after 0.10.0. In 0.10.0 the ``chan2`` segmentation reads its
+    ``iscell`` property from ``redcell.npy``, so the two channels disagree on ``iscell`` and writing the
+    red channel raises.
+
+.. code-block:: python
+
+    from neuroconv import ConverterPipe
+    from neuroconv.datainterfaces import Suite2pSegmentationInterface
+
+    green_metadata_key = "green"
+    red_metadata_key = "red"
+
+    green_segmentation = Suite2pSegmentationInterface(
+        folder_path="path/to/suite2p",
+        channel_name="chan1",
+        plane_name="plane0",
+        metadata_key=green_metadata_key,
+    )
+    red_segmentation = Suite2pSegmentationInterface(
+        folder_path="path/to/suite2p",
+        channel_name="chan2",
+        plane_name="plane0",
+        metadata_key=red_metadata_key,
+    )
+
+    converter = ConverterPipe(data_interfaces={"green": green_segmentation, "red": red_segmentation})
+    metadata = converter.get_metadata()
+
+    # Declare the table both channels write into
+    segmentation_table_metadata_key = "plane0_rois"
+    metadata["Ophys"]["SegmentationTables"] = {
+        segmentation_table_metadata_key: {
+            "name": "PlaneSegmentationPlane0",
+            "description": "ROIs detected by Suite2p on plane 0.",
+        }
+    }
+    plane_segmentations = metadata["Ophys"]["PlaneSegmentations"]
+    plane_segmentations[green_metadata_key]["segmentation_table_metadata_key"] = segmentation_table_metadata_key
+    plane_segmentations[red_metadata_key]["segmentation_table_metadata_key"] = segmentation_table_metadata_key
+
+    # Both channels hold the same ROIs
+    plane_segmentations[green_metadata_key]["segmentation_name"] = "suite2p_plane0"
+    plane_segmentations[red_metadata_key]["segmentation_name"] = "suite2p_plane0"
+
+    # Both channels image one plane
+    metadata["Ophys"]["ImagingPlanes"][green_metadata_key]["name"] = "ImagingPlanePlane0"
+    plane_segmentations[red_metadata_key]["imaging_plane_metadata_key"] = green_metadata_key
+
+    converter.run_conversion(nwbfile_path="two_channels.nwb", metadata=metadata)
+
+The table entry gives the name and description, so they do not depend on which interface writes first.
+The file holds one PlaneSegmentation, ``PlaneSegmentationPlane0``, and the traces of both channels
+reference its rows.
+
+The first interface to write creates the table and the next one adds its ROIs to it. Rows are identified
+by ``(segmentation_name, roi_name)``. An ROI whose pair is already in the table reuses that row, which is
+what happens to the red channel here, and raises when one of its ROI properties differs from the row's. An
+ROI whose pair is new is appended as a new row, so the same metadata collects different ROIs from several
+interfaces into one table, for example one interface per scan line, as long as their ROI names or their
+segmentation names differ. A segmentation without a ``segmentation_name`` whose ROI names match unnamed rows
+raises, since it could be the same ROIs or different ones. The interfaces sharing a table must link the same
+imaging plane, hold the same mask type, and carry the same ROI properties, since each property is a column.
+
+
+.. _how_to_annotate_ophys_from_a_template:
+
+How to Annotate from a Template
+-------------------------------
+
+The sections above reach into ``get_metadata()`` one entry at a time, so that each block and each link
+between them is visible. Once you know the shape, you do not have to type it again.
+``get_metadata_template()`` returns the whole thing already assembled, sized to what this interface
+writes, with every cross-reference resolved and every field only you can answer set to ``None``:
+
+.. code-block:: python
+
+    from neuroconv.datainterfaces import TiffImagingInterface
+
+    interface = TiffImagingInterface(
+        file_path="path/to/imaging_data.tif",
+        sampling_frequency=30.0,
+        metadata_key="visual_cortex",
+    )
+    metadata = interface.get_metadata_template()
+
+What comes back is printed in full, in both YAML and JSON, at
+:ref:`Metadata Templates <ophys_metadata_template>`.
+
+**The blanks are the checklist.** What comes back ``None`` is exactly what the source could not tell us,
+and everything else is already done: the ``device_metadata_key`` that links the plane to the microscope
+and the ``imaging_plane_metadata_key`` that links the series to the plane are wired for you. Fill in
+what applies and delete what does not, since a blank left behind is refused at write time rather than
+guessed at.
+
+It also shows what it does not require. The device model, the plane's coordinates and the scanner
+fields are optional, and they appear so that you know the writer accepts them at all; drop the ones
+this recording cannot answer. Every entry's ``name`` comes back blank, so keeping one costs naming it,
+which is what stops an offered entry reaching the file because nobody looked at it. The keys are
+handles rather than names in the file, so rename them freely, except the trace and image names under
+``RoiResponses`` and ``SegmentationImages``, which are roiextractors' own.
+
+.. code-block:: python
+
+    imaging_plane = metadata["Ophys"]["ImagingPlanes"]["visual_cortex"]
+    imaging_plane["name"] = "ImagingPlaneVisualCortex"
+    imaging_plane["description"] = "Imaging plane in V1 layer 2/3"
+    imaging_plane["excitation_lambda"] = 920.0
+    imaging_plane["indicator"] = "GCaMP6s"
+    imaging_plane["location"] = "V1 layer 2/3"
+    imaging_plane["imaging_rate"] = 30.0
+    optical_channel = imaging_plane["optical_channel"][0]
+    optical_channel["name"] = "Green"
+    optical_channel["description"] = "Green channel"
+    optical_channel["emission_lambda"] = 510.0
+
+    microscopy_series = metadata["Ophys"]["MicroscopySeries"]["visual_cortex"]
+    microscopy_series["name"] = "TwoPhotonSeriesVisualCortex"
+    microscopy_series["description"] = "Calcium imaging during visual stimulation"
+    microscopy_series["unit"] = "n.a."
+
+    device = metadata["Devices"]["microscope"]
+    device["name"] = "Microscope"
+    device["description"] = "Custom two-photon microscope"
+    device["serial_number"] = "2019-04-01"
+
+    device_model = metadata["DeviceModels"]["microscope_model"]
+    device_model["name"] = "MicroscopeModel"
+    device_model["manufacturer"] = "DIY"
+    device_model["description"] = "Custom-built, no catalog model"
+
+    # This rig did not measure where the plane sat, and the scanner settings were not recorded.
+    del imaging_plane["origin_coords"]
+    del imaging_plane["origin_coords_unit"]
+    del imaging_plane["grid_spacing"]
+    del imaging_plane["grid_spacing_unit"]
+    del imaging_plane["reference_frame"]
+    del microscopy_series["field_of_view"]
+    del microscopy_series["pmt_gain"]
+    del microscopy_series["scan_line_rate"]
+    del metadata["DeviceModels"]["microscope_model"]["model_number"]
+
+    nwbfile = interface.create_nwbfile(metadata=metadata)
+
+A segmentation interface offers the same thing, sized to what its pipeline produced. Only the traces
+and the summary images the file actually holds appear, so the entries you get back are the list to fill
+in rather than a menu to check against your output:
+
+.. code-block:: python
+
+    from neuroconv.datainterfaces import Suite2pSegmentationInterface
+
+    interface = Suite2pSegmentationInterface(
+        folder_path="path/to/suite2p/plane0",
+        metadata_key="suite2p",
+    )
+    metadata = interface.get_metadata_template()
+
+    plane_segmentation = metadata["Ophys"]["PlaneSegmentations"]["suite2p"]
+    plane_segmentation["name"] = "PlaneSegmentationSuite2p"
+    plane_segmentation["description"] = "ROIs detected by Suite2p"
+
+    # One entry per trace this run produced. A run that computed df/F has a "dff" entry here too.
+    roi_responses = metadata["Ophys"]["RoiResponses"]["suite2p"]
+    roi_responses["raw"]["name"] = "RoiResponseSeries"
+    roi_responses["raw"]["description"] = "Raw fluorescence traces from Suite2p"
+    roi_responses["raw"]["unit"] = "n.a."
+    roi_responses["neuropil"]["name"] = "Neuropil"
+    roi_responses["neuropil"]["description"] = "Neuropil fluorescence traces from Suite2p"
+    roi_responses["neuropil"]["unit"] = "n.a."
+    roi_responses["deconvolved"]["name"] = "Deconvolved"
+    roi_responses["deconvolved"]["description"] = "Deconvolved activity from Suite2p"
+    roi_responses["deconvolved"]["unit"] = "n.a."
+
+    segmentation_images = metadata["Ophys"]["SegmentationImages"]["suite2p"]
+    segmentation_images["mean"]["name"] = "mean_image"
+    segmentation_images["mean"]["description"] = "Mean image from Suite2p"
+    segmentation_images["correlation"]["name"] = "correlation_image"
+    segmentation_images["correlation"]["description"] = "Correlation image from Suite2p"
+
+The imaging plane and the device come back on the segmentation template too, and are filled in exactly
+as above. If the same conversion also writes the imaging the pipeline ran on, do not fill them in twice:
+point the segmentation's ``imaging_plane_metadata_key`` at the imaging interface's plane, as the
+sections above do, and delete the plane the segmentation template offered.
+
 .. note::
 
     If you have a use case not covered here, please open an issue at

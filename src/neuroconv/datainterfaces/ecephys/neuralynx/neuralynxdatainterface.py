@@ -1,5 +1,4 @@
 import json
-import warnings
 
 import numpy as np
 from pydantic import DirectoryPath
@@ -48,11 +47,13 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
     def __init__(
         self,
         folder_path: DirectoryPath,
-        *args,  # TODO: change to * (keyword only) on or after August 2026
+        *,
         stream_name: str | None = None,
         verbose: bool = False,
-        es_key: str = "ElectricalSeries",
+        es_key: str | None = None,
         metadata_key: str | None = None,
+        channels_to_exclude: list | None = None,
+        gap_tolerance_ms: float | None = None,
     ):
         """
         Initialize reading of OpenEphys binary recording.
@@ -69,35 +70,16 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
         metadata_key : str, optional
             Key that indexes this interface's entries in the dict-based metadata. Defaults to
             ``"neuralynx_recording"``.
+        channels_to_exclude : list, optional
+            Channels to leave out, by the ids in ``channel_ids``. Every other channel is converted. A name that
+            is not one of the interface's channels raises.
+        gap_tolerance_ms : float, optional
+            Timestamp gaps in the ``.ncs`` files shorter than this, in milliseconds, are ignored, and longer ones start
+            a new segment. By default any gap raises, with a report of where the gaps are.
         """
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "stream_name",
-                "verbose",
-                "es_key",
-            ]
-            num_positional_args_before_args = 1  # folder_path
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args + 1} were given. "
-                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
-                    "Please use keyword arguments."
-                )
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to NeuralynxRecordingInterface.__init__() is deprecated "
-                f"and will be removed on or after August 2026. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            stream_name = positional_values.get("stream_name", stream_name)
-            verbose = positional_values.get("verbose", verbose)
-            es_key = positional_values.get("es_key", es_key)
+
+        if metadata_key is None:
+            metadata_key = "neuralynx_recording"
 
         super().__init__(
             folder_path=folder_path,
@@ -105,10 +87,12 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
             verbose=verbose,
             es_key=es_key,
             metadata_key=metadata_key,
+            gap_tolerance_ms=gap_tolerance_ms,
         )
 
-        if metadata_key is None:
-            self.metadata_key = "neuralynx_recording"
+        # Read the header while the recording is still the neo-based extractor, as `remove_channels`
+        # replaces it with a channel slice that does not carry the `neo_reader`
+        self._neo_header_metadata = extract_neo_header_metadata(self.recording_extractor.neo_reader)
 
         # convert properties of object dtype (e.g. datetime) and bool as these are not supported by nwb
         for key in self.recording_extractor.get_property_keys():
@@ -116,9 +100,11 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
             if value.dtype == object or value.dtype == np.bool_:
                 self.recording_extractor.set_property(key, np.asarray(value, dtype=str))
 
+        self._exclude_channels(channels_to_exclude)
+
     def _extract_header_metadata(self) -> tuple[dict, dict | None]:
         """Read the Neuralynx header into NWBFile fields and, when the header names one, a device."""
-        neo_metadata = extract_neo_header_metadata(self.recording_extractor.neo_reader)
+        neo_metadata = self._neo_header_metadata
 
         # remove filter related entries already covered by `add_recording_extractor_properties`
         neo_metadata = {k: v for k, v in neo_metadata.items() if not k.lower().startswith("dsp")}
@@ -145,7 +131,7 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
 
         return nwbfile_metadata, neuralynx_device
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         nwbfile_metadata, neuralynx_device = self._extract_header_metadata()
 
         if use_new_metadata_format:
@@ -175,7 +161,7 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
         if neuralynx_device is not None:
             nwb_metadata["Ecephys"]["Device"].append(neuralynx_device)
 
-        return dict_deep_update(super().get_metadata(), nwb_metadata)
+        return dict_deep_update(super().get_metadata(use_new_metadata_format=False), nwb_metadata)
 
 
 class NeuralynxSortingInterface(BaseSortingExtractorInterface):
@@ -199,10 +185,12 @@ class NeuralynxSortingInterface(BaseSortingExtractorInterface):
     def __init__(
         self,
         folder_path: DirectoryPath,
-        *args,  # TODO: change to * (keyword only) on or after August 2026
+        *,
         sampling_frequency: float | None = None,
         verbose: bool = False,
         stream_id: str | None = None,
+        metadata_key: str | None = None,
+        gap_tolerance_ms: float | None = None,
     ):
         """_summary_
 
@@ -217,38 +205,19 @@ class NeuralynxSortingInterface(BaseSortingExtractorInterface):
         stream_id: str, optional
             Used by Spikeinterface and neo to calculate the t_start, if not provided and the stream is unique
             it will be chosen automatically
+        metadata_key : str, optional
+            Key of this sorting's entry in ``metadata["Ecephys"]["Sortings"]``. Defaults to ``"neuralynx_sorting"``.
+        gap_tolerance_ms : float, optional
+            Timestamp gaps in the ``.ncs`` files shorter than this, in milliseconds, are ignored, and longer ones start
+            a new segment. By default any gap raises, with a report of where the gaps are.
         """
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "sampling_frequency",
-                "verbose",
-                "stream_id",
-            ]
-            num_positional_args_before_args = 1  # folder_path
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args + 1} were given. "
-                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
-                    "Please use keyword arguments."
-                )
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to NeuralynxSortingInterface.__init__() is deprecated "
-                f"and will be removed on or after August 2026. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            sampling_frequency = positional_values.get("sampling_frequency", sampling_frequency)
-            verbose = positional_values.get("verbose", verbose)
-            stream_id = positional_values.get("stream_id", stream_id)
-
+        self.metadata_key = metadata_key or "neuralynx_sorting"
         super().__init__(
-            folder_path=folder_path, sampling_frequency=sampling_frequency, stream_id=stream_id, verbose=verbose
+            folder_path=folder_path,
+            sampling_frequency=sampling_frequency,
+            stream_id=stream_id,
+            verbose=verbose,
+            gap_tolerance_ms=gap_tolerance_ms,
         )
 
 

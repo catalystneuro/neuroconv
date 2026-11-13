@@ -1,6 +1,5 @@
 import datetime
 import json
-import warnings
 from pathlib import Path
 from typing import Optional
 
@@ -41,7 +40,7 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
     def __init__(
         self,
         file_path: Optional[FilePath] = None,
-        *args,  # TODO: change to * (keyword only) on or after August 2026
+        *,
         channel_name: Optional[str] = None,
         slice_sample: Optional[int] = None,
         plane_index: Optional[int] = None,
@@ -101,40 +100,6 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
         verbose : bool, default: False
             If True, will print detailed information about the interface initialization process.
         """
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "channel_name",
-                "slice_sample",
-                "plane_index",
-                "file_paths",
-                "interleave_slice_samples",
-                "verbose",
-            ]
-            num_positional_args_before_args = 1  # file_path
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args + 1} were given. "
-                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
-                    "Please use keyword arguments."
-                )
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to ScanImageImagingInterface.__init__() is deprecated "
-                f"and will be removed on or after August 2026. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            channel_name = positional_values.get("channel_name", channel_name)
-            slice_sample = positional_values.get("slice_sample", slice_sample)
-            plane_index = positional_values.get("plane_index", plane_index)
-            file_paths = positional_values.get("file_paths", file_paths)
-            interleave_slice_samples = positional_values.get("interleave_slice_samples", interleave_slice_samples)
-            verbose = positional_values.get("verbose", verbose)
 
         file_paths = [Path(file_path)] if file_path else file_paths
         header_version = self.get_scanimage_version(file_path=file_paths[0])
@@ -169,7 +134,7 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
         )
 
         # Make sure the timestamps are available, the extractor caches them
-        times = self.imaging_extractor.get_times()
+        times = self.imaging_extractor.get_timestamps()
         self.imaging_extractor.set_times(times=times)
 
     @classmethod
@@ -188,13 +153,13 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
         extractor_instance = extractor_class(**self.extractor_kwargs)
         return extractor_instance
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         """
         Get metadata for the ScanImage imaging data.
 
         Parameters
         ----------
-        use_new_metadata_format : bool, default: False
+        use_new_metadata_format : bool, default: True
             When False, returns the old list-based metadata format (backward compatible).
             When True, returns dict-based metadata with ScanImage provenance.
 
@@ -209,11 +174,7 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
             - Imaging plane details including grid spacing and origin coordinates if available
             - Photon series metadata with scan line rate and other acquisition parameters
         """
-        metadata = (
-            super().get_metadata()
-            if not use_new_metadata_format
-            else super().get_metadata(use_new_metadata_format=True)
-        )
+        metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
 
         session_start_time = self._get_session_start_time()
         if session_start_time:
@@ -288,7 +249,11 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
             microscopy_series_entry = {
                 "name": f"{self.photon_series_type}{channel_string}{plane_string}",
                 "imaging_plane_metadata_key": self.metadata_key,
-                "description": f"Imaging data acquired using ScanImage for {self.channel_name}",
+                "description": (
+                    f"Imaging data acquired using ScanImage for {self.channel_name}"
+                    if self.channel_name is not None
+                    else "Imaging data acquired using ScanImage"
+                ),
             }
             if scan_line_rate is not None:
                 microscopy_series_entry["scan_line_rate"] = scan_line_rate
@@ -302,7 +267,10 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
         # Old list-based format
         device_name = "Microscope"
         metadata["Ophys"]["Device"][0].update(name=device_name, description="Microscope controlled by ScanImage")
-        channel_name_string = self.channel_name.replace(" ", "").capitalize()
+        # A single-channel file states no channel and its objects take the plain names, the same rule
+        # the dict-based branch above applies. The extractor resolves which channel that is, but
+        # reading the resolved name back would rename the objects of every user who never asked for one.
+        channel_name_string = self.channel_name.replace(" ", "").capitalize() if self.channel_name is not None else ""
 
         optical_channel_name = f"OpticalChannel{channel_name_string}"
         optical_channel_metadata = {
@@ -327,7 +295,10 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
         photon_series_name = f"{photon_series_key}{channel_name_string}{plane_index_string}"
         photon_series_metadata["imaging_plane"] = imaging_plane_name
         photon_series_metadata["name"] = photon_series_name
-        photon_series_metadata["description"] = f"Imaging data acquired using ScanImage for {self.channel_name}"
+        photon_series_description = "Imaging data acquired using ScanImage"
+        if self.channel_name is not None:
+            photon_series_description = f"{photon_series_description} for {self.channel_name}"
+        photon_series_metadata["description"] = photon_series_description
 
         if scan_line_rate is not None:
             photon_series_metadata.update(scan_line_rate=scan_line_rate)
@@ -439,7 +410,7 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
         """
         from roiextractors import ScanImageImagingExtractor
 
-        return ScanImageImagingExtractor.get_available_channels(file_path=file_path)
+        return ScanImageImagingExtractor.get_available_channel_names(file_path=file_path)
 
     @staticmethod
     def get_available_planes(file_path: Path | str) -> list[str]:
@@ -463,7 +434,8 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
         """
         from roiextractors import ScanImageImagingExtractor
 
-        return ScanImageImagingExtractor.get_available_planes(file_path=file_path)
+        num_planes = ScanImageImagingExtractor.get_available_num_planes(file_path=file_path)
+        return [str(plane_index) for plane_index in range(num_planes)]
 
 
 class ScanImageLegacyImagingInterface(BaseImagingExtractorInterface):
@@ -499,7 +471,7 @@ class ScanImageLegacyImagingInterface(BaseImagingExtractorInterface):
     def __init__(
         self,
         file_path: FilePath,
-        *args,  # TODO: change to * (keyword only) on or after August 2026
+        *,
         fallback_sampling_frequency: float | None = None,
         verbose: bool = False,
         metadata_key: str | None = None,
@@ -518,34 +490,6 @@ class ScanImageLegacyImagingInterface(BaseImagingExtractorInterface):
         metadata_key : str, optional
             Metadata key for this interface. When None, defaults to "scan_image_legacy_imaging".
         """
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "fallback_sampling_frequency",
-                "verbose",
-            ]
-            num_positional_args_before_args = 1  # file_path
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args + 1} were given. "
-                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
-                    "Please use keyword arguments."
-                )
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to ScanImageLegacyImagingInterface.__init__() is deprecated "
-                f"and will be removed on or after August 2026. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            fallback_sampling_frequency = positional_values.get(
-                "fallback_sampling_frequency", fallback_sampling_frequency
-            )
-            verbose = positional_values.get("verbose", verbose)
 
         from roiextractors.extractors.tiffimagingextractors.scanimagetiff_utils import (
             extract_extra_metadata,
@@ -576,13 +520,13 @@ class ScanImageLegacyImagingInterface(BaseImagingExtractorInterface):
             metadata_key=metadata_key,
         )
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         """
         Get metadata for the ScanImage imaging data.
 
         Parameters
         ----------
-        use_new_metadata_format : bool, default: False
+        use_new_metadata_format : bool, default: True
             When False, returns the old list-based metadata format (backward compatible).
             When True, returns dict-based metadata with ScanImage provenance keyed by
             ``metadata_key`` under ``Devices``, ``Ophys.ImagingPlanes`` and
@@ -594,11 +538,7 @@ class ScanImageLegacyImagingInterface(BaseImagingExtractorInterface):
             Dictionary containing metadata including session start time and device information
             specific to the ScanImage system.
         """
-        metadata = (
-            super().get_metadata()
-            if not use_new_metadata_format
-            else super().get_metadata(use_new_metadata_format=True)
-        )
+        metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
 
         if "state.internal.triggerTimeString" in self.image_metadata:
             extracted_session_start_time = dateparse(self.image_metadata["state.internal.triggerTimeString"])

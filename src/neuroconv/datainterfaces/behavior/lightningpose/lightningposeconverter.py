@@ -1,14 +1,15 @@
-import warnings
 from copy import deepcopy
 
 from pydantic import FilePath, validate_call
 from pynwb import NWBFile
 
+from neuroconv._temporal_alignment import _TemporalAlignment
 from neuroconv.basedatainterface import BaseDataInterface
 from neuroconv.datainterfaces import LightningPoseDataInterface
 from neuroconv.datainterfaces.behavior.video.externalvideointerface import (
     ExternalVideoInterface,
 )
+from neuroconv.tools.nwb_helpers._metadata_and_file_helpers import _validate_metadata_key
 from neuroconv.utils import (
     DeepDict,
     dict_deep_update,
@@ -77,8 +78,25 @@ class LightningPoseConverter(BaseDataInterface):
                 video_name=self.labeled_video_name,
             )
 
-    def get_metadata(self) -> DeepDict:
-        metadata = self.data_interface_objects["PoseEstimation"].get_metadata()
+        self.temporal_alignment = _TemporalAlignment()
+        pose_estimation_interface = self.data_interface_objects["PoseEstimation"]
+        self.temporal_alignment._link_time_bearing_object(
+            key=pose_estimation_interface.metadata_key,
+            time_bearing_object=pose_estimation_interface.temporal_alignment[pose_estimation_interface.metadata_key],
+        )
+        for video_interface_name in ("OriginalVideo", "LabeledVideo"):
+            if video_interface_name not in self.data_interface_objects:
+                continue
+            video_interface = self.data_interface_objects[video_interface_name]
+            (file_key,) = video_interface.temporal_alignment.keys()
+            self.temporal_alignment._link_time_bearing_object(
+                key=video_interface.metadata_key,
+                time_bearing_object=video_interface.temporal_alignment[file_key],
+            )
+
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
+        pose_estimation_interface = self.data_interface_objects["PoseEstimation"]
+        metadata = pose_estimation_interface.get_metadata(use_new_metadata_format=use_new_metadata_format)
         original_video_interface = self.data_interface_objects["OriginalVideo"]
         original_videos_metadata = original_video_interface.get_metadata()
         original_videos_metadata["Behavior"]["ExternalVideos"]["original_video"].update(
@@ -100,7 +118,7 @@ class LightningPoseConverter(BaseDataInterface):
         self,
         nwbfile: NWBFile,
         metadata: dict,
-        *args,  # TODO: change to * (keyword only) on or after August 2026
+        *,
         reference_frame: str | None = None,
         confidence_definition: str | None = None,
         starting_frames_original_videos: list[int] | None = None,
@@ -127,42 +145,6 @@ class LightningPoseConverter(BaseDataInterface):
         stub_test : bool, optional
             If True, only a subset of the data will be added for testing purposes, by default False.
         """
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "reference_frame",
-                "confidence_definition",
-                "starting_frames_original_videos",
-                "starting_frames_labeled_videos",
-                "stub_test",
-            ]
-            num_positional_args_before_args = 2  # nwbfile, metadata
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"add_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args} were given. "
-                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
-                    "Please use keyword arguments."
-                )
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to LightningPoseConverter.add_to_nwbfile() is deprecated "
-                f"and will be removed on or after August 2026. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            reference_frame = positional_values.get("reference_frame", reference_frame)
-            confidence_definition = positional_values.get("confidence_definition", confidence_definition)
-            starting_frames_original_videos = positional_values.get(
-                "starting_frames_original_videos", starting_frames_original_videos
-            )
-            starting_frames_labeled_videos = positional_values.get(
-                "starting_frames_labeled_videos", starting_frames_labeled_videos
-            )
-            stub_test = positional_values.get("stub_test", stub_test)
 
         original_video_interface = self.data_interface_objects["OriginalVideo"]
         metadata_copy = deepcopy(metadata)
@@ -181,11 +163,29 @@ class LightningPoseConverter(BaseDataInterface):
                 parent_container="processing/behavior",
             )
 
+        # The pose estimation container links the ImageSeries written above rather than naming the
+        # source paths it was read from.
         pose_metadata = deepcopy(metadata)
-        videos_list = [dict(name=self.original_video_name)]
-        if self.labeled_video_name is not None:
-            videos_list.append(dict(name=self.labeled_video_name))
-        pose_metadata["Behavior"]["Videos"] = videos_list
+        if "Pose" in pose_metadata:
+            pose_estimation_interface = self.data_interface_objects["PoseEstimation"]
+            _validate_metadata_key(
+                pose_metadata,
+                metadata_path=("Pose", "PoseEstimations"),
+                metadata_key=pose_estimation_interface.metadata_key,
+            )
+            container_metadata = pose_metadata["Pose"]["PoseEstimations"][pose_estimation_interface.metadata_key]
+            # A link to the ImageSeries written above rather than the source path it was read from, and the
+            # paths dropped with it: the object is in the file, so the path would only be a weaker copy.
+            container_metadata["source_video_metadata_key"] = "original_video"
+            container_metadata["original_videos"] = None
+            if self.labeled_video_name is not None:
+                container_metadata["labeled_video_metadata_key"] = "labeled_video"
+            container_metadata["labeled_videos"] = None
+        else:
+            videos_list = [dict(name=self.original_video_name)]
+            if self.labeled_video_name is not None:
+                videos_list.append(dict(name=self.labeled_video_name))
+            pose_metadata["Behavior"]["Videos"] = videos_list
         self.data_interface_objects["PoseEstimation"].add_to_nwbfile(
             nwbfile=nwbfile,
             metadata=pose_metadata,

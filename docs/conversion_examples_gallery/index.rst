@@ -94,17 +94,45 @@ Segmentation
     Inscopix <segmentation/inscopix>
     Suite2P <segmentation/suite2p>
 
+.. _conversion_gallery_fiber_photometry:
+
 Fiber Photometry
 ~~~~~~~~~~~~~~~~
 
 .. toctree::
     :maxdepth: 1
 
-    Doric Fiber Photometry <fiberphotometry/doric_fp>
-    TDT Fiber Photometry <fiberphotometry/tdt_fp>
-    NPM Fiber Photometry <fiberphotometry/npm_fp>
-    CSV Fiber Photometry <fiberphotometry/csv_fp>
-    GuPPy Fiber Photometry <fiberphotometry/guppy_fp>
+    Doric <fiberphotometry/doric_fp>
+    TDT <fiberphotometry/tdt_fp>
+    NPM <fiberphotometry/npm_fp>
+    pyPhotometry <fiberphotometry/pyphotometry_fp>
+    CSV <fiberphotometry/csv_fp>
+    GuPPy <fiberphotometry/guppy_fp>
+
+.. _conversion_gallery_pose_estimation:
+
+Pose estimation
+---------------
+
+Keypoint estimation
+~~~~~~~~~~~~~~~~~~~
+
+.. toctree::
+    :maxdepth: 1
+
+    DANNCE <behavior/dannce>
+    DeepLabCut <behavior/deeplabcut>
+    LightningPose <behavior/lightningpose>
+    SLEAP <behavior/sleap>
+
+Behavioral segmentation
+~~~~~~~~~~~~~~~~~~~~~~~
+
+.. toctree::
+    :maxdepth: 1
+
+    VAME <behavior/vame>
+    keypoint-MoSeq <behavior/moseq_keypoints>
 
 Behavior
 --------
@@ -113,12 +141,11 @@ Behavior
     :maxdepth: 1
 
     Audio <behavior/audio>
-    DeepLabCut <behavior/deeplabcut>
+    BORIS <behavior/boris>
+    EthoVision <behavior/ethovision>
     FicTrac <behavior/fictrac>
-    LightningPose <behavior/lightningpose>
     Neuralynx NVT <behavior/neuralynx_nvt>
-    SLEAP <behavior/sleap>
-    VAME <behavior/vame>
+    OptiTrack <behavior/optitrack>
     Videos <behavior/video>
     MedPC <behavior/medpc>
 
@@ -129,10 +156,12 @@ Events
 .. toctree::
     :maxdepth: 1
 
-    CSV Events <events/csv_events>
-    Doric Events <events/doric_events>
-    NPM Events <events/npm_events>
-    TDT Events <events/tdt_events>
+    CSV <events/csv_events>
+    Doric <events/doric_events>
+    MedPC <events/medpc_events>
+    NPM <events/npm_events>
+    pyPhotometry <events/pyphotometry_events>
+    TDT <events/tdt_events>
 
 
 Image
@@ -163,5 +192,5 @@ Common interface combinations
     combinations/ecephys_pose_estimation
 
 .. note::
-If you do not see the format you need, feel free to `request it <https://github.com/catalystneuro/neuroconv/issues/new?assignees=&labels=enhancement,data+interfaces&template=format_request.yml>`_ or
-  :ref:`build-data-interface`.
+    If you do not see the format you need, feel free to `request it <https://github.com/catalystneuro/neuroconv/issues/new?assignees=&labels=enhancement,data+interfaces&template=format_request.yml>`_ or
+    :ref:`build-data-interface`.

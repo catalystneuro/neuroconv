@@ -1,4 +1,3 @@
-import warnings
 from datetime import datetime, timedelta
 from pathlib import Path
 from warnings import warn
@@ -37,10 +36,11 @@ class AxonRecordingInterface(BaseRecordingExtractorInterface):
     def __init__(
         self,
         file_path: FilePath,
-        *args,  # TODO: change to * (keyword only) on or after August 2026
+        *,
         verbose: bool = False,
-        es_key: str = "ElectricalSeries",
+        es_key: str | None = None,
         metadata_key: str | None = None,
+        channels_to_exclude: list | None = None,
     ):
         """
         Load and prepare raw data and corresponding metadata from the Axon Binary Format (.abf files).
@@ -56,67 +56,23 @@ class AxonRecordingInterface(BaseRecordingExtractorInterface):
             Key that indexes this interface's entries in the dict-based metadata. Defaults to
             ``"axon_recording"``.
             The key for the ElectricalSeries in the metadata
+        channels_to_exclude : list, optional
+            Channels to leave out, by the ids in ``channel_ids``. Every other channel is converted. A name that
+            is not one of the interface's channels raises.
         """
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "verbose",
-                "es_key",
-            ]
-            num_positional_args_before_args = 1  # file_path
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args + 1} were given. "
-                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
-                    "Please use keyword arguments."
-                )
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to AxonRecordingInterface.__init__() is deprecated "
-                f"and will be removed on or after August 2026. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            verbose = positional_values.get("verbose", verbose)
-            es_key = positional_values.get("es_key", es_key)
 
         self.file_path = Path(file_path)
 
+        if metadata_key is None:
+            metadata_key = "axon_recording"
+
         super().__init__(file_path=file_path, verbose=verbose, es_key=es_key, metadata_key=metadata_key)
 
-        if metadata_key is None:
-            self.metadata_key = "axon_recording"
+        # Read the start time while the recording is still the neo-based extractor, as `remove_channels`
+        # replaces it with a channel slice that does not carry the `neo_reader`
+        self._session_start_time = _get_start_datetime(self.recording_extractor.neo_reader)
 
-    def _get_start_datetime(self, neo_reader):
-        """
-        Get start datetime for ABF file.
-
-        Parameters
-        ----------
-        neo_reader : neo.io.AxonIO
-            The Neo reader object for the ABF file.
-
-        Returns
-        -------
-        datetime
-            The start date and time of the recording.
-        """
-        if all(k in neo_reader._axon_info for k in ["uFileStartDate", "uFileStartTimeMS"]):
-            startDate = str(neo_reader._axon_info["uFileStartDate"])
-            startTime = round(neo_reader._axon_info["uFileStartTimeMS"] / 1000)
-            startDate = datetime.strptime(startDate, "%Y%m%d")
-            startTime = timedelta(seconds=startTime)
-            return startDate + startTime
-        else:
-            warn(
-                f"uFileStartDate or uFileStartTimeMS not found in {neo_reader.filename.split('/')[-1]}, datetime for "
-                "recordings might be wrongly stored."
-            )
-            return neo_reader._axon_info["rec_datetime"]
+        self._exclude_channels(channels_to_exclude)
 
     def _get_metadata_schema_for_old_list_format(self) -> dict:
         metadata_schema = super()._get_metadata_schema_for_old_list_format()
@@ -125,19 +81,15 @@ class AxonRecordingInterface(BaseRecordingExtractorInterface):
         )
         return metadata_schema
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
 
-        # Extract session start time from ABF file using the existing neo_reader
-        neo_reader = self.recording_extractor.neo_reader
-        session_start_time = self._get_start_datetime(neo_reader)
-        session_start_time_str = session_start_time.strftime("%Y-%m-%dT%H:%M:%S%z")
+        session_start_time_str = self._session_start_time.strftime("%Y-%m-%dT%H:%M:%S%z")
         metadata["NWBFile"].update(session_start_time=session_start_time_str)
 
         axon_device = dict(
             name="Axon Instruments",
-            description="Axon Instruments data acquisition system (pCLAMP/AxoScope)",
-            manufacturer="Molecular Devices",
+            description="Axon Instruments (now Molecular Devices) data acquisition system (pCLAMP/AxoScope)",
         )
         if use_new_metadata_format:
             from ....tools.spikeinterface.spikeinterface import _get_group_name
@@ -155,7 +107,7 @@ class AxonRecordingInterface(BaseRecordingExtractorInterface):
             }
 
             metadata["Ecephys"]["ElectricalSeries"][self.metadata_key].update(
-                name="ElectricalSeriesRaw", description="Raw acquisition traces from Axon Binary Format file."
+                name="ElectricalSeries", description="Raw acquisition traces from Axon Binary Format file."
             )
 
             return metadata
@@ -176,3 +128,31 @@ class AxonRecordingInterface(BaseRecordingExtractorInterface):
         )
 
         return metadata
+
+
+def _get_start_datetime(neo_reader) -> datetime:
+    """
+    Get start datetime for ABF file.
+
+    Parameters
+    ----------
+    neo_reader : neo.io.AxonIO
+        The Neo reader object for the ABF file.
+
+    Returns
+    -------
+    datetime
+        The start date and time of the recording.
+    """
+    if all(k in neo_reader._axon_info for k in ["uFileStartDate", "uFileStartTimeMS"]):
+        startDate = str(neo_reader._axon_info["uFileStartDate"])
+        startTime = round(neo_reader._axon_info["uFileStartTimeMS"] / 1000)
+        startDate = datetime.strptime(startDate, "%Y%m%d")
+        startTime = timedelta(seconds=startTime)
+        return startDate + startTime
+    else:
+        warn(
+            f"uFileStartDate or uFileStartTimeMS not found in {neo_reader.filename.split('/')[-1]}, datetime for "
+            "recordings might be wrongly stored."
+        )
+        return neo_reader._axon_info["rec_datetime"]

@@ -6,6 +6,11 @@ How to Annotate Discrete Events Metadata
 This guide provides instructions for annotating discrete-event data (TTL lines, strobes, epocs,
 markers) using NeuroConv's dict-based events metadata format.
 
+It covers what the events are called and how they are laid out in the file. Which events exist is
+decided when the interface is constructed, and for a source that carries its events as a sampled signal
+rather than as a list, that is the ``detection_configuration`` argument covered in
+:ref:`extract_events_from_signals`.
+
 
 .. _annotate_events_single_interface:
 

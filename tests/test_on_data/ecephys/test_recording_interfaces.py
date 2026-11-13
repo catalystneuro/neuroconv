@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from platform import python_version
 from sys import platform
 
@@ -10,8 +10,10 @@ from packaging import version
 from pynwb import read_nwb
 from pynwb.testing.mock.file import mock_NWBFile
 
+from neuroconv import ConverterPipe
 from neuroconv.datainterfaces import (
     AlphaOmegaRecordingInterface,
+    AxonaLFPDataInterface,
     AxonaRecordingInterface,
     AxonRecordingInterface,
     BiocamRecordingInterface,
@@ -24,6 +26,7 @@ from neuroconv.datainterfaces import (
     MCSRawRecordingInterface,
     MEArecRecordingInterface,
     NeuralynxRecordingInterface,
+    NeuroScopeLFPInterface,
     NeuroScopeRecordingInterface,
     OpenEphysBinaryRecordingInterface,
     OpenEphysLegacyRecordingInterface,
@@ -52,6 +55,7 @@ this_python_version = version.parse(python_version())
 
 class TestAlphaOmegaRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = AlphaOmegaRecordingInterface
+    expected_temporal_alignment_keys = ("alpha_omega_recording_0", "alpha_omega_recording_1", "alpha_omega_recording_2")
     interface_kwargs = dict(folder_path=str(ECEPHY_DATA_PATH / "alphaomega" / "mpx_map_version4"))
     save_directory = OUTPUT_PATH
 
@@ -68,6 +72,7 @@ class TestAlphaOmegaRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
 class TestAxonRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = AxonRecordingInterface
+    expected_temporal_alignment_keys = ("axon_recording_0",)
     interface_kwargs = dict(file_path=str(ECEPHY_DATA_PATH / "axon" / "File_axon_1.abf"))
     save_directory = OUTPUT_PATH
 
@@ -76,14 +81,13 @@ class TestAxonRecordingInterface(RecordingExtractorInterfaceTestMixin):
         expected_devices = {
             "axon_device": dict(
                 name="Axon Instruments",
-                description="Axon Instruments data acquisition system (pCLAMP/AxoScope)",
-                manufacturer="Molecular Devices",
+                description="Axon Instruments (now Molecular Devices) data acquisition system (pCLAMP/AxoScope)",
             )
         }
-        # The series keeps the name and description the old format gives it.
+        # The series keeps the description the old format gives it.
         expected_electrical_series = {
             "axon_recording": dict(
-                name="ElectricalSeriesRaw", description="Raw acquisition traces from Axon Binary Format file."
+                name="ElectricalSeries", description="Raw acquisition traces from Axon Binary Format file."
             )
         }
 
@@ -104,8 +108,10 @@ class TestAxonRecordingInterface(RecordingExtractorInterfaceTestMixin):
         assert len(devices) >= 1
         axon_device = devices[0]
         assert axon_device["name"] == "Axon Instruments"
-        assert axon_device["description"] == "Axon Instruments data acquisition system (pCLAMP/AxoScope)"
-        assert axon_device["manufacturer"] == "Molecular Devices"
+        assert (
+            axon_device["description"]
+            == "Axon Instruments (now Molecular Devices) data acquisition system (pCLAMP/AxoScope)"
+        )
 
         # Check electrode groups have device assigned
         electrode_groups = metadata["Ecephys"]["ElectrodeGroup"]
@@ -119,16 +125,33 @@ class TestAxonRecordingInterface(RecordingExtractorInterfaceTestMixin):
         assert electrical_series_raw["description"] == "Raw acquisition traces from Axon Binary Format file."
 
 
+class TestAxonRecordingInterfaceExtracellular(RecordingExtractorInterfaceTestMixin):
+    """Four lumbar ventral-root channels, the extracellular case the interface is for."""
+
+    data_interface_cls = AxonRecordingInterface
+    expected_temporal_alignment_keys = ("axon_recording_0",)
+    interface_kwargs = dict(
+        file_path=str(ECEPHY_DATA_PATH / "axon" / "extracellular_data" / "four_electrodes" / "24606005_SampleData.abf")
+    )
+    save_directory = OUTPUT_PATH
+
+
 class TestAxonaRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = AxonaRecordingInterface
+    expected_temporal_alignment_keys = ("axona_recording_0",)
     interface_kwargs = dict(file_path=str(ECEPHY_DATA_PATH / "axona" / "axona_raw.bin"))
     save_directory = OUTPUT_PATH
 
     def check_extracted_metadata(self, metadata: dict):
         expected_metadata_key = "axona_recording"
         expected_devices = {
-            "axona_device": dict(name="Axona", description="Axona DacqUSB, sw_version=1.2.2.16", manufacturer="Axona")
+            "axona_device": dict(
+                name="Axona",
+                description="Axona DacqUSB, sw_version=1.2.2.16",
+                device_model_metadata_key="axona_dacqusb_model",
+            )
         }
+        expected_device_models = {"axona_dacqusb_model": dict(name="DacqUSB", manufacturer="Axona")}
         # One group per tetrode, each linked to the single Axona device.
         expected_electrode_groups = {
             group_name: dict(name=group_name, device_metadata_key="axona_device") for group_name in ("1", "2", "3", "4")
@@ -136,20 +159,41 @@ class TestAxonaRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
         assert self.interface.metadata_key == expected_metadata_key
         assert metadata["Devices"] == expected_devices
+        assert metadata["DeviceModels"] == expected_device_models
         assert metadata["Ecephys"]["ElectrodeGroups"] == expected_electrode_groups
 
     def check_extracted_metadata_old_list_format(self, metadata: dict):
         # Old list-based format: the Axona device lives in the Ecephys.Device list and every electrode
         # group points at it by name.
-        assert metadata["Ecephys"]["Device"] == [
-            dict(name="Axona", description="Axona DacqUSB, sw_version=1.2.2.16", manufacturer="Axona")
-        ]
+        assert metadata["Ecephys"]["Device"] == [dict(name="Axona", description="Axona DacqUSB, sw_version=1.2.2.16")]
         for electrode_group in metadata["Ecephys"]["ElectrodeGroup"]:
             assert electrode_group["device"] == "Axona"
 
 
+class TestAxonaLFPDataInterface(RecordingExtractorInterfaceTestMixin):
+    data_interface_cls = AxonaLFPDataInterface
+    expected_temporal_alignment_keys = ("ElectricalSeriesLFP_0",)
+    interface_kwargs = dict(file_path=str(ECEPHY_DATA_PATH / "axona" / "dataset_unit_spikes" / "20140815-180secs.eeg"))
+    save_directory = OUTPUT_PATH
+    is_lfp_interface = True
+
+    def check_extracted_metadata(self, metadata: dict):
+        expected_electrical_series = {"ElectricalSeriesLFP": dict(name="ElectricalSeriesLFP")}
+
+        assert metadata["Ecephys"]["ElectricalSeries"] == expected_electrical_series
+
+    def check_read_nwb(self, nwbfile_path: str):
+        super().check_read_nwb(nwbfile_path=nwbfile_path)
+
+        # The mixin skips the trace comparison for a single channel, which is what this file has.
+        nwbfile = read_nwb(nwbfile_path)
+        written_traces = nwbfile.processing["ecephys"]["LFP"]["ElectricalSeriesLFP"].data[:]
+        assert_array_equal(written_traces, self.interface.recording_extractor.get_traces(return_in_uV=False))
+
+
 class TestBiocamRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = BiocamRecordingInterface
+    expected_temporal_alignment_keys = ("biocam_recording_0",)
     interface_kwargs = dict(file_path=str(ECEPHY_DATA_PATH / "biocam" / "biocam_hw3.0_fw1.6.brw"))
     save_directory = OUTPUT_PATH
 
@@ -165,6 +209,7 @@ class TestBiocamRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
 class TestBlackrockRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = BlackrockRecordingInterface
+    expected_temporal_alignment_keys = ("blackrock_recording_0",)
     save_directory = OUTPUT_PATH
 
     def check_extracted_metadata(self, metadata: dict):
@@ -190,6 +235,12 @@ class TestBlackrockRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
         return self.interface, self.test_name
 
+    def test_session_start_time_is_utc(self):
+        interface = BlackrockRecordingInterface(file_path=str(ECEPHY_DATA_PATH / "blackrock" / "FileSpec2.3001.ns5"))
+        metadata = interface.get_metadata()
+
+        assert metadata["NWBFile"]["session_start_time"] == "2014-01-06T20:23:05.559000+00:00"
+
 
 @pytest.mark.skipif(
     platform != "win32" and this_python_version < version.parse("3.14"),
@@ -197,6 +248,7 @@ class TestBlackrockRecordingInterface(RecordingExtractorInterfaceTestMixin):
 )
 class TestSpike2RecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = Spike2RecordingInterface
+    expected_temporal_alignment_keys = ("spike2_recording_0",)
     interface_kwargs = dict(file_path=str(ECEPHY_DATA_PATH / "spike2" / "m365_1sec.smrx"))
     save_directory = OUTPUT_PATH
 
@@ -210,6 +262,7 @@ class TestSpike2RecordingInterface(RecordingExtractorInterfaceTestMixin):
 
 class TestCellExplorerRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = CellExplorerRecordingInterface
+    expected_temporal_alignment_keys = ("cell_explorer_recording_0",)
     save_directory = OUTPUT_PATH
 
     def check_extracted_metadata(self, metadata: dict):
@@ -286,12 +339,12 @@ class TestCellExplorerRecordingInterface(RecordingExtractorInterfaceTestMixin):
         nwbfile.read_io.close()
 
 
-@pytest.mark.skipif(
-    platform == "darwin",
-    reason="Interface unsupported for OSX.",
-)
+# The file holds two electrode channels next to a current, a temperature and an unitless channel, so
+# SpikeInterface warns about the mix while building the recording.
+@pytest.mark.filterwarnings("ignore:Found a mix of voltage and non-voltage units:UserWarning")
 class TestEDFRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = EDFRecordingInterface
+    expected_temporal_alignment_keys = ("edf_recording_0",)
     interface_kwargs = dict(file_path=str(ECEPHY_DATA_PATH / "edf" / "edf+C.edf"))
     save_directory = OUTPUT_PATH
 
@@ -301,62 +354,137 @@ class TestEDFRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
         assert self.interface.metadata_key == expected_metadata_key
         assert metadata["Ecephys"]["ElectricalSeries"] == expected_electrical_series
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2022, 3, 2, 10, 42, 19)
+        # The patient field of this file states a sex and nothing else.
+        assert metadata["Subject"] == dict(sex="F")
 
-    def check_run_conversion_with_backend(self, nwbfile_path: str, backend="hdf5"):
-        metadata = self.interface.get_metadata()
-        if "session_start_time" not in metadata["NWBFile"]:
-            metadata["NWBFile"].update(session_start_time=datetime.now().astimezone())
+    def test_get_stream_names(self):
+        stream_names = EDFRecordingInterface.get_stream_names(file_path=self.interface_kwargs["file_path"])
 
-        self.interface.run_conversion(
-            nwbfile_path=nwbfile_path,
-            overwrite=True,
-            metadata=metadata,
-            backend=backend,
-            **self.conversion_options,
+        assert stream_names == ["stream ((256.0,) Hz)"]
+
+
+class TestEDFRecordingInterfaceFullMetadata(RecordingExtractorInterfaceTestMixin):
+    """This file states every header field the format defines."""
+
+    data_interface_cls = EDFRecordingInterface
+    expected_temporal_alignment_keys = ("edf_recording_0",)
+    interface_kwargs = dict(
+        file_path=str(ECEPHY_DATA_PATH / "edf" / "metadata_annotations" / "full_metadata.edf"),
+    )
+    save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2024, 5, 2, 9, 30)
+        assert metadata["NWBFile"]["experimenter"] == ["Tech 01"]
+        assert metadata["Subject"] == dict(subject_id="SYNTH-001", sex="F", date_of_birth="1985-03-17")
+
+    def check_read_nwb(self, nwbfile_path: str):
+        nwbfile = read_nwb(nwbfile_path)
+
+        assert nwbfile.subject.subject_id == "SYNTH-001"
+        assert nwbfile.subject.sex == "F"
+        assert nwbfile.subject.date_of_birth.date() == date(1985, 3, 17)
+
+        nwbfile.read_io.close()
+        return super().check_read_nwb(nwbfile_path=nwbfile_path)
+
+
+class TestEDFRecordingInterfaceMultiStream(RecordingExtractorInterfaceTestMixin):
+    """This file sampled part of its signals at 100 Hz and the rest at 1 Hz, so it holds two streams."""
+
+    data_interface_cls = EDFRecordingInterface
+    expected_temporal_alignment_keys = ("edf_recording_0",)
+    interface_kwargs = dict(
+        file_path=str(ECEPHY_DATA_PATH / "edf" / "heterogeneous_offsets" / "same_unit_offsets_multirate.edf"),
+        stream_name="stream ((100.0,) Hz)",
+    )
+    # This stream is three electrode channels that all state uV and carry a per-channel offset, which a
+    # single ElectricalSeries can hold only in physical units. The 1 Hz stream is not the case to use
+    # here: its offsets differ because a respiration, a temperature and a marker channel each bring
+    # their own physical range, so it asks to have those channels excluded instead.
+    conversion_options = dict(data_representation="physical_units")
+    save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        # The patient field of this file states nothing, so no Subject is reported for it.
+        assert "Subject" not in metadata
+
+    def test_get_stream_names(self):
+        stream_names = EDFRecordingInterface.get_stream_names(file_path=self.interface_kwargs["file_path"])
+
+        assert stream_names == ["stream ((100.0,) Hz)", "stream ((1.0,) Hz)"]
+
+    def test_stream_name_is_required_for_a_multi_stream_file(self):
+        with pytest.raises(ValueError, match="several streams"):
+            EDFRecordingInterface(file_path=self.interface_kwargs["file_path"])
+
+    def test_stream_name_selects_the_channels_of_its_stream(self, setup_interface):
+        assert list(self.interface.channel_ids) == ["EEG Fpz-Cz", "EEG Pz-Oz", "EOG horizontal"]
+        assert self.interface.recording_extractor.get_sampling_frequency() == 100.0
+
+    def test_channels_to_skip_applies_within_the_selected_stream(self):
+        interface = EDFRecordingInterface(
+            file_path=self.interface_kwargs["file_path"],
+            stream_name="stream ((100.0,) Hz)",
+            channels_to_skip=["EOG horizontal"],
         )
 
-    def test_all_conversion_checks(self, setup_interface, tmp_path):
-        # Create a unique test name and file path
-        nwbfile_path = str(tmp_path / f"{self.__class__.__name__}.nwb")
-        self.nwbfile_path = nwbfile_path
+        assert list(interface.channel_ids) == ["EEG Fpz-Cz", "EEG Pz-Oz"]
 
-        # Now run the checks using the setup objects
-        metadata = self.interface.get_metadata()
-        assert metadata["NWBFile"]["session_start_time"] == datetime(2022, 3, 2, 10, 42, 19)
+    def test_get_available_channel_ids_spans_every_stream(self):
+        """The channel names come from the header, so a file with several streams still answers."""
+        channel_ids = EDFRecordingInterface.get_available_channel_ids(file_path=self.interface_kwargs["file_path"])
 
-        self.check_run_conversion_with_backend(nwbfile_path=nwbfile_path, backend="hdf5")
-        self.check_read_nwb(nwbfile_path=nwbfile_path)
+        assert channel_ids == [
+            "EEG Fpz-Cz",
+            "EEG Pz-Oz",
+            "EOG horizontal",
+            "Resp oro-nasal",
+            "EMG submental",
+            "Temp rectal",
+            "Event marker",
+        ]
 
-    # EDF has simultaneous access issues; can't have multiple interfaces open on the same file at once...
-    def test_metadata_schema_valid(self):
-        pass
+    def check_read_nwb(self, nwbfile_path: str):
+        """The traces were written in physical units, so they are read back and compared as such."""
+        from spikeinterface.core.testing import check_recordings_equal
+        from spikeinterface.extractors.extractor_classes import NwbRecordingExtractor
 
-    def test_no_metadata_mutation(self):
-        pass
+        recording = self.interface.recording_extractor
+        channel_name = recording.get_property("channel_name")
+        if channel_name is None:
+            channel_name = recording.get_channel_ids()
+        recording = recording.rename_channels(new_channel_ids=channel_name.astype("str", copy=False))
 
-    def test_interface_alignment(self):
-        pass
+        nwb_recording = NwbRecordingExtractor(
+            file_path=nwbfile_path, electrical_series_path="acquisition/ElectricalSeries", use_pynwb=True
+        )
 
-    def test_conversion_options_schema_valid(self):
-        pass
-
-    def test_metadata(self):
-        pass
-
-    def test_conversion_options_schema_valid(self):
-        pass
+        check_recordings_equal(RX1=recording, RX2=nwb_recording, return_in_uV=True)
 
 
 class TestIntanRecordingInterfaceRHS(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = IntanRecordingInterface
+    expected_temporal_alignment_keys = ("intan_recording_0",)
     interface_kwargs = dict(file_path=ECEPHY_DATA_PATH / "intan" / "intan_rhs_test_1.rhs")
 
     def check_extracted_metadata(self, metadata: dict):
         expected_metadata_key = "intan_recording"
         expected_devices = {
-            "intan_device": dict(name="Intan", description="RHS Stim/Recording System", manufacturer="Intan")
+            "intan_device": dict(
+                name="Intan",
+                description="RHS Stim/Recording System",
+                device_model_metadata_key="intan_rhs2000_model",
+            )
         }
-        expected_electrode_groups = {"0": dict(name="0", device_metadata_key="intan_device")}
+        expected_electrode_groups = {
+            "B": dict(
+                name="B",
+                device_metadata_key="intan_device",
+                description="Amplifier channels recorded on Intan headstage port B.",
+            )
+        }
         expected_electrical_series = {"intan_recording": dict(name="ElectricalSeries")}
 
         assert self.interface.metadata_key == expected_metadata_key
@@ -368,7 +496,7 @@ class TestIntanRecordingInterfaceRHS(RecordingExtractorInterfaceTestMixin):
         # Old list-based format: the Intan device lives in the Ecephys.Device list and every
         # electrode group points at it by name.
         devices = metadata["Ecephys"]["Device"]
-        assert dict(name="Intan", description="RHS Stim/Recording System", manufacturer="Intan") in devices
+        assert dict(name="Intan", description="RHS Stim/Recording System") in devices
         for electrode_group in metadata["Ecephys"]["ElectrodeGroup"]:
             assert electrode_group["device"] == "Intan"
 
@@ -383,23 +511,32 @@ class TestIntanRecordingInterfaceRHS(RecordingExtractorInterfaceTestMixin):
 
 class TestIntanRecordingInterfaceRHD(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = IntanRecordingInterface
+    expected_temporal_alignment_keys = ("intan_recording_0",)
     save_directory = OUTPUT_PATH
 
     def check_extracted_metadata(self, metadata: dict):
         expected_metadata_key = "intan_recording"
         expected_devices = {
-            "intan_device": dict(name="Intan", description="RHD Recording System", manufacturer="Intan")
+            "intan_device": dict(
+                name="Intan",
+                description="RHD Recording System",
+                device_model_metadata_key="intan_rhd2000_model",
+            )
         }
         expected_electrical_series = {"intan_recording": dict(name="ElectricalSeries")}
-        # The three fixtures carry different channel-group sets, so the expected groups are pinned per fixture.
-        expected_group_names = {
-            "rhd": ("0", "1", "2"),
-            "one-file-per-channel": ("0", "1"),
-            "one-file-per-signal": ("0", "1"),
+        # The three fixtures use different sets of headstage ports, so the expected groups are pinned per fixture.
+        expected_ports = {
+            "rhd": ("A", "B", "C"),
+            "one-file-per-channel": ("A", "B"),
+            "one-file-per-signal": ("A", "B"),
         }
         expected_electrode_groups = {
-            group_name: dict(name=group_name, device_metadata_key="intan_device")
-            for group_name in expected_group_names[self.test_name]
+            port: dict(
+                name=port,
+                device_metadata_key="intan_device",
+                description=f"Amplifier channels recorded on Intan headstage port {port}.",
+            )
+            for port in expected_ports[self.test_name]
         }
 
         assert self.interface.metadata_key == expected_metadata_key
@@ -411,7 +548,7 @@ class TestIntanRecordingInterfaceRHD(RecordingExtractorInterfaceTestMixin):
         # Old list-based format: the Intan device lives in the Ecephys.Device list and every
         # electrode group points at it by name.
         devices = metadata["Ecephys"]["Device"]
-        assert dict(name="Intan", description="RHD Recording System", manufacturer="Intan") in devices
+        assert dict(name="Intan", description="RHD Recording System") in devices
         for electrode_group in metadata["Ecephys"]["ElectrodeGroup"]:
             assert electrode_group["device"] == "Intan"
 
@@ -432,6 +569,25 @@ class TestIntanRecordingInterfaceRHD(RecordingExtractorInterfaceTestMixin):
 
         return self.interface, self.test_name
 
+    def test_headstage_port_is_written_as_group_name_and_column(self, setup_interface):
+        # The port names the electrode group and is also written per channel, because the two survive
+        # different things: attaching a probe regroups the channels and overwrites the group name, while
+        # the port stays true of every channel afterwards.
+        expected_ports = {
+            "rhd": ["A", "B", "C"],
+            "one-file-per-channel": ["A", "B"],
+            "one-file-per-signal": ["A", "B"],
+        }[self.test_name]
+
+        nwbfile = mock_NWBFile()
+        self.interface.add_to_nwbfile(nwbfile=nwbfile)
+
+        assert sorted(nwbfile.electrode_groups) == expected_ports
+        assert sorted(set(nwbfile.electrodes["port"].data[:])) == expected_ports
+        # SpikeInterface's ``group_names`` is restated as ``port``, so it must not also reach the table
+        # under a name one character from the ``group_name`` column beside it.
+        assert "group_names" not in nwbfile.electrodes.colnames
+
     def test_devices_written_correctly(self, setup_interface):
 
         nwbfile = mock_NWBFile()
@@ -451,6 +607,9 @@ class TestIntanRecordingInterfaceRHD(RecordingExtractorInterfaceTestMixin):
         channel_groups = np.full(shape=num_channels, fill_value=0, dtype=int)
         channel_groups[::2] = 1  # Every other channel is in group 1, the rest are in group 0
         recording.set_channel_groups(groups=channel_groups)
+        # The interface named the groups after the headstage port, so that name is stale once the channels
+        # are re-grouped and has to be restated alongside the new groups.
+        recording.set_property(key="group_name", values=[str(group) for group in channel_groups])
 
         self.interface.add_to_nwbfile(nwbfile=nwbfile)
         assert len(nwbfile.devices) == 1
@@ -469,6 +628,7 @@ class TestIntanRecordingInterfaceRHD(RecordingExtractorInterfaceTestMixin):
 @pytest.mark.skip(reason="This interface fails to load the necessary plugin sometimes.")
 class TestMaxOneRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = MaxOneRecordingInterface
+    expected_temporal_alignment_keys = ("maxone_recording_0",)
     interface_kwargs = dict(
         file_path=str(ECEPHY_DATA_PATH / "maxwell" / "MaxOne_data" / "Record" / "000011" / "data.raw.h5")
     )
@@ -482,12 +642,14 @@ class TestMaxOneRecordingInterface(RecordingExtractorInterfaceTestMixin):
             "maxone_device": dict(
                 name="MaxOne",
                 description="Recorded using Maxwell version '20190530'.",
-                manufacturer="MaxWell Biosystems",
+                device_model_metadata_key="maxone_model",
             )
         }
+        expected_device_models = {"maxone_model": dict(name="MaxOne", manufacturer="MaxWell Biosystems")}
 
         assert self.interface.metadata_key == expected_metadata_key
         assert metadata["Devices"] == expected_devices
+        assert metadata["DeviceModels"] == expected_device_models
         assert all(
             electrode_group["device_metadata_key"] == "maxone_device"
             for electrode_group in metadata["Ecephys"]["ElectrodeGroups"].values()
@@ -501,6 +663,7 @@ class TestMaxOneRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
 class TestMCSRawRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = MCSRawRecordingInterface
+    expected_temporal_alignment_keys = ("mcs_raw_recording_0",)
     interface_kwargs = dict(file_path=str(ECEPHY_DATA_PATH / "rawmcs" / "raw_mcs_with_header_1.raw"))
     save_directory = OUTPUT_PATH
 
@@ -514,6 +677,7 @@ class TestMCSRawRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
 class TestMEArecRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = MEArecRecordingInterface
+    expected_temporal_alignment_keys = ("mearec_recording_0",)
     interface_kwargs = dict(file_path=str(ECEPHY_DATA_PATH / "mearec" / "mearec_test_10s.h5"))
     save_directory = OUTPUT_PATH
 
@@ -556,9 +720,17 @@ class TestMEArecRecordingInterface(RecordingExtractorInterfaceTestMixin):
         )
 
 
-class TestNeuralynxRecordingInterfaceV574:
+class TestNeuralynxRecordingInterfaceV574(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = NeuralynxRecordingInterface
-    interface_kwargs = (dict(folder_path=str(ECEPHY_DATA_PATH / "neuralynx" / "Cheetah_v5.7.4" / "original_data")),)
+    expected_temporal_alignment_keys = (
+        "neuralynx_recording_0",
+        "neuralynx_recording_1",
+        "neuralynx_recording_2",
+        "neuralynx_recording_3",
+    )
+    interface_kwargs = dict(
+        folder_path=str(ECEPHY_DATA_PATH / "neuralynx" / "Cheetah_v5.7.4" / "original_data"), gap_tolerance_ms=1.0
+    )
 
     save_directory = OUTPUT_PATH
 
@@ -575,18 +747,18 @@ class TestNeuralynxRecordingInterfaceV574:
             "description": "Cheetah 5.7.4",
         }
 
-    def check_read(self, nwbfile_path):
-        super().check_read(nwbfile_path)
+    def check_read_nwb(self, nwbfile_path):
+        super().check_read_nwb(nwbfile_path)
         expected_single_channel_props = {
             "DSPLowCutFilterEnabled": "True",
-            "DspLowCutFrequency": "10",
-            "DspLowCutNumTaps": "0",
+            "DspLowCutFrequency": 10,
+            "DspLowCutNumTaps": 0,
             "DspLowCutFilterType": "DCO",
             "DSPHighCutFilterEnabled": "True",
-            "DspHighCutFrequency": "9000",
-            "DspHighCutNumTaps": "64",
+            "DspHighCutFrequency": 9000,
+            "DspHighCutNumTaps": 64,
             "DspHighCutFilterType": "FIR",
-            "DspDelayCompensation": "Enabled",
+            "DspDelayCompensation": "True",
         }
 
         n_channels = self.interface.recording_extractor.get_num_channels()
@@ -597,9 +769,12 @@ class TestNeuralynxRecordingInterfaceV574:
             assert exp_value == extracted_value[0]
 
 
-class TestNeuralynxRecordingInterfaceV563:
+class TestNeuralynxRecordingInterfaceV563(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = NeuralynxRecordingInterface
-    interface_kwargs = (dict(folder_path=str(ECEPHY_DATA_PATH / "neuralynx" / "Cheetah_v5.6.3" / "original_data")),)
+    expected_temporal_alignment_keys = ("neuralynx_recording_0", "neuralynx_recording_1")
+    interface_kwargs = dict(
+        folder_path=str(ECEPHY_DATA_PATH / "neuralynx" / "Cheetah_v5.6.3" / "original_data"), gap_tolerance_ms=1.0
+    )
 
     save_directory = OUTPUT_PATH
 
@@ -612,14 +787,11 @@ class TestNeuralynxRecordingInterfaceV563:
         assert '"sampling_rate": "2000.0"' in file_metadata["notes"]
         assert metadata["Ecephys"]["Device"][-1] == {"name": "DigitalLynxSX", "description": "Cheetah 5.6.3"}
 
-    def check_read(self, nwbfile_path):
-        super().check_read(nwbfile_path)
-        # Add any specific checks for Cheetah_v5.6.3 if needed
 
-
-class TestNeuralynxRecordingInterfaceV540:
+class TestNeuralynxRecordingInterfaceV540(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = NeuralynxRecordingInterface
-    interface_kwargs = (dict(folder_path=str(ECEPHY_DATA_PATH / "neuralynx" / "Cheetah_v5.4.0" / "original_data")),)
+    expected_temporal_alignment_keys = ("neuralynx_recording_0",)
+    interface_kwargs = dict(folder_path=str(ECEPHY_DATA_PATH / "neuralynx" / "Cheetah_v5.4.0" / "original_data"))
     save_directory = OUTPUT_PATH
 
     def check_extracted_metadata_old_list_format(self, metadata: dict):
@@ -630,13 +802,10 @@ class TestNeuralynxRecordingInterfaceV540:
         assert '"sampling_rate": "1017.375"' in file_metadata["notes"]
         assert metadata["Ecephys"]["Device"][-1] == {"name": "DigitalLynx", "description": "Cheetah 5.4.0"}
 
-    def check_read(self, nwbfile_path):
-        super().check_read(nwbfile_path)
-        # Add any specific checks for Cheetah_v5.4.0 if need
-
 
 class TestMultiStreamNeuralynxRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = NeuralynxRecordingInterface
+    expected_temporal_alignment_keys = ("neuralynx_recording_0",)
     interface_kwargs = dict(
         folder_path=str(ECEPHY_DATA_PATH / "neuralynx" / "Cheetah_v6.4.1dev" / "original_data"),
         stream_name="stream0_32000Hz_2mVRange_DSPFilter2",
@@ -673,6 +842,7 @@ class TestMultiStreamNeuralynxRecordingInterface(RecordingExtractorInterfaceTest
 
 class TestNeuroScopeRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = NeuroScopeRecordingInterface
+    expected_temporal_alignment_keys = ("neuroscope_recording_0",)
     interface_kwargs = dict(file_path=str(ECEPHY_DATA_PATH / "neuroscope" / "test1" / "test1.dat"))
     save_directory = OUTPUT_PATH
 
@@ -688,6 +858,24 @@ class TestNeuroScopeRecordingInterface(RecordingExtractorInterfaceTestMixin):
         assert metadata["Ecephys"]["ElectrodeGroups"] == expected_electrode_groups
         # Electrode-table columns keep their list shape; the dict migration is a follow-up.
         assert [column["name"] for column in metadata["Ecephys"]["Electrodes"]] == expected_electrode_column_names
+
+
+class TestNeuroScopeLFPInterface(RecordingExtractorInterfaceTestMixin):
+    data_interface_cls = NeuroScopeLFPInterface
+    expected_temporal_alignment_keys = ("neuroscope_lfp_0",)
+    interface_kwargs = dict(
+        file_path=str(ECEPHY_DATA_PATH / "neuroscope" / "dataset_1" / "YutaMouse42-151117.eeg"),
+        xml_file_path=str(ECEPHY_DATA_PATH / "neuroscope" / "dataset_1" / "YutaMouse42-151117.xml"),
+    )
+    save_directory = OUTPUT_PATH
+    is_lfp_interface = True
+
+    def check_extracted_metadata(self, metadata: dict):
+        expected_metadata_key = "neuroscope_lfp"
+        expected_electrical_series = {"neuroscope_lfp": dict(name="ElectricalSeriesLFP")}
+
+        assert self.interface.metadata_key == expected_metadata_key
+        assert metadata["Ecephys"]["ElectricalSeries"] == expected_electrical_series
 
 
 class TestOpenEphysBinaryRecordingInterfaceClassMethodsAndAssertions:
@@ -735,6 +923,7 @@ class TestOpenEphysBinaryRecordingInterfaceClassMethodsAndAssertions:
 
 class TestOpenEphysBinaryRecordingInterfaceVersion0_4_4(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = OpenEphysBinaryRecordingInterface
+    expected_temporal_alignment_keys = ("open_ephys_recording_0",)
     interface_kwargs = dict(folder_path=str(ECEPHY_DATA_PATH / "openephysbinary" / "v0.4.4.1_with_video_tracking"))
     save_directory = OUTPUT_PATH
 
@@ -760,6 +949,7 @@ class TestOpenEphysBinaryRecordingInterfaceVersion0_4_4(RecordingExtractorInterf
 
 class TestOpenEphysBinaryRecordingInterfaceVersion0_5_3_Stream1(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = OpenEphysBinaryRecordingInterface
+    expected_temporal_alignment_keys = ("open_ephys_recording_0",)
     interface_kwargs = dict(
         folder_path=str(ECEPHY_DATA_PATH / "openephysbinary" / "v0.5.3_two_neuropixels_stream" / "Record_Node_107"),
         stream_name="Record_Node_107#Neuropix-PXI-116.0",
@@ -778,6 +968,7 @@ class TestOpenEphysBinaryRecordingInterfaceVersion0_5_3_Stream1(RecordingExtract
 
 class TestOpenEphysBinaryRecordingInterfaceVersion0_5_3_Stream2(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = OpenEphysBinaryRecordingInterface
+    expected_temporal_alignment_keys = ("open_ephys_recording_0",)
     interface_kwargs = dict(
         folder_path=str(ECEPHY_DATA_PATH / "openephysbinary" / "v0.5.3_two_neuropixels_stream" / "Record_Node_107"),
         stream_name="Record_Node_107#Neuropix-PXI-116.1",
@@ -800,6 +991,7 @@ class TestOpenEphysBinaryRecordingInterfaceWithBlocks_version_0_6_block_1_stream
     """From Issue #695, exposed `block_index` argument and added tests on data that include multiple blocks."""
 
     data_interface_cls = OpenEphysBinaryRecordingInterface
+    expected_temporal_alignment_keys = ("open_ephys_recording_0",)
     interface_kwargs = dict(
         folder_path=str(
             ECEPHY_DATA_PATH / "openephysbinary" / "v0.6.x_neuropixels_multiexp_multistream" / "Record Node 101"
@@ -819,10 +1011,149 @@ class TestOpenEphysBinaryRecordingInterfaceWithBlocks_version_0_6_block_1_stream
         assert metadata["NWBFile"]["session_start_time"] == datetime(2022, 5, 3, 10, 52, 24)
 
 
+class TestOpenEphysBinaryRecordingInterfaceNeuropixelsProbe(RecordingExtractorInterfaceTestMixin):
+    """A probe whose `settings.xml` names both a part number and a serial number.
+
+    The v0.5.3 fixtures carry a serial number and no part number, so probeinterface cannot build a
+    catalogue probe from them and spikeinterface attaches none at all."""
+
+    data_interface_cls = OpenEphysBinaryRecordingInterface
+    expected_temporal_alignment_keys = ("open_ephys_recording_0",)
+    interface_kwargs = dict(
+        folder_path=str(ECEPHY_DATA_PATH / "openephysbinary" / "v0.6.x_neuropixels_with_sync" / "Record Node 104"),
+        stream_name="Record Node 104#Neuropix-PXI-100.ProbeA-AP",
+    )
+    save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        expected_devices = {
+            "neuropixels_22112107161": dict(
+                name="NeuropixelsProbeA",
+                serial_number="22112107161",
+                device_model_metadata_key="imec_NP1300",
+            )
+        }
+        expected_device_models = {
+            "imec_NP1300": dict(
+                name="NP1300",
+                model_number="NP1300",
+                manufacturer="imec",
+                description="Optopix phase1",
+            )
+        }
+        expected_ecephys_metadata = {
+            "ElectricalSeries": {"open_ephys_recording": dict(name="ElectricalSeries")},
+            "ElectrodeGroups": {
+                "NeuropixelsProbeA": dict(name="NeuropixelsProbeA", device_metadata_key="neuropixels_22112107161")
+            },
+        }
+
+        assert metadata["Devices"] == expected_devices
+        assert metadata["DeviceModels"] == expected_device_models
+        assert metadata["Ecephys"] == expected_ecephys_metadata
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 8, 30, 23, 41, 36)
+
+    def check_extracted_metadata_old_list_format(self, metadata: dict):
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2023, 8, 30, 23, 41, 36)
+
+
+class TestOpenEphysBinaryRecordingInterfaceProbeWithoutSerialNumber(RecordingExtractorInterfaceTestMixin):
+    """A probe whose `settings.xml` reports `probe_serial_number="0"`, which names no unit.
+
+    The device key then falls back to the interface-scoped shape, since a key built from the model
+    number would merge two probes of the same model into one device. The four keys are the shanks of
+    the NP2014, all linking to the single probe."""
+
+    data_interface_cls = OpenEphysBinaryRecordingInterface
+    expected_temporal_alignment_keys = ("my_probe_0",)
+    interface_kwargs = dict(
+        folder_path=str(
+            ECEPHY_DATA_PATH / "openephysbinary" / "v0.6.x_onebox_neuropixels_nontrivial_wiring" / "Record Node 101"
+        ),
+        stream_name="Record Node 101#OneBox-111.ProbeA",
+        metadata_key="my_probe",
+    )
+    save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        expected_devices = {"my_probe_probe": dict(name="NeuropixelsProbeA", device_model_metadata_key="imec_NP2014")}
+        expected_device_models = {
+            "imec_NP2014": dict(
+                name="NP2014",
+                model_number="NP2014",
+                manufacturer="imec",
+                description="Neuropixels 2.0 multishank probe with cap",
+            )
+        }
+        expected_electrode_groups = {
+            shank: dict(name=shank, device_metadata_key="my_probe_probe")
+            for shank in (
+                "NeuropixelsProbeAShank0",
+                "NeuropixelsProbeAShank1",
+                "NeuropixelsProbeAShank2",
+                "NeuropixelsProbeAShank3",
+            )
+        }
+
+        assert metadata["Devices"] == expected_devices
+        assert metadata["DeviceModels"] == expected_device_models
+        assert metadata["Ecephys"]["ElectrodeGroups"] == expected_electrode_groups
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2025, 11, 17, 10, 48, 37)
+
+    def check_extracted_metadata_old_list_format(self, metadata: dict):
+        assert metadata["NWBFile"]["session_start_time"] == datetime(2025, 11, 17, 10, 48, 37)
+
+    def test_no_serial_number_is_written(self, setup_interface):
+        """``"0"`` is what the plugin writes when it cannot read a serial off the probe, so the field is
+        left unset instead of stating it."""
+        interface, test_name = setup_interface
+
+        nwbfile = interface.create_nwbfile(metadata=interface.get_metadata(use_new_metadata_format=True))
+
+        assert nwbfile.devices["NeuropixelsProbeA"].serial_number is None
+
+
+def test_open_ephys_binary_two_probes_keep_their_own_electrodes():
+    """Two probes from one session each write their own electrode group, device and electrodes.
+
+    SpikeInterface numbers the groups within each stream, so both probes used to arrive as group "0" and
+    the second probe's channels were written against the first probe's electrode rows."""
+    folder_path = ECEPHY_DATA_PATH / "openephysbinary" / "v0.6.x_neuropixels_multiexp_multistream" / "Record Node 101"
+    probe_b = OpenEphysBinaryRecordingInterface(
+        folder_path=folder_path,
+        stream_name="Record Node 101#Neuropix-PXI-100.ProbeB",
+        block_index=0,
+        metadata_key="probe_b",
+    )
+    probe_c = OpenEphysBinaryRecordingInterface(
+        folder_path=folder_path,
+        stream_name="Record Node 101#Neuropix-PXI-100.ProbeC",
+        block_index=0,
+        metadata_key="probe_c",
+    )
+    converter = ConverterPipe(data_interfaces={"ProbeB": probe_b, "ProbeC": probe_c})
+    metadata = converter.get_metadata()
+    metadata["Ecephys"]["ElectricalSeries"]["probe_b"]["name"] = "ElectricalSeriesProbeB"
+    metadata["Ecephys"]["ElectricalSeries"]["probe_c"]["name"] = "ElectricalSeriesProbeC"
+
+    nwbfile = converter.create_nwbfile(
+        metadata=metadata, conversion_options={"ProbeB": dict(stub_test=True), "ProbeC": dict(stub_test=True)}
+    )
+
+    assert {name: group.device.name for name, group in nwbfile.electrode_groups.items()} == {
+        "NeuropixelsProbeB": "NeuropixelsProbeB",
+        "NeuropixelsProbeC": "NeuropixelsProbeC",
+    }
+    assert len(nwbfile.electrodes) == 768
+    assert list(nwbfile.acquisition["ElectricalSeriesProbeB"].electrodes.data[:]) == list(range(384))
+    assert list(nwbfile.acquisition["ElectricalSeriesProbeC"].electrodes.data[:]) == list(range(384, 768))
+
+
 class TestOpenEphysBinaryRecordingInterfaceNonNeuralDataExcluded(RecordingExtractorInterfaceTestMixin):
     """Test that non-neural channels are not written as ElectricalSeries"""
 
     data_interface_cls = OpenEphysBinaryRecordingInterface
+    expected_temporal_alignment_keys = ("open_ephys_recording_0",)
     interface_kwargs = dict(
         folder_path=str(ECEPHY_DATA_PATH / "openephysbinary" / "neural_and_non_neural_data_mixed"),
         stream_name="Rhythm_FPGA-100.0",
@@ -847,6 +1178,7 @@ class TestOpenEphysBinaryRecordingInterfaceNonNeuralDataExcluded(RecordingExtrac
 
 class TestOpenEphysLegacyRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = OpenEphysLegacyRecordingInterface
+    expected_temporal_alignment_keys = ("open_ephys_recording_0",)
     interface_kwargs = dict(folder_path=str(ECEPHY_DATA_PATH / "openephys" / "OpenEphys_SampleData_1"))
     save_directory = OUTPUT_PATH
 
@@ -868,6 +1200,7 @@ class TestOpenEphysLegacyRecordingInterface(RecordingExtractorInterfaceTestMixin
 
 class TestOpenEphysRecordingInterfaceRouter(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = OpenEphysRecordingInterface
+    expected_temporal_alignment_keys = ("open_ephys_recording_0",)
     save_directory = OUTPUT_PATH
 
     @pytest.fixture(
@@ -947,6 +1280,7 @@ class TestOpenEphysRecordingInterfaceRedirects(TestCase):
 
 class TestSpikeGadgetsRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = SpikeGadgetsRecordingInterface
+    expected_temporal_alignment_keys = ("spikegadgets_recording_0",)
     save_directory = OUTPUT_PATH
 
     def check_extracted_metadata(self, metadata: dict):
@@ -996,6 +1330,7 @@ class TestSpikeGadgetsRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
 class TestSpikeGLXRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = SpikeGLXRecordingInterface
+    expected_temporal_alignment_keys = ("spikeglx_imec0_ap_0",)
     interface_kwargs = dict(
         folder_path=ECEPHY_DATA_PATH / "spikeglx" / "Noise4Sam_g0" / "Noise4Sam_g0_imec0", stream_id="imec0.ap"
     )
@@ -1004,10 +1339,18 @@ class TestSpikeGLXRecordingInterface(RecordingExtractorInterfaceTestMixin):
     def check_extracted_metadata(self, metadata: dict):
         expected_metadata_key = "spikeglx_imec0_ap"
         expected_devices = {
-            "neuropixels_imec0": dict(
+            "neuropixels_18194809281": dict(
                 name="NeuropixelsImec0",
-                description='Neuropixels 1.0 probe. Additional metadata: {"part_number": "PRB_1_4_0480_1", "port": "2", "slot": "2", "model_name": "PRB_1_4_0480_1", "manufacturer": "imec"}',
                 serial_number="18194809281",
+                device_model_metadata_key="imec_PRB_1_4_0480_1",
+            )
+        }
+        expected_device_models = {
+            "imec_PRB_1_4_0480_1": dict(
+                name="PRB_1_4_0480_1",
+                model_number="PRB_1_4_0480_1",
+                manufacturer="imec",
+                description="Neuropixels 1.0 probe",
             )
         }
         expected_electrode_groups = {
@@ -1015,7 +1358,7 @@ class TestSpikeGLXRecordingInterface(RecordingExtractorInterfaceTestMixin):
                 name="NeuropixelsImec0",
                 description="A group representing probe/shank 'NeuropixelsImec0'.",
                 location="unknown",
-                device_metadata_key="neuropixels_imec0",
+                device_metadata_key="neuropixels_18194809281",
             )
         }
         expected_electrical_series = {"spikeglx_imec0_ap": dict(name="ElectricalSeriesAP")}
@@ -1029,6 +1372,7 @@ class TestSpikeGLXRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
         assert self.interface.metadata_key == expected_metadata_key
         assert metadata["Devices"] == expected_devices
+        assert metadata["DeviceModels"] == expected_device_models
         assert metadata["Ecephys"]["ElectrodeGroups"] == expected_electrode_groups
         assert metadata["Ecephys"]["ElectricalSeries"] == expected_electrical_series
         # Electrode-table column descriptions are carried over in list shape; the dict migration is a follow-up.
@@ -1043,8 +1387,26 @@ class TestSpikeGLXRecordingInterface(RecordingExtractorInterfaceTestMixin):
         )
 
 
+class TestSpikeGLXRecordingInterfaceLF(RecordingExtractorInterfaceTestMixin):
+    data_interface_cls = SpikeGLXRecordingInterface
+    expected_temporal_alignment_keys = ("spikeglx_imec0_lf_0",)
+    interface_kwargs = dict(
+        folder_path=ECEPHY_DATA_PATH / "spikeglx" / "Noise4Sam_g0" / "Noise4Sam_g0_imec0", stream_id="imec0.lf"
+    )
+    save_directory = OUTPUT_PATH
+
+    def check_extracted_metadata(self, metadata: dict):
+        # The LF stream is written to acquisition like the AP stream, not to processing/ecephys/LFP.
+        expected_metadata_key = "spikeglx_imec0_lf"
+        expected_electrical_series = {"spikeglx_imec0_lf": dict(name="ElectricalSeriesLF")}
+
+        assert self.interface.metadata_key == expected_metadata_key
+        assert metadata["Ecephys"]["ElectricalSeries"] == expected_electrical_series
+
+
 class TestSpikeGLXRecordingInterfaceLongNHP(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = SpikeGLXRecordingInterface
+    expected_temporal_alignment_keys = ("spikeglx_imec0_ap_0",)
     interface_kwargs = dict(
         folder_path=str(ECEPHY_DATA_PATH / "spikeglx" / "long_nhp_stubbed" / "snippet_g0" / "snippet_g0_imec0"),
         stream_id="imec0.ap",
@@ -1054,10 +1416,18 @@ class TestSpikeGLXRecordingInterfaceLongNHP(RecordingExtractorInterfaceTestMixin
     def check_extracted_metadata(self, metadata: dict):
         expected_metadata_key = "spikeglx_imec0_ap"
         expected_devices = {
-            "neuropixels_imec0": dict(
+            "neuropixels_22327214192": dict(
                 name="NeuropixelsImec0",
-                description='Neuropixels 1.0 NHP long linear probe with cap. Additional metadata: {"part_number": "NP1032", "port": "2", "slot": "2", "model_name": "NP1032", "manufacturer": "imec"}',
                 serial_number="22327214192",
+                device_model_metadata_key="imec_NP1032",
+            )
+        }
+        expected_device_models = {
+            "imec_NP1032": dict(
+                name="NP1032",
+                model_number="NP1032",
+                manufacturer="imec",
+                description="Neuropixels 1.0 NHP long linear probe with cap",
             )
         }
         expected_electrode_groups = {
@@ -1065,7 +1435,7 @@ class TestSpikeGLXRecordingInterfaceLongNHP(RecordingExtractorInterfaceTestMixin
                 name="NeuropixelsImec0",
                 description="A group representing probe/shank 'NeuropixelsImec0'.",
                 location="unknown",
-                device_metadata_key="neuropixels_imec0",
+                device_metadata_key="neuropixels_22327214192",
             )
         }
         expected_electrical_series = {"spikeglx_imec0_ap": dict(name="ElectricalSeriesAP")}
@@ -1079,6 +1449,7 @@ class TestSpikeGLXRecordingInterfaceLongNHP(RecordingExtractorInterfaceTestMixin
 
         assert self.interface.metadata_key == expected_metadata_key
         assert metadata["Devices"] == expected_devices
+        assert metadata["DeviceModels"] == expected_device_models
         assert metadata["Ecephys"]["ElectrodeGroups"] == expected_electrode_groups
         assert metadata["Ecephys"]["ElectricalSeries"] == expected_electrical_series
         # Electrode-table column descriptions are carried over in list shape; the dict migration is a follow-up.
@@ -1095,6 +1466,7 @@ class TestSpikeGLXRecordingInterfaceLongNHP(RecordingExtractorInterfaceTestMixin
 
 class TestTdtRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = TdtRecordingInterface
+    expected_temporal_alignment_keys = ("tdt_recording_0", "tdt_recording_1")
     test_gain_value = 0.195  # arbitrary value to test gain
     save_directory = OUTPUT_PATH
 
@@ -1140,6 +1512,7 @@ class TestTdtRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
 class TestPlexonRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = PlexonRecordingInterface
+    expected_temporal_alignment_keys = ("plexon_recording_0",)
     interface_kwargs = dict(
         file_path=str(ECEPHY_DATA_PATH / "plexon" / "4chDemoPLX.plx"),
     )
@@ -1156,8 +1529,26 @@ class TestPlexonRecordingInterface(RecordingExtractorInterfaceTestMixin):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2013, 11, 19, 13, 48, 13)
 
 
+class TestCellExplorerLFPInterface(RecordingExtractorInterfaceTestMixin):
+    data_interface_cls = CellExplorerLFPInterface
+    expected_temporal_alignment_keys = ("cell_explorer_lfp_0",)
+    interface_kwargs = dict(
+        folder_path=str(ECEPHY_DATA_PATH / "cellexplorer" / "dataset_4" / "Peter_MS22_180629_110319_concat_stubbed"),
+    )
+    save_directory = OUTPUT_PATH
+    is_lfp_interface = True
+
+    def check_extracted_metadata(self, metadata: dict):
+        expected_metadata_key = "cell_explorer_lfp"
+        expected_electrical_series = {"cell_explorer_lfp": dict(name="ElectricalSeriesLFP")}
+
+        assert self.interface.metadata_key == expected_metadata_key
+        assert metadata["Ecephys"]["ElectricalSeries"] == expected_electrical_series
+
+
 class TestPlexonLFPInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = PlexonLFPInterface
+    expected_temporal_alignment_keys = ("plexon_lfp_0",)
     interface_kwargs = dict(
         file_path=str(ECEPHY_DATA_PATH / "plexon" / "4chDemoPLX.plx"),
     )
@@ -1167,24 +1558,19 @@ class TestPlexonLFPInterface(RecordingExtractorInterfaceTestMixin):
     def check_extracted_metadata(self, metadata: dict):
         # An LFP interface names its own series; the base would emit the plain 'ElectricalSeries'.
         expected_metadata_key = "plexon_lfp"
-        expected_electrical_series = {"plexon_lfp": dict(name="ElectricalSeriesLF")}
+        expected_electrical_series = {"plexon_lfp": dict(name="ElectricalSeriesLFP")}
 
         assert self.interface.metadata_key == expected_metadata_key
         assert metadata["Ecephys"]["ElectricalSeries"] == expected_electrical_series
 
 
-def is_macos():
-    import platform
-
-    return platform.system() == "Darwin"
-
-
 @pytest.mark.skipif(
-    is_macos(),
-    reason="Plexon2 requires Wine on macOS and the wine-crossover Homebrew cask was removed upstream in April 2026.",
+    platform != "win32",
+    reason="Plexon2 tests only run on Windows because Wine-based testing is no longer maintained.",
 )
 class TestPlexon2RecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = Plexon2RecordingInterface
+    expected_temporal_alignment_keys = ("plexon2_recording_0",)
     interface_kwargs = dict(
         file_path=str(ECEPHY_DATA_PATH / "plexon" / "4chDemoPL2.pl2"),
     )
@@ -1203,6 +1589,7 @@ class TestPlexon2RecordingInterface(RecordingExtractorInterfaceTestMixin):
 
 class TestWhiteMatterRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = WhiteMatterRecordingInterface
+    expected_temporal_alignment_keys = ("white_matter_recording_0",)
     interface_kwargs = dict(
         file_path=str(
             ECEPHY_DATA_PATH / "whitematter" / "HSW_2024_12_12__10_28_23__70min_17sec__hsamp_64ch_25000sps_stub.bin"
@@ -1323,7 +1710,7 @@ def test_metadata_key_is_accepted_and_forwarded(interface_class, interface_kwarg
             PlexonLFPInterface,
             dict(file_path=str(ECEPHY_DATA_PATH / "plexon" / "4chDemoPLX.plx")),
             "plexon_lfp",
-            "ElectricalSeriesLF",
+            "ElectricalSeriesLFP",
         ),
         (
             CellExplorerLFPInterface,
@@ -1342,7 +1729,7 @@ def test_lfp_interfaces_name_their_own_series(
     interface_class, interface_kwargs, default_metadata_key, expected_series_name
 ):
     # The base emits the plain "ElectricalSeries" name, which is wrong for data written to processing/LFP,
-    # so each LFP interface states its own name. CellExplorerLFPInterface has no test class of its own.
+    # so each LFP interface states its own name.
     interface = interface_class(**interface_kwargs)
     assert interface.metadata_key == default_metadata_key
 

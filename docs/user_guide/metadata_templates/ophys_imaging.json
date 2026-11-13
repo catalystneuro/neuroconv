@@ -1,0 +1,59 @@
+{
+    "DeviceModels": {
+        "microscope_model": {
+            "name": null,
+            "manufacturer": null,
+            "model_number": null,
+            "description": null
+        }
+    },
+    "Devices": {
+        "microscope": {
+            "name": null,
+            "description": null,
+            "serial_number": null,
+            "device_model_metadata_key": "microscope_model"
+        }
+    },
+    "Ophys": {
+        "ImagingPlanes": {
+            "calcium_imaging": {
+                "name": null,
+                "description": null,
+                "device_metadata_key": "microscope",
+                "excitation_lambda": null,
+                "indicator": null,
+                "location": null,
+                "imaging_rate": null,
+                "optical_channel": [
+                    {
+                        "name": null,
+                        "description": null,
+                        "emission_lambda": null
+                    },
+                    {
+                        "name": null,
+                        "description": null,
+                        "emission_lambda": null
+                    }
+                ],
+                "origin_coords": null,
+                "origin_coords_unit": "meters",
+                "grid_spacing": null,
+                "grid_spacing_unit": "meters",
+                "reference_frame": null
+            }
+        },
+        "MicroscopySeries": {
+            "calcium_imaging": {
+                "name": null,
+                "description": null,
+                "unit": null,
+                "imaging_plane_metadata_key": "calcium_imaging",
+                "field_of_view": null,
+                "pmt_gain": null,
+                "scan_line_rate": null
+            }
+        }
+    }
+}

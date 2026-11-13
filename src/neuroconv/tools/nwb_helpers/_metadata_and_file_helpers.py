@@ -1,18 +1,19 @@
 """Collection of helper functions related to NWB."""
 
-import importlib
+import os
 import uuid
 import warnings
 from contextlib import contextmanager
 from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import FilePath
 from pynwb import NWBFile, read_nwb
 from pynwb.device import Device, DeviceModel
 from pynwb.file import Subject
+from pynwb.image import ImageSeries
 
 from . import (
     BACKEND_NWB_IO,
@@ -26,8 +27,49 @@ from ._device_types import (
     _build_inline_containers,
     _resolve_type,
 )
+from ._provenance import describe_source_script
+from ..external_resources import add_external_resources_to_nwbfile
 from ...utils.dict import DeepDict, load_dict_from_file
 from ...utils.json_schema import _validate_device_registry_names, validate_metadata
+
+
+def _walk_metadata_path(metadata: dict, path: tuple[str, ...]) -> tuple[Any, str, str | None]:
+    """Return the reached section, its location, and the first missing level, without creating entries."""
+    section = metadata
+    location = "metadata"
+    for level in path:
+        if level not in section:
+            return section, location, level
+        section = section.get(level)
+        location += f"[{level!r}]"
+    return section, location, None
+
+
+def _validate_metadata_key(metadata: dict, *, metadata_path: tuple[str, ...], metadata_key: str) -> None:
+    """Require a selected metadata entry, with a diagnostic naming its key, path, and available keys.
+
+    This gives any dictionary a useful error instead of a bare KeyError. The safe traversal also prevents
+    DeepDict from creating missing entries that writers could silently fill with placeholder metadata.
+    Only existence is checked, not the fields or values within the selected entry.
+    """
+    registry, location, missing_level = _walk_metadata_path(metadata, metadata_path)
+    registry_location = "metadata" + "".join(f"[{level!r}]" for level in metadata_path)
+    message = f"metadata_key '{metadata_key}' was not found in {registry_location}."
+    if missing_level is not None:
+        raise ValueError(f"{message} {location} has no '{missing_level}'. Available keys are:\n{list(registry)}")
+    if metadata_key not in registry:
+        raise ValueError(f"{message} Available keys are:\n{list(registry)}")
+
+
+def _validate_metadata_path(metadata: dict, path: tuple[str, ...]) -> None:
+    """Require a metadata path without creating entries or checking its contents."""
+    section, location, missing_level = _walk_metadata_path(metadata, path)
+    if missing_level is not None:
+        required_location = "metadata" + "".join(f"[{level!r}]" for level in path)
+        raise ValueError(
+            f"Required metadata path {required_location} is missing: {location} has no '{missing_level}' "
+            f"(available keys: {list(section)})."
+        )
 
 
 def get_module(nwbfile: NWBFile, name: str, description: str = None):
@@ -66,6 +108,45 @@ def get_module(nwbfile: NWBFile, name: str, description: str = None):
         return nwbfile.create_processing_module(name=name, description=description)
 
 
+def _get_container_by_name(nwbfile: NWBFile, name: str, neurodata_type: str):
+    """
+    Return the container of the given neurodata type carrying the given name.
+
+    Used where an interface must link to an object another interface already wrote, since metadata
+    addresses it by name while the link needs the object itself.
+
+    Parameters
+    ----------
+    nwbfile : NWBFile
+        The NWB file to search, including its processing modules.
+    name : str
+        The name of the container to return.
+    neurodata_type : str
+        The class name of the container, such as ``"PoseEstimation"`` or ``"ImageSeries"``.
+
+    Returns
+    -------
+    The container carrying that name.
+
+    Raises
+    ------
+    ValueError
+        If no container of that type carries that name, naming the ones that do exist.
+    """
+    containers = {obj.name: obj for obj in nwbfile.all_children() if type(obj).__name__ == neurodata_type}
+    if name in containers:
+        return containers[name]
+    if containers:
+        raise ValueError(
+            f"No {neurodata_type} named '{name}' was found in the NWB file. "
+            f"Available {neurodata_type} containers: {list(containers)}."
+        )
+    raise ValueError(
+        f"No {neurodata_type} named '{name}' was found in the NWB file. No {neurodata_type} containers exist "
+        "in the file, so ensure the interface that writes it runs first."
+    )
+
+
 def get_default_nwbfile_metadata() -> DeepDict:
     """
     Return structure with defaulted metadata values required for a NWBFile.
@@ -83,15 +164,15 @@ def get_default_nwbfile_metadata() -> DeepDict:
         A dictionary containing default metadata values for an NWBFile, including
         session description, identifier, and NeuroConv version information.
     """
-    neuroconv_version = importlib.metadata.version("neuroconv")
+    source_script, source_script_file_name = describe_source_script()
 
     metadata = DeepDict()
     metadata["NWBFile"].deep_update(
         session_description="no description",
         identifier=str(uuid.uuid4()),
-        # Add NeuroConv watermark (overridden if going through the GUIDE)
-        source_script=f"Created using NeuroConv v{neuroconv_version}",
-        source_script_file_name=__file__,  # Required for validation
+        # Add NeuroConv provenance record (overridden if going through the GUIDE)
+        source_script=source_script,
+        source_script_file_name=source_script_file_name,  # Required for validation
     )
 
     return metadata
@@ -116,31 +197,64 @@ def make_nwbfile_from_metadata(metadata: dict) -> NWBFile:
     schema_path = Path(__file__).resolve().parent.parent.parent / "schemas" / "base_metadata_schema.json"
     base_metadata_schema = load_dict_from_file(file_path=schema_path)
     assert metadata is not None, "Metadata is required to create an NWBFile but metadata=None was passed."
+
     validate_metadata(metadata=metadata, schema=base_metadata_schema)
 
-    nwbfile_kwargs = deepcopy(metadata["NWBFile"])
+    # Anything the caller did not provide falls back to the same defaults an interface would have given
+    nwbfile_kwargs = {**get_default_nwbfile_metadata()["NWBFile"], **deepcopy(metadata["NWBFile"])}
     # convert ISO 8601 string to datetime
     if isinstance(nwbfile_kwargs.get("session_start_time"), str):
         nwbfile_kwargs["session_start_time"] = datetime.fromisoformat(nwbfile_kwargs["session_start_time"])
-    if "session_description" not in nwbfile_kwargs:
-        nwbfile_kwargs["session_description"] = "No description."
-    if "identifier" not in nwbfile_kwargs:
-        nwbfile_kwargs["identifier"] = str(uuid.uuid4())
-    if "source_script" not in nwbfile_kwargs:
-        neuroconv_version = importlib.metadata.version("neuroconv")
-        nwbfile_kwargs["source_script"] = f"Created using NeuroConv v{neuroconv_version}"
-        nwbfile_kwargs["source_script_file_name"] = __file__  # Required for validation
 
-    if "Subject" in metadata:
-        nwbfile_kwargs["subject"] = metadata["Subject"]
-        # convert ISO 8601 string to datetime
-        if "date_of_birth" in nwbfile_kwargs["subject"] and isinstance(nwbfile_kwargs["subject"]["date_of_birth"], str):
-            nwbfile_kwargs["subject"]["date_of_birth"] = datetime.fromisoformat(
-                nwbfile_kwargs["subject"]["date_of_birth"]
-            )
-        nwbfile_kwargs["subject"] = Subject(**nwbfile_kwargs["subject"])
+    nwbfile = NWBFile(**nwbfile_kwargs)
+    add_subject_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
 
-    return NWBFile(**nwbfile_kwargs)
+    return nwbfile
+
+
+def add_subject_to_nwbfile(nwbfile: NWBFile, metadata: dict | None = None) -> None:
+    """
+    Add the subject described by ``metadata["Subject"]`` to an NWBFile.
+
+    Parameters
+    ----------
+    nwbfile : NWBFile
+        The NWBFile to add the subject to.
+    metadata : dict, optional
+        Metadata dictionary. The subject is read from ``metadata["Subject"]``, whose keys are the
+        arguments of :py:class:`~pynwb.file.Subject`::
+
+            metadata["Subject"] = dict(subject_id="M1", species="Mus musculus", sex="M")
+
+        A ``date_of_birth`` stated as an ISO 8601 string is converted. Metadata that names no subject
+        is not an error: a source that did not record one leaves the file without one.
+
+    Raises
+    ------
+    ValueError
+        If the NWBFile already holds a subject. An NWBFile describes one subject and pynwb refuses to
+        replace it, so a second one is a conflict for the caller to resolve rather than something to
+        overwrite silently.
+    """
+    metadata = metadata or dict()
+    if "Subject" not in metadata:
+        return
+
+    if nwbfile.subject is not None:
+        raise ValueError(
+            f"This NWBFile already holds the subject '{nwbfile.subject.subject_id}' and an NWBFile describes "
+            f"one subject. The metadata states '{metadata['Subject'].get('subject_id')}'. Write the two subjects "
+            "to separate files, or drop metadata['Subject'] to keep the one already there."
+        )
+
+    # Copied because the ISO 8601 conversion below writes into the entry, and the metadata belongs to
+    # the caller.
+    subject_metadata = deepcopy(metadata["Subject"])
+    date_of_birth = subject_metadata.get("date_of_birth")
+    if isinstance(date_of_birth, str):
+        subject_metadata["date_of_birth"] = datetime.fromisoformat(date_of_birth)
+
+    nwbfile.subject = Subject(**subject_metadata)
 
 
 def add_device_from_metadata(nwbfile: NWBFile, modality: str = "Ecephys", metadata: dict | None = None):
@@ -216,13 +330,8 @@ def _add_device_model_to_nwbfile(
         The DeviceModel object (either newly created or existing).
     """
     _validate_device_registry_names(metadata)
-    device_models_metadata = metadata.get("DeviceModels", {})
-    if metadata_key not in device_models_metadata:
-        raise ValueError(
-            f"device_model_metadata_key '{metadata_key}' is not present in metadata['DeviceModels'] "
-            f"(available: {list(device_models_metadata)})."
-        )
-    device_model_metadata = device_models_metadata[metadata_key]
+    _validate_metadata_key(metadata, metadata_path=("DeviceModels",), metadata_key=metadata_key)
+    device_model_metadata = metadata["DeviceModels"][metadata_key]
 
     model_name = device_model_metadata["name"]
     if model_name in nwbfile.device_models:
@@ -249,6 +358,31 @@ def _add_device_model_to_nwbfile(
     return device_model
 
 
+def _get_device_template_entry(*, device_model_metadata_key: str) -> dict:
+    """A blank device, ready to be linked to by whatever hangs off it.
+
+    The make and catalog specification belong to the model rather than to the instrument: pynwb
+    deprecated ``Device.manufacturer``, ``model_number`` and ``model_name`` in favor of a linked
+    ``DeviceModel``, so those are offered there and only the serial number of this one instrument
+    stays here.
+    """
+    return dict(
+        name=None,
+        description=None,
+        serial_number=None,
+        device_model_metadata_key=device_model_metadata_key,
+    )
+
+
+def _get_device_model_template_entry() -> dict:
+    """A blank device model: the make and catalog specification, shared by every recording on that instrument.
+
+    Optional as a whole. To drop it, delete the entry and the ``device_model_metadata_key`` pointing
+    at it.
+    """
+    return dict(name=None, manufacturer=None, model_number=None, description=None)
+
+
 def _add_device_to_nwbfile(
     nwbfile: NWBFile,
     *,
@@ -264,9 +398,9 @@ def _add_device_to_nwbfile(
     * **Canonical** ``(nwbfile, metadata, metadata_key)`` — the shape all callers should converge on,
       matching the rest of NeuroConv. Resolves ``metadata["Devices"][metadata_key]`` and, if the entry
       carries a ``device_model_metadata_key``, adds that model (idempotently, on demand) and links it.
-    * **Transitional** ``(nwbfile, device_metadata)`` — a pre-resolved entry dict, for callers that
-      build the entry themselves (e.g. placeholder or deprecated-nested-device fallbacks). This form
-      will be removed once those callers can pass ``metadata`` + ``metadata_key``.
+    * **Transitional** ``(nwbfile, device_metadata)`` — a pre-resolved entry dict, for the deprecated
+      nested-device fallbacks on the video interfaces, whose entry has no registry key to resolve. This
+      form goes with them.
 
     In either form the entry may carry a ``"type"`` field naming the concrete class (e.g.
     ``"OpticalFiber"``); when omitted, a plain ``pynwb.device.Device`` is created.
@@ -280,6 +414,7 @@ def _add_device_to_nwbfile(
         if metadata is None:
             raise ValueError("Provide `metadata` with `metadata_key`.")
         _validate_device_registry_names(metadata)
+        _validate_metadata_key(metadata, metadata_path=("Devices",), metadata_key=metadata_key)
         device_metadata = metadata["Devices"][metadata_key]
         device_model_metadata_key = device_metadata.get("device_model_metadata_key")
         if device_model_metadata_key is not None:
@@ -344,6 +479,14 @@ def make_or_load_nwbfile(
     verbose: bool, default: True
         If 'nwbfile_path' is specified, informs user after a successful write operation.
     """
+    warnings.warn(
+        "`make_or_load_nwbfile` is deprecated and will be removed in v0.12.0. "
+        "Use the `run_conversion` method of an interface or converter, or `configure_and_write_nwbfile` "
+        "for an NWBFile that has already been assembled.",
+        FutureWarning,
+        stacklevel=2,
+    )
+
     from . import BACKEND_NWB_IO
 
     nwbfile_path_is_provided = nwbfile_path is not None
@@ -451,40 +594,102 @@ def make_or_load_nwbfile(
             _attempt_cleanup_of_existing_nwbfile(nwbfile_path=nwbfile_path_in)
 
 
-def _resolve_backend(
+def _fetch_backend_from_nwbfile_on_disk(
+    nwbfile_path: FilePath,
     backend: Literal["hdf5", "zarr"] | None = None,
     backend_configuration: BackendConfiguration | None = None,
-) -> Literal["hdf5"]:
+) -> Literal["hdf5", "zarr"]:
     """
-    Resolve the backend to use for writing the NWBFile.
+    Fetch the backend of an NWB file that already exists on disk.
+
+    A file can only be opened with the backend it was written with, so a ``backend`` or
+    ``backend_configuration`` that is passed is checked against the file rather than used to select the backend.
 
     Parameters
     ----------
+    nwbfile_path: FilePath
+        Path of the NWB file to inspect.
     backend: {"hdf5", "zarr"}, optional
     backend_configuration: BackendConfiguration, optional
 
     Returns
     -------
     backend: {"hdf5", "zarr"}
-
+        The backend of the file at ``nwbfile_path``.
     """
+    nwbfile_path = Path(nwbfile_path)
+    if not nwbfile_path.exists():
+        raise FileNotFoundError(f"No NWB file exists at '{nwbfile_path}'!")
 
-    if backend is not None and backend_configuration is not None:
-        if backend == backend_configuration.backend:
-            warnings.warn(
-                f"Both `backend` and `backend_configuration` were specified as type '{backend}'. "
-                "To suppress this warning, specify only `backend_configuration`."
-            )
-        else:
+    backends_that_can_read = [
+        backend_name
+        for backend_name, backend_io_class in BACKEND_NWB_IO.items()
+        if backend_io_class.can_read(path=str(nwbfile_path))
+    ]
+    if len(backends_that_can_read) == 0:
+        raise IOError(
+            f"The file at '{nwbfile_path}' cannot be read by any of the available backends "
+            f"({list(BACKEND_NWB_IO)})!"
+        )
+    # Future-proofing: raise an error if more than one backend can read the file
+    assert (
+        len(backends_that_can_read) == 1
+    ), "More than one backend is capable of reading the file! Please raise an issue describing your file."
+
+    backend_on_disk = backends_that_can_read[0]
+
+    requested_backends = {
+        "backend": backend,
+        "backend_configuration.backend": backend_configuration.backend if backend_configuration is not None else None,
+    }
+    for parameter_name, requested_backend in requested_backends.items():
+        if requested_backend is not None and requested_backend != backend_on_disk:
             raise ValueError(
-                f"Both `backend` and `backend_configuration` were specified and are conflicting."
-                f"{backend=}, {backend_configuration.backend=}."
-                "These values must match. To suppress this error, specify only `backend_configuration`."
+                f"The file at '{nwbfile_path}' was written with the '{backend_on_disk}' backend, but "
+                f"`{parameter_name}` is '{requested_backend}'. An existing file can only be opened with the "
+                f"backend it was written with, so specify '{backend_on_disk}' or leave the backend unspecified."
             )
 
-    if backend is None:
-        backend = backend_configuration.backend if backend_configuration is not None else "hdf5"
-    return backend
+    return backend_on_disk
+
+
+def _make_image_series_paths_relative_to_nwbfile(nwbfile: NWBFile, nwbfile_path: Path) -> None:
+    """
+    Rewrite every ``ImageSeries.external_file`` entry so it is relative to the directory of ``nwbfile_path``.
+
+    The NWB specification reads ``external_file`` relative to the NWB file, while interfaces store whatever
+    path the caller handed them, which is usually absolute or relative to the working directory. An
+    ``ImageSeries`` read from an existing file is left alone, since its entries are already relative to that
+    file and not to the working directory. URLs are left as they are, and an entry that has no relative path
+    to the output at all (on Windows, a file on another drive) is written absolute. The result always uses
+    forward slashes so it stays meaningful once the file leaves the machine that wrote it.
+    """
+    output_directory = Path(nwbfile_path).resolve().parent
+    # `nwbfile.objects` is built on its first read and never invalidated, so it does not hold anything added
+    # to the file afterwards. `all_children` recomputes the walk.
+    for neurodata_object in nwbfile.all_children():
+        if not isinstance(neurodata_object, ImageSeries) or not neurodata_object.external_file:
+            continue
+        if neurodata_object.container_source is not None:  # read from disk, so already relative to that file
+            continue
+        rewritten_entries = []
+        for entry in neurodata_object.external_file:
+            entry = str(entry)  # an interface may have stored a `Path`
+            absolute_entry = Path(entry).resolve()
+            is_url = "://" in entry
+            if is_url:
+                rewritten_entries.append(entry)
+                continue
+            is_on_another_drive = absolute_entry.anchor != output_directory.anchor  # Windows: no relative path exists
+            if is_on_another_drive:
+                rewritten_entries.append(absolute_entry.as_posix())
+                continue
+            # TODO: replace with `absolute_entry.relative_to(output_directory, walk_up=True)` once the Python
+            # floor is 3.12; before that `Path.relative_to` cannot produce `..` segments.
+            rewritten_entries.append(Path(os.path.relpath(absolute_entry, start=output_directory)).as_posix())
+        # The setter refuses a field that is already set, and the list itself may belong to the interface that
+        # built the series, so a new list goes in where the setter would have stored it.
+        neurodata_object.fields["external_file"] = rewritten_entries
 
 
 def configure_and_write_nwbfile(
@@ -492,6 +697,7 @@ def configure_and_write_nwbfile(
     nwbfile_path: FilePath | None = None,
     backend: Literal["hdf5", "zarr"] | None = None,
     backend_configuration: BackendConfiguration | None = None,
+    metadata: dict | None = None,
 ) -> None:
     """
     Write an NWB file using a specific backend or backend configuration.
@@ -499,6 +705,10 @@ def configure_and_write_nwbfile(
     A ``backend`` or a ``backend_configuration`` must be provided. To use the default backend configuration for
     the specified backend, provide only ``backend``. To use a custom backend configuration, provide
     ``backend_configuration``. If both are provided, ``backend`` must match ``backend_configuration.backend``.
+
+    Before writing, every ``ImageSeries.external_file`` in ``nwbfile`` is replaced so its entries are relative to
+    the directory of ``nwbfile_path``, as the NWB specification reads them. An ``ImageSeries`` read from an
+    existing file keeps its paths.
 
     Parameters
     ----------
@@ -510,18 +720,28 @@ def configure_and_write_nwbfile(
     backend_configuration: BackendConfiguration, optional
         Specifies the backend type and the chunking and compression parameters of each dataset. If no
         ``backend_configuration`` is specified, the default configuration for the specified ``backend`` is used.
+    metadata: dict, optional
+        Conversion metadata.  Only ``metadata["ExternalResources"]`` is read: its terms are written into the file as HERD
+        references before the backend is configured, see
+        :py:func:`~neuroconv.tools.external_resources.add_external_resources_to_nwbfile`.
     """
 
     if nwbfile_path is None:
         raise ValueError("The 'nwbfile_path' parameter must be specified.")
 
-    backend = _resolve_backend(backend=backend, backend_configuration=backend_configuration)
+    if backend is not None and backend_configuration is not None and backend != backend_configuration.backend:
+        raise ValueError(
+            "Both `backend` and `backend_configuration` were specified and are conflicting. "
+            f"{backend=}, {backend_configuration.backend=}."
+        )
 
-    if backend is not None and backend_configuration is None:
-        backend_configuration = get_default_backend_configuration(nwbfile, backend=backend)
+    # Before the backend configuration, so the HERD tables are configured like everything else.
+    add_external_resources_to_nwbfile(nwbfile, metadata=metadata)
 
-    if backend_configuration is not None:
-        configure_backend(nwbfile=nwbfile, backend_configuration=backend_configuration)
+    if backend_configuration is None:
+        backend_configuration = get_default_backend_configuration(nwbfile, backend=backend or "hdf5")
+
+    configure_backend(nwbfile=nwbfile, backend_configuration=backend_configuration)
 
     IO = BACKEND_NWB_IO[backend_configuration.backend]
 
@@ -530,6 +750,7 @@ def configure_and_write_nwbfile(
             nwbfile.set_modified()
             io.export(nwbfile=nwbfile, src_io=nwbfile.read_io, write_args=dict(link_data=False))
         else:
+            _make_image_series_paths_relative_to_nwbfile(nwbfile=nwbfile, nwbfile_path=nwbfile_path)
             io.write(nwbfile)
 
 
@@ -551,25 +772,19 @@ def repack_nwbfile(
     export_backend : {"hdf5", "zarr", None}, default: None
         The type of backend used to write the repacked file. If None, the same backend as the input file is used.
     """
+    # The backend of the source file is a property of the file; the export backend is an independent
+    # choice that defaults to it.
+    if export_backend is None:
+        export_backend = _fetch_backend_from_nwbfile_on_disk(nwbfile_path=nwbfile_path)
+
     # Read the file using read_nwb (automatically detects backend)
     nwbfile = read_nwb(nwbfile_path)
-
-    # If no export backend specified, detect from the read_io attribute
-    if export_backend is None:
-        # Determine the backend from the IO class that was used to read the file
-        io_class_name = nwbfile.read_io.__class__.__name__
-        # Map IO class names to backend names
-        if "NWBHDF5IO" in io_class_name:
-            export_backend = "hdf5"
-        elif "NWBZarrIO" in io_class_name:
-            export_backend = "zarr"
-        else:
-            raise ValueError(f"Unable to determine backend from IO class: {io_class_name}")
 
     backend_configuration = get_default_backend_configuration(nwbfile=nwbfile, backend=export_backend)
     configure_and_write_nwbfile(
         nwbfile=nwbfile,
         backend_configuration=backend_configuration,
         nwbfile_path=export_nwbfile_path,
-        backend=export_backend,
     )
+
+    nwbfile.read_io.close()

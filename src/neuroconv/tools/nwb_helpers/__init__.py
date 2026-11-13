@@ -20,6 +20,7 @@ from ._configuration_models._hdf5_dataset_io import (
 from ._configuration_models._zarr_backend import ZarrBackendConfiguration
 from ._configuration_models._zarr_dataset_io import (
     AVAILABLE_ZARR_COMPRESSION_METHODS,
+    AVAILABLE_ZARR_FILTER_METHODS,
     ZarrDatasetIOConfiguration,
 )
 from ._configure_backend import configure_backend
@@ -28,6 +29,8 @@ from ._metadata_and_file_helpers import (
     _add_device_model_to_nwbfile,
     _add_device_to_nwbfile,
     add_device_from_metadata,
+    _get_container_by_name,
+    add_subject_to_nwbfile,
     configure_and_write_nwbfile,
     get_default_nwbfile_metadata,
     get_module,
@@ -39,6 +42,7 @@ from ._metadata_and_file_helpers import (
 __all__ = [
     "AVAILABLE_HDF5_COMPRESSION_METHODS",
     "AVAILABLE_ZARR_COMPRESSION_METHODS",
+    "AVAILABLE_ZARR_FILTER_METHODS",
     "BACKEND_CONFIGURATIONS",
     "DATASET_IO_CONFIGURATIONS",
     "BACKEND_NWB_IO",
@@ -56,6 +60,7 @@ __all__ = [
     "get_default_dataset_io_configurations",
     "get_default_backend_configuration",
     "add_device_from_metadata",
+    "add_subject_to_nwbfile",
     "configure_and_write_nwbfile",
     "get_default_nwbfile_metadata",
     "get_module",

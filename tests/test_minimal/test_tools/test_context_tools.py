@@ -9,12 +9,18 @@ from unittest.mock import patch
 import h5py
 import pytest
 from hdmf.testing import TestCase
-from hdmf_zarr import NWBZarrIO
 from pynwb import NWBHDF5IO, TimeSeries
 from pynwb.testing.mock.base import mock_TimeSeries
 from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.tools.nwb_helpers import make_nwbfile_from_metadata, make_or_load_nwbfile
+
+# hdmf_zarr installs only on Python 3.12 and newer.
+pytest.importorskip("hdmf_zarr")
+from hdmf_zarr import NWBZarrIO
+
+# The tests below exercise `make_or_load_nwbfile` itself, so its own deprecation warning is expected
+pytestmark = pytest.mark.filterwarnings("ignore:`make_or_load_nwbfile` is deprecated:FutureWarning")
 
 
 class TestMakeOrLoadNWBFile(TestCase):

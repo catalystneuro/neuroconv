@@ -9,7 +9,16 @@ from pynwb.device import Device
 from pynwb.ophys import ImagingPlane, OnePhotonSeries, TwoPhotonSeries
 
 from ._metadata_schema import _get_ophys_registry_entry_definitions, _keyed_registry
+from ._metadata_template import (
+    _get_imaging_plane_template_entry,
+    _resolve_device_metadata_key,
+)
+from ..._temporal_alignment import _TemporalAlignment
 from ...baseextractorinterface import BaseExtractorInterface
+from ...tools.nwb_helpers._metadata_and_file_helpers import (
+    _get_device_model_template_entry,
+    _get_device_template_entry,
+)
 from ...utils import (
     DeepDict,
     dict_deep_update,
@@ -75,6 +84,40 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         self.verbose = verbose
         self.photon_series_type = photon_series_type
         self.metadata_key = metadata_key
+        self._alignment_key = metadata_key or "default_metadata_key"
+        self._alignment = _TemporalAlignment()
+        self._alignment._register(
+            key=self._alignment_key,
+            get_native_times=self._get_native_times,
+            default_start_time=self._get_native_start_time,
+            get_number_of_samples=self.imaging_extractor.get_num_samples,
+        )
+
+    @property
+    def temporal_alignment(self) -> _TemporalAlignment:
+        return self._alignment
+
+    def _get_native_times(self) -> np.ndarray:
+        native_timestamps = self.imaging_extractor.get_native_timestamps()
+        if native_timestamps is not None:
+            return native_timestamps
+        num_samples = self.imaging_extractor.get_num_samples()
+        return np.arange(num_samples) / self.imaging_extractor.get_sampling_frequency()
+
+    def _get_native_start_time(self) -> float:
+        if self.imaging_extractor.get_num_samples() == 0:
+            return np.nan
+        times = self.imaging_extractor.get_native_timestamps(start_sample=0, end_sample=1)
+        return float(times[0]) if times is not None else 0.0
+
+    # TODO: once the minimum roiextractors version includes https://github.com/catalystneuro/roiextractors/pull/632,
+    # `has_time_vector()` answers this without reading timestamps; replace the body with
+    # `self.imaging_extractor.has_time_vector()`, which is also True for times set directly on the extractor
+    def _has_native_timestamps(self) -> bool:
+        """Whether the format records one time per sample, read from the first sample alone."""
+        if self.imaging_extractor.get_num_samples() == 0:
+            return False
+        return self.imaging_extractor.get_native_timestamps(start_sample=0, end_sample=1) is not None
 
     def get_metadata_schema(self) -> dict:
         """
@@ -153,13 +196,13 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         fill_defaults(metadata_schema, self.get_metadata())
         return metadata_schema
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         """
         Retrieve the metadata for the imaging data.
 
         Parameters
         ----------
-        use_new_metadata_format : bool, default: False
+        use_new_metadata_format : bool, default: True
             When False, returns the old list-based metadata format (backward compatible).
             When True, returns only NWBFile-level metadata (session_description, identifier,
             etc.) without ophys keys. Ophys defaults are filled by ``add_imaging_to_nwbfile()``
@@ -196,21 +239,115 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
                     two_photon_series["rate"] = float(two_photon_series["rate"])
         return metadata
 
+    def get_metadata_template(self) -> DeepDict:
+        """Return the imaging plane and series this interface writes, with the blanks marked.
+
+        The counterpart to :meth:`get_metadata`, which reports only what the source recorded and so
+        leaves a user no indication of what else the file needs. This returns those same values wrapped
+        in the structure the writer expects. Fill in the blanks and pass the result to ``add_to_nwbfile``
+        or ``run_conversion``; a blank still ``None`` at write time is an error rather than a value.
+
+        One imaging plane and one series, both under this interface's ``metadata_key`` and already
+        cross-referenced, hanging off one microscope. What is left ``None`` is what only the experimenter
+        can supply: the brain region imaged, the indicator, the excitation and emission wavelengths and
+        the name every object needs. The optional fields appear so that a user knows the writer accepts
+        them; delete the ones this recording cannot answer, since a blank left behind is refused at write
+        time rather than guessed at.
+
+        Rename the keys to suit the recording; they are handles, not names in the file.
+        """
+        # What ``add_imaging_to_nwbfile`` falls back to for an interface constructed without a key.
+        metadata_key = self.metadata_key or "default_metadata_key"
+        # Prefilled through the same transitional shim the writers use, so an interface whose
+        # ``get_metadata`` still answers in the old list format does not leak that shape into the
+        # template. When the old format goes the shim goes with it, and this becomes
+        # ``self.get_metadata()`` with nothing else to change.
+        source_metadata = self._get_metadata_for_writing()
+        device_metadata_key = _resolve_device_metadata_key(source_metadata=source_metadata, metadata_key=metadata_key)
+
+        # Optional fields of the series being written, which differ by photon series: a one-photon
+        # acquisition describes its camera exposure, a two-photon one its scanner.
+        optional_series_fields = dict(
+            TwoPhotonSeries=dict(field_of_view=None, pmt_gain=None, scan_line_rate=None),
+            OnePhotonSeries=dict(exposure_time=None, binning=None, power=None, intensity=None),
+        )[self.photon_series_type]
+        series_entry = dict(
+            name=None,
+            description=None,
+            unit=None,
+            imaging_plane_metadata_key=metadata_key,
+            **optional_series_fields,
+        )
+
+        device_model_metadata_key = f"{device_metadata_key}_model"
+        template = DeepDict(
+            dict(
+                DeviceModels={device_model_metadata_key: _get_device_model_template_entry()},
+                Devices={
+                    device_metadata_key: _get_device_template_entry(device_model_metadata_key=device_model_metadata_key)
+                },
+                Ophys=dict(
+                    ImagingPlanes={
+                        metadata_key: _get_imaging_plane_template_entry(device_metadata_key=device_metadata_key)
+                    },
+                    MicroscopySeries={metadata_key: series_entry},
+                ),
+            )
+        )
+
+        # The blanks are a floor rather than an override: whatever the source recorded wins over the
+        # template, so a field the interface was able to read is never handed back as one to fill in.
+        template.deep_update(source_metadata)
+        return template
+
     def get_original_timestamps(self) -> np.ndarray:
         reinitialized_extractor = self._initialize_extractor(self.source_data)
         return reinitialized_extractor.get_timestamps()
 
     def get_timestamps(self) -> np.ndarray:
-        return self.imaging_extractor.get_timestamps()
+        warnings.warn(
+            "`get_timestamps` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment[key].get_times()` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        return self.temporal_alignment[self._alignment_key].get_times()
 
     def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
-        self.imaging_extractor.set_times(times=aligned_timestamps)
+        warnings.warn(
+            "`set_aligned_timestamps` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment[key].set_times(times)` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        self.temporal_alignment[self._alignment_key].set_times(aligned_timestamps)
+
+    def set_aligned_starting_time(self, aligned_starting_time: float) -> None:
+        warnings.warn(
+            "`set_aligned_starting_time` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment.shift_times(delta)` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        self.temporal_alignment.shift_times(aligned_starting_time)
+
+    def align_by_interpolation(self, unaligned_timestamps: np.ndarray, aligned_timestamps: np.ndarray) -> None:
+        warnings.warn(
+            "`align_by_interpolation` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment.remap_times(local_sync_times=..., reference_sync_times=...)` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        self.temporal_alignment.remap_times(
+            local_sync_times=unaligned_timestamps,
+            reference_sync_times=aligned_timestamps,
+        )
 
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
         metadata: dict | None = None,
-        *args,  # TODO: change to * (keyword only) on or after August 2026
+        *,
         photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "TwoPhotonSeries",
         photon_series_index: int = 0,
         parent_container: Literal["acquisition", "processing/ophys"] = "acquisition",
@@ -256,45 +393,7 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
             The number of samples (frames) to use for testing.
         """
 
-        from ...tools.roiextractors import add_imaging_to_nwbfile
-
-        # TODO: Remove this block in August 2026 or after when positional arguments are no longer supported.
-        if args:
-            parameter_names = [
-                "photon_series_type",
-                "photon_series_index",
-                "parent_container",
-                "stub_test",
-                "always_write_timestamps",
-                "iterator_type",
-                "iterator_options",
-                "stub_samples",
-            ]
-            num_positional_args_before_args = 2  # nwbfile, metadata
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"add_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args} were given. "
-                    "Note: Positional arguments are deprecated and will be removed in August 2026 or after. Please use keyword arguments."
-                )
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to add_to_nwbfile is deprecated "
-                f"and will be removed in August 2026 or after. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            photon_series_type = positional_values.get("photon_series_type", photon_series_type)
-            photon_series_index = positional_values.get("photon_series_index", photon_series_index)
-            parent_container = positional_values.get("parent_container", parent_container)
-            stub_test = positional_values.get("stub_test", stub_test)
-            always_write_timestamps = positional_values.get("always_write_timestamps", always_write_timestamps)
-            iterator_type = positional_values.get("iterator_type", iterator_type)
-            iterator_options = positional_values.get("iterator_options", iterator_options)
-            stub_samples = positional_values.get("stub_samples", stub_samples)
+        from ...tools.roiextractors.roiextractors import _add_photon_series_to_nwbfile
 
         if stub_test:
             stub_samples = min([stub_samples, self.imaging_extractor.get_num_samples()])
@@ -305,7 +404,18 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
         # TODO: change to self.get_metadata(use_new_metadata_format=True) when all imaging interfaces are migrated
         metadata = metadata or self._get_metadata_for_writing()
 
-        add_imaging_to_nwbfile(
+        # The aligned times are handed to the writer, never set on the extractor. Timestamps when the times were
+        # replaced or the format records one per sample, otherwise the aligned start at the sampling frequency, so a
+        # shifted regular series is written as a start and a rate without building its times
+        series = self.temporal_alignment[self._alignment_key]
+        if series._times is not None or self._has_native_timestamps():
+            timestamps = series.get_times()[: imaging_extractor.get_num_samples()]
+            starting_time = None
+        else:
+            timestamps = None
+            starting_time = series._get_start_time()
+
+        _add_photon_series_to_nwbfile(
             imaging=imaging_extractor,
             nwbfile=nwbfile,
             metadata=metadata,
@@ -316,4 +426,6 @@ class BaseImagingExtractorInterface(BaseExtractorInterface):
             iterator_type=iterator_type,
             iterator_options=iterator_options,
             metadata_key=self.metadata_key,
+            timestamps=timestamps,
+            starting_time=starting_time,
         )

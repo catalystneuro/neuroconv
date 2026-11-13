@@ -231,16 +231,6 @@ class MiniscopeConverter(ConverterPipe):
                 self._user_config = json.load(f)
             _raise_if_legacy_user_config_device_list(user_config=self._user_config)
 
-            data_directory_path_in_config = self._user_config.get("dataDirectory", "")
-            data_directory_name_in_json = data_directory_path_in_config.split("/")[-1]
-            if data_directory_name_in_json != self._folder_path.name:
-                warnings.warn(
-                    f"Ignoring 'dataDirectory' field in User Config ('{data_directory_path_in_config}'). "
-                    f"Using provided folder_path: '{self._folder_path}'.",
-                    UserWarning,
-                    stacklevel=2,
-                )
-
             directory_structure = self._user_config.get("directoryStructure", [])
             config_fields = self._user_config.keys()
             fixed_path_entries = [key for key in directory_structure if key in config_fields]
@@ -383,12 +373,11 @@ class MiniscopeConverter(ConverterPipe):
                     )
                     timestamps = _get_device_folder_timestamps(folder_path=str(camera_folder_path))
                     segment_boundaries = list(starting_frames) + [len(timestamps)]
-                    interface.set_aligned_timestamps(
-                        aligned_timestamps=[
-                            timestamps[segment_start:segment_stop]
-                            for segment_start, segment_stop in zip(segment_boundaries[:-1], segment_boundaries[1:])
-                        ]
-                    )
+                    segment_ranges = zip(segment_boundaries[:-1], segment_boundaries[1:])
+                    for segment_key, (segment_start, segment_stop) in zip(
+                        interface.temporal_alignment.keys(), segment_ranges, strict=True
+                    ):
+                        interface.temporal_alignment[segment_key].set_times(timestamps[segment_start:segment_stop])
 
                     data_interfaces[interface_name] = interface
                     self._behavior_video_interfaces[interface_name] = dict(
@@ -405,7 +394,7 @@ class MiniscopeConverter(ConverterPipe):
             # Legacy mode: use _MiniscopeMultiRecordingInterface for backwards compatibility
             warnings.warn(
                 "Not passing 'user_configuration_file_path' to MiniscopeConverter is deprecated "
-                "and will be removed on or after December 2026. "
+                "and will be removed in v0.12.0. "
                 "The legacy folder discovery mode assumes all recordings are back-to-back, "
                 "which does not hold in general and can produce silently incorrect results. "
                 "Please pass the 'user_configuration_file_path' argument, which points to the "
@@ -519,7 +508,7 @@ class MiniscopeConverter(ConverterPipe):
         for interface_name, session_start_time in session_start_times.items():
             interface = self.data_interface_objects[interface_name]
             time_offset = (session_start_time - min_session_start_time).total_seconds()
-            interface.set_aligned_starting_time(aligned_starting_time=time_offset)
+            interface.temporal_alignment.shift_times(time_offset)
 
         # Align the behavior cameras with the session they were recorded in
         for video_interface_name in self._get_behavior_video_interface_names():
@@ -528,9 +517,7 @@ class MiniscopeConverter(ConverterPipe):
             if session_start_time is None:
                 continue
             time_offset = (session_start_time - min_session_start_time).total_seconds()
-            self.data_interface_objects[video_interface_name].set_aligned_starting_time(
-                aligned_starting_time=time_offset
-            )
+            self.data_interface_objects[video_interface_name].temporal_alignment.shift_times(time_offset)
 
         # Align head orientation interfaces with their paired imaging interfaces
         for ho_interface_name in self._get_head_orientation_interface_names():
@@ -540,8 +527,7 @@ class MiniscopeConverter(ConverterPipe):
                 ho_interface = self.data_interface_objects[ho_interface_name]
                 session_start_time = session_start_times[paired_interface_name]
                 time_offset = (session_start_time - min_session_start_time).total_seconds()
-                aligned_timestamps = ho_interface.get_timestamps() + time_offset
-                ho_interface.set_aligned_timestamps(aligned_timestamps)
+                ho_interface.temporal_alignment.shift_times(time_offset)
 
     def get_metadata(self) -> DeepDict:
         if self._user_configuration_file_path is None:

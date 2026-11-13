@@ -1,13 +1,20 @@
 """Base Pydantic models for the ZarrDatasetConfiguration."""
 
-from typing import ClassVar, Literal
+from typing import Any, ClassVar, Literal
 
 import psutil
-from hdmf_zarr import ZarrDataIO
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from ._base_backend import BackendConfiguration
 from ._zarr_dataset_io import ZarrDatasetIOConfiguration
+from ...importing import is_package_installed
+
+# hdmf_zarr installs only on Python 3.12 and newer. On 3.11 `raise_without_hdmf_zarr` raises before `data_io_class`
+# is used.
+if is_package_installed(package_name="hdmf_zarr"):
+    from hdmf_zarr import ZarrDataIO
+else:
+    ZarrDataIO = None
 
 
 class ZarrBackendConfiguration(BackendConfiguration):
@@ -35,3 +42,12 @@ class ZarrBackendConfiguration(BackendConfiguration):
         le=psutil.cpu_count(),
         default=psutil.cpu_count() - 1,
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def raise_without_hdmf_zarr(cls, values: Any) -> Any:
+        if ZarrDataIO is None:
+            raise NotImplementedError(
+                "The Zarr backend requires hdmf_zarr, which installs with neuroconv on Python 3.12 and newer."
+            )
+        return values

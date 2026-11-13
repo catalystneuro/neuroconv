@@ -16,6 +16,40 @@ from ..setup_paths import ECEPHY_DATA_PATH
 
 SPIKEGLX_PATH = ECEPHY_DATA_PATH / "spikeglx"
 
+# The electrodes columns are the same whatever the probe count, so both expectations below share them.
+EXPECTED_ELECTRODES_COLUMNS = [
+    {"name": "group_name", "description": "Name of the ElectrodeGroup this electrode is a part of."},
+    {
+        "name": "electrode_name",
+        "description": (
+            "The unique name of this electrode. Derived from probe contact identifiers. Multiple channels "
+            "(e.g., AP and LF bands) from the same physical electrode will share the same electrode_name."
+        ),
+    },
+    {"name": "contact_shapes", "description": "The shape of the electrode"},
+    {
+        "name": "adc_group",
+        "description": (
+            "The ADC (Analog-to-Digital Converter) index to which each electrode is connected. This hardware "
+            "configuration determines which channels are sampled simultaneously."
+        ),
+    },
+    {
+        "name": "adc_sample_order",
+        "description": (
+            "The sampling order index (0-based) of this electrode within its ADC group. Combined with "
+            "adc_group, this determines the precise temporal offset of each channel's samples."
+        ),
+    },
+]
+
+EXPECTED_NEUROPIXELS_1_MODEL = {
+    "name": "PRB_1_4_0480_1",
+    "model_number": "PRB_1_4_0480_1",
+    "manufacturer": "imec",
+    "description": "Neuropixels 1.0 probe",
+}
+
 
 def assert_single_probe_nwb_structure(nwbfile_path: Path, expected_session_start_time: datetime):
     """Helper function to verify NWB file structure for single probe SpikeGLX data."""
@@ -42,9 +76,9 @@ def assert_single_probe_nwb_structure(nwbfile_path: Path, expected_session_start
 class TestSingleProbeSpikeGLXConverter:
     """Tests for single-probe SpikeGLX converter."""
 
-    def test_single_probe_spikeglx_converter(self, tmp_path):
+    def test_single_probe_spikeglx_converter_old_list_format(self, tmp_path):
         converter = SpikeGLXConverterPipe(folder_path=SPIKEGLX_PATH / "Noise4Sam_g0")
-        metadata = converter.get_metadata()
+        metadata = converter.get_metadata(use_new_metadata_format=False)
 
         test_metadata = deepcopy(metadata)
         for exclude_field in ["session_start_time", "identifier"]:
@@ -71,6 +105,47 @@ class TestSingleProbeSpikeGLXConverter:
         assert_single_probe_nwb_structure(
             nwbfile_path=nwbfile_path, expected_session_start_time=expected_session_start_time
         )
+
+    def test_single_probe_dict_metadata(self):
+        """The dict-based metadata, which is the shape every conversion is written from.
+
+        The probe's device is keyed by its serial number and carries the model as a link, so the two
+        registries and the ``Ecephys`` block have to be checked together to see that the links resolve.
+        """
+        converter = SpikeGLXConverterPipe(folder_path=SPIKEGLX_PATH / "Noise4Sam_g0")
+        metadata = converter.get_metadata(use_new_metadata_format=True)
+
+        # The probe is keyed by its serial number and the NIDQ board is a device of its own.
+        assert metadata["Devices"] == {
+            "neuropixels_18194809281": {
+                "serial_number": "18194809281",
+                "name": "NeuropixelsImec0",
+                "device_model_metadata_key": "imec_PRB_1_4_0480_1",
+            },
+            "spikeglx_nidq_device": {
+                "name": "NIDQBoard",
+                "description": "A NIDQ board used in conjunction with SpikeGLX.",
+            },
+        }
+        assert metadata["DeviceModels"] == {"imec_PRB_1_4_0480_1": EXPECTED_NEUROPIXELS_1_MODEL}
+        assert metadata["Ecephys"] == {
+            # The entries are keyed per stream and the names are the interface's own, so re-keying an
+            # entry never renames the written series.
+            "ElectricalSeries": {
+                "spikeglx_imec0_ap": {"name": "ElectricalSeriesAP"},
+                "spikeglx_imec0_lf": {"name": "ElectricalSeriesLF"},
+            },
+            "ElectrodeGroups": {
+                "NeuropixelsImec0": {
+                    "name": "NeuropixelsImec0",
+                    "description": "A group representing probe/shank 'NeuropixelsImec0'.",
+                    # SpikeGLX states no implant location, and NWB requires the field.
+                    "location": "unknown",
+                    "device_metadata_key": "neuropixels_18194809281",
+                },
+            },
+            "Electrodes": EXPECTED_ELECTRODES_COLUMNS,
+        }
 
     def test_in_converter_pipe(self, tmp_path):
         spikeglx_converter = SpikeGLXConverterPipe(folder_path=SPIKEGLX_PATH / "Noise4Sam_g0")
@@ -109,12 +184,12 @@ class TestMultiProbeSpikeGLXConverter:
 
     test_folder = SPIKEGLX_PATH / "multi_trigger_multi_gate" / "SpikeGLX" / "5-19-2022-CI0"
 
-    def test_multi_probe_metadata(self):
+    def test_multi_probe_metadata_old_list_format(self):
         """Test that metadata is generated correctly for multi-probe setup."""
         converter = SpikeGLXConverterPipe(
             folder_path=self.test_folder,
         )
-        metadata = converter.get_metadata()
+        metadata = converter.get_metadata(use_new_metadata_format=False)
 
         test_metadata = deepcopy(metadata)
         for exclude_field in ["session_start_time", "identifier"]:
@@ -142,6 +217,51 @@ class TestMultiProbeSpikeGLXConverter:
         # Test all the dictionary
         assert test_ecephys_metadata == expected_ecephys_metadata
 
+    def test_multi_probe_dict_metadata(self):
+        """Two probes of the same model are two ``Devices`` entries sharing one ``DeviceModels`` entry."""
+        converter = SpikeGLXConverterPipe(
+            folder_path=self.test_folder,
+        )
+        metadata = converter.get_metadata(use_new_metadata_format=True)
+
+        # Two probes are two devices with their own serial numbers, and one shared model entry.
+        assert metadata["Devices"] == {
+            "neuropixels_18194803162": {
+                "serial_number": "18194803162",
+                "name": "NeuropixelsImec0",
+                "device_model_metadata_key": "imec_PRB_1_4_0480_1",
+            },
+            "neuropixels_18194803842": {
+                "serial_number": "18194803842",
+                "name": "NeuropixelsImec1",
+                "device_model_metadata_key": "imec_PRB_1_4_0480_1",
+            },
+        }
+        assert metadata["DeviceModels"] == {"imec_PRB_1_4_0480_1": EXPECTED_NEUROPIXELS_1_MODEL}
+        assert metadata["Ecephys"] == {
+            "ElectricalSeries": {
+                "spikeglx_imec0_ap": {"name": "ElectricalSeriesAPImec0"},
+                "spikeglx_imec1_ap": {"name": "ElectricalSeriesAPImec1"},
+                "spikeglx_imec0_lf": {"name": "ElectricalSeriesLFImec0"},
+                "spikeglx_imec1_lf": {"name": "ElectricalSeriesLFImec1"},
+            },
+            "ElectrodeGroups": {
+                "NeuropixelsImec0": {
+                    "name": "NeuropixelsImec0",
+                    "description": "A group representing probe/shank 'NeuropixelsImec0'.",
+                    "location": "unknown",
+                    "device_metadata_key": "neuropixels_18194803162",
+                },
+                "NeuropixelsImec1": {
+                    "name": "NeuropixelsImec1",
+                    "description": "A group representing probe/shank 'NeuropixelsImec1'.",
+                    "location": "unknown",
+                    "device_metadata_key": "neuropixels_18194803842",
+                },
+            },
+            "Electrodes": EXPECTED_ELECTRODES_COLUMNS,
+        }
+
     def test_multi_probe_run_conversion(self, tmp_path):
         """Test that multi-probe data with sync channels is written to NWB file correctly."""
         converter = SpikeGLXConverterPipe(
@@ -164,37 +284,37 @@ class TestMultiProbeSpikeGLXConverter:
         # Check electrical series acquisition objects - all 4 segments for each stream
         # TODO: improve name of segments using 'Segment{index}' for clarity
         # Probe 0 AP stream (4 segments)
-        assert "ElectricalSeriesAPImec00" in nwbfile.acquisition
-        assert "ElectricalSeriesAPImec01" in nwbfile.acquisition
-        assert "ElectricalSeriesAPImec02" in nwbfile.acquisition
-        assert "ElectricalSeriesAPImec03" in nwbfile.acquisition
+        assert "ElectricalSeriesAPImec0Segment0" in nwbfile.acquisition
+        assert "ElectricalSeriesAPImec0Segment1" in nwbfile.acquisition
+        assert "ElectricalSeriesAPImec0Segment2" in nwbfile.acquisition
+        assert "ElectricalSeriesAPImec0Segment3" in nwbfile.acquisition
         # Probe 1 AP stream (4 segments)
-        assert "ElectricalSeriesAPImec10" in nwbfile.acquisition
-        assert "ElectricalSeriesAPImec11" in nwbfile.acquisition
-        assert "ElectricalSeriesAPImec12" in nwbfile.acquisition
-        assert "ElectricalSeriesAPImec13" in nwbfile.acquisition
+        assert "ElectricalSeriesAPImec1Segment0" in nwbfile.acquisition
+        assert "ElectricalSeriesAPImec1Segment1" in nwbfile.acquisition
+        assert "ElectricalSeriesAPImec1Segment2" in nwbfile.acquisition
+        assert "ElectricalSeriesAPImec1Segment3" in nwbfile.acquisition
         # Probe 0 LF stream (4 segments)
-        assert "ElectricalSeriesLFImec00" in nwbfile.acquisition
-        assert "ElectricalSeriesLFImec01" in nwbfile.acquisition
-        assert "ElectricalSeriesLFImec02" in nwbfile.acquisition
-        assert "ElectricalSeriesLFImec03" in nwbfile.acquisition
+        assert "ElectricalSeriesLFImec0Segment0" in nwbfile.acquisition
+        assert "ElectricalSeriesLFImec0Segment1" in nwbfile.acquisition
+        assert "ElectricalSeriesLFImec0Segment2" in nwbfile.acquisition
+        assert "ElectricalSeriesLFImec0Segment3" in nwbfile.acquisition
         # Probe 1 LF stream (4 segments)
-        assert "ElectricalSeriesLFImec10" in nwbfile.acquisition
-        assert "ElectricalSeriesLFImec11" in nwbfile.acquisition
-        assert "ElectricalSeriesLFImec12" in nwbfile.acquisition
-        assert "ElectricalSeriesLFImec13" in nwbfile.acquisition
+        assert "ElectricalSeriesLFImec1Segment0" in nwbfile.acquisition
+        assert "ElectricalSeriesLFImec1Segment1" in nwbfile.acquisition
+        assert "ElectricalSeriesLFImec1Segment2" in nwbfile.acquisition
+        assert "ElectricalSeriesLFImec1Segment3" in nwbfile.acquisition
 
         # Check sync channels - multi-segment recordings get segment suffixes like electrical series
         # This data has 4 segments, so we expect segment indices 0-3 for each probe
-        assert "TimeSeriesImec0Sync0" in nwbfile.acquisition
-        assert "TimeSeriesImec0Sync1" in nwbfile.acquisition
-        assert "TimeSeriesImec0Sync2" in nwbfile.acquisition
-        assert "TimeSeriesImec0Sync3" in nwbfile.acquisition
+        assert "TimeSeriesImec0SyncSegment0" in nwbfile.acquisition
+        assert "TimeSeriesImec0SyncSegment1" in nwbfile.acquisition
+        assert "TimeSeriesImec0SyncSegment2" in nwbfile.acquisition
+        assert "TimeSeriesImec0SyncSegment3" in nwbfile.acquisition
         # Second probe sync channel
-        assert "TimeSeriesImec1Sync0" in nwbfile.acquisition
-        assert "TimeSeriesImec1Sync1" in nwbfile.acquisition
-        assert "TimeSeriesImec1Sync2" in nwbfile.acquisition
-        assert "TimeSeriesImec1Sync3" in nwbfile.acquisition
+        assert "TimeSeriesImec1SyncSegment0" in nwbfile.acquisition
+        assert "TimeSeriesImec1SyncSegment1" in nwbfile.acquisition
+        assert "TimeSeriesImec1SyncSegment2" in nwbfile.acquisition
+        assert "TimeSeriesImec1SyncSegment3" in nwbfile.acquisition
 
         # Total: 16 electrical series (2 probes × 2 streams × 4 segments) + 8 sync TimeSeries (2 probes × 4 segments)
         assert len(nwbfile.acquisition) == 24
@@ -225,24 +345,24 @@ class TestMultiProbeSpikeGLXConverter:
         nwbfile = converter.create_nwbfile()
 
         # Verify AP streams ARE present (4 segments each for 2 probes = 8 total)
-        assert "ElectricalSeriesAPImec00" in nwbfile.acquisition
-        assert "ElectricalSeriesAPImec01" in nwbfile.acquisition
-        assert "ElectricalSeriesAPImec02" in nwbfile.acquisition
-        assert "ElectricalSeriesAPImec03" in nwbfile.acquisition
-        assert "ElectricalSeriesAPImec10" in nwbfile.acquisition
-        assert "ElectricalSeriesAPImec11" in nwbfile.acquisition
-        assert "ElectricalSeriesAPImec12" in nwbfile.acquisition
-        assert "ElectricalSeriesAPImec13" in nwbfile.acquisition
+        assert "ElectricalSeriesAPImec0Segment0" in nwbfile.acquisition
+        assert "ElectricalSeriesAPImec0Segment1" in nwbfile.acquisition
+        assert "ElectricalSeriesAPImec0Segment2" in nwbfile.acquisition
+        assert "ElectricalSeriesAPImec0Segment3" in nwbfile.acquisition
+        assert "ElectricalSeriesAPImec1Segment0" in nwbfile.acquisition
+        assert "ElectricalSeriesAPImec1Segment1" in nwbfile.acquisition
+        assert "ElectricalSeriesAPImec1Segment2" in nwbfile.acquisition
+        assert "ElectricalSeriesAPImec1Segment3" in nwbfile.acquisition
 
         # Verify LF streams are NOT present
-        assert "ElectricalSeriesLFImec00" not in nwbfile.acquisition
-        assert "ElectricalSeriesLFImec01" not in nwbfile.acquisition
-        assert "ElectricalSeriesLFImec10" not in nwbfile.acquisition
-        assert "ElectricalSeriesLFImec11" not in nwbfile.acquisition
+        assert "ElectricalSeriesLFImec0Segment0" not in nwbfile.acquisition
+        assert "ElectricalSeriesLFImec0Segment1" not in nwbfile.acquisition
+        assert "ElectricalSeriesLFImec1Segment0" not in nwbfile.acquisition
+        assert "ElectricalSeriesLFImec1Segment1" not in nwbfile.acquisition
 
         # Verify sync channels are NOT present
-        assert "TimeSeriesImec0Sync0" not in nwbfile.acquisition
-        assert "TimeSeriesImec1Sync0" not in nwbfile.acquisition
+        assert "TimeSeriesImec0SyncSegment0" not in nwbfile.acquisition
+        assert "TimeSeriesImec1SyncSegment0" not in nwbfile.acquisition
 
         # Total should be 8 (only AP streams: 2 probes × 4 segments)
         assert len(nwbfile.acquisition) == 8

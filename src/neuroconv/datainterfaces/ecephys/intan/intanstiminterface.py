@@ -4,11 +4,11 @@ from pydantic import FilePath
 from pynwb import NWBFile
 
 from ._utils import _warn_if_split_siblings_detected
-from ....basedatainterface import BaseDataInterface
+from ..baserecordingastimeseriesinterface import BaseRecordingAsTimeSeriesInterface
 from ....utils import DeepDict, get_json_schema_from_method_signature
 
 
-class IntanStimInterface(BaseDataInterface):
+class IntanStimInterface(BaseRecordingAsTimeSeriesInterface):
     """
     Data interface for converting electrical stimulation data from Intan .rhs files.
 
@@ -21,6 +21,9 @@ class IntanStimInterface(BaseDataInterface):
     For other analog streams (ADC, DC amplifier, auxiliary), use
     :py:class:`~neuroconv.datainterfaces.ecephys.intan.intananaloginterface.IntanAnalogInterface`.
     """
+
+    # Stimulation is applied to the preparation rather than recorded from it.
+    parent_container = "stimulus"
 
     display_name = "Intan Stimulation"
     keywords = ("intan", "stimulation", "stim", "rhs", "current")
@@ -44,6 +47,7 @@ class IntanStimInterface(BaseDataInterface):
         verbose: bool = False,
         metadata_key: str = "intan_stim",
         saved_files_are_split: bool = False,
+        channels_to_include: list[str] | None = None,
     ):
         """
         Load and prepare stimulation data from an Intan .rhs file.
@@ -65,6 +69,10 @@ class IntanStimInterface(BaseDataInterface):
             option, producing several rotated ``.rhs`` files in one session folder. All sibling
             files in ``file_path.parent`` are concatenated in filename order (Intan's default
             ``{prefix}_YYMMDD_HHMMSS`` naming makes lexicographic order match chronological order).
+        channels_to_include : list of str, optional
+            Channels to convert, by the names in ``get_channel_names()`` (such as ``"A-000_STIM"``), written in the
+            order listed. Every channel is converted when omitted. A name that is not one of the interface's channels
+            raises.
         """
         self._file_path = Path(file_path)
         self._stream_name = "Stim channel"
@@ -92,7 +100,10 @@ class IntanStimInterface(BaseDataInterface):
         super().__init__(
             file_path=self._file_path,
             verbose=verbose,
+            channels_to_include=channels_to_include,
         )
+
+        self._include_channels(channels_to_include)
 
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
@@ -100,10 +111,13 @@ class IntanStimInterface(BaseDataInterface):
         intan_device = dict(
             name="Intan",
             description="RHS Stim/Recording System",
-            manufacturer="Intan",
+            device_model_metadata_key="intan_rhs2000_model",
         )
         # Same key as ``IntanRecordingInterface``: one Intan system, one registry entry.
         metadata["Devices"] = {"intan_device": intan_device}
+        metadata["DeviceModels"] = {
+            "intan_rhs2000_model": dict(name="RHS2000 Stim-Recording System", manufacturer="Intan")
+        }
 
         channel_names = [str(name) for name in self.get_channel_names()]
 
@@ -114,22 +128,18 @@ class IntanStimInterface(BaseDataInterface):
         recovery_current_limit = annotations.get("recovery_current_limit")
         recovery_target_voltage = annotations.get("recovery_target_voltage")
 
-        description = (
-            "Electrical stimulation current channels (RHS Stim/Recording System). "
-            f"Data are in Amperes. Channels are {channel_names} in that order. "
-            f"Stim step size: {stim_step_size} A, "
-            f"charge recovery mode: {charge_recovery_mode}, "
-            f"amplifier settle mode: {amp_settle_mode}, "
-            f"recovery current limit: {recovery_current_limit} A, "
-            f"recovery target voltage: {recovery_target_voltage} V."
+        metadata["TimeSeries"][self.metadata_key] = dict(
+            name="TimeSeriesIntanStim",
+            description=(
+                "Electrical stimulation current channels (RHS Stim/Recording System). "
+                f"Data are in Amperes. Channels are {channel_names} in that order. "
+                f"Stim step size: {stim_step_size} A, "
+                f"charge recovery mode: {charge_recovery_mode}, "
+                f"amplifier settle mode: {amp_settle_mode}, "
+                f"recovery current limit: {recovery_current_limit} A, "
+                f"recovery target voltage: {recovery_target_voltage} V."
+            ),
         )
-
-        metadata["TimeSeries"] = {
-            self.metadata_key: dict(
-                name="TimeSeriesIntanStim",
-                description=description,
-            )
-        }
 
         return metadata
 
@@ -179,25 +189,11 @@ class IntanStimInterface(BaseDataInterface):
         always_write_timestamps : bool, default: False
             If True, always writes timestamps instead of using sampling rate.
         """
-        from ....tools.spikeinterface import (
-            _stub_recording,
-            add_recording_as_time_series_to_nwbfile,
-        )
-
-        if metadata is None:
-            metadata = self.get_metadata()
-
-        recording = self.recording_extractor
-        if stub_test:
-            recording = _stub_recording(recording=recording)
-
-        add_recording_as_time_series_to_nwbfile(
-            recording=recording,
+        super().add_to_nwbfile(
             nwbfile=nwbfile,
             metadata=metadata,
+            stub_test=stub_test,
             iterator_type=iterator_type,
             iterator_options=iterator_options,
             always_write_timestamps=always_write_timestamps,
-            metadata_key=self.metadata_key,
-            parent_container="stimulus",
         )

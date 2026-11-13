@@ -12,6 +12,12 @@ Converting EDF Electrode Channels
 
 The :py:class:`~neuroconv.datainterfaces.ecephys.edf.edfdatainterface.EDFRecordingInterface` is designed specifically for electrode recording channels that will be stored as an ElectricalSeries in the NWB file.
 Other auxiliary signal channels should be excluded using the ``channels_to_skip`` parameter.
+EDF files that give each channel its own offset need one more decision, described in
+:doc:`../../how_to/handle_heterogeneous_offsets`.
+A file that samples some of its signals at a different rate than the rest holds them in separate
+streams and is read one stream at a time: list them with
+``EDFRecordingInterface.get_stream_names(file_path=file_path)`` and pass the one you want as
+``stream_name``.
 
 .. code-block:: python
 
@@ -39,7 +45,7 @@ Other auxiliary signal channels should be excluded using the ``channels_to_skip`
     # Extract what metadata we can from the source files
     metadata = interface.get_metadata()
     # For data provenance we add the time zone information to the conversion
-    session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("US/Pacific"))
+    session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("Asia/Tokyo"))
     metadata["NWBFile"].update(session_start_time=session_start_time)
     # Add subject information (required for DANDI upload)
     metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
@@ -79,7 +85,7 @@ you'll need to create separate EDFAnalogInterface instances for each unit type:
     # Extract metadata and add timezone information
     metadata = interface.get_metadata()
     # For data provenance we add the time zone information to the conversion
-    session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("US/Pacific"))
+    session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("Asia/Tokyo"))
     metadata["NWBFile"].update(session_start_time=session_start_time)
     # Add subject information (required for DANDI upload)
     metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
@@ -111,7 +117,7 @@ Remember to group auxiliary channels by their unit types:
     # Create electrode interface (skip all auxiliary channels)
     recording_interface = EDFRecordingInterface(
         file_path=file_path,
-        channels_to_skip=all_auxiliary_channels,
+        channels_to_skip=all_non_electrical_channels,
 
     )
 
@@ -130,16 +136,35 @@ Remember to group auxiliary channels by their unit types:
         metadata_key=percent_channels_metadata_key,
     )
 
+    bpm_channels_metadata_key = "time_series_pulse_rate"  # Beats per minute unit
+    bpm_interface = EDFAnalogInterface(
+        file_path=file_path,
+        channels_to_include=["PR"],  # Beats per minute units
+        metadata_key=bpm_channels_metadata_key,
+    )
+
+    microvolt_channels_metadata_key = "time_series_plethysmography"  # Microvolt unit
+    microvolt_interface = EDFAnalogInterface(
+        file_path=file_path,
+        channels_to_include=["Pleth"],  # Microvolt units
+        metadata_key=microvolt_channels_metadata_key,
+    )
+
     # Combine all interfaces
     converter = ConverterPipe(
-        data_interfaces=[recording_interface, trigger_interface, percent_interface],
-
+        data_interfaces=[
+            recording_interface,
+            trigger_interface,
+            percent_interface,
+            bpm_interface,
+            microvolt_interface,
+        ],
     )
 
     # Extract metadata and add timezone information
     metadata = converter.get_metadata()
     # For data provenance we add the time zone information to the conversion
-    session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("US/Pacific"))
+    session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("Asia/Tokyo"))
     metadata["NWBFile"].update(session_start_time=session_start_time)
     # Add subject information (required for DANDI upload)
     metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
@@ -154,6 +179,14 @@ Remember to group auxiliary channels by their unit types:
             percent_channels_metadata_key: {
                 "name": "TimeSeriesOxygen",
                 "description": "Oxygen saturation monitoring data"
+            },
+            bpm_channels_metadata_key: {
+                "name": "TimeSeriesPulseRate",
+                "description": "Pulse rate reported by the patient monitor"
+            },
+            microvolt_channels_metadata_key: {
+                "name": "TimeSeriesPlethysmography",
+                "description": "Plethysmography waveform from the pulse oximeter"
             }
         }
     }

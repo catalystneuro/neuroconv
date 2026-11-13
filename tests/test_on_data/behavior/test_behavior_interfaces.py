@@ -1,3 +1,4 @@
+import os
 import unittest
 from datetime import datetime, timezone
 from pathlib import Path
@@ -38,6 +39,7 @@ class TestFicTracDataInterface(DataInterfaceTestMixin):
         file_path=str(BEHAVIOR_DATA_PATH / "FicTrac" / "sample" / "sample-20230724_113055.dat"),
         configuration_file_path=str(BEHAVIOR_DATA_PATH / "FicTrac" / "sample" / "config.txt"),
     )
+    expected_temporal_alignment_keys = ("fictrac",)
 
     save_directory = OUTPUT_PATH
 
@@ -106,6 +108,7 @@ class TestFicTracDataInterfaceWithRadius(DataInterfaceTestMixin):
     interface_kwargs = dict(
         file_path=str(BEHAVIOR_DATA_PATH / "FicTrac" / "sample" / "sample-20230724_113055.dat"), radius=1.0
     )
+    expected_temporal_alignment_keys = ("fictrac",)
 
     save_directory = OUTPUT_PATH
 
@@ -169,6 +172,7 @@ class TestFicTracDataInterfaceWithRadius(DataInterfaceTestMixin):
         nwbfile.read_io.close()
 
 
+# TODO: remove in v0.13.0, when the deprecated alignment methods this class tests are removed
 class TestFicTracDataInterfaceTiming(TemporalAlignmentMixin):
     data_interface_cls = FicTracDataInterface
     interface_kwargs = dict(file_path=str(BEHAVIOR_DATA_PATH / "FicTrac" / "sample" / "sample-20230724_113055.dat"))
@@ -231,14 +235,24 @@ class TestMiniscopeInterface(DataInterfaceTestMixin):
         assert image_series.unit == "px"
         assert device == nwbfile.acquisition[self.image_series_name].device
         assert_array_equal(image_series.timestamps[:], self.timestamps)
-        assert_array_equal(image_series.external_file[:], self.external_files)
+        # Written relative to the NWB file, except on Windows CI where the data sits on another drive
+        output_directory = Path(nwbfile_path).resolve().parent
+        expected_external_files = []
+        for file in self.external_files:
+            video_path = Path(file).resolve()
+            if video_path.anchor == output_directory.anchor:
+                expected_external_files.append(Path(os.path.relpath(video_path, start=output_directory)).as_posix())
+            else:
+                expected_external_files.append(video_path.as_posix())
+        assert_array_equal(image_series.external_file[:], expected_external_files)
         nwbfile.read_io.close()
 
 
-class TestNeuralynxNvtInterface(DataInterfaceTestMixin, TemporalAlignmentMixin):
+class TestNeuralynxNvtInterface(DataInterfaceTestMixin):
     data_interface_cls = NeuralynxNvtInterface
     interface_kwargs = dict(file_path=str(BEHAVIOR_DATA_PATH / "neuralynx" / "test.nvt"))
     conversion_options = dict(add_angle=True)
+    expected_temporal_alignment_keys = ("neuralynx_nvt",)
     save_directory = OUTPUT_PATH
 
     def check_read_nwb(self, nwbfile_path: str):  # This is currently structured to be file-specific

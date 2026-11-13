@@ -1,5 +1,6 @@
 from typing import Iterable
 
+import numpy as np
 from spikeinterface import BaseRecording
 from tqdm import tqdm
 
@@ -84,7 +85,7 @@ class SpikeInterfaceRecordingDataChunkIterator(GenericDataChunkIterator):
 
         number_of_channels = self.recording.get_num_channels()
         number_of_frames = self.recording.get_num_samples(segment_index=self.segment_index)
-        dtype = self.recording.get_dtype()
+        dtype = self._get_dtype()  # The dtype written, which is wider than the recording's when scaled
 
         chunk_shape = get_electrical_series_chunk_shape(
             number_of_channels=number_of_channels, number_of_frames=number_of_frames, dtype=dtype, chunk_mb=chunk_mb
@@ -121,6 +122,10 @@ class SpikeInterfaceRecordingDataChunkIterator(GenericDataChunkIterator):
         )
 
     def _get_dtype(self):
+        # spikeinterface casts to float32 when it has gains and offsets to apply, and returns the
+        # traces untouched when it has none, so only the first case departs from the source dtype.
+        if self.return_in_uV and self.recording.has_scaleable_traces():
+            return np.dtype("float32")
         return self.recording.get_dtype()
 
     def _get_maxshape(self):

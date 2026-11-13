@@ -47,10 +47,14 @@ jobs:
       - name: Install neuroconv with minimal requirements
         run: pip install .[full,test]
 
-      - name: Install Wine (For Plexon2 Tests)
-        uses: ./.github/actions/install-wine
+      # Neo downloads the Plexon reader DLL into the home directory the first time a .pl2 file is
+      # opened, with a bare urlopen that has no timeout. Caching it keeps the test run off the network.
+      - name: Cache the Plexon2 reader DLL
+        if: runner.os == 'Windows'
+        uses: actions/cache@v5
         with:
-          os: ${{ runner.os }}
+          path: ~/.plexon_dlls_for_neo
+          key: plexon-dlls-${{ runner.os }}
 
       - name: Prepare data for tests
         uses: ./.github/actions/load-data
@@ -61,4 +65,4 @@ jobs:
 
 
       - name: Run doctests
-        run: pytest docs
+        run: pytest docs --numprocesses=0

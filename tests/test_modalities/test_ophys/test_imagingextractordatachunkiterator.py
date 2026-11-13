@@ -4,7 +4,7 @@ import numpy as np
 from hdmf.testing import TestCase
 from numpy.testing import assert_array_equal
 from parameterized import param, parameterized
-from roiextractors import VolumetricImagingExtractor
+from roiextractors import PoissonNoiseImagingExtractor
 from roiextractors.testing import generate_dummy_imaging_extractor
 
 from neuroconv.tools.roiextractors.imagingextractordatachunkiterator import (
@@ -188,14 +188,15 @@ def test_volumetric_default_chunking():
     height = 1024
     number_of_planes = 3
 
-    imaging_extractors = [
-        generate_dummy_imaging_extractor(num_samples=number_of_samples, num_rows=width, num_columns=height)
-        for _ in range(number_of_planes)
-    ]
-    volumetric_imaging_extractor = VolumetricImagingExtractor(imaging_extractors=imaging_extractors)
-    iterator = ImagingExtractorDataChunkIterator(imaging_extractor=volumetric_imaging_extractor)
+    imaging_extractor = PoissonNoiseImagingExtractor(
+        num_samples=number_of_samples,
+        num_rows=width,
+        num_columns=height,
+        num_planes=number_of_planes,
+    )
+    iterator = ImagingExtractorDataChunkIterator(imaging_extractor=imaging_extractor)
 
-    dtype = volumetric_imaging_extractor.get_dtype()
+    dtype = imaging_extractor.get_dtype()
     frame_size_bytes = width * height * dtype.itemsize
     expected_num_samples = int(10e6 / frame_size_bytes)
     assert iterator.chunk_shape == (expected_num_samples, width, height, 1)

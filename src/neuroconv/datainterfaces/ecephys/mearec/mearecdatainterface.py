@@ -1,5 +1,4 @@
 import json
-import warnings
 
 from pydantic import FilePath
 
@@ -34,10 +33,11 @@ class MEArecRecordingInterface(BaseRecordingExtractorInterface):
     def __init__(
         self,
         file_path: FilePath,
-        *args,  # TODO: change to * (keyword only) on or after August 2026
+        *,
         verbose: bool = False,
-        es_key: str = "ElectricalSeries",
+        es_key: str | None = None,
         metadata_key: str | None = None,
+        channels_to_exclude: list | None = None,
     ):
         """
         Load and prepare data for MEArec.
@@ -52,40 +52,23 @@ class MEArecRecordingInterface(BaseRecordingExtractorInterface):
         metadata_key : str, optional
             Key that indexes this interface's entries in the dict-based metadata. Defaults to
             ``"mearec_recording"``.
+        channels_to_exclude : list, optional
+            Channels to leave out, by the ids in ``channel_ids``. Every other channel is converted. A name that
+            is not one of the interface's channels raises.
         """
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "verbose",
-                "es_key",
-            ]
-            num_positional_args_before_args = 1  # file_path
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args + 1} were given. "
-                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
-                    "Please use keyword arguments."
-                )
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to MEArecRecordingInterface.__init__() is deprecated "
-                f"and will be removed on or after August 2026. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            verbose = positional_values.get("verbose", verbose)
-            es_key = positional_values.get("es_key", es_key)
+
+        if metadata_key is None:
+            metadata_key = "mearec_recording"
 
         super().__init__(file_path=file_path, verbose=verbose, es_key=es_key, metadata_key=metadata_key)
 
-        if metadata_key is None:
-            self.metadata_key = "mearec_recording"
+        # Read the simulation info while the recording is still the neo-based extractor, as `remove_channels`
+        # replaces it with a channel slice that does not carry the `neo_reader`
+        self._mearec_info = self.recording_extractor.neo_reader.raw_annotations["blocks"][0]["mearec_info"]
 
-    def get_metadata(self, *, use_new_metadata_format: bool = False) -> DeepDict:
+        self._exclude_channels(channels_to_exclude)
+
+    def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
 
         # TODO: improve ProbeInterface integration in our writing procedures
@@ -93,7 +76,7 @@ class MEArecRecordingInterface(BaseRecordingExtractorInterface):
 
         # There is a lot of device/electrode/waveform/sorting configuration information...
         # But no session start time...
-        mearec_info = self.recording_extractor.neo_reader.raw_annotations["blocks"][0]["mearec_info"]
+        mearec_info = self._mearec_info
 
         electrode_metadata = dict(mearec_info["electrodes"])
         device_name = electrode_metadata.pop(

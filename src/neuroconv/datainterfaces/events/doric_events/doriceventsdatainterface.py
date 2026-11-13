@@ -17,7 +17,7 @@ from ....tools.events import (
 from ....tools.signal_processing import (
     _condition_signal,
     _detect_events,
-    _frames_to_seconds,
+    _samples_to_seconds,
 )
 
 
@@ -107,6 +107,10 @@ class DoricEventsInterface(BaseEventsInterface):
         # same identifier. Validation covers structure and identifier resolution (rules 4 and 5) alike.
         _validate_detection_configuration(detection_configuration, self._available_signals)
         self._detection_configuration = detection_configuration
+
+    def get_event_type_source_ids(self) -> list[str]:
+        """The event types the configuration resolves to, read from nothing."""
+        return _get_event_type_source_ids(self._detection_configuration)
 
     @staticmethod
     def _get_available_signals(file_path) -> dict[str, dict]:
@@ -231,7 +235,7 @@ class DoricEventsInterface(BaseEventsInterface):
         # so only the name is seeded here. Derived from the configuration rather than from the events or
         # the plan, so metadata costs no data read and does not depend on a plan existing: whether a line
         # happened to fire does not change which event types the configuration asked for.
-        for event_type_source_id in _get_event_type_source_ids(self._detection_configuration):
+        for event_type_source_id in self.get_event_type_source_ids():
             metadata["Events"][self.metadata_key]["event_types"][event_type_source_id] = {
                 "event_name": event_type_source_id
             }
@@ -271,8 +275,13 @@ class DoricEventsInterface(BaseEventsInterface):
                     # A .doric digital line is already 0/1, so its cut is the derived midpoint, which
                     # lands between the two levels and hands detection back the same line.
                     conditioned = _condition_signal(data, spec["signal_conditioning"])
-                    onset_frames, offset_frames = _detect_events(conditioned, spec["detection"])
-                    onsets, durations = _frames_to_seconds(onset_frames, offset_frames, time)
+                    onset_samples, offset_samples = _detect_events(conditioned, spec["detection"])
+                    onsets, durations = _samples_to_seconds(
+                        onset_samples=onset_samples,
+                        offset_samples=offset_samples,
+                        timestamps=time,
+                        event_time_convention=spec.get("event_time_convention", "sample_after_transition"),
+                    )
                     events_data_dict[event_type_source_id] = _EventsData(
                         event_type_source_id=event_type_source_id,
                         timestamps=onsets,

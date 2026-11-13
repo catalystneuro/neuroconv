@@ -22,14 +22,17 @@ Each row represents one time interval (e.g., a trial, epoch, or event), and colu
 
 **Required Columns:**
 
-- ``start_time``: Start time of each interval in seconds (REQUIRED)
+- ``start_time``: Start time of each interval in seconds (REQUIRED). If your file names it differently
+  (e.g., ``start``), pass that name to the interface as ``start_time_column``, and the stop column's name as
+  ``stop_time_column``.
 
 **Optional Columns:**
 
-- ``stop_time``: Stop time of each interval in seconds
+- ``stop_time``: Stop time of each interval in seconds. If your file names it differently, pass that name as
+  ``stop_time_column``.
 
-  - If not provided, it will be automatically generated from the next interval's ``start_time``
-  - The last interval's ``stop_time`` will be NaN if not provided
+  - If the file has no stop times, pass ``stop_time_from_next_start=True``: each interval then stops at the next
+    interval's ``start_time``, and the last interval's ``stop_time`` is NaN
 
 - **Any additional columns**: Custom metadata for each interval (e.g., trial_type, condition, reward, correct, etc.)
 
@@ -68,7 +71,7 @@ The following example demonstrates basic conversion of a CSV file containing int
     >>> # Extract metadata from the source file
     >>> metadata = interface.get_metadata()
     >>> # Add the required time zone information to the conversion
-    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
+    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
     >>> metadata["NWBFile"] = dict(session_start_time=session_start_time)
     >>> # Add subject information (required for DANDI upload)
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
@@ -131,8 +134,7 @@ The interface provides additional options for customizing how CSV files are read
 
 You can pass additional parameters to pandas ``read_csv()`` function using the ``read_kwargs`` parameter,
 which is useful for handling CSV files with different delimiters, encodings, or other special formatting.
-You can also rename columns using the ``column_name_mapping`` parameter, which is especially useful for
-CSVs with non-standard column names (e.g., ``start`` instead of ``start_time``):
+You can also rename columns using the ``column_name_mapping`` parameter:
 
 .. code-block:: python
 
@@ -152,7 +154,7 @@ CSVs with non-standard column names (e.g., ``start`` instead of ``start_time``):
     ... )
     >>>
     >>> metadata = interface.get_metadata()
-    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
+    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
     >>> metadata["NWBFile"] = dict(session_start_time=session_start_time)
     >>> # Add subject information (required for DANDI upload)
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")

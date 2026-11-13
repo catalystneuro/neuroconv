@@ -4,7 +4,7 @@ from datetime import datetime
 
 import pytest
 from numpy.testing import assert_array_equal
-from pynwb import NWBHDF5IO, read_nwb
+from pynwb import read_nwb
 
 from neuroconv import NWBConverter
 from neuroconv.tools.nwb_helpers import get_existing_backend_configuration
@@ -20,21 +20,26 @@ def written_dataset_settings(nwbfile) -> dict:
     }
 
 
-def test_base_data_interface_append_on_disk(tmp_path):
-    """Test that append_on_disk_nwbfile works for BaseDataInterface.run_conversion."""
-    nwbfile_path = tmp_path / "test_append.nwb"
+@pytest.mark.parametrize("backend", ["hdf5", "zarr"])
+def test_base_data_interface_append_on_disk(tmp_path, backend):
+    """Test that append_on_disk_nwbfile works for BaseDataInterface.run_conversion.
+
+    The append call names no backend, so it only reaches the data when the backend is read off the file.
+    """
+    nwbfile_path = tmp_path / ("test_append.nwb" if backend == "hdf5" else "test_append.nwb.zarr")
+    expected_io_class = "NWBHDF5IO" if backend == "hdf5" else "NWBZarrIO"
 
     # First write - create the file with first TimeSeries
     interface1 = MockTimeSeriesInterface(num_channels=3, duration=0.1, metadata_key="TimeSeriesFirst")
     metadata1 = interface1.get_metadata()
     metadata1["TimeSeries"]["TimeSeriesFirst"]["name"] = "TimeSeriesFirst"
-    interface1.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata1)
+    interface1.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata1, backend=backend)
 
     # Verify first interface data was written
-    with NWBHDF5IO(nwbfile_path, "r") as io:
-        nwbfile = io.read()
-        assert "TimeSeriesFirst" in nwbfile.acquisition
-        assert nwbfile.acquisition["TimeSeriesFirst"].data.shape[1] == 3
+    nwbfile = read_nwb(nwbfile_path)
+    assert "TimeSeriesFirst" in nwbfile.acquisition
+    assert nwbfile.acquisition["TimeSeriesFirst"].data.shape[1] == 3
+    nwbfile.read_io.close()
 
     # Append to existing file with second interface (another TimeSeries)
     interface2 = MockTimeSeriesInterface(num_channels=2, duration=0.1, metadata_key="TimeSeriesSecond")
@@ -42,15 +47,101 @@ def test_base_data_interface_append_on_disk(tmp_path):
     metadata2["TimeSeries"]["TimeSeriesSecond"]["name"] = "TimeSeriesSecond"
     interface2.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata2, append_on_disk_nwbfile=True)
 
-    # Verify both interfaces' data exists
-    with NWBHDF5IO(nwbfile_path, "r") as io:
-        nwbfile = io.read()
-        # First TimeSeries
-        assert "TimeSeriesFirst" in nwbfile.acquisition
-        assert nwbfile.acquisition["TimeSeriesFirst"].data.shape[1] == 3
-        # Second TimeSeries
-        assert "TimeSeriesSecond" in nwbfile.acquisition
-        assert nwbfile.acquisition["TimeSeriesSecond"].data.shape[1] == 2
+    # Verify both interfaces' data exists, in a file still written with the backend it started with
+    nwbfile = read_nwb(nwbfile_path)
+    assert type(nwbfile.read_io).__name__ == expected_io_class
+    # First TimeSeries
+    assert "TimeSeriesFirst" in nwbfile.acquisition
+    assert nwbfile.acquisition["TimeSeriesFirst"].data.shape[1] == 3
+    # Second TimeSeries
+    assert "TimeSeriesSecond" in nwbfile.acquisition
+    assert nwbfile.acquisition["TimeSeriesSecond"].data.shape[1] == 2
+    nwbfile.read_io.close()
+
+
+class TestBackendConfigurationRequiresTheFileItDescribes:
+    """`run_conversion` adds this conversion's data after a caller could have built a configuration.
+
+    Both combinations below reach `configure_backend` with a configuration derived from a file that has
+    since gained the conversion's own datasets, which no configuration can describe.
+    """
+
+    @pytest.fixture
+    def interface(self):
+        return MockTimeSeriesInterface(num_channels=3, duration=0.1)
+
+    @pytest.fixture
+    def converter(self):
+        class TestConverter(NWBConverter):
+            data_interface_classes = dict(Test=MockTimeSeriesInterface)
+
+        return TestConverter(source_data=dict(Test=dict(num_channels=3, duration=0.1)))
+
+    def test_interface_rejects_an_in_memory_nwbfile(self, interface, tmp_path):
+        nwbfile_path = tmp_path / "interface_in_memory.nwb"
+        metadata = interface.get_metadata()
+        nwbfile = interface.create_nwbfile(metadata=metadata)
+        backend_configuration = interface.get_default_backend_configuration(nwbfile=nwbfile, backend="hdf5")
+
+        with pytest.raises(ValueError, match="while also providing an in-memory NWBFile"):
+            interface.run_conversion(
+                nwbfile_path=nwbfile_path,
+                nwbfile=nwbfile,
+                metadata=metadata,
+                backend_configuration=backend_configuration,
+            )
+
+        assert not nwbfile_path.exists()
+
+    def test_interface_rejects_appending_on_disk(self, interface, tmp_path):
+        nwbfile_path = tmp_path / "interface_append.nwb"
+        metadata = interface.get_metadata()
+        interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+        backend_configuration = interface.get_default_backend_configuration(
+            nwbfile=interface.create_nwbfile(metadata=metadata), backend="hdf5"
+        )
+
+        with pytest.raises(ValueError, match="while also appending to an existing file on disk"):
+            interface.run_conversion(
+                nwbfile_path=nwbfile_path,
+                metadata=metadata,
+                backend_configuration=backend_configuration,
+                append_on_disk_nwbfile=True,
+            )
+
+    def test_converter_rejects_an_in_memory_nwbfile(self, converter, tmp_path):
+        nwbfile_path = tmp_path / "converter_in_memory.nwb"
+        metadata = converter.get_metadata()
+        metadata["NWBFile"].update(session_start_time=datetime(2020, 1, 1).astimezone())
+        nwbfile = converter.create_nwbfile(metadata=metadata)
+        backend_configuration = converter.get_default_backend_configuration(nwbfile=nwbfile, backend="hdf5")
+
+        with pytest.raises(ValueError, match="while also providing an in-memory NWBFile"):
+            converter.run_conversion(
+                nwbfile_path=nwbfile_path,
+                nwbfile=nwbfile,
+                metadata=metadata,
+                backend_configuration=backend_configuration,
+            )
+
+        assert not nwbfile_path.exists()
+
+    def test_converter_rejects_appending_on_disk(self, converter, tmp_path):
+        nwbfile_path = tmp_path / "converter_append.nwb"
+        metadata = converter.get_metadata()
+        metadata["NWBFile"].update(session_start_time=datetime(2020, 1, 1).astimezone())
+        converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
+        backend_configuration = converter.get_default_backend_configuration(
+            nwbfile=converter.create_nwbfile(metadata=metadata), backend="hdf5"
+        )
+
+        with pytest.raises(ValueError, match="while also appending to an existing file on disk"):
+            converter.run_conversion(
+                nwbfile_path=nwbfile_path,
+                metadata=metadata,
+                backend_configuration=backend_configuration,
+                append_on_disk_nwbfile=True,
+            )
 
 
 @pytest.mark.parametrize("backend", ["hdf5", "zarr"])

@@ -113,6 +113,16 @@ def test_get_json_schema_from_method_signature_exclude():
     assert test_json_schema == expected_json_schema
 
 
+def test_get_json_schema_from_method_signature_leaves_exclude_alone():
+    def basic_method(integer_to_keep: int, floating_to_ignore: float):
+        pass
+
+    test_exclude = ["floating_to_ignore"]
+    get_json_schema_from_method_signature(method=basic_method, exclude=test_exclude)
+
+    assert test_exclude == ["floating_to_ignore"]
+
+
 def test_get_json_schema_from_method_signature_init():
     """Test that 'self' is automatically skipped."""
 
@@ -217,13 +227,21 @@ def test_get_json_schema_from_example_data_interface():
                 "description": "Path to the folder of .mpx files.",
             },
             "verbose": {"default": False, "type": "boolean", "description": "Allows verbose.\nDefault is False."},
-            "es_key": {"default": "ElectricalSeries", "type": "string"},
+            "es_key": {"anyOf": [{"type": "string"}, {"type": "null"}], "default": None},
             "metadata_key": {
                 "anyOf": [{"type": "string"}, {"type": "null"}],
                 "default": None,
                 "description": (
                     "Key that indexes this interface's entries in the dict-based metadata. Defaults to\n"
                     '``"alpha_omega_recording"``.'
+                ),
+            },
+            "channels_to_exclude": {
+                "anyOf": [{"items": {}, "type": "array"}, {"type": "null"}],
+                "default": None,
+                "description": (
+                    "Channels to leave out, by the ids in ``channel_ids``. Every other channel is converted. A name "
+                    "that\nis not one of the interface's channels raises."
                 ),
             },
         },
@@ -339,13 +357,13 @@ def test_get_json_schema_from_method_signature_docstring_warning():
     with pytest.warns(expected_warning=UserWarning) as warning_info:
         test_json_schema = get_json_schema_from_method_signature(method=method_with_typo_in_docstring)
 
-    assert len(warning_info) == 1
-
     expected_warning_message = (
         "The argument_name 'integ' from the docstring of method 'method_with_typo_in_docstring' does not occur in "
         "the signature, possibly due to a typo."
     )
-    assert warning_info[0].message.args[0] == expected_warning_message
+    # pytest.warns records every warning raised in the block, including unrelated ones from other tests
+    warning_messages = [str(record.message) for record in warning_info]
+    assert warning_messages.count(expected_warning_message) == 1
 
     expected_json_schema = {
         "properties": {"integer": {"type": "integer"}},
@@ -378,13 +396,12 @@ def test_get_json_schema_from_method_signature_docstring_warning_with_exclusions
             method=method_with_typo_in_docstring_and_exclusions, exclude=["nwbfile", "metadata"]
         )
 
-    assert len(warning_info) == 1
-
     expected_warning_message = (
         "The argument_name 'integ' from the docstring of method 'method_with_typo_in_docstring_and_exclusions' "
         "does not occur in the signature, possibly due to a typo."
     )
-    assert warning_info[0].message.args[0] == expected_warning_message
+    warning_messages = [str(record.message) for record in warning_info]
+    assert warning_messages.count(expected_warning_message) == 1
 
     expected_json_schema = {
         "properties": {"integer": {"type": "integer"}},
@@ -412,13 +429,12 @@ def test_get_json_schema_from_method_signature_docstring_warning_from_bound_meth
     with pytest.warns(expected_warning=UserWarning) as warning_info:
         test_json_schema = get_json_schema_from_method_signature(method=TestClass.test_bound_method)
 
-    assert len(warning_info) == 1
-
     expected_warning_message = (
         "The argument_name 'integ' from the docstring of method 'TestClass.test_bound_method' does not occur in the "
         "signature, possibly due to a typo."
     )
-    assert warning_info[0].message.args[0] == expected_warning_message
+    warning_messages = [str(record.message) for record in warning_info]
+    assert warning_messages.count(expected_warning_message) == 1
 
     expected_json_schema = {
         "properties": {"integer": {"type": "integer"}},
@@ -447,13 +463,12 @@ def test_get_json_schema_from_method_signature_docstring_warning_from_class_meth
     with pytest.warns(expected_warning=UserWarning) as warning_info:
         test_json_schema = get_json_schema_from_method_signature(method=TestClass.test_class_method)
 
-    assert len(warning_info) == 1
-
     expected_warning_message = (
         "The argument_name 'integ' from the docstring of method 'TestClass.test_class_method' does not occur in the "
         "signature, possibly due to a typo."
     )
-    assert warning_info[0].message.args[0] == expected_warning_message
+    warning_messages = [str(record.message) for record in warning_info]
+    assert warning_messages.count(expected_warning_message) == 1
 
     expected_json_schema = {
         "properties": {"integer": {"type": "integer"}},

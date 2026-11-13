@@ -2,7 +2,7 @@ import shutil
 import tempfile
 from datetime import datetime
 from pathlib import Path
-from warnings import warn
+from warnings import catch_warnings, simplefilter, warn
 
 import pytest
 from pynwb import read_nwb
@@ -52,6 +52,16 @@ def test_legacy_user_config_device_list_raises(tmp_path, device_kind):
     config_file_path.write_text(json.dumps(user_config), encoding="utf-8")
 
     with pytest.raises(NotImplementedError, match=f"devices\\[{device_kind}\\] as a list of devices"):
+        MiniscopeConverter(folder_path=folder_path, user_configuration_file_path=config_file_path)
+
+
+def test_relocated_data_root_does_not_warn():
+    """The explicit data root, not the acquisition machine dataDirectory, determines discovery."""
+    folder_path = OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "behavior_camera_with_config"
+    config_file_path = folder_path / "UserConfigFile.json"
+
+    with catch_warnings():
+        simplefilter("error", UserWarning)
         MiniscopeConverter(folder_path=folder_path, user_configuration_file_path=config_file_path)
 
 
@@ -409,7 +419,15 @@ class TestMiniscopeConverterLegacyTyeLabFormat:
         assert self.photon_series_name in nwbfile.acquisition
         assert isinstance(nwbfile.acquisition[self.photon_series_name], OnePhotonSeries)
         assert self.image_series_name in nwbfile.acquisition
-        assert isinstance(nwbfile.acquisition[self.image_series_name], ImageSeries)
+        image_series = nwbfile.acquisition[self.image_series_name]
+        assert isinstance(image_series, ImageSeries)
+        # Written relative to the NWB file, except on Windows CI where the data sits on another drive
+        output_directory = Path(nwbfile_path).resolve().parent
+        for file_path in image_series.external_file:
+            if self.folder_path.resolve().anchor == output_directory.anchor:
+                assert not Path(file_path).is_absolute()
+            else:
+                assert Path(file_path).is_absolute() and "\\" not in file_path
 
     def test_converter_metadata(self):
         """Test that metadata is correctly extracted from legacy format."""

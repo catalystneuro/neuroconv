@@ -130,7 +130,7 @@ class SortedSpikeGLXConverter(_SortedConverterPipe):
 
             # Add device information based on the recording interface's device metadata
             # Extract device name from the recording interface's metadata following SpikeGLX conventions
-            recording_interface_metadata = recording_interface.get_metadata()
+            recording_interface_metadata = recording_interface.get_metadata(use_new_metadata_format=False)
             device_name = recording_interface_metadata["Ecephys"]["Device"][0]["name"]  # e.g., "NeuropixelsImec0"
             device_values = [device_name] * len(sorting_interface.units_ids)
             sorting_interface.sorting_extractor.set_property(key="device", values=device_values)

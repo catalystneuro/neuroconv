@@ -16,12 +16,12 @@ _RESPONSE_SERIES_TYPE = "FiberPhotometryResponseSeries"
 def _series_by_name(nwbfile) -> dict:
     """Return every ``FiberPhotometryResponseSeries`` in the file, keyed by name.
 
-    Searches ``nwbfile.objects`` rather than ``nwbfile.acquisition`` because GuPPy accepts a series
-    anywhere in the file, including inside a processing module.
+    Walks the whole file rather than ``nwbfile.acquisition`` because GuPPy accepts a series anywhere in
+    the file, including inside a processing module.
     """
     return {
         neurodata_object.name: neurodata_object
-        for neurodata_object in nwbfile.objects.values()
+        for neurodata_object in nwbfile.all_children()
         if getattr(neurodata_object, "neurodata_type", None) == _RESPONSE_SERIES_TYPE
     }
 

@@ -5,7 +5,7 @@ of small ABF files, each shrunk by structure-preserving truncation so the header
 are intact while the samples are cut). See that folder's READMEs for what each file exercises.
 
 The interface is single-electrode: one instance writes one electrode's response (and an optional paired
-stimulus) plus one intracellular-recordings row per sweep, each row tagged with the run's ``sequence`` and
+stimulus) plus one intracellular-recordings row per sweep, each row tagged with the run's ``protocol_run`` and
 ``stimulus_type`` (the run information in denormalized form). Each ``DataInterfaceTestMixin`` subclass below
 targets a distinct code path (timing model, clamp-mode series type, the two stimulus sources). The interface
 deliberately stops at the per-sweep rows; the upper icephys hierarchy (simultaneous / sequential recordings)
@@ -46,6 +46,7 @@ class TestAxonMultiSweepVoltageClampCommand(DataInterfaceTestMixin):
     the core single-series + table path with the irregular-timing (timestamps) branch."""
 
     data_interface_cls = AxonIntracellularInterface
+    expected_temporal_alignment_keys = ("user_list_IN0", "user_list_IN0_stimulus")
     file_path = ICEPHYS_DATA_PATH / "read_raw_protocol" / "user_list.abf"
     response_channel_name = "IN0"
     interface_kwargs = dict(
@@ -139,9 +140,9 @@ class TestAxonMultiSweepVoltageClampCommand(DataInterfaceTestMixin):
         assert sweep_start_sample_indices == [stimuli[i].idx_start for i in range(len(intracellular_recordings))]
         assert samples_per_sweep == [stimuli[i].count for i in range(len(intracellular_recordings))]
 
-        # Every row carries the run's `sequence` (the file stem; one run per file, so all rows share it) and
+        # Every row carries the run's `protocol_run` (the file stem; one run per file, so all rows share it) and
         # `stimulus_type` (here the protocol name from the header) -- the run information in denormalized form.
-        sequences = [intracellular_recordings["sequence"][i] for i in range(len(intracellular_recordings))]
+        sequences = [intracellular_recordings["protocol_run"][i] for i in range(len(intracellular_recordings))]
         assert set(sequences) == {"user_list"}
         stimulus_types = [intracellular_recordings["stimulus_type"][i] for i in range(len(intracellular_recordings))]
         assert set(stimulus_types) == {"WT_act with ramp_reversed_env"}
@@ -156,6 +157,7 @@ class TestAxonSingleSweepABFv1(DataInterfaceTestMixin):
     """
 
     data_interface_cls = AxonIntracellularInterface
+    expected_temporal_alignment_keys = ("abf1_gapfree_bogus_episode_count_10Vm",)
     file_path = ICEPHYS_DATA_PATH / "abf1_gapfree_bogus_episode_count.abf"
     response_channel_name = "10Vm"
     interface_kwargs = dict(
@@ -176,25 +178,15 @@ class TestAxonSingleSweepABFv1(DataInterfaceTestMixin):
         import neo
         from packaging.version import Version
 
-        if Version(neo.__version__).release >= (0, 15):
+        if Version(neo.__version__).release >= (0, 14, 6):
             expected_session_start_time = datetime(2005, 6, 11, 14, 15, 0, 711999)
         else:
             expected_session_start_time = datetime(1900, 1, 1, 14, 15, 0, 711999)
         assert metadata["NWBFile"]["session_start_time"] == expected_session_start_time
 
-        # ABF v1 has no telegraph block, so the amplifier model is unknown and the device key is the fallback.
-        device_metadata_key = "amplifier"
         electrode_metadata_key = "abf1_gapfree_bogus_episode_count_10Vm"
         electrode_name_suffix = "Abf1GapfreeBogusEpisodeCount10vm"
 
-        # The model being unknown, the description stays generic and the name is the generic one (NWB requires a
-        # name, so it is not a made-up model).
-        expected_device_metadata = {
-            device_metadata_key: {
-                "name": "AxonAmplifier",
-                "description": "Axon Instruments amplifier.",
-            }
-        }
         # No stimulus configured -> exactly the response entry, no `_stimulus`.
         expected_series_metadata = {
             electrode_metadata_key: {
@@ -204,7 +196,10 @@ class TestAxonSingleSweepABFv1(DataInterfaceTestMixin):
             }
         }
 
-        assert metadata["Devices"] == expected_device_metadata
+        # ABF v1 has no telegraph block, so nothing identifies the amplifier and no device is reported. The
+        # electrode links none either, and the write path supplies its placeholder.
+        assert "Devices" not in metadata
+        assert "device_metadata_key" not in metadata["Icephys"]["IntracellularElectrodes"][electrode_metadata_key]
         assert metadata["Icephys"]["PatchClampSeries"] == expected_series_metadata
 
     def check_read_nwb(self, nwbfile_path: str):
@@ -213,8 +208,11 @@ class TestAxonSingleSweepABFv1(DataInterfaceTestMixin):
         assert response.rate == 1000.0  # single segment -> uniform rate in Hz, not timestamps
         assert response.timestamps is None
         assert len(nwbfile.stimulus) == 0
-        # No telegraph model -> the device carries the generic name.
-        assert "AxonAmplifier" in nwbfile.devices
+        # No telegraph model -> the interface named no amplifier, so the electrode is on the placeholder device.
+        # NWB requires the electrode to link one, so the link the metadata no longer states is still written.
+        assert list(nwbfile.devices) == ["PlaceholderIntracellularDevice"]
+        electrode = nwbfile.icephys_electrodes["IntracellularElectrodeAbf1GapfreeBogusEpisodeCount10vm"]
+        assert electrode.device is nwbfile.devices["PlaceholderIntracellularDevice"]
         intracellular_recordings = nwbfile.intracellular_recordings
         assert len(intracellular_recordings) == 1
         # Gap-free acquisition (operation mode 3) -> the `stimulus_type` column is the "gap-free" label.
@@ -227,6 +225,7 @@ class TestAxonVoltageClampCommand(DataInterfaceTestMixin):
     VoltageClampSeries + VoltageClampStimulusSeries with the regular-timing (rate) branch."""
 
     data_interface_cls = AxonIntracellularInterface
+    expected_temporal_alignment_keys = ("step_IN0", "step_IN0_stimulus")
     file_path = ICEPHYS_DATA_PATH / "read_raw_protocol" / "step.abf"
     response_channel_name = "IN0"
     interface_kwargs = dict(
@@ -290,7 +289,7 @@ class TestAxonVoltageClampCommand(DataInterfaceTestMixin):
         responses = intracellular_recordings["responses"]["response"]
         assert sweep_start_sample_indices == [responses[i].idx_start for i in range(len(intracellular_recordings))]
         assert samples_per_sweep == [responses[i].count for i in range(len(intracellular_recordings))]
-        sequences = [intracellular_recordings["sequence"][i] for i in range(len(intracellular_recordings))]
+        sequences = [intracellular_recordings["protocol_run"][i] for i in range(len(intracellular_recordings))]
         assert set(sequences) == {"step"}
         stimulus_types = [intracellular_recordings["stimulus_type"][i] for i in range(len(intracellular_recordings))]
         assert set(stimulus_types) == {"0201 memtest"}
@@ -301,6 +300,7 @@ class TestAxonIZero(DataInterfaceTestMixin):
     """I=0 mode: IZeroClampSeries and no stimulus."""
 
     data_interface_cls = AxonIntracellularInterface
+    expected_temporal_alignment_keys = ("abf2_zero_current_clamp_IN0",)
     file_path = ICEPHYS_DATA_PATH / "abf2_zero_current_clamp.abf"
     response_channel_name = "IN0"
     interface_kwargs = dict(
@@ -357,7 +357,7 @@ class TestAxonIZero(DataInterfaceTestMixin):
         responses = intracellular_recordings["responses"]["response"]
         assert sweep_start_sample_indices == [responses[i].idx_start for i in range(len(intracellular_recordings))]
         assert samples_per_sweep == [responses[i].count for i in range(len(intracellular_recordings))]
-        sequences = [intracellular_recordings["sequence"][i] for i in range(len(intracellular_recordings))]
+        sequences = [intracellular_recordings["protocol_run"][i] for i in range(len(intracellular_recordings))]
         assert set(sequences) == {"abf2_zero_current_clamp"}
         stimulus_types = [intracellular_recordings["stimulus_type"][i] for i in range(len(intracellular_recordings))]
         assert set(stimulus_types) == {"Simple Voltage Clamp Protocol"}
@@ -369,6 +369,7 @@ class TestAxonRecordedMonitorStimulus(DataInterfaceTestMixin):
     reconstructed command: CurrentClampSeries + CurrentClampStimulusSeries from a recorded channel."""
 
     data_interface_cls = AxonIntracellularInterface
+    expected_temporal_alignment_keys = ("current_clamp_IN0", "current_clamp_IN0_stimulus")
     file_path = ICEPHYS_DATA_PATH / "dual_patch_pairs" / "current_clamp.abf"
     response_channel_name = "IN0"
     interface_kwargs = dict(
