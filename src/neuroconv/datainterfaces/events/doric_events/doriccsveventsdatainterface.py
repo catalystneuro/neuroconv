@@ -77,13 +77,8 @@ class DoricCSVEventsInterface(BaseEventsInterface):
         verbose : bool, optional
             Whether to print status messages, default = False.
         """
-        super().__init__(
-            file_path=file_path,
-            detection_configuration=detection_configuration,
-            verbose=verbose,
-        )
         self.metadata_key = metadata_key or "doric_events"
-        self._time_column, digital_columns = self._discover_columns(self.source_data["file_path"])
+        self._time_column, digital_columns = self._discover_columns(file_path)
         # available_signals: signal_source_id (the column name, e.g. "DI/O-1") -> its {kind, column}
         # descriptor. The header group "Digital I/O" makes every discovered signal a digital line, settled
         # structurally with no data read, which is what lets the validator reject a bit carve on one.
@@ -104,6 +99,11 @@ class DoricCSVEventsInterface(BaseEventsInterface):
         # same identifier. Validation covers structure and identifier resolution (rules 4 and 5) alike.
         _validate_detection_configuration(detection_configuration, self._available_signals)
         self._detection_configuration = detection_configuration
+        super().__init__(
+            file_path=file_path,
+            detection_configuration=detection_configuration,
+            verbose=verbose,
+        )
 
     def get_event_type_source_ids(self) -> list[str]:
         """The event types the configuration resolves to, read from nothing."""
