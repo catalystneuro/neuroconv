@@ -7,25 +7,21 @@ from ....utils import DeepDict, get_json_schema_from_method_signature
 
 class OpenEphysLegacyAnalogInterface(BaseRecordingAsTimeSeriesInterface):
     """
-    Data interface for the analog channels of a legacy Open Ephys recording (.continuous files).
+    Data interface for the analog inputs of the acquisition board in a legacy Open Ephys recording (.continuous files).
 
-    A legacy recording keeps two kinds of analog channels next to the electrodes, which python-neo reads as their
-    own streams: the analog inputs of the acquisition board (``ADC1`` to ``ADC8``, stream ``"Signals ADC"``) and
-    the auxiliary inputs of each headstage, usually its accelerometer (``AUX1`` to ``AUX3`` per headstage, stream
-    ``"Signals AUX"``). Each stream is written as one ``TimeSeries``. For the electrode channels use
+    A legacy recording keeps the analog inputs of the acquisition board (``ADC1`` to ``ADC8``) next to the
+    electrodes, and python-neo reads them as their own stream, ``"Signals ADC"``. They are written as one
+    ``TimeSeries``. For the electrode channels use
     :py:class:`~neuroconv.datainterfaces.OpenEphysLegacyRecordingInterface`.
     """
 
     display_name = "OpenEphys Legacy Analog Recording"
-    keywords = ("OpenEphys", "analog", "ADC", "AUX")
+    keywords = ("OpenEphys", "analog", "ADC")
     associated_suffixes = (".continuous", ".openephys", ".xml")
-    info = "Interface for the analog and auxiliary channels of legacy OpenEphys recordings."
+    info = "Interface for the analog inputs of the acquisition board in legacy OpenEphys recordings."
 
-    # The analog streams python-neo reads from a legacy folder, with the name of the series each is written as
-    _stream_name_to_time_series_name = {
-        "Signals ADC": "TimeSeriesOpenEphysLegacyADC",
-        "Signals AUX": "TimeSeriesOpenEphysLegacyAUX",
-    }
+    # The stream python-neo reads the analog inputs of the acquisition board into
+    _stream_name = "Signals ADC"
 
     @classmethod
     def get_source_schema(cls) -> dict:
@@ -40,29 +36,25 @@ class OpenEphysLegacyAnalogInterface(BaseRecordingAsTimeSeriesInterface):
         self,
         folder_path: DirectoryPath,
         *,
-        stream_name: str | None = None,
         block_index: int | None = None,
         verbose: bool = False,
         metadata_key: str | None = None,
         channels_to_include: list[str] | None = None,
     ):
         """
-        Read the analog channels of a legacy Open Ephys recording.
+        Read the analog inputs of the acquisition board in a legacy Open Ephys recording.
 
         Parameters
         ----------
         folder_path : DirectoryPath
             Path to the folder holding the ``.continuous`` files.
-        stream_name : {"Signals ADC", "Signals AUX"}, optional
-            The analog stream to read. Only required when the folder holds both.
         block_index : int, optional, default: None
             The index of the block to extract from the data.
         verbose : bool, default: False
             Verbose output.
         metadata_key : str, optional
             Key for the TimeSeries metadata in the metadata dictionary. This addresses the entry; the written
-            object's name is the entry's ``name`` field. Defaults to ``"open_ephys_legacy_adc"`` or
-            ``"open_ephys_legacy_aux"``, after the stream, so one interface per stream can share a conversion.
+            object's name is the entry's ``name`` field. Defaults to ``"open_ephys_legacy_adc"``.
         channels_to_include : list of str, optional
             Channels to convert, by the names in ``get_channel_names()`` (such as ``"ADC1"``), written in the order
             listed. Every channel is converted when omitted. A name that is not one of the interface's channels
@@ -73,29 +65,16 @@ class OpenEphysLegacyAnalogInterface(BaseRecordingAsTimeSeriesInterface):
         )
 
         available_stream_names, _ = OpenEphysLegacyRecordingExtractor.get_streams(folder_path=folder_path)
-        analog_stream_names = [name for name in available_stream_names if name in self._stream_name_to_time_series_name]
-        if not analog_stream_names:
+        if self._stream_name not in available_stream_names:
             raise ValueError(
-                f"The folder '{folder_path}' holds no analog streams. Its streams are {available_stream_names}."
-            )
-        if stream_name is None:
-            if len(analog_stream_names) > 1:
-                raise ValueError(
-                    f"The folder holds more than one analog stream, {analog_stream_names}. "
-                    "Choose one with the `stream_name` argument."
-                )
-            stream_name = analog_stream_names[0]
-        elif stream_name not in analog_stream_names:
-            raise ValueError(
-                f"The stream '{stream_name}' is not an analog stream of this folder. Its analog streams are "
-                f"{analog_stream_names}. For the electrode channels use `OpenEphysLegacyRecordingInterface`."
+                f"The folder '{folder_path}' holds no analog inputs of the acquisition board (stream "
+                f"'{self._stream_name}'). Its streams are {available_stream_names}."
             )
 
-        self._stream_name = stream_name
-        self.metadata_key = metadata_key or f"open_ephys_legacy_{stream_name.split()[-1].lower()}"
+        self.metadata_key = metadata_key or "open_ephys_legacy_adc"
         self.recording_extractor = OpenEphysLegacyRecordingExtractor(
             folder_path=folder_path,
-            stream_name=stream_name,
+            stream_name=self._stream_name,
             block_index=block_index,
             use_names_as_ids=True,
         )
@@ -105,7 +84,6 @@ class OpenEphysLegacyAnalogInterface(BaseRecordingAsTimeSeriesInterface):
 
         super().__init__(
             folder_path=folder_path,
-            stream_name=stream_name,
             block_index=block_index,
             verbose=verbose,
             metadata_key=metadata_key,
@@ -122,7 +100,7 @@ class OpenEphysLegacyAnalogInterface(BaseRecordingAsTimeSeriesInterface):
 
         channel_names = [str(channel_name) for channel_name in self.get_channel_names()]
         metadata["TimeSeries"][self.metadata_key] = dict(
-            name=self._stream_name_to_time_series_name[self._stream_name],
+            name="TimeSeriesOpenEphysLegacyADC",
             description=(
                 f"Analog data acquired with the OpenEphys legacy format, stream '{self._stream_name}'. "
                 f"Channels are {channel_names} in that order."
