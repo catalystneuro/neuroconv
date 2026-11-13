@@ -565,6 +565,22 @@ def _get_segmentation_table_entry(*, metadata: dict, metadata_key: str) -> dict 
     return segmentation_tables[table_metadata_key]
 
 
+_SEGMENTATION_NAME_DESCRIPTION = (
+    "Name identifying the segmentation output that contains this ROI: the set of ROIs produced by a particular "
+    "segmentation run or curation step. All ROIs from that output share this value."
+)
+
+
+def _get_roi_identities(plane_segmentation: PlaneSegmentation) -> list[tuple[str, str]]:
+    """Return the ``(segmentation_name, roi_name)`` of each row, reading a table without the column as unnamed."""
+    roi_names = list(plane_segmentation["roi_name"][:])
+    if "segmentation_name" in plane_segmentation.colnames:
+        segmentation_names = list(plane_segmentation["segmentation_name"][:])
+    else:
+        segmentation_names = [""] * len(roi_names)
+    return list(zip(segmentation_names, roi_names))
+
+
 def _append_rois_to_plane_segmentation(
     *,
     segmentation_extractor: SegmentationExtractor,
@@ -573,13 +589,17 @@ def _append_rois_to_plane_segmentation(
     mask_type: str,
     image_or_pixel_masks,
     metadata_key: str,
+    segmentation_name: str,
 ) -> None:
     """Append a segmentation's ROIs to a PlaneSegmentation that another segmentation already wrote.
 
-    ROIs are matched to the rows already in the table by name. A new name is appended with an id after the
-    table's last one. A name already in the table reuses that row when the mask and the ROI properties are
-    equal, which is how segmentations of the same ROIs, such as two channels, write their traces against one
-    table, and raises when either differs.
+    ROIs are matched to the rows already in the table by ``(segmentation_name, roi_name)``. A new pair is
+    appended with an id after the table's last one. A pair already in the table reuses that row, which is how
+    segmentations of the same ROIs, such as two channels, write their traces against one table, and raises when
+    an ROI property differs. An unnamed segmentation whose ROI names match unnamed rows raises before the table
+    changes, since without a name the same ROIs written again can't be told from different ROIs with the same
+    names. The ``segmentation_name`` column is written only once some segmentation in the table is named, and
+    naming one later fills the earlier rows with ``""``.
     """
     entry_reference = f"metadata['Ophys']['PlaneSegmentations']['{metadata_key}']"
     table_name = plane_segmentation.name
@@ -601,10 +621,25 @@ def _append_rois_to_plane_segmentation(
             "holds one mask type."
         )
 
+    roi_ids = segmentation_extractor.get_roi_ids()
+    row_by_identity = {identity: row for row, identity in enumerate(_get_roi_identities(plane_segmentation))}
+    if segmentation_name == "":
+        matching_roi_names = [str(roi_id) for roi_id in roi_ids if ("", str(roi_id)) in row_by_identity]
+        if matching_roi_names:
+            raise ValueError(
+                f"ROIs of the unnamed segmentation of {entry_reference} match unnamed ROIs already in the "
+                f"PlaneSegmentation '{table_name}', starting with roi_name={matching_roi_names[0]!r}. Without a "
+                "segmentation name the writer can't tell the same ROIs written again, such as by a second channel, "
+                "from different ROIs with the same names. If they are the same ROIs, give every segmentation "
+                "writing them the same name. If they are different ROIs, give each segmentation its own name:\n"
+                f"    {entry_reference}['segmentation_name'] = '<name>'"
+            )
+
     # TODO: null-fill the columns a segmentation lacks, as the electrodes and units tables do, instead of raising.
     property_keys = list(segmentation_extractor.get_property_keys())
+    identity_columns = ("roi_name", "segmentation_name")
     table_property_columns = [
-        name for name in plane_segmentation.colnames if name != "roi_name" and name not in mask_column_names
+        name for name in plane_segmentation.colnames if name not in identity_columns and name not in mask_column_names
     ]
     if set(property_keys) != set(table_property_columns):
         raise ValueError(
@@ -613,9 +648,16 @@ def _append_rois_to_plane_segmentation(
             "Each property is a column, so the segmentations sharing a PlaneSegmentation must carry the same ones."
         )
 
-    roi_ids = segmentation_extractor.get_roi_ids()
     property_values = {key: segmentation_extractor.get_property(key=key, ids=roi_ids) for key in property_keys}
-    row_by_roi_name = {roi_name: row for row, roi_name in enumerate(plane_segmentation["roi_name"].data)}
+    if segmentation_name != "" and "segmentation_name" not in plane_segmentation.colnames:
+        plane_segmentation.add_column(
+            name="segmentation_name",
+            description=_SEGMENTATION_NAME_DESCRIPTION,
+            data=[""] * len(plane_segmentation),
+        )
+    segmentation_name_column = (
+        {"segmentation_name": segmentation_name} if "segmentation_name" in plane_segmentation.colnames else {}
+    )
     next_id = max(plane_segmentation.id.data) + 1
     # roiextractors image masks are (rows, columns, rois); NWB lists them (rois, columns, rows)
     # TODO: write rows first if core adopts that order, see
@@ -632,15 +674,8 @@ def _append_rois_to_plane_segmentation(
             # https://github.com/NeurodataWithoutBorders/nwb-schema/issues/660
             roi_mask = [(column, row, *rest) for row, column, *rest in image_or_pixel_masks[roi_index]]
 
-        if roi_name in row_by_roi_name:
-            row = row_by_roi_name[roi_name]
-            table_roi_mask = plane_segmentation[mask_column][row]
-            if not np.array_equal(np.asarray(table_roi_mask), np.asarray(roi_mask)):
-                raise ValueError(
-                    f"The ROI '{roi_name}' of {entry_reference} has a different mask from the ROI of that name "
-                    f"already in the PlaneSegmentation '{table_name}'. An ROI name already in the table is "
-                    "reused only for an equal mask, so different ROIs sharing a table need different names."
-                )
+        if (segmentation_name, roi_name) in row_by_identity:
+            row = row_by_identity[(segmentation_name, roi_name)]
             for key, values in property_values.items():
                 table_value = np.asarray(plane_segmentation[key][row])
                 value = np.asarray(values[roi_index])
@@ -656,7 +691,13 @@ def _append_rois_to_plane_segmentation(
             continue
 
         row_properties = {key: values[roi_index] for key, values in property_values.items()}
-        plane_segmentation.add_roi(id=next_id, roi_name=roi_name, **{mask_column: roi_mask}, **row_properties)
+        plane_segmentation.add_roi(
+            id=next_id,
+            roi_name=roi_name,
+            **segmentation_name_column,
+            **{mask_column: roi_mask},
+            **row_properties,
+        )
         next_id += 1
 
 
@@ -695,6 +736,7 @@ def _add_plane_segmentation_to_nwbfile(
     plane_seg_metadata = metadata["Ophys"]["PlaneSegmentations"][metadata_key].copy()
     segmentation_table_entry = _get_segmentation_table_entry(metadata=metadata, metadata_key=metadata_key)
     plane_seg_metadata.pop("segmentation_table_metadata_key", None)
+    segmentation_name = plane_seg_metadata.pop("segmentation_name", "")
 
     # Required by the NWB ``PlaneSegmentation`` object; default any the interface did not supply from the
     # central placeholder template. ``name`` is defaulted where the segmentation is built, which is also
@@ -779,6 +821,7 @@ def _add_plane_segmentation_to_nwbfile(
             mask_type=mask_type,
             image_or_pixel_masks=image_or_pixel_masks,
             metadata_key=metadata_key,
+            segmentation_name=segmentation_name,
         )
         return nwbfile
 
@@ -790,6 +833,10 @@ def _add_plane_segmentation_to_nwbfile(
     roi_names = [str(roi_id) for roi_id in roi_ids]
     roi_indices = list(range(len(roi_ids)))
     plane_segmentation.add_column(name="roi_name", description="The unique identifier for each ROI.")
+    segmentation_name_column = {}
+    if segmentation_name != "":
+        plane_segmentation.add_column(name="segmentation_name", description=_SEGMENTATION_NAME_DESCRIPTION)
+        segmentation_name_column = {"segmentation_name": segmentation_name}
 
     if mask_type == "image":
         # roiextractors image masks are (rows, columns, rois); NWB lists them (rois, columns, rows)
@@ -798,7 +845,9 @@ def _add_plane_segmentation_to_nwbfile(
         image_mask_array = image_or_pixel_masks.T
         for roi_index, roi_name in zip(roi_indices, roi_names):
             image_mask = image_mask_array[roi_index]
-            plane_segmentation.add_roi(id=roi_index, roi_name=roi_name, image_mask=image_mask)
+            plane_segmentation.add_roi(
+                id=roi_index, roi_name=roi_name, **segmentation_name_column, image_mask=image_mask
+            )
     else:
         mask_type_kwarg = f"{mask_type}_mask"
         pixel_masks = image_or_pixel_masks
@@ -808,7 +857,9 @@ def _add_plane_segmentation_to_nwbfile(
             # TODO: write rows first if core adopts that order, see
             # https://github.com/NeurodataWithoutBorders/nwb-schema/issues/660
             pixel_mask_to_write = [(column, row, *rest) for row, column, *rest in pixel_mask]
-            plane_segmentation.add_roi(id=roi_index, roi_name=roi_name, **{mask_type_kwarg: pixel_mask_to_write})
+            plane_segmentation.add_roi(
+                id=roi_index, roi_name=roi_name, **segmentation_name_column, **{mask_type_kwarg: pixel_mask_to_write}
+            )
 
     # Add all extractor properties as columns (acceptance, quality metrics, etc.). The quality metrics
     # below are named the same way by every segmenter that reports them, so their descriptions are known
@@ -970,9 +1021,9 @@ def _add_roi_response_traces_to_nwbfile(
 
     # Create ROI table region
     roi_ids = segmentation_extractor.get_roi_ids()
-    available_roi_names = list(plane_segmentation["roi_name"][:])
-    roi_names = [str(roi_id) for roi_id in roi_ids]
-    region = [available_roi_names.index(roi_name) for roi_name in roi_names]
+    segmentation_name = plane_segmentation_metadata.get("segmentation_name", "")
+    available_identities = _get_roi_identities(plane_segmentation)
+    region = [available_identities.index((segmentation_name, str(roi_id))) for roi_id in roi_ids]
     imaging_plane_name = plane_segmentation.imaging_plane.name
     roi_table_region = plane_segmentation.create_roi_table_region(
         region=region,
