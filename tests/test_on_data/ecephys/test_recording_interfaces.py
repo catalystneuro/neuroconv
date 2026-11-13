@@ -728,7 +728,9 @@ class TestNeuralynxRecordingInterfaceV574(RecordingExtractorInterfaceTestMixin):
         "neuralynx_recording_2",
         "neuralynx_recording_3",
     )
-    interface_kwargs = dict(folder_path=str(ECEPHY_DATA_PATH / "neuralynx" / "Cheetah_v5.7.4" / "original_data"))
+    interface_kwargs = dict(
+        folder_path=str(ECEPHY_DATA_PATH / "neuralynx" / "Cheetah_v5.7.4" / "original_data"), gap_tolerance_ms=1.0
+    )
 
     save_directory = OUTPUT_PATH
 
@@ -770,7 +772,9 @@ class TestNeuralynxRecordingInterfaceV574(RecordingExtractorInterfaceTestMixin):
 class TestNeuralynxRecordingInterfaceV563(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = NeuralynxRecordingInterface
     expected_temporal_alignment_keys = ("neuralynx_recording_0", "neuralynx_recording_1")
-    interface_kwargs = dict(folder_path=str(ECEPHY_DATA_PATH / "neuralynx" / "Cheetah_v5.6.3" / "original_data"))
+    interface_kwargs = dict(
+        folder_path=str(ECEPHY_DATA_PATH / "neuralynx" / "Cheetah_v5.6.3" / "original_data"), gap_tolerance_ms=1.0
+    )
 
     save_directory = OUTPUT_PATH
 

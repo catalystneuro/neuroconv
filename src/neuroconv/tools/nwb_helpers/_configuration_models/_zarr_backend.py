@@ -3,16 +3,14 @@
 from typing import Any, ClassVar, Literal
 
 import psutil
-import zarr
-from packaging.version import Version
 from pydantic import Field, model_validator
 
 from ._base_backend import BackendConfiguration
 from ._zarr_dataset_io import ZarrDatasetIOConfiguration
 from ...importing import is_package_installed
 
-# hdmf_zarr installs only on Python 3.12 and newer. On 3.11 zarr is 2, so `raise_without_zarr_3` raises before
-# `data_io_class` is used.
+# hdmf_zarr installs only on Python 3.12 and newer. On 3.11 `raise_without_hdmf_zarr` raises before `data_io_class`
+# is used.
 if is_package_installed(package_name="hdmf_zarr"):
     from hdmf_zarr import ZarrDataIO
 else:
@@ -45,13 +43,11 @@ class ZarrBackendConfiguration(BackendConfiguration):
         default=psutil.cpu_count() - 1,
     )
 
-    # Python 3.13 and older resolve zarr 2, held there by the zarr pins of dandi and spikeinterface.
     @model_validator(mode="before")
     @classmethod
-    def raise_without_zarr_3(cls, values: Any) -> Any:
-        if Version(zarr.__version__).major < 3:
+    def raise_without_hdmf_zarr(cls, values: Any) -> Any:
+        if ZarrDataIO is None:
             raise NotImplementedError(
-                f"The Zarr backend requires zarr 3, and zarr {zarr.__version__} is installed. "
-                "zarr 3 installs with neuroconv on Python 3.14 and newer."
+                "The Zarr backend requires hdmf_zarr, which installs with neuroconv on Python 3.12 and newer."
             )
         return values
