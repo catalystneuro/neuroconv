@@ -11,10 +11,10 @@ Why Unit ID Management Matters
 
 When you have multiple sorting outputs (e.g., from different algorithms like
 Kilosort and MountainSort), they might have overlapping unit IDs (0, 1, 2, etc.).
-If they do, adding them naively in NeuroConv will lead to the rows corresponding
-to the second sorter being skipped, as NeuroConv will identify them as the same
-unit and skip them to avoid duplicates. To handle this problem you have two main
-approaches:
+If they do and neither sorting has a ``sorting_name``, adding the second one to the
+same Units table raises an error, as NeuroConv can't tell whether its units are the
+units already in the table written again or different units with the same IDs. To
+handle this problem you have two main approaches:
 
 1. **Rename units** to create unique identifiers before merging into the
     canonical Units table
