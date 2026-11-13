@@ -3,24 +3,14 @@
 import warnings
 from typing import Any, ClassVar, Literal
 
-import zarr
 from hdmf import Container
-from packaging.version import Version
 from pydantic import Field, InstanceOf, model_validator
 from typing_extensions import Self
+from zarr.abc.codec import ArrayArrayCodec, BytesBytesCodec
+from zarr.codecs import BloscCodec, GzipCodec, ZstdCodec
+from zarr.codecs.numcodecs import BZ2, LZ4, LZMA, Delta, Fletcher32, JenkinsLookup3, PackBits, Shuffle, Zlib
 
 from ._base_dataset_io import _DEFAULT_GZIP_LEVEL, DatasetIOConfiguration
-
-# The Zarr backend requires zarr 3, and Python 3.13 and older resolve zarr 2, where `ZarrBackendConfiguration`
-# raises before any codec is built. These classes only exist in zarr 3, so under zarr 2 they stand in as `object`
-# to keep this module importable.
-if Version(zarr.__version__).major >= 3:
-    from zarr.abc.codec import ArrayArrayCodec, BytesBytesCodec
-    from zarr.codecs import BloscCodec, GzipCodec, ZstdCodec
-    from zarr.codecs.numcodecs import BZ2, LZ4, LZMA, Delta, Fletcher32, JenkinsLookup3, PackBits, Shuffle, Zlib
-else:
-    ArrayArrayCodec = BytesBytesCodec = BloscCodec = GzipCodec = ZstdCodec = object
-    BZ2 = LZ4 = LZMA = Delta = Fletcher32 = JenkinsLookup3 = PackBits = Shuffle = Zlib = object
 
 # Split by the zarr 3 codec stage: a compression method is a bytes-to-bytes codec and goes in `compressors`, a
 # filter method is an array-to-array codec and goes in `filters`. Gzip, Blosc and Zstd are the native zarr 3 codecs,
