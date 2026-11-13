@@ -101,8 +101,8 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
             If True, will print detailed information about the interface initialization process.
         """
 
-        file_paths = [Path(file_path)] if file_path else file_paths
-        header_version = self.get_scanimage_version(file_path=file_paths[0])
+        first_file_path = Path(file_path) if file_path else Path(file_paths[0])
+        header_version = self.get_scanimage_version(file_path=first_file_path)
         if header_version not in [3, 4, 5]:
             raise ValueError(
                 f"Unsupported ScanImage version {header_version}. Supported versions are 3, 4, and 5."
