@@ -348,7 +348,7 @@ class TestEDFRecordingInterface(RecordingExtractorInterfaceTestMixin):
     # ElectricalSeries. Only ch1 and ch2 are electrode channels.
     interface_kwargs = dict(
         file_path=str(ECEPHY_DATA_PATH / "edf" / "edf+C.edf"),
-        channels_to_skip=["ch3", "ch4", "ch5"],
+        channels_to_exclude=["ch3", "ch4", "ch5"],
     )
     # ch1 and ch2 have different physical ranges, so their offsets differ and only physical units can hold both.
     conversion_options = dict(data_representation="physical_units")

@@ -320,7 +320,7 @@ ecephys = [  # Note that these are the requirements of the extractors as they ar
 ## Icephys
 abf = [
     "ndx-dandi-icephys>=0.4.0",
-    "neo>=0.13.2",
+    "neo>=0.14.6",
 ]
 icephys = [
     "neuroconv[abf]",
