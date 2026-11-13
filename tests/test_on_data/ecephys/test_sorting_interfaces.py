@@ -120,6 +120,14 @@ class TestCellExplorerSortingInterface(SortingExtractorInterfaceTestMixin):
 
         return self.interface, self.test_name
 
+    def check_read_nwb(self, nwbfile_path: str):
+        super().check_read_nwb(nwbfile_path)
+
+        # The units are named after the sorting output CellExplorer recorded loading them from
+        nwbfile = read_nwb(nwbfile_path)
+        units = nwbfile.units
+        assert list(units["sorting_name"][:]) == ["Kilosort_2018-07-17_204347"] * len(units)
+
     def test_writing_channel_metadata(self, setup_interface):
         interface, test_name = setup_interface
 

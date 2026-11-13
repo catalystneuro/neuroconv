@@ -577,6 +577,10 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
         cell_info = spikes_mat.get("spikes", {})
         self.cell_info_fields = list(cell_info.keys())
 
+        # CellExplorer records the sorting output the spikes were loaded from, relative to the session folder
+        clustering_path = cell_info.get("processinginfo", {}).get("params", {}).get("clusteringpath")
+        self._clustering_path = clustering_path if isinstance(clustering_path, str) else ""
+
         unit_ids = self.sorting_extractor.get_unit_ids()
         if "cluID" in self.cell_info_fields:
             self.sorting_extractor.set_property(ids=unit_ids, key="clu_id", values=[int(x) for x in cell_info["cluID"]])
@@ -704,5 +708,7 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
                     )
                 )
         metadata.update(Ecephys=dict(UnitProperties=unit_properties))
+        if self._clustering_path:
+            metadata["Ecephys"]["Sortings"] = {self.metadata_key: dict(sorting_name=self._clustering_path)}
 
         return metadata
