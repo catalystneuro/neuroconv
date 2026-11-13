@@ -3117,6 +3117,7 @@ class TestWriteSortingAnalyzer(TestCase):
             nwbfile=self.nwbfile,
         )
         add_sorting_analyzer_to_nwbfile(
+            use_ndx_spikesorting=False,
             sorting_analyzer=self.single_segment_analyzer,
             nwbfile=self.nwbfile,
         )
@@ -3130,6 +3131,7 @@ class TestWriteSortingAnalyzer(TestCase):
             nwbfile=self.nwbfile,
         )
         add_sorting_analyzer_to_nwbfile(
+            use_ndx_spikesorting=False,
             sorting_analyzer=self.single_segment_analyzer_sparse,
             nwbfile=self.nwbfile,
         )
@@ -3139,6 +3141,7 @@ class TestWriteSortingAnalyzer(TestCase):
     def test_analyzer_multiple_segments(self):
         """This tests that the analyzer is written appropriately for the multi segment case"""
         add_sorting_analyzer_to_nwbfile(
+            use_ndx_spikesorting=False,
             sorting_analyzer=self.multi_segment_analyzer,
             nwbfile=self.nwbfile,
         )
@@ -3147,6 +3150,7 @@ class TestWriteSortingAnalyzer(TestCase):
     def test_analyzer_multiple_segments_sparse(self):
         """This tests that the analyzer is written appropriately for the multi segment case"""
         add_sorting_analyzer_to_nwbfile(
+            use_ndx_spikesorting=False,
             sorting_analyzer=self.multi_segment_analyzer_sparse,
             nwbfile=self.nwbfile,
         )
@@ -3156,7 +3160,10 @@ class TestWriteSortingAnalyzer(TestCase):
         """This tests that the analyzer is sliced properly based on unit_ids"""
         subset_unit_ids = self.single_segment_analyzer.unit_ids[::2]
         add_sorting_analyzer_to_nwbfile(
-            sorting_analyzer=self.single_segment_analyzer, nwbfile=self.nwbfile, unit_ids=subset_unit_ids
+            use_ndx_spikesorting=False,
+            sorting_analyzer=self.single_segment_analyzer,
+            nwbfile=self.nwbfile,
+            unit_ids=subset_unit_ids,
         )
         self._test_analyzer_write(self.analyzer_slice, self.nwbfile, test_properties=False)
 
@@ -3170,6 +3177,7 @@ class TestWriteSortingAnalyzer(TestCase):
             nwbfile=self.nwbfile,
         )
         add_sorting_analyzer_to_nwbfile(
+            use_ndx_spikesorting=False,
             sorting_analyzer=self.analyzer_recless,
             nwbfile=self.nwbfile,
             recording=self.analyzer_recless_recording,
@@ -3179,6 +3187,7 @@ class TestWriteSortingAnalyzer(TestCase):
         # check that not passing the recording raises and Exception
         with self.assertRaises(Exception) as context:
             add_sorting_analyzer_to_nwbfile(
+                use_ndx_spikesorting=False,
                 sorting_analyzer=self.analyzer_recless,
                 nwbfile=self.nwbfile,
                 recording=None,
@@ -3190,6 +3199,7 @@ class TestWriteSortingAnalyzer(TestCase):
         original_channel_groups = self.analyzer_recless_recording.get_channel_groups()
         self.analyzer_recless_recording.set_channel_groups([0] * len(self.analyzer_recless_recording.channel_ids))
         add_sorting_analyzer_to_nwbfile(
+            use_ndx_spikesorting=False,
             sorting_analyzer=self.analyzer_recless,
             nwbfile=self.nwbfile,
             recording=self.analyzer_recless_recording,
@@ -3197,6 +3207,7 @@ class TestWriteSortingAnalyzer(TestCase):
         # now we set new channel groups to mimic a different probe and call the function again
         self.analyzer_recless_recording.set_channel_groups([1] * len(self.analyzer_recless_recording.channel_ids))
         add_sorting_analyzer_to_nwbfile(
+            use_ndx_spikesorting=False,
             sorting_analyzer=self.analyzer_recless,
             nwbfile=self.nwbfile,
             recording=self.analyzer_recless_recording,
@@ -3235,6 +3246,7 @@ class TestWriteSortingAnalyzer(TestCase):
             es_key="ElectricalSeriesRaw1",
         )
         add_sorting_analyzer_to_nwbfile(
+            use_ndx_spikesorting=False,
             sorting_analyzer=self.single_segment_analyzer,
             nwbfile=self.nwbfile,
             metadata=metadata,
@@ -3251,6 +3263,7 @@ class TestWriteSortingAnalyzer(TestCase):
             es_key="ElectricalSeriesRaw2",
         )
         add_sorting_analyzer_to_nwbfile(
+            use_ndx_spikesorting=False,
             sorting_analyzer=self.single_segment_analyzer,
             nwbfile=self.nwbfile,
             metadata=metadata,
@@ -3279,6 +3292,7 @@ class TestWriteSortingAnalyzer(TestCase):
         groups = self.single_segment_analyzer.recording.get_channel_groups()
         self.single_segment_analyzer.recording.delete_property("group")
         add_sorting_analyzer_to_nwbfile(
+            use_ndx_spikesorting=False,
             sorting_analyzer=self.single_segment_analyzer,
             nwbfile=self.nwbfile,
         )
@@ -3289,6 +3303,7 @@ class TestWriteSortingAnalyzer(TestCase):
         num_channels = len(self.single_segment_analyzer.recording.channel_ids)
         self.single_segment_analyzer.recording.set_property("group_name", ["my-fancy-group"] * num_channels)
         add_sorting_analyzer_to_nwbfile(
+            use_ndx_spikesorting=False,
             sorting_analyzer=self.single_segment_analyzer,
             nwbfile=self.nwbfile,
         )
@@ -3307,6 +3322,7 @@ class TestWriteSortingAnalyzer(TestCase):
         )
         with pytest.raises(ValueError, match=expected_error):
             add_sorting_analyzer_to_nwbfile(
+                use_ndx_spikesorting=False,
                 sorting_analyzer=self.single_segment_analyzer,
                 nwbfile=self.nwbfile,
                 metadata=metadata,
@@ -3321,6 +3337,7 @@ class TestWriteSortingAnalyzer(TestCase):
             nwbfile=self.nwbfile,
         )
         add_sorting_analyzer_to_nwbfile(
+            use_ndx_spikesorting=False,
             sorting_analyzer=self.analyzer_channel_sliced,
             nwbfile=self.nwbfile,
             recording=self.analyzer_rec_sliced,
