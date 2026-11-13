@@ -24,7 +24,7 @@ Channels as TimeSeries
 
 Store the channels as irregular ``TimeSeries`` (one per channel) using
 :py:class:`~neuroconv.datainterfaces.ophys.inscopix.inscopixgpiodatainterface.InscopixGpioInterface`.
-By default every channel is written (storing a raw trace is always faithful); pass ``exclude_channels``
+By default every channel is written (storing a raw trace is always faithful); pass ``channels_to_exclude``
 to drop channels you do not want. To see what a file contains before configuring, use
 ``InscopixGpioInterface.get_available_channels(file_path)``, which lists each channel's name, sample
 count, and value range.

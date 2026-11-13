@@ -14,7 +14,7 @@ from ....tools.events import (
 from ....tools.signal_processing import (
     _condition_signal,
     _detect_events,
-    _frames_to_seconds,
+    _samples_to_seconds,
 )
 from ....utils import DeepDict
 
@@ -98,19 +98,19 @@ class InscopixGpioEventsInterface(BaseEventsInterface):
         verbose : bool, optional
             Whether to print status messages, default = False.
         """
-        super().__init__(
-            file_path=file_path,
-            detection_configuration=detection_configuration,
-            verbose=verbose,
-        )
         self.metadata_key = metadata_key or "inscopix_gpio_events"
         # available_signals: signal_source_id (the channel's name in the file) -> its descriptor. The
         # kind is None for every channel because a .gpio file records no analog-versus-digital flag, so
         # the validator admits every cut and every omission here and the read-time backstop is what
         # catches a channel that does not support the reading asked of it.
-        self._available_signals = self._get_available_signals(self.source_data["file_path"])
+        self._available_signals = self._get_available_signals(file_path)
         _validate_detection_configuration(detection_configuration, self._available_signals)
         self._detection_configuration = detection_configuration
+        super().__init__(
+            file_path=file_path,
+            detection_configuration=detection_configuration,
+            verbose=verbose,
+        )
 
     def get_event_type_source_ids(self) -> list[str]:
         """The event types the configuration resolves to, read from nothing."""
@@ -185,8 +185,10 @@ class InscopixGpioEventsInterface(BaseEventsInterface):
             data = np.asarray(amplitudes, dtype="float64")
             for event_type_source_id, spec in detection_specs:
                 conditioned = _condition_signal(data, spec.get("signal_conditioning"))
-                onset_frames, offset_frames = _detect_events(conditioned, spec["detection"])
-                onsets, durations = _frames_to_seconds(onset_frames, offset_frames, time)
+                onset_samples, offset_samples = _detect_events(conditioned, spec["detection"])
+                onsets, durations = _samples_to_seconds(
+                    onset_samples=onset_samples, offset_samples=offset_samples, timestamps=time
+                )
                 events_data_dict[event_type_source_id] = _EventsData(
                     event_type_source_id=event_type_source_id,
                     timestamps=onsets,

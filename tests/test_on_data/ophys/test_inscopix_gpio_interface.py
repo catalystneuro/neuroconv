@@ -4,6 +4,7 @@ import sys
 import uuid
 from datetime import datetime, timezone
 
+import numpy as np
 import pytest
 from pynwb import read_nwb
 from pynwb.testing.mock.file import mock_NWBFile
@@ -136,10 +137,10 @@ class TestInscopixGpioOdorConcentrationStimulus:
         # A general-purpose GPIO input has no known unit.
         assert read_nwbfile.acquisition["GPIO-1"].unit == "a.u."
 
-    def test_exclude_channels(self):
+    def test_channels_to_exclude(self):
         nwbfile = mock_NWBFile()
         interface = InscopixGpioInterface(
-            file_path=self.FILE_PATH, exclude_channels=["BNC Sync Output", "Digital GPI 0"]
+            file_path=self.FILE_PATH, channels_to_exclude=["BNC Sync Output", "Digital GPI 0"]
         )
         interface.add_to_nwbfile(nwbfile=nwbfile)
         assert len(nwbfile.acquisition) == 24
@@ -167,3 +168,23 @@ class TestInscopixGpioOdorConcentrationStimulus:
         interface.add_to_nwbfile(nwbfile=nwbfile, stub_test=True)
         # GPIO-1 has 475 samples in full; stub_test writes at most 100.
         assert nwbfile.acquisition["GPIO-1"].data.shape[0] == 100
+
+    def test_temporal_alignment_keys_follow_the_written_channels(self):
+        interface = InscopixGpioInterface(file_path=self.FILE_PATH, channels_to_exclude=["BNC Sync Output"])
+
+        temporal_alignment_keys = interface.temporal_alignment.keys()
+
+        assert len(temporal_alignment_keys) == 25
+        assert "inscopix_gpio_gpio_2" in temporal_alignment_keys
+        assert "inscopix_gpio_bnc_sync_output" not in temporal_alignment_keys
+
+    def test_shift_times_moves_the_written_timestamps(self):
+        interface = InscopixGpioInterface(file_path=self.FILE_PATH)
+        native_timestamps = interface.temporal_alignment["inscopix_gpio_gpio_2"].get_times()
+
+        interface.temporal_alignment.shift_times(10.0)
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile)
+
+        expected_timestamps = native_timestamps + 10.0
+        np.testing.assert_array_equal(nwbfile.acquisition["GPIO-2"].timestamps[:], expected_timestamps)

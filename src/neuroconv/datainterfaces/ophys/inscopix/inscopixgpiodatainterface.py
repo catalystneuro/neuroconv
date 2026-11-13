@@ -1,10 +1,12 @@
 import re
 from datetime import timezone
+from functools import partial
 
 import numpy as np
 from pydantic import FilePath, validate_call
 
 from ._inscopix_gpio_reader import get_gpio_channel_inventory, read_gpio
+from ...._temporal_alignment import _TemporalAlignment
 from ....basedatainterface import BaseDataInterface
 from ....utils import DeepDict
 
@@ -28,7 +30,7 @@ class InscopixGpioInterface(BaseDataInterface):
 
     **All present channels are written by default**, because storing a raw trace is always faithful
     regardless of whether a channel is a continuous signal or a discrete line, and the file records no
-    way to tell them apart. Use ``exclude_channels`` to drop channels you do not want. The monitor
+    way to tell them apart. Use ``channels_to_exclude`` to drop channels you do not want. The monitor
     channels (``EX-LED``, ``OG-LED``, ``DI-LED``, ``e-focus``) get their known physical units; every
     other channel carries no unit the file can state, so it is written as ``"a.u."`` unless the
     ``metadata["TimeSeries"]`` entry this interface seeds for it says otherwise.
@@ -51,7 +53,7 @@ class InscopixGpioInterface(BaseDataInterface):
         self,
         file_path: FilePath,
         *,
-        exclude_channels: list[str] | None = None,
+        channels_to_exclude: list[str] | None = None,
         metadata_key: str = "inscopix_gpio",
         verbose: bool = False,
     ):
@@ -61,15 +63,39 @@ class InscopixGpioInterface(BaseDataInterface):
         ----------
         file_path : FilePath
             Path to the ``.gpio`` Inscopix file.
-        exclude_channels : list of str, optional
+        channels_to_exclude : list of str, optional
             Names of channels to skip. If None (default), every present channel is written.
         metadata_key : str, optional
             Namespaces this interface's entries in ``metadata["TimeSeries"]``, one per written channel.
         verbose : bool, optional
             Whether to print status messages, default = False.
         """
-        super().__init__(file_path=file_path, exclude_channels=exclude_channels, verbose=verbose)
+        super().__init__(file_path=file_path, channels_to_exclude=channels_to_exclude, verbose=verbose)
         self.metadata_key = metadata_key
+
+        gpio = read_gpio(file_path)
+        exclude = set(channels_to_exclude or [])
+        self._alignment = _TemporalAlignment()
+        for index in range(gpio.num_channels):
+            channel_name = gpio.get_channel_name(index)
+            if channel_name in exclude:
+                continue
+            self._alignment._register(
+                key=self._get_channel_metadata_key(channel_name),
+                get_native_times=partial(self._get_channel_native_times, channel_index=index),
+                get_number_of_samples=partial(self._get_channel_number_of_samples, channel_index=index),
+            )
+
+    @property
+    def temporal_alignment(self) -> _TemporalAlignment:
+        return self._alignment
+
+    def _get_channel_native_times(self, channel_index: int) -> np.ndarray:
+        timestamps_microseconds, _ = read_gpio(self.source_data["file_path"]).get_channel_data(channel_index)
+        return np.asarray(timestamps_microseconds, dtype="float64") / 1e6
+
+    def _get_channel_number_of_samples(self, channel_index: int) -> int:
+        return len(self._get_channel_native_times(channel_index=channel_index))
 
     @classmethod
     def get_available_channels(cls, file_path) -> list[dict]:
@@ -77,7 +103,7 @@ class InscopixGpioInterface(BaseDataInterface):
 
         Each dict carries the channel's ``name``, ``num_samples``, ``num_unique``, ``unique_values``
         (up to eight), ``min`` and ``max``. The file records no analog-versus-digital flag, so this is
-        what tells you which channels are worth writing and which to pass to ``exclude_channels``.
+        what tells you which channels are worth writing and which to pass to ``channels_to_exclude``.
         """
         return get_gpio_channel_inventory(file_path)
 
@@ -99,7 +125,7 @@ class InscopixGpioInterface(BaseDataInterface):
         # ``timing.start.to_datetime()`` is a naive UTC datetime (isx.Time uses utcfromtimestamp).
         metadata["NWBFile"]["session_start_time"] = gpio.timing.start.to_datetime().replace(tzinfo=timezone.utc)
 
-        exclude = set(self.source_data.get("exclude_channels") or [])
+        exclude = set(self.source_data.get("channels_to_exclude") or [])
         time_series_metadata = {}
         for index in range(gpio.num_channels):
             channel_name = gpio.get_channel_name(index)
@@ -140,17 +166,17 @@ class InscopixGpioInterface(BaseDataInterface):
 
         metadata = metadata or self.get_metadata()
         time_series_metadata = metadata.get("TimeSeries", {})
-        exclude = set(self.source_data.get("exclude_channels") or [])
+        exclude = set(self.source_data.get("channels_to_exclude") or [])
 
         gpio = read_gpio(self.source_data["file_path"])
         for index in range(gpio.num_channels):
             channel_name = gpio.get_channel_name(index)
             if channel_name in exclude:
                 continue
-            timestamps_microseconds, amplitudes = gpio.get_channel_data(index)
-            if len(timestamps_microseconds) == 0:
+            _, amplitudes = gpio.get_channel_data(index)
+            if len(amplitudes) == 0:
                 continue  # a channel present but empty carries no signal; skip it
-            timestamps_seconds = np.asarray(timestamps_microseconds, dtype="float64") / 1e6
+            timestamps_seconds = self.temporal_alignment[self._get_channel_metadata_key(channel_name)].get_times()
             amplitudes = np.asarray(amplitudes)
             if stub_test:
                 timestamps_seconds = timestamps_seconds[:100]
