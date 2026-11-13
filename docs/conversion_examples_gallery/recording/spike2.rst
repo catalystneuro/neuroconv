@@ -9,8 +9,9 @@ Install NeuroConv with the additional dependencies necessary for reading Spike2 
 
 .. warning::
     The `sonpy <https://pypi.org/project/sonpy/>`_ library that reads Spike2 files only publishes wheels for Windows
-    (Python 3.9 to 3.14) and, on Linux and macOS, for Python 3.14 and above. On any other combination the extra
-    installs everything except ``sonpy`` and the interface throws an error naming the platform and the Python version.
+    (Python 3.9 to 3.14) and, on x86_64 Linux and macOS, for Python 3.14 and above. Its macOS wheel is labelled
+    ``universal2`` but only contains x86_64 code, so it does not load on Apple Silicon. On any other combination the
+    extra installs everything except ``sonpy`` and the interface raises an error when it is used.
 
 Convert Spike2 data to NWB using
 :py:class:`~neuroconv.datainterfaces.ecephys.spike2.spike2datainterface.Spike2RecordingInterface`.

@@ -184,7 +184,7 @@
   },
   "recording/spike2.rst": {
     "extra": "spike2",
-    "skip": "sonpy only resolves on Windows or Python 3.14 and later, so the page cannot run on most legs (PR #1855)"
+    "skip": "sonpy only resolves on Windows, or on x86_64 with Python 3.14 and later, so the page cannot run on most legs (PR #1855)"
   },
   "recording/spikegadgets.rst": {
     "extra": "spikegadgets"
