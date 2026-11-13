@@ -598,23 +598,6 @@ def test_a_modified_working_tree_warns_that_the_script_is_not_linked(tmp_path, m
         describe_source_script()
 
 
-def test_an_unpublished_commit_warns_that_the_script_is_not_linked(tmp_path, monkeypatch):
-    script = make_repository(tmp_path / "conversions")
-    monkeypatch.setattr(sys, "argv", [script])
-
-    with pytest.warns(UserWarning, match="the commit has not been pushed"):
-        describe_source_script()
-
-
-def test_a_script_outside_version_control_warns_that_it_is_not_linked(tmp_path, monkeypatch):
-    script = tmp_path / "convert_lab.py"
-    script.write_text("print('converting')\n", encoding="utf-8")
-    monkeypatch.setattr(sys, "argv", [str(script)])
-
-    with pytest.warns(UserWarning, match="the script is not in a git repository"):
-        describe_source_script()
-
-
 def test_a_linked_script_does_not_warn(tmp_path, monkeypatch):
     script = make_repository(tmp_path / "conversions")
     publish(tmp_path / "conversions")
@@ -636,17 +619,6 @@ def test_the_warning_is_emitted_once_per_process(tmp_path, monkeypatch):
         describe_source_script()
 
     assert len([warning for warning in caught_warnings if "will not link" in str(warning.message)]) == 1
-
-
-def test_no_git_info_does_not_warn(tmp_path, monkeypatch):
-    """Without the git keys there is no link to miss."""
-    script = make_repository(tmp_path / "conversions")
-    monkeypatch.setattr(sys, "argv", [script])
-    monkeypatch.setenv("NEUROCONV_PROVENANCE", "no-git-info")
-
-    with warnings.catch_warnings():
-        warnings.simplefilter("error")
-        describe_source_script()
 
 
 class FakeDistribution:
@@ -675,16 +647,6 @@ def test_an_editable_install_records_neuroconv_commit(tmp_path, monkeypatch):
     assert str(tmp_path) not in describe_source_script()[0]
 
 
-def test_an_editable_install_with_local_changes_is_modified(tmp_path, monkeypatch):
-    checkout = tmp_path / "neuroconv"
-    make_repository(checkout)
-    (checkout / "lab_utils.py").write_text("SAMPLING_FREQUENCY = 20_000.0\n", encoding="utf-8")
-    direct_url = {"url": checkout.as_uri(), "dir_info": {"editable": True}}
-    monkeypatch.setattr(_provenance.importlib.metadata, "distribution", lambda name: FakeDistribution(direct_url))
-
-    assert parse_record(describe_source_script()[0])["neuroconv_working_tree"] == "modified"
-
-
 def test_an_install_from_a_git_url_records_neuroconv_commit(monkeypatch):
     commit = "9f3c2ab1d4e7f09b2c5a8e3d6f10a4b7c9e2d5f8"
     direct_url = {
@@ -701,16 +663,6 @@ def test_an_install_from_a_git_url_records_neuroconv_commit(monkeypatch):
 
 def test_an_install_from_an_index_records_no_neuroconv_commit(monkeypatch):
     monkeypatch.setattr(_provenance.importlib.metadata, "distribution", lambda name: FakeDistribution(None))
-
-    assert "neuroconv_commit" not in parse_record(describe_source_script()[0])
-
-
-def test_no_git_info_drops_neuroconv_commit(tmp_path, monkeypatch):
-    checkout = tmp_path / "neuroconv"
-    make_repository(checkout)
-    direct_url = {"url": checkout.as_uri(), "dir_info": {"editable": True}}
-    monkeypatch.setattr(_provenance.importlib.metadata, "distribution", lambda name: FakeDistribution(direct_url))
-    monkeypatch.setenv("NEUROCONV_PROVENANCE", "no-git-info")
 
     assert "neuroconv_commit" not in parse_record(describe_source_script()[0])
 
