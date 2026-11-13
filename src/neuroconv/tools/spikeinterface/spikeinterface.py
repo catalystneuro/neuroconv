@@ -3018,7 +3018,9 @@ def _add_units_table_to_nwbfile(
     ``unit_electrode_indices`` is given and the table has an ``electrodes`` column, a
     unit whose electrode indices differ from those of every matching row is added as a
     new row. A pair matching several rows raises when ``unit_electrode_indices`` is not
-    given. Appending to a table without a ``sorting_name`` column raises. See
+    given. A sorting with no name is unnamed (``""``), and the ``sorting_name`` column is
+    written only once some unit in the table has a name: a table without it reads as
+    unnamed, and naming a sorting later fills the earlier rows with ``""``. See
     ``_add_electrodes_to_nwbfile`` for how the electrode table itself
     handles deduplication via ``(group_name, electrode_name, channel_name)``.
 
@@ -3142,12 +3144,6 @@ def _add_units_table_to_nwbfile(
             nwbfile.units = pynwb.misc.Units(name="units", **units_table_kwargs)
         units_table = nwbfile.units
 
-    if not write_table_first_time and "sorting_name" not in units_table.colnames:
-        raise ValueError(
-            f"Cannot append to units table '{units_table.name}' because it has no 'sorting_name' column. "
-            "Write to a new units table instead."
-        )
-
     default_descriptions = dict(
         isi_violation="Quality metric that measures the ISI violation ratio as a proxy for the purity of the unit.",
         firing_rate="Number of spikes per unit of time.",
@@ -3224,12 +3220,13 @@ def _add_units_table_to_nwbfile(
     if sorting_name is None:
         sorting_name = sorting.get_annotation("sorting_name")
     if sorting_name is None:
-        sorting_name = "sorting"
-    data_to_add["sorting_name"] = dict(
-        description=property_descriptions["sorting_name"],
-        data=np.full(num_units, sorting_name),
-        index=False,
-    )
+        sorting_name = ""
+    if sorting_name != "" or "sorting_name" in units_table.colnames:
+        data_to_add["sorting_name"] = dict(
+            description=property_descriptions["sorting_name"],
+            data=np.full(num_units, sorting_name),
+            index=False,
+        )
 
     # Add spike times to data_to_add alongside waveforms and electrodes.
     # This lets the shared column-adding loop below handle all data uniformly.
@@ -3278,7 +3275,12 @@ def _add_units_table_to_nwbfile(
     unit_identities = [(sorting_name, unit_name) for unit_name in unit_name_array]
     unit_identity_to_rows = defaultdict(list)
     if "unit_name" in units_table_previous_columns:
-        for index, identity in enumerate(zip(units_table["sorting_name"][:], units_table["unit_name"][:])):
+        existing_unit_names = units_table["unit_name"][:]
+        if "sorting_name" in units_table_previous_columns:
+            existing_sorting_names = units_table["sorting_name"][:]
+        else:
+            existing_sorting_names = [""] * len(existing_unit_names)
+        for index, identity in enumerate(zip(existing_sorting_names, existing_unit_names)):
             unit_identity_to_rows[identity].append(index)
 
     rows_to_add = []
@@ -3344,8 +3346,8 @@ def _add_units_table_to_nwbfile(
         cols_args = data_to_add["unit_name"]
         data = cols_args["data"]
 
-        previous_ids = units_table.id[:previous_table_size]
-        default_value = np.array(previous_ids).astype("str")
+        # Rows that predate the column get "", never a value derived for them such as their id
+        default_value = np.full(previous_table_size, "")
 
         extended_data = np.hstack([default_value, data])
         cols_args["data"] = extended_data
