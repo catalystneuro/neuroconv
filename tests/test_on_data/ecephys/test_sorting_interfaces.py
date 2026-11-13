@@ -179,7 +179,9 @@ class TestNeuralynxSortingInterfaceCheetahV551(SortingExtractorInterfaceTestMixi
     data_interface_cls = NeuralynxSortingInterface
     expected_temporal_alignment_keys = ("neuralynx_sorting_0", "neuralynx_sorting_1")
     interface_kwargs = dict(
-        folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v5.5.1" / "original_data"), stream_id="0"
+        folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v5.5.1" / "original_data"),
+        stream_id="0",
+        gap_tolerance_ms=1.0,
     )
     save_directory = OUTPUT_PATH
 
@@ -188,7 +190,9 @@ class TestNeuralynxSortingInterfaceCheetah563(SortingExtractorInterfaceTestMixin
     data_interface_cls = NeuralynxSortingInterface
     expected_temporal_alignment_keys = ("neuralynx_sorting_0", "neuralynx_sorting_1")
     interface_kwargs = dict(
-        folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v5.6.3" / "original_data"), stream_id="0"
+        folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v5.6.3" / "original_data"),
+        stream_id="0",
+        gap_tolerance_ms=1.0,
     )
 
     save_directory = OUTPUT_PATH

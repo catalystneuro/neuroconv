@@ -86,6 +86,8 @@ ZARR_COMPRESSION_EXPECTED = {
     "bz2": "bz2",
     "zlib": "zlib",
     "zstd": "zstd",
+    "lz4": "lz4",
+    "shuffle": "shuffle",
 }
 
 

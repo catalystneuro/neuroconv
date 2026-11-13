@@ -581,7 +581,9 @@ class RecordingExtractorInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlign
             pytest.skip("Excluding the only channel leaves nothing to convert")
 
         last_channel_id = channel_ids[-1]
-        interface = self.data_interface_cls(**self.interface_kwargs, channels_to_exclude=[last_channel_id])
+        # Add to any channels the test class already excludes rather than passing the argument twice
+        channels_to_exclude = list(self.interface_kwargs.get("channels_to_exclude") or []) + [last_channel_id]
+        interface = self.data_interface_cls(**{**self.interface_kwargs, "channels_to_exclude": channels_to_exclude})
 
         assert list(interface.channel_ids) == channel_ids[:-1]
         # Excluding replaces the recording with a channel slice, which does not carry the `neo_reader` some

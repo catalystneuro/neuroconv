@@ -489,8 +489,8 @@ class AxonIntracellularInterface(BaseIcephysInterface):
         """
         Recorded analog-to-digital converter channel names (the `response_channel_name` / `stimulus_channel_name` options).
 
-        Interior spaces are removed so a channel keeps one spelling across neo versions: neo below 0.15 reports
-        ``IN0`` and neo 0.15 or above reports ``IN 0`` for the same channel, and these names are what the electrode
+        Interior spaces are removed so a channel keeps one spelling across neo versions: neo below 0.14.6 reports
+        ``IN0`` and neo 0.14.6 or above reports ``IN 0`` for the same channel, and these names are what the electrode
         metadata keys and the NWB series names are built from, so letting them drift would rename written objects.
         A stored name can be empty either way; fall back to ``ch{index}`` so every channel stays addressable by name.
         """

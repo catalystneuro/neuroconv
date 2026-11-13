@@ -1,5 +1,6 @@
 """Integration tests for `get_existing_backend_configuration`."""
 
+import re
 from io import StringIO
 from unittest.mock import patch
 
@@ -10,6 +11,8 @@ from hdmf_zarr.nwb import NWBZarrIO
 from pynwb import NWBHDF5IO, H5DataIO, NWBFile
 from pynwb.testing.mock.base import mock_TimeSeries
 from pynwb.testing.mock.file import mock_NWBFile
+from zarr.codecs import BloscCodec
+from zarr.codecs.numcodecs import Delta
 
 from neuroconv.tools.nwb_helpers import (
     HDF5BackendConfiguration,
@@ -17,6 +20,19 @@ from neuroconv.tools.nwb_helpers import (
     get_existing_backend_configuration,
     get_module,
 )
+
+
+def _normalize_blosc_repr(text: str) -> str:
+    """Normalize BloscCodec repr to a canonical form that is stable across zarr versions.
+
+    Older zarr releases render enum members as ``<BloscCname.lz4: 'lz4'>``; newer ones
+    use plain strings such as ``'lz4'``.  Strip the enum wrapper so both forms compare equal.
+    """
+    # cname=<BloscCname.lz4: 'lz4'>  →  cname='lz4'
+    text = re.sub(r"cname=<\w+\.(\w+): '(\w+)'>", r"cname='\2'", text)
+    # shuffle=<BloscShuffle.shuffle: 'shuffle'>  →  shuffle='shuffle'
+    text = re.sub(r"shuffle=<\w+\.(\w+): '(\w+)'>", r"shuffle='\2'", text)
+    return text
 
 
 def generate_complex_nwbfile() -> NWBFile:
@@ -67,9 +83,6 @@ def hdf5_nwbfile_path(tmp_path_factory):
 
 @pytest.fixture(scope="session")
 def zarr_nwbfile_path(tmp_path_factory):
-    from zarr.codecs import BloscCodec
-    from zarr.codecs.numcodecs import Delta
-
     compressors = [BloscCodec(cname="lz4", clevel=5, shuffle="shuffle")]
 
     nwbfile_path = tmp_path_factory.mktemp("data") / "test_default_backend_configuration_hdf5_nwbfile.nwb.zarr"
@@ -308,4 +321,4 @@ acquisition/CompressedRawTimeSeries/data
   filters : [Delta(codec_name='numcodecs.delta', codec_config={'dtype': 'int32'})]
 
 """
-    assert stdout.getvalue() == expected_print
+    assert _normalize_blosc_repr(stdout.getvalue()) == expected_print

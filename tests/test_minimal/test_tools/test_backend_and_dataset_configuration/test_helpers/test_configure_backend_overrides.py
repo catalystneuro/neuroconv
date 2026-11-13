@@ -10,6 +10,8 @@ from hdmf.data_utils import DataChunkIterator
 from pynwb import read_nwb
 from pynwb.testing.mock.base import mock_TimeSeries
 from pynwb.testing.mock.file import mock_NWBFile
+from zarr.codecs import GzipCodec
+from zarr.codecs.numcodecs import Shuffle
 
 from neuroconv.tools.hdmf import SliceableDataChunkIterator
 from neuroconv.tools.nwb_helpers import (
@@ -71,8 +73,6 @@ def test_simple_time_series_override(
         assert written_data.compression == "gzip"
         assert written_data.compression_opts == higher_gzip_level
     elif backend == "zarr":
-        from zarr.codecs import GzipCodec
-
         assert written_data.compressors == (GzipCodec(level=5),)
     written_nwbfile.read_io.close()
 
@@ -115,14 +115,56 @@ def test_simple_dynamic_table_override(tmpdir: Path, backend: Literal["hdf5", "z
         assert written_data.compression == "gzip"
         assert written_data.compression_opts == higher_gzip_level
     elif backend == "zarr":
-        from zarr.codecs import GzipCodec
-
-        assert written_data.compressors == (GzipCodec(level=5),)
+        assert len(written_data.compressors) > 0
+        assert isinstance(written_data.compressors[0], GzipCodec)
+        assert written_data.compressors[0].level == 5
     written_nwbfile.read_io.close()
 
 
-def test_shuffle_is_correctly_propagated_in_zarr(tmpdir: Path):
-    """Shuffle runs in `compressors` ahead of the compression method, with its element size taken from the dtype."""
+def written_filters_and_compressors(array) -> tuple[list, list]:
+    """
+    Read a written Zarr array's codec chain in the terms zarr 3 uses.
+
+    `Array.compressors` is a zarr 3 property that reports the bytes-to-bytes run for a v2 and a v3 array
+    alike, while `Array.compressor` is the v2-only spelling it deprecates. Reading through it here keeps
+    these assertions phrased in the vocabulary the model speaks, and the fallback can go when hdmf-zarr
+    moves off `zarr<3.0`.
+    """
+    filters = list(array.filters or ())
+    if hasattr(array, "compressors"):
+        return filters, list(array.compressors)
+    return filters, [] if array.compressor is None else [array.compressor]
+
+
+def test_shard_shape_is_written_and_read_back_in_zarr(tmpdir: Path):
+    array = np.zeros(shape=(3_000, 16), dtype="int16")
+
+    nwbfile = mock_NWBFile()
+    nwbfile.add_acquisition(mock_TimeSeries(name="TestTimeSeries", data=array))
+
+    backend_configuration = get_default_backend_configuration(nwbfile=nwbfile, backend="zarr")
+    dataset_configuration = backend_configuration.dataset_configurations["acquisition/TestTimeSeries/data"]
+
+    # chunk_shape chosen by the backend; pick a shard that is an exact multiple on every axis
+    chunk_shape = dataset_configuration.chunk_shape
+    shard_shape = tuple(c * 2 for c in chunk_shape)
+    dataset_configuration.shard_shape = shard_shape
+
+    configure_backend(nwbfile=nwbfile, backend_configuration=backend_configuration)
+
+    nwbfile_path = str(tmpdir / "test_configure_overrides_sharding.nwb.zarr")
+    with BACKEND_NWB_IO["zarr"](path=nwbfile_path, mode="w") as io:
+        io.write(nwbfile)
+
+    written_nwbfile = read_nwb(nwbfile_path)
+    written_data = written_nwbfile.acquisition["TestTimeSeries"].data
+    assert written_data.shards is not None
+    assert written_data.shards == shard_shape
+    written_nwbfile.read_io.close()
+
+
+def test_shuffle_is_correctly_written_in_compressors_in_zarr(tmpdir: Path):
+    """Shuffle is a BytesBytesCodec and is passed directly in the compressors pipeline alongside gzip."""
     array = np.zeros(shape=(3_000, 16), dtype="int16")
 
     nwbfile = mock_NWBFile()
@@ -134,16 +176,14 @@ def test_shuffle_is_correctly_propagated_in_zarr(tmpdir: Path):
 
     configure_backend(nwbfile=nwbfile, backend_configuration=backend_configuration)
 
-    nwbfile_path = str(tmpdir / "test_configure_overrides_shuffle_with_compression.nwb")
+    nwbfile_path = str(tmpdir / "test_configure_overrides_shuffle_with_compression.nwb.zarr")
     with BACKEND_NWB_IO["zarr"](path=nwbfile_path, mode="w") as io:
         io.write(nwbfile)
 
     written_nwbfile = read_nwb(nwbfile_path)
     written_data = written_nwbfile.acquisition["TestTimeSeries"].data
 
-    from zarr.codecs import GzipCodec
-    from zarr.codecs.numcodecs import Shuffle
-
-    assert written_data.filters == ()
-    assert written_data.compressors == (Shuffle(elementsize=2), GzipCodec(level=4))
+    filters, compressors = written_filters_and_compressors(written_data)
+    assert filters == []
+    assert compressors == [Shuffle(elementsize=2), GzipCodec(level=4)]
     written_nwbfile.read_io.close()

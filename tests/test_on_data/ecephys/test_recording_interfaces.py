@@ -344,7 +344,14 @@ class TestCellExplorerRecordingInterface(RecordingExtractorInterfaceTestMixin):
 class TestEDFRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = EDFRecordingInterface
     expected_temporal_alignment_keys = ("edf_recording_0",)
-    interface_kwargs = dict(file_path=str(ECEPHY_DATA_PATH / "edf" / "edf+C.edf"))
+    # ch3 is in pA, ch5 in Celsius and ch4 states no unit, so none of the three belongs in an
+    # ElectricalSeries. Only ch1 and ch2 are electrode channels.
+    interface_kwargs = dict(
+        file_path=str(ECEPHY_DATA_PATH / "edf" / "edf+C.edf"),
+        channels_to_exclude=["ch3", "ch4", "ch5"],
+    )
+    # ch1 and ch2 have different physical ranges, so their offsets differ and only physical units can hold both.
+    conversion_options = dict(data_representation="physical_units")
     save_directory = OUTPUT_PATH
 
     def check_extracted_metadata(self, metadata: dict):
@@ -361,6 +368,23 @@ class TestEDFRecordingInterface(RecordingExtractorInterfaceTestMixin):
         stream_names = EDFRecordingInterface.get_stream_names(file_path=self.interface_kwargs["file_path"])
 
         assert stream_names == ["stream ((256.0,) Hz)"]
+
+    def check_read_nwb(self, nwbfile_path: str):
+        """The traces were written in physical units, so they are read back and compared as such."""
+        from spikeinterface.core.testing import check_recordings_equal
+        from spikeinterface.extractors.extractor_classes import NwbRecordingExtractor
+
+        recording = self.interface.recording_extractor
+        channel_name = recording.get_property("channel_name")
+        if channel_name is None:
+            channel_name = recording.get_channel_ids()
+        recording = recording.rename_channels(new_channel_ids=channel_name.astype("str", copy=False))
+
+        nwb_recording = NwbRecordingExtractor(
+            file_path=nwbfile_path, electrical_series_path="acquisition/ElectricalSeries", use_pynwb=True
+        )
+
+        check_recordings_equal(RX1=recording, RX2=nwb_recording, return_in_uV=True)
 
 
 class TestEDFRecordingInterfaceFullMetadata(RecordingExtractorInterfaceTestMixin):
@@ -445,22 +469,7 @@ class TestEDFRecordingInterfaceMultiStream(RecordingExtractorInterfaceTestMixin)
             "Event marker",
         ]
 
-    def check_read_nwb(self, nwbfile_path: str):
-        """The traces were written in physical units, so they are read back and compared as such."""
-        from spikeinterface.core.testing import check_recordings_equal
-        from spikeinterface.extractors.extractor_classes import NwbRecordingExtractor
-
-        recording = self.interface.recording_extractor
-        channel_name = recording.get_property("channel_name")
-        if channel_name is None:
-            channel_name = recording.get_channel_ids()
-        recording = recording.rename_channels(new_channel_ids=channel_name.astype("str", copy=False))
-
-        nwb_recording = NwbRecordingExtractor(
-            file_path=nwbfile_path, electrical_series_path="acquisition/ElectricalSeries", use_pynwb=True
-        )
-
-        check_recordings_equal(RX1=recording, RX2=nwb_recording, return_in_uV=True)
+    check_read_nwb = TestEDFRecordingInterface.check_read_nwb
 
 
 class TestIntanRecordingInterfaceRHS(RecordingExtractorInterfaceTestMixin):
@@ -761,7 +770,7 @@ class TestNeuralynxRecordingInterfaceV574:
 
     def test_get_metadata_after_remove_channels(self):
         folder_path = ECEPHY_DATA_PATH / "neuralynx" / "Cheetah_v5.7.4" / "original_data"
-        interface = NeuralynxRecordingInterface(folder_path=folder_path)
+        interface = NeuralynxRecordingInterface(folder_path=folder_path, gap_tolerance_ms=1.0)
         session_start_time = interface.get_metadata()["NWBFile"]["session_start_time"]
 
         interface.remove_channels(channel_ids=[interface.channel_ids[-1]])
