@@ -124,15 +124,16 @@ class TestAxonRecordingInterface(RecordingExtractorInterfaceTestMixin):
         assert electrical_series_raw["name"] == "ElectricalSeriesRaw"
         assert electrical_series_raw["description"] == "Raw acquisition traces from Axon Binary Format file."
 
-    def test_get_metadata_after_remove_channels(self):
-        # A cell, a ventral root and a stimulus in one file, where only the root is an extracellular recording
-        folder_path = ECEPHY_DATA_PATH / "axon" / "intracellular_data" / "spinal_cord_clamp_examples"
-        interface = AxonRecordingInterface(file_path=folder_path / "24102012_Current_Clamp.abf")
-        session_start_time = interface.get_metadata()["NWBFile"]["session_start_time"]
 
-        interface.remove_channels(channel_ids=["0", "2"])
+class TestAxonRecordingInterfaceExtracellular(RecordingExtractorInterfaceTestMixin):
+    """Four lumbar ventral-root channels, the extracellular case the interface is for."""
 
-        assert interface.get_metadata()["NWBFile"]["session_start_time"] == session_start_time
+    data_interface_cls = AxonRecordingInterface
+    expected_temporal_alignment_keys = ("axon_recording_0",)
+    interface_kwargs = dict(
+        file_path=str(ECEPHY_DATA_PATH / "axon" / "extracellular_data" / "four_electrodes" / "24606005_SampleData.abf")
+    )
+    save_directory = OUTPUT_PATH
 
 
 class TestAxonaRecordingInterface(RecordingExtractorInterfaceTestMixin):
@@ -719,9 +720,15 @@ class TestMEArecRecordingInterface(RecordingExtractorInterfaceTestMixin):
         )
 
 
-class TestNeuralynxRecordingInterfaceV574:
+class TestNeuralynxRecordingInterfaceV574(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = NeuralynxRecordingInterface
-    interface_kwargs = (dict(folder_path=str(ECEPHY_DATA_PATH / "neuralynx" / "Cheetah_v5.7.4" / "original_data")),)
+    expected_temporal_alignment_keys = (
+        "neuralynx_recording_0",
+        "neuralynx_recording_1",
+        "neuralynx_recording_2",
+        "neuralynx_recording_3",
+    )
+    interface_kwargs = dict(folder_path=str(ECEPHY_DATA_PATH / "neuralynx" / "Cheetah_v5.7.4" / "original_data"))
 
     save_directory = OUTPUT_PATH
 
@@ -738,18 +745,18 @@ class TestNeuralynxRecordingInterfaceV574:
             "description": "Cheetah 5.7.4",
         }
 
-    def check_read(self, nwbfile_path):
-        super().check_read(nwbfile_path)
+    def check_read_nwb(self, nwbfile_path):
+        super().check_read_nwb(nwbfile_path)
         expected_single_channel_props = {
             "DSPLowCutFilterEnabled": "True",
-            "DspLowCutFrequency": "10",
-            "DspLowCutNumTaps": "0",
+            "DspLowCutFrequency": 10,
+            "DspLowCutNumTaps": 0,
             "DspLowCutFilterType": "DCO",
             "DSPHighCutFilterEnabled": "True",
-            "DspHighCutFrequency": "9000",
-            "DspHighCutNumTaps": "64",
+            "DspHighCutFrequency": 9000,
+            "DspHighCutNumTaps": 64,
             "DspHighCutFilterType": "FIR",
-            "DspDelayCompensation": "Enabled",
+            "DspDelayCompensation": "True",
         }
 
         n_channels = self.interface.recording_extractor.get_num_channels()
@@ -759,19 +766,11 @@ class TestNeuralynxRecordingInterfaceV574:
             assert len(extracted_value) == n_channels
             assert exp_value == extracted_value[0]
 
-    def test_get_metadata_after_remove_channels(self):
-        folder_path = ECEPHY_DATA_PATH / "neuralynx" / "Cheetah_v5.7.4" / "original_data"
-        interface = NeuralynxRecordingInterface(folder_path=folder_path)
-        session_start_time = interface.get_metadata()["NWBFile"]["session_start_time"]
 
-        interface.remove_channels(channel_ids=[interface.channel_ids[-1]])
-
-        assert interface.get_metadata()["NWBFile"]["session_start_time"] == session_start_time
-
-
-class TestNeuralynxRecordingInterfaceV563:
+class TestNeuralynxRecordingInterfaceV563(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = NeuralynxRecordingInterface
-    interface_kwargs = (dict(folder_path=str(ECEPHY_DATA_PATH / "neuralynx" / "Cheetah_v5.6.3" / "original_data")),)
+    expected_temporal_alignment_keys = ("neuralynx_recording_0", "neuralynx_recording_1")
+    interface_kwargs = dict(folder_path=str(ECEPHY_DATA_PATH / "neuralynx" / "Cheetah_v5.6.3" / "original_data"))
 
     save_directory = OUTPUT_PATH
 
@@ -784,14 +783,11 @@ class TestNeuralynxRecordingInterfaceV563:
         assert '"sampling_rate": "2000.0"' in file_metadata["notes"]
         assert metadata["Ecephys"]["Device"][-1] == {"name": "DigitalLynxSX", "description": "Cheetah 5.6.3"}
 
-    def check_read(self, nwbfile_path):
-        super().check_read(nwbfile_path)
-        # Add any specific checks for Cheetah_v5.6.3 if needed
 
-
-class TestNeuralynxRecordingInterfaceV540:
+class TestNeuralynxRecordingInterfaceV540(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = NeuralynxRecordingInterface
-    interface_kwargs = (dict(folder_path=str(ECEPHY_DATA_PATH / "neuralynx" / "Cheetah_v5.4.0" / "original_data")),)
+    expected_temporal_alignment_keys = ("neuralynx_recording_0",)
+    interface_kwargs = dict(folder_path=str(ECEPHY_DATA_PATH / "neuralynx" / "Cheetah_v5.4.0" / "original_data"))
     save_directory = OUTPUT_PATH
 
     def check_extracted_metadata_old_list_format(self, metadata: dict):
@@ -801,10 +797,6 @@ class TestNeuralynxRecordingInterfaceV540:
         assert '"ADMaxValue": "32767"' in file_metadata["notes"]
         assert '"sampling_rate": "1017.375"' in file_metadata["notes"]
         assert metadata["Ecephys"]["Device"][-1] == {"name": "DigitalLynx", "description": "Cheetah 5.4.0"}
-
-    def check_read(self, nwbfile_path):
-        super().check_read(nwbfile_path)
-        # Add any specific checks for Cheetah_v5.4.0 if need
 
 
 class TestMultiStreamNeuralynxRecordingInterface(RecordingExtractorInterfaceTestMixin):
