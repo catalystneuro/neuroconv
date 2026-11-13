@@ -1771,6 +1771,38 @@ def _add_electrodes_to_nwbfile(
         data = np.full(recording.get_num_channels(), fill_value=default_location)
         data_to_add["location"] = dict(description="location", data=data, index=False)
 
+    # Match the recording's channels to the rows already in the table, before anything is written
+    channel_map = _build_channel_id_to_electrodes_table_map(recording=recording, nwbfile=nwbfile)
+    channel_ids = recording.get_channel_ids()
+    channel_id_to_index = {channel_id: index for index, channel_id in enumerate(channel_ids)}
+    matched_channel_ids = [channel_id for channel_id, row in channel_map.items() if row is not None]
+
+    # A reused row keeps its written values, so a supplied value that differs from the written one raises.
+    columns_not_compared = {"group", "group_name", "channel_name", "electrode_name"}
+    electrode_table_columns = set(nwbfile.electrodes.colnames) if nwbfile.electrodes is not None else set()
+    columns_to_compare = natsorted(electrode_table_columns.intersection(data_to_add) - columns_not_compared)
+    for channel_id in matched_channel_ids:
+        row = channel_map[channel_id]
+        channel_index = channel_id_to_index[channel_id]
+        for property in columns_to_compare:
+            written_value = np.asarray(nwbfile.electrodes[property][row])
+            supplied_value = np.asarray(data_to_add[property]["data"][channel_index])
+            both_numeric = written_value.dtype.kind in "iufc" and supplied_value.dtype.kind in "iufc"
+            if not np.array_equal(written_value, supplied_value, equal_nan=both_numeric):
+                written_value = written_value.tolist()
+                supplied_value = supplied_value.tolist()
+                raise ValueError(
+                    f"Electrode with group_name={str(group_names[channel_index])!r} and "
+                    f"channel_name={str(channel_names[channel_index])!r} is already in the electrodes table with "
+                    f"{property}={written_value!r}, and this recording supplies {property}={supplied_value!r}. "
+                    "When an electrode is already in the table, a write adds no new row for it and leaves the "
+                    "values in its existing row unchanged. To resolve this, either:\n"
+                    f"- Keep {property}={written_value!r} by removing the {property!r} property from this "
+                    "recording before writing it.\n"
+                    f"- Write {property}={supplied_value!r} by rebuilding the file, giving the recording that is "
+                    f"written first the same {property!r} values."
+                )
+
     # Add missing groups to the nwb file
     groupless_names = [group_name for group_name in group_names if group_name not in nwbfile.electrode_groups]
     if len(groupless_names) > 0:
@@ -1793,16 +1825,8 @@ def _add_electrodes_to_nwbfile(
     properties_to_add_by_rows = schema_properties.union(electrode_table_previous_properties)
     properties_to_add_by_columns = properties_to_add.difference(properties_to_add_by_rows)
 
-    # We only add new electrodes to the table
-    # Use the mapping function to determine which channels are already in the table
-    channel_map = _build_channel_id_to_electrodes_table_map(recording=recording, nwbfile=nwbfile)
-
-    # Channels to add are those that don't have a row mapping (None)
+    # We only add new electrodes to the table: the channels that don't have a row mapping (None)
     channel_ids_to_add = [channel_id for channel_id, row in channel_map.items() if row is None]
-
-    # Create mapping from channel_id to channel_index for data array access
-    channel_ids = recording.get_channel_ids()
-    channel_id_to_index = {channel_id: index for index, channel_id in enumerate(channel_ids)}
 
     # Properties that were added before require null values to add by rows if data is missing
     properties_requiring_null_values = electrode_table_previous_properties.difference(properties_to_add)

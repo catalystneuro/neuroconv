@@ -726,7 +726,7 @@ class TestAddElectrodes(TestCase):
     def test_common_property_extension(self):
         """Add a property for a first recording that is then extended by a second recording."""
         self.recording_1.set_property(key="common_property", values=["value_1"] * self.num_channels)
-        self.recording_2.set_property(key="common_property", values=["value_2"] * self.num_channels)
+        self.recording_2.set_property(key="common_property", values=["value_1", "value_1", "value_2", "value_2"])
 
         _add_electrodes_to_nwbfile(recording=self.recording_1, nwbfile=self.nwbfile)
         _add_electrodes_to_nwbfile(recording=self.recording_2, nwbfile=self.nwbfile)
@@ -841,7 +841,7 @@ class TestAddElectrodes(TestCase):
         self.nwbfile.add_electrode(**self.common_electrode_row_kwargs, id=21, channel_name="d", property="value_d")
         self.nwbfile.add_electrode(**self.common_electrode_row_kwargs, id=22, channel_name="f", property="value_f")
 
-        property_values = ["value_a", "value_b", "x", "y"]
+        property_values = ["value_a", "value_b", "value_c", "value_d"]
         self.recording_1.set_property(key="property", values=property_values)
 
         _add_electrodes_to_nwbfile(recording=self.recording_1, nwbfile=self.nwbfile)
@@ -999,7 +999,7 @@ class TestAddElectrodes(TestCase):
         metadata should not error.
         """
         self.recording_1.set_property(key="common_property", values=["value_1"] * self.num_channels)
-        self.recording_2.set_property(key="common_property", values=["value_2"] * self.num_channels)
+        self.recording_2.set_property(key="common_property", values=["value_1", "value_1", "value_2", "value_2"])
         self.recording_1.set_property(key="property_1", values=[f"value_{n+1}" for n in range(self.num_channels)])
         self.recording_2.set_property(key="property_2", values=[f"value_{n+1}" for n in range(self.num_channels)])
 
@@ -1219,6 +1219,27 @@ class TestAddElectrodes(TestCase):
         self.assertListEqual(electrode_names[-2:], ["e0", "e1"])
         self.assertListEqual(channel_names[-2:], ["probe2_ch0", "probe2_ch1"])
         self.assertListEqual(group_names[-2:], ["ProbeB", "ProbeB"])  # Different group
+
+    def test_differing_value_on_reused_row_raises(self):
+        """A reused row keeps its written values, so a recording supplying another value for it raises."""
+        self.recording_1.set_property(key="quality", values=["good", "good", "good", "good"])
+        self.recording_2.set_property(key="quality", values=["bad", "good", "good", "good"])
+        _add_electrodes_to_nwbfile(recording=self.recording_1, nwbfile=self.nwbfile)
+
+        expected_message = (
+            "Electrode with group_name='0' and channel_name='c' is already in the electrodes table with "
+            "quality='good', and this recording supplies quality='bad'. When an electrode is already in the table, "
+            "a write adds no new row for it and leaves the values in its existing row unchanged. To resolve this, "
+            "either:\n"
+            "- Keep quality='good' by removing the 'quality' property from this recording before writing it.\n"
+            "- Write quality='bad' by rebuilding the file, giving the recording that is written first the same "
+            "'quality' values."
+        )
+        with pytest.raises(ValueError, match=re.escape(expected_message)):
+            _add_electrodes_to_nwbfile(recording=self.recording_2, nwbfile=self.nwbfile)
+
+        expected_channel_names = ["a", "b", "c", "d"]
+        assert list(self.nwbfile.electrodes["channel_name"].data) == expected_channel_names
 
 
 class TestAddTimeSeries:
