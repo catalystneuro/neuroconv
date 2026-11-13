@@ -67,6 +67,7 @@ from .ecephys.openephys.openephysbinarydatainterface import (
     OpenEphysBinaryRecordingInterface,
 )
 from .ecephys.openephys.openephysdatainterface import OpenEphysRecordingInterface
+from .ecephys.openephys.openephyslegacyanaloginterface import OpenEphysLegacyAnalogInterface
 from .ecephys.openephys.openephyslegacydatainterface import (
     OpenEphysLegacyRecordingInterface,
 )
@@ -184,6 +185,7 @@ interface_list = [
     OpenEphysLegacyRecordingInterface,
     OpenEphysSortingInterface,
     OpenEphysBinaryAnalogInterface,
+    OpenEphysLegacyAnalogInterface,
     PhySortingInterface,
     KiloSortSortingInterface,
     MdaSortingInterface,
@@ -305,6 +307,7 @@ interfaces_by_category = dict(
     },
     analog=dict(
         OpenEphysAnalog=OpenEphysBinaryAnalogInterface,
+        OpenEphysLegacyAnalog=OpenEphysLegacyAnalogInterface,
         SpikeGLXNIDQ=SpikeGLXNIDQInterface,
         SpikeGLXSync=SpikeGLXSyncChannelInterface,
         IntanAnalog=IntanAnalogInterface,
