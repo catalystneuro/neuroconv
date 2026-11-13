@@ -102,7 +102,8 @@ class EDFAnalogInterface(BaseRecordingAsTimeSeriesInterface):
         file_path : FilePath
             Path to the EDF file
         channels_to_include : list of str, optional
-            Specific channel IDs to include.
+            Channels to convert, by the names in ``get_channel_names()``, written in the order listed. Every
+            channel is converted when omitted. A name that is not one of the interface's channels raises.
         verbose : bool, default: False
             Verbose output
         metadata_key : str, default: "edf_analog"
@@ -120,30 +121,18 @@ class EDFAnalogInterface(BaseRecordingAsTimeSeriesInterface):
         self._file_path = Path(file_path)
         self.metadata_key = metadata_key
 
-        full_recording = read_edf(
+        self.recording_extractor = read_edf(
             file_path=self._file_path, stream_name=stream_name, all_annotations=True, use_names_as_ids=True
         )
 
-        # Validate that the requested channels exist
-        self._channels_to_include = channels_to_include or full_recording.get_channel_ids().tolist()
-        available_channels = full_recording.get_channel_ids().astype(str)
-        missing_channels = set(self._channels_to_include) - set(available_channels)
-        if missing_channels:
-            error_msg = (
-                f"Channels not found in EDF file: {missing_channels}. "
-                f"Available channels: {list(available_channels)}"
-            )
-            raise ValueError(error_msg)
-
-        # Extract only the analog channels
-        self.recording_extractor = full_recording.select_channels(channel_ids=self._channels_to_include)
-
         super().__init__(
             file_path=self._file_path,
-            channels_to_include=self._channels_to_include,
+            channels_to_include=channels_to_include,
             verbose=verbose,
             stream_name=stream_name,
         )
+
+        self._include_channels(channels_to_include)
 
     @property
     def channel_ids(self):
