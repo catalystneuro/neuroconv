@@ -2024,8 +2024,8 @@ class TestAddUnitsTable(TestCase):
             session_description="session_description1", identifier="file_id1", session_start_time=testing_session_time
         )
         unit_ids = self.base_sorting.get_unit_ids()
-        # TODO: these two sortings share unit names "c" and "d" but have no sorting_name, so both fall back to
-        # "sorting" and the tests below treat the shared names as the same units. Move the tests that use both
+        # TODO: these two sortings share unit names "c" and "d" but have no sorting_name, so both are unnamed
+        # and the tests below treat the shared names as the same units. Move the tests that use both
         # to distinct sorting names, a few at a time.
         self.sorting_1 = self.base_sorting.select_units(unit_ids=unit_ids, renamed_unit_ids=["a", "b", "c", "d"])
         self.sorting_2 = self.base_sorting.select_units(unit_ids=unit_ids, renamed_unit_ids=["c", "d", "e", "f"])
@@ -2060,11 +2060,19 @@ class TestAddUnitsTable(TestCase):
 
         assert list(self.nwbfile.units["sorting_name"][:]) == ["source_sorting"] * self.num_units
 
-    def test_sorting_name_defaults_to_sorting(self):
+    def test_unnamed_sorting_writes_no_sorting_name_column(self):
         add_sorting_to_nwbfile(sorting=self.sorting_1, nwbfile=self.nwbfile)
 
-        assert list(self.nwbfile.units["sorting_name"][:]) == ["sorting"] * self.num_units
+        assert "sorting_name" not in self.nwbfile.units.colnames
         assert "sorting_name" not in self.sorting_1.get_annotation_keys()
+
+    def test_named_sorting_fills_earlier_unnamed_rows(self):
+        add_sorting_to_nwbfile(sorting=self.sorting_1, nwbfile=self.nwbfile)
+        self.sorting_2.annotate(sorting_name="curated")
+        add_sorting_to_nwbfile(sorting=self.sorting_2, nwbfile=self.nwbfile)
+
+        assert list(self.nwbfile.units["sorting_name"][:]) == [""] * self.num_units + ["curated"] * self.num_units
+        assert list(self.nwbfile.units["unit_name"][:]) == ["a", "b", "c", "d", "c", "d", "e", "f"]
 
     def test_new_property_follows_unit_identity_after_shuffle(self):
         """
@@ -2135,7 +2143,7 @@ class TestAddUnitsTable(TestCase):
         incoming_sorting = self.sorting_1.select_units(["b", "a"])
         incoming_sorting.set_property("snr", [1.0, 2.0])
         message = (
-            "Multiple rows in units table 'units' match sorting_name='sorting' and unit_name='a'. "
+            "Multiple rows in units table 'units' match sorting_name='' and unit_name='a'. "
             "Supply 'unit_electrode_indices' to identify the unit."
         )
         with pytest.raises(ValueError, match=re.escape(message)):
@@ -2161,7 +2169,6 @@ class TestAddUnitsTable(TestCase):
             "quality",
             "snr_2",
             "snr_10",
-            "sorting_name",
             "spike_times",
         ]
         self.assertListEqual(list(self.nwbfile.units.colnames), expected_unit_column_names)
@@ -2263,11 +2270,27 @@ class TestAddUnitsTable(TestCase):
         expected_properties_in_units_table = ["", "", "added_value", "added_value", "added_value", "added_value"]
         self.assertListEqual(properties_in_units_table, expected_properties_in_units_table)
 
+    def test_units_table_extension_after_manual_unit_addition(self):
+        """Rows added before the `unit_name` column existed get an empty `unit_name`, not their id."""
+        unit_row_kwargs = self.common_unit_row_kwargs.copy()
+
+        unit_row_kwargs.update(id=123, spike_times=[0, 1, 2])
+        self.nwbfile.add_unit(**unit_row_kwargs)
+
+        unit_row_kwargs.update(id=124, spike_times=[2, 3, 4])
+        self.nwbfile.add_unit(**unit_row_kwargs)
+
+        add_sorting_to_nwbfile(sorting=self.sorting_1, nwbfile=self.nwbfile)
+
+        expected_units_ids = [123, 124, 2, 3, 4, 5]
+        expected_unit_names = ["", "", "a", "b", "c", "d"]
+        self.assertListEqual(list(self.nwbfile.units.id.data), expected_units_ids)
+        self.assertListEqual(list(self.nwbfile.units["unit_name"].data), expected_unit_names)
+
     def test_manual_extension_after_add_sorting_to_nwbfile(self):
         """Add some units to the units table after using the add_sorting_to_nwbfile function"""
 
         add_sorting_to_nwbfile(sorting=self.sorting_1, nwbfile=self.nwbfile)
-        self.common_unit_row_kwargs["sorting_name"] = "manual_sorting"
 
         # Previous properties
         self.nwbfile.units.add_unit(**self.common_unit_row_kwargs, id=123, unit_name="123")
@@ -2285,8 +2308,6 @@ class TestAddUnitsTable(TestCase):
         Previous properties that are also available in the sorting are matched with unit_name
         """
         self.nwbfile.add_unit_column(name="unit_name", description="a string reference for the unit")
-        self.nwbfile.add_unit_column(name="sorting_name", description="the sorting output containing the unit")
-        self.common_unit_row_kwargs["sorting_name"] = "sorting"
         self.nwbfile.add_unit_column(name="property", description="property_added_before")
 
         self.nwbfile.add_unit(**self.common_unit_row_kwargs, id=20, unit_name="c", property="value_c")
@@ -2333,7 +2354,7 @@ class TestAddUnitsTable(TestCase):
         """
         self.nwbfile.add_unit_column(name="unit_name", description="a string reference for the unit")
         self.nwbfile.add_unit_column(name="sorting_name", description="the sorting output containing the unit")
-        self.common_unit_row_kwargs["sorting_name"] = "sorting"
+        self.common_unit_row_kwargs["sorting_name"] = ""
 
         # A unit "c" from another sorting comes first, so matching by unit name alone would pick it
         self.nwbfile.add_unit(spike_times=[1, 1, 1], sorting_name="other_sorting", id=19, unit_name="c")
@@ -2368,8 +2389,6 @@ class TestAddUnitsTable(TestCase):
         # We use an integer property because integers do not have a clear default value,
         # so if we were adding new rows, we would need to specify a null value for this property
         self.nwbfile.add_unit_column("unit_name", description="unit name")
-        self.nwbfile.add_unit_column(name="sorting_name", description="the sorting output containing the unit")
-        self.common_unit_row_kwargs["sorting_name"] = "sorting"
         self.nwbfile.add_unit_column("custom_int_property", description="integer property without default")
 
         # Add all units from sorting_1 manually
