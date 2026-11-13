@@ -1,6 +1,5 @@
 import shutil
 import tempfile
-import warnings
 from datetime import datetime, timezone
 from importlib.metadata import version as importlib_version
 from pathlib import Path
@@ -10,13 +9,15 @@ import numpy as np
 import pytest
 from hdmf.testing import TestCase
 from packaging import version
-from pynwb import NWBHDF5IO, NWBFile
+from pynwb import NWBHDF5IO, NWBFile, read_nwb
 from pynwb.file import Subject
 from pynwb.image import ImageSeries
 
 from neuroconv.converters import DANNCEConverter
 from neuroconv.datainterfaces import DANNCEInterface
+from neuroconv.datainterfaces.behavior.dannce.danncedatainterface import _SamplingRateFallbackWarning
 from neuroconv.tools import get_module
+from neuroconv.tools.testing.data_interface_mixins import DataInterfaceTestMixin
 from neuroconv.utils import dict_deep_update
 
 try:
@@ -50,43 +51,37 @@ class _TestCaseWithTemporaryDirectory(TestCase):
             warn(f"Unable to cleanup testing data at {cls.test_dir}! Please remove it manually.")
 
 
-class TestDANNCEConverterSingleSubject(_TestCaseWithTemporaryDirectory):
+class TestDANNCEConverterSingleSubject(DataInterfaceTestMixin):
     """Full happy-path coverage: 'sdannce/single_subject' has six campy-recorded cameras (video +
     frametimes.npy + metadata.csv), 'hires_camN_params.mat' calibration, and a single-subject (no
     animal axis) prediction file -- the direct replacement for this file's previous 2-camera,
     flat-layout coverage.
 
     The session has no Label3D/sync file, so the predictions' sampleIDs cannot be mapped to video frames and
-    the frametimes are not used for the pose: the converter warns, and the times are set by hand here, the
-    way a user would after checking that their sampleIDs are frame indices."""
+    the frametimes are not used for the pose: the converter warns, and the pose is timed from the cameras'
+    50 fps 'sampling_rate'."""
+
+    data_interface_cls = DANNCEConverter
+    run_path = SDANNCE_DATA_PATH / "single_subject"
+    interface_kwargs = dict(
+        file_paths=str(run_path / "SDANNCE" / "bsl0.5_FM" / "save_data_AVG0.mat"),
+        videos_folder_path=str(run_path / "videos"),
+        calibration_path=str(run_path / "calibration"),
+        sampling_rate=50.0,
+        metadata_key="PoseEstimationDANNCE",
+    )
+    conversion_options = dict(stub_test=True)
 
     camera_names = [f"Camera{i}" for i in range(1, 7)]
     expected_serial_numbers = {"Camera1": "40054255", "Camera2": "40068500"}
 
-    @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
-        run_path = SDANNCE_DATA_PATH / "single_subject"
-
-        with warnings.catch_warnings(record=True) as construction_warnings:
-            warnings.simplefilter("always")
-            cls.converter = DANNCEConverter(
-                file_paths=str(run_path / "SDANNCE" / "bsl0.5_FM" / "save_data_AVG0.mat"),
-                videos_folder_path=str(run_path / "videos"),
-                calibration_path=str(run_path / "calibration"),
-                metadata_key="PoseEstimationDANNCE",
-            )
-        cls.construction_warnings = [str(record.message) for record in construction_warnings]
-        cls.frametimes = np.load(run_path / "videos" / "Camera1" / "frametimes.npy")[1]
-        dannce_interface = cls.converter.data_interface_objects["DANNCE"]
-        dannce_interface.temporal_alignment[dannce_interface.metadata_key].set_times(cls.frametimes)
-
     def test_frametimes_without_sync_warn(self):
-        assert any("no sync table to map" in message for message in self.construction_warnings)
-        assert self.converter.data_interface_objects["DANNCE"].video_frame_indices is None
+        with pytest.warns(_SamplingRateFallbackWarning, match="no sync table to map"):
+            converter = DANNCEConverter(**self.interface_kwargs)
+        assert converter.data_interface_objects["DANNCE"].video_frame_indices is None
 
-    def test_expected_metadata(self):
-        metadata = self.converter.get_metadata()
+    def test_expected_metadata(self, setup_interface):
+        metadata = self.interface.get_metadata()
 
         for camera_name in self.camera_names:
             assert camera_name in metadata["Devices"]
@@ -101,10 +96,10 @@ class TestDANNCEConverterSingleSubject(_TestCaseWithTemporaryDirectory):
         ]
         assert camera_names_by_pose_estimation_metadata_key == self.camera_names
 
-    def test_camera_capture_metadata_from_metadata_csv(self):
+    def test_camera_capture_metadata_from_metadata_csv(self, setup_interface):
         """Each camera's real 'metadata.csv' (campy-style) should enrich its Device with serial_number
         and a shared DeviceModel (make/model), and its video description with the nominal frame rate."""
-        metadata = self.converter.get_metadata()
+        metadata = self.interface.get_metadata()
 
         device_model_metadata_key = "camera_model_a2a1920_160ucbas"
         assert metadata["DeviceModels"][device_model_metadata_key] == dict(
@@ -120,160 +115,130 @@ class TestDANNCEConverterSingleSubject(_TestCaseWithTemporaryDirectory):
             video_description = metadata["Behavior"]["ExternalVideos"][f"video_{camera_name}"]["description"]
             assert "50 fps" in video_description
 
-    def test_run_conversion(self):
-        nwbfile_path = str(self.test_dir / "test_dannce_converter_single_subject.nwb")
-        metadata = self.converter.get_metadata()
-        metadata["NWBFile"]["session_start_time"] = datetime.now(timezone.utc)
-        metadata["Subject"] = dict(subject_id="rat1", species="Rattus norvegicus", sex="U")
-        self.converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, stub_test=True)
-
-        self._assert_nwbfile_structure(nwbfile_path=nwbfile_path)
-
-    def _assert_nwbfile_structure(self, nwbfile_path: str):
+    def check_read_nwb(self, nwbfile_path: str):
         from ndx_pose import CalibratedCamera, MultiCameraPoseEstimation
 
-        with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
-            nwbfile = io.read()
+        nwbfile = read_nwb(nwbfile_path)
 
-            for camera_name in self.camera_names:
-                video_name = f"Video{camera_name}"
-                assert video_name in nwbfile.acquisition
-                assert isinstance(nwbfile.acquisition[video_name], ImageSeries)
+        for camera_name in self.camera_names:
+            video_name = f"Video{camera_name}"
+            assert video_name in nwbfile.acquisition
+            assert isinstance(nwbfile.acquisition[video_name], ImageSeries)
 
-            behavior = get_module(nwbfile=nwbfile, name="behavior")
-            pe = behavior.data_interfaces["PoseEstimationDANNCE"]
-            assert isinstance(pe, MultiCameraPoseEstimation)
-            assert len(pe.pose_estimations) == len(self.camera_names)
+        behavior = get_module(nwbfile=nwbfile, name="behavior")
+        pe = behavior.data_interfaces["PoseEstimationDANNCE"]
+        assert isinstance(pe, MultiCameraPoseEstimation)
+        assert len(pe.pose_estimations) == len(self.camera_names)
 
-            # Exactly one Device per camera -- the video's ImageSeries and DANNCE's per-camera
-            # PoseEstimation child must share the same calibrated Device, not each create their own.
-            assert set(nwbfile.devices.keys()) == set(self.camera_names)
+        # Exactly one Device per camera -- the video's ImageSeries and DANNCE's per-camera
+        # PoseEstimation child must share the same calibrated Device, not each create their own.
+        assert set(nwbfile.devices.keys()) == set(self.camera_names)
 
-            for camera_name in self.camera_names:
-                device = nwbfile.devices[camera_name]
-                assert isinstance(device, CalibratedCamera)
+        for camera_name in self.camera_names:
+            device = nwbfile.devices[camera_name]
+            assert isinstance(device, CalibratedCamera)
 
-                video = nwbfile.acquisition[f"Video{camera_name}"]
-                assert video.device is device
+            video = nwbfile.acquisition[f"Video{camera_name}"]
+            assert video.device is device
 
-                camera_pose_estimation = pe.pose_estimations[f"{camera_name}PoseEstimation"]
-                assert camera_pose_estimation.device is device
-                assert camera_pose_estimation.source_video is video
+            camera_pose_estimation = pe.pose_estimations[f"{camera_name}PoseEstimation"]
+            assert camera_pose_estimation.device is device
+            assert camera_pose_estimation.source_video is video
 
-            for pose_estimation_series in pe.pose_estimation_series.values():
-                assert pose_estimation_series.data.shape[0] == 50  # full session, shorter than the stub limit
+        for pose_estimation_series in pe.pose_estimation_series.values():
+            assert pose_estimation_series.data.shape[0] == 50  # full session, shorter than the stub limit
 
 
-class TestDANNCEConverterClassicDannceNoFrametimes(_TestCaseWithTemporaryDirectory):
+class TestDANNCEConverterClassicDannceNoFrametimes(DataInterfaceTestMixin):
     """'dannce/chunked_videos' is a classic (non-campy) DANNCE layout: 'kyle_camN_params.mat'
     calibration (exercises the generalized calibration filename pattern) and camera video folders
     with no 'frametimes.npy'/'metadata.csv' at all: the video files are placed one after another from their
     headers, and the pose is timed through the sync table and 'sampling_rate'."""
 
+    data_interface_cls = DANNCEConverter
+    run_path = DANNCE_DATA_PATH / "chunked_videos"
+    interface_kwargs = dict(
+        file_paths=str(run_path / "DANNCE" / "predict_results" / "save_data_AVG.mat"),
+        videos_folder_path=str(run_path / "videos"),
+        calibration_path=str(run_path / "calibration"),
+        sync_path=str(run_path / "label3d_dannce.mat"),
+        sampling_rate=100.0,
+        metadata_key="PoseEstimationDANNCE",
+    )
+
     camera_names = [f"Camera{i}" for i in range(1, 7)]
 
-    @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
-        run_path = DANNCE_DATA_PATH / "chunked_videos"
-
-        cls.converter = DANNCEConverter(
-            file_paths=str(run_path / "DANNCE" / "predict_results" / "save_data_AVG.mat"),
-            videos_folder_path=str(run_path / "videos"),
-            calibration_path=str(run_path / "calibration"),
-            sync_path=str(run_path / "label3d_dannce.mat"),
-            sampling_rate=100.0,
-            metadata_key="PoseEstimationDANNCE",
-        )
-
-    def test_pose_times_through_sync(self):
+    def test_pose_times_through_sync(self, setup_interface):
         """sampleIDs 1 and 11 are sync rows for frames 0 and 1, so at 100 Hz the times are 0.00 and 0.01 s."""
-        dannce_interface = self.converter.data_interface_objects["DANNCE"]
+        dannce_interface = self.interface.data_interface_objects["DANNCE"]
         np.testing.assert_array_equal(dannce_interface._sample_id, [1, 11])
         np.testing.assert_allclose(
             dannce_interface.temporal_alignment[dannce_interface.metadata_key].get_times(), [0.0, 0.01]
         )
 
-    def test_expected_metadata(self):
-        metadata = self.converter.get_metadata()
+    def test_expected_metadata(self, setup_interface):
+        metadata = self.interface.get_metadata()
         for camera_name in self.camera_names:
             assert metadata["Devices"][camera_name]["type"] == "CalibratedCamera"
 
-    def test_run_conversion(self):
-        nwbfile_path = str(self.test_dir / "test_dannce_converter_chunked_videos.nwb")
-        metadata = self.converter.get_metadata()
-        metadata["NWBFile"]["session_start_time"] = datetime.now(timezone.utc)
-        metadata["Subject"] = dict(subject_id="mouse1", species="Mus musculus", sex="U")
-        self.converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
-
+    def check_read_nwb(self, nwbfile_path: str):
         from ndx_pose import CalibratedCamera, MultiCameraPoseEstimation
 
-        with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
-            nwbfile = io.read()
-            for camera_name in self.camera_names:
-                assert f"Video{camera_name}" in nwbfile.acquisition
-                assert isinstance(nwbfile.devices[camera_name], CalibratedCamera)
+        nwbfile = read_nwb(nwbfile_path)
+        for camera_name in self.camera_names:
+            assert f"Video{camera_name}" in nwbfile.acquisition
+            assert isinstance(nwbfile.devices[camera_name], CalibratedCamera)
 
-            behavior = get_module(nwbfile=nwbfile, name="behavior")
-            pe = behavior.data_interfaces["PoseEstimationDANNCE"]
-            assert isinstance(pe, MultiCameraPoseEstimation)
-            for series in pe.pose_estimation_series.values():
-                assert series.data.shape[0] == 2  # this stub prediction file covers 2 frames
+        behavior = get_module(nwbfile=nwbfile, name="behavior")
+        pe = behavior.data_interfaces["PoseEstimationDANNCE"]
+        assert isinstance(pe, MultiCameraPoseEstimation)
+        for series in pe.pose_estimation_series.values():
+            assert series.data.shape[0] == 2  # this stub prediction file covers 2 frames
 
 
-class TestDANNCEConverterPredictionsSplitAcrossJobs(_TestCaseWithTemporaryDirectory):
+class TestDANNCEConverterPredictionsSplitAcrossJobs(DataInterfaceTestMixin):
     """'sdannce/predictions_split_across_jobs' partitions one subject's 50-frame session between two
     files in the same run folder (frames 0-24 and 25-49) -- exercises 'file_paths' concatenation."""
 
-    camera_names = [f"Camera{i}" for i in range(1, 7)]
+    data_interface_cls = DANNCEConverter
+    run_path = SDANNCE_DATA_PATH / "predictions_split_across_jobs"
+    interface_kwargs = dict(
+        file_paths=[
+            str(run_path / "SDANNCE" / "predict00" / "save_data_AVG0.mat"),
+            str(run_path / "SDANNCE" / "predict00" / "save_data_AVG25.mat"),
+        ],
+        videos_folder_path=str(run_path / "videos"),
+        calibration_path=str(run_path / "calibration"),
+        sync_path=str(run_path / "sampleCAL_BG_dannce.mat"),
+        animal_index=0,
+        metadata_key="PoseEstimationDANNCE",
+    )
 
-    @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
-        run_path = SDANNCE_DATA_PATH / "predictions_split_across_jobs"
-        predict_path = run_path / "SDANNCE" / "predict00"
-
-        cls.converter = DANNCEConverter(
-            file_paths=[str(predict_path / "save_data_AVG0.mat"), str(predict_path / "save_data_AVG25.mat")],
-            videos_folder_path=str(run_path / "videos"),
-            calibration_path=str(run_path / "calibration"),
-            sync_path=str(run_path / "sampleCAL_BG_dannce.mat"),
-            animal_index=0,
-            metadata_key="PoseEstimationDANNCE",
-        )
-        cls.frametimes = np.load(run_path / "videos" / "Camera1" / "frametimes.npy")[1]
-
-    def test_concatenated_into_one_continuous_session(self):
-        assert self.converter._dannce_interface._pred.shape[0] == 50
-        sample_id = self.converter._dannce_interface._sample_id
+    def test_concatenated_into_one_continuous_session(self, setup_interface):
+        assert self.interface._dannce_interface._pred.shape[0] == 50
+        sample_id = self.interface._dannce_interface._sample_id
         assert sample_id[0] == 0
         assert sample_id[-1] == 49
 
-    def test_pose_times_are_the_frametimes_at_the_synced_frames(self):
-        dannce_interface = self.converter.data_interface_objects["DANNCE"]
+    def test_pose_times_are_the_frametimes_at_the_synced_frames(self, setup_interface):
+        frametimes = np.load(self.run_path / "videos" / "Camera1" / "frametimes.npy")[1]
+        dannce_interface = self.interface.data_interface_objects["DANNCE"]
         frames = dannce_interface.video_frame_indices
         np.testing.assert_array_equal(frames, np.arange(50))
         np.testing.assert_allclose(
-            dannce_interface.temporal_alignment[dannce_interface.metadata_key].get_times(), self.frametimes[frames]
+            dannce_interface.temporal_alignment[dannce_interface.metadata_key].get_times(), frametimes[frames]
         )
 
-    def test_run_conversion(self):
-        nwbfile_path = str(self.test_dir / "test_dannce_converter_split_jobs.nwb")
-        metadata = self.converter.get_metadata()
-        metadata["NWBFile"]["session_start_time"] = datetime.now(timezone.utc)
-        metadata["Subject"] = dict(subject_id="rat1", species="Rattus norvegicus", sex="U")
-        self.converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
-
+    def check_read_nwb(self, nwbfile_path: str):
         from ndx_pose import MultiCameraPoseEstimation
 
-        with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
-            nwbfile = io.read()
-            behavior = get_module(nwbfile=nwbfile, name="behavior")
-            pe = behavior.data_interfaces["PoseEstimationDANNCE"]
-            assert isinstance(pe, MultiCameraPoseEstimation)
-            # One continuous 50-frame pose estimation, not two 25-frame fragments.
-            for series in pe.pose_estimation_series.values():
-                assert series.data.shape[0] == 50
+        nwbfile = read_nwb(nwbfile_path)
+        behavior = get_module(nwbfile=nwbfile, name="behavior")
+        pe = behavior.data_interfaces["PoseEstimationDANNCE"]
+        assert isinstance(pe, MultiCameraPoseEstimation)
+        # One continuous 50-frame pose estimation, not two 25-frame fragments.
+        for series in pe.pose_estimation_series.values():
+            assert series.data.shape[0] == 50
 
 
 class TestDANNCEConverterMultipleSubjectsSharedDevices(_TestCaseWithTemporaryDirectory):
@@ -589,45 +554,33 @@ class TestDANNCEConverterThreeSubjectsSharedDevices(_TestCaseWithTemporaryDirect
             assert "PoseEstimationDANNCEAnimal3" in behavior.data_interfaces
 
 
-class TestDANNCEConverterSyncLongerThanVideo(_TestCaseWithTemporaryDirectory):
+class TestDANNCEConverterSyncLongerThanVideo(DataInterfaceTestMixin):
     """'sdannce/sync_longer_than_video' has a Label3D synchronization table longer than the actual
     video/predictions: 'ANNOT_COM_BR_dannce.mat' has 67 sync rows for 50 video frames, and only the rows the
     predictions use are looked up, so the extra rows are harmless. Its prediction
     file has a singleton animal axis with no explicit 'animal_index' passed, exercising the
     auto-default-to-0 behavior end-to-end on real data."""
 
-    camera_names = [f"Camera{i}" for i in range(1, 7)]
+    data_interface_cls = DANNCEConverter
+    run_path = SDANNCE_DATA_PATH / "sync_longer_than_video"
+    interface_kwargs = dict(
+        file_paths=str(run_path / "SDANNCE" / "predict00" / "save_data_AVG0.mat"),
+        videos_folder_path=str(run_path / "videos"),
+        sync_path=str(run_path / "ANNOT_COM_BR_dannce.mat"),
+        calibration_path=str(run_path / "calibration"),
+        metadata_key="PoseEstimationDANNCE",
+    )
 
-    @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
-        run_path = SDANNCE_DATA_PATH / "sync_longer_than_video"
+    def test_animal_index_auto_defaulted(self, setup_interface):
+        assert self.interface._dannce_interface._animal_index == 0
 
-        cls.converter = DANNCEConverter(
-            file_paths=str(run_path / "SDANNCE" / "predict00" / "save_data_AVG0.mat"),
-            videos_folder_path=str(run_path / "videos"),
-            sync_path=str(run_path / "ANNOT_COM_BR_dannce.mat"),
-            calibration_path=str(run_path / "calibration"),
-            metadata_key="PoseEstimationDANNCE",
-        )
-
-    def test_animal_index_auto_defaulted(self):
-        assert self.converter._dannce_interface._animal_index == 0
-
-    def test_run_conversion(self):
-        nwbfile_path = str(self.test_dir / "test_dannce_converter_sync_longer_than_video.nwb")
-        metadata = self.converter.get_metadata()
-        metadata["NWBFile"]["session_start_time"] = datetime.now(timezone.utc)
-        metadata["Subject"] = dict(subject_id="rat1", species="Rattus norvegicus", sex="U")
-        self.converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
-
+    def check_read_nwb(self, nwbfile_path: str):
         from ndx_pose import MultiCameraPoseEstimation
 
-        with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
-            nwbfile = io.read()
-            behavior = get_module(nwbfile=nwbfile, name="behavior")
-            pe = behavior.data_interfaces["PoseEstimationDANNCE"]
-            assert isinstance(pe, MultiCameraPoseEstimation)
+        nwbfile = read_nwb(nwbfile_path)
+        behavior = get_module(nwbfile=nwbfile, name="behavior")
+        pe = behavior.data_interfaces["PoseEstimationDANNCE"]
+        assert isinstance(pe, MultiCameraPoseEstimation)
 
 
 class TestDANNCEConverterTwoRunsForOneSubject(_TestCaseWithTemporaryDirectory):
@@ -695,43 +648,33 @@ class TestDANNCEConverterTwoRunsForOneSubject(_TestCaseWithTemporaryDirectory):
             assert "PoseEstimationSDANNCERun" in behavior.data_interfaces
 
 
-class TestDANNCEConverterSdannceChunkedVideosWithFrametimes(_TestCaseWithTemporaryDirectory):
+class TestDANNCEConverterSdannceChunkedVideosWithFrametimes(DataInterfaceTestMixin):
     """'sdannce/chunked_videos' pairs multi-segment videos (two chunks per camera) with real
     'frametimes.npy' files -- unlike 'dannce/chunked_videos' (no frametimes at all), this exercises
     the per-segment timestamp-splitting path (frametimes present) rather than placing the files from
     their headers."""
 
+    data_interface_cls = DANNCEConverter
+    run_path = SDANNCE_DATA_PATH / "chunked_videos"
+    interface_kwargs = dict(
+        file_paths=str(run_path / "SDANNCE" / "predict00" / "save_data_AVG0.mat"),
+        videos_folder_path=str(run_path / "videos"),
+        sync_path=str(run_path / "sampleCAL_BG_dannce.mat"),
+        calibration_path=str(run_path / "calibration"),
+        metadata_key="PoseEstimationDANNCE",
+    )
+
     camera_names = [f"Camera{i}" for i in range(1, 7)]
 
-    @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
-        run_path = SDANNCE_DATA_PATH / "chunked_videos"
-
-        cls.converter = DANNCEConverter(
-            file_paths=str(run_path / "SDANNCE" / "predict00" / "save_data_AVG0.mat"),
-            videos_folder_path=str(run_path / "videos"),
-            sync_path=str(run_path / "sampleCAL_BG_dannce.mat"),
-            calibration_path=str(run_path / "calibration"),
-            metadata_key="PoseEstimationDANNCE",
-        )
-
-    def test_run_conversion(self):
-        nwbfile_path = str(self.test_dir / "test_dannce_converter_sdannce_chunked_videos.nwb")
-        metadata = self.converter.get_metadata()
-        metadata["NWBFile"]["session_start_time"] = datetime.now(timezone.utc)
-        metadata["Subject"] = dict(subject_id="rat1", species="Rattus norvegicus", sex="U")
-        self.converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
-
+    def check_read_nwb(self, nwbfile_path: str):
         from ndx_pose import MultiCameraPoseEstimation
 
-        with NWBHDF5IO(path=nwbfile_path, mode="r", load_namespaces=True) as io:
-            nwbfile = io.read()
-            for camera_name in self.camera_names:
-                assert f"Video{camera_name}" in nwbfile.acquisition
+        nwbfile = read_nwb(nwbfile_path)
+        for camera_name in self.camera_names:
+            assert f"Video{camera_name}" in nwbfile.acquisition
 
-            behavior = get_module(nwbfile=nwbfile, name="behavior")
-            pe = behavior.data_interfaces["PoseEstimationDANNCE"]
-            assert isinstance(pe, MultiCameraPoseEstimation)
-            for series in pe.pose_estimation_series.values():
-                assert series.data.shape[0] == 50
+        behavior = get_module(nwbfile=nwbfile, name="behavior")
+        pe = behavior.data_interfaces["PoseEstimationDANNCE"]
+        assert isinstance(pe, MultiCameraPoseEstimation)
+        for series in pe.pose_estimation_series.values():
+            assert series.data.shape[0] == 50
