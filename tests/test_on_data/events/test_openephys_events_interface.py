@@ -1,3 +1,4 @@
+import re
 from datetime import datetime
 
 import numpy as np
@@ -5,6 +6,7 @@ import pytest
 from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.datainterfaces import OpenEphysBinaryEventsInterface
+from neuroconv.tools.testing.data_interface_mixins import EventsInterfaceTestMixin
 
 try:
     from ..setup_paths import ECEPHY_DATA_PATH
@@ -17,6 +19,7 @@ MULTIEXP_PATH = OPENEPHYS_DATA_PATH / "v0.6.x_neuropixels_multiexp_multistream"
 MISSING_FOLDERS_PATH = OPENEPHYS_DATA_PATH / "v0.6.x_neuropixels_missing_folders"
 PRE_V06_PATH = OPENEPHYS_DATA_PATH / "v0.4.4.1_with_video_tracking"
 TWO_NODES_PATH = OPENEPHYS_DATA_PATH / "v0.5.x_two_nodes"
+NO_EVENTS_PATH = OPENEPHYS_DATA_PATH / "v0.6.x_onebox_neuropixels_nontrivial_wiring"
 
 NIDQ_STREAM = "Record Node 104#NI-DAQmx-103.PXIe-6341"
 MESSAGE_STREAM = "Record Node 104#MessageCenter"
@@ -91,11 +94,12 @@ class OpenEphysBinaryEventsInterfaceMixin:
         return self.data_interface_cls(**self.interface_kwargs)
 
 
-class TestDigitalLines(OpenEphysBinaryEventsInterfaceMixin):
+class TestDigitalLines(OpenEphysBinaryEventsInterfaceMixin, EventsInterfaceTestMixin):
     """The digital input lines of a NI-DAQmx board: four lines that fired, each written as its own table
     of every edge it produced."""
 
     interface_kwargs = dict(folder_path=WITH_SYNC_PATH, stream_name=NIDQ_STREAM)
+    expected_temporal_alignment_keys = ("line1", "line2", "line6", "line7")
 
     def test_get_metadata(self, interface):
         # One entry per line that fired, keyed by the line, each carrying the two columns the format
@@ -205,10 +209,11 @@ class TestBlockIndexSelectsExperiment(OpenEphysBinaryEventsInterfaceMixin):
         assert interface.get_metadata()["NWBFile"]["session_start_time"] == datetime(2022, 5, 3, 11, 9, 55)
 
 
-class TestMessages(OpenEphysBinaryEventsInterfaceMixin):
+class TestMessages(OpenEphysBinaryEventsInterfaceMixin, EventsInterfaceTestMixin):
     """The Message Center stream: free text annotations, written as one table of messages."""
 
     interface_kwargs = dict(folder_path=WITH_SYNC_PATH, stream_name=MESSAGE_STREAM)
+    expected_temporal_alignment_keys = ("messages",)
 
     def test_get_metadata(self, interface):
         expected_metadata = {
@@ -234,11 +239,12 @@ class TestMessages(OpenEphysBinaryEventsInterfaceMixin):
         assert np.allclose(messages["timestamp"][:2], [1339.694967, 1339.694967])
 
 
-class TestPreV06Layout(OpenEphysBinaryEventsInterfaceMixin):
-    """A recording written before v0.6, which names the states array ``channel_states`` and counts its
-    timestamps in samples rather than seconds."""
+class TestPreV06Layout(OpenEphysBinaryEventsInterfaceMixin, EventsInterfaceTestMixin):
+    """A recording written before v0.6, which names the states array ``channel_states``, counts its
+    timestamps in samples rather than seconds, and declares eight lines of which only line 8 fired."""
 
     interface_kwargs = dict(folder_path=PRE_V06_PATH, stream_name="Rhythm_FPGA-100.0/TTL_1")
+    expected_temporal_alignment_keys = ("line1", "line2", "line3", "line4", "line5", "line6", "line7", "line8")
 
     def test_add_to_nwbfile(self, interface):
         nwbfile = mock_NWBFile()
@@ -254,16 +260,34 @@ class TestPreV06Layout(OpenEphysBinaryEventsInterfaceMixin):
 
 
 class TestStreamWithoutEvents(OpenEphysBinaryEventsInterfaceMixin):
-    """A stream that was recorded and never fired. A line is only known here by having toggled, so a
-    stream where none did reports no event types and writes no table."""
+    """A stream that was recorded and never fired. Its header declares eight lines, so each is written as a
+    table with no events."""
 
     interface_kwargs = dict(folder_path=PRE_V06_PATH, stream_name="Sync_Port-129.0/TTL_1")
-
-    def test_get_metadata(self, interface):
-        assert interface.get_metadata()["Events"] == {}
 
     def test_add_to_nwbfile(self, interface):
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
 
-        assert nwbfile.events == {}
+        expected_table_lengths = {f"Line{line}": 0 for line in range(1, 9)}
+        assert {name: len(table) for name, table in nwbfile.events.items()} == expected_table_lengths
+
+
+def test_message_center_without_messages_writes_an_empty_table():
+    interface = OpenEphysBinaryEventsInterface(folder_path=NO_EVENTS_PATH, stream_name="Record Node 101#MessageCenter")
+    nwbfile = mock_NWBFile()
+    interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
+
+    expected_table_lengths = {"Messages": 0}
+    assert {name: len(table) for name, table in nwbfile.events.items()} == expected_table_lengths
+
+
+def test_stream_without_events_or_declared_lines_raises():
+    """From v0.6 on the header does not declare the lines of a stream, so a stream that never fired has none."""
+    stream_name = "Record Node 101#OneBox-111.ProbeA"
+    expected_message = (
+        f"The event stream '{stream_name}' recorded no events, and its 'structure.oebin' does not declare "
+        "how many lines it has, so there is nothing to write."
+    )
+    with pytest.raises(ValueError, match=re.escape(expected_message)):
+        OpenEphysBinaryEventsInterface(folder_path=NO_EVENTS_PATH, stream_name=stream_name)

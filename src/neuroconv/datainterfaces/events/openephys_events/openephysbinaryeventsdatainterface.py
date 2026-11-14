@@ -24,7 +24,7 @@ class OpenEphysBinaryEventsInterface(BaseEventsInterface):
     the edges into intervals at parse time, drops ``full_words``, and skips a whole line when its
     rising and falling counts disagree.
 
-    Each line that fired becomes one ``pynwb.event.EventsTable`` in ``nwbfile.events``, named
+    Each line becomes one ``pynwb.event.EventsTable`` in ``nwbfile.events``, named
     ``Line<n>`` until the metadata renames it: an Open Ephys line is a wire, so what it records
     (reward, lick, trial start) is known to the experimenter and not to the file. Every edge is
     written as its own row, with the direction in an ``edge`` column and the latched word in a
@@ -114,16 +114,23 @@ class OpenEphysBinaryEventsInterface(BaseEventsInterface):
                 f"The selected stream '{stream_name}' is not in the available streams {available_streams}!"
             )
 
+        self.metadata_key = metadata_key or "open_ephys_events"
+        # The recordings of the selected experiment, in order. They share the experiment's clock, so their
+        # arrays are concatenated rather than treated as separate sources.
+        self._stream_sources = streams[stream_name]
+
+        # Last, because the base registers the event types with `temporal_alignment`, which reads the stream sources
         super().__init__(
             folder_path=folder_path,
             stream_name=stream_name,
             block_index=block_index,
             verbose=verbose,
         )
-        self.metadata_key = metadata_key or "open_ephys_events"
-        # The recordings of the selected experiment, in order. They share the experiment's clock, so their
-        # arrays are concatenated rather than treated as separate sources.
-        self._stream_sources = streams[stream_name]
+        if not self.get_event_type_source_ids():
+            raise ValueError(
+                f"The event stream '{stream_name}' recorded no events, and its 'structure.oebin' does not declare "
+                "how many lines it has, so there is nothing to write."
+            )
 
     def get_metadata(self) -> DeepDict:
         """
@@ -166,12 +173,12 @@ class OpenEphysBinaryEventsInterface(BaseEventsInterface):
     def _get_events_data_dict(self) -> dict[str, _EventsData]:
         """Build the internal event representation from the stream's ``.npy`` arrays, cached after the first call.
 
-        A TTL stream yields one entry per line that fired, keyed ``line<n>``, holding every edge of that
-        line as a point event with the transition direction under the ``state`` payload field and the
-        latched port value under ``full_word``. A message stream yields a single ``messages`` entry
-        holding the decoded text. A stream that recorded nothing yields nothing: an event type that was
-        never named by any of its lines cannot be reported, since a line is only known to exist here by
-        having toggled.
+        A TTL stream yields one entry per line, keyed ``line<n>``, holding every edge of that line as a point
+        event with the transition direction under the ``state`` payload field and the latched port value
+        under ``full_word``. The lines are the ones the header declares (``num_channels``, written before
+        v0.6) plus any that fired, so a declared line that never fired is an entry with no events. From v0.6
+        on the header does not declare its lines, and a line is only known by having fired. A message stream
+        yields a single ``messages`` entry holding the decoded text, with no events when nothing was sent.
         """
         if self._events_data_dict is not None:
             return self._events_data_dict
@@ -182,10 +189,9 @@ class OpenEphysBinaryEventsInterface(BaseEventsInterface):
             text = np.concatenate(
                 [np.char.decode(np.load(source["path"] / "text.npy")) for source in self._stream_sources]
             )
-            if len(timestamps) > 0:
-                events_data_dict["messages"] = _EventsData(
-                    event_type_source_id="messages", timestamps=timestamps, payload={"text": text}
-                )
+            events_data_dict["messages"] = _EventsData(
+                event_type_source_id="messages", timestamps=timestamps, payload={"text": text}
+            )
         else:
             timestamps = np.concatenate([_read_timestamps(source=source) for source in self._stream_sources])
             states = np.concatenate([_read_states(path=source["path"]) for source in self._stream_sources])
@@ -193,7 +199,9 @@ class OpenEphysBinaryEventsInterface(BaseEventsInterface):
             full_words = np.concatenate(full_words) if all(word is not None for word in full_words) else None
 
             lines = np.abs(states)
-            for line in np.unique(lines):
+            num_declared_lines = self._stream_sources[0]["num_channels"] or 0
+            declared_lines = np.arange(1, num_declared_lines + 1)
+            for line in np.union1d(declared_lines, lines):
                 selection = lines == line
                 # The sign of the state is the edge; np.sign keeps it as the raw +1/-1 the labels are keyed by.
                 payload = {"state": np.sign(states[selection])}
@@ -250,7 +258,13 @@ def _discover_event_streams(folder_path: Path) -> dict[str, dict[str, list[dict]
             stream_name = _get_stream_name(folder_name=folder_name, record_node_name=record_node_name)
             sources = experiments.setdefault(experiment_name, {}).setdefault(stream_name, [])
             sources.append(
-                dict(path=path, recording_folder=recording_folder, sample_rate=entry["sample_rate"], kind=kind)
+                dict(
+                    path=path,
+                    recording_folder=recording_folder,
+                    sample_rate=entry["sample_rate"],
+                    kind=kind,
+                    num_channels=entry.get("num_channels"),
+                )
             )
     return experiments
 
