@@ -7,6 +7,7 @@ from .behavior.ethovision.ethovisionmanualscoringinterface import (
     EthoVisionManualScoringInterface,
 )
 from .behavior.ethovision.ethovisiontrackinterface import EthoVisionTrackInterface
+from .behavior.facemap.facemapdatainterface import FacemapInterface
 from .behavior.fictrac.fictracdatainterface import FicTracDataInterface
 from .behavior.lightningpose.lightningposedatainterface import (
     LightningPoseDataInterface,
@@ -260,6 +261,7 @@ interface_list = [
     FicTracDataInterface,
     NeuralynxNvtInterface,
     LightningPoseDataInterface,
+    FacemapInterface,
     MedPCInterface,
     VameInterface,
     MoseqKeyPointsInterface,
@@ -341,6 +343,7 @@ interfaces_by_category = dict(
         EthoVisionManualScoring=EthoVisionManualScoringInterface,
         MoseqKeyPoints=MoseqKeyPointsInterface,
         OptiTrack=OptiTrackInterface,
+        Facemap=FacemapInterface,
         # Text
         CsvTimeIntervals=CsvTimeIntervalsInterface,
         ExcelTimeIntervals=ExcelTimeIntervalsInterface,

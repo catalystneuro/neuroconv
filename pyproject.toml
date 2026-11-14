@@ -139,6 +139,10 @@ vame = [
 boris = [
     "ndx-ethogram>=0.1.0",  # a BORIS project is a coding scheme plus its events, and the scheme is an Ethogram
 ]
+facemap = [
+    "ndx-facemap-motionsvd @ git+https://github.com/catalystneuro/ndx-facemap-motionsvd.git",
+    "scipy", # for scipy.io.loadmat, which reads the pre-v7.3 container
+]
 ethovision = [
     "openpyxl",  # Excel is one of EthoVision's three Track-export containers
     "ndx-ethogram>=0.1.0",  # manual-scoring rows also produce an Ethogram and EthogramBouts
@@ -159,6 +163,7 @@ behavior = [
     "neuroconv[moseq]",
     "neuroconv[optitrack]",
     "neuroconv[vame]",
+    "neuroconv[facemap]",
     "ndx-miniscope>=0.5.1",  # This is for the miniscope behavior data interface, not sure is needed
 ]
 
