@@ -13,75 +13,91 @@ try:
 except ImportError:
     from setup_paths import ECEPHY_DATA_PATH
 
-OPENEPHYS_DATA_PATH = ECEPHY_DATA_PATH / "openephysbinary"
-WITH_SYNC_PATH = OPENEPHYS_DATA_PATH / "v0.6.x_neuropixels_with_sync"
-MULTIEXP_PATH = OPENEPHYS_DATA_PATH / "v0.6.x_neuropixels_multiexp_multistream"
-MISSING_FOLDERS_PATH = OPENEPHYS_DATA_PATH / "v0.6.x_neuropixels_missing_folders"
-PRE_V06_PATH = OPENEPHYS_DATA_PATH / "v0.4.4.1_with_video_tracking"
-TWO_NODES_PATH = OPENEPHYS_DATA_PATH / "v0.5.x_two_nodes"
-NO_EVENTS_PATH = OPENEPHYS_DATA_PATH / "v0.6.x_onebox_neuropixels_nontrivial_wiring"
 
-NIDQ_STREAM = "Record Node 104#NI-DAQmx-103.PXIe-6341"
-MESSAGE_STREAM = "Record Node 104#MessageCenter"
+class TestOpenEphysBinaryEventsInterfaceEdgeCases:
+    """Stream discovery, argument errors and streams with nothing to write, each read from a published
+    recording without running a conversion."""
 
+    with_sync_folder_path = ECEPHY_DATA_PATH / "openephysbinary" / "v0.6.x_neuropixels_with_sync"
+    multiexp_folder_path = ECEPHY_DATA_PATH / "openephysbinary" / "v0.6.x_neuropixels_multiexp_multistream"
+    missing_folders_folder_path = ECEPHY_DATA_PATH / "openephysbinary" / "v0.6.x_neuropixels_missing_folders"
+    two_nodes_folder_path = ECEPHY_DATA_PATH / "openephysbinary" / "v0.5.x_two_nodes"
+    no_events_folder_path = ECEPHY_DATA_PATH / "openephysbinary" / "v0.6.x_onebox_neuropixels_nontrivial_wiring"
 
-def test_get_stream_names():
-    # Every event stream the recording wrote, named as SpikeInterface names the recording streams.
-    stream_names = OpenEphysBinaryEventsInterface.get_stream_names(folder_path=WITH_SYNC_PATH)
-    assert stream_names == [
-        "Record Node 104#MessageCenter",
-        "Record Node 104#NI-DAQmx-103.PXIe-6341",
-        "Record Node 104#Neuropix-PXI-100.ProbeA-AP",
-        "Record Node 104#Neuropix-PXI-100.ProbeA-LFP",
-    ]
+    def test_get_stream_names(self):
+        # Every event stream the recording wrote, named as SpikeInterface names the recording streams.
+        stream_names = OpenEphysBinaryEventsInterface.get_stream_names(folder_path=self.with_sync_folder_path)
+        assert stream_names == [
+            "Record Node 104#MessageCenter",
+            "Record Node 104#NI-DAQmx-103.PXIe-6341",
+            "Record Node 104#Neuropix-PXI-100.ProbeA-AP",
+            "Record Node 104#Neuropix-PXI-100.ProbeA-LFP",
+        ]
 
+    def test_get_stream_names_skips_folders_never_written(self):
+        # This recording's structure.oebin lists four event streams but only two were written to disk
+        # (ProbeC and MessageCenter are absent); the streams that exist are still read.
+        stream_names = OpenEphysBinaryEventsInterface.get_stream_names(folder_path=self.missing_folders_folder_path)
+        assert stream_names == [
+            "Record Node 101#NI-DAQmx-103.PXIe-6341",
+            "Record Node 101#Neuropix-PXI-100.ProbeB",
+        ]
 
-def test_get_stream_names_skips_folders_never_written():
-    # This recording's structure.oebin lists four event streams but only two were written to disk
-    # (ProbeC and MessageCenter are absent); the streams that exist are still read.
-    stream_names = OpenEphysBinaryEventsInterface.get_stream_names(folder_path=MISSING_FOLDERS_PATH)
-    assert stream_names == [
-        "Record Node 101#NI-DAQmx-103.PXIe-6341",
-        "Record Node 101#Neuropix-PXI-100.ProbeB",
-    ]
+    def test_stream_name_required_when_several(self):
+        with pytest.raises(ValueError, match="More than one event stream is detected"):
+            OpenEphysBinaryEventsInterface(folder_path=self.with_sync_folder_path)
 
+    def test_unknown_stream_name(self):
+        with pytest.raises(ValueError, match="is not in the available streams"):
+            OpenEphysBinaryEventsInterface(
+                folder_path=self.with_sync_folder_path, stream_name="Record Node 104#NotAStream"
+            )
 
-def test_stream_name_required_when_several():
-    with pytest.raises(ValueError, match="More than one event stream is detected"):
-        OpenEphysBinaryEventsInterface(folder_path=WITH_SYNC_PATH)
+    def test_block_index_required_when_several_experiments(self):
+        with pytest.raises(ValueError, match="More than one experiment is detected"):
+            OpenEphysBinaryEventsInterface(
+                folder_path=self.multiexp_folder_path, stream_name="Record Node 104#NI-DAQmx-103.PXIe-6341"
+            )
 
+    def test_block_index_out_of_range(self):
+        with pytest.raises(ValueError, match="out of range"):
+            OpenEphysBinaryEventsInterface(folder_path=self.multiexp_folder_path, block_index=3)
 
-def test_unknown_stream_name():
-    with pytest.raises(ValueError, match="is not in the available streams"):
-        OpenEphysBinaryEventsInterface(folder_path=WITH_SYNC_PATH, stream_name="Record Node 104#NotAStream")
+    def test_session_start_time_absent(self):
+        # Both Record Nodes of this session wrote their streams and no settings.xml, so no start time is
+        # reported and nothing raises over it. It also names its nodes 'RecordNode103', without the space.
+        stream_names = OpenEphysBinaryEventsInterface.get_stream_names(folder_path=self.two_nodes_folder_path)
+        assert stream_names == [
+            "RecordNode103#Message_Center-904.0/TEXT_group_1",
+            "RecordNode105#Message_Center-904.0/TEXT_group_1",
+        ]
 
+        interface = OpenEphysBinaryEventsInterface(folder_path=self.two_nodes_folder_path, stream_name=stream_names[0])
+        assert "session_start_time" not in interface.get_metadata()["NWBFile"]
 
-def test_block_index_required_when_several_experiments():
-    with pytest.raises(ValueError, match="More than one experiment is detected"):
-        OpenEphysBinaryEventsInterface(folder_path=MULTIEXP_PATH, stream_name=NIDQ_STREAM)
+    def test_no_recording_found(self, tmp_path):
+        with pytest.raises(ValueError, match="No Open Ephys binary recording was found"):
+            OpenEphysBinaryEventsInterface(folder_path=tmp_path)
 
+    def test_message_center_without_messages_writes_an_empty_table(self):
+        interface = OpenEphysBinaryEventsInterface(
+            folder_path=self.no_events_folder_path, stream_name="Record Node 101#MessageCenter"
+        )
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
 
-def test_block_index_out_of_range():
-    with pytest.raises(ValueError, match="out of range"):
-        OpenEphysBinaryEventsInterface(folder_path=MULTIEXP_PATH, block_index=3)
+        expected_table_lengths = {"Messages": 0}
+        assert {name: len(table) for name, table in nwbfile.events.items()} == expected_table_lengths
 
-
-def test_session_start_time_absent():
-    # Both Record Nodes of this session wrote their streams and no settings.xml, so no start time is
-    # reported and nothing raises over it. It also names its nodes 'RecordNode103', without the space.
-    stream_names = OpenEphysBinaryEventsInterface.get_stream_names(folder_path=TWO_NODES_PATH)
-    assert stream_names == [
-        "RecordNode103#Message_Center-904.0/TEXT_group_1",
-        "RecordNode105#Message_Center-904.0/TEXT_group_1",
-    ]
-
-    interface = OpenEphysBinaryEventsInterface(folder_path=TWO_NODES_PATH, stream_name=stream_names[0])
-    assert "session_start_time" not in interface.get_metadata()["NWBFile"]
-
-
-def test_no_recording_found(tmp_path):
-    with pytest.raises(ValueError, match="No Open Ephys binary recording was found"):
-        OpenEphysBinaryEventsInterface(folder_path=tmp_path)
+    def test_stream_without_events_or_declared_lines_raises(self):
+        """From v0.6 on the header does not declare the lines of a stream, so a stream that never fired has none."""
+        stream_name = "Record Node 101#OneBox-111.ProbeA"
+        expected_message = (
+            f"The event stream '{stream_name}' recorded no events, and its 'structure.oebin' does not declare "
+            "how many lines it has, so there is nothing to write."
+        )
+        with pytest.raises(ValueError, match=re.escape(expected_message)):
+            OpenEphysBinaryEventsInterface(folder_path=self.no_events_folder_path, stream_name=stream_name)
 
 
 class OpenEphysBinaryEventsInterfaceMixin:
@@ -98,7 +114,10 @@ class TestDigitalLines(OpenEphysBinaryEventsInterfaceMixin, EventsInterfaceTestM
     """The digital input lines of a NI-DAQmx board: four lines that fired, each written as its own table
     of every edge it produced."""
 
-    interface_kwargs = dict(folder_path=WITH_SYNC_PATH, stream_name=NIDQ_STREAM)
+    interface_kwargs = dict(
+        folder_path=ECEPHY_DATA_PATH / "openephysbinary" / "v0.6.x_neuropixels_with_sync",
+        stream_name="Record Node 104#NI-DAQmx-103.PXIe-6341",
+    )
     expected_temporal_alignment_keys = ("line1", "line2", "line6", "line7")
 
     def test_get_metadata(self, interface):
@@ -168,7 +187,7 @@ class TestUnclosedInterval(OpenEphysBinaryEventsInterfaceMixin):
     where such a line is lost."""
 
     interface_kwargs = dict(
-        folder_path=MULTIEXP_PATH,
+        folder_path=ECEPHY_DATA_PATH / "openephysbinary" / "v0.6.x_neuropixels_multiexp_multistream",
         stream_name="Record Node 101#NI-DAQmx-103.PXIe-6341",
         block_index=2,
     )
@@ -188,7 +207,7 @@ class TestBlockIndexSelectsExperiment(OpenEphysBinaryEventsInterfaceMixin):
     """The experiments of a session restart the clock, so each is read on its own through ``block_index``."""
 
     interface_kwargs = dict(
-        folder_path=MULTIEXP_PATH,
+        folder_path=ECEPHY_DATA_PATH / "openephysbinary" / "v0.6.x_neuropixels_multiexp_multistream",
         stream_name="Record Node 101#NI-DAQmx-103.PXIe-6341",
         block_index=1,
     )
@@ -212,7 +231,10 @@ class TestBlockIndexSelectsExperiment(OpenEphysBinaryEventsInterfaceMixin):
 class TestMessages(OpenEphysBinaryEventsInterfaceMixin, EventsInterfaceTestMixin):
     """The Message Center stream: free text annotations, written as one table of messages."""
 
-    interface_kwargs = dict(folder_path=WITH_SYNC_PATH, stream_name=MESSAGE_STREAM)
+    interface_kwargs = dict(
+        folder_path=ECEPHY_DATA_PATH / "openephysbinary" / "v0.6.x_neuropixels_with_sync",
+        stream_name="Record Node 104#MessageCenter",
+    )
     expected_temporal_alignment_keys = ("messages",)
 
     def test_get_metadata(self, interface):
@@ -243,7 +265,10 @@ class TestPreV06Layout(OpenEphysBinaryEventsInterfaceMixin, EventsInterfaceTestM
     """A recording written before v0.6, which names the states array ``channel_states``, counts its
     timestamps in samples rather than seconds, and declares eight lines of which only line 8 fired."""
 
-    interface_kwargs = dict(folder_path=PRE_V06_PATH, stream_name="Rhythm_FPGA-100.0/TTL_1")
+    interface_kwargs = dict(
+        folder_path=ECEPHY_DATA_PATH / "openephysbinary" / "v0.4.4.1_with_video_tracking",
+        stream_name="Rhythm_FPGA-100.0/TTL_1",
+    )
     expected_temporal_alignment_keys = ("line1", "line2", "line3", "line4", "line5", "line6", "line7", "line8")
 
     def test_add_to_nwbfile(self, interface):
@@ -263,7 +288,10 @@ class TestStreamWithoutEvents(OpenEphysBinaryEventsInterfaceMixin):
     """A stream that was recorded and never fired. Its header declares eight lines, so each is written as a
     table with no events."""
 
-    interface_kwargs = dict(folder_path=PRE_V06_PATH, stream_name="Sync_Port-129.0/TTL_1")
+    interface_kwargs = dict(
+        folder_path=ECEPHY_DATA_PATH / "openephysbinary" / "v0.4.4.1_with_video_tracking",
+        stream_name="Sync_Port-129.0/TTL_1",
+    )
 
     def test_add_to_nwbfile(self, interface):
         nwbfile = mock_NWBFile()
@@ -271,23 +299,3 @@ class TestStreamWithoutEvents(OpenEphysBinaryEventsInterfaceMixin):
 
         expected_table_lengths = {f"Line{line}": 0 for line in range(1, 9)}
         assert {name: len(table) for name, table in nwbfile.events.items()} == expected_table_lengths
-
-
-def test_message_center_without_messages_writes_an_empty_table():
-    interface = OpenEphysBinaryEventsInterface(folder_path=NO_EVENTS_PATH, stream_name="Record Node 101#MessageCenter")
-    nwbfile = mock_NWBFile()
-    interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
-
-    expected_table_lengths = {"Messages": 0}
-    assert {name: len(table) for name, table in nwbfile.events.items()} == expected_table_lengths
-
-
-def test_stream_without_events_or_declared_lines_raises():
-    """From v0.6 on the header does not declare the lines of a stream, so a stream that never fired has none."""
-    stream_name = "Record Node 101#OneBox-111.ProbeA"
-    expected_message = (
-        f"The event stream '{stream_name}' recorded no events, and its 'structure.oebin' does not declare "
-        "how many lines it has, so there is nothing to write."
-    )
-    with pytest.raises(ValueError, match=re.escape(expected_message)):
-        OpenEphysBinaryEventsInterface(folder_path=NO_EVENTS_PATH, stream_name=stream_name)
