@@ -141,6 +141,7 @@ boris = [
 ]
 facemap = [
     "ndx-facemap-motionsvd @ git+https://github.com/catalystneuro/ndx-facemap-motionsvd.git",
+    "scipy", # for scipy.io.loadmat, which reads the pre-v7.3 container
 ]
 ethovision = [
     "openpyxl",  # Excel is one of EthoVision's three Track-export containers

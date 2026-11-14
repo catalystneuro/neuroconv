@@ -18,13 +18,136 @@ from ....utils import get_base_schema, get_schema_from_hdmf_class
 FilePathType = str | Path
 
 
+class _ProcFile:
+    """Read a Facemap MATLAB-GUI ``_proc.mat``, whichever container it was written in.
+
+    ``matlab/saveROI.m`` writes ``save(savepath, '-v7.3', 'proc')``, so the file is
+    HDF5 and only ``h5py`` opens it. Files resaved by downstream analysis are plain
+    MATLAB 5.0 instead, where only ``scipy.io.loadmat`` works. Both are common in
+    the wild, and the two libraries disagree about index order, so this class hides
+    the choice: every accessor returns arrays in MATLAB's own orientation, which is
+    the one ``saveROI.m`` and the Facemap documentation describe.
+
+    ``proc`` fields are also written conditionally, and a field that was never
+    populated is still present as an empty cell rather than being absent, so the
+    ``has_*`` predicates below distinguish the two.
+    """
+
+    def __init__(self, file_path: str | Path):
+        self.file_path = str(file_path)
+        with open(self.file_path, "rb") as handle:
+            self.is_hdf5 = handle.read(16).startswith(b"MATLAB 7.3")
+        if self.is_hdf5:
+            self._mat = None
+        else:
+            import scipy.io  # not a core neuroconv dependency
+
+            self._mat = scipy.io.loadmat(self.file_path)["proc"][0, 0]
+
+    def __enter__(self):
+        if self.is_hdf5:
+            self._h5 = h5py.File(self.file_path, "r")
+            self._proc = self._h5["proc"]
+        return self
+
+    def __exit__(self, *exc_info):
+        if self.is_hdf5:
+            self._h5.close()
+
+    # -- MATLAB stores an empty array in HDF5 as a two-element uint64 of its zero
+    # -- dimensions, not as a zero-length dataset, so emptiness needs its own test.
+    def _is_empty(self, reference) -> bool:
+        target = self._h5[reference]
+        return target.dtype == np.uint64 and target.shape == (2,) and int(np.prod(target[()])) == 0
+
+    def _cell(self, name: str) -> list:
+        if self.is_hdf5:
+            return list(self._proc[name][()].ravel())
+        return list(np.asarray(self._mat[name]).ravel())
+
+    def _cell_is_empty(self, name: str, index: int) -> bool:
+        entries = self._cell(name)
+        if index >= len(entries):
+            return True
+        if self.is_hdf5:
+            return self._is_empty(entries[index])
+        return np.asarray(entries[index]).size == 0
+
+    def _cell_value(self, name: str, index: int) -> np.ndarray:
+        entry = self._cell(name)[index]
+        # h5py reverses MATLAB's index order on every axis; transposing restores it.
+        return np.asarray(self._h5[entry][()]).T if self.is_hdf5 else np.asarray(entry)
+
+    def has_field(self, name: str) -> bool:
+        return name in (self._proc if self.is_hdf5 else self._mat.dtype.names)
+
+    def scalar(self, name: str) -> float:
+        source = self._proc[name] if self.is_hdf5 else self._mat[name]
+        return float(np.asarray(source).ravel()[0])
+
+    def motion_cell_indices(self) -> list[int]:
+        """Which motion-SVD cells hold data.
+
+        Cell 0 is the whole frame and the rest are the small ROIs, in the fixed
+        order Facemap writes them, so an ROI that was never drawn leaves an empty
+        cell in place rather than shifting the ones after it. Returning indices
+        rather than a count keeps that alignment with ``locROI``.
+        """
+        if not self.has_field("motSVD"):
+            return []
+        entries = self._cell("motSVD")
+        return [index for index in range(len(entries)) if not self._cell_is_empty("motSVD", index)]
+
+    def motion_svd(self, index: int) -> np.ndarray:
+        """Motion SVD components for one cell, ``(frames, components)``."""
+        return self._cell_value("motSVD", index)
+
+    def motion_mask(self, index: int) -> np.ndarray:
+        """Motion masks for one cell.
+
+        Cell 0 is the whole-frame mask, left flat as ``(pixels, components)`` by
+        ``saveROI.m``; every other cell was already reshaped by it to
+        ``(rows, columns, components)``.
+        """
+        return self._cell_value("uMotMask", index)
+
+    def multivideo_box(self) -> np.ndarray:
+        """The whole-frame box, ``proc.ROI{1}{1}``, reached through two cell levels."""
+        if self.is_hdf5:
+            return np.asarray(self._h5[self._h5[self._proc["ROI"][0][0]][0][0]][()]).ravel()
+        return np.asarray(np.asarray(np.asarray(self._mat["ROI"]).ravel()[0]).ravel()[0]).ravel()
+
+    def loc_roi(self, index: int) -> np.ndarray:
+        return self._cell_value("locROI", index).ravel()
+
+    def has_pupil(self) -> bool:
+        if not self.has_field("pupil"):
+            return False
+        if self.is_hdf5:
+            return isinstance(self._proc["pupil"], h5py.Group)
+        return np.asarray(self._mat["pupil"]).size > 0
+
+    def pupil(self, field: str) -> np.ndarray:
+        """One pupil trace, ``(frames, n)``. Assumes a single pupil ROI."""
+        if self.is_hdf5:
+            return np.asarray(self._proc["pupil"][field][()]).T
+        return np.asarray(np.asarray(self._mat["pupil"]).ravel()[0][field])
+
+    def processed_frame(self) -> np.ndarray:
+        """``proc.wpix{1}``, the per-pixel mask of what entered the whole-frame SVD."""
+        return self._cell_value("wpix", 0)
+
+
 class FacemapInterface(BaseTemporalAlignmentInterface):
     """Write Facemap pupil, eye-position and motion-SVD outputs to NWB."""
 
     display_name = "Facemap"
-    help = "Interface for Facemap output."
+    # Every other interface declares `info`; `help` is not read by the GUIDE, so it
+    # was reaching `get_format_summaries` as None.
+    info = "Interface for the pupil, eye-position and motion-SVD output of the Facemap MATLAB GUI."
+    associated_suffixes = (".mat", ".avi")
 
-    keywords = ["eye tracking"]
+    keywords = ("eye tracking", "pupil", "face motion")
 
     def __init__(
         self,
@@ -115,7 +238,7 @@ class FacemapInterface(BaseTemporalAlignmentInterface):
         if self._timestamps is None:
             self._timestamps = self.get_timestamps()
 
-        with h5py.File(self.source_data["mat_file_path"], "r") as file:
+        with _ProcFile(self.source_data["mat_file_path"]) as proc:
 
             behavior_module = get_module(nwbfile=nwbfile, name="behavior", description="behavioral data")
             eye_tracking_metadata = metadata["Behavior"]["EyeTracking"][0]
@@ -123,7 +246,7 @@ class FacemapInterface(BaseTemporalAlignmentInterface):
             eye_com = SpatialSeries(
                 name=eye_tracking_metadata["name"],
                 description=eye_tracking_metadata["description"],
-                data=file["proc"]["pupil"]["com"][:].T,
+                data=proc.pupil("com"),
                 reference_frame=eye_tracking_metadata["reference_frame"],
                 unit=eye_tracking_metadata["unit"],
                 timestamps=self._timestamps,
@@ -137,7 +260,7 @@ class FacemapInterface(BaseTemporalAlignmentInterface):
         self, nwbfile: NWBFile, metadata: DeepDict, pupil_trace_type: Literal["area_raw", "area"] = "area"
     ):
 
-        with h5py.File(self.source_data["mat_file_path"], "r") as file:
+        with _ProcFile(self.source_data["mat_file_path"]) as proc:
 
             behavior_module = get_module(nwbfile=nwbfile, name="behavior", description="behavioral data")
 
@@ -153,7 +276,7 @@ class FacemapInterface(BaseTemporalAlignmentInterface):
             pupil_trace = TimeSeries(
                 name=pupil_area_metadata["name"],
                 description=pupil_area_metadata["description"],
-                data=file["proc"]["pupil"][pupil_trace_type][:].T,
+                data=proc.pupil(pupil_trace_type),
                 unit=pupil_area_metadata["unit"],
                 timestamps=eye_com,
             )
@@ -191,16 +314,16 @@ class FacemapInterface(BaseTemporalAlignmentInterface):
         motion_series_name = metadata["Behavior"]["MotionSVDSeries"]["name"]
         motion_series_description = metadata["Behavior"]["MotionSVDSeries"]["description"]
 
-        with h5py.File(self.source_data["mat_file_path"], "r") as file:
+        with _ProcFile(self.source_data["mat_file_path"]) as proc:
 
             behavior_module = get_module(nwbfile=nwbfile, name="behavior", description="behavioral data")
 
             # Extract mask_coordinates
-            mask_coordinates = file[file[file["proc"]["ROI"][0][0]][0][0]]
-            y1 = int(np.round(mask_coordinates[0][0]) - 1)  # correct matlab indexing
-            x1 = int(np.round(mask_coordinates[1][0]) - 1)  # correct matlab indexing
-            y2 = y1 + int(np.round(mask_coordinates[2][0]))
-            x2 = x1 + int(np.round(mask_coordinates[3][0]))
+            box = proc.multivideo_box()
+            y1 = int(np.round(box[0]) - 1)  # correct matlab indexing
+            x1 = int(np.round(box[1]) - 1)  # correct matlab indexing
+            y2 = y1 + int(np.round(box[2]))
+            x2 = x1 + int(np.round(box[3]))
             mask_coordinates = [x1, y1, x2, y2]
 
             # store multivideo motion mask and motion series
@@ -213,11 +336,9 @@ class FacemapInterface(BaseTemporalAlignmentInterface):
             )
 
             # add multivideo mask
-            mask_ref = file["proc"]["uMotMask"][0][0]
-            for c, component in enumerate(file[mask_ref]):
-                if c == first_n_components:
-                    break
-                componendt_2d = component.reshape((y2 - y1, x2 - x1))
+            mask = proc.motion_mask(0)
+            for c in range(min(first_n_components, mask.shape[-1])):
+                componendt_2d = mask[:, c].reshape((y2 - y1, x2 - x1))
                 motion_masks_table.add_row(image_mask=componendt_2d.T, check_ragged=False)
 
             motion_masks = DynamicTableRegion(
@@ -227,14 +348,12 @@ class FacemapInterface(BaseTemporalAlignmentInterface):
                 table=motion_masks_table,
             )
 
-            series_ref = file["proc"]["motSVD"][0][0]
-            data = np.array(file[series_ref])
-            data = data[:first_n_components, :]
+            data = proc.motion_svd(0)[:, :first_n_components]
 
             motion_series = MotionSVDSeries(
                 name=f"{motion_series_name}Multivideo",
                 description=f"{motion_series_description} for multivideo.",
-                data=data.T,
+                data=data,
                 motion_masks=motion_masks,
                 unit="unknown",
                 timestamps=self._timestamps,
@@ -270,24 +389,21 @@ class FacemapInterface(BaseTemporalAlignmentInterface):
         motion_series_name = metadata["Behavior"]["MotionSVDSeries"]["name"]
         motion_series_description = metadata["Behavior"]["MotionSVDSeries"]["description"]
 
-        with h5py.File(self.source_data["mat_file_path"], "r") as file:
+        with _ProcFile(self.source_data["mat_file_path"]) as proc:
 
             behavior_module = get_module(nwbfile=nwbfile, name="behavior", description="behavioral data")
 
             downsampling_factor = self._get_downsamplig_factor()
             processed_frame_dimension = self._get_processed_frame_dimension()
             # store ROIs motion mask and motion series
-            n = 1
-            for series_ref, mask_ref in zip(file["proc"]["motSVD"][1:], file["proc"]["uMotMask"][1:]):
-                series_ref = series_ref[0]
-                mask_ref = mask_ref[0]
+            # skipping the first cell because it refers to the multivideo mask
+            for n in [index for index in proc.motion_cell_indices() if index > 0]:
 
-                # skipping the first ROI because it refers to "running" mask, from Facemap doc
-                mask_coordinates = file[file["proc"]["locROI"][n][0]]
-                y1 = int(np.round(mask_coordinates[0][0]) - 1)  # correct matlab indexing
-                x1 = int(np.round(mask_coordinates[1][0]) - 1)  # correct matlab indexing
-                y2 = y1 + int(np.round(mask_coordinates[2][0]))
-                x2 = x1 + int(np.round(mask_coordinates[3][0]))
+                box = proc.loc_roi(n)
+                y1 = int(np.round(box[0]) - 1)  # correct matlab indexing
+                x1 = int(np.round(box[1]) - 1)  # correct matlab indexing
+                y2 = y1 + int(np.round(box[2]))
+                x2 = x1 + int(np.round(box[3]))
                 mask_coordinates = [x1, y1, x2, y2]
 
                 motion_masks_table = MotionSVDMasks(
@@ -298,10 +414,9 @@ class FacemapInterface(BaseTemporalAlignmentInterface):
                     processed_frame_dimension=processed_frame_dimension,
                 )
 
-                for c, component in enumerate(file[mask_ref]):
-                    if c == first_n_components:
-                        break
-                    motion_masks_table.add_row(image_mask=component.T, check_ragged=False)
+                mask = proc.motion_mask(n)
+                for c in range(min(first_n_components, mask.shape[-1])):
+                    motion_masks_table.add_row(image_mask=mask[:, :, c], check_ragged=False)
 
                 motion_masks = DynamicTableRegion(
                     name="motion_masks",
@@ -310,18 +425,16 @@ class FacemapInterface(BaseTemporalAlignmentInterface):
                     table=motion_masks_table,
                 )
 
-                data = np.array(file[series_ref])
-                data = data[:first_n_components, :]
+                data = proc.motion_svd(n)[:, :first_n_components]
 
                 motion_series = MotionSVDSeries(
                     name=f"{motion_series_name}ROI{n}",
                     description=f"{motion_series_description} for ROI{n}",
-                    data=data.T,
+                    data=data,
                     motion_masks=motion_masks,
                     unit="unknown",
                     timestamps=self._timestamps,
                 )
-                n += 1
 
                 behavior_module.add(motion_masks_table)
                 behavior_module.add(motion_series)
@@ -343,20 +456,19 @@ class FacemapInterface(BaseTemporalAlignmentInterface):
         self._timestamps = aligned_timestamps
 
     def _get_downsamplig_factor(self) -> float:
-        with h5py.File(self.source_data["mat_file_path"], "r") as file:
-            downsamplig_factor = file["proc"]["sc"][0][0]
-        return downsamplig_factor
+        with _ProcFile(self.source_data["mat_file_path"]) as proc:
+            return proc.scalar("sc")
 
     def _get_processed_frame_dimension(self) -> np.ndarray:
-        with h5py.File(self.source_data["mat_file_path"], "r") as file:
-            processed_frame_ref = file["proc"]["wpix"][0][0]
-            frame = file[processed_frame_ref]
-            return [frame.shape[1], frame.shape[0]]
+        with _ProcFile(self.source_data["mat_file_path"]) as proc:
+            frame = proc.processed_frame()
+            return [frame.shape[0], frame.shape[1]]
 
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
         metadata: Optional[dict] = None,
+        *,
         first_n_components: int = 500,
         include_multivideo_SVD: bool = True,
     ):
@@ -374,8 +486,22 @@ class FacemapInterface(BaseTemporalAlignmentInterface):
         include_multivideo_SVD : bool, default: True
             Also write the multivideo (whole-frame) motion SVD.
         """
-        self._add_pupil_data(nwbfile=nwbfile, metadata=metadata, pupil_trace_type="area_raw")
-        self._add_pupil_data(nwbfile=nwbfile, metadata=metadata, pupil_trace_type="area")
-        self._add_motion_SVD(nwbfile=nwbfile, metadata=metadata, first_n_components=first_n_components)
-        if include_multivideo_SVD:
+        # Facemap writes whichever of these the operator drew an ROI for, and leaves
+        # the rest as empty cells rather than omitting them, so presence of the key
+        # says nothing about whether it holds data.
+        with _ProcFile(self.source_data["mat_file_path"]) as proc:
+            has_pupil = proc.has_pupil()
+            motion_cells = proc.motion_cell_indices()
+
+        if has_pupil:
+            self._add_pupil_data(nwbfile=nwbfile, metadata=metadata, pupil_trace_type="area_raw")
+            self._add_pupil_data(nwbfile=nwbfile, metadata=metadata, pupil_trace_type="area")
+        elif self.verbose:
+            print(f"No pupil ROI in {self.source_data['mat_file_path']}, skipping pupil and eye tracking.")
+
+        if any(index > 0 for index in motion_cells):
+            self._add_motion_SVD(nwbfile=nwbfile, metadata=metadata, first_n_components=first_n_components)
+        if include_multivideo_SVD and 0 in motion_cells:
             self._add_multivideo_motion_SVD(nwbfile=nwbfile, metadata=metadata, first_n_components=first_n_components)
+        elif not motion_cells and self.verbose:
+            print(f"No motion SVD in {self.source_data['mat_file_path']}, skipping motion masks and series.")
