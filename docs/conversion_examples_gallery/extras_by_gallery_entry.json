@@ -237,6 +237,9 @@
   "sorting/neuralynx.rst": {
     "extra": "neuralynx"
   },
+  "sorting/neuroexplorer.rst": {
+    "extra": "neuroexplorer"
+  },
   "sorting/neuroscope.rst": {
     "extra": "neuroscope"
   },

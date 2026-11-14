@@ -58,6 +58,7 @@ from .ecephys.neuralynx.neuralynxdatainterface import (
     NeuralynxRecordingInterface,
     NeuralynxSortingInterface,
 )
+from .ecephys.neuroexplorer.neuroexplorerdatainterface import NeuroExplorerSortingInterface
 from .ecephys.neuroscope.neuroscopedatainterface import (
     NeuroScopeLFPInterface,
     NeuroScopeRecordingInterface,
@@ -168,6 +169,7 @@ interface_list = [
     # Ecephys
     NeuralynxRecordingInterface,
     NeuralynxSortingInterface,
+    NeuroExplorerSortingInterface,
     NeuroScopeRecordingInterface,
     NeuroScopeSortingInterface,
     NeuroScopeLFPInterface,
