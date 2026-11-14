@@ -5,7 +5,8 @@ made once, against output GuPPy itself produced, in
 ``tests/test_on_data/fiber_photometry/guppy/test_reference_session.py``; asserting it a second time
 against ``mock_guppy`` -- a replica written from the same beliefs as the reader -- would prove nothing.
 
-* Parsing: the two bin-label parsing sites, exercised directly on hand-built DataFrames and indexes.
+* Parsing: the bin-label parser and the splitting of a pre-CSV GuPPy run's ``.h5`` tables, exercised
+  directly on hand-built labels and DataFrames.
 * Behavior and branches: the options a caller can flip and the shapes a GuPPy folder can take, run
   against ``mock_guppy`` because they need *a* folder rather than a *faithful* one.
 
@@ -23,16 +24,20 @@ import pytest
 from pynwb import NWBHDF5IO
 from pynwb.testing.mock.file import mock_NWBFile
 
+from neuroconv.datainterfaces.fiber_photometry.guppy._legacy_results import (
+    split_legacy_event_matrix,
+    split_legacy_peak_auc,
+)
 from neuroconv.datainterfaces.fiber_photometry.guppy.guppydatainterface import (
     GuppyInterface,
 )
 from neuroconv.tools.testing import generate_mock_guppy_output_folder
 
-SESSION = "Photo_249_391-200721-120136"
-
 # The mock topology: two recording sites, three events, two features, num_trials=4 binned three to a bin.
 RECORDING_SITES = ["dms", "dls"]
 EVENT_NAMES = ["rewarded_nose_pokes", "unrewarded_nose_pokes", "port_entries"]
+# The order the events registry puts them in, which every per-event column follows.
+EVENT_NAMES_IN_REGISTRY_ORDER = ["port_entries", "rewarded_nose_pokes", "unrewarded_nose_pokes"]
 TRACE_PREFIXES = ["cntrl_sig_fit", "dff", "z_score"]
 MOCK_SAMPLING_RATE = 200.0
 MOCK_STARTING_TIME = 1.0
@@ -54,85 +59,122 @@ TONIC_EPOCHS = [("baseline", 1.0, 2.0), ("post_injection", 2.0, 3.0)]
 # The generator's default onsets, shared by every event: they label the trial columns of every
 # peri-event product and fill <event>_<recording_site>.hdf5.
 MOCK_TRIAL_ONSETS = [10.0, 20.0, 30.0, 40.0]
+# The generator's default significance comparison, the one pair tested against each other.
+PSTH_COMPARISON = ("rewarded_nose_pokes", "unrewarded_nose_pokes")
+# The smallest session the generator will write: one site, one event, no optional products. The
+# significance tests that assert on an *absence* need nothing the rest of the topology provides.
+MINIMAL_SESSION = dict(
+    recording_site_to_stores={"dms": {"signal": "Dv2A", "control": "Dv1A"}},
+    event_store_to_name={"PrtR": "port_entries"},
+    cross_correlation_pairs=(),
+    bin_width=None,
+    covariates={},
+    tonic_epochs=(),
+    num_psth_timepoints=5,
+)
 
 
-class TestExtractBins:
-    """``GuppyInterface._extract_bins`` parses ``bin_(...)`` value/error COLUMNS of a PSTH/cross-corr file."""
+class TestBinEdges:
+    """``GuppyInterface._bin_edges`` parses the edges out of GuPPy's ``bin_(<start>-<stop>)`` labels."""
 
     def test_time_min_float_labels(self):
-        # Columns deliberately out of order to confirm the result is sorted by bin start.
+        bin_edges = GuppyInterface._bin_edges(["bin_(0.0-2.0)", "bin_(2.0-4.5)"])
+        np.testing.assert_array_equal(bin_edges, np.array([[0.0, 2.0], [2.0, 4.5]]))
+
+    def test_trials_integer_labels(self):
+        bin_edges = GuppyInterface._bin_edges(["bin_(0-3)", "bin_(3-6)"])
+        np.testing.assert_array_equal(bin_edges, np.array([[0.0, 3.0], [3.0, 6.0]]))
+
+
+class TestSplitLegacyEventMatrix:
+    """``split_legacy_event_matrix`` moves the ``bin_`` COLUMNS of a pre-CSV PSTH/cross-corr table to a table of their own."""
+
+    def test_time_min_float_labels(self):
         dataframe = pandas.DataFrame(
             {
-                "0.5": [1.0, 2.0],  # a per-trial onset column -- must be ignored
-                "bin_(2.0-4.0)": [12.0, 13.0],
-                "bin_err_(2.0-4.0)": [0.3, 0.4],
+                "0.5": [1.0, 2.0],
                 "bin_(0.0-2.0)": [10.0, 11.0],
                 "bin_err_(0.0-2.0)": [0.1, 0.2],
+                "bin_(2.0-4.0)": [12.0, 13.0],
+                "bin_err_(2.0-4.0)": [0.3, 0.4],
+                "timestamps": [-1.0, 1.0],
+                "mean": [1.0, 2.0],
+                "err": [0.0, 0.0],
             }
         )
-        result = GuppyInterface._extract_bins(dataframe)
-        np.testing.assert_array_equal(result["bin_edges"], np.array([[0.0, 2.0], [2.0, 4.0]]))
-        np.testing.assert_array_equal(result["binned_value"], np.array([[10.0, 12.0], [11.0, 13.0]]))
-        np.testing.assert_array_equal(result["binned_error"], np.array([[0.1, 0.3], [0.2, 0.4]]))
+        event_matrix, binned = split_legacy_event_matrix(dataframe)
+        assert list(event_matrix.columns) == ["0.5", "timestamps", "mean", "err"]
+        assert list(binned.columns) == [
+            "timestamps",
+            "bin_(0.0-2.0)",
+            "bin_err_(0.0-2.0)",
+            "bin_(2.0-4.0)",
+            "bin_err_(2.0-4.0)",
+        ]
+        np.testing.assert_array_equal(binned["bin_(2.0-4.0)"].to_numpy(), [12.0, 13.0])
 
-    def test_trials_integer_labels_unchanged(self):
+    def test_trials_integer_labels(self):
         dataframe = pandas.DataFrame(
             {
-                "bin_(0-3)": [10.0, 11.0],
-                "bin_err_(0-3)": [0.1, 0.2],
+                "7.0": [1.0],
+                "bin_(0-3)": [10.0],
+                "bin_err_(0-3)": [0.1],
+                "timestamps": [0.0],
+                "mean": [1.0],
+                "err": [0.0],
             }
         )
-        result = GuppyInterface._extract_bins(dataframe)
-        np.testing.assert_array_equal(result["bin_edges"], np.array([[0.0, 3.0]]))
-        np.testing.assert_array_equal(result["binned_value"], np.array([[10.0], [11.0]]))
-        np.testing.assert_array_equal(result["binned_error"], np.array([[0.1], [0.2]]))
+        event_matrix, binned = split_legacy_event_matrix(dataframe)
+        assert list(event_matrix.columns) == ["7.0", "timestamps", "mean", "err"]
+        assert list(binned.columns) == ["timestamps", "bin_(0-3)", "bin_err_(0-3)"]
 
-    def test_returns_none_without_bin_columns(self):
-        dataframe = pandas.DataFrame({"0.5": [1.0, 2.0], "mean": [3.0, 4.0]})
-        assert GuppyInterface._extract_bins(dataframe) is None
+    def test_unbinned_table(self):
+        dataframe = pandas.DataFrame({"0.5": [1.0], "timestamps": [0.0], "mean": [1.0], "err": [0.0]})
+        event_matrix, binned = split_legacy_event_matrix(dataframe)
+        assert list(event_matrix.columns) == ["0.5", "timestamps", "mean", "err"]
+        assert binned is None
 
 
-class TestPartitionPeakAucIndex:
-    """``GuppyInterface._partition_peak_auc_index`` splits a peak_AUC file's INDEX into trial/bin/mean rows."""
+class TestSplitLegacyPeakAuc:
+    """``split_legacy_peak_auc`` turns a pre-CSV peak/AUC table's INDEX into session/trial and session/bin columns."""
+
+    SESSION = "Photo_249_391-200721-120136"
 
     def test_time_min_float_rows_route_to_bins(self):
-        # Float bin rows used to crash the trial-onset parse (ValueError: '(0.0-2.0)'); they must route to bins.
         index = [
-            f"{SESSION}_12.5",
-            f"{SESSION}_3.0",
-            f"{SESSION}_bin_(2.0-4.0)",
-            f"{SESSION}_bin_(0.0-2.0)",
-            f"{SESSION}_mean",
+            f"{self.SESSION}_3.0",
+            f"{self.SESSION}_12.5",
+            f"{self.SESSION}_bin_(0.0-2.0)",
+            f"{self.SESSION}_bin_(2.0-4.0)",
+            f"{self.SESSION}_mean",
         ]
-        trial_rows, bin_rows, mean_row = GuppyInterface._partition_peak_auc_index(index)
-        assert trial_rows == [(3.0, f"{SESSION}_3.0"), (12.5, f"{SESSION}_12.5")]
-        assert bin_rows == [
-            (0.0, 2.0, f"{SESSION}_bin_(0.0-2.0)"),
-            (2.0, 4.0, f"{SESSION}_bin_(2.0-4.0)"),
-        ]
-        assert mean_row == f"{SESSION}_mean"
+        dataframe = pandas.DataFrame({"peak_pos_1": [1.0, 2.0, 3.0, 4.0, 5.0]}, index=index)
+        trials, binned = split_legacy_peak_auc(dataframe)
+        assert trials.to_dict("list") == {
+            "session": [self.SESSION] * 3,
+            "trial": ["3.0", "12.5", "mean"],
+            "peak_pos_1": [1.0, 2.0, 5.0],
+        }
+        assert binned.to_dict("list") == {
+            "session": [self.SESSION] * 2,
+            "bin": ["bin_(0.0-2.0)", "bin_(2.0-4.0)"],
+            "peak_pos_1": [3.0, 4.0],
+        }
 
     def test_trials_integer_rows(self):
-        index = [
-            f"{SESSION}_7.0",
-            f"{SESSION}_bin_(0-3)",
-            f"{SESSION}_bin_(3-6)",
-            f"{SESSION}_mean",
-        ]
-        trial_rows, bin_rows, mean_row = GuppyInterface._partition_peak_auc_index(index)
-        assert trial_rows == [(7.0, f"{SESSION}_7.0")]
-        assert bin_rows == [
-            (0.0, 3.0, f"{SESSION}_bin_(0-3)"),
-            (3.0, 6.0, f"{SESSION}_bin_(3-6)"),
-        ]
-        assert mean_row == f"{SESSION}_mean"
+        index = [f"{self.SESSION}_7.0", f"{self.SESSION}_bin_(0-3)", f"{self.SESSION}_mean"]
+        dataframe = pandas.DataFrame({"area_1": [1.0, 2.0, 3.0]}, index=index)
+        trials, binned = split_legacy_peak_auc(dataframe)
+        assert list(trials["trial"]) == ["7.0", "mean"]
+        assert list(binned["bin"]) == ["bin_(0-3)"]
+        assert list(binned["area_1"]) == [2.0]
 
-    def test_unbinned_index(self):
-        index = [f"{SESSION}_3.0", f"{SESSION}_12.5", f"{SESSION}_mean"]
-        trial_rows, bin_rows, mean_row = GuppyInterface._partition_peak_auc_index(index)
-        assert trial_rows == [(3.0, f"{SESSION}_3.0"), (12.5, f"{SESSION}_12.5")]
-        assert bin_rows == []
-        assert mean_row == f"{SESSION}_mean"
+    def test_unbinned_table(self):
+        index = [f"{self.SESSION}_3.0", f"{self.SESSION}_mean"]
+        dataframe = pandas.DataFrame({"area_1": [1.0, 2.0]}, index=index)
+        trials, binned = split_legacy_peak_auc(dataframe)
+        assert list(trials["trial"]) == ["3.0", "mean"]
+        assert binned is None
 
 
 class TestGuppyInterfaceBehavior:
@@ -168,7 +210,15 @@ class TestGuppyInterfaceBehavior:
         derived unit ever leak into the metadata.
         """
         guppy_metadata = interface.get_metadata()["FiberPhotometry"]["Guppy"][interface.metadata_key]
-        for family in ("Traces", "Transients", "CrossCorrelations", "PSTHs", "PeakAUCs", "Covariates"):
+        for family in (
+            "Traces",
+            "Transients",
+            "CrossCorrelations",
+            "PSTHs",
+            "PeakAUCs",
+            "Covariates",
+            "PSTHSignificance",
+        ):
             for name, entry in guppy_metadata[family].items():
                 assert set(entry.keys()) == {"name", "description"}, (family, entry)
                 assert entry["name"] == name
@@ -431,11 +481,10 @@ class TestGuppyInterfaceBehavior:
         """A metric the interface cannot map onto a (trace_type, metric) pair is an error, not a guess."""
         copied_folder = tmp_path / "guppy_output_copy"
         shutil.copytree(guppy_output_folder, copied_folder)
-        correlations_path = copied_folder / f"covariate_correlations_{RECORDING_SITES[0]}.h5"
-        correlations = pandas.read_hdf(correlations_path)
+        correlations_path = copied_folder / f"covariate_correlations_{RECORDING_SITES[0]}.csv"
+        correlations = pandas.read_csv(correlations_path, index_col="pair")
         correlations.loc[0, "metric"] = "median_zscore"
-        correlations_path.unlink()
-        correlations.to_hdf(correlations_path, key="df", mode="w")
+        correlations.to_csv(correlations_path)
 
         interface = GuppyInterface(folder_path=str(copied_folder))
         with pytest.raises(AssertionError, match="not a binned-metrics column"):
@@ -507,20 +556,135 @@ class TestGuppyInterfaceBehavior:
         """The epoch windows and their means are written together; one without the other is an error."""
         copied_folder = tmp_path / "guppy_output_copy"
         shutil.copytree(guppy_output_folder, copied_folder)
-        (copied_folder / f"tonic_{RECORDING_SITES[0]}.h5").unlink()
+        (copied_folder / f"tonic_means_{RECORDING_SITES[0]}.csv").unlink()
 
         with pytest.raises(AssertionError, match="tonic outputs for recording site"):
             GuppyInterface(folder_path=str(copied_folder))
 
-    def test_cross_correlation_without_bin_columns(self, guppy_output_folder, tmp_path, nwbfile):
-        """A GuPPy run with binning disabled writes no bin_ columns, so the bin fields stay unset."""
+    # ------------------------------------------------------------------ PSTH significance
+
+    @pytest.fixture(scope="class")
+    @classmethod
+    def significance_nwbfile(cls, tmp_path_factory):
+        """One written file for the significance assertions, which only read it.
+
+        A five-point PSTH window keeps every value hand-checkable, and writing once keeps the three
+        assertions below from paying for three full conversions of the same session.
+        """
+        folder_path = generate_mock_guppy_output_folder(
+            tmp_path_factory.mktemp("guppy_significance") / "guppy_output", num_psth_timepoints=5
+        )
+        interface = GuppyInterface(folder_path=str(folder_path))
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile, interface.get_metadata(), stub_test=False)
+        return nwbfile
+
+    def test_psth_significance_stacks_every_comparison_of_one_condition(self, significance_nwbfile):
+        """The tests against zero of one (recording site, feature) are the columns of one object."""
+        significance = significance_nwbfile.processing["guppy"]["psth_significance_dms_z_score"]
+        assert significance.neurodata_type == "GuppyPSTHSignificance"
+        assert significance.trace_type == "z_score"
+
+        event_names = list(significance.event.table["event_name"].data)
+        assert [event_names[index] for index in significance.event.data] == EVENT_NAMES_IN_REGISTRY_ORDER
+        recording_site_names = list(significance.recording_site.table["recording_site"].data)
+        assert [recording_site_names[index] for index in significance.recording_site.data] == ["dms"]
+
+        # The mock's window is linspace(-5, 10, 5) and each comparison's estimate is a
+        # linspace(-0.5, 1.5, 5) ramp shifted by a per-comparison offset, so no two columns agree.
+        # The columns are ordered by the events registry, which is why port_entries leads.
+        np.testing.assert_allclose(significance.peri_event_time, [-5.0, -1.25, 2.5, 6.25, 10.0])
+        np.testing.assert_allclose(
+            significance.estimate,
+            [[-0.3, -0.5, -0.4], [0.2, 0.0, 0.1], [0.7, 0.5, 0.6], [1.2, 1.0, 1.1], [1.7, 1.5, 1.6]],
+            atol=1e-6,
+        )
+        # The bounds sit a quarter either side of the estimate, except at the one timepoint where too
+        # few trials overlapped to resample, which GuPPy reports as a NaN interval.
+        np.testing.assert_allclose(significance.confidence_interval_lower[0], [-0.55, -0.75, -0.65], atol=1e-6)
+        np.testing.assert_allclose(significance.confidence_interval_upper[0], [-0.05, -0.25, -0.15], atol=1e-6)
+        assert np.all(np.isnan(significance.confidence_interval_lower[1]))
+        assert np.all(np.isnan(significance.confidence_interval_upper[1]))
+
+        # A NaN interval cannot exclude zero, so that timepoint is not significant.
+        np.testing.assert_array_equal(
+            significance.significant,
+            [[False] * 3, [False] * 3, [True] * 3, [True] * 3, [True] * 3],
+        )
+        np.testing.assert_array_equal(significance.num_trials, [len(MOCK_TRIAL_ONSETS)] * len(EVENT_NAMES))
+
+        # Nothing was tested against a second event here, so there is no second event to name.
+        assert significance.event_b is None
+        assert significance.num_trials_b is None
+
+    def test_paired_psth_significance_names_both_events(self, significance_nwbfile):
+        """An event-versus-event comparison is its own object, naming event A and event B per column."""
+        paired = significance_nwbfile.processing["guppy"]["psth_significance_paired_dms_z_score"]
+
+        event_names = list(paired.event.table["event_name"].data)
+        assert [event_names[index] for index in paired.event.data] == [PSTH_COMPARISON[0]]
+        assert [event_names[index] for index in paired.event_b.data] == [PSTH_COMPARISON[1]]
+        np.testing.assert_array_equal(paired.num_trials, [len(MOCK_TRIAL_ONSETS)])
+        np.testing.assert_array_equal(paired.num_trials_b, [len(MOCK_TRIAL_ONSETS)])
+        # The estimate is A minus B, on its own offset, so it is not a copy of either one-sample column.
+        np.testing.assert_allclose(paired.estimate[:, 0], [-0.2, 0.3, 0.8, 1.3, 1.8], atol=1e-6)
+
+    def test_psth_significance_covers_every_recording_site_and_feature(self, interface):
+        """One object per (recording site, feature, comparison kind), and no others."""
+        guppy_metadata = interface.get_metadata()["FiberPhotometry"]["Guppy"][interface.metadata_key]
+
+        assert sorted(guppy_metadata["PSTHSignificance"]) == sorted(
+            f"psth_significance{'_paired' if paired else ''}_{recording_site}_{feature}"
+            for recording_site in RECORDING_SITES
+            for feature in ["z_score", "dff"]
+            for paired in (False, True)
+        )
+
+    def test_no_psth_significance_writes_no_objects(self, tmp_path, nwbfile):
+        """A session that never ran the optional step has no output directory, so no object."""
+        folder_path = generate_mock_guppy_output_folder(
+            tmp_path / "guppy_output_no_significance", psth_comparisons=None, **MINIMAL_SESSION
+        )
+        interface = GuppyInterface(folder_path=str(folder_path))
+
+        guppy_metadata = interface.get_metadata()["FiberPhotometry"]["Guppy"][interface.metadata_key]
+        assert "PSTHSignificance" not in guppy_metadata
+
+        module = self.add_to_nwbfile(interface, nwbfile, stub_test=True)
+        assert not [name for name in module.data_interfaces if name.startswith("psth_significance")]
+
+    def test_significance_without_named_pairs_writes_only_the_tests_against_zero(self, tmp_path, nwbfile):
+        """Testing against zero needs no configuration, so it runs even with an empty comparison table."""
+        folder_path = generate_mock_guppy_output_folder(
+            tmp_path / "guppy_output_zero_only", psth_comparisons=(), **MINIMAL_SESSION
+        )
+        interface = GuppyInterface(folder_path=str(folder_path))
+
+        module = self.add_to_nwbfile(interface, nwbfile, stub_test=True)
+        assert "psth_significance_dms_z_score" in module.data_interfaces
+        assert "psth_significance_paired_dms_z_score" not in module.data_interfaces
+
+        parameters = nwbfile.lab_meta_data["guppy_parameters"]
+        # The blank row GuPPy's comparison table starts with is not a requested pair.
+        assert parameters.psth_comparison_events_a is None
+        assert parameters.psth_comparison_events_b is None
+
+    def test_psth_significance_parameters_land_on_guppy_parameters(self, significance_nwbfile):
+        """The threshold, the resample count, and the pairs that were asked for."""
+        parameters = significance_nwbfile.lab_meta_data["guppy_parameters"]
+
+        assert parameters.compute_psth_significance
+        assert parameters.psth_significance_alpha == 0.05
+        assert parameters.psth_bootstrap_resamples == 1000
+        assert list(parameters.psth_comparison_events_a) == [PSTH_COMPARISON[0]]
+        assert list(parameters.psth_comparison_events_b) == [PSTH_COMPARISON[1]]
+
+    def test_cross_correlation_without_binned_files(self, guppy_output_folder, tmp_path, nwbfile):
+        """A GuPPy run with binning disabled writes no binned_corr_ files, so the bin fields stay unset."""
         copied_folder = tmp_path / "guppy_output_copy"
         shutil.copytree(guppy_output_folder, copied_folder)
-        for h5_path in sorted((copied_folder / "cross_correlation_output").glob("corr_*.h5")):
-            dataframe = pandas.read_hdf(h5_path)
-            dataframe = dataframe.drop(columns=[column for column in dataframe.columns if column.startswith("bin_")])
-            h5_path.unlink()
-            dataframe.to_hdf(h5_path, key="df", mode="w")
+        for binned_path in (copied_folder / "cross_correlation_output").glob("binned_corr_*.csv"):
+            binned_path.unlink()
 
         interface = GuppyInterface(folder_path=str(copied_folder))
         module = self.add_to_nwbfile(interface, nwbfile, stub_test=False)

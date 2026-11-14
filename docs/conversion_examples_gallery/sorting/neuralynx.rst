@@ -21,10 +21,11 @@ Convert Neuralynx data to NWB using
     >>> folder_path = f"{ECEPHY_DATA_PATH}/neuralynx/Cheetah_v5.5.1/original_data"
     >>> # Change the folder_path to the location of the data in your system
     >>> # The stream is optional but is used to specify the sampling frequency of the data
-    >>> interface = NeuralynxSortingInterface(folder_path=folder_path, verbose=False, stream_id="0")
+    >>> # This recording has gaps between its records. Gaps longer than `gap_tolerance_ms` start a new segment
+    >>> interface = NeuralynxSortingInterface(folder_path=folder_path, verbose=False, stream_id="0", gap_tolerance_ms=1.0)
     >>>
     >>> metadata = interface.get_metadata()
-    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific")).isoformat()
+    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("Asia/Tokyo")).isoformat()
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>> # Add subject information (required for DANDI upload)
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")

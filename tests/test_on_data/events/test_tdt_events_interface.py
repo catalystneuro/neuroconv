@@ -3,6 +3,7 @@ import pytest
 from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.datainterfaces import TDTEventsInterface
+from neuroconv.tools.testing.data_interface_mixins import EventsInterfaceTestMixin
 
 try:
     from ..setup_paths import ECEPHY_DATA_PATH
@@ -20,7 +21,7 @@ def test_exclude_events():
     assert set(event_types) == {"s1s_"}
 
 
-class TDTEventsInterfaceMixin:
+class TDTEventsInterfaceMixin(EventsInterfaceTestMixin):
     """Builds ``self.interface`` from ``data_interface_cls`` and ``interface_kwargs`` set on the subclass."""
 
     data_interface_cls = TDTEventsInterface
@@ -34,6 +35,7 @@ class TestTimestampOnlyEventType(TDTEventsInterfaceMixin):
     """A timestamp-only event type: ``Tick`` in the durations dataset, with the event types that have
     durations excluded so only the timestamp-only one remains."""
 
+    expected_temporal_alignment_keys = ("Tick",)
     interface_kwargs = dict(
         folder_path=TDT_DATA_PATH / "epocs_with_offsets_1",
         exclude_events=["s1s_", "s4s_", "sms_"],
@@ -63,6 +65,7 @@ class TestEventTypeWithValueColumn(TDTEventsInterfaceMixin):
     """An event type carrying a categorical value column: ``PAB_`` in the payload dataset, 30 events
     whose codes cycle [16, 2064, 0]."""
 
+    expected_temporal_alignment_keys = ("PAB_",)
     interface_kwargs = dict(folder_path=TDT_DATA_PATH / "epocs_with_payload")
 
     def test_get_metadata(self, interface):
@@ -96,6 +99,7 @@ class TestEventTypeWithDurations(TDTEventsInterfaceMixin):
     """Event types whose events have durations: ``s1s_``/``s4s_``/``sms_`` in the durations dataset,
     written as a per-event duration in the table's ``duration`` column."""
 
+    expected_temporal_alignment_keys = ("s1s_", "s4s_", "sms_")
     interface_kwargs = dict(
         folder_path=TDT_DATA_PATH / "epocs_with_offsets_1",
         exclude_events=["Tick"],

@@ -2,14 +2,19 @@
 
 from typing import Literal
 
-from hdmf_zarr import NWBZarrIO
 from pynwb import NWBHDF5IO, NWBFile
 
 from ._configuration_models._hdf5_backend import HDF5BackendConfiguration
 from ._configuration_models._zarr_backend import ZarrBackendConfiguration
+from ..importing import is_package_installed
 
 BACKEND_CONFIGURATIONS = dict(hdf5=HDF5BackendConfiguration, zarr=ZarrBackendConfiguration)
-BACKEND_NWB_IO = dict(hdf5=NWBHDF5IO, zarr=NWBZarrIO)
+BACKEND_NWB_IO = dict(hdf5=NWBHDF5IO)
+# hdmf_zarr installs only on Python 3.12 and newer, so on 3.11 there is no Zarr backend to read or write with.
+if is_package_installed(package_name="hdmf_zarr"):
+    from hdmf_zarr import NWBZarrIO
+
+    BACKEND_NWB_IO["zarr"] = NWBZarrIO
 
 
 def get_default_backend_configuration(

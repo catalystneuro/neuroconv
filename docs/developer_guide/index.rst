@@ -13,6 +13,7 @@ The most common contribution is for a user/developer to help us integrate a new 
     Contributing <contributing>
     Build a Data Interface <build_data_interface>
     Metadata Principles <metadata_principles>
+    Timing Model <timing_model>
     Ophys Metadata Structure <ophys_metadata_structure>
     Fiber Photometry Metadata Structure <fiber_photometry_metadata_structure>
     Events Metadata Structure <events_metadata_structure>
@@ -22,6 +23,7 @@ The most common contribution is for a user/developer to help us integrate a new 
     Project Structure <project_structure>
     Testing Suite <testing_suite>
     Coding Style <style_guide>
+    Deprecations <deprecations>
     Building the Documentation <building_documentation>
     Building the Docker Image <docker_images>
     Making a Release <making_a_release>

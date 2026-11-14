@@ -20,14 +20,15 @@ Convert Neuralynx data to NWB using
     >>> # For this data interface we need to pass the folder where the data is
     >>> folder_path = f"{ECEPHY_DATA_PATH}/neuralynx/Cheetah_v5.7.4/original_data"
     >>> # Change the folder_path to the appropriate location in your system
-    >>> interface = NeuralynxRecordingInterface(folder_path=folder_path, verbose=False)
+    >>> # This recording has gaps between its records. Gaps longer than `gap_tolerance_ms` start a new segment
+    >>> interface = NeuralynxRecordingInterface(folder_path=folder_path, verbose=False, gap_tolerance_ms=1.0)
     >>>
     >>> # Extract what metadata we can from the source files
     >>> metadata = interface.get_metadata()
     >>> # session_start_time is required for conversion. If it cannot be inferred
     >>> # automatically from the source files you must supply one.
     >>> session_start_time = metadata["NWBFile"]["session_start_time"]
-    >>> session_start_time = session_start_time.replace(tzinfo=ZoneInfo("US/Pacific"))
+    >>> session_start_time = session_start_time.replace(tzinfo=ZoneInfo("Asia/Tokyo"))
     >>> metadata["NWBFile"]["session_start_time"] = session_start_time
     >>> # Add subject information (required for DANDI upload)
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")

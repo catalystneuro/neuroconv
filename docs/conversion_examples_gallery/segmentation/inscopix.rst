@@ -7,6 +7,12 @@ Install NeuroConv with the additional dependencies necessary for reading Inscopi
 
     pip install "neuroconv[inscopix]"
 
+.. note::
+
+    The ``isx`` package this interface reads through does not resolve on Python 3.13 or on macOS with
+    Apple Silicon, so a conversion needs Python 3.9 to 3.12 on a supported platform. See the
+    `pyisx installation instructions <https://github.com/inscopix/pyisx?tab=readme-ov-file#install>`_.
+
 Convert Inscopix segmentation data to NWB using :py:class:`~neuroconv.datainterfaces.ophys.inscopix.inscopixsegmentationdatainterface.InscopixSegmentationInterface`.
 
 .. code-block:: python
@@ -21,14 +27,14 @@ Convert Inscopix segmentation data to NWB using :py:class:`~neuroconv.datainterf
     >>>
     >>> metadata = interface.get_metadata()
     >>> # For data provenance we add the time zone information to the conversion
-    >>> session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("US/Pacific"))
+    >>> session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("Asia/Tokyo"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>> # Add subject information (required for DANDI upload)
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
     >>>
     >>> # Run the conversion
     >>> nwbfile_path = f"{path_to_save_nwbfile}"
-    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, mask_type="pixel")
+    >>> interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata)
 
 NeuroConv aims to automatically add all the metadata annotations that are present in the source format.
 It is often the case that crucial information is not available there, such as the anatomical location,

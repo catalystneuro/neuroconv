@@ -27,7 +27,7 @@ We can easily convert all data stored in the native SpikeGLX folder structure to
     >>> # Extract what metadata we can from the source files
     >>> metadata = converter.get_metadata()
     >>> # For data provenance we add the time zone information to the conversion
-    >>> session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("US/Pacific"))
+    >>> session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("Asia/Tokyo"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>> # Add subject information (required for DANDI upload)
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
@@ -61,7 +61,7 @@ Defining a 'stream' as a single band on a single NeuroPixels probe, we can conve
     >>> # Extract what metadata we can from the source files
     >>> metadata = interface.get_metadata()
     >>> # For data provenance we add the time zone information to the conversion
-    >>> session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("US/Pacific"))
+    >>> session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("Asia/Tokyo"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>> # Add subject information (required for DANDI upload)
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
@@ -92,7 +92,7 @@ can be used to convert these streams to NWB.
     >>> # Extract what metadata we can from the source files
     >>> metadata = interface.get_metadata()
     >>> # For data provenance we add the time zone information to the conversion
-    >>> session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("US/Pacific"))
+    >>> session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("Asia/Tokyo"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>> # Add subject information (required for DANDI upload)
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
@@ -187,8 +187,8 @@ arguments take the board's names).
 
 .. note::
 
-    The older ``digital_channel_groups`` argument is deprecated and will be removed on or after
-    August 2027. It still works, translated onto the grammar above: a group becomes a rising and a
+    The older ``digital_channel_groups`` argument is deprecated and will be removed in
+    v0.13.0. It still works, translated onto the grammar above: a group becomes a rising and a
     falling reading of its line routed into one table, so it still yields one object holding every
     edge, and its ``labels_map`` still names the two edges. What changes is that the object is an
     ``EventsTable`` in ``nwbfile.events`` rather than an ``ndx-events`` ``LabeledEvents`` in
@@ -272,7 +272,7 @@ preferring AP over LF when both are available). For more control over the additi
     >>> # Extract what metadata we can from the source files
     >>> metadata = interface.get_metadata()
     >>> # For data provenance we add the time zone information to the conversion
-    >>> session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("US/Pacific"))
+    >>> session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("Asia/Tokyo"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion

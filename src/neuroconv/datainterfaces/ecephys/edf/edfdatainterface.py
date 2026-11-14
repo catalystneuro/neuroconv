@@ -1,10 +1,53 @@
-import warnings
+from datetime import date
 
 from pydantic import FilePath
 
 from ..baserecordingextractorinterface import BaseRecordingExtractorInterface
 from ....tools import get_package
 from ....utils import DeepDict
+
+# EDF+ writes the month as an English abbreviation, so it is mapped rather than read with ``%b``, which
+# goes through ``LC_TIME`` and would fail on a machine not running an English locale.
+# TODO: nothing tests this. Asserting it needs a non-English locale, which no runner image ships, so the
+# test has to come with a `locale-gen` step in `testing.yml` and a fixture that restores `LC_TIME`.
+_MONTH_NUMBERS = {
+    name: number
+    for number, name in enumerate(
+        ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"], start=1
+    )
+}
+
+
+def _parse_birthdate(birthdate: str) -> str | None:
+    """Return an EDF+ birthdate as an ISO 8601 date, or ``None`` where the header does not state one.
+
+    Parameters
+    ----------
+    birthdate : str
+        The header's birthdate, which the readers hand back as ``"02 may 1951"``. EDF+ reserves ``"X"``
+        for a field the recording does not state, and a file written outside the spec can hold anything,
+        since it is a free-text patient field.
+
+    Returns
+    -------
+    str or None
+        The date as ``"1951-05-02"``, or ``None`` where the value is absent or not a date. It is returned
+        as a string because that is what the metadata schema declares; the conversion to a ``datetime``
+        happens once, where the subject is written.
+    """
+    parts = birthdate.strip().split()
+    if len(parts) != 3:
+        return None
+
+    day, month_name, year = parts
+    month = _MONTH_NUMBERS.get(month_name.lower())
+    if month is None or not (day.isdigit() and year.isdigit()):
+        return None
+
+    try:
+        return date(year=int(year), month=month, day=int(day)).isoformat()
+    except ValueError:  # A day the month does not have.
+        return None
 
 
 class EDFRecordingInterface(BaseRecordingExtractorInterface):
@@ -104,12 +147,13 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
     def __init__(
         self,
         file_path: FilePath,
-        *args,  # TODO: change to * (keyword only) on or after August 2026
+        *,
         verbose: bool = False,
         es_key: str | None = None,
         metadata_key: str | None = None,
         channels_to_skip: list | None = None,
         stream_name: str | None = None,
+        channels_to_exclude: list | None = None,
     ):
         """
         Load and prepare data for EDF.
@@ -128,47 +172,31 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
             Key that indexes this interface's entries in the dict-based metadata. Defaults to
             ``"edf_recording"``.
         channels_to_skip : list, default: None
-            Channels to skip when adding the data to the nwbfile. These parameter can be used to skip non-neural
-            channels that are present in the EDF file.
+            Kept for backwards compatibility. It means the same as ``channels_to_exclude``, which is the
+            argument to use.
         stream_name : str, optional
             Name of the stream to read, as returned by ``get_stream_names``. A file that sampled some
             of its signals at a different rate than the rest carries more than one stream and cannot
             be read without naming one, since a single recording holds a single sampling rate.
-
+        channels_to_exclude : list, optional
+            Channels to leave out, by the ids in ``channel_ids``. Every other channel is converted. A name that
+            is not one of the interface's channels raises.
         """
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "verbose",
-                "es_key",
-                "channels_to_skip",
-            ]
-            num_positional_args_before_args = 1  # file_path
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args + 1} were given. "
-                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
-                    "Please use keyword arguments."
-                )
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to EDFRecordingInterface.__init__() is deprecated "
-                f"and will be removed on or after August 2026. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            verbose = positional_values.get("verbose", verbose)
-            es_key = positional_values.get("es_key", es_key)
-            channels_to_skip = positional_values.get("channels_to_skip", channels_to_skip)
 
         get_package(
             package_name="pyedflib",
             excluded_platforms_and_python_versions=dict(darwin=dict(arm=["3.9"])),
         )
+
+        # `channels_to_exclude` is the intended argument. `channels_to_skip` is the older name for the same
+        # thing, kept only for backwards compatibility, so it is translated into `channels_to_exclude`.
+        if channels_to_skip and channels_to_exclude:
+            raise ValueError("Pass `channels_to_exclude` only. `channels_to_skip` is its older name.")
+        if channels_to_skip:
+            channels_to_exclude = channels_to_skip
+
+        if metadata_key is None:
+            metadata_key = "edf_recording"
 
         super().__init__(
             file_path=file_path,
@@ -179,14 +207,9 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
             stream_name=stream_name,
         )
 
-        if metadata_key is None:
-            self.metadata_key = "edf_recording"
-
         self.edf_header = self.recording_extractor.neo_reader.edf_header
 
-        # We remove the channels that are not neural
-        if channels_to_skip:
-            self.recording_extractor = self.recording_extractor.remove_channels(remove_channel_ids=channels_to_skip)
+        self._exclude_channels(channels_to_exclude)
 
     def extract_nwb_file_metadata(self) -> dict:
         # The header names a single technician, while experimenter is a list of names.
@@ -206,11 +229,10 @@ class EDFRecordingInterface(BaseRecordingExtractorInterface):
         # "gender" before pyedflib 0.1.36. A file that does not state it leaves both empty.
         sex_in_header = self.edf_header.get("sex") or self.edf_header.get("gender") or ""
 
-        # The header's birthdate is not reported here: the readers hand it back as "17 mar 1985"
-        # while Subject.date_of_birth requires a datetime, so it needs a parse first.
         subject_metadata = dict(
             subject_id=self.edf_header["patientcode"],
             sex={"male": "M", "female": "F"}.get(sex_in_header.lower()),
+            date_of_birth=_parse_birthdate(self.edf_header.get("birthdate") or ""),
         )
 
         # Filter empty values

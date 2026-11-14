@@ -77,7 +77,7 @@ several series sharing one ``FiberPhotometryTable``.
     ...     verbose=False,
     ... )
     >>> metadata = interface.get_metadata()
-    >>> metadata["NWBFile"]["session_start_time"] = datetime.now(tz=ZoneInfo("US/Eastern"))
+    >>> metadata["NWBFile"]["session_start_time"] = datetime.now(tz=ZoneInfo("Asia/Tokyo"))
     >>> # Add subject information (required for DANDI upload)
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
 

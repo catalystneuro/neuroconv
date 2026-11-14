@@ -102,12 +102,12 @@ Fiber Photometry
 .. toctree::
     :maxdepth: 1
 
-    Doric Fiber Photometry <fiberphotometry/doric_fp>
-    TDT Fiber Photometry <fiberphotometry/tdt_fp>
-    NPM Fiber Photometry <fiberphotometry/npm_fp>
-    pyPhotometry Fiber Photometry <fiberphotometry/pyphotometry_fp>
-    CSV Fiber Photometry <fiberphotometry/csv_fp>
-    GuPPy Fiber Photometry <fiberphotometry/guppy_fp>
+    Doric <fiberphotometry/doric_fp>
+    TDT <fiberphotometry/tdt_fp>
+    NPM <fiberphotometry/npm_fp>
+    pyPhotometry <fiberphotometry/pyphotometry_fp>
+    CSV <fiberphotometry/csv_fp>
+    GuPPy <fiberphotometry/guppy_fp>
 
 .. _conversion_gallery_pose_estimation:
 
@@ -120,6 +120,7 @@ Keypoint estimation
 .. toctree::
     :maxdepth: 1
 
+    DANNCE <behavior/dannce>
     DeepLabCut <behavior/deeplabcut>
     LightningPose <behavior/lightningpose>
     SLEAP <behavior/sleap>
@@ -131,6 +132,7 @@ Behavioral segmentation
     :maxdepth: 1
 
     VAME <behavior/vame>
+    keypoint-MoSeq <behavior/moseq_keypoints>
 
 Behavior
 --------
@@ -139,8 +141,11 @@ Behavior
     :maxdepth: 1
 
     Audio <behavior/audio>
+    BORIS <behavior/boris>
+    EthoVision <behavior/ethovision>
     FicTrac <behavior/fictrac>
     Neuralynx NVT <behavior/neuralynx_nvt>
+    OptiTrack <behavior/optitrack>
     Videos <behavior/video>
     MedPC <behavior/medpc>
 
@@ -151,11 +156,14 @@ Events
 .. toctree::
     :maxdepth: 1
 
-    CSV Events <events/csv_events>
-    Doric Events <events/doric_events>
-    NPM Events <events/npm_events>
-    OpenEphys Binary Events <events/openephys_events>
-    TDT Events <events/tdt_events>
+    CSV <events/csv_events>
+    Doric <events/doric_events>
+    Inscopix GPIO <events/inscopix_gpio>
+    MedPC <events/medpc_events>
+    NPM <events/npm_events>
+    OpenEphys Binary <events/openephys_events>
+    pyPhotometry <events/pyphotometry_events>
+    TDT <events/tdt_events>
 
 
 Image
@@ -186,5 +194,5 @@ Common interface combinations
     combinations/ecephys_pose_estimation
 
 .. note::
-If you do not see the format you need, feel free to `request it <https://github.com/catalystneuro/neuroconv/issues/new?assignees=&labels=enhancement,data+interfaces&template=format_request.yml>`_ or
-  :ref:`build-data-interface`.
+    If you do not see the format you need, feel free to `request it <https://github.com/catalystneuro/neuroconv/issues/new?assignees=&labels=enhancement,data+interfaces&template=format_request.yml>`_ or
+    :ref:`build-data-interface`.

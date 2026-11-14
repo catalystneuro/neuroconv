@@ -3,7 +3,7 @@ import re
 
 
 def to_snake_case(name: str) -> str:
-    """Convert a CamelCase, hyphenated or spaced string to snake_case.
+    """Convert a name with mixed casing or separators to snake_case.
 
     The inverse of :func:`to_camel_case`, for turning a name a device or file reports into the
     snake_case key a metadata registry is keyed by.
@@ -28,8 +28,10 @@ def to_snake_case(name: str) -> str:
     'miniscope_v4_bno'
     >>> to_snake_case("MyDeviceName")
     'my_device_name'
+    >>> to_snake_case("In zone(Arena / center-point)")
+    'in_zone_arena_center_point'
     """
-    name = re.sub(r"[\s-]+", "_", name.strip())
+    name = re.sub(r"[^\w]+", "_", name.strip(), flags=re.UNICODE)
     # Split runs of words written without separators: 'miniscopeV4' and 'HPCMiniscope' both split.
     name = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", "_", name)
     name = re.sub(r"(?<=[A-Z])(?=[A-Z][a-z])", "_", name)

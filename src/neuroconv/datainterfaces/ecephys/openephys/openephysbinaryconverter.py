@@ -129,6 +129,7 @@ class OpenEphysBinaryConverter(ConverterPipe):
                 folder_path=folder_path,
                 stream_name=stream_name,
                 time_series_name=time_series_name,
+                metadata_key=_to_metadata_key(stream_name),
             )
 
         super().__init__(data_interfaces=data_interfaces, verbose=verbose)
@@ -166,10 +167,3 @@ class OpenEphysBinaryConverter(ConverterPipe):
             electrical_series_metadata[metadata_key]["name"] = series_name
 
         return metadata
-
-    def get_conversion_options_schema(self) -> dict:
-        conversion_options_schema = super().get_conversion_options_schema()
-        conversion_options_schema["properties"].update(
-            {name: interface.get_conversion_options_schema() for name, interface in self.data_interface_objects.items()}
-        )
-        return conversion_options_schema

@@ -19,12 +19,12 @@ followed from its first file, and a volumetric one is written as a 4D series per
     >>> from zoneinfo import ZoneInfo
     >>> from neuroconv.converters import ScanImageConverter
     >>>
-    >>> file_path = OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "planar_two_channels_single_file" / "planar_two_ch_single_files_00001_00001.tif"
+    >>> file_path = OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "tiff_format_version_4" / "acquisition_setup" / "planar_two_channels_one_slice_stack_version_2021_0" / "planar_00001_00001.tif"
     >>> converter = ScanImageConverter(file_path=file_path)
     >>>
     >>> metadata = converter.get_metadata()
     >>> # For data provenance we add the time zone information to the conversion
-    >>> session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("US/Pacific"))
+    >>> session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("Asia/Tokyo"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>> # Add subject information (required for DANDI upload)
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
@@ -55,7 +55,7 @@ For multi-channel data, you need to specify the channel name, and you can use `p
     >>> from neuroconv.datainterfaces import ScanImageImagingInterface
     >>>
     >>>
-    >>> file_path = OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "volumetric_single_channel_single_file_no_flyback" / "vol_no_flyback_00001_00001.tif"
+    >>> file_path = OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "tiff_format_version_4" / "time_structure" / "volumetric_no_flyback_frames_single_channel_version_2021_0" / "volume_00001_00001.tif"
     >>>
     >>> # Specify channel_name for multi-channel data
     >>> # Specify plane_index for selecting a specific plane in multi-plane data or leave undefined  to write volumetric data
@@ -66,7 +66,7 @@ For multi-channel data, you need to specify the channel name, and you can use `p
     ... )
     >>> metadata = interface.get_metadata()
     >>> # For data provenance we add the time zone information to the conversion
-    >>> session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("US/Pacific"))
+    >>> session_start_time = metadata["NWBFile"]["session_start_time"].replace(tzinfo=ZoneInfo("Asia/Tokyo"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>> # Add subject information (required for DANDI upload)
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")

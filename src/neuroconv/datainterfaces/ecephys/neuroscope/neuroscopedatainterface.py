@@ -1,4 +1,3 @@
-import warnings
 from pathlib import Path
 
 import numpy as np
@@ -174,12 +173,13 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
     def __init__(
         self,
         file_path: FilePath,
-        *args,  # TODO: change to * (keyword only) on or after August 2026
+        *,
         gain: float | None = None,
         xml_file_path: FilePath | None = None,
         verbose: bool = False,
         es_key: str | None = None,
         metadata_key: str | None = None,
+        channels_to_exclude: list | None = None,
     ):
         """
         Load and prepare raw acquisition data and corresponding metadata from the Neuroscope format (.dat files).
@@ -200,47 +200,20 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
         metadata_key : str, optional
             Key that indexes this interface's entries in the dict-based metadata. Defaults to
             ``"neuroscope_recording"``.
+        channels_to_exclude : list, optional
+            Channels to leave out, by the ids in ``channel_ids``. Every other channel is converted. A name that
+            is not one of the interface's channels raises.
         """
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "gain",
-                "xml_file_path",
-                "verbose",
-                "es_key",
-            ]
-            num_positional_args_before_args = 1  # file_path
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args + 1} were given. "
-                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
-                    "Please use keyword arguments."
-                )
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to NeuroScopeRecordingInterface.__init__() is deprecated "
-                f"and will be removed on or after August 2026. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            gain = positional_values.get("gain", gain)
-            xml_file_path = positional_values.get("xml_file_path", xml_file_path)
-            verbose = positional_values.get("verbose", verbose)
-            es_key = positional_values.get("es_key", es_key)
 
         get_package(package_name="lxml")
 
         if xml_file_path is None:
             xml_file_path = get_xml_file_path(data_file_path=file_path)
 
-        super().__init__(file_path=file_path, verbose=verbose, es_key=es_key, metadata_key=metadata_key)
-
         if metadata_key is None:
-            self.metadata_key = "neuroscope_recording"
+            metadata_key = "neuroscope_recording"
+
+        super().__init__(file_path=file_path, verbose=verbose, es_key=es_key, metadata_key=metadata_key)
 
         self.source_data["xml_file_path"] = xml_file_path
 
@@ -249,6 +222,8 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
         self.recording_extractor = filter_non_neural_channels(
             recording_extractor=self.recording_extractor, xml_file_path=xml_file_path
         )
+
+        self._exclude_channels(channels_to_exclude)
 
     def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         session_path = Path(self.source_data["file_path"]).parent
@@ -310,12 +285,13 @@ class NeuroScopeLFPInterface(BaseLFPExtractorInterface):
     def __init__(
         self,
         file_path: FilePath,
-        *args,  # TODO: change to * (keyword only) on or after August 2026
+        *,
         gain: float | None = None,
         xml_file_path: FilePath | None = None,
         verbose: bool = False,
         es_key: str | None = None,
         metadata_key: str | None = None,
+        channels_to_exclude: list | None = None,
     ):
         """
         Load and prepare lfp data and corresponding metadata from the Neuroscope format (.eeg or .lfp files).
@@ -338,47 +314,20 @@ class NeuroScopeLFPInterface(BaseLFPExtractorInterface):
         metadata_key : str, optional
             Key that indexes this interface's entries in the dict-based metadata. Defaults to
             ``"neuroscope_lfp"``.
+        channels_to_exclude : list, optional
+            Channels to leave out, by the ids in ``channel_ids``. Every other channel is converted. A name that
+            is not one of the interface's channels raises.
         """
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "gain",
-                "xml_file_path",
-                "verbose",
-                "es_key",
-            ]
-            num_positional_args_before_args = 1  # file_path
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args + 1} were given. "
-                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
-                    "Please use keyword arguments."
-                )
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to NeuroScopeLFPInterface.__init__() is deprecated "
-                f"and will be removed on or after August 2026. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            gain = positional_values.get("gain", gain)
-            xml_file_path = positional_values.get("xml_file_path", xml_file_path)
-            verbose = positional_values.get("verbose", verbose)
-            es_key = positional_values.get("es_key", es_key)
 
         get_package(package_name="lxml")
 
         if xml_file_path is None:
             xml_file_path = get_xml_file_path(data_file_path=file_path)
 
-        super().__init__(file_path=file_path, metadata_key=metadata_key)
-
         if metadata_key is None:
-            self.metadata_key = "neuroscope_lfp"
+            metadata_key = "neuroscope_lfp"
+
+        super().__init__(file_path=file_path, metadata_key=metadata_key)
 
         self.source_data["xml_file_path"] = xml_file_path
 
@@ -387,6 +336,8 @@ class NeuroScopeLFPInterface(BaseLFPExtractorInterface):
         self.recording_extractor = filter_non_neural_channels(
             recording_extractor=self.recording_extractor, xml_file_path=xml_file_path
         )
+
+        self._exclude_channels(channels_to_exclude)
 
     def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         session_path = Path(self.source_data["file_path"]).parent
@@ -438,11 +389,12 @@ class NeuroScopeSortingInterface(BaseSortingExtractorInterface):
     def __init__(
         self,
         folder_path: DirectoryPath,
-        *args,  # TODO: change to * (keyword only) on or after August 2026
+        *,
         keep_mua_units: bool = True,
         exclude_shanks: list[int] | None = None,
         xml_file_path: FilePath | None = None,
         verbose: bool = False,
+        metadata_key: str | None = None,
     ):
         """
         Load and prepare spike sorted data and corresponding metadata from the Neuroscope format (.res/.clu files).
@@ -460,40 +412,13 @@ class NeuroScopeSortingInterface(BaseSortingExtractorInterface):
             Path to .xml file containing device and electrode configuration.
             If unspecified, it will be automatically set as the only .xml file in the same folder as the .dat file.
             The default is None.
+        metadata_key : str, optional
+            Key of this sorting's entry in ``metadata["Ecephys"]["Sortings"]``. Defaults to ``"neuroscope_sorting"``.
         """
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "keep_mua_units",
-                "exclude_shanks",
-                "xml_file_path",
-                "verbose",
-            ]
-            num_positional_args_before_args = 1  # folder_path
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args + 1} were given. "
-                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
-                    "Please use keyword arguments."
-                )
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to NeuroScopeSortingInterface.__init__() is deprecated "
-                f"and will be removed on or after August 2026. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            keep_mua_units = positional_values.get("keep_mua_units", keep_mua_units)
-            exclude_shanks = positional_values.get("exclude_shanks", exclude_shanks)
-            xml_file_path = positional_values.get("xml_file_path", xml_file_path)
-            verbose = positional_values.get("verbose", verbose)
 
         get_package(package_name="lxml")
 
+        self.metadata_key = metadata_key or "neuroscope_sorting"
         super().__init__(
             folder_path=folder_path,
             keep_mua_units=keep_mua_units,

@@ -13,6 +13,14 @@ Doric CSV Events
 ----------------
 .. automodule:: neuroconv.datainterfaces.events.doric_events.doriccsveventsdatainterface
 
+Intan Analog Events
+-------------------
+.. automodule:: neuroconv.datainterfaces.ecephys.intan.intananalogueventsinterface
+
+MedPC Events
+------------
+.. automodule:: neuroconv.datainterfaces.events.medpc_events.medpceventsdatainterface
+
 NPM Events
 ----------
 .. automodule:: neuroconv.datainterfaces.events.npm_events.npmeventsdatainterface
@@ -21,6 +29,14 @@ OpenEphys Binary Events
 -----------------------
 .. automodule:: neuroconv.datainterfaces.events.openephys_events.openephysbinaryeventsdatainterface
 
+pyPhotometry Events
+-------------------
+.. autoclass:: neuroconv.datainterfaces.events.pyphotometry_events.pyphotometryeventsdatainterface.PyPhotometryEventsInterface
+
 TDT Events
 ----------
 .. automodule:: neuroconv.datainterfaces.events.tdt_events.tdteventsdatainterface
+
+Inscopix GPIO Events
+--------------------
+.. automodule:: neuroconv.datainterfaces.events.inscopix_gpio_events.inscopixgpioeventsdatainterface

@@ -118,6 +118,16 @@ For more information regarding the NWB Standard, please view
 
 For examples of conversion pipelines that use NeuroConv, check out: https://catalystneuro.com/nwb-conversions/
 
+Getting help
+------------
+
+- For a bug, or a format or workflow NeuroConv does not cover yet, `open an issue <https://github.com/catalystneuro/neuroconv/issues>`_.
+  A small sample file and a description of the use case make it much easier to help.
+- For a step-by-step walkthrough of sharing NIH-funded neurophysiology data, from conversion to publication on the
+  DANDI Archive, see the `NWB and DANDI guide <https://catalystneuro.com/guides/nwb-dandi-guide/>`_.
+- NeuroConv is developed and maintained by `CatalystNeuro <https://catalystneuro.com/>`_. If your lab would like
+  a conversion pipeline built for its data, see `how a project with CatalystNeuro works <https://catalystneuro.com/work-with-us/>`_.
+
 .. seealso::
 
   Watch a video introduction to NeuroConv `here <https://youtu.be/QofVU-59Dd4>`_

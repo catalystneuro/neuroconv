@@ -17,7 +17,7 @@ class BrukerVoltageRecordingConverter(ConverterPipe):
     Combine one or more :class:`BrukerVoltageRecordingInterface` instances into a single NWB icephys table.
 
     Each interface writes one electrode's cycles as a continuous ``PatchClampSeries`` and one
-    intracellular-recordings row per cycle, tagging each row with the run-level grouping columns (``sequence``,
+    intracellular-recordings row per cycle, tagging each row with the run-level grouping columns (``protocol_run``,
     the optional ``stimulus_type``, and the optional ``repetition`` / ``condition``). This converter aligns the
     electrodes on one timeline, then hands off to
     :func:`~neuroconv.tools.icephys._build_icephys_hierarchical_tables`, which reads those columns back and
@@ -34,6 +34,19 @@ class BrukerVoltageRecordingConverter(ConverterPipe):
     keywords = BrukerVoltageRecordingInterface.keywords
     associated_suffixes = BrukerVoltageRecordingInterface.associated_suffixes
     info = "Combines several BrukerVoltageRecordingInterface instances into one icephys hierarchy."
+
+    def __init__(
+        self,
+        data_interfaces: list[BrukerVoltageRecordingInterface] | dict[str, BrukerVoltageRecordingInterface],
+        verbose: bool = False,
+    ):
+        super().__init__(data_interfaces=data_interfaces, verbose=verbose)
+        # Include each interface's current start in its target to preserve adjustments made before construction.
+        interfaces = list(self.data_interface_objects.values())
+        if interfaces:
+            _, starting_times = self._compute_alignment(interfaces)
+            for interface, starting_time in starting_times.items():
+                interface.temporal_alignment.move_earliest_observation_to(starting_time)
 
     def get_metadata(self) -> dict:
         interfaces = list(self.data_interface_objects.values())
@@ -57,11 +70,6 @@ class BrukerVoltageRecordingConverter(ConverterPipe):
             conditions=[interface._condition for interface in interfaces],
         )
 
-        # Align the electrodes onto one timeline before the interfaces write their series.
-        _, starting_time_shifts = self._compute_alignment(interfaces)
-        for interface, shift in starting_time_shifts.items():
-            interface._starting_time_shift = shift
-
         super().add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, conversion_options=conversion_options)
 
         if interfaces:
@@ -76,7 +84,7 @@ class BrukerVoltageRecordingConverter(ConverterPipe):
         A run is identified by the acquisition stem its cycles share, which PrairieView writes into the XML's
         ``DataFile``. Interfaces over the same run (the ``Primary`` and ``Secondary`` outputs of one electrode,
         say) keep one identity; distinct runs get the shortest path-suffix that is unique, since the stem alone
-        collides across session folders. This overrides the interface's default so ``sequence`` and the
+        collides across session folders. This overrides the interface's default so ``protocol_run`` and the
         electrode key are unique per run, with no silent cross-cell merge.
         """
         run_paths_by_interface = {
@@ -113,16 +121,17 @@ class BrukerVoltageRecordingConverter(ConverterPipe):
     @staticmethod
     def _compute_alignment(interfaces: list[BrukerVoltageRecordingInterface]):
         """
-        Return ``(session_start_datetime, {interface: starting_time_shift_seconds})`` from the cycle timestamps.
+        Return ``(session_start_datetime, {interface: starting_time_seconds})`` including current alignment.
 
         Every cycle carries its own ``DateTime`` with the rig's UTC offset, so unlike ABF there is no version
         of the format that lacks a real start time and no fallback to arrange for. The earliest cycle of the
-        whole set is the session origin, and electrodes recorded together resolve to the same shift.
+        whole set is the session origin. Each target includes the interface's current start to preserve user adjustments.
         """
         start_datetimes = {interface: interface._recording_start_datetime for interface in interfaces}
         session_start_datetime = min(start_datetimes.values())
-        starting_time_shifts = {
-            interface: (start_datetime - session_start_datetime).total_seconds()
+        starting_times = {
+            interface: interface.temporal_alignment[interface._alignment_key]._get_start_time()
+            + (start_datetime - session_start_datetime).total_seconds()
             for interface, start_datetime in start_datetimes.items()
         }
-        return session_start_datetime, starting_time_shifts
+        return session_start_datetime, starting_times

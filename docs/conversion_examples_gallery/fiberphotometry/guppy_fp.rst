@@ -19,9 +19,9 @@ Point the converter at three folders
 events, and ``guppy_folder_path`` is GuPPy's ``<session>_output_<N>`` folder. GuPPy writes a session's
 traces and events into one folder, so in practice the first two are usually the same path.
 
-``acquisition_format`` selects how the raw traces are read — ``"tdt"``, ``"csv"``, ``"doric"``, or
-``"npm"``, matching the :doc:`TDT <tdt_fp>`, :doc:`CSV <csv_fp>`, :doc:`Doric <doric_fp>`, and
-:doc:`NPM <npm_fp>` interfaces. The events are read the same way, except for the ones that did not come
+``acquisition_format`` selects how the raw traces are read — ``"tdt"``, ``"csv"``, ``"doric"``,
+``"npm"``, or ``"pyphotometry"``, matching the :doc:`TDT <tdt_fp>`, :doc:`CSV <csv_fp>`,
+:doc:`Doric <doric_fp>`, :doc:`NPM <npm_fp>`, and :doc:`pyPhotometry <pyphotometry_fp>` interfaces. The events are read the same way, except for the ones that did not come
 from the acquisition system: GuPPy's custom-event import writes the events it imported back out as
 one-column ``timestamps`` CSVs, which then sit in the session folder beside whatever the rig recorded.
 ``events_folder_path`` is scanned for those files, so a session whose ``storesList.csv`` lists stores
@@ -162,7 +162,7 @@ same origin the raw streams use. A CSV session carries no absolute clock origin,
 
 .. code-block:: python
 
-    >>> metadata["NWBFile"]["session_start_time"] = datetime.now(tz=ZoneInfo("US/Pacific"))
+    >>> metadata["NWBFile"]["session_start_time"] = datetime.now(tz=ZoneInfo("Asia/Tokyo"))
     >>> # Add subject information (required for DANDI upload)
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
 

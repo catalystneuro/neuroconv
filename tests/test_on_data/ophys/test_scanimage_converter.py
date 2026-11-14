@@ -10,7 +10,13 @@ SCANIMAGE_FOLDER_PATH = OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage"
 class TestScanImageConverterPlanarTwoChannels:
     """Two channels of a planar acquisition: one TwoPhotonSeries and one ImagingPlane each."""
 
-    file_path = SCANIMAGE_FOLDER_PATH / "planar_two_channels_single_file" / "planar_two_ch_single_files_00001_00001.tif"
+    file_path = (
+        SCANIMAGE_FOLDER_PATH
+        / "tiff_format_version_4"
+        / "acquisition_setup"
+        / "planar_two_channels_one_slice_stack_version_2021_0"
+        / "planar_00001_00001.tif"
+    )
 
     def test_run_conversion(self, tmp_path):
         converter = ScanImageConverter(file_path=self.file_path)
@@ -36,7 +42,13 @@ class TestScanImageConverterPlanarTwoChannels:
 class TestScanImageConverterVolumetricTwoChannels:
     """A volumetric acquisition writes one 4D series per channel."""
 
-    file_path = SCANIMAGE_FOLDER_PATH / "volumetric_two_channels_single_file" / "vol_two_ch_single_file_00001_00001.tif"
+    file_path = (
+        SCANIMAGE_FOLDER_PATH
+        / "tiff_format_version_4"
+        / "time_structure"
+        / "volumetric_flyback_frames_two_channels_version_2021_0"
+        / "volume_00001_00001.tif"
+    )
 
     def test_run_conversion(self, tmp_path):
         converter = ScanImageConverter(file_path=self.file_path)
@@ -56,7 +68,11 @@ class TestScanImageConverterSingleChannel:
     """A single-channel acquisition needs no arguments and carries no channel suffix."""
 
     file_path = (
-        SCANIMAGE_FOLDER_PATH / "volumetric_single_channel_single_file" / "vol_one_ch_single_files_00002_00001.tif"
+        SCANIMAGE_FOLDER_PATH
+        / "tiff_format_version_4"
+        / "time_structure"
+        / "volumetric_flyback_frames_single_channel_version_2021_0"
+        / "volume_00002_00001.tif"
     )
 
     def test_run_conversion(self, tmp_path):

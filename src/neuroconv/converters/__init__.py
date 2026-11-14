@@ -6,6 +6,7 @@ or one photon and behavior videos of Miniscope), yet the objects behave just as 
 converters can still be combined into a parent converter for a dataset).
 """
 
+from ..datainterfaces.behavior.dannce.dannceconverter import DANNCEConverter
 from ..datainterfaces.behavior.lightningpose.lightningposeconverter import (
     LightningPoseConverter,
 )
@@ -19,6 +20,7 @@ from ..datainterfaces.ecephys.intan.intanconverter import IntanConverter
 from ..datainterfaces.ecephys.openephys.openephysbinaryconverter import OpenEphysBinaryConverter
 from ..datainterfaces.ecephys.spikeglx.spikeglxconverter import SpikeGLXConverterPipe
 from ..datainterfaces.fiber_photometry.guppy.guppyconverter import GuppyConverter
+from ..datainterfaces.fiber_photometry.pyphotometry.pyphotometryconverter import PyPhotometryConverter
 from ..datainterfaces.ophys.brukertiff.brukertiffconverter import (
     BrukerTiffConverter,
     BrukerTiffMultiPlaneConverter,
@@ -32,6 +34,7 @@ from ..datainterfaces.ophys.thor.thorconverter import ThorConverter
 converter_list = [
     AxonIntracellularConverter,
     BrukerVoltageRecordingConverter,
+    DANNCEConverter,
     IntanConverter,
     LightningPoseConverter,
     OpenEphysBinaryConverter,
@@ -46,4 +49,5 @@ converter_list = [
     SortedRecordingConverter,
     SortedSpikeGLXConverter,
     GuppyConverter,
+    PyPhotometryConverter,
 ]

@@ -29,7 +29,7 @@ instead and are not served by this interface.
     >>> interface = MdaSortingInterface(file_path=mda_firings_path, sampling_frequency=mda_sampling_frequency, verbose=False)
     >>>
     >>> metadata = interface.get_metadata()
-    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
+    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>> # Add subject information (required for DANDI upload)
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")

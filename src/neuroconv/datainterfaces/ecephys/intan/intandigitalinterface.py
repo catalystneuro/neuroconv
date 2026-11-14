@@ -13,7 +13,7 @@ from ....tools.events import (
 from ....tools.signal_processing import (
     _condition_signal,
     _detect_events,
-    _frames_to_seconds,
+    _samples_to_seconds,
 )
 
 # The two digital words an Intan controller records. A file carries either, both, or neither, and the
@@ -143,6 +143,10 @@ class IntanDigitalInterface(BaseEventsInterface):
         )
         self.metadata_key = metadata_key or "intan_digital"
 
+    def get_event_type_source_ids(self) -> list[str]:
+        """The event types the configuration resolves to, read from nothing."""
+        return _get_event_type_source_ids(self._detection_configuration)
+
     @staticmethod
     def _read_digital_streams(file_path, saved_files_are_split: bool = False) -> dict:
         """Return ``stream_name -> recording`` for whichever digital words the file carries.
@@ -197,7 +201,7 @@ class IntanDigitalInterface(BaseEventsInterface):
         """
         metadata = super().get_metadata()
         event_types = metadata["Events"][self.metadata_key]["event_types"]
-        for event_type_source_id in _get_event_type_source_ids(self._detection_configuration):
+        for event_type_source_id in self.get_event_type_source_ids():
             event_types[event_type_source_id] = {"event_name": event_type_source_id}
         return metadata
 
@@ -233,8 +237,13 @@ class IntanDigitalInterface(BaseEventsInterface):
                 # An Intan digital line arrives already demultiplexed into a 0/1 trace, so no conditioning
                 # applies and the reading is taken from the line's own values, with no cut anywhere.
                 conditioned = _condition_signal(trace, spec["signal_conditioning"])
-                onset_frames, offset_frames = _detect_events(conditioned, spec["detection"])
-                onsets, durations = _frames_to_seconds(onset_frames, offset_frames, read_clock)
+                onset_samples, offset_samples = _detect_events(conditioned, spec["detection"])
+                onsets, durations = _samples_to_seconds(
+                    onset_samples=onset_samples,
+                    offset_samples=offset_samples,
+                    timestamps=read_clock,
+                    event_time_convention=spec.get("event_time_convention", "sample_after_transition"),
+                )
                 events_data_dict[event_type_source_id] = _EventsData(
                     event_type_source_id=event_type_source_id,
                     timestamps=onsets,

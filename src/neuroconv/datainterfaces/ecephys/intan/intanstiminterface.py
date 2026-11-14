@@ -47,6 +47,7 @@ class IntanStimInterface(BaseRecordingAsTimeSeriesInterface):
         verbose: bool = False,
         metadata_key: str = "intan_stim",
         saved_files_are_split: bool = False,
+        channels_to_include: list[str] | None = None,
     ):
         """
         Load and prepare stimulation data from an Intan .rhs file.
@@ -68,6 +69,10 @@ class IntanStimInterface(BaseRecordingAsTimeSeriesInterface):
             option, producing several rotated ``.rhs`` files in one session folder. All sibling
             files in ``file_path.parent`` are concatenated in filename order (Intan's default
             ``{prefix}_YYMMDD_HHMMSS`` naming makes lexicographic order match chronological order).
+        channels_to_include : list of str, optional
+            Channels to convert, by the names in ``get_channel_names()`` (such as ``"A-000_STIM"``), written in the
+            order listed. Every channel is converted when omitted. A name that is not one of the interface's channels
+            raises.
         """
         self._file_path = Path(file_path)
         self._stream_name = "Stim channel"
@@ -95,7 +100,10 @@ class IntanStimInterface(BaseRecordingAsTimeSeriesInterface):
         super().__init__(
             file_path=self._file_path,
             verbose=verbose,
+            channels_to_include=channels_to_include,
         )
+
+        self._include_channels(channels_to_include)
 
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()

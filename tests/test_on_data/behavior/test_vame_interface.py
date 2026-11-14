@@ -14,10 +14,7 @@ from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv import NWBConverter
 from neuroconv.datainterfaces import VameInterface
-from neuroconv.tools.testing.data_interface_mixins import (
-    DataInterfaceTestMixin,
-    TemporalAlignmentMixin,
-)
+from neuroconv.tools.testing.data_interface_mixins import DataInterfaceTestMixin
 from neuroconv.tools.testing.mock_interfaces import MockPoseEstimationInterface
 
 try:
@@ -58,6 +55,7 @@ class TestVameInterfaceMinimal(DataInterfaceTestMixin):
     """VameInterface with a single motif series and no optional inputs."""
 
     data_interface_cls = VameInterface
+    expected_temporal_alignment_keys = ("vame_project",)
     interface_kwargs = dict(
         file_path=str(CONFIG_PATH),
         motif_labels_file_paths={"kmeans": str(MOTIF_LABELS_PATH)},
@@ -67,9 +65,9 @@ class TestVameInterfaceMinimal(DataInterfaceTestMixin):
 
     def check_extracted_metadata(self, metadata: dict):
         vame = metadata["Behavior"]["Vame"]
-        assert vame["VameProjects"]["VAMEProject"]["name"] == "VAMEProject"
-        assert "VAMEProject_motif_kmeans" in vame["MotifSeries"]
-        assert vame["MotifSeries"]["VAMEProject_motif_kmeans"]["algorithm"] == "kmeans"
+        assert vame["VameProjects"]["vame_project"]["name"] == "VAMEProject"
+        assert "vame_project_motif_kmeans" in vame["MotifSeries"]
+        assert vame["MotifSeries"]["vame_project_motif_kmeans"]["algorithm"] == "kmeans"
         assert "LatentSpaceSeries" not in vame
         assert "CommunitySeries" not in vame
 
@@ -87,10 +85,11 @@ class TestVameInterfaceMinimal(DataInterfaceTestMixin):
         nwbfile.read_io.close()
 
 
-class TestVameInterfaceFull(DataInterfaceTestMixin, TemporalAlignmentMixin):
+class TestVameInterfaceFull(DataInterfaceTestMixin):
     """VameInterface with all optional inputs: latent vectors, community labels, config."""
 
     data_interface_cls = VameInterface
+    expected_temporal_alignment_keys = ("vame_project",)
     interface_kwargs = dict(
         file_path=str(CONFIG_PATH),
         motif_labels_file_paths={"kmeans": str(MOTIF_LABELS_PATH)},
@@ -102,12 +101,12 @@ class TestVameInterfaceFull(DataInterfaceTestMixin, TemporalAlignmentMixin):
 
     def check_extracted_metadata(self, metadata: dict):
         vame = metadata["Behavior"]["Vame"]
-        assert vame["VameProjects"]["VAMEProject"]["name"] == "VAMEProject"
-        assert "VAMEProject_motif_kmeans" in vame["MotifSeries"]
-        assert vame["MotifSeries"]["VAMEProject_motif_kmeans"]["algorithm"] == "kmeans"
-        assert "30 dimensions" in vame["LatentSpaceSeries"]["VAMEProject_latent_space"]["description"]
-        community = vame["CommunitySeries"]["VAMEProject_community_kmeans"]
-        assert community["motif_series_metadata_key"] == "VAMEProject_motif_kmeans"
+        assert vame["VameProjects"]["vame_project"]["name"] == "VAMEProject"
+        assert "vame_project_motif_kmeans" in vame["MotifSeries"]
+        assert vame["MotifSeries"]["vame_project_motif_kmeans"]["algorithm"] == "kmeans"
+        assert "30 dimensions" in vame["LatentSpaceSeries"]["vame_project_latent_space"]["description"]
+        community = vame["CommunitySeries"]["vame_project_community_kmeans"]
+        assert community["motif_series_metadata_key"] == "vame_project_motif_kmeans"
         assert community["algorithm"] == "kmeans"
 
     def check_read_nwb(self, nwbfile_path: str):
@@ -131,10 +130,11 @@ class TestVameInterfaceFull(DataInterfaceTestMixin, TemporalAlignmentMixin):
         nwbfile.read_io.close()
 
 
-class TestVameInterfaceWithStubTest(DataInterfaceTestMixin, TemporalAlignmentMixin):
+class TestVameInterfaceWithStubTest(DataInterfaceTestMixin):
     """VameInterface with stub_test=True to verify frame truncation."""
 
     data_interface_cls = VameInterface
+    expected_temporal_alignment_keys = ("vame_project",)
     interface_kwargs = dict(
         file_path=str(CONFIG_PATH),
         motif_labels_file_paths={"kmeans": str(MOTIF_LABELS_PATH)},
@@ -147,8 +147,8 @@ class TestVameInterfaceWithStubTest(DataInterfaceTestMixin, TemporalAlignmentMix
 
     def check_extracted_metadata(self, metadata: dict):
         vame = metadata["Behavior"]["Vame"]
-        assert vame["VameProjects"]["VAMEProject"]["name"] == "VAMEProject"
-        assert "VAMEProject_motif_kmeans" in vame["MotifSeries"]
+        assert vame["VameProjects"]["vame_project"]["name"] == "VAMEProject"
+        assert "vame_project_motif_kmeans" in vame["MotifSeries"]
         assert "LatentSpaceSeries" in vame
         assert "CommunitySeries" in vame
 
@@ -165,6 +165,7 @@ class TestVameInterfaceMultipleAlgorithms(DataInterfaceTestMixin):
     """Single VameInterface with two MotifSeries (kmeans + hmm) in one VAMEProject."""
 
     data_interface_cls = VameInterface
+    expected_temporal_alignment_keys = ("vame_project",)
     interface_kwargs = dict(
         file_path=str(CONFIG_PATH),
         motif_labels_file_paths={
@@ -179,12 +180,12 @@ class TestVameInterfaceMultipleAlgorithms(DataInterfaceTestMixin):
 
     def check_extracted_metadata(self, metadata: dict):
         vame = metadata["Behavior"]["Vame"]
-        assert "VAMEProject_motif_kmeans" in vame["MotifSeries"]
-        assert "VAMEProject_motif_hmm" in vame["MotifSeries"]
-        assert "VAMEProject_community_kmeans" in vame["CommunitySeries"]
+        assert "vame_project_motif_kmeans" in vame["MotifSeries"]
+        assert "vame_project_motif_hmm" in vame["MotifSeries"]
+        assert "vame_project_community_kmeans" in vame["CommunitySeries"]
         assert (
-            vame["CommunitySeries"]["VAMEProject_community_kmeans"]["motif_series_metadata_key"]
-            == "VAMEProject_motif_kmeans"
+            vame["CommunitySeries"]["vame_project_community_kmeans"]["motif_series_metadata_key"]
+            == "vame_project_motif_kmeans"
         )
 
     def check_read_nwb(self, nwbfile_path: str):
@@ -214,6 +215,7 @@ class TestVameInterfaceAutoDiscoverFilePaths(DataInterfaceTestMixin):
     """VameInterface with session_name auto-discovers all paths from the config."""
 
     data_interface_cls = VameInterface
+    expected_temporal_alignment_keys = ("vame_project",)
     interface_kwargs = dict(
         file_path=str(CONFIG_PATH),
         session_name=_SESSION_STEM,
@@ -223,13 +225,13 @@ class TestVameInterfaceAutoDiscoverFilePaths(DataInterfaceTestMixin):
 
     def check_extracted_metadata(self, metadata: dict):
         vame = metadata["Behavior"]["Vame"]
-        assert "VAMEProject_motif_kmeans" in vame["MotifSeries"]
-        assert "VAMEProject_motif_hmm" in vame["MotifSeries"]
+        assert "vame_project_motif_kmeans" in vame["MotifSeries"]
+        assert "vame_project_motif_hmm" in vame["MotifSeries"]
         assert "LatentSpaceSeries" in vame
-        assert "VAMEProject_community_kmeans" in vame["CommunitySeries"]
+        assert "vame_project_community_kmeans" in vame["CommunitySeries"]
         assert (
-            vame["CommunitySeries"]["VAMEProject_community_kmeans"]["motif_series_metadata_key"]
-            == "VAMEProject_motif_kmeans"
+            vame["CommunitySeries"]["vame_project_community_kmeans"]["motif_series_metadata_key"]
+            == "vame_project_motif_kmeans"
         )
 
     def check_read_nwb(self, nwbfile_path: str):
@@ -264,8 +266,8 @@ class TestVameInterfaceEthogram:
 
     def test_metadata_has_ethogram_entries(self):
         ethograms = VameInterface(**self.interface_kwargs).get_metadata()["Behavior"]["Ethograms"]
-        assert ethograms["VAMEProject_kmeans"]["EthogramBouts"]["name"] == "VAMEProjectEthogramBoutsKmeans"
-        assert ethograms["VAMEProject_kmeans"]["Ethogram"]["name"] == "VAMEProjectEthogramKmeans"
+        assert ethograms["vame_project_kmeans"]["EthogramBouts"]["name"] == "VAMEProjectEthogramBoutsKmeans"
+        assert ethograms["vame_project_kmeans"]["Ethogram"]["name"] == "VAMEProjectEthogramKmeans"
 
     def test_bouts_are_motif_labels_run_length_encoded(self):
         interface = VameInterface(**self.interface_kwargs)
@@ -531,17 +533,6 @@ class TestVameInterfaceGetOriginalTimestamps:
         with pytest.raises(ValueError, match="without any data file"):
             interface.get_original_timestamps()
 
-    def test_get_timestamps_returns_aligned_when_set(self):
-        """get_timestamps() returns the aligned timestamps set via set_aligned_timestamps()."""
-        interface = VameInterface(
-            file_path=str(CONFIG_PATH),
-            motif_labels_file_paths={"kmeans": str(MOTIF_LABELS_PATH)},
-            sampling_frequency_hz=30.0,
-        )
-        aligned = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
-        interface.set_aligned_timestamps(aligned)
-        assert_array_equal(interface.get_timestamps(), aligned)
-
 
 class TestVameInterfaceIrregularTimestamps:
     """When aligned timestamps are non-uniform, the NWB file stores explicit timestamps (not rate)."""
@@ -552,8 +543,8 @@ class TestVameInterfaceIrregularTimestamps:
             motif_labels_file_paths={"kmeans": str(MOTIF_LABELS_PATH)},
         )
         # Non-uniform spacing -> calculate_regular_series_rate returns None
-        irregular_timestamps = np.array([0.0, 0.1, 0.25, 0.4, 0.6])
-        interface.set_aligned_timestamps(irregular_timestamps)
+        irregular_timestamps = np.cumsum(np.linspace(0.1, 0.2, 100))
+        interface.temporal_alignment["vame_project"].set_times(irregular_timestamps)
 
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata(), stub_test=True)
@@ -595,8 +586,8 @@ class TestVameInterfacePoseEstimationLink:
             file_path=str(CONFIG_PATH),
             motif_labels_file_paths={"kmeans": str(MOTIF_LABELS_PATH)},
         )
+        interface.temporal_alignment["vame_project"].set_times(np.arange(100, dtype=float))
         aligned_timestamps = np.arange(10, dtype=float)
-        interface.set_aligned_timestamps(aligned_timestamps)
 
         # Build NWB file with a PoseEstimation container already present
         pose_estimation_interface = MockPoseEstimationInterface(num_samples=10, num_nodes=3, seed=0)
@@ -612,7 +603,7 @@ class TestVameInterfacePoseEstimationLink:
         vame_metadata = interface.get_metadata()
         # The pose registry must be present for the key to resolve (strict lookup, no name fallback).
         vame_metadata["Pose"] = pose_metadata["Pose"]
-        vame_metadata["Behavior"]["Vame"]["VameProjects"]["VAMEProject"]["pose_estimation_metadata_key"] = pose_key
+        vame_metadata["Behavior"]["Vame"]["VameProjects"]["vame_project"]["pose_estimation_metadata_key"] = pose_key
         interface.add_to_nwbfile(nwbfile=nwbfile, metadata=vame_metadata, stub_test=True)
 
         project = nwbfile.processing["behavior"].data_interfaces["VAMEProject"]
@@ -625,8 +616,8 @@ class TestVameInterfacePoseEstimationLink:
             file_path=str(CONFIG_PATH),
             motif_labels_file_paths={"kmeans": str(MOTIF_LABELS_PATH)},
         )
+        interface.temporal_alignment["vame_project"].set_times(np.arange(100, dtype=float))
         aligned_timestamps = np.arange(10, dtype=float)
-        interface.set_aligned_timestamps(aligned_timestamps)
 
         pose_interface = MockPoseEstimationInterface(num_samples=10, num_nodes=3, seed=0, metadata_key="DLC")
         pose_interface.set_aligned_timestamps(aligned_timestamps)
@@ -638,7 +629,7 @@ class TestVameInterfacePoseEstimationLink:
         pose_interface.add_to_nwbfile(nwbfile=nwbfile, metadata=pose_meta)
 
         vame_metadata = interface.get_metadata()
-        vame_metadata["Behavior"]["Vame"]["VameProjects"]["VAMEProject"]["pose_estimation_metadata_key"] = "DLC"
+        vame_metadata["Behavior"]["Vame"]["VameProjects"]["vame_project"]["pose_estimation_metadata_key"] = "DLC"
         vame_metadata["Pose"] = pose_meta["Pose"]
         interface.add_to_nwbfile(nwbfile=nwbfile, metadata=vame_metadata, stub_test=True)
 
@@ -652,8 +643,8 @@ class TestVameInterfacePoseEstimationLink:
             file_path=str(CONFIG_PATH),
             motif_labels_file_paths={"kmeans": str(MOTIF_LABELS_PATH)},
         )
+        interface.temporal_alignment["vame_project"].set_times(np.arange(100, dtype=float))
         aligned_timestamps = np.arange(10, dtype=float)
-        interface.set_aligned_timestamps(aligned_timestamps)
 
         pose_interface = MockPoseEstimationInterface(num_samples=10, num_nodes=3, seed=0)
         pose_interface.set_aligned_timestamps(aligned_timestamps)
@@ -665,7 +656,7 @@ class TestVameInterfacePoseEstimationLink:
 
         vame_metadata = interface.get_metadata()
         vame_metadata["Pose"] = pose_metadata["Pose"]
-        vame_metadata["Behavior"]["Vame"]["VameProjects"]["VAMEProject"]["pose_estimation_metadata_key"] = pose_key
+        vame_metadata["Behavior"]["Vame"]["VameProjects"]["vame_project"]["pose_estimation_metadata_key"] = pose_key
         interface.add_to_nwbfile(nwbfile=nwbfile, metadata=vame_metadata, stub_test=True)
 
         behavior = nwbfile.processing["behavior"]
@@ -685,7 +676,7 @@ class TestVameInterfaceVideoLink:
             file_path=str(CONFIG_PATH),
             motif_labels_file_paths={"kmeans": str(MOTIF_LABELS_PATH)},
         )
-        interface.set_aligned_timestamps(np.arange(10, dtype=float))
+        interface.temporal_alignment["vame_project"].set_times(np.arange(100, dtype=float))
 
         # An ImageSeries whose name differs from its registry key must already be in the file.
         nwbfile = mock_NWBFile()
@@ -702,7 +693,7 @@ class TestVameInterfaceVideoLink:
 
         vame_metadata = interface.get_metadata()
         vame_metadata["Behavior"]["ExternalVideos"] = {"my_video": {"name": "BehaviorCameraVideo"}}
-        vame_metadata["Behavior"]["Vame"]["VameProjects"]["VAMEProject"]["video_metadata_key"] = "my_video"
+        vame_metadata["Behavior"]["Vame"]["VameProjects"]["vame_project"]["video_metadata_key"] = "my_video"
         interface.add_to_nwbfile(nwbfile=nwbfile, metadata=vame_metadata, stub_test=True)
 
         bouts = nwbfile.processing["behavior"]["VAMEProjectEthogramBoutsKmeans"]
@@ -717,22 +708,22 @@ class TestVameInterfaceStrictKeyResolution:
             file_path=str(CONFIG_PATH),
             motif_labels_file_paths={"kmeans": str(MOTIF_LABELS_PATH)},
         )
-        interface.set_aligned_timestamps(np.arange(10, dtype=float))
+        interface.temporal_alignment["vame_project"].set_times(np.arange(100, dtype=float))
         return interface
 
     def test_unregistered_pose_key_raises(self):
         interface = self._interface()
         nwbfile = mock_NWBFile()
         metadata = interface.get_metadata()
-        metadata["Behavior"]["Vame"]["VameProjects"]["VAMEProject"]["pose_estimation_metadata_key"] = "not_a_key"
-        with pytest.raises(ValueError, match="pose_estimation_metadata_key 'not_a_key' was not found"):
+        metadata["Behavior"]["Vame"]["VameProjects"]["vame_project"]["pose_estimation_metadata_key"] = "not_a_key"
+        with pytest.raises(ValueError, match="metadata_key 'not_a_key' was not found"):
             interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, stub_test=True)
 
     def test_unregistered_video_key_raises(self):
         interface = self._interface()
         nwbfile = mock_NWBFile()
         metadata = interface.get_metadata()
-        metadata["Behavior"]["Vame"]["VameProjects"]["VAMEProject"]["video_metadata_key"] = "not_a_key"
+        metadata["Behavior"]["Vame"]["VameProjects"]["vame_project"]["video_metadata_key"] = "not_a_key"
         with pytest.raises(ValueError, match="video_metadata_key 'not_a_key' was not found"):
             interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, stub_test=True)
 
@@ -742,42 +733,13 @@ class TestVameInterfaceStrictKeyResolution:
             motif_labels_file_paths={"kmeans": str(MOTIF_LABELS_PATH)},
             community_labels_file_paths={"kmeans": str(COMMUNITY_LABELS_PATH)},
         )
-        interface.set_aligned_timestamps(np.arange(10, dtype=float))
+        interface.temporal_alignment["vame_project"].set_times(np.arange(100, dtype=float))
         nwbfile = mock_NWBFile()
         metadata = interface.get_metadata()
         community_key = next(iter(metadata["Behavior"]["Vame"]["CommunitySeries"]))
         metadata["Behavior"]["Vame"]["CommunitySeries"][community_key]["motif_series_metadata_key"] = "not_a_key"
         with pytest.raises(ValueError, match="motif_series_metadata_key 'not_a_key'"):
             interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata, stub_test=True)
-
-
-class TestVameInterfaceGetPoseEstimation:
-    """Static method _get_pose_estimation raises informative errors."""
-
-    def test_raises_when_no_pose_estimation_containers_in_file(self):
-        """Raises with 'No PoseEstimation containers exist' when the file is empty."""
-        nwbfile = mock_NWBFile()
-        with pytest.raises(ValueError, match="No PoseEstimation containers exist"):
-            VameInterface._get_pose_estimation(nwbfile, "SomeName")
-
-    def test_raises_listing_available_containers_when_wrong_name(self):
-        """Lists available PoseEstimation containers in the error when the requested name is absent."""
-        nwbfile = mock_NWBFile()
-        pose_estimation_interface = MockPoseEstimationInterface(num_samples=10, num_nodes=3, seed=0)
-        pose_estimation_interface.add_to_nwbfile(nwbfile=nwbfile, metadata=pose_estimation_interface.get_metadata())
-
-        with pytest.raises(ValueError, match=pose_estimation_interface.metadata_key):
-            VameInterface._get_pose_estimation(nwbfile, "WrongName")
-
-    def test_returns_container_when_name_matches(self):
-        """Returns the PoseEstimation object when the name is found."""
-        nwbfile = mock_NWBFile()
-        pose_estimation_interface = MockPoseEstimationInterface(num_samples=10, num_nodes=3, seed=0)
-        pose_estimation_interface.add_to_nwbfile(nwbfile=nwbfile, metadata=pose_estimation_interface.get_metadata())
-
-        expected = nwbfile.processing["behavior"].data_interfaces[pose_estimation_interface.metadata_key]
-        result = VameInterface._get_pose_estimation(nwbfile, pose_estimation_interface.metadata_key)
-        assert result is expected
 
 
 class TestVameInterfacesInConverter:

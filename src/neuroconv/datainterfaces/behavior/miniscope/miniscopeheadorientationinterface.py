@@ -6,12 +6,13 @@ from pydantic import FilePath, validate_call
 from pynwb import TimeSeries
 from pynwb.file import NWBFile
 
-from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
+from ...._temporal_alignment import _TemporalAlignment
+from ....basedatainterface import BaseDataInterface
 from ....tools import get_module
 from ....utils import DeepDict, calculate_regular_series_rate
 
 
-class MiniscopeHeadOrientationInterface(BaseTemporalAlignmentInterface):
+class MiniscopeHeadOrientationInterface(BaseDataInterface):
     """Data Interface for Miniscope head orientation data from BNO055 IMU sensor."""
 
     display_name = "Miniscope Head Orientation"
@@ -31,7 +32,7 @@ class MiniscopeHeadOrientationInterface(BaseTemporalAlignmentInterface):
     def __init__(
         self,
         file_path: FilePath,
-        *args,  # TODO: change to * (keyword only) on or after August 2026
+        *,
         metadata_key: str = "TimeSeriesMiniscopeHeadOrientation",
         verbose: bool = False,
     ):
@@ -47,38 +48,11 @@ class MiniscopeHeadOrientationInterface(BaseTemporalAlignmentInterface):
         verbose : bool, optional
             If True, enables verbose mode for detailed logging, by default False.
         """
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "metadata_key",
-                "verbose",
-            ]
-            num_positional_args_before_args = 1  # file_path
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args + 1} were given. "
-                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
-                    "Please use keyword arguments."
-                )
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to MiniscopeHeadOrientationInterface.__init__() is deprecated "
-                f"and will be removed on or after August 2026. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            metadata_key = positional_values.get("metadata_key", metadata_key)
-            verbose = positional_values.get("verbose", verbose)
 
         import pandas as pd
 
         super().__init__(file_path=file_path, verbose=verbose)
         self.metadata_key = metadata_key
-        self._timestamps = None
 
         # Store the device folder path (parent of headOrientation.csv)
         # This folder contains metaData.json with device info
@@ -89,6 +63,13 @@ class MiniscopeHeadOrientationInterface(BaseTemporalAlignmentInterface):
         # Explicitly convert to numpy for HDMF compatibility with pandas 3.0+
         # See https://github.com/hdmf-dev/hdmf/issues/1384
         self._quaternion_data = df[["qw", "qx", "qy", "qz"]].to_numpy(dtype="float64")
+
+        self.temporal_alignment = _TemporalAlignment()
+        self.temporal_alignment._register(
+            key=self.metadata_key,
+            get_native_times=self.get_original_timestamps,
+            get_number_of_samples=lambda: len(self._quaternion_data),
+        )
 
     @staticmethod
     def _get_session_start_time(folder_path):
@@ -120,13 +101,43 @@ class MiniscopeHeadOrientationInterface(BaseTemporalAlignmentInterface):
 
     def get_timestamps(self) -> np.ndarray:
         """Return the current timestamps (possibly aligned)."""
-        if self._timestamps is None:
-            return self.get_original_timestamps()
-        return self._timestamps
+        warnings.warn(
+            "`get_timestamps` is deprecated and will be removed in v0.13.0. "
+            f"Use `interface.temporal_alignment['{self.metadata_key}'].get_times()` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        return self.temporal_alignment[self.metadata_key].get_times()
 
     def set_aligned_timestamps(self, aligned_timestamps: np.ndarray) -> None:
         """Replace timestamps with aligned version."""
-        self._timestamps = aligned_timestamps
+        warnings.warn(
+            "`set_aligned_timestamps` is deprecated and will be removed in v0.13.0. "
+            f"Use `interface.temporal_alignment['{self.metadata_key}'].set_times(times)` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        self.temporal_alignment[self.metadata_key].set_times(aligned_timestamps)
+
+    def set_aligned_starting_time(self, aligned_starting_time: float) -> None:
+        warnings.warn(
+            "`set_aligned_starting_time` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment.shift_times(delta)` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        self.temporal_alignment.shift_times(aligned_starting_time)
+
+    def align_by_interpolation(self, unaligned_timestamps: np.ndarray, aligned_timestamps: np.ndarray) -> None:
+        warnings.warn(
+            "`align_by_interpolation` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment.remap_times(local_sync_times=..., reference_sync_times=...)` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        self.temporal_alignment.remap_times(
+            local_sync_times=unaligned_timestamps, reference_sync_times=aligned_timestamps
+        )
 
     def get_metadata(self) -> DeepDict:
         """Generate metadata for head orientation data."""
@@ -178,7 +189,7 @@ class MiniscopeHeadOrientationInterface(BaseTemporalAlignmentInterface):
         self,
         nwbfile: NWBFile,
         metadata: dict | None = None,
-        *args,  # TODO: change to * (keyword only) on or after August 2026
+        *,
         always_write_timestamps: bool = False,
     ):
         """
@@ -208,37 +219,13 @@ class MiniscopeHeadOrientationInterface(BaseTemporalAlignmentInterface):
             using a regular sampling rate instead of explicit timestamps. If set to True, timestamps will be written
             explicitly, regardless of whether the sampling rate is uniform.
         """
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "always_write_timestamps",
-            ]
-            num_positional_args_before_args = 2  # nwbfile, metadata
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"add_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args} were given. "
-                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
-                    "Please use keyword arguments."
-                )
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to MiniscopeHeadOrientationInterface.add_to_nwbfile() is deprecated "
-                f"and will be removed on or after August 2026. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            always_write_timestamps = positional_values.get("always_write_timestamps", always_write_timestamps)
 
         # Initialize series_kwargs with data
         series_kwargs = {}
         series_kwargs["data"] = self._quaternion_data
 
         # Check if timestamps are uniform
-        timestamps = self.get_timestamps()
+        timestamps = self.temporal_alignment[self.metadata_key].get_times()
         rate = calculate_regular_series_rate(series=timestamps)  # Returns None if not uniform
 
         if rate and not always_write_timestamps:

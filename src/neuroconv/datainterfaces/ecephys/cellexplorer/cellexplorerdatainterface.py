@@ -323,10 +323,11 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
     def __init__(
         self,
         folder_path: DirectoryPath,
-        *args,  # TODO: change to * (keyword only) on or after August 2026
+        *,
         verbose: bool = False,
         es_key: str | None = None,
         metadata_key: str | None = None,
+        channels_to_exclude: list | None = None,
     ):
         """
 
@@ -339,33 +340,10 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
         metadata_key : str, optional
             Key that indexes this interface's entries in the dict-based metadata. Defaults to
             ``"cell_explorer_recording"``.
+        channels_to_exclude : list, optional
+            Channels to leave out, by the ids in ``channel_ids``. Every other channel is converted. A name that
+            is not one of the interface's channels raises.
         """
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "verbose",
-                "es_key",
-            ]
-            num_positional_args_before_args = 1  # folder_path
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args + 1} were given. "
-                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
-                    "Please use keyword arguments."
-                )
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to CellExplorerRecordingInterface.__init__() is deprecated "
-                f"and will be removed on or after August 2026. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            verbose = positional_values.get("verbose", verbose)
-            es_key = positional_values.get("es_key", es_key)
 
         self.session_path = Path(folder_path)
 
@@ -416,6 +394,10 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
             recording_extractor=self.recording_extractor, folder_path=folder_path
         )
 
+        self._register_segments()
+
+        self._exclude_channels(channels_to_exclude)
+
     def get_original_timestamps(self):
         num_frames = self.recording_extractor.get_num_samples()
         sampling_frequency = self.recording_extractor.get_sampling_frequency()
@@ -450,42 +432,23 @@ class CellExplorerLFPInterface(CellExplorerRecordingInterface):
     def __init__(
         self,
         folder_path: DirectoryPath,
-        *args,  # TODO: change to * (keyword only) on or after August 2026
+        *,
         verbose: bool = False,
         es_key: str | None = None,
         metadata_key: str | None = None,
+        channels_to_exclude: list | None = None,
     ):
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "verbose",
-                "es_key",
-            ]
-            num_positional_args_before_args = 1  # folder_path
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args + 1} were given. "
-                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
-                    "Please use keyword arguments."
-                )
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to CellExplorerLFPInterface.__init__() is deprecated "
-                f"and will be removed on or after August 2026. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            verbose = positional_values.get("verbose", verbose)
-            es_key = positional_values.get("es_key", es_key)
-
-        super().__init__(folder_path, verbose=verbose, es_key=es_key, metadata_key=metadata_key)
 
         if metadata_key is None:
-            self.metadata_key = "cell_explorer_lfp"
+            metadata_key = "cell_explorer_lfp"
+
+        super().__init__(
+            folder_path,
+            verbose=verbose,
+            es_key=es_key,
+            metadata_key=metadata_key,
+            channels_to_exclude=channels_to_exclude,
+        )
 
     def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
@@ -501,60 +464,19 @@ class CellExplorerLFPInterface(CellExplorerRecordingInterface):
         self,
         nwbfile: NWBFile,
         metadata: dict | None = None,
-        *args,  # TODO: change to * (keyword only) on or after August 2026
+        *,
         stub_test: bool = False,
-        starting_time: float | None = None,
         parent_container: Literal["acquisition", "processing/LFP", "processing/FilteredEphys"] = "processing/LFP",
         write_as: Literal["raw", "lfp", "processed"] | None = None,
         write_electrical_series: bool = True,
-        compression: str | None = "gzip",
-        compression_opts: int | None = None,
         iterator_type: str = "v2",
         iterator_options: dict | None = None,
     ):
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "stub_test",
-                "starting_time",
-                "write_as",
-                "write_electrical_series",
-                "compression",
-                "compression_opts",
-                "iterator_type",
-                "iterator_options",
-            ]
-            num_positional_args_before_args = 2  # nwbfile, metadata
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"add_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args} were given. "
-                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
-                    "Please use keyword arguments."
-                )
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to CellExplorerLFPInterface.add_to_nwbfile() is deprecated "
-                f"and will be removed on or after August 2026. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            stub_test = positional_values.get("stub_test", stub_test)
-            starting_time = positional_values.get("starting_time", starting_time)
-            write_as = positional_values.get("write_as", write_as)
-            write_electrical_series = positional_values.get("write_electrical_series", write_electrical_series)
-            compression = positional_values.get("compression", compression)
-            compression_opts = positional_values.get("compression_opts", compression_opts)
-            iterator_type = positional_values.get("iterator_type", iterator_type)
-            iterator_options = positional_values.get("iterator_options", iterator_options)
 
         if write_as is not None:
             warnings.warn(
                 "The 'write_as' parameter of CellExplorerLFPInterface.add_to_nwbfile() is deprecated and will be "
-                "removed on or after February 2027. Use 'parent_container' instead "
+                "removed in v0.12.0. Use 'parent_container' instead "
                 "('raw' -> 'acquisition', 'lfp' -> 'processing/LFP', 'processed' -> 'processing/FilteredEphys').",
                 FutureWarning,
                 stacklevel=2,
@@ -567,11 +489,8 @@ class CellExplorerLFPInterface(CellExplorerRecordingInterface):
             nwbfile=nwbfile,
             metadata=metadata,
             stub_test=stub_test,
-            starting_time=starting_time,
             parent_container=parent_container,
             write_electrical_series=write_electrical_series,
-            compression=compression,
-            compression_opts=compression_opts,
             iterator_type=iterator_type,
             iterator_options=iterator_options,
         )
@@ -602,9 +521,7 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
         extractor_instance = extractor_class(**self.extractor_kwargs)
         return extractor_instance
 
-    def __init__(
-        self, file_path: FilePath, *args, verbose: bool = False
-    ):  # TODO: change to * (keyword only) on or after August 2026
+    def __init__(self, file_path: FilePath, *, verbose: bool = False, metadata_key: str | None = None):
         """
         Initialize read of Cell Explorer file.
 
@@ -613,31 +530,10 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
         file_path: FilePath
             Path to .spikes.cellinfo.mat file.
         verbose: bool, default: True
+        metadata_key : str, optional
+            Key of this sorting's entry in ``metadata["Ecephys"]["Sortings"]``. Defaults to ``"cell_explorer_sorting"``.
         """
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "verbose",
-            ]
-            num_positional_args_before_args = 1  # file_path
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args + 1} were given. "
-                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
-                    "Please use keyword arguments."
-                )
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to CellExplorerSortingInterface.__init__() is deprecated "
-                f"and will be removed on or after August 2026. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            verbose = positional_values.get("verbose", verbose)
+        self.metadata_key = metadata_key or "cell_explorer_sorting"
 
         # Triggers import error at initialization
         pymatreader = get_package(
@@ -680,6 +576,10 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
         spikes_mat = read_mat(filename=str(spikes_matfile_path))
         cell_info = spikes_mat.get("spikes", {})
         self.cell_info_fields = list(cell_info.keys())
+
+        # CellExplorer records the sorting output the spikes were loaded from, relative to the session folder
+        clustering_path = cell_info.get("processinginfo", {}).get("params", {}).get("clusteringpath")
+        self._clustering_path = clustering_path if isinstance(clustering_path, str) else ""
 
         unit_ids = self.sorting_extractor.get_unit_ids()
         if "cluID" in self.cell_info_fields:
@@ -808,5 +708,7 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
                     )
                 )
         metadata.update(Ecephys=dict(UnitProperties=unit_properties))
+        if self._clustering_path:
+            metadata["Ecephys"]["Sortings"] = {self.metadata_key: dict(sorting_name=self._clustering_path)}
 
         return metadata

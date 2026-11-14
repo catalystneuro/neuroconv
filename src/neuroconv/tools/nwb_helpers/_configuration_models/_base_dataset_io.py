@@ -1,11 +1,11 @@
 """Base Pydantic models for DatasetInfo and DatasetConfiguration."""
 
 import math
+import warnings
 from abc import ABC, abstractmethod
-from typing import Any, Literal
+from typing import Any, ClassVar, Literal
 
 import h5py
-import numcodecs
 import numpy as np
 import zarr
 from hdmf import Container
@@ -24,7 +24,9 @@ from pydantic import (
 from pynwb import NWBFile
 from pynwb.ecephys import ElectricalSeries
 from pynwb.image import ImageSeries
+from pynwb.misc import Units
 from typing_extensions import Self
+from zarr.abc.codec import BytesBytesCodec
 
 from neuroconv.tools.hdmf import get_full_data_shape
 from neuroconv.tools.iterative_write import get_electrical_series_chunk_shape
@@ -32,6 +34,9 @@ from neuroconv.utils.str_utils import human_readable_size
 
 from ._pydantic_pure_json_schema_generator import PureJSONSchemaGenerator
 from ...hdmf import SliceableDataChunkIterator
+
+# Match HDF5's existing default on both backends, independently of codec library defaults.
+_DEFAULT_GZIP_LEVEL = 4
 
 
 def _recursively_find_location_in_memory_nwbfile(current_location: str, neurodata_object: Container) -> str:
@@ -127,13 +132,19 @@ class DatasetIOConfiguration(BaseModel, ABC):
             "For optimized writing speeds and minimal RAM usage, a total size of around 1 GB is recommended."
         ),
     )
-    compression_method: str | InstanceOf[h5py._hl.filters.FilterRefBase] | InstanceOf[numcodecs.abc.Codec] | None = (
-        Field(
-            description="The specified compression method to apply to this dataset. Set to `None` to disable compression.",
-        )
+    compressors: list[str | InstanceOf[h5py._hl.filters.FilterRefBase] | InstanceOf[BytesBytesCodec]] | None = Field(
+        description=(
+            "The ordered collection of codecs to apply to this dataset after it is serialized to bytes. "
+            "A filter such as 'shuffle' composes with a compression method rather than replacing one, so both "
+            "live in this list. Set to `None` to disable compression."
+        ),
     )
-    compression_options: dict[str, Any] | None = Field(
-        default=None, description="The optional parameters to use for the specified compression method."
+    compressor_options: list[dict[str, Any] | None] | None = Field(
+        default=None,
+        description=(
+            "The optional parameters to use for each specified compressor, positionally matched to `compressors`. "
+            "Use `None` for an entry that takes no parameters, such as 'shuffle'."
+        ),
     )
 
     @property
@@ -152,6 +163,21 @@ class DatasetIOConfiguration(BaseModel, ABC):
         if self.chunk_shape is None:
             return None
         return math.prod(self.chunk_shape) * self.dtype.itemsize
+
+    # Entries of `compressors` that this backend can only express as a filter, never as its compression
+    # method. Empty by default: Zarr treats every codec alike, so the compression method is simply the
+    # last entry and everything before it is a filter.
+    _pure_filter_names: ClassVar[tuple[str, ...]] = ()
+
+    def _compressor_index(self) -> int | None:
+        """Index into `compressors` of the entry that is the compression method, or None if there is not one."""
+        if self.compressors is None:
+            return None
+        for index in reversed(range(len(self.compressors))):
+            compressor = self.compressors[index]
+            if not (isinstance(compressor, str) and compressor in self._pure_filter_names):
+                return index
+        return None
 
     @abstractmethod
     def get_data_io_kwargs(self) -> dict[str, Any]:
@@ -188,11 +214,11 @@ class DatasetIOConfiguration(BaseModel, ABC):
                 f"\n  disk space usage per chunk : {human_readable_size(self.disk_space_usage_per_chunk_in_bytes)}"
                 "\n"
             )
-        if self.compression_method is not None:
-            string += f"\n  compression method : {self.compression_method}"
-        if self.compression_options is not None:
-            string += f"\n  compression options : {self.compression_options}"
-        if self.compression_method is not None or self.compression_options is not None:
+        if self.compressors is not None:
+            string += f"\n  compressors : {self.compressors}"
+        if self.compressor_options is not None:
+            string += f"\n  compressor options : {self.compressor_options}"
+        if self.compressors is not None or self.compressor_options is not None:
             string += "\n"
         # TODO: would be cool to include estimate of ratio too (determined via stub file perhaps?)
 
@@ -336,6 +362,25 @@ class DatasetIOConfiguration(BaseModel, ABC):
             buffer_shape = full_shape
             compression_method = "gzip"
 
+        elif (
+            isinstance(neurodata_object.parent, Units)
+            and neurodata_object.name in ("waveform_mean", "waveform_sd")
+            and len(full_shape) in (2, 3)
+        ):
+            from ....tools.iterative_write import get_unit_waveform_chunk_shape
+
+            num_units, num_samples = full_shape[:2]
+            num_electrodes = full_shape[2] if len(full_shape) == 3 else None
+
+            chunk_shape = get_unit_waveform_chunk_shape(
+                num_units=num_units,
+                num_samples=num_samples,
+                num_electrodes=num_electrodes,
+                dtype=np.dtype(dtype),
+            )
+            buffer_shape = full_shape
+            compression_method = "gzip"
+
         elif dtype != np.dtype("object"):
             chunk_shape = SliceableDataChunkIterator.estimate_default_chunk_shape(
                 chunk_mb=10.0, maxshape=full_shape, dtype=np.dtype(dtype)
@@ -373,16 +418,28 @@ class DatasetIOConfiguration(BaseModel, ABC):
                 #     f"Consider manually specifying DatasetIOConfiguration for dataset at '{location_in_file}'."
                 # )
 
+        # A `timestamps` dataset is close to a monotonic ramp, so its sign, exponent and high mantissa bytes
+        # barely change between neighbours. The shuffle filter turns those into long runs that the compression
+        # method then collapses, which on two million irregular float64 timestamps is 11.75 MB against 7.51 MB
+        # on HDF5 and 11.62 MB against 7.62 MB on Zarr, at the same chunk shape and the same compression level.
+        # `data` is left alone: that is where nearly all the bytes are and its dtypes vary far too much to
+        # change without benchmarking against real files first.
+        if compression_method is None:
+            compressors = None
+        elif dataset_name == "timestamps":
+            compressors = ["shuffle", compression_method]
+        else:
+            compressors = [compression_method]
+
         return cls(
             object_id=neurodata_object.object_id,
-            object_name=neurodata_object.name,
             location_in_file=location_in_file,
             dataset_name=dataset_name,
             full_shape=full_shape,
             dtype=dtype,
             chunk_shape=chunk_shape,
             buffer_shape=buffer_shape,
-            compression_method=compression_method,
+            compressors=compressors,
         )
 
     @classmethod
@@ -428,7 +485,6 @@ class DatasetIOConfiguration(BaseModel, ABC):
         )
         return dict(
             object_id=neurodata_object.object_id,
-            object_name=neurodata_object.name,
             location_in_file=location_in_file,
             dataset_name=dataset_name,
             full_shape=full_shape,
@@ -446,3 +502,132 @@ class DatasetIOConfiguration(BaseModel, ABC):
         while hasattr(dataset, "dataset"):
             dataset = dataset.dataset
         return dataset
+
+    # ==================================================================================================
+    # Deprecated in v0.10.2, to be removed in v0.12.0.
+    #
+    # Everything between this marker and the one closing the block is self-contained: it reads and writes
+    # `compressors` and `compressor_options` and nothing outside the block calls into it. Deleting the
+    # whole block at v0.12.0 removes `compression_method` and `compression_options` and touches nothing
+    # else. The index helper is duplicated here on purpose rather than shared, so that deletion stays a
+    # deletion.
+    # ==================================================================================================
+
+    _COMPRESSION_METHOD_DEPRECATION_MESSAGE = (
+        "`compression_method` is deprecated and will be removed in v0.12.0. Use `compressors` instead."
+    )
+    _COMPRESSION_OPTIONS_DEPRECATION_MESSAGE = (
+        "`compression_options` is deprecated and will be removed in v0.12.0. Use `compressor_options` instead."
+    )
+
+    def _deprecated_compression_index(self) -> int | None:
+        """Index into `compressors` of the entry that is the compression method, or None if there is not one."""
+        if self.compressors is None:
+            return None
+        for index in reversed(range(len(self.compressors))):
+            compressor = self.compressors[index]
+            if not (isinstance(compressor, str) and compressor in self._pure_filter_names):
+                return index
+        return None
+
+    @property
+    def compression_method(self):
+        """
+        The compression method applied to this dataset.
+
+        .. deprecated:: 0.10.2
+            `compression_method` is deprecated and will be removed in v0.12.0. Use `compressors` instead.
+        """
+        warnings.warn(self._COMPRESSION_METHOD_DEPRECATION_MESSAGE, FutureWarning, stacklevel=2)
+        index = self._deprecated_compression_index()
+        return None if index is None else self.compressors[index]
+
+    @compression_method.setter
+    def compression_method(self, compression_method) -> None:
+        warnings.warn(self._COMPRESSION_METHOD_DEPRECATION_MESSAGE, FutureWarning, stacklevel=2)
+        index = self._deprecated_compression_index()
+
+        if compression_method is None:
+            if index is not None:
+                compressors = list(self.compressors)
+                compressors.pop(index)
+                self.compressors = compressors or None
+            return
+
+        if index is None:
+            self.compressors = list(self.compressors or []) + [compression_method]
+            return
+
+        compressors = list(self.compressors)
+        compressors[index] = compression_method
+        self.compressors = compressors
+
+    @property
+    def compression_options(self) -> dict[str, Any] | None:
+        """
+        The parameters of the compression method applied to this dataset.
+
+        .. deprecated:: 0.10.2
+            `compression_options` is deprecated and will be removed in v0.12.0. Use `compressor_options` instead.
+        """
+        warnings.warn(self._COMPRESSION_OPTIONS_DEPRECATION_MESSAGE, FutureWarning, stacklevel=2)
+        index = self._deprecated_compression_index()
+        if index is None or self.compressor_options is None:
+            return None
+        return self.compressor_options[index]
+
+    @compression_options.setter
+    def compression_options(self, compression_options: dict[str, Any] | None) -> None:
+        warnings.warn(self._COMPRESSION_OPTIONS_DEPRECATION_MESSAGE, FutureWarning, stacklevel=2)
+        index = self._deprecated_compression_index()
+        if index is None:
+            if compression_options is not None:
+                raise ValueError(
+                    "`compression_options` was set but there is no compression method to apply them to. "
+                    "Set `compressors` first."
+                )
+            return
+        compressor_options = list(self.compressor_options or [None] * len(self.compressors))
+        compressor_options[index] = compression_options
+        self.compressor_options = compressor_options
+
+    @model_validator(mode="before")
+    def translate_deprecated_compression_fields(cls, values: dict[str, Any]) -> dict[str, Any]:
+        """Accept the deprecated `compression_method` and `compression_options` spellings for one release cycle."""
+        if not isinstance(values, dict):
+            return values
+        has_compression_method = "compression_method" in values
+        has_compression_options = "compression_options" in values
+        if not (has_compression_method or has_compression_options):
+            return values
+        if "compressors" in values or "compressor_options" in values:
+            raise ValueError(
+                "Both the deprecated `compression_method`/`compression_options` and the new "
+                "`compressors`/`compressor_options` were specified. Use only `compressors` and `compressor_options`."
+            )
+
+        deprecated_names = [
+            name
+            for name, present in (
+                ("compression_method", has_compression_method),
+                ("compression_options", has_compression_options),
+            )
+            if present
+        ]
+        warnings.warn(
+            f"{' and '.join(f'`{name}`' for name in deprecated_names)} "
+            f"{'is' if len(deprecated_names) == 1 else 'are'} deprecated and will be removed in v0.12.0. "
+            "Use `compressors` and `compressor_options` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+
+        compression_method = values.pop("compression_method", None)
+        compression_options = values.pop("compression_options", None)
+        values["compressors"] = None if compression_method is None else [compression_method]
+        values["compressor_options"] = None if compression_options is None else [compression_options]
+        return values
+
+    # ==================================================================================================
+    # End of the block deprecated in v0.10.2, to be removed in v0.12.0.
+    # ==================================================================================================

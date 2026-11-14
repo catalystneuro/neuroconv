@@ -3,7 +3,6 @@
 from pathlib import Path
 from typing import Literal
 
-import numcodecs
 import numpy as np
 import pytest
 from hdmf.common import DynamicTable, VectorData
@@ -50,9 +49,9 @@ def test_simple_time_series_override(
 
     higher_gzip_level = 5
     if backend == "hdf5":
-        dataset_configuration.compression_options = dict(level=higher_gzip_level)
+        dataset_configuration.compressor_options = [dict(level=higher_gzip_level)]
     elif backend == "zarr":
-        dataset_configuration.compression_options = dict(level=higher_gzip_level)
+        dataset_configuration.compressor_options = [dict(level=higher_gzip_level)]
 
     configure_backend(nwbfile=nwbfile, backend_configuration=backend_configuration)
 
@@ -72,7 +71,9 @@ def test_simple_time_series_override(
         assert written_data.compression == "gzip"
         assert written_data.compression_opts == higher_gzip_level
     elif backend == "zarr":
-        assert written_data.compressor == numcodecs.GZip(level=5)
+        from zarr.codecs import GzipCodec
+
+        assert written_data.compressors == (GzipCodec(level=5),)
     written_nwbfile.read_io.close()
 
 
@@ -94,9 +95,9 @@ def test_simple_dynamic_table_override(tmpdir: Path, backend: Literal["hdf5", "z
 
     higher_gzip_level = 5
     if backend == "hdf5":
-        dataset_configuration.compression_options = dict(level=higher_gzip_level)
+        dataset_configuration.compressor_options = [dict(level=higher_gzip_level)]
     elif backend == "zarr":
-        dataset_configuration.compression_options = dict(level=higher_gzip_level)
+        dataset_configuration.compressor_options = [dict(level=higher_gzip_level)]
 
     configure_backend(nwbfile=nwbfile, backend_configuration=backend_configuration)
 
@@ -114,5 +115,35 @@ def test_simple_dynamic_table_override(tmpdir: Path, backend: Literal["hdf5", "z
         assert written_data.compression == "gzip"
         assert written_data.compression_opts == higher_gzip_level
     elif backend == "zarr":
-        assert written_data.compressor == numcodecs.GZip(level=5)
+        from zarr.codecs import GzipCodec
+
+        assert written_data.compressors == (GzipCodec(level=5),)
+    written_nwbfile.read_io.close()
+
+
+def test_shuffle_is_correctly_propagated_in_zarr(tmpdir: Path):
+    """Shuffle runs in `compressors` ahead of the compression method, with its element size taken from the dtype."""
+    array = np.zeros(shape=(3_000, 16), dtype="int16")
+
+    nwbfile = mock_NWBFile()
+    nwbfile.add_acquisition(mock_TimeSeries(name="TestTimeSeries", data=array))
+
+    backend_configuration = get_default_backend_configuration(nwbfile=nwbfile, backend="zarr")
+    dataset_configuration = backend_configuration.dataset_configurations["acquisition/TestTimeSeries/data"]
+    dataset_configuration.compressors = ["shuffle", "gzip"]
+
+    configure_backend(nwbfile=nwbfile, backend_configuration=backend_configuration)
+
+    nwbfile_path = str(tmpdir / "test_configure_overrides_shuffle_with_compression.nwb")
+    with BACKEND_NWB_IO["zarr"](path=nwbfile_path, mode="w") as io:
+        io.write(nwbfile)
+
+    written_nwbfile = read_nwb(nwbfile_path)
+    written_data = written_nwbfile.acquisition["TestTimeSeries"].data
+
+    from zarr.codecs import GzipCodec
+    from zarr.codecs.numcodecs import Shuffle
+
+    assert written_data.filters == ()
+    assert written_data.compressors == (Shuffle(elementsize=2), GzipCodec(level=4))
     written_nwbfile.read_io.close()

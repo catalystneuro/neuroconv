@@ -7,13 +7,14 @@ from pynwb import NWBFile
 from pynwb.behavior import CompassDirection, Position, SpatialSeries
 
 from .nvt_utils import read_data, read_header
-from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
+from ...._temporal_alignment import _TemporalAlignment
+from ....basedatainterface import BaseDataInterface
 from ....utils import DeepDict, get_base_schema
 from ....utils.json_schema import _NWBMetaDataEncoder
 from ....utils.path import infer_path
 
 
-class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
+class NeuralynxNvtInterface(BaseDataInterface):
     """Data interface for Neuralynx NVT files. NVT files store position tracking information."""
 
     display_name = "Neuralynx NVT"
@@ -22,9 +23,7 @@ class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
     info = "Interface for writing Neuralynx position tracking .nvt files to NWB."
 
     @validate_call
-    def __init__(
-        self, file_path: FilePath, *args, verbose: bool = False
-    ):  # TODO: change to * (keyword only) on or after August 2026
+    def __init__(self, file_path: FilePath, *, verbose: bool = False):
         """
         Interface for writing Neuralynx .nvt files to nwb.
 
@@ -35,38 +34,21 @@ class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
         verbose : bool, default: False
             controls verbosity.
         """
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "verbose",
-            ]
-            num_positional_args_before_args = 1  # file_path
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args + 1} were given. "
-                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
-                    "Please use keyword arguments."
-                )
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to NeuralynxNvtInterface.__init__() is deprecated "
-                f"and will be removed on or after August 2026. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            verbose = positional_values.get("verbose", verbose)
 
         self.file_path = file_path
         self.verbose = verbose
-        self._timestamps = self.get_original_timestamps()
         self.header = read_header(self.file_path)
         self.nvt_filename = infer_path(self.header["OriginalFileName"]).name
 
         super().__init__(file_path=file_path)
+
+        # The position and the angle share one timeline, so the interface has one time-bearing object
+        self.temporal_alignment = _TemporalAlignment()
+        self.temporal_alignment._register(
+            key="neuralynx_nvt",
+            get_native_times=self.get_original_timestamps,
+            get_number_of_samples=lambda: len(self.get_original_timestamps()),
+        )
 
     def get_original_timestamps(self) -> np.ndarray:
         data = read_data(self.file_path)
@@ -77,10 +59,42 @@ class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
         return times
 
     def get_timestamps(self) -> np.ndarray:
-        return self._timestamps
+        warnings.warn(
+            "`get_timestamps` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment['neuralynx_nvt'].get_times()` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        return self.temporal_alignment["neuralynx_nvt"].get_times()
 
     def set_aligned_timestamps(self, aligned_timestamps: np.ndarray) -> None:
-        self._timestamps = aligned_timestamps
+        warnings.warn(
+            "`set_aligned_timestamps` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment['neuralynx_nvt'].set_times(times)` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        self.temporal_alignment["neuralynx_nvt"].set_times(aligned_timestamps)
+
+    def set_aligned_starting_time(self, aligned_starting_time: float) -> None:
+        warnings.warn(
+            "`set_aligned_starting_time` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment.shift_times(delta)` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        self.temporal_alignment.shift_times(aligned_starting_time)
+
+    def align_by_interpolation(self, unaligned_timestamps: np.ndarray, aligned_timestamps: np.ndarray) -> None:
+        warnings.warn(
+            "`align_by_interpolation` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment.remap_times(local_sync_times=..., reference_sync_times=...)` instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        self.temporal_alignment.remap_times(
+            local_sync_times=unaligned_timestamps, reference_sync_times=aligned_timestamps
+        )
 
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
@@ -124,7 +138,7 @@ class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
         self,
         nwbfile: NWBFile,
         metadata: dict | None = None,
-        *args,  # TODO: change to * (keyword only) on or after August 2026
+        *,
         add_position: bool = True,
         add_angle: bool | None = None,
     ):
@@ -141,38 +155,13 @@ class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
         add_angle : bool, optional
             If None, write angle as long as it is not all 0s
         """
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "add_position",
-                "add_angle",
-            ]
-            num_positional_args_before_args = 2  # nwbfile, metadata
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"add_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args} were given. "
-                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
-                    "Please use keyword arguments."
-                )
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to NeuralynxNVTInterface.add_to_nwbfile() is deprecated "
-                f"and will be removed on or after August 2026. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            add_position = positional_values.get("add_position", add_position)
-            add_angle = positional_values.get("add_angle", add_angle)
 
         metadata = metadata or self.get_metadata()
         if isinstance(metadata, DeepDict):
             metadata = metadata.to_dict()
 
         data = read_data(self.file_path)
+        timestamps = self.temporal_alignment["neuralynx_nvt"].get_times()
 
         if add_position:
             # convert to float and change <= 0 (null) to NaN
@@ -190,7 +179,7 @@ class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
                 reference_frame=metadata["Behavior"][self.nvt_filename]["position_reference_frame"],
                 unit="pixels",
                 conversion=1.0,
-                timestamps=self.get_timestamps(),
+                timestamps=timestamps,
                 description=f"Pixel x and y coordinates from the .nvt file with header data: {json.dumps(self.header, cls=_NWBMetaDataEncoder)}",
             )
 
@@ -205,7 +194,7 @@ class NeuralynxNvtInterface(BaseTemporalAlignmentInterface):
                         reference_frame=metadata["Behavior"][self.nvt_filename]["angle_reference_frame"],
                         unit="degrees",
                         conversion=1.0,
-                        timestamps=spatial_series if add_position else self.get_timestamps(),
+                        timestamps=spatial_series if add_position else timestamps,
                         description=f"Angle from the .nvt file with header data: {json.dumps(self.header, cls=_NWBMetaDataEncoder)}",
                     ),
                     name="NvtCompassDirection",

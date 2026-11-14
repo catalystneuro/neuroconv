@@ -11,10 +11,10 @@ Why Unit ID Management Matters
 
 When you have multiple sorting outputs (e.g., from different algorithms like
 Kilosort and MountainSort), they might have overlapping unit IDs (0, 1, 2, etc.).
-If they do, adding them naively in NeuroConv will lead to the rows corresponding
-to the second sorter being skipped, as NeuroConv will identify them as the same
-unit and skip them to avoid duplicates. To handle this problem you have two main
-approaches:
+If they do and neither sorting has a ``sorting_name``, adding the second one to the
+same Units table raises an error, as NeuroConv can't tell whether its units are the
+units already in the table written again or different units with the same IDs. To
+handle this problem you have two main approaches:
 
 1. **Rename units** to create unique identifiers before merging into the
     canonical Units table
@@ -148,9 +148,9 @@ preserving original unit IDs.
 
 .. code-block:: python
 
-    # Create fresh sorting interfaces
-    mock_sorting1 = MockSortingInterface(num_units=4)
-    mock_sorting2 = MockSortingInterface(num_units=4)
+    # Create fresh sorting interfaces, each with the key of its entry in metadata["Ecephys"]["Sortings"]
+    mock_sorting1 = MockSortingInterface(num_units=4, metadata_key="kilosort_sorting")
+    mock_sorting2 = MockSortingInterface(num_units=4, metadata_key="mountainsort_sorting")
 
     # Set up data interfaces with descriptive names
     data_interfaces = {
@@ -161,22 +161,21 @@ preserving original unit IDs.
     # Create converter with both sortings
     converter = ConverterPipe(data_interfaces=data_interfaces)
 
-    # Configure to write each sorting to separate processing tables
-    conversion_options = {
+    # Naming a sorting's table writes it to a table of its own in the processing module
+    metadata = converter.get_metadata()
+    metadata["Ecephys"]["Sortings"] = {
         "kilosort_sorting": {
-            "write_as": "processing",
-            "units_name": "UnitsKilosort",
-            "units_description": "Units detected by Kilosort spike sorting algorithm"
+            "name": "UnitsKilosort",
+            "description": "Units detected by Kilosort spike sorting algorithm"
         },
         "mountainsort_sorting": {
-            "write_as": "processing",
-            "units_name": "UnitsMountainSort",
-            "units_description": "Units detected by MountainSort spike sorting algorithm"
+            "name": "UnitsMountainSort",
+            "description": "Units detected by MountainSort spike sorting algorithm"
         },
     }
 
     # Create NWB file with separate tables
-    nwbfile = converter.create_nwbfile(conversion_options=conversion_options)
+    nwbfile = converter.create_nwbfile(metadata=metadata)
 
     print("Processing module contents:")
     print(list(nwbfile.processing['ecephys'].data_interfaces.keys()))

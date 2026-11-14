@@ -19,14 +19,14 @@ This interface can handle conversions from `WAV` format to NWB using the
     >>> from neuroconv.datainterfaces.behavior.audio.audiointerface import AudioInterface
     >>>
     >>> audio_file_path = BEHAVIOR_DATA_PATH / "audio" / "natural_audio_recording.wav"
-    >>> interface = AudioInterface(file_paths=[audio_file_path], verbose=False)
+    >>> interface = AudioInterface(file_path=audio_file_path, verbose=False)
     >>>
     >>> metadata = interface.get_metadata()
     >>> # For data provenance we add the time zone information to the conversion
-    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("US/Pacific"))
+    >>> session_start_time = datetime(2020, 1, 1, 12, 30, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
     >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>> # Add subject information (required for DANDI upload)
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
     >>>
     >>> # Choose a path for saving the nwb file and run the conversion
-    >>> interface.run_conversion(nwbfile_path=path_to_save_nwbfile, metadata=metadata)
+    >>> interface.run_conversion(nwbfile_path=path_to_save_nwbfile, metadata=metadata, parent_container="acquisition")

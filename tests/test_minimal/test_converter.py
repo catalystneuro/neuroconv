@@ -1,4 +1,5 @@
 import unittest
+import warnings
 from datetime import datetime
 from pathlib import Path
 from shutil import rmtree
@@ -15,6 +16,7 @@ from neuroconv import (
     ConverterPipe,
     NWBConverter,
 )
+from neuroconv._temporal_alignment import _TemporalAlignment
 from neuroconv.tools.testing.mock_interfaces import MockInterface
 from neuroconv.utils import DeepDict
 
@@ -260,3 +262,202 @@ def test_nested_converter_receives_its_conversion_options():
     )
 
     assert nwbfile.subject is not None
+
+
+def test_converter_pipe_accepts_a_tuple_of_interfaces():
+    from neuroconv.tools.testing.mock_interfaces import MockBehaviorEventInterface
+
+    converter = ConverterPipe(data_interfaces=(MockBehaviorEventInterface(), MockBehaviorEventInterface()))
+
+    assert list(converter.data_interface_objects) == ["MockBehaviorEventInterface001", "MockBehaviorEventInterface002"]
+
+
+def test_converter_pipe_rejects_other_types_up_front():
+    from neuroconv.tools.testing.mock_interfaces import MockBehaviorEventInterface
+
+    with pytest.raises(TypeError, match="`data_interfaces` must be a list of interfaces, or a dict.*not set"):
+        ConverterPipe(data_interfaces={MockBehaviorEventInterface()})
+
+
+class MockTimedInterface(BaseDataInterface):
+    """An interface with one time-bearing object per key of ``times_by_key``, whose native times are given directly."""
+
+    def __init__(self, times_by_key: dict):
+        super().__init__()
+        self.temporal_alignment = _TemporalAlignment()
+        for key, times in times_by_key.items():
+            native_times = np.array(times, dtype="float64")
+            self.temporal_alignment._register(
+                key=key,
+                get_native_times=lambda native_times=native_times: native_times,
+                get_number_of_samples=lambda native_times=native_times: len(native_times),
+            )
+
+    def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict | None, **conversion_options):
+        pass
+
+
+class TestConverterTemporalAlignment:
+    def test_child_access(self):
+        from neuroconv.tools.testing.mock_interfaces import MockIcephysInterface
+
+        icephys_interface = MockIcephysInterface()
+        converter = ConverterPipe(data_interfaces=dict(Icephys=icephys_interface, Static=MockInterface()))
+
+        assert converter.temporal_alignment.keys() == ("Icephys",)
+        assert converter.temporal_alignment["Icephys"] is icephys_interface.temporal_alignment
+
+    def test_nested_access(self):
+        from neuroconv.tools.testing.mock_interfaces import MockIcephysInterface
+
+        icephys_interface = MockIcephysInterface(metadata_key="cell")
+        inner_converter = ConverterPipe(data_interfaces=dict(Icephys=icephys_interface))
+        outer_converter = ConverterPipe(data_interfaces=dict(Inner=inner_converter))
+
+        assert outer_converter.temporal_alignment.keys() == ("Inner",)
+        assert outer_converter.temporal_alignment["Inner"].keys() == ("Icephys",)
+        time_bearing_object = outer_converter.temporal_alignment["Inner"]["Icephys"]["cell"]
+        assert time_bearing_object is icephys_interface.temporal_alignment["cell"]
+
+    def test_access_rejects_undeclared_alignment(self):
+        converter = ConverterPipe(data_interfaces=dict(Static=MockInterface()))
+
+        with pytest.raises(KeyError, match="'Static' is a MockInterface, which has no temporal alignment"):
+            converter.temporal_alignment["Static"]
+
+    def test_unknown_child_lists_available_names(self):
+        converter = ConverterPipe(data_interfaces=dict(Static=MockInterface()))
+
+        with pytest.raises(KeyError, match="'Missing' is not a child of this converter. It holds 'Static'"):
+            converter.temporal_alignment["Missing"]
+
+    def test_shift_times_reaches_every_descendant(self):
+        first_original_times = np.array([2.0, 2.25, 2.5])
+        stimulus_original_times = np.array([2.0, 2.5])
+        second_original_times = np.array([10.0, 10.25, 10.5])
+        first_interface = MockTimedInterface(
+            times_by_key=dict(times=first_original_times, stimulus=stimulus_original_times)
+        )
+        second_interface = MockTimedInterface(times_by_key=dict(times=second_original_times))
+        inner_converter = ConverterPipe(data_interfaces=dict(Second=second_interface))
+        converter = ConverterPipe(data_interfaces=dict(First=first_interface, Inner=inner_converter))
+
+        delta = 5.0
+        converter.temporal_alignment.shift_times(delta)
+
+        first_times = first_interface.temporal_alignment["times"].get_times()
+        stimulus_times = first_interface.temporal_alignment["stimulus"].get_times()
+        second_times = second_interface.temporal_alignment["times"].get_times()
+        first_expected_times = first_original_times + delta
+        stimulus_expected_times = stimulus_original_times + delta
+        second_expected_times = second_original_times + delta
+        np.testing.assert_array_equal(first_times, first_expected_times)
+        np.testing.assert_array_equal(stimulus_times, stimulus_expected_times)
+        np.testing.assert_array_equal(second_times, second_expected_times)
+
+    def test_shift_times_only_moves_selected_subtree(self):
+        first_original_times = np.array([2.0, 2.25, 2.5])
+        second_original_times = np.array([10.0, 10.25, 10.5])
+        first_interface = MockTimedInterface(times_by_key=dict(times=first_original_times))
+        second_interface = MockTimedInterface(times_by_key=dict(times=second_original_times))
+        inner_converter = ConverterPipe(data_interfaces=dict(Second=second_interface))
+        converter = ConverterPipe(data_interfaces=dict(First=first_interface, Inner=inner_converter))
+
+        delta = 5.0
+        converter.temporal_alignment["Inner"].shift_times(delta)
+
+        first_times = first_interface.temporal_alignment["times"].get_times()
+        second_times = second_interface.temporal_alignment["times"].get_times()
+        first_expected_times = first_original_times
+        second_expected_times = second_original_times + delta
+        np.testing.assert_array_equal(first_times, first_expected_times)
+        np.testing.assert_array_equal(second_times, second_expected_times)
+
+    def test_shift_times_warns_when_alignment_is_undeclared(self):
+        from neuroconv.tools.testing.mock_interfaces import MockIcephysInterface
+
+        interface = MockIcephysInterface(metadata_key="cell", num_sweeps=1, sampling_frequency=4.0)
+        inner_converter = ConverterPipe(data_interfaces=dict(Unsupported=MockInterface()))
+        converter = ConverterPipe(data_interfaces=dict(Icephys=interface, Inner=inner_converter))
+        response = interface.temporal_alignment["cell"]
+        response.shift_times(2.0)
+        original_times = response.get_times().copy()
+
+        with pytest.warns(UserWarning, match="Skipping 'Inner/Unsupported'.*temporal_alignment = None"):
+            converter.temporal_alignment.shift_times(5.0)
+
+        np.testing.assert_allclose(response.get_times(), original_times + 5.0)
+
+    def test_shift_times_skips_explicitly_unalignable_children(self):
+        from neuroconv.datainterfaces import ExternalImageInterface, ImageInterface
+        from neuroconv.tools.testing.mock_interfaces import MockIcephysInterface
+
+        interface = MockIcephysInterface(metadata_key="cell", num_sweeps=1, sampling_frequency=4.0)
+        image_interface = ImageInterface(file_paths=[])
+        external_image_interface = ExternalImageInterface(file_paths=[])
+        images_converter = ConverterPipe(data_interfaces=dict(ExternalImages=external_image_interface))
+        converter = ConverterPipe(
+            data_interfaces=dict(Icephys=interface, Images=image_interface, Nested=images_converter)
+        )
+        response = interface.temporal_alignment["cell"]
+        original_times = response.get_times().copy()
+
+        with warnings.catch_warnings(record=True) as recorded_warnings:
+            warnings.simplefilter("always")
+            converter.temporal_alignment.shift_times(5.0)
+
+        assert not recorded_warnings
+        np.testing.assert_allclose(response.get_times(), original_times + 5.0)
+        assert converter.temporal_alignment.keys() == ("Icephys", "Nested")
+        assert images_converter.temporal_alignment.keys() == ()
+        with pytest.raises(KeyError, match="'Images' is an? ImageInterface, which has no temporal alignment"):
+            converter.temporal_alignment["Images"]
+
+    def test_move_earliest_observation_to_keeps_gaps_between_descendants(self):
+        first_original_times = np.array([2.0, 2.25, 2.5])
+        second_original_times = np.array([10.0, 10.25, 10.5])
+        first_interface = MockTimedInterface(times_by_key=dict(times=first_original_times))
+        second_interface = MockTimedInterface(times_by_key=dict(times=second_original_times))
+        inner_converter = ConverterPipe(data_interfaces=dict(Second=second_interface))
+        converter = ConverterPipe(data_interfaces=dict(First=first_interface, Inner=inner_converter))
+
+        starting_time = 100.0
+        earliest_observation = first_original_times[0]
+        expected_shift = starting_time - earliest_observation
+        converter.temporal_alignment.move_earliest_observation_to(starting_time)
+        converter.temporal_alignment.move_earliest_observation_to(starting_time)
+
+        first_times = first_interface.temporal_alignment["times"].get_times()
+        second_times = second_interface.temporal_alignment["times"].get_times()
+        first_expected_times = first_original_times + expected_shift
+        second_expected_times = second_original_times + expected_shift
+        np.testing.assert_array_equal(first_times, first_expected_times)
+        np.testing.assert_array_equal(second_times, second_expected_times)
+
+    def test_remap_times_reaches_every_descendant(self):
+        first_original_times = np.array([2.0, 2.25, 2.5])
+        stimulus_original_times = np.array([2.0, 2.5])
+        second_original_times = np.array([10.0, 10.25, 10.5])
+        first_interface = MockTimedInterface(
+            times_by_key=dict(times=first_original_times, stimulus=stimulus_original_times)
+        )
+        second_interface = MockTimedInterface(times_by_key=dict(times=second_original_times))
+        inner_converter = ConverterPipe(data_interfaces=dict(Second=second_interface))
+        converter = ConverterPipe(data_interfaces=dict(First=first_interface, Inner=inner_converter))
+
+        # These pulses map a local time t to 100 + 2 * t on the reference clock.
+        local_sync_times = np.array([0.0, 20.0])
+        reference_sync_times = np.array([100.0, 140.0])
+        converter.temporal_alignment.remap_times(
+            local_sync_times=local_sync_times, reference_sync_times=reference_sync_times
+        )
+
+        first_times = first_interface.temporal_alignment["times"].get_times()
+        stimulus_times = first_interface.temporal_alignment["stimulus"].get_times()
+        second_times = second_interface.temporal_alignment["times"].get_times()
+        first_expected_times = np.array([104.0, 104.5, 105.0])
+        stimulus_expected_times = np.array([104.0, 105.0])
+        second_expected_times = np.array([120.0, 120.5, 121.0])
+        np.testing.assert_array_equal(first_times, first_expected_times)
+        np.testing.assert_array_equal(stimulus_times, stimulus_expected_times)
+        np.testing.assert_array_equal(second_times, second_expected_times)

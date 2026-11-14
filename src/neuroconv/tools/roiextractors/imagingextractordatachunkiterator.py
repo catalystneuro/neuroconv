@@ -93,8 +93,11 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
         """This translate the sample shape in roiextractors to the nwb convention by transposing the frame shape."""
 
         roi_extractors_frame_shape = self.imaging_extractor.get_frame_shape()
-        height, width = roi_extractors_frame_shape[0], roi_extractors_frame_shape[1]
-        nwb_frame_shape = (width, height)
+        num_rows, num_columns = roi_extractors_frame_shape[0], roi_extractors_frame_shape[1]
+        # roiextractors frames are (rows, columns); NWB lists them (columns, rows)
+        # TODO: write rows first if core adopts that order, see
+        # https://github.com/NeurodataWithoutBorders/nwb-schema/issues/660
+        nwb_frame_shape = (num_columns, num_rows)
 
         if self.imaging_extractor.is_volumetric:
             num_planes = self.imaging_extractor.get_num_planes()
@@ -142,7 +145,7 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
 
     @property
     def shape(self):
-        """Return (num_frames, width, height) or (num_frames, width, height, num_planes) for volumetric."""
+        """Return (num_frames, num_columns, num_rows) or (num_frames, num_columns, num_rows, num_planes) for volumetric."""
         num_samples = self.imaging_extractor.get_num_samples()
         sample_shape = self._get_sample_shape()
         return (num_samples,) + sample_shape
@@ -159,8 +162,8 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
     def __getitem__(self, selection):
         """Enable array-like slicing with proper transpose handling for imaging data.
 
-        The imaging extractor returns data in (frames, height, width) order, but NWB
-        expects (frames, width, height), so this method transposes before applying
+        The imaging extractor returns data in (frames, rows, columns) order, but NWB
+        expects (frames, columns, rows), so this method transposes before applying
         spatial slices.
 
         Note that get_series always returns full spatial frames, so spatial slicing
@@ -178,8 +181,8 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
     def _get_data(self, selection: tuple[slice]) -> np.ndarray:
         """Fetch frames from the imaging extractor and apply spatial slicing.
 
-        The imaging extractor returns data in (frames, height, width) order, but NWB
-        expects (frames, width, height), so we transpose after fetching.
+        The imaging extractor returns data in (frames, rows, columns) order, but NWB
+        expects (frames, columns, rows), so we transpose after fetching.
 
         Note that get_series always returns full spatial frames, so spatial slicing
         happens in memory after the fetch. This is a roiextractors API limitation.
@@ -189,7 +192,10 @@ class ImagingExtractorDataChunkIterator(GenericDataChunkIterator):
             end_sample=selection[0].stop,
         )
 
-        # Transpose from roiextractors (frames, height, width) to NWB (frames, width, height)
+        # roiextractors series are (frames, rows, columns[, planes]); NWB lists them
+        # (frames, columns, rows[, planes])
+        # TODO: write rows first if core adopts that order, see
+        # https://github.com/NeurodataWithoutBorders/nwb-schema/issues/660
         transpose_axes = (0, 2, 1) if len(data.shape) == 3 else (0, 2, 1, 3)
         data = data.transpose(transpose_axes)
 

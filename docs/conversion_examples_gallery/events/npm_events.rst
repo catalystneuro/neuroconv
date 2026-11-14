@@ -46,7 +46,7 @@ supplied explicitly in the metadata.
     >>> interface = NPMEventsInterface(file_path=file_path, verbose=False)
     >>> metadata = interface.get_metadata()
     >>> # NPM recordings have no embedded start time, so it must be set explicitly.
-    >>> metadata["NWBFile"]["session_start_time"] = datetime.now(tz=ZoneInfo("US/Pacific"))
+    >>> metadata["NWBFile"]["session_start_time"] = datetime.now(tz=ZoneInfo("Asia/Tokyo"))
     >>> # Add subject information (required for DANDI upload)
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
 

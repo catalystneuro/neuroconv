@@ -257,6 +257,19 @@ Because the key is a handle and not a name:
    can only be a static string, but the derived case in point 2 needs a value known only at construction
    (a stream, a channel, a file stem). Resolving it in ``__init__`` covers the constant and the derived
    case with one uniform pattern and keeps the fallback in a single place.
+5. **Derive the keys below it from the** ``metadata_key``. When one interface writes several entries into
+   the same field, one per run, channel, camera or segment, key each as ``f"{metadata_key}_{handle}"``,
+   where ``handle`` comes from the source's own name for the object. The user controls all of them
+   through the one ``metadata_key`` they pass, so two interfaces in a conversion never collide and no
+   interface needs a parameter per entry. VAME (``f"{metadata_key}_motif_{run}"``), EthoVision
+   (``f"{metadata_key}_{channel}"``), DANNCE (``f"{metadata_key}_{camera}_pose_estimation"``) and the
+   per-segment ``ElectricalSeries`` overrides (``f"{metadata_key}_{segment_index}"``) follow it. State
+   the pattern in the interface's docstring.
+6. **Make a key predictable and short.** A user should be able to write a key from what they see in the
+   source and in the interface's docstring, without running ``get_metadata()`` to look it up. A key built
+   from the format's own names (a stream, a channel, an asset) passes that test. One built from an
+   internal index or a counter the user never sees does not. Keep it short as well, since the user types
+   it every time they edit that entry.
 
 
 Checklist for a new interface
@@ -276,4 +289,6 @@ When writing or reviewing an interface:
 - The ``metadata_key`` default is a snake_case constant, unless the format inherently produces several
   instances at once (then it is derived from a stable source handle).
 - The ``metadata_key`` is typed ``str | None``, and its default is resolved in ``__init__``.
+- Keys for several entries of one interface are ``f"{metadata_key}_{handle}"``, with the handle read
+  from the source, and the docstring states the pattern.
 - Every metadata field holding entries addressed by ``metadata_key`` is named in the plural.

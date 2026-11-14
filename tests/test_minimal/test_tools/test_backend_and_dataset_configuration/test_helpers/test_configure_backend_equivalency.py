@@ -3,7 +3,6 @@
 from pathlib import Path
 from typing import Literal
 
-import numcodecs
 import numpy as np
 import pytest
 from numpy.testing import assert_array_equal
@@ -67,7 +66,7 @@ def test_configure_backend_equivalency(
     # assert False, f"{backend_configuration_2=}"
 
     dataset_configuration = backend_configuration_2.dataset_configurations["acquisition/TestTimeSeries/data"]
-    dataset_configuration.compression_options = {"level": 2}
+    dataset_configuration.compressor_options = [{"level": 2}]
     configure_backend(nwbfile=nwbfile_1, backend_configuration=backend_configuration_2)
 
     nwbfile_path = str(tmpdir / f"test_configure_backend_equivalency.nwb")
@@ -83,7 +82,9 @@ def test_configure_backend_equivalency(
         assert written_data.compression == "gzip"
         assert written_data.compression_opts == 2
     elif backend == "zarr":
-        assert written_data.compressor == numcodecs.GZip(level=2)
+        from zarr.codecs import GzipCodec
+
+        assert written_data.compressors == (GzipCodec(level=2),)
 
     assert_array_equal(array_1, written_data[:])
     written_nwbfile.read_io.close()

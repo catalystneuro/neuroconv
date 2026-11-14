@@ -12,8 +12,6 @@ Convert Blackrock data to NWB using
 
 .. code-block:: python
 
-    >>> from datetime import datetime
-    >>> from zoneinfo import ZoneInfo
     >>> from pathlib import Path
     >>> from neuroconv.datainterfaces import BlackrockRecordingInterface
     >>>
@@ -24,10 +22,6 @@ Convert Blackrock data to NWB using
     >>>
     >>> # Extract what metadata we can from the source files
     >>> metadata = interface.get_metadata()
-    >>> # For data provenance we add the time zone information to the conversion
-    >>> session_start_time = datetime.fromisoformat(metadata["NWBFile"]["session_start_time"])
-    >>> session_start_time = session_start_time.replace(tzinfo=ZoneInfo("US/Pacific"))
-    >>> metadata["NWBFile"].update(session_start_time=session_start_time)
     >>> # Add subject information (required for DANDI upload)
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
     >>>

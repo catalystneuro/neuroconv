@@ -21,7 +21,7 @@ MAXIMUM_WAIT_IN_SECONDS = 120
 POLL_INTERVAL_IN_SECONDS = 2
 
 
-def _asset_is_from_this_run(dandiset: dandi.dandiapi.RemoteDandiset, asset_path: str) -> bool:
+def _asset_is_from_this_run(dandiset: "dandi.dandiapi.RemoteDandiset", asset_path: str) -> bool:
     """Whether the sandbox holds an asset at this path that this run uploaded.
 
     Past runs leave an asset at the same path, so existence alone is not enough: the modification time is

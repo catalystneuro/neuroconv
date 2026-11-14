@@ -22,7 +22,7 @@ import h5py
 import numpy as np
 import pandas
 import pytest
-from pynwb import NWBHDF5IO
+from pynwb import read_nwb
 
 from neuroconv.converters import GuppyConverter
 from neuroconv.datainterfaces.fiber_photometry.guppy.doric_utils import (
@@ -188,8 +188,8 @@ class TestGuppyConverterDoricModernHDF5(DoricConverterTestMixin):
         nwbfile_path = tmp_path / "doric_events.nwb"
         converter.run_conversion(nwbfile_path=str(nwbfile_path), metadata=metadata, overwrite=True)
 
-        with NWBHDF5IO(str(nwbfile_path), "r") as io:
-            nwbfile = io.read()
+        nwbfile = read_nwb(str(nwbfile_path))
+        try:
             counts = {
                 table_name: len(nwbfile.get_events_table(table_name))
                 for table_name in self.EXPECTED_EVENT_TABLE_TO_COUNT
@@ -199,6 +199,8 @@ class TestGuppyConverterDoricModernHDF5(DoricConverterTestMixin):
             registry = nwbfile.processing["guppy"]["events"]
             registry_names = {str(registry["event_name"][row]) for row in range(len(registry.id))}
             assert registry_names == set(self.EVENT_STORE_TO_NAME.values())
+        finally:
+            nwbfile.read_io.close()
 
 
 class TestGuppyConverterDoricLegacyHDF5(DoricConverterTestMixin):
@@ -230,10 +232,12 @@ class TestGuppyConverterDoricLegacyHDF5(DoricConverterTestMixin):
 
         nwbfile_path = tmp_path / "doric_no_events.nwb"
         converter.run_conversion(nwbfile_path=str(nwbfile_path), metadata=metadata, overwrite=True)
-        with NWBHDF5IO(str(nwbfile_path), "r") as io:
-            nwbfile = io.read()
+        nwbfile = read_nwb(str(nwbfile_path))
+        try:
             assert not nwbfile.events
             assert len(nwbfile.processing["guppy"]["events"].id) == 0
+        finally:
+            nwbfile.read_io.close()
 
 
 class TestGuppyConverterDoricCSV(DoricConverterTestMixin):
