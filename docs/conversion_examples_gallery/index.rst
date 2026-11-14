@@ -47,6 +47,7 @@ Sorting
     KiloSort <sorting/kilosort>
     MountainSort <sorting/mda>
     Neuralynx <sorting/neuralynx>
+    NeuroExplorer <sorting/neuroexplorer>
     NeuroScope <sorting/neuroscope>
     Phy <sorting/phy>
     Plexon <sorting/plexon>

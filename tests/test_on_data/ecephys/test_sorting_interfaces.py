@@ -11,6 +11,7 @@ from neuroconv.datainterfaces import (
     CellExplorerSortingInterface,
     KiloSortSortingInterface,
     NeuralynxSortingInterface,
+    NeuroExplorerSortingInterface,
     NeuroScopeSortingInterface,
     PhySortingInterface,
     PlexonSortingInterface,
@@ -344,6 +345,13 @@ class TestKilosortSortingInterface(SortingExtractorInterfaceTestMixin):
 
     def run_custom_checks(self):
         self.check_units_table_propagation()
+
+
+class TestNeuroExplorerSortingInterface(SortingExtractorInterfaceTestMixin):
+    data_interface_cls = NeuroExplorerSortingInterface
+    expected_temporal_alignment_keys = ("neuroexplorer_sorting_0",)
+    interface_kwargs = dict(file_path=str(DATA_PATH / "neuroexplorer" / "File_neuroexplorer_1.nex"))
+    save_directory = OUTPUT_PATH
 
 
 class TestPlexonSortingInterface(SortingExtractorInterfaceTestMixin):

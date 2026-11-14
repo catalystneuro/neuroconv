@@ -5,6 +5,7 @@ import pytest
 from pynwb import read_nwb
 
 from neuroconv.datainterfaces import SpikeGLXNIDQInterface
+from neuroconv.tools.testing.data_interface_mixins import DataInterfaceTestMixin
 
 # enable to run locally in interactive mode
 try:
@@ -654,3 +655,60 @@ def test_metadata_key_does_not_rename_series():
     time_series_metadata = custom_interface.get_metadata()["TimeSeries"]
     assert set(time_series_metadata) == {"my_nidq"}
     assert time_series_metadata["my_nidq"]["nidq_analog"]["name"] == "TimeSeriesNIDQ"
+
+
+class TestSpikeGLXNIDQInterface(DataInterfaceTestMixin):
+    """An analog group and the events derived from its channel, which one alignment of the board moves together."""
+
+    data_interface_cls = SpikeGLXNIDQInterface
+    interface_kwargs = dict(
+        folder_path=str(ECEPHY_DATA_PATH / "spikeglx" / "Noise4Sam_g0"),
+        analog_channel_groups={"lever": {"channels": ["XA3"]}},
+        detection_configuration={"XA3": [{"signal_conditioning": {"binarize": 550.0}, "detection": "high_period"}]},
+    )
+    expected_temporal_alignment_keys = ("spikeglx_nidq_lever_0", "XA3")
+
+
+def test_get_event_times_from_ttl_moves_with_temporal_alignment():
+    """The rising edges are read on the current times of the channel's group, so a shift of the board moves them."""
+    folder_path = ECEPHY_DATA_PATH / "spikeglx" / "Noise4Sam_g0"
+    interface = SpikeGLXNIDQInterface(folder_path=folder_path)
+    native_rising_times = interface.get_event_times_from_ttl(channel_name="XA0")
+
+    interface.temporal_alignment.shift_times(5.0)
+
+    expected_rising_times = native_rising_times + 5.0
+    np.testing.assert_allclose(interface.get_event_times_from_ttl(channel_name="XA0"), expected_rising_times)
+
+
+def test_get_event_times_from_ttl_raises_for_a_channel_in_no_group():
+    folder_path = ECEPHY_DATA_PATH / "spikeglx" / "Noise4Sam_g0"
+    interface = SpikeGLXNIDQInterface(folder_path=folder_path, analog_channel_groups={"lever": {"channels": ["XA3"]}})
+
+    expected_error = (
+        "'XA0' is in no analog channel group, so it has no times in `temporal_alignment`. "
+        "`get_event_times_from_ttl` reads the times of the group that holds the channel: add it to a group "
+        "in `analog_channel_groups`."
+    )
+    with pytest.raises(ValueError, match=re.escape(expected_error)):
+        interface.get_event_times_from_ttl(channel_name="XA0")
+
+
+def test_event_type_with_the_temporal_alignment_key_of_an_analog_group_raises():
+    folder_path = ECEPHY_DATA_PATH / "spikeglx" / "Noise4Sam_g0"
+    detection_configuration = {
+        "XA3": [
+            {
+                "signal_conditioning": {"binarize": 550.0},
+                "detection": "rising",
+                "event_name": "spikeglx_nidq_nidq_analog_0",
+            }
+        ]
+    }
+
+    expected_error = (
+        "The event type 'spikeglx_nidq_nidq_analog_0' has the same temporal alignment key as an analog group of "
+        "this SpikeGLXNIDQInterface. Give the event type another `event_name` in `detection_configuration`."
+    )
+    with pytest.raises(ValueError, match=re.escape(expected_error)):
+        SpikeGLXNIDQInterface(folder_path=folder_path, detection_configuration=detection_configuration)

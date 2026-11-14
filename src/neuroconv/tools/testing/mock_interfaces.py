@@ -936,6 +936,7 @@ class MockSpikeGLXNIDQInterface(SpikeGLXNIDQInterface):
             }
         }
         self._digital_channel_groups = {}
+        self._register_time_bearing_objects()
 
 
 class MockRecordingInterface(BaseRecordingExtractorInterface):
