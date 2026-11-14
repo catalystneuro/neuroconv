@@ -1,6 +1,7 @@
 import warnings
 from copy import deepcopy
 from datetime import datetime
+from functools import partial
 from pathlib import Path
 
 import numpy as np
@@ -11,6 +12,7 @@ from .spikeglxnidqeventsinterface import (
     _NEO_ADDRESSING_DEPRECATION,
     _SpikeGLXNIDQEventsInterface,
 )
+from ...._temporal_alignment import _TemporalAlignment
 from ....basedatainterface import BaseDataInterface
 from ....tools.signal_processing import get_rising_frames_from_ttl
 from ....utils import (
@@ -265,6 +267,54 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
                 metadata_key=self.metadata_key,
                 verbose=verbose,
             )
+
+        self._register_time_bearing_objects()
+
+    def _register_time_bearing_objects(self) -> None:
+        """Name every analog group's segments and the events half's event types in one ``temporal_alignment``.
+
+        An analog group is keyed ``{metadata_key}_{group_key}_{segment_index}``, one key per written
+        ``TimeSeries``. An event type keeps its ``event_type_source_id``, as in every events interface, and is
+        linked rather than registered again, so the events half and the board share one state and a shift of the
+        board moves both. Registering reads nothing.
+        """
+        self._alignment = _TemporalAlignment()
+        for group_key in self._analog_channel_groups:
+            for segment_index in range(self.recording_extractor.get_num_segments()):
+                self._alignment._register(
+                    key=f"{self.metadata_key}_{group_key}_{segment_index}",
+                    get_native_times=partial(self._get_segment_native_times, segment_index=segment_index),
+                    default_start_time=partial(self._get_segment_native_start_time, segment_index=segment_index),
+                    get_number_of_samples=partial(self._get_segment_number_of_samples, segment_index=segment_index),
+                )
+
+        if self._events_interface is None:
+            return
+        events_alignment = self._events_interface.temporal_alignment
+        for event_type_source_id in events_alignment.keys():
+            # Two keys alike would replace one object with the other, and a shift meant for one would move the other
+            if event_type_source_id in self._alignment.keys():
+                raise ValueError(
+                    f"The event type '{event_type_source_id}' has the same temporal alignment key as an analog "
+                    f"group of this {type(self).__name__}. Give the event type another `event_name` in "
+                    "`detection_configuration`."
+                )
+            self._alignment._link_time_bearing_object(
+                key=event_type_source_id, time_bearing_object=events_alignment[event_type_source_id]
+            )
+
+    @property
+    def temporal_alignment(self) -> _TemporalAlignment:
+        return self._alignment
+
+    def _get_segment_native_times(self, segment_index: int) -> np.ndarray:
+        return self.recording_extractor.get_times(segment_index=segment_index)
+
+    def _get_segment_native_start_time(self, segment_index: int) -> float:
+        return self.recording_extractor.get_start_time(segment_index=segment_index)
+
+    def _get_segment_number_of_samples(self, segment_index: int) -> int:
+        return self.recording_extractor.get_num_samples(segment_index=segment_index)
 
     def _translate_digital_channel_groups(self, digital_channel_groups: dict) -> tuple[dict, dict]:
         """Map the deprecated argument onto ``detection_configuration``, plus the table routing it implies.
@@ -707,7 +757,9 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         metadata : dict
             Metadata dictionary with TimeSeries information
         """
-        from ....tools.spikeinterface import add_recording_as_time_series_to_nwbfile
+        from ....tools.spikeinterface.spikeinterface import (
+            _add_recording_as_time_series_to_nwbfile,
+        )
 
         if not self._analog_channel_groups:
             return
@@ -727,15 +779,32 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
             # Get metadata for this group
             ts_metadata = {"TimeSeries": {group_key: time_series_metadata[group_key]}}
 
+            # The aligned times are handed to the writer, never set on the recording. Timestamps when the times were
+            # replaced or the segment has a time vector, otherwise the aligned start, so a shifted regular segment is
+            # written as a start and a rate without building its times
+            segment_timestamps, segment_starting_times = [], []
+            for segment_index in range(recording.get_num_segments()):
+                segment = self.temporal_alignment[f"{self.metadata_key}_{group_key}_{segment_index}"]
+                if segment._times is not None or self.recording_extractor.has_time_vector(segment_index=segment_index):
+                    number_of_samples = recording.get_num_samples(segment_index=segment_index)
+                    segment_timestamps.append(segment.get_times()[:number_of_samples])
+                    segment_starting_times.append(None)
+                else:
+                    segment_timestamps.append(None)
+                    segment_starting_times.append(segment._get_start_time())
+
             # Write TimeSeries
-            add_recording_as_time_series_to_nwbfile(
+            _add_recording_as_time_series_to_nwbfile(
                 recording=channel_recording,
                 nwbfile=nwbfile,
                 metadata=ts_metadata,
+                segment_timestamps=segment_timestamps,
+                segment_starting_times=segment_starting_times,
                 iterator_type=iterator_type,
                 iterator_options=iterator_options,
                 always_write_timestamps=always_write_timestamps,
                 metadata_key=group_key,
+                parent_container="acquisition",
             )
 
     def get_event_times_from_ttl(self, channel_name: str) -> np.ndarray:
@@ -750,16 +819,25 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
         Returns
         -------
         rising_times : numpy.ndarray
-            The times of the rising TTL pulses.
+            The times of the rising TTL pulses, on the current times of the analog group that holds the channel,
+            so they move with ``temporal_alignment``.
         """
         if "#" in str(channel_name):
             warnings.warn(_NEO_ADDRESSING_DEPRECATION, FutureWarning, stacklevel=2)
         channel_id = self._resolve_channel_id(channel_name)
 
+        group_keys = [key for key, config in self._analog_channel_groups.items() if channel_id in config["channels"]]
+        if not group_keys:
+            raise ValueError(
+                f"'{channel_name}' is in no analog channel group, so it has no times in `temporal_alignment`. "
+                "`get_event_times_from_ttl` reads the times of the group that holds the channel: add it to a group "
+                "in `analog_channel_groups`."
+            )
+
         # TODO: consider RAM cost of these operations and implement safer buffering version
         rising_frames = get_rising_frames_from_ttl(trace=self.recording_extractor.get_traces(channel_ids=[channel_id]))
 
-        nidq_timestamps = self.recording_extractor.get_times()
+        nidq_timestamps = self.temporal_alignment[f"{self.metadata_key}_{group_keys[0]}_0"].get_times()
         rising_times = nidq_timestamps[rising_frames]
 
         return rising_times
