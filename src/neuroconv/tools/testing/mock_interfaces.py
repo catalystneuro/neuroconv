@@ -1,5 +1,6 @@
 import warnings
 from datetime import datetime, timezone
+from functools import partial
 from pathlib import Path
 from typing import Literal
 
@@ -11,6 +12,7 @@ from .mock_ttl_signals import generate_mock_ttl_signal
 from ...basedatainterface import BaseDataInterface
 from ...basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from ...datainterfaces import SpikeGLXNIDQInterface
+from ...datainterfaces.behavior.audio.audiointerface import AudioInterface
 from ...datainterfaces.behavior.baseposeestimationinterface import (
     BasePoseEstimationInterface,
 )
@@ -30,6 +32,7 @@ from ...datainterfaces.events.baseeventsinterface import (
 from ...datainterfaces.fiber_photometry.basefiberphotometryinterface import (
     BaseFiberPhotometryInterface,
 )
+from ...datainterfaces.icephys.baseicephysinterface import BaseIcephysInterface
 from ...datainterfaces.ophys.baseimagingextractorinterface import (
     BaseImagingExtractorInterface,
 )
@@ -41,15 +44,14 @@ from ...tools.events import (
     _resolve_detection_plan,
     _validate_detection_configuration,
 )
-from ...tools.icephys import _RESPONSE_CLASS, _add_intracellular_electrode_to_nwbfile
+from ...tools.icephys import _IcephysSeriesData
 from ...tools.signal_processing import (
     _condition_signal,
     _detect_events,
-    _frames_to_seconds,
+    _samples_to_seconds,
 )
 from ...utils import (
     ArrayType,
-    calculate_regular_series_rate,
     get_json_schema_from_method_signature,
     to_camel_case,
 )
@@ -601,7 +603,6 @@ class MockSignalEncodedEventsInterface(BaseEventsInterface):
         self._num_events = num_events
         self._sampling_frequency = sampling_frequency
         self._sampling = sampling
-        super().__init__(verbose=verbose)
         self.metadata_key = metadata_key or "mock_signal_encoded_events"
 
         # Discovery, faked: one packed word, whose kind is what makes bit selection legal on it and a
@@ -622,6 +623,7 @@ class MockSignalEncodedEventsInterface(BaseEventsInterface):
         # same identifier. Validation covers structure and identifier resolution (rules 4 and 5) alike.
         _validate_detection_configuration(detection_configuration, self._available_signals)
         self._detection_configuration = detection_configuration
+        super().__init__(verbose=verbose)
 
     def get_event_type_source_ids(self) -> list[str]:
         """The event types the configuration resolves to, read from nothing."""
@@ -738,8 +740,13 @@ class MockSignalEncodedEventsInterface(BaseEventsInterface):
             signal = self._get_signal(signal_source_id)
             for event_type_source_id, spec in detection_specs:
                 conditioned = _condition_signal(signal, spec["signal_conditioning"])
-                onset_frames, offset_frames = _detect_events(conditioned, spec["detection"])
-                onsets, durations = _frames_to_seconds(onset_frames, offset_frames, timestamps)
+                onset_samples, offset_samples = _detect_events(conditioned, spec["detection"])
+                onsets, durations = _samples_to_seconds(
+                    onset_samples=onset_samples,
+                    offset_samples=offset_samples,
+                    timestamps=timestamps,
+                    event_time_convention=spec.get("event_time_convention", "sample_after_transition"),
+                )
                 events_data_dict[event_type_source_id] = _EventsData(
                     event_type_source_id=event_type_source_id,
                     timestamps=onsets,
@@ -767,6 +774,7 @@ class MockFiberPhotometryInterface(BaseFiberPhotometryInterface):
         sampling_frequency: float = 100.0,
         seed: int = 0,
         metadata_key: str | None = None,
+        commanded_voltage_streams: dict[str, str] | None = None,
         verbose: bool = False,
     ):
         """Initialize a mock fiber photometry interface.
@@ -794,6 +802,9 @@ class MockFiberPhotometryInterface(BaseFiberPhotometryInterface):
             Seed for the synthetic data.
         metadata_key : str, optional
             Override the response-series metadata key (default derived from the wavelengths).
+        commanded_voltage_streams : dict, optional
+            Drive signals keyed by their metadata and alignment keys, each mapped to one of this mock's
+            stream names (``"470nm"`` for the default wavelength), as the Doric interface takes them.
         verbose : bool, default: False
             Whether to print status messages.
         """
@@ -810,7 +821,18 @@ class MockFiberPhotometryInterface(BaseFiberPhotometryInterface):
         self._seed = int(seed)
         # One source stream per wavelength, named after it so the derived metadata_key is readable.
         stream_names = [f"{wavelength:g}nm" for wavelength in self._excitation_wavelengths_in_nm]
-        super().__init__(stream_names=stream_names, metadata_key=metadata_key, verbose=verbose)
+        super().__init__(
+            stream_names=stream_names,
+            metadata_key=metadata_key,
+            commanded_voltage_streams=commanded_voltage_streams,
+            verbose=verbose,
+        )
+        for key, stream_name in (commanded_voltage_streams or {}).items():
+            self._register_commanded_voltage(
+                key=key,
+                get_data=partial(self._get_stream_data, stream_name=stream_name),
+                get_native_times=partial(self._get_stream_timestamps, stream_name=stream_name),
+            )
 
     def _get_stream_data(self, *, stream_name: str) -> np.ndarray:
         # Deterministic per-wavelength synthetic trace (a distinct seed each, so the traces differ).
@@ -938,7 +960,7 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
 
     def __init__(
         self,
-        *args,
+        *,
         num_channels: int = 4,
         sampling_frequency: float = 30_000.0,
         durations: tuple[float, ...] = (1.0,),
@@ -948,44 +970,8 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
         metadata_key: str | None = None,
         set_probe: bool = False,
         calibration: Literal["unknown", "uniform", "heterogeneous_gains", "heterogeneous_offsets"] = "uniform",
+        channels_to_exclude: list | None = None,
     ):
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "num_channels",
-                "sampling_frequency",
-                "durations",
-                "seed",
-                "verbose",
-                "es_key",
-                "set_probe",
-            ]
-            # Number of positional parameters before *args in the signature (self is counted by Python in error messages)
-            num_positional_args_before_args = 1  # self
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"MockRecordingInterface.__init__() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments "
-                    f"but {len(args) + num_positional_args_before_args} were given. "
-                    "Note: Positional arguments are deprecated and will be removed in June 2026 or after. Please use keyword arguments."
-                )
-            # Map positional args to keyword args, positional args take precedence
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to MockRecordingInterface.__init__() is deprecated "
-                f"and will be removed in June 2026 or after. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            num_channels = positional_values.get("num_channels", num_channels)
-            sampling_frequency = positional_values.get("sampling_frequency", sampling_frequency)
-            durations = positional_values.get("durations", durations)
-            seed = positional_values.get("seed", seed)
-            verbose = positional_values.get("verbose", verbose)
-            es_key = positional_values.get("es_key", es_key)
-            set_probe = positional_values.get("set_probe", set_probe)
 
         super().__init__(
             num_channels=num_channels,
@@ -1027,10 +1013,21 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
             probe = self.recording_extractor.get_probe()
             contact_ids = [f"e{i}" for i in range(num_channels)]
             probe.set_contact_ids(contact_ids)
-            # TODO: drop `in_place=True` once spikeinterface>=0.105.0 is the minimum pin, where the call
-            # is always in place, returns None and the argument is deprecated. It is required on 0.104,
-            # which otherwise returns a new recording and leaves this one unchanged.
-            self.recording_extractor.set_probe(probe, group_mode="by_probe", in_place=True)
+            self.recording_extractor.set_probe(probe, group_mode="by_probe")
+
+        def _letters(index):
+            name = ""
+            index += 1
+            while index:
+                index, remainder = divmod(index - 1, 26)
+                name = chr(97 + remainder) + name
+            return name
+
+        self.recording_extractor = self.recording_extractor.rename_channels(
+            new_channel_ids=[f"channel_{_letters(index)}" for index in range(number_of_channels)]
+        )
+
+        self._exclude_channels(channels_to_exclude)
 
     def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         """
@@ -1074,6 +1071,7 @@ class MockSortingInterface(BaseSortingExtractorInterface):
         durations: tuple[float, ...] = (1.0,),
         seed: int = 0,
         verbose: bool = False,
+        metadata_key: str | None = None,
     ):
         """
         Parameters
@@ -1088,9 +1086,11 @@ class MockSortingInterface(BaseSortingExtractorInterface):
             Seed for the random number generator, by default 0.
         verbose : bool, optional
             Control whether to display verbose messages during writing, by default True.
+        metadata_key : str, optional
+            Key of this sorting's entry in ``metadata["Ecephys"]["Sortings"]``. Defaults to ``"mock_sorting"``.
 
         """
-
+        self.metadata_key = metadata_key or "mock_sorting"
         super().__init__(
             num_units=num_units,
             sampling_frequency=sampling_frequency,
@@ -1199,7 +1199,7 @@ class MockImagingInterface(BaseImagingExtractorInterface):
         self,
         nwbfile: NWBFile,
         metadata: dict | None = None,
-        *args,
+        *,
         photon_series_type: Literal["TwoPhotonSeries", "OnePhotonSeries"] = "TwoPhotonSeries",
         photon_series_index: int = 0,
         parent_container: Literal["acquisition", "processing/ophys"] = "acquisition",
@@ -1210,9 +1210,6 @@ class MockImagingInterface(BaseImagingExtractorInterface):
     ):
         """
         Add imaging data to the NWB file.
-
-        This method demonstrates the *args pattern for deprecating positional arguments
-        while maintaining schema validation for keyword-only arguments.
 
         Parameters
         ----------
@@ -1235,42 +1232,6 @@ class MockImagingInterface(BaseImagingExtractorInterface):
         iterator_options : dict, optional
             Options for controlling the iterative write process.
         """
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "photon_series_type",
-                "photon_series_index",
-                "parent_container",
-                "stub_test",
-                "always_write_timestamps",
-                "iterator_type",
-                "iterator_options",
-            ]
-            num_positional_args_before_args = 2  # nwbfile, metadata
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"add_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args} were given. "
-                    "Note: Positional arguments are deprecated and will be removed in June 2026 or after. Please use keyword arguments."
-                )
-            # Map positional args to keyword args, positional args take precedence
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to add_to_nwbfile is deprecated "
-                f"and will be removed in June 2026 or after. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            photon_series_type = positional_values.get("photon_series_type", photon_series_type)
-            photon_series_index = positional_values.get("photon_series_index", photon_series_index)
-            parent_container = positional_values.get("parent_container", parent_container)
-            stub_test = positional_values.get("stub_test", stub_test)
-            always_write_timestamps = positional_values.get("always_write_timestamps", always_write_timestamps)
-            iterator_type = positional_values.get("iterator_type", iterator_type)
-            iterator_options = positional_values.get("iterator_options", iterator_options)
 
         # Call parent implementation with keyword arguments
         super().add_to_nwbfile(
@@ -1441,12 +1402,12 @@ class MockPoseEstimationInterface(BasePoseEstimationInterface):
             Metadata key for this interface.
         pose_estimation_metadata_key : str, optional
             Deprecated. Renamed to ``metadata_key``; passing it forwards the value to
-            ``metadata_key`` and will be removed on or after February 2027.
+            ``metadata_key`` and will be removed in v0.12.0.
         """
         if pose_estimation_metadata_key is not None:
             warnings.warn(
                 "The 'pose_estimation_metadata_key' argument has been renamed to 'metadata_key' and "
-                "will be removed on or after February 2027. Please use 'metadata_key' instead.",
+                "will be removed in v0.12.0. Please use 'metadata_key' instead.",
                 DeprecationWarning,
                 stacklevel=2,
             )
@@ -1496,7 +1457,6 @@ class MockPoseEstimationInterface(BasePoseEstimationInterface):
             self._original_timestamps = frame_times[np.sort(labeled_frames)]
         else:
             self._original_timestamps = np.linspace(0.0, float(num_samples) / 30.0, num_samples)
-        self._timestamps = np.copy(self._original_timestamps)
 
         # Generate pose estimation data
         self.pose_data = self._generate_pose_data()
@@ -1537,14 +1497,6 @@ class MockPoseEstimationInterface(BasePoseEstimationInterface):
     def get_original_timestamps(self) -> np.ndarray:
         """Get the original timestamps before any alignment."""
         return self._original_timestamps
-
-    def get_timestamps(self) -> np.ndarray:
-        """Get the current (possibly aligned) timestamps."""
-        return self._timestamps
-
-    def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
-        """Set aligned timestamps."""
-        self._timestamps = aligned_timestamps
 
     def get_metadata(self) -> DeepDict:
         """Name the objects after this interface's key and add what the mock pretends its source records."""
@@ -1592,13 +1544,14 @@ class MockExternalVideoInterface(ExternalVideoInterface):
     """
     A mock external video interface for testing purposes.
 
-    Overrides exactly one thing: what the container header says. The frame count and the frame rate are
-    constructor arguments rather than reads, so a test can compose a video of any length into a conversion
+    Overrides what the container header says, and the one frame time the interface reads at the start of
+    each file. The frame count and the frame rate are constructor arguments rather than reads, and every file's
+    first frame sits at zero, so a test can compose a video of any length into a conversion
     at no cost, and everything else runs the real interface's course. In particular the timing is left
     unset, as it is on a freshly constructed real interface, so a single file writes a starting time and a
     rate while several files raise until the test says where they sit.
 
-    Nothing that reads the video itself is stubbed, only the header, so a method that decodes frames
+    Nothing else that reads the video is stubbed, so a method that decodes frames
     (``get_original_timestamps``, and ``set_aligned_segment_starting_times`` which goes through it) will
     fail here as it would on any missing file. Give the times directly with ``set_aligned_timestamps``.
 
@@ -1657,21 +1610,86 @@ class MockExternalVideoInterface(ExternalVideoInterface):
         metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
         return metadata
 
-    def _get_header_frame_counts(self) -> list[int]:
+    def get_header_frame_counts(self) -> list[int]:
         """Return the frame count the mock was built with, so the write path opens no files."""
         return [self.num_frames] * self._number_of_files
 
-    def _get_header_frame_rates(self) -> list[float]:
+    def get_header_frame_rates(self) -> list[float]:
         """Return the frame rate the mock was built with, so the write path opens no files."""
         return [self.frame_rate] * self._number_of_files
 
+    def _get_first_frame_time(self, *, file_index: int) -> float:
+        """Return zero, the first frame time of most containers, so placing a file opens nothing."""
+        return 0.0
 
-class MockIcephysInterface(BaseDataInterface):
+
+class MockAudioInterface(AudioInterface):
+    """
+    A mock audio interface for testing purposes.
+
+    Overrides what the WAV file holds: the sampling rate and the number of samples are constructor arguments and
+    the samples are zeros, so a test can compose audio of any length into a conversion without a file on disk.
+    Everything else runs the real interface's course.
+
+    The path does not have to exist and deliberately does not resolve.
+    """
+
+    display_name = "Mock Audio"
+    keywords = ("sound", "microphone", "mock")
+    associated_suffixes = ()
+    info = "Mock interface for audio data testing."
+
+    def __init__(
+        self,
+        file_path: str | None = None,
+        *,
+        num_samples: int = 1000,
+        sampling_rate: float = 1000.0,
+        metadata_key: str | None = None,
+        verbose: bool = False,
+    ):
+        """
+        Initialize a mock audio interface.
+
+        Parameters
+        ----------
+        file_path : str, optional
+            The path the interface is given; it does not have to exist. Defaults to ``"mock_audio.wav"``.
+        num_samples : int, default: 1000
+            The number of samples the file holds.
+        sampling_rate : float, default: 1000.0
+            The sampling rate of the file, in Hz.
+        metadata_key : str, optional
+            Snake_case key identifying this recording's entry under ``metadata["Audio"]["AcousticWaveformSeries"]``.
+            Defaults to the stem-based key of the parent interface.
+        verbose : bool, default: False
+            If True, display verbose output.
+        """
+        file_path = Path(file_path or "mock_audio.wav")
+        # AudioInterface.__init__ is wrapped by pydantic's validate_call, whose FilePath refuses a path that does
+        # not exist; the undecorated function kept at __wrapped__ lets this interface stand up with nothing behind
+        # its path.
+        AudioInterface.__init__.__wrapped__(self, file_path=file_path, metadata_key=metadata_key, verbose=verbose)
+        self._num_samples = num_samples
+        self._sampling_rate = sampling_rate
+
+    def get_metadata(self) -> DeepDict:
+        metadata = super().get_metadata()
+        metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
+        return metadata
+
+    def _read_acoustic_series(self, file_path) -> tuple[float, np.ndarray]:
+        """Return zeros of the mock's length in place of the file's samples."""
+        return self._sampling_rate, np.zeros(self._num_samples, dtype="int16")
+
+
+class MockIcephysInterface(BaseIcephysInterface):
     """
     A mock intracellular electrophysiology interface for testing purposes.
 
-    Writes one electrode's synthetic response as a single continuous response series (the class chosen by the
-    clamp ``mode``, as a real interface does) plus one
+    Writes one electrode's synthetic response, and optionally a paired stimulus, through
+    :class:`BaseIcephysInterface` the way a real interface does: a single continuous response series (the class
+    chosen by the clamp ``mode``) plus one
     intracellular-recordings row per sweep, each addressing the sweep's ``(start_index, count)`` sample range.
     That is the contract every icephys interface emits, so this exercises the format-independent machinery in
     :mod:`neuroconv.tools.icephys` (which reads those rows back to build the hierarchy tables and the sweep
@@ -1689,11 +1707,12 @@ class MockIcephysInterface(BaseDataInterface):
         sampling_frequency: float = 10_000.0,
         inter_sweep_interval: float = 0.0,
         starting_time: float = 0.0,
-        sequence: str = "run",
+        protocol_run: str = "run",
         stimulus_type: str | None = "mock protocol",
         repetition: str | None = None,
         condition: str | None = None,
         metadata_key: str = "mock",
+        stimulus_duration: float | None = None,
         seed: int = 0,
         verbose: bool = False,
     ):
@@ -1716,9 +1735,9 @@ class MockIcephysInterface(BaseDataInterface):
             them irregular, so it is written with explicit timestamps instead (the rule a real interface uses).
         starting_time : float, default: 0.0
             Time of the first sample, in seconds.
-        sequence : str, default: "run"
-            Run identity written to the ``sequence`` column of every row, the label that groups the rows into
-            one sequential recording.
+        protocol_run : str, default: "run"
+            Label written to the ``protocol_run`` column of every row, which groups the rows into one sequential
+            recording.
         stimulus_type : str, optional, default: "mock protocol"
             Value of the ``stimulus_type`` column, carried up to the sequential recording when aggregated. Pass
             ``None`` to omit the column, as an interface whose format describes no stimulus does.
@@ -1731,24 +1750,49 @@ class MockIcephysInterface(BaseDataInterface):
         metadata_key : str, default: "mock"
             Identity of this interface's electrode and response series in the metadata dict. Give combined
             instances distinct keys so each writes its own electrode and series.
+        stimulus_duration : float, optional
+            Duration of every sweep's paired stimulus, in seconds. None writes no stimulus. A duration other than
+            ``sweep_duration`` gives the stimulus its own sweep ranges, as for a sweep that stops recording before
+            its command ends.
         seed : int, default: 0
             Seed for the random number generator.
         verbose : bool, default: False
             Control verbosity.
         """
         super().__init__(verbose=verbose)
-        self.mode = mode
+        self._mode = mode
         self.num_sweeps = num_sweeps
         self.sweep_duration = sweep_duration
         self.sampling_frequency = sampling_frequency
         self.inter_sweep_interval = inter_sweep_interval
         self.starting_time = starting_time
-        self.sequence = sequence
+        self._run_identity = protocol_run
         self.stimulus_type = stimulus_type
-        self.repetition = repetition
-        self.condition = condition
+        self._repetition = repetition
+        self._condition = condition
         self.metadata_key = metadata_key
+        self.stimulus_duration = stimulus_duration
         self.seed = seed
+
+        # The base writer reads these. The series key doubles as the alignment key, as in the real interfaces.
+        self._series_metadata_key = metadata_key
+        self._alignment_key = metadata_key
+        samples_per_sweep = round(sweep_duration * sampling_frequency)
+        self.temporal_alignment._register(
+            key=self._alignment_key,
+            get_native_times=partial(self._get_sweep_times, samples_per_sweep),
+            default_start_time=starting_time,
+            get_number_of_samples=lambda: num_sweeps * samples_per_sweep,
+        )
+        if stimulus_duration is not None:
+            self._stimulus_alignment_key = f"{self._alignment_key}_stimulus"
+            stimulus_samples_per_sweep = round(stimulus_duration * sampling_frequency)
+            self.temporal_alignment._register(
+                key=self._stimulus_alignment_key,
+                get_native_times=partial(self._get_sweep_times, stimulus_samples_per_sweep),
+                default_start_time=starting_time,
+                get_number_of_samples=lambda: num_sweeps * stimulus_samples_per_sweep,
+            )
 
     def get_metadata(self) -> DeepDict:
         """
@@ -1786,98 +1830,64 @@ class MockIcephysInterface(BaseDataInterface):
             "voltage_clamp": "VoltageClampSeries",
             "current_clamp": "CurrentClampSeries",
             "izero": "IZeroClampSeries",
-        }[self.mode]
+        }[self._mode]
         metadata["Icephys"]["PatchClampSeries"] = {
             self.metadata_key: {
                 "name": f"{response_type_name}{name_suffix}",
-                "description": f"Mock intracellular response ({self.mode}).",
+                "description": f"Mock intracellular response ({self._mode}).",
                 "electrode_metadata_key": self.metadata_key,
             }
         }
+        # The stimulus sits in its own registry at the same key as its response and reuses its electrode.
+        if self.stimulus_duration is not None:
+            stimulus_type_name = {
+                "voltage_clamp": "VoltageClampStimulusSeries",
+                "current_clamp": "CurrentClampStimulusSeries",
+            }[self._mode]
+            metadata["Icephys"]["PatchClampStimulusSeries"] = {
+                self.metadata_key: {
+                    "name": f"{stimulus_type_name}{name_suffix}",
+                    "description": f"Mock intracellular stimulus ({self._mode}).",
+                }
+            }
         return metadata
 
-    def add_to_nwbfile(
-        self,
-        nwbfile: NWBFile,
-        metadata: dict | None = None,
-    ):
-        """
-        Add the mock response series and its per-sweep intracellular-recordings rows to an NWB file.
-
-        Parameters
-        ----------
-        nwbfile : NWBFile
-            The NWB file the series and rows are added to.
-        metadata : dict, optional
-            Metadata dictionary. If None, uses default metadata.
-        """
-        if metadata is None:
-            metadata = self.get_metadata()
-
-        response_metadata = metadata["Icephys"]["PatchClampSeries"][self.metadata_key]
-        electrode = _add_intracellular_electrode_to_nwbfile(
-            nwbfile, metadata, response_metadata["electrode_metadata_key"]
-        )
-
+    def _get_icephys_series_data(self):
+        """Return the synthetic response, the optional stimulus and the sweep ranges for the base writer."""
         samples_per_sweep = round(self.sweep_duration * self.sampling_frequency)
         rng = np.random.default_rng(self.seed)
-        total_samples = self.num_sweeps * samples_per_sweep
-        data = rng.standard_normal(total_samples).astype("float32")
-
-        # The sweeps are laid end to end in one continuous series, each starting an inter-sweep interval after
-        # the previous one ended; the ranges are the (start_index, count) pairs the recordings rows address.
+        data = rng.standard_normal(self.num_sweeps * samples_per_sweep).astype("float32")
+        response_data = _IcephysSeriesData(
+            data=data, timestamps=self._get_sweep_times(samples_per_sweep), conversion=1.0
+        )
+        # The sweeps are laid end to end in one continuous series; the ranges are the (start_index, count) pairs
+        # the recordings rows address.
         sweep_sample_ranges = [
             (sweep_index * samples_per_sweep, samples_per_sweep) for sweep_index in range(self.num_sweeps)
         ]
-        timestamps = np.empty(total_samples, dtype="float64")
-        for sweep_index, (start_index, count) in enumerate(sweep_sample_ranges):
-            sweep_start_time = self.starting_time + sweep_index * (self.sweep_duration + self.inter_sweep_interval)
-            timestamps[start_index : start_index + count] = (
-                sweep_start_time + np.arange(count) / self.sampling_frequency
-            )
 
-        series_kwargs = dict(
-            name=response_metadata["name"],
-            description=response_metadata["description"],
-            data=data,
-            electrode=electrode,
-            gain=np.nan,
+        stimulus_data = None
+        if self.stimulus_duration is not None:
+            stimulus_samples_per_sweep = round(self.stimulus_duration * self.sampling_frequency)
+            stimulus_data = _IcephysSeriesData(
+                data=np.ones(self.num_sweeps * stimulus_samples_per_sweep, dtype="float32"),
+                timestamps=self._get_sweep_times(stimulus_samples_per_sweep),
+                conversion=1.0,
+            )
+            if stimulus_samples_per_sweep != samples_per_sweep:
+                stimulus_data.sweep_sample_ranges = [
+                    (sweep_index * stimulus_samples_per_sweep, stimulus_samples_per_sweep)
+                    for sweep_index in range(self.num_sweeps)
+                ]
+        return response_data, stimulus_data, sweep_sample_ranges
+
+    def _get_stimulus_type(self) -> str | None:
+        return self.stimulus_type
+
+    def _get_sweep_times(self, samples_per_sweep: int) -> np.ndarray:
+        """Times of ``samples_per_sweep`` samples from the start of every sweep, the sweeps laid end to end."""
+        # Each sweep starts an inter-sweep interval after the previous one ended.
+        sweep_start_times = self.starting_time + np.arange(self.num_sweeps) * (
+            self.sweep_duration + self.inter_sweep_interval
         )
-        # Same timing rule as a real interface: a uniform rate while the samples stay regular, explicit
-        # timestamps once the inter-sweep gaps make them irregular.
-        rate = calculate_regular_series_rate(series=timestamps)
-        if rate is not None:
-            series_kwargs.update(starting_time=float(timestamps[0]), rate=rate)
-        else:
-            series_kwargs.update(timestamps=timestamps)
-        response_series = _RESPONSE_CLASS[self.mode](**series_kwargs)
-        nwbfile.add_acquisition(response_series)
-
-        # The run-level columns, denormalized onto every row exactly as a real interface writes them: the
-        # always-present run identity, plus the optional ones only when the caller asked for them.
-        columns = {"sequence": self.sequence}
-        if self.stimulus_type is not None:
-            columns["stimulus_type"] = self.stimulus_type
-        if self.repetition is not None:
-            columns["repetition"] = self.repetition
-        if self.condition is not None:
-            columns["condition"] = self.condition
-        column_descriptions = {
-            "sequence": "Run identity grouping rows into a sequential recording.",
-            "stimulus_type": "Stimulus type of the run, carried up to its sequential recording when aggregated.",
-            "repetition": "Repetition label grouping sequential recordings into a repetition.",
-            "condition": "Experimental condition label grouping repetitions.",
-        }
-        table = nwbfile.get_intracellular_recordings()
-        for column_name in columns:
-            if column_name not in table.colnames:
-                table.add_column(name=column_name, description=column_descriptions[column_name])
-
-        for start_index, count in sweep_sample_ranges:
-            nwbfile.add_intracellular_recording(
-                electrode=electrode,
-                response=response_series,
-                response_start_index=start_index,
-                response_index_count=count,
-                **columns,
-            )
+        return (sweep_start_times[:, np.newaxis] + np.arange(samples_per_sweep) / self.sampling_frequency).ravel()

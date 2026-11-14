@@ -35,6 +35,7 @@ class TestImportStructure(TestCase):
             "basetemporalalignmentinterface",
             "baseextractorinterface",
             "nwbconverter",
+            "_temporal_alignment",  # Attached to namespace by NWBConverter import
             "tools",  # Attached to namespace by NWBConverter import
             "utils",  # Attached to namespace by NWBconverter import
             # Exposed attributes
@@ -63,6 +64,7 @@ class TestImportStructure(TestCase):
             "path_expansion",
             "processes",
             "iterative_write",
+            "external_resources",  # Attached to namespace by top __init__ call of BaseDataInterface
             # Functions and classes imported on the __init__
             "get_format_summaries",
             "get_package",

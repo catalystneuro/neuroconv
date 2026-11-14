@@ -6,7 +6,6 @@ from abc import ABC, abstractmethod
 from typing import Any, ClassVar, Literal
 
 import h5py
-import numcodecs
 import numpy as np
 import zarr
 from hdmf import Container
@@ -25,7 +24,9 @@ from pydantic import (
 from pynwb import NWBFile
 from pynwb.ecephys import ElectricalSeries
 from pynwb.image import ImageSeries
+from pynwb.misc import Units
 from typing_extensions import Self
+from zarr.abc.codec import BytesBytesCodec
 
 from neuroconv.tools.hdmf import get_full_data_shape
 from neuroconv.tools.iterative_write import get_electrical_series_chunk_shape
@@ -131,14 +132,12 @@ class DatasetIOConfiguration(BaseModel, ABC):
             "For optimized writing speeds and minimal RAM usage, a total size of around 1 GB is recommended."
         ),
     )
-    compressors: list[str | InstanceOf[h5py._hl.filters.FilterRefBase] | InstanceOf[numcodecs.abc.Codec]] | None = (
-        Field(
-            description=(
-                "The ordered collection of codecs to apply to this dataset after it is serialized to bytes. "
-                "A filter such as 'shuffle' composes with a compression method rather than replacing one, so both "
-                "live in this list. Set to `None` to disable compression."
-            ),
-        )
+    compressors: list[str | InstanceOf[h5py._hl.filters.FilterRefBase] | InstanceOf[BytesBytesCodec]] | None = Field(
+        description=(
+            "The ordered collection of codecs to apply to this dataset after it is serialized to bytes. "
+            "A filter such as 'shuffle' composes with a compression method rather than replacing one, so both "
+            "live in this list. Set to `None` to disable compression."
+        ),
     )
     compressor_options: list[dict[str, Any] | None] | None = Field(
         default=None,
@@ -359,6 +358,25 @@ class DatasetIOConfiguration(BaseModel, ABC):
                 num_samples=num_samples,
                 sample_shape=sample_shape,
                 dtype=dtype,
+            )
+            buffer_shape = full_shape
+            compression_method = "gzip"
+
+        elif (
+            isinstance(neurodata_object.parent, Units)
+            and neurodata_object.name in ("waveform_mean", "waveform_sd")
+            and len(full_shape) in (2, 3)
+        ):
+            from ....tools.iterative_write import get_unit_waveform_chunk_shape
+
+            num_units, num_samples = full_shape[:2]
+            num_electrodes = full_shape[2] if len(full_shape) == 3 else None
+
+            chunk_shape = get_unit_waveform_chunk_shape(
+                num_units=num_units,
+                num_samples=num_samples,
+                num_electrodes=num_electrodes,
+                dtype=np.dtype(dtype),
             )
             buffer_shape = full_shape
             compression_method = "gzip"

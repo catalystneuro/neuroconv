@@ -1,4 +1,3 @@
-import warnings
 from pathlib import Path
 
 from pydantic import FilePath
@@ -38,11 +37,12 @@ class IntanAnalogInterface(BaseRecordingAsTimeSeriesInterface):
     def __init__(
         self,
         file_path: FilePath,
-        *args,  # TODO: change to * (keyword only) on or after August 2026
+        *,
         stream_name: str,
         verbose: bool = False,
         metadata_key: str = "intan_analog",
         saved_files_are_split: bool = False,
+        channels_to_include: list[str] | None = None,
     ):
         """
         Load and prepare analog data from Intan format (.rhd or .rhs files).
@@ -69,35 +69,11 @@ class IntanAnalogInterface(BaseRecordingAsTimeSeriesInterface):
             option, producing several rotated ``.rhd``/``.rhs`` files in one session folder. All sibling
             files in ``file_path.parent`` are concatenated in filename order (Intan's default
             ``{prefix}_YYMMDD_HHMMSS`` naming makes lexicographic order match chronological order).
+        channels_to_include : list of str, optional
+            Channels to convert, by the names in ``get_channel_names()`` (the built-in names, such as
+            ``"ANALOG-IN-1"``), written in the order listed. Every channel is converted when omitted. A name that is not
+            one of the interface's channels raises.
         """
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "stream_name",
-                "verbose",
-                "metadata_key",
-            ]
-            num_positional_args_before_args = 1  # file_path
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"__init__() takes at most {len(parameter_names) + num_positional_args_before_args + 1} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args + 1} were given. "
-                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
-                    "Please use keyword arguments."
-                )
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to IntanAnalogInterface.__init__() is deprecated "
-                f"and will be removed on or after August 2026. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            stream_name = positional_values.get("stream_name", stream_name)
-            verbose = positional_values.get("verbose", verbose)
-            metadata_key = positional_values.get("metadata_key", metadata_key)
 
         self._file_path = Path(file_path)
         self._stream_name = stream_name
@@ -161,7 +137,10 @@ class IntanAnalogInterface(BaseRecordingAsTimeSeriesInterface):
             file_path=self._file_path,
             stream_name=self._stream_name,
             verbose=verbose,
+            channels_to_include=channels_to_include,
         )
+
+        self._include_channels(channels_to_include)
 
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
@@ -195,7 +174,7 @@ class IntanAnalogInterface(BaseRecordingAsTimeSeriesInterface):
         self,
         nwbfile: NWBFile,
         metadata: dict | None = None,
-        *args,  # TODO: change to * (keyword only) on or after August 2026
+        *,
         stub_test: bool = False,
         iterator_type: str | None = "v2",
         iterator_options: dict | None = None,
@@ -219,36 +198,6 @@ class IntanAnalogInterface(BaseRecordingAsTimeSeriesInterface):
         always_write_timestamps : bool, default: False
             If True, always writes timestamps instead of using sampling rate
         """
-        # Handle deprecated positional arguments
-        if args:
-            parameter_names = [
-                "stub_test",
-                "iterator_type",
-                "iterator_options",
-                "always_write_timestamps",
-            ]
-            num_positional_args_before_args = 2  # nwbfile, metadata
-            if len(args) > len(parameter_names):
-                raise TypeError(
-                    f"add_to_nwbfile() takes at most {len(parameter_names) + num_positional_args_before_args} positional arguments but "
-                    f"{len(args) + num_positional_args_before_args} were given. "
-                    "Note: Positional arguments are deprecated and will be removed on or after August 2026. "
-                    "Please use keyword arguments."
-                )
-            positional_values = dict(zip(parameter_names, args))
-            passed_as_positional = list(positional_values.keys())
-            warnings.warn(
-                f"Passing arguments positionally to IntanAnalogInterface.add_to_nwbfile() is deprecated "
-                f"and will be removed on or after August 2026. "
-                f"The following arguments were passed positionally: {passed_as_positional}. "
-                "Please use keyword arguments instead.",
-                FutureWarning,
-                stacklevel=2,
-            )
-            stub_test = positional_values.get("stub_test", stub_test)
-            iterator_type = positional_values.get("iterator_type", iterator_type)
-            iterator_options = positional_values.get("iterator_options", iterator_options)
-            always_write_timestamps = positional_values.get("always_write_timestamps", always_write_timestamps)
 
         super().add_to_nwbfile(
             nwbfile=nwbfile,

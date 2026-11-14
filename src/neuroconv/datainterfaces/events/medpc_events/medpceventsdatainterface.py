@@ -134,11 +134,11 @@ class _MedPCEventsInterface(BaseEventsInterface):
     def set_aligned_timestamps(self, aligned_timestamps_dict: dict[str, np.ndarray]) -> None:
         """Replace the timestamps of one or more event types with externally aligned ones.
 
-        The interface's own alignment is a rigid offset (``alignment.shift_times``), which is what a session
+        The interface's own alignment is a rigid offset (``temporal_alignment.shift_times``), which is what a session
         recorded on one clock needs. This is for the other case: times recovered from another device, such as the
         TTL pulses a photometry rig recorded for each MedPC event, which are not the source's times shifted but
         different times altogether. The substituted values are what the writer writes and what
-        ``get_event_times`` reports, with ``alignment.offset`` still applied on top.
+        ``get_event_times`` reports, with any shift applied through ``temporal_alignment`` still on top.
 
         Parameters
         ----------
@@ -592,6 +592,7 @@ class MedPCPackedEventsInterface(_MedPCEventsInterface):
             Whether to print verbose output, by default False.
         """
         _validate_time_arguments(time_unit=time_unit)
+        self._header_dict = None
         super().__init__(
             file_path=file_path,
             session_header=session_header,
@@ -601,7 +602,6 @@ class MedPCPackedEventsInterface(_MedPCEventsInterface):
             verbose=verbose,
         )
         self.metadata_key = metadata_key or "medpc"
-        self._header_dict = None
 
     def _read_events(self) -> dict[str, _EventsData]:
         """Read the one time array, recover each event's code, and group the times by it."""

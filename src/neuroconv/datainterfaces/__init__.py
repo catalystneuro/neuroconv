@@ -1,7 +1,12 @@
 # Behavior
 from .behavior.audio.audiointerface import AudioInterface
 from .behavior.boris.borisdatainterface import BORISInterface
+from .behavior.dannce.danncedatainterface import DANNCEInterface
 from .behavior.deeplabcut.deeplabcutdatainterface import DeepLabCutInterface
+from .behavior.ethovision.ethovisionmanualscoringinterface import (
+    EthoVisionManualScoringInterface,
+)
+from .behavior.ethovision.ethovisiontrackinterface import EthoVisionTrackInterface
 from .behavior.facemap.facemapdatainterface import FacemapInterface
 from .behavior.fictrac.fictracdatainterface import FicTracDataInterface
 from .behavior.lightningpose.lightningposedatainterface import (
@@ -12,6 +17,7 @@ from .behavior.miniscope.miniscopedatainterface import MiniscopeBehaviorInterfac
 from .behavior.miniscope.miniscopeheadorientationinterface import MiniscopeHeadOrientationInterface
 from .behavior.moseq.moseqkeypointsinterface import MoseqKeyPointsInterface
 from .behavior.neuralynx.neuralynx_nvt_interface import NeuralynxNvtInterface
+from .behavior.optitrack.optitrackdatainterface import OptiTrackInterface
 from .behavior.sleap.sleapdatainterface import SLEAPInterface
 from .behavior.vame.vamedatainterface import VameInterface
 from .behavior.video.externalvideointerface import ExternalVideoInterface
@@ -19,6 +25,7 @@ from .behavior.video.internalvideointerface import InternalVideoInterface
 
 # Ecephys
 from .ecephys.alphaomega.alphaomegadatainterface import AlphaOmegaRecordingInterface
+from .ecephys.axon.axonanaloginterface import AxonAnalogInterface
 from .ecephys.axon.axondatainterface import AxonRecordingInterface
 from .ecephys.axona.axonadatainterface import (
     AxonaLFPDataInterface,
@@ -40,6 +47,7 @@ from .ecephys.edf.edfdatainterface import EDFRecordingInterface
 from .ecephys.edf.edfanaloginterface import EDFAnalogInterface
 from .ecephys.intan.intandatainterface import IntanRecordingInterface
 from .ecephys.intan.intananaloginterface import IntanAnalogInterface
+from .ecephys.intan.intananalogueventsinterface import IntanAnalogEventsInterface
 from .ecephys.intan.intandigitalinterface import IntanDigitalInterface
 from .ecephys.intan.intanstiminterface import IntanStimInterface
 from .ecephys.kilosort.kilosortdatainterface import KiloSortSortingInterface
@@ -61,6 +69,7 @@ from .ecephys.openephys.openephysbinarydatainterface import (
     OpenEphysBinaryRecordingInterface,
 )
 from .ecephys.openephys.openephysdatainterface import OpenEphysRecordingInterface
+from .ecephys.openephys.openephyslegacyanaloginterface import OpenEphysLegacyAnalogInterface
 from .ecephys.openephys.openephyslegacydatainterface import (
     OpenEphysLegacyRecordingInterface,
 )
@@ -101,6 +110,7 @@ from .ophys.femtonics.femtonicsdatainterface import FemtonicsImagingInterface
 from .ophys.hdf5.hdf5datainterface import Hdf5ImagingInterface
 from .ophys.inscopix.inscopixsegmentationdatainterface import InscopixSegmentationInterface
 from .ophys.inscopix.inscopiximagingdatainterface import InscopixImagingInterface
+from .ophys.inscopix.inscopixgpiodatainterface import InscopixGpioInterface
 from .ophys.micromanagertiff.micromanagertiffdatainterface import (
     MicroManagerTiffImagingInterface,
 )
@@ -150,6 +160,7 @@ from .events.pyphotometry_events.pyphotometryeventsdatainterface import (
     PyPhotometryEventsInterface,
 )
 from .events.tdt_events.tdteventsdatainterface import TDTEventsInterface
+from .events.inscopix_gpio_events.inscopixgpioeventsdatainterface import InscopixGpioEventsInterface
 
 interface_list = [
     # Ecephys
@@ -165,6 +176,7 @@ interface_list = [
     SpikeGadgetsRecordingInterface,
     IntanRecordingInterface,
     IntanAnalogInterface,
+    IntanAnalogEventsInterface,
     IntanDigitalInterface,
     IntanStimInterface,
     CellExplorerSortingInterface,
@@ -177,6 +189,7 @@ interface_list = [
     OpenEphysLegacyRecordingInterface,
     OpenEphysSortingInterface,
     OpenEphysBinaryAnalogInterface,
+    OpenEphysLegacyAnalogInterface,
     PhySortingInterface,
     KiloSortSortingInterface,
     MdaSortingInterface,
@@ -194,6 +207,7 @@ interface_list = [
     BiocamRecordingInterface,
     AlphaOmegaRecordingInterface,
     AxonRecordingInterface,
+    AxonAnalogInterface,
     MEArecRecordingInterface,
     MCSRawRecordingInterface,
     MaxOneRecordingInterface,
@@ -215,6 +229,7 @@ interface_list = [
     TiffImagingInterface,
     Hdf5ImagingInterface,
     InscopixImagingInterface,
+    InscopixGpioInterface,
     ScanImageImagingInterface,
     ScanImageLegacyImagingInterface,
     BrukerTiffImagingInterface,
@@ -236,10 +251,13 @@ interface_list = [
     ExternalVideoInterface,
     InternalVideoInterface,
     AudioInterface,
+    DANNCEInterface,
     DeepLabCutInterface,
     SLEAPInterface,
     MiniscopeBehaviorInterface,
     MiniscopeHeadOrientationInterface,
+    EthoVisionTrackInterface,
+    EthoVisionManualScoringInterface,
     FicTracDataInterface,
     NeuralynxNvtInterface,
     LightningPoseDataInterface,
@@ -247,6 +265,7 @@ interface_list = [
     MedPCInterface,
     VameInterface,
     MoseqKeyPointsInterface,
+    OptiTrackInterface,
     # Text
     CsvTimeIntervalsInterface,
     ExcelTimeIntervalsInterface,
@@ -262,6 +281,7 @@ interface_list = [
     NPMEventsInterface,
     PyPhotometryEventsInterface,
     TDTEventsInterface,
+    InscopixGpioEventsInterface,
 ]
 
 interfaces_by_category = dict(
@@ -295,11 +315,14 @@ interfaces_by_category = dict(
     },
     analog=dict(
         OpenEphysAnalog=OpenEphysBinaryAnalogInterface,
+        OpenEphysLegacyAnalog=OpenEphysLegacyAnalogInterface,
+        AxonAnalog=AxonAnalogInterface,
         SpikeGLXNIDQ=SpikeGLXNIDQInterface,
         SpikeGLXSync=SpikeGLXSyncChannelInterface,
         IntanAnalog=IntanAnalogInterface,
         IntanDigital=IntanDigitalInterface,
         IntanStim=IntanStimInterface,
+        InscopixGpio=InscopixGpioInterface,
     ),
     icephys=dict(
         Abf=AbfInterface,
@@ -309,13 +332,17 @@ interfaces_by_category = dict(
     behavior=dict(
         ExternalVideo=ExternalVideoInterface,
         InternalVideo=InternalVideoInterface,
+        DANNCE=DANNCEInterface,
         DeepLabCut=DeepLabCutInterface,
         SLEAP=SLEAPInterface,
+        EthoVisionTrack=EthoVisionTrackInterface,
         FicTrac=FicTracDataInterface,
         LightningPose=LightningPoseDataInterface,
         Vame=VameInterface,
         BORIS=BORISInterface,
+        EthoVisionManualScoring=EthoVisionManualScoringInterface,
         MoseqKeyPoints=MoseqKeyPointsInterface,
+        OptiTrack=OptiTrackInterface,
         Facemap=FacemapInterface,
         # Text
         CsvTimeIntervals=CsvTimeIntervalsInterface,
@@ -330,10 +357,12 @@ interfaces_by_category = dict(
         CSVEvents=CSVEventsInterface,
         DoricCSVEvents=DoricCSVEventsInterface,
         DoricEvents=DoricEventsInterface,
+        IntanAnalogEvents=IntanAnalogEventsInterface,
         MedPCArrayEvents=MedPCArrayEventsInterface,
         MedPCPackedEvents=MedPCPackedEventsInterface,
         NPMEvents=NPMEventsInterface,
         PyPhotometryEvents=PyPhotometryEventsInterface,
         TDTEvents=TDTEventsInterface,
+        InscopixGpioEvents=InscopixGpioEventsInterface,
     ),
 )

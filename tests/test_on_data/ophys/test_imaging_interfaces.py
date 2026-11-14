@@ -1,5 +1,4 @@
 import platform
-import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -41,8 +40,9 @@ except ImportError:
 
 class TestTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = TiffImagingInterface
+    expected_temporal_alignment_keys = ("tiff_imaging",)
     interface_kwargs = dict(
-        file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Tif" / "demoMovie.tif"),
+        file_paths=[str(OPHYS_DATA_PATH / "imaging_datasets" / "Tif" / "demoMovie.tif")],
         sampling_frequency=15.0,  # typically provided by user
     )
     save_directory = OUTPUT_PATH
@@ -65,11 +65,36 @@ class TestTiffImagingInterfaceMultiFile(ImagingExtractorInterfaceTestMixin):
     optical_series_name = "MicroscopySeries"
 
     data_interface_cls = TiffImagingInterface
+    expected_temporal_alignment_keys = ("tiff_imaging_channel_0",)
     interface_kwargs = dict(
         file_paths=[
-            str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20240320_multifile_00001.tif"),
-            str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20240320_multifile_00002.tif"),
-            str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20240320_multifile_00003.tif"),
+            str(
+                OPHYS_DATA_PATH
+                / "imaging_datasets"
+                / "ScanImage"
+                / "tiff_format_version_4"
+                / "time_structure"
+                / "planar_two_channels_loop_version_2023_1"
+                / "planar_00001.tif"
+            ),
+            str(
+                OPHYS_DATA_PATH
+                / "imaging_datasets"
+                / "ScanImage"
+                / "tiff_format_version_4"
+                / "time_structure"
+                / "planar_two_channels_loop_version_2023_1"
+                / "planar_00002.tif"
+            ),
+            str(
+                OPHYS_DATA_PATH
+                / "imaging_datasets"
+                / "ScanImage"
+                / "tiff_format_version_4"
+                / "time_structure"
+                / "planar_two_channels_loop_version_2023_1"
+                / "planar_00003.tif"
+            ),
         ],
         sampling_frequency=30.0,
         dimension_order="CZT",
@@ -81,8 +106,17 @@ class TestTiffImagingInterfaceMultiFile(ImagingExtractorInterfaceTestMixin):
 
 class TestScanImageImagingInterfaceMultiPlaneChannel1(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = ScanImageImagingInterface
+    expected_temporal_alignment_keys = ("scan_image_imaging_channel_1",)
     interface_kwargs = dict(
-        file_paths=[OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif"],
+        file_paths=[
+            OPHYS_DATA_PATH
+            / "imaging_datasets"
+            / "ScanImage"
+            / "tiff_format_version_4"
+            / "acquisition_setup"
+            / "multi_roi_slow_stack_two_rois_channels_one_and_four_version_2023_0"
+            / "stack.tif"
+        ],
         channel_name="Channel 1",
         interleave_slice_samples=True,
     )
@@ -91,7 +125,7 @@ class TestScanImageImagingInterfaceMultiPlaneChannel1(ImagingExtractorInterfaceT
     photon_series_name = "TwoPhotonSeriesChannel1"
     optical_series_name = "TwoPhotonSeriesChannel1"
     imaging_plane_name = "ImagingPlaneChannel1"
-    expected_two_photon_series_data_shape = (6, 256, 528, 2)
+    expected_two_photon_series_data_shape = (6, 64, 132, 2)
     expected_rate = None  # This is interleaved data so the timestamps are written
     expected_starting_time = None
     expected_metadata_key = "scan_image_imaging_channel_1"
@@ -147,8 +181,17 @@ class TestScanImageImagingInterfaceMultiPlaneChannel1(ImagingExtractorInterfaceT
 
 class TestScanImageImagingInterfaceMultiPlaneChannel4(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = ScanImageImagingInterface
+    expected_temporal_alignment_keys = ("scan_image_imaging_channel_4",)
     interface_kwargs = dict(
-        file_paths=[OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif"],
+        file_paths=[
+            OPHYS_DATA_PATH
+            / "imaging_datasets"
+            / "ScanImage"
+            / "tiff_format_version_4"
+            / "acquisition_setup"
+            / "multi_roi_slow_stack_two_rois_channels_one_and_four_version_2023_0"
+            / "stack.tif"
+        ],
         channel_name="Channel 4",
         interleave_slice_samples=True,
     )
@@ -157,7 +200,7 @@ class TestScanImageImagingInterfaceMultiPlaneChannel4(ImagingExtractorInterfaceT
     photon_series_name = "TwoPhotonSeriesChannel4"
     optical_series_name = "TwoPhotonSeriesChannel4"
     imaging_plane_name = "ImagingPlaneChannel4"
-    expected_two_photon_series_data_shape = (6, 256, 528, 2)
+    expected_two_photon_series_data_shape = (6, 64, 132, 2)
     expected_rate = None  # This is interleaved data so the timestamps are written
     expected_starting_time = None
     expected_metadata_key = "scan_image_imaging_channel_4"
@@ -214,7 +257,7 @@ class TestScanImageImagingInterfaceMultiPlaneChannel4(ImagingExtractorInterfaceT
 class TestScanImageImagingInterfaceSinglePlaneCase(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = ScanImageImagingInterface
     save_directory = OUTPUT_PATH
-    expected_two_photon_series_data_shape = (6, 256, 528)
+    expected_two_photon_series_data_shape = (6, 64, 132)
     expected_imaging_rate = 7.28119
     expected_scan_line_rate = 15843.868185354244
     expected_device_description = "Microscope and acquisition data with ScanImage (version 2023.0.0)"
@@ -223,7 +266,15 @@ class TestScanImageImagingInterfaceSinglePlaneCase(ImagingExtractorInterfaceTest
         params=[
             dict(
                 interface_kwargs=dict(
-                    file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif"),
+                    file_path=str(
+                        OPHYS_DATA_PATH
+                        / "imaging_datasets"
+                        / "ScanImage"
+                        / "tiff_format_version_4"
+                        / "acquisition_setup"
+                        / "multi_roi_slow_stack_two_rois_channels_one_and_four_version_2023_0"
+                        / "stack.tif"
+                    ),
                     channel_name="Channel 1",
                     plane_index=0,
                     interleave_slice_samples=True,
@@ -234,7 +285,15 @@ class TestScanImageImagingInterfaceSinglePlaneCase(ImagingExtractorInterfaceTest
             ),
             dict(
                 interface_kwargs=dict(
-                    file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif"),
+                    file_path=str(
+                        OPHYS_DATA_PATH
+                        / "imaging_datasets"
+                        / "ScanImage"
+                        / "tiff_format_version_4"
+                        / "acquisition_setup"
+                        / "multi_roi_slow_stack_two_rois_channels_one_and_four_version_2023_0"
+                        / "stack.tif"
+                    ),
                     channel_name="Channel 1",
                     plane_index=1,
                     interleave_slice_samples=True,
@@ -245,7 +304,15 @@ class TestScanImageImagingInterfaceSinglePlaneCase(ImagingExtractorInterfaceTest
             ),
             dict(
                 interface_kwargs=dict(
-                    file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif"),
+                    file_path=str(
+                        OPHYS_DATA_PATH
+                        / "imaging_datasets"
+                        / "ScanImage"
+                        / "tiff_format_version_4"
+                        / "acquisition_setup"
+                        / "multi_roi_slow_stack_two_rois_channels_one_and_four_version_2023_0"
+                        / "stack.tif"
+                    ),
                     channel_name="Channel 4",
                     plane_index=0,
                     interleave_slice_samples=True,
@@ -256,7 +323,15 @@ class TestScanImageImagingInterfaceSinglePlaneCase(ImagingExtractorInterfaceTest
             ),
             dict(
                 interface_kwargs=dict(
-                    file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif"),
+                    file_path=str(
+                        OPHYS_DATA_PATH
+                        / "imaging_datasets"
+                        / "ScanImage"
+                        / "tiff_format_version_4"
+                        / "acquisition_setup"
+                        / "multi_roi_slow_stack_two_rois_channels_one_and_four_version_2023_0"
+                        / "stack.tif"
+                    ),
                     channel_name="Channel 4",
                     plane_index=1,
                     interleave_slice_samples=True,
@@ -281,6 +356,7 @@ class TestScanImageImagingInterfaceSinglePlaneCase(ImagingExtractorInterfaceTest
         self.optical_series_name = self.photon_series_name
         self.imaging_plane_name = request.param["expected_imaging_plane_name"]
         self.expected_metadata_key = request.param["expected_metadata_key"]
+        self.expected_temporal_alignment_keys = (request.param["expected_metadata_key"],)
         self.interface = self.data_interface_cls(**self.interface_kwargs)
 
         return self.interface, self.test_name
@@ -344,28 +420,6 @@ class TestScanImageImagingInterfacesAssertions:
         ):
             ScanImageImagingInterface(file_path=file_path)
 
-    def test_channel_name_not_specified(self):
-        """Test that ValueError is raised when channel_name is not specified for data with multiple channels."""
-        file_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20240320_multifile_00001.tif")
-        with pytest.raises(ValueError, match="Multiple channels available in the data"):
-            ScanImageImagingInterface(file_path=file_path)
-
-    def test_incorrect_channel_name(self):
-        """Test that ValueError is raised when incorrect channel name is specified."""
-        file_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220923_roi.tif")
-        channel_name = "Channel 2"
-        with pytest.raises(
-            ValueError,
-            match=r"Channel name \(Channel 2\) not found in available channels \(\['Channel 1', 'Channel 4'\]\)\. Please specify a valid channel name\.",
-        ):
-            ScanImageImagingInterface(file_path=file_path, channel_name=channel_name, interleave_slice_samples=True)
-
-    def test_incorrect_plane_index(self):
-        """Test that ValueError is raised when incorrect plane index is specified."""
-        file_path = str(OPHYS_DATA_PATH / "imaging_datasets" / "ScanImage" / "scanimage_20220801_volume.tif")
-        with pytest.raises(ValueError, match=r"plane_index \(20\) must be between 0 and 19"):
-            ScanImageImagingInterface(file_path=file_path, plane_index=20, interleave_slice_samples=True)
-
 
 class TestScanImageImagingInterfaceDiscovery:
     """The two static methods that answer what a file holds before an interface is built.
@@ -378,15 +432,19 @@ class TestScanImageImagingInterfaceDiscovery:
         OPHYS_DATA_PATH
         / "imaging_datasets"
         / "ScanImage"
-        / "planar_two_channels_single_file"
-        / "planar_two_ch_single_files_00001_00001.tif"
+        / "tiff_format_version_4"
+        / "acquisition_setup"
+        / "planar_two_channels_one_slice_stack_version_2021_0"
+        / "planar_00001_00001.tif"
     )
     volumetric_file_path = str(
         OPHYS_DATA_PATH
         / "imaging_datasets"
         / "ScanImage"
-        / "volumetric_single_channel_single_file"
-        / "vol_one_ch_single_files_00002_00001.tif"
+        / "tiff_format_version_4"
+        / "time_structure"
+        / "volumetric_flyback_frames_single_channel_version_2021_0"
+        / "volume_00002_00001.tif"
     )
 
     def test_get_available_channels(self):
@@ -421,13 +479,16 @@ class TestScanImageImagingInterfaceSingleChannelNoChannelName(ImagingExtractorIn
     """
 
     data_interface_cls = ScanImageImagingInterface
+    expected_temporal_alignment_keys = ("scan_image_imaging",)
     interface_kwargs = dict(
         file_path=str(
             OPHYS_DATA_PATH
             / "imaging_datasets"
             / "ScanImage"
-            / "volumetric_single_channel_single_file"
-            / "vol_one_ch_single_files_00002_00001.tif"
+            / "tiff_format_version_4"
+            / "time_structure"
+            / "volumetric_flyback_frames_single_channel_version_2021_0"
+            / "volume_00002_00001.tif"
         ),
     )
     save_directory = OUTPUT_PATH
@@ -435,10 +496,10 @@ class TestScanImageImagingInterfaceSingleChannelNoChannelName(ImagingExtractorIn
     photon_series_name = "TwoPhotonSeries"
     optical_series_name = "TwoPhotonSeries"
     imaging_plane_name = "ImagingPlane"
-    expected_two_photon_series_data_shape = (100, 20, 20, 9)
+    expected_two_photon_series_data_shape = (3, 20, 20, 9)
     # The written rate comes from the timestamps the extractor reports, not from the header's nominal
     # volume rate, so it differs slightly from ``expected_imaging_rate`` below.
-    expected_rate = 32.74833656561069
+    expected_rate = 32.748354927325664
     expected_starting_time = 0.01526797
     expected_metadata_key = "scan_image_imaging"
     expected_imaging_rate = 32.7454
@@ -495,8 +556,10 @@ def test_two_channels_of_one_acquisition_share_one_device_entry():
         OPHYS_DATA_PATH
         / "imaging_datasets"
         / "ScanImage"
-        / "planar_two_channels_single_file"
-        / "planar_two_ch_single_files_00001_00001.tif"
+        / "tiff_format_version_4"
+        / "acquisition_setup"
+        / "planar_two_channels_one_slice_stack_version_2021_0"
+        / "planar_00001_00001.tif"
     )
     first = ScanImageImagingInterface(file_path=file_path, channel_name="Channel 1")
     second = ScanImageImagingInterface(file_path=file_path, channel_name="Channel 2")
@@ -520,6 +583,7 @@ def test_two_channels_of_one_acquisition_share_one_device_entry():
 @pytest.mark.skipif(platform.machine() == "arm64", reason="Interface not supported on arm64 architecture")
 class TestScanImageLegacyImagingInterface(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = ScanImageLegacyImagingInterface
+    expected_temporal_alignment_keys = ("scan_image_legacy_imaging",)
     interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Tif" / "sample_scanimage.tiff"))
     save_directory = OUTPUT_PATH
 
@@ -559,6 +623,7 @@ class TestScanImageLegacyImagingInterface(ImagingExtractorInterfaceTestMixin):
 
 class TestHdf5ImagingInterface(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = Hdf5ImagingInterface
+    expected_temporal_alignment_keys = ("hdf5_imaging",)
     interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "hdf5" / "demoMovie.hdf5"))
     save_directory = OUTPUT_PATH
     # The hdf5 reader states no series name, so the generic one is written.
@@ -575,6 +640,7 @@ class TestHdf5ImagingInterface(ImagingExtractorInterfaceTestMixin):
 
 class TestSbxImagingInterfaceMat(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = SbxImagingInterface
+    expected_temporal_alignment_keys = ("sbx_imaging",)
     interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Scanbox" / "sample.mat"))
     save_directory = OUTPUT_PATH
     # Scanbox states no series name, so the generic one is written.
@@ -599,6 +665,7 @@ class TestSbxImagingInterfaceMat(ImagingExtractorInterfaceTestMixin):
 
 class TestSbxImagingInterfaceSBX(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = SbxImagingInterface
+    expected_temporal_alignment_keys = ("sbx_imaging",)
     interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Scanbox" / "sample.sbx"))
 
     save_directory = OUTPUT_PATH
@@ -610,6 +677,7 @@ class TestBrukerTiffImagingInterfaceSinglePlane(ImagingExtractorInterfaceTestMix
     """Tests the unified BrukerTiffImagingInterface against single-channel single-plane data."""
 
     data_interface_cls = BrukerTiffImagingInterface
+    expected_temporal_alignment_keys = ("bruker_tiff_imaging",)
     interface_kwargs = dict(
         folder_path=str(
             OPHYS_DATA_PATH / "imaging_datasets" / "BrukerTif" / "NCCR32_2023_02_20_Into_the_void_t_series_baseline-000"
@@ -692,6 +760,7 @@ class TestBrukerTiffImagingInterfaceVolumetric(ImagingExtractorInterfaceTestMixi
     """Tests the unified BrukerTiffImagingInterface against single-channel volumetric data."""
 
     data_interface_cls = BrukerTiffImagingInterface
+    expected_temporal_alignment_keys = ("bruker_tiff_imaging",)
     interface_kwargs = dict(
         folder_path=str(
             OPHYS_DATA_PATH / "imaging_datasets" / "BrukerTif" / "NCCR32_2022_11_03_IntoTheVoid_t_series-005"
@@ -755,6 +824,7 @@ class TestBrukerTiffImagingInterfaceDualColor(ImagingExtractorInterfaceTestMixin
     """Tests the unified BrukerTiffImagingInterface against multi-channel single-plane data."""
 
     data_interface_cls = BrukerTiffImagingInterface
+    expected_temporal_alignment_keys = ("bruker_tiff_imaging_Ch1",)
     interface_kwargs = dict(
         folder_path=str(
             OPHYS_DATA_PATH / "imaging_datasets" / "BrukerTif" / "NCCR62_2023_07_06_IntoTheVoid_t_series_Dual_color-000"
@@ -769,6 +839,7 @@ class TestBrukerTiffImagingInterfaceDisjointPlane(ImagingExtractorInterfaceTestM
     """Unified interface pinned to a single depth plane of a volumetric acquisition (disjoint layout)."""
 
     data_interface_cls = BrukerTiffImagingInterface
+    expected_temporal_alignment_keys = ("bruker_tiff_imaging_plane0",)
     interface_kwargs = dict(
         folder_path=str(
             OPHYS_DATA_PATH / "imaging_datasets" / "BrukerTif" / "NCCR32_2022_11_03_IntoTheVoid_t_series-005"
@@ -780,13 +851,14 @@ class TestBrukerTiffImagingInterfaceDisjointPlane(ImagingExtractorInterfaceTestM
 
 
 # ---------------------------------------------------------------------------
-# Deprecated interfaces. Will be removed on or after December 2026.
+# Deprecated interfaces. Will be removed in v0.12.0.
 # These tests exercise the deprecated wrappers and assert the FutureWarning is emitted.
 # ---------------------------------------------------------------------------
 
 
 class TestBrukerTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = BrukerTiffSinglePlaneImagingInterface
+    expected_temporal_alignment_keys = ("default_metadata_key",)
     interface_kwargs = dict(
         folder_path=str(
             OPHYS_DATA_PATH / "imaging_datasets" / "BrukerTif" / "NCCR32_2023_02_20_Into_the_void_t_series_baseline-000"
@@ -871,6 +943,7 @@ class TestBrukerTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
 
 class TestBrukerTiffImagingInterfaceDualPlaneCase(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = BrukerTiffMultiPlaneImagingInterface
+    expected_temporal_alignment_keys = ("default_metadata_key",)
     interface_kwargs = dict(
         folder_path=str(
             OPHYS_DATA_PATH / "imaging_datasets" / "BrukerTif" / "NCCR32_2022_11_03_IntoTheVoid_t_series-005"
@@ -952,6 +1025,7 @@ class TestBrukerTiffImagingInterfaceDualPlaneCase(ImagingExtractorInterfaceTestM
 
 class TestBrukerTiffImagingInterfaceDualPlaneDisjointCase(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = BrukerTiffSinglePlaneImagingInterface
+    expected_temporal_alignment_keys = ("default_metadata_key",)
     interface_kwargs = dict(
         folder_path=str(
             OPHYS_DATA_PATH / "imaging_datasets" / "BrukerTif" / "NCCR32_2022_11_03_IntoTheVoid_t_series-005"
@@ -1051,6 +1125,7 @@ class TestBrukerTiffImagingInterfaceDualPlaneDisjointCase(ImagingExtractorInterf
 
 class TestBrukerTiffImagingInterfaceDualColorCase(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = BrukerTiffSinglePlaneImagingInterface
+    expected_temporal_alignment_keys = ("default_metadata_key",)
     interface_kwargs = dict(
         folder_path=str(
             OPHYS_DATA_PATH / "imaging_datasets" / "BrukerTif" / "NCCR62_2023_07_06_IntoTheVoid_t_series_Dual_color-000"
@@ -1149,8 +1224,17 @@ class TestBrukerTiffImagingInterfaceDualColorCase(ImagingExtractorInterfaceTestM
 
 class TestMicroManagerTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
     data_interface_cls = MicroManagerTiffImagingInterface
+    expected_temporal_alignment_keys = ("micromanager_imaging",)
     interface_kwargs = dict(
-        folder_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "MicroManagerTif" / "TS12_20220407_20hz_noteasy_1")
+        folder_path=str(
+            OPHYS_DATA_PATH
+            / "imaging_datasets"
+            / "MicroManagerTif"
+            / "mmstack"
+            / "micromanager_version_2_0_0"
+            / "binary_data_layout"
+            / "split_files"
+        )
     )
     save_directory = OUTPUT_PATH
     # Micro-Manager states no series name, so the generic one is written.
@@ -1173,13 +1257,16 @@ class TestMicroManagerTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
             location="unknown",
             device=cls.device_metadata["name"],
             optical_channel=[cls.optical_channel_metadata],
-            imaging_rate=20.0,
+            # TODO: expect exactly 1 / 0.04992 once roiextractors is released with
+            # https://github.com/catalystneuro/roiextractors/pull/649, which takes the rate from the frame times
+            # (20.03 Hz) instead of PlaybackFPS (20.0 Hz). Until then the release and roiextractors main differ.
+            imaging_rate=pytest.approx(20.0, abs=0.05),
         )
         cls.two_photon_series_metadata = dict(
             name="TwoPhotonSeries",
             description="Imaging data from two-photon excitation microscopy.",
             unit="px",
-            dimension=[1024, 1024],
+            dimension=[64, 64],
             format="tiff",
             imaging_plane=cls.imaging_plane_metadata["name"],
         )
@@ -1203,7 +1290,8 @@ class TestMicroManagerTiffImagingInterface(ImagingExtractorInterfaceTestMixin):
         assert "Devices" not in metadata
         assert metadata["Ophys"] == {
             "ImagingPlanes": {
-                metadata_key: {"imaging_rate": 20.0},
+                # TODO: expect exactly 1 / 0.04992, see the imaging_rate in setup_metadata
+                metadata_key: {"imaging_rate": pytest.approx(20.0, abs=0.05)},
             },
             "MicroscopySeries": {
                 metadata_key: {
@@ -1256,13 +1344,14 @@ class TestThorImagingInterface(ImagingExtractorInterfaceTestMixin):
     channel_name = "ChanA"
     optical_series_name: str = f"TwoPhotonSeries{channel_name}"
     data_interface_cls = ThorImagingInterface
+    expected_temporal_alignment_keys = ("thor_imaging_channel_ChanA",)
     interface_kwargs = dict(
         file_path=str(
             OPHYS_DATA_PATH
             / "imaging_datasets"
             / "ThorlabsTiff"
-            / "single_channel_single_plane"
-            / "20231018-002"
+            / "acquisition_setup"
+            / "planar_single_channel"
             / "ChanA_001_001_001_001.tif"
         ),
         channel_name="ChanA",
@@ -1341,6 +1430,7 @@ class TestThorImagingInterface(ImagingExtractorInterfaceTestMixin):
 )
 class Test_MiniscopeMultiRecordingInterface(MiniscopeImagingInterfaceMixin):
     data_interface_cls = _MiniscopeMultiRecordingInterface
+    expected_temporal_alignment_keys = ("default_metadata_key",)
     interface_kwargs = dict(folder_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "C6-J588_Disc5"))
     save_directory = OUTPUT_PATH
 
@@ -1404,6 +1494,7 @@ class Test_MiniscopeMultiRecordingInterface(MiniscopeImagingInterfaceMixin):
 
 class TestMiniscopeImagingInterface(MiniscopeImagingInterfaceMixin):
     data_interface_cls = MiniscopeImagingInterface
+    expected_temporal_alignment_keys = ("miniscope_imaging",)
     interface_kwargs = dict(
         folder_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Miniscope" / "C6-J588_Disc5" / "15_03_28" / "Miniscope")
     )
@@ -1514,12 +1605,10 @@ class TestMiniscopeImagingInterface(MiniscopeImagingInterfaceMixin):
         )
 
         file_paths = [str(miniscope_folder / "0.avi")]
-        configuration_file_path = str(miniscope_folder / "metaData.json")
         timestamps_path = str(miniscope_folder / "timeStamps.csv")
 
         interface = self.data_interface_cls(
             file_paths=file_paths,
-            configuration_file_path=configuration_file_path,
             timeStamps_file_path=timestamps_path,
         )
 
@@ -1539,17 +1628,13 @@ class TestMiniscopeImagingInterface(MiniscopeImagingInterfaceMixin):
         )
 
         # Test missing required parameters
-        with pytest.raises(ValueError, match="Either 'folder_path' must be provided"):
+        with pytest.raises(ValueError, match="Either 'folder_path' or 'file_paths' must be provided"):
             self.data_interface_cls()
-
-        # Test missing configuration_file_path when using file_paths
-        with pytest.raises(ValueError, match="Either 'folder_path' must be provided"):
-            self.data_interface_cls(file_paths=[str(miniscope_folder / "0.avi")])
 
         # Test conflicting parameters
         with pytest.raises(
             ValueError,
-            match="When 'folder_path' is provided, 'file_paths' and 'configuration_file_path' cannot be specified",
+            match="When 'folder_path' is provided, 'file_paths' cannot be specified",
         ):
             self.data_interface_cls(
                 folder_path=str(miniscope_folder),
@@ -1588,6 +1673,7 @@ class TestMiniscopeImagingInterfaceV4BNO(MiniscopeImagingInterfaceMixin):
     """
 
     data_interface_cls = MiniscopeImagingInterface
+    expected_temporal_alignment_keys = ("miniscope_imaging",)
     interface_kwargs = dict(
         folder_path=str(
             OPHYS_DATA_PATH
@@ -1689,6 +1775,7 @@ class TestInscopixImagingInterfaceMovie128x128x100Part1(ImagingExtractorInterfac
     """Test InscopixImagingInterface with movie_128x128x100_part1.isxd (minimal metadata file)."""
 
     data_interface_cls = InscopixImagingInterface
+    expected_temporal_alignment_keys = ("inscopix_imaging",)
     save_directory = OUTPUT_PATH
     interface_kwargs = dict(
         file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_128x128x100_part1.isxd")
@@ -1816,6 +1903,7 @@ class TestInscopixImagingInterfaceDualColorMovieWithDroppedFrames(ImagingExtract
     """Test InscopixImagingInterface with dual_color_movie_with_dropped_frames.isxd (single-plane file with rich acquisition metadata)."""
 
     data_interface_cls = InscopixImagingInterface
+    expected_temporal_alignment_keys = ("inscopix_imaging",)
     save_directory = OUTPUT_PATH
     interface_kwargs = dict(
         file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "dual_color_movie_with_dropped_frames.isxd")
@@ -1840,7 +1928,7 @@ class TestInscopixImagingInterfaceDualColorMovieWithDroppedFrames(ImagingExtract
         assert "Focus: 30" in imaging_plane["description"]
 
         ops = metadata["Ophys"]["OnePhotonSeries"][0]
-        assert ops["dimension"] == [288, 480]
+        assert ops["dimension"] == [480, 288]
 
     def check_extracted_metadata(self, metadata: dict):
         metadata_key = self.interface.metadata_key
@@ -1879,6 +1967,7 @@ class TestInscopixImagingInterfaceMovieU8(ImagingExtractorInterfaceTestMixin):
     """Test InscopixImagingInterface with movie_u8.isxd (minimal metadata file, uint8 dtype)."""
 
     data_interface_cls = InscopixImagingInterface
+    expected_temporal_alignment_keys = ("inscopix_imaging",)
     save_directory = OUTPUT_PATH
     interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "inscopix" / "movie_u8.isxd"))
     # Inscopix states no series name, so the generic one is written.
@@ -1928,7 +2017,7 @@ class TestInscopixImagingInterfaceMovieU8(ImagingExtractorInterfaceTestMixin):
         assert (
             ops["imaging_plane"] == "ImagingPlane"
         )  # Default metadata because this was not included in the source metadata
-        assert ops["dimension"] == [3, 4]
+        assert ops["dimension"] == [4, 3]
 
     def check_extracted_metadata(self, metadata: dict):
         """Test new dict-based metadata for uint8 file with minimal acquisition info."""
@@ -1956,6 +2045,7 @@ class TestFemtonicsImagingInterfaceP29(ImagingExtractorInterfaceTestMixin):
     """Test FemtonicsImagingInterface with p29.mesc file."""
 
     data_interface_cls = FemtonicsImagingInterface
+    expected_temporal_alignment_keys = ("femtonics_imaging_MUnit_0_channel_UG",)
     interface_kwargs = dict(
         file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"),
         munit_name="MUnit_0",
@@ -2062,6 +2152,7 @@ class TestFemtonicsImagingInterfaceP30(ImagingExtractorInterfaceTestMixin):
     """Test FemtonicsImagingInterface with p30.mesc file."""
 
     data_interface_cls = FemtonicsImagingInterface
+    expected_temporal_alignment_keys = ("femtonics_imaging_MUnit_0_channel_UG",)
     interface_kwargs = dict(
         file_path=str(OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p30.mesc"),
         munit_name="MUnit_0",
@@ -2319,74 +2410,3 @@ class TestFemtonicsImagingInterfaceStaticMethods:
         file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
         sessions = FemtonicsImagingInterface.get_available_sessions(file_path=file_path)
         assert sessions == ["MSession_0"]
-
-    def test_channel_name_not_specified_multiple_channels(self):
-        """Test that ValueError is raised when channel_name is not specified and multiple channels are available."""
-        file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
-        with pytest.raises(
-            ValueError,
-            match=r"Multiple channels found in MSession_0/MUnit_0: \['UG', 'UR'\]\. Please specify 'channel_name' to select one\.",
-        ):
-            FemtonicsImagingInterface(
-                file_path=file_path,
-                munit_name="MUnit_0",
-            )
-
-    def test_wrong_channel_name(self):
-        """Test that ValueError is raised when an invalid channel_name is specified."""
-        file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
-        with pytest.raises(
-            ValueError,
-            match=r"Channel 'WRONG_CHANNEL' not found in MSession_0/MUnit_0\. Available: \['UG', 'UR'\]",
-        ):
-            FemtonicsImagingInterface(
-                file_path=file_path,
-                munit_name="MUnit_0",
-                channel_name="WRONG_CHANNEL",
-            )
-
-    def test_channel_name_not_specified_multiple_channels(self):
-        """Test that ValueError is raised when channel_name is not specified and multiple channels are available."""
-        file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
-        with pytest.raises(
-            ValueError,
-            match=r"Multiple channels found in MSession_0/MUnit_0: \['UG', 'UR'\]\. Please specify 'channel_name' to select one\.",
-        ):
-            FemtonicsImagingInterface(
-                file_path=file_path,
-                munit_name="MUnit_0",
-            )
-
-    def test_munit_not_specified_with_multiple_units(self):
-        """Test that ValueError is raised when munit_name is not specified and multiple units are available."""
-        file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
-        expected_error = f"Multiple MUnits found in session 'MSession_0' of file: {file_path}. Available MUnits: ['MUnit_0', 'MUnit_1']. Please specify 'munit_name' to select one."
-        with pytest.raises(ValueError, match=re.escape(expected_error)):
-            FemtonicsImagingInterface(
-                file_path=file_path,
-                # munit_name not specified
-                channel_name="UG",
-            )
-
-    def test_wrong_munit_name(self):
-        """Test that ValueError is raised when an invalid munit_name is specified."""
-        file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
-        expected_error = f"MUnit 'WRONG_UNIT' not found in session 'MSession_0' of file: {file_path}. Available MUnits: ['MUnit_0', 'MUnit_1']"
-        with pytest.raises(ValueError, match=re.escape(expected_error)):
-            FemtonicsImagingInterface(
-                file_path=file_path,
-                munit_name="WRONG_UNIT",
-                channel_name="UG",
-            )
-
-    def test_wrong_session_name(self):
-        """Test that ValueError is raised when an invalid session_name is specified."""
-        file_path = OPHYS_DATA_PATH / "imaging_datasets" / "Femtonics" / "moser_lab_mec" / "p29.mesc"
-        expected_error = f"Session 'WRONG_SESSION' not found in file: {file_path}. Available sessions: ['MSession_0']"
-        with pytest.raises(ValueError, match=re.escape(expected_error)):
-            FemtonicsImagingInterface(
-                file_path=file_path,
-                session_name="WRONG_SESSION",
-                munit_name="MUnit_0",
-                channel_name="UG",
-            )

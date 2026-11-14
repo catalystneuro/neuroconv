@@ -5,6 +5,12 @@
   "behavior/boris.rst": {
     "extra": "boris"
   },
+  "behavior/ethovision.rst": {
+    "extra": "ethovision"
+  },
+  "behavior/dannce.rst": {
+    "extra": "dannce"
+  },
   "behavior/deeplabcut.rst": {
     "extra": "deeplabcut"
   },
@@ -23,6 +29,9 @@
   },
   "behavior/moseq_keypoints.rst": {
     "extra": "moseq"
+  },
+  "behavior/optitrack.rst": {
+    "extra": "optitrack"
   },
   "behavior/sleap.rst": {
     "extra": "sleap"
@@ -50,6 +59,9 @@
   },
   "events/doric_events.rst": {
     "extra": "doric_events"
+  },
+  "events/inscopix_gpio.rst": {
+    "extra": "inscopix"
   },
   "events/medpc_events.rst": {
     "extra": "medpc"

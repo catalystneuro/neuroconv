@@ -18,7 +18,7 @@ pytestmark = pytest.mark.filterwarnings(
 class TestThorConverterSingleChannel:
     """A single-channel acquisition writes the same file the interface writes on its own."""
 
-    file_path = THORLABS_FOLDER_PATH / "single_channel_single_plane" / "20231018-002" / "ChanA_001_001_001_001.tif"
+    file_path = THORLABS_FOLDER_PATH / "acquisition_setup" / "planar_single_channel" / "ChanA_001_001_001_001.tif"
 
     def test_run_conversion(self, tmp_path):
         converter = ThorConverter(file_path=self.file_path)
@@ -65,7 +65,12 @@ class TestThorConverterSingleChannel:
 class TestThorConverterMultiChannel:
     """Two channels over three z planes, written in one call."""
 
-    file_path = THORLABS_FOLDER_PATH / "multi_channel_multi_plane" / "lzw_compressed" / "ChanA_0001_0001_0001_0001.tif"
+    file_path = (
+        THORLABS_FOLDER_PATH
+        / "binary_data_layout"
+        / "two_channels_three_planes_lzw_compressed"
+        / "ChanA_0001_0001_0001_0001.tif"
+    )
 
     def test_get_available_channels(self):
         channel_names = ThorConverter.get_available_channels(file_path=self.file_path)

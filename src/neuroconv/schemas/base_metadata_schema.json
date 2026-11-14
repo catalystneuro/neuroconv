@@ -112,8 +112,8 @@
       "properties": {
         "age": {
           "type": "string",
-          "description": "The age of the subject. The ISO 8601 Duration format is recommended, e.g., 'P90D' for 90 days old, 'P2W' for 2 weeks old, 'P18Y' for 18 years old.",
-          "pattern": "^P((\\d+Y)?(\\d+M)?(\\d+D)?(T(\\d+H)?(\\d+M)?(\\d+S)?))|(\\d+W)?$"
+          "description": "The age of the subject, as an ISO 8601 duration, e.g., 'P90D' for 90 days old, 'P2W' for 2 weeks old, 'P18Y' for 18 years old, or as a range of two durations with either bound left out, e.g., 'P3M/P6M' for 3 to 6 months old, 'P8W/' for at least 8 weeks old, or '/' when the age is not known.",
+          "pattern": "^(?:P(?!$|/)(?:\\d+(?:\\.\\d+)?Y)?(?:\\d+(?:\\.\\d+)?M)?(?:\\d+(?:\\.\\d+)?W)?(?:\\d+(?:\\.\\d+)?D)?(?:T(?=\\d)(?:\\d+(?:\\.\\d+)?H)?(?:\\d+(?:\\.\\d+)?M)?(?:\\d+(?:\\.\\d+)?S)?)?|(?:P(?!$|/)(?:\\d+(?:\\.\\d+)?Y)?(?:\\d+(?:\\.\\d+)?M)?(?:\\d+(?:\\.\\d+)?W)?(?:\\d+(?:\\.\\d+)?D)?(?:T(?=\\d)(?:\\d+(?:\\.\\d+)?H)?(?:\\d+(?:\\.\\d+)?M)?(?:\\d+(?:\\.\\d+)?S)?)?)?/(?:P(?!$|/)(?:\\d+(?:\\.\\d+)?Y)?(?:\\d+(?:\\.\\d+)?M)?(?:\\d+(?:\\.\\d+)?W)?(?:\\d+(?:\\.\\d+)?D)?(?:T(?=\\d)(?:\\d+(?:\\.\\d+)?H)?(?:\\d+(?:\\.\\d+)?M)?(?:\\d+(?:\\.\\d+)?S)?)?)?)$"
         },
         "age__reference": {
           "type": "string",
@@ -161,6 +161,33 @@
         "strain": {
           "type": "string",
           "description": "The strain of the subject, e.g., 'C57BL/6J'"
+        }
+      }
+    },
+    "ExternalResources": {
+      "type": "object",
+      "description": "External resource terms for the whole file, one map per kind of value, each keyed by the exact value string it annotates. Written into the file as HERD references by neuroconv.tools.external_resources.add_external_resources_to_nwbfile.",
+      "additionalProperties": false,
+      "properties": {
+        "species": {
+          "description": "Terms for Subject.species, keyed by the species value.",
+          "$ref": "#/definitions/TermMap"
+        },
+        "strain": {
+          "description": "Terms for Subject.strain, keyed by the strain value.",
+          "$ref": "#/definitions/TermMap"
+        },
+        "anatomical_structures": {
+          "description": "Terms for anatomical location fields (electrodes, electrode groups, imaging planes, intracellular electrodes, optogenetic stimulus sites, viral vector injections, fiber photometry) and ndx-pose Skeleton node names (pose-estimation keypoints), keyed by the location or node name.",
+          "$ref": "#/definitions/TermMap"
+        },
+        "experimenter": {
+          "description": "Terms for the names in NWBFile.experimenter, keyed by the name.",
+          "$ref": "#/definitions/TermMap"
+        },
+        "institution": {
+          "description": "Terms for NWBFile.institution, keyed by the institution value.",
+          "$ref": "#/definitions/TermMap"
         }
       }
     },
@@ -225,6 +252,35 @@
           "type": "string",
           "description": "DeviceModel class or extension type to build."
         }
+      }
+    },
+    "Term": {
+      "title": "Term",
+      "description": "An external resource entity, e.g. {'id': 'NCBITaxon:10090', 'uri': 'http://purl.obolibrary.org/obo/NCBITaxon_10090'}.",
+      "type": "object",
+      "required": ["id", "uri"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The entity's compact identifier (CURIE), e.g. 'MBA:382'."
+        },
+        "uri": {
+          "type": "string",
+          "minLength": 1,
+          "description": "A resolvable URI for the entity."
+        }
+      }
+    },
+    "TermMap": {
+      "title": "TermMap",
+      "description": "Maps each value as written in the file to one term, or to a list of terms to annotate it with several resources.",
+      "type": "object",
+      "additionalProperties": {
+        "oneOf": [
+          {"$ref": "#/definitions/Term"},
+          {"type": "array", "minItems": 1, "items": {"$ref": "#/definitions/Term"}}
+        ]
       }
     }
   }

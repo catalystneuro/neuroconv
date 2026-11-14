@@ -15,7 +15,7 @@ from ....tools.events import (
 from ....tools.signal_processing import (
     _condition_signal,
     _detect_events,
-    _frames_to_seconds,
+    _samples_to_seconds,
 )
 from ....utils import DeepDict
 
@@ -82,15 +82,10 @@ class PyPhotometryEventsInterface(BaseEventsInterface):
         verbose : bool, optional
             Whether to print status messages, default = False.
         """
-        super().__init__(
-            file_path=file_path,
-            detection_configuration=detection_configuration,
-            verbose=verbose,
-        )
         self.metadata_key = metadata_key or "pyphotometry_events"
         # Read once and kept: a photometry session is small enough to hold, and separating the words
         # into signals is what tells us which lines the file carries.
-        self._recording = _read_ppd(self.source_data["file_path"])
+        self._recording = _read_ppd(file_path)
         # available_signals: signal_source_id ("digital_1") -> its descriptor. Every signal a .ppd carries
         # here is a digital line, one bit wide by construction, and kind "line" is what lets the validator
         # reject a bit carve on one.
@@ -112,6 +107,11 @@ class PyPhotometryEventsInterface(BaseEventsInterface):
         # same identifier. Validation covers structure and identifier resolution alike.
         _validate_detection_configuration(detection_configuration, self._available_signals)
         self._detection_configuration = detection_configuration
+        super().__init__(
+            file_path=file_path,
+            detection_configuration=detection_configuration,
+            verbose=verbose,
+        )
 
     def get_event_type_source_ids(self) -> list[str]:
         """The event types the configuration resolves to, read from nothing."""
@@ -192,8 +192,13 @@ class PyPhotometryEventsInterface(BaseEventsInterface):
 
             for event_type_source_id, spec in detection_specs:
                 conditioned = _condition_signal(digital_signal.data, spec["signal_conditioning"])
-                onset_frames, offset_frames = _detect_events(conditioned, spec["detection"])
-                onsets, durations = _frames_to_seconds(onset_frames, offset_frames, read_clock)
+                onset_samples, offset_samples = _detect_events(conditioned, spec["detection"])
+                onsets, durations = _samples_to_seconds(
+                    onset_samples=onset_samples,
+                    offset_samples=offset_samples,
+                    timestamps=read_clock,
+                    event_time_convention=spec.get("event_time_convention", "sample_after_transition"),
+                )
                 events_data_dict[event_type_source_id] = _EventsData(
                     event_type_source_id=event_type_source_id,
                     timestamps=onsets,

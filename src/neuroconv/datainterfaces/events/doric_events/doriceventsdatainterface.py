@@ -17,7 +17,7 @@ from ....tools.events import (
 from ....tools.signal_processing import (
     _condition_signal,
     _detect_events,
-    _frames_to_seconds,
+    _samples_to_seconds,
 )
 
 
@@ -83,16 +83,11 @@ class DoricEventsInterface(BaseEventsInterface):
         verbose : bool, optional
             Whether to print status messages, default = False.
         """
-        super().__init__(
-            file_path=file_path,
-            detection_configuration=detection_configuration,
-            verbose=verbose,
-        )
         self.metadata_key = metadata_key or "doric_events"
         # available_signals: signal_source_id (the line's dataset key, e.g. "Camera1" or "DI--O-1") -> its
         # {kind, data_path, time_path} descriptor. Every discovered signal is a digital line, already a
         # 0/1 signal, and kind "line" is what lets the validator reject a bit carve on one.
-        self._available_signals = self._get_available_signals(self.source_data["file_path"])
+        self._available_signals = self._get_available_signals(file_path)
         if detection_configuration is None:
             # The default, used only when the caller passes none: read every discovered line as a
             # "high_period", the lossless durative reading (onset at the rising edge, duration to the
@@ -107,6 +102,11 @@ class DoricEventsInterface(BaseEventsInterface):
         # same identifier. Validation covers structure and identifier resolution (rules 4 and 5) alike.
         _validate_detection_configuration(detection_configuration, self._available_signals)
         self._detection_configuration = detection_configuration
+        super().__init__(
+            file_path=file_path,
+            detection_configuration=detection_configuration,
+            verbose=verbose,
+        )
 
     def get_event_type_source_ids(self) -> list[str]:
         """The event types the configuration resolves to, read from nothing."""
@@ -275,8 +275,13 @@ class DoricEventsInterface(BaseEventsInterface):
                     # A .doric digital line is already 0/1, so its cut is the derived midpoint, which
                     # lands between the two levels and hands detection back the same line.
                     conditioned = _condition_signal(data, spec["signal_conditioning"])
-                    onset_frames, offset_frames = _detect_events(conditioned, spec["detection"])
-                    onsets, durations = _frames_to_seconds(onset_frames, offset_frames, time)
+                    onset_samples, offset_samples = _detect_events(conditioned, spec["detection"])
+                    onsets, durations = _samples_to_seconds(
+                        onset_samples=onset_samples,
+                        offset_samples=offset_samples,
+                        timestamps=time,
+                        event_time_convention=spec.get("event_time_convention", "sample_after_transition"),
+                    )
                     events_data_dict[event_type_source_id] = _EventsData(
                         event_type_source_id=event_type_source_id,
                         timestamps=onsets,

@@ -24,6 +24,7 @@ class TestPerArrayLernerLab(EventsInterfaceTestMixin):
     pairing the port-entry onsets in G with the durations in E."""
 
     data_interface_cls = MedPCArrayEventsInterface
+    expected_temporal_alignment_keys = ("A", "B", "C", "D", "G")
 
     event_names = {
         "A": "left_nose_poke_times",
@@ -120,7 +121,7 @@ class TestPerArrayLernerLab(EventsInterfaceTestMixin):
     def test_alignment_shifts_the_written_times(self, setup_interface):
         metadata = self.edit_metadata(self.interface.get_metadata())
         original_timestamps = self.interface.get_event_times("A")
-        self.interface.alignment.shift_times(delta=1.23)
+        self.interface.temporal_alignment.shift_times(delta=1.23)
 
         assert np.allclose(self.interface.get_event_times("A"), original_timestamps + 1.23)
 
@@ -173,6 +174,7 @@ class TestPerArrayTyeLab(EventsInterfaceTestMixin):
     and whose `.MPC` source names what each array holds."""
 
     data_interface_cls = MedPCArrayEventsInterface
+    expected_temporal_alignment_keys = ("P", "N", "Q", "R", "S", "H")
     event_names = {
         "P": "lick_start_ethanol",
         "N": "lick_end_ethanol",
@@ -295,6 +297,7 @@ class TestPackedWithLegend(EventsInterfaceTestMixin):
     and the legend of `ExampleFile2` names each code."""
 
     data_interface_cls = MedPCPackedEventsInterface
+    expected_temporal_alignment_keys = ("001", "011", "051", "021", "052", "012", "050", "022")
     event_names = {
         "001": "lick",
         "011": "pump_a_on",
@@ -357,8 +360,6 @@ class TestPackedWithLegend(EventsInterfaceTestMixin):
         # time by two and a half, which pushes the last event past the end the header states.
         interface_kwargs = dict(self.interface_kwargs)
         interface_kwargs["time_unit"] = 0.005
-        interface = MedPCPackedEventsInterface(**interface_kwargs)
-
         expected_message = (
             "The last event read from the MedPC variable 'A' is at 3369.73 s, but the header says the "
             "session ran 1812 s, from '10:38:46' to '11:08:58'. "
@@ -372,7 +373,7 @@ class TestPackedWithLegend(EventsInterfaceTestMixin):
             "at https://github.com/catalystneuro/neuroconv/issues with the program and a sample file."
         )
         with pytest.raises(ValueError, match=re.escape(expected_message)):
-            interface.get_event_times("001")
+            MedPCPackedEventsInterface(**interface_kwargs)
 
     def test_round_trip(self, setup_interface, tmp_path):
         metadata = self.edit_metadata(self.interface.get_metadata())
@@ -390,6 +391,7 @@ class TestPackedWithoutLegend(EventsInterfaceTestMixin):
     beside it is a later version whose numbering disagrees with the file, so the codes cannot be named."""
 
     data_interface_cls = MedPCPackedEventsInterface
+    expected_temporal_alignment_keys = ("036", "034", "004", "029", "041", "001", "030", "002", "012", "032")
     event_names = {
         code: f"code_{code}" for code in ("036", "034", "004", "029", "041", "001", "030", "032", "002", "012")
     }
@@ -462,6 +464,21 @@ class TestPackedVariableWidthCodes(EventsInterfaceTestMixin):
     against it rather than inferred."""
 
     data_interface_cls = MedPCPackedEventsInterface
+    expected_temporal_alignment_keys = (
+        "999",
+        "987",
+        "100",
+        "110",
+        "400",
+        "240",
+        "300",
+        "200",
+        "998",
+        "531",
+        "307",
+        "218",
+        "155",
+    )
     event_names = {
         "999": "session_start",
         "987": "pre_cs_period",
@@ -543,8 +560,6 @@ class TestPackedVariableWidthCodes(EventsInterfaceTestMixin):
         # lands at over twelve hours, which the session-length check refuses.
         interface_kwargs = dict(self.interface_kwargs)
         interface_kwargs["time_unit"] = "deciseconds"
-        interface = MedPCPackedEventsInterface(**interface_kwargs)
-
         expected_message = (
             "The last event read from the MedPC variable 'J' is at 44078.4 s, but the header says the "
             "session ran 4408 s, from '10:33:49' to '11:47:17'. "
@@ -558,7 +573,7 @@ class TestPackedVariableWidthCodes(EventsInterfaceTestMixin):
             "at https://github.com/catalystneuro/neuroconv/issues with the program and a sample file."
         )
         with pytest.raises(ValueError, match=re.escape(expected_message)):
-            interface.get_event_times("100")
+            MedPCPackedEventsInterface(**interface_kwargs)
 
     def test_round_trip(self, setup_interface, tmp_path):
         metadata = self.edit_metadata(self.interface.get_metadata())
@@ -577,6 +592,7 @@ class TestPackedRelativeMode(EventsInterfaceTestMixin):
     values are times only once accumulated."""
 
     data_interface_cls = MedPCPackedEventsInterface
+    expected_temporal_alignment_keys = ("1",)
     event_names = {"1": "lever_press"}
 
     interface_kwargs = dict(
@@ -621,8 +637,6 @@ class TestPackedRelativeMode(EventsInterfaceTestMixin):
         # series that runs backwards, which is the only signal the file gives that it was misread.
         interface_kwargs = dict(self.interface_kwargs)
         interface_kwargs["relative_mode"] = False
-        interface = MedPCPackedEventsInterface(**interface_kwargs)
-
         expected_message = (
             "The onsets read from the MedPC variable 'C' (event type '1') run backwards: event 0 is at "
             "6.4 s and event 1 is at 1.2 s. "
@@ -635,7 +649,7 @@ class TestPackedRelativeMode(EventsInterfaceTestMixin):
             "https://github.com/catalystneuro/neuroconv/issues with the program and a sample file."
         )
         with pytest.raises(ValueError, match=re.escape(expected_message)):
-            interface.get_event_times("1")
+            MedPCPackedEventsInterface(**interface_kwargs)
 
     def test_round_trip(self, setup_interface, tmp_path):
         metadata = self.edit_metadata(self.interface.get_metadata())
@@ -737,8 +751,6 @@ class TestEncodingEdgeCases:
         path = tmp_path / "no_decimals.txt"
         self.write_medpc_file(path, {"A": [10602.0, 10900.0]}, decimals=0)
 
-        interface = MedPCPackedEventsInterface(file_path=path, session_header=self.SESSION_HEADER, events_variable="A")
-
         expected_message = (
             "The values of 'A' print no digits after the decimal point, so they cannot carry a packed "
             "code. A program whose `DISKFORMAT` leaves no decimals either writes the codes into a companion "
@@ -747,7 +759,7 @@ class TestEncodingEdgeCases:
             "a sample file."
         )
         with pytest.raises(ValueError, match=re.escape(expected_message)):
-            interface.get_event_type_source_ids()
+            MedPCPackedEventsInterface(file_path=path, session_header=self.SESSION_HEADER, events_variable="A")
 
     def test_events_grouped_by_type_are_not_read_as_backwards(self, tmp_path):
         # A program may write every event of one type before the next, so the pooled array is not sorted even
@@ -769,8 +781,6 @@ class TestEncodingEdgeCases:
         path = tmp_path / "interleaved.txt"
         self.write_medpc_file(path, {"B": [1.003, 75.001, 78.001, 17.003]})
 
-        interface = MedPCPackedEventsInterface(file_path=path, session_header=self.SESSION_HEADER, events_variable="B")
-
         expected_message = (
             "The onsets read from the MedPC variable 'B' run backwards: event 2 is at 78 s and event 3 is "
             "at 17 s. "
@@ -783,7 +793,7 @@ class TestEncodingEdgeCases:
             "https://github.com/catalystneuro/neuroconv/issues with the program and a sample file."
         )
         with pytest.raises(ValueError, match=re.escape(expected_message)):
-            interface.get_event_type_source_ids()
+            MedPCPackedEventsInterface(file_path=path, session_header=self.SESSION_HEADER, events_variable="B")
 
     def test_a_resolution_of_zero_raises(self, tmp_path):
         path = tmp_path / "zero_rate.txt"

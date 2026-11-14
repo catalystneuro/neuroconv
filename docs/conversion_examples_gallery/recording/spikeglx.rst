@@ -187,8 +187,8 @@ arguments take the board's names).
 
 .. note::
 
-    The older ``digital_channel_groups`` argument is deprecated and will be removed on or after
-    August 2027. It still works, translated onto the grammar above: a group becomes a rising and a
+    The older ``digital_channel_groups`` argument is deprecated and will be removed in
+    v0.13.0. It still works, translated onto the grammar above: a group becomes a rising and a
     falling reading of its line routed into one table, so it still yields one object holding every
     edge, and its ``labels_map`` still names the two edges. What changes is that the object is an
     ``EventsTable`` in ``nwbfile.events`` rather than an ``ndx-events`` ``LabeledEvents`` in

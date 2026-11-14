@@ -13,7 +13,7 @@ from ....tools.events import (
 from ....tools.signal_processing import (
     _condition_signal,
     _detect_events,
-    _frames_to_seconds,
+    _samples_to_seconds,
 )
 from ....utils import DeepDict
 
@@ -25,7 +25,7 @@ from ....utils import DeepDict
 # spikeglxnidqinterface.py only because that module imports this one.
 _NEO_ADDRESSING_DEPRECATION = (
     "Addressing a NIDQ channel by neo's stream-qualified id ('nidq#XA0') is deprecated and will be "
-    "removed on or after August 2027. Use the board's own name ('XA0'), which is what the SpikeGLX "
+    "removed in v0.13.0. Use the board's own name ('XA0'), which is what the SpikeGLX "
     "header, CatGT and get_channel_names() all show. The stream prefix distinguishes nothing here, "
     "since this interface only ever reads the nidq stream."
 )
@@ -91,7 +91,6 @@ class _SpikeGLXNIDQEventsInterface(BaseEventsInterface):
             SpikeGLXRecordingExtractor,
         )
 
-        super().__init__(folder_path=folder_path, verbose=verbose)
         self.metadata_key = metadata_key
         # Its own reader rather than the parent's, so this stays an ordinary interface: source data is a
         # path, it can be constructed and tested on its own, and nothing in its signature is a live
@@ -125,7 +124,7 @@ class _SpikeGLXNIDQEventsInterface(BaseEventsInterface):
             # own name. neo's stream-qualified id ("nidq#XD0") is accepted too, as a temporary
             # backwards-compatibility shim: this interface handed those ids back from get_channel_names()
             # and took them in analog_channel_groups for its first few releases, so user code has them.
-            # Both now warn and go on or after August 2027, together with this block and the collision
+            # Both now warn and go in v0.13.0, together with this block and the collision
             # check inside it, which exists only because two spellings do.
             normalized = {}
             used_neo_addressing = False
@@ -158,6 +157,7 @@ class _SpikeGLXNIDQEventsInterface(BaseEventsInterface):
         if detection_configuration:
             _validate_detection_configuration(detection_configuration, self._available_signals)
         self._detection_configuration = detection_configuration
+        super().__init__(folder_path=folder_path, verbose=verbose)
 
     def get_event_type_source_ids(self) -> list[str]:
         """The event types the configuration resolves to, read from nothing; none for the ``{}`` sentinel."""
@@ -294,9 +294,12 @@ class _SpikeGLXNIDQEventsInterface(BaseEventsInterface):
             trace = np.ravel(self.recording_extractor.get_traces(channel_ids=[channel_id]))
             for event_type_source_id, spec in detection_specs:
                 conditioned = _condition_signal(trace, spec["signal_conditioning"])
-                onset_frames, offset_frames = _detect_events(conditioned, spec["detection"])
-                onsets, durations = _frames_to_seconds(
-                    onset_frames, offset_frames, self.recording_extractor.sample_index_to_time
+                onset_samples, offset_samples = _detect_events(conditioned, spec["detection"])
+                onsets, durations = _samples_to_seconds(
+                    onset_samples=onset_samples,
+                    offset_samples=offset_samples,
+                    timestamps=self.recording_extractor.sample_index_to_time,
+                    event_time_convention=spec.get("event_time_convention", "sample_after_transition"),
                 )
                 events_data_dict[event_type_source_id] = _EventsData(
                     event_type_source_id=event_type_source_id,

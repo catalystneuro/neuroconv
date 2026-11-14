@@ -25,6 +25,10 @@ Inscopix Imaging
 ----------------
 .. automodule:: neuroconv.datainterfaces.ophys.inscopix.inscopiximagingdatainterface
 
+Inscopix GPIO
+-------------
+.. automodule:: neuroconv.datainterfaces.ophys.inscopix.inscopixgpiodatainterface
+
 MicroManager Tiff Imaging
 -------------------------
 .. automodule:: neuroconv.datainterfaces.ophys.micromanagertiff.micromanagertiffdatainterface

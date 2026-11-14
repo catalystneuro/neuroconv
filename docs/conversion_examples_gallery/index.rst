@@ -120,6 +120,7 @@ Keypoint estimation
 .. toctree::
     :maxdepth: 1
 
+    DANNCE <behavior/dannce>
     DeepLabCut <behavior/deeplabcut>
     LightningPose <behavior/lightningpose>
     SLEAP <behavior/sleap>
@@ -141,8 +142,10 @@ Behavior
 
     Audio <behavior/audio>
     BORIS <behavior/boris>
+    EthoVision <behavior/ethovision>
     FicTrac <behavior/fictrac>
     Neuralynx NVT <behavior/neuralynx_nvt>
+    OptiTrack <behavior/optitrack>
     Videos <behavior/video>
     MedPC <behavior/medpc>
 
@@ -155,6 +158,7 @@ Events
 
     CSV <events/csv_events>
     Doric <events/doric_events>
+    Inscopix GPIO <events/inscopix_gpio>
     MedPC <events/medpc_events>
     NPM <events/npm_events>
     pyPhotometry <events/pyphotometry_events>
@@ -189,5 +193,5 @@ Common interface combinations
     combinations/ecephys_pose_estimation
 
 .. note::
-If you do not see the format you need, feel free to `request it <https://github.com/catalystneuro/neuroconv/issues/new?assignees=&labels=enhancement,data+interfaces&template=format_request.yml>`_ or
-  :ref:`build-data-interface`.
+    If you do not see the format you need, feel free to `request it <https://github.com/catalystneuro/neuroconv/issues/new?assignees=&labels=enhancement,data+interfaces&template=format_request.yml>`_ or
+    :ref:`build-data-interface`.

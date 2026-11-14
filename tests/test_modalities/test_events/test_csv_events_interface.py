@@ -18,6 +18,7 @@ TWO_TYPE_ROWS = [(1.0, "a"), (2.0, "b"), (3.0, "a"), (4.0, "b"), (5.0, "a")]
 
 class TestCSVEventsInterface(EventsInterfaceTestMixin):
     data_interface_cls = CSVEventsInterface
+    expected_temporal_alignment_keys = ("ttl",)
 
     @pytest.fixture(scope="class", autouse=True)
     @classmethod
@@ -382,13 +383,12 @@ class TestCSVEventsInterface(EventsInterfaceTestMixin):
         assert list(ttl_events["timestamp"][:]) == [1.5, 3.5, 5.5]
 
     def test_missing_timestamps_emit_warning(self, two_type_file_with_nans):
-        interface = CSVEventsInterface(
-            file_path=two_type_file_with_nans,
-            timestamps_column="onset",
-            event_type_column="kind",
-        )
         with pytest.warns(UserWarning, match="Dropped 2 row"):
-            interface.get_metadata()
+            CSVEventsInterface(
+                file_path=two_type_file_with_nans,
+                timestamps_column="onset",
+                event_type_column="kind",
+            )
 
     def test_missing_timestamps_drop_labels_in_step(self, two_type_file_with_nans):
         interface = CSVEventsInterface(
