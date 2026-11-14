@@ -247,6 +247,9 @@ neuralynx = [
     "neuroconv[ecephys_minimal]",
     "natsort>=7.1.1",
 ]
+neuroexplorer = [
+    "neuroconv[ecephys_minimal]",
+]
 neuroscope = [
     "neuroconv[ecephys_minimal]",
     "lxml>=4.6.5",
@@ -302,6 +305,7 @@ ecephys = [  # Note that these are the requirements of the extractors as they ar
     "neuroconv[mda]",
     "neuroconv[mearec]",
     "neuroconv[neuralynx]",
+    "neuroconv[neuroexplorer]",
     "neuroconv[neuroscope]",
     "neuroconv[openephys]",
     "neuroconv[phy]",
