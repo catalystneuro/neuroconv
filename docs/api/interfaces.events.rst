@@ -25,6 +25,10 @@ NPM Events
 ----------
 .. automodule:: neuroconv.datainterfaces.events.npm_events.npmeventsdatainterface
 
+OpenEphys Binary Events
+-----------------------
+.. automodule:: neuroconv.datainterfaces.events.openephys_events.openephysbinaryeventsdatainterface
+
 pyPhotometry Events
 -------------------
 .. autoclass:: neuroconv.datainterfaces.events.pyphotometry_events.pyphotometryeventsdatainterface.PyPhotometryEventsInterface

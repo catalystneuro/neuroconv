@@ -162,6 +162,7 @@ Events
     Inscopix GPIO <events/inscopix_gpio>
     MedPC <events/medpc_events>
     NPM <events/npm_events>
+    OpenEphys Binary <events/openephys_events>
     pyPhotometry <events/pyphotometry_events>
     TDT <events/tdt_events>
 
