@@ -398,7 +398,7 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
 
         self._exclude_channels(channels_to_exclude)
 
-    def get_original_timestamps(self):
+    def _get_original_timestamps(self):
         num_frames = self.recording_extractor.get_num_samples()
         sampling_frequency = self.recording_extractor.get_sampling_frequency()
         timestamps = np.arange(num_frames) / sampling_frequency

@@ -1495,7 +1495,7 @@ class MockPoseEstimationInterface(BasePoseEstimationInterface):
 
         return data
 
-    def get_original_timestamps(self) -> np.ndarray:
+    def _get_original_timestamps(self) -> np.ndarray:
         """Get the original timestamps before any alignment."""
         return self._original_timestamps
 
