@@ -21,6 +21,10 @@ MedPC Events
 ------------
 .. automodule:: neuroconv.datainterfaces.events.medpc_events.medpceventsdatainterface
 
+Neuralynx Events
+----------------
+.. automodule:: neuroconv.datainterfaces.events.neuralynx_events.neuralynxeventsdatainterface
+
 NPM Events
 ----------
 .. automodule:: neuroconv.datainterfaces.events.npm_events.npmeventsdatainterface

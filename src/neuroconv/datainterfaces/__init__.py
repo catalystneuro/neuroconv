@@ -155,6 +155,9 @@ from .events.medpc_events.medpceventsdatainterface import (
     MedPCArrayEventsInterface,
     MedPCPackedEventsInterface,
 )
+from .events.neuralynx_events.neuralynxeventsdatainterface import (
+    NeuralynxEventsInterface,
+)
 from .events.npm_events.npmeventsdatainterface import NPMEventsInterface
 from .events.pyphotometry_events.pyphotometryeventsdatainterface import (
     PyPhotometryEventsInterface,
@@ -278,6 +281,7 @@ interface_list = [
     DoricEventsInterface,
     MedPCArrayEventsInterface,
     MedPCPackedEventsInterface,
+    NeuralynxEventsInterface,
     NPMEventsInterface,
     PyPhotometryEventsInterface,
     TDTEventsInterface,
@@ -359,6 +363,7 @@ interfaces_by_category = dict(
         IntanAnalogEvents=IntanAnalogEventsInterface,
         MedPCArrayEvents=MedPCArrayEventsInterface,
         MedPCPackedEvents=MedPCPackedEventsInterface,
+        NeuralynxEvents=NeuralynxEventsInterface,
         NPMEvents=NPMEventsInterface,
         PyPhotometryEvents=PyPhotometryEventsInterface,
         TDTEvents=TDTEventsInterface,
