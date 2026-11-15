@@ -157,6 +157,7 @@ Events
 .. toctree::
     :maxdepth: 1
 
+    Blackrock <events/blackrock_events>
     CSV <events/csv_events>
     Doric <events/doric_events>
     Inscopix GPIO <events/inscopix_gpio>

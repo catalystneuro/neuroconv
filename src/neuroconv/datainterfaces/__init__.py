@@ -148,6 +148,9 @@ from .text.csv.csvtimeintervalsinterface import CsvTimeIntervalsInterface
 from .text.excel.exceltimeintervalsinterface import ExcelTimeIntervalsInterface
 
 # Events
+from .events.blackrock_events.blackrockeventsdatainterface import (
+    BlackrockEventsInterface,
+)
 from .events.csv_events.csveventsdatainterface import CSVEventsInterface
 from .events.doric_events.doriccsveventsdatainterface import DoricCSVEventsInterface
 from .events.doric_events.doriceventsdatainterface import DoricEventsInterface
@@ -273,6 +276,7 @@ interface_list = [
     ImageInterface,
     ExternalImageInterface,
     # Events
+    BlackrockEventsInterface,
     CSVEventsInterface,
     DoricCSVEventsInterface,
     DoricEventsInterface,
@@ -353,6 +357,7 @@ interfaces_by_category = dict(
         ExternalImage=ExternalImageInterface,
     ),
     events=dict(
+        BlackrockEvents=BlackrockEventsInterface,
         CSVEvents=CSVEventsInterface,
         DoricCSVEvents=DoricCSVEventsInterface,
         DoricEvents=DoricEventsInterface,

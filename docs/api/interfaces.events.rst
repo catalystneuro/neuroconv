@@ -1,6 +1,10 @@
 Events
 ======
 
+Blackrock Events
+----------------
+.. automodule:: neuroconv.datainterfaces.events.blackrock_events.blackrockeventsdatainterface
+
 CSV Events
 ----------
 .. automodule:: neuroconv.datainterfaces.events.csv_events.csveventsdatainterface
