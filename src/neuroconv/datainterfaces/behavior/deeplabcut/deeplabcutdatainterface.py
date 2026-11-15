@@ -612,7 +612,7 @@ class DeepLabCutInterface(BasePoseEstimationInterface):
 
         return metadata
 
-    def get_original_timestamps(self) -> np.ndarray:
+    def _get_original_timestamps(self) -> np.ndarray:
         # A DeepLabCut file's index is the video frame number, so it becomes a time only
         # once a frame rate is known. Neither the .h5/.csv nor the project config records one,
         # so it has to come from the caller.
