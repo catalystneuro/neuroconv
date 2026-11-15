@@ -219,15 +219,6 @@ at it with ``segmentation_table_metadata_key``. Both entries give the same ``seg
 their ROIs are the same ROIs. A PlaneSegmentation links one imaging plane, so both entries also link the same
 plane.
 
-.. TODO: remove this note once neuroconv requires a roiextractors release with
-   https://github.com/catalystneuro/roiextractors/pull/654
-
-.. note::
-
-    This example needs a roiextractors release after 0.10.0. In 0.10.0 the ``chan2`` segmentation reads its
-    ``iscell`` property from ``redcell.npy``, so the two channels disagree on ``iscell`` and writing the
-    red channel raises.
-
 .. code-block:: python
 
     from neuroconv import ConverterPipe
