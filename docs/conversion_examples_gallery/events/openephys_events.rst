@@ -8,8 +8,7 @@ writes its text annotations into a ``MessageCenter`` folder. Each line that fire
 ``pynwb.event.EventsTable`` in ``nwbfile.events``, holding every edge that line produced with the direction
 of the transition in an ``edge`` column and the latched port value in a ``full_word`` column.
 
-Open Ephys events are read straight from the ``.npy`` arrays, so this interface needs only NeuroConv's core
-dependencies; the ``openephys_events`` extra is available for a consistent install command.
+Install NeuroConv with the additional dependencies necessary for reading Open Ephys binary events.
 
 .. code-block:: bash
 

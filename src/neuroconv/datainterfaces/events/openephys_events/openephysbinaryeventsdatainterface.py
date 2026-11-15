@@ -20,17 +20,15 @@ class OpenEphysBinaryEventsInterface(BaseEventsInterface):
     ``events/<stream>/TTL/`` as parallel ``.npy`` arrays: ``states.npy`` (the line number as the
     magnitude and the edge direction as the sign), ``timestamps.npy``, and ``full_words.npy`` (the
     state of the first 64 lines latched at that moment). Text annotations live beside them in a
-    ``MessageCenter`` folder. Those arrays are read here directly rather than through neo, which pairs
-    the edges into intervals at parse time, drops ``full_words``, and skips a whole line when its
-    rising and falling counts disagree.
+    ``MessageCenter`` folder.
 
     Each line becomes one ``pynwb.event.EventsTable`` in ``nwbfile.events``, named
     ``Line<n>`` until the metadata renames it: an Open Ephys line is a wire, so what it records
     (reward, lick, trial start) is known to the experimenter and not to the file. Every edge is
     written as its own row, with the direction in an ``edge`` column and the latched word in a
     ``full_word`` column, which keeps the whole file: pairing the edges into intervals is a reading
-    that can be taken later from these rows, while the standalone edges neo discards cannot be
-    recovered once dropped.
+    that can be taken later from these rows, including a line whose rising and falling edges do not
+    pair up.
 
     One interface reads one event stream of one experiment. Streams are named as SpikeInterface names
     the recording streams (``Record Node 104#NI-DAQmx-103.PXIe-6341``), so the events of a recording
