@@ -11,8 +11,11 @@ def _test_sonpy_installation() -> None:
     get_package(
         package_name="sonpy",
         excluded_platforms_and_python_versions=dict(
-            linux=["3.12", "3.13"],
-            darwin=["3.12", "3.13"],
+            linux=["3.10", "3.11", "3.12", "3.13"],
+            darwin=dict(
+                arm=["3.10", "3.11", "3.12", "3.13", "3.14"],
+                i386=["3.10", "3.11", "3.12", "3.13"],
+            ),
         ),
     )
 

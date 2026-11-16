@@ -1,5 +1,6 @@
 import re
 import sys
+from platform import processor
 from platform import python_version as get_python_version
 
 import jsonschema
@@ -963,10 +964,11 @@ class TestAssertions(TestCase):
         reason="sonpy is installable on Windows for all supported versions, and on other platforms from 3.14",
     )
     def test_spike2_import_assertions(self):
+        platform_string = f"darwin:{processor()}" if sys.platform == "darwin" else sys.platform
         with self.assertRaisesWith(
             exc_type=ModuleNotFoundError,
             exc_msg=(
-                f"\nThe package 'sonpy' is not available on the {sys.platform} platform for "
+                f"\nThe package 'sonpy' is not available on the {platform_string} platform for "
                 f"Python version 3.{python_version.minor}!"
             ),
         ):

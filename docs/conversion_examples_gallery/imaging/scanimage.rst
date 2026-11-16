@@ -151,4 +151,5 @@ gap by mapping each extractor sample back to its raw frame index in the TIFF.
   to sync-pulse-space.
 
 .. note::
-    For older ScanImage files (v3.8 and earlier), use the :doc:`ScanImageLegacyImagingInterface <scanimage_legacy>` interface instead.
+    Files from ScanImage 3.x and 4.x are read by the same interface. These versions record no time for each
+    frame and no pixel size, so the series is written with the rate from the header and without a grid spacing.
