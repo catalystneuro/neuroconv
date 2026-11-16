@@ -56,7 +56,7 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
         gap_tolerance_ms: float | None = None,
     ):
         """
-        Initialize reading of OpenEphys binary recording.
+        Initialize reading of Neuralynx recording.
 
         Parameters
         ----------

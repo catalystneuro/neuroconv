@@ -56,7 +56,7 @@ def test_get_data_io_kwargs():
     zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration()
 
     assert zarr_dataset_configuration.get_data_io_kwargs() == dict(
-        chunks=(78125, 64), filters=None, compressors=[GzipCodec(level=4)]
+        chunks=(78125, 64), filters=None, compressors=[GzipCodec(level=4)], shards=None
     )
 
 
@@ -71,7 +71,7 @@ def test_get_data_io_kwargs_with_shuffle():
     zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration(compressors=["shuffle", "gzip"])
 
     assert zarr_dataset_configuration.get_data_io_kwargs() == dict(
-        chunks=(78125, 64), filters=None, compressors=[Shuffle(), GzipCodec(level=4)]
+        chunks=(78125, 64), filters=None, compressors=[Shuffle(), GzipCodec(level=4)], shards=None
     )
 
 
@@ -82,7 +82,7 @@ def test_get_data_io_kwargs_with_shuffle_and_a_filter_method():
     )
 
     assert zarr_dataset_configuration.get_data_io_kwargs() == dict(
-        chunks=(78125, 64), filters=[Delta(dtype="int16")], compressors=[Shuffle(), GzipCodec(level=4)]
+        chunks=(78125, 64), filters=[Delta(dtype="int16")], compressors=[Shuffle(), GzipCodec(level=4)], shards=None
     )
 
 
@@ -120,3 +120,60 @@ def test_shuffle_elementsize_is_kept_when_stated():
         Shuffle(elementsize=2),
         GzipCodec(level=4),
     ]
+
+
+# ==================================================================================================
+# Shard shape tests
+# ==================================================================================================
+
+
+def test_shard_shape_valid():
+    # chunk_shape default is (78_125, 64); shard must be >= and evenly divisible
+    config = mock_ZarrDatasetIOConfiguration(shard_shape=(78_125 * 2, 64 * 2))
+    assert config.shard_shape == (156_250, 128)
+
+
+def test_shard_shape_none_is_default():
+    config = mock_ZarrDatasetIOConfiguration()
+    assert config.shard_shape is None
+
+
+def test_shard_shape_in_str():
+    config = mock_ZarrDatasetIOConfiguration(shard_shape=(78_125 * 2, 64 * 2))
+    assert "shard shape : (156250, 128)" in str(config)
+
+
+def test_shard_shape_absent_from_str_when_none():
+    config = mock_ZarrDatasetIOConfiguration()
+    assert "shard shape" not in str(config)
+
+
+def test_shard_shape_dimension_mismatch_raises():
+    with pytest.raises(ValidationError, match="Length of shard_shape"):
+        # chunk_shape is 2D, shard_shape is 1D
+        mock_ZarrDatasetIOConfiguration(shard_shape=(156_250,))
+
+
+def test_shard_shape_smaller_than_chunk_raises():
+    with pytest.raises(ValidationError, match="smaller than the chunk_shape"):
+        # 78_124 < 78_125 on the first axis
+        mock_ZarrDatasetIOConfiguration(shard_shape=(78_124, 128))
+
+
+def test_shard_shape_not_divisible_raises():
+    with pytest.raises(ValidationError, match="do not evenly divide"):
+        # 78_126 is not divisible by 78_125
+        mock_ZarrDatasetIOConfiguration(shard_shape=(78_126, 128))
+
+
+def test_shard_shape_in_get_data_io_kwargs():
+    config = mock_ZarrDatasetIOConfiguration(shard_shape=(78_125 * 2, 64 * 2))
+    result = config.get_data_io_kwargs()
+    # hdmf-zarr ZarrDataIO uses the key "shards" (not "shard_shape")
+    assert result["shards"] == (156_250, 128)
+
+
+def test_no_shard_shape_passes_none():
+    config = mock_ZarrDatasetIOConfiguration()
+    result = config.get_data_io_kwargs()
+    assert result["shards"] is None
