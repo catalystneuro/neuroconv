@@ -19,16 +19,15 @@ AVAILABLE_ZARR_COMPRESSION_METHODS = {
     "blosc": BloscCodec,
     "bz2": BZ2,
     "gzip": GzipCodec,
-    "blosc": BloscCodec,
-    "zstd": ZstdCodec,
-    "bz2": BZ2,
+    "lz4": LZ4,
     "lzma": LZMA,
     "zlib": Zlib,
-    "lz4": LZ4,
+    "zstd": ZstdCodec,
 }
 
-# Curated mapping of string names to zarr v3 ArrayArrayCodec classes for filters.
-AVAILABLE_ZARR_FILTER_METHODS: dict[str, type[ArrayArrayCodec]] = {"delta": Delta}
+AVAILABLE_ZARR_FILTER_METHODS = {
+    "delta": Delta,
+}
 
 # ======================================================================================================
 # Deprecated in v0.11.0, to be removed in v0.12.0.
@@ -56,34 +55,37 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
     """A data model for configuring options about an object that will become a Zarr Dataset in the file."""
 
     # Shuffle rearranges bytes rather than compressing them, so it can never be the compression method of a
-    # dataset. It is listed separately here so _compressor_index() can skip it when finding the main compressor.
+    # dataset. It is a bytes-to-bytes codec and runs in `compressors`, ahead of the compression method.
     _pure_filter_names: ClassVar[tuple[str, ...]] = ("shuffle",)
 
     compressors: (
-        list[Literal[(*_pure_filter_names, *AVAILABLE_ZARR_COMPRESSION_METHODS.keys())] | InstanceOf[BytesBytesCodec]]
+        list[Literal[(*_pure_filter_names, *_ZARR_CODECS_ACCEPTED_UNTIL_V0_12.keys())] | InstanceOf[BytesBytesCodec]]
         | None
     ) = Field(
-        default=["gzip"],
+        default=["gzip"],  # TODO: would like this to be 'auto'
         description=(
             "The ordered collection of codecs to apply to this dataset after it is serialized to bytes. "
             "Each element can be either a string that matches an available method on your system, "
-            "or an instantiated zarr BytesBytesCodec object (e.g. zarr.codecs.GzipCodec(level=5)). "
+            "or an instantiated zarr bytes-to-bytes codec. "
             "A filter such as 'shuffle' composes with a compression method rather than replacing one, so both "
             "live in this list. "
             "Set to `None` to disable compression."
         ),
     )
+    # TODO: actually provide better schematic rendering of options. Only support defaults in GUIDE for now.
+    # Looks like they'll have to be hand-typed however... Can try parsing the numpy docstrings - no annotation typing.
     compressor_options: list[dict[str, Any] | None] | None = Field(
         default=None, description="The optional parameters to use for each specified compressor."
     )
     filters: (
-        list[Literal[(*_pure_filter_names, *AVAILABLE_ZARR_FILTER_METHODS.keys())] | InstanceOf[ArrayArrayCodec]] | None
+        list[Literal[(*_pure_filter_names, *_ZARR_CODECS_ACCEPTED_UNTIL_V0_12.keys())] | InstanceOf[ArrayArrayCodec]]
+        | None
     ) = Field(
         default=None,
         description=(
             "The ordered collection of codecs to apply to this dataset's values before it is serialized to bytes. "
             "Each element can be either a string that matches an available method on your system, "
-            "or an instantiated zarr ArrayArrayCodec object (e.g. zarr.codecs.numcodecs.Delta()). "
+            "or an instantiated zarr array-to-array codec. "
             "Set to `None` to disable filtering."
         ),
     )
@@ -294,56 +296,34 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
     # ==================================================================================================
 
     def _instantiate_codec(self, codec, codec_options: dict[str, Any] | None):
-        if isinstance(codec, (BytesBytesCodec, ArrayArrayCodec)):
+        if not isinstance(codec, str):
             return codec
 
-        codec_options = dict(codec_options or {})
+        codec_options = dict(codec_options or dict())
         if codec == "gzip":
             codec_options.setdefault("level", _DEFAULT_GZIP_LEVEL)
 
-        # Shuffle defaults `elementsize` to 4 regardless of dtype, so on wider types it transposes the
-        # wrong byte planes. The configuration knows the dtype so we fill it in here.
-        if codec == "shuffle" and "elementsize" not in codec_options:
-            codec_options["elementsize"] = self.dtype.itemsize
-
-        if codec == "shuffle":
-            return Shuffle(**codec_options)
-
-        if codec in AVAILABLE_ZARR_FILTER_METHODS:
-            return AVAILABLE_ZARR_FILTER_METHODS[codec](**codec_options)
-
-        return AVAILABLE_ZARR_COMPRESSION_METHODS[codec](**codec_options)
+        codec_class = Shuffle if codec == "shuffle" else _ZARR_CODECS_ACCEPTED_UNTIL_V0_12[codec]
+        return codec_class(**codec_options)
 
     def get_data_io_kwargs(self) -> dict[str, Any]:
-        # Build ArrayArrayCodec filters. The deprecated path allowed "shuffle" (a BytesBytesCodec) to be
-        # named in `filters`; those entries are collected separately so they can join `compressors` below.
-        filter_codecs = []
-        bytes_from_deprecated_filters = []
-        if self.filters:
-            all_filter_options = self.filter_options or [dict() for _ in self.filters]
-            for method, opts in zip(self.filters, all_filter_options):
-                codec = self._instantiate_codec(method, opts)
-                if isinstance(codec, BytesBytesCodec):
-                    bytes_from_deprecated_filters.append(codec)
-                else:
-                    filter_codecs.append(codec)
+        filters = self.filters or []
+        filter_options = self.filter_options or [None] * len(filters)
+        compressors = self.compressors or []
+        compressor_options = self.compressor_options or [None] * len(compressors)
+        codecs = [
+            self._instantiate_codec(codec, codec_options)
+            for codec, codec_options in zip([*filters, *compressors], [*filter_options, *compressor_options])
+        ]
 
-        # Build BytesBytesCodec compressors. Shuffle from the deprecated filters path is prepended so the
-        # pipeline order is preserved: shuffle → compression codec (matching the compressors=[..] spelling).
-        compressor_codecs = bytes_from_deprecated_filters
-        if self.compressors is not None:
-            all_compressor_options = self.compressor_options or [None] * len(self.compressors)
-            compressor_codecs = compressor_codecs + [
-                self._instantiate_codec(codec, opts) for codec, opts in zip(self.compressors, all_compressor_options)
-            ]
-            compressors = compressor_codecs or False
-        else:
-            compressors = compressor_codecs or False  # False = explicitly disable compression
+        # Each codec goes to the stage its class runs in, which also places a name deprecated in the other field.
+        array_codecs = [codec for codec in codecs if isinstance(codec, ArrayArrayCodec)]
+        bytes_codecs = [codec for codec in codecs if isinstance(codec, BytesBytesCodec)]
 
         return dict(
             chunks=self.chunk_shape,
-            filters=filter_codecs or None,
-            compressors=compressors,
+            filters=array_codecs or None,
+            compressors=bytes_codecs or False,
             shards=self.shard_shape,
         )
 
@@ -372,13 +352,8 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
             neurodata_object=neurodata_object,
             dataset_name=dataset_name,
         )
-        dataset = getattr(neurodata_object, dataset_name)
-        # zarr v3: .compressors is a tuple of BytesBytesCodec; .filters is a tuple of ArrayArrayCodec
-        compressors_on_disk = dataset.compressors
-        filters_on_disk = dataset.filters
+        zarr_array = getattr(neurodata_object, dataset_name)
+        compressors = list(zarr_array.compressors)
+        filters = list(zarr_array.filters)
 
-        return cls(
-            **kwargs,
-            compressors=list(compressors_on_disk) if compressors_on_disk else None,
-            filters=list(filters_on_disk) if filters_on_disk else None,
-        )
+        return cls(**kwargs, compressors=compressors or None, filters=filters or None)

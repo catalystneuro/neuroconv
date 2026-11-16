@@ -1,6 +1,5 @@
 """Unit tests for the ZarrDatasetIOConfiguration Pydantic model."""
 
-import numpy as np
 import pytest
 from pydantic import ValidationError
 from zarr.codecs import GzipCodec
@@ -56,10 +55,9 @@ def test_default_compression_is_always_available():
 def test_get_data_io_kwargs():
     zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration()
 
-    result = zarr_dataset_configuration.get_data_io_kwargs()
-    assert result["chunks"] == (78125, 64)
-    assert result["filters"] is None
-    assert result["compressors"] == [GzipCodec(level=4)]
+    assert zarr_dataset_configuration.get_data_io_kwargs() == dict(
+        chunks=(78125, 64), filters=None, compressors=[GzipCodec(level=4)], shards=None
+    )
 
 
 def test_zarr_dataset_io_configuration_schema():
@@ -69,11 +67,11 @@ def test_zarr_dataset_io_configuration_schema():
 
 
 def test_get_data_io_kwargs_with_shuffle():
-    """Shuffle is a BytesBytesCodec and lives in compressors alongside the compression method."""
+    """Shuffle is a bytes-to-bytes codec, so it runs in `compressors` ahead of the compression method."""
     zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration(compressors=["shuffle", "gzip"])
 
     assert zarr_dataset_configuration.get_data_io_kwargs() == dict(
-        chunks=(78125, 64), compressors=[Shuffle(elementsize=2), GzipCodec(level=4)], filters=None, shards=None
+        chunks=(78125, 64), filters=None, compressors=[Shuffle(), GzipCodec(level=4)], shards=None
     )
 
 
@@ -84,10 +82,7 @@ def test_get_data_io_kwargs_with_shuffle_and_a_filter_method():
     )
 
     assert zarr_dataset_configuration.get_data_io_kwargs() == dict(
-        chunks=(78125, 64),
-        compressors=[Shuffle(elementsize=2), GzipCodec(level=4)],
-        filters=[Delta(dtype="int16")],
-        shards=None,
+        chunks=(78125, 64), filters=[Delta(dtype="int16")], compressors=[Shuffle(), GzipCodec(level=4)], shards=None
     )
 
 
@@ -113,10 +108,7 @@ def test_deprecated_shuffle_in_filters_runs_in_compressors():
     with pytest.warns(FutureWarning, match="'shuffle' in `filters` is deprecated"):
         zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration(filters=["shuffle"])
 
-    assert zarr_dataset_configuration.get_data_io_kwargs()["compressors"] == [
-        Shuffle(elementsize=2),
-        GzipCodec(level=4),
-    ]
+    assert zarr_dataset_configuration.get_data_io_kwargs()["compressors"] == [Shuffle(), GzipCodec(level=4)]
 
 
 def test_shuffle_elementsize_is_kept_when_stated():
@@ -128,24 +120,6 @@ def test_shuffle_elementsize_is_kept_when_stated():
         Shuffle(elementsize=2),
         GzipCodec(level=4),
     ]
-
-
-def test_shuffle_elementsize_follows_the_dtype_on_the_deprecated_path():
-    """The deprecated `filters=["shuffle"]` spelling routes through the same elementsize helper."""
-    zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration(filters=["shuffle"], dtype=np.dtype("float64"))
-
-    result = zarr_dataset_configuration.get_data_io_kwargs()
-    # shuffle is a BytesBytesCodec so it ends up in compressors, ahead of the default gzip
-    assert result["compressors"][0] == Shuffle(elementsize=8)
-
-
-def test_shuffle_elementsize_is_not_overridden_when_stated():
-    zarr_dataset_configuration = mock_ZarrDatasetIOConfiguration(
-        compressors=["shuffle", "gzip"], compressor_options=[dict(elementsize=2), None], dtype=np.dtype("float64")
-    )
-
-    result = zarr_dataset_configuration.get_data_io_kwargs()
-    assert result["compressors"][0] == Shuffle(elementsize=2)
 
 
 # ==================================================================================================

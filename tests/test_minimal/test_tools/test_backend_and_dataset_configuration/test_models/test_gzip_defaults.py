@@ -1,7 +1,6 @@
 """Gzip defaults agree across backends without overriding caller settings."""
 
 import pytest
-from zarr.codecs import GzipCodec
 
 from neuroconv.tools.testing import mock_HDF5DatasetIOConfiguration, mock_ZarrDatasetIOConfiguration
 
@@ -23,6 +22,8 @@ def test_gzip_level_agrees_across_backends(options, expected_level, with_shuffle
 
 
 def test_gzip_instance_is_preserved():
+    from zarr.codecs import GzipCodec
+
     compressor = GzipCodec(level=1)
     configuration = mock_ZarrDatasetIOConfiguration(compressors=[compressor])
     assert configuration.get_data_io_kwargs()["compressors"][0] is compressor

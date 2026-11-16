@@ -2,7 +2,6 @@ from typing import Any, Iterable, Literal
 
 import h5py
 import numpy as np
-from zarr.abc.codec import ArrayArrayCodec, BytesBytesCodec
 
 from ...nwb_helpers import (
     AVAILABLE_HDF5_COMPRESSION_METHODS,

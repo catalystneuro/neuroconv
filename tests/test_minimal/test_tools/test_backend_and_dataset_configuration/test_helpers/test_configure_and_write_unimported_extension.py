@@ -6,8 +6,6 @@ from hdmf.build import BuildManager
 from pynwb import NWBHDF5IO, TimeSeries, get_type_map, read_nwb
 from pynwb.spec import NWBDatasetSpec, NWBGroupSpec, NWBNamespaceBuilder
 from pynwb.testing.mock.file import mock_NWBFile
-from zarr.codecs import GzipCodec
-from zarr.codecs.numcodecs import Shuffle
 
 from neuroconv.tools.nwb_helpers import configure_and_write_nwbfile
 
@@ -80,6 +78,8 @@ def test_configure_and_write_nwbfile_with_unimported_extension(
         if backend == "hdf5":
             assert written_data.compression == "gzip"
         else:
+            from zarr.codecs import GzipCodec
+
             assert written_data.compressors == (GzipCodec(level=4),)
 
 
@@ -157,5 +157,8 @@ def test_configure_and_write_nwbfile_with_unimported_extension_datasets(
             assert written_recording.data.compression == "gzip"
             assert written_recording.timestamps.compression == "gzip"
         else:
+            from zarr.codecs import GzipCodec
+            from zarr.codecs.numcodecs import Shuffle
+
             assert written_recording.data.compressors == (GzipCodec(level=4),)
             assert written_recording.timestamps.compressors == (Shuffle(elementsize=8), GzipCodec(level=4))
