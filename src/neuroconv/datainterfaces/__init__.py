@@ -24,6 +24,7 @@ from .behavior.video.internalvideointerface import InternalVideoInterface
 
 # Ecephys
 from .ecephys.alphaomega.alphaomegadatainterface import AlphaOmegaRecordingInterface
+from .ecephys.axon.axonanaloginterface import AxonAnalogInterface
 from .ecephys.axon.axondatainterface import AxonRecordingInterface
 from .ecephys.axona.axonadatainterface import (
     AxonaLFPDataInterface,
@@ -57,6 +58,7 @@ from .ecephys.neuralynx.neuralynxdatainterface import (
     NeuralynxRecordingInterface,
     NeuralynxSortingInterface,
 )
+from .ecephys.neuroexplorer.neuroexplorerdatainterface import NeuroExplorerSortingInterface
 from .ecephys.neuroscope.neuroscopedatainterface import (
     NeuroScopeLFPInterface,
     NeuroScopeRecordingInterface,
@@ -67,6 +69,7 @@ from .ecephys.openephys.openephysbinarydatainterface import (
     OpenEphysBinaryRecordingInterface,
 )
 from .ecephys.openephys.openephysdatainterface import OpenEphysRecordingInterface
+from .ecephys.openephys.openephyslegacyanaloginterface import OpenEphysLegacyAnalogInterface
 from .ecephys.openephys.openephyslegacydatainterface import (
     OpenEphysLegacyRecordingInterface,
 )
@@ -107,6 +110,7 @@ from .ophys.femtonics.femtonicsdatainterface import FemtonicsImagingInterface
 from .ophys.hdf5.hdf5datainterface import Hdf5ImagingInterface
 from .ophys.inscopix.inscopixsegmentationdatainterface import InscopixSegmentationInterface
 from .ophys.inscopix.inscopiximagingdatainterface import InscopixImagingInterface
+from .ophys.inscopix.inscopixgpiodatainterface import InscopixGpioInterface
 from .ophys.micromanagertiff.micromanagertiffdatainterface import (
     MicroManagerTiffImagingInterface,
 )
@@ -156,11 +160,13 @@ from .events.pyphotometry_events.pyphotometryeventsdatainterface import (
     PyPhotometryEventsInterface,
 )
 from .events.tdt_events.tdteventsdatainterface import TDTEventsInterface
+from .events.inscopix_gpio_events.inscopixgpioeventsdatainterface import InscopixGpioEventsInterface
 
 interface_list = [
     # Ecephys
     NeuralynxRecordingInterface,
     NeuralynxSortingInterface,
+    NeuroExplorerSortingInterface,
     NeuroScopeRecordingInterface,
     NeuroScopeSortingInterface,
     NeuroScopeLFPInterface,
@@ -184,6 +190,7 @@ interface_list = [
     OpenEphysLegacyRecordingInterface,
     OpenEphysSortingInterface,
     OpenEphysBinaryAnalogInterface,
+    OpenEphysLegacyAnalogInterface,
     PhySortingInterface,
     KiloSortSortingInterface,
     MdaSortingInterface,
@@ -201,6 +208,7 @@ interface_list = [
     BiocamRecordingInterface,
     AlphaOmegaRecordingInterface,
     AxonRecordingInterface,
+    AxonAnalogInterface,
     MEArecRecordingInterface,
     MCSRawRecordingInterface,
     MaxOneRecordingInterface,
@@ -222,6 +230,7 @@ interface_list = [
     TiffImagingInterface,
     Hdf5ImagingInterface,
     InscopixImagingInterface,
+    InscopixGpioInterface,
     ScanImageImagingInterface,
     ScanImageLegacyImagingInterface,
     BrukerTiffImagingInterface,
@@ -272,6 +281,7 @@ interface_list = [
     NPMEventsInterface,
     PyPhotometryEventsInterface,
     TDTEventsInterface,
+    InscopixGpioEventsInterface,
 ]
 
 interfaces_by_category = dict(
@@ -305,11 +315,14 @@ interfaces_by_category = dict(
     },
     analog=dict(
         OpenEphysAnalog=OpenEphysBinaryAnalogInterface,
+        OpenEphysLegacyAnalog=OpenEphysLegacyAnalogInterface,
+        AxonAnalog=AxonAnalogInterface,
         SpikeGLXNIDQ=SpikeGLXNIDQInterface,
         SpikeGLXSync=SpikeGLXSyncChannelInterface,
         IntanAnalog=IntanAnalogInterface,
         IntanDigital=IntanDigitalInterface,
         IntanStim=IntanStimInterface,
+        InscopixGpio=InscopixGpioInterface,
     ),
     icephys=dict(
         Abf=AbfInterface,
@@ -349,5 +362,6 @@ interfaces_by_category = dict(
         NPMEvents=NPMEventsInterface,
         PyPhotometryEvents=PyPhotometryEventsInterface,
         TDTEvents=TDTEventsInterface,
+        InscopixGpioEvents=InscopixGpioEventsInterface,
     ),
 )

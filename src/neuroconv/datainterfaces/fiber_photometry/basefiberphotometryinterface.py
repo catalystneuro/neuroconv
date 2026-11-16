@@ -90,8 +90,8 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         self.temporal_alignment = _TemporalAlignment()
         self.temporal_alignment._register(
             key=self.metadata_key,
-            get_native_times=self.get_original_timestamps,
-            get_number_of_samples=lambda: len(self.get_original_timestamps()),
+            get_native_times=self._get_original_timestamps,
+            get_number_of_samples=lambda: len(self._get_original_timestamps()),
         )
         super().__init__(verbose=verbose, stream_names=stream_names, **source_data)
         # Keep the ndx extensions registered so pynwb IO works correctly.
@@ -129,6 +129,16 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         return self.temporal_alignment
 
     def get_original_timestamps(self) -> np.ndarray:
+        """Deprecated: read ``interface.temporal_alignment[key].get_times()`` before aligning instead."""
+        warnings.warn(
+            "`get_original_timestamps` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment[key].get_times()` before aligning instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        return self._get_original_timestamps()
+
+    def _get_original_timestamps(self) -> np.ndarray:
         """Return the original (unaligned) timestamps of this interface's primary stream."""
         return self._get_stream_timestamps(stream_name=self.stream_names[0])
 

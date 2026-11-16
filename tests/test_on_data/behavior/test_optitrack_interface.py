@@ -1,3 +1,4 @@
+import re
 from datetime import datetime
 
 import numpy as np
@@ -370,6 +371,24 @@ class TestOptiTrackInterfaceFormat1_25(_OptiTrackInterfaceTestMixin):
         nwbfile.read_io.close()
 
 
+class TestOptiTrackInterfaceRowsWithExtraEmptyFields(_OptiTrackInterfaceTestMixin):
+    """A skeleton take where Motive wrote an untracked frame, 12140, with 137 fields where the axis row has 128."""
+
+    data_interface_cls = OptiTrackInterface
+    interface_kwargs = dict(
+        file_path=str(OPTITRACK_DATA_PATH / "edge_cases" / "rows_with_extra_empty_fields" / "PID 5 LIGHT EXPECTED.csv")
+    )
+    save_directory = OUTPUT_PATH
+
+    def test_untracked_frame_is_read_as_missing(self):
+        interface = OptiTrackInterface(**self.interface_kwargs)
+        motion_capture_data = interface._read_motion_capture_data()
+
+        expected_frames = np.arange(12020, 12260)
+        assert_array_equal(motion_capture_data.index.get_level_values("frame"), expected_frames)
+        assert np.isnan(motion_capture_data.loc[12140].to_numpy()).all()
+
+
 class TestOptiTrackInterfaceFileVariants:
     """How the interface reads the export layouts and edge cases in the OptiTrack test data."""
 
@@ -385,6 +404,7 @@ class TestOptiTrackInterfaceFileVariants:
         OPTITRACK_DATA_PATH / "without_header" / "quaternions_millimeters" / "Take 2017-02-19 05.39.28 PM_batch.csv"
     )
     localized_file_path = OPTITRACK_DATA_PATH / "edge_cases" / "localized_am_pm_marker" / "test_markers_enabled.csv"
+    no_assets_file_path = OPTITRACK_DATA_PATH / "edge_cases" / "no_assets" / "test_default.csv"
     legacy_file_path = OPTITRACK_DATA_PATH / "legacy_row_typed" / "version_1_1" / "Take 2020-02-06 01.34.46 PM.csv"
     local_coordinates_file_path = (
         OPTITRACK_DATA_PATH / "version_1_25" / "quaternions_meters_local_coordinates" / "Take_001.csv"
@@ -441,6 +461,12 @@ class TestOptiTrackInterfaceFileVariants:
         interface = OptiTrackInterface(file_path=self.localized_file_path)
         with pytest.raises(ValueError, match="nothing to write"):
             interface._get_labeled_points()
+
+    def test_export_with_no_assets_raises(self):
+        """An export holding only the frame and time columns."""
+        expected_message = f"'{self.no_assets_file_path}' has no assets, only the frame and time columns, so there is nothing to write."
+        with pytest.raises(ValueError, match=re.escape(expected_message)):
+            OptiTrackInterface(file_path=self.no_assets_file_path)
 
     def test_row_typed_export_raises(self):
         with pytest.raises(ValueError, match="row-typed layout"):

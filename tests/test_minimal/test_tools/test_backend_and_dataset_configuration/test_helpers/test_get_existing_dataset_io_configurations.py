@@ -5,8 +5,6 @@ from typing import Literal
 import numpy as np
 import pytest
 from hdmf.common import VectorData
-from hdmf_zarr import ZarrDataIO
-from hdmf_zarr.nwb import NWBZarrIO
 from pynwb import NWBHDF5IO, H5DataIO
 from pynwb.base import DynamicTable
 from pynwb.behavior import CompassDirection
@@ -15,7 +13,7 @@ from pynwb.testing.mock.base import mock_TimeSeries
 from pynwb.testing.mock.behavior import mock_SpatialSeries
 from pynwb.testing.mock.ecephys import mock_ElectrodesTable
 from pynwb.testing.mock.file import mock_NWBFile
-from zarr.codecs import Delta, GzipCodec, Shuffle, ZstdCodec
+from zarr.codecs import Delta, GzipCodec, Shuffle
 
 from neuroconv.tools.importing import is_package_installed
 from neuroconv.tools.nwb_helpers import (
@@ -24,9 +22,12 @@ from neuroconv.tools.nwb_helpers import (
     get_module,
 )
 
-# The compressor zarr applies to a dataset that was written without an explicit one. Datasets hdmf writes
-# itself, ragged-index columns among them, are never wrapped in a `ZarrDataIO` and so are stored with this.
-_ZARR_DEFAULT_COMPRESSOR = ZstdCodec(level=0, checksum=False)
+# hdmf_zarr installs only on Python 3.12 and newer.
+pytest.importorskip("hdmf_zarr")
+from hdmf_zarr import ZarrDataIO
+from hdmf_zarr.nwb import NWBZarrIO
+from zarr.codecs import GzipCodec
+from zarr.codecs.numcodecs import Delta, Shuffle
 
 
 @pytest.mark.parametrize("backend", ["hdf5", "zarr"])

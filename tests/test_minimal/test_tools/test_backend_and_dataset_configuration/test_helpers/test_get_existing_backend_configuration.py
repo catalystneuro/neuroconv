@@ -6,8 +6,6 @@ from unittest.mock import patch
 
 import numpy as np
 import pytest
-from hdmf_zarr import ZarrDataIO
-from hdmf_zarr.nwb import NWBZarrIO
 from pynwb import NWBHDF5IO, H5DataIO, NWBFile
 from pynwb.testing.mock.base import mock_TimeSeries
 from pynwb.testing.mock.file import mock_NWBFile
@@ -20,6 +18,11 @@ from neuroconv.tools.nwb_helpers import (
     get_existing_backend_configuration,
     get_module,
 )
+
+# hdmf_zarr installs only on Python 3.12 and newer.
+pytest.importorskip("hdmf_zarr")
+from hdmf_zarr import ZarrDataIO
+from hdmf_zarr.nwb import NWBZarrIO
 
 
 def _normalize_blosc_repr(text: str) -> str:

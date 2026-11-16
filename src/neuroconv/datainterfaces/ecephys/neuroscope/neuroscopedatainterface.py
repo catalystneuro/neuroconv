@@ -240,7 +240,7 @@ class NeuroScopeRecordingInterface(BaseRecordingExtractorInterface):
             metadata["NWBFile"]["session_start_time"] = session_start_time
         return metadata
 
-    def get_original_timestamps(self) -> np.ndarray:
+    def _get_original_timestamps(self) -> np.ndarray:
         # TODO: add generic method for aliasing from NeuroConv signature to SI init
         new_recording = self._initialize_extractor({"file_path": self.source_data["file_path"]})
         if self._number_of_segments == 1:

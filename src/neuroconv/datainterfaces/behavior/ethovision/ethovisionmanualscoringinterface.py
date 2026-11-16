@@ -81,6 +81,7 @@ class EthoVisionManualScoringInterface(BaseEventsInterface):
         self._arena = self._scoring_sheet.arena
         self.metadata_key = metadata_key or f"ethovision_{to_snake_case(f'{self._arena}_{self._subject}')}"
         self._manual_scoring_metadata_key = f"ethovision_{to_snake_case(self._arena)}_manual_scoring"
+        self._scoring_events = [event for event in self._scoring_sheet.events if event.subject == self._subject]
         super().__init__(
             file_path=file_path,
             arena_name=self._arena,
@@ -88,8 +89,6 @@ class EthoVisionManualScoringInterface(BaseEventsInterface):
             metadata_key=self.metadata_key,
             verbose=verbose,
         )
-
-        self._scoring_events = [event for event in self._scoring_sheet.events if event.subject == self._subject]
 
     def get_metadata_schema(self) -> dict:
         metadata_schema = super().get_metadata_schema()

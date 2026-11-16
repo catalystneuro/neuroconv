@@ -144,24 +144,32 @@ class OpenEphysLegacyRecordingInterface(BaseRecordingExtractorInterface):
             # pipeline synthesizes its defaults from the channel-group properties.
             metadata["Ecephys"]["ElectricalSeries"][self.metadata_key]["name"] = "ElectricalSeries"
 
-        block_annotations = self._neo_reader.raw_annotations.get("blocks", [])
-        if block_annotations:
-            segment_annotations = block_annotations[0].get("segments", [])
-            if segment_annotations:
-                expected_date_format = "%d-%b-%Y %H%M%S"
-                date_created = segment_annotations[0]["date_created"]
-                date_created = date_created.strip("'")
-                extracted_date, extracted_timestamp = date_created.split(" ")
-                if len(extracted_timestamp) != len("%H%M%S"):
-                    warn(
-                        "The timestamp for starting time from openephys metadata is ambiguous "
-                        f"('{extracted_timestamp}')! Only the date will be auto-populated in metadata. "
-                        "Please update the timestamp manually to record this value with the highest known "
-                        "temporal resolution."
-                    )
-                    session_start_time = datetime.strptime(extracted_date, "%d-%b-%Y")
-                else:
-                    session_start_time = datetime.strptime(date_created, expected_date_format)
-                metadata["NWBFile"].update(session_start_time=session_start_time)
+        session_start_time = _get_session_start_time(neo_reader=self._neo_reader)
+        if session_start_time is not None:
+            metadata["NWBFile"].update(session_start_time=session_start_time)
 
         return metadata
+
+
+def _get_session_start_time(neo_reader) -> datetime | None:
+    """The session start time a legacy Open Ephys folder records, or ``None`` when it records none."""
+    block_annotations = neo_reader.raw_annotations.get("blocks", [])
+    if not block_annotations:
+        return None
+    segment_annotations = block_annotations[0].get("segments", [])
+    if not segment_annotations:
+        return None
+
+    expected_date_format = "%d-%b-%Y %H%M%S"
+    date_created = segment_annotations[0]["date_created"]
+    date_created = date_created.strip("'")
+    extracted_date, extracted_timestamp = date_created.split(" ")
+    if len(extracted_timestamp) != len("%H%M%S"):
+        warn(
+            "The timestamp for starting time from openephys metadata is ambiguous "
+            f"('{extracted_timestamp}')! Only the date will be auto-populated in metadata. "
+            "Please update the timestamp manually to record this value with the highest known "
+            "temporal resolution."
+        )
+        return datetime.strptime(extracted_date, "%d-%b-%Y")
+    return datetime.strptime(date_created, expected_date_format)

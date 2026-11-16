@@ -122,8 +122,8 @@ def pytest_runtest_setup(item):
             if os != "Windows" and version.parse(python_version) >= version.parse("3.14"):
                 pytest.skip("Plexon2 is not supported on Python 3.14 outside Windows at the moment, as zugbruecke cannot start its Wine session there.")
 
-        # Check if we are running the doctest from inscopix.rst
-        if test_file.name == "inscopix.rst":
+        # Check if we are running the doctest from an Inscopix page (isx-backed)
+        if test_file.name in ("inscopix.rst", "inscopix_gpio.rst"):
             # Skip on macOS ARM64
             if os == "Darwin" and platform.machine() == "arm64":
                 pytest.skip(

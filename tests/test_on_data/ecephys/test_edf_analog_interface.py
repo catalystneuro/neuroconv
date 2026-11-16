@@ -1,3 +1,4 @@
+import re
 from datetime import datetime
 
 import pytest
@@ -65,8 +66,11 @@ class TestEDFAnalogInterface(TimeSeriesInterfaceTestMixin):
         """Test that specifying non-existent channels raises ValueError."""
         file_path = ECEPHY_DATA_PATH / "edf" / "electrode_and_analog_data" / "electrode_and_analog_data.edf"
 
-        with pytest.raises(ValueError, match="Channels not found in EDF file"):
-            EDFAnalogInterface(file_path=file_path, channels_to_include=["NonExistentChannel"])
+        expected_error_msg = (
+            "`channels_to_include` names ['NonExistentChannel'], which are not channels of this EDFAnalogInterface."
+        )
+        with pytest.raises(ValueError, match=re.escape(expected_error_msg)):
+            EDFAnalogInterface(file_path=file_path, channels_to_include=["OSAT", "NonExistentChannel"])
 
     def test_custom_metadata_key(self):
         """Test custom metadata key."""

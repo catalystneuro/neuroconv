@@ -1,25 +1,34 @@
 """Tests for the provenance record written into ``general/source_script``."""
 
+import json
 import re
 import subprocess
 import sys
+import warnings
 from pathlib import Path
 
 import pytest
 from pynwb import read_nwb
+from pynwb.testing.mock.file import mock_NWBFile
 
-from neuroconv.tools.nwb_helpers import _provenance
+from neuroconv.tools.nwb_helpers import _provenance, configure_and_write_nwbfile
 from neuroconv.tools.nwb_helpers._provenance import describe_source_script
 
 
 @pytest.fixture(autouse=True)
 def clear_git_cache():
-    """The git description is cached per directory, which must not carry across tests."""
-    _provenance._describe_git_checkout.cache_clear()
-    _provenance._script_is_tracked.cache_clear()
+    """The git description, and the warning emitted once per process, must not carry across tests."""
+    cached_functions = (
+        _provenance._describe_git_checkout,
+        _provenance._script_is_tracked,
+        _provenance._describe_neuroconv_installation,
+        _provenance._warn_that_the_script_is_not_linked,
+    )
+    for cached_function in cached_functions:
+        cached_function.cache_clear()
     yield
-    _provenance._describe_git_checkout.cache_clear()
-    _provenance._script_is_tracked.cache_clear()
+    for cached_function in cached_functions:
+        cached_function.cache_clear()
 
 
 def parse_record(record: str) -> dict:
@@ -577,3 +586,101 @@ def test_an_unknown_host_states_the_commit_without_a_script_url(tmp_path, monkey
     assert keys["repository"] == "https://git.institute.edu/lab/conversions"
     assert keys["commit"]
     assert keys["source_script"] == "convert_lab.py"
+
+
+def test_a_modified_working_tree_warns_that_the_script_is_not_linked(tmp_path, monkeypatch):
+    script = make_repository(tmp_path / "conversions")
+    publish(tmp_path / "conversions")
+    Path(script).write_text("print('edited')\n", encoding="utf-8")
+    monkeypatch.setattr(sys, "argv", [script])
+
+    with pytest.warns(UserWarning, match="the repository has uncommitted changes"):
+        describe_source_script()
+
+
+def test_a_linked_script_does_not_warn(tmp_path, monkeypatch):
+    script = make_repository(tmp_path / "conversions")
+    publish(tmp_path / "conversions")
+    monkeypatch.setattr(sys, "argv", [script])
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        describe_source_script()
+
+
+def test_the_warning_is_emitted_once_per_process(tmp_path, monkeypatch):
+    """The record is built once per interface, so a converter would otherwise repeat the warning for each."""
+    script = make_repository(tmp_path / "conversions")
+    monkeypatch.setattr(sys, "argv", [script])
+
+    with warnings.catch_warnings(record=True) as caught_warnings:
+        warnings.simplefilter("always")
+        describe_source_script()
+        describe_source_script()
+
+    assert len([warning for warning in caught_warnings if "will not link" in str(warning.message)]) == 1
+
+
+class FakeDistribution:
+    """Stands in for NeuroConv's installed distribution, whose `direct_url.json` says where it came from."""
+
+    version = "0.11.0.dev0"
+
+    def __init__(self, direct_url: dict | None):
+        self.direct_url = direct_url
+
+    def read_text(self, file_name: str) -> str | None:
+        assert file_name == "direct_url.json"
+        return None if self.direct_url is None else json.dumps(self.direct_url)
+
+
+def test_an_editable_install_records_neuroconv_commit(tmp_path, monkeypatch):
+    checkout = tmp_path / "neuroconv"
+    make_repository(checkout)
+    direct_url = {"url": checkout.as_uri(), "dir_info": {"editable": True}}
+    monkeypatch.setattr(_provenance.importlib.metadata, "distribution", lambda name: FakeDistribution(direct_url))
+
+    keys = parse_record(describe_source_script()[0])
+
+    assert keys["neuroconv_commit"] == run_git(checkout, "rev-parse", "HEAD")
+    assert keys["neuroconv_working_tree"] == "clean"
+    assert str(tmp_path) not in describe_source_script()[0]
+
+
+def test_an_install_from_a_git_url_records_neuroconv_commit(monkeypatch):
+    commit = "9f3c2ab1d4e7f09b2c5a8e3d6f10a4b7c9e2d5f8"
+    direct_url = {
+        "url": "https://github.com/catalystneuro/neuroconv.git",
+        "vcs_info": {"vcs": "git", "commit_id": commit},
+    }
+    monkeypatch.setattr(_provenance.importlib.metadata, "distribution", lambda name: FakeDistribution(direct_url))
+
+    keys = parse_record(describe_source_script()[0])
+
+    assert keys["neuroconv_commit"] == commit
+    assert "neuroconv_working_tree" not in keys
+
+
+def test_an_install_from_an_index_records_no_neuroconv_commit(monkeypatch):
+    monkeypatch.setattr(_provenance.importlib.metadata, "distribution", lambda name: FakeDistribution(None))
+
+    assert "neuroconv_commit" not in parse_record(describe_source_script()[0])
+
+
+def test_an_nwbfile_built_without_neuroconv_gets_the_record_when_written(tmp_path):
+    """A script may build the NWBFile with PyNWB and only hand it to NeuroConv to write."""
+    nwbfile_path = tmp_path / "built_with_pynwb.nwb"
+    configure_and_write_nwbfile(nwbfile=mock_NWBFile(), nwbfile_path=nwbfile_path, backend="hdf5")
+
+    nwbfile = read_nwb(nwbfile_path)
+
+    assert nwbfile.source_script.splitlines()[0] == "NeuroConv provenance record"
+    assert nwbfile.source_script_file_name == "neuroconv"
+
+
+def test_writing_keeps_a_source_script_set_by_the_user(tmp_path):
+    nwbfile = mock_NWBFile(source_script="https://example.org/lab_script.py", source_script_file_name="lab_script.py")
+    nwbfile_path = tmp_path / "with_user_source_script.nwb"
+    configure_and_write_nwbfile(nwbfile=nwbfile, nwbfile_path=nwbfile_path, backend="hdf5")
+
+    assert read_nwb(nwbfile_path).source_script == "https://example.org/lab_script.py"

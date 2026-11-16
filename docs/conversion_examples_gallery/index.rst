@@ -47,6 +47,7 @@ Sorting
     KiloSort <sorting/kilosort>
     MountainSort <sorting/mda>
     Neuralynx <sorting/neuralynx>
+    NeuroExplorer <sorting/neuroexplorer>
     NeuroScope <sorting/neuroscope>
     Phy <sorting/phy>
     Plexon <sorting/plexon>
@@ -158,6 +159,7 @@ Events
 
     CSV <events/csv_events>
     Doric <events/doric_events>
+    Inscopix GPIO <events/inscopix_gpio>
     MedPC <events/medpc_events>
     NPM <events/npm_events>
     pyPhotometry <events/pyphotometry_events>

@@ -71,7 +71,9 @@ jobs:
         run: pip install --no-cache-dir --force-reinstall --no-deps git+https://github.com/NeuralEnsemble/python-neo@master
       - name: Dev gallery - HDMF
         run: pip install --no-cache-dir --force-reinstall --no-deps git+https://github.com/hdmf-dev/hdmf@dev
+      # hdmf-zarr requires Python 3.12, and neuroconv does not install it on 3.11.
       - name: Dev gallery - HDMF-ZARR
+        if: ${{ matrix.python-version != '3.11' }}
         run : pip install --no-cache-dir --force-reinstall --no-deps git+https://github.com/hdmf-dev/hdmf-zarr@dev
 
       # The dev installs above pass --no-deps, so a dependency that a dev branch newly declared is never

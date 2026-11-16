@@ -320,6 +320,16 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         self.remove_channels(channel_ids=channels_to_exclude)
 
     def get_original_timestamps(self) -> np.ndarray | list[np.ndarray]:
+        """Deprecated: read ``interface.temporal_alignment[key].get_times()`` before aligning instead."""
+        warnings.warn(
+            "`get_original_timestamps` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment[key].get_times()` before aligning instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        return self._get_original_timestamps()
+
+    def _get_original_timestamps(self) -> np.ndarray | list[np.ndarray]:
         """
         Retrieve the original unaltered timestamps for the data in this interface.
 

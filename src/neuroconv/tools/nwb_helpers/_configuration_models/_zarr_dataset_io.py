@@ -4,7 +4,7 @@ import warnings
 from typing import Any, ClassVar, Literal
 
 from hdmf import Container
-from pydantic import Field, InstanceOf, PositiveInt, model_validator
+from pydantic import Field, InstanceOf, model_validator
 from typing_extensions import Self
 from zarr.abc.codec import ArrayArrayCodec, BytesBytesCodec
 from zarr.codecs import BloscCodec, GzipCodec, ZstdCodec
@@ -12,9 +12,12 @@ from zarr.codecs.numcodecs import BZ2, LZ4, LZMA, Delta, Fletcher32, JenkinsLook
 
 from ._base_dataset_io import _DEFAULT_GZIP_LEVEL, DatasetIOConfiguration
 
-# Curated mapping of string names to zarr v3 BytesBytesCodec classes.
-# Prefer native zarr codecs where available; fall back to numcodecs wrappers otherwise.
-AVAILABLE_ZARR_COMPRESSION_METHODS: dict[str, type[BytesBytesCodec]] = {
+# Split by the zarr 3 codec stage: a compression method is a bytes-to-bytes codec and goes in `compressors`, a
+# filter method is an array-to-array codec and goes in `filters`. Gzip, Blosc and Zstd are the native zarr 3 codecs,
+# readable by implementations without numcodecs.
+AVAILABLE_ZARR_COMPRESSION_METHODS = {
+    "blosc": BloscCodec,
+    "bz2": BZ2,
     "gzip": GzipCodec,
     "blosc": BloscCodec,
     "zstd": ZstdCodec,
