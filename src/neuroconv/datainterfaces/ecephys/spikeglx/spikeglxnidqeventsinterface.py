@@ -91,7 +91,6 @@ class _SpikeGLXNIDQEventsInterface(BaseEventsInterface):
             SpikeGLXRecordingExtractor,
         )
 
-        super().__init__(folder_path=folder_path, verbose=verbose)
         self.metadata_key = metadata_key
         # Its own reader rather than the parent's, so this stays an ordinary interface: source data is a
         # path, it can be constructed and tested on its own, and nothing in its signature is a live
@@ -100,9 +99,9 @@ class _SpikeGLXNIDQEventsInterface(BaseEventsInterface):
         #
         # The one thing to keep in mind: the parent writes its analog TimeSeries from *its* extractor and
         # this writes events from *this* one, so anything that mutates a reader's clock has to be applied
-        # to both. Nothing does today (SpikeGLXNIDQInterface has no alignment API, and stub_test builds a
-        # separate stubbed recording the analog path alone sees), but `set_aligned_starting_time` would,
-        # and silently shifting one and not the other is the same class of bug this interface just fixed.
+        # to both. Nothing mutates either reader: the parent links this interface's event types into its own
+        # `temporal_alignment`, so one shift of the board moves both halves, and stub_test builds a separate
+        # stubbed recording the analog path alone sees.
         self.recording_extractor = SpikeGLXRecordingExtractor(
             folder_path=folder_path,
             stream_id="nidq",
@@ -158,6 +157,7 @@ class _SpikeGLXNIDQEventsInterface(BaseEventsInterface):
         if detection_configuration:
             _validate_detection_configuration(detection_configuration, self._available_signals)
         self._detection_configuration = detection_configuration
+        super().__init__(folder_path=folder_path, verbose=verbose)
 
     def get_event_type_source_ids(self) -> list[str]:
         """The event types the configuration resolves to, read from nothing; none for the ``{}`` sentinel."""

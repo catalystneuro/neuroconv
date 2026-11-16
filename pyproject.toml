@@ -67,8 +67,7 @@ dependencies = [
 neuroconv = "neuroconv.tools.yaml_conversion_specification._yaml_conversion_specification:run_conversion_from_yaml_cli"
 
 [project.optional-dependencies]
-# dandi 0.82.0 is the first release that allows zarr above 3.1.5
-dandi = ["dandi>=0.82.0; python_version < '3.14'"]
+dandi = ["dandi>=0.82.0"]  # 0.82.0 is the first release that allows zarr above 3.1.5
 compressors = ["hdf5plugin"]
 aws = ["boto3"]
 
@@ -248,6 +247,9 @@ neuralynx = [
     "neuroconv[ecephys_minimal]",
     "natsort>=7.1.1",
 ]
+neuroexplorer = [
+    "neuroconv[ecephys_minimal]",
+]
 neuroscope = [
     "neuroconv[ecephys_minimal]",
     "lxml>=4.6.5",
@@ -303,6 +305,7 @@ ecephys = [  # Note that these are the requirements of the extractors as they ar
     "neuroconv[mda]",
     "neuroconv[mearec]",
     "neuroconv[neuralynx]",
+    "neuroconv[neuroexplorer]",
     "neuroconv[neuroscope]",
     "neuroconv[openephys]",
     "neuroconv[phy]",
@@ -387,7 +390,7 @@ fiber_photometry = [
 
 ## Ophys
 ophys_minimal = [  # Keeps the minimal version of ophys dependencies in the repo
-    "roiextractors>=0.10.0",
+    "roiextractors>=0.11.0",
 ]
 # What it takes to read a tiff, stated once for the formats that are stored as one. Membership is by
 # what the format reads and not by modality, so Inscopix (.isxd) and Miniscope (video) are not here.

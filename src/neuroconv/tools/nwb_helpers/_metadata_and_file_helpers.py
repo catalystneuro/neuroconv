@@ -738,6 +738,10 @@ def configure_and_write_nwbfile(
     # Before the backend configuration, so the HERD tables are configured like everything else.
     add_external_resources_to_nwbfile(nwbfile, metadata=metadata)
 
+    # An NWBFile built without NeuroConv's metadata helpers carries no record. A file read from disk keeps its own.
+    if nwbfile.read_io is None and nwbfile.source_script is None:
+        nwbfile.source_script, nwbfile.source_script_file_name = describe_source_script()
+
     if backend_configuration is None:
         backend_configuration = get_default_backend_configuration(nwbfile, backend=backend or "hdf5")
 

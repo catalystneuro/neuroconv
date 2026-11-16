@@ -109,10 +109,10 @@ class BORISInterface(BaseEventsInterface):
         # the observation rather than fixed: a conversion running several of them would otherwise write
         # every block under the same handle. Observation names are free text, so the words are joined.
         observation_words = [word for word in re.split(r"[\W_]+", observation_name, flags=re.UNICODE) if word]
-        super().__init__(file_path=file_path, observation_name=observation_name, verbose=verbose)
-        self.metadata_key = metadata_key or "_".join(["boris", *(word.lower() for word in observation_words)])
         self._project = _read_boris_project(file_path=file_path)
         self._observation = _read_boris_observation(file_path=file_path, observation_name=observation_name)
+        super().__init__(file_path=file_path, observation_name=observation_name, verbose=verbose)
+        self.metadata_key = metadata_key or "_".join(["boris", *(word.lower() for word in observation_words)])
 
     def get_metadata(self) -> DeepDict:
         """

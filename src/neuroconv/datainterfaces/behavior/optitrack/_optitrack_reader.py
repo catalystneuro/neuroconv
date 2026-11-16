@@ -86,13 +86,32 @@ def read_motion_capture_data(file_path: Path, nrows: int | None = None) -> pd.Da
                 num_header_rows += 1
             if line.startswith("Frame,"):
                 break
+    num_columns = len(line.rstrip("\r\n").split(","))
+    if num_columns == 2:
+        raise ValueError(f"'{file_path}' has no assets, only the frame and time columns, so there is nothing to write.")
     header_levels = (
         _MOTIVE_HEADER_LEVELS_WITH_PARENT
         if num_header_rows == len(_MOTIVE_HEADER_LEVELS_WITH_PARENT)
         else _MOTIVE_HEADER_LEVELS
     )
+
+    # Motive sometimes writes a row with extra empty fields after its last column.
+    def drop_empty_trailing_fields(fields: list[str]) -> list[str]:
+        if any(field.strip() for field in fields[num_columns:]):
+            raise ValueError(
+                f"A row of '{file_path}' starting with frame {fields[0]} has {len(fields)} fields where the header "
+                f"has {num_columns}, and the extra fields are not empty."
+            )
+        return fields[:num_columns]
+
     motion_capture_data = pd.read_csv(
-        file_path, skiprows=1, header=list(range(len(header_levels))), index_col=[0, 1], nrows=nrows
+        file_path,
+        skiprows=1,
+        header=list(range(len(header_levels))),
+        index_col=[0, 1],
+        nrows=nrows,
+        engine="python",
+        on_bad_lines=drop_empty_trailing_fields,
     )
     motion_capture_data.columns.names = header_levels
     motion_capture_data.index.names = ["frame", "time"]

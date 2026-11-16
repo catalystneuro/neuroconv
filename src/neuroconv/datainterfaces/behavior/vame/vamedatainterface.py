@@ -575,6 +575,16 @@ class VameInterface(BaseTemporalAlignmentInterface):
         return metadata
 
     def get_original_timestamps(self) -> np.ndarray:
+        """Deprecated: read ``interface.temporal_alignment[key].get_times()`` before aligning instead."""
+        warnings.warn(
+            "`get_original_timestamps` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment[key].get_times()` before aligning instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        return self._get_original_timestamps()
+
+    def _get_original_timestamps(self) -> np.ndarray:
         if self._sampling_frequency_hz is None:
             raise ValueError(
                 "VameInterface cannot generate original timestamps without a sampling_frequency_hz. "
@@ -603,7 +613,7 @@ class VameInterface(BaseTemporalAlignmentInterface):
         return np.load(reference_file).shape[0]
 
     def _get_native_times(self) -> np.ndarray:
-        return self.get_original_timestamps()
+        return self._get_original_timestamps()
 
     def get_timestamps(self) -> np.ndarray:
         warnings.warn(
