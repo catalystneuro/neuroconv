@@ -4,7 +4,7 @@ import warnings
 from typing import Any, ClassVar, Literal
 
 from hdmf import Container
-from pydantic import Field, InstanceOf, model_validator
+from pydantic import Field, InstanceOf, PositiveInt, model_validator
 from typing_extensions import Self
 from zarr.abc.codec import ArrayArrayCodec, BytesBytesCodec
 from zarr.codecs import BloscCodec, GzipCodec, ZstdCodec
