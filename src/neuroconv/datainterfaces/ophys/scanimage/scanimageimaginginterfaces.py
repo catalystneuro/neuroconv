@@ -102,8 +102,6 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
             If True, will print detailed information about the interface initialization process.
         """
 
-        file_paths = [Path(file_path)] if file_path else file_paths
-
         if interleave_slice_samples is None:
             interleave_slice_samples = False
 
