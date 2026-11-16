@@ -103,22 +103,19 @@ class BaseEventsInterface(BaseDataInterface):
         # Filled on the first _get_events_data_dict() call and reused thereafter, so the backend is
         # coerced once even though get_metadata, add_to_nwbfile, and alignment all read it.
         self._events_data_dict = None
-        self._alignment = None
+        self._alignment = _TemporalAlignment()
+        for source_id in self.get_event_type_source_ids():
+            self._alignment._register(
+                key=source_id,
+                get_native_times=lambda source_id=source_id: self._get_events_data_dict()[source_id].timestamps,
+                get_number_of_samples=lambda source_id=source_id: len(
+                    self._get_events_data_dict()[source_id].timestamps
+                ),
+                get_native_durations=lambda source_id=source_id: self._get_events_data_dict()[source_id].durations,
+            )
 
     @property
     def temporal_alignment(self):
-        if self._alignment is None:
-            alignment = _TemporalAlignment()
-            for source_id in self.get_event_type_source_ids():
-                alignment._register(
-                    key=source_id,
-                    get_native_times=lambda source_id=source_id: self._get_events_data_dict()[source_id].timestamps,
-                    get_number_of_samples=lambda source_id=source_id: len(
-                        self._get_events_data_dict()[source_id].timestamps
-                    ),
-                    get_native_durations=lambda source_id=source_id: self._get_events_data_dict()[source_id].durations,
-                )
-            self._alignment = alignment
         return self._alignment
 
     def _get_event_durations(self, event_type_source_id: str) -> np.ndarray | None:

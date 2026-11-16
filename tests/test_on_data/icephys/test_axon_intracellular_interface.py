@@ -178,7 +178,7 @@ class TestAxonSingleSweepABFv1(DataInterfaceTestMixin):
         import neo
         from packaging.version import Version
 
-        if Version(neo.__version__).release >= (0, 15):
+        if Version(neo.__version__).release >= (0, 14, 6):
             expected_session_start_time = datetime(2005, 6, 11, 14, 15, 0, 711999)
         else:
             expected_session_start_time = datetime(1900, 1, 1, 14, 15, 0, 711999)

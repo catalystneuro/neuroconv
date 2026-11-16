@@ -603,7 +603,6 @@ class MockSignalEncodedEventsInterface(BaseEventsInterface):
         self._num_events = num_events
         self._sampling_frequency = sampling_frequency
         self._sampling = sampling
-        super().__init__(verbose=verbose)
         self.metadata_key = metadata_key or "mock_signal_encoded_events"
 
         # Discovery, faked: one packed word, whose kind is what makes bit selection legal on it and a
@@ -624,6 +623,7 @@ class MockSignalEncodedEventsInterface(BaseEventsInterface):
         # same identifier. Validation covers structure and identifier resolution (rules 4 and 5) alike.
         _validate_detection_configuration(detection_configuration, self._available_signals)
         self._detection_configuration = detection_configuration
+        super().__init__(verbose=verbose)
 
     def get_event_type_source_ids(self) -> list[str]:
         """The event types the configuration resolves to, read from nothing."""
@@ -936,6 +936,7 @@ class MockSpikeGLXNIDQInterface(SpikeGLXNIDQInterface):
             }
         }
         self._digital_channel_groups = {}
+        self._register_time_bearing_objects()
 
 
 class MockRecordingInterface(BaseRecordingExtractorInterface):
@@ -970,6 +971,7 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
         metadata_key: str | None = None,
         set_probe: bool = False,
         calibration: Literal["unknown", "uniform", "heterogeneous_gains", "heterogeneous_offsets"] = "uniform",
+        channels_to_exclude: list | None = None,
     ):
 
         super().__init__(
@@ -1025,6 +1027,8 @@ class MockRecordingInterface(BaseRecordingExtractorInterface):
         self.recording_extractor = self.recording_extractor.rename_channels(
             new_channel_ids=[f"channel_{_letters(index)}" for index in range(number_of_channels)]
         )
+
+        self._exclude_channels(channels_to_exclude)
 
     def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         """
@@ -1491,7 +1495,7 @@ class MockPoseEstimationInterface(BasePoseEstimationInterface):
 
         return data
 
-    def get_original_timestamps(self) -> np.ndarray:
+    def _get_original_timestamps(self) -> np.ndarray:
         """Get the original timestamps before any alignment."""
         return self._original_timestamps
 

@@ -297,6 +297,13 @@ class _TemporalAlignment:
         self._name_to_time_bearing_object[key] = time_bearing_object
         return time_bearing_object
 
+    def _link_time_bearing_object(self, *, key: str, time_bearing_object: _TimeBearingObject) -> None:
+        """Name a time-bearing object that another alignment already holds, so both share one state.
+
+        For a composite interface that exposes its children's objects under keys of its own.
+        """
+        self._name_to_time_bearing_object[key] = time_bearing_object
+
     def keys(self) -> tuple[str, ...]:
         """The time-bearing objects this interface can name, empty when it names none."""
         return tuple(self._name_to_time_bearing_object)
@@ -457,3 +464,36 @@ class _ConverterTemporalAlignment:
         time_bearing_objects = self._collect_time_bearing_objects()
         for time_bearing_object in time_bearing_objects:
             time_bearing_object.shift_times(delta)
+
+    def move_earliest_observation_to(self, starting_time: float) -> None:
+        """Move every descendant time-bearing object by one amount, placing the earliest observation at ``starting_time``.
+
+        The earliest observation across the whole selection sets a single shift, so the gaps between children are
+        kept. Calling it twice with the same value changes nothing. Empty objects are left out of the earliest
+        observation, and children are skipped as in ``shift_times``. All starts are read before anything moves.
+        """
+        starting_time = float(starting_time)
+        time_bearing_objects = self._collect_time_bearing_objects()
+        starts = [
+            time_bearing_object._get_earliest_time()
+            for time_bearing_object in time_bearing_objects
+            if not time_bearing_object._is_empty()
+        ]
+        delta = starting_time - min(starts)
+        for time_bearing_object in time_bearing_objects:
+            time_bearing_object.shift_times(delta)
+
+    def remap_times(self, *, local_sync_times, reference_sync_times, interpolation_function=None) -> None:
+        """Re-express every descendant time-bearing object on a reference clock through one set of synchronization pulses.
+
+        The same pulse pairs apply to every descendant, so this is right only when every interface under the
+        selection runs on one clock. Children are skipped as in ``shift_times``. See
+        :meth:`_TimeBearingObject.remap_times`.
+        """
+        time_bearing_objects = self._collect_time_bearing_objects()
+        for time_bearing_object in time_bearing_objects:
+            time_bearing_object.remap_times(
+                local_sync_times=local_sync_times,
+                reference_sync_times=reference_sync_times,
+                interpolation_function=interpolation_function,
+            )

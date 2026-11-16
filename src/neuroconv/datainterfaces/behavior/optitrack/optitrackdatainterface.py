@@ -197,7 +197,7 @@ class OptiTrackInterface(BaseDataInterface):
         self.temporal_alignment = _TemporalAlignment()
         self.temporal_alignment._register(
             key=self.metadata_key,
-            get_native_times=self.get_original_timestamps,
+            get_native_times=self._get_original_timestamps,
             get_number_of_samples=self._get_number_of_samples,
         )
 
@@ -311,6 +311,16 @@ class OptiTrackInterface(BaseDataInterface):
         return self.temporal_alignment[self.metadata_key].get_times()
 
     def get_original_timestamps(self) -> np.ndarray:
+        """Deprecated: read ``interface.temporal_alignment[key].get_times()`` before aligning instead."""
+        warnings.warn(
+            "`get_original_timestamps` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment[key].get_times()` before aligning instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        return self._get_original_timestamps()
+
+    def _get_original_timestamps(self) -> np.ndarray:
         """The time of each frame, ``Frame / Export Frame Rate``, in seconds from the start of the take.
 
         The export also has a ``Time (Seconds)`` column. The choice between the two is empirical: across the

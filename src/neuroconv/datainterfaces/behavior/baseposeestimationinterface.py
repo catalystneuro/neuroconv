@@ -30,7 +30,7 @@ class BasePoseEstimationInterface(BaseDataInterface):
         self._alignment = _TemporalAlignment()
         self._alignment._register(
             key=self.metadata_key,
-            get_native_times=self.get_original_timestamps,
+            get_native_times=self._get_original_timestamps,
             get_number_of_samples=self._get_number_of_samples,
         )
 
@@ -46,6 +46,16 @@ class BasePoseEstimationInterface(BaseDataInterface):
         # others give only by decoding the video
         positions, _ = next(iter(self._get_keypoint_data().values()))
         return len(positions)
+
+    def get_original_timestamps(self) -> np.ndarray:
+        """Deprecated: read ``interface.temporal_alignment[key].get_times()`` before aligning instead."""
+        warnings.warn(
+            "`get_original_timestamps` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment[key].get_times()` before aligning instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        return self._get_original_timestamps()
 
     def get_timestamps(self) -> np.ndarray:
         warnings.warn(

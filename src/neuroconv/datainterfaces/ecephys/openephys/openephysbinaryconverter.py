@@ -129,6 +129,7 @@ class OpenEphysBinaryConverter(ConverterPipe):
                 folder_path=folder_path,
                 stream_name=stream_name,
                 time_series_name=time_series_name,
+                metadata_key=_to_metadata_key(stream_name),
             )
 
         super().__init__(data_interfaces=data_interfaces, verbose=verbose)

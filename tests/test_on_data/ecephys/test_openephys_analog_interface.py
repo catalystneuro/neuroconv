@@ -20,6 +20,7 @@ class TestOpenEphysBinaryAnalogInterface(TimeSeriesInterfaceTestMixin):
         stream_name="Rhythm_FPGA-100.0_ADC",
     )
     expected_time_series_names = ("TimeSeriesOpenEphysAnalog",)
+    expected_temporal_alignment_keys = ("open_ephys_analog_0",)
 
     def check_extracted_metadata(self, metadata):
         assert set(metadata["TimeSeries"]) == {"open_ephys_analog"}

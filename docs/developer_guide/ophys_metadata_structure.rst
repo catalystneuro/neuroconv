@@ -254,13 +254,16 @@ must give a name, and two table entries with the same name raise. A ``PlaneSegme
 names no table writes a table of its own, and its write raises when a PlaneSegmentation of that name is
 already in the file.
 
-The first interface creates the table and the others append to it. An ROI whose name is not in the table
-yet is appended with an id after the table's last one. An ROI whose name is already there reuses that row
-when its mask and its ROI properties are equal to the row's, which lets interfaces with the same ROIs, such
-as two channels, write their traces against one table, and raises when either differs, since a reused row
-holds one value per column. The interfaces sharing a table must link the
-same imaging plane, hold the same mask type, and carry the same ROI properties, since each property is a
-column.
+The first interface creates the table and the others append to it. Rows are identified by
+``(segmentation_name, roi_name)``, where ``segmentation_name`` comes from the ``PlaneSegmentations`` entry
+and a segmentation without one is unnamed (``""``). An ROI whose pair is not in the table yet is appended
+with an id after the table's last one. An ROI whose pair is already there reuses that row, which lets
+interfaces with the same ROIs, such as two channels, write their traces against one table when they give
+the same ``segmentation_name``, and raises when one of its ROI properties differs, since a reused row holds
+one value per column. An unnamed segmentation whose ROI names match unnamed rows raises before the table
+changes. The ``segmentation_name`` column is written only once some segmentation in the table is named. The
+interfaces sharing a table must link the same imaging plane, hold the same mask type, and carry the same ROI
+properties, since each property is a column.
 
 
 Single ImageSegmentation Container

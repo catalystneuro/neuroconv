@@ -2,12 +2,15 @@
 
 import functools
 import importlib.metadata
+import json
 import os
 import re
 import subprocess
 import sys
+import warnings
 from pathlib import Path
 from urllib.parse import urlparse
+from urllib.request import url2pathname
 
 PROVENANCE_FORMAT_VERSION = 1
 RECORD_HEADER = "NeuroConv provenance record"
@@ -47,23 +50,28 @@ def describe_source_script() -> tuple[str, str]:
     """
     neuroconv_version = importlib.metadata.version("neuroconv")
     script = _resolve_script()
+    git_information_is_requested = _git_information_is_requested()
 
-    keys = {
-        "neuroconv_version": neuroconv_version,
-        "execution_environment": _describe_execution_environment(),
-    }
+    keys = {"neuroconv_version": neuroconv_version}
+    if git_information_is_requested:
+        keys.update(_describe_neuroconv_installation())
+    keys["execution_environment"] = _describe_execution_environment()
     if script is None:
         return _render(keys), _NO_SCRIPT_FILE_NAME
 
     keys["source_script"] = script.name
-    if _git_information_is_requested():
+    if git_information_is_requested:
         directory = str(_script_directory(script=script))
         git_keys, repository_root = _describe_git_checkout(directory=directory)
         path_in_repository = _path_in_repository(script=script, repository_root=repository_root)
         if path_in_repository is not None:
             keys["source_script"] = path_in_repository
         # Resolved, because `sys.argv[0]` may be relative to the working directory rather than to `directory`
-        if _script_is_tracked(directory=directory, script=str(script.resolve())):
+        script_is_tracked = _script_is_tracked(directory=directory, script=str(script.resolve()))
+        reasons = _reasons_the_script_is_not_linked(git_keys=git_keys, script_is_tracked=script_is_tracked)
+        if reasons:
+            _warn_that_the_script_is_not_linked(reasons=tuple(reasons))
+        else:
             script_url = _build_script_url_at_commit(path_in_repository=path_in_repository, git_keys=git_keys)
             if script_url is not None:
                 keys["source_script"] = script_url
@@ -183,6 +191,43 @@ def _describe_git_checkout(directory: str) -> tuple[dict[str, str], str | None]:
     return keys, _run_git(directory, "rev-parse", "--show-toplevel")
 
 
+@functools.cache
+def _describe_neuroconv_installation() -> dict[str, str]:
+    """
+    Describe the commit NeuroConv itself was installed from, when it was installed from git.
+
+    The version alone does not identify the code on a development install: a ``.dev0`` version covers a
+    whole release cycle, and an editable install keeps reporting the version it was installed at. The
+    installation's ``direct_url.json`` (PEP 610) records where it came from.
+
+    Cached because the metadata helpers run once per interface, like the checkout description.
+    """
+    try:
+        direct_url_text = importlib.metadata.distribution("neuroconv").read_text("direct_url.json")
+        direct_url = json.loads(direct_url_text) if direct_url_text else {}
+    except (importlib.metadata.PackageNotFoundError, json.JSONDecodeError):
+        return {}
+
+    vcs_info = direct_url.get("vcs_info", {})
+    if vcs_info.get("vcs") == "git" and "commit_id" in vcs_info:  # installed from a git URL
+        return {"neuroconv_commit": vcs_info["commit_id"]}
+
+    if not direct_url.get("dir_info", {}).get("editable"):
+        return {}
+
+    directory = url2pathname(urlparse(direct_url["url"]).path)
+    commit = _run_git(directory, "rev-parse", "HEAD")
+    if commit is None:
+        return {}
+
+    keys = {"neuroconv_commit": commit}
+    status = _run_git(directory, "status", "--porcelain", "--untracked-files=no")
+    if status is not None:
+        keys["neuroconv_working_tree"] = "modified" if status else "clean"
+
+    return keys
+
+
 def _run_git(directory: str, *arguments: str) -> str | None:
     """Run a git command, returning None rather than raising when it cannot be run."""
     try:
@@ -246,6 +291,34 @@ def _script_is_tracked(directory: str, script: str) -> bool:
     Cached for the same reason the checkout description is: the metadata helpers run once per interface.
     """
     return _run_git(directory, "ls-files", "--error-unmatch", script) is not None
+
+
+def _reasons_the_script_is_not_linked(git_keys: dict[str, str], script_is_tracked: bool) -> list[str]:
+    """The reasons, each one fixable by whoever runs the conversion, that the record will not link to the script."""
+    if git_keys.get("version_control") != "git":
+        return ["the script is not in a git repository"]
+
+    reasons = []
+    if "repository" not in git_keys:
+        reasons.append("the repository has no remote")
+    if not script_is_tracked:
+        reasons.append("the script is not committed")
+    if git_keys.get("working_tree") == "modified":
+        reasons.append("the repository has uncommitted changes")
+    if git_keys.get("commit_published") == "no":
+        reasons.append("the commit has not been pushed")
+
+    return reasons
+
+
+@functools.cache
+def _warn_that_the_script_is_not_linked(reasons: tuple[str, ...]) -> None:
+    """Warn once per process, since the record is built once per interface."""
+    warnings.warn(
+        f"The provenance record will not link to the conversion script because {' and '.join(reasons)}. "
+        "Run the conversion from a committed and pushed git checkout to record the link.",
+        stacklevel=2,
+    )
 
 
 def _build_script_url_at_commit(path_in_repository: str | None, git_keys: dict[str, str]) -> str | None:

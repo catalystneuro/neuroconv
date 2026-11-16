@@ -899,6 +899,19 @@ def _add_sorting_to_nwbfile(
     )
 
 
+def _warn_on_computed_fields_in_series_entry(entry: dict, metadata_location: str):
+    """Warn when a series metadata entry sets the data or the timing, which the writer computes from the recording."""
+    computed_fields = [field for field in ("data", "starting_time", "rate", "timestamps") if field in entry]
+    if computed_fields:
+        warnings.warn(
+            f"{metadata_location} sets {computed_fields}, which the writer computes from the recording. Setting the "
+            "data or the timing of a series in its metadata entry is deprecated and will raise in v0.13.0. To change "
+            "the times, use the interface's `temporal_alignment`, or set the times on the recording.",
+            FutureWarning,
+            stacklevel=2,
+        )
+
+
 def _add_recording_segment_to_nwbfile(
     recording: BaseRecording,
     nwbfile: pynwb.NWBFile,
@@ -1037,11 +1050,19 @@ def _add_recording_segment_to_nwbfile(
         else:
             eseries_kwargs["timestamps"] = timestamps
 
-    # Update with user metadata - allows override of all fields including name, description, data, timestamps, etc.
+    # Update with user metadata. An entry that sets the data or the timing still overrides them, with a deprecation
+    # warning, until v0.13.0.
     if metadata_key is not None:
-        eseries_kwargs.update(metadata["Ecephys"]["ElectricalSeries"][metadata_key])
+        series_entry = metadata["Ecephys"]["ElectricalSeries"][metadata_key]
+        _warn_on_computed_fields_in_series_entry(
+            entry=series_entry, metadata_location=f"metadata['Ecephys']['ElectricalSeries']['{metadata_key}']"
+        )
+        eseries_kwargs.update(series_entry)
     elif metadata is not None and "Ecephys" in metadata and es_key is not None:
         assert es_key in metadata["Ecephys"], f"metadata['Ecephys'] dictionary does not contain key '{es_key}'"
+        _warn_on_computed_fields_in_series_entry(
+            entry=metadata["Ecephys"][es_key], metadata_location=f"metadata['Ecephys']['{es_key}']"
+        )
         eseries_kwargs.update(metadata["Ecephys"][es_key])
 
     # If the recording extractor has more than 1 segment, append the unpadded segment index to the name so that the
@@ -1057,7 +1078,12 @@ def _add_recording_segment_to_nwbfile(
     segment_metadata_key = f"{metadata_key}_{segment_index}"
     has_segment_override = metadata_key is not None and segment_metadata_key in metadata["Ecephys"]["ElectricalSeries"]
     if has_segment_override:
-        eseries_kwargs.update(metadata["Ecephys"]["ElectricalSeries"][segment_metadata_key])
+        segment_entry = metadata["Ecephys"]["ElectricalSeries"][segment_metadata_key]
+        _warn_on_computed_fields_in_series_entry(
+            entry=segment_entry,
+            metadata_location=f"metadata['Ecephys']['ElectricalSeries']['{segment_metadata_key}']",
+        )
+        eseries_kwargs.update(segment_entry)
 
     # Create ElectricalSeries object and add it to nwbfile
     es = pynwb.ecephys.ElectricalSeries(**eseries_kwargs)
@@ -1495,6 +1521,14 @@ def _build_channel_id_to_electrodes_table_map(
     return dict(channel_to_electrode_row)
 
 
+def _annotation_values_are_equal(written_value: Any, supplied_value: Any) -> bool:
+    """Compare a value already in a table cell with a supplied one, treating two missing (NaN) values as equal."""
+    written_value = np.asarray(written_value)
+    supplied_value = np.asarray(supplied_value)
+    both_numeric = written_value.dtype.kind in "iufc" and supplied_value.dtype.kind in "iufc"
+    return bool(np.array_equal(written_value, supplied_value, equal_nan=both_numeric))
+
+
 def _get_null_value_for_property(property: str, sample_data: Any, null_values_for_properties: dict[str, Any]) -> Any:
     """
     Retrieve the null value for a given property based on its data type or a provided mapping.
@@ -1737,6 +1771,38 @@ def _add_electrodes_to_nwbfile(
         data = np.full(recording.get_num_channels(), fill_value=default_location)
         data_to_add["location"] = dict(description="location", data=data, index=False)
 
+    # Match the recording's channels to the rows already in the table, before anything is written
+    channel_map = _build_channel_id_to_electrodes_table_map(recording=recording, nwbfile=nwbfile)
+    channel_ids = recording.get_channel_ids()
+    channel_id_to_index = {channel_id: index for index, channel_id in enumerate(channel_ids)}
+    matched_channel_ids = [channel_id for channel_id, row in channel_map.items() if row is not None]
+
+    # A reused row keeps its written values, so a supplied value that differs from the written one raises.
+    columns_not_compared = {"group", "group_name", "channel_name", "electrode_name"}
+    electrode_table_columns = set(nwbfile.electrodes.colnames) if nwbfile.electrodes is not None else set()
+    columns_to_compare = natsorted(electrode_table_columns.intersection(data_to_add) - columns_not_compared)
+    for channel_id in matched_channel_ids:
+        row = channel_map[channel_id]
+        channel_index = channel_id_to_index[channel_id]
+        for property in columns_to_compare:
+            written_value = np.asarray(nwbfile.electrodes[property][row])
+            supplied_value = np.asarray(data_to_add[property]["data"][channel_index])
+            both_numeric = written_value.dtype.kind in "iufc" and supplied_value.dtype.kind in "iufc"
+            if not np.array_equal(written_value, supplied_value, equal_nan=both_numeric):
+                written_value = written_value.tolist()
+                supplied_value = supplied_value.tolist()
+                raise ValueError(
+                    f"Electrode with group_name={str(group_names[channel_index])!r} and "
+                    f"channel_name={str(channel_names[channel_index])!r} is already in the electrodes table with "
+                    f"{property}={written_value!r}, and this recording supplies {property}={supplied_value!r}. "
+                    "When an electrode is already in the table, a write adds no new row for it and leaves the "
+                    "values in its existing row unchanged. To resolve this, either:\n"
+                    f"- Keep {property}={written_value!r} by removing the {property!r} property from this "
+                    "recording before writing it.\n"
+                    f"- Write {property}={supplied_value!r} by rebuilding the file, giving the recording that is "
+                    f"written first the same {property!r} values."
+                )
+
     # Add missing groups to the nwb file
     groupless_names = [group_name for group_name in group_names if group_name not in nwbfile.electrode_groups]
     if len(groupless_names) > 0:
@@ -1759,16 +1825,8 @@ def _add_electrodes_to_nwbfile(
     properties_to_add_by_rows = schema_properties.union(electrode_table_previous_properties)
     properties_to_add_by_columns = properties_to_add.difference(properties_to_add_by_rows)
 
-    # We only add new electrodes to the table
-    # Use the mapping function to determine which channels are already in the table
-    channel_map = _build_channel_id_to_electrodes_table_map(recording=recording, nwbfile=nwbfile)
-
-    # Channels to add are those that don't have a row mapping (None)
+    # We only add new electrodes to the table: the channels that don't have a row mapping (None)
     channel_ids_to_add = [channel_id for channel_id, row in channel_map.items() if row is None]
-
-    # Create mapping from channel_id to channel_index for data array access
-    channel_ids = recording.get_channel_ids()
-    channel_id_to_index = {channel_id: index for index, channel_id in enumerate(channel_ids)}
 
     # Properties that were added before require null values to add by rows if data is missing
     properties_requiring_null_values = electrode_table_previous_properties.difference(properties_to_add)
@@ -2133,6 +2191,49 @@ def add_recording_as_time_series_to_nwbfile(
         applied to the system (e.g., electrical stimulation current).
     """
 
+    # Each segment's set time vector where it has one, otherwise its start at the sampling frequency
+    segment_timestamps, segment_starting_times = [], []
+    for segment_index in range(recording.get_num_segments()):
+        if recording.has_time_vector(segment_index=segment_index):
+            segment_timestamps.append(recording.get_times(segment_index=segment_index))
+            segment_starting_times.append(None)
+        else:
+            segment_timestamps.append(None)
+            segment_starting_times.append(recording.get_start_time(segment_index=segment_index))
+
+    _add_recording_as_time_series_to_nwbfile(
+        recording=recording,
+        nwbfile=nwbfile,
+        metadata=metadata,
+        segment_timestamps=segment_timestamps,
+        segment_starting_times=segment_starting_times,
+        iterator_type=iterator_type,
+        iterator_options=iterator_options,
+        always_write_timestamps=always_write_timestamps,
+        metadata_key=metadata_key,
+        parent_container=parent_container,
+    )
+
+
+def _add_recording_as_time_series_to_nwbfile(
+    *,
+    recording: BaseRecording,
+    nwbfile: pynwb.NWBFile,
+    metadata: dict | None,
+    segment_timestamps: list[np.ndarray | None],
+    segment_starting_times: list[float | None],
+    iterator_type: str | None,
+    iterator_options: dict | None,
+    always_write_timestamps: bool,
+    metadata_key: str | None,
+    parent_container: Literal["acquisition", "stimulus"],
+):
+    """``add_recording_as_time_series_to_nwbfile`` with each segment's times given instead of read from the recording.
+
+    For an interface, which holds the aligned times itself. A segment's times are its entry in
+    ``segment_timestamps``, one time per sample, or, where that entry is None, its entry in
+    ``segment_starting_times`` at the recording's sampling frequency.
+    """
     # ``metadata_key`` addresses an entry, so it is only meaningful when there is a block to address.
     # Checked with ``in`` rather than ``[]`` because ``metadata`` is routinely a ``DeepDict``, whose
     # ``__getitem__`` would auto-create the block and make this guard pass on a dict that never had one.
@@ -2159,6 +2260,8 @@ def add_recording_as_time_series_to_nwbfile(
             always_write_timestamps=always_write_timestamps,
             metadata_key=metadata_key,
             parent_container=parent_container,
+            timestamps=segment_timestamps[segment_index],
+            starting_time=segment_starting_times[segment_index],
         )
 
 
@@ -2172,13 +2275,17 @@ def _add_time_series_segment_to_nwbfile(
     always_write_timestamps: bool = False,
     metadata_key: str | None = None,
     parent_container: Literal["acquisition", "stimulus"] = "acquisition",
+    *,
+    timestamps: np.ndarray | None,
+    starting_time: float | None,
 ):
     """
     Internal function to add a single recording segment as a TimeSeries to an NWBFile.
 
     See `add_recording_as_time_series_to_nwbfile` for public API details.
     All backward compatibility handling and metadata filtering should be done
-    in the public function before calling this.
+    in the public function before calling this. The segment's times are ``timestamps``, one per sample, or, when
+    they are None, ``starting_time`` at the recording's sampling frequency.
     """
 
     metadata = DeepDict() if metadata is None else metadata
@@ -2254,17 +2361,18 @@ def _add_time_series_segment_to_nwbfile(
 
     # Add timestamps or rate
     if always_write_timestamps:
-        timestamps = recording.get_times(segment_index=segment_index)
+        if timestamps is None:
+            number_of_samples = recording.get_num_samples(segment_index=segment_index)
+            timestamps = starting_time + np.arange(number_of_samples) / recording.get_sampling_frequency()
         tseries_kwargs["timestamps"] = timestamps
     else:
-        recording_has_timestamps = recording.has_time_vector(segment_index=segment_index)
-        if recording_has_timestamps:
-            timestamps = recording.get_times(segment_index=segment_index)
-            rate = calculate_regular_series_rate(series=timestamps)
+        # By default we write the rate if the timestamps are regular
+        if timestamps is not None:
+            rate = calculate_regular_series_rate(series=timestamps)  # Returns None if it is not regular
             recording_t_start = timestamps[0]
         else:
             rate = recording.get_sampling_frequency()
-            recording_t_start = recording.get_start_time(segment_index=segment_index)
+            recording_t_start = starting_time
 
         if rate:
             starting_time = float(recording_t_start)
@@ -2273,7 +2381,11 @@ def _add_time_series_segment_to_nwbfile(
         else:
             tseries_kwargs["timestamps"] = timestamps
 
-    # Update with user-provided metadata
+    # Update with user-provided metadata. An entry that sets the data or the timing still overrides them, with a
+    # deprecation warning, until v0.13.0.
+    _warn_on_computed_fields_in_series_entry(
+        entry=user_metadata, metadata_location=f"metadata['TimeSeries']['{metadata_key}']"
+    )
     tseries_kwargs.update(user_metadata)
 
     # Fill in required fields with defaults if missing, before the segment suffix so a default name gets it too
@@ -2292,7 +2404,11 @@ def _add_time_series_segment_to_nwbfile(
     segment_metadata_key = f"{metadata_key}_{segment_index}"
     has_segment_override = metadata_key is not None and segment_metadata_key in metadata.get("TimeSeries", {})
     if has_segment_override:
-        tseries_kwargs.update(metadata["TimeSeries"][segment_metadata_key])
+        segment_entry = metadata["TimeSeries"][segment_metadata_key]
+        _warn_on_computed_fields_in_series_entry(
+            entry=segment_entry, metadata_location=f"metadata['TimeSeries']['{segment_metadata_key}']"
+        )
+        tseries_kwargs.update(segment_entry)
 
     # Create TimeSeries object and add it to nwbfile
     time_series = pynwb.base.TimeSeries(**tseries_kwargs)
@@ -2479,7 +2595,11 @@ def _add_spatial_series_segment_to_nwbfile(
         else:
             series_kwargs["timestamps"] = timestamps
 
-    # Update with user-provided metadata
+    # Update with user-provided metadata. An entry that sets the data or the timing still overrides them, with a
+    # deprecation warning, until v0.13.0.
+    _warn_on_computed_fields_in_series_entry(
+        entry=user_metadata, metadata_location=f"metadata['SpatialSeries']['{metadata_key}']"
+    )
     series_kwargs.update(user_metadata)
 
     # Fill in missing required fields with defaults, before the segment suffix so a default name gets it too
@@ -2496,7 +2616,11 @@ def _add_spatial_series_segment_to_nwbfile(
     # segment only, its name used as given.
     segment_metadata_key = f"{metadata_key}_{segment_index}"
     if segment_metadata_key in metadata.get("SpatialSeries", {}):
-        series_kwargs.update(metadata["SpatialSeries"][segment_metadata_key])
+        segment_entry = metadata["SpatialSeries"][segment_metadata_key]
+        _warn_on_computed_fields_in_series_entry(
+            entry=segment_entry, metadata_location=f"metadata['SpatialSeries']['{segment_metadata_key}']"
+        )
+        series_kwargs.update(segment_entry)
 
     # Create the SpatialSeries instance
     spatial_series = pynwb.behavior.SpatialSeries(**series_kwargs)
@@ -2922,11 +3046,16 @@ def _add_units_table_to_nwbfile(
     null values.
 
     Deduplication is handled by ``(sorting_name, unit_name)``: a unit whose pair already
-    exists in the table reuses that row and keeps its existing values. When
+    exists in the table reuses that row and keeps its existing values. Supplying a value
+    that differs from one already written in an existing column raises. When
     ``unit_electrode_indices`` is given and the table has an ``electrodes`` column, a
     unit whose electrode indices differ from those of every matching row is added as a
     new row. A pair matching several rows raises when ``unit_electrode_indices`` is not
-    given. Appending to a table without a ``sorting_name`` column raises. See
+    given. A unit of an unnamed sorting that matches a row raises, since without a name
+    the same sorting written again and a different sorting with the same unit names
+    can't be told apart. A sorting with no name is unnamed (``""``), and the ``sorting_name`` column is
+    written only once some unit in the table has a name: a table without it reads as
+    unnamed, and naming a sorting later fills the earlier rows with ``""``. See
     ``_add_electrodes_to_nwbfile`` for how the electrode table itself
     handles deduplication via ``(group_name, electrode_name, channel_name)``.
 
@@ -3050,12 +3179,6 @@ def _add_units_table_to_nwbfile(
             nwbfile.units = pynwb.misc.Units(name="units", **units_table_kwargs)
         units_table = nwbfile.units
 
-    if not write_table_first_time and "sorting_name" not in units_table.colnames:
-        raise ValueError(
-            f"Cannot append to units table '{units_table.name}' because it has no 'sorting_name' column. "
-            "Write to a new units table instead."
-        )
-
     default_descriptions = dict(
         isi_violation="Quality metric that measures the ISI violation ratio as a proxy for the purity of the unit.",
         firing_rate="Number of spikes per unit of time.",
@@ -3132,12 +3255,13 @@ def _add_units_table_to_nwbfile(
     if sorting_name is None:
         sorting_name = sorting.get_annotation("sorting_name")
     if sorting_name is None:
-        sorting_name = "sorting"
-    data_to_add["sorting_name"] = dict(
-        description=property_descriptions["sorting_name"],
-        data=np.full(num_units, sorting_name),
-        index=False,
-    )
+        sorting_name = ""
+    if sorting_name != "" or "sorting_name" in units_table.colnames:
+        data_to_add["sorting_name"] = dict(
+            description=property_descriptions["sorting_name"],
+            data=np.full(num_units, sorting_name),
+            index=False,
+        )
 
     # Add spike times to data_to_add alongside waveforms and electrodes.
     # This lets the shared column-adding loop below handle all data uniformly.
@@ -3186,12 +3310,24 @@ def _add_units_table_to_nwbfile(
     unit_identities = [(sorting_name, unit_name) for unit_name in unit_name_array]
     unit_identity_to_rows = defaultdict(list)
     if "unit_name" in units_table_previous_columns:
-        for index, identity in enumerate(zip(units_table["sorting_name"][:], units_table["unit_name"][:])):
+        existing_unit_names = units_table["unit_name"][:]
+        if "sorting_name" in units_table_previous_columns:
+            existing_sorting_names = units_table["sorting_name"][:]
+        else:
+            existing_sorting_names = [""] * len(existing_unit_names)
+        for index, identity in enumerate(zip(existing_sorting_names, existing_unit_names)):
             unit_identity_to_rows[identity].append(index)
 
     rows_to_add = []
     indices_for_new_data = list(range(num_units))
     has_electrodes_column = "electrodes" in units_table_previous_columns and unit_electrode_indices is not None
+    # Annotation columns this write supplies that the table already has. Identity and spike data are never compared.
+    columns_not_compared = {"sorting_name", "unit_name", "spike_times", "electrodes", "waveform_mean", "waveform_sd"}
+    annotation_columns_to_compare = [
+        property
+        for property in units_table_previous_columns
+        if property not in columns_not_compared and "data" in data_to_add.get(property, {})
+    ]
     if units_table_previous_columns:
         for index, identity in enumerate(unit_identities):
             matching_rows = unit_identity_to_rows.get(identity, [])
@@ -3209,7 +3345,46 @@ def _add_units_table_to_nwbfile(
                 )
 
             if matching_rows:
-                indices_for_new_data[index] = matching_rows[0]
+                unit_name = str(unit_name_array[index])
+                if sorting_name == "":
+                    raise ValueError(
+                        f"Units of an unnamed sorting match unnamed units already in units table "
+                        f"'{units_table.name}', starting with unit_name={unit_name!r}. Without a sorting name the "
+                        "writer can't tell the same sorting written again from a different sorting with the same "
+                        "unit names. If it is a different sorting, name it with "
+                        "metadata['Ecephys']['Sortings'][metadata_key]['sorting_name'] or the 'sorting_name' "
+                        "annotation of the extractor. If it is the same sorting, give it the same name on both writes."
+                    )
+                row = matching_rows[0]
+                for property in annotation_columns_to_compare:
+                    written_value = units_table[property].get(row, index=True)
+                    supplied_value = data_to_add[property]["data"][index]
+                    if not _annotation_values_are_equal(written_value, supplied_value):
+                        written_value = np.asarray(written_value).tolist()
+                        supplied_value = np.asarray(supplied_value).tolist()
+                        written_value_is_null = written_value in ("", []) or (
+                            isinstance(written_value, float) and np.isnan(written_value)
+                        )
+                        placeholder_note = (
+                            f" {property}={written_value!r} may be the placeholder the table filled in when another "
+                            f"sorting added the {property!r} column."
+                            if written_value_is_null
+                            else ""
+                        )
+                        sorting_description = f"the sorting with sorting_name={sorting_name!r}" + (
+                            f" (metadata key {metadata_key!r})" if metadata_key is not None else ""
+                        )
+                        raise ValueError(
+                            f"Unit with sorting_name={sorting_name!r} and unit_name={unit_name!r} is already in "
+                            f"units table '{units_table.name}' with {property}={written_value!r}, and this write "
+                            f"supplies {property}={supplied_value!r}. When a unit is already in the table, a write "
+                            "adds no new row for it and leaves the values in its existing row unchanged."
+                            f"{placeholder_note} To resolve this, either:\n"
+                            f"- Keep {property}={written_value!r} by passing skip_properties=[{property!r}].\n"
+                            f"- Write {property}={supplied_value!r} by rebuilding the file, giving "
+                            f"{sorting_description} its {property!r} values the first time it is written to the table."
+                        )
+                indices_for_new_data[index] = row
             else:
                 indices_for_new_data[index] = len(units_table) + len(rows_to_add)
                 rows_to_add.append(index)
@@ -3252,8 +3427,8 @@ def _add_units_table_to_nwbfile(
         cols_args = data_to_add["unit_name"]
         data = cols_args["data"]
 
-        previous_ids = units_table.id[:previous_table_size]
-        default_value = np.array(previous_ids).astype("str")
+        # Rows that predate the column get "", never a value derived for them such as their id
+        default_value = np.full(previous_table_size, "")
 
         extended_data = np.hstack([default_value, data])
         cols_args["data"] = extended_data

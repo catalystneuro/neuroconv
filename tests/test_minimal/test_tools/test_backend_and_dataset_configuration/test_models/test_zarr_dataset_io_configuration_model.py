@@ -2,17 +2,14 @@
 
 import pytest
 from pydantic import ValidationError
+from zarr.codecs import GzipCodec
+from zarr.codecs.numcodecs import Delta, Shuffle
 
 from neuroconv.tools.nwb_helpers import (
     AVAILABLE_ZARR_COMPRESSION_METHODS,
     ZarrDatasetIOConfiguration,
 )
 from neuroconv.tools.testing import mock_ZarrDatasetIOConfiguration
-
-# The Zarr backend requires zarr 3, which only installs on Python 3.14 and newer.
-pytest.importorskip("zarr", minversion="3")
-from zarr.codecs import GzipCodec
-from zarr.codecs.numcodecs import Delta, Shuffle
 
 
 def test_validator_filter_options_has_methods():

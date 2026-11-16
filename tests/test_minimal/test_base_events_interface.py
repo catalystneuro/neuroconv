@@ -38,6 +38,17 @@ class TestMockEventsInterface(EventsInterfaceTestMixin):
         overridden = MockEventsInterface(metadata_key="my_events").get_metadata()["Events"]
         assert set(overridden.keys()) == {"my_events"}
 
+    def test_event_types_are_registered_at_construction(self, monkeypatch):
+        interface = MockEventsInterface(num_event_types=2)
+        expected_keys = interface.get_event_type_source_ids()
+
+        def fail_if_listed_again():
+            raise AssertionError("temporal_alignment listed the event types after construction")
+
+        monkeypatch.setattr(interface, "get_event_type_source_ids", fail_if_listed_again)
+
+        assert list(interface.temporal_alignment.keys()) == expected_keys
+
     def test_events_with_timestamps_only(self):
         interface = MockEventsInterface(event_payload="timestamps only")
         nwbfile = mock_NWBFile()

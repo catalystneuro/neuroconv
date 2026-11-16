@@ -40,6 +40,7 @@ class AxonRecordingInterface(BaseRecordingExtractorInterface):
         verbose: bool = False,
         es_key: str | None = None,
         metadata_key: str | None = None,
+        channels_to_exclude: list | None = None,
     ):
         """
         Load and prepare raw data and corresponding metadata from the Axon Binary Format (.abf files).
@@ -55,6 +56,9 @@ class AxonRecordingInterface(BaseRecordingExtractorInterface):
             Key that indexes this interface's entries in the dict-based metadata. Defaults to
             ``"axon_recording"``.
             The key for the ElectricalSeries in the metadata
+        channels_to_exclude : list, optional
+            Channels to leave out, by the ids in ``channel_ids``. Every other channel is converted. A name that
+            is not one of the interface's channels raises.
         """
 
         self.file_path = Path(file_path)
@@ -66,34 +70,9 @@ class AxonRecordingInterface(BaseRecordingExtractorInterface):
 
         # Read the start time while the recording is still the neo-based extractor, as `remove_channels`
         # replaces it with a channel slice that does not carry the `neo_reader`
-        self._session_start_time = self._get_start_datetime(self.recording_extractor.neo_reader)
+        self._session_start_time = _get_start_datetime(self.recording_extractor.neo_reader)
 
-    def _get_start_datetime(self, neo_reader):
-        """
-        Get start datetime for ABF file.
-
-        Parameters
-        ----------
-        neo_reader : neo.io.AxonIO
-            The Neo reader object for the ABF file.
-
-        Returns
-        -------
-        datetime
-            The start date and time of the recording.
-        """
-        if all(k in neo_reader._axon_info for k in ["uFileStartDate", "uFileStartTimeMS"]):
-            startDate = str(neo_reader._axon_info["uFileStartDate"])
-            startTime = round(neo_reader._axon_info["uFileStartTimeMS"] / 1000)
-            startDate = datetime.strptime(startDate, "%Y%m%d")
-            startTime = timedelta(seconds=startTime)
-            return startDate + startTime
-        else:
-            warn(
-                f"uFileStartDate or uFileStartTimeMS not found in {neo_reader.filename.split('/')[-1]}, datetime for "
-                "recordings might be wrongly stored."
-            )
-            return neo_reader._axon_info["rec_datetime"]
+        self._exclude_channels(channels_to_exclude)
 
     def _get_metadata_schema_for_old_list_format(self) -> dict:
         metadata_schema = super()._get_metadata_schema_for_old_list_format()
@@ -149,3 +128,31 @@ class AxonRecordingInterface(BaseRecordingExtractorInterface):
         )
 
         return metadata
+
+
+def _get_start_datetime(neo_reader) -> datetime:
+    """
+    Get start datetime for ABF file.
+
+    Parameters
+    ----------
+    neo_reader : neo.io.AxonIO
+        The Neo reader object for the ABF file.
+
+    Returns
+    -------
+    datetime
+        The start date and time of the recording.
+    """
+    if all(k in neo_reader._axon_info for k in ["uFileStartDate", "uFileStartTimeMS"]):
+        startDate = str(neo_reader._axon_info["uFileStartDate"])
+        startTime = round(neo_reader._axon_info["uFileStartTimeMS"] / 1000)
+        startDate = datetime.strptime(startDate, "%Y%m%d")
+        startTime = timedelta(seconds=startTime)
+        return startDate + startTime
+    else:
+        warn(
+            f"uFileStartDate or uFileStartTimeMS not found in {neo_reader.filename.split('/')[-1]}, datetime for "
+            "recordings might be wrongly stored."
+        )
+        return neo_reader._axon_info["rec_datetime"]

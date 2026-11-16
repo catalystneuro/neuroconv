@@ -327,6 +327,7 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
         verbose: bool = False,
         es_key: str | None = None,
         metadata_key: str | None = None,
+        channels_to_exclude: list | None = None,
     ):
         """
 
@@ -339,6 +340,9 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
         metadata_key : str, optional
             Key that indexes this interface's entries in the dict-based metadata. Defaults to
             ``"cell_explorer_recording"``.
+        channels_to_exclude : list, optional
+            Channels to leave out, by the ids in ``channel_ids``. Every other channel is converted. A name that
+            is not one of the interface's channels raises.
         """
 
         self.session_path = Path(folder_path)
@@ -392,7 +396,9 @@ class CellExplorerRecordingInterface(BaseRecordingExtractorInterface):
 
         self._register_segments()
 
-    def get_original_timestamps(self):
+        self._exclude_channels(channels_to_exclude)
+
+    def _get_original_timestamps(self):
         num_frames = self.recording_extractor.get_num_samples()
         sampling_frequency = self.recording_extractor.get_sampling_frequency()
         timestamps = np.arange(num_frames) / sampling_frequency
@@ -430,12 +436,19 @@ class CellExplorerLFPInterface(CellExplorerRecordingInterface):
         verbose: bool = False,
         es_key: str | None = None,
         metadata_key: str | None = None,
+        channels_to_exclude: list | None = None,
     ):
 
         if metadata_key is None:
             metadata_key = "cell_explorer_lfp"
 
-        super().__init__(folder_path, verbose=verbose, es_key=es_key, metadata_key=metadata_key)
+        super().__init__(
+            folder_path,
+            verbose=verbose,
+            es_key=es_key,
+            metadata_key=metadata_key,
+            channels_to_exclude=channels_to_exclude,
+        )
 
     def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
@@ -564,6 +577,10 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
         cell_info = spikes_mat.get("spikes", {})
         self.cell_info_fields = list(cell_info.keys())
 
+        # CellExplorer records the sorting output the spikes were loaded from, relative to the session folder
+        clustering_path = cell_info.get("processinginfo", {}).get("params", {}).get("clusteringpath")
+        self._clustering_path = clustering_path if isinstance(clustering_path, str) else ""
+
         unit_ids = self.sorting_extractor.get_unit_ids()
         if "cluID" in self.cell_info_fields:
             self.sorting_extractor.set_property(ids=unit_ids, key="clu_id", values=[int(x) for x in cell_info["cluID"]])
@@ -691,5 +708,7 @@ class CellExplorerSortingInterface(BaseSortingExtractorInterface):
                     )
                 )
         metadata.update(Ecephys=dict(UnitProperties=unit_properties))
+        if self._clustering_path:
+            metadata["Ecephys"]["Sortings"] = {self.metadata_key: dict(sorting_name=self._clustering_path)}
 
         return metadata

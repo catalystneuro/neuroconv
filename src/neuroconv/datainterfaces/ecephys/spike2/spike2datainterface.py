@@ -71,6 +71,7 @@ class Spike2RecordingInterface(BaseRecordingExtractorInterface):
         verbose: bool = False,
         es_key: str | None = None,
         metadata_key: str | None = None,
+        channels_to_exclude: list | None = None,
     ):
         """
         Initialize reading of Spike2 file.
@@ -84,6 +85,9 @@ class Spike2RecordingInterface(BaseRecordingExtractorInterface):
         metadata_key : str, optional
             Key that indexes this interface's entries in the dict-based metadata. Defaults to
             ``"spike2_recording"``.
+        channels_to_exclude : list, optional
+            Channels to leave out, by the ids in ``channel_ids``. Every other channel is converted. A name that
+            is not one of the interface's channels raises.
         """
 
         _test_sonpy_installation()
@@ -100,3 +104,5 @@ class Spike2RecordingInterface(BaseRecordingExtractorInterface):
         signal_channels = self.recording_extractor.neo_reader.header["signal_channels"]
         channel_ids_of_raw_data = [channel_info[1] for channel_info in signal_channels if channel_info[4] == "mV"]
         self.recording_extractor = self.recording_extractor.select_channels(channel_ids=channel_ids_of_raw_data)
+
+        self._exclude_channels(channels_to_exclude)
