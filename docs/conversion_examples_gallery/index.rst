@@ -79,7 +79,6 @@ Imaging
     Inscopix <imaging/inscopix>
     Scanbox <imaging/scanbox>
     ScanImage <imaging/scanimage>
-    ScanImage Legacy (v3.8 and older) <imaging/scanimage_legacy>
     Thor <imaging/thor>
     Tiff <imaging/tiff>
 

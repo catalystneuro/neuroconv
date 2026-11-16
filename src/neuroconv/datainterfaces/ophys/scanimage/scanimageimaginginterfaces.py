@@ -1,5 +1,6 @@
 import datetime
 import json
+import warnings
 from pathlib import Path
 from typing import Optional
 
@@ -100,14 +101,6 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
         verbose : bool, default: False
             If True, will print detailed information about the interface initialization process.
         """
-
-        first_file_path = Path(file_path) if file_path else Path(file_paths[0])
-        header_version = self.get_scanimage_version(file_path=first_file_path)
-        if header_version not in [3, 4, 5]:
-            raise ValueError(
-                f"Unsupported ScanImage version {header_version}. Supported versions are 3, 4, and 5."
-                f"Most likely this is a legacy version, use ScanImageLegacyImagingInterface instead."
-            )
 
         if interleave_slice_samples is None:
             interleave_slice_samples = False
@@ -321,17 +314,13 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
         Extract and parse the 'epoch' metadata from a ScanImage TIFF file as the session start time.
 
         This method opens the first frame of the TIFF file, extracts the 'epoch' field from the
-        ImageDescription tag, and parses it into a datetime object.
+        ImageDescription tag, and parses it into a datetime object. ScanImage 3.x and 4.x headers have
+        no 'epoch' field, and for them the trigger time that the extractor reads is returned instead.
 
         Returns
         -------
         datetime
             Parsed datetime from the 'epoch' metadata.
-
-        Raises
-        ------
-        ValueError
-            If 'epoch' metadata is not found in the file.
         """
 
         from tifffile import TiffReader
@@ -344,10 +333,11 @@ class ScanImageImagingInterface(BaseImagingExtractorInterface):
 
         match = re.search(r"epoch\s*=\s*\[([^\]]+)\]", image_description)
         if not match:
-            raise ValueError(f"'epoch' field not found in {tiff_file_path}")
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", message="The metadata API is experimental")
+                return self.imaging_extractor.metadata.acquisition_start_datetime
 
         epoch_values = match.group(1).split()
-        import warnings
 
         if len(epoch_values) != 6:
             warnings.warn(
@@ -490,6 +480,12 @@ class ScanImageLegacyImagingInterface(BaseImagingExtractorInterface):
         metadata_key : str, optional
             Metadata key for this interface. When None, defaults to "scan_image_legacy_imaging".
         """
+        warnings.warn(
+            "ScanImageLegacyImagingInterface is deprecated and will be removed in v0.13.0. "
+            "Use ScanImageImagingInterface, which reads the files of ScanImage 3.x and 4.x.",
+            FutureWarning,
+            stacklevel=2,
+        )
 
         from roiextractors.extractors.tiffimagingextractors.scanimagetiff_utils import (
             extract_extra_metadata,

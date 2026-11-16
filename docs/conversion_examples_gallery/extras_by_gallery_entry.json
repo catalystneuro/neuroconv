@@ -120,9 +120,6 @@
   "imaging/scanimage.rst": {
     "extra": "scanimage"
   },
-  "imaging/scanimage_legacy.rst": {
-    "extra": "scanimage_legacy"
-  },
   "imaging/thor.rst": {
     "extra": "thor"
   },
