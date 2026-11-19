@@ -20,12 +20,29 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
     info = "Interface for Neuralynx recording data."
 
     @classmethod
-    def get_stream_names(cls, folder_path: DirectoryPath) -> list[str]:
+    def get_stream_names(cls, folder_path: DirectoryPath, exclude_filenames: list[str] | None = None) -> list[str]:
+        """
+        Get names of recording streams in a Neuralynx folder.
+
+        Parameters
+        ----------
+        folder_path : DirectoryPath
+            Path to Neuralynx directory.
+        exclude_filenames : list[str], optional
+            Names of files in ``folder_path`` to leave out, as in ``NeuralynxRecordingInterface.__init__``.
+
+        Returns
+        -------
+        list[str]
+            The stream names.
+        """
         from spikeinterface.extractors.extractor_classes import (
             NeuralynxRecordingExtractor,
         )
 
-        stream_names, _ = NeuralynxRecordingExtractor.get_streams(folder_path=folder_path)
+        stream_names, _ = NeuralynxRecordingExtractor.get_streams(
+            folder_path=folder_path, exclude_filename=exclude_filenames
+        )
         return stream_names
 
     @classmethod
@@ -44,6 +61,9 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
 
         return NeuralynxRecordingExtractor
 
+    def _initialize_extractor(self, interface_kwargs: dict):
+        return super()._initialize_extractor(_rename_exclude_filenames(interface_kwargs))
+
     def __init__(
         self,
         folder_path: DirectoryPath,
@@ -54,6 +74,7 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
         metadata_key: str | None = None,
         channels_to_exclude: list | None = None,
         gap_tolerance_ms: float | None = None,
+        exclude_filenames: list[str] | None = None,
     ):
         """
         Initialize reading of Neuralynx recording.
@@ -76,6 +97,11 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
         gap_tolerance_ms : float, optional
             Timestamp gaps in the ``.ncs`` files shorter than this, in milliseconds, are ignored, and longer ones start
             a new segment. By default any gap raises, with a report of where the gaps are.
+        exclude_filenames : list of str, optional
+            Names of files in ``folder_path`` to leave out, for example ``["Events.nev", "EyeTracking.ncs"]``.
+            Takes effect before the folder is read (unlike ``channels_to_exclude``). Used when a folder with
+            channels at different sampling rates fails with "Incompatible section structures across streams" and
+            ``gap_tolerance_ms`` does not fix it.
         """
 
         if metadata_key is None:
@@ -88,6 +114,7 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
             es_key=es_key,
             metadata_key=metadata_key,
             gap_tolerance_ms=gap_tolerance_ms,
+            exclude_filenames=exclude_filenames,
         )
 
         # Read the header while the recording is still the neo-based extractor, as `remove_channels`
@@ -182,6 +209,9 @@ class NeuralynxSortingInterface(BaseSortingExtractorInterface):
 
         return NeuralynxSortingExtractor
 
+    def _initialize_extractor(self, interface_kwargs: dict):
+        return super()._initialize_extractor(_rename_exclude_filenames(interface_kwargs))
+
     def __init__(
         self,
         folder_path: DirectoryPath,
@@ -191,6 +221,7 @@ class NeuralynxSortingInterface(BaseSortingExtractorInterface):
         stream_id: str | None = None,
         metadata_key: str | None = None,
         gap_tolerance_ms: float | None = None,
+        exclude_filenames: list[str] | None = None,
     ):
         """_summary_
 
@@ -210,6 +241,10 @@ class NeuralynxSortingInterface(BaseSortingExtractorInterface):
         gap_tolerance_ms : float, optional
             Timestamp gaps in the ``.ncs`` files shorter than this, in milliseconds, are ignored, and longer ones start
             a new segment. By default any gap raises, with a report of where the gaps are.
+        exclude_filenames : list of str, optional
+            Names of files in ``folder_path`` to leave out, for example ``["EyeTracking.ncs"]``. Used when a folder
+            with channels at different sampling rates fails with "Incompatible section structures across streams"
+            and ``gap_tolerance_ms`` does not fix it.
         """
         self.metadata_key = metadata_key or "neuralynx_sorting"
         super().__init__(
@@ -218,7 +253,15 @@ class NeuralynxSortingInterface(BaseSortingExtractorInterface):
             stream_id=stream_id,
             verbose=verbose,
             gap_tolerance_ms=gap_tolerance_ms,
+            exclude_filenames=exclude_filenames,
         )
+
+
+def _rename_exclude_filenames(interface_kwargs: dict) -> dict:
+    """Return a copy of the interface arguments with ``exclude_filenames`` under SpikeInterface's singular name"""
+    extractor_kwargs = interface_kwargs.copy()
+    extractor_kwargs["exclude_filename"] = extractor_kwargs.pop("exclude_filenames", None)
+    return extractor_kwargs
 
 
 def extract_neo_header_metadata(neo_reader) -> dict:

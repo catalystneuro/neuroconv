@@ -1,0 +1,1 @@
+Add `exclude_filenames` to `NeuralynxRecordingInterface`, `NeuralynxSortingInterface` and `NeuralynxRecordingInterface.get_stream_names`, the names of files in the folder to skip, so a folder with channels at different sampling rates that fails with "Incompatible section structures across streams" that isn't fixed with `gap_tolerance_ms` can be read.
