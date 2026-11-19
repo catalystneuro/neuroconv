@@ -39,7 +39,7 @@ Convert Neuralynx data to NWB using
 
 
 If the folder holds channels at different sampling rates, reading it can fail with "Incompatible section structures across streams". Try
-``gap_tolerance_ms=1.0`` first: some systems round timestamps to the microsecond and by default that splits files at different points. 
+``gap_tolerance_ms=1.0`` first: some systems round timestamps to the microsecond and by default that splits files at different points.
 If the read still fails, pass the names of the other files as ``exclude_filenames``, for example
 ``NeuralynxRecordingInterface(folder_path=folder_path, gap_tolerance_ms=1.0, exclude_filenames=["EyeTracking.ncs"])``.
 
