@@ -65,7 +65,7 @@ class MiniscopeHeadOrientationInterface(BaseDataInterface):
         self._quaternion_data = df[["qw", "qx", "qy", "qz"]].to_numpy(dtype="float64")
 
         self.temporal_alignment = _TemporalAlignment()
-        self.temporal_alignment._register(
+        self.temporal_alignment._add_time_bearing_object(
             key=self.metadata_key,
             get_native_times=self._get_original_timestamps,
             get_number_of_samples=lambda: len(self._quaternion_data),

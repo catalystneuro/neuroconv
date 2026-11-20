@@ -275,13 +275,13 @@ class SpikeGLXNIDQInterface(BaseDataInterface):
 
         An analog group is keyed ``{metadata_key}_{group_key}_{segment_index}``, one key per written
         ``TimeSeries``. An event type keeps its ``event_type_source_id``, as in every events interface, and is
-        linked rather than registered again, so the events half and the board share one state and a shift of the
-        board moves both. Registering reads nothing.
+        linked rather than added again, so the events half and the board share one state and a shift of the
+        board moves both. Adding the objects reads nothing.
         """
         self._alignment = _TemporalAlignment()
         for group_key in self._analog_channel_groups:
             for segment_index in range(self.recording_extractor.get_num_segments()):
-                self._alignment._register(
+                self._alignment._add_time_bearing_object(
                     key=f"{self.metadata_key}_{group_key}_{segment_index}",
                     get_native_times=partial(self._get_segment_native_times, segment_index=segment_index),
                     default_start_time=partial(self._get_segment_native_start_time, segment_index=segment_index),

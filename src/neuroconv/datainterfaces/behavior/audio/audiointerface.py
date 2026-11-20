@@ -105,10 +105,10 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         self._segment_starting_times = None
 
         # Alignment by composition, with the one recording keyed by `metadata_key`. See neuroconv/_temporal_alignment.py.
-        # The deprecated `file_paths` keeps its own starting times and registers nothing.
+        # The deprecated `file_paths` keeps its own starting times and adds no time-bearing objects.
         self.temporal_alignment = _TemporalAlignment()
         if self.metadata_key is not None:
-            self.temporal_alignment._register(
+            self.temporal_alignment._add_time_bearing_object(
                 key=self.metadata_key,
                 get_native_times=self._get_native_times,
                 default_start_time=0.0,

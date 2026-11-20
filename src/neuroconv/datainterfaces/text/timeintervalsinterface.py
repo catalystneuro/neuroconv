@@ -85,7 +85,7 @@ class TimeIntervalsInterface(BaseDataInterface):
         self.temporal_alignment = _TemporalAlignment()
         for column in self.dataframe.columns:
             if column.endswith("_time"):
-                self.temporal_alignment._register(
+                self.temporal_alignment._add_time_bearing_object(
                     key=column,
                     get_native_times=partial(self._get_native_times, column=column),
                     get_number_of_samples=lambda: len(self.dataframe),
