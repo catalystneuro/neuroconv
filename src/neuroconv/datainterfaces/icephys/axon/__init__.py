@@ -1,2 +1,4 @@
 from .axonintracellularconverter import AxonIntracellularConverter
 from .axonintracellularinterface import AxonIntracellularInterface
+
+from .axoneventsinterface import AxonEventsInterface
