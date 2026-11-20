@@ -140,6 +140,11 @@ class InscopixGpioEventsInterface(BaseEventsInterface):
         }
 
     @classmethod
+    def get_available_event_sources(cls, file_path: FilePath) -> list[str]:
+        """List every channel in the file, in file order."""
+        return list(cls._get_available_signals(file_path))
+
+    @classmethod
     def get_available_channels(cls, file_path) -> list[dict]:
         """Return one dict per channel of a ``.gpio`` file.
 

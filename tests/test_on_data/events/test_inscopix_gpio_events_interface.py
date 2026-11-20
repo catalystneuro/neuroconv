@@ -61,6 +61,34 @@ class TestInscopixGpioOdorConcentrationStimulus(EventsInterfaceTestMixin):
     data_interface_cls = InscopixGpioEventsInterface
     interface_kwargs = dict(file_path=FILE_PATH, detection_configuration=DETECTION_CONFIGURATION)
     expected_temporal_alignment_keys = ("BNC Sync Output", "GPIO-2")
+    expected_event_sources = (
+        "Digital GPI 0",
+        "Digital GPI 1",
+        "Digital GPI 2",
+        "Digital GPI 3",
+        "Digital GPI 4",
+        "Digital GPI 5",
+        "Digital GPI 6",
+        "Digital GPI 7",
+        "Digital GPO 0",
+        "Digital GPO 1",
+        "Digital GPO 2",
+        "Digital GPO 3",
+        "Digital GPO 4",
+        "Digital GPO 5",
+        "Digital GPO 6",
+        "Digital GPO 7",
+        "GPIO-1",
+        "GPIO-2",
+        "GPIO-3",
+        "GPIO-4",
+        "EX-LED",
+        "OG-LED",
+        "DI-LED",
+        "e-focus",
+        "BNC Sync Output",
+        "BNC Trigger Input",
+    )
 
     @pytest.fixture(autouse=True)
     def _read_a_uniquely_named_copy(self, tmp_path):
