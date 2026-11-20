@@ -18,15 +18,33 @@ class TestMockEventSourceResolution(EventsInterfaceTestMixin):
     interface_kwargs = dict(num_event_types=2)
     expected_temporal_alignment_keys = ("events_0", "events_1")
     expected_event_sources = ("events_0", "events_1", "silent")
-    populated_event_source = "events_1"
     silent_event_source = "silent"
 
-    def test_explicit_source_supplies_the_requested_timestamps(self, setup_interface):
+    def test_missing_event_source(self):
+        missing_source = "missing_test_source"
+        event_extraction_configuration = {"requested": {"source": missing_source}}
+        with pytest.raises(ValueError) as error:
+            MockEventsInterface(**self.interface_kwargs, event_extraction_configuration=event_extraction_configuration)
+        message = str(error.value)
+        assert missing_source in message
+        assert "get_available_event_sources" in message
+        assert str(list(self.expected_event_sources)) in message
+
+    def test_two_event_types_can_read_the_same_source(self, setup_interface):
+        source_name = "events_1"
+        event_extraction_configuration = {
+            "first_read": {"source": source_name},
+            "second_read": {"source": source_name},
+        }
         interface = MockEventsInterface(
             **self.interface_kwargs,
-            event_extraction_configuration={"renamed": {"source": "events_1"}},
+            event_extraction_configuration=event_extraction_configuration,
         )
-        np.testing.assert_array_equal(interface.get_event_times("renamed"), self.interface.get_event_times("events_1"))
+        expected_timestamps = self.interface.get_event_times(source_name)
+        assert len(expected_timestamps) > 0
+        assert interface.get_event_type_source_ids() == ["first_read", "second_read"]
+        np.testing.assert_array_equal(interface.get_event_times("first_read"), expected_timestamps)
+        np.testing.assert_array_equal(interface.get_event_times("second_read"), expected_timestamps)
 
     def test_silent_event_source_preserves_native_payload_dtype(self, tmp_path):
         interface = MockEventsInterface(
