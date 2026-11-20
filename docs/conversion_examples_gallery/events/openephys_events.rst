@@ -4,9 +4,9 @@ OpenEphys Binary Events data conversion
 Convert the discrete events of an `Open Ephys <https://open-ephys.org/gui>`_ binary recording to NWB using
 :py:class:`~neuroconv.datainterfaces.events.openephys_events.openephysbinaryeventsdatainterface.OpenEphysBinaryEventsInterface`.
 A Record Node writes one record every time a digital line changes state, into ``events/<stream>/TTL/``, and
-writes its text annotations into a ``MessageCenter`` folder. Each line that fired becomes its own
-``pynwb.event.EventsTable`` in ``nwbfile.events``, holding every edge that line produced with the direction
-of the transition in an ``edge`` column and the latched port value in a ``full_word`` column.
+writes its text annotations into a ``MessageCenter`` folder. A digital input stream becomes one
+``pynwb.event.EventsTable`` in ``nwbfile.events`` with one row per recorded edge. Each row keeps the
+signed ``state``, its ``line`` and ``onset``, and the recorded ``full_word`` when available.
 
 Install NeuroConv with the additional dependencies necessary for reading Open Ephys binary events.
 
@@ -15,10 +15,8 @@ Install NeuroConv with the additional dependencies necessary for reading Open Ep
     pip install "neuroconv[openephys_events]"
 
 A recording holds one event stream per processor that emitted events, so the stream is selected by name, as
-it is for the recording itself. The tables are named after the lines (``Line1``, ``Line2``) because the file
-records which wire fired and not what was wired to it; rename them in the metadata to say what they are. How
-the event types are named, described and grouped into tables is driven entirely by the editable events
-metadata. See :ref:`annotate_events_metadata`.
+it is for the recording itself. Event table names and descriptions can be edited in the metadata.
+See :ref:`annotate_events_metadata`.
 
 .. code-block:: python
 

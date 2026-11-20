@@ -1,4 +1,3 @@
-import re
 from datetime import datetime
 
 import numpy as np
@@ -89,15 +88,14 @@ class TestOpenEphysBinaryEventsInterfaceEdgeCases:
         expected_table_lengths = {"Messages": 0}
         assert {name: len(table) for name, table in nwbfile.events.items()} == expected_table_lengths
 
-    def test_stream_without_events_or_declared_lines_raises(self):
-        """From v0.6 on the header does not declare the lines of a stream, so a stream that never fired has none."""
-        stream_name = "Record Node 101#OneBox-111.ProbeA"
-        expected_message = (
-            f"The event stream '{stream_name}' recorded no events, and its 'structure.oebin' does not declare "
-            "how many lines it has, so there is nothing to write."
+    def test_stream_without_events_or_declared_lines_writes_an_empty_table(self):
+        interface = OpenEphysBinaryEventsInterface(
+            folder_path=self.no_events_folder_path, stream_name="Record Node 101#OneBox-111.ProbeA"
         )
-        with pytest.raises(ValueError, match=re.escape(expected_message)):
-            OpenEphysBinaryEventsInterface(folder_path=self.no_events_folder_path, stream_name=stream_name)
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
+
+        assert [len(table) for table in nwbfile.events.values()] == [0]
 
 
 class OpenEphysBinaryEventsInterfaceMixin:
@@ -118,53 +116,35 @@ class TestDigitalLines(OpenEphysBinaryEventsInterfaceMixin, EventsInterfaceTestM
         folder_path=ECEPHY_DATA_PATH / "openephysbinary" / "v0.6.x_neuropixels_with_sync",
         stream_name="Record Node 104#NI-DAQmx-103.PXIe-6341",
     )
-    expected_temporal_alignment_keys = ("line1", "line2", "line6", "line7")
+    expected_temporal_alignment_keys = ("Record_Node_104_NI_DAQmx_103_PXIe_6341",)
 
     def test_get_metadata(self, interface):
-        # One entry per line that fired, keyed by the line, each carrying the two columns the format
-        # itself explains: the direction of the transition and the latched port value. What the line
-        # was wired to is not in the file, so the name stays the line's own until a user renames it.
-        expected_columns = {
-            "state": {
-                "column_name": "edge",
-                "description": "The direction of the transition that produced this event.",
-                "column_categories": {"labels": {1: "rising", -1: "falling"}},
-            },
-            "full_word": {
-                "column_name": "full_word",
-                "description": "The state of the first 64 TTL lines at the moment of this event.",
-            },
-        }
-        expected_metadata = {
-            "open_ephys_events": {
-                "event_types": {
-                    line: {"event_name": line, "columns": expected_columns}
-                    for line in ["line1", "line2", "line6", "line7"]
-                },
-            },
-        }
-        assert interface.get_metadata()["Events"] == expected_metadata
+        event_types = interface.get_metadata()["Events"]["open_ephys_events"]["event_types"]
+        assert tuple(event_types) == self.expected_temporal_alignment_keys
+        columns = event_types[self.expected_temporal_alignment_keys[0]]["columns"]
+        assert set(columns) == {"state", "line", "onset", "full_word"}
+        assert columns["onset"]["column_categories"]["labels"] == {"rising": "rising", "falling": "falling"}
 
     def test_add_to_nwbfile(self, interface):
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
 
-        assert sorted(nwbfile.events) == ["Line1", "Line2", "Line6", "Line7"]
-
-        # Every edge is a row of its line's table, rising and falling alike, so the row count is the
-        # number of transitions the line recorded rather than the number of pulses it can be read as.
-        assert {name: len(table) for name, table in nwbfile.events.items()} == {
-            "Line1": 3143,
-            "Line2": 1121,
-            "Line6": 62630,
-            "Line7": 93947,
-        }
-
-        line1 = nwbfile.events["Line1"]
-        assert line1.colnames == ("timestamp", "edge", "full_word")
-        assert np.allclose(line1["timestamp"][:4], [728.069181, 728.569167, 729.069233, 729.569267])
-        assert list(line1["edge"][:4]) == ["falling", "rising", "falling", "rising"]
-        assert list(line1["full_word"][:4]) == [66, 67, 66, 67]
+        assert len(nwbfile.events) == 1
+        table = next(iter(nwbfile.events.values()))
+        assert table.colnames == ("timestamp", "state", "line", "onset", "full_word")
+        assert len(table) == 3143 + 1121 + 62630 + 93947
+        first_edges_on_line_one = np.flatnonzero(np.asarray(table["line"][:]) == 1)[:4]
+        assert np.allclose(
+            np.asarray(table["timestamp"][:])[first_edges_on_line_one], [728.069181, 728.569167, 729.069233, 729.569267]
+        )
+        assert list(np.asarray(table["state"][:])[first_edges_on_line_one]) == [-1, 1, -1, 1]
+        assert list(np.asarray(table["onset"][:])[first_edges_on_line_one]) == [
+            "falling",
+            "rising",
+            "falling",
+            "rising",
+        ]
+        assert list(np.asarray(table["full_word"][:])[first_edges_on_line_one]) == [66, 67, 66, 67]
 
     def test_session_start_time(self, interface):
         # Read from the Record Node's settings.xml, so an events-only conversion carries the same start
@@ -177,8 +157,9 @@ class TestDigitalLines(OpenEphysBinaryEventsInterfaceMixin, EventsInterfaceTestM
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
 
-        line6 = nwbfile.events["Line6"]
-        assert list(line6["full_word"][:4]) == [35, 67, 99, 3]
+        table = next(iter(nwbfile.events.values()))
+        line_six = np.asarray(table["line"][:]) == 6
+        assert list(np.asarray(table["full_word"][:])[line_six][:4]) == [35, 67, 99, 3]
 
 
 class TestUnclosedInterval(OpenEphysBinaryEventsInterfaceMixin):
@@ -196,9 +177,10 @@ class TestUnclosedInterval(OpenEphysBinaryEventsInterfaceMixin):
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
 
-        line1 = nwbfile.events["Line1"]
-        edges = list(line1["edge"][:])
-        assert len(line1) == 1453
+        table = next(iter(nwbfile.events.values()))
+        line_one = np.asarray(table["line"][:]) == 1
+        edges = list(np.asarray(table["onset"][:])[line_one])
+        assert len(edges) == 1453
         assert edges.count("rising") == 727
         assert edges.count("falling") == 726
 
@@ -218,9 +200,11 @@ class TestBlockIndexSelectsExperiment(OpenEphysBinaryEventsInterfaceMixin):
 
         # experiment3 opens with a falling edge (the line was already high when recording started) and
         # holds 1493 transitions on line 1, against experiment6's 1453.
-        line1 = nwbfile.events["Line1"]
-        assert len(line1) == 1493
-        assert line1["edge"][0] == "falling"
+        table = next(iter(nwbfile.events.values()))
+        line_one = np.asarray(table["line"][:]) == 1
+        edges = np.asarray(table["onset"][:])[line_one]
+        assert len(edges) == 1493
+        assert edges[0] == "falling"
 
     def test_session_start_time(self, interface):
         # The GUI writes one settings file per experiment, so the start time is experiment3's own
@@ -269,24 +253,25 @@ class TestPreV06Layout(OpenEphysBinaryEventsInterfaceMixin, EventsInterfaceTestM
         folder_path=ECEPHY_DATA_PATH / "openephysbinary" / "v0.4.4.1_with_video_tracking",
         stream_name="Rhythm_FPGA-100.0/TTL_1",
     )
-    expected_temporal_alignment_keys = ("line1", "line2", "line3", "line4", "line5", "line6", "line7", "line8")
+    expected_temporal_alignment_keys = ("Rhythm_FPGA_100_0_TTL_1",)
 
     def test_add_to_nwbfile(self, interface):
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
 
-        line8 = nwbfile.events["Line8"]
-        assert line8.colnames == ("timestamp", "edge", "full_word")
+        assert len(nwbfile.events) == 1
+        line8 = next(iter(nwbfile.events.values()))
+        assert line8.colnames == ("timestamp", "state", "line", "onset", "full_word", "full_word_pattern")
         assert len(line8) == 14
         # 1046013 samples at 30 kHz, the sampling rate the stream declares in structure.oebin.
         assert np.allclose(line8["timestamp"][:4], [34.8671, 34.867133, 35.100367, 35.1004])
-        assert list(line8["edge"][:4]) == ["rising", "falling", "rising", "falling"]
+        assert list(line8["onset"][:4]) == ["rising", "falling", "rising", "falling"]
         assert list(line8["full_word"][:4]) == [128, 0, 128, 0]
+        assert list(line8["full_word_pattern"][:4]) == ["10000000", "00000000"] * 2
 
 
 class TestStreamWithoutEvents(OpenEphysBinaryEventsInterfaceMixin):
-    """A stream that was recorded and never fired. Its header declares eight lines, so each is written as a
-    table with no events."""
+    """A recorded stream with no edges still has one table."""
 
     interface_kwargs = dict(
         folder_path=ECEPHY_DATA_PATH / "openephysbinary" / "v0.4.4.1_with_video_tracking",
@@ -297,5 +282,4 @@ class TestStreamWithoutEvents(OpenEphysBinaryEventsInterfaceMixin):
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
 
-        expected_table_lengths = {f"Line{line}": 0 for line in range(1, 9)}
-        assert {name: len(table) for name, table in nwbfile.events.items()} == expected_table_lengths
+        assert [len(table) for table in nwbfile.events.values()] == [0]

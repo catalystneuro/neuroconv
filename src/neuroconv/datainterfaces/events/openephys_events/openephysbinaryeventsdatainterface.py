@@ -22,13 +22,9 @@ class OpenEphysBinaryEventsInterface(BaseEventsInterface):
     state of the first 64 lines latched at that moment). Text annotations live beside them in a
     ``MessageCenter`` folder.
 
-    Each line becomes one ``pynwb.event.EventsTable`` in ``nwbfile.events``, named
-    ``Line<n>`` until the metadata renames it: an Open Ephys line is a wire, so what it records
-    (reward, lick, trial start) is known to the experimenter and not to the file. Every edge is
-    written as its own row, with the direction in an ``edge`` column and the latched word in a
-    ``full_word`` column, which keeps the whole file: pairing the edges into intervals is a reading
-    that can be taken later from these rows, including a line whose rising and falling edges do not
-    pair up.
+    A digital input stream becomes one ``pynwb.event.EventsTable`` in ``nwbfile.events``.
+    Each row keeps the recorded signed ``state``, its ``line`` and ``onset``, and the recorded
+    ``full_word`` when the recording supplies it.
 
     One interface reads one event stream of one experiment. Streams are named as SpikeInterface names
     the recording streams (``Record Node 104#NI-DAQmx-103.PXIe-6341``), so the events of a recording
@@ -124,11 +120,6 @@ class OpenEphysBinaryEventsInterface(BaseEventsInterface):
             block_index=block_index,
             verbose=verbose,
         )
-        if not self.get_event_type_source_ids():
-            raise ValueError(
-                f"The event stream '{stream_name}' recorded no events, and its 'structure.oebin' does not declare "
-                "how many lines it has, so there is nothing to write."
-            )
 
     def get_metadata(self) -> DeepDict:
         """
@@ -151,14 +142,27 @@ class OpenEphysBinaryEventsInterface(BaseEventsInterface):
             columns = {}
             if "state" in event.payload:
                 columns["state"] = {
-                    "column_name": "edge",
-                    "description": "The direction of the transition that produced this event.",
-                    "column_categories": {"labels": {1: "rising", -1: "falling"}},
+                    "column_name": "state",
+                    "description": "The signed line state stored in the recording.",
+                }
+                columns["line"] = {
+                    "column_name": "line",
+                    "description": "The number of the line that changed.",
+                }
+                columns["onset"] = {
+                    "column_name": "onset",
+                    "description": "The direction of the recorded change.",
+                    "column_categories": {"labels": {"rising": "rising", "falling": "falling"}},
                 }
             if "full_word" in event.payload:
                 columns["full_word"] = {
                     "column_name": "full_word",
                     "description": "The state of the first 64 TTL lines at the moment of this event.",
+                }
+            if "full_word_pattern" in event.payload:
+                columns["full_word_pattern"] = {
+                    "column_name": "full_word_pattern",
+                    "description": "The recorded port states in binary, highest line first.",
                 }
             if "text" in event.payload:
                 columns["text"] = {"column_name": "text", "description": "The text of this message."}
@@ -171,12 +175,8 @@ class OpenEphysBinaryEventsInterface(BaseEventsInterface):
     def _get_events_data_dict(self) -> dict[str, _EventsData]:
         """Build the internal event representation from the stream's ``.npy`` arrays, cached after the first call.
 
-        A TTL stream yields one entry per line, keyed ``line<n>``, holding every edge of that line as a point
-        event with the transition direction under the ``state`` payload field and the latched port value
-        under ``full_word``. The lines are the ones the header declares (``num_channels``, written before
-        v0.6) plus any that fired, so a declared line that never fired is an entry with no events. From v0.6
-        on the header does not declare its lines, and a line is only known by having fired. A message stream
-        yields a single ``messages`` entry holding the decoded text, with no events when nothing was sent.
+        Digital input streams yield one entry with one occurrence per recorded edge.
+        Message streams yield one entry holding the decoded text.
         """
         if self._events_data_dict is not None:
             return self._events_data_dict
@@ -194,23 +194,28 @@ class OpenEphysBinaryEventsInterface(BaseEventsInterface):
             timestamps = np.concatenate([_read_timestamps(source=source) for source in self._stream_sources])
             states = np.concatenate([_read_states(path=source["path"]) for source in self._stream_sources])
             full_words = [_read_full_words(path=source["path"]) for source in self._stream_sources]
-            full_words = np.concatenate(full_words) if all(word is not None for word in full_words) else None
 
-            lines = np.abs(states)
-            num_declared_lines = self._stream_sources[0]["num_channels"] or 0
-            declared_lines = np.arange(1, num_declared_lines + 1)
-            for line in np.union1d(declared_lines, lines):
-                selection = lines == line
-                # The sign of the state is the edge; np.sign keeps it as the raw +1/-1 the labels are keyed by.
-                payload = {"state": np.sign(states[selection])}
-                if full_words is not None:
-                    payload["full_word"] = full_words[selection]
-                event_type_source_id = f"line{line}"
-                events_data_dict[event_type_source_id] = _EventsData(
-                    event_type_source_id=event_type_source_id,
-                    timestamps=timestamps[selection],
-                    payload=payload,
-                )
+            payload = {
+                "state": states,
+                "line": np.abs(states),
+                "onset": np.where(states > 0, "rising", "falling"),
+            }
+            if all(word is not None for word in full_words):
+                payload["full_word"] = np.concatenate(full_words)
+                widths = {source["num_channels"] for source in self._stream_sources}
+                if len(widths) == 1:
+                    width = next(iter(widths))
+                    if width and width <= 64 and np.all(payload["full_word"] < 1 << width):
+                        payload["full_word_pattern"] = np.asarray(
+                            [format(int(word), f"0{width}b") for word in payload["full_word"]], dtype=str
+                        )
+
+            event_type_source_id = re.sub(r"[^a-zA-Z0-9]+", "_", self.source_data["stream_name"]).strip("_")
+            events_data_dict[event_type_source_id] = _EventsData(
+                event_type_source_id=event_type_source_id,
+                timestamps=timestamps,
+                payload=payload,
+            )
 
         self._events_data_dict = events_data_dict
         return self._events_data_dict
