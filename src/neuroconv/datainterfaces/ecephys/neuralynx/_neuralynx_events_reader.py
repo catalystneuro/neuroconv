@@ -39,7 +39,7 @@ port with its highest line set is 0x8000 and above, which Int16 turns negative."
 _TTL_STRING_PATTERNS = [
     # Cheetah 5.5 and later, Pegasus: "TTL Input on AcqSystem1_0 board 0 port 3 value (0x0004)."
     re.compile(
-        r"TTL (?P<direction>Input|Output) on (?P<device>\S+) board (?P<board>\d+) port (?P<port>\d+) "
+        r"TTL (?P<direction>Input|Output) on (?P<device>\S+) board (?P<board>\d+)(?: port (?P<port>\d+))? "
         r"value \((?P<value>0x[0-9A-Fa-f]+)\)"
     ),
     # Cheetah 4: "RecID: 4098 Port: 0 TTL Value: 0x0001"

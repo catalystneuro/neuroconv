@@ -48,6 +48,11 @@ class TestCheetah64HardwareEvents(NeuralynxEventsInterfaceMixin):
                 "description": "The value of the 16-bit TTL port written with the record, one bit per line.",
             },
             "text": {"column_name": "text", "description": "The event string of the record."},
+            "board": {"column_name": "board", "description": "The board number stated in the event string."},
+            "direction": {
+                "column_name": "direction",
+                "description": "The input or output direction stated in the event string.",
+            },
         }
         expected_metadata = {
             "neuralynx_events": {
@@ -66,9 +71,11 @@ class TestCheetah64HardwareEvents(NeuralynxEventsInterfaceMixin):
         expected_timestamps = np.array([701704988, 701705978, 702004628, 702404588, 702429602]) / 1e6
         # The words are unsigned: each has the highest line of the port set, so it is 0x8000 or more.
         expected_ttl_values = [0xFFE1, 0xFFE0, 0xFFE4, 0xFFE2, 0xFFE0]
-        assert event_records.colnames == ("timestamp", "event_id", "ttl_value", "text")
+        assert event_records.colnames == ("timestamp", "event_id", "ttl_value", "text", "board", "direction")
         assert np.allclose(event_records["timestamp"][:], expected_timestamps)
         assert list(event_records["ttl_value"][:]) == expected_ttl_values
+        assert list(event_records["board"][:]) == [0] * 5
+        assert list(event_records["direction"][:]) == ["input"] * 5
         assert event_records["text"][0] == "Cheetah 32 DIO board 0 input TTL (0xFFE1)"
 
 
@@ -99,6 +106,10 @@ class TestNamedTTLValues(NeuralynxEventsInterfaceMixin):
         ]
         assert len(event_records) == 12
         assert list(event_records["text"][:5]) == expected_texts
+        for column in ("board", "port"):
+            assert np.isnan(event_records[column][:4]).all()
+            assert event_records[column][4] == 0
+        assert list(event_records["direction"][:5]) == ["", "", "", "", "input"]
         # The named records keep their TTL value: "detection" is 0x1 and "stimulation" is 0x2.
         assert list(event_records["ttl_value"][:5]) == [0, 0, 1, 2, 0]
         assert list(event_records["event_id"][:5]) == [19, 4, 11, 11, 11]
@@ -132,6 +143,7 @@ class TestStimulationMessages(NeuralynxEventsInterfaceMixin):
         ]
         assert list(event_records["text"][:]) == expected_texts
         assert list(event_records["event_id"][:]) == [19, 23, 23, 23, 19]
+        assert event_records.colnames == ("timestamp", "event_id", "ttl_value", "text")
 
 
 class TestNeuralynxEventsInterfaceEdgeCases:

@@ -25,6 +25,13 @@ _COLUMNS = {
 }
 
 
+_DERIVED_COLUMNS = {
+    "board": "The board number stated in the event string.",
+    "port": "The port number stated in the event string.",
+    "direction": "The input or output direction stated in the event string.",
+}
+
+
 class NeuralynxEventsInterface(BaseEventsInterface):
     """Data interface for the events of a Neuralynx event file (``.nev``).
 
@@ -79,9 +86,15 @@ class NeuralynxEventsInterface(BaseEventsInterface):
         metadata = super().get_metadata()
         if self._event_file.time_opened is not None:
             metadata["NWBFile"]["session_start_time"] = self._event_file.time_opened.isoformat()
+        columns = {field: dict(column) for field, column in _COLUMNS.items()}
+        payload = self._get_events_data_dict()[_EVENT_TYPE_SOURCE_ID].payload
+        for field, description in _DERIVED_COLUMNS.items():
+            if field in payload:
+                columns[field] = {"column_name": field, "description": description}
+
         metadata["Events"][self.metadata_key]["event_types"][_EVENT_TYPE_SOURCE_ID] = {
             "event_name": _EVENT_TYPE_SOURCE_ID,
-            "columns": {field_source_id: dict(column) for field_source_id, column in _COLUMNS.items()},
+            "columns": columns,
         }
         return metadata
 
@@ -91,15 +104,20 @@ class NeuralynxEventsInterface(BaseEventsInterface):
             return self._events_data_dict
 
         records = self._event_file.records
+        text = np.asarray(records["event_string"].tolist())
+        payload = dict(event_id=records["event_id"], ttl_value=records["ttl_value"], text=text)
+        for field in ("board", "port"):
+            values = records[field]
+            if (values >= 0).any():
+                payload[field] = np.where(values >= 0, values, np.nan)
+        if records["ttl_direction"].any():
+            payload["direction"] = np.asarray(records["ttl_direction"].tolist())
+
         self._events_data_dict = {
             _EVENT_TYPE_SOURCE_ID: _EventsData(
                 event_type_source_id=_EVENT_TYPE_SOURCE_ID,
                 timestamps=records["timestamp"].astype("float64") / 1e6,
-                payload=dict(
-                    event_id=records["event_id"],
-                    ttl_value=records["ttl_value"],
-                    text=np.array(records["event_string"].tolist()),
-                ),
+                payload=payload,
             )
         }
         return self._events_data_dict
