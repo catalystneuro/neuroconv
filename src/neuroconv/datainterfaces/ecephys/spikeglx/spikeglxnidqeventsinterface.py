@@ -63,7 +63,7 @@ class _SpikeGLXNIDQEventsInterface(BaseEventsInterface):
         *,
         folder_path,
         detection_configuration: dict | None = None,
-        metadata_key: str = "spikeglx_nidq",
+        metadata_key: str | None = None,
         verbose: bool = False,
     ):
         """Initialize the events half of a NIDQ conversion.
@@ -82,8 +82,9 @@ class _SpikeGLXNIDQEventsInterface(BaseEventsInterface):
             ``"high_period"`` / ``"low_period"`` (a durative event), or ``"value_change"``, and it is
             required. If None (default), every line of every digital word is read as a ``high_period``
             and the analog channels are skipped.
-        metadata_key : str, default: "spikeglx_nidq"
+        metadata_key : str, optional
             The key under ``metadata["Events"]`` that namespaces this interface's events metadata.
+            Defaults to ``"spikeglx_nidq"``.
         verbose : bool, default: False
             Whether to output verbose text.
         """
@@ -91,7 +92,7 @@ class _SpikeGLXNIDQEventsInterface(BaseEventsInterface):
             SpikeGLXRecordingExtractor,
         )
 
-        self.metadata_key = metadata_key
+        self.metadata_key = metadata_key or "spikeglx_nidq"
         # Its own reader rather than the parent's, so this stays an ordinary interface: source data is a
         # path, it can be constructed and tested on its own, and nothing in its signature is a live
         # object. The second open is cheap (the bin file is memmapped) and both readers see the same

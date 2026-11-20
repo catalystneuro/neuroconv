@@ -40,7 +40,7 @@ class IntanAnalogInterface(BaseRecordingAsTimeSeriesInterface):
         *,
         stream_name: str,
         verbose: bool = False,
-        metadata_key: str = "intan_analog",
+        metadata_key: str | None = None,
         saved_files_are_split: bool = False,
         channels_to_include: list[str] | None = None,
     ):
@@ -61,9 +61,10 @@ class IntanAnalogInterface(BaseRecordingAsTimeSeriesInterface):
             - "DC Amplifier channel": DC amplifier channels (RHS system only)
         verbose : bool, default: False
             Verbose output
-        metadata_key : str, default: "intan_analog"
+        metadata_key : str, optional
             Key for the TimeSeries metadata in the metadata dictionary. This addresses the entry;
             the written object's name is the entry's ``name`` field, derived from ``stream_name``.
+            Defaults to ``"intan_analog"``.
         saved_files_are_split : bool, default: False
             Set to True when the recording was saved using Intan RHX's "new save file every N minutes"
             option, producing several rotated ``.rhd``/``.rhs`` files in one session folder. All sibling
@@ -112,7 +113,7 @@ class IntanAnalogInterface(BaseRecordingAsTimeSeriesInterface):
 
         # Set time_series_name from stream info and metadata_key from parameter
         self._time_series_name = self.stream_info[self._stream_name]["time_series_name"]
-        self.metadata_key = metadata_key
+        self.metadata_key = metadata_key or "intan_analog"
 
         # Load the recording extractor using stream_name
         if saved_files_are_split:
