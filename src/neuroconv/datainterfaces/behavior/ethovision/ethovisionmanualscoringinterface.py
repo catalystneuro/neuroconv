@@ -91,12 +91,12 @@ class EthoVisionManualScoringInterface(BaseEventsInterface):
         )
 
     def get_metadata_schema(self) -> dict:
+        from ....tools.behavior import _get_ethogram_metadata_schema
+
         metadata_schema = super().get_metadata_schema()
         metadata_schema["properties"]["Behavior"] = {
             "type": "object",
-            "properties": {
-                "Ethograms": {"type": "object", "additionalProperties": {"type": "object"}},
-            },
+            "properties": _get_ethogram_metadata_schema(),
             "additionalProperties": True,
         }
         return metadata_schema
