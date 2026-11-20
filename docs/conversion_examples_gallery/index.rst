@@ -163,6 +163,7 @@ For events recorded in a Plexon PLX file, see :ref:`plexon_recorded_events`.
     Doric <events/doric_events>
     Inscopix GPIO <events/inscopix_gpio>
     MedPC <events/medpc_events>
+    Neuralynx <events/neuralynx_events>
     NPM <events/npm_events>
     pyPhotometry <events/pyphotometry_events>
     TDT <events/tdt_events>

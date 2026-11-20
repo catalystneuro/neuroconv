@@ -182,6 +182,11 @@ tdt_events = [
 doric_events = [
     "h5py>=3",  # Doric events live in the .doric HDF5 file; the CSV export variant needs only pandas.
 ]
+neuralynx_events = [
+    # Neuralynx event files are read by neuroconv's own reader with numpy, so this needs only the core
+    # dependencies; kept as a stable install alias so `neuroconv[neuralynx_events]` and `neuroconv[events]`
+    # remain valid.
+]
 pyphotometry_events = [
     # A .ppd is read by neuroconv's own binary reader and written as native pynwb 4.0 EventsTable objects,
     # so this needs only core numpy + pynwb>=4.0; kept as a stable install alias so
@@ -191,6 +196,7 @@ events = [
     "neuroconv[csv_events]",
     "neuroconv[doric_events]",
     "neuroconv[medpc]",
+    "neuroconv[neuralynx_events]",
     "neuroconv[npm_events]",
     "neuroconv[pyphotometry_events]",
     "neuroconv[tdt_events]",
