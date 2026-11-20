@@ -647,7 +647,7 @@ class TestEventSourceResolution:
 
 
 class TestEventSeparation:
-    """``separation`` in ``event_extraction_configuration``, applied by ``BaseEventsInterface._separate_events``."""
+    """``separation`` in ``event_extraction_configuration``, applied by ``neuroconv.tools.events._separate_events``."""
 
     def test_one_field_gives_one_event_type_per_recorded_value(self):
         num_events = 8
