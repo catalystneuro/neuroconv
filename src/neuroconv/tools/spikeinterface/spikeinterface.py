@@ -9,6 +9,7 @@ import pynwb
 from hdmf.common.table import VectorIndex
 from hdmf.data_utils import AbstractDataChunkIterator
 from natsort import natsorted
+from packaging.version import Version
 from pydantic import FilePath
 from spikeinterface import BaseRecording, BaseSorting, SortingAnalyzer
 from spikeinterface.core.segmentutils import AppendSegmentRecording
@@ -16,6 +17,7 @@ from spikeinterface.core.segmentutils import AppendSegmentRecording
 from .spikeinterfacerecordingdatachunkiterator import (
     SpikeInterfaceRecordingDataChunkIterator,
 )
+from ..importing import get_package_version, is_package_installed
 from ..nwb_helpers import (
     BACKEND_NWB_IO,
     HDF5BackendConfiguration,
@@ -3695,6 +3697,35 @@ def write_sorting_to_nwbfile(
             print(f"NWB file saved at {nwbfile_path}!")
 
 
+def _ndx_spikesorting_unavailable_reason(sorting_analyzer: SortingAnalyzer) -> str | None:
+    """Why the analyzer cannot be written with ndx-spikesorting, or None when it can."""
+    if not is_package_installed("ndx_spikesorting"):
+        return "ndx-spikesorting is not installed"
+    if get_package_version("ndx-spikesorting") < Version("0.1.2"):
+        return "ndx-spikesorting>=0.1.2 is required"
+    if sorting_analyzer.get_num_segments() > 1:
+        return "ndx-spikesorting only supports single-segment sorting analyzers"
+    return None
+
+
+def _get_electrical_series_in_nwbfile(nwbfile: pynwb.NWBFile) -> list[pynwb.ecephys.ElectricalSeries]:
+    """Every ElectricalSeries in the file, in acquisition or in processing."""
+    # `all_children` rather than `objects`, which is cached on first read and misses objects added later
+    return [obj for obj in nwbfile.all_children() if isinstance(obj, pynwb.ecephys.ElectricalSeries)]
+
+
+def _get_path_in_nwbfile(neurodata_object, nwbfile: pynwb.NWBFile) -> str:
+    """Path of an acquisition or processing object in the file, e.g. 'processing/ecephys/LFP/ElectricalSeriesLFP'."""
+    # Walked from the parents rather than read off the dataset's path in the file (as spikeinterface's NWB extractors
+    # do), since the file is still in memory and its datasets have no path yet.
+    names = []
+    while neurodata_object.parent is not nwbfile:
+        names.append(neurodata_object.name)
+        neurodata_object = neurodata_object.parent
+    top_level = "processing" if isinstance(neurodata_object, pynwb.ProcessingModule) else "acquisition"
+    return "/".join([top_level, neurodata_object.name, *reversed(names)])
+
+
 def add_sorting_analyzer_to_nwbfile(
     sorting_analyzer: SortingAnalyzer,
     nwbfile: pynwb.NWBFile | None = None,
@@ -3710,14 +3741,17 @@ def add_sorting_analyzer_to_nwbfile(
     parent_container: Literal["units", "processing"] | None = None,
     null_values_for_properties: dict | None = None,
     metadata_key: str | None = None,
+    use_ndx_spikesorting: bool | None = None,
+    electrical_series_name: str | None = None,
 ):
     """
     Convenience function to write directly a sorting analyzer object to an nwbfile.
 
-    The function adds the data of the recording and the sorting plus the following information from the sorting analyzer:
-    - quality metrics
-    - template mean and std
-    - template metrics
+    The function adds the electrodes and the units table, with the spike times, the template mean and std, and
+    the quality and template metrics of each unit. With ndx-spikesorting (see ``use_ndx_spikesorting``), every
+    computed extension (waveforms, templates, principal components, correlograms, metrics, ...) is also written to
+    a ``SpikeSortingContainer`` in ``processing/ecephys``, which ``ndx_spikesorting.read_sorting_analyzer_from_nwb``
+    reads back into a ``SortingAnalyzer``.
 
 
     Parameters
@@ -3768,6 +3802,16 @@ def add_sorting_analyzer_to_nwbfile(
         Deprecated. A sorting whose entry in ``metadata["Ecephys"]["Sortings"]`` gives a ``name`` writes a table of its
         own in processing. Otherwise it writes ``nwbfile.units``, or the shared table its ``units_table_metadata_key``
         names in ``metadata["Ecephys"]["UnitsTables"]``. Will be removed in v0.12.0.
+    use_ndx_spikesorting : bool, optional
+        Whether to write the analyzer's extensions with ndx-spikesorting. If None (default), ndx-spikesorting is
+        used when ndx-spikesorting>=0.1.2 is installed and the analyzer is single-segment, and a warning says why
+        when it cannot be. If True, those conditions raise instead. If False, only the units table is written.
+    electrical_series_name : str, optional
+        Path in the file of the ElectricalSeries the analyzer was computed on, e.g. ``"acquisition/ElectricalSeries"``
+        or ``"processing/ecephys/LFP/ElectricalSeriesLFP"`` (a bare name is looked up in acquisition), linked as the
+        source recording of the ndx-spikesorting container. Linking is optional: if None (default), nothing is
+        linked, and ``ndx_spikesorting.read_sorting_analyzer_from_nwb`` reads the analyzer back without a
+        recording.
     """
     _warn_about_units_table_options(
         units_name=units_name,
@@ -3801,6 +3845,23 @@ def add_sorting_analyzer_to_nwbfile(
         assert units_name == "units", "When writing to the nwbfile.units table, the name of the table must be 'units'!"
     write_in_processing_module = placement == "processing"
 
+    ndx_spikesorting_unavailable_reason = _ndx_spikesorting_unavailable_reason(sorting_analyzer=sorting_analyzer)
+    if use_ndx_spikesorting is None:
+        use_ndx_spikesorting = ndx_spikesorting_unavailable_reason is None
+        if not use_ndx_spikesorting and is_package_installed("ndx_spikesorting"):
+            warnings.warn(
+                f"The sorting analyzer is not written with ndx-spikesorting because "
+                f"{ndx_spikesorting_unavailable_reason}. Only its metrics and templates are written, to the units "
+                "table.",
+                UserWarning,
+                stacklevel=2,
+            )
+    elif use_ndx_spikesorting and ndx_spikesorting_unavailable_reason is not None:
+        raise ValueError(
+            f"use_ndx_spikesorting=True, but {ndx_spikesorting_unavailable_reason}. Set use_ndx_spikesorting=False "
+            "to write the metrics and templates to the units table only."
+        )
+
     # retrieve templates and stds
     template_extension = sorting_analyzer.get_extension("templates")
     if template_extension is None:
@@ -3825,7 +3886,13 @@ def add_sorting_analyzer_to_nwbfile(
     else:
         unit_ids = sorting_analyzer.unit_ids
 
-    # metrics properties (quality, template) are added as properties to the sorting copy
+    # metrics properties (quality, template) are added as properties to the sorting copy. With ndx-spikesorting,
+    # the metrics it adds to the units table as typed columns (firing_rate, num_spikes) are left to it.
+    metrics_written_by_ndx_spikesorting = set()
+    if use_ndx_spikesorting:
+        from ndx_spikesorting.utils import UNITS_TYPED_COLUMNS
+
+        metrics_written_by_ndx_spikesorting = set(UNITS_TYPED_COLUMNS)
     property_descriptions = dict() if property_descriptions is None else property_descriptions
     extra_properties = dict()
     if sorting_analyzer.has_extension("quality_metrics"):
@@ -3834,7 +3901,7 @@ def add_sorting_analyzer_to_nwbfile(
         qm_descriptions = qm_ext.get_metric_column_descriptions()
 
         for prop in qm_df.columns:
-            if prop not in sorting.get_property_keys():
+            if prop not in sorting.get_property_keys() and prop not in metrics_written_by_ndx_spikesorting:
                 extra_properties[prop] = qm_df.loc[unit_ids, prop].values
                 property_descriptions.update({prop: qm_descriptions.get(prop, "No description.")})
     if sorting_analyzer.has_extension("template_metrics"):
@@ -3842,7 +3909,7 @@ def add_sorting_analyzer_to_nwbfile(
         tm_df = tm_ext.get_data()
         tm_descriptions = tm_ext.get_metric_column_descriptions()
         for prop in tm_df.columns:
-            if prop not in sorting.get_property_keys():
+            if prop not in sorting.get_property_keys() and prop not in metrics_written_by_ndx_spikesorting:
                 extra_properties[prop] = tm_df.loc[unit_ids, prop].values
                 property_descriptions.update({prop: tm_descriptions.get(prop, "No description.")})
 
@@ -3884,6 +3951,34 @@ def add_sorting_analyzer_to_nwbfile(
         null_values_for_properties=null_values_for_properties,
     )
 
+    if use_ndx_spikesorting:
+        from ndx_spikesorting import add_sorting_analyzer_to_nwbfile as add_extensions_to_nwbfile
+
+        channel_id_to_electrode_row = _build_channel_id_to_electrodes_table_map(recording=recording, nwbfile=nwbfile)
+        electrode_indices = [channel_id_to_electrode_row.get(channel_id) for channel_id in sorting_analyzer.channel_ids]
+        missing_channel_ids = [
+            channel_id for channel_id, row in zip(sorting_analyzer.channel_ids, electrode_indices) if row is None
+        ]
+        if missing_channel_ids:
+            raise ValueError(
+                f"The sorting analyzer's channels {missing_channel_ids} are not in the electrodes table. The "
+                "`recording` must contain all of the sorting analyzer's channels."
+            )
+        units_table = nwbfile.processing["ecephys"][units_name] if write_in_processing_module else nwbfile.units
+        written_analyzer = (
+            sorting_analyzer
+            if list(unit_ids) == list(sorting_analyzer.unit_ids)
+            else sorting_analyzer.select_units(unit_ids)
+        )
+        add_extensions_to_nwbfile(
+            written_analyzer,
+            nwbfile,
+            electrical_series_name=electrical_series_name,
+            units_table=units_table,
+            electrode_indices=electrode_indices,
+            container_name="spike_sorting" if units_table is nwbfile.units else f"spike_sorting_{units_table.name}",
+        )
+
 
 def write_sorting_analyzer_to_nwbfile(
     sorting_analyzer: SortingAnalyzer,
@@ -3908,14 +4003,14 @@ def write_sorting_analyzer_to_nwbfile(
     append_on_disk_nwbfile: bool = False,
     null_values_for_properties: dict | None = None,
     metadata_key: str | None = None,
+    use_ndx_spikesorting: bool | None = None,
+    electrical_series_name: str | None = None,
 ) -> pynwb.NWBFile | None:
     """
     Convenience function to write directly a sorting analyzer object to an nwbfile.
 
-    The function adds the data of the recording and the sorting plus the following information from the sorting analyzer:
-    - quality metrics
-    - template mean and std
-    - template metrics
+    The function adds the electrodes and the units table, with the spike times and the template mean and std of
+    each unit, and the rest of the analyzer as described in :func:`add_sorting_analyzer_to_nwbfile`.
 
     Parameters
     ----------
@@ -3986,6 +4081,12 @@ def write_sorting_analyzer_to_nwbfile(
         Deprecated. A sorting whose entry in ``metadata["Ecephys"]["Sortings"]`` gives a ``name`` writes a table of its
         own in processing. Otherwise it writes ``nwbfile.units``, or the shared table its ``units_table_metadata_key``
         names in ``metadata["Ecephys"]["UnitsTables"]``. Will be removed in v0.12.0.
+    use_ndx_spikesorting : bool, optional
+        Whether to write the analyzer's extensions with ndx-spikesorting. See :func:`add_sorting_analyzer_to_nwbfile`.
+    electrical_series_name : str, optional
+        Path in the file of the ElectricalSeries the analyzer was computed on (see
+        :func:`add_sorting_analyzer_to_nwbfile`), linked as the source recording of the ndx-spikesorting container. If None (default) and ``write_electrical_series=True``, the ElectricalSeries
+        written here is linked; otherwise nothing is.
 
     Returns
     -------
@@ -4054,6 +4155,7 @@ def write_sorting_analyzer_to_nwbfile(
 
         if write_electrical_series:
             add_electrical_series_kwargs = add_electrical_series_kwargs or dict()
+            existing_series = _get_electrical_series_in_nwbfile(nwbfile)
             add_recording_to_nwbfile(
                 recording=recording,
                 nwbfile=nwbfile,
@@ -4061,6 +4163,14 @@ def write_sorting_analyzer_to_nwbfile(
                 null_values_for_properties=null_values_for_properties,
                 **add_electrical_series_kwargs,
             )
+            if electrical_series_name is None:
+                written_series = [
+                    series
+                    for series in _get_electrical_series_in_nwbfile(nwbfile)
+                    if not any(series is existing for existing in existing_series)
+                ]
+                if len(written_series) == 1:
+                    electrical_series_name = _get_path_in_nwbfile(written_series[0], nwbfile)
 
         add_sorting_analyzer_to_nwbfile(
             sorting_analyzer=sorting_analyzer,
@@ -4075,6 +4185,8 @@ def write_sorting_analyzer_to_nwbfile(
             units_description=units_description,
             null_values_for_properties=null_values_for_properties,
             metadata_key=metadata_key,
+            use_ndx_spikesorting=use_ndx_spikesorting,
+            electrical_series_name=electrical_series_name,
         )
 
         configure_and_write_nwbfile(
@@ -4098,6 +4210,7 @@ def write_sorting_analyzer_to_nwbfile(
 
             if write_electrical_series:
                 add_electrical_series_kwargs = add_electrical_series_kwargs or dict()
+                existing_series = _get_electrical_series_in_nwbfile(nwbfile)
                 add_recording_to_nwbfile(
                     recording=recording,
                     nwbfile=nwbfile,
@@ -4105,6 +4218,14 @@ def write_sorting_analyzer_to_nwbfile(
                     null_values_for_properties=null_values_for_properties,
                     **add_electrical_series_kwargs,
                 )
+                if electrical_series_name is None:
+                    written_series = [
+                        series
+                        for series in _get_electrical_series_in_nwbfile(nwbfile)
+                        if not any(series is existing for existing in existing_series)
+                    ]
+                    if len(written_series) == 1:
+                        electrical_series_name = _get_path_in_nwbfile(written_series[0], nwbfile)
 
             add_sorting_analyzer_to_nwbfile(
                 sorting_analyzer=sorting_analyzer,
@@ -4119,6 +4240,8 @@ def write_sorting_analyzer_to_nwbfile(
                 units_description=units_description,
                 null_values_for_properties=null_values_for_properties,
                 metadata_key=metadata_key,
+                use_ndx_spikesorting=use_ndx_spikesorting,
+                electrical_series_name=electrical_series_name,
             )
 
             if backend_configuration is None:
