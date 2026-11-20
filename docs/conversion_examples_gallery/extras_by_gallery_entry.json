@@ -17,6 +17,9 @@
   "behavior/deeplabcut.rst": {
     "extra": "deeplabcut"
   },
+  "behavior/facemap.rst": {
+    "extra": "facemap"
+  },
   "behavior/fictrac.rst": {
     "extra": "fictrac"
   },

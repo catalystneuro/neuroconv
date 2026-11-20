@@ -145,6 +145,7 @@ boris = [
 facemap = [
     "ndx-facemap-motionsvd>=0.2.0",
     "scipy", # for scipy.io.loadmat, which reads the pre-v7.3 container
+    "neuroconv[video]",  # frame times come from the video the outputs were computed from
 ]
 ethovision = [
     "openpyxl",  # Excel is one of EthoVision's three Track-export containers
