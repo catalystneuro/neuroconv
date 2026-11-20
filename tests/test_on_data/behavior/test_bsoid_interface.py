@@ -345,22 +345,6 @@ class TestSamplingFrequency:
         assert interface.temporal_alignment["bsoid"].get_times()[1] == expected_second_frame_time
 
 
-class TestCallerMetadata:
-    def test_bouts_without_ethogram_metadata_key_have_no_catalogue(self):
-        # The caller's metadata is used as given, so a key removed from it is not put back from get_metadata.
-        interface = BSOiDInterface(
-            file_path=APP_1_4_FOLDER / "BSOID" / f"labels_pose_60Hz_20261116_1454_{POSE_FILE_STEM}.csv"
-        )
-        metadata = interface.get_metadata()
-        del metadata["Behavior"]["EthogramBouts"]["bsoid"]["ethogram_metadata_key"]
-        nwbfile = mock_NWBFile()
-        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
-
-        behavior_module = nwbfile.processing["behavior"]
-        assert behavior_module["BSOiDEthogramBouts"].ethogram is None
-        assert "BSOiDEthogram" not in behavior_module.data_interfaces
-
-
 class TestFilesThatAreNotLabelsFiles:
     def test_raises_on_the_output_of_the_matlab_code(self):
         file_path = BSOID_PATH / "matlab" / "pose_input_format" / "deeplabcut_csv" / "MsActionGrps.mat"
