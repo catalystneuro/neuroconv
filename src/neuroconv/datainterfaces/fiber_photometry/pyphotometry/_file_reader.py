@@ -214,11 +214,10 @@ def _read_legacy_header(header_bytes: bytes) -> dict:
     }
 
 
-def _read_header(raw: bytes) -> tuple[dict, bytes]:
-    """Split a file into its header and its words, whichever header generation it uses."""
-    header_length = int.from_bytes(raw[:2], "little")
-    header_bytes = raw[2 : 2 + header_length]
-    payload = raw[2 + header_length :]
+def _read_header(stream) -> dict:
+    """Read the header, leaving the stream positioned at the first sample."""
+    header_length = int.from_bytes(stream.read(2), "little")
+    header_bytes = stream.read(header_length)
     try:
         header = json.loads(header_bytes.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError):
@@ -228,7 +227,7 @@ def _read_header(raw: bytes) -> tuple[dict, bytes]:
                 f"fixed layout that precedes it (the declared header length is {header_length})."
             )
         header = _read_legacy_header(header_bytes)
-    return header, payload
+    return header
 
 
 def _get_layout(header: dict) -> _ModeLayout:
@@ -258,6 +257,10 @@ def _get_layout(header: dict) -> _ModeLayout:
         )
 
     return layout
+
+
+def _digital_input_count(header: dict, layout: _ModeLayout) -> int:
+    return min(int(header.get("n_digital_signals", 2)), layout.analog_input_count)
 
 
 def _volts_per_division(header: dict, analog_input: int) -> float:
@@ -291,8 +294,9 @@ def _read_ppd(file_path: Path | str) -> _PPDRecording:
     amount the format does not record and that has only been measured on one board, so those signals start
     at zero here and the interface states the measurement in the series comments instead.
     """
-    raw = Path(file_path).read_bytes()
-    header, payload = _read_header(raw)
+    with Path(file_path).open("rb") as stream:
+        header = _read_header(stream)
+        payload = stream.read()
     layout = _get_layout(header)
 
     words = np.frombuffer(payload, dtype="<u2")
@@ -361,9 +365,8 @@ def _read_ppd(file_path: Path | str) -> _PPDRecording:
     # starts when that line does. Headers before 1.0 do not count the lines; both are present. A mode can
     # also carry fewer lines than it has analog inputs: `3EX_2EM_pulsed` states one, because the board
     # drives its third excitation source from the second digital output and the line is not free to read.
-    digital_count = int(header.get("n_digital_signals", 2))
     digital_signals = []
-    for digital_input in range(min(digital_count, layout.analog_input_count)):
+    for digital_input in range(_digital_input_count(header, layout)):
         offset = digital_input * (2 if has_paired_samples else 1)
         word_indices = np.arange(offset, len(words), words_per_cycle)
         digital_signals.append(
