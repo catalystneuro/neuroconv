@@ -91,7 +91,7 @@ class EDFAnalogInterface(BaseRecordingAsTimeSeriesInterface):
         *,
         channels_to_include: list[str] | None = None,
         verbose: bool = False,
-        metadata_key: str = "edf_analog",
+        metadata_key: str | None = None,
         stream_name: str | None = None,
     ):
         """
@@ -106,9 +106,9 @@ class EDFAnalogInterface(BaseRecordingAsTimeSeriesInterface):
             channel is converted when omitted. A name that is not one of the interface's channels raises.
         verbose : bool, default: False
             Verbose output
-        metadata_key : str, default: "edf_analog"
+        metadata_key : str, optional
             Key for the TimeSeries metadata in the metadata dictionary. This addresses the entry;
-            the written object's name is the entry's ``name`` field.
+            the written object's name is the entry's ``name`` field. Defaults to ``"edf_analog"``.
         stream_name : str, optional
             Name of the stream the channels are read from, as returned by ``get_stream_names``. A file
             that sampled some of its signals at a different rate than the rest carries more than one
@@ -119,7 +119,7 @@ class EDFAnalogInterface(BaseRecordingAsTimeSeriesInterface):
         from spikeinterface.extractors import read_edf
 
         self._file_path = Path(file_path)
-        self.metadata_key = metadata_key
+        self.metadata_key = metadata_key or "edf_analog"
 
         self.recording_extractor = read_edf(
             file_path=self._file_path, stream_name=stream_name, all_annotations=True, use_names_as_ids=True

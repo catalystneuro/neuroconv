@@ -54,7 +54,7 @@ class InscopixGpioInterface(BaseDataInterface):
         file_path: FilePath,
         *,
         channels_to_exclude: list[str] | None = None,
-        metadata_key: str = "inscopix_gpio",
+        metadata_key: str | None = None,
         verbose: bool = False,
     ):
         """Initialize the InscopixGpioInterface.
@@ -67,11 +67,12 @@ class InscopixGpioInterface(BaseDataInterface):
             Names of channels to skip. If None (default), every present channel is written.
         metadata_key : str, optional
             Namespaces this interface's entries in ``metadata["TimeSeries"]``, one per written channel.
+            Defaults to ``"inscopix_gpio"``.
         verbose : bool, optional
             Whether to print status messages, default = False.
         """
         super().__init__(file_path=file_path, channels_to_exclude=channels_to_exclude, verbose=verbose)
-        self.metadata_key = metadata_key
+        self.metadata_key = metadata_key or "inscopix_gpio"
 
         gpio = read_gpio(file_path)
         exclude = set(channels_to_exclude or [])
