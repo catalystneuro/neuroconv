@@ -287,7 +287,7 @@ class MockTimedInterface(BaseDataInterface):
         self.temporal_alignment = _TemporalAlignment()
         for key, times in times_by_key.items():
             native_times = np.array(times, dtype="float64")
-            self.temporal_alignment._register(
+            self.temporal_alignment._add_time_bearing_object(
                 key=key,
                 get_native_times=lambda native_times=native_times: native_times,
                 get_number_of_samples=lambda native_times=native_times: len(native_times),

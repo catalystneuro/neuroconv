@@ -44,7 +44,7 @@ class NeuralynxNvtInterface(BaseDataInterface):
 
         # The position and the angle share one timeline, so the interface has one time-bearing object
         self.temporal_alignment = _TemporalAlignment()
-        self.temporal_alignment._register(
+        self.temporal_alignment._add_time_bearing_object(
             key="neuralynx_nvt",
             get_native_times=self._get_original_timestamps,
             get_number_of_samples=lambda: len(self._get_original_timestamps()),

@@ -28,7 +28,7 @@ class BasePoseEstimationInterface(BaseDataInterface):
     def __init__(self, verbose: bool = False, **source_data):
         super().__init__(verbose=verbose, **source_data)
         self._alignment = _TemporalAlignment()
-        self._alignment._register(
+        self._alignment._add_time_bearing_object(
             key=self.metadata_key,
             get_native_times=self._get_original_timestamps,
             get_number_of_samples=self._get_number_of_samples,

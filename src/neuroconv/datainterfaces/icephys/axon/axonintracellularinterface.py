@@ -164,7 +164,7 @@ class AxonIntracellularInterface(BaseIcephysInterface):
         self._num_sweeps = int(reader.header["nb_segment"][0])
         self._sampling_rate = float(reader.get_signal_sampling_rate())
         self._alignment_key = self._series_metadata_key
-        self.temporal_alignment._register(
+        self.temporal_alignment._add_time_bearing_object(
             key=self._alignment_key,
             get_native_times=self._get_native_times,
             default_start_time=self._get_native_start_time,
@@ -174,7 +174,7 @@ class AxonIntracellularInterface(BaseIcephysInterface):
         # share one namespace, so it takes a suffix, unlike its metadata key in the stimulus registry.
         if self._has_stimulus:
             self._stimulus_alignment_key = f"{self._alignment_key}_stimulus"
-            self.temporal_alignment._register(
+            self.temporal_alignment._add_time_bearing_object(
                 key=self._stimulus_alignment_key,
                 get_native_times=self._get_native_times,
                 default_start_time=self._get_native_start_time,

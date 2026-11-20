@@ -45,11 +45,11 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         """Name every segment as a time-bearing object, keyed ``{metadata_key}_{segment_index}`` as for recordings.
 
         The keys are for alignment only. The segments are joined in one units table, so there is no segment-level
-        metadata for them to address. Registering reads nothing.
+        metadata for them to address. Adding the objects reads nothing.
         """
         self._alignment = _TemporalAlignment()
         for segment_index in range(self._number_of_segments):
-            self._alignment._register(
+            self._alignment._add_time_bearing_object(
                 key=f"{self.metadata_key}_{segment_index}",
                 get_native_times=partial(self._get_segment_native_spike_times, segment_index=segment_index),
                 time_bearing_object_class=_SortingTimeBearingObject,

@@ -182,7 +182,7 @@ class DataInterfaceTestMixin:
 
         self.run_custom_checks()
 
-    # Stated by each test class as a literal tuple of the keys its interface registers, in registration order.
+    # Stated by each test class as a literal tuple of the keys its interface adds, in the order it adds them.
     # Keys are public API users type into ``alignment[key]``, so the expected value is never derived from the
     # interface under test, which could not fail.
     expected_temporal_alignment_keys: tuple[str, ...] | None = None
@@ -195,7 +195,7 @@ class DataInterfaceTestMixin:
 
         assert self.expected_temporal_alignment_keys is not None, (
             f"{type(self).__name__} must state `expected_temporal_alignment_keys`, the literal tuple of keys that "
-            f"{self.data_interface_cls.__name__} registers in `temporal_alignment`."
+            f"{self.data_interface_cls.__name__} adds to `temporal_alignment`."
         )
         assert self.interface.temporal_alignment.keys() == tuple(self.expected_temporal_alignment_keys)
 
