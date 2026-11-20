@@ -151,16 +151,6 @@ class BaseEventsInterface(BaseDataInterface):
         raise NotImplementedError(f"{cls.__name__} does not provide event source discovery.")
 
     @classmethod
-    def get_supported_event_operations(cls, *, source: str, **source_data) -> list[str]:
-        """List the optional extraction operations the reader supports for one source.
-
-        Pass the same input arguments as for ``get_available_event_sources`` and the source name.
-        An empty list means the source can be read directly without optional operations.
-        Raise ValueError if the source is missing or the reader cannot read it.
-        """
-        raise NotImplementedError(f"{cls.__name__} does not provide event operation discovery.")
-
-    @classmethod
     def _resolve_event_sources(
         cls,
         event_extraction_configuration: dict | None,

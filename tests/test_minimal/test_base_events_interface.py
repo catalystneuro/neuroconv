@@ -558,12 +558,6 @@ class TestMockEventsInterface(EventsInterfaceTestMixin):
 
 
 class TestEventSourceResolution:
-    def test_operation_discovery_rejects_missing_source(self):
-        missing_source = "missing_test_source"
-        expected_error = f"Unknown event source {missing_source!r}. Available sources: ['events', 'silent']."
-        with pytest.raises(ValueError, match=rf"\A{re.escape(expected_error)}\Z"):
-            MockEventsInterface.get_supported_event_operations(source=missing_source)
-
     def test_missing_event_source(self):
         missing_source = "missing_test_source"
         event_extraction_configuration = {"requested": {"source": missing_source}}

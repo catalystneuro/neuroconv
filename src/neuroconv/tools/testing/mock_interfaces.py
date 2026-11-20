@@ -370,13 +370,6 @@ class MockEventsInterface(BaseEventsInterface):
     def get_available_event_sources(cls, num_event_types: int = 1) -> list[str]:
         return list(cls._get_event_source_info(num_event_types))
 
-    @classmethod
-    def get_supported_event_operations(cls, num_event_types: int = 1, *, source: str) -> list[str]:
-        available_sources = cls._get_event_source_info(num_event_types)
-        if source not in available_sources:
-            raise ValueError(f"Unknown event source {source!r}. Available sources: {list(available_sources)}.")
-        return available_sources[source]["supported_operations"]
-
     def get_event_type_source_ids(self) -> list[str]:
         return list(self._event_sources)
 
