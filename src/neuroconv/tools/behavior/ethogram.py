@@ -5,6 +5,7 @@ from hdmf.common import MeaningsTable
 from pynwb import NWBFile
 
 from ..nwb_helpers import get_module
+from ..nwb_helpers._metadata_and_file_helpers import _get_container_by_name, _validate_metadata_key
 from ..signal_processing import _run_length_encode_labels
 
 
@@ -84,36 +85,38 @@ def _add_ethogram_to_nwbfile(
     column_meanings = column_meanings or {}
     behavior_module = get_module(nwbfile=nwbfile, name="behavior")
 
+    catalogue = None
     catalogue_metadata = ethogram_metadata["Ethogram"]
-    catalogue = behavior_module.data_interfaces.get(catalogue_metadata["name"])
-    if catalogue is None:
-        catalogue = Ethogram(
-            name=catalogue_metadata["name"], description=catalogue_metadata["description"], exclusive=exclusive
-        )
-        for name, column in behavior_columns.items():
-            catalogue.add_column(name=name, description=column["description"], index=column.get("index", False))
-        behavior_module.add(catalogue)
-    elif not isinstance(catalogue, Ethogram):
-        raise TypeError(f"Behavior object '{catalogue.name}' exists but is not an Ethogram.")
+    if catalogue_metadata is not None:
+        catalogue = behavior_module.data_interfaces.get(catalogue_metadata["name"])
+        if catalogue is None:
+            catalogue = Ethogram(
+                name=catalogue_metadata["name"], description=catalogue_metadata["description"], exclusive=exclusive
+            )
+            for name, column in behavior_columns.items():
+                catalogue.add_column(name=name, description=column["description"], index=column.get("index", False))
+            behavior_module.add(catalogue)
+        elif not isinstance(catalogue, Ethogram):
+            raise TypeError(f"Behavior object '{catalogue.name}' exists but is not an Ethogram.")
 
-    catalogued_behaviors = list(catalogue["behavior"].data)
-    catalogued_types = (
-        list(catalogue["behavior_type"].data)
-        if "behavior_type" in catalogue.colnames
-        else [None] * len(catalogued_behaviors)
-    )
-    behavior_types = dict(zip(catalogued_behaviors, catalogued_types))
-    for row in behaviors:
-        behavior = row["behavior"]
-        if behavior in behavior_types:
-            if behavior_types[behavior] != row.get("behavior_type"):
-                raise ValueError(
-                    f"Behavior '{behavior}' is already catalogued in '{catalogue.name}' as "
-                    f"'{behavior_types[behavior]}', not '{row.get('behavior_type')}'."
-                )
-            continue
-        catalogue.add_row(**row)
-        behavior_types[behavior] = row.get("behavior_type")
+        catalogued_behaviors = list(catalogue["behavior"].data)
+        catalogued_types = (
+            list(catalogue["behavior_type"].data)
+            if "behavior_type" in catalogue.colnames
+            else [None] * len(catalogued_behaviors)
+        )
+        behavior_types = dict(zip(catalogued_behaviors, catalogued_types))
+        for row in behaviors:
+            behavior = row["behavior"]
+            if behavior in behavior_types:
+                if behavior_types[behavior] != row.get("behavior_type"):
+                    raise ValueError(
+                        f"Behavior '{behavior}' is already catalogued in '{catalogue.name}' as "
+                        f"'{behavior_types[behavior]}', not '{row.get('behavior_type')}'."
+                    )
+                continue
+            catalogue.add_row(**row)
+            behavior_types[behavior] = row.get("behavior_type")
 
     # A producer can hold no bout at all, a scheme of point behaviors or a session nobody finished. The
     # catalogue still says what could have been scored; an empty interval table would say nothing more.
@@ -123,9 +126,10 @@ def _add_ethogram_to_nwbfile(
     bouts_metadata = ethogram_metadata["EthogramBouts"]
     bouts = behavior_module.data_interfaces.get(bouts_metadata["name"]) if extend_bouts else None
     if bouts is None:
+        bouts_description = {"description": bouts_metadata["description"]} if bouts_metadata.get("description") else {}
         bouts = EthogramBouts(
             name=bouts_metadata["name"],
-            description=bouts_metadata["description"],
+            **bouts_description,
             labeling_method=labeling_method,
             source_software=source_software,
             annotator=annotator,
@@ -156,6 +160,115 @@ def _add_ethogram_to_nwbfile(
         for value, meaning in meanings_specification["meanings"].items():
             meanings_table.add_row(value=value, meaning=meaning)
         bouts.add_meanings_table(meanings_table)
+
+
+def _get_ethogram_metadata_schema() -> dict:
+    """Return the schema of ``Behavior/Ethograms`` and ``Behavior/EthogramBouts``, shared by every ethogram writer.
+
+    A converter merges the schemas of its interfaces, and two writers whose copies of these two fields differ
+    merge into a schema that rejects valid entries. So every writer takes its copy from here.
+
+    An ``Ethograms`` entry also admits the ``Ethogram`` and ``EthogramBouts`` keys of the entry that names both
+    objects, which the writers released before ``Behavior/EthogramBouts`` existed still return. ``name`` is not
+    required there for that reason, and it is required where the entry is read.
+    """
+    named_entry_schema = {
+        "type": "object",
+        "properties": {"name": {"type": "string"}, "description": {"type": "string"}},
+        "required": ["name"],
+        "additionalProperties": False,
+    }
+    ethogram_entry_schema = {
+        "type": "object",
+        "properties": {
+            "name": {"type": "string"},
+            "description": {"type": "string"},
+            "Ethogram": named_entry_schema,
+            "EthogramBouts": named_entry_schema,
+        },
+        "additionalProperties": False,
+    }
+    bouts_entry_schema = {
+        "type": "object",
+        "properties": {
+            "name": {"type": "string"},
+            "description": {"type": "string"},
+            "annotator": {"type": "string", "description": "Who scored or corrected the labels."},
+            "labeling_method": {"type": "string", "enum": ["manual", "automated", "curated"]},
+            "ethogram_metadata_key": {
+                "type": "string",
+                "description": "Key of the Behavior/Ethograms entry whose catalogue the bouts are scored against.",
+            },
+            "source_pose_metadata_key": {
+                "type": "string",
+                "description": "Key of the Pose/PoseEstimations entry the bouts were derived from.",
+            },
+            "source_video_metadata_key": {
+                "type": "string",
+                "description": "Key of the Behavior/InternalVideos or Behavior/ExternalVideos entry the bouts were "
+                "scored on.",
+            },
+        },
+        "required": ["name"],
+        "additionalProperties": False,
+    }
+    return {
+        "Ethograms": {"type": "object", "properties": {}, "additionalProperties": ethogram_entry_schema},
+        "EthogramBouts": {"type": "object", "properties": {}, "additionalProperties": bouts_entry_schema},
+    }
+
+
+def _resolve_ethogram_bouts_entry(nwbfile: NWBFile, *, metadata: dict, metadata_key: str) -> dict:
+    """Read an ``EthogramBouts`` entry and follow its keys, into arguments of ``_add_ethogram_to_nwbfile``.
+
+    An absent ``ethogram_metadata_key`` writes the bouts with no catalogue, and an absent link key writes no
+    link. A key that names no entry raises, and so does an entry whose object is not in the file yet.
+
+    Returns
+    -------
+    dict
+        ``ethogram_metadata``, ``source_pose`` and ``source_video``, plus ``annotator`` and ``labeling_method``
+        where the entry gives them.
+    """
+    _validate_metadata_key(metadata, metadata_path=("Behavior", "EthogramBouts"), metadata_key=metadata_key)
+    bouts_entry = metadata["Behavior"]["EthogramBouts"][metadata_key]
+
+    catalogue_entry = None
+    ethogram_key = bouts_entry.get("ethogram_metadata_key")
+    if ethogram_key is not None:
+        _validate_metadata_key(metadata, metadata_path=("Behavior", "Ethograms"), metadata_key=ethogram_key)
+        catalogue_entry = metadata["Behavior"]["Ethograms"][ethogram_key]
+
+    source_pose = None
+    pose_key = bouts_entry.get("source_pose_metadata_key")
+    if pose_key is not None:
+        _validate_metadata_key(metadata, metadata_path=("Pose", "PoseEstimations"), metadata_key=pose_key)
+        pose_name = metadata["Pose"]["PoseEstimations"][pose_key]["name"]
+        source_pose = _get_container_by_name(nwbfile, pose_name, "PoseEstimation")
+
+    source_video = None
+    video_key = bouts_entry.get("source_video_metadata_key")
+    if video_key is not None:
+        videos = {**metadata["Behavior"].get("InternalVideos", {}), **metadata["Behavior"].get("ExternalVideos", {})}
+        if video_key not in videos:
+            raise ValueError(
+                f"source_video_metadata_key '{video_key}' was not found in metadata['Behavior']['InternalVideos'] "
+                f"or metadata['Behavior']['ExternalVideos']. Available keys: {list(videos)}."
+            )
+        source_video = _get_container_by_name(nwbfile, videos[video_key]["name"], "ImageSeries")
+
+    entry_arguments = {
+        name: bouts_entry[name] for name in ("annotator", "labeling_method") if bouts_entry.get(name) is not None
+    }
+    return dict(
+        ethogram_metadata=dict(
+            Ethogram=catalogue_entry,
+            EthogramBouts=dict(name=bouts_entry["name"], description=bouts_entry.get("description")),
+        ),
+        source_pose=source_pose,
+        source_video=source_video,
+        **entry_arguments,
+    )
 
 
 def _get_bouts_and_behaviors_from_labels(

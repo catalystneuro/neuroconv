@@ -147,6 +147,7 @@ class MoseqKeyPointsInterface(BaseDataInterface):
             return file[self._recording_name]["syllable"].shape[0]
 
     def get_metadata_schema(self) -> dict:
+        from ....tools.behavior import _get_ethogram_metadata_schema
         from ....utils import get_base_schema
 
         metadata_schema = super().get_metadata_schema()
@@ -206,21 +207,6 @@ class MoseqKeyPointsInterface(BaseDataInterface):
             "required": ["name"],
             "additionalProperties": False,
         }
-        named_entry_schema = {
-            "type": "object",
-            "properties": {"name": {"type": "string"}, "description": {"type": "string"}},
-            "required": ["name"],
-            "additionalProperties": False,
-        }
-        # The curated ndx-ethogram entry lives in the shared top-level Behavior/Ethograms registry
-        # rather than under Behavior/MoseqKeyPoints, because the curated layer is producer-agnostic:
-        # VAME populates the same registry.
-        ethogram_entry_schema = {
-            "type": "object",
-            "properties": {"EthogramBouts": named_entry_schema, "Ethogram": named_entry_schema},
-            "additionalProperties": False,
-        }
-
         metadata_schema["properties"]["Behavior"] = get_base_schema(tag="Behavior")
         # Leave the Behavior node open so sibling registries written by other interfaces (a video
         # interface's Behavior/InternalVideos, say) survive validation in a converter. The
@@ -245,7 +231,9 @@ class MoseqKeyPointsInterface(BaseDataInterface):
                 },
                 "additionalProperties": False,
             },
-            "Ethograms": {"type": "object", "properties": {}, "additionalProperties": ethogram_entry_schema},
+            # Curated ndx-ethogram entries live in Behavior/Ethograms and Behavior/EthogramBouts, shared by every
+            # ethogram writer.
+            **_get_ethogram_metadata_schema(),
         }
 
         return metadata_schema
