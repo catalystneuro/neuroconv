@@ -1,6 +1,7 @@
 # Behavior
 from .behavior.audio.audiointerface import AudioInterface
 from .behavior.boris.borisdatainterface import BORISInterface
+from .behavior.bsoid.bsoidinterface import BSOiDInterface
 from .behavior.dannce.danncedatainterface import DANNCEInterface
 from .behavior.deeplabcut.deeplabcutdatainterface import DeepLabCutInterface
 from .behavior.ethovision.ethovisionmanualscoringinterface import (
@@ -267,6 +268,7 @@ interface_list = [
     MedPCInterface,
     VameInterface,
     MoseqKeyPointsInterface,
+    BSOiDInterface,
     OptiTrackInterface,
     # Text
     CsvTimeIntervalsInterface,
@@ -346,6 +348,7 @@ interfaces_by_category = dict(
         BORIS=BORISInterface,
         EthoVisionManualScoring=EthoVisionManualScoringInterface,
         MoseqKeyPoints=MoseqKeyPointsInterface,
+        BSOiD=BSOiDInterface,
         OptiTrack=OptiTrackInterface,
         # Text
         CsvTimeIntervals=CsvTimeIntervalsInterface,
