@@ -1694,6 +1694,8 @@ class EventsInterfaceTestMixin(DataInterfaceTestMixin):
     states them in its own ``check_read_nwb``, calling ``super().check_read_nwb`` first.
     """
 
+    expected_event_sources: tuple[str, ...] | None = None
+
     #: ``event_type_source_id`` to ``event_name``. Empty means the interface's own names are written.
     event_names: dict[str, str] = {}
 
@@ -1738,6 +1740,13 @@ class EventsInterfaceTestMixin(DataInterfaceTestMixin):
             assert_allclose(written_timestamps, self.interface.get_event_times(event_type_source_id))
 
         nwbfile.read_io.close()
+
+    def test_event_source_discovery(self):
+        if self.expected_event_sources is None:
+            pytest.skip("Fixture does not exercise event source discovery.")
+
+        sources = self.data_interface_cls.get_available_event_sources(**self.interface_kwargs)
+        assert sources == list(self.expected_event_sources)
 
     def test_event_time_convention_reaches_every_event_type(self, setup_interface):
         """``event_time_convention`` on every spec moves every event to the sample before its transition.

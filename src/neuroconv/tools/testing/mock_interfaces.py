@@ -295,6 +295,8 @@ class MockEventsInterface(BaseEventsInterface):
     constructor flag.
     """
 
+    _supports_event_extraction_configuration = True
+
     def __init__(
         self,
         *,
@@ -305,6 +307,7 @@ class MockEventsInterface(BaseEventsInterface):
         event_payload: Literal[
             "timestamps only", "single value", "single value variable length", "multi value"
         ] = "timestamps only",
+        event_extraction_configuration: dict | None = None,
         verbose: bool = False,
     ):
         """Initialize a mock events interface.
@@ -335,6 +338,9 @@ class MockEventsInterface(BaseEventsInterface):
             three columns on the same rows, one per way the writer treats a value column: ``outcome`` (labels
             and meanings, so a ``MeaningsTable``), ``cue`` (labels but nothing to explain, so no
             ``MeaningsTable``), and ``amplitude`` (raw numeric values). Applies to every event type.
+        event_extraction_configuration : dict, optional
+            Synthetic sources to read, keyed by output event type. The "silent" source has
+            no occurrences and is excluded from the default output.
         verbose : bool, optional
             Whether to print status messages, by default False.
         """
@@ -342,15 +348,30 @@ class MockEventsInterface(BaseEventsInterface):
         self._num_events = num_events
         self._event_extent = event_extent
         self._event_payload = event_payload
-        super().__init__(verbose=verbose)
+        available_sources = self._get_event_source_info(num_event_types)
+        configuration = self._resolve_event_sources(event_extraction_configuration, available_sources)
+        if configuration is None:
+            self._event_sources = {name: name for name in available_sources if name != "silent"}
+        else:
+            self._event_sources = {name: entry["source"] for name, entry in configuration.items()}
+        self._source_indices = {name: index for index, name in enumerate(available_sources)}
+        super().__init__(verbose=verbose, event_extraction_configuration=event_extraction_configuration)
         self.metadata_key = metadata_key or "mock_events"
 
+    @classmethod
+    def _get_event_source_info(cls, num_event_types: int) -> dict[str, dict]:
+        if num_event_types == 1:
+            source_names = ["events", "silent"]
+        else:
+            source_names = [f"events_{index}" for index in range(num_event_types)] + ["silent"]
+        return {name: {"supported_operations": []} for name in source_names}
+
+    @classmethod
+    def get_available_event_sources(cls, num_event_types: int = 1) -> list[str]:
+        return list(cls._get_event_source_info(num_event_types))
+
     def get_event_type_source_ids(self) -> list[str]:
-        # A single type keeps the plain "events" id; several are indexed so their ids (and, by default,
-        # their tables and column names) stay unique.
-        if self._num_event_types == 1:
-            return ["events"]
-        return [f"events_{index}" for index in range(self._num_event_types)]
+        return list(self._event_sources)
 
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
@@ -429,26 +450,28 @@ class MockEventsInterface(BaseEventsInterface):
 
         duration = 0.05 if self._event_extent == "event with duration" else None
         events_data_dict = {}
-        for index, event_type_source_id in enumerate(self.get_event_type_source_ids()):
+        for event_type_source_id, source_name in self._event_sources.items():
+            index = self._source_indices[source_name]
+            num_events = 0 if source_name == "silent" else self._num_events
             # Stagger timestamps across types so pooling several into one table interleaves in time.
-            timestamps = 0.1 * (np.arange(self._num_events) * self._num_event_types + index + 1)
-            durations = np.full(self._num_events, duration) if duration is not None else None
+            timestamps = 0.1 * (np.arange(num_events) * self._num_event_types + index + 1)
+            durations = np.full(num_events, duration) if duration is not None else None
             # One branch per payload mode, matching the columns get_metadata declares for that mode.
             if self._event_payload == "timestamps only":
                 payload = {}
             elif self._event_payload == "single value":
-                payload = {"outcome": np.arange(self._num_events) % 2}  # alternating go / no_go
+                payload = {"outcome": np.arange(num_events) % 2}  # alternating go / no_go
             elif self._event_payload == "single value variable length":
                 # Lengths cycle 0, 1, 2, 3 so a single generated type covers the empty cell, the
                 # one-value cell that a scalar column could have held, and the genuinely several.
                 payload = {
-                    "conditions": np.array([list(range(count % 4)) for count in range(self._num_events)], dtype=object)
+                    "conditions": np.array([list(range(count % 4)) for count in range(num_events)], dtype=object)
                 }
             elif self._event_payload == "multi value":
                 payload = {
-                    "outcome": np.arange(self._num_events) % 2,  # alternating go / no_go
-                    "cue": (np.arange(self._num_events) // 2) % 2,  # tone, tone, light, light, ...
-                    "amplitude": np.arange(self._num_events, dtype="float64"),
+                    "outcome": np.arange(num_events) % 2,  # alternating go / no_go
+                    "cue": (np.arange(num_events) // 2) % 2,  # tone, tone, light, light, ...
+                    "amplitude": np.arange(num_events, dtype="float32"),
                 }
             events_data_dict[event_type_source_id] = _EventsData(
                 event_type_source_id=event_type_source_id,
