@@ -23,6 +23,7 @@ NPM_EVENTS_PATH = OPHYS_DATA_PATH / "events_datasets" / "NPM"
 
 class TestNPMStringLabels(EventsInterfaceTestMixin):
     data_interface_cls = NPMEventsInterface
+    expected_event_sources = ("table",)
     expected_temporal_alignment_keys = ("whitenoise", "pinknoise")
     interface_kwargs = dict(file_path=NPM_EVENTS_PATH / "event_type_as_string" / "bl72bl82_12feb2024_stimuli.csv")
 
@@ -88,12 +89,14 @@ class TestNPMStringLabels(EventsInterfaceTestMixin):
         ]
         file_path.write_text("\n".join(rows) + "\n", encoding="utf-8")
 
+        assert NPMEventsInterface.get_available_event_sources(file_path) == []
         with pytest.raises(ValueError, match="headerless two-column CSV"):
             NPMEventsInterface(file_path=file_path)
 
 
 class TestNPMNumericLabels(EventsInterfaceTestMixin):
     data_interface_cls = NPMEventsInterface
+    expected_event_sources = ("table",)
     expected_temporal_alignment_keys = ("1", "3")
     interface_kwargs = dict(file_path=NPM_EVENTS_PATH / "event_type_as_number" / "ttls.csv")
 
@@ -143,6 +146,7 @@ class TestNPMNumericLabels(EventsInterfaceTestMixin):
 
 class TestNPMBoolLabels(EventsInterfaceTestMixin):
     data_interface_cls = NPMEventsInterface
+    expected_event_sources = ("table",)
     expected_temporal_alignment_keys = ("True", "False")
     interface_kwargs = dict(file_path=NPM_EVENTS_PATH / "event_type_as_bool" / "PagCeAVgatFear_1442_ts0.csv")
 
@@ -174,6 +178,7 @@ class TestNPMBoolLabels(EventsInterfaceTestMixin):
 
 class TestNPMSingleEventType(EventsInterfaceTestMixin):
     data_interface_cls = NPMEventsInterface
+    expected_event_sources = ("table",)
     expected_temporal_alignment_keys = ("1",)
     interface_kwargs = dict(file_path=NPM_EVENTS_PATH / "single_event_type" / "PagCeAVgatFear_1512_ts0.csv")
 

@@ -39,6 +39,20 @@ class NPMEventsInterface(CSVEventsInterface):
     info = "Data Interface for converting discrete events from Neurophotometrics files."
     associated_suffixes = ("csv",)
 
+    @classmethod
+    @validate_call
+    def get_available_event_sources(cls, file_path: FilePath) -> list[str]:
+        """Only a two-column stimuli export declares the table this reader converts."""
+        try:
+            number_of_columns = cls._get_column_count(file_path)
+        except pd.errors.EmptyDataError:
+            return []
+        return ["table"] if number_of_columns == 2 else []
+
+    @staticmethod
+    def _get_column_count(file_path) -> int:
+        return pd.read_csv(file_path, header=None, nrows=1).shape[1]
+
     @validate_call
     def __init__(
         self,
@@ -70,7 +84,7 @@ class NPMEventsInterface(CSVEventsInterface):
         # separate 5-column Digital IOs log, without specifying that the second column is the type, not a
         # value. This is a convention matched to our examples, not a documented guarantee; do not treat
         # it as gospel.
-        number_of_columns = pd.read_csv(file_path, header=None, nrows=1).shape[1]
+        number_of_columns = self._get_column_count(file_path)
         if number_of_columns > 2:
             raise ValueError(
                 f"NPMEventsInterface expects a headerless two-column CSV (onset time, event type), but "

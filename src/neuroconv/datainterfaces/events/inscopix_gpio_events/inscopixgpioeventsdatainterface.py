@@ -105,6 +105,17 @@ class InscopixGpioEventsInterface(BaseEventsInterface):
         # catches a channel that does not support the reading asked of it.
         self._available_signals = self._get_available_signals(file_path)
         _validate_detection_configuration(detection_configuration, self._available_signals)
+        # A .gpio file stores each change with its own timestamp, so an event takes the time of its change.
+        # The stored point before a change is the previous change, which can be seconds earlier, so a
+        # convention that reads the sample before a transition has no meaning here.
+        for signal_source_id, specs in detection_configuration.items():
+            for spec in specs:
+                if "event_time_convention" in spec:
+                    raise ValueError(
+                        f"detection_configuration spec for '{signal_source_id}' sets 'event_time_convention', "
+                        "which does not apply to an Inscopix .gpio file. The file records the time of each "
+                        "change, so each event takes that time."
+                    )
         self._detection_configuration = detection_configuration
         super().__init__(
             file_path=file_path,
@@ -127,6 +138,11 @@ class InscopixGpioEventsInterface(BaseEventsInterface):
         return {
             gpio.get_channel_name(index): {"kind": None, "channel_index": index} for index in range(gpio.num_channels)
         }
+
+    @classmethod
+    def get_available_event_sources(cls, file_path: FilePath) -> list[str]:
+        """List every channel in the file, in file order."""
+        return list(cls._get_available_signals(file_path))
 
     @classmethod
     def get_available_channels(cls, file_path) -> list[dict]:
