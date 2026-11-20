@@ -840,83 +840,65 @@ class TestMultiStreamNeuralynxRecordingInterface(RecordingExtractorInterfaceTest
         assert metadata["NWBFile"]["session_id"] == "f58d55bb-22f6-4682-b3a2-aa116fabb78e"
 
 
-class TestNeuralynxStreamSelection:
-    """The streams of a Neuralynx folder are found from the headers and one of them is read without the others."""
-
-    neuralynx_path = ECEPHY_DATA_PATH / "neuralynx"
-    # 2 kHz with three gaps and 32 kHz without, which neo cannot open as one folder
-    gaps_in_one_of_two_rates = (
-        neuralynx_path / "pegasus" / "version_2_1_3" / "time_structure" / "gaps_in_one_of_two_rates"
+class TestNeuralynxRecordingInterfaceStreamWithGaps(RecordingExtractorInterfaceTestMixin):
+    # 2 kHz with three gaps next to 32 kHz without, which neo cannot open as one folder
+    data_interface_cls = NeuralynxRecordingInterface
+    expected_temporal_alignment_keys = (
+        "neuralynx_recording_0",
+        "neuralynx_recording_1",
+        "neuralynx_recording_2",
+        "neuralynx_recording_3",
     )
+    interface_kwargs = dict(
+        folder_path=str(
+            ECEPHY_DATA_PATH / "neuralynx" / "pegasus" / "version_2_1_3" / "time_structure" / "gaps_in_one_of_two_rates"
+        ),
+        stream_name="stream1_2000Hz_10mVRange_DSPFilter0",
+        gap_tolerance_ms=1.0,
+    )
+    save_directory = OUTPUT_PATH
+
+
+class TestNeuralynxRecordingInterfaceStreamWithoutGaps(RecordingExtractorInterfaceTestMixin):
+    data_interface_cls = NeuralynxRecordingInterface
+    expected_temporal_alignment_keys = ("neuralynx_recording_0",)
+    interface_kwargs = dict(
+        folder_path=str(
+            ECEPHY_DATA_PATH / "neuralynx" / "pegasus" / "version_2_1_3" / "time_structure" / "gaps_in_one_of_two_rates"
+        ),
+        stream_name="stream0_32000Hz_1mVRange_DSPFilter1",
+        gap_tolerance_ms=1.0,
+    )
+    save_directory = OUTPUT_PATH
+
+
+class TestNeuralynxRecordingInterfaceStreamsWithDifferentGaps(RecordingExtractorInterfaceTestMixin):
     # two 32 kHz streams with different filters that lost data at different times
-    file_not_closed_properly = (
-        neuralynx_path / "files_with_errors" / "cheetah" / "version_5_5_1" / "file_not_closed_properly"
-    )
-
-    def test_stream_names_match_neo(self):
-        from neo.rawio import NeuralynxRawIO
-
-        multi_stream_folders = [
-            self.neuralynx_path / "Cheetah_v6.4.1dev" / "original_data",
-            self.neuralynx_path / "cheetah" / "version_5_6_3" / "time_structure" / "dsp_delay_compensation_disabled",
-            self.neuralynx_path
+    data_interface_cls = NeuralynxRecordingInterface
+    expected_temporal_alignment_keys = ("neuralynx_recording_0", "neuralynx_recording_1", "neuralynx_recording_2")
+    interface_kwargs = dict(
+        folder_path=str(
+            ECEPHY_DATA_PATH
+            / "neuralynx"
+            / "files_with_errors"
             / "cheetah"
-            / "version_6_4_1_development"
-            / "time_structure"
-            / "two_dsp_delays_offset_after_partial_record",
-            self.neuralynx_path / "cheetah" / "version_6_5_0" / "header" / "latin1_and_utf8_headers_in_one_folder",
-            self.neuralynx_path / "pegasus" / "version_2_1_3" / "time_structure" / "clock_corrections_across_two_rates",
-        ]
-        for folder_path in multi_stream_folders:
-            neo_reader = NeuralynxRawIO(dirname=str(folder_path), gap_tolerance_ms=1.0)
-            neo_reader.parse_header()
-            neo_stream_names = neo_reader.header["signal_streams"]["name"].tolist()
+            / "version_5_5_1"
+            / "file_not_closed_properly"
+        ),
+        stream_name="stream0_32000Hz_2mVRange_DSPFilter0",
+        gap_tolerance_ms=1.0,
+    )
+    save_directory = OUTPUT_PATH
 
-            stream_names = NeuralynxRecordingInterface.get_stream_names(folder_path=folder_path)
-            assert stream_names == neo_stream_names, folder_path
+
+class TestNeuralynxStreamSelection:
+    gaps_in_one_of_two_rates = (
+        ECEPHY_DATA_PATH / "neuralynx" / "pegasus" / "version_2_1_3" / "time_structure" / "gaps_in_one_of_two_rates"
+    )
 
     def test_get_stream_names_on_streams_with_different_gaps(self):
         stream_names = NeuralynxRecordingInterface.get_stream_names(folder_path=self.gaps_in_one_of_two_rates)
         assert stream_names == ["stream0_32000Hz_1mVRange_DSPFilter1", "stream1_2000Hz_10mVRange_DSPFilter0"]
-
-    def test_stream_with_gaps(self):
-        interface = NeuralynxRecordingInterface(
-            folder_path=self.gaps_in_one_of_two_rates,
-            stream_name="stream1_2000Hz_10mVRange_DSPFilter0",
-            gap_tolerance_ms=1.0,
-        )
-        recording = interface.recording_extractor
-        assert recording.get_sampling_frequency() == 2000.0
-        assert recording.get_channel_ids().tolist() == ["8"]
-        assert [recording.get_num_samples(segment_index) for segment_index in range(4)] == [5020, 3065, 2537, 939]
-
-    def test_stream_without_gaps(self):
-        interface = NeuralynxRecordingInterface(
-            folder_path=self.gaps_in_one_of_two_rates,
-            stream_name="stream0_32000Hz_1mVRange_DSPFilter1",
-            gap_tolerance_ms=1.0,
-        )
-        recording = interface.recording_extractor
-        assert recording.get_sampling_frequency() == 32000.0
-        assert recording.get_channel_ids().tolist() == ["136"]
-        assert recording.get_num_segments() == 1
-
-    def test_streams_that_lost_data_at_different_times(self):
-        first_stream = NeuralynxRecordingInterface(
-            folder_path=self.file_not_closed_properly,
-            stream_name="stream0_32000Hz_2mVRange_DSPFilter0",
-            gap_tolerance_ms=1.0,
-        )
-        assert first_stream.recording_extractor.get_channel_ids().tolist() == ["34"]
-        assert first_stream.recording_extractor.get_num_segments() == 3
-
-        second_stream = NeuralynxRecordingInterface(
-            folder_path=self.file_not_closed_properly,
-            stream_name="stream1_32000Hz_2mVRange_DSPFilter1",
-            gap_tolerance_ms=1.0,
-        )
-        assert second_stream.recording_extractor.get_channel_ids().tolist() == ["35"]
-        assert second_stream.recording_extractor.get_num_segments() == 2
 
     def test_stream_name_is_required_for_a_multi_stream_folder(self):
         with pytest.raises(ValueError, match="More than one stream is detected"):
