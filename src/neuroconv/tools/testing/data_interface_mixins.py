@@ -1793,10 +1793,14 @@ class EventsInterfaceTestMixin(DataInterfaceTestMixin):
         nwbfile.read_io.close()
 
     def test_event_source_discovery(self):
-        if self.expected_event_sources is None:
-            pytest.skip("Fixture does not exercise event source discovery.")
-
-        sources = self.data_interface_cls.get_available_event_sources(**self.interface_kwargs)
+        assert self.expected_event_sources is not None, (
+            f"{type(self).__name__} must set `expected_event_sources` to the source names in discovery order. "
+            "Use () when the input declares no sources."
+        )
+        discover_sources = self.data_interface_cls.get_available_event_sources
+        discovery_parameters = inspect.signature(discover_sources).parameters
+        source_data = {key: value for key, value in self.interface_kwargs.items() if key in discovery_parameters}
+        sources = discover_sources(**source_data)
         assert sources == list(self.expected_event_sources)
 
     def test_event_time_convention_reaches_every_event_type(self, setup_interface):

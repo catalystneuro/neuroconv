@@ -1,8 +1,10 @@
 from datetime import datetime, timezone
+from pathlib import Path
 
 import numpy as np
 from pydantic import DirectoryPath, validate_call
 
+from neuroconv.tools import get_package
 from neuroconv.utils import DeepDict
 
 from ..baseeventsinterface import BaseEventsInterface, _EventsData
@@ -59,6 +61,28 @@ class TDTEventsInterface(TDTLoadMixin, BaseEventsInterface):
             verbose=verbose,
         )
         self.metadata_key = metadata_key or "tdt_events"
+
+    @classmethod
+    def get_available_event_sources(cls, folder_path: DirectoryPath) -> list[str]:
+        """List onset stores in block-header order, including declared stores with no records."""
+        tdt = get_package("tdt", installation_instructions="pip install tdt")
+        from tdt.TDTbin2py import parse_tbk
+
+        if not tdt.get_files(str(folder_path), ".tsq", ignore_mac=True) and tdt.get_files(
+            str(folder_path), ".sev", ignore_mac=True
+        ):
+            return []
+        header = tdt.read_block(str(folder_path), headers=1, evtype=["epocs"])
+        block_path = Path(header.tev_path).with_suffix(".Tbk")
+        declarations = parse_tbk(block_path) if block_path.is_file() else []
+        declared_names = [
+            tdt.fix_var_name(store.StoreName)
+            for store in declarations
+            if int(getattr(store, "TankEvType", 0)) in (tdt.EVTYPE_STRON, tdt.EVTYPE_MARK)
+            and getattr(store, "Enabled", None) != "2"
+        ]
+        recorded_names = [name for name, store in header.stores.items() if store.type_str == "epocs"]
+        return list(dict.fromkeys([*declared_names, *recorded_names]))
 
     def get_event_type_source_ids(self) -> list[str]:
         """The epoc stores the tank holds, less the excluded ones and those with no events, from the epoc headers."""

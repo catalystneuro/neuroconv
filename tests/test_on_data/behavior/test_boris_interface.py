@@ -160,6 +160,7 @@ class TestBORISVersion1_6(BORISTestMixin):
     """Format 1.6: no `category` field on a behavior, and `modifiers` a flat comma-separated string."""
 
     data_interface_cls = BORISInterface
+    expected_event_sources = ("media observation", "live observation")
     expected_temporal_alignment_keys = ("forage", "rest", "groom", "call")
     conversion_options = dict()  # what is written is set at construction, not at write
     save_directory = OUTPUT_PATH
@@ -224,6 +225,7 @@ class TestBORISVersion4_0(BORISTestMixin):
     """Format 4.0: categories exist, modifiers are still a flat string, and times are in seconds."""
 
     data_interface_cls = BORISInterface
+    expected_event_sources = ("media observation", "live observation")
     expected_temporal_alignment_keys = ("walk", "stand", "drink", "peck", "vigilance")
     conversion_options = dict()  # what is written is set at construction, not at write
     save_directory = OUTPUT_PATH
@@ -291,6 +293,27 @@ class TestBORISCategorizedEthogram(BORISTestMixin):
     """The BORIS Android demo project: eleven behaviors, of which this observation scores a few."""
 
     data_interface_cls = BORISInterface
+    expected_event_sources = (
+        "test1",
+        "aaaa",
+        "observation #1",
+        "observation #2",
+        "id2",
+        "id1",
+        "a1",
+        "kkk",
+        "x",
+        "test",
+        "555",
+        "testID",
+        "aadadas",
+        "zasasasas",
+        "aaaaa",
+        "ssss",
+        "222",
+        "xxx",
+        "zzz",
+    )
     expected_temporal_alignment_keys = (
         "groom",
         "run",
@@ -370,6 +393,7 @@ class TestBORISModifierSlots(BORISTestMixin):
     """All three modifier slot types. Every behavior scored here is a point behavior, so no bouts."""
 
     data_interface_cls = BORISInterface
+    expected_event_sources = ("1", "paola", "aa")
     expected_temporal_alignment_keys = (
         "p",
         "a",
@@ -507,6 +531,20 @@ class TestBORISMultiSubject(BORISTestMixin):
     """One observation carrying events from two named subjects, which is why subject is a column."""
 
     data_interface_cls = BORISInterface
+    expected_event_sources = (
+        "offset positif",
+        "offset neg",
+        "observation #1",
+        "observation #2",
+        "live not paired",
+        "live",
+        "modifiers",
+        "2 video",
+        "2 video avi",
+        "live export behavioral sequences",
+        "observation #2 (copy)",
+        "observation without events",
+    )
     expected_temporal_alignment_keys = ("p", "s", "q", "r", "m")
     conversion_options = dict()  # what is written is set at construction, not at write
     save_directory = OUTPUT_PATH
@@ -573,6 +611,7 @@ class TestBORISUntidyModifiers(BORISTestMixin):
     """Untidy declared values and the literal `None` token for a slot nobody answered."""
 
     data_interface_cls = BORISInterface
+    expected_event_sources = ("test1 live",)
     expected_temporal_alignment_keys = ("p", "r")
     conversion_options = dict()  # what is written is set at construction, not at write
     save_directory = OUTPUT_PATH
@@ -649,6 +688,7 @@ class TestBORISTimeOffsetAndUndeclaredCodes(BORISTestMixin):
     """
 
     data_interface_cls = BORISInterface
+    expected_event_sources = ("positive offset", "negative offset", "removed behaviors")
     expected_temporal_alignment_keys = (
         "Foraging/Caching",
         "Exploración",

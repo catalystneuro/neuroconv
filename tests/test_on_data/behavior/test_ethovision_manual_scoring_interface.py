@@ -95,6 +95,7 @@ class TestEthoVisionManualScoring(EthoVisionManualScoringTestMixin):
     file_path = ETHOVISION_FOLDER_PATH / "excel/single_arena_single_subject/track_and_manual_scoring/two_c57.xlsx"
     interface_kwargs = dict(file_path=file_path)
     data_interface_cls = EthoVisionManualScoringInterface
+    expected_event_sources = ("Manual Scoring-Arena 1",)
     expected_temporal_alignment_keys = (
         "start",
         "Sniff",
@@ -159,6 +160,7 @@ class TestEthoVisionManualScoringOnly(EthoVisionManualScoringTestMixin):
     file_path = ETHOVISION_FOLDER_PATH / "excel/single_arena_single_subject/manual_scoring_only/manual_scoring.xlsx"
     interface_kwargs = dict(file_path=file_path)
     data_interface_cls = EthoVisionManualScoringInterface
+    expected_event_sources = ("Manual Scoring-Arena 1",)
     expected_temporal_alignment_keys = ("Rearing", "Sniffing", "Operant", "Free-air whisking", "Tone")
     save_directory = OUTPUT_PATH
 
@@ -260,6 +262,7 @@ class TestEthoVisionManualScoringEdgeCases:
             / "excel/single_arena_multiple_subjects/hardware_and_trial_control/two_subjects_missing_samples.xlsx"
         )
         assert EthoVisionManualScoringInterface.get_available_scorings(file_path) == []
+        assert EthoVisionManualScoringInterface.get_available_event_sources(file_path) == []
 
         expected_error = (
             "No EthoVision Manual Scoring matches arena_name=None, subject_name=None "
