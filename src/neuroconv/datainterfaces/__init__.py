@@ -156,6 +156,9 @@ from .events.medpc_events.medpceventsdatainterface import (
     MedPCPackedEventsInterface,
 )
 from .events.npm_events.npmeventsdatainterface import NPMEventsInterface
+from .events.openephys_events.openephysbinaryeventsdatainterface import (
+    OpenEphysBinaryEventsInterface,
+)
 from .events.pyphotometry_events.pyphotometryeventsdatainterface import (
     PyPhotometryEventsInterface,
 )
@@ -279,6 +282,7 @@ interface_list = [
     MedPCArrayEventsInterface,
     MedPCPackedEventsInterface,
     NPMEventsInterface,
+    OpenEphysBinaryEventsInterface,
     PyPhotometryEventsInterface,
     TDTEventsInterface,
     InscopixGpioEventsInterface,
@@ -360,6 +364,7 @@ interfaces_by_category = dict(
         MedPCArrayEvents=MedPCArrayEventsInterface,
         MedPCPackedEvents=MedPCPackedEventsInterface,
         NPMEvents=NPMEventsInterface,
+        OpenEphysBinaryEvents=OpenEphysBinaryEventsInterface,
         PyPhotometryEvents=PyPhotometryEventsInterface,
         TDTEvents=TDTEventsInterface,
         InscopixGpioEvents=InscopixGpioEventsInterface,
