@@ -105,7 +105,7 @@ class BaseEventsInterface(BaseDataInterface):
         self._events_data_dict = None
         self._alignment = _TemporalAlignment()
         for source_id in self.get_event_type_source_ids():
-            self._alignment._register(
+            self._alignment._add_time_bearing_object(
                 key=source_id,
                 get_native_times=lambda source_id=source_id: self._get_events_data_dict()[source_id].timestamps,
                 get_number_of_samples=lambda source_id=source_id: len(

@@ -40,35 +40,35 @@ Modality-specific code defines what can be aligned, and the shared component def
 The distinction between an interface and its objects matters when considering inheritance. An inherited contract
 such as ``get_timestamps() -> np.ndarray`` and ``set_aligned_timestamps(np.ndarray)`` assumes one array per interface.
 An events interface has separate times for each event type, so returning a dictionary violates that contract and
-combining the arrays loses their separate identities. Inheritance could support object registration too, but it would
+combining the arrays loses their separate identities. Inheritance could support adding time-bearing objects too, but it would
 still tie alignment to the interface hierarchy and place timing methods beside ``get_metadata`` and
 ``add_to_nwbfile``. A held component keeps those methods together under ``temporal_alignment`` without requiring a particular
 interface base class. That same attribute gives converters a common surface through which to check alignment support
 and apply collection operations.
 
-Object registration
--------------------
+Adding time-bearing objects
+---------------------------
 
-**Registration** is how an interface declares its time-bearing objects to the alignment component. For each object,
+An interface declares its time-bearing objects to the alignment component by adding them. For each object,
 it supplies a key and a callable that reads its native times, plus a scalar start accessor where available. The
 component can then expose that object for alignment without knowing how its source format stores time.
 
-Storing the callables without invoking them keeps registration independent of when timestamp values are needed.
+Storing the callables without invoking them keeps adding time-bearing objects independent of when timestamp values are needed.
 
-Choosing what to register determines which data can be aligned independently. That choice belongs to each
-interface's alignment design, and the registered objects need not map one to one to source files or written NWB
-objects. Trial video illustrates this distinction: each file is registered separately so its start can be placed
+Choosing what to add determines which data can be aligned independently. That choice belongs to each
+interface's alignment design, and the added objects need not map one to one to source files or written NWB
+objects. Trial video illustrates this distinction: each file is added separately so its start can be placed
 independently, even when several files contribute to one written series.
 
-Registration finishes during ``__init__``, before alignment begins, because every operation acts on the objects
-present when it is called. A later registration would miss earlier shifts or remaps and leave the interface partly
+Every time-bearing object is added during ``__init__``, before alignment begins, because every operation acts on the objects
+present when it is called. An object added later would miss earlier shifts or remaps and leave the interface partly
 aligned. A shared collection offset would only recover shifts, so it would not solve that ordering problem.
 
 Lazy evaluation
 ---------------
 
 **Lazy evaluation** means building timestamp arrays only when an operation needs their values. An object can retain
-access to its native times through a reader instead of loading them during registration. This matters for long
+access to its native times through a reader instead of loading them while it is added. This matters for long
 recordings, where a timing correction should not require reading or allocating an array with one entry per sample.
 
 The separation between base times and an offset makes this possible for translations. ``shift_times`` updates the
@@ -175,7 +175,7 @@ be the target of a collection operation.
 Each collection has its own keys. Equal local keys in different interfaces need no global renaming because their
 parent collections distinguish them.
 
-The hierarchy follows public composition boundaries. A composite interface exposes its own registered object keys
+The hierarchy follows public composition boundaries. A composite interface exposes the keys of its own time-bearing objects
 and keeps its internal interfaces private, even if those interfaces help it read or write the data. Its users see
 the timing units the composite presents, without needing to follow its internal implementation.
 

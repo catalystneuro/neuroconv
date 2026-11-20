@@ -1779,7 +1779,7 @@ class MockIcephysInterface(BaseIcephysInterface):
         self._series_metadata_key = metadata_key
         self._alignment_key = metadata_key
         samples_per_sweep = round(sweep_duration * sampling_frequency)
-        self.temporal_alignment._register(
+        self.temporal_alignment._add_time_bearing_object(
             key=self._alignment_key,
             get_native_times=partial(self._get_sweep_times, samples_per_sweep),
             default_start_time=starting_time,
@@ -1788,7 +1788,7 @@ class MockIcephysInterface(BaseIcephysInterface):
         if stimulus_duration is not None:
             self._stimulus_alignment_key = f"{self._alignment_key}_stimulus"
             stimulus_samples_per_sweep = round(stimulus_duration * sampling_frequency)
-            self.temporal_alignment._register(
+            self.temporal_alignment._add_time_bearing_object(
                 key=self._stimulus_alignment_key,
                 get_native_times=partial(self._get_sweep_times, stimulus_samples_per_sweep),
                 default_start_time=starting_time,

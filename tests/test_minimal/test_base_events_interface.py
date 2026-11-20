@@ -38,7 +38,7 @@ class TestMockEventsInterface(EventsInterfaceTestMixin):
         overridden = MockEventsInterface(metadata_key="my_events").get_metadata()["Events"]
         assert set(overridden.keys()) == {"my_events"}
 
-    def test_event_types_are_registered_at_construction(self, monkeypatch):
+    def test_event_types_are_added_at_construction(self, monkeypatch):
         interface = MockEventsInterface(num_event_types=2)
         expected_keys = interface.get_event_type_source_ids()
 

@@ -247,7 +247,7 @@ class VameInterface(BaseTemporalAlignmentInterface):
         # Alignment by composition. Every series of the project is written on one time axis, keyed by `metadata_key`.
         # See neuroconv/_temporal_alignment.py.
         self.temporal_alignment = _TemporalAlignment()
-        self.temporal_alignment._register(
+        self.temporal_alignment._add_time_bearing_object(
             key=self._metadata_key,
             get_native_times=self._get_native_times,
             get_number_of_samples=self._get_number_of_frames,

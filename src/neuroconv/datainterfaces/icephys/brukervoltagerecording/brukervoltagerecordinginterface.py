@@ -171,7 +171,7 @@ class BrukerVoltageRecordingInterface(BaseIcephysInterface):
         # session folders. It is a label, not a claim about which cell this is.
         self._run_identity = self._cycle_headers[0].stem
         self._alignment_key = self._series_metadata_key
-        self.temporal_alignment._register(
+        self.temporal_alignment._add_time_bearing_object(
             key=self._alignment_key,
             get_native_times=self._get_native_times,
             default_start_time=0.0,
@@ -182,7 +182,7 @@ class BrukerVoltageRecordingInterface(BaseIcephysInterface):
         # metadata key in the stimulus registry.
         if self._command_waveforms is not None:
             self._stimulus_alignment_key = f"{self._alignment_key}_stimulus"
-            self.temporal_alignment._register(
+            self.temporal_alignment._add_time_bearing_object(
                 key=self._stimulus_alignment_key,
                 get_native_times=self._get_native_command_times,
                 default_start_time=0.0,
