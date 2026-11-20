@@ -76,6 +76,7 @@ from .ecephys.openephys.openephyslegacydatainterface import (
 )
 from .ecephys.openephys.openephyssortingdatainterface import OpenEphysSortingInterface
 from .ecephys.phy.phydatainterface import PhySortingInterface
+from .ecephys.plexon.plexon2eventsinterface import Plexon2EventsInterface
 from .ecephys.plexon.plexondatainterface import (
     Plexon2RecordingInterface,
     PlexonRecordingInterface,
@@ -283,6 +284,7 @@ interface_list = [
     MedPCPackedEventsInterface,
     NPMEventsInterface,
     PlexonEventsInterface,
+    Plexon2EventsInterface,
     PyPhotometryEventsInterface,
     TDTEventsInterface,
     InscopixGpioEventsInterface,
@@ -366,6 +368,7 @@ interfaces_by_category = dict(
         MedPCPackedEvents=MedPCPackedEventsInterface,
         NPMEvents=NPMEventsInterface,
         PlexonEvents=PlexonEventsInterface,
+        Plexon2Events=Plexon2EventsInterface,
         PyPhotometryEvents=PyPhotometryEventsInterface,
         TDTEvents=TDTEventsInterface,
         InscopixGpioEvents=InscopixGpioEventsInterface,

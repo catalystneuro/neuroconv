@@ -40,3 +40,7 @@ Inscopix GPIO Events
 Plexon Events
 -------------
 .. autoclass:: neuroconv.datainterfaces.ecephys.plexon.plexoneventsinterface.PlexonEventsInterface
+
+Plexon2 Events
+--------------
+.. automodule:: neuroconv.datainterfaces.ecephys.plexon.plexon2eventsinterface
