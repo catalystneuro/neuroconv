@@ -187,7 +187,13 @@ pyphotometry_events = [
     # so this needs only core numpy + pynwb>=4.0; kept as a stable install alias so
     # `neuroconv[pyphotometry_events]` and `neuroconv[events]` remain valid.
 ]
+blackrock_events = [
+    # Blackrock event files are read by neuroconv's own reader with numpy, so this needs only the core
+    # dependencies; kept as a stable install alias so `neuroconv[blackrock_events]` and `neuroconv[events]`
+    # remain valid.
+]
 events = [
+    "neuroconv[blackrock_events]",
     "neuroconv[csv_events]",
     "neuroconv[doric_events]",
     "neuroconv[medpc]",
