@@ -51,6 +51,7 @@ from ...tools.icephys import _IcephysSeriesData
 from ...tools.signal_processing import (
     _condition_signal,
     _detect_events,
+    _detect_occurrences,
     _samples_to_seconds,
 )
 from ...utils import (
@@ -485,12 +486,12 @@ class MockEventsInterface(BaseEventsInterface):
             else:
                 # A magnitude that is high from 0.2 to 0.4 s and from 0.6 to 0.8 s.
                 trace = np.array([0.0, 0.1, 4.9, 5.0, 0.2, 0.0, 5.1, 4.8, 0.1, 0.0])
-            return self._detect_occurrences(
-                entry_name=event_type_source_id,
+            timestamps, durations = _detect_occurrences(
                 entry=self._event_extraction_configuration[event_type_source_id],
                 trace=trace,
                 timestamps=0.1 * np.arange(len(trace)),
             )
+            return _EventsData(event_type_source_id=event_type_source_id, timestamps=timestamps, durations=durations)
 
         duration = 0.05 if self._event_extent == "event with duration" else None
         index = self._source_indices[source_name]
