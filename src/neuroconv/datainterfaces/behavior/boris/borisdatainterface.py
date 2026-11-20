@@ -80,6 +80,11 @@ class BORISInterface(BaseEventsInterface):
         """
         return _get_observation_names(file_path=file_path)
 
+    @classmethod
+    def get_available_event_sources(cls, file_path: FilePath) -> list[str]:
+        """List every observation declared in the project, including unscored ones."""
+        return cls.get_observation_names(file_path)
+
     @validate_call
     def __init__(
         self,

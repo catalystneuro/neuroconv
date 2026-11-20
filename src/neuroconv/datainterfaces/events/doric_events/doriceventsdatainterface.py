@@ -1,5 +1,6 @@
 """Interface for discrete events (digital IO) from Doric Neuroscience Studio ``.doric`` files."""
 
+import re
 import warnings
 from datetime import datetime
 
@@ -19,6 +20,12 @@ from ....tools.signal_processing import (
     _detect_events,
     _samples_to_seconds,
 )
+
+
+def _doric_event_source_name(line_name: str) -> str:
+    if re.fullmatch(r"(?:DigitalCh|DIO|DI--O-|DI/O-)\d+", line_name, flags=re.IGNORECASE):
+        return "DigitalIO"
+    return line_name
 
 
 class DoricEventsInterface(BaseEventsInterface):
@@ -112,9 +119,25 @@ class DoricEventsInterface(BaseEventsInterface):
         """The event types the configuration resolves to, read from nothing."""
         return _get_event_type_source_ids(self._detection_configuration)
 
+    @classmethod
+    def get_available_event_sources(cls, file_path: FilePath) -> list[str]:
+        """Group numbered lines into a port and retain the console's individually named signals."""
+        signals = cls._get_signal_paths(file_path)
+        groups = {group for group, line in signals}
+        sources = {}
+        for group, line in signals:
+            name = _doric_event_source_name(line)
+            source = f"{group}/{name}" if len(groups) > 1 else name
+            sources[source] = None
+        return list(sources)
+
+    @classmethod
+    def _get_available_signals(cls, file_path) -> dict[str, dict]:
+        return {line: paths for (group, line), paths in cls._get_signal_paths(file_path).items()}
+
     @staticmethod
-    def _get_available_signals(file_path) -> dict[str, dict]:
-        """Return ``signal_source_id -> {kind, data_path, time_path}`` for every digital line in the file.
+    def _get_signal_paths(file_path) -> dict[tuple[str, str], dict]:
+        """Return the paths of each line, keyed by recording group and line name.
 
         Dispatches on the root group to cover both ``.doric`` generations: ``DataAcquisition`` is the
         modern layout and ``Traces`` is the legacy "EPConsole" one (the two are named after the root
@@ -133,8 +156,8 @@ class DoricEventsInterface(BaseEventsInterface):
         return {}
 
     @staticmethod
-    def _discover_signals_in_root_is_data_acquisition_format(f) -> dict[str, dict]:
-        """Digital lines of the modern ``DataAcquisition`` layout, keyed by ``signal_source_id``.
+    def _discover_signals_in_root_is_data_acquisition_format(f) -> dict[tuple[str, str], dict]:
+        """Digital lines of the modern ``DataAcquisition`` layout, keyed by recording group and line.
 
         Walks for ``DigitalIO`` groups (leaf name ``DigitalIO`` holding a ``Time`` dataset); each non-Time
         1-D dataset is a digital line at ``DataAcquisition/<group>/<line>``, keyed by its dataset name
@@ -142,7 +165,7 @@ class DoricEventsInterface(BaseEventsInterface):
         """
         import h5py
 
-        available_signals: dict[str, dict] = {}
+        available_signals = {}
 
         def _visit(name: str, obj) -> None:
             if not isinstance(obj, h5py.Group):
@@ -155,7 +178,7 @@ class DoricEventsInterface(BaseEventsInterface):
                 item = obj[key]
                 if isinstance(item, h5py.Dataset) and item.ndim == 1:
                     # The digital line's name is its signal_source_id (identity-in-header).
-                    available_signals[key] = {
+                    available_signals[name.removesuffix("/DigitalIO"), key] = {
                         "kind": "line",
                         "data_path": f"DataAcquisition/{name}/{key}",
                         "time_path": f"DataAcquisition/{name}/Time",
@@ -165,8 +188,8 @@ class DoricEventsInterface(BaseEventsInterface):
         return available_signals
 
     @staticmethod
-    def _discover_signals_in_root_is_traces_format(f) -> dict[str, dict]:
-        """Digital lines of the legacy "EPConsole" ``Traces`` layout, keyed by ``signal_source_id``.
+    def _discover_signals_in_root_is_traces_format(f) -> dict[tuple[str, str], dict]:
+        """Digital lines of the legacy "EPConsole" ``Traces`` layout, keyed by console and line.
 
         Each stream nests as ``Traces/<console>/<stream>/<stream>`` and the console's shared time base is
         the single dataset in its sibling ``Time(s)`` group. Digital lines are the streams named
@@ -174,7 +197,7 @@ class DoricEventsInterface(BaseEventsInterface):
         """
         import h5py
 
-        available_signals: dict[str, dict] = {}
+        available_signals = {}
         for console_name, console in f["Traces"].items():
             if not isinstance(console, h5py.Group):
                 continue
@@ -190,7 +213,7 @@ class DoricEventsInterface(BaseEventsInterface):
                     continue
                 line = stream.get(stream_name)  # the same-named nested dataset holds the trace
                 if isinstance(line, h5py.Dataset) and line.ndim == 1:
-                    available_signals[stream_name] = {
+                    available_signals[console_name, stream_name] = {
                         "kind": "line",
                         "data_path": f"Traces/{console_name}/{stream_name}/{stream_name}",
                         "time_path": time_path,

@@ -21,6 +21,7 @@ class TestDoricCSVEvents(EventsInterfaceTestMixin):
     """
 
     data_interface_cls = DoricCSVEventsInterface
+    expected_event_sources = ("DigitalIO",)
     expected_temporal_alignment_keys = ("DI/O-1",)
     interface_kwargs = dict(file_path=FILE_PATH)
 
