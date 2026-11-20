@@ -1740,20 +1740,17 @@ class EventsInterfaceTestMixin(DataInterfaceTestMixin):
         nwbfile.read_io.close()
 
     # Opt in when the fixture exposes both a populated source and a declared, readable silent source.
-    # Discovery arguments contain only the inputs needed to locate the recording.
-    event_source_discovery_kwargs: dict | None = None
-    expected_event_sources: tuple[str, ...] = ()
-    expected_default_event_type_ids: tuple[str, ...] = ()
+    expected_event_sources: tuple[str, ...] | None = None
     populated_event_source: str | None = None
     silent_event_source: str | None = None
 
     def test_configured_event_sources(self, setup_interface):
-        if self.event_source_discovery_kwargs is None:
+        if self.expected_event_sources is None:
             pytest.skip("Fixture does not exercise event source discovery.")
 
-        sources = self.data_interface_cls.get_available_event_sources(**self.event_source_discovery_kwargs)
+        sources = self.data_interface_cls.get_available_event_sources(**self.interface_kwargs)
         assert tuple(sources) == self.expected_event_sources
-        assert tuple(self.interface.get_event_type_source_ids()) == self.expected_default_event_type_ids
+        assert tuple(self.interface.get_event_type_source_ids()) == self.expected_temporal_alignment_keys
 
         interface = self.data_interface_cls(
             **{
@@ -1777,7 +1774,7 @@ class EventsInterfaceTestMixin(DataInterfaceTestMixin):
         assert len(nwbfile.get_events_table("SilentRead")) == 0
 
     def test_missing_event_source(self, setup_interface):
-        if self.event_source_discovery_kwargs is None:
+        if self.expected_event_sources is None:
             pytest.skip("Fixture does not exercise event source discovery.")
 
         with pytest.raises(ValueError) as error:

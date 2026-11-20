@@ -15,11 +15,9 @@ from neuroconv.tools.testing.mock_interfaces import MockEventsInterface
 
 class TestMockEventSourceResolution(EventsInterfaceTestMixin):
     data_interface_cls = MockEventsInterface
-    interface_kwargs = dict(num_event_types=2, event_payload="multi value")
+    interface_kwargs = dict(num_event_types=2)
     expected_temporal_alignment_keys = ("events_0", "events_1")
-    event_source_discovery_kwargs = dict(num_event_types=2)
     expected_event_sources = ("events_0", "events_1", "silent")
-    expected_default_event_type_ids = ("events_0", "events_1")
     populated_event_source = "events_1"
     silent_event_source = "silent"
 
@@ -33,6 +31,7 @@ class TestMockEventSourceResolution(EventsInterfaceTestMixin):
     def test_silent_event_source_preserves_native_payload_dtype(self, tmp_path):
         interface = MockEventsInterface(
             **self.interface_kwargs,
+            event_payload="multi value",
             event_extraction_configuration={"silent_read": {"source": "silent"}},
         )
         nwbfile_path = tmp_path / "empty_events.nwb"
