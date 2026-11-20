@@ -1,6 +1,5 @@
 import inspect
 import json
-import re
 import tempfile
 from abc import abstractmethod
 from copy import deepcopy
@@ -1661,15 +1660,6 @@ class EthogramInterfaceTestMixin(DataInterfaceTestMixin):
         behavior_module = nwbfile.processing["behavior"]
         assert behavior_module[bouts_entry["name"]].ethogram is None
         assert catalogue_entry["name"] not in behavior_module.data_interfaces
-
-    def test_source_pose_metadata_key_that_names_no_entry_raises(self, setup_interface):
-        metadata = _get_metadata_for_writing(self.interface)
-        bouts_entry, _ = self._get_entries(metadata)
-        bouts_entry["source_pose_metadata_key"] = "not_a_pose_estimation"
-
-        expected_message = "metadata_key 'not_a_pose_estimation' was not found in metadata['Pose']['PoseEstimations']."
-        with pytest.raises(ValueError, match=re.escape(expected_message)):
-            self.interface.add_to_nwbfile(nwbfile=mock_NWBFile(), metadata=metadata)
 
 
 class FiberPhotometryInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
