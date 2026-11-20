@@ -23,7 +23,7 @@ class _Separation(TypedDict):
 class _ExtractionEntry(TypedDict):
     __pydantic_config__ = ConfigDict(extra="forbid")
 
-    source: StrictStr
+    source: NotRequired[StrictStr]
     separation: NotRequired[_Separation]
 
 

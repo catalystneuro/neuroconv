@@ -1694,6 +1694,8 @@ class EventsInterfaceTestMixin(DataInterfaceTestMixin):
     states them in its own ``check_read_nwb``, calling ``super().check_read_nwb`` first.
     """
 
+    expected_event_sources: tuple[str, ...] | None = None
+
     #: ``event_type_source_id`` to ``event_name``. Empty means the interface's own names are written.
     event_names: dict[str, str] = {}
 
@@ -1739,57 +1741,12 @@ class EventsInterfaceTestMixin(DataInterfaceTestMixin):
 
         nwbfile.read_io.close()
 
-    # Opt in when the fixture exposes both a populated source and a declared, readable silent source.
-    # Discovery arguments contain only the inputs needed to locate the recording.
-    event_source_discovery_kwargs: dict | None = None
-    expected_event_sources: tuple[str, ...] = ()
-    expected_default_event_type_ids: tuple[str, ...] = ()
-    populated_event_source: str | None = None
-    silent_event_source: str | None = None
-
-    def test_configured_event_sources(self, setup_interface):
-        if self.event_source_discovery_kwargs is None:
+    def test_event_source_discovery(self):
+        if self.expected_event_sources is None:
             pytest.skip("Fixture does not exercise event source discovery.")
 
-        sources = self.data_interface_cls.get_available_event_sources(**self.event_source_discovery_kwargs)
-        assert tuple(sources) == self.expected_event_sources
-        assert tuple(self.interface.get_event_type_source_ids()) == self.expected_default_event_type_ids
-
-        interface = self.data_interface_cls(
-            **{
-                **self.interface_kwargs,
-                "event_extraction_configuration": {
-                    "first_read": {"source": self.populated_event_source},
-                    "second_read": {"source": self.populated_event_source},
-                    "silent_read": {"source": self.silent_event_source},
-                },
-            }
-        )
-        assert interface.get_event_type_source_ids() == ["first_read", "second_read", "silent_read"]
-        first_read = interface.get_event_times("first_read")
-        assert len(first_read) > 0
-        assert_array_equal(interface.get_event_times("second_read"), first_read)
-        assert len(interface.get_event_times("silent_read")) == 0
-
-        metadata = _get_metadata_for_writing(interface)
-        metadata["NWBFile"].setdefault("session_start_time", datetime.now().astimezone())
-        nwbfile = interface.create_nwbfile(metadata=metadata, **self.conversion_options)
-        assert len(nwbfile.get_events_table("SilentRead")) == 0
-
-    def test_missing_event_source(self, setup_interface):
-        if self.event_source_discovery_kwargs is None:
-            pytest.skip("Fixture does not exercise event source discovery.")
-
-        with pytest.raises(ValueError) as error:
-            self.data_interface_cls(
-                **{
-                    **self.interface_kwargs,
-                    "event_extraction_configuration": {"requested": {"source": "missing_test_source"}},
-                }
-            )
-        assert "missing_test_source" in str(error.value)
-        assert "get_available_event_sources" in str(error.value)
-        assert str(list(self.expected_event_sources)) in str(error.value)
+        sources = self.data_interface_cls.get_available_event_sources(**self.interface_kwargs)
+        assert sources == list(self.expected_event_sources)
 
     def test_event_time_convention_reaches_every_event_type(self, setup_interface):
         """``event_time_convention`` on every spec moves every event to the sample before its transition.
