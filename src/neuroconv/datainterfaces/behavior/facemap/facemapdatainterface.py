@@ -113,6 +113,10 @@ class _ProcFile:
         """
         return self._cell_value("uMotMask", index)
 
+    def average_motion(self, index: int) -> np.ndarray:
+        """Mean motion of each pixel of one cell, flat over the cell's box in MATLAB's column-major order."""
+        return self._cell_value("avgmot", index).ravel()
+
     def multivideo_box(self) -> np.ndarray:
         """The whole-frame box, ``proc.ROI{1}{1}``, reached through two cell levels."""
         if self.is_hdf5:
@@ -310,10 +314,10 @@ class FacemapInterface(BaseDataInterface):
                 unit="pixels",
             )
             metadata["TimeSeries"][self._pupil_metadata_keys["area"]] = dict(
-                name="pupil_area", description="Area of pupil.", unit="unknown"
+                name="pupil_area", description="Area of pupil.", unit="pixels^2"
             )
             metadata["TimeSeries"][self._pupil_metadata_keys["area_raw"]] = dict(
-                name="pupil_area_raw", description="Raw unprocessed area of pupil.", unit="unknown"
+                name="pupil_area_raw", description="Raw unprocessed area of pupil.", unit="pixels^2"
             )
         for index, region_name in self._region_names.items():
             region_metadata_key = self._region_metadata_keys[index]
@@ -391,12 +395,15 @@ class FacemapInterface(BaseDataInterface):
             column_end = column_start + int(np.round(box[2]))
             row_end = row_start + int(np.round(box[3]))
             frame = proc.processed_frame()
+            # Flat in MATLAB's column-major order, so reshaping to (width, height) and transposing gives (height, width).
+            average_motion = proc.average_motion(index).reshape((column_end - column_start, row_end - row_start)).T
 
             motion_masks_table = MotionSVDMasks(
                 **masks_metadata,
                 mask_coordinates=[row_start, column_start, row_end, column_end],
                 downsampling_factor=proc.scalar("sc"),
                 processed_frame_dimension=[frame.shape[0], frame.shape[1]],
+                average_motion=average_motion,
             )
 
             mask = proc.motion_mask(index)

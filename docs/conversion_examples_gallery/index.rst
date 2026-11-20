@@ -144,6 +144,7 @@ Behavior
     Audio <behavior/audio>
     BORIS <behavior/boris>
     EthoVision <behavior/ethovision>
+    Facemap <behavior/facemap>
     FicTrac <behavior/fictrac>
     Neuralynx NVT <behavior/neuralynx_nvt>
     OptiTrack <behavior/optitrack>
