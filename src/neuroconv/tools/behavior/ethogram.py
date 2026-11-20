@@ -1,5 +1,7 @@
 """Shared writer for behavioral bouts and the behavior catalogue they draw from (the ``ndx-ethogram`` extension)."""
 
+from typing import Literal
+
 import numpy as np
 from hdmf.common import MeaningsTable
 from pynwb import NWBFile
@@ -18,7 +20,7 @@ def _add_ethogram_to_nwbfile(
     behaviors: list[dict],
     ethogram_metadata: dict,
     labeling_method: str,
-    exclusive: bool | None = None,
+    bout_concurrency: Literal["partition", "disjoint", "concurrent"] | None = None,
     source_software: str | None = None,
     annotator: str | None = None,
     parameters: str | None = None,
@@ -57,8 +59,10 @@ def _add_ethogram_to_nwbfile(
         the shape of an entry in ``metadata["Behavior"]["Ethograms"]``.
     labeling_method : str
         ``"manual"``, ``"automated"``, or ``"curated"``.
-    exclusive : bool, optional
-        Whether the scheme is a single-label partition (recorded on the catalogue).
+    bout_concurrency : {"partition", "disjoint", "concurrent"}, optional
+        How the bouts of one subject relate in time, recorded on the ``EthogramBouts``: ``"partition"`` when
+        one bout covers every observed instant, ``"disjoint"`` when bouts never overlap but may leave gaps,
+        ``"concurrent"`` when they may overlap. Omitted when the source does not say.
     source_software, annotator, parameters : str, optional
         Provenance written onto the ``EthogramBouts`` group.
     source, source_pose, source_video : optional
@@ -78,52 +82,165 @@ def _add_ethogram_to_nwbfile(
         subjects scored in one EthoVision arena share one table. Otherwise that name already in the file
         raises.
     """
-    from ndx_ethogram import Ethogram, EthogramBouts
+    catalogue = None
+    if ethogram_metadata["Ethogram"] is not None:
+        catalogue = _add_ethogram_catalogue_to_nwbfile(
+            nwbfile,
+            behaviors=behaviors,
+            catalogue_metadata=ethogram_metadata["Ethogram"],
+            behavior_columns=behavior_columns,
+        )
+    _add_ethogram_bouts_to_nwbfile(
+        nwbfile,
+        start_times=start_times,
+        stop_times=stop_times,
+        labels=labels,
+        bouts_metadata=ethogram_metadata["EthogramBouts"],
+        labeling_method=labeling_method,
+        catalogue=catalogue,
+        bout_concurrency=bout_concurrency,
+        source_software=source_software,
+        annotator=annotator,
+        parameters=parameters,
+        source=source,
+        source_pose=source_pose,
+        source_video=source_video,
+        bout_columns=bout_columns,
+        column_meanings=column_meanings,
+        extend_bouts=extend_bouts,
+    )
+
+
+def _add_ethogram_catalogue_to_nwbfile(
+    nwbfile: NWBFile,
+    *,
+    behaviors: list[dict],
+    catalogue_metadata: dict,
+    behavior_columns: dict[str, dict] | None = None,
+):
+    """Add the ``Ethogram`` catalogue to the behavior module, or extend the one of the same name already there.
+
+    A behavior already catalogued is not added again and must keep its ``behavior_type``.
+
+    Parameters
+    ----------
+    nwbfile : NWBFile
+        The NWB file to add the catalogue to.
+    behaviors : list of dict
+        The catalogue rows, one per behavior: ``behavior`` and ``definition``, optionally ``behavior_type``,
+        ``native_code`` and ``category``, and a value for each column in ``behavior_columns``.
+    catalogue_metadata : dict
+        The ``name`` and ``description`` of the catalogue, an entry of ``metadata["Behavior"]["Ethograms"]``.
+    behavior_columns : dict, optional
+        Extra catalogue columns, as ``{name: {"description": str, "index": bool | int}}``. ``index`` makes
+        the column ragged, as in ``DynamicTable.add_column``.
+
+    Returns
+    -------
+    Ethogram
+        The catalogue in the file.
+    """
+    from ndx_ethogram import Ethogram
 
     behavior_columns = behavior_columns or {}
-    bout_columns = bout_columns or {}
-    column_meanings = column_meanings or {}
     behavior_module = get_module(nwbfile=nwbfile, name="behavior")
 
-    catalogue = None
-    catalogue_metadata = ethogram_metadata["Ethogram"]
-    if catalogue_metadata is not None:
-        catalogue = behavior_module.data_interfaces.get(catalogue_metadata["name"])
-        if catalogue is None:
-            catalogue = Ethogram(
-                name=catalogue_metadata["name"], description=catalogue_metadata["description"], exclusive=exclusive
-            )
-            for name, column in behavior_columns.items():
-                catalogue.add_column(name=name, description=column["description"], index=column.get("index", False))
-            behavior_module.add(catalogue)
-        elif not isinstance(catalogue, Ethogram):
-            raise TypeError(f"Behavior object '{catalogue.name}' exists but is not an Ethogram.")
+    catalogue = behavior_module.data_interfaces.get(catalogue_metadata["name"])
+    if catalogue is None:
+        catalogue = Ethogram(name=catalogue_metadata["name"], description=catalogue_metadata["description"])
+        for name, column in behavior_columns.items():
+            catalogue.add_column(name=name, description=column["description"], index=column.get("index", False))
+        behavior_module.add(catalogue)
+    elif not isinstance(catalogue, Ethogram):
+        raise TypeError(f"Behavior object '{catalogue.name}' exists but is not an Ethogram.")
 
-        catalogued_behaviors = list(catalogue["behavior"].data)
-        catalogued_types = (
-            list(catalogue["behavior_type"].data)
-            if "behavior_type" in catalogue.colnames
-            else [None] * len(catalogued_behaviors)
-        )
-        behavior_types = dict(zip(catalogued_behaviors, catalogued_types))
-        for row in behaviors:
-            behavior = row["behavior"]
-            if behavior in behavior_types:
-                if behavior_types[behavior] != row.get("behavior_type"):
-                    raise ValueError(
-                        f"Behavior '{behavior}' is already catalogued in '{catalogue.name}' as "
-                        f"'{behavior_types[behavior]}', not '{row.get('behavior_type')}'."
-                    )
-                continue
-            catalogue.add_row(**row)
-            behavior_types[behavior] = row.get("behavior_type")
+    catalogued_behaviors = list(catalogue["behavior"].data)
+    catalogued_types = (
+        list(catalogue["behavior_type"].data)
+        if "behavior_type" in catalogue.colnames
+        else [None] * len(catalogued_behaviors)
+    )
+    behavior_types = dict(zip(catalogued_behaviors, catalogued_types))
+    for row in behaviors:
+        behavior = row["behavior"]
+        if behavior in behavior_types:
+            if behavior_types[behavior] != row.get("behavior_type"):
+                raise ValueError(
+                    f"Behavior '{behavior}' is already catalogued in '{catalogue.name}' as "
+                    f"'{behavior_types[behavior]}', not '{row.get('behavior_type')}'."
+                )
+            continue
+        catalogue.add_row(**row)
+        behavior_types[behavior] = row.get("behavior_type")
+    return catalogue
+
+
+def _add_ethogram_bouts_to_nwbfile(
+    nwbfile: NWBFile,
+    *,
+    start_times,
+    stop_times,
+    labels,
+    bouts_metadata: dict,
+    labeling_method: str,
+    catalogue=None,
+    bout_concurrency: Literal["partition", "disjoint", "concurrent"] | None = None,
+    source_software: str | None = None,
+    annotator: str | None = None,
+    parameters: str | None = None,
+    source=None,
+    source_pose=None,
+    source_video=None,
+    bout_columns: dict[str, dict] | None = None,
+    column_meanings: dict[str, dict] | None = None,
+    extend_bouts: bool = False,
+) -> None:
+    """Add the ``EthogramBouts`` table to the behavior module, linked to its catalogue when one is given.
+
+    Writes nothing when there is no bout. The table is new unless ``extend_bouts`` is set.
+
+    Parameters
+    ----------
+    nwbfile : NWBFile
+        The NWB file to add the bouts to.
+    start_times, stop_times : array-like of float
+        The start and stop time of each bout, in seconds.
+    labels : array-like of str
+        The behavior of each bout, matching the ``behavior`` of a catalogue row.
+    bouts_metadata : dict
+        The ``name`` and optional ``description`` of the table.
+    labeling_method : str
+        ``"manual"``, ``"automated"``, or ``"curated"``.
+    catalogue : Ethogram, optional
+        The catalogue the bouts link to.
+    bout_concurrency : {"partition", "disjoint", "concurrent"}, optional
+        How the bouts of one subject relate in time. Omitted when the source does not say.
+    source_software, annotator, parameters : str, optional
+        Provenance written onto the ``EthogramBouts`` group.
+    source, source_pose, source_video : optional
+        Objects the bouts were derived from (the faithful producer, an ``ndx-pose``
+        ``PoseEstimation``, and an ``ImageSeries`` video), linked from the bout table.
+    bout_columns : dict, optional
+        Extra per-bout columns, as ``{name: {"description": str, "data": array-like, "index": bool}}``, with
+        one value per bout in ``data``.
+    column_meanings : dict, optional
+        A ``MeaningsTable`` for a bouts column, ``label`` included, as
+        ``{name: {"description": str, "meanings": {value: meaning}}}``. A column with no meanings gets none.
+    extend_bouts : bool, default: False
+        Whether to append to an ``EthogramBouts`` of the same name already in the file. Otherwise that name
+        already in the file raises.
+    """
+    from ndx_ethogram import EthogramBouts
+
+    bout_columns = bout_columns or {}
+    column_meanings = column_meanings or {}
 
     # A producer can hold no bout at all, a scheme of point behaviors or a session nobody finished. The
     # catalogue still says what could have been scored; an empty interval table would say nothing more.
     if len(start_times) == 0:
         return
 
-    bouts_metadata = ethogram_metadata["EthogramBouts"]
+    behavior_module = get_module(nwbfile=nwbfile, name="behavior")
     bouts = behavior_module.data_interfaces.get(bouts_metadata["name"]) if extend_bouts else None
     if bouts is None:
         bouts_description = {"description": bouts_metadata["description"]} if bouts_metadata.get("description") else {}
@@ -134,6 +251,7 @@ def _add_ethogram_to_nwbfile(
             source_software=source_software,
             annotator=annotator,
             parameters=parameters,
+            bout_concurrency=bout_concurrency,
             source=source,
             source_pose=source_pose,
             source_video=source_video,

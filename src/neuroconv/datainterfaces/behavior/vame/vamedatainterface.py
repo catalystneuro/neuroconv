@@ -699,7 +699,7 @@ class VameInterface(BaseTemporalAlignmentInterface):
             source=motif_series,
             source_pose=pose_estimation,
             source_video=source_video,
-            exclusive=True,  # VAME motifs are a single-label partition.
+            bout_concurrency="partition",  # VAME assigns one motif to every frame.
         )
 
     def add_to_nwbfile(
