@@ -130,21 +130,21 @@ optitrack = [
     "ndx-pose>=0.4.0",  # for MultiCameraPoseEstimation
 ]
 moseq = [
-    "ndx-ethogram>=0.1.0",  # For the curated EthogramBouts/Ethogram derived from the syllable sequence
+    "ndx-ethogram>=0.2.0",  # For the curated EthogramBouts/Ethogram derived from the syllable sequence
 ]
 vame = [
     "ndx-vame>=0.3.2",
-    "ndx-ethogram>=0.1.0",  # For the curated EthogramBouts/Ethogram derived from MotifSeries
+    "ndx-ethogram>=0.2.0",  # For the curated EthogramBouts/Ethogram derived from MotifSeries
 ]
 bsoid = [
-    "ndx-ethogram>=0.1.0",  # the behavior groups are written as an Ethogram and its EthogramBouts
+    "ndx-ethogram>=0.2.0",  # the behavior groups are written as an Ethogram and its EthogramBouts
 ]
 boris = [
-    "ndx-ethogram>=0.1.0",  # a BORIS project is a coding scheme plus its events, and the scheme is an Ethogram
+    "ndx-ethogram>=0.2.0",  # a BORIS project is a coding scheme plus its events, and the scheme is an Ethogram
 ]
 ethovision = [
     "openpyxl",  # Excel is one of EthoVision's three Track-export containers
-    "ndx-ethogram>=0.1.0",  # manual-scoring rows also produce an Ethogram and EthogramBouts
+    "ndx-ethogram>=0.2.0",  # manual-scoring rows also produce an Ethogram and EthogramBouts
 ]
 behavior = [
     "neuroconv[boris]",

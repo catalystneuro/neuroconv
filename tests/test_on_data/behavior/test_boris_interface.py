@@ -188,7 +188,10 @@ class TestBORISVersion1_6(BORISTestMixin):
         )
         # The whole coding scheme reaches the catalogue, including behaviors nothing was scored against.
         assert len(behavior_module["Ethogram"].to_dataframe()) == 4
-        assert len(behavior_module["MediaObservationBouts"].to_dataframe()) == 2
+        bouts = behavior_module["MediaObservationBouts"]
+        assert len(bouts.to_dataframe()) == 2
+        # BORIS lets several behaviors be open at once and keeps each subject's bouts apart.
+        assert bouts.bout_concurrency == "concurrent"
 
     def check_extracted_metadata(self, metadata: dict):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2016, 1, 2, 9, 0, 0)

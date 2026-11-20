@@ -293,7 +293,7 @@ class TestVameInterfaceEthogram:
         interface.add_to_nwbfile(nwbfile, metadata=interface.get_metadata())
         catalogue = nwbfile.processing["behavior"]["VAMEProjectEthogramKmeans"]
         assert len(catalogue) == 15  # n_clusters from config, including motifs absent this session.
-        assert catalogue.exclusive
+        assert nwbfile.processing["behavior"]["VAMEProjectEthogramBoutsKmeans"].bout_concurrency == "partition"
         assert list(catalogue["behavior"][:]) == [str(index) for index in range(15)]
         assert [int(code) for code in catalogue["native_code"][:]] == list(range(15))
         # category = the modal community per motif, matching an independent computation.
@@ -329,7 +329,7 @@ class TestVameInterfaceEthogram:
         bouts = behavior["VAMEProjectEthogramBoutsKmeans"]
         assert len(bouts) == expected_runs
         assert bouts.source.name == "MotifSeriesKmeans"
-        assert behavior["VAMEProjectEthogramKmeans"].exclusive
+        assert bouts.bout_concurrency == "partition"
         nwbfile.read_io.close()
 
     def test_data_to_write_algorithm_output_writes_project_without_ethogram(self):
@@ -354,7 +354,7 @@ class TestVameInterfaceEthogram:
         assert "VAMEProject" not in behavior.data_interfaces
         bouts = behavior["VAMEProjectEthogramBoutsKmeans"]
         assert bouts.source is None
-        assert behavior["VAMEProjectEthogramKmeans"].exclusive
+        assert bouts.bout_concurrency == "partition"
         nwbfile.read_io.close()
 
 
