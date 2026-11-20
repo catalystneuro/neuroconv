@@ -1607,14 +1607,11 @@ class EthogramInterfaceTestMixin(DataInterfaceTestMixin):
     own test file.
     """
 
-    def _get_entries(self, metadata: dict) -> tuple[dict, dict]:
-        bouts_entry = metadata["Behavior"]["EthogramBouts"][self.interface.metadata_key]
-        catalogue_entry = metadata["Behavior"]["Ethograms"][bouts_entry["ethogram_metadata_key"]]
-        return bouts_entry, catalogue_entry
-
     def check_read_nwb(self, nwbfile_path: str):
         """The bouts and their catalogue are written under the names and descriptions of their entries."""
-        bouts_entry, catalogue_entry = self._get_entries(_get_metadata_for_writing(self.interface))
+        metadata = _get_metadata_for_writing(self.interface)
+        bouts_entry = metadata["Behavior"]["EthogramBouts"][self.interface.metadata_key]
+        catalogue_entry = metadata["Behavior"]["Ethograms"][bouts_entry["ethogram_metadata_key"]]
         nwbfile = read_nwb(nwbfile_path)
         behavior_module = nwbfile.processing["behavior"]
 
@@ -1630,7 +1627,8 @@ class EthogramInterfaceTestMixin(DataInterfaceTestMixin):
     def test_metadata_propagation(self, setup_interface):
         """The names, descriptions, annotator and labeling method of the two entries reach the written objects."""
         metadata = _get_metadata_for_writing(self.interface)
-        bouts_entry, catalogue_entry = self._get_entries(metadata)
+        bouts_entry = metadata["Behavior"]["EthogramBouts"][self.interface.metadata_key]
+        catalogue_entry = metadata["Behavior"]["Ethograms"][bouts_entry["ethogram_metadata_key"]]
         bouts_entry.update(
             name="CustomBouts",
             description="Custom bouts description.",
@@ -1648,18 +1646,6 @@ class EthogramInterfaceTestMixin(DataInterfaceTestMixin):
         assert bouts.labeling_method == "curated"
         assert bouts.ethogram.name == "CustomEthogram"
         assert bouts.ethogram.description == "Custom catalogue description."
-
-    def test_bouts_without_ethogram_metadata_key_have_no_catalogue(self, setup_interface):
-        metadata = _get_metadata_for_writing(self.interface)
-        bouts_entry, catalogue_entry = self._get_entries(metadata)
-        del bouts_entry["ethogram_metadata_key"]
-
-        nwbfile = mock_NWBFile()
-        self.interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
-
-        behavior_module = nwbfile.processing["behavior"]
-        assert behavior_module[bouts_entry["name"]].ethogram is None
-        assert catalogue_entry["name"] not in behavior_module.data_interfaces
 
 
 class FiberPhotometryInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):

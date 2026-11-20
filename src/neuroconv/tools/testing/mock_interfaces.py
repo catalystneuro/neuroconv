@@ -774,7 +774,7 @@ class MockEthogramInterface(BaseDataInterface):
     def __init__(
         self,
         *,
-        num_frames: int = 300,
+        num_samples: int = 300,
         num_behaviors: int = 4,
         sampling_frequency_hz: float = 30.0,
         seed: int = 0,
@@ -786,8 +786,8 @@ class MockEthogramInterface(BaseDataInterface):
 
         Parameters
         ----------
-        num_frames : int, default: 300
-            Number of labelled frames.
+        num_samples : int, default: 300
+            Number of labelled samples.
         num_behaviors : int, default: 4
             Number of behavior ids the labels are drawn from.
         sampling_frequency_hz : float, default: 30.0
@@ -805,9 +805,9 @@ class MockEthogramInterface(BaseDataInterface):
 
         # Bouts of a few frames each, so the run-length encoding has runs to find.
         rng = np.random.default_rng(seed)
-        bout_lengths = rng.integers(low=3, high=15, size=num_frames)
-        bout_labels = rng.integers(low=0, high=num_behaviors, size=num_frames)
-        self._labels = np.repeat(bout_labels, bout_lengths)[:num_frames]
+        bout_lengths = rng.integers(low=3, high=15, size=num_samples)
+        bout_labels = rng.integers(low=0, high=num_behaviors, size=num_samples)
+        self._labels = np.repeat(bout_labels, bout_lengths)[:num_samples]
 
         super().__init__(verbose=verbose)
 
