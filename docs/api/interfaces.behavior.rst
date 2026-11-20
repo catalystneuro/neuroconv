@@ -1,6 +1,10 @@
 Behavior
 ========
 
+Anipose
+-------
+.. autoclass:: neuroconv.datainterfaces.behavior.anipose.aniposedatainterface.AniposeInterface
+
 Audio
 -----
 .. automodule:: neuroconv.datainterfaces.behavior.audio.audiointerface

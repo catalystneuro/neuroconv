@@ -88,6 +88,9 @@ text = [
 ]
 
 ## Behavior
+anipose = [
+    "ndx-pose>=0.4.0",  # for MultiCameraPoseEstimation and CalibratedCamera
+]
 audio = [
     "ndx-sound>=0.3.0",  # 0.3.0 allows any number of channels, 0.2.3 fixed the starting_time dtype for hdmf>=6
     "scipy", # for scipy.io.wavfile
@@ -147,6 +150,7 @@ ethovision = [
     "ndx-ethogram>=0.2.0",  # manual-scoring rows also produce an Ethogram and EthogramBouts
 ]
 behavior = [
+    "neuroconv[anipose]",
     "neuroconv[boris]",
     "neuroconv[bsoid]",
     "neuroconv[ethovision]",
