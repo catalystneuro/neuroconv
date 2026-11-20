@@ -143,7 +143,7 @@ boris = [
     "ndx-ethogram>=0.1.0",  # a BORIS project is a coding scheme plus its events, and the scheme is an Ethogram
 ]
 facemap = [
-    "ndx-facemap-motionsvd @ git+https://github.com/catalystneuro/ndx-facemap-motionsvd.git",
+    "ndx-facemap-motionsvd>=0.2.0",
     "scipy", # for scipy.io.loadmat, which reads the pre-v7.3 container
 ]
 ethovision = [

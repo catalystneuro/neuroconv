@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Optional
 
 import h5py
 import numpy as np
@@ -11,9 +11,11 @@ from pynwb.file import NWBFile
 from neuroconv.utils.dict import DeepDict
 
 from ..video.video_utils import get_video_timestamps
-from ....basetemporalalignmentinterface import BaseTemporalAlignmentInterface
+from ...._temporal_alignment import _TemporalAlignment
+from ....basedatainterface import BaseDataInterface
 from ....tools import get_module
-from ....utils import get_base_schema, get_schema_from_hdmf_class
+from ....tools.nwb_helpers import _get_container_by_name
+from ....utils import calculate_regular_series_rate, get_base_schema
 
 FilePathType = str | Path
 
@@ -138,8 +140,17 @@ class _ProcFile:
         return self._cell_value("wpix", 0)
 
 
-class FacemapInterface(BaseTemporalAlignmentInterface):
-    """Write Facemap pupil, eye-position and motion-SVD outputs to NWB."""
+class FacemapInterface(BaseDataInterface):
+    """Write Facemap pupil, eye-position and motion-SVD outputs to NWB.
+
+    The pupil traces are the interface's own measurements and are described by keyed entries in the top-level
+    ``metadata["TimeSeries"]`` and ``metadata["SpatialSeries"]``. The motion SVD of each region (the whole frame,
+    which Facemap calls multivideo, and each small ROI) is described by one keyed entry in
+    ``metadata["Behavior"]["Facemap"]["MotionSVDMasks"]`` and one in ``["MotionSVDSeries"]``. Each series entry
+    names its masks with ``motion_masks_metadata_key``, and a masks entry can name the video it was computed from
+    with ``source_video_metadata_key``, a key of ``metadata["Behavior"]["InternalVideos"]`` or
+    ``["ExternalVideos"]`` whose ``ImageSeries`` must already be in the file.
+    """
 
     display_name = "Facemap"
     # Every other interface declares `info`; `help` is not read by the GUIDE, so it
@@ -151,8 +162,10 @@ class FacemapInterface(BaseTemporalAlignmentInterface):
 
     def __init__(
         self,
-        mat_file_path: FilePathType,
+        file_path: FilePathType,
         video_file_path: FilePathType,
+        *,
+        metadata_key: str | None = None,
         verbose: bool = True,
     ):
         """
@@ -160,309 +173,256 @@ class FacemapInterface(BaseTemporalAlignmentInterface):
 
         Parameters
         ----------
-        mat_file_path : string or Path
+        file_path : string or Path
             Path to the .mat file.
         video_file_path : string or Path
             Path to the .avi file.
+        metadata_key : str, optional
+            The prefix of this interface's metadata keys and its key in ``temporal_alignment``. Defaults to
+            "facemap"; set it so several Facemap interfaces can share an NWB file.
         verbose : bool, default: True
             Allows verbose.
         """
         from ndx_facemap_motionsvd import MotionSVDMasks, MotionSVDSeries  # noqa: F401
 
-        super().__init__(mat_file_path=mat_file_path, video_file_path=video_file_path, verbose=verbose)
-        self._original_timestamps = None
-        self._timestamps = None
+        self.metadata_key = metadata_key or "facemap"
+        super().__init__(
+            file_path=file_path, video_file_path=video_file_path, metadata_key=self.metadata_key, verbose=verbose
+        )
+
+        # Facemap writes whichever of these the operator drew an ROI for, and leaves
+        # the rest as empty cells rather than omitting them, so presence of the key
+        # says nothing about whether it holds data.
+        with _ProcFile(file_path) as proc:
+            self._has_pupil = proc.has_pupil()
+            self._motion_cell_indices = proc.motion_cell_indices()
+        # Cell 0 is the whole frame, which Facemap calls multivideo, and the rest are the small ROIs.
+        self._region_names = {
+            index: "Multivideo" if index == 0 else f"ROI{index}" for index in self._motion_cell_indices
+        }
+        self._region_metadata_keys = {
+            index: f"{self.metadata_key}_{region_name.lower()}" for index, region_name in self._region_names.items()
+        }
+        self._eye_center_of_mass_metadata_key = f"{self.metadata_key}_eye_center_of_mass"
+        self._pupil_metadata_keys = {
+            "area": f"{self.metadata_key}_pupil_area",
+            "area_raw": f"{self.metadata_key}_pupil_area_raw",
+        }
+
+        self._video_timestamps = None
+        self.temporal_alignment = _TemporalAlignment()
+        self.temporal_alignment._add_time_bearing_object(
+            key=self.metadata_key,
+            get_native_times=self._get_native_times,
+            get_number_of_samples=self._get_number_of_frames,
+        )
+
+    def _get_native_times(self) -> np.ndarray:
+        if self._video_timestamps is None:
+            self._video_timestamps = np.asarray(get_video_timestamps(self.source_data["video_file_path"]))
+        return self._video_timestamps
+
+    def _get_number_of_frames(self) -> int:
+        with _ProcFile(self.source_data["file_path"]) as proc:
+            if self._has_pupil:
+                return proc.pupil("area").shape[0]
+            return proc.motion_svd(self._motion_cell_indices[0]).shape[0]
 
     def get_metadata_schema(self) -> dict:
         metadata_schema = super().get_metadata_schema()
-        metadata_schema["properties"]["Behavior"] = get_base_schema(tag="Behavior")
-        spatial_series_metadata_schema = get_schema_from_hdmf_class(SpatialSeries)
-        time_series_metadata_schema = get_schema_from_hdmf_class(TimeSeries)
-        metadata_schema["properties"]["Behavior"].update(
-            required=["EyeTracking", "PupilTracking", "MotionSVDMasks", "MotionSVDSeries"],
-            properties=dict(
-                EyeTracking=dict(
-                    type="array",
-                    minItems=1,
-                    items=spatial_series_metadata_schema,
-                ),
-                PupilTracking=dict(
-                    type="array",
-                    minItems=1,
-                    items=time_series_metadata_schema,
-                ),
-                MotionSVDMasks=dict(
-                    type="object",
-                    properties=dict(
-                        name=dict(type="string"),
-                        description=dict(type="string"),
-                    ),
-                    required=["name", "description"],
-                ),
-                MotionSVDSeries=dict(
-                    type="object",
-                    properties=dict(
-                        name=dict(type="string"),
-                        description=dict(type="string"),
-                    ),
-                    required=["name", "description"],
-                ),
-            ),
-        )
+        named_series_schema = {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string"},
+                "description": {"type": "string"},
+                "unit": {"type": "string"},
+            },
+            "required": ["name", "description", "unit"],
+            "additionalProperties": True,
+        }
+        spatial_series_schema = {
+            "type": "object",
+            "properties": {
+                **named_series_schema["properties"],
+                "reference_frame": {"type": "string"},
+            },
+            "required": [*named_series_schema["required"], "reference_frame"],
+            "additionalProperties": True,
+        }
+        metadata_schema["properties"]["SpatialSeries"] = {
+            "type": "object",
+            "additionalProperties": spatial_series_schema,
+        }
+        metadata_schema["properties"]["TimeSeries"] = {
+            "type": "object",
+            "additionalProperties": named_series_schema,
+        }
 
+        motion_masks_entry_schema = {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string"},
+                "description": {"type": "string"},
+                "source_video_metadata_key": {
+                    "type": "string",
+                    "description": "Key of the Behavior/InternalVideos or Behavior/ExternalVideos entry the masks "
+                    "were computed from.",
+                },
+            },
+            "required": ["name", "description"],
+            "additionalProperties": False,
+        }
+        motion_series_entry_schema = {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string"},
+                "description": {"type": "string"},
+                "motion_masks_metadata_key": {
+                    "type": "string",
+                    "description": "Key of the Behavior/Facemap/MotionSVDMasks entry holding the masks of the series.",
+                },
+            },
+            "required": ["name", "description", "motion_masks_metadata_key"],
+            "additionalProperties": False,
+        }
+        metadata_schema["properties"]["Behavior"] = get_base_schema(tag="Behavior")
+        # Left open so the metadata other interfaces write under Behavior survives validation in a converter.
+        metadata_schema["properties"]["Behavior"]["additionalProperties"] = True
+        metadata_schema["properties"]["Behavior"]["properties"] = {
+            "Facemap": {
+                "type": "object",
+                "properties": {
+                    "MotionSVDMasks": {"type": "object", "additionalProperties": motion_masks_entry_schema},
+                    "MotionSVDSeries": {"type": "object", "additionalProperties": motion_series_entry_schema},
+                },
+                "additionalProperties": False,
+            },
+        }
         return metadata_schema
 
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
-        behavior_metadata = dict(
-            EyeTracking=[
-                dict(
-                    name="eye_center_of_mass",
-                    description="The position of the eye measured in degrees.",
-                    reference_frame="unknown",
-                    unit="degrees",
-                )
-            ],
-            PupilTracking=[
-                dict(name="pupil_area", description="Area of pupil.", unit="unknown"),
-                dict(name="pupil_area_raw", description="Raw unprocessed area of pupil.", unit="unknown"),
-            ],
-            MotionSVDMasks=dict(name="MotionSVDMasks", description="Motion masks"),
-            MotionSVDSeries=dict(name="MotionSVDSeries", description="Motion SVD components"),
-        )
-        metadata["Behavior"] = behavior_metadata
+        if self._has_pupil:
+            metadata["SpatialSeries"][self._eye_center_of_mass_metadata_key] = dict(
+                name="eye_center_of_mass",
+                description="Center of mass of the pupil, as (row, column) in pixels of the pupil ROI.",
+                reference_frame="Top-left corner of the pupil ROI, with 1-based MATLAB indices.",
+                unit="pixels",
+            )
+            metadata["TimeSeries"][self._pupil_metadata_keys["area"]] = dict(
+                name="pupil_area", description="Area of pupil.", unit="unknown"
+            )
+            metadata["TimeSeries"][self._pupil_metadata_keys["area_raw"]] = dict(
+                name="pupil_area_raw", description="Raw unprocessed area of pupil.", unit="unknown"
+            )
+        for index, region_name in self._region_names.items():
+            region_metadata_key = self._region_metadata_keys[index]
+            metadata["Behavior"]["Facemap"]["MotionSVDMasks"][region_metadata_key] = dict(
+                name=f"MotionSVDMasks{region_name}", description=f"Motion masks for {region_name}."
+            )
+            metadata["Behavior"]["Facemap"]["MotionSVDSeries"][region_metadata_key] = dict(
+                name=f"MotionSVDSeries{region_name}",
+                description=f"Motion SVD components for {region_name}.",
+                motion_masks_metadata_key=region_metadata_key,
+            )
         return metadata
 
-    def _add_eye_tracking(self, nwbfile: NWBFile, metadata: DeepDict):
-
-        if self._timestamps is None:
-            self._timestamps = self.get_timestamps()
-
-        with _ProcFile(self.source_data["mat_file_path"]) as proc:
-
-            behavior_module = get_module(nwbfile=nwbfile, name="behavior", description="behavioral data")
-            eye_tracking_metadata = metadata["Behavior"]["EyeTracking"][0]
-
-            eye_com = SpatialSeries(
-                name=eye_tracking_metadata["name"],
-                description=eye_tracking_metadata["description"],
+    def _add_pupil(self, nwbfile: NWBFile, metadata: DeepDict, time_kwargs: dict):
+        behavior_module = get_module(nwbfile=nwbfile, name="behavior", description="behavioral data")
+        with _ProcFile(self.source_data["file_path"]) as proc:
+            eye_center_of_mass = SpatialSeries(
                 data=proc.pupil("com"),
-                reference_frame=eye_tracking_metadata["reference_frame"],
-                unit=eye_tracking_metadata["unit"],
-                timestamps=self._timestamps,
+                **metadata["SpatialSeries"][self._eye_center_of_mass_metadata_key],
+                **time_kwargs,
             )
+            behavior_module.add(EyeTracking(name="EyeTracking", spatial_series=eye_center_of_mass))
 
-            eye_tracking = EyeTracking(name="EyeTracking", spatial_series=eye_com)
+            pupil_tracking = PupilTracking(name="PupilTracking")
+            for pupil_trace_type, pupil_metadata_key in self._pupil_metadata_keys.items():
+                pupil_tracking.add_timeseries(
+                    TimeSeries(
+                        data=proc.pupil(pupil_trace_type),
+                        **metadata["TimeSeries"][pupil_metadata_key],
+                        **time_kwargs,
+                    )
+                )
+            behavior_module.add(pupil_tracking)
 
-            behavior_module.add(eye_tracking)
-
-    def _add_pupil_data(
-        self, nwbfile: NWBFile, metadata: DeepDict, pupil_trace_type: Literal["area_raw", "area"] = "area"
+    def _add_motion_svd(
+        self, nwbfile: NWBFile, metadata: DeepDict, index: int, first_n_components: int, time_kwargs: dict
     ):
-
-        with _ProcFile(self.source_data["mat_file_path"]) as proc:
-
-            behavior_module = get_module(nwbfile=nwbfile, name="behavior", description="behavioral data")
-
-            pupil_area_metadata_ind = 0 if pupil_trace_type == "area" else 1
-            pupil_area_metadata = metadata["Behavior"]["PupilTracking"][pupil_area_metadata_ind]
-
-            if "EyeTracking" not in behavior_module.data_interfaces:
-                self._add_eye_tracking(nwbfile=nwbfile, metadata=metadata)
-
-            eye_tracking_name = metadata["Behavior"]["EyeTracking"][0]["name"]
-            eye_com = behavior_module.data_interfaces["EyeTracking"].spatial_series[eye_tracking_name]
-
-            pupil_trace = TimeSeries(
-                name=pupil_area_metadata["name"],
-                description=pupil_area_metadata["description"],
-                data=proc.pupil(pupil_trace_type),
-                unit=pupil_area_metadata["unit"],
-                timestamps=eye_com,
-            )
-
-            if "PupilTracking" not in behavior_module.data_interfaces:
-                pupil_tracking = PupilTracking(name="PupilTracking")
-                behavior_module.add(pupil_tracking)
-            else:
-                pupil_tracking = behavior_module.data_interfaces["PupilTracking"]
-
-            pupil_tracking.add_timeseries(pupil_trace)
-
-    def _add_multivideo_motion_SVD(self, nwbfile: NWBFile, metadata: DeepDict, first_n_components: int):
         """
-        Add data motion SVD and motion mask for the whole video.
+        Add the motion SVD and motion masks of one region.
 
-        Parameters
-        ----------
-        nwbfile : NWBFile
-            NWBFile to add motion SVD components data to.
-        first_n_components : int
-            Number of components to store.
+        From the Facemap documentation:
+        motSVD: cell array of motion SVDs [time x components] (in order: multivideo, ROI1, ROI2, ROI3)
+        uMotMask: cell array of motion masks [pixels x components]  (in order: multivideo, ROI1, ROI2, ROI3)
+        The multivideo masks are 2D arrays [pixels x components], and the ROI masks are 3D arrays
+        [rows x columns x components].
         """
         from ndx_facemap_motionsvd import MotionSVDMasks, MotionSVDSeries
 
-        # From documentation
-        # motSVD: cell array of motion SVDs [time x components] (in order: multivideo, ROI1, ROI2, ROI3)
-        # uMotMask: cell array of motion masks [pixels x components]  (in order: multivideo, ROI1, ROI2, ROI3)
-        # motion masks of multivideo are reported as 2D-arrays npixels x
-        if self._timestamps is None:
-            self._timestamps = self.get_timestamps()
+        facemap_metadata = metadata["Behavior"]["Facemap"]
+        series_metadata = dict(facemap_metadata["MotionSVDSeries"][self._region_metadata_keys[index]])
+        masks_metadata = dict(facemap_metadata["MotionSVDMasks"][series_metadata.pop("motion_masks_metadata_key")])
 
-        motion_mask_name = metadata["Behavior"]["MotionSVDMasks"]["name"]
-        motion_mask_description = metadata["Behavior"]["MotionSVDMasks"]["description"]
-        motion_series_name = metadata["Behavior"]["MotionSVDSeries"]["name"]
-        motion_series_description = metadata["Behavior"]["MotionSVDSeries"]["description"]
-
-        with _ProcFile(self.source_data["mat_file_path"]) as proc:
-
-            behavior_module = get_module(nwbfile=nwbfile, name="behavior", description="behavioral data")
-
-            # Extract mask_coordinates
-            box = proc.multivideo_box()
-            y1 = int(np.round(box[0]) - 1)  # correct matlab indexing
-            x1 = int(np.round(box[1]) - 1)  # correct matlab indexing
-            y2 = y1 + int(np.round(box[2]))
-            x2 = x1 + int(np.round(box[3]))
-            mask_coordinates = [x1, y1, x2, y2]
-
-            # store multivideo motion mask and motion series
-            motion_masks_table = MotionSVDMasks(
-                name=f"{motion_mask_name}Multivideo",
-                description=f"{motion_mask_description} for multivideo.",
-                mask_coordinates=mask_coordinates,
-                downsampling_factor=self._get_downsamplig_factor(),
-                processed_frame_dimension=self._get_processed_frame_dimension(),
+        source_video_metadata_key = masks_metadata.pop("source_video_metadata_key", None)
+        if source_video_metadata_key is not None:
+            videos = {
+                **metadata["Behavior"].get("InternalVideos", {}),
+                **metadata["Behavior"].get("ExternalVideos", {}),
+            }
+            if source_video_metadata_key not in videos:
+                raise ValueError(
+                    f"source_video_metadata_key '{source_video_metadata_key}' was not found in "
+                    "metadata['Behavior']['InternalVideos'] or metadata['Behavior']['ExternalVideos']. "
+                    f"Available keys: {list(videos)}."
+                )
+            masks_metadata["source_video"] = _get_container_by_name(
+                nwbfile, videos[source_video_metadata_key]["name"], "ImageSeries"
             )
 
-            # add multivideo mask
-            mask = proc.motion_mask(0)
-            for c in range(min(first_n_components, mask.shape[-1])):
-                componendt_2d = mask[:, c].reshape((y2 - y1, x2 - x1))
-                motion_masks_table.add_row(image_mask=componendt_2d.T, check_ragged=False)
+        behavior_module = get_module(nwbfile=nwbfile, name="behavior", description="behavioral data")
+        with _ProcFile(self.source_data["file_path"]) as proc:
+            # The boxes are MATLAB [x y width height], x being the column and y the row of the top-left corner.
+            box = proc.multivideo_box() if index == 0 else proc.loc_roi(index)
+            column_start = int(np.round(box[0]) - 1)  # correct matlab indexing
+            row_start = int(np.round(box[1]) - 1)  # correct matlab indexing
+            column_end = column_start + int(np.round(box[2]))
+            row_end = row_start + int(np.round(box[3]))
+            frame = proc.processed_frame()
+
+            motion_masks_table = MotionSVDMasks(
+                **masks_metadata,
+                mask_coordinates=[row_start, column_start, row_end, column_end],
+                downsampling_factor=proc.scalar("sc"),
+                processed_frame_dimension=[frame.shape[0], frame.shape[1]],
+            )
+
+            mask = proc.motion_mask(index)
+            for component in range(min(first_n_components, mask.shape[-1])):
+                if index == 0:
+                    image_mask = mask[:, component].reshape((column_end - column_start, row_end - row_start)).T
+                else:
+                    image_mask = mask[:, :, component]
+                motion_masks_table.add_row(image_mask=image_mask, check_ragged=False)
 
             motion_masks = DynamicTableRegion(
                 name="motion_masks",
                 data=list(range(len(motion_masks_table))),
-                description="all the multivideo motion mask",
+                description=f"All the {self._region_names[index]} motion masks.",
                 table=motion_masks_table,
             )
 
-            data = proc.motion_svd(0)[:, :first_n_components]
-
             motion_series = MotionSVDSeries(
-                name=f"{motion_series_name}Multivideo",
-                description=f"{motion_series_description} for multivideo.",
-                data=data,
+                **series_metadata,
+                data=proc.motion_svd(index)[:, :first_n_components],
                 motion_masks=motion_masks,
                 unit="unknown",
-                timestamps=self._timestamps,
+                **time_kwargs,
             )
             behavior_module.add(motion_masks_table)
             behavior_module.add(motion_series)
-
-        return
-
-    def _add_motion_SVD(self, nwbfile: NWBFile, metadata: DeepDict, first_n_components: int):
-        """
-        Add data motion SVD and motion mask for each ROI.
-
-        Parameters
-        ----------
-        nwbfile : NWBFile
-            NWBFile to add motion SVD components data to.
-        first_n_components : int
-            Number of components to store.
-        """
-        from ndx_facemap_motionsvd import MotionSVDMasks, MotionSVDSeries
-
-        # From documentation
-        # motSVD: cell array of motion SVDs [time x components] (in order: multivideo, ROI1, ROI2, ROI3)
-        # uMotMask: cell array of motion masks [pixels x components]  (in order: multivideo, ROI1, ROI2, ROI3)
-        # ROIs motion masks are reported as 3D-arrays x_pixels x y_pixels x components
-
-        if self._timestamps is None:
-            self._timestamps = self.get_timestamps()
-
-        motion_mask_name = metadata["Behavior"]["MotionSVDMasks"]["name"]
-        motion_mask_description = metadata["Behavior"]["MotionSVDMasks"]["description"]
-        motion_series_name = metadata["Behavior"]["MotionSVDSeries"]["name"]
-        motion_series_description = metadata["Behavior"]["MotionSVDSeries"]["description"]
-
-        with _ProcFile(self.source_data["mat_file_path"]) as proc:
-
-            behavior_module = get_module(nwbfile=nwbfile, name="behavior", description="behavioral data")
-
-            downsampling_factor = self._get_downsamplig_factor()
-            processed_frame_dimension = self._get_processed_frame_dimension()
-            # store ROIs motion mask and motion series
-            # skipping the first cell because it refers to the multivideo mask
-            for n in [index for index in proc.motion_cell_indices() if index > 0]:
-
-                box = proc.loc_roi(n)
-                y1 = int(np.round(box[0]) - 1)  # correct matlab indexing
-                x1 = int(np.round(box[1]) - 1)  # correct matlab indexing
-                y2 = y1 + int(np.round(box[2]))
-                x2 = x1 + int(np.round(box[3]))
-                mask_coordinates = [x1, y1, x2, y2]
-
-                motion_masks_table = MotionSVDMasks(
-                    name=f"{motion_mask_name}ROI{n}",
-                    description=f"{motion_mask_description} for ROI{n}",
-                    mask_coordinates=mask_coordinates,
-                    downsampling_factor=downsampling_factor,
-                    processed_frame_dimension=processed_frame_dimension,
-                )
-
-                mask = proc.motion_mask(n)
-                for c in range(min(first_n_components, mask.shape[-1])):
-                    motion_masks_table.add_row(image_mask=mask[:, :, c], check_ragged=False)
-
-                motion_masks = DynamicTableRegion(
-                    name="motion_masks",
-                    data=list(range(len(motion_masks_table))),
-                    description="all the ROIs motion mask",
-                    table=motion_masks_table,
-                )
-
-                data = proc.motion_svd(n)[:, :first_n_components]
-
-                motion_series = MotionSVDSeries(
-                    name=f"{motion_series_name}ROI{n}",
-                    description=f"{motion_series_description} for ROI{n}",
-                    data=data,
-                    motion_masks=motion_masks,
-                    unit="unknown",
-                    timestamps=self._timestamps,
-                )
-
-                behavior_module.add(motion_masks_table)
-                behavior_module.add(motion_series)
-
-        return
-
-    def get_original_timestamps(self) -> np.ndarray:
-        if self._original_timestamps is None:
-            self._original_timestamps = get_video_timestamps(self.source_data["video_file_path"])
-        return self._original_timestamps
-
-    def get_timestamps(self) -> np.ndarray:
-        if self._timestamps is None:
-            return self.get_original_timestamps()
-        else:
-            return self._timestamps
-
-    def set_aligned_timestamps(self, aligned_timestamps: np.ndarray) -> None:
-        self._timestamps = aligned_timestamps
-
-    def _get_downsamplig_factor(self) -> float:
-        with _ProcFile(self.source_data["mat_file_path"]) as proc:
-            return proc.scalar("sc")
-
-    def _get_processed_frame_dimension(self) -> np.ndarray:
-        with _ProcFile(self.source_data["mat_file_path"]) as proc:
-            frame = proc.processed_frame()
-            return [frame.shape[0], frame.shape[1]]
 
     def add_to_nwbfile(
         self,
@@ -486,22 +446,28 @@ class FacemapInterface(BaseTemporalAlignmentInterface):
         include_multivideo_SVD : bool, default: True
             Also write the multivideo (whole-frame) motion SVD.
         """
-        # Facemap writes whichever of these the operator drew an ROI for, and leaves
-        # the rest as empty cells rather than omitting them, so presence of the key
-        # says nothing about whether it holds data.
-        with _ProcFile(self.source_data["mat_file_path"]) as proc:
-            has_pupil = proc.has_pupil()
-            motion_cells = proc.motion_cell_indices()
+        resolved_metadata = DeepDict(self.get_metadata())
+        if metadata is not None:
+            resolved_metadata.deep_update(metadata)
 
-        if has_pupil:
-            self._add_pupil_data(nwbfile=nwbfile, metadata=metadata, pupil_trace_type="area_raw")
-            self._add_pupil_data(nwbfile=nwbfile, metadata=metadata, pupil_trace_type="area")
+        timestamps = self.temporal_alignment[self.metadata_key].get_times()
+        rate = calculate_regular_series_rate(series=timestamps)
+        time_kwargs = dict(rate=rate, starting_time=timestamps[0]) if rate else dict(timestamps=timestamps)
+
+        if self._has_pupil:
+            self._add_pupil(nwbfile=nwbfile, metadata=resolved_metadata, time_kwargs=time_kwargs)
         elif self.verbose:
-            print(f"No pupil ROI in {self.source_data['mat_file_path']}, skipping pupil and eye tracking.")
+            print(f"No pupil ROI in {self.source_data['file_path']}, skipping pupil and eye tracking.")
 
-        if any(index > 0 for index in motion_cells):
-            self._add_motion_SVD(nwbfile=nwbfile, metadata=metadata, first_n_components=first_n_components)
-        if include_multivideo_SVD and 0 in motion_cells:
-            self._add_multivideo_motion_SVD(nwbfile=nwbfile, metadata=metadata, first_n_components=first_n_components)
-        elif not motion_cells and self.verbose:
-            print(f"No motion SVD in {self.source_data['mat_file_path']}, skipping motion masks and series.")
+        for index in self._motion_cell_indices:
+            if index == 0 and not include_multivideo_SVD:
+                continue
+            self._add_motion_svd(
+                nwbfile=nwbfile,
+                metadata=resolved_metadata,
+                index=index,
+                first_n_components=first_n_components,
+                time_kwargs=time_kwargs,
+            )
+        if not self._motion_cell_indices and self.verbose:
+            print(f"No motion SVD in {self.source_data['file_path']}, skipping motion masks and series.")

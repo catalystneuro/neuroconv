@@ -4,10 +4,7 @@ from pynwb import read_nwb
 from pynwb.behavior import EyeTracking, PupilTracking
 
 from neuroconv.datainterfaces import FacemapInterface
-from neuroconv.tools.testing.data_interface_mixins import (
-    DataInterfaceTestMixin,
-    TemporalAlignmentMixin,
-)
+from neuroconv.tools.testing.data_interface_mixins import DataInterfaceTestMixin
 
 try:
     from ..setup_paths import BEHAVIOR_DATA_PATH, OUTPUT_PATH
@@ -18,7 +15,7 @@ FACEMAP_DATA_PATH = BEHAVIOR_DATA_PATH / "facemap" / "motion_svd" / "matlab_gui"
 FIRST_N_COMPONENTS = 3
 
 
-class FacemapInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
+class FacemapInterfaceMixin(DataInterfaceTestMixin):
     """Checks shared by the two containers a Facemap MATLAB-GUI file is written in.
 
     Both fixtures are the same session, so every number below holds for both and a
@@ -28,19 +25,34 @@ class FacemapInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
     data_interface_cls = FacemapInterface
     conversion_options = dict(first_n_components=FIRST_N_COMPONENTS)
     save_directory = OUTPUT_PATH
+    expected_temporal_alignment_keys = ("facemap",)
 
     eye_com_expected_metadata = dict(
         name="eye_center_of_mass",
-        description="The position of the eye measured in degrees.",
-        reference_frame="unknown",
-        unit="degrees",
+        description="Center of mass of the pupil, as (row, column) in pixels of the pupil ROI.",
+        reference_frame="Top-left corner of the pupil ROI, with 1-based MATLAB indices.",
+        unit="pixels",
     )
     pupil_area_expected_metadata = dict(name="pupil_area", description="Area of pupil.", unit="unknown")
     pupil_area_raw_expected_metadata = dict(
         name="pupil_area_raw", description="Raw unprocessed area of pupil.", unit="unknown"
     )
-    motion_masks_expected_metadata = dict(name="MotionSVDMasks", description="Motion masks")
-    motion_series_expected_metadata = dict(name="MotionSVDSeries", description="Motion SVD components")
+    motion_svd_masks_expected_metadata = {
+        "facemap_multivideo": dict(name="MotionSVDMasksMultivideo", description="Motion masks for Multivideo."),
+        "facemap_roi1": dict(name="MotionSVDMasksROI1", description="Motion masks for ROI1."),
+    }
+    motion_svd_series_expected_metadata = {
+        "facemap_multivideo": dict(
+            name="MotionSVDSeriesMultivideo",
+            description="Motion SVD components for Multivideo.",
+            motion_masks_metadata_key="facemap_multivideo",
+        ),
+        "facemap_roi1": dict(
+            name="MotionSVDSeriesROI1",
+            description="Motion SVD components for ROI1.",
+            motion_masks_metadata_key="facemap_roi1",
+        ),
+    }
 
     # Boxes and frame geometry are properties of the session and survive stubbing.
     multivideo_mask_coordinates = [49, 0, 294, 287]
@@ -53,7 +65,7 @@ class FacemapInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
             _ProcFile,
         )
 
-        with _ProcFile(self.interface_kwargs["mat_file_path"]) as proc:
+        with _ProcFile(self.interface_kwargs["file_path"]) as proc:
             return dict(
                 com=proc.pupil("com"),
                 area=proc.pupil("area"),
@@ -62,12 +74,12 @@ class FacemapInterfaceMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
             )
 
     def check_extracted_metadata(self, metadata: dict):
-        behavior = metadata["Behavior"]
-        assert behavior["EyeTracking"][0] == self.eye_com_expected_metadata
-        assert behavior["PupilTracking"][0] == self.pupil_area_expected_metadata
-        assert behavior["PupilTracking"][1] == self.pupil_area_raw_expected_metadata
-        assert behavior["MotionSVDMasks"] == self.motion_masks_expected_metadata
-        assert behavior["MotionSVDSeries"] == self.motion_series_expected_metadata
+        assert metadata["SpatialSeries"]["facemap_eye_center_of_mass"] == self.eye_com_expected_metadata
+        assert metadata["TimeSeries"]["facemap_pupil_area"] == self.pupil_area_expected_metadata
+        assert metadata["TimeSeries"]["facemap_pupil_area_raw"] == self.pupil_area_raw_expected_metadata
+        facemap_metadata = metadata["Behavior"]["Facemap"]
+        assert facemap_metadata["MotionSVDMasks"] == self.motion_svd_masks_expected_metadata
+        assert facemap_metadata["MotionSVDSeries"] == self.motion_svd_series_expected_metadata
 
     def check_read_nwb(self, nwbfile_path: str):
         from ndx_facemap_motionsvd import MotionSVDMasks, MotionSVDSeries
@@ -110,7 +122,7 @@ class TestFacemapInterfaceHDF5Container(FacemapInterfaceMixin):
     """The container `saveROI.m` writes: `save(savepath, '-v7.3', 'proc')`."""
 
     interface_kwargs = dict(
-        mat_file_path=str(
+        file_path=str(
             FACEMAP_DATA_PATH / "whole_frame_and_one_roi" / "single_video_hdf5" / "11222019_grabAM05_spont_proc.mat"
         ),
         video_file_path=str(
@@ -123,7 +135,7 @@ class TestFacemapInterfaceMatlab5Container(FacemapInterfaceMixin):
     """The same session resaved as plain MATLAB 5.0, which h5py cannot open."""
 
     interface_kwargs = dict(
-        mat_file_path=str(
+        file_path=str(
             FACEMAP_DATA_PATH / "whole_frame_and_one_roi" / "single_video_matlab5" / "11222019_grabAM05_spont_proc.mat"
         ),
         video_file_path=str(
@@ -141,7 +153,7 @@ def test_pupil_only_file_has_no_motion_svd(tmp_path):
 
     This fixture ships without its video, which is not public, so the timestamps
     are supplied directly. The video handed to the constructor is never read once
-    `set_aligned_timestamps` has been called.
+    the times have been set.
     """
     from pynwb.testing.mock.file import mock_NWBFile
 
@@ -150,8 +162,8 @@ def test_pupil_only_file_has_no_motion_svd(tmp_path):
         FACEMAP_DATA_PATH / "whole_frame_and_one_roi" / "single_video_hdf5" / "11222019_grabAM05_spont.avi"
     )
 
-    interface = FacemapInterface(mat_file_path=str(mat_file_path), video_file_path=str(video_file_path), verbose=False)
-    interface.set_aligned_timestamps(np.arange(100) / 30.0)
+    interface = FacemapInterface(file_path=str(mat_file_path), video_file_path=str(video_file_path), verbose=False)
+    interface.temporal_alignment["facemap"].set_times(np.arange(100) / 30.0)
 
     nwbfile = mock_NWBFile()
     interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
