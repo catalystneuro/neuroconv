@@ -13,6 +13,10 @@ Doric CSV Events
 ----------------
 .. automodule:: neuroconv.datainterfaces.events.doric_events.doriccsveventsdatainterface
 
+EDF Events
+----------
+.. automodule:: neuroconv.datainterfaces.ecephys.edf.edfeventsinterface
+
 Intan Analog Events
 -------------------
 .. automodule:: neuroconv.datainterfaces.ecephys.intan.intananalogueventsinterface

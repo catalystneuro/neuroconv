@@ -464,6 +464,7 @@ class BaseEventsInterface(BaseDataInterface):
         # value-column specs keyed by column_name.
         rows = []
         column_specs = {}
+        column_dtypes = {}
         # A payload field may hold several values per event rather than one, a behavior scored with two
         # qualifiers at once or a trial tagged with three conditions. Those become a ragged column, and
         # which columns those are is read off the data rather than declared: a metadata flag would be a
@@ -486,7 +487,10 @@ class BaseEventsInterface(BaseDataInterface):
                 # checked for consistency up front by _validate_shared_columns); record it once, then let
                 # each type fill its own rows below.
                 column_specs.setdefault(column_name, column_spec)
-                if any(_holds_several_values(value) for value in event.payload[field_source_id]):
+                values = event.payload[field_source_id]
+                if isinstance(values, np.ndarray) and values.dtype.kind in "biufSU":
+                    column_dtypes.setdefault(column_name, []).append(values.dtype)
+                if any(_holds_several_values(value) for value in values):
                     ragged_column_names.add(column_name)
                 resolved_columns.append((field_source_id, column_name, self._labels_map(column_spec)))
             for index, timestamp in enumerate(timestamps):
@@ -548,11 +552,17 @@ class BaseEventsInterface(BaseDataInterface):
                     )
                 else:
                     fill = "" if categories is not None else np.nan
-                    empty = np.array([], dtype=str if categories is not None else float)
+                    dtypes = column_dtypes.get(column_name, [])
+                    if categories is not None:
+                        empty_dtype = str
+                    elif dtypes and all(dtype.kind == dtypes[0].kind for dtype in dtypes):
+                        empty_dtype = np.result_type(*dtypes)
+                    else:
+                        empty_dtype = float
                     table.add_column(
                         name=column_name,
                         description=column_spec.get("description", ""),
-                        data=empty if stays_empty else [fill] * n_existing,
+                        data=np.array([], dtype=empty_dtype) if stays_empty else [fill] * n_existing,
                     )
             elif is_ragged and not isinstance(table[column_name], VectorIndex):
                 raise ValueError(

@@ -44,6 +44,7 @@ from .ecephys.cellexplorer.cellexplorerdatainterface import (
 )
 from .ecephys.edf.edfdatainterface import EDFRecordingInterface
 from .ecephys.edf.edfanaloginterface import EDFAnalogInterface
+from .ecephys.edf.edfeventsinterface import EDFEventsInterface
 from .ecephys.intan.intandatainterface import IntanRecordingInterface
 from .ecephys.intan.intananaloginterface import IntanAnalogInterface
 from .ecephys.intan.intananalogueventsinterface import IntanAnalogEventsInterface
@@ -276,6 +277,7 @@ interface_list = [
     CSVEventsInterface,
     DoricCSVEventsInterface,
     DoricEventsInterface,
+    EDFEventsInterface,
     MedPCArrayEventsInterface,
     MedPCPackedEventsInterface,
     NPMEventsInterface,
@@ -356,6 +358,7 @@ interfaces_by_category = dict(
         CSVEvents=CSVEventsInterface,
         DoricCSVEvents=DoricCSVEventsInterface,
         DoricEvents=DoricEventsInterface,
+        EDFEvents=EDFEventsInterface,
         IntanAnalogEvents=IntanAnalogEventsInterface,
         MedPCArrayEvents=MedPCArrayEventsInterface,
         MedPCPackedEvents=MedPCPackedEventsInterface,
