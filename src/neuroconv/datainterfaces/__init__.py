@@ -1,4 +1,5 @@
 # Behavior
+from .behavior.anipose.aniposedatainterface import AniposeInterface
 from .behavior.audio.audiointerface import AudioInterface
 from .behavior.boris.borisdatainterface import BORISInterface
 from .behavior.bsoid.bsoidinterface import BSOiDInterface
@@ -250,6 +251,7 @@ interface_list = [
     MinianSegmentationInterface,
     ThorImagingInterface,
     # Behavior
+    AniposeInterface,
     BORISInterface,
     ExternalVideoInterface,
     InternalVideoInterface,
@@ -334,6 +336,7 @@ interfaces_by_category = dict(
         BrukerVoltageRecording=BrukerVoltageRecordingInterface,
     ),
     behavior=dict(
+        Anipose=AniposeInterface,
         ExternalVideo=ExternalVideoInterface,
         InternalVideo=InternalVideoInterface,
         DANNCE=DANNCEInterface,

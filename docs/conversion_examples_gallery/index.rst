@@ -120,6 +120,7 @@ Keypoint estimation
 .. toctree::
     :maxdepth: 1
 
+    Anipose <behavior/anipose>
     DANNCE <behavior/dannce>
     DeepLabCut <behavior/deeplabcut>
     LightningPose <behavior/lightningpose>

@@ -1,4 +1,7 @@
 {
+  "behavior/anipose.rst": {
+    "extra": "anipose"
+  },
   "behavior/audio.rst": {
     "extra": "audio"
   },
