@@ -1,6 +1,8 @@
-"""Generates synthetic files with different sampling rates and gaps to cause "incompatible section structures" error
+"""Generates synthetic files with different sampling rates and gaps 
+to cause "incompatible section structures" error
 
-Headers reproducted from Pegasus recordings in MNE test data
+Headers reproduced from Pegasus recordings in MNE test data 
+(https://github.com/mne-tools/mne-testing-data/tree/master/neuralynx)
 """
 
 from pathlib import Path
