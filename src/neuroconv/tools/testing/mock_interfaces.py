@@ -45,6 +45,7 @@ from ...datainterfaces.ophys.basesegmentationextractorinterface import (
 from ...tools.events import (
     _get_event_type_source_ids,
     _resolve_detection_plan,
+    _separate_events,
     _validate_detection_configuration,
 )
 from ...tools.icephys import _IcephysSeriesData
@@ -462,7 +463,7 @@ class MockEventsInterface(BaseEventsInterface):
         if self._event_extraction_configuration is None:
             self._events_data_dict = events_by_entry
         else:
-            self._events_data_dict = self._separate_events(self._event_extraction_configuration, events_by_entry)
+            self._events_data_dict = _separate_events(self._event_extraction_configuration, events_by_entry)
         return self._events_data_dict
 
     def _read_event_source(self, event_type_source_id: str, source_name: str) -> _EventsData:
