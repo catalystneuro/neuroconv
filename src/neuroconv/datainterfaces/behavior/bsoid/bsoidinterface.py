@@ -102,7 +102,7 @@ class BSOiDInterface(BaseDataInterface):
         super().__init__(file_path=file_path, verbose=verbose)
 
         self.temporal_alignment = _TemporalAlignment()
-        self.temporal_alignment._register(
+        self.temporal_alignment._add_time_bearing_object(
             key=self.metadata_key,
             get_native_times=self._get_native_times,
             get_number_of_samples=lambda: len(self._labels),
