@@ -13,57 +13,59 @@ from neuroconv.tools.testing.data_interface_mixins import EventsInterfaceTestMix
 from neuroconv.tools.testing.mock_interfaces import MockEventsInterface
 
 
-class TestMockEventSourceResolution(EventsInterfaceTestMixin):
-    data_interface_cls = MockEventsInterface
-    interface_kwargs = dict(num_event_types=2)
-    expected_temporal_alignment_keys = ("events_0", "events_1")
-    expected_event_sources = ("events_0", "events_1", "silent")
-    silent_event_source = "silent"
-
+class TestMockEventSourceResolution:
     def test_missing_event_source(self):
         missing_source = "missing_test_source"
         event_extraction_configuration = {"requested": {"source": missing_source}}
-        with pytest.raises(ValueError) as error:
-            MockEventsInterface(**self.interface_kwargs, event_extraction_configuration=event_extraction_configuration)
-        message = str(error.value)
-        assert missing_source in message
-        assert "get_available_event_sources" in message
-        assert str(list(self.expected_event_sources)) in message
+        expected_error = (
+            f"Event extraction entry 'requested' requests missing source '{missing_source}'. "
+            "Available sources: ['events_0', 'events_1', 'silent']. "
+            "Use MockEventsInterface.get_available_event_sources(...) to inspect the recording."
+        )
+        with pytest.raises(ValueError, match=rf"\A{re.escape(expected_error)}\Z"):
+            MockEventsInterface(num_event_types=2, event_extraction_configuration=event_extraction_configuration)
 
-    def test_two_event_types_can_read_the_same_source(self, setup_interface):
+    def test_two_event_types_can_read_the_same_source(self):
+        num_event_types = 2
         source_name = "events_1"
+        default_interface = MockEventsInterface(num_event_types=num_event_types)
+        expected_timestamps = default_interface.get_event_times(source_name)
         event_extraction_configuration = {
             "first_read": {"source": source_name},
             "second_read": {"source": source_name},
         }
         interface = MockEventsInterface(
-            **self.interface_kwargs,
+            num_event_types=num_event_types,
             event_extraction_configuration=event_extraction_configuration,
         )
-        expected_timestamps = self.interface.get_event_times(source_name)
         assert len(expected_timestamps) > 0
         assert interface.get_event_type_source_ids() == ["first_read", "second_read"]
         np.testing.assert_array_equal(interface.get_event_times("first_read"), expected_timestamps)
         np.testing.assert_array_equal(interface.get_event_times("second_read"), expected_timestamps)
 
-    def test_silent_event_source_preserves_native_payload_dtype(self, tmp_path):
+    def test_requested_silent_source_writes_empty_table_with_native_payload_dtype(self, tmp_path):
+        requested_event_type = "silent_read"
+        event_extraction_configuration = {requested_event_type: {"source": "silent"}}
         interface = MockEventsInterface(
-            **self.interface_kwargs,
             event_payload="multi value",
-            event_extraction_configuration={"silent_read": {"source": "silent"}},
+            event_extraction_configuration=event_extraction_configuration,
         )
+        assert interface.get_event_type_source_ids() == [requested_event_type]
+        assert len(interface.get_event_times(requested_event_type)) == 0
+
         nwbfile_path = tmp_path / "empty_events.nwb"
         interface.run_conversion(nwbfile_path=nwbfile_path)
         with NWBHDF5IO(nwbfile_path, mode="r") as io:
             table = io.read().get_events_table("SilentRead")
             assert len(table) == 0
-            assert table["amplitude_0"].data.dtype == np.dtype("float32")
+            assert table["amplitude"].data.dtype == np.dtype("float32")
 
     def test_source_is_required_in_configured_entries(self):
         configuration = {"requested": {}}
         schema = MockEventsInterface.get_source_schema()
         assert not Draft7Validator(schema).is_valid({"event_extraction_configuration": configuration})
-        with pytest.raises(ValueError, match="source.*required"):
+        expected_error = "Invalid event_extraction_configuration['requested']: 'source' is a required property"
+        with pytest.raises(ValueError, match=rf"\A{re.escape(expected_error)}\Z"):
             MockEventsInterface(event_extraction_configuration=configuration)
 
     def test_reader_can_allow_an_implicit_source(self):
@@ -84,17 +86,27 @@ class TestMockEventSourceResolution(EventsInterfaceTestMixin):
         configuration = {"requested": {"source": "events", "table_metadata_key": "table"}}
         schema = MockEventsInterface.get_source_schema()
         assert not Draft7Validator(schema).is_valid({"event_extraction_configuration": configuration})
-        with pytest.raises(ValueError, match="table_metadata_key"):
+        expected_error = (
+            "Invalid event_extraction_configuration['requested']: "
+            "Additional properties are not allowed ('table_metadata_key' was unexpected)"
+        )
+        with pytest.raises(ValueError, match=rf"\A{re.escape(expected_error)}\Z"):
             MockEventsInterface(event_extraction_configuration=configuration)
 
     def test_extraction_configuration_rejects_unsupported_operation(self):
-        with pytest.raises(ValueError, match=r"unsupported operations.*separation.*events"):
-            MockEventsInterface(event_extraction_configuration={"requested": {"source": "events", "separation": {}}})
+        configuration = {"requested": {"source": "events", "separation": {}}}
+        expected_error = (
+            "Event extraction entry 'requested' requests unsupported operations ['separation'] for source 'events'. "
+            "Supported operations: []."
+        )
+        with pytest.raises(ValueError, match=rf"\A{re.escape(expected_error)}\Z"):
+            MockEventsInterface(event_extraction_configuration=configuration)
 
 
 class TestMockEventsInterface(EventsInterfaceTestMixin):
     data_interface_cls = MockEventsInterface
     expected_temporal_alignment_keys = ("events",)
+    expected_event_sources = ("events", "silent")
     interface_kwargs = dict()
 
     def test_get_metadata(self):

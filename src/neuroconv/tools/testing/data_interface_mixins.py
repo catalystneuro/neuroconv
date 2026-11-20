@@ -1740,7 +1740,6 @@ class EventsInterfaceTestMixin(DataInterfaceTestMixin):
         nwbfile.read_io.close()
 
     expected_event_sources: tuple[str, ...] | None = None
-    silent_event_source: str | None = None
 
     def test_event_source_discovery(self):
         if self.expected_event_sources is None:
@@ -1748,24 +1747,6 @@ class EventsInterfaceTestMixin(DataInterfaceTestMixin):
 
         sources = self.data_interface_cls.get_available_event_sources(**self.interface_kwargs)
         assert tuple(sources) == self.expected_event_sources
-
-    def test_requested_silent_source_writes_empty_table(self, setup_interface):
-        if self.silent_event_source is None:
-            pytest.skip("Fixture does not specify a silent event source.")
-
-        assert tuple(self.interface.get_event_type_source_ids()) == self.expected_temporal_alignment_keys
-
-        event_extraction_configuration = {"silent_read": {"source": self.silent_event_source}}
-        configured_interface_kwargs = self.interface_kwargs.copy()
-        configured_interface_kwargs["event_extraction_configuration"] = event_extraction_configuration
-        interface = self.data_interface_cls(**configured_interface_kwargs)
-        assert interface.get_event_type_source_ids() == ["silent_read"]
-        assert len(interface.get_event_times("silent_read")) == 0
-
-        metadata = _get_metadata_for_writing(interface)
-        metadata["NWBFile"].setdefault("session_start_time", datetime.now().astimezone())
-        nwbfile = interface.create_nwbfile(metadata=metadata, **self.conversion_options)
-        assert len(nwbfile.get_events_table("SilentRead")) == 0
 
     def test_event_time_convention_reaches_every_event_type(self, setup_interface):
         """``event_time_convention`` on every spec moves every event to the sample before its transition.
