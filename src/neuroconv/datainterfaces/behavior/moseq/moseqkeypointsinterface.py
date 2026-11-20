@@ -1,5 +1,7 @@
 """DataInterface for keypoint-MoSeq behavioral segmentation output."""
 
+import copy
+import warnings
 from typing import Literal
 
 import numpy as np
@@ -8,14 +10,12 @@ from pynwb import NWBFile
 from pynwb.base import TimeSeries
 from pynwb.behavior import CompassDirection, Position, SpatialSeries
 
-from ....basedatainterface import BaseDataInterface
+from ..basebehavioralsegmentationinterface import BaseBehavioralSegmentationInterface
 from ....tools import get_module
-from ....tools.nwb_helpers import _get_container_by_name
-from ....tools.nwb_helpers._metadata_and_file_helpers import _validate_metadata_key
-from ....utils import DeepDict
+from ....utils import DeepDict, calculate_regular_series_rate
 
 
-class MoseqKeyPointsInterface(BaseDataInterface):
+class MoseqKeyPointsInterface(BaseBehavioralSegmentationInterface):
     """DataInterface for keypoint-MoSeq output (``results.h5``).
 
     Writes one recording of a ``results.h5``: the syllables as an ``ndx-ethogram`` ``EthogramBouts``
@@ -50,6 +50,12 @@ class MoseqKeyPointsInterface(BaseDataInterface):
     keywords = ("keypoint-MoSeq", "MoSeq", "behavioral syllables", "pose segmentation")
     associated_suffixes = (".h5",)
     info = "Interface for adding data from keypoint-MoSeq (Motion Sequencing on pose keypoints)."
+
+    source_software = "keypoint-MoSeq"
+    behavior_definition = (
+        "keypoint-MoSeq unsupervised syllable; the id is specific to the run that produced it and carries no meaning "
+        "outside it."
+    )
 
     @classmethod
     def get_source_schema(cls) -> dict:
@@ -88,9 +94,10 @@ class MoseqKeyPointsInterface(BaseDataInterface):
             their own frame counts, so one interface writes one of them. Optional when the file holds
             a single recording; required otherwise. Use :meth:`get_available_recordings` to list them.
         metadata_key : str, optional
-            Key of this interface's entries in the ``metadata["Behavior"]["MoseqKeyPoints"]``
-            registries and in ``metadata["Behavior"]["Ethograms"]``. Defaults to ``"keypoint_moseq"``.
-            Change it when writing two recordings into one NWB file so their entries do not collide.
+            Key of this interface's entries in the ``metadata["Behavior"]["MoseqKeyPoints"]`` registries, in
+            ``metadata["Behavior"]["Ethograms"]`` and ``metadata["Behavior"]["EthogramBouts"]``, and of its
+            object in ``temporal_alignment``. Defaults to ``"keypoint_moseq"``. Change it when writing two
+            recordings into one NWB file so their entries do not collide.
         verbose : bool, default False
             Controls verbosity of the conversion process.
         """
@@ -140,18 +147,26 @@ class MoseqKeyPointsInterface(BaseDataInterface):
         with h5py.File(self.source_data["file_path"], "r") as file:
             return file[self._recording_name][dataset_name][:]
 
-    def _get_number_of_frames(self) -> int:
-        import h5py
+    def _get_labels(self) -> np.ndarray:
+        return self._read_dataset("syllable")
 
-        with h5py.File(self.source_data["file_path"], "r") as file:
-            return file[self._recording_name]["syllable"].shape[0]
+    def _get_native_times(self) -> np.ndarray:
+        return np.arange(len(self._get_labels())) / self._sampling_frequency_hz
+
+    def _get_source(self, nwbfile: NWBFile, metadata: dict):
+        # The bouts point back at the latent trajectory they came from when it is in the file. With
+        # data_to_write="ethogram" it is not, and there is nothing to link to.
+        if "behavior" not in nwbfile.processing:
+            return None
+        latent_state_name = metadata["Behavior"]["MoseqKeyPoints"]["LatentStates"][self.metadata_key]["name"]
+        return nwbfile.processing["behavior"].data_interfaces.get(latent_state_name)
 
     def get_metadata_schema(self) -> dict:
-        from ....tools.behavior import _get_ethogram_metadata_schema
-        from ....utils import get_base_schema
-
         metadata_schema = super().get_metadata_schema()
 
+        # Deprecated: the two links moved to the bouts entry in Behavior/EthogramBouts, as
+        # source_pose_metadata_key and source_video_metadata_key. Kept until v0.13.0 so metadata written for
+        # earlier versions still validates.
         recording_entry_schema = {
             "type": "object",
             "properties": {
@@ -207,33 +222,23 @@ class MoseqKeyPointsInterface(BaseDataInterface):
             "required": ["name"],
             "additionalProperties": False,
         }
-        metadata_schema["properties"]["Behavior"] = get_base_schema(tag="Behavior")
-        # Leave the Behavior node open so sibling registries written by other interfaces (a video
-        # interface's Behavior/InternalVideos, say) survive validation in a converter. The
-        # MoseqKeyPoints and Ethograms sub-schemas stay strict.
-        metadata_schema["properties"]["Behavior"]["additionalProperties"] = True
-        metadata_schema["properties"]["Behavior"]["properties"] = {
-            "MoseqKeyPoints": {
-                "type": "object",
-                "properties": {
-                    "Recordings": {
-                        "type": "object",
-                        "properties": {},
-                        "additionalProperties": recording_entry_schema,
-                    },
-                    "Centroids": {"type": "object", "properties": {}, "additionalProperties": centroid_entry_schema},
-                    "Headings": {"type": "object", "properties": {}, "additionalProperties": heading_entry_schema},
-                    "LatentStates": {
-                        "type": "object",
-                        "properties": {},
-                        "additionalProperties": latent_state_entry_schema,
-                    },
+        metadata_schema["properties"]["Behavior"]["properties"]["MoseqKeyPoints"] = {
+            "type": "object",
+            "properties": {
+                "Recordings": {
+                    "type": "object",
+                    "properties": {},
+                    "additionalProperties": recording_entry_schema,
                 },
-                "additionalProperties": False,
+                "Centroids": {"type": "object", "properties": {}, "additionalProperties": centroid_entry_schema},
+                "Headings": {"type": "object", "properties": {}, "additionalProperties": heading_entry_schema},
+                "LatentStates": {
+                    "type": "object",
+                    "properties": {},
+                    "additionalProperties": latent_state_entry_schema,
+                },
             },
-            # Curated ndx-ethogram entries live in Behavior/Ethograms and Behavior/EthogramBouts, shared by every
-            # ethogram writer.
-            **_get_ethogram_metadata_schema(),
+            "additionalProperties": False,
         }
 
         return metadata_schema
@@ -245,9 +250,7 @@ class MoseqKeyPointsInterface(BaseDataInterface):
         recording = self._recording_name
 
         # The series live in flat, addressable registries under Behavior/MoseqKeyPoints, one per
-        # type, following the unified metadata pattern. Behavior/MoseqKeyPoints/Recordings holds the
-        # optional links to an upstream PoseEstimation and video; it is absent here because the
-        # source evidences neither, and a user who wants those links adds the entry.
+        # type, following the unified metadata pattern.
         metadata["Behavior"]["MoseqKeyPoints"] = {
             "Centroids": {
                 self.metadata_key: dict(
@@ -279,27 +282,24 @@ class MoseqKeyPointsInterface(BaseDataInterface):
             },
         }
 
-        # Curated ndx-ethogram products go in the shared, producer-agnostic Behavior/Ethograms
-        # registry, the same one VameInterface writes to.
-        metadata["Behavior"]["Ethograms"] = {
-            self.metadata_key: dict(
-                EthogramBouts=dict(
-                    name="MoseqKeyPointsEthogramBouts",
-                    description=(
-                        f"keypoint-MoSeq syllables for recording '{recording}' as run-length-encoded bouts. The "
-                        "first frames of the recording are model padding repeated from the first real syllable, so "
-                        "the first bout starts earlier than the first syllable the model assigned."
-                    ),
-                ),
-                Ethogram=dict(
-                    name="MoseqKeyPointsEthogram",
-                    description=(
-                        "keypoint-MoSeq syllable catalogue (coding scheme): one row per syllable id present in "
-                        "this recording."
-                    ),
-                ),
-            )
-        }
+        metadata["Behavior"]["Ethograms"][self.metadata_key] = dict(
+            name="MoseqKeyPointsEthogram",
+            description=(
+                "keypoint-MoSeq syllable catalogue (coding scheme): one row per syllable id present in this recording."
+            ),
+        )
+        # The links to the pose and the video (source_pose_metadata_key, source_video_metadata_key) are absent
+        # because results.h5 evidences neither.
+        metadata["Behavior"]["EthogramBouts"][self.metadata_key] = dict(
+            name="MoseqKeyPointsEthogramBouts",
+            description=(
+                f"keypoint-MoSeq syllables for recording '{recording}' as run-length-encoded bouts. The first frames "
+                "of the recording are model padding repeated from the first real syllable, so the first bout starts "
+                "earlier than the first syllable the model assigned."
+            ),
+            labeling_method="automated",
+            ethogram_metadata_key=self.metadata_key,
+        )
 
         return metadata
 
@@ -317,22 +317,20 @@ class MoseqKeyPointsInterface(BaseDataInterface):
         nwbfile : NWBFile
             Target NWB file.
         metadata : dict, optional
-            Metadata dictionary. This interface's fields live in flat registries under
-            ``metadata["Behavior"]["MoseqKeyPoints"]``, each keyed by ``metadata_key``:
+            Metadata dictionary. Defaults to ``get_metadata()``. The series are described by flat registries
+            under ``metadata["Behavior"]["MoseqKeyPoints"]``, each keyed by ``metadata_key``:
 
             - ``"Centroids"`` – ``{name, description, unit, reference_frame, container_name}`` for the
               centroid ``SpatialSeries`` and the ``Position`` container holding it.
             - ``"Headings"`` – the same fields for the heading ``SpatialSeries`` and its
               ``CompassDirection`` container.
             - ``"LatentStates"`` – ``{name, description, unit}`` for the latent-state ``TimeSeries``.
-            - ``"Recordings"`` – ``{pose_estimation_metadata_key, video_metadata_key}``, the optional
-              links the curated bouts carry back to the pose and the video they were derived from.
-              Both are registry addresses, resolved through ``metadata["Pose"]["PoseEstimations"]``
-              and ``metadata["Behavior"]["InternalVideos"]`` / ``["ExternalVideos"]``, so the object
-              named there must already be in the file.
 
-            The curated ``EthogramBouts`` and ``Ethogram`` names and descriptions live in the shared
-            ``metadata["Behavior"]["Ethograms"][metadata_key]`` registry.
+            The bouts table is described by ``metadata["Behavior"]["EthogramBouts"][metadata_key]``, whose
+            ``ethogram_metadata_key`` names the catalogue's entry in ``metadata["Behavior"]["Ethograms"]``. Its
+            optional ``source_pose_metadata_key`` and ``source_video_metadata_key`` name an entry of
+            ``metadata["Pose"]["PoseEstimations"]`` and of ``metadata["Behavior"]["InternalVideos"]`` or
+            ``["ExternalVideos"]``, whose object must already be in the file.
         data_to_write : {"algorithm_output", "ethogram", "both"}, default "both"
             Which of the two outputs to write. ``"algorithm_output"`` writes only the per-frame arrays
             keypoint-MoSeq produced: the centroid, the heading and the latent-state trajectory.
@@ -341,33 +339,28 @@ class MoseqKeyPointsInterface(BaseDataInterface):
             dropped; the ``source_pose`` and ``source_video`` links are external references and are
             kept. ``"both"`` (the default) writes both.
         """
-        from ....tools.behavior import _add_ethogram_to_nwbfile, _get_bouts_and_behaviors_from_labels
+        metadata = self._migrate_deprecated_metadata(metadata) if metadata is not None else self.get_metadata()
+        moseq_metadata = metadata["Behavior"]["MoseqKeyPoints"]
 
-        write_algorithm_output = data_to_write in ("algorithm_output", "both")
-        write_curated = data_to_write in ("ethogram", "both")
+        if data_to_write in ("algorithm_output", "both"):
+            # Every series shares the one clock of the syllables, the frames as aligned.
+            timestamps = self.temporal_alignment[self.metadata_key].get_times()
+            rate = calculate_regular_series_rate(series=timestamps)
+            if rate:
+                timing_kwargs = dict(rate=rate, starting_time=float(timestamps[0]))
+            else:
+                timing_kwargs = dict(timestamps=timestamps)
 
-        default_metadata = DeepDict(self.get_metadata())
-        if metadata is not None:
-            default_metadata.deep_update(metadata)
-        moseq_metadata = default_metadata["Behavior"]["MoseqKeyPoints"]
+            behavior_module = get_module(nwbfile, name="behavior", description="processed behavioral data")
 
-        # Every series shares one regular clock, since the frame rate is the only time base there is.
-        frame_period = 1.0 / self._sampling_frequency_hz
-        timestamps = np.arange(self._get_number_of_frames()) * frame_period
-        timing_kwargs = dict(rate=self._sampling_frequency_hz, starting_time=0.0)
+            # keypoint-MoSeq expresses the centroid in whatever coordinate space the pose it was given used,
+            # image pixels for 2D DeepLabCut output and the triangulation's own space for 3D, and results.h5
+            # records neither the unit nor the frame. SpatialSeries requires both, so they are filled here
+            # rather than reported by get_metadata().
+            placeholder_reference_frame = (
+                "PLACEHOLDER: keypoint-MoSeq does not record the coordinate frame of the pose it was given."
+            )
 
-        behavior_module = get_module(nwbfile, name="behavior", description="processed behavioral data")
-
-        latent_state_series = None
-        # keypoint-MoSeq expresses the centroid in whatever coordinate space the pose it was given used,
-        # image pixels for 2D DeepLabCut output and the triangulation's own space for 3D, and results.h5
-        # records neither the unit nor the frame. SpatialSeries requires both, so they are filled here
-        # rather than reported by get_metadata().
-        placeholder_reference_frame = (
-            "PLACEHOLDER: keypoint-MoSeq does not record the coordinate frame of the pose it was given."
-        )
-
-        if write_algorithm_output:
             # The centroid is (T, 2) for 2D pose and (T, 3) for 3D, so the width is read off the array.
             centroid_metadata = dict(moseq_metadata["Centroids"][self.metadata_key])
             position_container_name = centroid_metadata.pop("container_name")
@@ -391,66 +384,67 @@ class MoseqKeyPointsInterface(BaseDataInterface):
             behavior_module.add(CompassDirection(name=compass_container_name, spatial_series=heading_series))
 
             latent_state_metadata = dict(moseq_metadata["LatentStates"][self.metadata_key])
-            latent_state_series = TimeSeries(
-                data=self._read_dataset("latent_state"), **latent_state_metadata, **timing_kwargs
+            behavior_module.add(
+                TimeSeries(data=self._read_dataset("latent_state"), **latent_state_metadata, **timing_kwargs)
             )
-            behavior_module.add(latent_state_series)
 
-        if not write_curated:
-            return
+        # The syllables are the curated layer and the only one. Run-length encoding is exactly invertible
+        # given the timestamps, so the bout table loses nothing about the labels, and the material a faithful
+        # keypoint-MoSeq container would hold (kappa, num_states, the checkpoint) is not in results.h5 at all.
+        if data_to_write in ("ethogram", "both"):
+            super().add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
 
-        # Optional links to the upstream pose and video, resolved strictly through the metadata
-        # registries. The recording name carries no mapping to a session, so nothing is derived from
-        # it; a link exists only where the user addressed one.
-        recording_metadata = moseq_metadata.get("Recordings", {}).get(self.metadata_key, {})
-        source_pose = None
-        pose_estimation_key = recording_metadata.get("pose_estimation_metadata_key")
-        if pose_estimation_key is not None:
-            _validate_metadata_key(
-                default_metadata,
-                metadata_path=("Pose", "PoseEstimations"),
-                metadata_key=pose_estimation_key,
-            )
-            pose_estimations_registry = default_metadata["Pose"]["PoseEstimations"]
-            pose_container_name = pose_estimations_registry[pose_estimation_key]["name"]
-            source_pose = _get_container_by_name(nwbfile, pose_container_name, "PoseEstimation")
+    def _migrate_deprecated_metadata(self, metadata: dict) -> dict:
+        """Move the metadata of versions before v0.11.0 to where this version reads it, with a ``FutureWarning``.
 
-        source_video = None
-        video_key = recording_metadata.get("video_metadata_key")
-        if video_key is not None:
-            behavior_metadata = default_metadata.get("Behavior", {})
-            videos_registry = {
-                **behavior_metadata.get("InternalVideos", {}),
-                **behavior_metadata.get("ExternalVideos", {}),
-            }
-            if video_key not in videos_registry:
-                raise ValueError(
-                    f"video_metadata_key '{video_key}' was not found in metadata['Behavior']['InternalVideos'] "
-                    f"or metadata['Behavior']['ExternalVideos']. Available keys: {list(videos_registry)}."
-                )
-            source_video = _get_container_by_name(nwbfile, videos_registry[video_key]["name"], "ImageSeries")
+        Before v0.11.0 the catalogue and the bouts were described by one ``Behavior/Ethograms`` entry holding an
+        ``Ethogram`` and an ``EthogramBouts`` key, and the links to the pose and the video by a
+        ``Behavior/MoseqKeyPoints/Recordings`` entry. Returns a copy; the caller's metadata is left as it is.
+        """
+        metadata = copy.deepcopy(metadata)
+        behavior_metadata = metadata["Behavior"]
+        ethogram_entry = behavior_metadata.get("Ethograms", {}).get(self.metadata_key, {})
+        recording_entry = behavior_metadata.get("MoseqKeyPoints", {}).get("Recordings", {}).pop(self.metadata_key, None)
+        if "Ethogram" not in ethogram_entry and "EthogramBouts" not in ethogram_entry and recording_entry is None:
+            return metadata
 
-        # The syllables are the curated layer and the only one. Run-length encoding is exactly
-        # invertible given the timestamps, so the bout table loses nothing about the labels, and the
-        # material a faithful keypoint-MoSeq container would hold (kappa, num_states, the checkpoint)
-        # is not in results.h5 at all. The bouts point back at the latent trajectory they came from,
-        # when it was written; with data_to_write="ethogram" there is no object to link to.
-        ethogram_metadata = default_metadata["Behavior"]["Ethograms"][self.metadata_key]
-        _add_ethogram_to_nwbfile(
-            nwbfile,
-            **_get_bouts_and_behaviors_from_labels(
-                labels=self._read_dataset("syllable"),
-                timestamps=timestamps,
-                class_definition=(
-                    "keypoint-MoSeq unsupervised syllable; the id is specific to the run that produced it and "
-                    "carries no meaning outside it."
-                ),
-            ),
-            ethogram_metadata=ethogram_metadata,
-            labeling_method="automated",
-            source_software="keypoint-MoSeq",
-            source=latent_state_series,
-            source_pose=source_pose,
-            source_video=source_video,
-            exclusive=True,  # keypoint-MoSeq syllables are a single-label partition.
+        bouts_entry = behavior_metadata.setdefault("EthogramBouts", {}).setdefault(
+            self.metadata_key, dict(ethogram_metadata_key=self.metadata_key)
         )
+        if "Ethogram" in ethogram_entry or "EthogramBouts" in ethogram_entry:
+            warnings.warn(
+                f"The 'Ethogram' and 'EthogramBouts' keys of metadata['Behavior']['Ethograms']['{self.metadata_key}'] "
+                "are deprecated and will be removed in v0.13.0. Give the catalogue's name and description in "
+                f"metadata['Behavior']['Ethograms']['{self.metadata_key}'] itself, and the bouts' in "
+                f"metadata['Behavior']['EthogramBouts']['{self.metadata_key}'].",
+                FutureWarning,
+                stacklevel=3,
+            )
+            ethogram_entry.update(ethogram_entry.pop("Ethogram", {}))
+            bouts_entry.update(ethogram_entry.pop("EthogramBouts", {}))
+
+        if recording_entry is not None:
+            warnings.warn(
+                f"metadata['Behavior']['MoseqKeyPoints']['Recordings'] is deprecated and will be removed in v0.13.0. "
+                f"Give the links in metadata['Behavior']['EthogramBouts']['{self.metadata_key}'] as "
+                "'source_pose_metadata_key' and 'source_video_metadata_key'.",
+                FutureWarning,
+                stacklevel=3,
+            )
+            links = dict(
+                source_pose_metadata_key=recording_entry.get("pose_estimation_metadata_key"),
+                source_video_metadata_key=recording_entry.get("video_metadata_key"),
+            )
+            for link_name, old_value in links.items():
+                if old_value is None:
+                    continue
+                new_value = bouts_entry.get(link_name)
+                if new_value is not None and new_value != old_value:
+                    raise ValueError(
+                        f"metadata['Behavior']['MoseqKeyPoints']['Recordings']['{self.metadata_key}'] links to "
+                        f"'{old_value}' while metadata['Behavior']['EthogramBouts']['{self.metadata_key}']"
+                        f"['{link_name}'] is '{new_value}'. Give the link in the bouts entry only."
+                    )
+                bouts_entry[link_name] = old_value
+
+        return metadata

@@ -29,7 +29,8 @@ file gives the bare recording name.
 
 keypoint-MoSeq records no time base. Neither ``results.h5`` nor its CSV sibling carries timestamps or
 a frame rate, because the rate is a property of the video the keypoints came from, so
-``sampling_frequency_hz`` is required.
+``sampling_frequency_hz`` is required. Every object the interface writes follows the frames, which
+``temporal_alignment`` moves under the ``metadata_key``.
 
 .. code-block:: python
 
@@ -65,9 +66,9 @@ Specifying Metadata
 ~~~~~~~~~~~~~~~~~~~
 
 The three continuous series live in flat registries under ``metadata["Behavior"]["MoseqKeyPoints"]``,
-one per type (``Centroids``, ``Headings``, ``LatentStates``), and the curated ethogram products live in
-the shared, producer-agnostic ``metadata["Behavior"]["Ethograms"]`` registry. Every entry is keyed by
-``metadata_key``, which defaults to ``"keypoint_moseq"``. Pass a different one to write two recordings
+one per type (``Centroids``, ``Headings``, ``LatentStates``). The bouts are described by
+``metadata["Behavior"]["EthogramBouts"]`` and their catalogue by ``metadata["Behavior"]["Ethograms"]``,
+shared by every ethogram writer. Every entry is keyed by ``metadata_key``, which defaults to ``"keypoint_moseq"``. Pass a different one to write two recordings
 into the same NWB file without their entries colliding.
 
 The centroid is the one place worth editing. Its width follows the input pose, ``(T, 2)`` for 2D
@@ -104,8 +105,8 @@ Linking to pose estimation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 A recording name carries no mapping to a session or a subject, so nothing is derived from it. To
-record the upstream pose keypoints the syllables were fitted on, add a ``Recordings`` entry naming the
-``PoseEstimation`` registry key. The container it names must already be in the NWB file when
+record the upstream pose keypoints the syllables were fitted on, set ``source_pose_metadata_key`` in the
+bouts entry to the ``PoseEstimation`` registry key. The container it names must already be in the NWB file when
 ``add_to_nwbfile`` is called, so the pose interface has to run first.
 
 .. code-block:: python
@@ -118,9 +119,8 @@ record the upstream pose keypoints the syllables were fitted on, add a ``Recordi
     ...     data_interfaces=dict(DLC=pose_interface, Moseq=interface)
     ... )
     >>> metadata = converter.get_metadata()  # doctest: +SKIP
-    >>> metadata["Behavior"]["MoseqKeyPoints"]["Recordings"] = {  # doctest: +SKIP
-    ...     "keypoint_moseq": {"pose_estimation_metadata_key": "PoseEstimationDeepLabCut"},
-    ... }
+    >>> bouts_entry = metadata["Behavior"]["EthogramBouts"]["keypoint_moseq"]  # doctest: +SKIP
+    >>> bouts_entry["source_pose_metadata_key"] = "PoseEstimationDeepLabCut"  # doctest: +SKIP
     >>> converter.run_conversion(nwbfile_path=path_to_save_nwbfile, metadata=metadata)  # doctest: +SKIP
 
 
@@ -173,14 +173,12 @@ The default object names collide when two instances share a file, so rename them
     ...             },
     ...         },
     ...         "Ethograms": {
-    ...             "first_recording": {
-    ...                 "EthogramBouts": {"name": "EthogramBoutsFirst"},
-    ...                 "Ethogram": {"name": "EthogramFirst"},
-    ...             },
-    ...             "second_recording": {
-    ...                 "EthogramBouts": {"name": "EthogramBoutsSecond"},
-    ...                 "Ethogram": {"name": "EthogramSecond"},
-    ...             },
+    ...             "first_recording": {"name": "EthogramFirst"},
+    ...             "second_recording": {"name": "EthogramSecond"},
+    ...         },
+    ...         "EthogramBouts": {
+    ...             "first_recording": {"name": "EthogramBoutsFirst"},
+    ...             "second_recording": {"name": "EthogramBoutsSecond"},
     ...         },
     ...     },
     ... }

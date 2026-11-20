@@ -13,6 +13,9 @@ from ...basedatainterface import BaseDataInterface
 from ...basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from ...datainterfaces import SpikeGLXNIDQInterface
 from ...datainterfaces.behavior.audio.audiointerface import AudioInterface
+from ...datainterfaces.behavior.basebehavioralsegmentationinterface import (
+    BaseBehavioralSegmentationInterface,
+)
 from ...datainterfaces.behavior.baseposeestimationinterface import (
     BasePoseEstimationInterface,
 )
@@ -334,10 +337,11 @@ class MockEventsInterface(BaseEventsInterface):
             carries that same one field, but each of its cells holds *several* values rather than one, which
             the writer turns into a ragged column: an event tagged with two conditions at once, or a behavior
             scored with two qualifiers. The cells vary in length, including the empty one, so it exercises the
-            fill a row with nothing to say gets. ``"multi value"`` carries a three-field struct that fans into
-            three columns on the same rows, one per way the writer treats a value column: ``outcome`` (labels
+            fill a row with nothing to say gets. ``"multi value"`` carries a four-field struct that fans into
+            four columns on the same rows, one per way the writer treats a value column: ``outcome`` (labels
             and meanings, so a ``MeaningsTable``), ``cue`` (labels but nothing to explain, so no
-            ``MeaningsTable``), and ``amplitude`` (raw numeric values). Applies to every event type.
+            ``MeaningsTable``) and ``amplitude`` (raw numeric values), plus ``side``, raw text, so that one
+            field holds text values. Applies to every event type.
         event_extraction_configuration : dict, optional
             Synthetic sources to read, keyed by output event type. The "silent" source has
             no occurrences and is excluded from the default output.
@@ -350,6 +354,7 @@ class MockEventsInterface(BaseEventsInterface):
         self._event_payload = event_payload
         available_sources = self._get_event_source_info(num_event_types)
         configuration = self._resolve_event_sources(event_extraction_configuration, available_sources)
+        self._event_extraction_configuration = configuration
         if configuration is None:
             self._event_sources = {name: name for name in available_sources if name != "silent"}
         else:
@@ -364,14 +369,11 @@ class MockEventsInterface(BaseEventsInterface):
             source_names = ["events", "silent"]
         else:
             source_names = [f"events_{index}" for index in range(num_event_types)] + ["silent"]
-        return {name: {"supported_operations": []} for name in source_names}
+        return {name: {"supported_operations": ["separation"]} for name in source_names}
 
     @classmethod
     def get_available_event_sources(cls, num_event_types: int = 1) -> list[str]:
         return list(cls._get_event_source_info(num_event_types))
-
-    def get_event_type_source_ids(self) -> list[str]:
-        return list(self._event_sources)
 
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
@@ -412,9 +414,10 @@ class MockEventsInterface(BaseEventsInterface):
                     },
                 }
             elif self._event_payload == "multi value":
-                # A struct payload fanned into three columns on the same rows, one per way the writer
+                # A struct payload fanned into four columns on the same rows, one per way the writer
                 # treats a value column: 'outcome' as above, 'cue' declaring labels whose meaning is
-                # self-evident (so no meanings and no MeaningsTable), and 'amplitude' as raw numbers.
+                # self-evident (so no meanings and no MeaningsTable), and 'amplitude' as raw numbers, plus
+                # 'side' as raw text.
                 columns = {
                     "outcome": {
                         "column_name": f"outcome{suffix}",
@@ -433,6 +436,10 @@ class MockEventsInterface(BaseEventsInterface):
                         "column_name": f"amplitude{suffix}",
                         "description": "The amplitude of each event.",
                     },
+                    "side": {
+                        "column_name": f"side{suffix}",
+                        "description": "The side of each event.",
+                    },
                 }
             # No EventTables entry: a solo type names its own table from event_name (CamelCased). A merge
             # test repoints these types' table_metadata_key at a shared key and declares the table there.
@@ -448,40 +455,48 @@ class MockEventsInterface(BaseEventsInterface):
         if self._events_data_dict is not None:
             return self._events_data_dict
 
-        duration = 0.05 if self._event_extent == "event with duration" else None
-        events_data_dict = {}
-        for event_type_source_id, source_name in self._event_sources.items():
-            index = self._source_indices[source_name]
-            num_events = 0 if source_name == "silent" else self._num_events
-            # Stagger timestamps across types so pooling several into one table interleaves in time.
-            timestamps = 0.1 * (np.arange(num_events) * self._num_event_types + index + 1)
-            durations = np.full(num_events, duration) if duration is not None else None
-            # One branch per payload mode, matching the columns get_metadata declares for that mode.
-            if self._event_payload == "timestamps only":
-                payload = {}
-            elif self._event_payload == "single value":
-                payload = {"outcome": np.arange(num_events) % 2}  # alternating go / no_go
-            elif self._event_payload == "single value variable length":
-                # Lengths cycle 0, 1, 2, 3 so a single generated type covers the empty cell, the
-                # one-value cell that a scalar column could have held, and the genuinely several.
-                payload = {
-                    "conditions": np.array([list(range(count % 4)) for count in range(num_events)], dtype=object)
-                }
-            elif self._event_payload == "multi value":
-                payload = {
-                    "outcome": np.arange(num_events) % 2,  # alternating go / no_go
-                    "cue": (np.arange(num_events) // 2) % 2,  # tone, tone, light, light, ...
-                    "amplitude": np.arange(num_events, dtype="float32"),
-                }
-            events_data_dict[event_type_source_id] = _EventsData(
-                event_type_source_id=event_type_source_id,
-                timestamps=timestamps,
-                durations=durations,
-                payload=payload,
-            )
-
-        self._events_data_dict = events_data_dict
+        events_by_entry = {
+            entry_name: self._read_event_source(entry_name, source_name)
+            for entry_name, source_name in self._event_sources.items()
+        }
+        if self._event_extraction_configuration is None:
+            self._events_data_dict = events_by_entry
+        else:
+            self._events_data_dict = self._separate_events(self._event_extraction_configuration, events_by_entry)
         return self._events_data_dict
+
+    def _read_event_source(self, event_type_source_id: str, source_name: str) -> _EventsData:
+        """Generate the occurrences of one synthetic source, before any separation."""
+        duration = 0.05 if self._event_extent == "event with duration" else None
+        index = self._source_indices[source_name]
+        num_events = 0 if source_name == "silent" else self._num_events
+        # Stagger timestamps across types so pooling several into one table interleaves in time.
+        timestamps = 0.1 * (np.arange(num_events) * self._num_event_types + index + 1)
+        durations = np.full(num_events, duration) if duration is not None else None
+        # One branch per payload mode, matching the columns get_metadata declares for that mode.
+        if self._event_payload == "timestamps only":
+            payload = {}
+        elif self._event_payload == "single value":
+            payload = {"outcome": np.arange(num_events) % 2}  # alternating go / no_go
+        elif self._event_payload == "single value variable length":
+            # Lengths cycle 0, 1, 2, 3 so a single generated type covers the empty cell, the
+            # one-value cell that a scalar column could have held, and the genuinely several.
+            payload = {"conditions": np.array([list(range(count % 4)) for count in range(num_events)], dtype=object)}
+        elif self._event_payload == "multi value":
+            payload = {
+                "outcome": np.arange(num_events) % 2,  # alternating go / no_go
+                "cue": (np.arange(num_events) // 2) % 2,  # tone, tone, light, light, ...
+                "amplitude": np.arange(num_events, dtype="float32"),
+                "side": np.where(
+                    (np.arange(num_events) // 2) % 2 == 0, "left", "right"
+                ),  # left, left, right, right, ...
+            }
+        return _EventsData(
+            event_type_source_id=event_type_source_id,
+            timestamps=timestamps,
+            durations=durations,
+            payload=payload,
+        )
 
 
 class MockSignalEncodedEventsInterface(BaseEventsInterface):
@@ -780,19 +795,21 @@ class MockSignalEncodedEventsInterface(BaseEventsInterface):
         return self._events_data_dict
 
 
-class MockEthogramInterface(BaseDataInterface):
+class MockBehavioralSegmentationInterface(BaseBehavioralSegmentationInterface):
     """
-    A mock interface that writes per-frame behavior labels as ``ndx-ethogram`` bouts, for testing purposes.
+    A mock behavioral segmentation interface backed by synthetic per-frame labels, for testing purposes.
 
-    It writes the way the interfaces of per-frame segmentation tools do: the labels are run-length encoded
-    into an ``EthogramBouts`` table scored against an ``Ethogram`` catalogue, both described by the
-    ``Behavior/EthogramBouts`` and ``Behavior/Ethograms`` entries of its ``metadata_key``.
+    Implements only the per-frame labels and their times, so the catalogue, the bouts and their temporal
+    alignment come from ``BaseBehavioralSegmentationInterface``.
     """
 
-    display_name = "Mock Ethogram"
+    display_name = "Mock Behavioral Segmentation"
     keywords = ("behavior", "ethogram", "mock")
     associated_suffixes = []
-    info = "Mock interface for ndx-ethogram bouts testing."
+    info = "Mock interface for behavioral segmentation testing."
+
+    source_software = "MockSoftware"
+    behavior_definition = "Mock behavior id."
 
     def __init__(
         self,
@@ -801,11 +818,11 @@ class MockEthogramInterface(BaseDataInterface):
         num_behaviors: int = 4,
         sampling_frequency_hz: float = 30.0,
         seed: int = 0,
-        metadata_key: str = "mock_ethogram",
+        metadata_key: str = "mock_behavioral_segmentation",
         verbose: bool = False,
     ):
         """
-        Initialize a mock ethogram interface.
+        Initialize a mock behavioral segmentation interface.
 
         Parameters
         ----------
@@ -817,9 +834,9 @@ class MockEthogramInterface(BaseDataInterface):
             Frame rate of the labels, in Hz.
         seed : int, default: 0
             Seed for the random number generator.
-        metadata_key : str, default: "mock_ethogram"
+        metadata_key : str, default: "mock_behavioral_segmentation"
             Key of this interface's entries in ``metadata["Behavior"]["Ethograms"]`` and
-            ``metadata["Behavior"]["EthogramBouts"]``.
+            ``metadata["Behavior"]["EthogramBouts"]``, and of its object in ``temporal_alignment``.
         verbose : bool, default: False
             Control verbosity.
         """
@@ -834,15 +851,11 @@ class MockEthogramInterface(BaseDataInterface):
 
         super().__init__(verbose=verbose)
 
-    def get_metadata_schema(self) -> dict:
-        from ...tools.behavior import _get_ethogram_metadata_schema
-        from ...utils import get_base_schema
+    def _get_labels(self) -> np.ndarray:
+        return self._labels
 
-        metadata_schema = super().get_metadata_schema()
-        metadata_schema["properties"]["Behavior"] = get_base_schema(tag="Behavior")
-        metadata_schema["properties"]["Behavior"]["additionalProperties"] = True
-        metadata_schema["properties"]["Behavior"]["properties"] = _get_ethogram_metadata_schema()
-        return metadata_schema
+    def _get_native_times(self) -> np.ndarray:
+        return np.arange(len(self._labels)) / self.sampling_frequency_hz
 
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
@@ -858,44 +871,6 @@ class MockEthogramInterface(BaseDataInterface):
             ethogram_metadata_key=self.metadata_key,
         )
         return metadata
-
-    def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict | None = None):
-        """
-        Add the mock bouts and their catalogue to an NWB file.
-
-        Parameters
-        ----------
-        nwbfile : NWBFile
-            The NWB file to add the bouts to.
-        metadata : dict, optional
-            Metadata dictionary. The bouts table is described by
-            ``metadata["Behavior"]["EthogramBouts"][metadata_key]``, which names the catalogue's entry and,
-            optionally, the pose estimation and the video the bouts link to.
-        """
-        from ...tools.behavior import (
-            _add_ethogram_to_nwbfile,
-            _get_bouts_and_behaviors_from_labels,
-            _resolve_ethogram_bouts_entry,
-        )
-
-        # The caller's metadata reaches the writer as they wrote it, so a key they removed stays removed.
-        metadata = metadata if metadata is not None else self.get_metadata()
-
-        entry_arguments = dict(labeling_method="automated")
-        entry_arguments.update(
-            _resolve_ethogram_bouts_entry(nwbfile, metadata=metadata, metadata_key=self.metadata_key)
-        )
-        _add_ethogram_to_nwbfile(
-            nwbfile,
-            **_get_bouts_and_behaviors_from_labels(
-                labels=self._labels,
-                timestamps=np.arange(len(self._labels)) / self.sampling_frequency_hz,
-                class_definition="Mock behavior id.",
-            ),
-            **entry_arguments,
-            source_software="MockSoftware",
-            exclusive=True,
-        )
 
 
 class MockFiberPhotometryInterface(BaseFiberPhotometryInterface):

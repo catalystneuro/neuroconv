@@ -184,5 +184,5 @@ class BSOiDInterface(BaseDataInterface):
             ),
             **entry_arguments,
             source_software="B-SOiD",
-            exclusive=True,  # B-SOiD assigns one group to every frame.
+            bout_concurrency="partition",  # B-SOiD assigns one group to every frame.
         )
