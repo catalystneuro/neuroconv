@@ -4,7 +4,6 @@ from typing import Literal
 from pynwb.file import NWBFile
 
 from ...basedatainterface import BaseDataInterface
-from ...tools.nwb_helpers import get_module
 from ...tools.nwb_helpers._metadata_and_file_helpers import _validate_metadata_key
 
 __all__ = ["BaseEthogramInterface"]
@@ -54,7 +53,8 @@ class BaseEthogramInterface(BaseDataInterface):
 
         The caller's metadata reaches the writers as they wrote it. It is not merged over this interface's
         defaults, so a key the caller removed stays removed: a bouts entry without ``ethogram_metadata_key``
-        writes bouts with no catalogue.
+        writes bouts with no catalogue. The pose estimation and the video the bouts entry's
+        ``source_pose_metadata_key`` and ``source_video_metadata_key`` name must already be in the file.
 
         Parameters
         ----------
@@ -63,62 +63,28 @@ class BaseEthogramInterface(BaseDataInterface):
         metadata : dict, optional
             Metadata dictionary. Defaults to ``get_metadata()``.
         """
-        metadata = metadata if metadata is not None else self.get_metadata()
-        self.add_ethogram_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
-        self.add_bouts_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
-
-    def add_ethogram_to_nwbfile(self, nwbfile: NWBFile, metadata: dict) -> None:
-        """Write the ``Ethogram`` catalogue, or extend the one of the same name already in the file.
-
-        Writes nothing when the bouts entry has no ``ethogram_metadata_key``.
-
-        Parameters
-        ----------
-        nwbfile : NWBFile
-            Target NWB file.
-        metadata : dict
-            Metadata dictionary.
-        """
-        from ...tools.behavior import _add_ethogram_catalogue_to_nwbfile
-
-        _validate_metadata_key(metadata, metadata_path=("Behavior", "EthogramBouts"), metadata_key=self.metadata_key)
-        ethogram_metadata_key = metadata["Behavior"]["EthogramBouts"][self.metadata_key].get("ethogram_metadata_key")
-        if ethogram_metadata_key is None:
-            return
-        _validate_metadata_key(metadata, metadata_path=("Behavior", "Ethograms"), metadata_key=ethogram_metadata_key)
-        _add_ethogram_catalogue_to_nwbfile(
-            nwbfile,
-            behaviors=self._get_behaviors(),
-            catalogue_metadata=metadata["Behavior"]["Ethograms"][ethogram_metadata_key],
+        from ...tools.behavior import (
+            _add_ethogram_bouts_to_nwbfile,
+            _add_ethogram_catalogue_to_nwbfile,
+            _resolve_ethogram_bouts_entry,
         )
 
-    def add_bouts_to_nwbfile(self, nwbfile: NWBFile, metadata: dict) -> None:
-        """Write the ``EthogramBouts`` table, linked to the catalogue its entry names.
+        metadata = metadata if metadata is not None else self.get_metadata()
 
-        That catalogue must already be in the file, written by ``add_ethogram_to_nwbfile``. So must the pose
-        estimation and the video the entry's ``source_pose_metadata_key`` and ``source_video_metadata_key`` name.
-
-        Parameters
-        ----------
-        nwbfile : NWBFile
-            Target NWB file.
-        metadata : dict
-            Metadata dictionary.
-        """
-        from ...tools.behavior import _add_ethogram_bouts_to_nwbfile, _resolve_ethogram_bouts_entry
+        _validate_metadata_key(metadata, metadata_path=("Behavior", "EthogramBouts"), metadata_key=self.metadata_key)
+        catalogue = None
+        ethogram_metadata_key = metadata["Behavior"]["EthogramBouts"][self.metadata_key].get("ethogram_metadata_key")
+        if ethogram_metadata_key is not None:
+            _validate_metadata_key(
+                metadata, metadata_path=("Behavior", "Ethograms"), metadata_key=ethogram_metadata_key
+            )
+            catalogue = _add_ethogram_catalogue_to_nwbfile(
+                nwbfile,
+                behaviors=self._get_behaviors(),
+                catalogue_metadata=metadata["Behavior"]["Ethograms"][ethogram_metadata_key],
+            )
 
         entry_arguments = _resolve_ethogram_bouts_entry(nwbfile, metadata=metadata, metadata_key=self.metadata_key)
-        catalogue = None
-        catalogue_metadata = entry_arguments["ethogram_metadata"]["Ethogram"]
-        if catalogue_metadata is not None:
-            behavior_module = get_module(nwbfile=nwbfile, name="behavior")
-            catalogue = behavior_module.data_interfaces.get(catalogue_metadata["name"])
-            if catalogue is None:
-                raise ValueError(
-                    f"The bouts entry '{self.metadata_key}' names the catalogue '{catalogue_metadata['name']}', "
-                    "which is not in the file. Call add_ethogram_to_nwbfile first."
-                )
-
         _add_ethogram_bouts_to_nwbfile(
             nwbfile,
             **self._get_bouts(),

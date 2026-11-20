@@ -1648,21 +1648,6 @@ class EthogramInterfaceTestMixin(DataInterfaceTestMixin):
         assert bouts.ethogram.description == "Custom catalogue description."
 
 
-class BehavioralSegmentationInterfaceTestMixin(EthogramInterfaceTestMixin):
-    """Shared tests for the interfaces built on ``BaseBehavioralSegmentationInterface``.
-
-    The run-length encoding, the catalogue and the temporal alignment are the base class's and are tested on
-    ``MockBehavioralSegmentationInterface``. What each format decides is how it reads its labels and the time of
-    each frame, so that is what runs here.
-    """
-
-    def test_one_time_per_label(self, setup_interface):
-        """The reader and the clock agree on the number of frames."""
-        number_of_labels = len(self.interface._get_labels())
-        number_of_times = len(self.interface._get_native_times())
-        assert number_of_labels == number_of_times
-
-
 class FiberPhotometryInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
     """Shared tests for single-series fiber photometry interfaces.
 

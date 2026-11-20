@@ -6,12 +6,12 @@ from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.tools.testing import MockBehavioralSegmentationInterface
 from neuroconv.tools.testing.data_interface_mixins import (
-    BehavioralSegmentationInterfaceTestMixin,
+    EthogramInterfaceTestMixin,
     _get_metadata_for_writing,
 )
 
 
-class TestMockBehavioralSegmentationInterface(BehavioralSegmentationInterfaceTestMixin):
+class TestMockBehavioralSegmentationInterface(EthogramInterfaceTestMixin):
     data_interface_cls = MockBehavioralSegmentationInterface
     interface_kwargs = dict(num_samples=300, num_behaviors=4, seed=0)
     expected_temporal_alignment_keys = ("mock_behavioral_segmentation",)
@@ -34,16 +34,6 @@ class TestMockBehavioralSegmentationInterface(BehavioralSegmentationInterfaceTes
         assert bouts["start_time"][0] == times[0]
         np.testing.assert_allclose(bouts["stop_time"][:-1], bouts["start_time"][1:])
         assert list(catalogue["behavior"][:]) == expected_behaviors
-
-    def test_bouts_without_their_catalogue_in_the_file_raise(self, setup_interface):
-        metadata = _get_metadata_for_writing(self.interface)
-
-        expected_message = (
-            "The bouts entry 'mock_behavioral_segmentation' names the catalogue 'MockEthogram', which is not in the "
-            "file. Call add_ethogram_to_nwbfile first."
-        )
-        with pytest.raises(ValueError, match=re.escape(expected_message)):
-            self.interface.add_bouts_to_nwbfile(nwbfile=mock_NWBFile(), metadata=metadata)
 
     def test_bouts_without_ethogram_metadata_key_have_no_catalogue(self, setup_interface):
         metadata = _get_metadata_for_writing(self.interface)

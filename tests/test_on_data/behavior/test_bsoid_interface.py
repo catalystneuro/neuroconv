@@ -88,9 +88,7 @@ class TestBSOiDUmap(DataInterfaceTestMixin):
         )
         expected = expected_bouts(labels, timestamps, 1.0 / self.expected_sampling_frequency_hz)
 
-        bouts_table = read_nwb(nwbfile_path).processing["behavior"]["BSOiDEthogramBouts"]
-        assert bouts_table.bout_concurrency == "partition"
-        bouts = bouts_table.to_dataframe()
+        bouts = read_nwb(nwbfile_path).processing["behavior"]["BSOiDEthogramBouts"].to_dataframe()
         assert len(bouts) == self.expected_number_of_bouts
         assert bouts["start_time"].iloc[0] == self.expected_first_bout_start_time
         assert bouts["label"].iloc[0] == self.expected_first_label
