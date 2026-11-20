@@ -140,7 +140,9 @@ class TestEthoVisionManualScoring(EthoVisionManualScoringTestMixin):
         ethogram = behavior_module["EthoVisionEthogramArena1"].to_dataframe()
         assert dict(zip(ethogram["behavior"], ethogram["behavior_type"])) == self.expected_behavior_types
 
-        bouts = behavior_module["EthoVisionEthogramBoutsArena1"].to_dataframe()
+        bouts_table = behavior_module["EthoVisionEthogramBoutsArena1"]
+        assert bouts_table.bout_concurrency is None
+        bouts = bouts_table.to_dataframe()
         assert len(bouts) == self.expected_number_of_bouts
         assert set(bouts["subject"]) == {"Subject 1"}
         assert set(bouts["arena"]) == {"Arena 1"}

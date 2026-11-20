@@ -74,6 +74,7 @@ class TestMoseqKeyPointsInterfaceTwoDimensional(DataInterfaceTestMixin):
         bouts = behavior["MoseqKeyPointsEthogramBouts"]
         assert bouts.labeling_method == "automated"
         assert bouts.source_software == "keypoint-MoSeq"
+        assert bouts.bout_concurrency == "partition"
         assert behavior["MoseqKeyPointsEthogram"] is not None
 
 

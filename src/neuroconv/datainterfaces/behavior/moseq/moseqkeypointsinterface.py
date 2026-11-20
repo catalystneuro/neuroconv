@@ -452,5 +452,5 @@ class MoseqKeyPointsInterface(BaseDataInterface):
             source=latent_state_series,
             source_pose=source_pose,
             source_video=source_video,
-            exclusive=True,  # keypoint-MoSeq syllables are a single-label partition.
+            bout_concurrency="partition",  # keypoint-MoSeq assigns one syllable to every frame.
         )

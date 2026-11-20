@@ -776,8 +776,9 @@ def test_unpaired_state_start_becomes_nan():
     assert len(state_rows) == 4  # three bouts that closed, one that did not
     assert state_rows["duration"].isna().sum() == 1
 
-    bouts = nwbfile.processing["behavior"]["LiveNotPairedBouts"].to_dataframe()
+    bouts = nwbfile.processing["behavior"]["LiveNotPairedBouts"]
     assert len(bouts) == 3
+    assert bouts.bout_concurrency == "concurrent"
 
 
 def test_modifier_name_absent():

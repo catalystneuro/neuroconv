@@ -212,7 +212,7 @@ class EthoVisionManualScoringInterface(BaseEventsInterface):
             ],
             ethogram_metadata=ethogram_metadata,
             labeling_method="manual",
-            exclusive=False,
+            # No bout_concurrency: the export does not record which behaviors the scheme made exclusive.
             source_software="Noldus EthoVision XT",
             bout_columns={
                 "subject": {
