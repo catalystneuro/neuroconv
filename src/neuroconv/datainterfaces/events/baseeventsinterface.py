@@ -162,6 +162,8 @@ class BaseEventsInterface(BaseDataInterface):
         available_sources: dict[str, dict],
     ) -> dict | None:
         """Validate configured entries against the reader's inventory, or defer to its native default."""
+        if not available_sources:
+            raise ValueError("No event sources were found in the input data.")
         if event_extraction_configuration is None:
             return None
 
@@ -175,8 +177,6 @@ class BaseEventsInterface(BaseDataInterface):
         for entry_name, entry in event_extraction_configuration.items():
             source_name = entry.get("source")
             if source_name is None:
-                if not available_sources:
-                    raise ValueError(f"No event sources are available in this recording for entry {entry_name!r}.")
                 if len(available_sources) > 1:
                     raise ValueError(
                         f"Event extraction entry {entry_name!r} must specify 'source' because this recording has "

@@ -625,11 +625,15 @@ class TestEventSourceResolution:
         np.testing.assert_array_equal(interface.get_event_times("requested"), expected_timestamps)
         assert configuration == {"requested": {}}
 
-    def test_omitted_source_with_no_discovered_sources(self):
-        configuration = {"requested": {}}
-        expected_error = "No event sources are available in this recording for entry 'requested'."
+    def test_initialization_fails_when_input_has_no_event_sources(self):
+        class MockInterfaceWithoutEventSources(MockEventsInterface):
+            @classmethod
+            def get_available_event_sources(cls, num_event_types=1):
+                return {}
+
+        expected_error = "No event sources were found in the input data."
         with pytest.raises(ValueError, match=rf"\A{re.escape(expected_error)}\Z"):
-            MockEventsInterface._resolve_event_sources(configuration, available_sources={})
+            MockInterfaceWithoutEventSources()
 
     def test_extraction_configuration_rejects_unsupported_operation(self):
         configuration = {"requested": {"source": "events", "separation": {}}}
