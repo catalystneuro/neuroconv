@@ -38,12 +38,12 @@ class TestDigitalInput16BitWords(BlackrockEventsInterfaceMixin):
 
     def test_get_metadata(self, interface):
         expected_columns = {
-            "value": {
-                "column_name": "value",
-                "description": "The value of the 16-bit digital input port written with this event, one bit per line.",
+            "digital_input": {
+                "column_name": "digital_input",
+                "description": "The native digital input value stored in this packet. Its interpretation depends on capture mode.",
             },
-            "insertion_reason": {
-                "column_name": "insertion_reason",
+            "packet_insertion_reason": {
+                "column_name": "packet_insertion_reason",
                 "description": (
                     "Why the packet was written, as the bit flags of the Blackrock file specification. Bit 0 is a "
                     "change on the digital input port; the other bits changed meaning between spec 2.x and spec 3.0."
@@ -64,10 +64,10 @@ class TestDigitalInput16BitWords(BlackrockEventsInterfaceMixin):
         digital_input = nwbfile.events["DigitalInput"]
         expected_timestamps = np.array([4000, 13155, 22297, 31439, 40585, 49741]) / 30_000
         expected_values = [59136, 35328, 48896, 33280, 48896, 55808]
-        assert digital_input.colnames == ("timestamp", "value", "insertion_reason")
+        assert digital_input.colnames == ("timestamp", "digital_input", "packet_insertion_reason")
         assert np.allclose(digital_input["timestamp"][:], expected_timestamps)
-        assert list(digital_input["value"][:]) == expected_values
-        assert list(digital_input["insertion_reason"][:]) == [1] * 6
+        assert list(digital_input["digital_input"][:]) == expected_values
+        assert list(digital_input["packet_insertion_reason"][:]) == [1] * 6
 
 
 class TestFrameCounterComments(BlackrockEventsInterfaceMixin):
@@ -100,7 +100,9 @@ class TestFrameCounterComments(BlackrockEventsInterfaceMixin):
         assert np.allclose(comments["timestamp"][:], expected_timestamps)
         assert list(comments["text"][:]) == expected_texts
         # These comments carry a colour instead of a start time.
-        assert np.all(np.isnan(comments["start_offset"][:]))
+        assert list(comments["character_set"][:]) == [0] * 4
+        assert list(comments["flag"][:]) == [0] * 4
+        assert list(comments["comment_data"][:]) == [0xFF00FF] * 4
 
 
 class TestLogEvent(BlackrockEventsInterfaceMixin):
@@ -125,7 +127,8 @@ class TestLogEvent(BlackrockEventsInterfaceMixin):
         comments = nwbfile.events["Comments"]
         assert list(comments["text"][:]) == ["Data Loss. Information Possibly Lost On The NSP!"]
         assert np.allclose(comments["timestamp"][:], [17088 / 30_000])
-        assert np.allclose(comments["start_offset"][:], [(17088 - 16781) / 30_000])
+        assert list(comments["flag"][:]) == [1]
+        assert list(comments["comment_data"][:]) == [16781]
 
 
 class TestVideoSync(BlackrockEventsInterfaceMixin):
@@ -190,9 +193,8 @@ class TestRecordingEventsAndButtonTrigger(BlackrockEventsInterfaceMixin):
         # start of the comment back to the packet, 3332200 here.
         comments = nwbfile.events["Comments"]
         assert list(comments["text"][:]) == ["late comment", "late comment"]
-        start_offsets = comments["start_offset"][:]
-        assert np.isnan(start_offsets[0])
-        assert np.isclose(start_offsets[1], 3.3322)
+        assert list(comments["flag"][:]) == [0, 1]
+        assert list(comments["comment_data"][:]) == [0, 3332200]
 
 
 class TestBlackrockEventsInterfaceEdgeCases:

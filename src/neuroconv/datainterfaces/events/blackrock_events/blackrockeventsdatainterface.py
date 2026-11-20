@@ -11,18 +11,17 @@ from ....utils import DeepDict
 # field, except where _COLUMN_NAMES says otherwise.
 _EVENT_TYPE_COLUMNS = {
     "digital_input": {
-        "value": "The value of the 16-bit digital input port written with this event, one bit per line.",
-        "insertion_reason": (
+        "digital_input": "The native digital input value stored in this packet. Its interpretation depends on capture mode.",
+        "packet_insertion_reason": (
             "Why the packet was written, as the bit flags of the Blackrock file specification. Bit 0 is a change "
             "on the digital input port; the other bits changed meaning between spec 2.x and spec 3.0."
         ),
     },
     "comments": {
         "text": "The text of the comment.",
-        "start_offset": (
-            "The seconds from when the comment was started to when it was written, or NaN when the file does not "
-            "record it."
-        ),
+        "character_set": "The character set identifier stored in the comment packet.",
+        "flag": "The flag that identifies how to interpret the comment packet's data field.",
+        "data": "The native comment data, such as a color value or the start time in the recording's native units.",
     },
     "recording_events": {
         "reason": "What the recording did: start, stop, pause or resume.",
@@ -48,7 +47,7 @@ _EVENT_TYPE_COLUMNS = {
 }
 
 # A column whose name ends in `_time` is read as a time on the session clock, which the video's elapsed time is not.
-_COLUMN_NAMES = {("video_sync", "elapsed_time"): "elapsed_milliseconds"}
+_COLUMN_NAMES = {("video_sync", "elapsed_time"): "elapsed_milliseconds", ("comments", "data"): "comment_data"}
 
 
 class BlackrockEventsInterface(BaseEventsInterface):
@@ -57,14 +56,13 @@ class BlackrockEventsInterface(BaseEventsInterface):
     Each kind of event packet in the file that holds at least one packet is written as one
     ``pynwb.event.EventsTable`` in ``nwbfile.events``, with the fields of the packet as columns:
 
-    - ``digital_input``: the 16-bit digital input port, with its ``value`` and ``insertion_reason``.
-    - ``comments``: comments typed in Central or sent to it, with their ``text`` and ``start_offset``.
+    - ``digital_input``: the 16-bit digital input port, with its ``digital_input`` and ``packet_insertion_reason``.
+    - ``comments``: comments typed in Central or sent to it, with their text, character set, flag and native data.
     - ``recording_events``: the starts, stops, pauses and resumes of the recording, in a ``reason`` column.
     - ``button_triggers``, ``video_sync``, ``log_events`` and ``configuration_changes``.
 
-    A digital packet is the value of the whole port at the moment Central wrote it. When Central writes one
-    depends on how its digital input was configured (on any change, on a rising edge, or on a strobe), which the
-    file does not record, so each packet is written as it is and the port value is not split into lines.
+    The stored digital input value depends on the capture mode. It can contain the states of the port lines
+    or identify the lines that changed in one direction. The interface preserves the value as stored.
 
     The times are the packet timestamps divided by the timestamp resolution of the file, as the recording and
     sorting interfaces time the same file.
@@ -139,8 +137,8 @@ class BlackrockEventsInterface(BaseEventsInterface):
             payloads["digital_input"] = (
                 events.digital_events["timestamp"],
                 dict(
-                    value=events.digital_events["value"],
-                    insertion_reason=events.digital_events["insertion_reason"],
+                    digital_input=events.digital_events["value"],
+                    packet_insertion_reason=events.digital_events["insertion_reason"],
                 ),
             )
         if events.comments:
@@ -148,16 +146,9 @@ class BlackrockEventsInterface(BaseEventsInterface):
                 [comment["timestamp"] for comment in events.comments],
                 dict(
                     text=np.array([comment["text"] for comment in events.comments]),
-                    start_offset=np.array(
-                        [
-                            (
-                                np.nan
-                                if comment["start_timestamp"] is None
-                                else (comment["timestamp"] - comment["start_timestamp"]) / resolution
-                            )
-                            for comment in events.comments
-                        ]
-                    ),
+                    character_set=np.asarray([comment["char_set"] for comment in events.comments]),
+                    flag=np.asarray([comment["flag"] for comment in events.comments]),
+                    data=np.asarray([comment["data"] for comment in events.comments]),
                 ),
             )
         if events.recording_events:
