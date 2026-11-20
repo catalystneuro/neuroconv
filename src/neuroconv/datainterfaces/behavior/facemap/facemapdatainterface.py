@@ -10,7 +10,7 @@ from pynwb.file import NWBFile
 
 from neuroconv.utils.dict import DeepDict
 
-from ..video.video_utils import get_video_timestamps
+from ..video.video_utils import VideoCaptureContext
 from ...._temporal_alignment import _TemporalAlignment
 from ....basedatainterface import BaseDataInterface
 from ....tools import get_module
@@ -213,7 +213,7 @@ class FacemapInterface(BaseDataInterface):
             "area_raw": f"{self.metadata_key}_pupil_area_raw",
         }
 
-        self._video_timestamps = None
+        self._video_times = None
         self.temporal_alignment = _TemporalAlignment()
         self.temporal_alignment._add_time_bearing_object(
             key=self.metadata_key,
@@ -222,9 +222,16 @@ class FacemapInterface(BaseDataInterface):
         )
 
     def _get_native_times(self) -> np.ndarray:
-        if self._video_timestamps is None:
-            self._video_timestamps = np.asarray(get_video_timestamps(self.source_data["video_file_path"]))
-        return self._video_timestamps
+        # The times ExternalVideoInterface and InternalVideoInterface write for the same video: the container's time
+        # for the first frame, then the header frame rate. Reading every frame's position with OpenCV returns 0 for
+        # the last frames of some AVI files, so those times are not used.
+        if self._video_times is None:
+            with VideoCaptureContext(file_path=str(self.source_data["video_file_path"])) as video:
+                frame_rate = video.get_video_fps()
+                first_frame_times = video.get_video_timestamps(max_frames=1, display_progress=False)
+            first_frame_time = float(first_frame_times[0]) if first_frame_times.size else 0.0
+            self._video_times = first_frame_time + np.arange(self._get_number_of_frames()) / frame_rate
+        return self._video_times
 
     def _get_number_of_frames(self) -> int:
         with _ProcFile(self.source_data["file_path"]) as proc:

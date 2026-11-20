@@ -41,6 +41,9 @@ class TestFacemapInterfaceHDF5Container(DataInterfaceTestMixin):
         "MotionSVDSeriesROI1",
     }
     expected_number_of_frames = 100
+    # The video's header frame rate, from the container's time for its first frame.
+    expected_rate = 9.0
+    expected_starting_time = 2 / 9
     expected_first_pupil_area = 5197.043
     expected_first_pupil_area_raw = 5197.043
     expected_first_eye_center_of_mass = [43.43814, 44.745445]
@@ -67,6 +70,8 @@ class TestFacemapInterfaceHDF5Container(DataInterfaceTestMixin):
 
         eye_center_of_mass = containers["EyeTracking"].spatial_series["eye_center_of_mass"]
         assert eye_center_of_mass.data.shape == (self.expected_number_of_frames, 2)
+        assert eye_center_of_mass.rate == self.expected_rate
+        assert_allclose(eye_center_of_mass.starting_time, self.expected_starting_time)
         assert_allclose(eye_center_of_mass.data[0], self.expected_first_eye_center_of_mass, rtol=1e-6)
         pupil_tracking = containers["PupilTracking"]
         assert_allclose(pupil_tracking.time_series["pupil_area"].data[0], self.expected_first_pupil_area, rtol=1e-6)
@@ -116,6 +121,9 @@ class TestFacemapInterfaceMatlab5Container(DataInterfaceTestMixin):
         "MotionSVDSeriesROI1",
     }
     expected_number_of_frames = 100
+    # The video's header frame rate, from the container's time for its first frame.
+    expected_rate = 9.0
+    expected_starting_time = 2 / 9
     expected_first_pupil_area = 5197.043
     expected_first_pupil_area_raw = 5197.043
     expected_first_eye_center_of_mass = [43.43814, 44.745445]
@@ -142,6 +150,8 @@ class TestFacemapInterfaceMatlab5Container(DataInterfaceTestMixin):
 
         eye_center_of_mass = containers["EyeTracking"].spatial_series["eye_center_of_mass"]
         assert eye_center_of_mass.data.shape == (self.expected_number_of_frames, 2)
+        assert eye_center_of_mass.rate == self.expected_rate
+        assert_allclose(eye_center_of_mass.starting_time, self.expected_starting_time)
         assert_allclose(eye_center_of_mass.data[0], self.expected_first_eye_center_of_mass, rtol=1e-6)
         pupil_tracking = containers["PupilTracking"]
         assert_allclose(pupil_tracking.time_series["pupil_area"].data[0], self.expected_first_pupil_area, rtol=1e-6)
@@ -184,6 +194,9 @@ class TestFacemapInterfaceWholeFrameOnly(DataInterfaceTestMixin):
     expected_motion_svd_metadata_keys = {"facemap_multivideo"}
     expected_container_names = {"EyeTracking", "PupilTracking", "MotionSVDMasksMultivideo", "MotionSVDSeriesMultivideo"}
     expected_number_of_frames = 100
+    # The video's header frame rate, from the container's time for its first frame.
+    expected_rate = 25.0
+    expected_starting_time = 0.08
     expected_first_pupil_area = 1515.5901
     expected_first_pupil_area_raw = 1485.8027
     expected_first_eye_center_of_mass = [41.205887, 45.540756]
@@ -207,6 +220,8 @@ class TestFacemapInterfaceWholeFrameOnly(DataInterfaceTestMixin):
 
         eye_center_of_mass = containers["EyeTracking"].spatial_series["eye_center_of_mass"]
         assert eye_center_of_mass.data.shape == (self.expected_number_of_frames, 2)
+        assert eye_center_of_mass.rate == self.expected_rate
+        assert_allclose(eye_center_of_mass.starting_time, self.expected_starting_time)
         assert_allclose(eye_center_of_mass.data[0], self.expected_first_eye_center_of_mass, rtol=1e-6)
         pupil_tracking = containers["PupilTracking"]
         assert_allclose(pupil_tracking.time_series["pupil_area"].data[0], self.expected_first_pupil_area, rtol=1e-6)
@@ -256,6 +271,9 @@ class TestFacemapInterfacePupilOnly(DataInterfaceTestMixin):
     expected_time_series_keys = {"facemap_pupil_area", "facemap_pupil_area_raw"}
     expected_container_names = {"EyeTracking", "PupilTracking"}
     expected_number_of_frames = 100
+    # The video's header frame rate, from the container's time for its first frame.
+    expected_rate = 9.0
+    expected_starting_time = 2 / 9
     expected_first_pupil_area = 1530.868
     expected_first_pupil_area_raw = 1552.7341
     expected_first_eye_center_of_mass = [39.992153, 48.079636]
@@ -272,6 +290,8 @@ class TestFacemapInterfacePupilOnly(DataInterfaceTestMixin):
 
         eye_center_of_mass = containers["EyeTracking"].spatial_series["eye_center_of_mass"]
         assert eye_center_of_mass.data.shape == (self.expected_number_of_frames, 2)
+        assert eye_center_of_mass.rate == self.expected_rate
+        assert_allclose(eye_center_of_mass.starting_time, self.expected_starting_time)
         assert_allclose(eye_center_of_mass.data[0], self.expected_first_eye_center_of_mass, rtol=1e-6)
         pupil_tracking = containers["PupilTracking"]
         assert_allclose(pupil_tracking.time_series["pupil_area"].data[0], self.expected_first_pupil_area, rtol=1e-6)
