@@ -131,6 +131,7 @@ Behavioral segmentation
 .. toctree::
     :maxdepth: 1
 
+    B-SOiD <behavior/bsoid>
     VAME <behavior/vame>
     keypoint-MoSeq <behavior/moseq_keypoints>
 

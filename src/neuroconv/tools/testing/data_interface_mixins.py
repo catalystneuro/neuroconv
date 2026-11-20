@@ -1597,6 +1597,57 @@ class PoseEstimationInterfaceTestMixin(DataInterfaceTestMixin):
             assert series.data.shape[0] == len(timestamps)
 
 
+class EthogramInterfaceTestMixin(DataInterfaceTestMixin):
+    """Shared tests for the interfaces that write ``ndx-ethogram`` bouts described by an ``EthogramBouts`` entry.
+
+    The interface's bouts entry is ``metadata["Behavior"]["EthogramBouts"][interface.metadata_key]``, and its
+    ``ethogram_metadata_key`` names the catalogue's entry in ``metadata["Behavior"]["Ethograms"]``.
+    ``check_read_nwb`` asserts that the written bouts and catalogue carry what those entries say. The links to a
+    pose estimation and a video need another interface's object in the file, so each writer tests them in its
+    own test file.
+    """
+
+    def check_read_nwb(self, nwbfile_path: str):
+        """The bouts and their catalogue are written under the names and descriptions of their entries."""
+        metadata = _get_metadata_for_writing(self.interface)
+        bouts_entry = metadata["Behavior"]["EthogramBouts"][self.interface.metadata_key]
+        catalogue_entry = metadata["Behavior"]["Ethograms"][bouts_entry["ethogram_metadata_key"]]
+        nwbfile = read_nwb(nwbfile_path)
+        behavior_module = nwbfile.processing["behavior"]
+
+        bouts = behavior_module[bouts_entry["name"]]
+        catalogue = behavior_module[catalogue_entry["name"]]
+        assert bouts.description == bouts_entry["description"]
+        assert bouts.labeling_method == bouts_entry["labeling_method"]
+        assert bouts.ethogram.name == catalogue_entry["name"]
+        assert catalogue.description == catalogue_entry["description"]
+        assert set(bouts["label"][:]) <= set(catalogue["behavior"][:])
+        nwbfile.read_io.close()
+
+    def test_metadata_propagation(self, setup_interface):
+        """The names, descriptions, annotator and labeling method of the two entries reach the written objects."""
+        metadata = _get_metadata_for_writing(self.interface)
+        bouts_entry = metadata["Behavior"]["EthogramBouts"][self.interface.metadata_key]
+        catalogue_entry = metadata["Behavior"]["Ethograms"][bouts_entry["ethogram_metadata_key"]]
+        bouts_entry.update(
+            name="CustomBouts",
+            description="Custom bouts description.",
+            annotator="A. Scorer",
+            labeling_method="curated",
+        )
+        catalogue_entry.update(name="CustomEthogram", description="Custom catalogue description.")
+
+        nwbfile = mock_NWBFile()
+        self.interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+        bouts = nwbfile.processing["behavior"]["CustomBouts"]
+        assert bouts.description == "Custom bouts description."
+        assert bouts.annotator == "A. Scorer"
+        assert bouts.labeling_method == "curated"
+        assert bouts.ethogram.name == "CustomEthogram"
+        assert bouts.ethogram.description == "Custom catalogue description."
+
+
 class FiberPhotometryInterfaceTestMixin(DataInterfaceTestMixin, TemporalAlignmentMixin):
     """Shared tests for single-series fiber photometry interfaces.
 

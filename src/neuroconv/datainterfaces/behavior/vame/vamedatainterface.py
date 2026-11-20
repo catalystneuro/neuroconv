@@ -363,6 +363,7 @@ class VameInterface(BaseTemporalAlignmentInterface):
         return f"{self._metadata_key}_latent_space"
 
     def get_metadata_schema(self) -> dict:
+        from ....tools.behavior import _get_ethogram_metadata_schema
         from ....utils import get_base_schema
 
         metadata_schema = super().get_metadata_schema()
@@ -446,26 +447,6 @@ class VameInterface(BaseTemporalAlignmentInterface):
             "required": ["name"],
             "additionalProperties": False,
         }
-        named_entry_schema = {
-            "type": "object",
-            "properties": {
-                "name": {"type": "string"},
-                "description": {"type": "string"},
-            },
-            "required": ["name"],
-            "additionalProperties": False,
-        }
-        # Curated ndx-ethogram entry: lives in the shared top-level Behavior/Ethograms registry, not
-        # under Behavior/Vame, because the curated layer is producer-agnostic.
-        ethogram_entry_schema = {
-            "type": "object",
-            "properties": {
-                "EthogramBouts": named_entry_schema,
-                "Ethogram": named_entry_schema,
-            },
-            "additionalProperties": False,
-        }
-
         metadata_schema["properties"]["Behavior"] = get_base_schema(tag="Behavior")
         # Leave the Behavior node open so sibling registries from other interfaces (e.g. a video
         # interface's Behavior/InternalVideos) survive schema validation when VAME is combined in a
@@ -491,11 +472,9 @@ class VameInterface(BaseTemporalAlignmentInterface):
                 },
                 "additionalProperties": False,
             },
-            "Ethograms": {
-                "type": "object",
-                "properties": {},
-                "additionalProperties": ethogram_entry_schema,
-            },
+            # Curated ndx-ethogram entries live in Behavior/Ethograms and Behavior/EthogramBouts, shared by every
+            # ethogram writer.
+            **_get_ethogram_metadata_schema(),
         }
 
         return metadata_schema
