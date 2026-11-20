@@ -35,8 +35,8 @@ class PlexonEventsInterface(BaseEventsInterface):
         file_path : FilePath
             Path to the Plexon PLX file.
         event_extraction_configuration : dict, optional
-            Entries keyed by the desired event type identifier. Each entry names one native channel
-            with ``source``. For a strobed channel, add
+            Entries keyed by the desired event type identifier. Each entry names a native channel
+            with ``source``, which can be omitted if the file declares just one channel. For a strobed channel, add
             ``separation={"by_payload_fields": ["strobed_word"]}`` to create one type per distinct word.
             Add ``select`` to that block to request particular integer words, including words with
             no matches. A supported source explicitly requested with no occurrences yields an empty
@@ -56,8 +56,8 @@ class PlexonEventsInterface(BaseEventsInterface):
 
     @classmethod
     @validate_call
-    def get_available_event_sources(cls, file_path: FilePath) -> dict[str, dict]:
-        """Report header-declared channels and their supported extraction operations.
+    def get_available_event_sources(cls, file_path: FilePath) -> list[str]:
+        """List the event channel names in header order.
 
         Parameters
         ----------
@@ -66,11 +66,11 @@ class PlexonEventsInterface(BaseEventsInterface):
 
         Returns
         -------
-        dict
-            Channel descriptors keyed by the recorded name or its numerical fallback. Includes
+        list of str
+            Recorded channel names or their numerical fallbacks. Includes
             channels without occurrences as well as deferred keyboard and recording-control channels.
         """
-        return _describe_sources(_read_plx_event_sources(file_path))
+        return list(_read_plx_event_sources(file_path))
 
     def _get_events_data_dict(self) -> dict[str, _EventsData]:
         if self._events_data_dict is not None:

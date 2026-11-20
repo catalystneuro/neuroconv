@@ -18,7 +18,6 @@ class TestPlexonEventsInterface(EventsInterfaceTestMixin):
     data_interface_cls = PlexonEventsInterface
     interface_kwargs = {"file_path": TETRODE_PATH}
     expected_temporal_alignment_keys = ("EVT01", "EVT02", "EVT03", "Strobed")
-    event_source_discovery_kwargs = {"file_path": TETRODE_PATH}
     expected_event_sources = (
         *(f"EVT{channel:02d}" for channel in range(1, 33)),
         "Strobed",
@@ -26,9 +25,6 @@ class TestPlexonEventsInterface(EventsInterfaceTestMixin):
         "Stop",
         *(f"KBD{channel}" for channel in range(1, 9)),
     )
-    expected_default_event_type_ids = expected_temporal_alignment_keys
-    populated_event_source = "EVT01"
-    silent_event_source = "EVT32"
 
     def check_read_nwb(self, nwbfile_path):
         super().check_read_nwb(nwbfile_path)
@@ -46,14 +42,7 @@ class TestPlexonEventsInterface(EventsInterfaceTestMixin):
             nwbfile.read_io.close()
 
 
-def test_plexon_event_source_discovery_and_silent_selection(tmp_path):
-    sources = PlexonEventsInterface.get_available_event_sources(TETRODE_PATH)
-    assert len(sources) == 43
-    assert sources["EVT32"]["supported_operations"] == []
-    assert sources["Strobed"]["supported_operations"] == ["separation"]
-    assert sources["KBD1"]["unsupported_reason"]
-    assert sources["Start"]["unsupported_reason"]
-
+def test_plexon_selected_words_and_silent_input(tmp_path):
     interface = PlexonEventsInterface(
         TETRODE_PATH,
         event_extraction_configuration={
@@ -89,11 +78,11 @@ def test_plexon_custom_header_name_and_timestamp_clock():
     file_path = (
         PLX_PATH / "timestamp_clock" / "one_megahertz_forty_bit_timestamps" / "sorted_spikes_and_strobed_events.plx"
     )
+    assert PlexonEventsInterface.get_available_event_sources(file_path) == ["events"]
     interface = PlexonEventsInterface(
         file_path,
         event_extraction_configuration={
             "strobes": {
-                "source": "events",
                 "separation": {"by_payload_fields": ["strobed_word"], "select": [100]},
             }
         },
@@ -121,7 +110,7 @@ def test_plexon_padded_events_repeated_words_and_native_name_collisions(tmp_path
     file_path.write_bytes(header + channel_headers + blocks)
 
     sources = PlexonEventsInterface.get_available_event_sources(file_path)
-    assert list(sources) == ["0_0", "0", "input_4_4", "input_5", "input_4", "card_two"]
+    assert sources == ["0_0", "0", "input_4_4", "input_5", "input_4", "card_two"]
     interface = PlexonEventsInterface(file_path)
     assert interface.get_event_type_source_ids() == ["0_0", "card_two"]
     nwbfile = mock_NWBFile()

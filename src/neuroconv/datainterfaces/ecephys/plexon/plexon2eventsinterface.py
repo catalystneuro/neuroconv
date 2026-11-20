@@ -31,7 +31,8 @@ class Plexon2EventsInterface(BaseEventsInterface):
         file_path : FilePath
             Path to the Plexon PL2 file.
         event_extraction_configuration : dict, optional
-            Map an event type name to an entry with a native channel name under source.
+            Map an event type name to an entry with a native channel name under ``source``.
+            The source can be omitted if the file declares just one event channel.
             For a strobed-word channel, separation can split by ["strobed_word"] in
             by_payload_fields. An optional integer list under select limits the resulting
             types to those words, including zero-row types for requested words with no matches.
@@ -60,10 +61,10 @@ class Plexon2EventsInterface(BaseEventsInterface):
 
     @classmethod
     @validate_call
-    def get_available_event_sources(cls, file_path: FilePath) -> dict[str, dict]:
-        """List header-declared event channels, including silent and unsupported channels."""
+    def get_available_event_sources(cls, file_path: FilePath) -> list[str]:
+        """List event channel names in header order, including silent and unsupported channels."""
         with file_path.open("rb") as stream:
-            return _Plexon2EventsReader(stream).source_info
+            return list(_Plexon2EventsReader(stream).source_info)
 
     def _get_events_data_dict(self) -> dict[str, _EventsData]:
         return self._plexon_events

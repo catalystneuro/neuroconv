@@ -348,7 +348,7 @@ class MockEventsInterface(BaseEventsInterface):
         self._num_events = num_events
         self._event_extent = event_extent
         self._event_payload = event_payload
-        available_sources = self.get_available_event_sources(num_event_types)
+        available_sources = self._get_event_source_info(num_event_types)
         configuration = self._resolve_event_sources(event_extraction_configuration, available_sources)
         if configuration is None:
             self._event_sources = {name: name for name in available_sources if name != "silent"}
@@ -359,12 +359,16 @@ class MockEventsInterface(BaseEventsInterface):
         self.metadata_key = metadata_key or "mock_events"
 
     @classmethod
-    def get_available_event_sources(cls, num_event_types: int = 1) -> dict[str, dict]:
+    def _get_event_source_info(cls, num_event_types: int) -> dict[str, dict]:
         if num_event_types == 1:
             source_names = ["events", "silent"]
         else:
             source_names = [f"events_{index}" for index in range(num_event_types)] + ["silent"]
         return {name: {"supported_operations": []} for name in source_names}
+
+    @classmethod
+    def get_available_event_sources(cls, num_event_types: int = 1) -> list[str]:
+        return list(cls._get_event_source_info(num_event_types))
 
     def get_event_type_source_ids(self) -> list[str]:
         return list(self._event_sources)

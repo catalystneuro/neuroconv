@@ -18,7 +18,6 @@ _EVENT_EXTRACTION_CONFIGURATION_SCHEMA = {
     "propertyNames": {"type": "string", "minLength": 1},
     "additionalProperties": {
         "type": "object",
-        "required": ["source"],
         "properties": {
             "source": {"type": "string", "minLength": 1},
             "format_options": {"type": "object"},
@@ -118,7 +117,6 @@ class BaseEventsInterface(BaseDataInterface):
     keywords = ("events",)
 
     _supports_event_extraction_configuration = False
-    _default_event_source: str | None = None
 
     def __init__(self, **source_data):
         super().__init__(**source_data)
@@ -141,26 +139,14 @@ class BaseEventsInterface(BaseDataInterface):
         source_schema = super().get_source_schema()
         if cls._supports_event_extraction_configuration:
             configuration_schema = source_schema["properties"]["event_extraction_configuration"]
-            configuration_schema.setdefault("allOf", []).append(cls._get_event_extraction_configuration_schema())
+            configuration_schema.setdefault("allOf", []).append(deepcopy(_EVENT_EXTRACTION_CONFIGURATION_SCHEMA))
         return source_schema
 
     @classmethod
-    def _get_event_extraction_configuration_schema(cls) -> dict:
-        schema = deepcopy(_EVENT_EXTRACTION_CONFIGURATION_SCHEMA)
-        if cls._default_event_source is not None:
-            del schema["additionalProperties"]["required"]
-        return schema
+    def get_available_event_sources(cls, **source_data) -> list[str]:
+        """List the names of the event sources declared in the input data, in source order.
 
-    @classmethod
-    def get_available_event_sources(cls, **source_data) -> dict[str, dict]:
-        """List the event sources in a recording before constructing an interface.
-
-        Interfaces that accept ``event_extraction_configuration`` implement this method with
-        the arguments needed to locate the recording. Keys are the source names, including
-        sources declared in the recording with no occurrences. Each value has a
-        ``supported_operations`` list of optional configuration blocks accepted for that
-        source. Direct reading needs no operation block. If direct reading is unavailable,
-        include an ``unsupported_reason`` explaining why the source cannot be read.
+        Include sources with zero occurrences and return an empty list if none are declared.
         """
         raise NotImplementedError(f"{cls.__name__} does not provide event source discovery.")
 
@@ -171,10 +157,12 @@ class BaseEventsInterface(BaseDataInterface):
         available_sources: dict[str, dict],
     ) -> dict | None:
         """Validate configured entries against the reader's inventory, or defer to its native default."""
+        if not available_sources:
+            raise ValueError("No event sources were found in the input data.")
         if event_extraction_configuration is None:
             return None
 
-        validator = Draft7Validator(cls._get_event_extraction_configuration_schema())
+        validator = Draft7Validator(_EVENT_EXTRACTION_CONFIGURATION_SCHEMA)
         error = next(validator.iter_errors(event_extraction_configuration), None)
         if error is not None:
             location = "".join(f"[{key!r}]" for key in error.absolute_path)
@@ -182,7 +170,14 @@ class BaseEventsInterface(BaseDataInterface):
 
         resolved_entries = {}
         for entry_name, entry in event_extraction_configuration.items():
-            source_name = entry.get("source", cls._default_event_source)
+            source_name = entry.get("source")
+            if source_name is None:
+                if len(available_sources) > 1:
+                    raise ValueError(
+                        f"Event extraction entry {entry_name!r} must specify 'source' because this recording has "
+                        f"multiple event sources. Available sources: {list(available_sources)}."
+                    )
+                (source_name,) = available_sources
             if source_name not in available_sources:
                 raise ValueError(
                     f"Event extraction entry {entry_name!r} requests missing source {source_name!r}. "
