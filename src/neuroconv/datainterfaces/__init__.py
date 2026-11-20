@@ -95,6 +95,7 @@ from .ecephys.xclust.xclustdatainterface import XClustSortingInterface
 # Icephys
 from .icephys.abf.abfdatainterface import AbfInterface
 from .icephys.axon.axonintracellularinterface import AxonIntracellularInterface
+from .icephys.axon.axoneventsinterface import AxonEventsInterface
 from .icephys.brukervoltagerecording.brukervoltagerecordinginterface import BrukerVoltageRecordingInterface
 
 # Ophys
@@ -273,6 +274,7 @@ interface_list = [
     ImageInterface,
     ExternalImageInterface,
     # Events
+    AxonEventsInterface,
     CSVEventsInterface,
     DoricCSVEventsInterface,
     DoricEventsInterface,
@@ -353,6 +355,7 @@ interfaces_by_category = dict(
         ExternalImage=ExternalImageInterface,
     ),
     events=dict(
+        AxonEvents=AxonEventsInterface,
         CSVEvents=CSVEventsInterface,
         DoricCSVEvents=DoricCSVEventsInterface,
         DoricEvents=DoricEventsInterface,
