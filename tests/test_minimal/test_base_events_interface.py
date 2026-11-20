@@ -142,10 +142,11 @@ class TestMockEventsInterface(EventsInterfaceTestMixin):
         interface.add_to_nwbfile(nwbfile=nwbfile)
 
         events = nwbfile.get_events_table("Events")
-        assert set(events.colnames) == {"timestamp", "outcome", "cue", "amplitude"}
+        assert set(events.colnames) == {"timestamp", "outcome", "cue", "amplitude", "side"}
         assert list(events["outcome"][:]) == ["go", "no_go", "go"]
         assert list(events["cue"][:]) == ["tone", "tone", "light"]
         assert list(events["amplitude"][:]) == [0.0, 1.0, 2.0]
+        assert list(events["side"][:]) == ["left", "left", "right"]
         # Only the column that declares meanings earns a MeaningsTable: 'cue' writes its display labels
         # without one, and 'amplitude' writes raw values.
         assert set(events.meanings_tables.keys()) == {"outcome_meanings"}
@@ -636,10 +637,10 @@ class TestEventSourceResolution:
             MockInterfaceWithoutEventSources()
 
     def test_extraction_configuration_rejects_unsupported_operation(self):
-        configuration = {"requested": {"source": "events", "separation": {}}}
+        configuration = {"requested": {"source": "events", "detection": {"on_change": {"onset": "rising"}}}}
         expected_error = (
-            "Event extraction entry 'requested' requests unsupported operations ['separation'] for source 'events'. "
-            "Supported operations: []."
+            "Event extraction entry 'requested' requests unsupported operations ['detection'] for source 'events'. "
+            "Supported operations: ['separation']."
         )
         with pytest.raises(ValueError, match=rf"\A{re.escape(expected_error)}\Z"):
             MockEventsInterface(event_extraction_configuration=configuration)
@@ -747,7 +748,109 @@ class TestEventDetection:
             MockEventsInterface(event_extraction_configuration=configuration)
 
 
-class TestSharedColumnAcrossEventTypes:
+class TestEventSeparation:
+    """``separation`` in ``event_extraction_configuration``, applied by ``BaseEventsInterface._separate_events``."""
+
+    def test_one_field_gives_one_event_type_per_recorded_value(self):
+        num_events = 8
+        unseparated = MockEventsInterface(
+            num_events=num_events, event_payload="multi value", event_extent="event with duration"
+        )
+        recorded = unseparated._get_events_data_dict()["events"]
+        configuration = {"choices": {"source": "events", "separation": {"by_payload_fields": ["outcome"]}}}
+        interface = MockEventsInterface(
+            num_events=num_events,
+            event_payload="multi value",
+            event_extent="event with duration",
+            event_extraction_configuration=configuration,
+        )
+
+        expected_identifiers = ["choices_0", "choices_1"]
+        expected_rows = {"choices_0": [0, 2, 4, 6], "choices_1": [1, 3, 5, 7]}
+        assert interface.get_event_type_source_ids() == expected_identifiers
+        assert list(interface.temporal_alignment.keys()) == expected_identifiers
+        events_data_dict = interface._get_events_data_dict()
+        for identifier, rows in expected_rows.items():
+            events = events_data_dict[identifier]
+            np.testing.assert_array_equal(interface.get_event_times(identifier), recorded.timestamps[rows])
+            np.testing.assert_array_equal(events.durations, recorded.durations[rows])
+            for field, values in recorded.payload.items():
+                np.testing.assert_array_equal(events.payload[field], values[rows])
+
+    def test_text_field_gives_text_identifiers(self):
+        configuration = {"choices": {"source": "events", "separation": {"by_payload_fields": ["side"]}}}
+        interface = MockEventsInterface(event_payload="multi value", event_extraction_configuration=configuration)
+
+        expected_times = {"choices_left": [0.1, 0.2], "choices_right": [0.3, 0.4]}
+        assert interface.get_event_type_source_ids() == list(expected_times)
+        for identifier, times in expected_times.items():
+            np.testing.assert_allclose(interface.get_event_times(identifier), times)
+
+    def test_two_fields_give_one_event_type_per_recorded_pair(self):
+        configuration = {"choices": {"source": "events", "separation": {"by_payload_fields": ["outcome", "side"]}}}
+        interface = MockEventsInterface(
+            num_events=8, event_payload="multi value", event_extraction_configuration=configuration
+        )
+
+        expected_times = {
+            "choices_0_left": [0.1, 0.5],
+            "choices_1_left": [0.2, 0.6],
+            "choices_0_right": [0.3, 0.7],
+            "choices_1_right": [0.4, 0.8],
+        }
+        assert interface.get_event_type_source_ids() == list(expected_times)
+        for identifier, times in expected_times.items():
+            np.testing.assert_allclose(interface.get_event_times(identifier), times)
+
+    def test_selected_value_without_occurrences_writes_typed_empty_table(self):
+        selected_outcomes = [1, 2]
+        configuration = {
+            "choices": {
+                "source": "events",
+                "separation": {"by_payload_fields": ["outcome"], "select": selected_outcomes},
+            }
+        }
+        interface = MockEventsInterface(event_payload="multi value", event_extraction_configuration=configuration)
+
+        expected_identifiers = ["choices_1", "choices_2"]
+        assert interface.get_event_type_source_ids() == expected_identifiers
+        np.testing.assert_allclose(interface.get_event_times("choices_1"), [0.2, 0.4])
+
+        nwbfile = interface.create_nwbfile()
+        empty_table = nwbfile.get_events_table("Choices2")
+        assert len(empty_table) == 0
+        assert empty_table["amplitude"].data.dtype == np.dtype("float32")
+        assert empty_table["side"].data.dtype.kind == "U"
+
+    def test_selected_pair(self):
+        selected_pair = {"outcome": 1, "side": "right"}
+        configuration = {
+            "choices": {
+                "source": "events",
+                "separation": {"by_payload_fields": ["outcome", "side"], "select": [selected_pair]},
+            }
+        }
+        interface = MockEventsInterface(
+            num_events=8, event_payload="multi value", event_extraction_configuration=configuration
+        )
+
+        assert interface.get_event_type_source_ids() == ["choices_1_right"]
+        np.testing.assert_allclose(interface.get_event_times("choices_1_right"), [0.4, 0.8])
+
+    def test_entry_named_like_a_separated_type_raises(self):
+        configuration = {
+            "choices_1": {"source": "events"},
+            "choices": {"source": "events", "separation": {"by_payload_fields": ["outcome"]}},
+        }
+        expected_error = (
+            "Two event types get the identifier 'choices_1': entry 'choices_1' and entry 'choices' with "
+            "{'outcome': 1}."
+        )
+        with pytest.raises(ValueError, match=rf"\A{re.escape(expected_error)}\Z"):
+            MockEventsInterface(event_payload="multi value", event_extraction_configuration=configuration)
+
+
+class TestColumnFilledBySeveralEventTypes:
     """A value column shared across event types pooled into one ``EventsTable`` (issue #1786).
 
     All single-interface: one ``MockEventsInterface`` whose event types route to one table via a shared
@@ -1040,7 +1143,7 @@ class TestEventsAcrossInterfaces:
         }
 
     def test_shared_column_across_two_interfaces(self):
-        # The cross-interface counterpart of TestSharedColumnAcrossEventTypes.test_shared_column_across_merged_event_types:
+        # The cross-interface counterpart of TestColumnFilledBySeveralEventTypes.test_shared_column_across_merged_event_types:
         # both interfaces write the SAME column_name ("outcome") with identical categories. The second
         # interface appends to the first's column instead of getting its own, so it is one shared column
         # filled from both, not outcome_a / outcome_b with fill-value gaps.
