@@ -20,6 +20,7 @@ class TestIntanAnalogEventsInterfaceErrors:
     CONFIGURATION = {"ANALOG-IN-1": [{"signal_conditioning": {"binarize": "midpoint"}, "detection": "rising"}]}
 
     def test_no_adc_streams_raises(self):
+        assert IntanAnalogEventsInterface.get_available_event_sources(self.FILE_PATH) == []
         expected_error = f"'{self.FILE_PATH}' carries no channels in its ADC input or output streams."
         with pytest.raises(ValueError, match=re.escape(expected_error)):
             IntanAnalogEventsInterface(
@@ -36,6 +37,18 @@ class TestIntanAnalogEventsInterface(EventsInterfaceTestMixin):
     CONFIGURATION = {"ANALOG-IN-1": [{"signal_conditioning": {"binarize": "midpoint"}, "detection": "rising"}]}
     METADATA_KEY = "intan_analog_events"
     data_interface_cls = IntanAnalogEventsInterface
+    expected_event_sources = (
+        "ANALOG-IN-1",
+        "ANALOG-IN-2",
+        "ANALOG-IN-3",
+        "ANALOG-IN-4",
+        "ANALOG-IN-5",
+        "ANALOG-IN-6",
+        "ANALOG-IN-7",
+        "ANALOG-IN-8",
+        "ANALOG-OUT-1",
+        "ANALOG-OUT-2",
+    )
     expected_temporal_alignment_keys = ("ANALOG-IN-1",)
     interface_kwargs = dict(
         file_path=FILE_PATH,

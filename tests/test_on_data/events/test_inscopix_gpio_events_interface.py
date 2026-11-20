@@ -1,4 +1,5 @@
 import platform
+import re
 import shutil
 import sys
 import uuid
@@ -11,6 +12,7 @@ from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.datainterfaces import InscopixGpioEventsInterface
 from neuroconv.tools.nwb_helpers import configure_and_write_nwbfile
+from neuroconv.tools.testing.data_interface_mixins import EventsInterfaceTestMixin
 
 try:
     from ..setup_paths import OPHYS_DATA_PATH
@@ -37,7 +39,7 @@ skip_on_python_313 = pytest.mark.skipif(
 
 @skip_on_darwin_arm64
 @skip_on_python_313
-class TestInscopixGpioOdorConcentrationStimulus:
+class TestInscopixGpioOdorConcentrationStimulus(EventsInterfaceTestMixin):
     """InscopixGpioEventsInterface derives events from the channels of an Inscopix ``.gpio`` file.
 
     ``odor_concentration_stimulus.gpio`` is a four-level odor-concentration code on ``GPIO-2``
@@ -55,6 +57,10 @@ class TestInscopixGpioOdorConcentrationStimulus:
         "BNC Sync Output": [{"signal_conditioning": {"binarize": "midpoint"}, "detection": "rising"}],
         "GPIO-2": [{"signal_conditioning": {"binarize": 136}, "detection": "high_period"}],
     }
+
+    data_interface_cls = InscopixGpioEventsInterface
+    interface_kwargs = dict(file_path=FILE_PATH, detection_configuration=DETECTION_CONFIGURATION)
+    expected_temporal_alignment_keys = ("BNC Sync Output", "GPIO-2")
 
     @pytest.fixture(autouse=True)
     def _read_a_uniquely_named_copy(self, tmp_path):
@@ -79,12 +85,13 @@ class TestInscopixGpioOdorConcentrationStimulus:
         copy is 76 KB. ``isx`` never deletes its intermediate files, so each test leaves one small
         ``<random>_gpio.isxd`` behind in the temporary directory.
 
-        Assigning ``self.FILE_PATH`` here shadows the class attribute for the current test only, because
-        pytest builds a new instance of the class for every test.
+        Assigning ``self.FILE_PATH`` and ``self.interface_kwargs`` here shadows the class attributes for the
+        current test only, because pytest builds a new instance of the class for every test.
         """
         copy_path = tmp_path / f"{uuid.uuid4().hex}.gpio"
         shutil.copy(self.FILE_PATH, copy_path)
         self.FILE_PATH = str(copy_path)
+        self.interface_kwargs = {**self.interface_kwargs, "file_path": self.FILE_PATH}
 
     def test_requires_detection_configuration(self):
         # Selection is explicit: the file records no analog-versus-digital flag, so there is no lossless
@@ -150,3 +157,26 @@ class TestInscopixGpioOdorConcentrationStimulus:
             InscopixGpioEventsInterface(
                 file_path=self.FILE_PATH, detection_configuration={"NotAChannel": [{"detection": "rising"}]}
             )
+
+    def test_event_time_convention_reaches_every_event_type(self):
+        pytest.skip("A .gpio file records the time of each change, so the convention is rejected instead.")
+
+    def test_event_time_convention_raises(self):
+        # The stored point before a change is the previous change, which can be seconds earlier, so reading
+        # the sample before a transition would move an event to the wrong time.
+        detection_configuration = {
+            "BNC Sync Output": [
+                {
+                    "signal_conditioning": {"binarize": "midpoint"},
+                    "detection": "rising",
+                    "event_time_convention": "sample_before_transition",
+                }
+            ],
+        }
+        expected_error = (
+            "detection_configuration spec for 'BNC Sync Output' sets 'event_time_convention', which does not "
+            "apply to an Inscopix .gpio file. The file records the time of each change, so each event takes "
+            "that time."
+        )
+        with pytest.raises(ValueError, match=rf"\A{re.escape(expected_error)}\Z"):
+            InscopixGpioEventsInterface(file_path=self.FILE_PATH, detection_configuration=detection_configuration)

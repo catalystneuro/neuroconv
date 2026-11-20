@@ -13,6 +13,9 @@ from ...basedatainterface import BaseDataInterface
 from ...basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from ...datainterfaces import SpikeGLXNIDQInterface
 from ...datainterfaces.behavior.audio.audiointerface import AudioInterface
+from ...datainterfaces.behavior.basebehavioralsegmentationinterface import (
+    BaseBehavioralSegmentationInterface,
+)
 from ...datainterfaces.behavior.baseposeestimationinterface import (
     BasePoseEstimationInterface,
 )
@@ -792,19 +795,21 @@ class MockSignalEncodedEventsInterface(BaseEventsInterface):
         return self._events_data_dict
 
 
-class MockEthogramInterface(BaseDataInterface):
+class MockBehavioralSegmentationInterface(BaseBehavioralSegmentationInterface):
     """
-    A mock interface that writes per-frame behavior labels as ``ndx-ethogram`` bouts, for testing purposes.
+    A mock behavioral segmentation interface backed by synthetic per-frame labels, for testing purposes.
 
-    It writes the way the interfaces of per-frame segmentation tools do: the labels are run-length encoded
-    into an ``EthogramBouts`` table scored against an ``Ethogram`` catalogue, both described by the
-    ``Behavior/EthogramBouts`` and ``Behavior/Ethograms`` entries of its ``metadata_key``.
+    Implements only the per-frame labels and their times, so the catalogue, the bouts and their temporal
+    alignment come from ``BaseBehavioralSegmentationInterface``.
     """
 
-    display_name = "Mock Ethogram"
+    display_name = "Mock Behavioral Segmentation"
     keywords = ("behavior", "ethogram", "mock")
     associated_suffixes = []
-    info = "Mock interface for ndx-ethogram bouts testing."
+    info = "Mock interface for behavioral segmentation testing."
+
+    source_software = "MockSoftware"
+    behavior_definition = "Mock behavior id."
 
     def __init__(
         self,
@@ -813,11 +818,11 @@ class MockEthogramInterface(BaseDataInterface):
         num_behaviors: int = 4,
         sampling_frequency_hz: float = 30.0,
         seed: int = 0,
-        metadata_key: str = "mock_ethogram",
+        metadata_key: str = "mock_behavioral_segmentation",
         verbose: bool = False,
     ):
         """
-        Initialize a mock ethogram interface.
+        Initialize a mock behavioral segmentation interface.
 
         Parameters
         ----------
@@ -829,9 +834,9 @@ class MockEthogramInterface(BaseDataInterface):
             Frame rate of the labels, in Hz.
         seed : int, default: 0
             Seed for the random number generator.
-        metadata_key : str, default: "mock_ethogram"
+        metadata_key : str, default: "mock_behavioral_segmentation"
             Key of this interface's entries in ``metadata["Behavior"]["Ethograms"]`` and
-            ``metadata["Behavior"]["EthogramBouts"]``.
+            ``metadata["Behavior"]["EthogramBouts"]``, and of its object in ``temporal_alignment``.
         verbose : bool, default: False
             Control verbosity.
         """
@@ -846,15 +851,11 @@ class MockEthogramInterface(BaseDataInterface):
 
         super().__init__(verbose=verbose)
 
-    def get_metadata_schema(self) -> dict:
-        from ...tools.behavior import _get_ethogram_metadata_schema
-        from ...utils import get_base_schema
+    def _get_labels(self) -> np.ndarray:
+        return self._labels
 
-        metadata_schema = super().get_metadata_schema()
-        metadata_schema["properties"]["Behavior"] = get_base_schema(tag="Behavior")
-        metadata_schema["properties"]["Behavior"]["additionalProperties"] = True
-        metadata_schema["properties"]["Behavior"]["properties"] = _get_ethogram_metadata_schema()
-        return metadata_schema
+    def _get_native_times(self) -> np.ndarray:
+        return np.arange(len(self._labels)) / self.sampling_frequency_hz
 
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
@@ -870,44 +871,6 @@ class MockEthogramInterface(BaseDataInterface):
             ethogram_metadata_key=self.metadata_key,
         )
         return metadata
-
-    def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict | None = None):
-        """
-        Add the mock bouts and their catalogue to an NWB file.
-
-        Parameters
-        ----------
-        nwbfile : NWBFile
-            The NWB file to add the bouts to.
-        metadata : dict, optional
-            Metadata dictionary. The bouts table is described by
-            ``metadata["Behavior"]["EthogramBouts"][metadata_key]``, which names the catalogue's entry and,
-            optionally, the pose estimation and the video the bouts link to.
-        """
-        from ...tools.behavior import (
-            _add_ethogram_to_nwbfile,
-            _get_bouts_and_behaviors_from_labels,
-            _resolve_ethogram_bouts_entry,
-        )
-
-        # The caller's metadata reaches the writer as they wrote it, so a key they removed stays removed.
-        metadata = metadata if metadata is not None else self.get_metadata()
-
-        entry_arguments = dict(labeling_method="automated")
-        entry_arguments.update(
-            _resolve_ethogram_bouts_entry(nwbfile, metadata=metadata, metadata_key=self.metadata_key)
-        )
-        _add_ethogram_to_nwbfile(
-            nwbfile,
-            **_get_bouts_and_behaviors_from_labels(
-                labels=self._labels,
-                timestamps=np.arange(len(self._labels)) / self.sampling_frequency_hz,
-                class_definition="Mock behavior id.",
-            ),
-            **entry_arguments,
-            source_software="MockSoftware",
-            exclusive=True,
-        )
 
 
 class MockFiberPhotometryInterface(BaseFiberPhotometryInterface):

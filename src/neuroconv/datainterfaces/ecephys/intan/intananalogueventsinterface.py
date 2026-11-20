@@ -99,6 +99,12 @@ class IntanAnalogEventsInterface(BaseEventsInterface):
             stream_name: read_stream(stream_name) for stream_name in _ADC_STREAM_NAMES if stream_name in stream_names
         }
 
+    @classmethod
+    def get_available_event_sources(cls, file_path: FilePath) -> list[str]:
+        """List all analog input and output channels in the file's header."""
+        streams = cls._read_adc_streams(str(file_path), saved_files_are_split=False)
+        return [str(channel) for recording in streams.values() for channel in recording.get_channel_ids()]
+
     def get_event_type_source_ids(self) -> list[str]:
         """The event types the configuration resolves to."""
         return _get_event_type_source_ids(self._detection_configuration)
