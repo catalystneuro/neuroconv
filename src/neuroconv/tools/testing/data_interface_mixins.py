@@ -1746,7 +1746,7 @@ class EventsInterfaceTestMixin(DataInterfaceTestMixin):
             pytest.skip("Fixture does not exercise event source discovery.")
 
         sources = self.data_interface_cls.get_available_event_sources(**self.interface_kwargs)
-        assert tuple(sources) == self.expected_event_sources
+        assert sources == list(self.expected_event_sources)
 
     def test_event_time_convention_reaches_every_event_type(self, setup_interface):
         """``event_time_convention`` on every spec moves every event to the sample before its transition.

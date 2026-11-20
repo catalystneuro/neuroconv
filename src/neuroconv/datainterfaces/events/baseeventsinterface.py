@@ -143,17 +143,22 @@ class BaseEventsInterface(BaseDataInterface):
         return source_schema
 
     @classmethod
-    def get_available_event_sources(cls, **source_data) -> dict[str, dict]:
-        """List the event sources in a recording before constructing an interface.
+    def get_available_event_sources(cls, **source_data) -> list[str]:
+        """List the names of the event sources declared in the input data, in source order.
 
-        Interfaces that accept ``event_extraction_configuration`` implement this method with
-        the arguments needed to locate the recording. Keys are the source names, including
-        sources declared in the recording with no occurrences. Each value has a
-        ``supported_operations`` list of optional configuration blocks accepted for that
-        source. Direct reading needs no operation block. If direct reading is unavailable,
-        include an ``unsupported_reason`` explaining why the source cannot be read.
+        Include sources with zero occurrences and return an empty list if none are declared.
         """
         raise NotImplementedError(f"{cls.__name__} does not provide event source discovery.")
+
+    @classmethod
+    def get_supported_event_operations(cls, *, source: str, **source_data) -> list[str]:
+        """List the optional extraction operations the reader supports for one source.
+
+        Pass the same input arguments as for ``get_available_event_sources`` and the source name.
+        An empty list means the source can be read directly without optional operations.
+        Raise ValueError if the source is missing or the reader cannot read it.
+        """
+        raise NotImplementedError(f"{cls.__name__} does not provide event operation discovery.")
 
     @classmethod
     def _resolve_event_sources(

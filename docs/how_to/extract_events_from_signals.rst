@@ -18,8 +18,10 @@ Choose a recorded event source
 
 Interfaces that accept ``event_extraction_configuration`` can list a recording's sources before
 conversion with ``get_available_event_sources(...)``. Pass the arguments that locate the recording,
-such as ``file_path`` for a file-based reader. The result is a dictionary keyed by source name.
-``supported_operations`` lists the optional configuration blocks each source accepts.
+such as ``file_path`` for a file-based reader. The result is a list of source names in source order.
+To find which optional extraction blocks a source accepts, call ``get_supported_event_operations``
+with the same input arguments and ``source``. An empty list of operations means you can read the
+source directly. Asking about a missing or unreadable source raises ``ValueError``.
 You can omit ``source`` from an entry when the recording declares exactly one event source.
 When it declares several, name the one to read. Sources with zero occurrences count toward this choice.
 
@@ -29,9 +31,10 @@ This example uses a synthetic recording. Each configuration key names an event t
 .. doctest::
 
     >>> from neuroconv.tools.testing.mock_interfaces import MockEventsInterface
-    >>> sources = MockEventsInterface.get_available_event_sources()
-    >>> list(sources)
+    >>> MockEventsInterface.get_available_event_sources()
     ['events', 'silent']
+    >>> MockEventsInterface.get_supported_event_operations(source="events")
+    []
     >>> configuration = {
     ...     "trial_starts": {"source": "events"},
     ...     "unused_input": {"source": "silent"},
