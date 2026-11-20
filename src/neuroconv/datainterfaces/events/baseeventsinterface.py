@@ -1,8 +1,10 @@
 from abc import abstractmethod
+from copy import deepcopy
 from dataclasses import dataclass, field
 
 import numpy as np
 from hdmf.common import MeaningsTable, VectorIndex
+from jsonschema import Draft7Validator
 from pynwb.event import EventsTable
 from pynwb.file import NWBFile
 
@@ -10,6 +12,22 @@ from ..._temporal_alignment import _TemporalAlignment
 from ...basedatainterface import BaseDataInterface
 from ...tools.nwb_helpers._metadata_and_file_helpers import _validate_metadata_key, _validate_metadata_path
 from ...utils import to_camel_case
+
+_EVENT_EXTRACTION_CONFIGURATION_SCHEMA = {
+    "type": ["object", "null"],
+    "propertyNames": {"type": "string", "minLength": 1},
+    "additionalProperties": {
+        "type": "object",
+        "properties": {
+            "source": {"type": "string", "minLength": 1},
+            "format_options": {"type": "object"},
+            "signal_conditioning": {"type": "object"},
+            "detection": {"type": "object"},
+            "separation": {"type": "object"},
+        },
+        "additionalProperties": False,
+    },
+}
 
 
 @dataclass
@@ -98,6 +116,8 @@ class BaseEventsInterface(BaseDataInterface):
 
     keywords = ("events",)
 
+    _supports_event_extraction_configuration = False
+
     def __init__(self, **source_data):
         super().__init__(**source_data)
         # Filled on the first _get_events_data_dict() call and reused thereafter, so the backend is
@@ -105,7 +125,7 @@ class BaseEventsInterface(BaseDataInterface):
         self._events_data_dict = None
         self._alignment = _TemporalAlignment()
         for source_id in self.get_event_type_source_ids():
-            self._alignment._register(
+            self._alignment._add_time_bearing_object(
                 key=source_id,
                 get_native_times=lambda source_id=source_id: self._get_events_data_dict()[source_id].timestamps,
                 get_number_of_samples=lambda source_id=source_id: len(
@@ -113,6 +133,73 @@ class BaseEventsInterface(BaseDataInterface):
                 ),
                 get_native_durations=lambda source_id=source_id: self._get_events_data_dict()[source_id].durations,
             )
+
+    @classmethod
+    def get_source_schema(cls) -> dict:
+        source_schema = super().get_source_schema()
+        if cls._supports_event_extraction_configuration:
+            configuration_schema = source_schema["properties"]["event_extraction_configuration"]
+            configuration_schema.setdefault("allOf", []).append(deepcopy(_EVENT_EXTRACTION_CONFIGURATION_SCHEMA))
+        return source_schema
+
+    @classmethod
+    def get_available_event_sources(cls, **source_data) -> list[str]:
+        """List the names of the event sources declared in the input data, in source order.
+
+        Include sources with zero occurrences and return an empty list if none are declared.
+        """
+        raise NotImplementedError(f"{cls.__name__} does not provide event source discovery.")
+
+    @classmethod
+    def _resolve_event_sources(
+        cls,
+        event_extraction_configuration: dict | None,
+        available_sources: dict[str, dict],
+    ) -> dict | None:
+        """Validate configured entries against the reader's inventory, or defer to its native default."""
+        if not available_sources:
+            raise ValueError("No event sources were found in the input data.")
+        if event_extraction_configuration is None:
+            return None
+
+        validator = Draft7Validator(_EVENT_EXTRACTION_CONFIGURATION_SCHEMA)
+        error = next(validator.iter_errors(event_extraction_configuration), None)
+        if error is not None:
+            location = "".join(f"[{key!r}]" for key in error.absolute_path)
+            raise ValueError(f"Invalid event_extraction_configuration{location}: {error.message}")
+
+        resolved_entries = {}
+        for entry_name, entry in event_extraction_configuration.items():
+            source_name = entry.get("source")
+            if source_name is None:
+                if len(available_sources) > 1:
+                    raise ValueError(
+                        f"Event extraction entry {entry_name!r} must specify 'source' because this recording has "
+                        f"multiple event sources. Available sources: {list(available_sources)}."
+                    )
+                (source_name,) = available_sources
+            if source_name not in available_sources:
+                raise ValueError(
+                    f"Event extraction entry {entry_name!r} requests missing source {source_name!r}. "
+                    f"Available sources: {list(available_sources)}. "
+                    f"Use {cls.__name__}.get_available_event_sources(...) to inspect the recording."
+                )
+
+            source = available_sources[source_name]
+            if unsupported_reason := source.get("unsupported_reason"):
+                raise ValueError(
+                    f"Event extraction entry {entry_name!r} cannot read {source_name!r}: {unsupported_reason}"
+                )
+            supported_operations = source["supported_operations"]
+            unsupported_operations = sorted(entry.keys() - {"source", *supported_operations})
+            if unsupported_operations:
+                raise ValueError(
+                    f"Event extraction entry {entry_name!r} requests unsupported operations "
+                    f"{unsupported_operations} for source {source_name!r}. "
+                    f"Supported operations: {supported_operations}."
+                )
+            resolved_entries[entry_name] = {**entry, "source": source_name}
+        return resolved_entries
 
     @property
     def temporal_alignment(self):
@@ -464,6 +551,7 @@ class BaseEventsInterface(BaseDataInterface):
         # value-column specs keyed by column_name.
         rows = []
         column_specs = {}
+        column_dtypes = {}
         # A payload field may hold several values per event rather than one, a behavior scored with two
         # qualifiers at once or a trial tagged with three conditions. Those become a ragged column, and
         # which columns those are is read off the data rather than declared: a metadata flag would be a
@@ -486,7 +574,10 @@ class BaseEventsInterface(BaseDataInterface):
                 # checked for consistency up front by _validate_shared_columns); record it once, then let
                 # each type fill its own rows below.
                 column_specs.setdefault(column_name, column_spec)
-                if any(_holds_several_values(value) for value in event.payload[field_source_id]):
+                values = event.payload[field_source_id]
+                if isinstance(values, np.ndarray) and values.dtype.kind in "biufSU":
+                    column_dtypes.setdefault(column_name, []).append(values.dtype)
+                if any(_holds_several_values(value) for value in values):
                     ragged_column_names.add(column_name)
                 resolved_columns.append((field_source_id, column_name, self._labels_map(column_spec)))
             for index, timestamp in enumerate(timestamps):
@@ -548,11 +639,17 @@ class BaseEventsInterface(BaseDataInterface):
                     )
                 else:
                     fill = "" if categories is not None else np.nan
-                    empty = np.array([], dtype=str if categories is not None else float)
+                    dtypes = column_dtypes.get(column_name, [])
+                    if categories is not None:
+                        empty_dtype = str
+                    elif dtypes and all(dtype.kind == dtypes[0].kind for dtype in dtypes):
+                        empty_dtype = np.result_type(*dtypes)
+                    else:
+                        empty_dtype = float
                     table.add_column(
                         name=column_name,
                         description=column_spec.get("description", ""),
-                        data=empty if stays_empty else [fill] * n_existing,
+                        data=np.array([], dtype=empty_dtype) if stays_empty else [fill] * n_existing,
                     )
             elif is_ragged and not isinstance(table[column_name], VectorIndex):
                 raise ValueError(

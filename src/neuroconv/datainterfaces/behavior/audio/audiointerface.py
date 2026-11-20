@@ -105,10 +105,10 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         self._segment_starting_times = None
 
         # Alignment by composition, with the one recording keyed by `metadata_key`. See neuroconv/_temporal_alignment.py.
-        # The deprecated `file_paths` keeps its own starting times and registers nothing.
+        # The deprecated `file_paths` keeps its own starting times and adds no time-bearing objects.
         self.temporal_alignment = _TemporalAlignment()
         if self.metadata_key is not None:
-            self.temporal_alignment._register(
+            self.temporal_alignment._add_time_bearing_object(
                 key=self.metadata_key,
                 get_native_times=self._get_native_times,
                 default_start_time=0.0,
@@ -177,6 +177,16 @@ class AudioInterface(BaseTemporalAlignmentInterface):
         return metadata
 
     def get_original_timestamps(self) -> np.ndarray:
+        """Deprecated: read ``interface.temporal_alignment[key].get_times()`` before aligning instead."""
+        warnings.warn(
+            "`get_original_timestamps` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment[key].get_times()` before aligning instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        return self._get_original_timestamps()
+
+    def _get_original_timestamps(self) -> np.ndarray:
         raise NotImplementedError("The AudioInterface does not yet support timestamps.")
 
     def get_timestamps(self) -> np.ndarray | None:

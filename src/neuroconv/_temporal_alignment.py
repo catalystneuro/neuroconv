@@ -16,7 +16,7 @@ What an operation is called on is what it applies to. ``shift_times`` and ``move
 scopes: on one object they move that object, on the interface they move every object by one common amount.
 Literal times belong to one object and so cannot be given without one. Each object holds its own offset, and
 the interface holds none, so an interface that names nothing has nothing to move and every operation on it
-raises. Events interfaces register their event types on first access to alignment. An event object supports
+raises. Events interfaces add their event types as time-bearing objects on first access to alignment. An event object supports
 every operation; its durations never change under a shift, are left alone by ``set_times``, and are recomputed
 through the map by ``remap_times``, since two clocks that drift stretch an interval as well as move it.
 
@@ -57,7 +57,7 @@ class _TimeBearingObject:
         get_number_of_samples=None,
         get_native_durations=None,
     ):
-        # A callable rather than an array, so an interface registers its objects without reading its source.
+        # A callable rather than an array, so an interface adds its objects without reading its source.
         # The start is separate so that placing an object needs one number, not every sample time; a number
         # where the interface knows it outright, a callable where it has to be read from a header.
         self._get_native_times = get_native_times
@@ -257,7 +257,7 @@ class _TimeBearingObject:
 class _TemporalAlignment:
     """The alignment surface for an interface's time-bearing objects, exposed as ``interface.temporal_alignment``.
 
-    Names the objects the interface registered, each holding its own offset, ``output = default + offset``,
+    Names the objects the interface added, each holding its own offset, ``output = default + offset``,
     ``0.0`` by default (identity). ``shift_times``,
     ``move_earliest_observation_to`` and ``remap_times`` called here act on every object: the first two move them
     all by one common amount, and ``remap_times`` is one clock's correction. Called on
@@ -268,7 +268,7 @@ class _TemporalAlignment:
     def __init__(self):
         self._name_to_time_bearing_object: dict[str, _TimeBearingObject] = {}
 
-    def _register(
+    def _add_time_bearing_object(
         self,
         *,
         key: str,
@@ -278,7 +278,7 @@ class _TemporalAlignment:
         get_native_durations=None,
         time_bearing_object_class=_TimeBearingObject,
     ) -> _TimeBearingObject:
-        """Name one time-bearing object. Called by the interface, not by a user.
+        """Create one time-bearing object and add it to this alignment. Called by the interface, not by a user.
 
         ``get_native_times`` returns the times the object has when nothing has been said. ``default_start_time``
         is their first and earliest value for chronologically ordered native times, a number or a callable,
@@ -317,9 +317,7 @@ class _TemporalAlignment:
     def shift_times(self, delta: float) -> None:
         """Shift every time-bearing object in the interface by ``delta`` seconds (relative, accumulates)."""
         if not self._name_to_time_bearing_object:
-            raise NotImplementedError(
-                "This interface has registered no time-bearing objects, so there is nothing to shift."
-            )
+            raise NotImplementedError("This interface has added no time-bearing objects, so there is nothing to shift.")
         for time_bearing_object in self._name_to_time_bearing_object.values():
             time_bearing_object.shift_times(delta)
 
@@ -339,9 +337,7 @@ class _TemporalAlignment:
         if not np.isfinite(starting_time):
             raise ValueError(f"`move_earliest_observation_to` needs a finite time in seconds, not {starting_time}.")
         if not self._name_to_time_bearing_object:
-            raise NotImplementedError(
-                "This interface has registered no time-bearing objects, so it has no start to move."
-            )
+            raise NotImplementedError("This interface has added no time-bearing objects, so it has no start to move.")
         starts = []
         for key, time_bearing_object in self._name_to_time_bearing_object.items():
             start = time_bearing_object._get_earliest_time()
@@ -362,9 +358,7 @@ class _TemporalAlignment:
         :meth:`_TimeBearingObject.remap_times`.
         """
         if not self._name_to_time_bearing_object:
-            raise NotImplementedError(
-                "This interface has registered no time-bearing objects, so there is nothing to remap."
-            )
+            raise NotImplementedError("This interface has added no time-bearing objects, so there is nothing to remap.")
         for time_bearing_object in self._name_to_time_bearing_object.values():
             time_bearing_object.remap_times(
                 local_sync_times=local_sync_times,

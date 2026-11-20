@@ -56,6 +56,7 @@ def mock_ZarrDatasetIOConfiguration(
     compressor_options: Iterable[dict[str, Any] | None] | None = None,
     filters: Iterable[Literal[tuple(AVAILABLE_ZARR_FILTER_METHODS.keys())] | ArrayArrayCodec | None] | None = None,
     filter_options: Iterable[dict[str, Any]] | None = None,
+    shard_shape: tuple[int, ...] | None = None,
 ) -> ZarrDatasetIOConfiguration:
     """Mock object of a ZarrDatasetIOConfiguration with NeuroPixel-like values to show chunk/buffer recommendations."""
     return ZarrDatasetIOConfiguration(
@@ -70,6 +71,7 @@ def mock_ZarrDatasetIOConfiguration(
         compressor_options=None if compressor_options is None else list(compressor_options),
         filters=filters,
         filter_options=filter_options,
+        shard_shape=shard_shape,
     )
 
 

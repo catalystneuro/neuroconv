@@ -295,6 +295,8 @@ class MockEventsInterface(BaseEventsInterface):
     constructor flag.
     """
 
+    _supports_event_extraction_configuration = True
+
     def __init__(
         self,
         *,
@@ -305,6 +307,7 @@ class MockEventsInterface(BaseEventsInterface):
         event_payload: Literal[
             "timestamps only", "single value", "single value variable length", "multi value"
         ] = "timestamps only",
+        event_extraction_configuration: dict | None = None,
         verbose: bool = False,
     ):
         """Initialize a mock events interface.
@@ -335,6 +338,9 @@ class MockEventsInterface(BaseEventsInterface):
             three columns on the same rows, one per way the writer treats a value column: ``outcome`` (labels
             and meanings, so a ``MeaningsTable``), ``cue`` (labels but nothing to explain, so no
             ``MeaningsTable``), and ``amplitude`` (raw numeric values). Applies to every event type.
+        event_extraction_configuration : dict, optional
+            Synthetic sources to read, keyed by output event type. The "silent" source has
+            no occurrences and is excluded from the default output.
         verbose : bool, optional
             Whether to print status messages, by default False.
         """
@@ -342,15 +348,30 @@ class MockEventsInterface(BaseEventsInterface):
         self._num_events = num_events
         self._event_extent = event_extent
         self._event_payload = event_payload
-        super().__init__(verbose=verbose)
+        available_sources = self._get_event_source_info(num_event_types)
+        configuration = self._resolve_event_sources(event_extraction_configuration, available_sources)
+        if configuration is None:
+            self._event_sources = {name: name for name in available_sources if name != "silent"}
+        else:
+            self._event_sources = {name: entry["source"] for name, entry in configuration.items()}
+        self._source_indices = {name: index for index, name in enumerate(available_sources)}
+        super().__init__(verbose=verbose, event_extraction_configuration=event_extraction_configuration)
         self.metadata_key = metadata_key or "mock_events"
 
+    @classmethod
+    def _get_event_source_info(cls, num_event_types: int) -> dict[str, dict]:
+        if num_event_types == 1:
+            source_names = ["events", "silent"]
+        else:
+            source_names = [f"events_{index}" for index in range(num_event_types)] + ["silent"]
+        return {name: {"supported_operations": []} for name in source_names}
+
+    @classmethod
+    def get_available_event_sources(cls, num_event_types: int = 1) -> list[str]:
+        return list(cls._get_event_source_info(num_event_types))
+
     def get_event_type_source_ids(self) -> list[str]:
-        # A single type keeps the plain "events" id; several are indexed so their ids (and, by default,
-        # their tables and column names) stay unique.
-        if self._num_event_types == 1:
-            return ["events"]
-        return [f"events_{index}" for index in range(self._num_event_types)]
+        return list(self._event_sources)
 
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
@@ -429,26 +450,28 @@ class MockEventsInterface(BaseEventsInterface):
 
         duration = 0.05 if self._event_extent == "event with duration" else None
         events_data_dict = {}
-        for index, event_type_source_id in enumerate(self.get_event_type_source_ids()):
+        for event_type_source_id, source_name in self._event_sources.items():
+            index = self._source_indices[source_name]
+            num_events = 0 if source_name == "silent" else self._num_events
             # Stagger timestamps across types so pooling several into one table interleaves in time.
-            timestamps = 0.1 * (np.arange(self._num_events) * self._num_event_types + index + 1)
-            durations = np.full(self._num_events, duration) if duration is not None else None
+            timestamps = 0.1 * (np.arange(num_events) * self._num_event_types + index + 1)
+            durations = np.full(num_events, duration) if duration is not None else None
             # One branch per payload mode, matching the columns get_metadata declares for that mode.
             if self._event_payload == "timestamps only":
                 payload = {}
             elif self._event_payload == "single value":
-                payload = {"outcome": np.arange(self._num_events) % 2}  # alternating go / no_go
+                payload = {"outcome": np.arange(num_events) % 2}  # alternating go / no_go
             elif self._event_payload == "single value variable length":
                 # Lengths cycle 0, 1, 2, 3 so a single generated type covers the empty cell, the
                 # one-value cell that a scalar column could have held, and the genuinely several.
                 payload = {
-                    "conditions": np.array([list(range(count % 4)) for count in range(self._num_events)], dtype=object)
+                    "conditions": np.array([list(range(count % 4)) for count in range(num_events)], dtype=object)
                 }
             elif self._event_payload == "multi value":
                 payload = {
-                    "outcome": np.arange(self._num_events) % 2,  # alternating go / no_go
-                    "cue": (np.arange(self._num_events) // 2) % 2,  # tone, tone, light, light, ...
-                    "amplitude": np.arange(self._num_events, dtype="float64"),
+                    "outcome": np.arange(num_events) % 2,  # alternating go / no_go
+                    "cue": (np.arange(num_events) // 2) % 2,  # tone, tone, light, light, ...
+                    "amplitude": np.arange(num_events, dtype="float32"),
                 }
             events_data_dict[event_type_source_id] = _EventsData(
                 event_type_source_id=event_type_source_id,
@@ -757,6 +780,124 @@ class MockSignalEncodedEventsInterface(BaseEventsInterface):
         return self._events_data_dict
 
 
+class MockEthogramInterface(BaseDataInterface):
+    """
+    A mock interface that writes per-frame behavior labels as ``ndx-ethogram`` bouts, for testing purposes.
+
+    It writes the way the interfaces of per-frame segmentation tools do: the labels are run-length encoded
+    into an ``EthogramBouts`` table scored against an ``Ethogram`` catalogue, both described by the
+    ``Behavior/EthogramBouts`` and ``Behavior/Ethograms`` entries of its ``metadata_key``.
+    """
+
+    display_name = "Mock Ethogram"
+    keywords = ("behavior", "ethogram", "mock")
+    associated_suffixes = []
+    info = "Mock interface for ndx-ethogram bouts testing."
+
+    def __init__(
+        self,
+        *,
+        num_samples: int = 300,
+        num_behaviors: int = 4,
+        sampling_frequency_hz: float = 30.0,
+        seed: int = 0,
+        metadata_key: str = "mock_ethogram",
+        verbose: bool = False,
+    ):
+        """
+        Initialize a mock ethogram interface.
+
+        Parameters
+        ----------
+        num_samples : int, default: 300
+            Number of labelled samples.
+        num_behaviors : int, default: 4
+            Number of behavior ids the labels are drawn from.
+        sampling_frequency_hz : float, default: 30.0
+            Frame rate of the labels, in Hz.
+        seed : int, default: 0
+            Seed for the random number generator.
+        metadata_key : str, default: "mock_ethogram"
+            Key of this interface's entries in ``metadata["Behavior"]["Ethograms"]`` and
+            ``metadata["Behavior"]["EthogramBouts"]``.
+        verbose : bool, default: False
+            Control verbosity.
+        """
+        self.metadata_key = metadata_key
+        self.sampling_frequency_hz = sampling_frequency_hz
+
+        # Bouts of a few frames each, so the run-length encoding has runs to find.
+        rng = np.random.default_rng(seed)
+        bout_lengths = rng.integers(low=3, high=15, size=num_samples)
+        bout_labels = rng.integers(low=0, high=num_behaviors, size=num_samples)
+        self._labels = np.repeat(bout_labels, bout_lengths)[:num_samples]
+
+        super().__init__(verbose=verbose)
+
+    def get_metadata_schema(self) -> dict:
+        from ...tools.behavior import _get_ethogram_metadata_schema
+        from ...utils import get_base_schema
+
+        metadata_schema = super().get_metadata_schema()
+        metadata_schema["properties"]["Behavior"] = get_base_schema(tag="Behavior")
+        metadata_schema["properties"]["Behavior"]["additionalProperties"] = True
+        metadata_schema["properties"]["Behavior"]["properties"] = _get_ethogram_metadata_schema()
+        return metadata_schema
+
+    def get_metadata(self) -> DeepDict:
+        metadata = super().get_metadata()
+        metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
+        metadata["Behavior"]["Ethograms"][self.metadata_key] = dict(
+            name="MockEthogram",
+            description="Mock behavior catalogue: one row per behavior id present in the labels.",
+        )
+        metadata["Behavior"]["EthogramBouts"][self.metadata_key] = dict(
+            name="MockEthogramBouts",
+            description="Mock per-frame behavior labels as run-length-encoded bouts.",
+            labeling_method="automated",
+            ethogram_metadata_key=self.metadata_key,
+        )
+        return metadata
+
+    def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict | None = None):
+        """
+        Add the mock bouts and their catalogue to an NWB file.
+
+        Parameters
+        ----------
+        nwbfile : NWBFile
+            The NWB file to add the bouts to.
+        metadata : dict, optional
+            Metadata dictionary. The bouts table is described by
+            ``metadata["Behavior"]["EthogramBouts"][metadata_key]``, which names the catalogue's entry and,
+            optionally, the pose estimation and the video the bouts link to.
+        """
+        from ...tools.behavior import (
+            _add_ethogram_to_nwbfile,
+            _get_bouts_and_behaviors_from_labels,
+            _resolve_ethogram_bouts_entry,
+        )
+
+        # The caller's metadata reaches the writer as they wrote it, so a key they removed stays removed.
+        metadata = metadata if metadata is not None else self.get_metadata()
+
+        entry_arguments = dict(labeling_method="automated")
+        entry_arguments.update(
+            _resolve_ethogram_bouts_entry(nwbfile, metadata=metadata, metadata_key=self.metadata_key)
+        )
+        _add_ethogram_to_nwbfile(
+            nwbfile,
+            **_get_bouts_and_behaviors_from_labels(
+                labels=self._labels,
+                timestamps=np.arange(len(self._labels)) / self.sampling_frequency_hz,
+                class_definition="Mock behavior id.",
+            ),
+            **entry_arguments,
+            source_software="MockSoftware",
+            exclusive=True,
+        )
+
+
 class MockFiberPhotometryInterface(BaseFiberPhotometryInterface):
     """A mock acquisition fiber photometry interface backed by synthetic data.
 
@@ -936,6 +1077,7 @@ class MockSpikeGLXNIDQInterface(SpikeGLXNIDQInterface):
             }
         }
         self._digital_channel_groups = {}
+        self._register_time_bearing_objects()
 
 
 class MockRecordingInterface(BaseRecordingExtractorInterface):
@@ -1494,7 +1636,7 @@ class MockPoseEstimationInterface(BasePoseEstimationInterface):
 
         return data
 
-    def get_original_timestamps(self) -> np.ndarray:
+    def _get_original_timestamps(self) -> np.ndarray:
         """Get the original timestamps before any alignment."""
         return self._original_timestamps
 
@@ -1778,7 +1920,7 @@ class MockIcephysInterface(BaseIcephysInterface):
         self._series_metadata_key = metadata_key
         self._alignment_key = metadata_key
         samples_per_sweep = round(sweep_duration * sampling_frequency)
-        self.temporal_alignment._register(
+        self.temporal_alignment._add_time_bearing_object(
             key=self._alignment_key,
             get_native_times=partial(self._get_sweep_times, samples_per_sweep),
             default_start_time=starting_time,
@@ -1787,7 +1929,7 @@ class MockIcephysInterface(BaseIcephysInterface):
         if stimulus_duration is not None:
             self._stimulus_alignment_key = f"{self._alignment_key}_stimulus"
             stimulus_samples_per_sweep = round(stimulus_duration * sampling_frequency)
-            self.temporal_alignment._register(
+            self.temporal_alignment._add_time_bearing_object(
                 key=self._stimulus_alignment_key,
                 get_native_times=partial(self._get_sweep_times, stimulus_samples_per_sweep),
                 default_start_time=starting_time,

@@ -80,7 +80,7 @@ class InscopixGpioInterface(BaseDataInterface):
             channel_name = gpio.get_channel_name(index)
             if channel_name in exclude:
                 continue
-            self._alignment._register(
+            self._alignment._add_time_bearing_object(
                 key=self._get_channel_metadata_key(channel_name),
                 get_native_times=partial(self._get_channel_native_times, channel_index=index),
                 get_number_of_samples=partial(self._get_channel_number_of_samples, channel_index=index),

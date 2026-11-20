@@ -247,7 +247,7 @@ class VameInterface(BaseTemporalAlignmentInterface):
         # Alignment by composition. Every series of the project is written on one time axis, keyed by `metadata_key`.
         # See neuroconv/_temporal_alignment.py.
         self.temporal_alignment = _TemporalAlignment()
-        self.temporal_alignment._register(
+        self.temporal_alignment._add_time_bearing_object(
             key=self._metadata_key,
             get_native_times=self._get_native_times,
             get_number_of_samples=self._get_number_of_frames,
@@ -363,6 +363,7 @@ class VameInterface(BaseTemporalAlignmentInterface):
         return f"{self._metadata_key}_latent_space"
 
     def get_metadata_schema(self) -> dict:
+        from ....tools.behavior import _get_ethogram_metadata_schema
         from ....utils import get_base_schema
 
         metadata_schema = super().get_metadata_schema()
@@ -446,26 +447,6 @@ class VameInterface(BaseTemporalAlignmentInterface):
             "required": ["name"],
             "additionalProperties": False,
         }
-        named_entry_schema = {
-            "type": "object",
-            "properties": {
-                "name": {"type": "string"},
-                "description": {"type": "string"},
-            },
-            "required": ["name"],
-            "additionalProperties": False,
-        }
-        # Curated ndx-ethogram entry: lives in the shared top-level Behavior/Ethograms registry, not
-        # under Behavior/Vame, because the curated layer is producer-agnostic.
-        ethogram_entry_schema = {
-            "type": "object",
-            "properties": {
-                "EthogramBouts": named_entry_schema,
-                "Ethogram": named_entry_schema,
-            },
-            "additionalProperties": False,
-        }
-
         metadata_schema["properties"]["Behavior"] = get_base_schema(tag="Behavior")
         # Leave the Behavior node open so sibling registries from other interfaces (e.g. a video
         # interface's Behavior/InternalVideos) survive schema validation when VAME is combined in a
@@ -491,11 +472,9 @@ class VameInterface(BaseTemporalAlignmentInterface):
                 },
                 "additionalProperties": False,
             },
-            "Ethograms": {
-                "type": "object",
-                "properties": {},
-                "additionalProperties": ethogram_entry_schema,
-            },
+            # Curated ndx-ethogram entries live in Behavior/Ethograms and Behavior/EthogramBouts, shared by every
+            # ethogram writer.
+            **_get_ethogram_metadata_schema(),
         }
 
         return metadata_schema
@@ -575,6 +554,16 @@ class VameInterface(BaseTemporalAlignmentInterface):
         return metadata
 
     def get_original_timestamps(self) -> np.ndarray:
+        """Deprecated: read ``interface.temporal_alignment[key].get_times()`` before aligning instead."""
+        warnings.warn(
+            "`get_original_timestamps` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment[key].get_times()` before aligning instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        return self._get_original_timestamps()
+
+    def _get_original_timestamps(self) -> np.ndarray:
         if self._sampling_frequency_hz is None:
             raise ValueError(
                 "VameInterface cannot generate original timestamps without a sampling_frequency_hz. "
@@ -603,7 +592,7 @@ class VameInterface(BaseTemporalAlignmentInterface):
         return np.load(reference_file).shape[0]
 
     def _get_native_times(self) -> np.ndarray:
-        return self.get_original_timestamps()
+        return self._get_original_timestamps()
 
     def get_timestamps(self) -> np.ndarray:
         warnings.warn(

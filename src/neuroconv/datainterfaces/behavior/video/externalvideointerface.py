@@ -157,12 +157,12 @@ class ExternalVideoInterface(BaseDataInterface):
         self._segment_keys = _compute_segment_keys(file_paths)
         self.temporal_alignment = _TemporalAlignment()
         for file_index, segment_key in enumerate(self._segment_keys):
-            # Callables, so registering the files reads none of them.
+            # Callables, so adding the files reads none of them.
             # Every file starts where its container puts its first frame, usually zero, until it is placed:
             # several files record nothing about how they relate, so none is assumed, and files left unplaced
             # overlap and raise when written.
             # No sample count here: the write checks it, in `_check_timestamps_number_matches_frames`.
-            self.temporal_alignment._register(
+            self.temporal_alignment._add_time_bearing_object(
                 key=segment_key,
                 get_native_times=partial(self._get_default_times, file_index=file_index),
                 default_start_time=partial(self._get_first_frame_time, file_index=file_index),
@@ -459,6 +459,16 @@ class ExternalVideoInterface(BaseDataInterface):
             previous_segment_key, previous_end_time = segment_key, times[-1]
 
     def get_original_timestamps(self, stub_test: bool = False) -> list[np.ndarray]:
+        """Deprecated: read ``interface.temporal_alignment[key].get_times()`` before aligning instead."""
+        warnings.warn(
+            "`get_original_timestamps` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment[key].get_times()` before aligning instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        return self._get_original_timestamps(stub_test=stub_test)
+
+    def _get_original_timestamps(self, stub_test: bool = False) -> list[np.ndarray]:
         """
         Retrieve the original unaltered timestamps for the data in this interface.
 
@@ -507,7 +517,7 @@ class ExternalVideoInterface(BaseDataInterface):
         )
         times_were_set = [self.temporal_alignment[segment_key]._times is not None for segment_key in self._segment_keys]
         if not all(times_were_set):
-            original_timestamps = self.get_original_timestamps(stub_test=stub_test)
+            original_timestamps = self._get_original_timestamps(stub_test=stub_test)
         return [
             (
                 self.temporal_alignment[segment_key].get_times()
@@ -640,7 +650,7 @@ class ExternalVideoInterface(BaseDataInterface):
                 f"match the number of video files ({self._number_of_files})!"
             )
         times_were_set = [self.temporal_alignment[segment_key]._times is not None for segment_key in self._segment_keys]
-        original_timestamps = None if all(times_were_set) else self.get_original_timestamps(stub_test=stub_test)
+        original_timestamps = None if all(times_were_set) else self._get_original_timestamps(stub_test=stub_test)
         for file_index, (segment_key, segment_starting_time) in enumerate(
             zip(self._segment_keys, aligned_segment_starting_times)
         ):

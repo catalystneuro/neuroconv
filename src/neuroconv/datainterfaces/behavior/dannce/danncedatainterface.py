@@ -653,7 +653,7 @@ class DANNCEInterface(BasePoseEstimationInterface):
         camera's per-frame timestamps (``frametimes.npy``)."""
         return self._video_frame_indices
 
-    def get_original_timestamps(self) -> np.ndarray:
+    def _get_original_timestamps(self) -> np.ndarray:
         if self._sampling_rate is None:
             raise ValueError(
                 "No timing information is available for this DANNCE output. The prediction file records "

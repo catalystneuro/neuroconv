@@ -45,11 +45,11 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         """Name every segment as a time-bearing object, keyed ``{metadata_key}_{segment_index}`` as for recordings.
 
         The keys are for alignment only. The segments are joined in one units table, so there is no segment-level
-        metadata for them to address. Registering reads nothing.
+        metadata for them to address. Adding the objects reads nothing.
         """
         self._alignment = _TemporalAlignment()
         for segment_index in range(self._number_of_segments):
-            self._alignment._register(
+            self._alignment._add_time_bearing_object(
                 key=f"{self.metadata_key}_{segment_index}",
                 get_native_times=partial(self._get_segment_native_spike_times, segment_index=segment_index),
                 time_bearing_object_class=_SortingTimeBearingObject,
@@ -262,6 +262,16 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         self.sorting_extractor.register_recording(recording=recording_interface.recording_extractor)
 
     def get_original_timestamps(self) -> np.ndarray:
+        """Deprecated: read ``interface.temporal_alignment[key].get_times()`` before aligning instead."""
+        warnings.warn(
+            "`get_original_timestamps` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment[key].get_times()` before aligning instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        return self._get_original_timestamps()
+
+    def _get_original_timestamps(self) -> np.ndarray:
         raise NotImplementedError(
             "Unable to fetch original timestamps for a SortingInterface since it relies upon an attached recording."
         )
