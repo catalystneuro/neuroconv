@@ -1694,6 +1694,8 @@ class EventsInterfaceTestMixin(DataInterfaceTestMixin):
     states them in its own ``check_read_nwb``, calling ``super().check_read_nwb`` first.
     """
 
+    expected_event_sources: tuple[str, ...] | None = None
+
     #: ``event_type_source_id`` to ``event_name``. Empty means the interface's own names are written.
     event_names: dict[str, str] = {}
 
@@ -1738,8 +1740,6 @@ class EventsInterfaceTestMixin(DataInterfaceTestMixin):
             assert_allclose(written_timestamps, self.interface.get_event_times(event_type_source_id))
 
         nwbfile.read_io.close()
-
-    expected_event_sources: tuple[str, ...] | None = None
 
     def test_event_source_discovery(self):
         if self.expected_event_sources is None:

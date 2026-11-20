@@ -13,96 +13,6 @@ from neuroconv.tools.testing.data_interface_mixins import EventsInterfaceTestMix
 from neuroconv.tools.testing.mock_interfaces import MockEventsInterface
 
 
-class TestMockEventSourceResolution:
-    def test_missing_event_source(self):
-        missing_source = "missing_test_source"
-        event_extraction_configuration = {"requested": {"source": missing_source}}
-        expected_error = (
-            f"Event extraction entry 'requested' requests missing source '{missing_source}'. "
-            "Available sources: ['events_0', 'events_1', 'silent']. "
-            "Use MockEventsInterface.get_available_event_sources(...) to inspect the recording."
-        )
-        with pytest.raises(ValueError, match=rf"\A{re.escape(expected_error)}\Z"):
-            MockEventsInterface(num_event_types=2, event_extraction_configuration=event_extraction_configuration)
-
-    def test_two_event_types_can_read_the_same_source(self):
-        num_event_types = 2
-        source_name = "events_1"
-        default_interface = MockEventsInterface(num_event_types=num_event_types)
-        expected_timestamps = default_interface.get_event_times(source_name)
-        event_extraction_configuration = {
-            "first_read": {"source": source_name},
-            "second_read": {"source": source_name},
-        }
-        interface = MockEventsInterface(
-            num_event_types=num_event_types,
-            event_extraction_configuration=event_extraction_configuration,
-        )
-        assert len(expected_timestamps) > 0
-        assert interface.get_event_type_source_ids() == ["first_read", "second_read"]
-        np.testing.assert_array_equal(interface.get_event_times("first_read"), expected_timestamps)
-        np.testing.assert_array_equal(interface.get_event_times("second_read"), expected_timestamps)
-
-    def test_requested_silent_source_writes_empty_table_with_native_payload_dtype(self, tmp_path):
-        requested_event_type = "silent_read"
-        event_extraction_configuration = {requested_event_type: {"source": "silent"}}
-        interface = MockEventsInterface(
-            event_payload="multi value",
-            event_extraction_configuration=event_extraction_configuration,
-        )
-        assert interface.get_event_type_source_ids() == [requested_event_type]
-        assert len(interface.get_event_times(requested_event_type)) == 0
-
-        nwbfile_path = tmp_path / "empty_events.nwb"
-        interface.run_conversion(nwbfile_path=nwbfile_path)
-        with NWBHDF5IO(nwbfile_path, mode="r") as io:
-            table = io.read().get_events_table("SilentRead")
-            assert len(table) == 0
-            assert table["amplitude"].data.dtype == np.dtype("float32")
-
-    def test_source_is_required_in_configured_entries(self):
-        configuration = {"requested": {}}
-        schema = MockEventsInterface.get_source_schema()
-        assert not Draft7Validator(schema).is_valid({"event_extraction_configuration": configuration})
-        expected_error = "Invalid event_extraction_configuration['requested']: 'source' is a required property"
-        with pytest.raises(ValueError, match=rf"\A{re.escape(expected_error)}\Z"):
-            MockEventsInterface(event_extraction_configuration=configuration)
-
-    def test_reader_can_allow_an_implicit_source(self):
-        class ImplicitSourceInterface(MockEventsInterface):
-            _default_event_source = "events"
-
-        configuration = {"requested": {}}
-        schema = ImplicitSourceInterface.get_source_schema()
-        assert Draft7Validator(schema).is_valid({"event_extraction_configuration": configuration})
-
-        interface = ImplicitSourceInterface(event_extraction_configuration=configuration)
-        np.testing.assert_array_equal(
-            interface.get_event_times("requested"), MockEventsInterface().get_event_times("events")
-        )
-        assert configuration == {"requested": {}}
-
-    def test_extraction_configuration_rejects_table_metadata(self):
-        configuration = {"requested": {"source": "events", "table_metadata_key": "table"}}
-        schema = MockEventsInterface.get_source_schema()
-        assert not Draft7Validator(schema).is_valid({"event_extraction_configuration": configuration})
-        expected_error = (
-            "Invalid event_extraction_configuration['requested']: "
-            "Additional properties are not allowed ('table_metadata_key' was unexpected)"
-        )
-        with pytest.raises(ValueError, match=rf"\A{re.escape(expected_error)}\Z"):
-            MockEventsInterface(event_extraction_configuration=configuration)
-
-    def test_extraction_configuration_rejects_unsupported_operation(self):
-        configuration = {"requested": {"source": "events", "separation": {}}}
-        expected_error = (
-            "Event extraction entry 'requested' requests unsupported operations ['separation'] for source 'events'. "
-            "Supported operations: []."
-        )
-        with pytest.raises(ValueError, match=rf"\A{re.escape(expected_error)}\Z"):
-            MockEventsInterface(event_extraction_configuration=configuration)
-
-
 class TestMockEventsInterface(EventsInterfaceTestMixin):
     data_interface_cls = MockEventsInterface
     expected_temporal_alignment_keys = ("events",)
@@ -645,6 +555,90 @@ class TestMockEventsInterface(EventsInterfaceTestMixin):
         expected_error = "Event types 'events_0', 'events_1' resolve to the same events table name 'Shared'"
         with pytest.raises(ValueError, match=re.escape(expected_error)):
             interface.add_to_nwbfile(nwbfile=mock_NWBFile(), metadata=metadata)
+
+
+class TestEventSourceResolution:
+    def test_missing_event_source(self):
+        missing_source = "missing_test_source"
+        event_extraction_configuration = {"requested": {"source": missing_source}}
+        expected_error = (
+            f"Event extraction entry 'requested' requests missing source '{missing_source}'. "
+            "Available sources: ['events_0', 'events_1', 'silent']. "
+            "Use MockEventsInterface.get_available_event_sources(...) to inspect the recording."
+        )
+        with pytest.raises(ValueError, match=rf"\A{re.escape(expected_error)}\Z"):
+            MockEventsInterface(num_event_types=2, event_extraction_configuration=event_extraction_configuration)
+
+    def test_two_event_types_can_read_the_same_source(self):
+        num_event_types = 2
+        source_name = "events_1"
+        default_interface = MockEventsInterface(num_event_types=num_event_types)
+        expected_timestamps = default_interface.get_event_times(source_name)
+        event_extraction_configuration = {
+            "first_read": {"source": source_name},
+            "second_read": {"source": source_name},
+        }
+        interface = MockEventsInterface(
+            num_event_types=num_event_types,
+            event_extraction_configuration=event_extraction_configuration,
+        )
+        assert len(expected_timestamps) > 0
+        assert interface.get_event_type_source_ids() == ["first_read", "second_read"]
+        np.testing.assert_array_equal(interface.get_event_times("first_read"), expected_timestamps)
+        np.testing.assert_array_equal(interface.get_event_times("second_read"), expected_timestamps)
+
+    def test_requested_silent_source_writes_empty_table_with_native_payload_dtype(self):
+        requested_event_type = "silent_read"
+        event_extraction_configuration = {requested_event_type: {"source": "silent"}}
+        interface = MockEventsInterface(
+            event_payload="multi value",
+            event_extraction_configuration=event_extraction_configuration,
+        )
+        assert interface.get_event_type_source_ids() == [requested_event_type]
+        assert len(interface.get_event_times(requested_event_type)) == 0
+
+        nwbfile = interface.create_nwbfile()
+        table = nwbfile.get_events_table("SilentRead")
+        assert len(table) == 0
+        assert table["amplitude"].data.dtype == np.dtype("float32")
+
+    def test_omitted_source_with_multiple_discovered_sources(self):
+        configuration = {"requested": {}}
+        expected_error = (
+            "Event extraction entry 'requested' must specify 'source' because this recording has "
+            "multiple event sources. Available sources: ['events', 'silent']."
+        )
+        with pytest.raises(ValueError, match=rf"\A{re.escape(expected_error)}\Z"):
+            MockEventsInterface(event_extraction_configuration=configuration)
+
+    def test_omitted_source_uses_the_only_discovered_source(self):
+        class CameraRecording(MockEventsInterface):
+            @classmethod
+            def get_available_event_sources(cls, num_event_types=1):
+                return {"camera": {"supported_operations": []}}
+
+        configuration = {"requested": {}}
+        schema = CameraRecording.get_source_schema()
+        assert Draft7Validator(schema).is_valid({"event_extraction_configuration": configuration})
+        expected_timestamps = CameraRecording().get_event_times("camera")
+        interface = CameraRecording(event_extraction_configuration=configuration)
+        np.testing.assert_array_equal(interface.get_event_times("requested"), expected_timestamps)
+        assert configuration == {"requested": {}}
+
+    def test_omitted_source_with_no_discovered_sources(self):
+        configuration = {"requested": {}}
+        expected_error = "No event sources are available in this recording for entry 'requested'."
+        with pytest.raises(ValueError, match=rf"\A{re.escape(expected_error)}\Z"):
+            MockEventsInterface._resolve_event_sources(configuration, available_sources={})
+
+    def test_extraction_configuration_rejects_unsupported_operation(self):
+        configuration = {"requested": {"source": "events", "separation": {}}}
+        expected_error = (
+            "Event extraction entry 'requested' requests unsupported operations ['separation'] for source 'events'. "
+            "Supported operations: []."
+        )
+        with pytest.raises(ValueError, match=rf"\A{re.escape(expected_error)}\Z"):
+            MockEventsInterface(event_extraction_configuration=configuration)
 
 
 class TestSharedColumnAcrossEventTypes:
