@@ -11,6 +11,7 @@ from pynwb.file import NWBFile
 from ..._temporal_alignment import _TemporalAlignment
 from ...basedatainterface import BaseDataInterface
 from ...tools.nwb_helpers._metadata_and_file_helpers import _validate_metadata_key, _validate_metadata_path
+from ...tools.signal_processing import _condition_signal, _detect_events, _samples_to_seconds
 from ...utils import to_camel_case
 
 _EVENT_EXTRACTION_CONFIGURATION_SCHEMA = {
@@ -21,12 +22,57 @@ _EVENT_EXTRACTION_CONFIGURATION_SCHEMA = {
         "properties": {
             "source": {"type": "string", "minLength": 1},
             "format_options": {"type": "object"},
-            "signal_conditioning": {"type": "object"},
-            "detection": {"type": "object"},
+            "signal_conditioning": {
+                "type": "object",
+                "required": ["binarize"],
+                "properties": {"binarize": {"anyOf": [{"const": "midpoint"}, {"type": "number"}]}},
+                "additionalProperties": False,
+            },
+            "detection": {
+                "type": "object",
+                "required": ["on_change"],
+                "properties": {
+                    "lines": {
+                        "type": "array",
+                        "items": {"type": "integer", "minimum": 0},
+                        "minItems": 1,
+                        "maxItems": 1,
+                    },
+                    "on_change": {
+                        "type": "object",
+                        "required": ["onset"],
+                        "properties": {
+                            "onset": {"enum": ["rising", "falling", "either"]},
+                            "end": {"enum": ["rising", "falling"]},
+                        },
+                        "additionalProperties": False,
+                    },
+                    "timestamp_estimate": {
+                        "enum": ["first_sample_after_change", "last_sample_before_change", "halfway_between_samples"]
+                    },
+                },
+                "additionalProperties": False,
+            },
             "separation": {"type": "object"},
         },
         "additionalProperties": False,
     },
+}
+
+# The reading of the shared detection helpers that each `on_change` onset and end ask for.
+_ON_CHANGE_READINGS = {
+    ("rising", None): "rising",
+    ("falling", None): "falling",
+    ("either", None): "value_change",
+    ("rising", "falling"): "high_period",
+    ("falling", "rising"): "low_period",
+}
+
+# The convention of the shared timing helper that each `timestamp_estimate` asks for.
+_TIMESTAMP_ESTIMATES = {
+    "first_sample_after_change": "sample_after_transition",
+    "last_sample_before_change": "sample_before_transition",
+    "halfway_between_samples": "halfway_between_samples",
 }
 
 
@@ -198,8 +244,74 @@ class BaseEventsInterface(BaseDataInterface):
                     f"{unsupported_operations} for source {source_name!r}. "
                     f"Supported operations: {supported_operations}."
                 )
+
+            detection = entry.get("detection")
+            if detection is not None:
+                onset = detection["on_change"]["onset"]
+                end = detection["on_change"].get("end")
+                if (onset, end) not in _ON_CHANGE_READINGS:
+                    raise ValueError(
+                        f"Event extraction entry {entry_name!r} sets 'on_change' with onset {onset!r} and end "
+                        f"{end!r}. An event that starts on a rising change ends on a falling one and the reverse, "
+                        "and an 'either' onset takes no end."
+                    )
+                num_lines = source.get("num_lines")
+                if "signal_conditioning" not in entry and num_lines is None:
+                    raise ValueError(
+                        f"Event extraction entry {entry_name!r} detects on {source_name!r}, an analog signal, "
+                        "without 'signal_conditioning'. Set 'signal_conditioning': {'binarize': ...} to cut it "
+                        "into a line."
+                    )
+                if "signal_conditioning" not in entry and "lines" not in detection and num_lines > 1:
+                    raise ValueError(
+                        f"Event extraction entry {entry_name!r} must set 'lines' in 'detection' because source "
+                        f"{source_name!r} has {num_lines} lines."
+                    )
             resolved_entries[entry_name] = {**entry, "source": source_name}
         return resolved_entries
+
+    @staticmethod
+    def _detect_occurrences(entry_name: str, entry: dict, trace: np.ndarray, timestamps) -> _EventsData:
+        """Detect the occurrences of one resolved extraction entry on a sampled signal.
+
+        ``signal_conditioning`` cuts an analog signal into a line. Otherwise ``detection.lines`` picks the
+        line out of the source, which is line 0 when the source has a single one. ``on_change`` then says
+        which changes of that line are events, and ``timestamp_estimate`` which sample time each takes.
+
+        Parameters
+        ----------
+        entry_name : str
+            The name of the entry, which identifies the event type.
+        entry : dict
+            The entry as :meth:`_resolve_event_sources` returns it.
+        trace : numpy.ndarray
+            The samples of the entry's source: a magnitude for an analog signal, or one integer per sample
+            whose bit ``k`` is line ``k`` for a digital source.
+        timestamps : numpy.ndarray or callable
+            The time of each sample, or a function from sample indices to times, as
+            :func:`~neuroconv.tools.signal_processing._samples_to_seconds` takes them.
+
+        Returns
+        -------
+        _EventsData
+            The detected occurrences, with durations when ``on_change`` has an ``end``.
+        """
+        detection = entry["detection"]
+        if "signal_conditioning" in entry:
+            line = _condition_signal(trace, entry["signal_conditioning"])
+        else:
+            line = _condition_signal(trace, {"bits": detection.get("lines", [0])})
+        reading = _ON_CHANGE_READINGS[(detection["on_change"]["onset"], detection["on_change"].get("end"))]
+        onset_samples, offset_samples = _detect_events(line, reading)
+        onsets, durations = _samples_to_seconds(
+            onset_samples=onset_samples,
+            offset_samples=offset_samples,
+            timestamps=timestamps,
+            event_time_convention=_TIMESTAMP_ESTIMATES[
+                detection.get("timestamp_estimate", "first_sample_after_change")
+            ],
+        )
+        return _EventsData(event_type_source_id=entry_name, timestamps=onsets, durations=durations)
 
     @property
     def temporal_alignment(self):
