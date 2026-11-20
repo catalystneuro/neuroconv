@@ -13,6 +13,40 @@ read, how each one becomes a line, and which of its transitions become events.
 What those events are then called and how they are laid out in the file is a separate job, the editable
 events metadata, covered in :ref:`annotate_events_metadata`.
 
+Choose a recorded event source
+------------------------------
+
+Interfaces that accept ``event_extraction_configuration`` can list a recording's sources before
+conversion with ``get_available_event_sources(...)``. Pass the arguments that locate the recording,
+such as ``file_path`` for a file-based reader. The result is a dictionary keyed by source name.
+``supported_operations`` lists the optional configuration blocks each source accepts.
+
+This example uses a synthetic recording. Each configuration key names an event type, and its
+``source`` names a source from discovery.
+
+.. doctest::
+
+    >>> from neuroconv.tools.testing.mock_interfaces import MockEventsInterface
+    >>> sources = MockEventsInterface.get_available_event_sources()
+    >>> list(sources)
+    ['events', 'silent']
+    >>> configuration = {
+    ...     "trial_starts": {"source": "events"},
+    ...     "unused_input": {"source": "silent"},
+    ... }
+    >>> interface = MockEventsInterface(event_extraction_configuration=configuration)
+    >>> interface.get_event_type_source_ids()
+    ['trial_starts', 'unused_input']
+    >>> interface.get_event_times("unused_input").size
+    0
+    >>> MockEventsInterface(event_extraction_configuration={"trials": {"source": "other"}})
+    Traceback (most recent call last):
+        ...
+    ValueError: Event extraction entry 'trials' requests missing source 'other'. Available sources: ['events', 'silent']. Use MockEventsInterface.get_available_event_sources(...) to inspect the recording.
+
+Omit the configuration to use the reader's default event types. A source declared in a recording
+can have zero occurrences. Request it explicitly to write an empty table.
+
 The event detection model
 -------------------------
 

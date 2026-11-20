@@ -13,6 +13,68 @@ from neuroconv.tools.testing.data_interface_mixins import EventsInterfaceTestMix
 from neuroconv.tools.testing.mock_interfaces import MockEventsInterface
 
 
+class TestMockEventSourceResolution(EventsInterfaceTestMixin):
+    data_interface_cls = MockEventsInterface
+    interface_kwargs = dict(num_event_types=2, event_payload="multi value")
+    expected_temporal_alignment_keys = ("events_0", "events_1")
+    event_source_discovery_kwargs = dict(num_event_types=2)
+    expected_event_sources = ("events_0", "events_1", "silent")
+    expected_default_event_type_ids = ("events_0", "events_1")
+    populated_event_source = "events_1"
+    silent_event_source = "silent"
+
+    def test_explicit_source_supplies_the_requested_timestamps(self, setup_interface):
+        interface = MockEventsInterface(
+            **self.interface_kwargs,
+            event_extraction_configuration={"renamed": {"source": "events_1"}},
+        )
+        np.testing.assert_array_equal(interface.get_event_times("renamed"), self.interface.get_event_times("events_1"))
+
+    def test_silent_event_source_preserves_native_payload_dtype(self, tmp_path):
+        interface = MockEventsInterface(
+            **self.interface_kwargs,
+            event_extraction_configuration={"silent_read": {"source": "silent"}},
+        )
+        nwbfile_path = tmp_path / "empty_events.nwb"
+        interface.run_conversion(nwbfile_path=nwbfile_path)
+        with NWBHDF5IO(nwbfile_path, mode="r") as io:
+            table = io.read().get_events_table("SilentRead")
+            assert len(table) == 0
+            assert table["amplitude_0"].data.dtype == np.dtype("float32")
+
+    def test_source_is_required_in_configured_entries(self):
+        configuration = {"requested": {}}
+        schema = MockEventsInterface.get_source_schema()
+        assert not Draft7Validator(schema).is_valid({"event_extraction_configuration": configuration})
+        with pytest.raises(ValueError, match="source.*required"):
+            MockEventsInterface(event_extraction_configuration=configuration)
+
+    def test_reader_can_allow_an_implicit_source(self):
+        class ImplicitSourceInterface(MockEventsInterface):
+            _default_event_source = "events"
+
+        configuration = {"requested": {}}
+        schema = ImplicitSourceInterface.get_source_schema()
+        assert Draft7Validator(schema).is_valid({"event_extraction_configuration": configuration})
+
+        interface = ImplicitSourceInterface(event_extraction_configuration=configuration)
+        np.testing.assert_array_equal(
+            interface.get_event_times("requested"), MockEventsInterface().get_event_times("events")
+        )
+        assert configuration == {"requested": {}}
+
+    def test_extraction_configuration_rejects_table_metadata(self):
+        configuration = {"requested": {"source": "events", "table_metadata_key": "table"}}
+        schema = MockEventsInterface.get_source_schema()
+        assert not Draft7Validator(schema).is_valid({"event_extraction_configuration": configuration})
+        with pytest.raises(ValueError, match="table_metadata_key"):
+            MockEventsInterface(event_extraction_configuration=configuration)
+
+    def test_extraction_configuration_rejects_unsupported_operation(self):
+        with pytest.raises(ValueError, match=r"unsupported operations.*separation.*events"):
+            MockEventsInterface(event_extraction_configuration={"requested": {"source": "events", "separation": {}}})
+
+
 class TestMockEventsInterface(EventsInterfaceTestMixin):
     data_interface_cls = MockEventsInterface
     expected_temporal_alignment_keys = ("events",)
