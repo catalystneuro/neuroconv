@@ -721,19 +721,19 @@ class TestEventSeparation:
         assert empty_table["side"].data.dtype.kind == "U"
 
     def test_selected_pair(self):
-        selected_pair = {"outcome": 1, "cue": 1}
+        selected_pair = {"outcome": 1, "side": "right"}
         configuration = {
             "choices": {
                 "source": "events",
-                "separation": {"by_payload_fields": ["outcome", "cue"], "select": [selected_pair]},
+                "separation": {"by_payload_fields": ["outcome", "side"], "select": [selected_pair]},
             }
         }
         interface = MockEventsInterface(
             num_events=8, event_payload="multi value", event_extraction_configuration=configuration
         )
 
-        assert interface.get_event_type_source_ids() == ["choices_1_1"]
-        np.testing.assert_allclose(interface.get_event_times("choices_1_1"), [0.4, 0.8])
+        assert interface.get_event_type_source_ids() == ["choices_1_right"]
+        np.testing.assert_allclose(interface.get_event_times("choices_1_right"), [0.4, 0.8])
 
     def test_entry_named_like_a_separated_type_raises(self):
         configuration = {
