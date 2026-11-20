@@ -11,7 +11,8 @@ from pynwb import read_nwb
 from pynwb.testing.mock.file import mock_NWBFile
 
 from neuroconv.datainterfaces import MoseqKeyPointsInterface
-from neuroconv.tools.testing.data_interface_mixins import DataInterfaceTestMixin
+from neuroconv.tools.testing.data_interface_mixins import EthogramInterfaceTestMixin
+from neuroconv.tools.testing.mock_interfaces import MockPoseEstimationInterface
 
 try:
     from ..setup_paths import BEHAVIOR_DATA_PATH
@@ -30,7 +31,7 @@ def expected_bouts(labels, timestamps, frame_period):
     return bouts
 
 
-class TestMoseqKeyPointsInterfaceTwoDimensional(DataInterfaceTestMixin):
+class TestMoseqKeyPointsInterfaceTwoDimensional(EthogramInterfaceTestMixin):
     """A recording from a run on 2D pose, whose centroid is (T, 2).
 
     Its group names carry the scorer suffix DeepLabCut appended to the file the keypoints came from.
@@ -46,6 +47,7 @@ class TestMoseqKeyPointsInterfaceTwoDimensional(DataInterfaceTestMixin):
         recording_name=recording_name,
         sampling_frequency_hz=sampling_frequency_hz,
     )
+    expected_temporal_alignment_keys = ("keypoint_moseq",)
 
     def _read_source_dataset(self, dataset_name):
         """Return one dataset of this class's recording, straight out of the source file.
@@ -56,6 +58,7 @@ class TestMoseqKeyPointsInterfaceTwoDimensional(DataInterfaceTestMixin):
             return file[self.recording_name][dataset_name][:]
 
     def check_read_nwb(self, nwbfile_path: str):
+        super().check_read_nwb(nwbfile_path)
         nwbfile = read_nwb(nwbfile_path)
         behavior = nwbfile.processing["behavior"]
 
@@ -77,7 +80,7 @@ class TestMoseqKeyPointsInterfaceTwoDimensional(DataInterfaceTestMixin):
         assert behavior["MoseqKeyPointsEthogram"] is not None
 
 
-class TestMoseqKeyPointsInterfaceThreeDimensional(DataInterfaceTestMixin):
+class TestMoseqKeyPointsInterfaceThreeDimensional(EthogramInterfaceTestMixin):
     """A recording from a run on 3D pose, whose centroid is (T, 3) in a different coordinate space.
 
     Its group names are bare, since the keypoints came from a plain coordinates file.
@@ -93,6 +96,7 @@ class TestMoseqKeyPointsInterfaceThreeDimensional(DataInterfaceTestMixin):
         recording_name=recording_name,
         sampling_frequency_hz=sampling_frequency_hz,
     )
+    expected_temporal_alignment_keys = ("keypoint_moseq",)
 
     def _read_source_dataset(self, dataset_name):
         """Return one dataset of this class's recording, straight out of the source file.
@@ -103,6 +107,7 @@ class TestMoseqKeyPointsInterfaceThreeDimensional(DataInterfaceTestMixin):
             return file[self.recording_name][dataset_name][:]
 
     def check_read_nwb(self, nwbfile_path: str):
+        super().check_read_nwb(nwbfile_path)
         nwbfile = read_nwb(nwbfile_path)
         behavior = nwbfile.processing["behavior"]
 
@@ -304,6 +309,7 @@ class TestMetadata:
         for registry in moseq_metadata.values():
             assert list(registry) == ["keypoint_moseq"]
         assert list(metadata["Behavior"]["Ethograms"]) == ["keypoint_moseq"]
+        assert list(metadata["Behavior"]["EthogramBouts"]) == ["keypoint_moseq"]
 
     def test_centroid_reports_no_unit_or_reference_frame(self, interface):
         centroid_metadata = interface.get_metadata()["Behavior"]["MoseqKeyPoints"]["Centroids"]["keypoint_moseq"]
@@ -320,6 +326,18 @@ class TestMetadata:
         metadata = interface.get_metadata()
         assert list(metadata["Behavior"]["MoseqKeyPoints"]["Centroids"]) == ["second_recording"]
         assert list(metadata["Behavior"]["Ethograms"]) == ["second_recording"]
+        assert list(metadata["Behavior"]["EthogramBouts"]) == ["second_recording"]
+
+    def test_bouts_without_ethogram_metadata_key_have_no_catalogue(self, interface):
+        # The caller's metadata is used as given, so a key removed from it is not put back from get_metadata.
+        metadata = interface.get_metadata()
+        del metadata["Behavior"]["EthogramBouts"]["keypoint_moseq"]["ethogram_metadata_key"]
+        nwbfile = mock_NWBFile()
+        interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+        behavior = nwbfile.processing["behavior"]
+        assert behavior["MoseqKeyPointsEthogramBouts"].ethogram is None
+        assert "MoseqKeyPointsEthogram" not in behavior.data_interfaces
 
 
 class TestDataToWrite:
@@ -363,3 +381,60 @@ class TestDataToWrite:
             "MoseqKeyPointsEthogram",
         }
         assert behavior["MoseqKeyPointsEthogramBouts"].source is behavior["MoseqKeyPointsLatentState"]
+
+
+class TestDeprecatedMetadata:
+    """The metadata of versions before v0.11.0 is still read, with a FutureWarning, until v0.13.0."""
+
+    file_path = BEHAVIOR_DATA_PATH / "moseq" / "keypoint_moseq" / "three_dimensional" / "results.h5"
+    recording_name = "21_11_8_one_mouse"
+    sampling_frequency_hz = 30.0
+
+    @pytest.fixture
+    def interface(self):
+        return MoseqKeyPointsInterface(
+            file_path=self.file_path,
+            recording_name=self.recording_name,
+            sampling_frequency_hz=self.sampling_frequency_hz,
+        )
+
+    def test_the_ethogram_pair_entry_names_the_catalogue_and_the_bouts(self, interface):
+        metadata = interface.get_metadata()
+        metadata["Behavior"]["Ethograms"]["keypoint_moseq"].update(
+            Ethogram=dict(name="OldEthogram", description="Old catalogue description."),
+            EthogramBouts=dict(name="OldBouts", description="Old bouts description."),
+        )
+        nwbfile = mock_NWBFile()
+        with pytest.warns(FutureWarning, match="'Ethogram' and 'EthogramBouts' keys"):
+            interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+        bouts = nwbfile.processing["behavior"]["OldBouts"]
+        assert bouts.description == "Old bouts description."
+        assert bouts.ethogram.name == "OldEthogram"
+        assert bouts.ethogram.description == "Old catalogue description."
+
+    def test_the_recordings_entry_links_the_bouts_to_the_pose(self, interface):
+        pose_interface = MockPoseEstimationInterface(num_samples=700)
+        nwbfile = mock_NWBFile()
+        metadata = pose_interface.get_metadata()
+        pose_interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+        pose_name = metadata["Pose"]["PoseEstimations"]["MockPoseEstimation"]["name"]
+
+        metadata["Behavior"] = interface.get_metadata()["Behavior"]
+        metadata["Behavior"]["MoseqKeyPoints"]["Recordings"] = {
+            "keypoint_moseq": {"pose_estimation_metadata_key": "MockPoseEstimation"}
+        }
+        with pytest.warns(FutureWarning, match=r"\['Recordings'\] is deprecated"):
+            interface.add_to_nwbfile(nwbfile=nwbfile, metadata=metadata)
+
+        bouts = nwbfile.processing["behavior"]["MoseqKeyPointsEthogramBouts"]
+        assert bouts.source_pose.name == pose_name
+
+    def test_a_link_given_in_both_places_that_differs_raises(self, interface):
+        metadata = interface.get_metadata()
+        metadata["Behavior"]["EthogramBouts"]["keypoint_moseq"]["source_pose_metadata_key"] = "NewPose"
+        metadata["Behavior"]["MoseqKeyPoints"]["Recordings"] = {
+            "keypoint_moseq": {"pose_estimation_metadata_key": "OldPose"}
+        }
+        with pytest.warns(FutureWarning), pytest.raises(ValueError, match="Give the link in the bouts entry only"):
+            interface.add_to_nwbfile(nwbfile=mock_NWBFile(), metadata=metadata)
