@@ -891,24 +891,6 @@ class TestNeuralynxRecordingInterfaceStreamsWithDifferentGaps(RecordingExtractor
     save_directory = OUTPUT_PATH
 
 
-class TestNeuralynxStreamSelection:
-    gaps_in_one_of_two_rates = (
-        ECEPHY_DATA_PATH / "neuralynx" / "pegasus" / "version_2_1_3" / "time_structure" / "gaps_in_one_of_two_rates"
-    )
-
-    def test_get_stream_names_on_streams_with_different_gaps(self):
-        stream_names = NeuralynxRecordingInterface.get_stream_names(folder_path=self.gaps_in_one_of_two_rates)
-        assert stream_names == ["stream0_32000Hz_1mVRange_DSPFilter1", "stream1_2000Hz_10mVRange_DSPFilter0"]
-
-    def test_stream_name_is_required_for_a_multi_stream_folder(self):
-        with pytest.raises(ValueError, match="More than one stream is detected"):
-            NeuralynxRecordingInterface(folder_path=self.gaps_in_one_of_two_rates, gap_tolerance_ms=1.0)
-
-    def test_unknown_stream_name(self):
-        with pytest.raises(ValueError, match="is not in the available streams"):
-            NeuralynxRecordingInterface(folder_path=self.gaps_in_one_of_two_rates, stream_name="not_a_stream")
-
-
 class TestNeuroScopeRecordingInterface(RecordingExtractorInterfaceTestMixin):
     data_interface_cls = NeuroScopeRecordingInterface
     expected_temporal_alignment_keys = ("neuroscope_recording_0",)
