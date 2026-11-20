@@ -154,6 +154,7 @@ Behavior
 Events
 ------
 
+For annotations stored in EDF+ or BDF+ recordings, see :ref:`edf_annotation_events`.
 For events recorded in a Plexon PLX file, see :ref:`plexon_recorded_events`.
 
 .. toctree::

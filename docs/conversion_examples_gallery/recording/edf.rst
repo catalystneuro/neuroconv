@@ -197,3 +197,45 @@ Remember to group auxiliary channels by their unit types:
     # Convert all channel types to a single NWB file
     nwbfile_path = f"{path_to_save_nwbfile}"
     converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
+
+.. _edf_annotation_events:
+
+Annotation events
+^^^^^^^^^^^^^^^^^
+
+EDF+ and BDF+ recordings can store timestamped annotations alongside sampled signals.
+The :py:class:`~neuroconv.datainterfaces.ecephys.edf.edfeventsinterface.EDFEventsInterface`
+writes one row per annotation in the ``EDFAnnotations`` table. The ``annotation`` column
+holds the original text. When the file supplies durations, the ``duration`` column holds
+them in seconds. An explicit zero stays zero and an omitted duration is missing.
+
+.. code-block:: python
+
+    >>> from pynwb import NWBHDF5IO
+    >>> from neuroconv.datainterfaces import EDFEventsInterface
+
+    >>> file_path = ECEPHY_DATA_PATH / "edf" / "events" / "test_subsecond.edf"
+    >>> interface = EDFEventsInterface(file_path=file_path)
+    >>> interface.run_conversion(nwbfile_path=path_to_save_nwbfile)
+    >>> with NWBHDF5IO(path_to_save_nwbfile, mode="r") as io:
+    ...     print(list(io.read().events["EDFAnnotations"]["annotation"][:]))
+    ['XLSpike', 'Clip Note', 'XLEvent', 'XLSpike']
+
+Here ``XLSpike`` appears twice. To convert just those two occurrences, group by
+``annotation`` and select the recorded text. Omitting ``select`` creates one event
+type for each distinct text.
+
+.. code-block:: python
+
+    >>> interface = EDFEventsInterface(
+    ...     file_path=file_path,
+    ...     event_extraction_configuration={
+    ...         "markers": {
+    ...             "source": "annotations",
+    ...             "separation": {"by_payload_fields": ["annotation"], "select": ["XLSpike"]},
+    ...         },
+    ...     },
+    ... )
+    >>> interface.get_event_times("markers_XLSpike").tolist()
+    [1.9511719, 583.5722656]
+    >>> interface.run_conversion(nwbfile_path=output_folder / "selected_markers.nwb")
