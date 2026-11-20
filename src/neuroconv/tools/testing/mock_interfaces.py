@@ -51,6 +51,7 @@ from ...tools.icephys import _IcephysSeriesData
 from ...tools.signal_processing import (
     _condition_signal,
     _detect_events,
+    _detect_occurrences,
     _samples_to_seconds,
 )
 from ...utils import (
@@ -344,7 +345,9 @@ class MockEventsInterface(BaseEventsInterface):
             field holds text values. Applies to every event type.
         event_extraction_configuration : dict, optional
             Synthetic sources to read, keyed by output event type. The "silent" source has
-            no occurrences and is excluded from the default output.
+            no occurrences. The "digital_port" source is a sampled word carrying two lines, and the
+            "analog" source a sampled magnitude, so both are read through ``detection``. These three are
+            excluded from the default output.
         verbose : bool, optional
             Whether to print status messages, by default False.
         """
@@ -356,7 +359,8 @@ class MockEventsInterface(BaseEventsInterface):
         configuration = self._resolve_event_sources(event_extraction_configuration, available_sources)
         self._event_extraction_configuration = configuration
         if configuration is None:
-            self._event_sources = {name: name for name in available_sources if name != "silent"}
+            excluded_sources = ("silent", "digital_port", "analog")
+            self._event_sources = {name: name for name in available_sources if name not in excluded_sources}
         else:
             self._event_sources = {name: entry["source"] for name, entry in configuration.items()}
         self._source_indices = {name: index for index, name in enumerate(available_sources)}
@@ -369,7 +373,10 @@ class MockEventsInterface(BaseEventsInterface):
             source_names = ["events", "silent"]
         else:
             source_names = [f"events_{index}" for index in range(num_event_types)] + ["silent"]
-        return {name: {"supported_operations": ["separation"]} for name in source_names}
+        event_sources = {name: {"supported_operations": ["separation"]} for name in source_names}
+        event_sources["digital_port"] = {"supported_operations": ["detection"], "num_lines": 2}
+        event_sources["analog"] = {"supported_operations": ["signal_conditioning", "detection"]}
+        return event_sources
 
     @classmethod
     def get_available_event_sources(cls, num_event_types: int = 1) -> list[str]:
@@ -384,8 +391,11 @@ class MockEventsInterface(BaseEventsInterface):
             # One branch per payload mode, spelled out in full rather than composed from shared pieces:
             # between them the modes cover the three ways the writer treats a value column, and stating
             # each mode's columns outright is what makes which-mode-covers-which readable.
-            if self._event_payload == "timestamps only":
-                # No value column at all.
+            if (
+                self._event_payload == "timestamps only"
+                or not self._get_events_data_dict()[event_type_source_id].payload
+            ):
+                # No value column at all. Occurrences detected on a sampled source carry no payload either.
                 columns = {}
             elif self._event_payload == "single value":
                 # One categorical column declaring labels and meanings: display labels plus a MeaningsTable.
@@ -467,6 +477,22 @@ class MockEventsInterface(BaseEventsInterface):
 
     def _read_event_source(self, event_type_source_id: str, source_name: str) -> _EventsData:
         """Generate the occurrences of one synthetic source, before any separation."""
+        if source_name in ("digital_port", "analog"):
+            if source_name == "digital_port":
+                # Two lines packed in one word. Line 0 pulses three times and line 1 once.
+                line_0 = np.array([0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0])
+                line_1 = np.array([0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0])
+                trace = (line_0 + 2 * line_1).astype("uint16")
+            else:
+                # A magnitude that is high from 0.2 to 0.4 s and from 0.6 to 0.8 s.
+                trace = np.array([0.0, 0.1, 4.9, 5.0, 0.2, 0.0, 5.1, 4.8, 0.1, 0.0])
+            timestamps, durations = _detect_occurrences(
+                entry=self._event_extraction_configuration[event_type_source_id],
+                trace=trace,
+                timestamps=0.1 * np.arange(len(trace)),
+            )
+            return _EventsData(event_type_source_id=event_type_source_id, timestamps=timestamps, durations=durations)
+
         duration = 0.05 if self._event_extent == "event with duration" else None
         index = self._source_indices[source_name]
         num_events = 0 if source_name == "silent" else self._num_events
