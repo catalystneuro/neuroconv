@@ -195,7 +195,7 @@ class OptiTrackInterface(BaseDataInterface):
         super().__init__(verbose=verbose, file_path=file_path, metadata_key=self.metadata_key)
 
         self.temporal_alignment = _TemporalAlignment()
-        self.temporal_alignment._register(
+        self.temporal_alignment._add_time_bearing_object(
             key=self.metadata_key,
             get_native_times=self._get_original_timestamps,
             get_number_of_samples=self._get_number_of_samples,

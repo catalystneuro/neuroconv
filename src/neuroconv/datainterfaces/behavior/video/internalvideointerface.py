@@ -95,7 +95,7 @@ class InternalVideoInterface(BaseDataInterface):
         # `metadata_key`. See neuroconv/_temporal_alignment.py.
         # No sample count here, because the header can state it wrongly.
         self.temporal_alignment = _TemporalAlignment()
-        self.temporal_alignment._register(
+        self.temporal_alignment._add_time_bearing_object(
             key=self.metadata_key,
             get_native_times=self._get_default_times,
             default_start_time=lambda: self._get_header_timing()[2],

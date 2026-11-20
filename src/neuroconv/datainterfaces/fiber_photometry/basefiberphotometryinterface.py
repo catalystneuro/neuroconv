@@ -85,10 +85,10 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
         self.metadata_key = metadata_key
         # Alignment by composition, the same component the events interfaces hold. This interface writes one
         # response series and any declared drives, under the same keys their metadata uses. The
-        # native times are registered as a callable, so naming the object reads nothing.
+        # native times are given as a callable, so naming the object reads nothing.
         # See neuroconv/_temporal_alignment.py.
         self.temporal_alignment = _TemporalAlignment()
-        self.temporal_alignment._register(
+        self.temporal_alignment._add_time_bearing_object(
             key=self.metadata_key,
             get_native_times=self._get_original_timestamps,
             get_number_of_samples=lambda: len(self._get_original_timestamps()),
@@ -414,14 +414,14 @@ class BaseFiberPhotometryInterface(BaseTemporalAlignmentInterface):
     def _register_commanded_voltage(self, *, key: str, get_data, get_native_times) -> None:
         """Name one commanded-voltage drive as a time-bearing object. Called by the formats that record drives.
 
-        ``get_data`` and ``get_native_times`` are callables, so registering reads nothing. The key is the one
+        ``get_data`` and ``get_native_times`` are callables, so adding the object reads nothing. The key is the one
         the drive's ``CommandedVoltageSeries`` metadata entry and the table rows'
         ``commanded_voltage_series_metadata_key`` use.
         """
         if key == self.metadata_key:
             raise ValueError(f"Commanded-voltage key '{key}' is also the response-series key.")
         self._commanded_voltage_key_to_get_data[key] = get_data
-        self.temporal_alignment._register(
+        self.temporal_alignment._add_time_bearing_object(
             key=key,
             get_native_times=get_native_times,
             get_number_of_samples=lambda: len(get_native_times()),

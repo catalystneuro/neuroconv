@@ -144,6 +144,12 @@ class CSVEventsInterface(BaseEventsInterface):
             verbose=verbose,
         )
 
+    @classmethod
+    @validate_call
+    def get_available_event_sources(cls, file_path: FilePath) -> list[str]:
+        """One input table, including when it has a header but no occurrences."""
+        return ["table"]
+
     def get_event_type_source_ids(self) -> list[str]:
         """One type per distinct label, in first-appearance order, or the file stem when the file is one type.
 

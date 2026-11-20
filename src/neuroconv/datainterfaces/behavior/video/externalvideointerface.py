@@ -157,12 +157,12 @@ class ExternalVideoInterface(BaseDataInterface):
         self._segment_keys = _compute_segment_keys(file_paths)
         self.temporal_alignment = _TemporalAlignment()
         for file_index, segment_key in enumerate(self._segment_keys):
-            # Callables, so registering the files reads none of them.
+            # Callables, so adding the files reads none of them.
             # Every file starts where its container puts its first frame, usually zero, until it is placed:
             # several files record nothing about how they relate, so none is assumed, and files left unplaced
             # overlap and raise when written.
             # No sample count here: the write checks it, in `_check_timestamps_number_matches_frames`.
-            self.temporal_alignment._register(
+            self.temporal_alignment._add_time_bearing_object(
                 key=segment_key,
                 get_native_times=partial(self._get_default_times, file_index=file_index),
                 default_start_time=partial(self._get_first_frame_time, file_index=file_index),
