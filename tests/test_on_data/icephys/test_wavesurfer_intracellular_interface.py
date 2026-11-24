@@ -462,11 +462,12 @@ class TestWaveSurferStimulusReconstruction:
             selected_outputable=("ws.StimulusMap", 2),
         )
 
-        np.testing.assert_array_equal(self.get_template(file_path), np.zeros(40))
+        # Both sweeps play the same silent command, so the template holds it once.
+        np.testing.assert_array_equal(self.get_template(file_path), np.zeros(20))
         interface = WaveSurferIntracellularInterface(file_path=empty_file_path, reconstruct_stimulus=True)
         nwbfile = interface.create_nwbfile()
         template = nwbfile.stimulus_template["CurrentClampStimulusSeriesTemplateCell00030004Electrode1"]
-        np.testing.assert_array_equal(template.data, np.zeros(40))
+        np.testing.assert_array_equal(template.data, np.zeros(20))
 
     def test_sequence_cycles_its_maps(self, write_wavesurfer_file):
         # Three sweeps through a two-map sequence play maps 1, 2, 1; without repeating, the third plays nothing.
@@ -478,15 +479,22 @@ class TestWaveSurferStimulusReconstruction:
             sweep_timestamps=(0.0, 5.0, 10.0),
             input_channels=[("Electrode 1 Voltage", "mV", 0.01, True, LINEAR_COEFFICIENTS, np.arange(60))],
         )
-        repeating = self.get_template(write_wavesurfer_file(**options))
+        interface = WaveSurferIntracellularInterface(
+            file_path=write_wavesurfer_file(**options), reconstruct_stimulus=True
+        )
+        nwbfile = interface.create_nwbfile()
         not_repeating = self.get_template(write_wavesurfer_file(do_repeat_sequence=False, **options))
 
-        on_samples = [5, 25, 45]
-        np.testing.assert_array_equal(repeating[on_samples], [1.0, 5.0, 1.0])
-        np.testing.assert_array_equal(not_repeating[on_samples], [1.0, 5.0, 0.0])
+        # Repeating, the third sweep plays the first sweep's command, so the template holds two commands.
+        repeating = nwbfile.stimulus_template["CurrentClampStimulusSeriesTemplateCell00010002Electrode1"]
+        np.testing.assert_array_equal(np.asarray(repeating.data)[[5, 25]], [1.0, 5.0])
+        templates = nwbfile.intracellular_recordings["stimuli"]["stimulus_template"]
+        assert [(templates[row].idx_start, templates[row].count) for row in range(3)] == [(0, 20), (20, 20), (0, 20)]
+        np.testing.assert_array_equal(not_repeating[[5, 25, 45]], [1.0, 5.0, 0.0])
 
     def test_stimulation_rate_gives_the_template_its_own_sweeps(self, write_wavesurfer_file):
-        # At 20 Hz a 2 s sweep is 40 template samples against 20 response samples.
+        # At 20 Hz a 2 s sweep is 40 template samples against 20 response samples. The template's times start at
+        # 0.0 and run on at the stimulation rate, with no gap between its commands.
         file_path = write_wavesurfer_file(stimulation_rate=20.0)
         interface = WaveSurferIntracellularInterface(file_path=file_path, reconstruct_stimulus=True)
         nwbfile = interface.create_nwbfile()
@@ -494,7 +502,7 @@ class TestWaveSurferStimulusReconstruction:
         templates = nwbfile.intracellular_recordings["stimuli"]["stimulus_template"]
         assert [(templates[row].idx_start, templates[row].count) for row in range(2)] == [(0, 40), (40, 40)]
         template = nwbfile.stimulus_template["CurrentClampStimulusSeriesTemplateCell00010002Electrode1"]
-        np.testing.assert_allclose(template.get_timestamps()[[0, 39, 40]], [0.0, 1.95, 5.0])
+        np.testing.assert_allclose(template.get_timestamps()[[0, 39, 40]], [0.0, 1.95, 2.0])
 
     def test_expression_stimulus_raises(self, write_wavesurfer_file):
         stimulus = dict(
@@ -601,7 +609,7 @@ class TestWaveSurferCurrentClampSteps(DataInterfaceTestMixin):
     data_interface_cls = WaveSurferIntracellularInterface
     file_path = WAVESURFER_DATA_PATH / "current_clamp" / "current_steps" / "m114_0279-0281.h5"
     interface_kwargs = dict(file_path=file_path, stimulus_channel_name="Current Injection", reconstruct_stimulus=True)
-    expected_temporal_alignment_keys = ("m114_0279-0281_Electrode_1",)
+    expected_temporal_alignment_keys = ("m114_0279-0281_Electrode_1", "m114_0279-0281_Electrode_1_stimulus")
     save_directory = OUTPUT_PATH
 
     def check_extracted_metadata(self, metadata: dict):
@@ -631,7 +639,7 @@ class TestWaveSurferVoltageClampTestPulse(DataInterfaceTestMixin):
     data_interface_cls = WaveSurferIntracellularInterface
     file_path = WAVESURFER_DATA_PATH / "voltage_clamp" / "test_pulse" / "m114_0275-0277.h5"
     interface_kwargs = dict(file_path=file_path, stimulus_channel_name="Voltage Cmd", reconstruct_stimulus=True)
-    expected_temporal_alignment_keys = ("m114_0275-0277_Electrode_1",)
+    expected_temporal_alignment_keys = ("m114_0275-0277_Electrode_1", "m114_0275-0277_Electrode_1_stimulus")
     save_directory = OUTPUT_PATH
 
     def check_extracted_metadata(self, metadata: dict):
@@ -641,16 +649,14 @@ class TestWaveSurferVoltageClampTestPulse(DataInterfaceTestMixin):
         interface = WaveSurferIntracellularInterface(**self.interface_kwargs)
         nwbfile = interface.create_nwbfile()
 
-        # A 0.3 s sweep is 3000 response samples and 6000 template samples; the pulse covers 0.1 s to 0.2 s.
+        # A 0.3 s sweep is 3000 response samples and 6000 template samples; the pulse covers 0.1 s to 0.2 s. Every
+        # sweep plays the same pulse, so the template holds it once.
         templates = nwbfile.intracellular_recordings["stimuli"]["stimulus_template"]
-        assert [(templates[row].idx_start, templates[row].count) for row in range(3)] == [
-            (0, 6000),
-            (6000, 6000),
-            (12000, 6000),
-        ]
+        assert [(templates[row].idx_start, templates[row].count) for row in range(3)] == [(0, 6000)] * 3
         template = np.asarray(
             nwbfile.stimulus_template["VoltageClampStimulusSeriesTemplateM11402750277Electrode1"].data
         )
+        assert len(template) == 6000
         np.testing.assert_array_equal(template[[1999, 2000, 3999, 4000]], [0.0, -5.0, -5.0, 0.0])
 
 

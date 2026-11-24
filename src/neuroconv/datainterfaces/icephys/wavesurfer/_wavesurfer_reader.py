@@ -316,11 +316,12 @@ class WaveSurferFile:
             )
         self.get_command_unit()
 
-    def calculate_command(self) -> tuple[np.ndarray, list[int]]:
-        """The command the stimulus library specified for the electrode, for every sweep, end to end.
+    def calculate_command(self) -> tuple[list[np.ndarray], list[int]]:
+        """The commands the stimulus library specified for the electrode.
 
-        Returns the samples, in the command channel's unit at the stimulation rate, and the sample count of each
-        sweep. Episode ``i`` of the run is sweep ``i`` of the file.
+        Returns each distinct sweep command once, in the command channel's unit at the stimulation rate and in the
+        order first played, and the index of the command each sweep played. Episode ``i`` of the run is sweep ``i``
+        of the file.
         """
         self.check_command_can_be_rebuilt()
         # With finite sweeps on the acquisition trigger, WaveSurfer overrides every map's duration with the sweep's.
@@ -329,7 +330,9 @@ class WaveSurferFile:
         times = sample_period / 2 + sample_period * np.arange(sample_count)
 
         channel_name = self.electrode["CommandChannelName"]
-        sweeps = []
+        commands = []
+        command_indices = {}
+        sweep_command_indices = []
         with h5py.File(self.file_path, "r") as file:
             library = file["header/Stimulation/StimulusLibrary"]
             for episode_index in range(1, len(self.sweep_names) + 1):
@@ -351,8 +354,12 @@ class WaveSurferFile:
                             command = multiplier * _calculate_stimulus_signal(
                                 stimulus=stimulus, times=times, episode_index=episode_index
                             )
-                sweeps.append(command)
-        return np.concatenate(sweeps), [sample_count] * len(sweeps)
+                command_key = command.tobytes()
+                if command_key not in command_indices:
+                    command_indices[command_key] = len(commands)
+                    commands.append(command)
+                sweep_command_indices.append(command_indices[command_key])
+        return commands, sweep_command_indices
 
     def _get_map_index(self, library: h5py.Group, episode_index: int) -> int | None:
         """The library index of the map played in an episode, following ``getCurrentStimulusMapIndex``."""

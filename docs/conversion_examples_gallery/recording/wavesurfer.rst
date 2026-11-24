@@ -42,6 +42,8 @@ Two stimulus series can be written, and either or both can be requested:
 - ``reconstruct_stimulus=True`` rebuilds the command the stimulus library specified for the electrode's command
   channel, sweep by sweep, and writes it as the **stimulus template**. Square pulses, square pulse trains, two square
   pulses, ramps, sines and chirps are supported, in maps or sequences; ``Expression`` and ``File`` stimuli raise.
+  Each distinct command is stored once, with times starting at 0.0, and each sweep's row points at the command it
+  played.
 - ``stimulus_channel_name`` names an analog input that recorded the delivered command, and writes it as the
   **stimulus**. It must be in a unit of the commanded quantity (a current in current clamp, a voltage in voltage
   clamp).

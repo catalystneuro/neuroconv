@@ -5,7 +5,7 @@ from pydantic import FilePath, validate_call
 
 from ._wavesurfer_reader import WaveSurferFile
 from ..baseicephysinterface import BaseIcephysInterface
-from ....tools.icephys import _IcephysSeriesData
+from ....tools.icephys import _IcephysSeriesData, _IcephysStimulusTemplateData
 from ....utils import DeepDict, get_conversion_from_unit, to_camel_case
 
 
@@ -100,12 +100,21 @@ class WaveSurferIntracellularInterface(BaseIcephysInterface):
         self._run_identity = self._file.file_path.stem
         self._recording_start_datetime = self._file.run_start_time
         self._alignment_key = self._series_metadata_key
-        self.temporal_alignment._register(
+        self.temporal_alignment._add_time_bearing_object(
             key=self._alignment_key,
             get_native_times=self._get_native_times,
-            default_start_time=0.0,
+            default_start_time=self._file.sweep_start_times[0],
             get_number_of_samples=lambda: sum(self._file.sweep_sample_counts),
         )
+        # The recorded stimulus has the response's samples, and a key of its own like every paired stimulus.
+        if self._stimulus_channel_index is not None:
+            self._stimulus_alignment_key = f"{self._alignment_key}_stimulus"
+            self.temporal_alignment._add_time_bearing_object(
+                key=self._stimulus_alignment_key,
+                get_native_times=self._get_native_times,
+                default_start_time=self._file.sweep_start_times[0],
+                get_number_of_samples=lambda: sum(self._file.sweep_sample_counts),
+            )
 
     @classmethod
     def get_channel_names(cls, file_path: FilePath, electrode_name: str | None = None) -> list[str]:
@@ -162,6 +171,11 @@ class WaveSurferIntracellularInterface(BaseIcephysInterface):
     def _series_metadata_key(self) -> str:
         return self._metadata_key or self._electrode_metadata_key
 
+    @property
+    def _stimulus_template_metadata_key(self) -> str:
+        # The template is keyed by waveform and electrode, and the electrode is per run, so the key is the series'.
+        return self._series_metadata_key
+
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
         metadata["NWBFile"]["session_start_time"] = self._recording_start_datetime
@@ -214,7 +228,7 @@ class WaveSurferIntracellularInterface(BaseIcephysInterface):
             }
         if self._reconstruct_stimulus:
             metadata["Icephys"]["PatchClampStimulusTemplateSeries"] = {
-                series_metadata_key: {
+                self._stimulus_template_metadata_key: {
                     "name": f"{stimulus_type_name}Template{name_suffix}",
                     "description": (
                         "Command the WaveSurfer stimulus library specified for "
@@ -248,18 +262,16 @@ class WaveSurferIntracellularInterface(BaseIcephysInterface):
         sweep_sample_ranges = self._file.get_sweep_sample_ranges(self._file.sweep_sample_counts)
         return response_data, stimulus_data, sweep_sample_ranges
 
-    def _get_icephys_stimulus_template_data(self) -> _IcephysSeriesData | None:
-        """The command rebuilt from the stimulus library, at the stimulation rate, with its own sweep ranges."""
+    def _get_icephys_stimulus_template_data(self) -> _IcephysStimulusTemplateData | None:
+        """The distinct commands rebuilt from the stimulus library, at the stimulation rate."""
         if not self._reconstruct_stimulus:
             return None
-        command, sample_counts = self._file.calculate_command()
-        return _IcephysSeriesData(
-            data=command.astype("float32"),
-            timestamps=self._file.get_times(
-                sample_counts=sample_counts, sampling_rate=self._file.stimulation_sampling_rate
-            ),
+        waveforms, sweep_waveform_indices = self._file.calculate_command()
+        return _IcephysStimulusTemplateData(
+            waveforms=[waveform.astype("float32") for waveform in waveforms],
+            sweep_waveform_indices=sweep_waveform_indices,
+            rate=self._file.stimulation_sampling_rate,
             conversion=get_conversion_from_unit(self._file.get_command_unit()),
-            sweep_sample_ranges=self._file.get_sweep_sample_ranges(sample_counts),
         )
 
     def _get_stimulus_type(self) -> str | None:

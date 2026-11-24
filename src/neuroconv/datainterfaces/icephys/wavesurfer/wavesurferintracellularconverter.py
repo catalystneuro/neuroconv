@@ -17,7 +17,7 @@ class WaveSurferIntracellularConverter(ConverterPipe):
     Combine one or more :class:`WaveSurferIntracellularInterface` instances into a single NWB icephys table.
 
     Each interface writes one electrode's run as a continuous ``PatchClampSeries`` and one intracellular-recordings
-    row per sweep, tagging each row with the run-level grouping columns (``sequence``, ``stimulus_type``, and the
+    row per sweep, tagging each row with the run-level grouping columns (``protocol_run``, ``stimulus_type``, and the
     optional ``repetition`` / ``condition``). This converter places the runs on one timeline by their
     ``ClockAtRunStart``, the earliest run being the session start, then builds the ``SimultaneousRecordings`` /
     ``SequentialRecordings`` / ``Repetitions`` / ``ExperimentalConditions`` tables with
@@ -42,7 +42,7 @@ class WaveSurferIntracellularConverter(ConverterPipe):
         if interfaces:
             _, starting_times = self._compute_alignment(interfaces)
             for interface, starting_time in starting_times.items():
-                interface.temporal_alignment.move_start_to(starting_time)
+                interface.temporal_alignment.move_earliest_observation_to(starting_time)
 
     def get_metadata(self) -> dict:
         interfaces = list(self.data_interface_objects.values())
