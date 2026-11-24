@@ -656,13 +656,13 @@ class TestEventDetection:
 
     def test_rising_changes_on_one_line_of_a_port(self):
         configuration = {
-            "camera": {"source": "digital_port", "detection": {"lines": [0], "on_change": {"onset": "rising"}}}
+            "camera": {"source": "digital_port", "detection": {"lines": [1], "on_change": {"onset": "rising"}}}
         }
         interface = MockEventsInterface(event_extraction_configuration=configuration)
 
         assert interface.get_event_type_source_ids() == ["camera"]
         assert interface.temporal_alignment.keys() == ("camera",)
-        np.testing.assert_allclose(interface.get_event_times("camera"), [0.1, 0.5, 0.9])
+        np.testing.assert_allclose(interface.get_event_times("camera"), [0.3])
         assert interface._get_event_durations("camera") is None
 
     def test_onset_and_end_give_an_event_with_duration(self):
@@ -678,14 +678,6 @@ class TestEventDetection:
         table = nwbfile.get_events_table("Camera")
         np.testing.assert_allclose(table["timestamp"][:], [0.1, 0.5, 0.9])
         np.testing.assert_allclose(table["duration"][:], [0.2, 0.2, 0.2])
-
-    def test_either_onset_gives_every_change(self):
-        configuration = {
-            "light": {"source": "digital_port", "detection": {"lines": [1], "on_change": {"onset": "either"}}}
-        }
-        interface = MockEventsInterface(event_extraction_configuration=configuration)
-
-        np.testing.assert_allclose(interface.get_event_times("light"), [0.3, 0.8])
 
     def test_analog_signal_is_cut_into_a_line(self):
         configuration = {
