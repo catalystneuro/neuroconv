@@ -170,11 +170,11 @@ class TestWaveSurferIntracellularInterface:
         file_path = write_wavesurfer_file(version="1.0.2")
 
         with pytest.raises(ValueError, match="written by WaveSurfer 1.0.2, and only WaveSurfer 0.945"):
-            WaveSurferIntracellularInterface(file_path=file_path)
+            WaveSurferIntracellularInterface(cell_id="cell1", file_path=file_path)
 
     def test_current_clamp_response(self, write_wavesurfer_file):
         file_path = write_wavesurfer_file()
-        interface = WaveSurferIntracellularInterface(file_path=file_path)
+        interface = WaveSurferIntracellularInterface(cell_id="cell1", file_path=file_path)
         nwbfile = interface.create_nwbfile()
 
         response = nwbfile.acquisition["CurrentClampSeriesCell00010002Electrode1"]
@@ -194,7 +194,7 @@ class TestWaveSurferIntracellularInterface:
             input_channels=[("Electrode 1 Current", "pA", 0.0005, True, LINEAR_COEFFICIENTS, np.arange(40))],
             output_channels=[("Command 1", "mV")],
         )
-        interface = WaveSurferIntracellularInterface(file_path=file_path)
+        interface = WaveSurferIntracellularInterface(cell_id="cell1", file_path=file_path)
         nwbfile = interface.create_nwbfile()
 
         response = nwbfile.acquisition["VoltageClampSeriesCell00010002Electrode1"]
@@ -205,12 +205,12 @@ class TestWaveSurferIntracellularInterface:
 
     def test_izero_response_and_no_stimulus(self, write_wavesurfer_file):
         file_path = write_wavesurfer_file(electrodes=[electrode(mode="i_equals_zero")])
-        interface = WaveSurferIntracellularInterface(file_path=file_path)
+        interface = WaveSurferIntracellularInterface(cell_id="cell1", file_path=file_path)
         nwbfile = interface.create_nwbfile()
 
         assert isinstance(nwbfile.acquisition["IZeroClampSeriesCell00010002Electrode1"], IZeroClampSeries)
         with pytest.raises(ValueError, match="I=0 mode, which has no stimulus"):
-            WaveSurferIntracellularInterface(file_path=file_path, reconstruct_stimulus=True)
+            WaveSurferIntracellularInterface(cell_id="cell1", file_path=file_path, reconstruct_stimulus=True)
 
     def test_inactive_channel_is_not_a_row(self, write_wavesurfer_file):
         # The monitor is the third channel, but the second is inactive, so the monitor is the second analogScans row.
@@ -221,7 +221,7 @@ class TestWaveSurferIntracellularInterface:
                 ("Electrode 1 Voltage", "mV", 0.01, True, LINEAR_COEFFICIENTS, np.arange(200, 240)),
             ]
         )
-        interface = WaveSurferIntracellularInterface(file_path=file_path)
+        interface = WaveSurferIntracellularInterface(cell_id="cell1", file_path=file_path)
         nwbfile = interface.create_nwbfile()
 
         response = nwbfile.acquisition["CurrentClampSeriesCell00010002Electrode1"]
@@ -234,7 +234,7 @@ class TestWaveSurferIntracellularInterface:
         )
 
         with pytest.raises(ValueError, match="quadratic and cubic terms that change values by up to 10.74 counts"):
-            WaveSurferIntracellularInterface(file_path=file_path)
+            WaveSurferIntracellularInterface(cell_id="cell1", file_path=file_path)
 
     def test_monitor_unit_that_does_not_match_the_mode_raises(self, write_wavesurfer_file):
         file_path = write_wavesurfer_file(
@@ -242,11 +242,13 @@ class TestWaveSurferIntracellularInterface:
         )
 
         with pytest.raises(ValueError, match="is in 'pA', which is not a unit of the quantity monitored"):
-            WaveSurferIntracellularInterface(file_path=file_path)
+            WaveSurferIntracellularInterface(cell_id="cell1", file_path=file_path)
 
     def test_recorded_stimulus(self, write_wavesurfer_file):
         file_path = write_wavesurfer_file()
-        interface = WaveSurferIntracellularInterface(file_path=file_path, stimulus_channel_name="Current Injection")
+        interface = WaveSurferIntracellularInterface(
+            cell_id="cell1", file_path=file_path, stimulus_channel_name="Current Injection"
+        )
         nwbfile = interface.create_nwbfile()
 
         stimulus = nwbfile.stimulus["CurrentClampStimulusSeriesCell00010002Electrode1"]
@@ -259,7 +261,9 @@ class TestWaveSurferIntracellularInterface:
         file_path = write_wavesurfer_file()
 
         with pytest.raises(ValueError, match="'Electrode 1 Voltage' is in 'mV', which is not a unit of the quantity"):
-            WaveSurferIntracellularInterface(file_path=file_path, stimulus_channel_name="Electrode 1 Voltage")
+            WaveSurferIntracellularInterface(
+                cell_id="cell1", file_path=file_path, stimulus_channel_name="Electrode 1 Voltage"
+            )
 
     def test_channel_names_and_clamp_mode_before_construction(self, write_wavesurfer_file):
         file_path = write_wavesurfer_file(electrodes=[electrode(mode="i_equals_zero")])
@@ -272,21 +276,22 @@ class TestWaveSurferIntracellularInterface:
 
     def test_stimulus_type_is_the_protocol_file_name(self, write_wavesurfer_file):
         file_path = write_wavesurfer_file(protocol_file=r"R:\Lab\protocols\CC excitability 20 pA steps.cfg")
-        interface = WaveSurferIntracellularInterface(file_path=file_path)
+        interface = WaveSurferIntracellularInterface(cell_id="cell1", file_path=file_path)
         nwbfile = interface.create_nwbfile()
 
         assert list(nwbfile.intracellular_recordings["stimulus_type"][:]) == ["CC excitability 20 pA steps"] * 2
 
     def test_session_start_time_is_the_run_start(self, write_wavesurfer_file):
         file_path = write_wavesurfer_file(clock_at_run_start=(2025, 3, 10, 13, 17, 39.5))
-        interface = WaveSurferIntracellularInterface(file_path=file_path)
+        interface = WaveSurferIntracellularInterface(cell_id="cell1", file_path=file_path)
 
         assert interface.get_metadata()["NWBFile"]["session_start_time"] == datetime(2025, 3, 10, 13, 17, 39, 500000)
 
     def test_device_from_the_electrode_type(self, write_wavesurfer_file):
-        interface = WaveSurferIntracellularInterface(file_path=write_wavesurfer_file())
+        interface = WaveSurferIntracellularInterface(cell_id="cell1", file_path=write_wavesurfer_file())
         manual_interface = WaveSurferIntracellularInterface(
-            file_path=write_wavesurfer_file(file_name="manual.h5", electrodes=[electrode(electrode_type="Manual")])
+            cell_id="cell1",
+            file_path=write_wavesurfer_file(file_name="manual.h5", electrodes=[electrode(electrode_type="Manual")]),
         )
 
         assert interface.get_metadata()["Devices"] == {
@@ -310,8 +315,8 @@ class TestWaveSurferIntracellularInterface:
         )
 
         with pytest.raises(ValueError, match=r"several electrodes, so pass one of \['Electrode 1', 'Electrode 2'\]"):
-            WaveSurferIntracellularInterface(file_path=file_path)
-        interface = WaveSurferIntracellularInterface(file_path=file_path, electrode_name="Electrode 2")
+            WaveSurferIntracellularInterface(cell_id="cell1", file_path=file_path)
+        interface = WaveSurferIntracellularInterface(cell_id="cell1", file_path=file_path, electrode_name="Electrode 2")
         nwbfile = interface.create_nwbfile()
         response = nwbfile.acquisition["CurrentClampSeriesCell00010002Electrode2"]
         np.testing.assert_array_equal(response.data, np.arange(300, 340, dtype="int16"))
@@ -322,14 +327,14 @@ class TestWaveSurferStimulusReconstruction:
 
     @staticmethod
     def get_template(file_path) -> np.ndarray:
-        interface = WaveSurferIntracellularInterface(file_path=file_path, reconstruct_stimulus=True)
+        interface = WaveSurferIntracellularInterface(cell_id="cell1", file_path=file_path, reconstruct_stimulus=True)
         nwbfile = interface.create_nwbfile()
         return np.asarray(nwbfile.stimulus_template["CurrentClampStimulusSeriesTemplateCell00010002Electrode1"].data)
 
     def test_square_pulse_amplitude_follows_the_episode(self, write_wavesurfer_file):
         # Delay 0.5 s and duration 1 s cover the samples at 0.55 ... 1.45 s, indices 5 to 14; amplitude 10*i.
         file_path = write_wavesurfer_file()
-        interface = WaveSurferIntracellularInterface(file_path=file_path, reconstruct_stimulus=True)
+        interface = WaveSurferIntracellularInterface(cell_id="cell1", file_path=file_path, reconstruct_stimulus=True)
         nwbfile = interface.create_nwbfile()
 
         template = nwbfile.stimulus_template["CurrentClampStimulusSeriesTemplateCell00010002Electrode1"]
@@ -464,7 +469,9 @@ class TestWaveSurferStimulusReconstruction:
 
         # Both sweeps play the same silent command, so the template holds it once.
         np.testing.assert_array_equal(self.get_template(file_path), np.zeros(20))
-        interface = WaveSurferIntracellularInterface(file_path=empty_file_path, reconstruct_stimulus=True)
+        interface = WaveSurferIntracellularInterface(
+            cell_id="cell1", file_path=empty_file_path, reconstruct_stimulus=True
+        )
         nwbfile = interface.create_nwbfile()
         template = nwbfile.stimulus_template["CurrentClampStimulusSeriesTemplateCell00030004Electrode1"]
         np.testing.assert_array_equal(template.data, np.zeros(20))
@@ -480,7 +487,7 @@ class TestWaveSurferStimulusReconstruction:
             input_channels=[("Electrode 1 Voltage", "mV", 0.01, True, LINEAR_COEFFICIENTS, np.arange(60))],
         )
         interface = WaveSurferIntracellularInterface(
-            file_path=write_wavesurfer_file(**options), reconstruct_stimulus=True
+            cell_id="cell1", file_path=write_wavesurfer_file(**options), reconstruct_stimulus=True
         )
         nwbfile = interface.create_nwbfile()
         not_repeating = self.get_template(write_wavesurfer_file(do_repeat_sequence=False, **options))
@@ -496,7 +503,7 @@ class TestWaveSurferStimulusReconstruction:
         # At 20 Hz a 2 s sweep is 40 template samples against 20 response samples. The template's times start at
         # 0.0 and run on at the stimulation rate, with no gap between its commands.
         file_path = write_wavesurfer_file(stimulation_rate=20.0)
-        interface = WaveSurferIntracellularInterface(file_path=file_path, reconstruct_stimulus=True)
+        interface = WaveSurferIntracellularInterface(cell_id="cell1", file_path=file_path, reconstruct_stimulus=True)
         nwbfile = interface.create_nwbfile()
 
         templates = nwbfile.intracellular_recordings["stimuli"]["stimulus_template"]
@@ -515,7 +522,7 @@ class TestWaveSurferStimulusReconstruction:
             Delegate=dict(Expression="sin(t)"),
         )
         file_path = write_wavesurfer_file(stimuli=[stimulus])
-        interface = WaveSurferIntracellularInterface(file_path=file_path, reconstruct_stimulus=True)
+        interface = WaveSurferIntracellularInterface(cell_id="cell1", file_path=file_path, reconstruct_stimulus=True)
 
         with pytest.raises(NotImplementedError, match="WaveSurfer stimulus type 'Expression' is not supported"):
             interface.create_nwbfile()
@@ -524,13 +531,13 @@ class TestWaveSurferStimulusReconstruction:
         file_path = write_wavesurfer_file(stimulation_enabled=False)
 
         with pytest.raises(ValueError, match="Stimulation was disabled for this run"):
-            WaveSurferIntracellularInterface(file_path=file_path, reconstruct_stimulus=True)
+            WaveSurferIntracellularInterface(cell_id="cell1", file_path=file_path, reconstruct_stimulus=True)
 
     def test_separate_stimulation_trigger_raises(self, write_wavesurfer_file):
         file_path = write_wavesurfer_file(stimulation_uses_acquisition_trigger=False)
 
         with pytest.raises(ValueError, match="whose stimulation uses the acquisition trigger"):
-            WaveSurferIntracellularInterface(file_path=file_path, reconstruct_stimulus=True)
+            WaveSurferIntracellularInterface(cell_id="cell1", file_path=file_path, reconstruct_stimulus=True)
 
 
 class TestWaveSurferIntracellularConverter:
@@ -545,8 +552,8 @@ class TestWaveSurferIntracellularConverter:
         )
         converter = WaveSurferIntracellularConverter(
             data_interfaces=[
-                WaveSurferIntracellularInterface(file_path=first_run),
-                WaveSurferIntracellularInterface(file_path=second_run),
+                WaveSurferIntracellularInterface(cell_id="cell1", file_path=first_run),
+                WaveSurferIntracellularInterface(cell_id="cell1", file_path=second_run),
             ]
         )
         metadata = converter.get_metadata()
@@ -558,6 +565,9 @@ class TestWaveSurferIntracellularConverter:
         sequential = nwbfile.icephys_sequential_recordings
         assert list(sequential["stimulus_type"][:]) == ["FI steps", "Spontaneous"]
         assert len(nwbfile.intervals["sweeps"]) == 4
+        # Both runs were made on one cell, so they share its electrode.
+        assert [electrode.cell_id for electrode in nwbfile.icephys_electrodes.values()] == ["cell1"]
+        assert second_response.electrode is nwbfile.icephys_electrodes["IntracellularElectrodeCell1"]
 
     def test_repetitions_and_conditions(self, write_wavesurfer_file):
         run_specifications = [
@@ -567,6 +577,7 @@ class TestWaveSurferIntracellularConverter:
         ]
         interfaces = [
             WaveSurferIntracellularInterface(
+                cell_id="cell1",
                 file_path=write_wavesurfer_file(file_name, clock_at_run_start=(2025, 3, 10, 13, 17, seconds)),
                 repetition=repetition,
                 condition=condition,
@@ -592,8 +603,8 @@ class TestWaveSurferIntracellularConverter:
         )
         converter = WaveSurferIntracellularConverter(
             data_interfaces=[
-                WaveSurferIntracellularInterface(file_path=file_path, electrode_name="Electrode 1"),
-                WaveSurferIntracellularInterface(file_path=file_path, electrode_name="Electrode 2"),
+                WaveSurferIntracellularInterface(file_path=file_path, cell_id="cell1", electrode_name="Electrode 1"),
+                WaveSurferIntracellularInterface(file_path=file_path, cell_id="cell2", electrode_name="Electrode 2"),
             ]
         )
         nwbfile = converter.create_nwbfile()
@@ -601,6 +612,7 @@ class TestWaveSurferIntracellularConverter:
         assert len(nwbfile.intracellular_recordings) == 4
         assert len(nwbfile.icephys_simultaneous_recordings) == 2
         assert len(nwbfile.icephys_sequential_recordings) == 1
+        assert sorted(electrode.cell_id for electrode in nwbfile.icephys_electrodes.values()) == ["cell1", "cell2"]
 
 
 class TestWaveSurferCurrentClampSteps(DataInterfaceTestMixin):
@@ -608,7 +620,9 @@ class TestWaveSurferCurrentClampSteps(DataInterfaceTestMixin):
 
     data_interface_cls = WaveSurferIntracellularInterface
     file_path = WAVESURFER_DATA_PATH / "current_clamp" / "current_steps" / "m114_0279-0281.h5"
-    interface_kwargs = dict(file_path=file_path, stimulus_channel_name="Current Injection", reconstruct_stimulus=True)
+    interface_kwargs = dict(
+        file_path=file_path, cell_id="cell1", stimulus_channel_name="Current Injection", reconstruct_stimulus=True
+    )
     expected_temporal_alignment_keys = ("m114_0279-0281_Electrode_1", "m114_0279-0281_Electrode_1_stimulus")
     save_directory = OUTPUT_PATH
 
@@ -638,7 +652,9 @@ class TestWaveSurferVoltageClampTestPulse(DataInterfaceTestMixin):
 
     data_interface_cls = WaveSurferIntracellularInterface
     file_path = WAVESURFER_DATA_PATH / "voltage_clamp" / "test_pulse" / "m114_0275-0277.h5"
-    interface_kwargs = dict(file_path=file_path, stimulus_channel_name="Voltage Cmd", reconstruct_stimulus=True)
+    interface_kwargs = dict(
+        file_path=file_path, cell_id="cell1", stimulus_channel_name="Voltage Cmd", reconstruct_stimulus=True
+    )
     expected_temporal_alignment_keys = ("m114_0275-0277_Electrode_1", "m114_0275-0277_Electrode_1_stimulus")
     save_directory = OUTPUT_PATH
 
@@ -670,13 +686,13 @@ class TestWaveSurferRealFileConfigurations:
         )
 
         with pytest.raises(ValueError, match="'Voltage Cmd' is in 'mV', which is not a unit of the quantity commanded"):
-            WaveSurferIntracellularInterface(file_path=file_path, stimulus_channel_name="Voltage Cmd")
+            WaveSurferIntracellularInterface(cell_id="cell1", file_path=file_path, stimulus_channel_name="Voltage Cmd")
 
     def test_only_the_first_stimulus_bound_to_a_channel_plays(self):
         # The map binds a 30 mV / -50 mV pulse pair (from 0.5 s, 1.5 s each) and then a -0.005 mV pulse at 0.1 s to
         # the same channel. WaveSurfer plays only the first binding, so the samples at 0.1 s stay 0.
         file_path = WAVESURFER_DATA_PATH / "voltage_clamp" / "two_stimuli_bound_to_one_channel" / "m114_0435-0436.h5"
-        interface = WaveSurferIntracellularInterface(file_path=file_path, reconstruct_stimulus=True)
+        interface = WaveSurferIntracellularInterface(cell_id="cell1", file_path=file_path, reconstruct_stimulus=True)
         nwbfile = interface.create_nwbfile()
 
         template = np.asarray(

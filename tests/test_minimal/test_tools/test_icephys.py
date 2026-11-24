@@ -82,7 +82,7 @@ class TestMockIcephysInterfaceWithAStimulusTemplate(DataInterfaceTestMixin):
     """A template's times are relative to its own start, so the shared alignment tests leave it where it is."""
 
     data_interface_cls = MockIcephysInterface
-    interface_kwargs = dict(num_sweeps=2, sampling_frequency=10.0, stimulus_template_duration=1.0)
+    interface_kwargs = dict(cell_id="mock", num_sweeps=2, sampling_frequency=10.0, stimulus_template_duration=1.0)
     expected_temporal_alignment_keys = ("mock",)
 
     def check_read_nwb(self, nwbfile_path: str):
@@ -449,7 +449,7 @@ class TestStimulusTemplate:
 
     def test_rows_address_the_stimulus_and_the_template(self):
         interface = MockIcephysInterface(
-            num_sweeps=2, sampling_frequency=10.0, stimulus_duration=1.0, stimulus_template_duration=1.0
+            cell_id="mock", num_sweeps=2, sampling_frequency=10.0, stimulus_duration=1.0, stimulus_template_duration=1.0
         )
         nwbfile = interface.create_nwbfile()
 
@@ -466,7 +466,9 @@ class TestStimulusTemplate:
         np.testing.assert_array_equal(template.data, np.full(10, 2.0, dtype="float32"))
 
     def test_template_without_a_recorded_stimulus(self):
-        interface = MockIcephysInterface(num_sweeps=2, sampling_frequency=10.0, stimulus_template_duration=1.0)
+        interface = MockIcephysInterface(
+            cell_id="mock", num_sweeps=2, sampling_frequency=10.0, stimulus_template_duration=1.0
+        )
         nwbfile = interface.create_nwbfile()
 
         stimuli = nwbfile.intracellular_recordings["stimuli"]
@@ -484,9 +486,15 @@ class TestStimulusTemplate:
         # the first and third runs' rows hold empty references.
         interfaces = [
             MockIcephysInterface(
-                mode="izero", num_sweeps=2, sampling_frequency=10.0, protocol_run="izero", metadata_key="izero"
+                cell_id="cell1",
+                mode="izero",
+                num_sweeps=2,
+                sampling_frequency=10.0,
+                protocol_run="izero",
+                metadata_key="izero",
             ),
             MockIcephysInterface(
+                cell_id="cell1",
                 num_sweeps=2,
                 sampling_frequency=10.0,
                 starting_time=10.0,
@@ -495,6 +503,7 @@ class TestStimulusTemplate:
                 stimulus_template_duration=1.0,
             ),
             MockIcephysInterface(
+                cell_id="cell1",
                 num_sweeps=2,
                 sampling_frequency=10.0,
                 starting_time=20.0,
@@ -526,6 +535,7 @@ class TestStimulusTemplate:
     def test_template_stays_relative_when_the_response_is_shifted(self):
         # Two sweeps 10 s apart that stop recording after 10 samples, each against a template of 12 samples.
         interface = MockIcephysInterface(
+            cell_id="mock",
             num_sweeps=2,
             sweep_duration=1.0,
             sampling_frequency=10.0,
@@ -544,6 +554,7 @@ class TestStimulusTemplate:
     def test_interfaces_naming_one_template_on_one_electrode_share_it(self):
         interfaces = [
             MockIcephysInterface(
+                cell_id="cell1",
                 num_sweeps=2,
                 sampling_frequency=10.0,
                 starting_time=starting_time,
@@ -554,9 +565,7 @@ class TestStimulusTemplate:
             )
             for starting_time, metadata_key in [(0.0, "first"), (10.0, "second")]
         ]
-        metadata = ConverterPipe(data_interfaces=interfaces).get_metadata()
-        metadata["Icephys"]["PatchClampSeries"]["second"]["electrode_metadata_key"] = "first"
-        nwbfile = create_finalized_nwbfile(interfaces, metadata=metadata)
+        nwbfile = create_finalized_nwbfile(interfaces)
 
         assert list(nwbfile.stimulus_template) == ["CurrentClampStimulusSeriesTemplateSteps"]
         template = nwbfile.stimulus_template["CurrentClampStimulusSeriesTemplateSteps"]
@@ -567,6 +576,7 @@ class TestStimulusTemplate:
     def test_interfaces_naming_one_template_with_different_waveforms_raise(self):
         interfaces = [
             MockIcephysInterface(
+                cell_id="cell1",
                 num_sweeps=2,
                 sampling_frequency=10.0,
                 protocol_run=metadata_key,
@@ -576,19 +586,18 @@ class TestStimulusTemplate:
             )
             for stimulus_template_duration, metadata_key in [(1.0, "first"), (1.2, "second")]
         ]
-        metadata = ConverterPipe(data_interfaces=interfaces).get_metadata()
-        metadata["Icephys"]["PatchClampSeries"]["second"]["electrode_metadata_key"] = "first"
 
         expected_message = (
             "The stimulus template 'CurrentClampStimulusSeriesTemplateSteps' is already in the NWB file with a "
             "different waveform or electrode."
         )
         with pytest.raises(ValueError, match=re.escape(expected_message)):
-            create_finalized_nwbfile(interfaces, metadata=metadata)
+            create_finalized_nwbfile(interfaces)
 
     def test_interfaces_naming_one_template_on_different_electrodes_raise(self):
         interfaces = [
             MockIcephysInterface(
+                cell_id=cell_id,
                 num_sweeps=2,
                 sampling_frequency=10.0,
                 protocol_run=metadata_key,
@@ -596,7 +605,7 @@ class TestStimulusTemplate:
                 stimulus_template_duration=1.0,
                 stimulus_template_metadata_key="steps",
             )
-            for metadata_key in ["first", "second"]
+            for cell_id, metadata_key in [("cell1", "first"), ("cell2", "second")]
         ]
 
         expected_message = (
@@ -607,7 +616,9 @@ class TestStimulusTemplate:
             create_finalized_nwbfile(interfaces)
 
     def test_missing_template_entry_raises(self):
-        interface = MockIcephysInterface(num_sweeps=1, metadata_key="cell1", stimulus_template_duration=1.0)
+        interface = MockIcephysInterface(
+            cell_id="cell1", num_sweeps=1, metadata_key="cell1", stimulus_template_duration=1.0
+        )
         metadata = interface.get_metadata()
         del metadata["Icephys"]["PatchClampStimulusTemplateSeries"]["cell1"]
 

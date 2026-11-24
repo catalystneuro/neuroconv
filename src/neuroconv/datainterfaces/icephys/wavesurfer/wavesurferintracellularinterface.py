@@ -14,6 +14,7 @@ class WaveSurferIntracellularInterface(BaseIcephysInterface):
     Interface for intracellular electrophysiology recorded with WaveSurfer 0.945 (.h5).
 
     One interface instance corresponds to one electrode in one WaveSurfer file, which holds one run of one protocol.
+    The file does not record which cell the electrode was in, so ``cell_id`` names it.
     The clamp mode and the response channel come from the electrode's settings in the file header. The response is
     written as a single continuous ``PatchClampSeries`` of raw int16 counts, with each sweep recorded through the
     NWB ``IntracellularRecordings`` table by ``(start_index, count)`` ranges. The conversion uses the constant and
@@ -31,6 +32,7 @@ class WaveSurferIntracellularInterface(BaseIcephysInterface):
     def __init__(
         self,
         file_path: FilePath,
+        cell_id: str,
         *,
         electrode_name: str | None = None,
         stimulus_channel_name: str | None = None,
@@ -45,6 +47,9 @@ class WaveSurferIntracellularInterface(BaseIcephysInterface):
         ----------
         file_path : FilePath
             Path to the WaveSurfer .h5 file.
+        cell_id : str
+            The cell the electrode recorded in this run, which keys the ``IntracellularElectrode``. Interfaces given
+            the same cell share one electrode.
         electrode_name : str, optional
             The WaveSurfer electrode to convert, by its name in the Electrodes window (for example
             ``"Electrode 1"``). Required when the file has more than one electrode.
@@ -66,10 +71,11 @@ class WaveSurferIntracellularInterface(BaseIcephysInterface):
             stem plus the electrode name.
         verbose : bool, default: False
         """
-        super().__init__(verbose=verbose)
+        super().__init__(cell_id=cell_id, verbose=verbose)
         self._file_path = file_path
         self.source_data = dict(
             file_path=file_path,
+            cell_id=cell_id,
             electrode_name=electrode_name,
             stimulus_channel_name=stimulus_channel_name,
             reconstruct_stimulus=reconstruct_stimulus,
@@ -164,16 +170,16 @@ class WaveSurferIntracellularInterface(BaseIcephysInterface):
         return electrode_type.lower().replace(" ", "_")
 
     @property
-    def _electrode_metadata_key(self) -> str:
+    def _run_electrode_label(self) -> str:
         return f"{self._run_identity}_{self._electrode_name.replace(' ', '_')}"
 
     @property
     def _series_metadata_key(self) -> str:
-        return self._metadata_key or self._electrode_metadata_key
+        return self._metadata_key or self._run_electrode_label
 
     @property
     def _stimulus_template_metadata_key(self) -> str:
-        # The template is keyed by waveform and electrode, and the electrode is per run, so the key is the series'.
+        # Keyed per run, like the response.
         return self._series_metadata_key
 
     def get_metadata(self) -> DeepDict:
@@ -184,11 +190,12 @@ class WaveSurferIntracellularInterface(BaseIcephysInterface):
         device_metadata_key = self._device_metadata_key
         electrode_metadata_key = self._electrode_metadata_key
         series_metadata_key = self._series_metadata_key
-        name_suffix = to_camel_case(electrode_metadata_key)
+        name_suffix = to_camel_case(self._run_electrode_label)
 
         electrode_metadata = {
-            "name": f"IntracellularElectrode{name_suffix}",
+            "name": f"IntracellularElectrode{to_camel_case(electrode_metadata_key)}",
             "description": f"Patch-clamp electrode '{self._electrode_name}' in WaveSurfer.",
+            "cell_id": self._cell_id,
         }
         if device_metadata_key is not None:
             electrode_type = self._file.electrode["Type"]

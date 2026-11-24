@@ -4,15 +4,16 @@ WaveSurfer data conversion
 Convert intracellular electrophysiology recorded with `WaveSurfer <https://wavesurfer.janelia.org>`_ to NWB using
 :py:class:`~neuroconv.datainterfaces.icephys.wavesurfer.wavesurferintracellularinterface.WaveSurferIntracellularInterface`.
 WaveSurfer writes one ``.h5`` file per run of a protocol, holding one or more sweeps. One interface instance
-corresponds to one electrode in one file. Only files written by WaveSurfer 0.945 are supported; other versions raise
-an error.
+corresponds to one electrode in one file. WaveSurfer does not record which cell an electrode was in, so name it with
+``cell_id``: interfaces given the same cell share one ``IntracellularElectrode``. Only files written by WaveSurfer
+0.945 are supported; other versions raise an error.
 
 .. code-block:: python
 
     >>> from neuroconv.datainterfaces import WaveSurferIntracellularInterface
     >>>
     >>> file_path = f"{ECEPHY_DATA_PATH}/wavesurfer/version_0_945/current_clamp/current_steps/m114_0279-0281.h5"
-    >>> interface = WaveSurferIntracellularInterface(file_path=file_path, reconstruct_stimulus=True)
+    >>> interface = WaveSurferIntracellularInterface(file_path=file_path, cell_id="cell1", reconstruct_stimulus=True)
     >>>
     >>> # Extract what metadata we can from the source files (session_start_time is the run's start, in local time)
     >>> metadata = interface.get_metadata()
@@ -71,9 +72,8 @@ the ``Repetitions`` and ``ExperimentalConditions`` tables from the ``repetition`
 interfaces, when they are given. It also writes a ``sweeps`` table of NWB ``TimeIntervals`` with each sweep's start
 and stop time.
 
-WaveSurfer has no notion of a cell: every run of a day uses the same electrode settings. By default each run gets its
-own ``IntracellularElectrode``. To record that several runs were made on one cell, point their series at one
-electrode entry in the metadata:
+Here a test pulse and a series of current steps were run on the same cell, so both interfaces get the same
+``cell_id`` and share its electrode:
 
 .. code-block:: python
 
@@ -83,10 +83,12 @@ electrode entry in the metadata:
     >>> data_path = f"{ECEPHY_DATA_PATH}/wavesurfer/version_0_945"
     >>> test_pulse = WaveSurferIntracellularInterface(
     ...     file_path=f"{data_path}/voltage_clamp/test_pulse/m114_0275-0277.h5",
+    ...     cell_id="cell1",
     ...     reconstruct_stimulus=True,
     ... )
     >>> steps = WaveSurferIntracellularInterface(
     ...     file_path=f"{data_path}/current_clamp/current_steps/m114_0279-0281.h5",
+    ...     cell_id="cell1",
     ...     stimulus_channel_name="Current Injection",
     ...     reconstruct_stimulus=True,
     ... )
@@ -97,13 +99,6 @@ electrode entry in the metadata:
     ...     tzinfo=ZoneInfo("US/Central")
     ... )
     >>> metadata["Subject"] = dict(subject_id="subject1", species="Mus musculus", sex="M", age="P30D")
-    >>>
-    >>> # One electrode for the cell, shared by both runs
-    >>> metadata["Icephys"]["IntracellularElectrodes"] = {
-    ...     "cell1": dict(name="Cell1", description="Whole-cell patch electrode.", device_metadata_key="axon_multiclamp")
-    ... }
-    >>> for series_metadata in metadata["Icephys"]["PatchClampSeries"].values():
-    ...     series_metadata["electrode_metadata_key"] = "cell1"
     >>>
     >>> nwbfile_path = f"{path_to_save_nwbfile}"  # This should be something like: "./saved_file.nwb"
     >>> converter.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, overwrite=True)
