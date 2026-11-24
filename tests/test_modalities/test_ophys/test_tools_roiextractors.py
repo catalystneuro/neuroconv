@@ -363,6 +363,15 @@ class TestAddPhotonSeries(TestCase):
         assert self.imaging_plane_name in imaging_planes_in_file
         assert len(imaging_planes_in_file) == 1
 
+    def test_dimension_written_column_first(self):
+        """NWB lists `dimension` columns first, the order of the data it describes."""
+        _add_photon_series_to_nwbfile_old_list_format(
+            imaging=self.imaging_extractor, nwbfile=self.nwbfile, metadata=self.two_photon_series_metadata
+        )
+
+        two_photon_series = self.nwbfile.acquisition[self.two_photon_series_name]
+        assert list(two_photon_series.dimension) == [self.num_columns, self.num_rows]
+
     def test_invalid_iterator_type_raises_error(self):
         """Test error is raised when adding two photon series with invalid iterator type."""
         with self.assertRaisesWith(
@@ -1505,6 +1514,26 @@ class TestAddImaging:
         # The planes axis stays last, which is the layout the v2 iterator advertises.
         assert series.data.shape == (num_samples, num_columns, num_rows, num_planes)
 
+    def test_dimension_written_column_first(self):
+        """NWB lists `dimension` columns first, the order of the data it describes."""
+        nwbfile = mock_NWBFile()
+        imaging = generate_dummy_imaging_extractor(num_samples=10, num_rows=5, num_columns=4)
+
+        add_imaging_to_nwbfile(imaging=imaging, nwbfile=nwbfile)
+
+        series = nwbfile.acquisition["MicroscopySeries"]
+        assert list(series.dimension) == [4, 5]
+
+    def test_dimension_of_volumetric_data_written_column_first(self):
+        """The planes stay last, as in the data."""
+        nwbfile = mock_NWBFile()
+        imaging = generate_dummy_imaging_extractor(num_samples=10, num_rows=5, num_columns=4, num_planes=3)
+
+        add_imaging_to_nwbfile(imaging=imaging, nwbfile=nwbfile)
+
+        series = nwbfile.acquisition["MicroscopySeries"]
+        assert list(series.dimension) == [4, 5, 3]
+
     def test_metadata_not_mutated(self):
         """Dict-based metadata is not mutated by add_imaging_to_nwbfile."""
         nwbfile = mock_NWBFile()
@@ -2449,19 +2478,21 @@ class TestAddSegmentation:
         assert list(fluorescence["RoiResponseSeriesLine1"].rois.data) == [0]
         assert list(fluorescence["RoiResponseSeriesLine2"].rois.data) == [1, 2]
 
-    def test_roi_in_a_shared_table_with_an_equal_mask_reuses_its_row(self):
-        """Segmentations of the same ROIs, such as two channels, write their traces against the rows the
-        first one wrote, without adding rows."""
+    def test_roi_of_segmentations_with_the_same_name_reuses_its_row(self):
+        """Segmentations of the same ROIs, such as two channels, give the same segmentation name and write
+        their traces against the rows the first one wrote, without adding rows."""
         nwbfile = mock_NWBFile()
         channel_1 = generate_dummy_segmentation_extractor(num_rois=3, has_summary_images=False, seed=0)
         channel_2 = generate_dummy_segmentation_extractor(num_rois=3, has_summary_images=False, seed=0)
+        segmentation_name = "suite2p"
+        roi_names = [str(roi_id) for roi_id in channel_1.get_roi_ids()]
 
         metadata = {
             "Ophys": {
                 "SegmentationTables": {"cells": {"name": "PlaneSegmentationCells"}},
                 "PlaneSegmentations": {
-                    "channel_1": {"segmentation_table_metadata_key": "cells"},
-                    "channel_2": {"segmentation_table_metadata_key": "cells"},
+                    "channel_1": {"segmentation_table_metadata_key": "cells", "segmentation_name": segmentation_name},
+                    "channel_2": {"segmentation_table_metadata_key": "cells", "segmentation_name": segmentation_name},
                 },
                 "RoiResponses": {
                     "channel_1": {"raw": {"name": "RoiResponseSeriesChannel1"}},
@@ -2477,17 +2508,112 @@ class TestAddSegmentation:
             segmentation_extractor=channel_2, nwbfile=nwbfile, metadata=metadata, metadata_key="channel_2"
         )
 
-        plane_segmentation = nwbfile.processing["ophys"]["ImageSegmentation"]["PlaneSegmentationCells"]
-        assert len(plane_segmentation) == 3
-        fluorescence = nwbfile.processing["ophys"]["Fluorescence"]
-        assert list(fluorescence["RoiResponseSeriesChannel2"].rois.data) == [0, 1, 2]
+        expected_roi_names = roi_names
+        expected_segmentation_names = [segmentation_name] * len(roi_names)
+        expected_channel_2_rois = [0, 1, 2]
 
-    def test_roi_in_a_shared_table_with_another_mask_raises(self):
-        """An ROI name already in a shared table with a different mask is another ROI under the same name,
-        which reusing the row would silently link to the wrong mask."""
+        plane_segmentation = nwbfile.processing["ophys"]["ImageSegmentation"]["PlaneSegmentationCells"]
+        assert list(plane_segmentation["roi_name"].data) == expected_roi_names
+        assert list(plane_segmentation["segmentation_name"].data) == expected_segmentation_names
+        fluorescence = nwbfile.processing["ophys"]["Fluorescence"]
+        assert list(fluorescence["RoiResponseSeriesChannel2"].rois.data) == expected_channel_2_rois
+
+    def test_segmentations_with_different_names_keep_their_own_rows(self):
+        """Two segmentations with the same ROI names but different segmentation names hold different ROIs,
+        so each gets rows of its own and its traces point at them."""
         nwbfile = mock_NWBFile()
         first = generate_dummy_segmentation_extractor(num_rois=2, has_summary_images=False, seed=0)
         second = generate_dummy_segmentation_extractor(num_rois=2, has_summary_images=False, seed=1)
+        first_segmentation_name = "session_1"
+        second_segmentation_name = "session_2"
+        roi_names = [str(roi_id) for roi_id in first.get_roi_ids()]
+
+        metadata = {
+            "Ophys": {
+                "SegmentationTables": {"cells": {"name": "PlaneSegmentationCells"}},
+                "PlaneSegmentations": {
+                    "first": {"segmentation_table_metadata_key": "cells", "segmentation_name": first_segmentation_name},
+                    "second": {
+                        "segmentation_table_metadata_key": "cells",
+                        "segmentation_name": second_segmentation_name,
+                    },
+                },
+                "RoiResponses": {
+                    "first": {"raw": {"name": "RoiResponseSeriesFirst"}},
+                    "second": {"raw": {"name": "RoiResponseSeriesSecond"}},
+                },
+            },
+        }
+
+        add_segmentation_to_nwbfile(
+            segmentation_extractor=first, nwbfile=nwbfile, metadata=metadata, metadata_key="first"
+        )
+        add_segmentation_to_nwbfile(
+            segmentation_extractor=second, nwbfile=nwbfile, metadata=metadata, metadata_key="second"
+        )
+
+        expected_roi_names = roi_names + roi_names
+        expected_segmentation_names = [first_segmentation_name] * 2 + [second_segmentation_name] * 2
+        expected_first_rois = [0, 1]
+        expected_second_rois = [2, 3]
+
+        plane_segmentation = nwbfile.processing["ophys"]["ImageSegmentation"]["PlaneSegmentationCells"]
+        assert list(plane_segmentation["roi_name"].data) == expected_roi_names
+        assert list(plane_segmentation["segmentation_name"].data) == expected_segmentation_names
+        assert_array_equal(plane_segmentation["image_mask"][2], second.get_roi_image_masks().T[0])
+        fluorescence = nwbfile.processing["ophys"]["Fluorescence"]
+        assert list(fluorescence["RoiResponseSeriesFirst"].rois.data) == expected_first_rois
+        assert list(fluorescence["RoiResponseSeriesSecond"].rois.data) == expected_second_rois
+
+    def test_naming_a_segmentation_after_an_unnamed_one_fills_its_rows_as_unnamed(self):
+        """The `segmentation_name` column is written once a segmentation is named, and the rows an unnamed
+        segmentation wrote before it read as unnamed."""
+        nwbfile = mock_NWBFile()
+        first = generate_dummy_segmentation_extractor(num_rois=2, has_summary_images=False, seed=0)
+        second = generate_dummy_segmentation_extractor(num_rois=2, has_summary_images=False, seed=1)
+        segmentation_name = "curated"
+        roi_names = [str(roi_id) for roi_id in first.get_roi_ids()]
+
+        metadata = {
+            "Ophys": {
+                "SegmentationTables": {"cells": {"name": "PlaneSegmentationCells"}},
+                "PlaneSegmentations": {
+                    "first": {"segmentation_table_metadata_key": "cells"},
+                    "second": {"segmentation_table_metadata_key": "cells", "segmentation_name": segmentation_name},
+                },
+                "RoiResponses": {
+                    "first": {"raw": {"name": "RoiResponseSeriesFirst"}},
+                    "second": {"raw": {"name": "RoiResponseSeriesSecond"}},
+                },
+            },
+        }
+
+        add_segmentation_to_nwbfile(
+            segmentation_extractor=first, nwbfile=nwbfile, metadata=metadata, metadata_key="first"
+        )
+        plane_segmentation = nwbfile.processing["ophys"]["ImageSegmentation"]["PlaneSegmentationCells"]
+        assert "segmentation_name" not in plane_segmentation.colnames
+
+        add_segmentation_to_nwbfile(
+            segmentation_extractor=second, nwbfile=nwbfile, metadata=metadata, metadata_key="second"
+        )
+
+        expected_roi_names = roi_names + roi_names
+        expected_segmentation_names = [""] * len(roi_names) + [segmentation_name] * len(roi_names)
+        expected_second_rois = [2, 3]
+
+        assert list(plane_segmentation["roi_name"].data) == expected_roi_names
+        assert list(plane_segmentation["segmentation_name"].data) == expected_segmentation_names
+        fluorescence = nwbfile.processing["ophys"]["Fluorescence"]
+        assert list(fluorescence["RoiResponseSeriesSecond"].rois.data) == expected_second_rois
+
+    def test_unnamed_segmentation_matching_unnamed_rois_raises(self):
+        """Without a name, a second channel of the same ROIs and different ROIs with the same names look the
+        same, so the write raises before the table changes."""
+        nwbfile = mock_NWBFile()
+        first = generate_dummy_segmentation_extractor(num_rois=2, has_summary_images=False, seed=0)
+        second = generate_dummy_segmentation_extractor(num_rois=2, has_summary_images=False, seed=1)
+        roi_names = [str(roi_id) for roi_id in first.get_roi_ids()]
 
         metadata = {
             "Ophys": {
@@ -2504,29 +2630,38 @@ class TestAddSegmentation:
         )
 
         expected_message = (
-            "The ROI 'roi_0' of metadata['Ophys']['PlaneSegmentations']['second'] has a different mask from the "
-            "ROI of that name already in the PlaneSegmentation 'PlaneSegmentationCells'. An ROI name already in "
-            "the table is reused only for an equal mask, so different ROIs sharing a table need different names."
+            "ROIs of the unnamed segmentation of metadata['Ophys']['PlaneSegmentations']['second'] match unnamed "
+            "ROIs already in the PlaneSegmentation 'PlaneSegmentationCells', starting with roi_name='roi_0'. "
+            "Without a segmentation name the writer can't tell the same ROIs written again, such as by a second "
+            "channel, from different ROIs with the same names. If they are the same ROIs, give every segmentation "
+            "writing them the same name. If they are different ROIs, give each segmentation its own name:\n"
+            "    metadata['Ophys']['PlaneSegmentations']['second']['segmentation_name'] = '<name>'"
         )
         with pytest.raises(ValueError, match=re.escape(expected_message)):
             add_segmentation_to_nwbfile(
                 segmentation_extractor=second, nwbfile=nwbfile, metadata=metadata, metadata_key="second"
             )
 
+        expected_roi_names = roi_names
+
+        plane_segmentation = nwbfile.processing["ophys"]["ImageSegmentation"]["PlaneSegmentationCells"]
+        assert list(plane_segmentation["roi_name"].data) == expected_roi_names
+
     def test_roi_in_a_shared_table_with_another_property_value_raises(self):
-        """A reused row holds one value per column, so an ROI with an equal mask but another property value
+        """A reused row holds one value per column, so an ROI with the same name but another property value
         would have its value dropped, as Suite2p's second channel did with its red-cell labels."""
         nwbfile = mock_NWBFile()
         first = generate_dummy_segmentation_extractor(num_rois=2, has_summary_images=False, seed=0)
         second = generate_dummy_segmentation_extractor(num_rois=2, has_summary_images=False, seed=0)
         second.set_property("is_accepted", np.array([False, True]), ids=second.get_roi_ids())
+        segmentation_name = "suite2p"
 
         metadata = {
             "Ophys": {
                 "SegmentationTables": {"cells": {"name": "PlaneSegmentationCells"}},
                 "PlaneSegmentations": {
-                    "first": {"segmentation_table_metadata_key": "cells"},
-                    "second": {"segmentation_table_metadata_key": "cells"},
+                    "first": {"segmentation_table_metadata_key": "cells", "segmentation_name": segmentation_name},
+                    "second": {"segmentation_table_metadata_key": "cells", "segmentation_name": segmentation_name},
                 },
             },
         }

@@ -2,7 +2,6 @@
 
 from abc import abstractmethod
 
-import numpy as np
 from pynwb import NWBFile
 
 from ..._temporal_alignment import _TemporalAlignment
@@ -55,26 +54,17 @@ class BaseIcephysInterface(BaseDataInterface):
         timestamps = self.temporal_alignment[self._alignment_key].get_times()
         if timestamps.ndim != 1 or len(timestamps) != len(response_data.data):
             raise ValueError("Intracellular timestamps must be one-dimensional with one time per response sample.")
-        native_timestamps = response_data.timestamps
         response_data.timestamps = timestamps
         stimulus_sweep_sample_ranges = None
         if stimulus_data is not None:
-            stimulus_sweep_sample_ranges = _align_paired_series(
-                paired_data=stimulus_data,
-                native_timestamps=native_timestamps,
-                timestamps=timestamps,
-                sweep_sample_ranges=sweep_sample_ranges,
-                name="stimulus",
-            )
+            stimulus_data.timestamps = self.temporal_alignment[self._stimulus_alignment_key].get_times()
+            stimulus_sweep_sample_ranges = stimulus_data.sweep_sample_ranges
         stimulus_template_sweep_sample_ranges = None
         if stimulus_template_data is not None:
-            stimulus_template_sweep_sample_ranges = _align_paired_series(
-                paired_data=stimulus_template_data,
-                native_timestamps=native_timestamps,
-                timestamps=timestamps,
-                sweep_sample_ranges=sweep_sample_ranges,
-                name="stimulus template",
-            )
+            stimulus_template_data.timestamps = self.temporal_alignment[
+                self._stimulus_template_alignment_key
+            ].get_times()
+            stimulus_template_sweep_sample_ranges = stimulus_template_data.sweep_sample_ranges
         response_series = _add_patch_clamp_series_to_nwbfile(
             nwbfile=nwbfile,
             metadata=metadata,
@@ -118,7 +108,7 @@ class BaseIcephysInterface(BaseDataInterface):
             stimulus_template_series=stimulus_template_series,
             stimulus_template_sweep_sample_ranges=stimulus_template_sweep_sample_ranges,
             sweep_sample_ranges=sweep_sample_ranges,
-            sequence=self._run_identity,
+            protocol_run=self._run_identity,
             stimulus_type=self._get_stimulus_type(),
             repetition=self._repetition,
             condition=self._condition,
@@ -135,39 +125,3 @@ class BaseIcephysInterface(BaseDataInterface):
     def _get_icephys_stimulus_template_data(self) -> _IcephysSeriesData | None:
         """Return the stimulus template the source specifies, if any, in the standard internal representation."""
         return None
-
-
-def _align_paired_series(
-    paired_data: _IcephysSeriesData,
-    native_timestamps: np.ndarray,
-    timestamps: np.ndarray,
-    sweep_sample_ranges: list[tuple[int, int]],
-    name: str,
-) -> list[tuple[int, int]] | None:
-    """Move a stimulus or stimulus template onto its response's aligned times, and return its own sweep ranges.
-
-    A paired series with its own sweep ranges keeps its own times, each sweep mapped the way its response sweep
-    was: the same shift, and the same stretch from the sweep's first to last sample. One without them shares the
-    response's samples, so it takes the response's times.
-    """
-    if paired_data.sweep_sample_ranges is not None:
-        native_paired_timestamps = np.asarray(paired_data.timestamps, dtype="float64")
-        paired_timestamps = native_paired_timestamps.copy()
-        for (response_start_index, response_count), (paired_start_index, paired_count) in zip(
-            sweep_sample_ranges, paired_data.sweep_sample_ranges, strict=True
-        ):
-            response_stop_index = response_start_index + response_count - 1
-            native_start = native_timestamps[response_start_index]
-            native_span = native_timestamps[response_stop_index] - native_start
-            aligned_span = timestamps[response_stop_index] - timestamps[response_start_index]
-            stretch = aligned_span / native_span if native_span > 0 else 1.0
-            paired_window = slice(paired_start_index, paired_start_index + paired_count)
-            paired_timestamps[paired_window] = timestamps[response_start_index] + stretch * (
-                native_paired_timestamps[paired_window] - native_start
-            )
-        paired_data.timestamps = paired_timestamps
-        return paired_data.sweep_sample_ranges
-    if len(paired_data.data) != len(timestamps):
-        raise ValueError(f"The paired {name} must have one sample per response timestamp.")
-    paired_data.timestamps = timestamps
-    return None

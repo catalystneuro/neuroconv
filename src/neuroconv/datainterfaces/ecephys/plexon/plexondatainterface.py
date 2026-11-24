@@ -40,6 +40,7 @@ class PlexonRecordingInterface(BaseRecordingExtractorInterface):
         es_key: str | None = None,
         metadata_key: str | None = None,
         stream_name: str = "WB-Wideband",
+        channels_to_exclude: list | None = None,
     ):
         """
         Load and prepare data for Plexon.
@@ -57,6 +58,9 @@ class PlexonRecordingInterface(BaseRecordingExtractorInterface):
         stream_name: str, optional
             Only pass a stream if you modified the channel prefixes in the Plexon file and you know the prefix of
             the wideband data.
+        channels_to_exclude : list, optional
+            Channels to leave out, by the ids in ``channel_ids``. Every other channel is converted. A name that
+            is not one of the interface's channels raises.
         """
 
         invalid_stream_names = ["FPl-Low Pass Filtered", "SPKC-High Pass Filtered", "AI-Auxiliary Input"]
@@ -73,6 +77,8 @@ class PlexonRecordingInterface(BaseRecordingExtractorInterface):
         # replaces it with a channel slice that does not carry the `neo_reader` or the `block_index`
         self._neo_reader = self.recording_extractor.neo_reader
         self._block_index = self.recording_extractor.block_index
+
+        self._exclude_channels(channels_to_exclude)
 
     def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
@@ -119,6 +125,7 @@ class PlexonLFPInterface(BaseLFPExtractorInterface):
         es_key: str | None = None,
         metadata_key: str | None = None,
         stream_name: str = "FPl-Low Pass Filtered",
+        channels_to_exclude: list | None = None,
     ):
         """
         Load and prepare data for Plexon.
@@ -136,6 +143,9 @@ class PlexonLFPInterface(BaseLFPExtractorInterface):
         stream_name: str, default: "FPl-Low Pass Filtered""
             Only pass a stream if you modified the channel prefixes in the Plexon file and you know the prefix of
             the FPllow pass filtered data.
+        channels_to_exclude : list, optional
+            Channels to leave out, by the ids in ``channel_ids``. Every other channel is converted. A name that
+            is not one of the interface's channels raises.
         """
 
         # By default, the stream name of Plexon LFP data is "FPl-Low Pass Filter"
@@ -156,6 +166,8 @@ class PlexonLFPInterface(BaseLFPExtractorInterface):
         # replaces it with a channel slice that does not carry the `neo_reader` or the `block_index`
         self._neo_reader = self.recording_extractor.neo_reader
         self._block_index = self.recording_extractor.block_index
+
+        self._exclude_channels(channels_to_exclude)
 
     def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
@@ -216,6 +228,7 @@ class Plexon2RecordingInterface(BaseRecordingExtractorInterface):
         verbose: bool = False,
         es_key: str | None = None,
         metadata_key: str | None = None,
+        channels_to_exclude: list | None = None,
     ):
         """
         Load and prepare data for Plexon.
@@ -230,6 +243,9 @@ class Plexon2RecordingInterface(BaseRecordingExtractorInterface):
         metadata_key : str, optional
             Key that indexes this interface's entries in the dict-based metadata. Defaults to
             ``"plexon2_recording"``.
+        channels_to_exclude : list, optional
+            Channels to leave out, by the ids in ``channel_ids``. Every other channel is converted. A name that
+            is not one of the interface's channels raises.
         """
 
         # TODO: when neo version 0.14.4 is out or higher change this to stream_name for clarify
@@ -256,6 +272,8 @@ class Plexon2RecordingInterface(BaseRecordingExtractorInterface):
         # replaces it with a channel slice that does not carry the `neo_reader` or the `block_index`
         self._neo_reader = self.recording_extractor.neo_reader
         self._block_index = self.recording_extractor.block_index
+
+        self._exclude_channels(channels_to_exclude)
 
     def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)

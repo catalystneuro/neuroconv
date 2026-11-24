@@ -176,6 +176,16 @@ class LightningPoseDataInterface(BasePoseEstimationInterface):
         return video_shape[0], video_shape[1]
 
     def get_original_timestamps(self, stub_test: bool = False) -> np.ndarray:
+        """Deprecated: read ``interface.temporal_alignment[key].get_times()`` before aligning instead."""
+        warnings.warn(
+            "`get_original_timestamps` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment[key].get_times()` before aligning instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        return self._get_original_timestamps(stub_test=stub_test)
+
+    def _get_original_timestamps(self, stub_test: bool = False) -> np.ndarray:
         max_frames = 10 if stub_test else None
         with self._vc(file_path=str(self.original_video_file_path)) as video:
             timestamps = video.get_video_timestamps(max_frames=max_frames)
@@ -194,7 +204,7 @@ class LightningPoseDataInterface(BasePoseEstimationInterface):
         time_bearing_object = self.temporal_alignment[self.metadata_key]
         if stub_test:
             return time_bearing_object._get_times(
-                get_default_times=partial(self.get_original_timestamps, stub_test=True)
+                get_default_times=partial(self._get_original_timestamps, stub_test=True)
             )[:10]
         return time_bearing_object.get_times()
 

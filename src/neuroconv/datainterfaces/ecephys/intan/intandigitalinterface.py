@@ -19,7 +19,10 @@ from ....tools.signal_processing import (
 # The two digital words an Intan controller records. A file carries either, both, or neither, and the
 # lines of both share the amplifier's sampling rate and timeline, so one interface covers whichever are
 # present.
-_DIGITAL_STREAM_NAMES = ("USB board digital input channel", "USB board digital output channel")
+_DIGITAL_STREAM_NAMES = {
+    "USB board digital input channel": "digital_inputs",
+    "USB board digital output channel": "digital_outputs",
+}
 
 
 class IntanDigitalInterface(BaseEventsInterface):
@@ -142,6 +145,14 @@ class IntanDigitalInterface(BaseEventsInterface):
             verbose=verbose,
         )
         self.metadata_key = metadata_key or "intan_digital"
+
+    @classmethod
+    def get_available_event_sources(cls, file_path: FilePath) -> list[str]:
+        """List the digital ports present in the header, independent of the save layout."""
+        from spikeinterface.extractors import get_neo_streams
+
+        stream_names, _ = get_neo_streams("intan", file_path=file_path)
+        return [port for stream, port in _DIGITAL_STREAM_NAMES.items() if stream in stream_names]
 
     def get_event_type_source_ids(self) -> list[str]:
         """The event types the configuration resolves to, read from nothing."""

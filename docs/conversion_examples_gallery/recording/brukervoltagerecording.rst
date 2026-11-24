@@ -10,7 +10,7 @@ sweep. One interface instance corresponds to one electrode, and you give it that
 
     >>> from neuroconv.datainterfaces import BrukerVoltageRecordingInterface
     >>>
-    >>> folder_path = f"{ECEPHY_DATA_PATH}/bruker/voltage_recording/cc_01_cell1-001"
+    >>> folder_path = f"{ECEPHY_DATA_PATH}/bruker/voltage_recording/current_clamp/divisor_0_01"
     >>> interface = BrukerVoltageRecordingInterface(
     ...     file_paths=[f"{folder_path}/cell1-001_Cycle00001_VoltageRecording_001.csv"],
     ... )
@@ -32,7 +32,7 @@ so gathering the cycles of one cell is left to your conversion script:
     >>> from pathlib import Path
     >>> from neuroconv.datainterfaces import BrukerVoltageRecordingInterface
     >>>
-    >>> folder_path = Path(f"{ECEPHY_DATA_PATH}/bruker/voltage_recording/cc_01_cell1-001")
+    >>> folder_path = Path(f"{ECEPHY_DATA_PATH}/bruker/voltage_recording/current_clamp/divisor_0_01")
     >>> cycles = sorted(folder_path.glob("*_VoltageRecording_*.csv"))
     >>> interface = BrukerVoltageRecordingInterface(file_paths=cycles)
 
@@ -44,8 +44,10 @@ Everything else is read from the XML that sits beside each CSV:
   signal other than ``Primary``, whose unit does not identify the mode.
 - The **scaling** comes from ``Multiplier`` and ``Divisor``. The samples are stored exactly as the CSV holds
   them and the whole chain lives in the series' ``conversion``, so what you read back is what PrairieView wrote.
-- The **amplifier** comes from ``PatchclampDevice``, and the **session start time** from the cycle's
-  ``DateTime``, which carries the rig's UTC offset so no timezone has to be supplied.
+- The **amplifier** comes from ``PatchclampDevice``, and the **session start time** from the ``Sequence``
+  time in the acquisition's PVScan XML (``<stem>.xml``), in the timezone of the cycle's ``DateTime``, so no
+  timezone has to be supplied. Keep the PVScan XML beside the cycles: without it the interface uses
+  ``DateTime``, which can be seconds early, and warns.
 
 If a cycle recorded more than one signal, name the one that is this electrode's response with
 ``response_signal_name``. Which signals were recorded, and which column each occupies, comes from the XML's
@@ -56,7 +58,7 @@ what a cycle recorded:
 
     >>> from neuroconv.datainterfaces import BrukerVoltageRecordingInterface
     >>>
-    >>> file_path = f"{ECEPHY_DATA_PATH}/bruker/voltage_recording/cc_01_cell1-001/cell1-001_Cycle00001_VoltageRecording_001.csv"
+    >>> file_path = f"{ECEPHY_DATA_PATH}/bruker/voltage_recording/current_clamp/divisor_0_01/cell1-001_Cycle00001_VoltageRecording_001.csv"
     >>> BrukerVoltageRecordingInterface.get_signal_names(file_path=file_path)
     ['Primary']
 
@@ -64,8 +66,25 @@ Only signals routed through the amplifier can be written here. PrairieView's oth
 trace, the photodiode channels, the wavelength channels such as ``720nm``) carry no ``PatchclampDevice`` and
 are recorded in volts; they are analog monitors rather than intracellular data, and the interface refuses them.
 
+Beside each cycle PrairieView also writes a ``VoltageOutput`` XML, the protocol it played on its output lines.
+Name the waveform that drives the amplifier with ``stimulus_command`` and its command is drawn from that
+protocol and written as the stimulus. To see which waveforms a cycle enabled:
+
+.. code-block:: python
+
+    >>> from neuroconv.datainterfaces import BrukerVoltageRecordingInterface
+    >>>
+    >>> file_path = f"{ECEPHY_DATA_PATH}/bruker/voltage_recording/current_clamp/divisor_0_01/cell1-001_Cycle00001_VoltageRecording_001.csv"
+    >>> BrukerVoltageRecordingInterface.get_command_names(file_path=file_path)
+    ['700B']
+    >>> interface = BrukerVoltageRecordingInterface(file_paths=[file_path], stimulus_command="700B")
+
+The command is drawn at the protocol's update rate over the span of the protocol, so it can end before or after
+the recording. It is what PrairieView sent to the amplifier, which adds it to any holding level set on the
+amplifier itself; PrairieView does not record that level.
+
 The interface writes one continuous ``PatchClampSeries`` per electrode, with each cycle placed at its own
-``DateTime`` so the dead time between cycles survives as a gap, and records each cycle through the NWB
+start time so the dead time between cycles survives as a gap, and records each cycle through the NWB
 ``IntracellularRecordings`` table. It stops there: the upper icephys hierarchy tables and the per-sweep time
 intervals are written only once the full set of electrodes is known. If this interface is your whole
 conversion, wrap it in the converter below with that one interface, which finalizes those tables for you.
@@ -85,9 +104,8 @@ arguments. Runs sharing a ``repetition`` label are grouped into one ``Repetition
 the same protocol), and repetitions sharing a ``condition`` label are grouped into one
 ``ExperimentalConditions`` entry (a drug wash-in versus control, say).
 
-PrairieView records no protocol section, so there is nothing to derive a stimulus from and no stimulus series
-is written. Pass ``stimulus_type`` if you want the run described (``"somatic excitability"``, for instance);
-left out, the column is omitted rather than filled with a placeholder.
+Pass ``stimulus_type`` if you want the run described (``"somatic excitability"``, for instance); left out, the
+column is omitted rather than filled with a placeholder.
 
 .. code-block:: python
 
@@ -98,11 +116,11 @@ left out, the column is omitted rather than filled with a placeholder.
     >>>
     >>> # One interface per electrode; here two cells, each with its own cycles.
     >>> first_cell = BrukerVoltageRecordingInterface(
-    ...     file_paths=[f"{data_path}/cc_03_cell2-020/cell2-020_Cycle00001_VoltageRecording_001.csv"],
+    ...     file_paths=[f"{data_path}/current_clamp/five_digit_fractional_seconds/cell2-020_Cycle00001_VoltageRecording_001.csv"],
     ...     stimulus_type="somatic excitability",
     ... )
     >>> second_cell = BrukerVoltageRecordingInterface(
-    ...     file_paths=[f"{data_path}/cc_05_cell1-001_2016/cell1-001_Cycle00001_VoltageRecording_001.csv"],
+    ...     file_paths=[f"{data_path}/current_clamp/divisor_0_01/cell1-001_Cycle00001_VoltageRecording_001.csv"],
     ...     stimulus_type="somatic excitability",
     ... )
     >>> converter = BrukerVoltageRecordingConverter(

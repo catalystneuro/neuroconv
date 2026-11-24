@@ -9,6 +9,10 @@ BORIS
 -----
 .. autoclass:: neuroconv.datainterfaces.behavior.boris.borisdatainterface.BORISInterface
 
+B-SOiD
+------
+.. automodule:: neuroconv.datainterfaces.behavior.bsoid.bsoidinterface
+
 DANNCE
 ------
 .. autoclass:: neuroconv.datainterfaces.behavior.dannce.danncedatainterface.DANNCEInterface

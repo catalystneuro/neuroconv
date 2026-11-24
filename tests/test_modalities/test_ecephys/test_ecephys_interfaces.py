@@ -1,5 +1,6 @@
 import re
 import sys
+from platform import processor
 from platform import python_version as get_python_version
 
 import jsonschema
@@ -9,6 +10,7 @@ from hdmf.testing import TestCase
 from packaging.version import Version
 from probeinterface import Probe, ProbeGroup
 from pynwb import NWBHDF5IO
+from spikeinterface.core import NumpySorting
 
 from neuroconv import ConverterPipe
 from neuroconv.datainterfaces import Spike2RecordingInterface
@@ -63,6 +65,58 @@ class TestSortingInterface(SortingExtractorInterfaceTestMixin):
         assert units_table.description == "Units after manual curation."
         assert len(units_table) == 3
 
+    def test_metadata_propagation(self):
+        """Check sorting metadata propagation from the mock interface to the written units table.
+
+        Add future sorting metadata fields and their written-value assertions to this test.
+        """
+        metadata_key = "kilosort_sorting"
+        interface = MockSortingInterface(num_units=3, durations=[0.100], metadata_key=metadata_key)
+        metadata = interface.get_metadata()
+        metadata["Ecephys"]["Sortings"] = {
+            metadata_key: {
+                "name": "CuratedUnits",
+                "description": "Units after manual curation.",
+                "sorting_name": "probe_0_kilosort",
+            }
+        }
+        metadata["Ecephys"]["UnitProperties"] = [
+            {"name": "sorting_name", "description": "Sorting output for each unit."}
+        ]
+        interface.validate_metadata(metadata=metadata)
+
+        nwbfile = interface.create_nwbfile(metadata=metadata)
+
+        units_table = nwbfile.processing["ecephys"]["CuratedUnits"]
+        assert nwbfile.units is None
+        assert units_table.description == "Units after manual curation."
+        assert len(units_table) == 3
+        assert list(units_table["sorting_name"][:]) == ["probe_0_kilosort"] * 3
+        assert units_table["sorting_name"].description == "Sorting output for each unit."
+
+    def test_sorting_entry_name_and_description_are_ignored_in_a_shared_table(self):
+        """A sorting writing a shared table takes the name and description of the table's entry, and the name and
+        description on its own entry are ignored."""
+        metadata_key = "probe_0_sorting"
+        interface = MockSortingInterface(num_units=3, metadata_key=metadata_key)
+        units_table_metadata_key = "all_probes"
+        metadata = interface.get_metadata()
+        metadata["Ecephys"]["UnitsTables"] = {
+            units_table_metadata_key: {"name": "AllProbes", "description": "Units of both probes."}
+        }
+        metadata["Ecephys"]["Sortings"] = {
+            metadata_key: {
+                "units_table_metadata_key": units_table_metadata_key,
+                "name": "Probe0Units",
+                "description": "Units of probe 0.",
+            }
+        }
+
+        nwbfile = interface.create_nwbfile(metadata=metadata)
+
+        assert list(nwbfile.processing["ecephys"].data_interfaces) == ["AllProbes"]
+        assert nwbfile.processing["ecephys"]["AllProbes"].description == "Units of both probes."
+
     def test_two_sortings_write_into_the_canonical_units_table(self):
         """Two sortings with no entry both write their units into the default table, nwbfile.units."""
         probe_0_interface = MockSortingInterface(num_units=3, metadata_key="probe_0_sorting")
@@ -74,6 +128,23 @@ class TestSortingInterface(SortingExtractorInterfaceTestMixin):
 
         assert len(nwbfile.units) == 5
         assert "ecephys" not in nwbfile.processing
+
+    def test_named_sorting_appended_on_disk_fills_earlier_unnamed_rows(self, tmp_path):
+        """A named sorting appended to a file whose units table has no `sorting_name` column adds the column,
+        and the units already on disk read as unnamed."""
+        nwbfile_path = tmp_path / "test.nwb"
+        unnamed_interface = MockSortingInterface(num_units=3, metadata_key="probe_0_sorting")
+        unnamed_interface.run_conversion(nwbfile_path=nwbfile_path)
+
+        metadata_key = "probe_1_sorting"
+        named_interface = MockSortingInterface(num_units=2, metadata_key=metadata_key)
+        metadata = named_interface.get_metadata()
+        metadata["Ecephys"]["Sortings"] = {metadata_key: {"sorting_name": "probe_1_kilosort"}}
+        named_interface.run_conversion(nwbfile_path=nwbfile_path, metadata=metadata, append_on_disk_nwbfile=True)
+
+        with NWBHDF5IO(nwbfile_path, mode="r") as io:
+            units_table = io.read().units
+            assert list(units_table["sorting_name"][:]) == ["", "", "", "probe_1_kilosort", "probe_1_kilosort"]
 
     def test_two_sortings_write_into_one_processed_units_table(self):
         """Two sortings pointing at one table write their units into it, described once in its entry."""
@@ -189,19 +260,92 @@ class TestSortingInterface(SortingExtractorInterfaceTestMixin):
         with pytest.raises(NotImplementedError, match=expected_error):
             segment.set_times(segment.get_times())
 
-    def test_move_start_to_raises(self):
-        """A sorting's first spike is not where it starts, so neither a segment nor the interface can be placed."""
-        metadata_key = "mock_sorting"
-        interface = MockSortingInterface(num_units=3, durations=[1.0], metadata_key=metadata_key)
-
-        expected_error = re.escape(
-            "A sorting has no start to place: its first spike is not when its recording began. Use `shift_times` "
-            "to move it."
+    def test_placing_one_segment_uses_the_earliest_spike_across_units(self):
+        interface = MockSortingInterface(num_units=3, durations=[1.0])
+        earliest_spike = 2
+        segment_0 = {
+            "later": np.array([earliest_spike + 3, earliest_spike + 6]),
+            "earlier": np.array([earliest_spike, earliest_spike + 5]),
+            "empty": np.array([], dtype=int),
+        }
+        interface.sorting_extractor = NumpySorting.from_unit_dict(
+            [segment_0],
+            sampling_frequency=1.0,
         )
-        with pytest.raises(NotImplementedError, match=expected_error):
-            interface.temporal_alignment[f"{metadata_key}_0"].move_start_to(100.0)
-        with pytest.raises(NotImplementedError, match=expected_error):
-            interface.temporal_alignment.move_start_to(100.0)
+
+        new_earliest_spike = 10.0
+        shift = new_earliest_spike - earliest_spike
+        interface.temporal_alignment["mock_sorting_0"].move_earliest_observation_to(new_earliest_spike)
+        nwbfile = interface.create_nwbfile()
+
+        np.testing.assert_array_equal(nwbfile.units["unit_name"][:], ["later", "earlier", "empty"])
+        np.testing.assert_allclose(nwbfile.units["spike_times"][0], segment_0["later"] + shift)
+        np.testing.assert_allclose(nwbfile.units["spike_times"][1], segment_0["earlier"] + shift)
+        assert nwbfile.units["spike_times"][2].size == 0
+
+    def test_placing_sorting_matches_shifting(self):
+        earliest_spike = 2
+        segment_0 = {
+            "later": np.array([earliest_spike + 3, earliest_spike + 6]),
+            "earlier": np.array([earliest_spike, earliest_spike + 5]),
+        }
+        expected_interface = MockSortingInterface(num_units=2, durations=[1.0])
+        placed_interface = MockSortingInterface(num_units=2, durations=[1.0])
+        for interface in (expected_interface, placed_interface):
+            interface.sorting_extractor = NumpySorting.from_unit_dict(
+                [segment_0],
+                sampling_frequency=1.0,
+            )
+
+        new_earliest_spike = 10.0
+        equivalent_shift = new_earliest_spike - earliest_spike
+        expected_interface.temporal_alignment.shift_times(equivalent_shift)
+        expected_nwbfile = expected_interface.create_nwbfile()
+
+        placed_interface.temporal_alignment.move_earliest_observation_to(new_earliest_spike)
+        placed_nwbfile = placed_interface.create_nwbfile()
+
+        np.testing.assert_array_equal(placed_nwbfile.units["unit_name"][:], expected_nwbfile.units["unit_name"][:])
+        for row_index in range(len(expected_nwbfile.units)):
+            np.testing.assert_allclose(
+                placed_nwbfile.units["spike_times"][row_index], expected_nwbfile.units["spike_times"][row_index]
+            )
+
+    def test_placing_remapped_spikes_matches_shifting(self):
+        earliest_spike = 2
+        segment_0 = {
+            "later": np.array([earliest_spike + 3, earliest_spike + 6]),
+            "earlier": np.array([earliest_spike, earliest_spike + 5]),
+        }
+        clock_scale = 2.0
+        clock_offset = 20.0
+        local_sync_times = np.array([0.0, 10.0])
+        reference_sync_times = local_sync_times * clock_scale + clock_offset
+        expected_interface = MockSortingInterface(num_units=2, durations=[1.0])
+        placed_interface = MockSortingInterface(num_units=2, durations=[1.0])
+        for interface in (expected_interface, placed_interface):
+            interface.sorting_extractor = NumpySorting.from_unit_dict(
+                [segment_0],
+                sampling_frequency=1.0,
+            )
+            interface.temporal_alignment["mock_sorting_0"].remap_times(
+                local_sync_times=local_sync_times, reference_sync_times=reference_sync_times
+            )
+
+        remapped_earliest_spike = earliest_spike * clock_scale + clock_offset
+        new_earliest_spike = 10.0
+        equivalent_shift = new_earliest_spike - remapped_earliest_spike
+        expected_interface.temporal_alignment["mock_sorting_0"].shift_times(equivalent_shift)
+        expected_nwbfile = expected_interface.create_nwbfile()
+
+        placed_interface.temporal_alignment["mock_sorting_0"].move_earliest_observation_to(new_earliest_spike)
+        placed_nwbfile = placed_interface.create_nwbfile()
+
+        np.testing.assert_array_equal(placed_nwbfile.units["unit_name"][:], expected_nwbfile.units["unit_name"][:])
+        for row_index in range(len(expected_nwbfile.units)):
+            np.testing.assert_allclose(
+                placed_nwbfile.units["spike_times"][row_index], expected_nwbfile.units["spike_times"][row_index]
+            )
 
     def test_stub(self):
 
@@ -430,6 +574,14 @@ class TestRecordingInterface(RecordingExtractorInterfaceTestMixin):
 
         assert returned_interface is interface  # returns self so the call can be chained
         assert list(interface.channel_ids) == ["channel_a", "channel_c", "channel_e"]
+
+    def test_channels_to_exclude_names_a_channel_the_interface_does_not_have(self):
+        expected_error_msg = (
+            "`channels_to_exclude` names ['channel_z'], which are not channels of this MockRecordingInterface. "
+            "Its channels are ['channel_a', 'channel_b', 'channel_c']."
+        )
+        with pytest.raises(ValueError, match=re.escape(expected_error_msg)):
+            MockRecordingInterface(num_channels=3, durations=[0.100], channels_to_exclude=["channel_b", "channel_z"])
 
     def test_stub(self, setup_interface):
         interface = self.interface
@@ -812,10 +964,11 @@ class TestAssertions(TestCase):
         reason="sonpy is installable on Windows for all supported versions, and on other platforms from 3.14",
     )
     def test_spike2_import_assertions(self):
+        platform_string = f"darwin:{processor()}" if sys.platform == "darwin" else sys.platform
         with self.assertRaisesWith(
             exc_type=ModuleNotFoundError,
             exc_msg=(
-                f"\nThe package 'sonpy' is not available on the {sys.platform} platform for "
+                f"\nThe package 'sonpy' is not available on the {platform_string} platform for "
                 f"Python version 3.{python_version.minor}!"
             ),
         ):

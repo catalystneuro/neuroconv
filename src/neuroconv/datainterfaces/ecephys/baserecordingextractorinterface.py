@@ -102,11 +102,11 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         """Name every segment as a time-bearing object, keyed ``{metadata_key}_{segment_index}``.
 
         The key is the one a ``{metadata_key}_{segment_index}`` metadata entry uses to override the series of that
-        segment, so one name addresses a segment for both. Registering reads nothing.
+        segment, so one name addresses a segment for both. Adding the objects reads nothing.
         """
         self._alignment = _TemporalAlignment()
         for segment_index in range(self._number_of_segments):
-            self._alignment._register(
+            self._alignment._add_time_bearing_object(
                 key=f"{self.metadata_key}_{segment_index}",
                 get_native_times=partial(self._get_segment_native_times, segment_index=segment_index),
                 default_start_time=partial(self._get_segment_native_start_time, segment_index=segment_index),
@@ -301,7 +301,35 @@ class BaseRecordingExtractorInterface(BaseExtractorInterface):
         self.recording_extractor = self.recording_extractor.remove_channels(remove_channel_ids=channel_ids)
         return self
 
+    def _exclude_channels(self, channels_to_exclude: list | None) -> None:
+        """Drop the channels named by the ``channels_to_exclude`` constructor argument.
+
+        Called last in each interface's ``__init__``, after the interface's own routing, so the names are the
+        ``channel_ids`` the interface ends up holding.
+        """
+        if not channels_to_exclude:
+            return
+
+        channel_ids = self.channel_ids.tolist()
+        missing_channels = [channel for channel in channels_to_exclude if channel not in channel_ids]
+        if missing_channels:
+            raise ValueError(
+                f"`channels_to_exclude` names {missing_channels}, which are not channels of this "
+                f"{type(self).__name__}. Its channels are {channel_ids}."
+            )
+        self.remove_channels(channel_ids=channels_to_exclude)
+
     def get_original_timestamps(self) -> np.ndarray | list[np.ndarray]:
+        """Deprecated: read ``interface.temporal_alignment[key].get_times()`` before aligning instead."""
+        warnings.warn(
+            "`get_original_timestamps` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment[key].get_times()` before aligning instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        return self._get_original_timestamps()
+
+    def _get_original_timestamps(self) -> np.ndarray | list[np.ndarray]:
         """
         Retrieve the original unaltered timestamps for the data in this interface.
 

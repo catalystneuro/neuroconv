@@ -19,7 +19,7 @@ every channel named in the accompanying ``Experiment.xml`` is written, one ``Ima
     >>> from pathlib import Path
     >>> from neuroconv.converters import ThorConverter
     >>>
-    >>> file_path = OPHYS_DATA_PATH / "imaging_datasets" / "ThorlabsTiff" / "single_channel_single_plane" / "20231018-002" / "ChanA_001_001_001_001.tif"
+    >>> file_path = OPHYS_DATA_PATH / "imaging_datasets" / "ThorlabsTiff" / "acquisition_setup" / "planar_single_channel" / "ChanA_001_001_001_001.tif"
     >>> converter = ThorConverter(file_path=file_path)
     >>>
     >>> metadata = converter.get_metadata()
@@ -50,7 +50,7 @@ one channel, chosen with the `channel_name` argument. To see what is available, 
     >>> from pathlib import Path
     >>> from neuroconv.datainterfaces import ThorImagingInterface
     >>>
-    >>> file_path = OPHYS_DATA_PATH / "imaging_datasets" / "ThorlabsTiff" / "single_channel_single_plane" / "20231018-002" / "ChanA_001_001_001_001.tif"
+    >>> file_path = OPHYS_DATA_PATH / "imaging_datasets" / "ThorlabsTiff" / "acquisition_setup" / "planar_single_channel" / "ChanA_001_001_001_001.tif"
     >>> interface = ThorImagingInterface(file_path=file_path, channel_name="ChanA")
     >>>
     >>> metadata = interface.get_metadata()

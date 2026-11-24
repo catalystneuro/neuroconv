@@ -13,6 +13,7 @@ import pynwb.ecephys
 import pytest
 from hdmf.testing import TestCase
 from pynwb import NWBHDF5IO, NWBFile, read_nwb
+from pynwb.testing.mock.ecephys import mock_ElectrodesTable
 from pynwb.testing.mock.file import mock_NWBFile
 from spikeinterface.core import NumpySorting
 from spikeinterface.core.generate import (
@@ -725,7 +726,7 @@ class TestAddElectrodes(TestCase):
     def test_common_property_extension(self):
         """Add a property for a first recording that is then extended by a second recording."""
         self.recording_1.set_property(key="common_property", values=["value_1"] * self.num_channels)
-        self.recording_2.set_property(key="common_property", values=["value_2"] * self.num_channels)
+        self.recording_2.set_property(key="common_property", values=["value_1", "value_1", "value_2", "value_2"])
 
         _add_electrodes_to_nwbfile(recording=self.recording_1, nwbfile=self.nwbfile)
         _add_electrodes_to_nwbfile(recording=self.recording_2, nwbfile=self.nwbfile)
@@ -840,7 +841,7 @@ class TestAddElectrodes(TestCase):
         self.nwbfile.add_electrode(**self.common_electrode_row_kwargs, id=21, channel_name="d", property="value_d")
         self.nwbfile.add_electrode(**self.common_electrode_row_kwargs, id=22, channel_name="f", property="value_f")
 
-        property_values = ["value_a", "value_b", "x", "y"]
+        property_values = ["value_a", "value_b", "value_c", "value_d"]
         self.recording_1.set_property(key="property", values=property_values)
 
         _add_electrodes_to_nwbfile(recording=self.recording_1, nwbfile=self.nwbfile)
@@ -998,7 +999,7 @@ class TestAddElectrodes(TestCase):
         metadata should not error.
         """
         self.recording_1.set_property(key="common_property", values=["value_1"] * self.num_channels)
-        self.recording_2.set_property(key="common_property", values=["value_2"] * self.num_channels)
+        self.recording_2.set_property(key="common_property", values=["value_1", "value_1", "value_2", "value_2"])
         self.recording_1.set_property(key="property_1", values=[f"value_{n+1}" for n in range(self.num_channels)])
         self.recording_2.set_property(key="property_2", values=[f"value_{n+1}" for n in range(self.num_channels)])
 
@@ -1218,6 +1219,27 @@ class TestAddElectrodes(TestCase):
         self.assertListEqual(electrode_names[-2:], ["e0", "e1"])
         self.assertListEqual(channel_names[-2:], ["probe2_ch0", "probe2_ch1"])
         self.assertListEqual(group_names[-2:], ["ProbeB", "ProbeB"])  # Different group
+
+    def test_differing_value_on_reused_row_raises(self):
+        """A reused row keeps its written values, so a recording supplying another value for it raises."""
+        self.recording_1.set_property(key="quality", values=["good", "good", "good", "good"])
+        self.recording_2.set_property(key="quality", values=["bad", "good", "good", "good"])
+        _add_electrodes_to_nwbfile(recording=self.recording_1, nwbfile=self.nwbfile)
+
+        expected_message = (
+            "Electrode with group_name='0' and channel_name='c' is already in the electrodes table with "
+            "quality='good', and this recording supplies quality='bad'. When an electrode is already in the table, "
+            "a write adds no new row for it and leaves the values in its existing row unchanged. To resolve this, "
+            "either:\n"
+            "- Keep quality='good' by removing the 'quality' property from this recording before writing it.\n"
+            "- Write quality='bad' by rebuilding the file, giving the recording that is written first the same "
+            "'quality' values."
+        )
+        with pytest.raises(ValueError, match=re.escape(expected_message)):
+            _add_electrodes_to_nwbfile(recording=self.recording_2, nwbfile=self.nwbfile)
+
+        expected_channel_names = ["a", "b", "c", "d"]
+        assert list(self.nwbfile.electrodes["channel_name"].data) == expected_channel_names
 
 
 class TestAddTimeSeries:
@@ -1565,6 +1587,19 @@ class TestAddTimeSeries:
 
         assert set(nwbfile.acquisition) == {"TimeSeriesSegment0", "TimeSeriesSegment1"}
 
+    def test_timing_in_the_entry_is_deprecated(self):
+        recording = generate_recording(sampling_frequency=1.0, num_channels=2, durations=[3.0])
+        metadata = {"TimeSeries": {"analog": {"name": "Analog", "unit": "V", "starting_time": 5.0}}}
+        nwbfile = mock_NWBFile()
+
+        expected_warning = re.escape(
+            "metadata['TimeSeries']['analog'] sets ['starting_time'], which the writer computes from the recording."
+        )
+        with pytest.warns(FutureWarning, match=expected_warning):
+            add_recording_as_time_series_to_nwbfile(
+                recording=recording, nwbfile=nwbfile, metadata=metadata, metadata_key="analog", iterator_type=None
+            )
+
 
 class TestAddTimeSeriesMetadataKeyResolution:
     """``metadata_key`` addresses an entry, so it is required exactly when there is one to address."""
@@ -1864,6 +1899,20 @@ class TestAddSpatialSeries:
 
         assert set(nwbfile.acquisition) == {"SpatialSeriesSegment0", "SpatialSeriesSegment1"}
 
+    def test_timing_in_the_entry_is_deprecated(self):
+        recording = generate_recording(sampling_frequency=30.0, num_channels=2, durations=[0.1])
+        metadata = {"SpatialSeries": {"SpatialSeries": {"reference_frame": "test", "starting_time": 5.0}}}
+        nwbfile = mock_NWBFile()
+
+        expected_warning = re.escape(
+            "metadata['SpatialSeries']['SpatialSeries'] sets ['starting_time'], which the writer computes from the "
+            "recording."
+        )
+        with pytest.warns(FutureWarning, match=expected_warning):
+            add_recording_as_spatial_series_to_nwbfile(
+                recording=recording, nwbfile=nwbfile, metadata=metadata, iterator_type=None
+            )
+
 
 def _probe_naming(**probe_fields):
     """A four-contact probe with whatever identity fields the test needs set on it."""
@@ -1996,10 +2045,134 @@ class TestAddUnitsTable(TestCase):
             session_description="session_description1", identifier="file_id1", session_start_time=testing_session_time
         )
         unit_ids = self.base_sorting.get_unit_ids()
+        # These two sortings share unit names "c" and "d". Tests that write both under one name treat the shared
+        # names as the same units.
         self.sorting_1 = self.base_sorting.select_units(unit_ids=unit_ids, renamed_unit_ids=["a", "b", "c", "d"])
         self.sorting_2 = self.base_sorting.select_units(unit_ids=unit_ids, renamed_unit_ids=["c", "d", "e", "f"])
 
         self.common_unit_row_kwargs = dict(spike_times=[1, 1, 1])
+
+    def test_sorting_name_metadata_overrides_annotation(self):
+        self.sorting_1.annotate(sorting_name="source_sorting")
+        metadata_key = "selected_sorting"
+        metadata = {
+            "Ecephys": {
+                "Sortings": {
+                    "other_sorting": {"sorting_name": "other"},
+                    metadata_key: {"sorting_name": "curated"},
+                }
+            }
+        }
+        original_metadata = deepcopy(metadata)
+
+        add_sorting_to_nwbfile(
+            sorting=self.sorting_1, nwbfile=self.nwbfile, metadata=metadata, metadata_key=metadata_key
+        )
+
+        assert list(self.nwbfile.units["sorting_name"][:]) == ["curated"] * self.num_units
+        assert metadata == original_metadata
+        assert self.sorting_1.get_annotation("sorting_name") == "source_sorting"
+
+    def test_sorting_name_from_annotation(self):
+        self.sorting_1.annotate(sorting_name="source_sorting")
+
+        add_sorting_to_nwbfile(sorting=self.sorting_1, nwbfile=self.nwbfile)
+
+        assert list(self.nwbfile.units["sorting_name"][:]) == ["source_sorting"] * self.num_units
+
+    def test_unnamed_sorting_writes_no_sorting_name_column(self):
+        add_sorting_to_nwbfile(sorting=self.sorting_1, nwbfile=self.nwbfile)
+
+        assert "sorting_name" not in self.nwbfile.units.colnames
+        assert "sorting_name" not in self.sorting_1.get_annotation_keys()
+
+    def test_named_sorting_fills_earlier_unnamed_rows(self):
+        add_sorting_to_nwbfile(sorting=self.sorting_1, nwbfile=self.nwbfile)
+        self.sorting_2.annotate(sorting_name="curated")
+        add_sorting_to_nwbfile(sorting=self.sorting_2, nwbfile=self.nwbfile)
+
+        assert list(self.nwbfile.units["sorting_name"][:]) == [""] * self.num_units + ["curated"] * self.num_units
+        assert list(self.nwbfile.units["unit_name"][:]) == ["a", "b", "c", "d", "c", "d", "e", "f"]
+
+    def test_new_property_follows_unit_identity_after_shuffle(self):
+        """
+        Values of a new property are placed by unit identity (`sorting_name`, `unit_name`), not by the order the
+        units arrive in.
+
+        The sorting is written, then written again with a new property and its units shuffled. Every row is reused,
+        and each value must land on the row of its own unit, not in the shuffled order.
+        """
+        self.sorting_1.annotate(sorting_name="curated")
+        add_sorting_to_nwbfile(sorting=self.sorting_1, nwbfile=self.nwbfile)
+        self.sorting_1.set_property("spike_count", [10, 20, 30, 40])
+
+        shuffled_sorting = self.sorting_1.select_units(["c", "a", "d", "b"])
+        add_sorting_to_nwbfile(sorting=shuffled_sorting, nwbfile=self.nwbfile)
+
+        assert list(self.nwbfile.units["spike_count"][:]) == [10, 20, 30, 40]
+
+    def test_electrodes_disambiguate_rows_and_new_properties(self):
+        mock_ElectrodesTable(n_rows=2, nwbfile=self.nwbfile)
+        sorting_1 = generate_sorting(num_units=1, durations=[1.0], seed=0)
+        sorting_2 = generate_sorting(num_units=1, durations=[1.0], seed=1)
+        sorting_1.annotate(sorting_name="curated")
+        sorting_2.annotate(sorting_name="curated")
+        add_sorting_to_nwbfile(sorting_1, self.nwbfile, unit_electrode_indices=[[0]])
+        add_sorting_to_nwbfile(sorting_2, self.nwbfile, unit_electrode_indices=[[1]])
+
+        assert len(self.nwbfile.units) == 2
+        sorting_2.set_property("quality", ["good"])
+        add_sorting_to_nwbfile(sorting_2, self.nwbfile, unit_electrode_indices=[[1]])
+
+        assert len(self.nwbfile.units) == 2
+        assert list(self.nwbfile.units["quality"][:]) == ["", "good"]
+        for row in range(2):
+            assert list(self.nwbfile.units["electrodes"].get(row, index=True)) == [row]
+
+    def test_unit_electrode_indices_needed_only_for_ambiguous_matches(self):
+        """
+        Electrodes are a tie-breaker for units that share `sorting_name` and `unit_name`.
+
+        Before `sorting_name` existed, electrodes were the only way the writer could keep apart two units with the
+        same `unit_name`: a unit whose electrode indices differed from the stored ones was added as a new row. That
+        behavior is kept for backward compatibility. Rows are matched first by `sorting_name` and `unit_name`, and
+        when `unit_electrode_indices` is given, electrodes choose among the matching rows. A unit whose electrodes
+        differ from those of every matching row is added as a new row.
+
+        When `unit_electrode_indices` is not given, the writer relies on `sorting_name` and `unit_name` alone:
+
+        * If one row matches, it is reused and keeps its electrodes.
+        * If several rows match, they were told apart by electrodes in an earlier write, and without electrodes the
+          writer can't know which one is meant. It raises and asks for `unit_electrode_indices`, before adding any
+          row or column. The previous behavior silently used the first matching row, so a new property could land
+          on the wrong unit.
+        """
+        mock_ElectrodesTable(n_rows=2, nwbfile=self.nwbfile)
+        self.sorting_1.annotate(sorting_name="curated")
+        unit_a = self.sorting_1.select_units(["a"])
+        add_sorting_to_nwbfile(unit_a, self.nwbfile, unit_electrode_indices=[[0]])
+
+        # One match: reused without electrodes
+        unit_a.set_property("quality", ["good"])
+        add_sorting_to_nwbfile(unit_a, self.nwbfile)
+        assert len(self.nwbfile.units) == 1
+        assert list(self.nwbfile.units["quality"][:]) == ["good"]
+        assert list(self.nwbfile.units["electrodes"].get(0, index=True)) == [0]
+
+        # Two matches: raises before modifying the table
+        add_sorting_to_nwbfile(unit_a, self.nwbfile, unit_electrode_indices=[[1]])
+        original_columns = self.nwbfile.units.colnames
+        incoming_sorting = self.sorting_1.select_units(["b", "a"])
+        incoming_sorting.set_property("snr", [1.0, 2.0])
+        message = (
+            "Multiple rows in units table 'units' match sorting_name='curated' and unit_name='a'. "
+            "Supply 'unit_electrode_indices' to identify the unit."
+        )
+        with pytest.raises(ValueError, match=re.escape(message)):
+            add_sorting_to_nwbfile(incoming_sorting, self.nwbfile)
+
+        assert len(self.nwbfile.units) == 2
+        assert self.nwbfile.units.colnames == original_columns
 
     def test_units_column_order_is_naturally_sorted(self):
         """The units table had the same set iteration problem as the electrodes table.
@@ -2012,7 +2185,14 @@ class TestAddUnitsTable(TestCase):
 
         add_sorting_to_nwbfile(sorting=self.sorting_1, nwbfile=self.nwbfile)
 
-        expected_unit_column_names = ["unit_name", "amplitude_cutoff", "quality", "snr_2", "snr_10", "spike_times"]
+        expected_unit_column_names = [
+            "unit_name",
+            "amplitude_cutoff",
+            "quality",
+            "snr_2",
+            "snr_10",
+            "spike_times",
+        ]
         self.assertListEqual(list(self.nwbfile.units.colnames), expected_unit_column_names)
 
     def test_integer_unit_names(self):
@@ -2053,10 +2233,12 @@ class TestAddUnitsTable(TestCase):
         self.sorting_1.set_property(key="unit_name", values=quoted_unit_names)
         self.sorting_1.set_property(key="property", values=["value_a", "value_b", "value_c", "value_d"])
 
+        self.sorting_1.annotate(sorting_name="curated")
         add_sorting_to_nwbfile(sorting=self.sorting_1, nwbfile=self.nwbfile)
 
         self.sorting_2.set_property(key="unit_name", values=["unit'c", "unit'd", "unit'e", "unit'f"])
-        self.sorting_2.set_property(key="property", values=["value_c2", "value_d2", "value_e", "value_f"])
+        self.sorting_2.set_property(key="property", values=["value_c", "value_d", "value_e", "value_f"])
+        self.sorting_2.annotate(sorting_name="curated")
 
         add_sorting_to_nwbfile(sorting=self.sorting_2, nwbfile=self.nwbfile)
 
@@ -2068,10 +2250,12 @@ class TestAddUnitsTable(TestCase):
     def test_integer_unit_names_overwrite(self):
         """Ensure unit names merge correctly after appending when unit names are integers."""
         unit_ids = self.base_sorting.get_unit_ids()
+        sorting = self.base_sorting.select_units(unit_ids=unit_ids)
+        sorting.annotate(sorting_name="curated")
         offset_unit_ids = [int(unit_id) + 2 for unit_id in unit_ids]
-        sorting_with_offset_unit_ids = self.base_sorting.rename_units(new_unit_ids=offset_unit_ids)
+        sorting_with_offset_unit_ids = sorting.rename_units(new_unit_ids=offset_unit_ids)
 
-        add_sorting_to_nwbfile(sorting=self.base_sorting, nwbfile=self.nwbfile)
+        add_sorting_to_nwbfile(sorting=sorting, nwbfile=self.nwbfile)
         add_sorting_to_nwbfile(sorting=sorting_with_offset_unit_ids, nwbfile=self.nwbfile)
 
         expected_unit_names_in_units_table = ["0", "1", "2", "3", "4", "5"]
@@ -2080,6 +2264,8 @@ class TestAddUnitsTable(TestCase):
 
     def test_string_unit_names_overwrite(self):
         """Ensure unit names merge correctly after appending when channel names are strings."""
+        self.sorting_1.annotate(sorting_name="curated")
+        self.sorting_2.annotate(sorting_name="curated")
         add_sorting_to_nwbfile(sorting=self.sorting_1, nwbfile=self.nwbfile)
         add_sorting_to_nwbfile(sorting=self.sorting_2, nwbfile=self.nwbfile)
 
@@ -2091,17 +2277,21 @@ class TestAddUnitsTable(TestCase):
         """Add a property for a first sorting that is then extended by a second sorting."""
         self.sorting_1.set_property(key="common_property", values=["value_1"] * self.num_units)
         self.sorting_2.set_property(key="common_property", values=["value_2"] * self.num_units)
+        self.sorting_1.annotate(sorting_name="sorting_1")
+        self.sorting_2.annotate(sorting_name="sorting_2")
 
         add_sorting_to_nwbfile(sorting=self.sorting_1, nwbfile=self.nwbfile)
         add_sorting_to_nwbfile(sorting=self.sorting_2, nwbfile=self.nwbfile)
 
         properties_in_units_table = list(self.nwbfile.units["common_property"].data)
-        expected_properties_in_units_table = ["value_1", "value_1", "value_1", "value_1", "value_2", "value_2"]
+        expected_properties_in_units_table = ["value_1"] * self.num_units + ["value_2"] * self.num_units
         self.assertListEqual(properties_in_units_table, expected_properties_in_units_table)
 
     def test_property_addition(self):
         """Add a property only available in a second sorting."""
         self.sorting_2.set_property(key="added_property", values=["added_value"] * self.num_units)
+        self.sorting_1.annotate(sorting_name="curated")
+        self.sorting_2.annotate(sorting_name="curated")
 
         add_sorting_to_nwbfile(sorting=self.sorting_1, nwbfile=self.nwbfile)
         add_sorting_to_nwbfile(sorting=self.sorting_2, nwbfile=self.nwbfile)
@@ -2111,7 +2301,7 @@ class TestAddUnitsTable(TestCase):
         self.assertListEqual(properties_in_units_table, expected_properties_in_units_table)
 
     def test_units_table_extension_after_manual_unit_addition(self):
-        """Add some rows to the units tables before using the add_sorting_to_nwbfile function"""
+        """Rows added before the `unit_name` column existed get an empty `unit_name`, not their id."""
         unit_row_kwargs = self.common_unit_row_kwargs.copy()
 
         unit_row_kwargs.update(id=123, spike_times=[0, 1, 2])
@@ -2123,7 +2313,7 @@ class TestAddUnitsTable(TestCase):
         add_sorting_to_nwbfile(sorting=self.sorting_1, nwbfile=self.nwbfile)
 
         expected_units_ids = [123, 124, 2, 3, 4, 5]
-        expected_unit_names = ["123", "124", "a", "b", "c", "d"]
+        expected_unit_names = ["", "", "a", "b", "c", "d"]
         self.assertListEqual(list(self.nwbfile.units.id.data), expected_units_ids)
         self.assertListEqual(list(self.nwbfile.units["unit_name"].data), expected_unit_names)
 
@@ -2148,14 +2338,17 @@ class TestAddUnitsTable(TestCase):
         Previous properties that are also available in the sorting are matched with unit_name
         """
         self.nwbfile.add_unit_column(name="unit_name", description="a string reference for the unit")
+        self.nwbfile.add_unit_column(name="sorting_name", description="the sorting output containing the unit")
         self.nwbfile.add_unit_column(name="property", description="property_added_before")
+        self.common_unit_row_kwargs["sorting_name"] = "curated"
 
         self.nwbfile.add_unit(**self.common_unit_row_kwargs, id=20, unit_name="c", property="value_c")
         self.nwbfile.add_unit(**self.common_unit_row_kwargs, id=21, unit_name="d", property="value_d")
         self.nwbfile.add_unit(**self.common_unit_row_kwargs, id=22, unit_name="f", property="value_f")
 
-        property_values = ["value_a", "value_b", "x", "y"]
+        property_values = ["value_a", "value_b", "value_c", "value_d"]
         self.sorting_1.set_property(key="property", values=property_values)
+        self.sorting_1.annotate(sorting_name="curated")
 
         add_sorting_to_nwbfile(sorting=self.sorting_1, nwbfile=self.nwbfile)
 
@@ -2168,11 +2361,76 @@ class TestAddUnitsTable(TestCase):
         self.assertListEqual(list(self.nwbfile.units["unit_name"].data), expected_unit_names)
         self.assertListEqual(list(self.nwbfile.units["property"].data), expected_property_values)
 
-    def test_add_existing_units(self):
-        # test that additional units are not added if already in the nwbfile.units table
+    def test_differing_value_on_reused_row_raises(self):
+        sorting = generate_sorting(num_units=2, durations=[1.0], seed=0)
+        sorting.annotate(sorting_name="curated")
+        sorting.set_property("quality", ["good", "mua"])
+        add_sorting_to_nwbfile(sorting=sorting, nwbfile=self.nwbfile)
+
+        reconstructed_sorting = generate_sorting(num_units=2, durations=[1.0], seed=0)
+        reconstructed_sorting.annotate(sorting_name="curated")
+        reconstructed_sorting.set_property("quality", ["good", "noise"])
+        reconstructed_sorting.set_property("snr", [1.0, 2.0])
+        message = (
+            "Unit with sorting_name='curated' and unit_name='1' is already in units table 'units' with "
+            "quality='mua', and this write supplies quality='noise'."
+        )
+        with pytest.raises(ValueError, match=re.escape(message)):
+            add_sorting_to_nwbfile(sorting=reconstructed_sorting, nwbfile=self.nwbfile)
+
+        assert len(self.nwbfile.units) == 2
+        assert "snr" not in self.nwbfile.units.colnames
+        assert list(self.nwbfile.units["quality"][:]) == ["good", "mua"]
+
+    def test_placeholder_value_on_reused_row_raises(self):
+        """A column added by another sorting leaves a placeholder in this sorting's rows, which a later write can't fill."""
+        curated_sorting = generate_sorting(num_units=2, durations=[1.0], seed=0)
+        curated_sorting.annotate(sorting_name="curated")
+        add_sorting_to_nwbfile(sorting=curated_sorting, nwbfile=self.nwbfile)
+
+        raw_sorting = generate_sorting(num_units=2, durations=[1.0], seed=1)
+        raw_sorting.annotate(sorting_name="raw")
+        raw_sorting.set_property("snr", [3.0, 4.0])
+        add_sorting_to_nwbfile(sorting=raw_sorting, nwbfile=self.nwbfile)
+
+        curated_sorting.set_property("snr", [1.0, 2.0])
+        message = (
+            "Unit with sorting_name='curated' and unit_name='0' is already in units table 'units' with snr=nan, and "
+            "this write supplies snr=1.0. When a unit is already in the table, a write adds no new row for it and "
+            "leaves the values in its existing row unchanged. snr=nan may be the placeholder the table filled in when "
+            "another sorting added the 'snr' column. To resolve this, either:\n"
+            "- Keep snr=nan by passing skip_properties=['snr'].\n"
+            "- Write snr=1.0 by rebuilding the file, giving the sorting with sorting_name='curated' its 'snr' values "
+            "the first time it is written to the table."
+        )
+        with pytest.raises(ValueError, match=re.escape(message)):
+            add_sorting_to_nwbfile(sorting=curated_sorting, nwbfile=self.nwbfile)
+
+    def test_equal_values_on_reused_row_are_accepted(self):
+        """Two missing values count as equal, so a NaN written again does not raise."""
+        sorting = generate_sorting(num_units=2, durations=[1.0], seed=0)
+        sorting.annotate(sorting_name="curated")
+        sorting.set_property("quality", ["good", "mua"])
+        sorting.set_property("snr", [1.0, np.nan])
+        add_sorting_to_nwbfile(sorting=sorting, nwbfile=self.nwbfile)
+        add_sorting_to_nwbfile(sorting=sorting, nwbfile=self.nwbfile)
+
+        assert len(self.nwbfile.units) == 2
+
+    def test_unnamed_sorting_matching_unnamed_rows_raises(self):
+        """Without a name, the same sorting written again and a different sorting with the same unit names look the same."""
         add_sorting_to_nwbfile(sorting=self.sorting_1, nwbfile=self.nwbfile)
-        add_sorting_to_nwbfile(sorting=self.sorting_1, nwbfile=self.nwbfile)
-        self.assertEqual(len(self.nwbfile.units), len(self.sorting_1.unit_ids))
+
+        self.sorting_2.set_property("snr", np.arange(self.num_units, dtype=float))
+        message = (
+            "Units of an unnamed sorting match unnamed units already in units table 'units', starting with "
+            "unit_name='c'."
+        )
+        with pytest.raises(ValueError, match=re.escape(message)):
+            add_sorting_to_nwbfile(sorting=self.sorting_2, nwbfile=self.nwbfile)
+
+        assert len(self.nwbfile.units) == self.num_units
+        assert "snr" not in self.nwbfile.units.colnames
 
     def test_property_matching_by_unit_name_with_new_property(self):
         """
@@ -2180,20 +2438,25 @@ class TestAddUnitsTable(TestCase):
         New properties in the sorter are matched by unit name
         """
         self.nwbfile.add_unit_column(name="unit_name", description="a string reference for the unit")
+        self.nwbfile.add_unit_column(name="sorting_name", description="the sorting output containing the unit")
+        self.common_unit_row_kwargs["sorting_name"] = "curated"
 
+        # A unit "c" from another sorting comes first, so matching by unit name alone would pick it
+        self.nwbfile.add_unit(spike_times=[1, 1, 1], sorting_name="other_sorting", id=19, unit_name="c")
         self.nwbfile.add_unit(**self.common_unit_row_kwargs, id=20, unit_name="c")
         self.nwbfile.add_unit(**self.common_unit_row_kwargs, id=21, unit_name="d")
         self.nwbfile.add_unit(**self.common_unit_row_kwargs, id=22, unit_name="f")
 
         property_values = ["value_a", "value_b", "value_c", "value_d"]
         self.sorting_1.set_property(key="property", values=property_values)
+        self.sorting_1.annotate(sorting_name="curated")
 
         add_sorting_to_nwbfile(sorting=self.sorting_1, nwbfile=self.nwbfile)
 
         # Properties correspond with unit names, ids are filled positionally
-        expected_units_ids = [20, 21, 22, 3, 4]
-        expected_unit_names = ["c", "d", "f", "a", "b"]
-        expected_property_values = ["value_c", "value_d", "", "value_a", "value_b"]
+        expected_units_ids = [19, 20, 21, 22, 4, 5]
+        expected_unit_names = ["c", "c", "d", "f", "a", "b"]
+        expected_property_values = ["", "value_c", "value_d", "", "value_a", "value_b"]
 
         self.assertListEqual(list(self.nwbfile.units.id.data), expected_units_ids)
         self.assertListEqual(list(self.nwbfile.units["unit_name"].data), expected_unit_names)
@@ -2212,11 +2475,19 @@ class TestAddUnitsTable(TestCase):
         # We use an integer property because integers do not have a clear default value,
         # so if we were adding new rows, we would need to specify a null value for this property
         self.nwbfile.add_unit_column("unit_name", description="unit name")
+        self.nwbfile.add_unit_column("sorting_name", description="sorting name")
         self.nwbfile.add_unit_column("custom_int_property", description="integer property without default")
 
         # Add all units from sorting_1 manually
         for i, unit_id in enumerate(self.sorting_1.unit_ids):
-            self.nwbfile.add_unit(**self.common_unit_row_kwargs, id=i, unit_name=unit_id, custom_int_property=i * 100)
+            self.nwbfile.add_unit(
+                **self.common_unit_row_kwargs,
+                id=i,
+                unit_name=unit_id,
+                sorting_name="curated",
+                custom_int_property=i * 100,
+            )
+        self.sorting_1.annotate(sorting_name="curated")
 
         # This should not raise an error even though custom_int_property has no clear default
         # because no new rows need to be added
@@ -2434,6 +2705,8 @@ class TestAddUnitsTable(TestCase):
 
         add_recording_to_nwbfile(recording=recording, nwbfile=self.nwbfile)
 
+        self.sorting_1.annotate(sorting_name="curated")
+        self.sorting_2.annotate(sorting_name="curated")
         add_sorting_to_nwbfile(
             sorting=self.sorting_1,
             nwbfile=self.nwbfile,
@@ -2460,6 +2733,8 @@ class TestAddUnitsTable(TestCase):
         """
         num_samples, num_channels = 10, 4
         waveform_means = np.ones(shape=(self.num_units, num_samples, num_channels))
+        self.sorting_1.annotate(sorting_name="curated")
+        self.sorting_2.annotate(sorting_name="curated")
 
         add_sorting_to_nwbfile(
             sorting=self.sorting_1,
@@ -2482,6 +2757,8 @@ class TestAddUnitsTable(TestCase):
         """
         num_samples, num_channels = 10, 4
         waveform_means = np.ones(shape=(self.num_units, num_samples, num_channels))
+        self.sorting_1.annotate(sorting_name="curated")
+        self.sorting_2.annotate(sorting_name="curated")
 
         add_sorting_to_nwbfile(sorting=self.sorting_1, nwbfile=self.nwbfile)
         add_sorting_to_nwbfile(
@@ -2502,6 +2779,8 @@ class TestAddUnitsTable(TestCase):
         extending path already writes for units that lack the property.
         """
         self.sorting_1.set_property(key="ragged_property", values=np.ones(shape=(self.num_units, 2)))
+        self.sorting_1.annotate(sorting_name="curated")
+        self.sorting_2.annotate(sorting_name="curated")
 
         add_sorting_to_nwbfile(sorting=self.sorting_1, nwbfile=self.nwbfile)
         add_sorting_to_nwbfile(sorting=self.sorting_2, nwbfile=self.nwbfile)
@@ -2595,25 +2874,71 @@ class TestAddSorting:
         }
 
         expected_error = re.escape(
-            f"metadata['Ecephys']['UnitsTables'] keys '{curated_units_table_metadata_key}' and "
-            f"'{raw_units_table_metadata_key}' both use the name '{units_table_name}'.\n"
+            f"metadata['Ecephys']['UnitsTables']['{curated_units_table_metadata_key}'] and "
+            f"metadata['Ecephys']['UnitsTables']['{raw_units_table_metadata_key}'] both use the name "
+            f"'{units_table_name}'.\n"
             "For two tables, give each its own name:\n"
-            "    metadata['Ecephys']['UnitsTables'] = {\n"
-            f"        '{curated_units_table_metadata_key}': {{'name': '{units_table_name}'}},\n"
-            f"        '{raw_units_table_metadata_key}': {{'name': '<another name>'}},\n"
-            "    }\n"
-            "For one table shared by several sortings, declare it under one key and point each sorting at that "
-            "key:\n"
-            f"    metadata['Ecephys']['UnitsTables'] = {{'{curated_units_table_metadata_key}': "
-            f"{{'name': '{units_table_name}'}}}}\n"
-            "    metadata['Ecephys']['Sortings'] = {\n"
-            f"        '<sorting key>': {{'units_table_metadata_key': '{curated_units_table_metadata_key}'}},\n"
-            f"        '<other sorting key>': {{'units_table_metadata_key': '{curated_units_table_metadata_key}'}},\n"
-            "    }"
+            f"    metadata['Ecephys']['UnitsTables']['{raw_units_table_metadata_key}']['name'] = '<another name>'\n"
+            "For one table shared by several sortings, declare it once and point each sorting's entry at its key:\n"
+            f"    metadata['Ecephys']['UnitsTables'] = {{'<table key>': {{'name': '{units_table_name}'}}}}\n"
+            "    metadata['Ecephys']['Sortings']['<sorting key>']['units_table_metadata_key'] = '<table key>'"
         )
         with pytest.raises(ValueError, match=expected_error):
             add_sorting_to_nwbfile(sorting=sorting, nwbfile=nwbfile, metadata=metadata, metadata_key=metadata_key)
         assert "ecephys" not in nwbfile.processing
+
+    def test_two_sorting_entries_with_the_same_name_raise(self):
+        """Two sorting entries giving one name would write one table that neither declared shared, so the first
+        write raises before anything is written."""
+        sorting = generate_sorting(num_units=3, durations=[1.0])
+        nwbfile = mock_NWBFile()
+        probe_0_metadata_key = "probe_0_sorting"
+        probe_1_metadata_key = "probe_1_sorting"
+        units_table_name = "ProcessedUnits"
+        metadata = {
+            "Ecephys": {
+                "Sortings": {
+                    probe_0_metadata_key: {"name": units_table_name},
+                    probe_1_metadata_key: {"name": units_table_name},
+                }
+            }
+        }
+
+        expected_error = re.escape(
+            f"metadata['Ecephys']['Sortings']['{probe_0_metadata_key}'] and "
+            f"metadata['Ecephys']['Sortings']['{probe_1_metadata_key}'] both use the name '{units_table_name}'.\n"
+            "For two tables, give each its own name:\n"
+            f"    metadata['Ecephys']['Sortings']['{probe_1_metadata_key}']['name'] = '<another name>'\n"
+            "For one table shared by several sortings, declare it once and point each sorting's entry at its key:\n"
+            f"    metadata['Ecephys']['UnitsTables'] = {{'<table key>': {{'name': '{units_table_name}'}}}}\n"
+            "    metadata['Ecephys']['Sortings']['<sorting key>']['units_table_metadata_key'] = '<table key>'"
+        )
+        with pytest.raises(ValueError, match=expected_error):
+            add_sorting_to_nwbfile(
+                sorting=sorting, nwbfile=nwbfile, metadata=metadata, metadata_key=probe_0_metadata_key
+            )
+        assert "ecephys" not in nwbfile.processing
+
+    def test_sorting_entry_description_without_name_raises(self):
+        """A sorting entry without a name writes nwbfile.units, which only its UnitsTables entry describes, so a
+        description on the sorting entry raises instead of being dropped."""
+        sorting = generate_sorting(num_units=3, durations=[1.0])
+        metadata_key = "kilosort_sorting"
+        metadata = {"Ecephys": {"Sortings": {metadata_key: {"description": "Kilosort 4, curated in Phy."}}}}
+
+        expected_error = re.escape(
+            f"metadata['Ecephys']['Sortings']['{metadata_key}'] gives a 'description' but no 'name', so the sorting "
+            "writes nwbfile.units, which only metadata['Ecephys']['UnitsTables']['canonical_units_table'] "
+            "describes.\n"
+            "To describe nwbfile.units:\n"
+            "    metadata['Ecephys']['UnitsTables']['canonical_units_table'] = {'description': '<description>'}\n"
+            "To write the sorting into a table of its own in processing, give its entry a name:\n"
+            f"    metadata['Ecephys']['Sortings']['{metadata_key}']['name'] = '<table name>'"
+        )
+        with pytest.raises(ValueError, match=expected_error):
+            add_sorting_to_nwbfile(
+                sorting=sorting, nwbfile=mock_NWBFile(), metadata=metadata, metadata_key=metadata_key
+            )
 
     def test_caller_metadata_is_not_mutated(self):
         """The write path reads the caller's metadata and never writes back into it."""
@@ -3538,6 +3863,24 @@ class TestAddRecording:
         )
         with pytest.raises(ValueError, match=expected_error):
             add_recording_to_nwbfile(recording=recording, nwbfile=nwbfile, metadata=metadata)
+
+    def test_timing_in_the_entry_is_deprecated(self):
+        recording = generate_recording(sampling_frequency=1.0, num_channels=3, durations=[3.0])
+        recording.set_channel_gains(gains=[1.0] * recording.get_num_channels())
+        recording.set_channel_offsets(offsets=[0.0] * recording.get_num_channels())
+        nwbfile = mock_NWBFile()
+
+        metadata = _get_ecephys_metadata_placeholders()
+        metadata["Ecephys"]["ElectricalSeries"] = {"series": {"name": "ElectricalSeries", "starting_time": 5.0}}
+
+        expected_warning = re.escape(
+            "metadata['Ecephys']['ElectricalSeries']['series'] sets ['starting_time'], which the writer computes "
+            "from the recording."
+        )
+        with pytest.warns(FutureWarning, match=expected_warning):
+            add_recording_to_nwbfile(
+                recording=recording, nwbfile=nwbfile, metadata=metadata, metadata_key="series", iterator_type=None
+            )
 
     def test_metadata_not_mutated(self):
         """add_recording_to_nwbfile does not mutate the input metadata dict."""

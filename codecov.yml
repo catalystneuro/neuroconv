@@ -1,6 +1,6 @@
 comment:
   layout: "reach, diff, flags, files"
-  behavior: new
+  behavior: once  # post one comment per PR and edit it in place on later pushes (edits send no notification email); if the comment is deleted, do not repost
   require_changes: true  # if true: only post the comment if coverage changes
   require_base: no        # [yes :: must have a base report to post]
   require_head: yes       # [yes :: must have a head report to post]

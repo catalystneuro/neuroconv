@@ -21,6 +21,7 @@ class TestIntanAnalogInterface(TimeSeriesInterfaceTestMixin):
         stream_name="USB board ADC input channel",
     )
     expected_time_series_names = ("TimeSeriesIntanADCInput",)
+    expected_temporal_alignment_keys = ("intan_analog_0",)
 
     def check_extracted_metadata(self, metadata):
         assert set(metadata["TimeSeries"]) == {"intan_analog"}

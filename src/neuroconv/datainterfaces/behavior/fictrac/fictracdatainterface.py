@@ -195,10 +195,10 @@ class FicTracDataInterface(BaseDataInterface):
 
         # Every series FicTrac writes shares one timeline, so the interface has one time-bearing object
         self.temporal_alignment = _TemporalAlignment()
-        self.temporal_alignment._register(
+        self.temporal_alignment._add_time_bearing_object(
             key="fictrac",
-            get_native_times=self.get_original_timestamps,
-            get_number_of_samples=lambda: len(self.get_original_timestamps()),
+            get_native_times=self._get_original_timestamps,
+            get_number_of_samples=lambda: len(self._get_original_timestamps()),
         )
 
     def get_metadata(self) -> DeepDict:
@@ -282,6 +282,16 @@ class FicTracDataInterface(BaseDataInterface):
         processing_module.add(position_container)
 
     def get_original_timestamps(self):
+        """Deprecated: read ``interface.temporal_alignment[key].get_times()`` before aligning instead."""
+        warnings.warn(
+            "`get_original_timestamps` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment[key].get_times()` before aligning instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        return self._get_original_timestamps()
+
+    def _get_original_timestamps(self):
         """
         Retrieve and correct timestamps from a FicTrac data file.
 

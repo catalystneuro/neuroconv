@@ -214,7 +214,7 @@ def test_always_write_timestamps(nwb_converter, nwbfile_path, metadata):
 def test_aligned_starting_time(nwb_converter, nwbfile_path, metadata, aligned_starting_time):
     """Test that aligned starting time is correctly applied."""
     interface = nwb_converter.data_interface_objects["Video1"]
-    interface.temporal_alignment["video_test1"].move_start_to(aligned_starting_time)
+    interface.temporal_alignment["video_test1"].move_earliest_observation_to(aligned_starting_time)
 
     conversion_options = dict(Video1=dict(stub_test=True))
     nwb_converter.run_conversion(

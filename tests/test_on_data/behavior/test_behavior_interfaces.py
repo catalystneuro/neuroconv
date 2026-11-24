@@ -248,10 +248,11 @@ class TestMiniscopeInterface(DataInterfaceTestMixin):
         nwbfile.read_io.close()
 
 
-class TestNeuralynxNvtInterface(DataInterfaceTestMixin, TemporalAlignmentMixin):
+class TestNeuralynxNvtInterface(DataInterfaceTestMixin):
     data_interface_cls = NeuralynxNvtInterface
     interface_kwargs = dict(file_path=str(BEHAVIOR_DATA_PATH / "neuralynx" / "test.nvt"))
     conversion_options = dict(add_angle=True)
+    expected_temporal_alignment_keys = ("neuralynx_nvt",)
     save_directory = OUTPUT_PATH
 
     def check_read_nwb(self, nwbfile_path: str):  # This is currently structured to be file-specific

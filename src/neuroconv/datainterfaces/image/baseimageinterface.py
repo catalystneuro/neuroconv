@@ -19,6 +19,8 @@ class BaseImageInterface(BaseDataInterface):
     ``_create_nwb_image``, which turns a single file into the NWB image object placed in the container.
     """
 
+    temporal_alignment = None
+
     @classmethod
     def get_source_schema(cls) -> dict:
         """Return the schema for the source_data."""
