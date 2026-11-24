@@ -42,8 +42,9 @@ class _IcephysSeriesData:
     timestamps: np.ndarray
     conversion: float
     offset: float = 0.0
-    # A stimulus's or stimulus template's own `(start_index, count)` per sweep, for a source whose stimulus and
-    # response sweeps differ in length. None addresses it by the response's ranges.
+    # A stimulus's own `(start_index, count)` per sweep, for a source whose stimulus and response sweeps differ in
+    # length, or a stimulus template's, pointing each sweep at its waveform. None addresses it by the response's
+    # ranges.
     sweep_sample_ranges: list[tuple[int, int]] | None = None
 
 
@@ -127,40 +128,6 @@ def _check_matching_stimulus_template(
             "electrode. Give each distinct waveform and electrode its own entry in "
             "metadata['Icephys']['PatchClampStimulusTemplateSeries']."
         )
-
-
-def _deduplicate_stimulus_template_sweeps(
-    template_data: _IcephysSeriesData, sweep_sample_ranges: list[tuple[int, int]]
-) -> _IcephysSeriesData:
-    """Return the stimulus template with each distinct sweep waveform stored once, in the order first played.
-
-    Each sweep's range points at the copy of its waveform, and the timestamps restart at 0.0 at the template's rate.
-    A template without its own sweep ranges is addressed by ``sweep_sample_ranges``, the response's.
-    """
-    rate = calculate_regular_series_rate(series=template_data.timestamps)
-    if rate is None:
-        raise ValueError("A stimulus template must be regularly sampled.")
-    template_sweep_sample_ranges = template_data.sweep_sample_ranges or sweep_sample_ranges
-    waveform_ranges = {}
-    waveforms = []
-    deduplicated_sweep_sample_ranges = []
-    next_start_index = 0
-    for start_index, count in template_sweep_sample_ranges:
-        waveform = template_data.data[start_index : start_index + count]
-        waveform_key = waveform.tobytes()
-        if waveform_key not in waveform_ranges:
-            waveform_ranges[waveform_key] = (next_start_index, count)
-            waveforms.append(waveform)
-            next_start_index += count
-        deduplicated_sweep_sample_ranges.append(waveform_ranges[waveform_key])
-    data = np.concatenate(waveforms)
-    return _IcephysSeriesData(
-        data=data,
-        timestamps=np.arange(len(data)) / rate,
-        conversion=template_data.conversion,
-        offset=template_data.offset,
-        sweep_sample_ranges=deduplicated_sweep_sample_ranges,
-    )
 
 
 # NWB requires a `stimulus_type` on every SequentialRecordings entry, so a source that describes none still has

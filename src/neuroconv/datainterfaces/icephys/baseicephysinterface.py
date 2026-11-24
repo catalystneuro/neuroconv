@@ -10,7 +10,6 @@ from ...tools.icephys import (
     _add_intracellular_electrode_to_nwbfile,
     _add_intracellular_recordings_to_nwbfile,
     _add_patch_clamp_series_to_nwbfile,
-    _deduplicate_stimulus_template_sweeps,
     _IcephysSeriesData,
 )
 from ...tools.nwb_helpers._metadata_and_file_helpers import _validate_metadata_key
@@ -63,9 +62,6 @@ class BaseIcephysInterface(BaseDataInterface):
             stimulus_sweep_sample_ranges = stimulus_data.sweep_sample_ranges
         stimulus_template_sweep_sample_ranges = None
         if stimulus_template_data is not None:
-            stimulus_template_data = _deduplicate_stimulus_template_sweeps(
-                template_data=stimulus_template_data, sweep_sample_ranges=sweep_sample_ranges
-            )
             stimulus_template_sweep_sample_ranges = stimulus_template_data.sweep_sample_ranges
         response_series = _add_patch_clamp_series_to_nwbfile(
             nwbfile=nwbfile,
@@ -127,7 +123,8 @@ class BaseIcephysInterface(BaseDataInterface):
     def _get_icephys_stimulus_template_data(self) -> _IcephysSeriesData | None:
         """Return the stimulus template the source specifies, if any, in the standard internal representation.
 
-        It is regularly sampled, with timestamps relative to the start of the template, and is not aligned with the
-        response. The base stores each distinct sweep waveform once.
+        The data holds each distinct sweep waveform once, and ``sweep_sample_ranges`` gives one
+        ``(start_index, count)`` per sweep, pointing at the waveform that sweep played. The timestamps are relative
+        to the start of the template, so the first is 0.0, and are written as given, not aligned with the response.
         """
         return None

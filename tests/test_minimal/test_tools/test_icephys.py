@@ -18,7 +18,6 @@ from neuroconv.tools.icephys import (
     _add_patch_clamp_series_to_nwbfile,
     _add_sweep_time_intervals_to_nwbfile,
     _build_icephys_hierarchical_tables,
-    _deduplicate_stimulus_template_sweeps,
     _IcephysSeriesData,
 )
 from neuroconv.tools.testing.data_interface_mixins import DataInterfaceTestMixin
@@ -574,25 +573,6 @@ class TestStimulusTemplate:
         )
         with pytest.raises(ValueError, match=re.escape(expected_message)):
             interface.create_nwbfile(metadata=metadata)
-
-
-class TestDeduplicateStimulusTemplateSweeps:
-    """Each distinct sweep waveform is stored once, in the order first played, and every sweep points at its copy."""
-
-    def test_repeated_waveforms_are_stored_once(self):
-        # Three sweeps of two samples at 10 Hz, playing waveforms A, B, A.
-        template_data = _IcephysSeriesData(
-            data=np.array([1.0, 1.0, 2.0, 2.0, 1.0, 1.0]),
-            timestamps=np.arange(6) / 10.0,
-            conversion=1.0,
-        )
-        deduplicated_data = _deduplicate_stimulus_template_sweeps(
-            template_data=template_data, sweep_sample_ranges=[(0, 2), (2, 2), (4, 2)]
-        )
-
-        np.testing.assert_array_equal(deduplicated_data.data, [1.0, 1.0, 2.0, 2.0])
-        np.testing.assert_allclose(deduplicated_data.timestamps, [0.0, 0.1, 0.2, 0.3])
-        assert deduplicated_data.sweep_sample_ranges == [(0, 2), (2, 2), (0, 2)]
 
 
 class TestMissingMetadataEntries:

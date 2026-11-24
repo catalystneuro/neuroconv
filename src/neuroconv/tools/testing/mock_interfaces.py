@@ -1874,9 +1874,9 @@ class MockIcephysInterface(BaseIcephysInterface):
             ``sweep_duration`` gives the stimulus its own sweep ranges, as for a sweep that stops recording before
             its command ends.
         stimulus_template_duration : float, optional
-            Duration of every sweep's stimulus template, in seconds. None writes no template. A duration other than
-            ``sweep_duration`` gives the template its own sweep ranges. The template's samples are all 2.0, so it
-            can be told apart from the stimulus's 1.0.
+            Duration of the stimulus template, in seconds. None writes no template. Every sweep plays the same
+            waveform, so the template holds it once. Its samples are all 2.0, so it can be told apart from the
+            stimulus's 1.0.
         stimulus_template_metadata_key : str, optional
             Identity of the stimulus template in the metadata dict. Defaults to ``metadata_key``. Instances on one
             electrode that give the same key share one template series.
@@ -2022,23 +2022,16 @@ class MockIcephysInterface(BaseIcephysInterface):
         return response_data, stimulus_data, sweep_sample_ranges
 
     def _get_icephys_stimulus_template_data(self):
-        """Return the synthetic stimulus template, all 2.0, when a template duration was given."""
+        """Return the synthetic stimulus template, one waveform of all 2.0 that every sweep plays."""
         if self.stimulus_template_duration is None:
             return None
-        samples_per_sweep = round(self.sweep_duration * self.sampling_frequency)
-        template_samples_per_sweep = round(self.stimulus_template_duration * self.sampling_frequency)
-        template_data = _IcephysSeriesData(
-            data=np.full(self.num_sweeps * template_samples_per_sweep, 2.0, dtype="float32"),
-            # Relative to the start of the template, every sweep's waveform laid end to end.
-            timestamps=np.arange(self.num_sweeps * template_samples_per_sweep) / self.sampling_frequency,
+        template_samples = round(self.stimulus_template_duration * self.sampling_frequency)
+        return _IcephysSeriesData(
+            data=np.full(template_samples, 2.0, dtype="float32"),
+            timestamps=np.arange(template_samples) / self.sampling_frequency,
             conversion=1.0,
+            sweep_sample_ranges=[(0, template_samples)] * self.num_sweeps,
         )
-        if template_samples_per_sweep != samples_per_sweep:
-            template_data.sweep_sample_ranges = [
-                (sweep_index * template_samples_per_sweep, template_samples_per_sweep)
-                for sweep_index in range(self.num_sweeps)
-            ]
-        return template_data
 
     def _get_stimulus_type(self) -> str | None:
         return self.stimulus_type
