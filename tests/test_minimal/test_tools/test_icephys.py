@@ -72,6 +72,20 @@ class TestMockIcephysInterfaceWithALongerStimulus(DataInterfaceTestMixin):
         nwbfile.read_io.close()
 
 
+class TestMockIcephysInterfaceWithAStimulusTemplate(DataInterfaceTestMixin):
+    """A template's times are relative to its own start, so the shared alignment tests leave it where it is."""
+
+    data_interface_cls = MockIcephysInterface
+    interface_kwargs = dict(num_sweeps=2, sampling_frequency=10.0, stimulus_template_duration=1.0)
+    expected_temporal_alignment_keys = ("mock",)
+
+    def check_read_nwb(self, nwbfile_path: str):
+        nwbfile = read_nwb(nwbfile_path)
+        template = nwbfile.stimulus_template["CurrentClampStimulusSeriesTemplateMock"]
+        assert template.starting_time == 0.0
+        nwbfile.read_io.close()
+
+
 class TestSweepTimeIntervals:
     """The ``sweeps`` table: one row per distinct sweep interval, in time order, on either timing basis."""
 

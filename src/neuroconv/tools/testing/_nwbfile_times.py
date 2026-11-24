@@ -12,7 +12,7 @@ def _get_nwbfile_times(nwbfile: NWBFile) -> dict[str, np.ndarray]:
     computed from ``starting_time`` and ``rate`` when they are not stored, and a table contributes the columns
     named ``timestamp`` or ending in ``_time``. A units table's ``spike_times`` is ragged, one list per unit, so it
     contributes its flat data, every unit's spikes in row order. Durations are not times and are left out because
-    a shift never changes them.
+    a shift never changes them. A stimulus template's times are relative to its own start, so it is left out.
 
     Returns
     -------
@@ -20,7 +20,10 @@ def _get_nwbfile_times(nwbfile: NWBFile) -> dict[str, np.ndarray]:
         The times, keyed for example by ``"acquisition/video/timestamps"`` or ``"events/Tick/timestamp"``.
     """
     times = {}
+    stimulus_templates = list(nwbfile.stimulus_template.values())
     for container in nwbfile.objects.values():
+        if any(container is stimulus_template for stimulus_template in stimulus_templates):
+            continue
         ancestors = [ancestor for ancestor in container.get_ancestors() if not isinstance(ancestor, NWBFile)]
         path = "/".join(reversed([container.name, *(ancestor.name for ancestor in ancestors)]))
         if isinstance(container, TimeSeries):
