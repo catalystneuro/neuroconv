@@ -1878,8 +1878,8 @@ class MockIcephysInterface(BaseIcephysInterface):
             ``sweep_duration`` gives the template its own sweep ranges. The template's samples are all 2.0, so it
             can be told apart from the stimulus's 1.0.
         stimulus_template_metadata_key : str, optional
-            Identity of the stimulus template in the metadata dict. Defaults to ``metadata_key``. Instances that
-            give the same key share one template series.
+            Identity of the stimulus template in the metadata dict. Defaults to ``metadata_key``. Instances on one
+            electrode that give the same key share one template series.
         seed : int, default: 0
             Seed for the random number generator.
         verbose : bool, default: False
@@ -1978,7 +1978,7 @@ class MockIcephysInterface(BaseIcephysInterface):
                     "description": f"Mock intracellular stimulus ({self._mode}).",
                 }
             }
-        # The template is keyed by waveform, so instances that name the same key share one series.
+        # The template is keyed by waveform and electrode, so instances that name the same key share one series.
         if self.stimulus_template_duration is not None:
             stimulus_type_name = {
                 "voltage_clamp": "VoltageClampStimulusSeries",

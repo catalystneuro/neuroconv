@@ -10,6 +10,7 @@ from ...tools.icephys import (
     _add_intracellular_electrode_to_nwbfile,
     _add_intracellular_recordings_to_nwbfile,
     _add_patch_clamp_series_to_nwbfile,
+    _deduplicate_stimulus_template_sweeps,
     _IcephysSeriesData,
 )
 from ...tools.nwb_helpers._metadata_and_file_helpers import _validate_metadata_key
@@ -20,7 +21,7 @@ class BaseIcephysInterface(BaseDataInterface):
 
     Concrete interfaces return source data through :meth:`_get_icephys_series_data`, and a stimulus template through
     :meth:`_get_icephys_stimulus_template_data` when the source specifies one, with its metadata entry named by
-    ``_stimulus_template_metadata_key``. This base owns NWB object
+    ``_stimulus_template_metadata_key``, one entry per waveform and electrode. This base owns NWB object
     construction, metadata-linked electrode resolution, and the per-sweep ``IntracellularRecordings`` rows.
     The hierarchy above those rows remains a converter responsibility, once every interface has contributed.
     """
@@ -62,6 +63,9 @@ class BaseIcephysInterface(BaseDataInterface):
             stimulus_sweep_sample_ranges = stimulus_data.sweep_sample_ranges
         stimulus_template_sweep_sample_ranges = None
         if stimulus_template_data is not None:
+            stimulus_template_data = _deduplicate_stimulus_template_sweeps(
+                template_data=stimulus_template_data, sweep_sample_ranges=sweep_sample_ranges
+            )
             stimulus_template_sweep_sample_ranges = stimulus_template_data.sweep_sample_ranges
         response_series = _add_patch_clamp_series_to_nwbfile(
             nwbfile=nwbfile,
@@ -123,7 +127,7 @@ class BaseIcephysInterface(BaseDataInterface):
     def _get_icephys_stimulus_template_data(self) -> _IcephysSeriesData | None:
         """Return the stimulus template the source specifies, if any, in the standard internal representation.
 
-        Its timestamps are relative to the start of the template, so the first is 0.0. They are written as given,
-        not aligned with the response.
+        It is regularly sampled, with timestamps relative to the start of the template, and is not aligned with the
+        response. The base stores each distinct sweep waveform once.
         """
         return None

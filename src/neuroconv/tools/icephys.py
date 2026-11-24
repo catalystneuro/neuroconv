@@ -100,7 +100,7 @@ def _add_patch_clamp_series_to_nwbfile(
     if role == "stimulus_template" and series_kwargs["name"] in nwbfile.stimulus_template:
         existing_series = nwbfile.stimulus_template[series_kwargs["name"]]
         _check_matching_stimulus_template(
-            existing_series=existing_series, series_class=series_class, series_data=series_data
+            existing_series=existing_series, series_class=series_class, series_data=series_data, electrode=electrode
         )
         return existing_series
 
@@ -109,10 +109,13 @@ def _add_patch_clamp_series_to_nwbfile(
     return series
 
 
-def _check_matching_stimulus_template(existing_series, series_class, series_data: _IcephysSeriesData) -> None:
-    """Raise unless a stimulus template already in the file holds the same waveform as ``series_data``."""
+def _check_matching_stimulus_template(
+    existing_series, series_class, series_data: _IcephysSeriesData, electrode
+) -> None:
+    """Raise unless a stimulus template already in the file holds the same waveform, on the same electrode."""
     matches = (
-        type(existing_series) is series_class
+        existing_series.electrode is electrode
+        and type(existing_series) is series_class
         and np.array_equal(existing_series.data[:], series_data.data)
         and existing_series.conversion == series_data.conversion
         and existing_series.offset == series_data.offset
@@ -120,9 +123,44 @@ def _check_matching_stimulus_template(existing_series, series_class, series_data
     )
     if not matches:
         raise ValueError(
-            f"The stimulus template '{existing_series.name}' is already in the NWB file with a different waveform. "
-            "Give each distinct waveform its own entry in metadata['Icephys']['PatchClampStimulusTemplateSeries']."
+            f"The stimulus template '{existing_series.name}' is already in the NWB file with a different waveform or "
+            "electrode. Give each distinct waveform and electrode its own entry in "
+            "metadata['Icephys']['PatchClampStimulusTemplateSeries']."
         )
+
+
+def _deduplicate_stimulus_template_sweeps(
+    template_data: _IcephysSeriesData, sweep_sample_ranges: list[tuple[int, int]]
+) -> _IcephysSeriesData:
+    """Return the stimulus template with each distinct sweep waveform stored once, in the order first played.
+
+    Each sweep's range points at the copy of its waveform, and the timestamps restart at 0.0 at the template's rate.
+    A template without its own sweep ranges is addressed by ``sweep_sample_ranges``, the response's.
+    """
+    rate = calculate_regular_series_rate(series=template_data.timestamps)
+    if rate is None:
+        raise ValueError("A stimulus template must be regularly sampled.")
+    template_sweep_sample_ranges = template_data.sweep_sample_ranges or sweep_sample_ranges
+    waveform_ranges = {}
+    waveforms = []
+    deduplicated_sweep_sample_ranges = []
+    next_start_index = 0
+    for start_index, count in template_sweep_sample_ranges:
+        waveform = template_data.data[start_index : start_index + count]
+        waveform_key = waveform.tobytes()
+        if waveform_key not in waveform_ranges:
+            waveform_ranges[waveform_key] = (next_start_index, count)
+            waveforms.append(waveform)
+            next_start_index += count
+        deduplicated_sweep_sample_ranges.append(waveform_ranges[waveform_key])
+    data = np.concatenate(waveforms)
+    return _IcephysSeriesData(
+        data=data,
+        timestamps=np.arange(len(data)) / rate,
+        conversion=template_data.conversion,
+        offset=template_data.offset,
+        sweep_sample_ranges=deduplicated_sweep_sample_ranges,
+    )
 
 
 # NWB requires a `stimulus_type` on every SequentialRecordings entry, so a source that describes none still has
@@ -172,8 +210,7 @@ def _get_icephys_metadata_placeholders() -> DeepDict:
     - ``Icephys.PatchClampStimulusSeries[key]``: the optional paired stimulus, in a parallel registry at the
       SAME key as its response. It reuses the response's electrode, so it carries no ``electrode_metadata_key``.
     - ``Icephys.PatchClampStimulusTemplateSeries[key]``: the optional stimulus template, the command the protocol
-      specified, keyed by waveform. Interfaces that name the same entry share one series, which links the electrode
-      of the first interface written.
+      specified, keyed by waveform and electrode. Interfaces that name the same entry share one series.
     """
     metadata = DeepDict()
     metadata["Devices"] = {

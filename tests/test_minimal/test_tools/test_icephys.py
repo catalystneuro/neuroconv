@@ -18,6 +18,7 @@ from neuroconv.tools.icephys import (
     _add_patch_clamp_series_to_nwbfile,
     _add_sweep_time_intervals_to_nwbfile,
     _build_icephys_hierarchical_tables,
+    _deduplicate_stimulus_template_sweeps,
     _IcephysSeriesData,
 )
 from neuroconv.tools.testing.data_interface_mixins import DataInterfaceTestMixin
@@ -401,7 +402,7 @@ class TestStimulusLongerThanResponse:
 
 class TestStimulusTemplate:
     """A stimulus template, the command the protocol specified, is written beside the response and any recorded
-    stimulus, and each row addresses its stretch of it."""
+    stimulus, with each distinct sweep waveform stored once and each row addressing its copy."""
 
     def test_rows_address_the_stimulus_and_the_template(self):
         interface = MockIcephysInterface(
@@ -415,10 +416,11 @@ class TestStimulusTemplate:
             (stimuli["stimulus_template"][row].idx_start, stimuli["stimulus_template"][row].count) for row in range(2)
         ]
         assert stimulus_references == [(0, 10), (10, 10)]
-        assert template_references == [(0, 10), (10, 10)]
+        # Both sweeps play the same waveform, so the template stores it once.
+        assert template_references == [(0, 10), (0, 10)]
         template = nwbfile.stimulus_template["CurrentClampStimulusSeriesTemplateMock"]
         assert stimuli["stimulus_template"][0].timeseries is template
-        np.testing.assert_array_equal(template.data, np.full(20, 2.0, dtype="float32"))
+        np.testing.assert_array_equal(template.data, np.full(10, 2.0, dtype="float32"))
 
     def test_template_without_a_recorded_stimulus(self):
         interface = MockIcephysInterface(num_sweeps=2, sampling_frequency=10.0, stimulus_template_duration=1.0)
@@ -431,7 +433,7 @@ class TestStimulusTemplate:
         ]
         assert [
             (stimuli["stimulus_template"][row].idx_start, stimuli["stimulus_template"][row].count) for row in range(2)
-        ] == [(0, 10), (10, 10)]
+        ] == [(0, 10), (0, 10)]
         assert len(nwbfile.stimulus) == 0
 
     def test_runs_without_a_template_before_and_after_one_with_a_template(self, tmp_path):
@@ -473,7 +475,7 @@ class TestStimulusTemplate:
             (None, None, None),
             (None, None, None),
             (0, 10, "CurrentClampStimulusSeriesTemplateSteps"),
-            (10, 10, "CurrentClampStimulusSeriesTemplateSteps"),
+            (0, 10, "CurrentClampStimulusSeriesTemplateSteps"),
             (None, None, None),
             (None, None, None),
         ]
@@ -491,12 +493,12 @@ class TestStimulusTemplate:
         nwbfile = interface.create_nwbfile()
 
         templates = nwbfile.intracellular_recordings["stimuli"]["stimulus_template"]
-        assert [(templates[row].idx_start, templates[row].count) for row in range(2)] == [(0, 12), (12, 12)]
+        assert [(templates[row].idx_start, templates[row].count) for row in range(2)] == [(0, 12), (0, 12)]
         template = nwbfile.stimulus_template["CurrentClampStimulusSeriesTemplateMock"]
         assert template.starting_time == 0.0
         assert template.rate == 10.0
 
-    def test_interfaces_naming_one_template_share_it(self):
+    def test_interfaces_naming_one_template_on_one_electrode_share_it(self):
         interfaces = [
             MockIcephysInterface(
                 num_sweeps=2,
@@ -509,17 +511,14 @@ class TestStimulusTemplate:
             )
             for starting_time, metadata_key in [(0.0, "first"), (10.0, "second")]
         ]
-        nwbfile = create_finalized_nwbfile(interfaces)
+        metadata = ConverterPipe(data_interfaces=interfaces).get_metadata()
+        metadata["Icephys"]["PatchClampSeries"]["second"]["electrode_metadata_key"] = "first"
+        nwbfile = create_finalized_nwbfile(interfaces, metadata=metadata)
 
         assert list(nwbfile.stimulus_template) == ["CurrentClampStimulusSeriesTemplateSteps"]
         template = nwbfile.stimulus_template["CurrentClampStimulusSeriesTemplateSteps"]
         templates = nwbfile.intracellular_recordings["stimuli"]["stimulus_template"]
-        assert [(templates[row].idx_start, templates[row].count) for row in range(4)] == [
-            (0, 10),
-            (10, 10),
-            (0, 10),
-            (10, 10),
-        ]
+        assert [(templates[row].idx_start, templates[row].count) for row in range(4)] == [(0, 10)] * 4
         assert all(templates[row].timeseries is template for row in range(4))
 
     def test_interfaces_naming_one_template_with_different_waveforms_raise(self):
@@ -534,10 +533,32 @@ class TestStimulusTemplate:
             )
             for stimulus_template_duration, metadata_key in [(1.0, "first"), (1.2, "second")]
         ]
+        metadata = ConverterPipe(data_interfaces=interfaces).get_metadata()
+        metadata["Icephys"]["PatchClampSeries"]["second"]["electrode_metadata_key"] = "first"
 
         expected_message = (
             "The stimulus template 'CurrentClampStimulusSeriesTemplateSteps' is already in the NWB file with a "
-            "different waveform."
+            "different waveform or electrode."
+        )
+        with pytest.raises(ValueError, match=re.escape(expected_message)):
+            create_finalized_nwbfile(interfaces, metadata=metadata)
+
+    def test_interfaces_naming_one_template_on_different_electrodes_raise(self):
+        interfaces = [
+            MockIcephysInterface(
+                num_sweeps=2,
+                sampling_frequency=10.0,
+                protocol_run=metadata_key,
+                metadata_key=metadata_key,
+                stimulus_template_duration=1.0,
+                stimulus_template_metadata_key="steps",
+            )
+            for metadata_key in ["first", "second"]
+        ]
+
+        expected_message = (
+            "The stimulus template 'CurrentClampStimulusSeriesTemplateSteps' is already in the NWB file with a "
+            "different waveform or electrode."
         )
         with pytest.raises(ValueError, match=re.escape(expected_message)):
             create_finalized_nwbfile(interfaces)
@@ -553,6 +574,25 @@ class TestStimulusTemplate:
         )
         with pytest.raises(ValueError, match=re.escape(expected_message)):
             interface.create_nwbfile(metadata=metadata)
+
+
+class TestDeduplicateStimulusTemplateSweeps:
+    """Each distinct sweep waveform is stored once, in the order first played, and every sweep points at its copy."""
+
+    def test_repeated_waveforms_are_stored_once(self):
+        # Three sweeps of two samples at 10 Hz, playing waveforms A, B, A.
+        template_data = _IcephysSeriesData(
+            data=np.array([1.0, 1.0, 2.0, 2.0, 1.0, 1.0]),
+            timestamps=np.arange(6) / 10.0,
+            conversion=1.0,
+        )
+        deduplicated_data = _deduplicate_stimulus_template_sweeps(
+            template_data=template_data, sweep_sample_ranges=[(0, 2), (2, 2), (4, 2)]
+        )
+
+        np.testing.assert_array_equal(deduplicated_data.data, [1.0, 1.0, 2.0, 2.0])
+        np.testing.assert_allclose(deduplicated_data.timestamps, [0.0, 0.1, 0.2, 0.3])
+        assert deduplicated_data.sweep_sample_ranges == [(0, 2), (2, 2), (0, 2)]
 
 
 class TestMissingMetadataEntries:
