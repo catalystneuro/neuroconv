@@ -1916,15 +1916,6 @@ class MockIcephysInterface(BaseIcephysInterface):
                 default_start_time=starting_time,
                 get_number_of_samples=lambda: num_sweeps * stimulus_samples_per_sweep,
             )
-        if stimulus_template_duration is not None:
-            self._stimulus_template_alignment_key = f"{self._alignment_key}_stimulus_template"
-            template_samples_per_sweep = round(stimulus_template_duration * sampling_frequency)
-            self.temporal_alignment._add_time_bearing_object(
-                key=self._stimulus_template_alignment_key,
-                get_native_times=partial(self._get_sweep_times, template_samples_per_sweep),
-                default_start_time=starting_time,
-                get_number_of_samples=lambda: num_sweeps * template_samples_per_sweep,
-            )
 
     def get_metadata(self) -> DeepDict:
         """
@@ -2033,7 +2024,8 @@ class MockIcephysInterface(BaseIcephysInterface):
         template_samples_per_sweep = round(self.stimulus_template_duration * self.sampling_frequency)
         template_data = _IcephysSeriesData(
             data=np.full(self.num_sweeps * template_samples_per_sweep, 2.0, dtype="float32"),
-            timestamps=self._get_sweep_times(template_samples_per_sweep),
+            # Relative to the start of the template, every sweep's waveform laid end to end.
+            timestamps=np.arange(self.num_sweeps * template_samples_per_sweep) / self.sampling_frequency,
             conversion=1.0,
         )
         if template_samples_per_sweep != samples_per_sweep:

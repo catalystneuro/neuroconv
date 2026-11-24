@@ -71,27 +71,6 @@ class TestMockIcephysInterfaceWithALongerStimulus(DataInterfaceTestMixin):
         nwbfile.read_io.close()
 
 
-class TestMockIcephysInterfaceWithALongerStimulusTemplate(DataInterfaceTestMixin):
-    """Two sweeps 10 s apart that stop recording after 10 samples, each against a template of 12 samples. The
-    template has times of its own, so the shared alignment tests replace and remap them as well."""
-
-    data_interface_cls = MockIcephysInterface
-    interface_kwargs = dict(
-        num_sweeps=2,
-        sweep_duration=1.0,
-        sampling_frequency=10.0,
-        inter_sweep_interval=9.0,
-        stimulus_template_duration=1.2,
-    )
-    expected_temporal_alignment_keys = ("mock", "mock_stimulus_template")
-
-    def check_read_nwb(self, nwbfile_path: str):
-        nwbfile = read_nwb(nwbfile_path)
-        template_timestamps = nwbfile.stimulus_template["CurrentClampStimulusSeriesTemplateMock"].get_timestamps()
-        np.testing.assert_allclose(template_timestamps[[0, 11, 12, 23]], [0.0, 1.1, 10.0, 11.1])
-        nwbfile.read_io.close()
-
-
 class TestSweepTimeIntervals:
     """The ``sweeps`` table: one row per distinct sweep interval, in time order, on either timing basis."""
 
@@ -499,7 +478,7 @@ class TestStimulusTemplate:
             (None, None, None),
         ]
 
-    def test_template_longer_than_the_response_moves_with_its_sweeps(self):
+    def test_template_stays_relative_when_the_response_is_shifted(self):
         # Two sweeps 10 s apart that stop recording after 10 samples, each against a template of 12 samples.
         interface = MockIcephysInterface(
             num_sweeps=2,
@@ -513,8 +492,9 @@ class TestStimulusTemplate:
 
         templates = nwbfile.intracellular_recordings["stimuli"]["stimulus_template"]
         assert [(templates[row].idx_start, templates[row].count) for row in range(2)] == [(0, 12), (12, 12)]
-        template_timestamps = nwbfile.stimulus_template["CurrentClampStimulusSeriesTemplateMock"].get_timestamps()
-        np.testing.assert_allclose(template_timestamps[[0, 11, 12, 23]], [5.0, 6.1, 15.0, 16.1])
+        template = nwbfile.stimulus_template["CurrentClampStimulusSeriesTemplateMock"]
+        assert template.starting_time == 0.0
+        assert template.rate == 10.0
 
     def test_missing_template_entry_raises(self):
         interface = MockIcephysInterface(num_sweeps=1, metadata_key="cell1", stimulus_template_duration=1.0)

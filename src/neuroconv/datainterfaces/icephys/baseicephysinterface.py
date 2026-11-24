@@ -61,9 +61,6 @@ class BaseIcephysInterface(BaseDataInterface):
             stimulus_sweep_sample_ranges = stimulus_data.sweep_sample_ranges
         stimulus_template_sweep_sample_ranges = None
         if stimulus_template_data is not None:
-            stimulus_template_data.timestamps = self.temporal_alignment[
-                self._stimulus_template_alignment_key
-            ].get_times()
             stimulus_template_sweep_sample_ranges = stimulus_template_data.sweep_sample_ranges
         response_series = _add_patch_clamp_series_to_nwbfile(
             nwbfile=nwbfile,
@@ -123,5 +120,9 @@ class BaseIcephysInterface(BaseDataInterface):
         return None
 
     def _get_icephys_stimulus_template_data(self) -> _IcephysSeriesData | None:
-        """Return the stimulus template the source specifies, if any, in the standard internal representation."""
+        """Return the stimulus template the source specifies, if any, in the standard internal representation.
+
+        Its timestamps are relative to the start of the template, so the first is 0.0. They are written as given,
+        not aligned with the response.
+        """
         return None
