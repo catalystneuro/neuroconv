@@ -84,8 +84,8 @@ class AxonIntracellularConverter(ConverterPipe):
 
         Interfaces sharing a file path (dual patch) keep one identity; distinct files get the shortest path-suffix
         that's unique (the bare stem unless it collides across folders, which Clampex's per-folder ``0000.abf``
-        naming makes common). This overrides the interface's stem default so ``protocol_run`` and the device/electrode/
-        series keys are unique per file, no silent cross-cell merge, no duplicate-name clash.
+        naming makes common). This overrides the interface's stem default so ``protocol_run`` and the series keys
+        are unique per file, with no duplicate-name clash.
         """
         paths = list(dict.fromkeys(interface._file_path for interface in interfaces))
         labels = _disambiguate_run_labels(paths)

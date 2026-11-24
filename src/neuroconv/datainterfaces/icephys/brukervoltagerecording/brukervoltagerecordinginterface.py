@@ -62,6 +62,7 @@ class BrukerVoltageRecordingInterface(BaseIcephysInterface):
         self,
         file_paths: list[FilePath],
         *,
+        cell_id: str,
         response_signal_name: str | None = None,
         mode: Literal["voltage_clamp", "current_clamp", "izero"] | None = None,
         stimulus_command: str | None = None,
@@ -80,6 +81,9 @@ class BrukerVoltageRecordingInterface(BaseIcephysInterface):
             (``<stem>.xml``) there too, since it holds the cycle's start time. The list is explicit because
             nothing in the format states which cycles belong together; globbing a session folder belongs in the
             conversion script.
+        cell_id : str
+            The cell this electrode recorded. It keys the electrode in the metadata and fills its ``cell_id``, so
+            interfaces given the same cell share one ``IntracellularElectrode``.
         response_signal_name : str, optional
             Which recorded signal is this electrode's response, given as its name in the CSV header and the
             XML ``SignalList`` (for example ``"Primary"``). Optional while only one signal was recorded, which
@@ -110,7 +114,7 @@ class BrukerVoltageRecordingInterface(BaseIcephysInterface):
             acquisition stem the cycles share plus the response signal name.
         verbose : bool, default: False
         """
-        super().__init__(verbose=verbose)
+        super().__init__(cell_id=cell_id, verbose=verbose)
         self._file_paths = [Path(file_path) for file_path in file_paths]
         self._repetition = repetition
         self._condition = condition
@@ -118,6 +122,7 @@ class BrukerVoltageRecordingInterface(BaseIcephysInterface):
         self._metadata_key = metadata_key
         self.source_data = dict(
             file_paths=file_paths,
+            cell_id=cell_id,
             response_signal_name=response_signal_name,
             mode=mode,
             stimulus_command=stimulus_command,
@@ -165,10 +170,10 @@ class BrukerVoltageRecordingInterface(BaseIcephysInterface):
         # converter combining electrodes reads it to place them all against the earliest of the set.
         self._recording_start_datetime = min(header.start_datetime for header in self._cycle_headers)
 
-        # The run identity: the handle `protocol_run` and the electrode / series keys derive from. Defaults to the
+        # The run identity: the handle `protocol_run` and the series key derive from. Defaults to the
         # acquisition stem the cycles share, which PrairieView writes into the XML's `DataFile`; a converter
         # combining electrodes overrides it with a disambiguated label, since that stem collides across
-        # session folders. It is a label, not a claim about which cell this is.
+        # session folders.
         self._run_identity = self._cycle_headers[0].stem
         self._alignment_key = self._series_metadata_key
         self.temporal_alignment._add_time_bearing_object(
@@ -189,17 +194,11 @@ class BrukerVoltageRecordingInterface(BaseIcephysInterface):
                 get_number_of_samples=lambda: sum(len(waveform.data) for waveform in self._command_waveforms),
             )
 
-    # Registry keys derive from the run identity so a converter that overrides `_run_identity` propagates to
-    # all of them. The electrode is per run rather than per signal, because `Primary` and `Secondary` are two
-    # outputs of one amplifier channel and so one electrode, unlike ABF where two response channels are two
-    # electrodes. The device is the exception: it identifies the amplifier, which runs share.
+    # The series key derives from the run identity so a converter that overrides `_run_identity` propagates to
+    # it. The electrode is keyed by the cell and the device by the amplifier, since several runs share each.
     @property
     def _device_metadata_key(self) -> str:
         return self._response_signal.patchclamp_device.lower().replace(" ", "_")
-
-    @property
-    def _electrode_metadata_key(self) -> str:
-        return self._run_identity
 
     @property
     def _series_metadata_key(self) -> str:
@@ -329,12 +328,11 @@ class BrukerVoltageRecordingInterface(BaseIcephysInterface):
         metadata["NWBFile"]["session_start_time"] = self._recording_start_datetime
 
         # The metadata-dict keys were resolved at construction. Each series entry stores its
-        # electrode_metadata_key as an editable link: repointing two series at one electrode key merges them
-        # onto a single electrode. `to_camel_case` is applied only here, the one place a key becomes an NWB name.
+        # electrode_metadata_key as a link, so the runs of one cell meet at that cell's electrode. `to_camel_case`
+        # is applied only here, the one place a key becomes an NWB name.
         device_metadata_key = self._device_metadata_key
         electrode_metadata_key = self._electrode_metadata_key
         series_metadata_key = self._series_metadata_key
-        electrode_name_suffix = to_camel_case(electrode_metadata_key)
 
         # The amplifier model as PrairieView records it, kept verbatim ("Multiclamp700B Ch1") rather than
         # recased, since it is the manufacturer's own string and the same rule Axon follows for the model its
@@ -347,8 +345,9 @@ class BrukerVoltageRecordingInterface(BaseIcephysInterface):
         }
         metadata["Icephys"]["IntracellularElectrodes"] = {
             electrode_metadata_key: {
-                "name": f"IntracellularElectrode{electrode_name_suffix}",
+                "name": f"IntracellularElectrode{to_camel_case(electrode_metadata_key)}",
                 "description": "Patch-clamp electrode.",
+                "cell_id": self._cell_id,
                 "device_metadata_key": device_metadata_key,
             }
         }

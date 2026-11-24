@@ -85,7 +85,7 @@ class BrukerVoltageRecordingConverter(ConverterPipe):
         ``DataFile``. Interfaces over the same run (the ``Primary`` and ``Secondary`` outputs of one electrode,
         say) keep one identity; distinct runs get the shortest path-suffix that is unique, since the stem alone
         collides across session folders. This overrides the interface's default so ``protocol_run`` and the
-        electrode key are unique per run, with no silent cross-cell merge.
+        series keys are unique per run.
         """
         run_paths_by_interface = {
             interface: interface._file_paths[0].with_name(interface._cycle_headers[0].stem + ".csv")
@@ -94,28 +94,27 @@ class BrukerVoltageRecordingConverter(ConverterPipe):
         labels = _disambiguate_run_labels(list(dict.fromkeys(run_paths_by_interface.values())))
         for interface, run_path in run_paths_by_interface.items():
             interface._run_identity = labels[run_path]
-        BrukerVoltageRecordingConverter._check_one_amplifier_per_run(interfaces)
+        BrukerVoltageRecordingConverter._check_one_amplifier_per_cell(interfaces)
 
     @staticmethod
-    def _check_one_amplifier_per_run(interfaces: list[BrukerVoltageRecordingInterface]) -> None:
-        """Refuse two interfaces that claim one electrode but report different amplifiers.
+    def _check_one_amplifier_per_cell(interfaces: list[BrukerVoltageRecordingInterface]) -> None:
+        """Refuse two interfaces that name one cell but report different amplifiers.
 
-        Interfaces over one run share an electrode by design, which is what puts an amplifier's ``Primary``
-        and ``Secondary`` outputs on a single pipette. Two different ``PatchclampDevice`` values under one run
-        mean two headstages, so they are two electrodes rather than one, and letting them merge would attribute
-        one cell's data to the other's amplifier (the metadata merge keeps whichever device link came last).
+        Interfaces naming one cell share its electrode, which is what puts an amplifier's ``Primary`` and
+        ``Secondary`` outputs on a single pipette. Two different ``PatchclampDevice`` values for one cell mean
+        two headstages, so two electrodes, and letting them merge would attribute one cell's data to the other's
+        amplifier (the metadata merge keeps whichever device link came last).
         """
-        devices_by_run: dict[str, dict[str, str]] = {}
+        devices_by_cell: dict[str, dict[str, str]] = {}
         for interface in interfaces:
             device_name = interface._response_signal.patchclamp_device
-            recorded = devices_by_run.setdefault(interface._run_identity, {})
+            recorded = devices_by_cell.setdefault(interface._cell_id, {})
             recorded[device_name] = interface._response_signal_name
             if len(recorded) > 1:
                 described = ", ".join(f"{name!r} on {device!r}" for device, name in sorted(recorded.items()))
                 raise ValueError(
-                    f"Run '{interface._run_identity}' has signals on more than one amplifier ({described}), so "
-                    "they are separate electrodes rather than two outputs of one. Give them distinct "
-                    "`metadata_key` values and point each series at its own electrode entry."
+                    f"Cell '{interface._cell_id}' has signals on more than one amplifier ({described}), so "
+                    "they are separate electrodes. Give each its own `cell_id`."
                 )
 
     @staticmethod

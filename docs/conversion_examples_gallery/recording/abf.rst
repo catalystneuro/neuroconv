@@ -20,6 +20,7 @@ Install NeuroConv with the additional dependencies necessary for reading Axon Bi
     >>> file_path = f"{ECEPHY_DATA_PATH}/axon/File_axon_5.abf"
     >>> interface = AxonIntracellularInterface(
     ...     file_path=file_path,
+    ...     cell_id="cell1",                # the cell this electrode recorded
     ...     response_channel_name="_Ipatch",   # the recorded channel
     ...     mode="current_clamp",         # voltage_clamp | current_clamp | izero
     ...     stimulus_command="Cmd 0",     # optional: reconstruct the stimulus from this command channel
@@ -36,6 +37,8 @@ Install NeuroConv with the additional dependencies necessary for reading Axon Bi
 The interface does not guess which recorded channel is the cell and which is an auxiliary monitor, so the
 recording is described explicitly through the constructor arguments:
 
+- ``cell_id`` (required): the cell this electrode recorded, which the file does not state. Interfaces given the
+  same ``cell_id`` share one ``IntracellularElectrode``, so give every run of a cell the same value.
 - ``response_channel_name`` (required): the recorded analog-to-digital converter channel for the electrode's
   response, given as the channel name (for example ``"_Ipatch"`` or ``"IN0"``) or its integer index.
 - ``mode`` (required): the clamp mode, one of ``"voltage_clamp"``, ``"current_clamp"`` or ``"izero"``.
@@ -114,11 +117,13 @@ The example below combines two channels recorded in one file.
     >>> # One interface per channel; here two electrodes recorded in the same file.
     >>> current_clamp = AxonIntracellularInterface(
     ...     file_path=f"{ECEPHY_DATA_PATH}/axon/File_axon_6.abf",
+    ...     cell_id="cell1",
     ...     response_channel_name="_Ipatch",
     ...     mode="current_clamp",
     ... )
     >>> voltage_clamp = AxonIntracellularInterface(
     ...     file_path=f"{ECEPHY_DATA_PATH}/axon/File_axon_6.abf",
+    ...     cell_id="cell2",
     ...     response_channel_name="IN1",
     ...     mode="voltage_clamp",
     ... )

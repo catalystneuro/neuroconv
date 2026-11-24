@@ -90,7 +90,7 @@ class TestBrukerCurrentClamp(DataInterfaceTestMixin):
     data_interface_cls = BrukerVoltageRecordingInterface
     expected_temporal_alignment_keys = ("cell1-001_Primary", "cell1-001_Primary_stimulus")
     file_path = cycle_csv_path("current_clamp/divisor_0_01")
-    interface_kwargs = dict(file_paths=[file_path], stimulus_command="700B")
+    interface_kwargs = dict(file_paths=[file_path], cell_id="cell1", stimulus_command="700B")
     save_directory = OUTPUT_PATH
 
     def check_extracted_metadata(self, metadata: dict):
@@ -98,9 +98,9 @@ class TestBrukerCurrentClamp(DataInterfaceTestMixin):
         expected_start_time = datetime(2017, 2, 2, 15, 39, 33, 108257, tzinfo=timezone(timedelta(hours=-6)))
         assert metadata["NWBFile"]["session_start_time"] == expected_start_time
 
-        # Default identity: the electrode key is the acquisition stem the cycles share (PrairieView writes it
-        # into `DataFile`), and the device key is the amplifier, which runs share. The electrode is per run
-        # rather than per signal, since `Primary` and `Secondary` are two outputs of one headstage.
+        # Default identity: the series key is the acquisition stem the cycles share (PrairieView writes it into
+        # `DataFile`) plus the signal, the electrode key is the cell, and the device key is the amplifier, which
+        # runs share.
         assert metadata["Devices"] == {
             "multiclamp700b_ch1": {
                 "name": "Multiclamp700B Ch1",
@@ -108,9 +108,10 @@ class TestBrukerCurrentClamp(DataInterfaceTestMixin):
             }
         }
         assert metadata["Icephys"]["IntracellularElectrodes"] == {
-            "cell1-001": {
-                "name": "IntracellularElectrodeCell1001",
+            "cell1": {
+                "name": "IntracellularElectrodeCell1",
                 "description": "Patch-clamp electrode.",
+                "cell_id": "cell1",
                 "device_metadata_key": "multiclamp700b_ch1",
             }
         }
@@ -118,7 +119,7 @@ class TestBrukerCurrentClamp(DataInterfaceTestMixin):
             "cell1-001_Primary": {
                 "name": "CurrentClampSeriesCell1001Primary",
                 "description": "Intracellular response (current_clamp).",
-                "electrode_metadata_key": "cell1-001",
+                "electrode_metadata_key": "cell1",
             }
         }
 
@@ -141,7 +142,7 @@ class TestBrukerCurrentClamp(DataInterfaceTestMixin):
 
         stimulus = nwbfile.stimulus["CurrentClampStimulusSeriesCell1001Primary"]
         assert isinstance(stimulus, CurrentClampStimulusSeries)
-        assert stimulus.electrode.name == "IntracellularElectrodeCell1001"
+        assert stimulus.electrode.name == "IntracellularElectrodeCell1"
 
         # Two components played back to back, 900 ms in all at the protocol's 10 kHz. The step is the first
         # one's single pulse, 200 ms in and 500 ms wide, at -0.3 V times 400 pA/V.
@@ -176,7 +177,7 @@ class TestBrukerVoltageClamp(DataInterfaceTestMixin):
     data_interface_cls = BrukerVoltageRecordingInterface
     expected_temporal_alignment_keys = ("cell1_LED12-018_Primary", "cell1_LED12-018_Primary_stimulus")
     file_path = cycle_csv_path("voltage_clamp/device_name_without_channel")
-    interface_kwargs = dict(file_paths=[file_path], stimulus_command="700B")
+    interface_kwargs = dict(file_paths=[file_path], cell_id="cell1", stimulus_command="700B")
     save_directory = OUTPUT_PATH
 
     def check_extracted_metadata(self, metadata: dict):
@@ -213,7 +214,7 @@ class TestBrukerPVScanXml(DataInterfaceTestMixin):
     data_interface_cls = BrukerVoltageRecordingInterface
     expected_temporal_alignment_keys = ("cell2-001_Primary",)
     file_path = cycle_csv_path("current_clamp/pvscan_xml_with_date_time_before_sequence_time")
-    interface_kwargs = dict(file_paths=[file_path])
+    interface_kwargs = dict(file_paths=[file_path], cell_id="cell1")
     save_directory = OUTPUT_PATH
 
     expected_session_start_time = datetime(2016, 5, 27, 18, 43, 47, 805118, tzinfo=timezone(timedelta(hours=-5)))
@@ -246,7 +247,7 @@ class TestBrukerThreeComponentCommand(DataInterfaceTestMixin):
         / "07072017_Cell2_dist2_trio-001"
         / "07072017_Cell2_dist2_trio-001_Cycle00001_VoltageRecording_001.csv"
     )
-    interface_kwargs = dict(file_paths=[file_path], stimulus_command="700B")
+    interface_kwargs = dict(file_paths=[file_path], cell_id="cell1", stimulus_command="700B")
     save_directory = OUTPUT_PATH
 
     def check_read_nwb(self, nwbfile_path: str):
@@ -276,7 +277,7 @@ class TestBrukerThreeComponentCommand(DataInterfaceTestMixin):
 def test_mode_and_scaling_across_the_fixture_set(folder_name, expected_mode, expected_conversion):
     """``Primary``'s unit decides the clamp mode and, with the divisor, the whole conversion factor. Every
     fixture is checked because the set exists to carry those variants: three divisors and two units."""
-    interface = BrukerVoltageRecordingInterface(file_paths=[cycle_csv_path(folder_name)])
+    interface = BrukerVoltageRecordingInterface(cell_id="cell1", file_paths=[cycle_csv_path(folder_name)])
     nwbfile = mock_NWBFile()
     interface.add_to_nwbfile(nwbfile=nwbfile)
 
@@ -298,7 +299,7 @@ def test_mode_and_scaling_across_the_fixture_set(folder_name, expected_mode, exp
     ],
 )
 def test_fractional_seconds_are_normalized_to_six_digits(folder_name, expected_microsecond):
-    interface = BrukerVoltageRecordingInterface(file_paths=[cycle_csv_path(folder_name)])
+    interface = BrukerVoltageRecordingInterface(cell_id="cell1", file_paths=[cycle_csv_path(folder_name)])
 
     assert interface.get_metadata()["NWBFile"]["session_start_time"].microsecond == expected_microsecond
 
@@ -312,13 +313,15 @@ def test_a_cycle_without_its_pvscan_xml_warns_that_its_start_time_is_date_time()
         "PVScan XML beside the cycle files to read the start times from it."
     )
     with pytest.warns(UserWarning, match=re.escape(expected)):
-        BrukerVoltageRecordingInterface(file_paths=[cycle_csv_path("current_clamp/divisor_0_01")])
+        BrukerVoltageRecordingInterface(cell_id="cell1", file_paths=[cycle_csv_path("current_clamp/divisor_0_01")])
 
 
 def test_explicit_mode_overrides_the_derived_one():
     """``izero`` reads ``mV`` exactly like ordinary current clamp, so it is the one mode the file cannot state
     and the argument is the only way to reach ``IZeroClampSeries``."""
-    interface = BrukerVoltageRecordingInterface(file_paths=[cycle_csv_path("current_clamp/divisor_0_01")], mode="izero")
+    interface = BrukerVoltageRecordingInterface(
+        cell_id="cell1", file_paths=[cycle_csv_path("current_clamp/divisor_0_01")], mode="izero"
+    )
     nwbfile = mock_NWBFile()
     interface.add_to_nwbfile(nwbfile=nwbfile)
 
@@ -344,7 +347,7 @@ class TestCycleAssembly:
                 tmp_path, "current_clamp/divisor_0_01", 3, start_datetime="2017-02-02T15:41:08.9082577-06:00"
             ),
         ]
-        interface = BrukerVoltageRecordingInterface(file_paths=cycles)
+        interface = BrukerVoltageRecordingInterface(cell_id="cell1", file_paths=cycles)
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile)
 
@@ -378,7 +381,7 @@ class TestCycleAssembly:
                 tmp_path, "current_clamp/divisor_0_01", 3, start_datetime="2017-02-02T15:41:08.0000000-06:00"
             ),
         ]
-        interface = BrukerVoltageRecordingInterface(file_paths=[cycles[2], cycles[0], cycles[1]])
+        interface = BrukerVoltageRecordingInterface(cell_id="cell1", file_paths=[cycles[2], cycles[0], cycles[1]])
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile)
 
@@ -394,7 +397,7 @@ class TestCycleAssembly:
             write_derived_cycle(tmp_path, "current_clamp/divisor_0_01", 2, divisor="0.1"),
         ]
         with pytest.raises(ValueError, match="disagrees with .* on the divisor"):
-            BrukerVoltageRecordingInterface(file_paths=cycles)
+            BrukerVoltageRecordingInterface(cell_id="cell1", file_paths=cycles)
 
 
 class TestColumnIdentityComesFromTheXml:
@@ -424,7 +427,7 @@ class TestColumnIdentityComesFromTheXml:
         """``Primary`` is absent from the header entirely, so a header-driven reader either rejects the file
         or hands back the wrong column scaled by the wrong divisor."""
         cycle = self.write_cycle_with_a_shifted_header(tmp_path)
-        interface = BrukerVoltageRecordingInterface(file_paths=[cycle], response_signal_name="Primary")
+        interface = BrukerVoltageRecordingInterface(cell_id="cell1", file_paths=[cycle], response_signal_name="Primary")
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile)
 
@@ -442,7 +445,7 @@ class TestColumnIdentityComesFromTheXml:
         cycle.write_text("\n".join([lines[0] + ", Extra"] + [f"{row},0" for row in lines[1:]]) + "\n", encoding="utf-8")
 
         with pytest.raises(ValueError, match="marks 1 signal"):
-            BrukerVoltageRecordingInterface(file_paths=[cycle])
+            BrukerVoltageRecordingInterface(cell_id="cell1", file_paths=[cycle])
 
 
 class TestSignalResolution:
@@ -452,19 +455,19 @@ class TestSignalResolution:
     def test_several_recorded_signals_need_naming(self, tmp_path):
         cycle = write_derived_cycle(tmp_path, "current_clamp/divisor_0_01", 1, extra_signal_name="Secondary")
         with pytest.raises(ValueError, match="Pass response_signal_name"):
-            BrukerVoltageRecordingInterface(file_paths=[cycle])
+            BrukerVoltageRecordingInterface(cell_id="cell1", file_paths=[cycle])
 
     def test_mode_cannot_be_derived_from_a_signal_other_than_primary(self, tmp_path):
         """``Secondary`` carries whichever complementary signal the amplifier was configured to emit (``pA``
         here, ``mV`` on other fixtures), so its unit does not identify the mode."""
         cycle = write_derived_cycle(tmp_path, "current_clamp/divisor_0_01", 1, extra_signal_name="Secondary")
         with pytest.raises(ValueError, match="only the amplifier's 'Primary' output identifies the mode"):
-            BrukerVoltageRecordingInterface(file_paths=[cycle], response_signal_name="Secondary")
+            BrukerVoltageRecordingInterface(cell_id="cell1", file_paths=[cycle], response_signal_name="Secondary")
 
     def test_an_explicit_mode_makes_a_secondary_response_writable(self, tmp_path):
         cycle = write_derived_cycle(tmp_path, "current_clamp/divisor_0_01", 1, extra_signal_name="Secondary")
         interface = BrukerVoltageRecordingInterface(
-            file_paths=[cycle], response_signal_name="Secondary", mode="voltage_clamp"
+            cell_id="cell1", file_paths=[cycle], response_signal_name="Secondary", mode="voltage_clamp"
         )
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile)
@@ -476,7 +479,9 @@ class TestSignalResolution:
     def test_a_signal_that_was_not_recorded_says_so(self):
         with pytest.raises(ValueError, match="declared in .* but not enabled"):
             BrukerVoltageRecordingInterface(
-                file_paths=[cycle_csv_path("current_clamp/divisor_0_01")], response_signal_name="Secondary"
+                cell_id="cell1",
+                file_paths=[cycle_csv_path("current_clamp/divisor_0_01")],
+                response_signal_name="Secondary",
             )
 
     def test_a_non_patch_signal_is_refused(self, tmp_path):
@@ -484,7 +489,7 @@ class TestSignalResolution:
         volts, not intracellular data, and belong in a TimeSeries rather than here."""
         cycle = write_derived_cycle(tmp_path, "current_clamp/divisor_0_01", 1, extra_signal_name="WF")
         with pytest.raises(ValueError, match="carries no PatchclampDevice"):
-            BrukerVoltageRecordingInterface(file_paths=[cycle], response_signal_name="WF")
+            BrukerVoltageRecordingInterface(cell_id="cell1", file_paths=[cycle], response_signal_name="WF")
 
 
 def test_the_xml_must_be_beside_the_csv(tmp_path):
@@ -493,7 +498,7 @@ def test_the_xml_must_be_beside_the_csv(tmp_path):
     lonely_csv.write_text(cycle_csv_path("current_clamp/divisor_0_01").read_text(encoding="utf-8"), encoding="utf-8")
 
     with pytest.raises(FileNotFoundError, match="No VoltageRecording XML beside"):
-        BrukerVoltageRecordingInterface(file_paths=[lonely_csv])
+        BrukerVoltageRecordingInterface(cell_id="cell1", file_paths=[lonely_csv])
 
 
 class TestBrukerVoltageRecordingConverter:
@@ -502,9 +507,11 @@ class TestBrukerVoltageRecordingConverter:
 
     def test_electrodes_are_placed_on_one_timeline_and_finalized(self):
         first = BrukerVoltageRecordingInterface(
-            file_paths=[cycle_csv_path("current_clamp/five_digit_fractional_seconds")]
+            cell_id="cell1", file_paths=[cycle_csv_path("current_clamp/five_digit_fractional_seconds")]
         )
-        second = BrukerVoltageRecordingInterface(file_paths=[cycle_csv_path("current_clamp/divisor_0_01")])
+        second = BrukerVoltageRecordingInterface(
+            cell_id="cell2", file_paths=[cycle_csv_path("current_clamp/divisor_0_01")]
+        )
         converter = BrukerVoltageRecordingConverter(data_interfaces=dict(CellA=first, CellB=second))
 
         metadata = converter.get_metadata()
@@ -523,7 +530,7 @@ class TestBrukerVoltageRecordingConverter:
             (max(first._recording_start_datetime, second._recording_start_datetime) - earliest).total_seconds()
         )
 
-        # Distinct runs keep distinct identities, so nothing is merged across cells.
+        # Two cells give two electrodes, and distinct runs keep distinct identities.
         assert len(nwbfile.icephys_electrodes) == 2
         assert set(nwbfile.intracellular_recordings["protocol_run"][:]) == {"cell2-020", "cell1-001"}
 
@@ -536,7 +543,9 @@ class TestBrukerVoltageRecordingConverter:
         """PrairieView records no protocol, so the column exists only when the caller supplies one; then it is
         carried up to the sequential recording in place of the placeholder."""
         interface = BrukerVoltageRecordingInterface(
-            file_paths=[cycle_csv_path("current_clamp/divisor_0_01")], stimulus_type="somatic excitability"
+            cell_id="cell1",
+            file_paths=[cycle_csv_path("current_clamp/divisor_0_01")],
+            stimulus_type="somatic excitability",
         )
         converter = BrukerVoltageRecordingConverter(data_interfaces=dict(CellA=interface))
         metadata = converter.get_metadata()
@@ -556,10 +565,12 @@ class TestBrukerVoltageRecordingConverter:
         written before or after the one that does) and gets the readable placeholder at the sequential level,
         where NWB requires a value."""
         described = BrukerVoltageRecordingInterface(
-            file_paths=[cycle_csv_path("current_clamp/divisor_0_01")], stimulus_type="somatic excitability"
+            cell_id="cell1",
+            file_paths=[cycle_csv_path("current_clamp/divisor_0_01")],
+            stimulus_type="somatic excitability",
         )
         undescribed = BrukerVoltageRecordingInterface(
-            file_paths=[cycle_csv_path("current_clamp/five_digit_fractional_seconds")]
+            cell_id="cell2", file_paths=[cycle_csv_path("current_clamp/five_digit_fractional_seconds")]
         )
         order = ["Described", "Undescribed"] if described_first else ["Undescribed", "Described"]
         interfaces = {"Described": described, "Undescribed": undescribed}
@@ -576,9 +587,9 @@ class TestBrukerVoltageRecordingConverter:
             value or "not described" for value in expected
         ]
 
-    def test_two_amplifiers_under_one_run_are_refused(self, tmp_path):
-        """Interfaces over one run share an electrode by design, which is what puts an amplifier's ``Primary``
-        and ``Secondary`` on a single pipette. Two different ``PatchclampDevice`` values under one run mean two
+    def test_two_amplifiers_under_one_cell_are_refused(self, tmp_path):
+        """Interfaces naming one cell share its electrode, which is what puts an amplifier's ``Primary`` and
+        ``Secondary`` on a single pipette. Two different ``PatchclampDevice`` values for one cell mean two
         headstages, and merging them would attribute one cell's data to the other's amplifier, since the
         metadata merge keeps whichever device link came last."""
         # One cycle recording two signals, each on its own headstage: the dual-patch shape.
@@ -594,9 +605,9 @@ class TestBrukerVoltageRecordingConverter:
             ),
             encoding="utf-8",
         )
-        first = BrukerVoltageRecordingInterface(file_paths=[cycle], response_signal_name="Primary")
+        first = BrukerVoltageRecordingInterface(cell_id="cell1", file_paths=[cycle], response_signal_name="Primary")
         second = BrukerVoltageRecordingInterface(
-            file_paths=[cycle], response_signal_name="Secondary", mode="voltage_clamp"
+            cell_id="cell1", file_paths=[cycle], response_signal_name="Secondary", mode="voltage_clamp"
         )
         converter = BrukerVoltageRecordingConverter(data_interfaces=dict(A=first, B=second))
 
@@ -605,20 +616,21 @@ class TestBrukerVoltageRecordingConverter:
 
     def test_runs_sharing_a_stem_are_disambiguated(self, tmp_path):
         """The acquisition stem is the experimenter's own naming and collides across session folders, so the
-        converter falls back to the folder to keep the two runs (and their electrodes) apart."""
+        converter falls back to the folder to keep the two runs apart."""
         first_folder = tmp_path / "session_a"
         second_folder = tmp_path / "session_b"
         first_folder.mkdir()
         second_folder.mkdir()
         first = BrukerVoltageRecordingInterface(
-            file_paths=[write_derived_cycle(first_folder, "current_clamp/divisor_0_01", 1)]
+            cell_id="cell1", file_paths=[write_derived_cycle(first_folder, "current_clamp/divisor_0_01", 1)]
         )
         second = BrukerVoltageRecordingInterface(
+            cell_id="cell2",
             file_paths=[
                 write_derived_cycle(
                     second_folder, "current_clamp/divisor_0_01", 1, start_datetime="2017-02-02T16:00:00.0000000-06:00"
                 )
-            ]
+            ],
         )
         converter = BrukerVoltageRecordingConverter(data_interfaces=dict(CellA=first, CellB=second))
 
