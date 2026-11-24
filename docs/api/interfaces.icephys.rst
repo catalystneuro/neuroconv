@@ -14,3 +14,8 @@ Bruker VoltageRecording Interface
 ---------------------------------
 .. automodule:: neuroconv.datainterfaces.icephys.brukervoltagerecording.brukervoltagerecordinginterface
 .. automodule:: neuroconv.datainterfaces.icephys.brukervoltagerecording.brukervoltagerecordingconverter
+
+WaveSurfer Intracellular Interface
+----------------------------------
+.. automodule:: neuroconv.datainterfaces.icephys.wavesurfer.wavesurferintracellularinterface
+.. automodule:: neuroconv.datainterfaces.icephys.wavesurfer.wavesurferintracellularconverter

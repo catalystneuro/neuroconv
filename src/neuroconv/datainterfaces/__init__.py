@@ -98,6 +98,7 @@ from .ecephys.xclust.xclustdatainterface import XClustSortingInterface
 from .icephys.abf.abfdatainterface import AbfInterface
 from .icephys.axon.axonintracellularinterface import AxonIntracellularInterface
 from .icephys.brukervoltagerecording.brukervoltagerecordinginterface import BrukerVoltageRecordingInterface
+from .icephys.wavesurfer.wavesurferintracellularinterface import WaveSurferIntracellularInterface
 
 # Ophys
 from .ophys.brukertiff.brukertiffdatainterface import (
@@ -220,6 +221,7 @@ interface_list = [
     AbfInterface,
     AxonIntracellularInterface,
     BrukerVoltageRecordingInterface,
+    WaveSurferIntracellularInterface,
     # Ophys
     CaimanSegmentationInterface,
     CnmfeSegmentationInterface,
@@ -332,6 +334,7 @@ interfaces_by_category = dict(
         Abf=AbfInterface,
         AxonIntracellular=AxonIntracellularInterface,
         BrukerVoltageRecording=BrukerVoltageRecordingInterface,
+        WaveSurferIntracellular=WaveSurferIntracellularInterface,
     ),
     behavior=dict(
         ExternalVideo=ExternalVideoInterface,
