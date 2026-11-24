@@ -97,9 +97,32 @@ def _add_patch_clamp_series_to_nwbfile(
     else:
         series_kwargs.update(timestamps=series_data.timestamps)
 
+    if role == "stimulus_template" and series_kwargs["name"] in nwbfile.stimulus_template:
+        existing_series = nwbfile.stimulus_template[series_kwargs["name"]]
+        _check_matching_stimulus_template(
+            existing_series=existing_series, series_class=series_class, series_data=series_data
+        )
+        return existing_series
+
     series = series_class(**series_kwargs)
     add_series(nwbfile, series)
     return series
+
+
+def _check_matching_stimulus_template(existing_series, series_class, series_data: _IcephysSeriesData) -> None:
+    """Raise unless a stimulus template already in the file holds the same waveform as ``series_data``."""
+    matches = (
+        type(existing_series) is series_class
+        and np.array_equal(existing_series.data[:], series_data.data)
+        and existing_series.conversion == series_data.conversion
+        and existing_series.offset == series_data.offset
+        and np.allclose(existing_series.get_timestamps(), series_data.timestamps)
+    )
+    if not matches:
+        raise ValueError(
+            f"The stimulus template '{existing_series.name}' is already in the NWB file with a different waveform. "
+            "Give each distinct waveform its own entry in metadata['Icephys']['PatchClampStimulusTemplateSeries']."
+        )
 
 
 # NWB requires a `stimulus_type` on every SequentialRecordings entry, so a source that describes none still has
@@ -149,7 +172,8 @@ def _get_icephys_metadata_placeholders() -> DeepDict:
     - ``Icephys.PatchClampStimulusSeries[key]``: the optional paired stimulus, in a parallel registry at the
       SAME key as its response. It reuses the response's electrode, so it carries no ``electrode_metadata_key``.
     - ``Icephys.PatchClampStimulusTemplateSeries[key]``: the optional stimulus template, the command the protocol
-      specified, in a third registry at the same key and reusing the response's electrode the same way.
+      specified, keyed by waveform. Interfaces that name the same entry share one series, which links the electrode
+      of the first interface written.
     """
     metadata = DeepDict()
     metadata["Devices"] = {

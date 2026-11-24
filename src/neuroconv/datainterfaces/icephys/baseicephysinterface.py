@@ -19,7 +19,8 @@ class BaseIcephysInterface(BaseDataInterface):
     """Base interface for patch-clamp data written as NWB icephys series.
 
     Concrete interfaces return source data through :meth:`_get_icephys_series_data`, and a stimulus template through
-    :meth:`_get_icephys_stimulus_template_data` when the source specifies one. This base owns NWB object
+    :meth:`_get_icephys_stimulus_template_data` when the source specifies one, with its metadata entry named by
+    ``_stimulus_template_metadata_key``. This base owns NWB object
     construction, metadata-linked electrode resolution, and the per-sweep ``IntracellularRecordings`` rows.
     The hierarchy above those rows remains a converter responsibility, once every interface has contributed.
     """
@@ -89,7 +90,7 @@ class BaseIcephysInterface(BaseDataInterface):
             stimulus_template_series = _add_patch_clamp_series_to_nwbfile(
                 nwbfile=nwbfile,
                 metadata=metadata,
-                series_metadata_key=series_metadata_key,
+                series_metadata_key=self._stimulus_template_metadata_key,
                 series_data=stimulus_template_data,
                 electrode=electrode,
                 mode=self._mode,

@@ -496,6 +496,52 @@ class TestStimulusTemplate:
         assert template.starting_time == 0.0
         assert template.rate == 10.0
 
+    def test_interfaces_naming_one_template_share_it(self):
+        interfaces = [
+            MockIcephysInterface(
+                num_sweeps=2,
+                sampling_frequency=10.0,
+                starting_time=starting_time,
+                protocol_run=metadata_key,
+                metadata_key=metadata_key,
+                stimulus_template_duration=1.0,
+                stimulus_template_metadata_key="steps",
+            )
+            for starting_time, metadata_key in [(0.0, "first"), (10.0, "second")]
+        ]
+        nwbfile = create_finalized_nwbfile(interfaces)
+
+        assert list(nwbfile.stimulus_template) == ["CurrentClampStimulusSeriesTemplateSteps"]
+        template = nwbfile.stimulus_template["CurrentClampStimulusSeriesTemplateSteps"]
+        templates = nwbfile.intracellular_recordings["stimuli"]["stimulus_template"]
+        assert [(templates[row].idx_start, templates[row].count) for row in range(4)] == [
+            (0, 10),
+            (10, 10),
+            (0, 10),
+            (10, 10),
+        ]
+        assert all(templates[row].timeseries is template for row in range(4))
+
+    def test_interfaces_naming_one_template_with_different_waveforms_raise(self):
+        interfaces = [
+            MockIcephysInterface(
+                num_sweeps=2,
+                sampling_frequency=10.0,
+                protocol_run=metadata_key,
+                metadata_key=metadata_key,
+                stimulus_template_duration=stimulus_template_duration,
+                stimulus_template_metadata_key="steps",
+            )
+            for stimulus_template_duration, metadata_key in [(1.0, "first"), (1.2, "second")]
+        ]
+
+        expected_message = (
+            "The stimulus template 'CurrentClampStimulusSeriesTemplateSteps' is already in the NWB file with a "
+            "different waveform."
+        )
+        with pytest.raises(ValueError, match=re.escape(expected_message)):
+            create_finalized_nwbfile(interfaces)
+
     def test_missing_template_entry_raises(self):
         interface = MockIcephysInterface(num_sweeps=1, metadata_key="cell1", stimulus_template_duration=1.0)
         metadata = interface.get_metadata()

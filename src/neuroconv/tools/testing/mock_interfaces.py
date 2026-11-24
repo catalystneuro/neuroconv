@@ -1831,6 +1831,7 @@ class MockIcephysInterface(BaseIcephysInterface):
         metadata_key: str = "mock",
         stimulus_duration: float | None = None,
         stimulus_template_duration: float | None = None,
+        stimulus_template_metadata_key: str | None = None,
         seed: int = 0,
         verbose: bool = False,
     ):
@@ -1876,6 +1877,9 @@ class MockIcephysInterface(BaseIcephysInterface):
             Duration of every sweep's stimulus template, in seconds. None writes no template. A duration other than
             ``sweep_duration`` gives the template its own sweep ranges. The template's samples are all 2.0, so it
             can be told apart from the stimulus's 1.0.
+        stimulus_template_metadata_key : str, optional
+            Identity of the stimulus template in the metadata dict. Defaults to ``metadata_key``. Instances that
+            give the same key share one template series.
         seed : int, default: 0
             Seed for the random number generator.
         verbose : bool, default: False
@@ -1895,6 +1899,7 @@ class MockIcephysInterface(BaseIcephysInterface):
         self.metadata_key = metadata_key
         self.stimulus_duration = stimulus_duration
         self.stimulus_template_duration = stimulus_template_duration
+        self._stimulus_template_metadata_key = stimulus_template_metadata_key or metadata_key
         self.seed = seed
 
         # The base writer reads these. The series key doubles as the alignment key, as in the real interfaces.
@@ -1973,15 +1978,15 @@ class MockIcephysInterface(BaseIcephysInterface):
                     "description": f"Mock intracellular stimulus ({self._mode}).",
                 }
             }
-        # The template sits in a third registry at the same key, reusing the response's electrode the same way.
+        # The template is keyed by waveform, so instances that name the same key share one series.
         if self.stimulus_template_duration is not None:
             stimulus_type_name = {
                 "voltage_clamp": "VoltageClampStimulusSeries",
                 "current_clamp": "CurrentClampStimulusSeries",
             }[self._mode]
             metadata["Icephys"]["PatchClampStimulusTemplateSeries"] = {
-                self.metadata_key: {
-                    "name": f"{stimulus_type_name}Template{name_suffix}",
+                self._stimulus_template_metadata_key: {
+                    "name": f"{stimulus_type_name}Template{to_camel_case(self._stimulus_template_metadata_key)}",
                     "description": f"Mock intracellular stimulus template ({self._mode}).",
                 }
             }
