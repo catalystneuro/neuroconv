@@ -37,6 +37,13 @@ class BaseEthogramInterface(BaseDataInterface):
     def _get_bouts(self) -> dict:
         """Return the bouts as ``start_times``, ``stop_times`` and ``labels``, one entry per bout."""
 
+    def _get_source(self, nwbfile: NWBFile, metadata: dict):
+        """Return the object in the file the bouts were derived from, linked from them as ``source``.
+
+        ``None`` by default, for a source with no such object.
+        """
+        return None
+
     def get_metadata_schema(self) -> dict:
         from ...tools.behavior import _get_ethogram_metadata_schema
         from ...utils import get_base_schema
@@ -94,6 +101,7 @@ class BaseEthogramInterface(BaseDataInterface):
             catalogue=catalogue,
             bout_concurrency=self.bout_concurrency,
             source_software=self.source_software,
+            source=self._get_source(nwbfile, metadata),
             source_pose=entry_arguments["source_pose"],
             source_video=entry_arguments["source_video"],
         )

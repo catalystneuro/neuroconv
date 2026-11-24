@@ -70,7 +70,7 @@ class SpikeGLXSyncChannelInterface(BaseRecordingAsTimeSeriesInterface):
         *,
         stream_id: str,
         verbose: bool = False,
-        metadata_key: str = "spikeglx_sync",
+        metadata_key: str | None = None,
     ):
         """
         Read synchronization channel data from SpikeGLX Neuropixel probe recordings.
@@ -87,11 +87,11 @@ class SpikeGLXSyncChannelInterface(BaseRecordingAsTimeSeriesInterface):
             Examples: 'imec0.ap-SYNC', 'imec1.lf-SYNC'
         verbose : bool, default: False
             Whether to output verbose text.
-        metadata_key : str, default: "spikeglx_sync"
+        metadata_key : str, optional
             Key used to organize metadata in the metadata dictionary. This is especially useful
             when multiple sync channel interfaces are used in the same conversion. The metadata_key is used
             to organize TimeSeries metadata. It addresses the entry; the written object's name is the
-            entry's ``name`` field, derived from the probe index.
+            entry's ``name`` field, derived from the probe index. Defaults to ``"spikeglx_sync"``.
 
         Raises
         ------
@@ -116,7 +116,7 @@ class SpikeGLXSyncChannelInterface(BaseRecordingAsTimeSeriesInterface):
 
         self.folder_path = Path(folder_path)
         self.stream_id = stream_id
-        self.metadata_key = metadata_key
+        self.metadata_key = metadata_key or "spikeglx_sync"
 
         from spikeinterface.extractors.extractor_classes import (
             SpikeGLXRecordingExtractor,
