@@ -105,7 +105,7 @@ class MockTimeSeriesInterface(BaseDataInterface):
         duration: float = 1.0,
         seed: int = 0,
         verbose: bool = False,
-        metadata_key: str = "TimeSeries",
+        metadata_key: str | None = None,
     ):
         """
         Initialize a mock TimeSeries interface.
@@ -129,7 +129,7 @@ class MockTimeSeriesInterface(BaseDataInterface):
         self.sampling_frequency = sampling_frequency
         self.duration = duration
         self.seed = seed
-        self.metadata_key = metadata_key
+        self.metadata_key = metadata_key or "TimeSeries"
 
         super().__init__(verbose=verbose)
 
@@ -819,7 +819,7 @@ class MockBehavioralSegmentationInterface(BaseBehavioralSegmentationInterface):
         num_behaviors: int = 4,
         sampling_frequency_hz: float = 30.0,
         seed: int = 0,
-        metadata_key: str = "mock_behavioral_segmentation",
+        metadata_key: str | None = None,
         verbose: bool = False,
     ):
         """
@@ -835,13 +835,14 @@ class MockBehavioralSegmentationInterface(BaseBehavioralSegmentationInterface):
             Frame rate of the labels, in Hz.
         seed : int, default: 0
             Seed for the random number generator.
-        metadata_key : str, default: "mock_behavioral_segmentation"
+        metadata_key : str, optional
             Key of this interface's entries in ``metadata["Behavior"]["Ethograms"]`` and
             ``metadata["Behavior"]["EthogramBouts"]``, and of its object in ``temporal_alignment``.
+            Defaults to ``"mock_behavioral_segmentation"``.
         verbose : bool, default: False
             Control verbosity.
         """
-        self.metadata_key = metadata_key
+        self.metadata_key = metadata_key or "mock_behavioral_segmentation"
         self.sampling_frequency_hz = sampling_frequency_hz
 
         # Bouts of a few frames each, so the run-length encoding has runs to find.
@@ -1495,7 +1496,7 @@ class MockPoseEstimationInterface(BasePoseEstimationInterface):
         seed: int = 0,
         sampling: Literal["regular", "irregular"] = "regular",
         verbose: bool = False,
-        metadata_key: str = "MockPoseEstimation",
+        metadata_key: str | None = None,
         pose_estimation_metadata_key: str | None = None,
     ):
         """
@@ -1516,8 +1517,8 @@ class MockPoseEstimationInterface(BasePoseEstimationInterface):
             dataset rather than a rate.
         verbose : bool, optional
             Control verbosity, by default False.
-        metadata_key : str, default: "MockPoseEstimation"
-            Metadata key for this interface.
+        metadata_key : str, optional
+            Metadata key for this interface. Defaults to ``"MockPoseEstimation"``.
         pose_estimation_metadata_key : str, optional
             Deprecated. Renamed to ``metadata_key``; passing it forwards the value to
             ``metadata_key`` and will be removed in v0.12.0.
@@ -1533,7 +1534,7 @@ class MockPoseEstimationInterface(BasePoseEstimationInterface):
 
         self.num_samples = num_samples
         self.num_nodes = num_nodes
-        self.metadata_key = metadata_key
+        self.metadata_key = metadata_key or "MockPoseEstimation"
         self.seed = seed
         self.verbose = verbose
 
@@ -1829,7 +1830,7 @@ class MockIcephysInterface(BaseIcephysInterface):
         stimulus_type: str | None = "mock protocol",
         repetition: str | None = None,
         condition: str | None = None,
-        metadata_key: str = "mock",
+        metadata_key: str | None = None,
         stimulus_duration: float | None = None,
         seed: int = 0,
         verbose: bool = False,
@@ -1865,9 +1866,9 @@ class MockIcephysInterface(BaseIcephysInterface):
         condition : str, optional
             Label grouping this run's repetition with others into an ``ExperimentalConditions`` entry. Written as
             a column only when given.
-        metadata_key : str, default: "mock"
+        metadata_key : str, optional
             Identity of this interface's electrode and response series in the metadata dict. Give combined
-            instances distinct keys so each writes its own electrode and series.
+            instances distinct keys so each writes its own electrode and series. Defaults to ``"mock"``.
         stimulus_duration : float, optional
             Duration of every sweep's paired stimulus, in seconds. None writes no stimulus. A duration other than
             ``sweep_duration`` gives the stimulus its own sweep ranges, as for a sweep that stops recording before
@@ -1888,13 +1889,13 @@ class MockIcephysInterface(BaseIcephysInterface):
         self.stimulus_type = stimulus_type
         self._repetition = repetition
         self._condition = condition
-        self.metadata_key = metadata_key
+        self.metadata_key = metadata_key or "mock"
         self.stimulus_duration = stimulus_duration
         self.seed = seed
 
         # The base writer reads these. The series key doubles as the alignment key, as in the real interfaces.
-        self._series_metadata_key = metadata_key
-        self._alignment_key = metadata_key
+        self._series_metadata_key = self.metadata_key
+        self._alignment_key = self.metadata_key
         samples_per_sweep = round(sweep_duration * sampling_frequency)
         self.temporal_alignment._add_time_bearing_object(
             key=self._alignment_key,

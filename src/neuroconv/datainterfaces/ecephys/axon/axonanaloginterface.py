@@ -35,7 +35,7 @@ class AxonAnalogInterface(BaseRecordingAsTimeSeriesInterface):
         file_path: FilePath,
         *,
         verbose: bool = False,
-        metadata_key: str = "axon_analog",
+        metadata_key: str | None = None,
         channels_to_include: list[str] | None = None,
     ):
         """
@@ -47,9 +47,9 @@ class AxonAnalogInterface(BaseRecordingAsTimeSeriesInterface):
             Path to an Axon Binary Format (.abf) file.
         verbose : bool, default: False
             Verbose output.
-        metadata_key : str, default: "axon_analog"
+        metadata_key : str, optional
             Key for the TimeSeries metadata in the metadata dictionary. This addresses the entry; the written
-            object's name is the entry's ``name`` field.
+            object's name is the entry's ``name`` field. Defaults to ``"axon_analog"``.
         channels_to_include : list of str, optional
             Channels to convert, by the names the file stores (as Clampex shows them, without spaces, such as
             ``"Tmp"`` or ``"IN7"``), written in the order listed. A channel with no stored name is ``ch{index}``.
@@ -58,7 +58,7 @@ class AxonAnalogInterface(BaseRecordingAsTimeSeriesInterface):
         from spikeinterface.extractors.extractor_classes import AxonRecordingExtractor
 
         self._file_path = Path(file_path)
-        self.metadata_key = metadata_key
+        self.metadata_key = metadata_key or "axon_analog"
 
         recording = AxonRecordingExtractor(file_path=self._file_path)
         neo_reader = recording.neo_reader

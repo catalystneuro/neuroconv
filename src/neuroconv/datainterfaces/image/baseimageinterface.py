@@ -44,7 +44,7 @@ class BaseImageInterface(BaseDataInterface):
         file_paths: list[str | Path] | None = None,
         folder_path: str | Path | None = None,
         *,
-        metadata_key: str = "Images",
+        metadata_key: str | None = None,
         verbose: bool = True,
     ):
         """
@@ -56,8 +56,8 @@ class BaseImageInterface(BaseDataInterface):
             List of paths to image files to be converted
         folder_path : str | Path, optional
             Path to folder containing images to be converted. Used if file_paths not provided.
-        metadata_key : str, default: "Images"
-            Key to use in metadata["Images"][metadata_key] for storing container metadata
+        metadata_key : str, optional
+            Key to use in metadata["Images"][metadata_key] for storing container metadata. Defaults to ``"Images"``.
         verbose : bool, default: True
             Whether to print status messages
         """
@@ -69,7 +69,7 @@ class BaseImageInterface(BaseDataInterface):
 
         self.file_paths = file_paths
         self.folder_path = folder_path
-        self.metadata_key = metadata_key
+        self.metadata_key = metadata_key or "Images"
         # Destination set at construction through `ImageInterface`'s deprecated `images_location`.
         # `add_to_nwbfile` falls back to it when its own `parent_container` is not given.
         self.parent_container = None

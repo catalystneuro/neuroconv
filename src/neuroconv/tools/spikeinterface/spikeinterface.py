@@ -2444,7 +2444,7 @@ def add_recording_as_spatial_series_to_nwbfile(
     recording: BaseRecording,
     nwbfile: pynwb.NWBFile,
     metadata: dict | None = None,
-    metadata_key: str = "SpatialSeries",
+    metadata_key: str | None = None,
     write_as: Literal["acquisition", "processing"] | None = None,
     iterator_type: str = "v2",
     iterator_options: dict | None = None,
@@ -2478,11 +2478,11 @@ def add_recording_as_spatial_series_to_nwbfile(
             }
 
         Where the metadata_key is used to look up metadata in the metadata dictionary.
-    metadata_key : str, default: 'SpatialSeries'
+    metadata_key : str, optional
         The entry in SpatialSeries metadata to use.
         On a recording with several segments the entry applies to all of them, and an optional entry keyed
         ``{metadata_key}_{segment_index}`` overrides it field by field for that segment only, its ``name``
-        used as given.
+        used as given. Defaults to ``"SpatialSeries"``.
     parent_container : {'acquisition', 'processing'}, default: 'acquisition'
         Where to save the spatial series data:
         - 'acquisition': Save in nwbfile.acquisition
@@ -2515,6 +2515,8 @@ def add_recording_as_spatial_series_to_nwbfile(
     if parent_container not in ["acquisition", "processing"]:
         raise ValueError(f"parent_container must be 'acquisition' or 'processing', got '{parent_container}'")
 
+    metadata_key = metadata_key or "SpatialSeries"
+
     # Handle multiple segments
     number_of_segments = recording.get_num_segments()
     for segment_index in range(number_of_segments):
@@ -2536,7 +2538,7 @@ def _add_spatial_series_segment_to_nwbfile(
     nwbfile: pynwb.NWBFile,
     segment_index: int,
     metadata: dict | None = None,
-    metadata_key: str = "SpatialSeries",
+    metadata_key: str | None = None,
     parent_container: Literal["acquisition", "processing"] = "acquisition",
     iterator_type: str | None = "v2",
     iterator_options: dict | None = None,

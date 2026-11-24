@@ -45,7 +45,7 @@ class IntanStimInterface(BaseRecordingAsTimeSeriesInterface):
         file_path: FilePath,
         *,
         verbose: bool = False,
-        metadata_key: str = "intan_stim",
+        metadata_key: str | None = None,
         saved_files_are_split: bool = False,
         channels_to_include: list[str] | None = None,
     ):
@@ -61,9 +61,9 @@ class IntanStimInterface(BaseRecordingAsTimeSeriesInterface):
             its parent directory is scanned for siblings.
         verbose : bool, default: False
             Verbose output.
-        metadata_key : str, default: "intan_stim"
+        metadata_key : str, optional
             Key for the TimeSeries metadata in the metadata dictionary. This addresses the entry;
-            the written object's name is the entry's ``name`` field.
+            the written object's name is the entry's ``name`` field. Defaults to ``"intan_stim"``.
         saved_files_are_split : bool, default: False
             Set to True when the recording was saved using Intan RHX's "new save file every N minutes"
             option, producing several rotated ``.rhs`` files in one session folder. All sibling
@@ -76,7 +76,7 @@ class IntanStimInterface(BaseRecordingAsTimeSeriesInterface):
         """
         self._file_path = Path(file_path)
         self._stream_name = "Stim channel"
-        self.metadata_key = metadata_key
+        self.metadata_key = metadata_key or "intan_stim"
         self._saved_files_are_split = saved_files_are_split
 
         if saved_files_are_split:
