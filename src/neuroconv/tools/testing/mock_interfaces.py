@@ -1818,6 +1818,7 @@ class MockIcephysInterface(BaseIcephysInterface):
     def __init__(
         self,
         *,
+        cell_id: str,
         mode: Literal["voltage_clamp", "current_clamp", "izero"] = "current_clamp",
         num_sweeps: int = 3,
         sweep_duration: float = 1.0,
@@ -1838,6 +1839,9 @@ class MockIcephysInterface(BaseIcephysInterface):
 
         Parameters
         ----------
+        cell_id : str
+            The cell this electrode recorded, which keys the electrode. Instances given the same cell share one
+            electrode.
         mode : {"current_clamp", "voltage_clamp", "izero"}, default: "current_clamp"
             The clamp mode, which selects the response series class the same way a real interface does.
         num_sweeps : int, default: 3
@@ -1865,8 +1869,8 @@ class MockIcephysInterface(BaseIcephysInterface):
             Label grouping this run's repetition with others into an ``ExperimentalConditions`` entry. Written as
             a column only when given.
         metadata_key : str, default: "mock"
-            Identity of this interface's electrode and response series in the metadata dict. Give combined
-            instances distinct keys so each writes its own electrode and series.
+            Identity of this interface's response series in the metadata dict. Give combined instances distinct
+            keys so each writes its own series.
         stimulus_duration : float, optional
             Duration of every sweep's paired stimulus, in seconds. None writes no stimulus. A duration other than
             ``sweep_duration`` gives the stimulus its own sweep ranges, as for a sweep that stops recording before
@@ -1876,7 +1880,7 @@ class MockIcephysInterface(BaseIcephysInterface):
         verbose : bool, default: False
             Control verbosity.
         """
-        super().__init__(verbose=verbose)
+        super().__init__(cell_id=cell_id, verbose=verbose)
         self._mode = mode
         self.num_sweeps = num_sweeps
         self.sweep_duration = sweep_duration
@@ -1918,8 +1922,8 @@ class MockIcephysInterface(BaseIcephysInterface):
         Returns
         -------
         DeepDict
-            The metadata dictionary, with the device, electrode and response series entries keyed by
-            ``metadata_key`` and cross-linked the way a real icephys interface links them.
+            The metadata dictionary, with the electrode keyed by ``cell_id`` and the response series by
+            ``metadata_key``, cross-linked the way a real icephys interface links them.
         """
         metadata = super().get_metadata()
         metadata["NWBFile"]["session_start_time"] = datetime.now().astimezone()
@@ -1935,13 +1939,14 @@ class MockIcephysInterface(BaseIcephysInterface):
             }
         }
         metadata["Icephys"]["IntracellularElectrodes"] = {
-            self.metadata_key: {
-                "name": f"IntracellularElectrode{name_suffix}",
+            self._electrode_metadata_key: {
+                "name": f"IntracellularElectrode{to_camel_case(self._electrode_metadata_key)}",
                 "description": "Mock patch-clamp electrode.",
+                "cell_id": self._cell_id,
                 "device_metadata_key": device_metadata_key,
             }
         }
-        # The default name is the NWB neurodata type for the clamp mode plus the electrode suffix, the same
+        # The default name is the NWB neurodata type for the clamp mode plus the series suffix, the same
         # rule a real interface follows (add_to_nwbfile instantiates the matching class via _RESPONSE_CLASS).
         response_type_name = {
             "voltage_clamp": "VoltageClampSeries",
@@ -1952,7 +1957,7 @@ class MockIcephysInterface(BaseIcephysInterface):
             self.metadata_key: {
                 "name": f"{response_type_name}{name_suffix}",
                 "description": f"Mock intracellular response ({self._mode}).",
-                "electrode_metadata_key": self.metadata_key,
+                "electrode_metadata_key": self._electrode_metadata_key,
             }
         }
         # The stimulus sits in its own registry at the same key as its response and reuses its electrode.

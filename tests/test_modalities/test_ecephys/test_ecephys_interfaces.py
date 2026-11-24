@@ -925,7 +925,7 @@ def test_recording_routes_on_its_own_block_in_a_mixed_converter_old_list_format(
     from pynwb.testing.mock.file import mock_NWBFile
 
     recording_interface = MockRecordingInterface(num_channels=4, durations=[0.100], calibration="uniform")
-    dict_only_interface = MockIcephysInterface()
+    dict_only_interface = MockIcephysInterface(cell_id="mock")
     converter = ConverterPipe(data_interfaces=dict(Recording=recording_interface, Icephys=dict_only_interface))
 
     metadata = converter.get_metadata(use_new_metadata_format=False)

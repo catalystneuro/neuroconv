@@ -49,6 +49,7 @@ class AxonIntracellularInterface(BaseIcephysInterface):
         self,
         file_path: FilePath,
         *,
+        cell_id: str,
         response_channel_name: str,
         mode: Literal["voltage_clamp", "current_clamp", "izero"],
         stimulus_channel_name: str | None = None,
@@ -63,6 +64,9 @@ class AxonIntracellularInterface(BaseIcephysInterface):
         ----------
         file_path : FilePath
             Path to the Axon Binary Format (.abf) file.
+        cell_id : str
+            The cell this electrode recorded. It keys the electrode in the metadata and fills its ``cell_id``, so
+            interfaces given the same cell share one ``IntracellularElectrode``.
         response_channel_name : str
             The recorded analog-to-digital converter channel for this electrode's response, given as the
             channel name (for example ``"IN0"`` or ``"_Ipatch"``). See ``get_channel_names``.
@@ -90,13 +94,14 @@ class AxonIntracellularInterface(BaseIcephysInterface):
             file stem plus the response channel name (a plain identifier).
         verbose : bool, default: False
         """
-        super().__init__(verbose=verbose)
+        super().__init__(cell_id=cell_id, verbose=verbose)
         self._file_path = file_path
         self._mode = mode
         self._repetition = repetition
         self._condition = condition
         self.source_data = dict(
             file_path=file_path,
+            cell_id=cell_id,
             response_channel_name=response_channel_name,
             mode=mode,
             stimulus_channel_name=stimulus_channel_name,
@@ -181,11 +186,10 @@ class AxonIntracellularInterface(BaseIcephysInterface):
                 get_number_of_samples=lambda: len(self._get_native_times()),
             )
 
-    # Registry keys derive from the run identity so a converter that overrides `_run_identity` propagates to all
-    # of them. The electrode is per response channel and the series key is the user's `metadata_key` if given,
-    # else the electrode key. Each series entry links to its electrode key and each electrode to its device key
-    # (see get_metadata), and those links are editable, so two series can be pointed at one electrode to share it.
-    # The device is the exception: it identifies the amplifier, which runs share, not the run itself.
+    # The series key derives from the run identity so a converter that overrides `_run_identity` propagates to
+    # it; it is the user's `metadata_key` if given. The electrode is keyed by the cell and the device by the
+    # amplifier, since several runs share each. Each series entry links to its electrode key and each electrode
+    # to its device key (see get_metadata).
     @property
     def _amplifier_name(self) -> str | None:
         """The amplifier model the telegraph header reports, or None when the file reports none.
@@ -210,12 +214,8 @@ class AxonIntracellularInterface(BaseIcephysInterface):
         return amplifier_name.lower().replace(" ", "_")
 
     @property
-    def _electrode_metadata_key(self) -> str:
-        return f"{self._run_identity}_{self._response_channel_name}"
-
-    @property
     def _series_metadata_key(self) -> str:
-        return self._metadata_key or self._electrode_metadata_key
+        return self._metadata_key or f"{self._run_identity}_{self._response_channel_name}"
 
     # ------------------------------------------------------------------ metadata
 
@@ -232,16 +232,17 @@ class AxonIntracellularInterface(BaseIcephysInterface):
         amplifier_name = self._amplifier_name
 
         # The metadata-dict keys were seeded at construction. Each series entry stores its electrode_metadata_key as
-        # an editable link: repointing two series at one electrode key merges them onto a single electrode; distinct
-        # is the default. `to_camel_case` is applied only here, the one place a key is composed into an NWB `name`.
+        # a link, so the runs of one cell meet at that cell's electrode. `to_camel_case` is applied only here, the
+        # one place a key is composed into an NWB `name`.
         device_metadata_key = self._device_metadata_key
         electrode_metadata_key = self._electrode_metadata_key
         series_metadata_key = self._series_metadata_key
-        electrode_name_suffix = to_camel_case(electrode_metadata_key)
+        series_name_suffix = to_camel_case(f"{self._run_identity}_{self._response_channel_name}")
 
         electrode_metadata = {
-            "name": f"IntracellularElectrode{electrode_name_suffix}",
+            "name": f"IntracellularElectrode{to_camel_case(electrode_metadata_key)}",
             "description": "Patch-clamp electrode.",
+            "cell_id": self._cell_id,
         }
         # A device only where the telegraph named the amplifier. With no telegraph block there is nothing to
         # report, so the electrode links no device and the write path supplies its placeholder.
@@ -255,7 +256,7 @@ class AxonIntracellularInterface(BaseIcephysInterface):
             electrode_metadata["device_metadata_key"] = device_metadata_key
         metadata["Icephys"]["IntracellularElectrodes"] = {electrode_metadata_key: electrode_metadata}
 
-        # Default series name = the NWB neurodata type + the electrode suffix, written out per clamp mode so the
+        # Default series name = the NWB neurodata type + the run suffix, written out per clamp mode so the
         # naming pattern is explicit here (add_to_nwbfile instantiates the matching class via _RESPONSE_CLASS).
         response_type_name = {
             "voltage_clamp": "VoltageClampSeries",
@@ -264,7 +265,7 @@ class AxonIntracellularInterface(BaseIcephysInterface):
         }[self._mode]
         metadata["Icephys"]["PatchClampSeries"] = {
             series_metadata_key: {
-                "name": f"{response_type_name}{electrode_name_suffix}",
+                "name": f"{response_type_name}{series_name_suffix}",
                 "description": f"Intracellular response ({self._mode}).",
                 "electrode_metadata_key": electrode_metadata_key,
             }
@@ -280,7 +281,7 @@ class AxonIntracellularInterface(BaseIcephysInterface):
             }[self._mode]
             metadata["Icephys"]["PatchClampStimulusSeries"] = {
                 series_metadata_key: {
-                    "name": f"{stimulus_type_name}{electrode_name_suffix}",
+                    "name": f"{stimulus_type_name}{series_name_suffix}",
                     "description": f"Intracellular stimulus ({self._mode}).",
                 }
             }

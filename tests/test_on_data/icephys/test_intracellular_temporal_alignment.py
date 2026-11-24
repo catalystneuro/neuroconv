@@ -35,12 +35,14 @@ BRUKER_DATA_PATH = ECEPHY_DATA_PATH / "bruker" / "voltage_recording"
 
 
 def build_axon_interface():
-    return AxonIntracellularInterface(file_path=AXON_FILE_PATH, response_channel_name="IN0", mode="izero")
+    return AxonIntracellularInterface(
+        cell_id="cell1", file_path=AXON_FILE_PATH, response_channel_name="IN0", mode="izero"
+    )
 
 
 def build_bruker_interface():
     cycle_csv_path = next((BRUKER_DATA_PATH / "current_clamp" / "divisor_0_01").glob("*_VoltageRecording_*.csv"))
-    return BrukerVoltageRecordingInterface(file_paths=[cycle_csv_path])
+    return BrukerVoltageRecordingInterface(cell_id="cell1", file_paths=[cycle_csv_path])
 
 
 def written_response_series(interface):
@@ -87,7 +89,9 @@ def test_shift_moves_a_converter_placed_set_as_a_block():
     # with one, every placement is zero and a bug that overwrote the placement would pass unnoticed.
     def build_interfaces():
         return [
-            AxonIntracellularInterface(file_path=file_path, response_channel_name="IN0", mode="current_clamp")
+            AxonIntracellularInterface(
+                cell_id="cell1", file_path=file_path, response_channel_name="IN0", mode="current_clamp"
+            )
             for file_path in AXON_RUN_FILE_PATHS
         ]
 

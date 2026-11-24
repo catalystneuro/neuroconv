@@ -13,6 +13,7 @@ sweep. One interface instance corresponds to one electrode, and you give it that
     >>> folder_path = f"{ECEPHY_DATA_PATH}/bruker/voltage_recording/current_clamp/divisor_0_01"
     >>> interface = BrukerVoltageRecordingInterface(
     ...     file_paths=[f"{folder_path}/cell1-001_Cycle00001_VoltageRecording_001.csv"],
+    ...     cell_id="cell1",
     ... )
     >>>
     >>> # Extract what metadata we can from the source files (session_start_time is read from the XML)
@@ -25,7 +26,8 @@ sweep. One interface instance corresponds to one electrode, and you give it that
 
 The list of cycles is explicit because nothing in the format says which cycles belong to which cell. The
 folder layout usually does, but that is the experimenter's own naming rather than something the files state,
-so gathering the cycles of one cell is left to your conversion script:
+so gathering the cycles of one cell is left to your conversion script, and you name the cell with ``cell_id``.
+Interfaces given the same ``cell_id`` share one ``IntracellularElectrode``.
 
 .. code-block:: python
 
@@ -34,7 +36,7 @@ so gathering the cycles of one cell is left to your conversion script:
     >>>
     >>> folder_path = Path(f"{ECEPHY_DATA_PATH}/bruker/voltage_recording/current_clamp/divisor_0_01")
     >>> cycles = sorted(folder_path.glob("*_VoltageRecording_*.csv"))
-    >>> interface = BrukerVoltageRecordingInterface(file_paths=cycles)
+    >>> interface = BrukerVoltageRecordingInterface(file_paths=cycles, cell_id="cell1")
 
 Everything else is read from the XML that sits beside each CSV:
 
@@ -77,7 +79,7 @@ protocol and written as the stimulus. To see which waveforms a cycle enabled:
     >>> file_path = f"{ECEPHY_DATA_PATH}/bruker/voltage_recording/current_clamp/divisor_0_01/cell1-001_Cycle00001_VoltageRecording_001.csv"
     >>> BrukerVoltageRecordingInterface.get_command_names(file_path=file_path)
     ['700B']
-    >>> interface = BrukerVoltageRecordingInterface(file_paths=[file_path], stimulus_command="700B")
+    >>> interface = BrukerVoltageRecordingInterface(file_paths=[file_path], cell_id="cell1", stimulus_command="700B")
 
 The command is drawn at the protocol's update rate over the span of the protocol, so it can end before or after
 the recording. It is what PrairieView sent to the amplifier, which adds it to any holding level set on the
@@ -117,10 +119,12 @@ column is omitted rather than filled with a placeholder.
     >>> # One interface per electrode; here two cells, each with its own cycles.
     >>> first_cell = BrukerVoltageRecordingInterface(
     ...     file_paths=[f"{data_path}/current_clamp/five_digit_fractional_seconds/cell2-020_Cycle00001_VoltageRecording_001.csv"],
+    ...     cell_id="cell2",
     ...     stimulus_type="somatic excitability",
     ... )
     >>> second_cell = BrukerVoltageRecordingInterface(
     ...     file_paths=[f"{data_path}/current_clamp/divisor_0_01/cell1-001_Cycle00001_VoltageRecording_001.csv"],
+    ...     cell_id="cell1",
     ...     stimulus_type="somatic excitability",
     ... )
     >>> converter = BrukerVoltageRecordingConverter(
