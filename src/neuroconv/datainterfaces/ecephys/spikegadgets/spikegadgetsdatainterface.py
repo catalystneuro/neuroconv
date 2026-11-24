@@ -48,6 +48,7 @@ class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
         verbose: bool = False,
         es_key: str | None = None,
         metadata_key: str | None = None,
+        channels_to_exclude: list | None = None,
     ):
         """
         Recording Interface for the SpikeGadgets Format.
@@ -64,6 +65,9 @@ class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
         metadata_key : str, optional
             Key that indexes this interface's entries in the dict-based metadata. Defaults to
             ``"spikegadgets_recording"``.
+        channels_to_exclude : list, optional
+            Channels to leave out, by the ids in ``channel_ids``. Every other channel is converted. A name that
+            is not one of the interface's channels raises.
         """
 
         if metadata_key is None:
@@ -77,3 +81,5 @@ class SpikeGadgetsRecordingInterface(BaseRecordingExtractorInterface):
             if len(gains) == 1:
                 gains = [gains[0]] * self.recording_extractor.get_num_channels()
             self.recording_extractor.set_channel_gains(gains=gains)
+
+        self._exclude_channels(channels_to_exclude)

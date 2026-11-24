@@ -33,6 +33,7 @@ class OpenEphysBinaryAnalogInterface(BaseRecordingAsTimeSeriesInterface):
         verbose: bool = False,
         metadata_key: str = "open_ephys_analog",
         time_series_name: str = "TimeSeriesOpenEphysAnalog",
+        channels_to_include: list[str] | None = None,
     ):
         """
         Read analog channel data from the OpenEphysBinary recording.
@@ -53,6 +54,9 @@ class OpenEphysBinaryAnalogInterface(BaseRecordingAsTimeSeriesInterface):
             the written object's name is ``time_series_name``.
         time_series_name : str, default: "TimeSeriesOpenEphysAnalog"
             The name of the TimeSeries object in the NWBFile.
+        channels_to_include : list of str, optional
+            Channels to convert, by the names in ``get_channel_names()`` (such as ``"ADC1"``), written in the order
+            listed. Every channel is converted when omitted. A name that is not one of the interface's channels raises.
         """
 
         from spikeinterface.extractors.extractor_classes import (
@@ -107,7 +111,10 @@ class OpenEphysBinaryAnalogInterface(BaseRecordingAsTimeSeriesInterface):
             stream_name=stream_name,
             block_index=block_index,
             verbose=verbose,
+            channels_to_include=channels_to_include,
         )
+
+        self._include_channels(channels_to_include)
 
     def get_metadata(self) -> DeepDict:
         metadata = super().get_metadata()
@@ -132,7 +139,7 @@ class OpenEphysBinaryAnalogInterface(BaseRecordingAsTimeSeriesInterface):
         list of str
             The names of all analog channels in the OpenEphys recording.
         """
-        return list(self.analog_channel_ids)
+        return list(self.recording_extractor.get_channel_ids())
 
     def add_to_nwbfile(
         self,

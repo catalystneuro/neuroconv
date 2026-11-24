@@ -13,7 +13,7 @@ from ..baseeventsinterface import BaseEventsInterface, _EventsData
 
 # The reader is shared with the deprecated MedPCInterface, which still owns it; it moves into this package
 # when that interface is removed.
-from ...behavior.medpc.medpc_helpers import _read_medpc_file
+from ...behavior.medpc.medpc_helpers import _get_session_lines, _read_medpc_file
 
 # MED-PC IV writes the same fixed header above every session, so a session always begins at its `Start Date` line
 # and the reader needs no configuration to find it.
@@ -75,6 +75,13 @@ class _MedPCEventsInterface(BaseEventsInterface):
 
     keywords = ("events", "behavior", "MedPC")
     associated_suffixes = (".txt",)
+
+    @classmethod
+    def get_available_event_sources(cls, file_path: FilePath, *, session_header: dict) -> list[str]:
+        """List declared array variables of the selected session, before any choice of decoding."""
+        with open(file_path, encoding="utf-8") as stream:
+            lines = _get_session_lines(stream.readlines(), session_header, _SESSION_START_FIELD)
+        return [line.strip()[:-1] for line in lines if re.fullmatch(r"[A-Z]:", line.strip())]
 
     def get_metadata(self) -> DeepDict:
         """
@@ -592,6 +599,7 @@ class MedPCPackedEventsInterface(_MedPCEventsInterface):
             Whether to print verbose output, by default False.
         """
         _validate_time_arguments(time_unit=time_unit)
+        self._header_dict = None
         super().__init__(
             file_path=file_path,
             session_header=session_header,
@@ -601,7 +609,6 @@ class MedPCPackedEventsInterface(_MedPCEventsInterface):
             verbose=verbose,
         )
         self.metadata_key = metadata_key or "medpc"
-        self._header_dict = None
 
     def _read_events(self) -> dict[str, _EventsData]:
         """Read the one time array, recover each event's code, and group the times by it."""

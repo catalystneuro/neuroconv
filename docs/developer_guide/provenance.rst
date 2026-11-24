@@ -51,6 +51,16 @@ Files written before this record existed, and before NeuroConv v0.10.1, carry a 
       - PEP 440 version
       - The version of NeuroConv that wrote the file. Redundant with the first line, so that a parser
         needs no regular expression over prose.
+    * - ``neuroconv_commit``
+      - full sha
+      - The commit NeuroConv was installed from, when it was installed from git, either editable or from a
+        git URL. A development version such as ``0.11.0.dev0`` covers a whole release cycle, and an
+        editable install keeps reporting the version it was installed at, so on such an install this is
+        what identifies the code. Absent for an install from a package index.
+    * - ``neuroconv_working_tree``
+      - ``clean``, ``modified``
+      - For an editable install, whether NeuroConv's checkout matched ``neuroconv_commit``, computed the
+        same way as ``working_tree``.
     * - ``execution_environment``
       - ``script``, ``notebook``, ``interactive``
       - How the conversion was run.
@@ -96,7 +106,8 @@ pushed, and the host's URL layout is known, which currently means ``github.com``
 left out. The script's own tracking is checked separately from the working tree because an untracked
 script leaves the tree clean while being absent from the commit. A link to a commit that is not what ran looks authoritative and is wrong, which is
 worse than no link. The ``commit`` key is written either way, so nothing is withheld; it is only the link
-that is conditioned.
+that is conditioned. When the link is left out for a reason the person running the conversion can fix, such
+as uncommitted changes or an unpushed commit, NeuroConv warns once per process and names the reason.
 
 Nothing distinguishes a public repository from a private one without a network request, and NeuroConv
 makes none while writing a file. ``commit_published`` therefore means what its name says and nothing
@@ -117,12 +128,15 @@ its existence and its name. Set ``NEUROCONV_PROVENANCE`` to control this:
     * - ``full-git-info``
       - Everything above. This is the default, and what an unset variable means.
     * - ``no-git-info``
-      - ``version_control``, ``repository``, ``commit``, ``commit_date``, ``working_tree`` and
-        ``commit_published`` are omitted, and ``source_script`` falls back to the script's name.
+      - ``neuroconv_commit``, ``neuroconv_working_tree``, ``version_control``, ``repository``, ``commit``,
+        ``commit_date``, ``working_tree`` and ``commit_published`` are omitted, and ``source_script`` falls
+        back to the script's name.
         ``neuroconv_provenance_format``, ``neuroconv_version`` and ``execution_environment`` are kept.
 
 Any other value is treated as ``no-git-info``, so a typo discloses less rather than more. The variable can
 only remove keys, never add or change them.
 
 A conversion that sets ``metadata["NWBFile"]["source_script"]`` itself replaces the record entirely, which
-is how the NWB GUIDE writes its own.
+is how the NWB GUIDE writes its own. An ``NWBFile`` built without NeuroConv's metadata helpers, for example
+directly with PyNWB, gets the record when ``configure_and_write_nwbfile`` writes it, unless it already has a
+``source_script``. A file read from disk and exported keeps whatever it had.

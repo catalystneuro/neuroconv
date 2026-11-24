@@ -2,7 +2,7 @@ import numpy as np
 from pydantic import FilePath, validate_call
 from pynwb.file import NWBFile
 
-from ._ethovision_reader import get_available_scorings, parse_start_time, select_scoring
+from ._ethovision_reader import _open_scoring_sheets, get_available_scorings, parse_start_time, select_scoring
 from ...events.baseeventsinterface import BaseEventsInterface, _EventsData
 from ....tools import get_module
 from ....tools.behavior import _add_ethogram_to_nwbfile
@@ -45,6 +45,12 @@ class EthoVisionManualScoringInterface(BaseEventsInterface):
         """
         return get_available_scorings(file_path=file_path)
 
+    @classmethod
+    def get_available_event_sources(cls, file_path: FilePath) -> list[str]:
+        """List the workbook's Manual Scoring sheets, including sheets with no scoring rows."""
+        with _open_scoring_sheets(file_path) as sheets:
+            return list(sheets)
+
     @validate_call
     def __init__(
         self,
@@ -81,6 +87,7 @@ class EthoVisionManualScoringInterface(BaseEventsInterface):
         self._arena = self._scoring_sheet.arena
         self.metadata_key = metadata_key or f"ethovision_{to_snake_case(f'{self._arena}_{self._subject}')}"
         self._manual_scoring_metadata_key = f"ethovision_{to_snake_case(self._arena)}_manual_scoring"
+        self._scoring_events = [event for event in self._scoring_sheet.events if event.subject == self._subject]
         super().__init__(
             file_path=file_path,
             arena_name=self._arena,
@@ -89,15 +96,13 @@ class EthoVisionManualScoringInterface(BaseEventsInterface):
             verbose=verbose,
         )
 
-        self._scoring_events = [event for event in self._scoring_sheet.events if event.subject == self._subject]
-
     def get_metadata_schema(self) -> dict:
+        from ....tools.behavior import _get_ethogram_metadata_schema
+
         metadata_schema = super().get_metadata_schema()
         metadata_schema["properties"]["Behavior"] = {
             "type": "object",
-            "properties": {
-                "Ethograms": {"type": "object", "additionalProperties": {"type": "object"}},
-            },
+            "properties": _get_ethogram_metadata_schema(),
             "additionalProperties": True,
         }
         return metadata_schema
@@ -213,7 +218,7 @@ class EthoVisionManualScoringInterface(BaseEventsInterface):
             ],
             ethogram_metadata=ethogram_metadata,
             labeling_method="manual",
-            exclusive=False,
+            # No bout_concurrency: the export does not record which behaviors the scheme made exclusive.
             source_software="Noldus EthoVision XT",
             bout_columns={
                 "subject": {

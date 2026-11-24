@@ -3,24 +3,14 @@
 import warnings
 from typing import Any, ClassVar, Literal
 
-import zarr
 from hdmf import Container
-from packaging.version import Version
-from pydantic import Field, InstanceOf, model_validator
+from pydantic import Field, InstanceOf, PositiveInt, model_validator
 from typing_extensions import Self
+from zarr.abc.codec import ArrayArrayCodec, BytesBytesCodec
+from zarr.codecs import BloscCodec, GzipCodec, ZstdCodec
+from zarr.codecs.numcodecs import BZ2, LZ4, LZMA, Delta, Fletcher32, JenkinsLookup3, PackBits, Shuffle, Zlib
 
 from ._base_dataset_io import _DEFAULT_GZIP_LEVEL, DatasetIOConfiguration
-
-# The Zarr backend requires zarr 3, and Python 3.13 and older resolve zarr 2, where `ZarrBackendConfiguration`
-# raises before any codec is built. These classes only exist in zarr 3, so under zarr 2 they stand in as `object`
-# to keep this module importable.
-if Version(zarr.__version__).major >= 3:
-    from zarr.abc.codec import ArrayArrayCodec, BytesBytesCodec
-    from zarr.codecs import BloscCodec, GzipCodec, ZstdCodec
-    from zarr.codecs.numcodecs import BZ2, LZ4, LZMA, Delta, Fletcher32, JenkinsLookup3, PackBits, Shuffle, Zlib
-else:
-    ArrayArrayCodec = BytesBytesCodec = BloscCodec = GzipCodec = ZstdCodec = object
-    BZ2 = LZ4 = LZMA = Delta = Fletcher32 = JenkinsLookup3 = PackBits = Shuffle = Zlib = object
 
 # Split by the zarr 3 codec stage: a compression method is a bytes-to-bytes codec and goes in `compressors`, a
 # filter method is an array-to-array codec and goes in `filters`. Gzip, Blosc and Zstd are the native zarr 3 codecs,
@@ -102,6 +92,15 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
     filter_options: list[dict[str, Any]] | None = Field(
         default=None, description="The optional parameters to use for each specified filter."
     )
+    shard_shape: tuple[PositiveInt, ...] | None = Field(
+        default=None,
+        description=(
+            "The specified shape to use for sharding the dataset. "
+            "Each shard contains one or more chunks. When set, each axis must be >= the corresponding "
+            "chunk_shape axis, and chunk axes must evenly divide shard axes. "
+            "Set to `None` to disable sharding (default)."
+        ),
+    )
 
     def __str__(self) -> str:  # Inherited docstring from parent. noqa: D105
         string = super().__str__()
@@ -111,6 +110,8 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
             string += f"\n  filter options : {self.filter_options}"
         if self.filters is not None or self.filter_options is not None:
             string += "\n"
+        if self.shard_shape is not None:
+            string += f"\n  shard shape : {self.shard_shape}\n"
 
         return string
 
@@ -153,6 +154,31 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
             )
 
         return values
+
+    @model_validator(mode="after")
+    def validate_shard_shape(self) -> Self:
+        if self.shard_shape is None or self.chunk_shape is None:
+            return self
+
+        if len(self.shard_shape) != len(self.chunk_shape):
+            raise ValueError(
+                f"Length of shard_shape ({len(self.shard_shape)}) does not match "
+                f"chunk_shape ({len(self.chunk_shape)}) for dataset at location '{self.location_in_file}'!"
+            )
+
+        if any(shard_axis < chunk_axis for shard_axis, chunk_axis in zip(self.shard_shape, self.chunk_shape)):
+            raise ValueError(
+                f"Some dimensions of the shard_shape {self.shard_shape} are smaller than the "
+                f"chunk_shape {self.chunk_shape} for dataset at location '{self.location_in_file}'!"
+            )
+
+        if any(shard_axis % chunk_axis != 0 for shard_axis, chunk_axis in zip(self.shard_shape, self.chunk_shape)):
+            raise ValueError(
+                f"Some dimensions of the chunk_shape {self.chunk_shape} do not evenly divide the "
+                f"shard_shape {self.shard_shape} for dataset at location '{self.location_in_file}'!"
+            )
+
+        return self
 
     # ==================================================================================================
     # Deprecated in v0.10.2, to be removed in v0.12.0.
@@ -294,7 +320,12 @@ class ZarrDatasetIOConfiguration(DatasetIOConfiguration):
         array_codecs = [codec for codec in codecs if isinstance(codec, ArrayArrayCodec)]
         bytes_codecs = [codec for codec in codecs if isinstance(codec, BytesBytesCodec)]
 
-        return dict(chunks=self.chunk_shape, filters=array_codecs or None, compressors=bytes_codecs or False)
+        return dict(
+            chunks=self.chunk_shape,
+            filters=array_codecs or None,
+            compressors=bytes_codecs or False,
+            shards=self.shard_shape,
+        )
 
     @classmethod
     def from_neurodata_object_with_existing(

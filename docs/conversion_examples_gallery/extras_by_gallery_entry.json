@@ -8,6 +8,9 @@
   "behavior/ethovision.rst": {
     "extra": "ethovision"
   },
+  "behavior/bsoid.rst": {
+    "extra": "bsoid"
+  },
   "behavior/dannce.rst": {
     "extra": "dannce"
   },
@@ -59,6 +62,9 @@
   },
   "events/doric_events.rst": {
     "extra": "doric_events"
+  },
+  "events/inscopix_gpio.rst": {
+    "extra": "inscopix"
   },
   "events/medpc_events.rst": {
     "extra": "medpc"
@@ -116,9 +122,6 @@
   },
   "imaging/scanimage.rst": {
     "extra": "scanimage"
-  },
-  "imaging/scanimage_legacy.rst": {
-    "extra": "scanimage_legacy"
   },
   "imaging/thor.rst": {
     "extra": "thor"
@@ -188,7 +191,7 @@
   },
   "recording/spike2.rst": {
     "extra": "spike2",
-    "skip": "sonpy only resolves on Windows or Python 3.14 and later, so the page cannot run on most legs (PR #1855)"
+    "skip": "sonpy only resolves on Windows, or on x86_64 with Python 3.14 and later, so the page cannot run on most legs (PR #1855)"
   },
   "recording/spikegadgets.rst": {
     "extra": "spikegadgets"
@@ -234,6 +237,9 @@
   },
   "sorting/neuralynx.rst": {
     "extra": "neuralynx"
+  },
+  "sorting/neuroexplorer.rst": {
+    "extra": "neuroexplorer"
   },
   "sorting/neuroscope.rst": {
     "extra": "neuroscope"

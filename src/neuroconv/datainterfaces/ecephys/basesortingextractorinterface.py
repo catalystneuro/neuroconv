@@ -13,17 +13,12 @@ from ..._temporal_alignment import _TemporalAlignment, _TimeBearingObject
 from ...baseextractorinterface import BaseExtractorInterface
 from ...utils import DeepDict, get_base_schema, get_schema_from_hdmf_class
 
-_NO_SORTING_START_MESSAGE = (
-    "A sorting has no start to place: its first spike is not when its recording began. Use `shift_times` to move " "it."
-)
-
 
 class _SortingTimeBearingObject(_TimeBearingObject):
     """One segment of a sorting: every unit's spikes in that segment, flattened in unit order.
 
-    A shift or a remap acts on each spike, so both work. What would need the flat vector to mean more is
-    refused: replacement times cannot say which spike belongs to which unit, and the first spike is not where
-    the segment starts.
+    Shifting, placement, and remapping preserve spike order and unit associations. Replacement times are
+    refused because a flat vector cannot say which spike belongs to which unit.
     """
 
     def set_times(self, times) -> None:
@@ -31,12 +26,6 @@ class _SortingTimeBearingObject(_TimeBearingObject):
             "A sorting's times are its units' spikes flattened in unit order, so `set_times` cannot say which "
             "spike is which. Use `shift_times` or `remap_times`."
         )
-
-    def move_start_to(self, starting_time: float) -> None:
-        raise NotImplementedError(_NO_SORTING_START_MESSAGE)
-
-    def _get_start_time(self) -> float:
-        raise NotImplementedError(_NO_SORTING_START_MESSAGE)
 
 
 class BaseSortingExtractorInterface(BaseExtractorInterface):
@@ -56,11 +45,11 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         """Name every segment as a time-bearing object, keyed ``{metadata_key}_{segment_index}`` as for recordings.
 
         The keys are for alignment only. The segments are joined in one units table, so there is no segment-level
-        metadata for them to address. Registering reads nothing.
+        metadata for them to address. Adding the objects reads nothing.
         """
         self._alignment = _TemporalAlignment()
         for segment_index in range(self._number_of_segments):
-            self._alignment._register(
+            self._alignment._add_time_bearing_object(
                 key=f"{self.metadata_key}_{segment_index}",
                 get_native_times=partial(self._get_segment_native_spike_times, segment_index=segment_index),
                 time_bearing_object_class=_SortingTimeBearingObject,
@@ -151,6 +140,23 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
                 type="object",
                 additionalProperties=False,
                 properties=dict(
+                    sorting_name=dict(
+                        type="string",
+                        description=(
+                            "Name identifying one sorting output: the set of units produced by a particular "
+                            "spike-sorting run or curation step. All units from that output share this value. "
+                            "Assign distinct names to different outputs written to the same units table."
+                        ),
+                    ),
+                    name=dict(
+                        type="string",
+                        pattern="^[^/]*$",
+                        description="Name of a units table of this sorting's own, written in processing.",
+                    ),
+                    description=dict(
+                        type="string",
+                        description="Description of the units table of this sorting's own, which needs a 'name'.",
+                    ),
                     units_table_metadata_key=dict(
                         type="string",
                         description="Key of the units table this sorting writes into in metadata['Ecephys']['UnitsTables'].",
@@ -256,6 +262,16 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         self.sorting_extractor.register_recording(recording=recording_interface.recording_extractor)
 
     def get_original_timestamps(self) -> np.ndarray:
+        """Deprecated: read ``interface.temporal_alignment[key].get_times()`` before aligning instead."""
+        warnings.warn(
+            "`get_original_timestamps` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment[key].get_times()` before aligning instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        return self._get_original_timestamps()
+
+    def _get_original_timestamps(self) -> np.ndarray:
         raise NotImplementedError(
             "Unable to fetch original timestamps for a SortingInterface since it relies upon an attached recording."
         )
@@ -539,14 +555,16 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
         write_ecephys_metadata : bool, default: False
             Write electrode information contained in the metadata.
         parent_container : {'units', 'processing'}, optional
-            Deprecated. The units table's key in ``metadata["Ecephys"]["UnitsTables"]`` decides where it is written:
-            ``"canonical_units_table"`` is ``nwbfile.units``, and any other key is a table in processing. Will be
-            removed in v0.13.0.
+            Deprecated. A sorting whose entry in ``metadata["Ecephys"]["Sortings"]`` gives a ``name`` writes a table of
+            its own in processing. Otherwise it writes ``nwbfile.units``, or the shared table its
+            ``units_table_metadata_key`` names in ``metadata["Ecephys"]["UnitsTables"]``. Will be removed in v0.13.0.
         units_name : str, optional
-            Deprecated. Set ``name`` in ``metadata["Ecephys"]["UnitsTables"]`` instead. Will be removed in v0.13.0.
+            Deprecated. Set ``name`` in the sorting's entry in ``metadata["Ecephys"]["Sortings"]`` instead, which writes
+            the sorting into a table of its own in processing. Will be removed in v0.13.0.
         units_description : str, optional
-            Deprecated. Set ``description`` in ``metadata["Ecephys"]["UnitsTables"]`` instead. Will be removed in
-            v0.13.0.
+            Deprecated. Set ``description`` in the sorting's entry in ``metadata["Ecephys"]["Sortings"]`` for a table of
+            its own, or in ``metadata["Ecephys"]["UnitsTables"]`` for ``nwbfile.units`` and for a shared table. Will be
+            removed in v0.13.0.
         unit_electrode_indices : list of lists of int, optional
             A list of lists of integers indicating the indices of the electrodes that each unit is associated with.
             The length of the list must match the number of units in the sorting extractor.
@@ -558,16 +576,18 @@ class BaseSortingExtractorInterface(BaseExtractorInterface):
                 - "unit": str, the unit of measurement (default: "volts")
                 - "time_before_peak_in_ms": float, the time from the start of each waveform to the spike peak, optional
         write_as : {'units', 'processing'}, optional
-            Deprecated. The units table's key in ``metadata["Ecephys"]["UnitsTables"]`` decides where it is
-            written. Will be removed in v0.12.0.
+            Deprecated. A sorting whose entry in ``metadata["Ecephys"]["Sortings"]`` gives a ``name`` writes a table of
+            its own in processing. Otherwise it writes ``nwbfile.units``, or the shared table its
+            ``units_table_metadata_key`` names in ``metadata["Ecephys"]["UnitsTables"]``. Will be removed in v0.12.0.
         """
         from ...tools.spikeinterface.spikeinterface import _add_sorting_to_nwbfile
 
         if write_as is not None:
             warnings.warn(
                 "The 'write_as' parameter of BaseSortingExtractorInterface.add_to_nwbfile() is deprecated and will "
-                "be removed in v0.12.0. The units table's key in metadata['Ecephys']['UnitsTables'] decides where "
-                "it is written.",
+                "be removed in v0.12.0. A sorting whose entry in metadata['Ecephys']['Sortings'] gives a 'name' "
+                "writes a table of its own in processing. Otherwise it writes nwbfile.units, or the shared table its "
+                "'units_table_metadata_key' names in metadata['Ecephys']['UnitsTables'].",
                 FutureWarning,
                 stacklevel=2,
             )

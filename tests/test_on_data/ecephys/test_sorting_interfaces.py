@@ -11,6 +11,7 @@ from neuroconv.datainterfaces import (
     CellExplorerSortingInterface,
     KiloSortSortingInterface,
     NeuralynxSortingInterface,
+    NeuroExplorerSortingInterface,
     NeuroScopeSortingInterface,
     PhySortingInterface,
     PlexonSortingInterface,
@@ -37,6 +38,13 @@ class TestBlackrockSortingInterface(SortingExtractorInterfaceTestMixin):
     associated_recording_kwargs = dict(file_path=str(DATA_PATH / "blackrock" / "FileSpec2.3001.ns5"))
 
     save_directory = OUTPUT_PATH
+
+    def test_session_start_time_is_utc_for_file_spec_3_0(self):
+        file_path = DATA_PATH / "blackrock" / "blackrock_3_0_ptp" / "20231027-125608-001.nev"
+        interface = BlackrockSortingInterface(file_path=str(file_path), sampling_frequency=30_000.0)
+        metadata = interface.get_metadata()
+
+        assert metadata["NWBFile"]["session_start_time"] == "2023-10-27T16:56:08.165000+00:00"
 
 
 import pytest
@@ -113,6 +121,14 @@ class TestCellExplorerSortingInterface(SortingExtractorInterfaceTestMixin):
 
         return self.interface, self.test_name
 
+    def check_read_nwb(self, nwbfile_path: str):
+        super().check_read_nwb(nwbfile_path)
+
+        # The units are named after the sorting output CellExplorer recorded loading them from
+        nwbfile = read_nwb(nwbfile_path)
+        units = nwbfile.units
+        assert list(units["sorting_name"][:]) == ["Kilosort_2018-07-17_204347"] * len(units)
+
     def test_writing_channel_metadata(self, setup_interface):
         interface, test_name = setup_interface
 
@@ -164,7 +180,9 @@ class TestNeuralynxSortingInterfaceCheetahV551(SortingExtractorInterfaceTestMixi
     data_interface_cls = NeuralynxSortingInterface
     expected_temporal_alignment_keys = ("neuralynx_sorting_0", "neuralynx_sorting_1")
     interface_kwargs = dict(
-        folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v5.5.1" / "original_data"), stream_id="0"
+        folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v5.5.1" / "original_data"),
+        stream_id="0",
+        gap_tolerance_ms=1.0,
     )
     save_directory = OUTPUT_PATH
 
@@ -173,7 +191,9 @@ class TestNeuralynxSortingInterfaceCheetah563(SortingExtractorInterfaceTestMixin
     data_interface_cls = NeuralynxSortingInterface
     expected_temporal_alignment_keys = ("neuralynx_sorting_0", "neuralynx_sorting_1")
     interface_kwargs = dict(
-        folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v5.6.3" / "original_data"), stream_id="0"
+        folder_path=str(DATA_PATH / "neuralynx" / "Cheetah_v5.6.3" / "original_data"),
+        stream_id="0",
+        gap_tolerance_ms=1.0,
     )
 
     save_directory = OUTPUT_PATH
@@ -325,6 +345,13 @@ class TestKilosortSortingInterface(SortingExtractorInterfaceTestMixin):
 
     def run_custom_checks(self):
         self.check_units_table_propagation()
+
+
+class TestNeuroExplorerSortingInterface(SortingExtractorInterfaceTestMixin):
+    data_interface_cls = NeuroExplorerSortingInterface
+    expected_temporal_alignment_keys = ("neuroexplorer_sorting_0",)
+    interface_kwargs = dict(file_path=str(DATA_PATH / "neuroexplorer" / "File_neuroexplorer_1.nex"))
+    save_directory = OUTPUT_PATH
 
 
 class TestPlexonSortingInterface(SortingExtractorInterfaceTestMixin):

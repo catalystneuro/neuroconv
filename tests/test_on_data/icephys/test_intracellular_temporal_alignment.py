@@ -39,7 +39,7 @@ def build_axon_interface():
 
 
 def build_bruker_interface():
-    cycle_csv_path = next((BRUKER_DATA_PATH / "cc_01_cell1-001").glob("*_VoltageRecording_*.csv"))
+    cycle_csv_path = next((BRUKER_DATA_PATH / "current_clamp" / "divisor_0_01").glob("*_VoltageRecording_*.csv"))
     return BrukerVoltageRecordingInterface(file_paths=[cycle_csv_path])
 
 

@@ -10,6 +10,9 @@ on:
       CONVERSION_GALLERY_CHANGED:
         description: "Whether the files under /docs/conversion_examples_gallery/ were changed."
         value: ${{ jobs.build.outputs.CONVERSION_GALLERY_CHANGED }}
+      TRANSFER_TOOLS_CHANGED:
+        description: "Whether the data transfer tools, their live-service tests or that workflow were changed."
+        value: ${{ jobs.build.outputs.TRANSFER_TOOLS_CHANGED }}
       CHANGELOG_ENTRY_ADDED:
         description: "Whether a changelog entry was added under /changelog_entries/."
         value: ${{ jobs.build.outputs.CHANGELOG_ENTRY_ADDED }}
@@ -27,6 +30,7 @@ jobs:
     outputs:
       SOURCE_CHANGED: ${{ steps.assess-changes.outputs.SOURCE_CHANGED }}
       CONVERSION_GALLERY_CHANGED: ${{ steps.assess-changes.outputs.CONVERSION_GALLERY_CHANGED }}
+      TRANSFER_TOOLS_CHANGED: ${{ steps.assess-changes.outputs.TRANSFER_TOOLS_CHANGED }}
       CHANGELOG_ENTRY_ADDED: ${{ steps.assess-changes.outputs.CHANGELOG_ENTRY_ADDED }}
       PYPROJECT_DEPENDENCIES_CHANGED: ${{ steps.assess-changes.outputs.PYPROJECT_DEPENDENCIES_CHANGED }}
       CHANGED_GALLERY_PAGES: ${{ steps.assess-changes.outputs.CHANGED_GALLERY_PAGES }}
@@ -46,6 +50,7 @@ jobs:
         run: |
           echo "SOURCE_CHANGED=false" >> $GITHUB_OUTPUT
           echo "CONVERSION_GALLERY_CHANGED=false" >> $GITHUB_OUTPUT
+          echo "TRANSFER_TOOLS_CHANGED=false" >> $GITHUB_OUTPUT
           echo "CHANGELOG_ENTRY_ADDED=false" >> $GITHUB_OUTPUT
           PYPROJECT_TOUCHED=false
           GALLERY_PAGES=""
@@ -65,6 +70,13 @@ jobs:
               GALLERY_PAGES="$GALLERY_PAGES $file"
             else
               echo "Conversion gallery not changed"
+            fi
+            if [[ $file == "src/neuroconv/tools/data_transfers/"* || $file == "tests/remote_transfer_services/"* || $file == ".github/workflows/live-service-testing.yml" ]]
+            then
+              echo "Transfer tools changed"
+              echo "TRANSFER_TOOLS_CHANGED=true" >> $GITHUB_OUTPUT
+            else
+              echo "Transfer tools not changed"
             fi
             # The name has to carry this pull request's own number, since `give_next_pr_number` predicts
             # the number and does not reserve it, so an entry can end up pointing at somebody else's.

@@ -62,6 +62,15 @@ def _get_ophys_registry_entry_definitions() -> dict:
             properties=dict(
                 name=dict(type="string", pattern="^[^/]*$"),
                 description=dict(type="string"),
+                segmentation_name=dict(
+                    type="string",
+                    description=(
+                        "Name identifying one segmentation output: the set of ROIs produced by a particular "
+                        "segmentation run or curation step. Segmentations of the same ROIs, such as two channels, "
+                        "give the same name. Assign distinct names to different outputs written to the same "
+                        "PlaneSegmentation."
+                    ),
+                ),
                 imaging_plane_metadata_key=dict(
                     type="string",
                     description="Key of this segmentation's imaging plane in metadata['Ophys']['ImagingPlanes'].",

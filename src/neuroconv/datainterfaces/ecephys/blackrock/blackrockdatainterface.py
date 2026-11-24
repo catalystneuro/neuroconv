@@ -1,3 +1,4 @@
+from datetime import timezone
 from pathlib import Path
 from typing import Optional
 
@@ -53,6 +54,7 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
         verbose: bool = False,
         es_key: str | None = None,
         metadata_key: str | None = None,
+        channels_to_exclude: list | None = None,
     ):
         """
         Load and prepare data corresponding to Blackrock interface.
@@ -66,6 +68,9 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
         metadata_key : str, optional
             Key that indexes this interface's entries in the dict-based metadata. Defaults to
             ``"blackrock_recording"``.
+        channels_to_exclude : list, optional
+            Channels to leave out, by the ids in ``channel_ids``. Every other channel is converted. A name that
+            is not one of the interface's channels raises.
         """
 
         file_path = Path(file_path)
@@ -86,12 +91,15 @@ class BlackrockRecordingInterface(BaseRecordingExtractorInterface):
 
         super().__init__(file_path=file_path, verbose=verbose, es_key=es_key, metadata_key=metadata_key)
 
+        self._exclude_channels(channels_to_exclude)
+
     def get_metadata(self, *, use_new_metadata_format: bool = True) -> DeepDict:
         metadata = super().get_metadata(use_new_metadata_format=use_new_metadata_format)
         # Open file and extract headers
         basic_header = _parse_nsx_basic_header(self.source_data["file_path"])
         if "TimeOrigin" in basic_header:
-            metadata["NWBFile"].update(session_start_time=basic_header["TimeOrigin"].isoformat())
+            session_start_time = basic_header["TimeOrigin"].replace(tzinfo=timezone.utc)
+            metadata["NWBFile"].update(session_start_time=session_start_time.isoformat())
         if "Comment" in basic_header:
             metadata["NWBFile"].update(session_description=basic_header["Comment"])
 
@@ -160,6 +168,8 @@ class BlackrockSortingInterface(BaseSortingExtractorInterface):
         basic_header = _parse_nev_basic_header(self.source_data["file_path"])
         if "TimeOrigin" in basic_header:
             session_start_time = basic_header["TimeOrigin"]
+            if basic_header["FileSpec"] == "3.0":
+                session_start_time = session_start_time.replace(tzinfo=timezone.utc)
             metadata["NWBFile"].update(session_start_time=session_start_time.isoformat())
         if "Comment" in basic_header:
             metadata["NWBFile"].update(session_description=basic_header["Comment"])

@@ -7,6 +7,12 @@ Install NeuroConv with the additional dependencies necessary for reading Inscopi
 
     pip install "neuroconv[inscopix]"
 
+.. note::
+
+    The ``isx`` package this interface reads through does not resolve on Python 3.13 or on macOS with
+    Apple Silicon, so a conversion needs Python 3.9 to 3.12 on a supported platform. See the
+    `pyisx installation instructions <https://github.com/inscopix/pyisx?tab=readme-ov-file#install>`_.
+
 Convert Inscopix segmentation data to NWB using :py:class:`~neuroconv.datainterfaces.ophys.inscopix.inscopixsegmentationdatainterface.InscopixSegmentationInterface`.
 
 .. code-block:: python

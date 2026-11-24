@@ -1,4 +1,6 @@
 import json
+import warnings
+from pathlib import Path
 
 import numpy as np
 from pydantic import DirectoryPath
@@ -21,12 +23,7 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
 
     @classmethod
     def get_stream_names(cls, folder_path: DirectoryPath) -> list[str]:
-        from spikeinterface.extractors.extractor_classes import (
-            NeuralynxRecordingExtractor,
-        )
-
-        stream_names, _ = NeuralynxRecordingExtractor.get_streams(folder_path=folder_path)
-        return stream_names
+        return list(_group_ncs_files_into_streams(folder_path=folder_path))
 
     @classmethod
     def get_source_schema(cls) -> dict:
@@ -44,6 +41,39 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
 
         return NeuralynxRecordingExtractor
 
+    def _initialize_extractor(self, interface_kwargs: dict):
+        # neo checks that every stream of the folder has the same gaps before a stream can be chosen, so a folder
+        # whose streams lost data at different times cannot be opened by stream name. Leaving the files of the
+        # other streams out lets the chosen stream load on its own.
+        extractor_kwargs = interface_kwargs.copy()
+        stream_name = extractor_kwargs.pop("stream_name", None)
+
+        ncs_files_per_stream = _group_ncs_files_into_streams(folder_path=extractor_kwargs["folder_path"])
+        stream_names = list(ncs_files_per_stream)
+        if stream_name is None and len(stream_names) > 1:
+            raise ValueError(
+                "More than one stream is detected! "
+                "Please specify which stream you wish to load with the `stream_name` argument. "
+                "To see what streams are available, call "
+                "`NeuralynxRecordingInterface.get_stream_names(folder_path=...)`."
+            )
+        if stream_name is not None and stream_name not in stream_names:
+            raise ValueError(f"The selected stream '{stream_name}' is not in the available streams '{stream_names}'!")
+
+        if len(stream_names) == 1:
+            return super()._initialize_extractor(extractor_kwargs)
+
+        extractor_kwargs["exclude_filename"] = [
+            file_name
+            for name, file_names in ncs_files_per_stream.items()
+            if name != stream_name
+            for file_name in file_names
+        ]
+        # SpikeInterface passes the list to neo under its deprecated singular name
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", message="`exclude_filename` is deprecated")
+            return super()._initialize_extractor(extractor_kwargs)
+
     def __init__(
         self,
         folder_path: DirectoryPath,
@@ -52,9 +82,11 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
         verbose: bool = False,
         es_key: str | None = None,
         metadata_key: str | None = None,
+        channels_to_exclude: list | None = None,
+        gap_tolerance_ms: float | None = None,
     ):
         """
-        Initialize reading of OpenEphys binary recording.
+        Initialize reading of Neuralynx recording.
 
         Parameters
         ----------
@@ -68,6 +100,12 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
         metadata_key : str, optional
             Key that indexes this interface's entries in the dict-based metadata. Defaults to
             ``"neuralynx_recording"``.
+        channels_to_exclude : list, optional
+            Channels to leave out, by the ids in ``channel_ids``. Every other channel is converted. A name that
+            is not one of the interface's channels raises.
+        gap_tolerance_ms : float, optional
+            Timestamp gaps in the ``.ncs`` files shorter than this, in milliseconds, are ignored, and longer ones start
+            a new segment. By default any gap raises, with a report of where the gaps are.
         """
 
         if metadata_key is None:
@@ -79,6 +117,7 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
             verbose=verbose,
             es_key=es_key,
             metadata_key=metadata_key,
+            gap_tolerance_ms=gap_tolerance_ms,
         )
 
         # Read the header while the recording is still the neo-based extractor, as `remove_channels`
@@ -90,6 +129,8 @@ class NeuralynxRecordingInterface(BaseRecordingExtractorInterface):
             value = self.recording_extractor.get_property(key)
             if value.dtype == object or value.dtype == np.bool_:
                 self.recording_extractor.set_property(key, np.asarray(value, dtype=str))
+
+        self._exclude_channels(channels_to_exclude)
 
     def _extract_header_metadata(self) -> tuple[dict, dict | None]:
         """Read the Neuralynx header into NWBFile fields and, when the header names one, a device."""
@@ -179,6 +220,7 @@ class NeuralynxSortingInterface(BaseSortingExtractorInterface):
         verbose: bool = False,
         stream_id: str | None = None,
         metadata_key: str | None = None,
+        gap_tolerance_ms: float | None = None,
     ):
         """_summary_
 
@@ -195,11 +237,73 @@ class NeuralynxSortingInterface(BaseSortingExtractorInterface):
             it will be chosen automatically
         metadata_key : str, optional
             Key of this sorting's entry in ``metadata["Ecephys"]["Sortings"]``. Defaults to ``"neuralynx_sorting"``.
+        gap_tolerance_ms : float, optional
+            Timestamp gaps in the ``.ncs`` files shorter than this, in milliseconds, are ignored, and longer ones start
+            a new segment. By default any gap raises, with a report of where the gaps are.
         """
         self.metadata_key = metadata_key or "neuralynx_sorting"
         super().__init__(
-            folder_path=folder_path, sampling_frequency=sampling_frequency, stream_id=stream_id, verbose=verbose
+            folder_path=folder_path,
+            sampling_frequency=sampling_frequency,
+            stream_id=stream_id,
+            verbose=verbose,
+            gap_tolerance_ms=gap_tolerance_ms,
         )
+
+
+def _group_ncs_files_into_streams(folder_path: DirectoryPath) -> dict[str, list[str]]:
+    """
+    Group the `.ncs` files of a Neuralynx folder into neo's streams by reading their headers only.
+
+    The streams and their names follow ``NeuralynxRawIO._parse_header``: channels share a stream when they share
+    sampling rate, input range and DSP filter settings, streams are numbered from the highest sampling rate down,
+    and the filter number is the position of the stream's filter settings among the sorted distinct ones. Unlike
+    neo, the timestamps are not read, so the folder is grouped even when its streams have gaps at different times.
+
+    Returns
+    -------
+    dict[str, list[str]]
+        The names of the `.ncs` files of each stream, keyed by stream name.
+    """
+    from neo.rawio import NeuralynxRawIO
+    from neo.rawio.neuralynxrawio.nlxheader import NlxHeader
+
+    file_paths = sorted((path for path in Path(folder_path).iterdir() if path.is_file()), key=lambda path: path.name)
+    ncs_file_paths = [path for path in file_paths if path.suffix.lower() == ".ncs"]
+
+    file_names_per_stream_key = {}
+    for file_path in ncs_file_paths:
+        # neo skips files that hold only a header
+        if file_path.stat().st_size <= NlxHeader.HEADER_SIZE:
+            continue
+        header = NlxHeader(str(file_path))
+        for channel_index in range(len(header["channel_ids"])):
+            input_range = header.get("InputRange")
+            if isinstance(input_range, list):
+                input_range = input_range[channel_index] if channel_index < len(input_range) else input_range[0]
+            filter_parameters = tuple(
+                sorted((key, header[key]) for key in NeuralynxRawIO._filter_keys if key in header)
+            )
+            stream_key = (float(header["sampling_rate"]), input_range, filter_parameters)
+            file_names = file_names_per_stream_key.setdefault(stream_key, [])
+            if file_path.name not in file_names:
+                file_names.append(file_path.name)
+
+    filter_number = {
+        filter_parameters: number
+        for number, filter_parameters in enumerate(sorted({stream_key[2] for stream_key in file_names_per_stream_key}))
+    }
+    stream_keys = sorted(file_names_per_stream_key, reverse=True, key=lambda stream_key: stream_key[0])
+
+    file_names_per_stream = {}
+    for stream_index, (sampling_rate, input_range, filter_parameters) in enumerate(stream_keys):
+        input_range_mv = int(input_range / 1000) if input_range is not None else 0
+        stream_name = (
+            f"stream{stream_index}_{int(sampling_rate)}Hz_{input_range_mv}mVRange"
+            f"_DSPFilter{filter_number[filter_parameters]}"
+        )
+        file_names_per_stream[stream_name] = file_names_per_stream_key[(sampling_rate, input_range, filter_parameters)]
+    return file_names_per_stream
 
 
 def extract_neo_header_metadata(neo_reader) -> dict:

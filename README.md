@@ -92,5 +92,10 @@ If you use NeuroConv in your research, please cite our paper:
 }
 ```
 
+## Getting Help
+- For a bug, or a format or workflow NeuroConv does not cover yet, [open an issue](https://github.com/catalystneuro/neuroconv/issues) with a small sample file if you can.
+- For a walkthrough of sharing NIH-funded neurophysiology data, from conversion to publication on the DANDI Archive, see the [NWB and DANDI guide](https://catalystneuro.com/guides/nwb-dandi-guide/).
+- NeuroConv is developed and maintained by [CatalystNeuro](https://catalystneuro.com/). If your lab would like a conversion pipeline built for its data, see [how a project with CatalystNeuro works](https://catalystneuro.com/work-with-us/).
+
 ## License
 NeuroConv is distributed under the BSD3 License. See [LICENSE](https://github.com/catalystneuro/neuroconv/blob/main/license.txt) for more information.

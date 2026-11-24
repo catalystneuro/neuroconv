@@ -1,0 +1,1 @@
+`BrukerVoltageRecordingInterface` now places each cycle at the `Sequence` time of the acquisition's PVScan XML (`<stem>.xml`) instead of at the cycle's `DateTime`, as `DateTime` can be seconds early. Without the PVScan XML beside the cycles it still uses `DateTime` and warns.

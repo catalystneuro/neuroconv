@@ -229,9 +229,9 @@ overlap raises an error. Place each file where the previous one ends:
     starting_times = np.concatenate([[0.0], np.cumsum(durations)[:-1]])
 
     for segment_key, start in zip(video_interface.temporal_alignment.keys(), starting_times):
-        video_interface.temporal_alignment[segment_key].move_start_to(start)
+        video_interface.temporal_alignment[segment_key].move_earliest_observation_to(start)
 
-``move_start_to`` moves one file so that its first frame sits at the time you give on the session clock. It reads
+``move_earliest_observation_to`` moves one file so that its first frame sits at the time you give on the session clock. It reads
 nothing inside the file. If the camera also started late, shift the interface as in the known-offset case
 and the files keep their layout. Nothing in the files records a gap between them if there was one. If the
 rig has a frame-out line, use it and take each file's times from the pulses instead, as in the trialized
@@ -300,7 +300,7 @@ A triggered camera, one file per trial
 --------------------------------------
 
 One camera again, but a pulse triggers it at the start of each trial, so the session produces one file per
-trial with real gaps between them. Each file has to be placed on its own, with ``temporal_alignment[key].move_start_to``.
+trial with real gaps between them. Each file has to be placed on its own, with ``temporal_alignment[key].move_earliest_observation_to``.
 A file left unplaced stays at its own start, usually zero, and the write raises an error when it overlaps the
 file before it: in the
 order given, each file has to begin after the previous one ends. The check is on the times, so a first file
@@ -337,13 +337,13 @@ passed twice, raises at construction.
     assert len(trial_onsets) == len(segment_keys)
 
     for segment_key, onset in zip(segment_keys, trial_onsets):
-        video_interface.temporal_alignment[segment_key].move_start_to(onset)
+        video_interface.temporal_alignment[segment_key].move_earliest_observation_to(onset)
 
 Each file is placed where its trigger fired. Within a file the frame times come from the nominal frame
 rate, so the drift caveat from the known-offset case applies again, per trial instead of once for the
 session. That is usually fine. A trial is short and a camera does not drift far in ten seconds.
 
-``move_start_to`` states where a file begins instead of how far to move it. Running the loop twice leaves the
+``move_earliest_observation_to`` states where a file begins instead of how far to move it. Running the loop twice leaves the
 files where it says instead of moving them twice. A ``shift_times`` on the interface afterwards moves every
 file together.
 
@@ -439,7 +439,7 @@ Two setups we know of have no recipe.
 
 **One file per trial and no line.** Nothing in the recording says where the trials sit. The starting times
 have to come from somewhere else, a behavioral log or the modification times of the files, and you place
-each file by hand with ``move_start_to``.
+each file by hand with ``move_earliest_observation_to``.
 
 **A camera that free-runs while only some of its frames are written to disk.** The counts no longer say
 which frames were saved, so neither the gaps nor the onsets can reconstruct the mapping. No alignment recipe

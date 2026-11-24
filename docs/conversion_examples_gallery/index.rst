@@ -47,6 +47,7 @@ Sorting
     KiloSort <sorting/kilosort>
     MountainSort <sorting/mda>
     Neuralynx <sorting/neuralynx>
+    NeuroExplorer <sorting/neuroexplorer>
     NeuroScope <sorting/neuroscope>
     Phy <sorting/phy>
     Plexon <sorting/plexon>
@@ -79,7 +80,6 @@ Imaging
     Inscopix <imaging/inscopix>
     Scanbox <imaging/scanbox>
     ScanImage <imaging/scanimage>
-    ScanImage Legacy (v3.8 and older) <imaging/scanimage_legacy>
     Thor <imaging/thor>
     Tiff <imaging/tiff>
 
@@ -132,6 +132,7 @@ Behavioral segmentation
 .. toctree::
     :maxdepth: 1
 
+    B-SOiD <behavior/bsoid>
     VAME <behavior/vame>
     keypoint-MoSeq <behavior/moseq_keypoints>
 
@@ -154,11 +155,14 @@ Behavior
 Events
 ------
 
+For events recorded in a Plexon PLX file, see :ref:`plexon_recorded_events`.
+
 .. toctree::
     :maxdepth: 1
 
     CSV <events/csv_events>
     Doric <events/doric_events>
+    Inscopix GPIO <events/inscopix_gpio>
     MedPC <events/medpc_events>
     NPM <events/npm_events>
     pyPhotometry <events/pyphotometry_events>

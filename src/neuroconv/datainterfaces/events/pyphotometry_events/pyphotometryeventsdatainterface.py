@@ -1,12 +1,13 @@
 """Interface for discrete events (digital IO) from pyPhotometry ``.ppd`` recordings."""
 
 from datetime import datetime
+from pathlib import Path
 
 import numpy as np
 from pydantic import FilePath, validate_call
 
 from ..baseeventsinterface import BaseEventsInterface, _EventsData
-from ...fiber_photometry.pyphotometry._file_reader import _read_ppd
+from ...fiber_photometry.pyphotometry._file_reader import _digital_input_count, _get_layout, _read_header, _read_ppd
 from ....tools.events import (
     _get_event_type_source_ids,
     _resolve_detection_plan,
@@ -82,15 +83,10 @@ class PyPhotometryEventsInterface(BaseEventsInterface):
         verbose : bool, optional
             Whether to print status messages, default = False.
         """
-        super().__init__(
-            file_path=file_path,
-            detection_configuration=detection_configuration,
-            verbose=verbose,
-        )
         self.metadata_key = metadata_key or "pyphotometry_events"
         # Read once and kept: a photometry session is small enough to hold, and separating the words
         # into signals is what tells us which lines the file carries.
-        self._recording = _read_ppd(self.source_data["file_path"])
+        self._recording = _read_ppd(file_path)
         # available_signals: signal_source_id ("digital_1") -> its descriptor. Every signal a .ppd carries
         # here is a digital line, one bit wide by construction, and kind "line" is what lets the validator
         # reject a bit carve on one.
@@ -112,6 +108,18 @@ class PyPhotometryEventsInterface(BaseEventsInterface):
         # same identifier. Validation covers structure and identifier resolution alike.
         _validate_detection_configuration(detection_configuration, self._available_signals)
         self._detection_configuration = detection_configuration
+        super().__init__(
+            file_path=file_path,
+            detection_configuration=detection_configuration,
+            verbose=verbose,
+        )
+
+    @classmethod
+    def get_available_event_sources(cls, file_path: FilePath) -> list[str]:
+        """List the digital port when the acquisition mode records any digital inputs."""
+        with Path(file_path).open("rb") as stream:
+            header = _read_header(stream)
+        return ["digital"] if _digital_input_count(header, _get_layout(header)) > 0 else []
 
     def get_event_type_source_ids(self) -> list[str]:
         """The event types the configuration resolves to, read from nothing."""

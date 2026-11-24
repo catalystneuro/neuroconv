@@ -607,8 +607,14 @@ class TestInscopixSegmentationInterfaceCellSet(SegmentationExtractorInterfaceTes
     interface_kwargs = dict(file_path=str(OPHYS_DATA_PATH / "segmentation_datasets" / "inscopix" / "cellset.isxd"))
     save_directory = OUTPUT_PATH
 
-    # TODO: remove these three skips once a roiextractors release includes
+    # TODO: remove these four skips once a roiextractors release includes
     # https://github.com/catalystneuro/roiextractors/pull/639 or an equivalent fix.
+    def test_temporal_alignment_move_earliest_observation_to_reaches_the_nwbfile(self):
+        pytest.skip(
+            "roiextractors' InscopixSegmentationExtractor does not fill get_traces_dict(), so no traces are written "
+            "and nothing carries a time: https://github.com/catalystneuro/roiextractors/pull/639"
+        )
+
     def test_temporal_alignment_shift_times_reaches_the_nwbfile(self):
         pytest.skip(
             "roiextractors' InscopixSegmentationExtractor does not fill get_traces_dict(), so no traces are written "
@@ -744,8 +750,14 @@ class TestInscopixSegmentationInterfaceCellSetPart1(SegmentationExtractorInterfa
     )
     save_directory = OUTPUT_PATH
 
-    # TODO: remove these three skips once a roiextractors release includes
+    # TODO: remove these four skips once a roiextractors release includes
     # https://github.com/catalystneuro/roiextractors/pull/639 or an equivalent fix.
+    def test_temporal_alignment_move_earliest_observation_to_reaches_the_nwbfile(self):
+        pytest.skip(
+            "roiextractors' InscopixSegmentationExtractor does not fill get_traces_dict(), so no traces are written "
+            "and nothing carries a time: https://github.com/catalystneuro/roiextractors/pull/639"
+        )
+
     def test_temporal_alignment_shift_times_reaches_the_nwbfile(self):
         pytest.skip(
             "roiextractors' InscopixSegmentationExtractor does not fill get_traces_dict(), so no traces are written "

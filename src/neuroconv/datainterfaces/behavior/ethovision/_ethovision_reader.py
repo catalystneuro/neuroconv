@@ -3,6 +3,7 @@
 import csv
 import io
 import re
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -160,8 +161,8 @@ def select_scoring(
     )
 
 
-def read_scoring_sheets(file_path) -> list[EthoVisionScoringSheet]:
-    """Read every Manual Scoring sheet of an Excel workbook; text exports raise."""
+@contextmanager
+def _open_scoring_sheets(file_path):
     path = Path(file_path)
     if path.suffix.lower() != ".xlsx":
         raise ValueError(
@@ -173,13 +174,21 @@ def read_scoring_sheets(file_path) -> list[EthoVisionScoringSheet]:
 
     workbook = _load_workbook(file_path=path)
     try:
-        sheet_rows = {
-            sheet_name: [list(row) for row in workbook[sheet_name].iter_rows(values_only=True)]
+        yield {
+            sheet_name: workbook[sheet_name]
             for sheet_name in workbook.sheetnames
             if _normalize_scoring_sheet_name(sheet_name).startswith(SCORING_SHEET_PREFIX)
         }
     finally:
         workbook.close()
+
+
+def read_scoring_sheets(file_path) -> list[EthoVisionScoringSheet]:
+    """Read every Manual Scoring sheet of an Excel workbook; text exports raise."""
+    with _open_scoring_sheets(file_path) as worksheets:
+        sheet_rows = {
+            name: [list(row) for row in sheet.iter_rows(values_only=True)] for name, sheet in worksheets.items()
+        }
 
     sheets = []
     for sheet_name, rows in sheet_rows.items():

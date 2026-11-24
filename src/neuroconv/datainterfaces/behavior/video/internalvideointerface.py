@@ -95,7 +95,7 @@ class InternalVideoInterface(BaseDataInterface):
         # `metadata_key`. See neuroconv/_temporal_alignment.py.
         # No sample count here, because the header can state it wrongly.
         self.temporal_alignment = _TemporalAlignment()
-        self.temporal_alignment._register(
+        self.temporal_alignment._add_time_bearing_object(
             key=self.metadata_key,
             get_native_times=self._get_default_times,
             default_start_time=lambda: self._get_header_timing()[2],
@@ -154,6 +154,16 @@ class InternalVideoInterface(BaseDataInterface):
         return dict_deep_update(metadata, video_metadata)
 
     def get_original_timestamps(self, stub_test: bool = False) -> np.ndarray:
+        """Deprecated: read ``interface.temporal_alignment[key].get_times()`` before aligning instead."""
+        warnings.warn(
+            "`get_original_timestamps` is deprecated and will be removed in v0.13.0. "
+            "Use `interface.temporal_alignment[key].get_times()` before aligning instead.",
+            FutureWarning,
+            stacklevel=2,
+        )
+        return self._get_original_timestamps(stub_test=stub_test)
+
+    def _get_original_timestamps(self, stub_test: bool = False) -> np.ndarray:
         """
         Retrieve the original unaltered timestamps for the data in this interface.
 
@@ -204,7 +214,7 @@ class InternalVideoInterface(BaseDataInterface):
 
     def _get_container_times(self) -> np.ndarray:
         """Return the timestamps the container stores for every frame, for ``always_write_timestamps=True``."""
-        return self.get_original_timestamps()
+        return self._get_original_timestamps()
 
     def get_timestamps(self, stub_test: bool = False) -> np.ndarray:
         """
@@ -233,7 +243,7 @@ class InternalVideoInterface(BaseDataInterface):
         time_bearing_object = self.temporal_alignment[self.metadata_key]
         if time_bearing_object._times is not None:
             return time_bearing_object.get_times()
-        return self.get_original_timestamps(stub_test=stub_test)
+        return self._get_original_timestamps(stub_test=stub_test)
 
     def set_aligned_timestamps(self, aligned_timestamps: np.ndarray):
         """
@@ -260,7 +270,7 @@ class InternalVideoInterface(BaseDataInterface):
         Set the starting time of the video, or shift the timestamps set on it by this amount.
 
         .. deprecated::
-            Use ``interface.temporal_alignment[key].move_start_to(starting_time)`` to place the video, or
+            Use ``interface.temporal_alignment[key].move_earliest_observation_to(starting_time)`` to place the video, or
             ``interface.temporal_alignment.shift_times(delta)`` to move it. Removed in v0.13.0.
 
         Parameters
@@ -272,7 +282,7 @@ class InternalVideoInterface(BaseDataInterface):
         """
         warnings.warn(
             "`set_aligned_starting_time` is deprecated and will be removed in v0.13.0. Use "
-            "`interface.temporal_alignment[key].move_start_to(starting_time)` to place the video, or "
+            "`interface.temporal_alignment[key].move_earliest_observation_to(starting_time)` to place the video, or "
             "`interface.temporal_alignment.shift_times(delta)` to move it.",
             FutureWarning,
             stacklevel=2,
@@ -282,7 +292,7 @@ class InternalVideoInterface(BaseDataInterface):
         if time_bearing_object._times is not None:
             time_bearing_object.shift_times(aligned_starting_time)
         else:
-            time_bearing_object.move_start_to(aligned_starting_time)
+            time_bearing_object.move_earliest_observation_to(aligned_starting_time)
 
     def align_by_interpolation(self, unaligned_timestamps: np.ndarray, aligned_timestamps: np.ndarray):
         """

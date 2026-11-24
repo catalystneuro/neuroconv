@@ -153,7 +153,7 @@ class AxonIntracellularInterface(BaseIcephysInterface):
         self._response_channel_name = self._channel_names[self._response_channel_index]
         self._metadata_key = metadata_key
 
-        # The run identity: the per-file grouping handle that `sequence` and the device/electrode/series keys all
+        # The run identity: the per-file grouping handle that `protocol_run` and the device/electrode/series keys all
         # derive from (see the properties below). Defaults to the file stem; a converter combining several files
         # overrides it with a unique, disambiguated label, because the stem collides across folders (Clampex names
         # files per folder, e.g. 0000.abf). A lone interface keeps the stem, so single-file output is unchanged.
@@ -164,12 +164,22 @@ class AxonIntracellularInterface(BaseIcephysInterface):
         self._num_sweeps = int(reader.header["nb_segment"][0])
         self._sampling_rate = float(reader.get_signal_sampling_rate())
         self._alignment_key = self._series_metadata_key
-        self.temporal_alignment._register(
+        self.temporal_alignment._add_time_bearing_object(
             key=self._alignment_key,
             get_native_times=self._get_native_times,
             default_start_time=self._get_native_start_time,
             get_number_of_samples=lambda: len(self._get_native_times()),
         )
+        # The stimulus has the response's samples, and a key of its own like every paired stimulus. Alignment keys
+        # share one namespace, so it takes a suffix, unlike its metadata key in the stimulus registry.
+        if self._has_stimulus:
+            self._stimulus_alignment_key = f"{self._alignment_key}_stimulus"
+            self.temporal_alignment._add_time_bearing_object(
+                key=self._stimulus_alignment_key,
+                get_native_times=self._get_native_times,
+                default_start_time=self._get_native_start_time,
+                get_number_of_samples=lambda: len(self._get_native_times()),
+            )
 
     # Registry keys derive from the run identity so a converter that overrides `_run_identity` propagates to all
     # of them. The electrode is per response channel and the series key is the user's `metadata_key` if given,
@@ -479,8 +489,8 @@ class AxonIntracellularInterface(BaseIcephysInterface):
         """
         Recorded analog-to-digital converter channel names (the `response_channel_name` / `stimulus_channel_name` options).
 
-        Interior spaces are removed so a channel keeps one spelling across neo versions: neo below 0.15 reports
-        ``IN0`` and neo 0.15 or above reports ``IN 0`` for the same channel, and these names are what the electrode
+        Interior spaces are removed so a channel keeps one spelling across neo versions: neo below 0.14.6 reports
+        ``IN0`` and neo 0.14.6 or above reports ``IN 0`` for the same channel, and these names are what the electrode
         metadata keys and the NWB series names are built from, so letting them drift would rename written objects.
         A stored name can be empty either way; fall back to ``ch{index}`` so every channel stays addressable by name.
         """

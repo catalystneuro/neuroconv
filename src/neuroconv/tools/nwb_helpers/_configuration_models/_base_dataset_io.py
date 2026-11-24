@@ -13,7 +13,6 @@ from hdmf.build.builders import (
     BaseBuilder,
 )
 from hdmf.data_utils import GenericDataChunkIterator as HDMFGenericDataChunkIterator
-from packaging.version import Version
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -27,12 +26,7 @@ from pynwb.ecephys import ElectricalSeries
 from pynwb.image import ImageSeries
 from pynwb.misc import Units
 from typing_extensions import Self
-
-# zarr 3 only. Under zarr 2, which Python 3.13 and older resolve, it stands in as `object` (see `_zarr_dataset_io.py`).
-if Version(zarr.__version__).major >= 3:
-    from zarr.abc.codec import BytesBytesCodec
-else:
-    BytesBytesCodec = object
+from zarr.abc.codec import BytesBytesCodec
 
 from neuroconv.tools.hdmf import get_full_data_shape
 from neuroconv.tools.iterative_write import get_electrical_series_chunk_shape

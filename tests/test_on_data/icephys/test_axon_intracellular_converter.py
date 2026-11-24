@@ -2,9 +2,9 @@
 
 The converter is the piece that builds the NWB icephys *hierarchy*. Each ``AxonIntracellularInterface`` writes
 only the per-sweep rows of the intracellular-recordings table (one channel, one file), tagging each row with the
-run-level grouping columns (``sequence``, ``stimulus_type``, and the optional ``repetition`` / ``condition``). The
-converter reads those rows back and aggregates them: rows sharing a timing range within a run become one
-``SimultaneousRecordings`` entry, rows sharing a ``sequence`` become one ``SequentialRecordings`` entry,
+run-level grouping columns (``protocol_run``, ``stimulus_type``, and the optional ``repetition`` /
+``condition``). The converter reads those rows back and aggregates them: rows sharing a timing range within a run
+become one ``SimultaneousRecordings`` entry, rows sharing a ``protocol_run`` become one ``SequentialRecordings`` entry,
 ``repetition`` groups sequentials into ``Repetitions``, and ``condition`` groups repetitions into
 ``ExperimentalConditions``. When the interfaces come from several files, the converter also places them on one
 timeline from each file's header start time (``rec_datetime``).
@@ -116,7 +116,7 @@ class TestAxonConverterMultiFile:
         ]
         nwbfile = AxonIntracellularConverter(data_interfaces=interfaces).create_nwbfile()
 
-        # One run per file: each distinct file is its own sequence, hence its own sequential recording.
+        # One protocol run per file: each distinct file is its own sequential recording.
         assert len(nwbfile.icephys_sequential_recordings) == len(self.run_files)
         # All runs are the same amplifier model, so the files share one device even across files (dedup by name).
         assert len(nwbfile.devices) == 1
@@ -165,10 +165,10 @@ class TestAxonConverterDisambiguatesCollidingFilenames:
         ]
         nwbfile = AxonIntracellularConverter(data_interfaces=interfaces).create_nwbfile()
 
-        # The shared stem "0000" is disambiguated by the parent folder, so the two cells carry distinct `sequence`s
-        # (not one merged run identity).
+        # The shared stem "0000" is disambiguated by the parent folder, so the two cells carry distinct
+        # `protocol_run` labels (not one merged run identity).
         intracellular_recordings = nwbfile.intracellular_recordings
-        sequences = {intracellular_recordings["sequence"][i] for i in range(len(intracellular_recordings))}
+        sequences = {intracellular_recordings["protocol_run"][i] for i in range(len(intracellular_recordings))}
         assert sequences == {"cellA_0000", "cellB_0000"}
         # Two distinct response series (no duplicate-name collision) and two separate runs (not folded into one
         # SimultaneousRecordings as if they were a dual patch).

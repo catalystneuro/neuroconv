@@ -42,9 +42,41 @@ class _IcephysSeriesData:
     timestamps: np.ndarray
     conversion: float
     offset: float = 0.0
-    # A stimulus's or stimulus template's own `(start_index, count)` per sweep, for a source whose stimulus and
-    # response sweeps differ in length. None addresses it by the response's ranges.
+    # A stimulus's own `(start_index, count)` per sweep, for a source whose stimulus and response sweeps differ in
+    # length, or a stimulus template's, pointing each sweep at its waveform. None addresses it by the response's
+    # ranges.
     sweep_sample_ranges: list[tuple[int, int]] | None = None
+
+
+@dataclass
+class _IcephysStimulusTemplateData:
+    """A stimulus template: each distinct sweep waveform once, and the index of the waveform each sweep played."""
+
+    waveforms: list[np.ndarray]
+    sweep_waveform_indices: list[int]
+    rate: float
+    conversion: float
+    offset: float = 0.0
+
+    def __post_init__(self):
+        if len({waveform.tobytes() for waveform in self.waveforms}) != len(self.waveforms):
+            raise ValueError("A stimulus template must hold each distinct waveform once.")
+
+    def to_series_data(self) -> _IcephysSeriesData:
+        """Lay the waveforms end to end from 0.0 and point each sweep at its waveform."""
+        waveform_counts = [len(waveform) for waveform in self.waveforms]
+        waveform_start_indices = np.cumsum([0, *waveform_counts[:-1]])
+        data = np.concatenate(self.waveforms)
+        return _IcephysSeriesData(
+            data=data,
+            timestamps=np.arange(len(data)) / self.rate,
+            conversion=self.conversion,
+            offset=self.offset,
+            sweep_sample_ranges=[
+                (int(waveform_start_indices[waveform_index]), waveform_counts[waveform_index])
+                for waveform_index in self.sweep_waveform_indices
+            ],
+        )
 
 
 # Each role a patch-clamp series plays: the metadata registry its entry lives in and the NWBFile method that adds it.
@@ -97,9 +129,36 @@ def _add_patch_clamp_series_to_nwbfile(
     else:
         series_kwargs.update(timestamps=series_data.timestamps)
 
+    if role == "stimulus_template" and series_kwargs["name"] in nwbfile.stimulus_template:
+        existing_series = nwbfile.stimulus_template[series_kwargs["name"]]
+        _check_matching_stimulus_template(
+            existing_series=existing_series, series_class=series_class, series_data=series_data, electrode=electrode
+        )
+        return existing_series
+
     series = series_class(**series_kwargs)
     add_series(nwbfile, series)
     return series
+
+
+def _check_matching_stimulus_template(
+    existing_series, series_class, series_data: _IcephysSeriesData, electrode
+) -> None:
+    """Raise unless a stimulus template already in the file holds the same waveform, on the same electrode."""
+    matches = (
+        existing_series.electrode is electrode
+        and type(existing_series) is series_class
+        and np.array_equal(existing_series.data[:], series_data.data)
+        and existing_series.conversion == series_data.conversion
+        and existing_series.offset == series_data.offset
+        and np.allclose(existing_series.get_timestamps(), series_data.timestamps)
+    )
+    if not matches:
+        raise ValueError(
+            f"The stimulus template '{existing_series.name}' is already in the NWB file with a different waveform or "
+            "electrode. Give each distinct waveform and electrode its own entry in "
+            "metadata['Icephys']['PatchClampStimulusTemplateSeries']."
+        )
 
 
 # NWB requires a `stimulus_type` on every SequentialRecordings entry, so a source that describes none still has
@@ -116,7 +175,7 @@ _UNSTATED_RUN_LEVEL_VALUE = ""
 # `_build_icephys_hierarchical_tables` reads back to build the upper tables. Shared so the two halves of that
 # contract cannot drift: one function writes these columns, the other consumes them.
 _RUN_LEVEL_COLUMN_DESCRIPTIONS = {
-    "sequence": "Run identity grouping rows into a sequential recording (shared by the run's sweeps).",
+    "protocol_run": "Label of the protocol run this row belongs to; each protocol run is one sequential recording.",
     "stimulus_type": "Stimulus type of the run, carried up to its sequential recording when aggregated.",
     "repetition": "Repetition label grouping sequential recordings into a repetition.",
     "condition": "Experimental condition label grouping repetitions.",
@@ -149,7 +208,7 @@ def _get_icephys_metadata_placeholders() -> DeepDict:
     - ``Icephys.PatchClampStimulusSeries[key]``: the optional paired stimulus, in a parallel registry at the
       SAME key as its response. It reuses the response's electrode, so it carries no ``electrode_metadata_key``.
     - ``Icephys.PatchClampStimulusTemplateSeries[key]``: the optional stimulus template, the command the protocol
-      specified, in a third registry at the same key and reusing the response's electrode the same way.
+      specified, keyed by waveform and electrode. Interfaces that name the same entry share one series.
     """
     metadata = DeepDict()
     metadata["Devices"] = {
@@ -244,7 +303,7 @@ def _add_intracellular_recordings_to_nwbfile(
     electrode,
     response_series,
     sweep_sample_ranges: list,
-    sequence: str,
+    protocol_run: str,
     stimulus_series=None,
     stimulus_sweep_sample_ranges: list | None = None,
     stimulus_template_series=None,
@@ -259,8 +318,8 @@ def _add_intracellular_recordings_to_nwbfile(
     Each row addresses the run's continuous response series by the sweep's ``(start_index, count)`` range, and
     carries the run-level values denormalized onto it, so the file stays information-complete even before the
     upper tables exist. The columns are the ones :func:`_build_icephys_hierarchical_tables` reads back:
-    ``sequence`` always, and ``stimulus_type`` / ``repetition`` / ``condition`` when the source or caller stated
-    them.
+    ``protocol_run`` always, and ``stimulus_type`` / ``repetition`` / ``condition`` when the source or caller
+    stated them.
 
     A run-level column belongs to the table, not to the interface that introduced it, so an optional value has
     to stay representable when runs disagree about whether they have one:
@@ -286,8 +345,8 @@ def _add_intracellular_recordings_to_nwbfile(
         The run's continuous response, which the rows address by index range.
     sweep_sample_ranges : list of tuple of int
         One ``(start_index, count)`` per sweep, into ``response_series``.
-    sequence : str
-        The run identity shared by these sweeps, grouped on to build a ``SequentialRecordings`` entry.
+    protocol_run : str
+        Label of the protocol run these sweeps belong to, grouped on to build a ``SequentialRecordings`` entry.
     stimulus_series : PatchClampStimulusSeries, optional
         The run's stimulus, when the source carries one, addressed by ``stimulus_sweep_sample_ranges`` or else by
         the same ranges.
@@ -308,7 +367,7 @@ def _add_intracellular_recordings_to_nwbfile(
     condition : str, optional
         Label grouping this run's repetition into an experimental condition.
     """
-    columns = {"sequence": sequence}
+    columns = {"protocol_run": protocol_run}
     for name, value in (("stimulus_type", stimulus_type), ("repetition", repetition), ("condition", condition)):
         if value is not None:
             columns[name] = value
@@ -395,12 +454,13 @@ def _build_icephys_hierarchical_tables(nwbfile: NWBFile) -> None:
     """
     Build the icephys hierarchy tables from the grouping columns on the intracellular-recordings table.
 
-    Reads, per row: the response's sweep timing, ``sequence``, and the optional ``stimulus_type`` /
+    Reads, per row: the response's sweep timing, ``protocol_run``, and the optional ``stimulus_type`` /
     ``repetition`` / ``condition`` columns, then groups upward:
 
-    - rows of one ``sequence`` covering the same span of time -> one ``SimultaneousRecordings`` entry,
-    - the simultaneous entries of one ``sequence`` -> one ``SequentialRecordings`` entry (with its stimulus type),
-    - the sequentials of one ``repetition`` -> one ``Repetitions`` entry (present, or identity per sequence
+    - rows of one ``protocol_run`` covering the same span of time -> one ``SimultaneousRecordings`` entry,
+    - the simultaneous entries of one ``protocol_run`` -> one ``SequentialRecordings`` entry, carrying its
+      stimulus type and its ``protocol_run`` label,
+    - the sequentials of one ``repetition`` -> one ``Repetitions`` entry (present, or identity per protocol run
       when a ``condition`` needs a repetitions rung beneath it),
     - the repetitions of one ``condition`` -> one ``ExperimentalConditions`` entry (only if the column is present).
 
@@ -412,8 +472,8 @@ def _build_icephys_hierarchical_tables(nwbfile: NWBFile) -> None:
     notion of sweep identity :func:`_add_sweep_time_intervals_to_nwbfile` keys on, so the two projections of these
     rows cannot disagree.
 
-    Each grouping value is constant within a sequence (a run), so the run-level attributes are read off any of
-    its rows. When a ``repetition`` column is absent, each sequence is its own repetition (identity grouping,
+    Each grouping value is constant within a protocol run, so the run-level attributes are read off any of its
+    rows. When a ``repetition`` column is absent, each protocol run is its own repetition (identity grouping,
     the same width-1 default ``SimultaneousRecordings`` uses for a single electrode), so a ``condition`` without
     a ``repetition`` still builds: it groups those identity repetitions. A ``stimulus_type`` column is likewise
     optional: NWB requires the field on the sequential recording, so a placeholder is supplied there when the
@@ -431,7 +491,7 @@ def _build_icephys_hierarchical_tables(nwbfile: NWBFile) -> None:
 
     column_names = intracellular_recordings.colnames
     responses = intracellular_recordings["responses"]["response"]
-    sequences = intracellular_recordings["sequence"]
+    protocol_runs = intracellular_recordings["protocol_run"]
     stimulus_types = intracellular_recordings["stimulus_type"] if "stimulus_type" in column_names else None
     repetitions = intracellular_recordings["repetition"] if "repetition" in column_names else None
     conditions = intracellular_recordings["condition"] if "condition" in column_names else None
@@ -441,7 +501,7 @@ def _build_icephys_hierarchical_tables(nwbfile: NWBFile) -> None:
     timing_groups_by_sequence: dict = {}
     attributes_by_sequence: dict = {}
     for row_index in range(len(intracellular_recordings)):
-        sequence_value = sequences[row_index]
+        sequence_value = protocol_runs[row_index]
         if sequence_value not in timing_groups_by_sequence:
             sequence_order.append(sequence_value)
             timing_groups_by_sequence[sequence_value] = {}
@@ -458,7 +518,11 @@ def _build_icephys_hierarchical_tables(nwbfile: NWBFile) -> None:
         )
         timing_groups_by_sequence[sequence_value].setdefault(timing_key, []).append(row_index)
 
-    # Simultaneous + sequential: one sequential per sequence.
+    # Simultaneous + sequential: one sequential per protocol run, named by the run's label.
+    nwbfile.get_icephys_sequential_recordings().add_column(
+        name="protocol_run",
+        description="Label of this protocol run, the value in the protocol_run column of its intracellular recordings.",
+    )
     sequential_index_by_sequence: dict = {}
     for sequence_value in sequence_order:
         timing_groups = timing_groups_by_sequence[sequence_value]
@@ -472,6 +536,7 @@ def _build_icephys_hierarchical_tables(nwbfile: NWBFile) -> None:
             # A run that stated none reaches here as `None` (no column at all) or as the unstated value (a
             # sibling run forced the column); both mean the same thing and get the one readable placeholder.
             stimulus_type=stimulus_type if stimulus_type else _UNDESCRIBED_STIMULUS_TYPE,
+            protocol_run=sequence_value,
         )
 
     # The repetitions level is built when it was requested (a `repetition` column) or when `condition` needs a
@@ -553,7 +618,8 @@ def _add_sweep_time_intervals_to_nwbfile(nwbfile: NWBFile, name: str = "sweeps")
     One row per distinct interval: the channels of a simultaneous recording (a dual patch, say) address the same
     sample range of their own series and so describe one sweep, not two. Rows are written in time order, since
     the recordings table is ordered by contributing interface rather than by time. When the recordings table
-    carries the ``sequence`` column, it is copied over so each sweep still names the run it belongs to.
+    carries the ``protocol_run`` column, it is copied over so each sweep still names the protocol run it belongs
+    to.
 
     Called once the intracellular-recordings table is complete, for the same reason the hierarchy tables are
     (see :func:`_build_icephys_hierarchical_tables`): each interface appends only its own rows.
@@ -570,10 +636,10 @@ def _add_sweep_time_intervals_to_nwbfile(nwbfile: NWBFile, name: str = "sweeps")
         return
 
     responses = intracellular_recordings["responses"]["response"]
-    has_sequence_column = "sequence" in intracellular_recordings.colnames
-    sequences = intracellular_recordings["sequence"] if has_sequence_column else None
+    has_protocol_run_column = "protocol_run" in intracellular_recordings.colnames
+    protocol_runs = intracellular_recordings["protocol_run"] if has_protocol_run_column else None
 
-    sequence_by_interval: dict = {}
+    protocol_run_by_interval: dict = {}
     for row_index in range(len(intracellular_recordings)):
         response_reference = responses[row_index]
         interval = _get_sweep_start_and_stop_time(
@@ -581,19 +647,21 @@ def _add_sweep_time_intervals_to_nwbfile(nwbfile: NWBFile, name: str = "sweeps")
             start_index=response_reference.idx_start,
             count=response_reference.count,
         )
-        if interval not in sequence_by_interval:
-            sequence_by_interval[interval] = sequences[row_index] if has_sequence_column else None
+        if interval not in protocol_run_by_interval:
+            protocol_run_by_interval[interval] = protocol_runs[row_index] if has_protocol_run_column else None
 
     sweeps = TimeIntervals(
         name=name,
         description="Start and stop time of each sweep, derived from the intracellular recordings table.",
     )
-    if has_sequence_column:
-        sweeps.add_column(name="sequence", description="Run the sweep belongs to (from the recordings table).")
-    for start_time, stop_time in sorted(sequence_by_interval):
+    if has_protocol_run_column:
+        sweeps.add_column(
+            name="protocol_run", description="Protocol run the sweep belongs to (from the recordings table)."
+        )
+    for start_time, stop_time in sorted(protocol_run_by_interval):
         row = dict(start_time=start_time, stop_time=stop_time)
-        if has_sequence_column:
-            row["sequence"] = sequence_by_interval[(start_time, stop_time)]
+        if has_protocol_run_column:
+            row["protocol_run"] = protocol_run_by_interval[(start_time, stop_time)]
         sweeps.add_row(**row)
 
     nwbfile.add_time_intervals(sweeps)
