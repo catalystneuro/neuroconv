@@ -20,16 +20,23 @@ class BaseIcephysInterface(BaseDataInterface):
 
     Concrete interfaces return source data through :meth:`_get_icephys_series_data`. This base owns NWB object
     construction, metadata-linked electrode resolution, and the per-sweep ``IntracellularRecordings`` rows.
+    Each interface names the cell it recorded with ``cell_id``, which keys its electrode, so interfaces recorded
+    on the same cell share one ``IntracellularElectrode``.
     The hierarchy above those rows remains a converter responsibility, once every interface has contributed.
     """
 
-    def __init__(self, *, verbose: bool = False, **source_data):
+    def __init__(self, *, cell_id: str, verbose: bool = False, **source_data):
         super().__init__(verbose=verbose, **source_data)
+        self._cell_id = cell_id
         self._alignment = _TemporalAlignment()
 
     @property
     def temporal_alignment(self):
         return self._alignment
+
+    @property
+    def _electrode_metadata_key(self) -> str:
+        return self._cell_id
 
     def add_to_nwbfile(self, nwbfile: NWBFile, metadata: dict | None = None) -> None:
         """Write this interface's response, optional stimulus, and sweep rows to an NWB file."""

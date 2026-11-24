@@ -41,7 +41,11 @@ class TestAxonConverterSingleCell:
 
     def test_add_to_nwbfile(self):
         interface = AxonIntracellularInterface(
-            file_path=self.file_path, response_channel_name="IN0", mode="voltage_clamp", stimulus_command="Cmd 0"
+            cell_id="cell1",
+            file_path=self.file_path,
+            response_channel_name="IN0",
+            mode="voltage_clamp",
+            stimulus_command="Cmd 0",
         )
         nwbfile = AxonIntracellularConverter(data_interfaces=[interface]).create_nwbfile()
 
@@ -72,8 +76,12 @@ class TestAxonConverterDualPatch:
 
     def test_add_to_nwbfile(self):
         interfaces = [
-            AxonIntracellularInterface(file_path=self.file_path, response_channel_name="IN0", mode="current_clamp"),
-            AxonIntracellularInterface(file_path=self.file_path, response_channel_name="IN1", mode="voltage_clamp"),
+            AxonIntracellularInterface(
+                cell_id="cell1", file_path=self.file_path, response_channel_name="IN0", mode="current_clamp"
+            ),
+            AxonIntracellularInterface(
+                cell_id="cell2", file_path=self.file_path, response_channel_name="IN1", mode="voltage_clamp"
+            ),
         ]
         nwbfile = AxonIntracellularConverter(data_interfaces=interfaces).create_nwbfile()
 
@@ -111,7 +119,9 @@ class TestAxonConverterMultiFile:
 
     def test_add_to_nwbfile(self):
         interfaces = [
-            AxonIntracellularInterface(file_path=path, response_channel_name="IN0", mode="current_clamp")
+            AxonIntracellularInterface(
+                cell_id="cell1", file_path=path, response_channel_name="IN0", mode="current_clamp"
+            )
             for path in self.run_files
         ]
         nwbfile = AxonIntracellularConverter(data_interfaces=interfaces).create_nwbfile()
@@ -120,6 +130,8 @@ class TestAxonConverterMultiFile:
         assert len(nwbfile.icephys_sequential_recordings) == len(self.run_files)
         # All runs are the same amplifier model, so the files share one device even across files (dedup by name).
         assert len(nwbfile.devices) == 1
+        # All runs are the same cell, so they share its electrode.
+        assert [electrode.cell_id for electrode in nwbfile.icephys_electrodes.values()] == ["cell1"]
 
         start_datetimes = [interface._recording_start_datetime for interface in interfaces]
         earliest = min(start_datetimes)
@@ -160,8 +172,12 @@ class TestAxonConverterDisambiguatesCollidingFilenames:
         cell_b.symlink_to(self.source_files[1].resolve())
 
         interfaces = [
-            AxonIntracellularInterface(file_path=cell_a, response_channel_name="IN0", mode="current_clamp"),
-            AxonIntracellularInterface(file_path=cell_b, response_channel_name="IN0", mode="current_clamp"),
+            AxonIntracellularInterface(
+                cell_id="cell_a", file_path=cell_a, response_channel_name="IN0", mode="current_clamp"
+            ),
+            AxonIntracellularInterface(
+                cell_id="cell_b", file_path=cell_b, response_channel_name="IN0", mode="current_clamp"
+            ),
         ]
         nwbfile = AxonIntracellularConverter(data_interfaces=interfaces).create_nwbfile()
 

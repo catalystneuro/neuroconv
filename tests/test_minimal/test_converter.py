@@ -301,7 +301,7 @@ class TestConverterTemporalAlignment:
     def test_child_access(self):
         from neuroconv.tools.testing.mock_interfaces import MockIcephysInterface
 
-        icephys_interface = MockIcephysInterface()
+        icephys_interface = MockIcephysInterface(cell_id="mock")
         converter = ConverterPipe(data_interfaces=dict(Icephys=icephys_interface, Static=MockInterface()))
 
         assert converter.temporal_alignment.keys() == ("Icephys",)
@@ -310,7 +310,7 @@ class TestConverterTemporalAlignment:
     def test_nested_access(self):
         from neuroconv.tools.testing.mock_interfaces import MockIcephysInterface
 
-        icephys_interface = MockIcephysInterface(metadata_key="cell")
+        icephys_interface = MockIcephysInterface(cell_id="cell", metadata_key="cell")
         inner_converter = ConverterPipe(data_interfaces=dict(Icephys=icephys_interface))
         outer_converter = ConverterPipe(data_interfaces=dict(Inner=inner_converter))
 
@@ -376,7 +376,7 @@ class TestConverterTemporalAlignment:
     def test_shift_times_warns_when_alignment_is_undeclared(self):
         from neuroconv.tools.testing.mock_interfaces import MockIcephysInterface
 
-        interface = MockIcephysInterface(metadata_key="cell", num_sweeps=1, sampling_frequency=4.0)
+        interface = MockIcephysInterface(cell_id="cell", metadata_key="cell", num_sweeps=1, sampling_frequency=4.0)
         inner_converter = ConverterPipe(data_interfaces=dict(Unsupported=MockInterface()))
         converter = ConverterPipe(data_interfaces=dict(Icephys=interface, Inner=inner_converter))
         response = interface.temporal_alignment["cell"]
@@ -392,7 +392,7 @@ class TestConverterTemporalAlignment:
         from neuroconv.datainterfaces import ExternalImageInterface, ImageInterface
         from neuroconv.tools.testing.mock_interfaces import MockIcephysInterface
 
-        interface = MockIcephysInterface(metadata_key="cell", num_sweeps=1, sampling_frequency=4.0)
+        interface = MockIcephysInterface(cell_id="cell", metadata_key="cell", num_sweeps=1, sampling_frequency=4.0)
         image_interface = ImageInterface(file_paths=[])
         external_image_interface = ExternalImageInterface(file_paths=[])
         images_converter = ConverterPipe(data_interfaces=dict(ExternalImages=external_image_interface))

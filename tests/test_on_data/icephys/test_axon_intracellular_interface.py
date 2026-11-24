@@ -51,6 +51,7 @@ class TestAxonMultiSweepVoltageClampCommand(DataInterfaceTestMixin):
     response_channel_name = "IN0"
     interface_kwargs = dict(
         file_path=file_path,
+        cell_id="cell1",
         response_channel_name=response_channel_name,
         mode="voltage_clamp",
         stimulus_command="Cmd 0",
@@ -66,12 +67,12 @@ class TestAxonMultiSweepVoltageClampCommand(DataInterfaceTestMixin):
         # session_start_time is read from the ABF header (a real date for version 2).
         assert metadata["NWBFile"]["session_start_time"] == datetime(2020, 12, 3, 14, 13, 3, 760000)
 
-        # Default identity: the electrode key is the plain file stem plus response channel, and the device key is
-        # the amplifier the header reports (runs on one amplifier meet at one entry, so it is not the stem). NWB
-        # object names are the CamelCase form of the electrode key.
+        # Default identity: the series key is the plain file stem plus response channel, the electrode key is the
+        # cell, and the device key is the amplifier the header reports (runs on one amplifier meet at one entry).
+        # NWB object names are the CamelCase form of the keys.
         device_metadata_key = "axopatch_200b"
-        electrode_metadata_key = "user_list_IN0"
-        electrode_name_suffix = "UserListIN0"
+        series_metadata_key = "user_list_IN0"
+        series_name_suffix = "UserListIN0"
 
         expected_device_metadata = {
             device_metadata_key: {
@@ -80,24 +81,25 @@ class TestAxonMultiSweepVoltageClampCommand(DataInterfaceTestMixin):
             }
         }
         expected_electrode_metadata = {
-            electrode_metadata_key: {
-                "name": f"IntracellularElectrode{electrode_name_suffix}",
+            "cell1": {
+                "name": "IntracellularElectrodeCell1",
                 "description": "Patch-clamp electrode.",
+                "cell_id": "cell1",
                 "device_metadata_key": device_metadata_key,
             }
         }
         expected_series_metadata = {
-            electrode_metadata_key: {
-                "name": f"VoltageClampSeries{electrode_name_suffix}",
+            series_metadata_key: {
+                "name": f"VoltageClampSeries{series_name_suffix}",
                 "description": "Intracellular response (voltage_clamp).",
-                "electrode_metadata_key": electrode_metadata_key,
+                "electrode_metadata_key": "cell1",
             },
         }
         # The paired stimulus lives in the parallel PatchClampStimulusSeries registry at the SAME key, with no
         # `_stimulus` suffix and no electrode link (it reuses the response's electrode).
         expected_stimulus_metadata = {
-            electrode_metadata_key: {
-                "name": f"VoltageClampStimulusSeries{electrode_name_suffix}",
+            series_metadata_key: {
+                "name": f"VoltageClampStimulusSeries{series_name_suffix}",
                 "description": "Intracellular stimulus (voltage_clamp).",
             },
         }
@@ -162,6 +164,7 @@ class TestAxonSingleSweepABFv1(DataInterfaceTestMixin):
     response_channel_name = "10Vm"
     interface_kwargs = dict(
         file_path=file_path,
+        cell_id="cell1",
         response_channel_name=response_channel_name,
         mode="current_clamp",
     )
@@ -184,22 +187,22 @@ class TestAxonSingleSweepABFv1(DataInterfaceTestMixin):
             expected_session_start_time = datetime(1900, 1, 1, 14, 15, 0, 711999)
         assert metadata["NWBFile"]["session_start_time"] == expected_session_start_time
 
-        electrode_metadata_key = "abf1_gapfree_bogus_episode_count_10Vm"
-        electrode_name_suffix = "Abf1GapfreeBogusEpisodeCount10vm"
+        series_metadata_key = "abf1_gapfree_bogus_episode_count_10Vm"
+        series_name_suffix = "Abf1GapfreeBogusEpisodeCount10vm"
 
         # No stimulus configured -> exactly the response entry, no `_stimulus`.
         expected_series_metadata = {
-            electrode_metadata_key: {
-                "name": f"CurrentClampSeries{electrode_name_suffix}",
+            series_metadata_key: {
+                "name": f"CurrentClampSeries{series_name_suffix}",
                 "description": "Intracellular response (current_clamp).",
-                "electrode_metadata_key": electrode_metadata_key,
+                "electrode_metadata_key": "cell1",
             }
         }
 
         # ABF v1 has no telegraph block, so nothing identifies the amplifier and no device is reported. The
         # electrode links none either, and the write path supplies its placeholder.
         assert "Devices" not in metadata
-        assert "device_metadata_key" not in metadata["Icephys"]["IntracellularElectrodes"][electrode_metadata_key]
+        assert "device_metadata_key" not in metadata["Icephys"]["IntracellularElectrodes"]["cell1"]
         assert metadata["Icephys"]["PatchClampSeries"] == expected_series_metadata
 
     def check_read_nwb(self, nwbfile_path: str):
@@ -211,7 +214,7 @@ class TestAxonSingleSweepABFv1(DataInterfaceTestMixin):
         # No telegraph model -> the interface named no amplifier, so the electrode is on the placeholder device.
         # NWB requires the electrode to link one, so the link the metadata no longer states is still written.
         assert list(nwbfile.devices) == ["PlaceholderIntracellularDevice"]
-        electrode = nwbfile.icephys_electrodes["IntracellularElectrodeAbf1GapfreeBogusEpisodeCount10vm"]
+        electrode = nwbfile.icephys_electrodes["IntracellularElectrodeCell1"]
         assert electrode.device is nwbfile.devices["PlaceholderIntracellularDevice"]
         intracellular_recordings = nwbfile.intracellular_recordings
         assert len(intracellular_recordings) == 1
@@ -230,6 +233,7 @@ class TestAxonVoltageClampCommand(DataInterfaceTestMixin):
     response_channel_name = "IN0"
     interface_kwargs = dict(
         file_path=file_path,
+        cell_id="cell1",
         response_channel_name=response_channel_name,
         mode="voltage_clamp",
         stimulus_command="Cmd 0",
@@ -244,8 +248,8 @@ class TestAxonVoltageClampCommand(DataInterfaceTestMixin):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2018, 7, 2, 9, 29, 4, 849999)
 
         device_metadata_key = "multiclamp_700"
-        electrode_metadata_key = "step_IN0"
-        electrode_name_suffix = "StepIN0"
+        series_metadata_key = "step_IN0"
+        series_name_suffix = "StepIN0"
         assert metadata["Devices"] == {
             device_metadata_key: {
                 "name": "MultiClamp 700",
@@ -253,15 +257,15 @@ class TestAxonVoltageClampCommand(DataInterfaceTestMixin):
             }
         }
         assert metadata["Icephys"]["PatchClampSeries"] == {
-            electrode_metadata_key: {
-                "name": f"VoltageClampSeries{electrode_name_suffix}",
+            series_metadata_key: {
+                "name": f"VoltageClampSeries{series_name_suffix}",
                 "description": "Intracellular response (voltage_clamp).",
-                "electrode_metadata_key": electrode_metadata_key,
+                "electrode_metadata_key": "cell1",
             },
         }
         assert metadata["Icephys"]["PatchClampStimulusSeries"] == {
-            electrode_metadata_key: {
-                "name": f"VoltageClampStimulusSeries{electrode_name_suffix}",
+            series_metadata_key: {
+                "name": f"VoltageClampStimulusSeries{series_name_suffix}",
                 "description": "Intracellular stimulus (voltage_clamp).",
             },
         }
@@ -305,6 +309,7 @@ class TestAxonIZero(DataInterfaceTestMixin):
     response_channel_name = "IN0"
     interface_kwargs = dict(
         file_path=file_path,
+        cell_id="cell1",
         response_channel_name=response_channel_name,
         mode="izero",
     )
@@ -319,8 +324,8 @@ class TestAxonIZero(DataInterfaceTestMixin):
         assert metadata["NWBFile"]["session_start_time"] == datetime(2000, 1, 1, 0, 0)
 
         device_metadata_key = "multiclamp_700"
-        electrode_metadata_key = "abf2_zero_current_clamp_IN0"
-        electrode_name_suffix = "Abf2ZeroCurrentClampIN0"
+        series_metadata_key = "abf2_zero_current_clamp_IN0"
+        series_name_suffix = "Abf2ZeroCurrentClampIN0"
         assert metadata["Devices"] == {
             device_metadata_key: {
                 "name": "MultiClamp 700",
@@ -329,10 +334,10 @@ class TestAxonIZero(DataInterfaceTestMixin):
         }
         # I=0 has no stimulus -> only the response entry.
         assert metadata["Icephys"]["PatchClampSeries"] == {
-            electrode_metadata_key: {
-                "name": f"IZeroClampSeries{electrode_name_suffix}",
+            series_metadata_key: {
+                "name": f"IZeroClampSeries{series_name_suffix}",
                 "description": "Intracellular response (izero).",
-                "electrode_metadata_key": electrode_metadata_key,
+                "electrode_metadata_key": "cell1",
             }
         }
 
@@ -374,6 +379,7 @@ class TestAxonRecordedMonitorStimulus(DataInterfaceTestMixin):
     response_channel_name = "IN0"
     interface_kwargs = dict(
         file_path=file_path,
+        cell_id="cell1",
         response_channel_name=response_channel_name,
         mode="current_clamp",
         stimulus_channel_name="IN1",  # the second recorded electrode, used here as a recorded monitor
@@ -389,18 +395,18 @@ class TestAxonRecordedMonitorStimulus(DataInterfaceTestMixin):
 
         # A recorded-monitor stimulus produces a paired entry in the parallel PatchClampStimulusSeries registry,
         # at the same key as the response.
-        electrode_metadata_key = "current_clamp_IN0"
-        electrode_name_suffix = "CurrentClampIN0"
+        series_metadata_key = "current_clamp_IN0"
+        series_name_suffix = "CurrentClampIN0"
         assert metadata["Icephys"]["PatchClampSeries"] == {
-            electrode_metadata_key: {
-                "name": f"CurrentClampSeries{electrode_name_suffix}",
+            series_metadata_key: {
+                "name": f"CurrentClampSeries{series_name_suffix}",
                 "description": "Intracellular response (current_clamp).",
-                "electrode_metadata_key": electrode_metadata_key,
+                "electrode_metadata_key": "cell1",
             },
         }
         assert metadata["Icephys"]["PatchClampStimulusSeries"] == {
-            electrode_metadata_key: {
-                "name": f"CurrentClampStimulusSeries{electrode_name_suffix}",
+            series_metadata_key: {
+                "name": f"CurrentClampStimulusSeries{series_name_suffix}",
                 "description": "Intracellular stimulus (current_clamp).",
             },
         }
@@ -432,10 +438,18 @@ class TestAxonIntracellularMetadata:
     def test_two_electrodes_share_one_device(self):
         # The two electrodes reference the same `device_metadata_key`, so one device is created and shared.
         interface_in0 = AxonIntracellularInterface(
-            file_path=self.file_path, response_channel_name="IN0", mode="current_clamp", metadata_key="patch_a"
+            cell_id="patch_a",
+            file_path=self.file_path,
+            response_channel_name="IN0",
+            mode="current_clamp",
+            metadata_key="patch_a",
         )
         interface_in1 = AxonIntracellularInterface(
-            file_path=self.file_path, response_channel_name="IN1", mode="voltage_clamp", metadata_key="patch_b"
+            cell_id="patch_b",
+            file_path=self.file_path,
+            response_channel_name="IN1",
+            mode="voltage_clamp",
+            metadata_key="patch_b",
         )
         shared_device_key = "rig_amplifier"
         metadata = {
@@ -479,10 +493,18 @@ class TestAxonIntracellularMetadata:
     def test_two_series_share_one_electrode(self):
         # The two series reference the same `electrode_metadata_key`, so one electrode is created and shared.
         interface_a = AxonIntracellularInterface(
-            file_path=self.file_path, response_channel_name="IN0", mode="current_clamp", metadata_key="series_a"
+            cell_id="series_a",
+            file_path=self.file_path,
+            response_channel_name="IN0",
+            mode="current_clamp",
+            metadata_key="series_a",
         )
         interface_b = AxonIntracellularInterface(
-            file_path=self.file_path, response_channel_name="IN0", mode="current_clamp", metadata_key="series_b"
+            cell_id="series_b",
+            file_path=self.file_path,
+            response_channel_name="IN0",
+            mode="current_clamp",
+            metadata_key="series_b",
         )
         shared_electrode_key = "the_pipette"
         metadata = {
@@ -525,10 +547,18 @@ class TestAxonIntracellularMetadata:
     def test_independent_devices_and_electrodes(self):
         # Distinct device and electrode keys yield two independent devices and two independent electrodes.
         interface_a = AxonIntracellularInterface(
-            file_path=self.file_path, response_channel_name="IN0", mode="current_clamp", metadata_key="cell_a"
+            cell_id="cell_a",
+            file_path=self.file_path,
+            response_channel_name="IN0",
+            mode="current_clamp",
+            metadata_key="cell_a",
         )
         interface_b = AxonIntracellularInterface(
-            file_path=self.file_path, response_channel_name="IN1", mode="voltage_clamp", metadata_key="cell_b"
+            cell_id="cell_b",
+            file_path=self.file_path,
+            response_channel_name="IN1",
+            mode="voltage_clamp",
+            metadata_key="cell_b",
         )
         metadata = {
             "Devices": {"amp_a": {"name": "AmplifierA"}, "amp_b": {"name": "AmplifierB"}},
@@ -560,7 +590,7 @@ class TestAxonIntracellularMetadata:
     def test_no_metadata_mutation(self):
         # Writing must not mutate the caller's metadata dict (a non-mixin class, so it needs its own guard).
         interface = AxonIntracellularInterface(
-            file_path=self.file_path, response_channel_name="IN0", mode="current_clamp"
+            cell_id="cell1", file_path=self.file_path, response_channel_name="IN0", mode="current_clamp"
         )
         metadata = interface.get_metadata()
         metadata_before = deepcopy(metadata)
@@ -594,6 +624,7 @@ class TestAxonInterfaceConstructionErrors:
             AxonIntracellularInterface(file_path=self.v2_file)
         message = str(exception_info.value)
         assert "Missing required keyword only argument" in message
+        assert "cell_id" in message
         assert "response_channel_name" in message
         assert "mode" in message
 
@@ -604,7 +635,7 @@ class TestAxonInterfaceConstructionErrors:
         )
         with pytest.raises(ValueError, match=re.escape(expected_message)):
             AxonIntracellularInterface(
-                file_path=self.v2_file, response_channel_name="does_not_exist", mode="current_clamp"
+                cell_id="cell1", file_path=self.v2_file, response_channel_name="does_not_exist", mode="current_clamp"
             )
 
     def test_stimulus_sources_are_mutually_exclusive(self):
@@ -614,6 +645,7 @@ class TestAxonInterfaceConstructionErrors:
         )
         with pytest.raises(ValueError, match=re.escape(expected_message)):
             AxonIntracellularInterface(
+                cell_id="cell1",
                 file_path=self.v2_file,
                 response_channel_name="IN0",
                 mode="current_clamp",
@@ -625,7 +657,11 @@ class TestAxonInterfaceConstructionErrors:
         expected_message = "mode='izero' has no stimulus; remove 'stimulus_channel_name' / 'stimulus_command'."
         with pytest.raises(ValueError, match=re.escape(expected_message)):
             AxonIntracellularInterface(
-                file_path=self.izero_file, response_channel_name="IN0", mode="izero", stimulus_command="Cmd 0"
+                cell_id="cell1",
+                file_path=self.izero_file,
+                response_channel_name="IN0",
+                mode="izero",
+                stimulus_command="Cmd 0",
             )
 
     def test_stimulus_command_requires_abf_v2(self):
@@ -635,6 +671,7 @@ class TestAxonInterfaceConstructionErrors:
         )
         with pytest.raises(ValueError, match=re.escape(expected_message)):
             AxonIntracellularInterface(
+                cell_id="cell1",
                 file_path=self.v1_file,
                 response_channel_name="10Vm",
                 mode="current_clamp",

@@ -375,7 +375,7 @@ class TestExternalResourcesMetadataSchema:
         # Interfaces build their schema on the base one, so the typo is caught before any data is written.
         from neuroconv.tools.testing.mock_interfaces import MockIcephysInterface
 
-        interface = MockIcephysInterface(num_sweeps=1, sweep_duration=0.01)
+        interface = MockIcephysInterface(cell_id="mock", num_sweeps=1, sweep_duration=0.01)
         metadata = interface.get_metadata()
         metadata["ExternalResources"] = {"anatomical_structure": {"CA1": self.BRAIN_REGION_TERM}}
         with pytest.raises(ValidationError, match="anatomical_structure"):
@@ -452,7 +452,7 @@ class TestConversionPipelineAnnotation:
     def _mouse_icephys_interface(self, location="CA1", herd=None):
         from neuroconv.tools.testing.mock_interfaces import MockIcephysInterface
 
-        interface = MockIcephysInterface(num_sweeps=1, sweep_duration=0.01)
+        interface = MockIcephysInterface(cell_id="mock", num_sweeps=1, sweep_duration=0.01)
         metadata = interface.get_metadata()
         metadata["Subject"] = dict(subject_id="m1", species="Mus musculus", sex="M", age="P30D")
         metadata["Icephys"]["IntracellularElectrodes"]["mock"]["location"] = location

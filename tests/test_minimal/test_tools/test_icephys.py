@@ -38,11 +38,12 @@ def create_finalized_nwbfile(interfaces: list, metadata: dict | None = None) -> 
 
 
 def create_runs(repetitions: list | None = None, conditions: list | None = None, num_runs: int = 4) -> list:
-    """One mock interface per run, each its own protocol run and electrode, optionally labelled for grouping."""
+    """One mock interface per run, each its own protocol run and cell, optionally labelled for grouping."""
     repetitions = repetitions or [None] * num_runs
     conditions = conditions or [None] * num_runs
     return [
         MockIcephysInterface(
+            cell_id=f"cell_{index}",
             num_sweeps=2,
             starting_time=float(index * 10),
             protocol_run=f"run_{index}",
@@ -60,7 +61,12 @@ class TestMockIcephysInterfaceWithALongerStimulus(DataInterfaceTestMixin):
 
     data_interface_cls = MockIcephysInterface
     interface_kwargs = dict(
-        num_sweeps=2, sweep_duration=1.0, sampling_frequency=10.0, inter_sweep_interval=9.0, stimulus_duration=1.2
+        cell_id="cell1",
+        num_sweeps=2,
+        sweep_duration=1.0,
+        sampling_frequency=10.0,
+        inter_sweep_interval=9.0,
+        stimulus_duration=1.2,
     )
     expected_temporal_alignment_keys = ("mock", "mock_stimulus")
 
@@ -77,7 +83,7 @@ class TestSweepTimeIntervals:
     def test_series_written_with_a_rate(self):
         """Contiguous sweeps leave the samples regular, so the series carries a rate and no timestamps."""
         interface = MockIcephysInterface(
-            num_sweeps=3, sweep_duration=SWEEP_DURATION, sampling_frequency=SAMPLING_FREQUENCY
+            cell_id="mock", num_sweeps=3, sweep_duration=SWEEP_DURATION, sampling_frequency=SAMPLING_FREQUENCY
         )
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile)
@@ -93,6 +99,7 @@ class TestSweepTimeIntervals:
     def test_series_written_with_timestamps(self):
         """Inter-sweep gaps make the samples irregular, so the series carries explicit timestamps and no rate."""
         interface = MockIcephysInterface(
+            cell_id="mock",
             num_sweeps=3,
             sweep_duration=SWEEP_DURATION,
             sampling_frequency=SAMPLING_FREQUENCY,
@@ -112,8 +119,8 @@ class TestSweepTimeIntervals:
     def test_simultaneous_channels_are_one_row_each(self):
         """Two electrodes recorded together describe one sweep per range, not one per recordings row."""
         # Mirrors the real dual-patch fixture: one channel in current clamp, the other in voltage clamp.
-        first_channel = MockIcephysInterface(num_sweeps=3, mode="current_clamp", metadata_key="a")
-        second_channel = MockIcephysInterface(num_sweeps=3, mode="voltage_clamp", metadata_key="b")
+        first_channel = MockIcephysInterface(cell_id="a", num_sweeps=3, mode="current_clamp", metadata_key="a")
+        second_channel = MockIcephysInterface(cell_id="b", num_sweeps=3, mode="voltage_clamp", metadata_key="b")
         nwbfile = mock_NWBFile()
         first_channel.add_to_nwbfile(nwbfile=nwbfile)
         second_channel.add_to_nwbfile(nwbfile=nwbfile)
@@ -127,8 +134,12 @@ class TestSweepTimeIntervals:
 
     def test_rows_are_sorted_and_keep_their_run(self):
         """Runs are written in interface order, so the intervals have to be sorted by time and labelled by run."""
-        later_run = MockIcephysInterface(num_sweeps=2, starting_time=10.0, protocol_run="run_b", metadata_key="b")
-        earlier_run = MockIcephysInterface(num_sweeps=2, starting_time=0.0, protocol_run="run_a", metadata_key="a")
+        later_run = MockIcephysInterface(
+            cell_id="b", num_sweeps=2, starting_time=10.0, protocol_run="run_b", metadata_key="b"
+        )
+        earlier_run = MockIcephysInterface(
+            cell_id="a", num_sweeps=2, starting_time=0.0, protocol_run="run_a", metadata_key="a"
+        )
         nwbfile = mock_NWBFile()
         # The later run is added first, so a table built in row order would come out unsorted.
         later_run.add_to_nwbfile(nwbfile=nwbfile)
@@ -141,7 +152,7 @@ class TestSweepTimeIntervals:
         assert list(sweeps.protocol_run[:]) == ["run_a", "run_a", "run_b", "run_b"]
 
     def test_round_trip(self, tmp_path):
-        interface = MockIcephysInterface(num_sweeps=3)
+        interface = MockIcephysInterface(cell_id="mock", num_sweeps=3)
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile)
         _add_sweep_time_intervals_to_nwbfile(nwbfile)
@@ -175,8 +186,12 @@ class TestSimultaneityIsDecidedOnTime:
 
     def test_electrodes_recorded_together_are_one_entry(self):
         """A dual patch: two electrodes, two series, both sweeps at index 0 and at the same instant."""
-        first = MockIcephysInterface(num_sweeps=1, starting_time=0.0, protocol_run="cell", metadata_key="a")
-        second = MockIcephysInterface(num_sweeps=1, starting_time=0.0, protocol_run="cell", metadata_key="b")
+        first = MockIcephysInterface(
+            cell_id="a", num_sweeps=1, starting_time=0.0, protocol_run="cell", metadata_key="a"
+        )
+        second = MockIcephysInterface(
+            cell_id="b", num_sweeps=1, starting_time=0.0, protocol_run="cell", metadata_key="b"
+        )
 
         nwbfile = create_finalized_nwbfile([first, second])
 
@@ -189,8 +204,12 @@ class TestSimultaneityIsDecidedOnTime:
         """Successive runs written as a series each, which is what an interface that does not concatenate its
         sweeps produces: both rows read index 0 of their own series, yet they are 47 seconds apart and did not
         happen at once."""
-        first = MockIcephysInterface(num_sweeps=1, starting_time=0.0, protocol_run="cell", metadata_key="a")
-        second = MockIcephysInterface(num_sweeps=1, starting_time=47.3, protocol_run="cell", metadata_key="b")
+        first = MockIcephysInterface(
+            cell_id="a", num_sweeps=1, starting_time=0.0, protocol_run="cell", metadata_key="a"
+        )
+        second = MockIcephysInterface(
+            cell_id="b", num_sweeps=1, starting_time=47.3, protocol_run="cell", metadata_key="b"
+        )
 
         nwbfile = create_finalized_nwbfile([first, second])
 
@@ -209,7 +228,7 @@ class TestOptionalStimulusType:
     schema insists on one."""
 
     def test_column_omitted_when_the_source_describes_no_stimulus(self):
-        interface = MockIcephysInterface(num_sweeps=2, stimulus_type=None)
+        interface = MockIcephysInterface(cell_id="mock", num_sweeps=2, stimulus_type=None)
 
         nwbfile = create_finalized_nwbfile([interface])
 
@@ -217,7 +236,7 @@ class TestOptionalStimulusType:
         assert list(nwbfile.icephys_sequential_recordings["stimulus_type"][:]) == ["not described"]
 
     def test_column_written_when_the_source_states_one(self):
-        interface = MockIcephysInterface(num_sweeps=2, stimulus_type="step")
+        interface = MockIcephysInterface(cell_id="mock", num_sweeps=2, stimulus_type="step")
 
         nwbfile = create_finalized_nwbfile([interface])
 
@@ -237,7 +256,7 @@ class TestMockIcephysInterface:
         ],
     )
     def test_clamp_mode_selects_the_series_class(self, mode, expected_series_name):
-        interface = MockIcephysInterface(mode=mode, num_sweeps=1)
+        interface = MockIcephysInterface(cell_id="mock", mode=mode, num_sweeps=1)
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile)
 
@@ -313,35 +332,40 @@ def test_sequential_recordings_carry_their_protocol_run_label():
     assert list(nwbfile.icephys_sequential_recordings["protocol_run"][:]) == ["run_0", "run_1", "run_2", "run_3"]
 
 
-class TestElectrodeSharingThroughMetadata:
-    """Several runs of one cell each default to their own electrode, but the user knows they are the same physical
-    pipette. Editing the metadata links collapses them onto one electrode without merging the runs. Migrated off
-    the Axon converter's gin tests for the same reason as the class above."""
+class TestElectrodePerCell:
+    """An interface's electrode is keyed by its cell, so runs of one cell share an electrode and runs of different
+    cells do not, while each run stays its own sequential recording."""
 
-    def test_merge_electrodes_via_edited_links(self):
-        interfaces = create_runs()
-        converter = ConverterPipe(data_interfaces=interfaces)
-        metadata = converter.get_metadata()
-
-        # Default: one electrode entry per run.
-        assert len(metadata["Icephys"]["IntracellularElectrodes"]) == len(interfaces)
-
-        # Collapse to a single shared electrode and point every series at it.
-        shared_key = "shared_cell"
-        first_electrode = next(iter(metadata["Icephys"]["IntracellularElectrodes"].values()))
-        metadata["Icephys"]["IntracellularElectrodes"] = {
-            shared_key: {**first_electrode, "name": "IntracellularElectrodeSharedCell"}
-        }
-        for series_entry in metadata["Icephys"]["PatchClampSeries"].values():
-            series_entry["electrode_metadata_key"] = shared_key
+    def test_runs_of_one_cell_share_an_electrode(self):
+        interfaces = [
+            MockIcephysInterface(
+                cell_id="cell1", num_sweeps=1, starting_time=0.0, protocol_run="test_pulse", metadata_key="test_pulse"
+            ),
+            MockIcephysInterface(
+                cell_id="cell1", num_sweeps=1, starting_time=10.0, protocol_run="steps", metadata_key="steps"
+            ),
+        ]
+        metadata = ConverterPipe(data_interfaces=interfaces).get_metadata()
+        assert list(metadata["Icephys"]["IntracellularElectrodes"]) == ["cell1"]
 
         nwbfile = create_finalized_nwbfile(interfaces, metadata=metadata)
 
-        # The link edit took effect: the per-run electrodes collapsed onto the one shared electrode.
-        assert len(nwbfile.icephys_electrodes) == 1
-        # The invariant this test owns: merging electrodes does not merge runs. Run grouping follows the `protocol_run`
-        # column, not electrode identity, so each run is still its own sequential recording.
-        assert len(nwbfile.icephys_sequential_recordings) == len(interfaces)
+        assert [electrode.cell_id for electrode in nwbfile.icephys_electrodes.values()] == ["cell1"]
+        assert len(nwbfile.icephys_sequential_recordings) == 2
+
+    def test_runs_of_different_cells_get_their_own_electrodes(self):
+        interfaces = [
+            MockIcephysInterface(
+                cell_id="cell1", num_sweeps=1, starting_time=0.0, protocol_run="first", metadata_key="first"
+            ),
+            MockIcephysInterface(
+                cell_id="cell2", num_sweeps=1, starting_time=10.0, protocol_run="second", metadata_key="second"
+            ),
+        ]
+        nwbfile = create_finalized_nwbfile(interfaces)
+
+        cell_ids = sorted(electrode.cell_id for electrode in nwbfile.icephys_electrodes.values())
+        assert cell_ids == ["cell1", "cell2"]
 
 
 # TODO: move these into the generic icephys interface tests once they exist, so they run through
@@ -371,7 +395,7 @@ class TestMetadataEntryFields:
         assert series.bias_current == -5e-11
 
     def test_electrode_entry_rejects_a_key_that_is_not_a_field(self):
-        interface = MockIcephysInterface(num_sweeps=2, metadata_key="cell1")
+        interface = MockIcephysInterface(cell_id="cell1", num_sweeps=2, metadata_key="cell1")
         metadata = interface.get_metadata()
         metadata["Icephys"]["IntracellularElectrodes"]["cell1"]["targeted_layer"] = "L5"
 
@@ -385,7 +409,12 @@ class TestStimulusLongerThanResponse:
     def test_rows_address_the_whole_stimulus_of_each_sweep(self):
         # Two sweeps 10 s apart that stop recording after 10 samples, each against a command of 12 samples.
         interface = MockIcephysInterface(
-            num_sweeps=2, sweep_duration=1.0, sampling_frequency=10.0, inter_sweep_interval=9.0, stimulus_duration=1.2
+            cell_id="mock",
+            num_sweeps=2,
+            sweep_duration=1.0,
+            sampling_frequency=10.0,
+            inter_sweep_interval=9.0,
+            stimulus_duration=1.2,
         )
         interface.temporal_alignment.shift_times(5.0)
         nwbfile = interface.create_nwbfile()
@@ -403,7 +432,7 @@ class TestMissingMetadataEntries:
     """A response, stimulus or electrode entry the write looks up and cannot find raises, naming its key and registry."""
 
     def test_missing_response_entry_raises(self):
-        interface = MockIcephysInterface(num_sweeps=1, metadata_key="cell1")
+        interface = MockIcephysInterface(cell_id="cell1", num_sweeps=1, metadata_key="cell1")
         metadata = interface.get_metadata()
         del metadata["Icephys"]["PatchClampSeries"]["cell1"]
 
@@ -414,7 +443,7 @@ class TestMissingMetadataEntries:
             interface.create_nwbfile(metadata=metadata)
 
     def test_missing_stimulus_entry_raises(self):
-        interface = MockIcephysInterface(num_sweeps=1, metadata_key="cell1", stimulus_duration=1.0)
+        interface = MockIcephysInterface(cell_id="cell1", num_sweeps=1, metadata_key="cell1", stimulus_duration=1.0)
         metadata = interface.get_metadata()
         del metadata["Icephys"]["PatchClampStimulusSeries"]["cell1"]
 
@@ -426,7 +455,7 @@ class TestMissingMetadataEntries:
             interface.create_nwbfile(metadata=metadata)
 
     def test_missing_electrode_entry_raises(self):
-        interface = MockIcephysInterface(num_sweeps=1, metadata_key="cell1")
+        interface = MockIcephysInterface(cell_id="cell1", num_sweeps=1, metadata_key="cell1")
         metadata = interface.get_metadata()
         del metadata["Icephys"]["IntracellularElectrodes"]["cell1"]
 
