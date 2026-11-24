@@ -19,6 +19,7 @@ from neuroconv.tools.icephys import (
     _add_sweep_time_intervals_to_nwbfile,
     _build_icephys_hierarchical_tables,
     _IcephysSeriesData,
+    _IcephysStimulusTemplateData,
 )
 from neuroconv.tools.testing.data_interface_mixins import DataInterfaceTestMixin
 from neuroconv.tools.testing.mock_interfaces import MockIcephysInterface
@@ -573,6 +574,33 @@ class TestStimulusTemplate:
         )
         with pytest.raises(ValueError, match=re.escape(expected_message)):
             interface.create_nwbfile(metadata=metadata)
+
+
+class TestIcephysStimulusTemplateData:
+    """A stimulus template holds each distinct waveform once and is laid out from 0.0 with a range per sweep."""
+
+    def test_sweeps_point_at_their_waveforms(self):
+        # Three sweeps at 10 Hz playing waveforms A, B, A, where A has two samples and B three.
+        template = _IcephysStimulusTemplateData(
+            waveforms=[np.array([1.0, 1.0]), np.array([2.0, 2.0, 2.0])],
+            sweep_waveform_indices=[0, 1, 0],
+            rate=10.0,
+            conversion=1.0,
+        )
+        series_data = template.to_series_data()
+
+        np.testing.assert_array_equal(series_data.data, [1.0, 1.0, 2.0, 2.0, 2.0])
+        np.testing.assert_allclose(series_data.timestamps, [0.0, 0.1, 0.2, 0.3, 0.4])
+        assert series_data.sweep_sample_ranges == [(0, 2), (2, 3), (0, 2)]
+
+    def test_repeated_waveform_raises(self):
+        with pytest.raises(ValueError, match="A stimulus template must hold each distinct waveform once."):
+            _IcephysStimulusTemplateData(
+                waveforms=[np.array([1.0, 1.0]), np.array([1.0, 1.0])],
+                sweep_waveform_indices=[0, 1],
+                rate=10.0,
+                conversion=1.0,
+            )
 
 
 class TestMissingMetadataEntries:

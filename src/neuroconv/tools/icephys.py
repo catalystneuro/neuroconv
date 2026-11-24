@@ -48,6 +48,37 @@ class _IcephysSeriesData:
     sweep_sample_ranges: list[tuple[int, int]] | None = None
 
 
+@dataclass
+class _IcephysStimulusTemplateData:
+    """A stimulus template: each distinct sweep waveform once, and the index of the waveform each sweep played."""
+
+    waveforms: list[np.ndarray]
+    sweep_waveform_indices: list[int]
+    rate: float
+    conversion: float
+    offset: float = 0.0
+
+    def __post_init__(self):
+        if len({waveform.tobytes() for waveform in self.waveforms}) != len(self.waveforms):
+            raise ValueError("A stimulus template must hold each distinct waveform once.")
+
+    def to_series_data(self) -> _IcephysSeriesData:
+        """Lay the waveforms end to end from 0.0 and point each sweep at its waveform."""
+        waveform_counts = [len(waveform) for waveform in self.waveforms]
+        waveform_start_indices = np.cumsum([0, *waveform_counts[:-1]])
+        data = np.concatenate(self.waveforms)
+        return _IcephysSeriesData(
+            data=data,
+            timestamps=np.arange(len(data)) / self.rate,
+            conversion=self.conversion,
+            offset=self.offset,
+            sweep_sample_ranges=[
+                (int(waveform_start_indices[waveform_index]), waveform_counts[waveform_index])
+                for waveform_index in self.sweep_waveform_indices
+            ],
+        )
+
+
 # Each role a patch-clamp series plays: the metadata registry its entry lives in and the NWBFile method that adds it.
 _SERIES_ROLES = {
     "response": ("PatchClampSeries", NWBFile.add_acquisition),

@@ -47,7 +47,7 @@ from ...tools.events import (
     _resolve_detection_plan,
     _validate_detection_configuration,
 )
-from ...tools.icephys import _IcephysSeriesData
+from ...tools.icephys import _IcephysSeriesData, _IcephysStimulusTemplateData
 from ...tools.signal_processing import (
     _condition_signal,
     _detect_events,
@@ -2026,11 +2026,11 @@ class MockIcephysInterface(BaseIcephysInterface):
         if self.stimulus_template_duration is None:
             return None
         template_samples = round(self.stimulus_template_duration * self.sampling_frequency)
-        return _IcephysSeriesData(
-            data=np.full(template_samples, 2.0, dtype="float32"),
-            timestamps=np.arange(template_samples) / self.sampling_frequency,
+        return _IcephysStimulusTemplateData(
+            waveforms=[np.full(template_samples, 2.0, dtype="float32")],
+            sweep_waveform_indices=[0] * self.num_sweeps,
+            rate=self.sampling_frequency,
             conversion=1.0,
-            sweep_sample_ranges=[(0, template_samples)] * self.num_sweeps,
         )
 
     def _get_stimulus_type(self) -> str | None:

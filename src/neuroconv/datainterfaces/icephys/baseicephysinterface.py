@@ -11,6 +11,7 @@ from ...tools.icephys import (
     _add_intracellular_recordings_to_nwbfile,
     _add_patch_clamp_series_to_nwbfile,
     _IcephysSeriesData,
+    _IcephysStimulusTemplateData,
 )
 from ...tools.nwb_helpers._metadata_and_file_helpers import _validate_metadata_key
 
@@ -51,7 +52,8 @@ class BaseIcephysInterface(BaseDataInterface):
             electrode_metadata_key=response_metadata["electrode_metadata_key"],
         )
         response_data, stimulus_data, sweep_sample_ranges = self._get_icephys_series_data()
-        stimulus_template_data = self._get_icephys_stimulus_template_data()
+        stimulus_template = self._get_icephys_stimulus_template_data()
+        stimulus_template_data = None if stimulus_template is None else stimulus_template.to_series_data()
         timestamps = self.temporal_alignment[self._alignment_key].get_times()
         if timestamps.ndim != 1 or len(timestamps) != len(response_data.data):
             raise ValueError("Intracellular timestamps must be one-dimensional with one time per response sample.")
@@ -120,11 +122,9 @@ class BaseIcephysInterface(BaseDataInterface):
         """Return the run's source-described stimulus type, if any."""
         return None
 
-    def _get_icephys_stimulus_template_data(self) -> _IcephysSeriesData | None:
-        """Return the stimulus template the source specifies, if any, in the standard internal representation.
+    def _get_icephys_stimulus_template_data(self) -> _IcephysStimulusTemplateData | None:
+        """Return the stimulus template the source specifies, if any.
 
-        The data holds each distinct sweep waveform once, and ``sweep_sample_ranges`` gives one
-        ``(start_index, count)`` per sweep, pointing at the waveform that sweep played. The timestamps are relative
-        to the start of the template, so the first is 0.0, and are written as given, not aligned with the response.
+        The template is written from 0.0 at its rate and is not aligned with the response.
         """
         return None
