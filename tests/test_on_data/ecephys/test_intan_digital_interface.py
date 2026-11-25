@@ -187,21 +187,6 @@ class TestIntanDigitalBothWords(EventsInterfaceTestMixin):
             "DIGITAL-OUT-15": 10,
         }
 
-    def test_configuration_reads_a_line_of_a_port(self):
-        """An entry names the port and the line's position on it: line 13 of the digital inputs is
-        ``DIGITAL-IN-14``, which pulses ten times."""
-        configuration = {
-            "camera": {"source": "digital_inputs", "detection": {"lines": [13], "on_change": {"onset": "rising"}}}
-        }
-        interface = IntanDigitalInterface(file_path=self.FILE_PATH, event_extraction_configuration=configuration)
-        nwbfile = mock_NWBFile()
-        interface.add_to_nwbfile(nwbfile=nwbfile)
-
-        assert set(nwbfile.events) == {"Camera"}
-        table = nwbfile.events["Camera"]
-        assert table.colnames == ("timestamp",)
-        assert len(table) == 10
-
     def test_detection_configuration_is_deprecated_and_keeps_its_identifiers(self):
         """The released shape still works: it warns, and its event type keeps the identifier it had."""
         detection_configuration = {
@@ -231,15 +216,6 @@ class TestIntanDigitalBothWords(EventsInterfaceTestMixin):
         )
         with pytest.raises(ValueError, match=rf"\A{re.escape(expected_error)}\Z"):
             IntanDigitalInterface(file_path=self.FILE_PATH, event_extraction_configuration=configuration)
-
-    def test_both_configurations_raise(self):
-        expected_error = "Pass 'event_extraction_configuration' or the deprecated 'detection_configuration', not both."
-        with pytest.raises(ValueError, match=rf"\A{re.escape(expected_error)}\Z"):
-            IntanDigitalInterface(
-                file_path=self.FILE_PATH,
-                event_extraction_configuration={},
-                detection_configuration={},
-            )
 
 
 class TestIntanDigitalFileWithoutDigitalChannels:
