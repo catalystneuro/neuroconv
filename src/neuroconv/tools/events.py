@@ -1,10 +1,3 @@
-"""Tools for the discrete-events data interfaces.
-
-Everything here is private. It is the shared implementation the signal-encoded events interfaces call,
-not a surface anyone should import: a caller writes a ``detection_configuration`` and hands it to an
-interface, which is where the documented contract lives.
-"""
-
 from dataclasses import replace
 
 import numpy as np

@@ -7,8 +7,7 @@ from pydantic import FilePath, validate_call
 
 from ._utils import _warn_if_split_siblings_detected
 from ...events.baseeventsinterface import BaseEventsInterface, _EventsData
-from ....tools.events import _get_event_type_source_ids, _resolve_detection_plan, _validate_detection_configuration
-from ....tools.signal_processing import _condition_signal, _detect_events, _samples_to_seconds
+from ....tools.signal_processing import _detect_occurrences
 
 _ADC_STREAM_NAMES = ("USB board ADC input channel", "USB board ADC output channel")
 
@@ -17,11 +16,8 @@ class IntanAnalogEventsInterface(BaseEventsInterface):
     """Derive discrete events from Intan USB-board ADC input and output streams.
 
     This is the events counterpart to :class:`.IntanAnalogInterface`. It does not write the continuous
-    traces, so callers may use either interface or both. ``detection_configuration`` is required: unlike
-    an already-discrete digital line, an ADC trace has no lossless default event reading without a
-    caller-selected cut point. :class:`.IntanDigitalInterface` can derive every line as ``"high_period"``
-    events by default because its input is already binary; an ADC threshold instead establishes the event
-    semantics.
+    traces, so callers may use either interface or both. ``event_extraction_configuration`` is required:
+    an ADC trace has no default event reading, because nothing in the file says where on begins.
     """
 
     display_name = "Intan Analog Events"
@@ -34,7 +30,7 @@ class IntanAnalogEventsInterface(BaseEventsInterface):
         self,
         file_path: FilePath,
         *,
-        detection_configuration: dict[str, list[dict]],
+        event_extraction_configuration: dict[str, dict],
         metadata_key: str | None = None,
         verbose: bool = False,
         saved_files_are_split: bool = False,
@@ -45,13 +41,12 @@ class IntanAnalogEventsInterface(BaseEventsInterface):
         ----------
         file_path : FilePath
             Path to an ``.rhd`` or ``.rhs`` file, or any chunk in a rotated session.
-        detection_configuration : dict
-            Required ``{channel_name: [spec, ...]}`` mapping across the available ADC input and output
-            channels. Every spec states a caller-selected ``signal_conditioning={"binarize": cut}`` and
-            a ``detection`` reading such as ``"rising"`` or ``"high_period"``. ``cut`` is in the source's
-            stored ADC values, matching the raw ``IntanAnalogInterface`` trace and the shared
-            signal-encoded-events convention. This differs from ``IntanDigitalInterface``, which needs no
-            configuration because its input already has a lossless ``"high_period"`` reading.
+        event_extraction_configuration : dict
+            Entries keyed by the event type identifier. Each entry names an ADC channel in ``source``
+            (``"ANALOG-IN-1"``, ``"ANALOG-OUT-1"``), cuts it into a line with
+            ``signal_conditioning={"binarize": cut}`` and says which changes are events with
+            ``detection={"on_change": {"onset": ...}}``. ``cut`` is in the stored ADC values, matching the
+            raw ``IntanAnalogInterface`` trace, or ``"midpoint"``.
         metadata_key : str, optional
             The key under ``metadata["Events"]``. Defaults to ``"intan_analog_events"``.
         verbose : bool, default: False
@@ -63,21 +58,24 @@ class IntanAnalogEventsInterface(BaseEventsInterface):
         if not saved_files_are_split:
             _warn_if_split_siblings_detected(Path(file_path), interface_name="IntanAnalogEventsInterface")
 
-        self._saved_files_are_split = saved_files_are_split
         self._recording_extractors = self._read_adc_streams(file_path, saved_files_are_split)
-        self._available_signals = {
-            str(channel_id): {"kind": "analog", "stream_name": stream_name, "channel_id": channel_id}
+        self._channel_streams = {
+            str(channel_id): stream_name
             for stream_name, recording in self._recording_extractors.items()
             for channel_id in recording.get_channel_ids()
         }
-        if not self._available_signals:
+        if not self._channel_streams:
             raise ValueError(f"'{file_path}' carries no channels in its ADC input or output streams.")
-        _validate_detection_configuration(detection_configuration, self._available_signals)
-        self._detection_configuration = detection_configuration
+        available_sources = {
+            channel: {"supported_operations": ["signal_conditioning", "detection"]} for channel in self._channel_streams
+        }
+        self._event_extraction_configuration = self._resolve_event_sources(
+            event_extraction_configuration, available_sources
+        )
 
         super().__init__(
             file_path=file_path,
-            detection_configuration=detection_configuration,
+            event_extraction_configuration=event_extraction_configuration,
             verbose=verbose,
         )
         self.metadata_key = metadata_key or "intan_analog_events"
@@ -106,11 +104,11 @@ class IntanAnalogEventsInterface(BaseEventsInterface):
         return [str(channel) for recording in streams.values() for channel in recording.get_channel_ids()]
 
     def get_event_type_source_ids(self) -> list[str]:
-        """The event types the configuration resolves to."""
-        return _get_event_type_source_ids(self._detection_configuration)
+        """The event types the configuration names."""
+        return list(self._event_extraction_configuration)
 
     def get_metadata(self) -> dict:
-        """Seed one event type per configured derived event without reading the ADC trace."""
+        """Seed one event type per configured entry without reading the ADC trace."""
         metadata = super().get_metadata()
         event_types = metadata["Events"][self.metadata_key]["event_types"]
         for event_type_source_id in self.get_event_type_source_ids():
@@ -122,25 +120,18 @@ class IntanAnalogEventsInterface(BaseEventsInterface):
         if self._events_data_dict is not None:
             return self._events_data_dict
 
-        detection_plan = _resolve_detection_plan(self._detection_configuration)
         events_data_dict = {}
-        for signal_source_id, detection_specs in detection_plan.items():
-            signal = self._available_signals[signal_source_id]
-            recording = self._recording_extractors[signal["stream_name"]]
-            trace = recording.get_traces(channel_ids=[signal["channel_id"]])[:, 0]
-            read_clock = partial(recording.sample_index_to_time, segment_index=0)
-            for event_type_source_id, spec in detection_specs:
-                conditioned = _condition_signal(trace, spec["signal_conditioning"])
-                onset_samples, offset_samples = _detect_events(conditioned, spec["detection"])
-                onsets, durations = _samples_to_seconds(
-                    onset_samples=onset_samples,
-                    offset_samples=offset_samples,
-                    timestamps=read_clock,
-                    event_time_convention=spec.get("event_time_convention", "sample_after_transition"),
-                )
-                events_data_dict[event_type_source_id] = _EventsData(
-                    event_type_source_id=event_type_source_id, timestamps=onsets, durations=durations
-                )
+        for event_type_source_id, entry in self._event_extraction_configuration.items():
+            recording = self._recording_extractors[self._channel_streams[entry["source"]]]
+            trace = recording.get_traces(channel_ids=[entry["source"]])[:, 0]
+            onsets, durations = _detect_occurrences(
+                entry=entry,
+                trace=trace,
+                timestamps=partial(recording.sample_index_to_time, segment_index=0),
+            )
+            events_data_dict[event_type_source_id] = _EventsData(
+                event_type_source_id=event_type_source_id, timestamps=onsets, durations=durations
+            )
 
         self._events_data_dict = events_data_dict
         return self._events_data_dict

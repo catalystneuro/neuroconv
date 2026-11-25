@@ -160,8 +160,6 @@ class BaseEventsInterface(BaseDataInterface):
 
     keywords = ("events",)
 
-    _supports_event_extraction_configuration = False
-
     def __init__(self, **source_data):
         super().__init__(**source_data)
         # Filled on the first _get_events_data_dict() call and reused thereafter, so the backend is
@@ -181,7 +179,7 @@ class BaseEventsInterface(BaseDataInterface):
     @classmethod
     def get_source_schema(cls) -> dict:
         source_schema = super().get_source_schema()
-        if cls._supports_event_extraction_configuration:
+        if "event_extraction_configuration" in source_schema["properties"]:
             configuration_schema = source_schema["properties"]["event_extraction_configuration"]
             configuration_schema.setdefault("allOf", []).append(deepcopy(_EVENT_EXTRACTION_CONFIGURATION_SCHEMA))
         return source_schema
