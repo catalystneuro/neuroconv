@@ -53,13 +53,21 @@ class TestInscopixGpioOdorConcentrationStimulus(EventsInterfaceTestMixin):
 
     # ``BNC Sync Output`` is a 0/1 line, so its cut is the derived midpoint. ``GPIO-2`` is cut at the
     # lowest odor boundary, which reads the span above it.
-    DETECTION_CONFIGURATION = {
-        "BNC Sync Output": [{"signal_conditioning": {"binarize": "midpoint"}, "detection": "rising"}],
-        "GPIO-2": [{"signal_conditioning": {"binarize": 136}, "detection": "high_period"}],
+    EVENT_EXTRACTION_CONFIGURATION = {
+        "BNC Sync Output": {
+            "source": "BNC Sync Output",
+            "signal_conditioning": {"binarize": "midpoint"},
+            "detection": {"on_change": {"onset": "rising"}},
+        },
+        "GPIO-2": {
+            "source": "GPIO-2",
+            "signal_conditioning": {"binarize": 136},
+            "detection": {"on_change": {"onset": "rising", "end": "falling"}},
+        },
     }
 
     data_interface_cls = InscopixGpioEventsInterface
-    interface_kwargs = dict(file_path=FILE_PATH, detection_configuration=DETECTION_CONFIGURATION)
+    interface_kwargs = dict(file_path=FILE_PATH, event_extraction_configuration=EVENT_EXTRACTION_CONFIGURATION)
     expected_temporal_alignment_keys = ("BNC Sync Output", "GPIO-2")
     expected_event_sources = (
         "Digital GPI 0",
@@ -121,10 +129,10 @@ class TestInscopixGpioOdorConcentrationStimulus(EventsInterfaceTestMixin):
         self.FILE_PATH = str(copy_path)
         self.interface_kwargs = {**self.interface_kwargs, "file_path": self.FILE_PATH}
 
-    def test_requires_detection_configuration(self):
+    def test_requires_event_extraction_configuration(self):
         # Selection is explicit: the file records no analog-versus-digital flag, so there is no lossless
         # default to derive and the configuration is a required keyword.
-        with pytest.raises(ValidationError, match="detection_configuration"):
+        with pytest.raises(ValidationError, match="event_extraction_configuration"):
             InscopixGpioEventsInterface(file_path=self.FILE_PATH)
 
     def test_get_available_channels(self):
@@ -135,7 +143,7 @@ class TestInscopixGpioOdorConcentrationStimulus(EventsInterfaceTestMixin):
 
     def test_get_metadata(self):
         interface = InscopixGpioEventsInterface(
-            file_path=self.FILE_PATH, detection_configuration=self.DETECTION_CONFIGURATION
+            file_path=self.FILE_PATH, event_extraction_configuration=self.EVENT_EXTRACTION_CONFIGURATION
         )
 
         metadata = interface.get_metadata()
@@ -155,7 +163,7 @@ class TestInscopixGpioOdorConcentrationStimulus(EventsInterfaceTestMixin):
     def test_metadata_key_overrides_the_block_name(self):
         interface = InscopixGpioEventsInterface(
             file_path=self.FILE_PATH,
-            detection_configuration=self.DETECTION_CONFIGURATION,
+            event_extraction_configuration=self.EVENT_EXTRACTION_CONFIGURATION,
             metadata_key="odor_session",
         )
 
@@ -164,7 +172,7 @@ class TestInscopixGpioOdorConcentrationStimulus(EventsInterfaceTestMixin):
     def test_add_to_nwbfile(self, tmp_path):
         """Only the two configured channels are written; the other 24 never appear."""
         interface = InscopixGpioEventsInterface(
-            file_path=self.FILE_PATH, detection_configuration=self.DETECTION_CONFIGURATION
+            file_path=self.FILE_PATH, event_extraction_configuration=self.EVENT_EXTRACTION_CONFIGURATION
         )
         nwbfile = mock_NWBFile()
         interface.add_to_nwbfile(nwbfile=nwbfile, metadata=interface.get_metadata())
@@ -181,30 +189,42 @@ class TestInscopixGpioOdorConcentrationStimulus(EventsInterfaceTestMixin):
     def test_unknown_channel_raises_at_construction(self):
         # The channel inventory is known at construction, so naming a channel the file does not have fails
         # there rather than at read time.
-        with pytest.raises(ValueError, match="not one of the file's signals"):
-            InscopixGpioEventsInterface(
-                file_path=self.FILE_PATH, detection_configuration={"NotAChannel": [{"detection": "rising"}]}
-            )
+        configuration = {"events": {"source": "NotAChannel", "detection": {"on_change": {"onset": "rising"}}}}
+        with pytest.raises(ValueError, match="requests missing source 'NotAChannel'"):
+            InscopixGpioEventsInterface(file_path=self.FILE_PATH, event_extraction_configuration=configuration)
 
-    def test_event_time_convention_reaches_every_event_type(self):
-        pytest.skip("A .gpio file records the time of each change, so the convention is rejected instead.")
-
-    def test_event_time_convention_raises(self):
-        # The stored point before a change is the previous change, which can be seconds earlier, so reading
-        # the sample before a transition would move an event to the wrong time.
-        detection_configuration = {
-            "BNC Sync Output": [
-                {
-                    "signal_conditioning": {"binarize": "midpoint"},
-                    "detection": "rising",
-                    "event_time_convention": "sample_before_transition",
-                }
-            ],
+    def test_digital_channel_raises(self):
+        configuration = {
+            "camera": {
+                "source": "Digital GPI 3",
+                "signal_conditioning": {"binarize": "midpoint"},
+                "detection": {"on_change": {"onset": "rising"}},
+            }
         }
         expected_error = (
-            "detection_configuration spec for 'BNC Sync Output' sets 'event_time_convention', which does not "
-            "apply to an Inscopix .gpio file. The file records the time of each change, so each event takes "
-            "that time."
+            "Event extraction entry 'camera' cannot read 'Digital GPI 3': events from the digital inputs and "
+            "outputs of the DAQ box are not supported yet. If you need them, see "
+            "https://github.com/catalystneuro/neuroconv/issues/2280"
         )
         with pytest.raises(ValueError, match=rf"\A{re.escape(expected_error)}\Z"):
-            InscopixGpioEventsInterface(file_path=self.FILE_PATH, detection_configuration=detection_configuration)
+            InscopixGpioEventsInterface(file_path=self.FILE_PATH, event_extraction_configuration=configuration)
+
+    def test_event_time_convention_reaches_every_event_type(self):
+        pytest.skip("A .gpio file records the time of each change, so timestamp_estimate is rejected instead.")
+
+    def test_timestamp_estimate_raises(self):
+        # The stored point before a change is the previous change, which can be seconds earlier, so reading
+        # the sample before a change would move an event to the wrong time.
+        configuration = {
+            "frames": {
+                "source": "BNC Sync Output",
+                "signal_conditioning": {"binarize": "midpoint"},
+                "detection": {"on_change": {"onset": "rising"}, "timestamp_estimate": "last_sample_before_change"},
+            },
+        }
+        expected_error = (
+            "Event extraction entry 'frames' sets 'timestamp_estimate', which does not apply to an Inscopix .gpio "
+            "file. The file records the time of each change, so each event takes that time."
+        )
+        with pytest.raises(ValueError, match=rf"\A{re.escape(expected_error)}\Z"):
+            InscopixGpioEventsInterface(file_path=self.FILE_PATH, event_extraction_configuration=configuration)
