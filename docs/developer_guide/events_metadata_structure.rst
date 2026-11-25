@@ -388,7 +388,7 @@ What is shared is the column's *identity*: its name, its ``description``, and it
 Those are the only things that can disagree, and they exist only where the contributors declared them,
 so a column carrying neither ``column_categories`` nor a ``description`` is never checked at all and two
 such declarations merge **silently**, whatever their values. Where they are declared, a disagreement
-raises before anything is written (``BaseEventsInterface._validate_shared_columns``):
+raises before anything is written (``neuroconv.tools.events._validate_shared_columns``):
 
 - **Comparison is by display label, never by raw code.** The key is the label a value renders as, with
   a raw code that has no declared label standing in as its own label. Codes are private to each source,
