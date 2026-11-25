@@ -108,11 +108,11 @@ class TestIntanConverter:
         converter = IntanConverter(
             file_path=RHS_TRADITIONAL,
             event_extraction_configuration={
-                "DIGITAL-IN-14": {
+                "digital_onsets": {
                     "source": "digital_inputs",
                     "detection": {"lines": [13], "on_change": {"onset": "rising"}},
                 },
-                "ANALOG-IN-1": {
+                "analog_onsets": {
                     "source": "ANALOG-IN-1",
                     "signal_conditioning": {"binarize": "midpoint"},
                     "detection": {"on_change": {"onset": "rising"}},
@@ -126,7 +126,7 @@ class TestIntanConverter:
         nwbfile = mock_NWBFile()
         converter.add_to_nwbfile(nwbfile)
 
-        assert set(nwbfile.events) == {"DIGITAL-IN-14", "ANALOG-IN-1"}
+        assert set(nwbfile.events) == {"DigitalOnsets", "AnalogOnsets"}
 
 
 class TestMetadataKeyRouting:
