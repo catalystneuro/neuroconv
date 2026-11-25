@@ -146,22 +146,20 @@ Configure the line and read the event times back without writing anything:
     recording_interface = IntanRecordingInterface(file_path="session.rhd")
     digital_interface = IntanDigitalInterface(
         file_path="session.rhd",
-        detection_configuration={
-            "DIGITAL-IN-02": [
-                {
-                    "signal_conditioning": {"binarize": "midpoint"},
-                    "detection": "rising",
-                    "event_name": "camera_frame",
-                }
-            ]
+        event_extraction_configuration={
+            "camera_frame": {
+                "source": "digital_inputs",
+                "detection": {"lines": [1], "on_change": {"onset": "rising"}},
+            }
         },
     )
 
     frame_pulse_times = digital_interface.get_event_times("camera_frame")
 
-Each key of ``detection_configuration`` names one input of the recording system as the file names it, here
-``"DIGITAL-IN-02"``. Use the input the camera's cable is plugged into on your rig. A name the file does not
-hold throws an error that lists the ones it does.
+Each entry names the port of the recording system in ``source``, here the digital inputs, and the line on
+that port in ``lines``, counted from 0. Use the line the camera's cable is plugged into on your rig. A port
+the file does not hold throws an error that lists the ones it does, and so does a line the file did not
+record.
 
 The pulses are on the clock of the system that recorded them. Times read from an Intan digital line are on
 the Intan clock, so the frames you give them to land on that clock too. That is the session clock as long

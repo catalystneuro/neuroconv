@@ -104,12 +104,19 @@ class TestIntanConverter:
         assert "ElectricalSeries" in nwbfile.acquisition
         assert len(nwbfile.events["DIGITAL-IN-14"]) == 16
 
-    def test_detection_configuration_is_propagated(self):
+    def test_event_extraction_configuration_is_routed_by_source(self):
         converter = IntanConverter(
             file_path=RHS_TRADITIONAL,
-            detection_configuration={
-                "DIGITAL-IN-14": [{"signal_conditioning": {"binarize": "midpoint"}, "detection": "rising"}],
-                "ANALOG-IN-1": [{"signal_conditioning": {"binarize": "midpoint"}, "detection": "rising"}],
+            event_extraction_configuration={
+                "DIGITAL-IN-14": {
+                    "source": "digital_inputs",
+                    "detection": {"lines": [13], "on_change": {"onset": "rising"}},
+                },
+                "ANALOG-IN-1": {
+                    "source": "ANALOG-IN-1",
+                    "signal_conditioning": {"binarize": "midpoint"},
+                    "detection": {"on_change": {"onset": "rising"}},
+                },
             },
         )
 
@@ -199,16 +206,16 @@ class TestStreamDiscoveryAndRouting:
         assert "Stim" not in interface_names
         assert "Recording" in interface_names
 
-    def test_unknown_detection_configuration_signal_raises(self):
+    def test_unknown_event_extraction_source_raises(self):
         expected_error = (
-            "detection_configuration names signal(s) not found in the discovered digital or ADC streams: "
-            "['missing']. Available signals: ['ANALOG-IN-1', 'DIGITAL-IN-01']."
+            "Event extraction entry 'requested' must name a 'source' among the digital ports and ADC channels "
+            "of the file. Available sources: ['digital_inputs', 'ANALOG-IN-1']."
         )
         with pytest.raises(ValueError, match=re.escape(expected_error)):
             IntanConverter(
                 file_path=RHD_FILE_PER_SIGNAL,
-                detection_configuration={
-                    "missing": [{"signal_conditioning": {"binarize": "midpoint"}, "detection": "rising"}]
+                event_extraction_configuration={
+                    "requested": {"source": "missing", "detection": {"on_change": {"onset": "rising"}}}
                 },
             )
 

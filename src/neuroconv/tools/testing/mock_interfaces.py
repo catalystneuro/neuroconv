@@ -300,8 +300,6 @@ class MockEventsInterface(BaseEventsInterface):
     constructor flag.
     """
 
-    _supports_event_extraction_configuration = True
-
     def __init__(
         self,
         *,
