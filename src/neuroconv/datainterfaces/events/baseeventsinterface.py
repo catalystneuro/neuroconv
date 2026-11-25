@@ -11,6 +11,7 @@ from pynwb.file import NWBFile
 from ..._temporal_alignment import _TemporalAlignment
 from ...basedatainterface import BaseDataInterface
 from ...tools.nwb_helpers._metadata_and_file_helpers import _validate_metadata_key, _validate_metadata_path
+from ...tools.signal_processing import _ON_CHANGE_READINGS
 from ...utils import to_camel_case
 
 _EVENT_EXTRACTION_CONFIGURATION_SCHEMA = {
@@ -21,8 +22,37 @@ _EVENT_EXTRACTION_CONFIGURATION_SCHEMA = {
         "properties": {
             "source": {"type": "string", "minLength": 1},
             "format_options": {"type": "object"},
-            "signal_conditioning": {"type": "object"},
-            "detection": {"type": "object"},
+            "signal_conditioning": {
+                "type": "object",
+                "required": ["binarize"],
+                "properties": {"binarize": {"anyOf": [{"const": "midpoint"}, {"type": "number"}]}},
+                "additionalProperties": False,
+            },
+            "detection": {
+                "type": "object",
+                "required": ["on_change"],
+                "properties": {
+                    "lines": {
+                        "type": "array",
+                        "items": {"type": "integer", "minimum": 0},
+                        "minItems": 1,
+                        "maxItems": 1,
+                    },
+                    "on_change": {
+                        "type": "object",
+                        "required": ["onset"],
+                        "properties": {
+                            "onset": {"enum": ["rising", "falling", "either"]},
+                            "end": {"enum": ["rising", "falling"]},
+                        },
+                        "additionalProperties": False,
+                    },
+                    "timestamp_estimate": {
+                        "enum": ["first_sample_after_change", "last_sample_before_change", "halfway_between_samples"]
+                    },
+                },
+                "additionalProperties": False,
+            },
             "separation": {
                 "type": "object",
                 "required": ["by_payload_fields"],
@@ -212,6 +242,17 @@ class BaseEventsInterface(BaseDataInterface):
                     f"{unsupported_operations} for source {source_name!r}. "
                     f"Supported operations: {supported_operations}."
                 )
+
+            detection = entry.get("detection")
+            if detection is not None:
+                onset = detection["on_change"]["onset"]
+                end = detection["on_change"].get("end")
+                if (onset, end) not in _ON_CHANGE_READINGS:
+                    raise ValueError(
+                        f"Event extraction entry {entry_name!r} sets 'on_change' with onset {onset!r} and end "
+                        f"{end!r}. An event that starts on a rising change ends on a falling one and the reverse, "
+                        "and an 'either' onset takes no end."
+                    )
             resolved_entries[entry_name] = {**entry, "source": source_name}
         return resolved_entries
 
