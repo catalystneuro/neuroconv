@@ -654,16 +654,16 @@ class TestEventDetection:
     2.5 upward at 0.2 and 0.6 s and downward at 0.4 and 0.8 s.
     """
 
-    def test_rising_changes_on_one_line_of_a_port(self):
+    def test_lines_selects_one_bit_of_a_digital_port(self):
         configuration = {
             "camera": {"source": "digital_port", "detection": {"lines": [1], "on_change": {"onset": "rising"}}}
         }
         interface = MockEventsInterface(event_extraction_configuration=configuration)
 
-        assert interface.get_event_type_source_ids() == ["camera"]
-        assert interface.temporal_alignment.keys() == ("camera",)
-        np.testing.assert_allclose(interface.get_event_times("camera"), [0.3])
-        assert interface._get_event_durations("camera") is None
+        nwbfile = interface.create_nwbfile()
+        table = nwbfile.get_events_table("Camera")
+        assert table.colnames == ("timestamp",)
+        np.testing.assert_allclose(table["timestamp"][:], [0.3])
 
     def test_onset_and_end_give_an_event_with_duration(self):
         configuration = {
@@ -689,41 +689,35 @@ class TestEventDetection:
         }
         interface = MockEventsInterface(event_extraction_configuration=configuration)
 
-        np.testing.assert_allclose(interface.get_event_times("photodiode"), [0.2, 0.6])
-        np.testing.assert_allclose(interface._get_event_durations("photodiode"), [0.2, 0.2])
+        nwbfile = interface.create_nwbfile()
+        table = nwbfile.get_events_table("Photodiode")
+        np.testing.assert_allclose(table["timestamp"][:], [0.2, 0.6])
+        np.testing.assert_allclose(table["duration"][:], [0.2, 0.2])
 
-    def test_timestamp_estimate_takes_the_last_sample_before_the_change(self):
+    @pytest.mark.parametrize(
+        "timestamp_estimate, expected_timestamps",
+        [
+            ("first_sample_after_change", [0.1, 0.5, 0.9]),
+            ("last_sample_before_change", [0.0, 0.4, 0.8]),
+            ("halfway_between_samples", [0.05, 0.45, 0.85]),
+        ],
+    )
+    def test_timestamp_estimate_picks_the_time_of_each_change(self, timestamp_estimate, expected_timestamps):
         configuration = {
             "camera": {
                 "source": "digital_port",
                 "detection": {
                     "lines": [0],
                     "on_change": {"onset": "rising"},
-                    "timestamp_estimate": "last_sample_before_change",
+                    "timestamp_estimate": timestamp_estimate,
                 },
             }
         }
         interface = MockEventsInterface(event_extraction_configuration=configuration)
 
-        np.testing.assert_allclose(interface.get_event_times("camera"), [0.0, 0.4, 0.8])
-
-    def test_port_without_lines_raises(self):
-        configuration = {"camera": {"source": "digital_port", "detection": {"on_change": {"onset": "rising"}}}}
-        expected_error = (
-            "Event extraction entry 'camera' must set 'lines' in 'detection' because source 'digital_port' has 2 "
-            "lines."
-        )
-        with pytest.raises(ValueError, match=rf"\A{re.escape(expected_error)}\Z"):
-            MockEventsInterface(event_extraction_configuration=configuration)
-
-    def test_analog_signal_without_signal_conditioning_raises(self):
-        configuration = {"photodiode": {"source": "analog", "detection": {"on_change": {"onset": "rising"}}}}
-        expected_error = (
-            "Event extraction entry 'photodiode' detects on 'analog', an analog signal, without "
-            "'signal_conditioning'. Set 'signal_conditioning': {'binarize': ...} to cut it into a line."
-        )
-        with pytest.raises(ValueError, match=rf"\A{re.escape(expected_error)}\Z"):
-            MockEventsInterface(event_extraction_configuration=configuration)
+        nwbfile = interface.create_nwbfile()
+        table = nwbfile.get_events_table("Camera")
+        np.testing.assert_allclose(table["timestamp"][:], expected_timestamps)
 
     def test_end_equal_to_the_onset_raises(self):
         configuration = {

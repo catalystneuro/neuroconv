@@ -253,18 +253,6 @@ class BaseEventsInterface(BaseDataInterface):
                         f"{end!r}. An event that starts on a rising change ends on a falling one and the reverse, "
                         "and an 'either' onset takes no end."
                     )
-                num_lines = source.get("num_lines")
-                if "signal_conditioning" not in entry and num_lines is None:
-                    raise ValueError(
-                        f"Event extraction entry {entry_name!r} detects on {source_name!r}, an analog signal, "
-                        "without 'signal_conditioning'. Set 'signal_conditioning': {'binarize': ...} to cut it "
-                        "into a line."
-                    )
-                if "signal_conditioning" not in entry and "lines" not in detection and num_lines > 1:
-                    raise ValueError(
-                        f"Event extraction entry {entry_name!r} must set 'lines' in 'detection' because source "
-                        f"{source_name!r} has {num_lines} lines."
-                    )
             resolved_entries[entry_name] = {**entry, "source": source_name}
         return resolved_entries
 

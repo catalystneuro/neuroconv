@@ -375,7 +375,7 @@ class MockEventsInterface(BaseEventsInterface):
         else:
             source_names = [f"events_{index}" for index in range(num_event_types)] + ["silent"]
         event_sources = {name: {"supported_operations": ["separation"]} for name in source_names}
-        event_sources["digital_port"] = {"supported_operations": ["detection"], "num_lines": 2}
+        event_sources["digital_port"] = {"supported_operations": ["detection"]}
         event_sources["analog"] = {"supported_operations": ["signal_conditioning", "detection"]}
         return event_sources
 
