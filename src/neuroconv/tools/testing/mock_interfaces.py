@@ -1925,7 +1925,7 @@ class MockIcephysInterface(BaseIcephysInterface):
         self.metadata_key = metadata_key or "mock"
         self.stimulus_duration = stimulus_duration
         self.stimulus_template_duration = stimulus_template_duration
-        self._stimulus_template_metadata_key = stimulus_template_metadata_key or metadata_key
+        self._stimulus_template_metadata_key = stimulus_template_metadata_key or self.metadata_key
         self.seed = seed
 
         # The base writer reads these. The series key doubles as the alignment key, as in the real interfaces.
