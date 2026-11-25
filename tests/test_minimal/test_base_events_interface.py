@@ -16,7 +16,7 @@ from neuroconv.tools.testing.mock_interfaces import MockEventsInterface
 class TestMockEventsInterface(EventsInterfaceTestMixin):
     data_interface_cls = MockEventsInterface
     expected_temporal_alignment_keys = ("events",)
-    expected_event_sources = ("events", "silent")
+    expected_event_sources = ("events", "silent", "digital_port", "analog")
     interface_kwargs = dict()
 
     def test_get_metadata(self):
@@ -564,7 +564,7 @@ class TestEventSourceResolution:
         event_extraction_configuration = {"requested": {"source": missing_source}}
         expected_error = (
             f"Event extraction entry 'requested' requests missing source '{missing_source}'. "
-            "Available sources: ['events_0', 'events_1', 'silent']. "
+            "Available sources: ['events_0', 'events_1', 'silent', 'digital_port', 'analog']. "
             "Use MockEventsInterface.get_available_event_sources(...) to inspect the recording."
         )
         with pytest.raises(ValueError, match=rf"\A{re.escape(expected_error)}\Z"):
@@ -607,7 +607,7 @@ class TestEventSourceResolution:
         configuration = {"requested": {}}
         expected_error = (
             "Event extraction entry 'requested' must specify 'source' because this recording has "
-            "multiple event sources. Available sources: ['events', 'silent']."
+            "multiple event sources. Available sources: ['events', 'silent', 'digital_port', 'analog']."
         )
         with pytest.raises(ValueError, match=rf"\A{re.escape(expected_error)}\Z"):
             MockEventsInterface(event_extraction_configuration=configuration)
@@ -637,7 +637,7 @@ class TestEventSourceResolution:
             MockInterfaceWithoutEventSources()
 
     def test_extraction_configuration_rejects_unsupported_operation(self):
-        configuration = {"requested": {"source": "events", "detection": {}}}
+        configuration = {"requested": {"source": "events", "detection": {"on_change": {"onset": "rising"}}}}
         expected_error = (
             "Event extraction entry 'requested' requests unsupported operations ['detection'] for source 'events'. "
             "Supported operations: ['separation']."
@@ -646,8 +646,96 @@ class TestEventSourceResolution:
             MockEventsInterface(event_extraction_configuration=configuration)
 
 
+class TestEventDetection:
+    """``detection`` on the sampled sources of ``MockEventsInterface``.
+
+    ``digital_port`` holds two lines sampled every 0.1 s. Line 0 rises at 0.1, 0.5 and 0.9 s and falls at
+    0.3, 0.7 and 1.1 s. Line 1 rises at 0.3 s and falls at 0.8 s. ``analog`` is a magnitude that crosses
+    2.5 upward at 0.2 and 0.6 s and downward at 0.4 and 0.8 s.
+    """
+
+    def test_lines_selects_one_bit_of_a_digital_port(self):
+        configuration = {
+            "camera": {"source": "digital_port", "detection": {"lines": [1], "on_change": {"onset": "rising"}}}
+        }
+        interface = MockEventsInterface(event_extraction_configuration=configuration)
+
+        nwbfile = interface.create_nwbfile()
+        table = nwbfile.get_events_table("Camera")
+        assert table.colnames == ("timestamp",)
+        np.testing.assert_allclose(table["timestamp"][:], [0.3])
+
+    def test_onset_and_end_give_an_event_with_duration(self):
+        configuration = {
+            "camera": {
+                "source": "digital_port",
+                "detection": {"lines": [0], "on_change": {"onset": "rising", "end": "falling"}},
+            }
+        }
+        interface = MockEventsInterface(event_extraction_configuration=configuration)
+
+        nwbfile = interface.create_nwbfile()
+        table = nwbfile.get_events_table("Camera")
+        np.testing.assert_allclose(table["timestamp"][:], [0.1, 0.5, 0.9])
+        np.testing.assert_allclose(table["duration"][:], [0.2, 0.2, 0.2])
+
+    def test_analog_signal_is_cut_into_a_line(self):
+        configuration = {
+            "photodiode": {
+                "source": "analog",
+                "signal_conditioning": {"binarize": 2.5},
+                "detection": {"on_change": {"onset": "rising", "end": "falling"}},
+            }
+        }
+        interface = MockEventsInterface(event_extraction_configuration=configuration)
+
+        nwbfile = interface.create_nwbfile()
+        table = nwbfile.get_events_table("Photodiode")
+        np.testing.assert_allclose(table["timestamp"][:], [0.2, 0.6])
+        np.testing.assert_allclose(table["duration"][:], [0.2, 0.2])
+
+    @pytest.mark.parametrize(
+        "timestamp_estimate, expected_timestamps",
+        [
+            ("first_sample_after_change", [0.1, 0.5, 0.9]),
+            ("last_sample_before_change", [0.0, 0.4, 0.8]),
+            ("halfway_between_samples", [0.05, 0.45, 0.85]),
+        ],
+    )
+    def test_timestamp_estimate_picks_the_time_of_each_change(self, timestamp_estimate, expected_timestamps):
+        configuration = {
+            "camera": {
+                "source": "digital_port",
+                "detection": {
+                    "lines": [0],
+                    "on_change": {"onset": "rising"},
+                    "timestamp_estimate": timestamp_estimate,
+                },
+            }
+        }
+        interface = MockEventsInterface(event_extraction_configuration=configuration)
+
+        nwbfile = interface.create_nwbfile()
+        table = nwbfile.get_events_table("Camera")
+        np.testing.assert_allclose(table["timestamp"][:], expected_timestamps)
+
+    def test_end_equal_to_the_onset_raises(self):
+        configuration = {
+            "camera": {
+                "source": "digital_port",
+                "detection": {"lines": [0], "on_change": {"onset": "rising", "end": "rising"}},
+            }
+        }
+        expected_error = (
+            "Event extraction entry 'camera' sets 'on_change' with onset 'rising' and end 'rising'. An event that "
+            "starts on a rising change ends on a falling one and the reverse, and an 'either' onset takes no end."
+        )
+        with pytest.raises(ValueError, match=rf"\A{re.escape(expected_error)}\Z"):
+            MockEventsInterface(event_extraction_configuration=configuration)
+
+
 class TestEventSeparation:
-    """``separation`` in ``event_extraction_configuration``, applied by ``BaseEventsInterface._separate_events``."""
+    """``separation`` in ``event_extraction_configuration``, applied by ``neuroconv.tools.events._separate_events``."""
 
     def test_one_field_gives_one_event_type_per_recorded_value(self):
         num_events = 8

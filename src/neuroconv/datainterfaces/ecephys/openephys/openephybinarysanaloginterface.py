@@ -31,7 +31,7 @@ class OpenEphysBinaryAnalogInterface(BaseRecordingAsTimeSeriesInterface):
         stream_name: str | None = None,
         block_index: int | None = None,
         verbose: bool = False,
-        metadata_key: str = "open_ephys_analog",
+        metadata_key: str | None = None,
         time_series_name: str = "TimeSeriesOpenEphysAnalog",
         channels_to_include: list[str] | None = None,
     ):
@@ -49,9 +49,9 @@ class OpenEphysBinaryAnalogInterface(BaseRecordingAsTimeSeriesInterface):
             The index of the block to extract from the data.
         verbose : bool, default: False
             Controls verbosity.
-        metadata_key : str, default: "open_ephys_analog"
+        metadata_key : str, optional
             Key for the TimeSeries metadata in the metadata dictionary. This addresses the entry;
-            the written object's name is ``time_series_name``.
+            the written object's name is ``time_series_name``. Defaults to ``"open_ephys_analog"``.
         time_series_name : str, default: "TimeSeriesOpenEphysAnalog"
             The name of the TimeSeries object in the NWBFile.
         channels_to_include : list of str, optional
@@ -65,7 +65,7 @@ class OpenEphysBinaryAnalogInterface(BaseRecordingAsTimeSeriesInterface):
 
         self.folder_path = folder_path
         self._xml_root = _read_settings_xml(folder_path)
-        self.metadata_key = metadata_key
+        self.metadata_key = metadata_key or "open_ephys_analog"
         self.time_series_name = time_series_name
 
         available_streams = OpenEphysBinaryRecordingExtractor.get_streams(folder_path=folder_path)[0]

@@ -122,9 +122,13 @@ class TestIntanDigitalInterfaceSplit:
         interface = IntanDigitalInterface(
             file_path=first_file,
             saved_files_are_split=True,
-            detection_configuration={
-                line: [{"signal_conditioning": {"binarize": "midpoint"}, "detection": "low_period"}]
-                for line in expected_events_per_line
+            event_extraction_configuration={
+                name: {
+                    "source": "digital_inputs",
+                    "detection": {"lines": [line], "on_change": {"onset": "falling", "end": "rising"}},
+                }
+                # This recording's software names its lines from 0, so the name and the position agree.
+                for name, line in (("DIGITAL-IN-12", 12), ("DIGITAL-IN-13", 13), ("DIGITAL-IN-14", 14))
             },
         )
         nwbfile = mock_NWBFile()

@@ -88,6 +88,9 @@ text = [
 ]
 
 ## Behavior
+behavior_minimal = [  # Keeps the minimal version of the ethogram dependency in the repo
+    "ndx-ethogram>=0.2.0",
+]
 audio = [
     "ndx-sound>=0.3.0",  # 0.3.0 allows any number of channels, 0.2.3 fixed the starting_time dtype for hdmf>=6
     "scipy", # for scipy.io.wavfile
@@ -130,21 +133,21 @@ optitrack = [
     "ndx-pose>=0.4.0",  # for MultiCameraPoseEstimation
 ]
 moseq = [
-    "ndx-ethogram>=0.2.0",  # For the curated EthogramBouts/Ethogram derived from the syllable sequence
+    "neuroconv[behavior_minimal]",  # For the curated EthogramBouts/Ethogram derived from the syllable sequence
 ]
 vame = [
     "ndx-vame>=0.3.2",
-    "ndx-ethogram>=0.2.0",  # For the curated EthogramBouts/Ethogram derived from MotifSeries
+    "neuroconv[behavior_minimal]",  # For the curated EthogramBouts/Ethogram derived from MotifSeries
 ]
 bsoid = [
-    "ndx-ethogram>=0.2.0",  # the behavior groups are written as an Ethogram and its EthogramBouts
+    "neuroconv[behavior_minimal]",  # the behavior groups are written as an Ethogram and its EthogramBouts
 ]
 boris = [
-    "ndx-ethogram>=0.2.0",  # a BORIS project is a coding scheme plus its events, and the scheme is an Ethogram
+    "neuroconv[behavior_minimal]",  # a BORIS project is a coding scheme plus its events, and the scheme is an Ethogram
 ]
 ethovision = [
     "openpyxl",  # Excel is one of EthoVision's three Track-export containers
-    "ndx-ethogram>=0.2.0",  # manual-scoring rows also produce an Ethogram and EthogramBouts
+    "neuroconv[behavior_minimal]",  # manual-scoring rows also produce an Ethogram and EthogramBouts
 ]
 behavior = [
     "neuroconv[boris]",

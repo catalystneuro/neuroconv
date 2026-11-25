@@ -62,8 +62,8 @@ sub-interface, so a single call writes them all to NWB.
 .. note::
 
     If present, digital lines are converted to events by default. ADC streams are converted only as
-    continuous data; to derive events from ADC signals, pass a ``detection_configuration`` as described
-    in :ref:`the event-detection configuration <intan-event-detections>`.
+    continuous data; to derive events from ADC signals, pass an ``event_extraction_configuration`` as
+    described in :ref:`the event-detection configuration <intan-event-detections>`.
 
 To inspect what streams are in a file before constructing the converter, use
 ``IntanConverter.get_streams(file_path=...)``.
@@ -289,17 +289,19 @@ Digital TTL events
 Convert Intan digital TTL lines to discrete events using
 :py:class:`~neuroconv.datainterfaces.ecephys.intan.intandigitalinterface.IntanDigitalInterface`.
 The controller packs its 16 digital input lines (and its 16 digital output lines) into one 16-bit word
-per sample, and the header names every line it recorded. This interface reads each named line,
-edge-detects it, and writes them as ``pynwb.event.EventsTable`` objects into ``nwbfile.events``.
+per sample, and the header names every line it recorded. This interface reads lines of those words,
+edge-detects them, and writes them as ``pynwb.event.EventsTable`` objects into ``nwbfile.events``.
 
-Lines are addressed by the header's own name (``DIGITAL-IN-01``, ``DIN-00``, ``DIGITAL-OUT-05``), which
-is what the acquisition software shows. Because every line is named individually, one interface covers
-whichever digital words the file carries and there is no stream to pick. To see the names a file offers,
-construct the interface with no configuration and read the event types off ``get_metadata()``.
+Each word is a port, ``"digital_inputs"`` or ``"digital_outputs"``, whichever way the file was saved.
+A line is addressed by its position on the port, counted from 0. The header's line names are not the
+address, because Intan software versions name the same line differently: line 0 is ``DIN-00`` in an
+older file and ``DIGITAL-IN-01`` in a newer one. ``IntanDigitalInterface.get_available_event_sources``
+lists the ports of a file.
 
-With no ``detection_configuration`` (the default), every line the header exposes is derived as one event
-type, using the lossless ``"high_period"`` reading (a durative event per pulse, with a duration). A line
-that was recorded but never toggles is still written, as an empty table.
+With no ``event_extraction_configuration`` (the default), every line the header exposes becomes one
+event type named after the line, read from each rising change to the next falling change, so each event
+is one high pulse with its duration. A line that was recorded but never toggles is still written, as an
+empty table.
 
 .. code-block:: python
 
@@ -323,34 +325,25 @@ that was recorded but never toggles is still written, as an empty table.
     >>> nwbfile_path_digital = output_folder / "intan_digital_conversion.nwb"
     >>> interface_digital.run_conversion(nwbfile_path=nwbfile_path_digital, metadata=metadata_digital, overwrite=True)
 
-To select particular digital lines or request a different edge reading, pass a
-``detection_configuration`` keyed by their header names. An Intan digital line already is a line, so its
-conditioning is always ``{"binarize": "midpoint"}``, which cuts strictly between the signal's two levels
-whatever they are:
+To select particular digital lines or request a different edge reading, pass an
+``event_extraction_configuration``. Each entry is keyed by the name of the event type it produces and
+names the port in ``source`` and the line's position in ``lines``:
 
 .. code-block:: python
 
     >>> interface_digital = IntanDigitalInterface(
     ...     file_path=file_path_digital,
-    ...     detection_configuration={
-    ...         # The key is the line's name in the Intan header. The optional "event_name" is a name you
-    ...         # choose for whatever device is wired to it; it replaces the derived identifier, and
-    ...         # pinning it now means the identifier does not move if you later read the same line two
-    ...         # ways. Without it, the line keeps its header name.
-    ...         "DIGITAL-IN-01": [
-    ...             {
-    ...                 "signal_conditioning": {"binarize": "midpoint"},
-    ...                 "detection": "rising",
-    ...                 "event_name": "camera_sync",
-    ...             }
-    ...         ],
+    ...     event_extraction_configuration={
+    ...         "camera_sync": {
+    ...             "source": "digital_inputs",
+    ...             "detection": {"lines": [0], "on_change": {"onset": "rising"}},
+    ...         },
     ...     },
     ...     verbose=False,
     ... )
 
 To skip digital events entirely, do not construct this interface (or ``exclude_streams`` the digital
-word in the converter); an empty ``detection_configuration={}`` raises rather than silently writing
-nothing.
+word in the converter).
 
 
 Analog ADC events
@@ -368,10 +361,12 @@ continuous trace is also wanted.
     >>>
     >>> interface_events = IntanAnalogEventsInterface(
     ...     file_path=file_path_output,
-    ...     detection_configuration={
-    ...         "ANALOG-OUT-1": [
-    ...             {"signal_conditioning": {"binarize": 5000}, "detection": "rising"},
-    ...         ],
+    ...     event_extraction_configuration={
+    ...         "ANALOG-OUT-1": {
+    ...             "source": "ANALOG-OUT-1",
+    ...             "signal_conditioning": {"binarize": 5000},
+    ...             "detection": {"on_change": {"onset": "rising"}},
+    ...         },
     ...     },
     ... )
 
@@ -382,12 +377,13 @@ The threshold is in the stored ADC values.
 **Specifying event detections.** Unlike :py:class:`~neuroconv.datainterfaces.ecephys.intan.intandigitalinterface.IntanDigitalInterface`,
 which by default writes every contiguous high interval on each digital line as an event with a duration,
 :py:class:`~neuroconv.datainterfaces.ecephys.intan.intananalogueventsinterface.IntanAnalogEventsInterface`
-requires a ``detection_configuration``. An ADC trace is continuous, so the configuration supplies the
-threshold that defines its events.
+requires an ``event_extraction_configuration``. An ADC trace is continuous, so the configuration supplies
+the threshold that defines its events.
 
-``IntanConverter`` accepts one flat ``detection_configuration`` mapping across digital lines and ADC
-channels. Omit it to preserve the lossless digital default and keep ADC streams raw-only; provide it to
-select exactly the digital lines and ADC channels that become events:
+``IntanConverter`` accepts one ``event_extraction_configuration`` across the digital ports and the ADC
+channels, and hands each entry to the interface that reads its ``source``. Omit it to preserve the digital
+default and keep ADC streams raw-only; provide it to select exactly the digital lines and ADC channels
+that become events:
 
 .. code-block:: python
 
@@ -395,13 +391,16 @@ select exactly the digital lines and ADC channels that become events:
     >>>
     >>> converter = IntanConverter(
     ...     file_path=file_path_output,
-    ...     detection_configuration={
-    ...         "DIGITAL-IN-01": [
-    ...             {"signal_conditioning": {"binarize": "midpoint"}, "detection": "rising"},
-    ...         ],
-    ...         "ANALOG-OUT-1": [
-    ...             {"signal_conditioning": {"binarize": 5000}, "detection": "rising"},
-    ...         ],
+    ...     event_extraction_configuration={
+    ...         "DIGITAL-IN-01": {
+    ...             "source": "digital_inputs",
+    ...             "detection": {"lines": [0], "on_change": {"onset": "rising"}},
+    ...         },
+    ...         "ANALOG-OUT-1": {
+    ...             "source": "ANALOG-OUT-1",
+    ...             "signal_conditioning": {"binarize": 5000},
+    ...             "detection": {"on_change": {"onset": "rising"}},
+    ...         },
     ...     },
     ... )
 
