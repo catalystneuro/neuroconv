@@ -420,8 +420,75 @@ def _add_events_to_nwbfile(nwbfile: NWBFile, *, events_data: dict, metadata: dic
     _validate_metadata_key(metadata, metadata_path=("Events",), metadata_key=metadata_key)
     _validate_metadata_path(metadata, ("Events", metadata_key, "event_types"))
     events_metadata = metadata["Events"]
-    _validate_shared_columns(events_metadata)
     event_tables_metadata = events_metadata.get("EventTables", {})
+
+    # Event types writing one shared column must declare it consistently. Several event types may write the
+    # same `column_name` into one merged table (they share a `table_metadata_key`); the output column is then
+    # the union of their declarations. That union is well defined only where the declarations agree: a label
+    # both types explain must get the same meaning, and a description both types set must match. Raw codes
+    # are not compared across contributors, because each source's codes are private (two sources may reuse
+    # the same integer for different labels, which is a legitimate heterogeneous merge, not a conflict).
+    # Where declarations do not overlap it is a contribution, not a conflict. The whole `Events` metadata is
+    # checked at once, so an inconsistency is caught before anything is written, whether the contributors
+    # live in one interface or several (a converter passes every interface's block in the one dict). Only
+    # genuine merges are checked: a table with a declared `EventTables` entry, or one that more than one type
+    # in a single interface routes to. Two interfaces that merely leave `table_metadata_key` unset (so it
+    # defaults to each type's own `event_type_source_id`) are not a shared table even if those defaults
+    # coincide.
+    #
+    # Count, per interface block, how many types route to each table key (tells a real within-interface
+    # merge from a default key that two interfaces coincidentally share), and collect every column
+    # declaration keyed by the table and column it targets.
+    block_table_counts = {}
+    declarations = {}  # (table_key, column_name) -> list of (event_name, interface_key, column_spec)
+    for interface_key, block in events_metadata.items():
+        if interface_key == "EventTables":
+            continue
+        for source_id, entry in block.get("event_types", {}).items():
+            table_key = entry.get("table_metadata_key", source_id)
+            block_table_counts[(interface_key, table_key)] = block_table_counts.get((interface_key, table_key), 0) + 1
+            for spec in entry.get("columns", {}).values():
+                declarations.setdefault((table_key, spec["column_name"]), []).append(
+                    (entry["event_name"], interface_key, spec)
+                )
+
+    for (table_key, column_name), decls in declarations.items():
+        is_merge_table = table_key in event_tables_metadata or any(
+            count >= 2 for (_interface, key), count in block_table_counts.items() if key == table_key
+        )
+        if len(decls) < 2 or not is_merge_table:
+            continue
+        table_display = event_tables_metadata.get(table_key, {}).get("table_name", table_key)
+        label_to_meaning = {}  # display label -> (meaning, event_name, interface_key)
+        described_by = None  # (description, event_name, interface_key) for the first non-empty description
+        for event_name, interface_key, spec in decls:
+            # A conflict is the detail of the disagreement and the (value, event_name, interface_key) of the
+            # type this one disagrees with.
+            conflict = None
+            categories = spec.get("column_categories") or {}
+            labels = {str(code): label for code, label in categories.get("labels", {}).items()}
+            meanings = {str(code): meaning for code, meaning in categories.get("meanings", {}).items()}
+            for code, meaning in meanings.items():
+                label = labels.get(code, code)
+                prior = label_to_meaning.setdefault(label, (meaning, event_name, interface_key))
+                if prior[0] != meaning:
+                    conflict = (f"label '{label}' means '{prior[0]}' vs '{meaning}'", prior)
+                    break
+            description = spec.get("description", "")
+            if conflict is None and description:
+                described_by = described_by or (description, event_name, interface_key)
+                if described_by[0] != description:
+                    conflict = (f"description '{described_by[0]}' vs '{description}'", described_by)
+            if conflict is not None:
+                detail, (_, first_name, first_interface) = conflict
+                raise ValueError(
+                    f"Event types '{first_name}' (interface '{first_interface}') and '{event_name}' "
+                    f"(interface '{interface_key}') disagree on column '{column_name}' in the shared events "
+                    f"table '{table_display}': {detail}. A column shared across event types must be declared "
+                    f"consistently (matching labels, meanings, and description where they overlap); reconcile "
+                    f"the declarations or use distinct column_names."
+                )
+
     event_types = events_metadata[metadata_key]["event_types"]
 
     # Group event types by the table they route to; table_metadata_key defaults to the source id.
@@ -575,22 +642,31 @@ def _append_events_to_table(
             )
             column_name = column_spec["column_name"]
             # Several types writing the same column_name is one shared column (its declarations are
-            # checked for consistency up front by _validate_shared_columns); record it once, then let
+            # checked for consistency up front by _add_events_to_nwbfile); record it once, then let
             # each type fill its own rows below.
             column_specs.setdefault(column_name, column_spec)
             values = event.payload[field_source_id]
             if isinstance(values, np.ndarray) and values.dtype.kind in "biufSU":
                 column_dtypes.setdefault(column_name, []).append(values.dtype)
-            if any(_holds_several_values(value) for value in values):
+            # A string is a scalar even though it is iterable, and a numpy string scalar likewise, so the test
+            # is for the container types a payload actually uses to mean "more than one".
+            if any(
+                isinstance(value, (list, tuple, set)) or (isinstance(value, np.ndarray) and value.ndim > 0)
+                for value in values
+            ):
                 ragged_column_names.add(column_name)
-            resolved_columns.append((field_source_id, column_name, _labels_map(column_spec)))
+            # The raw-value to display-label map of a categorical column, else None. Keys are stringified so a
+            # value that survives a JSON round trip (metadata keys become strings) still matches.
+            categories = column_spec.get("column_categories")
+            labels_map = {str(key): label for key, label in categories["labels"].items()} if categories else None
+            resolved_columns.append((field_source_id, column_name, labels_map))
         for index, timestamp in enumerate(timestamps):
             cells = {}
             for field_source_id, column_name, labels_map in resolved_columns:
                 value = event.payload[field_source_id][index]
                 if labels_map is None:
                     cells[column_name] = value
-                elif _holds_several_values(value):
+                elif isinstance(value, (list, tuple, set)) or (isinstance(value, np.ndarray) and value.ndim > 0):
                     cells[column_name] = [labels_map[str(item)] for item in value]
                 else:
                     cells[column_name] = labels_map[str(value)]
@@ -750,120 +826,6 @@ def _append_events_to_table(
                 existing = table[column_name].data
                 row_kwargs[column_name] = "" if len(existing) and isinstance(existing[0], str) else np.nan
         table.add_row(**row_kwargs)
-
-
-def _validate_shared_columns(events_metadata: dict) -> None:
-    """Validate that event types writing one shared column declare it consistently.
-
-    Several event types may write the same ``column_name`` into one merged table (they share a
-    ``table_metadata_key``); the output column is then the union of their declarations. That union is
-    well defined only where the declarations agree: a label both types explain must get the same meaning,
-    and a description both types set must match. Raw codes are *not* compared across contributors, because
-    each source's codes are private (two sources may reuse the same integer for different labels, which is
-    a legitimate heterogeneous merge, not a conflict). Where declarations do not overlap it is a
-    contribution, not a conflict (each may add its own values). The
-    whole ``Events`` metadata is checked at once, so an inconsistency is caught before anything is
-    written, whether the contributors live in one interface or several (a converter passes every
-    interface's block in the one dict). Only genuine merges are checked: a table with a declared
-    ``EventTables`` entry, or one that more than one type in a single interface routes to. Two interfaces
-    that merely leave ``table_metadata_key`` unset (so it defaults to each type's own
-    ``event_type_source_id``) are not a shared table even if those defaults coincide.
-    """
-    event_tables = events_metadata.get("EventTables", {})
-
-    # Count, per interface block, how many types route to each table key (tells a real within-interface
-    # merge from a default key that two interfaces coincidentally share), and collect every column
-    # declaration keyed by the table and column it targets.
-    block_table_counts = {}
-    declarations = {}  # (table_key, column_name) -> list of (event_name, interface_key, column_spec)
-    for interface_key, block in events_metadata.items():
-        if interface_key == "EventTables":
-            continue
-        for source_id, entry in block.get("event_types", {}).items():
-            table_key = entry.get("table_metadata_key", source_id)
-            block_table_counts[(interface_key, table_key)] = block_table_counts.get((interface_key, table_key), 0) + 1
-            for spec in entry.get("columns", {}).values():
-                declarations.setdefault((table_key, spec["column_name"]), []).append(
-                    (entry["event_name"], interface_key, spec)
-                )
-
-    def is_merge_table(table_key: str) -> bool:
-        return table_key in event_tables or any(
-            count >= 2 for (_interface, key), count in block_table_counts.items() if key == table_key
-        )
-
-    for (table_key, column_name), decls in declarations.items():
-        if len(decls) < 2 or not is_merge_table(table_key):
-            continue
-        table_display = event_tables.get(table_key, {}).get("table_name", table_key)
-        label_to_meaning = {}  # display label -> (meaning, event_name, interface_key)
-        described_by = None  # (description, event_name, interface_key) for the first non-empty description
-        for event_name, interface_key, spec in decls:
-            who = (event_name, interface_key)
-            categories = spec.get("column_categories") or {}
-            labels = {str(code): label for code, label in categories.get("labels", {}).items()}
-            meanings = {str(code): meaning for code, meaning in categories.get("meanings", {}).items()}
-            for code, meaning in meanings.items():
-                label = labels.get(code, code)
-                prior = label_to_meaning.get(label)
-                if prior is not None and prior[0] != meaning:
-                    raise _shared_column_conflict(
-                        column_name,
-                        table_display,
-                        f"label '{label}' means '{prior[0]}' vs '{meaning}'",
-                        prior[1:],
-                        who,
-                    )
-                label_to_meaning.setdefault(label, (meaning, *who))
-            description = spec.get("description", "")
-            if description:
-                if described_by is not None and described_by[0] != description:
-                    raise _shared_column_conflict(
-                        column_name,
-                        table_display,
-                        f"description '{described_by[0]}' vs '{description}'",
-                        described_by[1:],
-                        who,
-                    )
-                described_by = described_by or (description, *who)
-
-
-def _labels_map(column_spec: dict) -> dict | None:
-    """Return a stringified raw-value -> display-label map for a categorical column, else None.
-
-    Keys are stringified so a value that survives a JSON round trip (metadata keys become strings)
-    still matches.
-    """
-    categories = column_spec.get("column_categories")
-    return {str(key): label for key, label in categories["labels"].items()} if categories else None
-
-
-def _holds_several_values(value) -> bool:
-    """Whether one event's value for a payload field is several values rather than one.
-
-    A string is a scalar even though it is iterable, and a numpy string scalar likewise, so the test is
-    for the container types a payload actually uses to mean "more than one".
-    """
-    return isinstance(value, (list, tuple, set)) or (isinstance(value, np.ndarray) and value.ndim > 0)
-
-
-def _shared_column_conflict(
-    column_name: str, table_display: str, detail: str, first: tuple, second: tuple
-) -> ValueError:
-    """Build the error for two event types declaring one shared column inconsistently.
-
-    ``first``/``second`` are ``(event_name, interface_key)`` pairs naming the two types that disagree, and
-    ``detail`` says exactly how (a label, a meaning, or the description). Returned (not raised) so the caller
-    raises at the offending site.
-    """
-    (first_name, first_interface), (second_name, second_interface) = first, second
-    return ValueError(
-        f"Event types '{first_name}' (interface '{first_interface}') and '{second_name}' "
-        f"(interface '{second_interface}') disagree on column '{column_name}' in the shared events table "
-        f"'{table_display}': {detail}. A column shared across event types must be declared consistently "
-        f"(matching labels, meanings, and description where they overlap); reconcile the declarations or use "
-        f"distinct column_names."
-    )
 
 
 def _to_table_object_name(name: str) -> str:
